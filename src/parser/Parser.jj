@@ -1,0 +1,1437 @@
+/**
+ * option illustration.
+ */
+options {
+    STATIC = false;
+    DEBUG_PARSER = true;
+    UNICODE_INPUT = true;
+    JDK_VERSION = "1.7";
+}
+
+PARSER_BEGIN(Parser)
+
+package parser;
+
+import ast.*;
+import ast.Tree.*;
+import type.*;
+import utils.*;
+import exception.*;
+import java.util.*;
+import java.io.*;
+
+/**
+ * The parser that parses the cflat source file.
+ * It maps a token sequence into an abstract syntax
+ * tree witch operates by LR grammar.
+ * @version 1.0
+ */
+public class Parser {
+
+	/**
+     * The factory to be used for abstract syntax tree construction.
+     */
+    private TreeMaker F;
+
+	/**
+	 * 默认的字符编码标准
+	 */
+    static final public String SOURCE_ENCODING = "UTF-8";
+
+    /**
+     * The name table.
+     */
+    private Name.Table names;
+    
+    private Log log;  
+    
+	/**
+	 * The current token.
+	 */
+	private Token t;
+
+	private static final Context.Key parserKey = new Context.Key();
+	
+	/**
+	 * Constructs a parser.
+	 * 
+	 * @param input	the input stream
+	 * @param debug		whether debug  or not 
+	 * @param context	A context object
+	 */
+	public Parser(InputStream input, boolean debug, Context context) {
+		this(input, SOURCE_ENCODING);
+		context.put(parserKey, this);
+		this.F = TreeMaker.instance(context);
+		this.log = Log.instance(context);
+		this.names = Name.Table.instance(context);
+		if (debug) {
+			enable_tracing();
+		} else {
+			disable_tracing();
+		}
+	}
+
+	/**
+	 * Constructor with file name.
+	 * @throws FileNotFoundException 
+	 * @throws UnsupportedEncodingException 
+	 */
+	public Parser(String filename, boolean debug, Context context) 
+			throws UnsupportedEncodingException, FileNotFoundException 
+	{
+		this(new FileInputStream(filename), debug, context);
+	}
+
+	/**
+	 * Constructs a Integer literal node.
+	 */
+    private Literal integerNode(int pos, String image) {
+        long i = integerValue(image);
+        if (image.endsWith("L")) {
+            return F.at(pos).Literal(Type.LONG, new Long(i));
+        }
+        else {
+			return F.at(pos).Literal(Type.LONG, new Integer(i));
+        }
+    }
+        
+	/**	
+	 * A auxiliary method for extracting a integer or long value.
+	 */	        
+    private long integerValue(String image) {
+        String s = image.replaceFirst("[UL]+", "");
+        if (s.startsWith("0x") || s.startsWith("0X")) {
+            return Long.parseLong(s.substring(2), 16);
+        }
+        else if (s.startsWith("0") && !s.equals("0")) {
+            return Long.parseLong(s.substring(1), 8);
+        }
+        else {
+            return Long.parseLong(s, 10);
+        }
+    }
+
+	/**	
+	 * A auxiliary method for extracting a character node.
+	 */	 
+    private long characterCode(String image) throws ParseException {
+        String s = stringValue(image);
+        if (s.length() != 1) {
+            throw new Error("must not happen: character length > 1");
+        }
+        return (long)s.charAt(0);
+    }
+
+	/**	
+	 * A auxiliary method for extracting a string value.
+	 */	 
+    private String stringValue(String _image) throws ParseException {
+        int pos = 0;
+        int idx;
+        StringBuffer buf = new StringBuffer();
+        String image = _image.substring(1, _image.length() - 1);
+
+        while ((idx = image.indexOf("\\", pos)) >= 0) {
+            buf.append(image.substring(pos, idx));
+            if (image.length() >= idx + 4
+                    && Character.isDigit(image.charAt(idx+1))
+                    && Character.isDigit(image.charAt(idx+2))
+                    && Character.isDigit(image.charAt(idx+3))) {
+                buf.append(unescapeOctal(image.substring(idx+1, idx+4)));
+                pos = idx + 4;
+            }
+            else {
+                buf.append(unescapeSeq(image.charAt(idx+1)));
+                pos = idx + 2;
+            }
+        }
+        if (pos < image.length()) {
+            buf.append(image.substring(pos, image.length()));
+        }
+        return buf.toString();
+    }
+
+
+    private static final int charMax = 255;
+
+    private char unescapeOctal(String digits) throws ParseException {
+        int i = Integer.parseInt(digits, 8);
+        if (i > charMax) {
+            throw new ParseException(
+                "octal character sequence too big: \\" + digits);
+        }
+        return (char)i;
+    }
+
+
+
+    private static final char bell = 7;
+    private static final char backspace = 8;
+    private static final char escape = 27;
+    private static final char vt = 11;
+
+    private char unescapeSeq(char c) throws ParseException {
+        switch (c) {
+        case '0': return '\0';
+        case '"': return '"';
+        case '\'': return '\'';
+        case 'a': return bell;
+        case 'b': return backspace;
+        case 'e': return escape;
+        case 'f': return '\f';
+        case 'n': return '\n';
+        case 'r': return '\r';
+        case 't': return '\t';
+        case 'v': return vt;
+        default:
+            throw new ParseException("unknown escape sequence: \"\\" + c);
+        }
+    }
+
+
+	/**
+	 * Gets the current position of current token.
+	 */
+	private int position()
+	{
+		// get the current token
+		Token current = getToken(0);
+		return Position.make(current.beginLine, current.beginColumn);
+	}
+}
+PARSER_END(Parser)
+
+/*
+ * Lexical Rules
+ * 词法规则
+ */
+
+// 空白符
+// linear-white-spaces
+// #@@range/lex_spaces{
+SPECIAL_TOKEN: { <SPACES: ([" ", "\t", "\n", "\r", "\f"])+> }
+// #@@}
+
+// 多行注释
+// block comment
+MORE: { <"/*"> : IN_BLOCK_COMMENT }
+<IN_BLOCK_COMMENT> MORE: { <~[]> }
+<IN_BLOCK_COMMENT> SPECIAL_TOKEN: { <BLOCK_COMMENT: "*/"> : DEFAULT }
+
+
+// 单行注释
+// single line comment
+SPECIAL_TOKEN: {
+    <LINE_COMMENT: "//" (~["\n", "\r"])* ("\n" | "\r\n" | "\r")?>
+}
+
+
+// 保留字，或者称为关键字
+// reserved words or keywords
+TOKEN: {
+      <VOID     : "void">
+  	| <BYTE		:  "byte">
+    | <CHAR     : "char">
+    | <SHORT    : "short">
+    | <INT      : "int">
+    | <LONG     : "long">
+    | <FLOAT	: "float">
+    | <DOUBLE 	: "double">
+    | <BOOL 	: "bool">
+    | <STRUCT   : "struct">
+    | <UNION    : "union">
+    | <ENUM     : "enum">
+    | <STATIC   : "static">
+    | <EXTERN   : "extern">
+    | <CONST    : "const">
+    | <SIGNED   : "signed">
+    | <TRUE_ 	: "true">
+    | <FALSE_ 	: "false">
+    | <UNSIGNED : "unsigned">
+    | <IF       : "if">
+    | <ELSE     : "else">
+    | <SWITCH   : "switch">
+    | <CASE     : "case">
+    | <DEFAULT_ : "default">
+    | <WHILE    : "while">
+    | <DO       : "do">
+    | <FOR      : "for">
+    | <RETURN   : "return">
+    | <BREAK    : "break">
+    | <CONTINUE : "continue">
+    | <GOTO     : "goto">
+    | <TYPEDEF  : "typedef">
+    | <IMPORT   : "import">
+    | <SIZEOF   : "sizeof">
+}
+
+
+// 标识符
+// IDENTIFIER
+TOKEN: {
+    <IDENTIFIER: ["a"-"z", "A"-"Z", "_"] (["a"-"z", "A"-"Z", "_", "0"-"9"])*>
+}
+
+
+// 整数字面量
+// integer literals
+TOKEN: {
+    <INTEGER: ["1"-"9"] (["0"-"9"])* ("U")? ("L")?
+            | "0" ["x", "X"] (["0"-"9", "a"-"f", "A"-"F"])+ ("L")?
+            | "0" (["0"-"7"])* ("L")?
+            >
+}
+
+
+// 字符字面量
+// character literal
+MORE: { <"'"> : IN_CHARACTER }                         // rule1
+<IN_CHARACTER> MORE: {
+      <~["'", "\\", "\n", "\r"]> : CHARACTER_TERM      // rule2
+    | <"\\" (["0"-"7"]){3}>      : CHARACTER_TERM      // rule3
+    | <"\\" ~[]>                 : CHARACTER_TERM      // rule4
+}
+<CHARACTER_TERM> TOKEN: { <CHARACTER: "'"> : DEFAULT } // rule5
+
+
+// 字符串字面量
+// string literal
+MORE: { <"\""> : IN_STRING }                           // rule1
+<IN_STRING> MORE: {
+      <(~["\"", "\\", "\n", "\r"])+>                   // rule2
+    | <"\\" (["0"-"7"]){3}>                            // rule3
+    | <"\\" ~[]>                                       // rule4
+}
+<IN_STRING> TOKEN: { <STRING: "\""> : DEFAULT }        // rule5
+
+
+/*
+ * Grammar
+ × 该语言的语法
+ */
+
+
+/**
+ * The entry for parsing the c-flat source file.
+ * A tree that represents the toplevel should be returned.
+ *
+ */
+public Tree.TopLevel compilationUnit():
+{
+	List<Tree> importdecls, typedecls;
+}
+{
+        {
+            t = getToken(1);
+        }    
+    	importdecls = importDeclarations() typedecls = top_defs() <EOF>
+        {
+            importdecls.add(typedecls);
+            int pos = position();
+            return F.at(pos).TopLevel(importdecls);
+        }
+}
+
+
+/**
+ * 处理import语句序列，并返回一棵根节点为Declarations的抽象语法树。
+ * 该语句的BNF范式如下：
+ * importDeclarations::
+ *				import_stmt;
+ *				importDeclarations
+ *
+ * @return 
+ */
+List<Tree> importDeclarations():
+{
+    List<Tree> imports;
+    Tree impt;
+}
+{
+    ( impt = import_statement() { imports.add(impt);} 
+    )*
+        {
+            return imports;
+        }
+}
+
+
+/**
+ * 处理单个import语句，并返回一个表示import语句的字符串。
+ * 该语句的BNF范式如下：
+ * import_statement::= IMPORT name SEMICOLON
+ *						| IMPORT name DOT MULT SEMICOLON
+ *
+ * name	::=	simple_name
+ *	|	qualified_name
+ *	;
+ * simple_name ::=	IDENTIFIER
+ *	;
+ * qualified_name ::=
+ *		name DOT IDENTIFIER
+ *	;
+ * @return	一棵根节点为Declarations的抽象语法树。
+ */
+Tree import_statement():
+{
+	Tree pid;
+    Name n;
+    int pos;
+}
+{
+    <IMPORT> n=name()   { 
+ 	   	pos = position();
+    	pid = F.at(pos).Ident(n);
+     }
+    ("." n=name()       { 
+	 	   	pos = position(); 
+    		pid = F.at(pos).Select(pid, n);
+    	} 
+    )*
+    ";"
+        {        	
+            return F.at(pos).Import(pid);
+        }
+}
+
+
+/**
+ * Gets a Name instance from a token.
+ */
+Name name():
+{}
+{
+    t = <IDENTIFIER> { return  Name.fromString(t.image); }
+}
+
+/**
+ * 顶层的变量或函数声明语句序列。
+ * type_declarations_opt   ::= type_declarations   | ;
+ * type_declarations ::= 
+ *		type_declaration
+ *	|	type_declarations type_declaration
+ *	
+ * type_declaration ::=
+ *		Function_declaration
+ *	|	variable_declaration (包括结构体和普通变量声明，以及类型重定义typedef)
+ *	|	SEMICOLON
+ *
+ * @return	Declarations	一棵根节点为Declarations的抽象语法树。
+ */
+List<Tree> top_defs():
+{
+	
+	List<Tree> res;    
+    List<Tree> decls = new ArrayList<Tree>();
+}
+{
+
+	/** a lookahead encountered when reaching a choice point.
+	 * 
+	 * if next token is belong of set that consists of storage-class, 
+	 * type-class, IDENTTIFIER and left parentheses, 
+	 * then the definition of function is selected.
+	 */ 
+    ( 
+		res = declaration() { decls.addAll(res); }
+    )*
+    {
+        return decls;
+    }
+}
+
+List<Tree> declaration():
+{
+	/**
+	 * the definition of various of variables.
+	 */   
+    MethodDef methodDef;
+    List<Tree> defvars;
+    
+    List<Tree> defs = new ArrayList<Tree>();
+}
+{
+    LOOKAHEAD( [<STATIC>] type() <IDENTIFIER> "(")
+    	methodDef = methodDeclaration()         { defs.add(methodDef); }
+      
+    | 
+      defvars = variableDefinitions()     { defs.addAll(defvars); }
+  	{
+  		return defs;
+  	}
+}
+
+
+/**
+ * 变量定义语句序列。
+ * variable_def ::= 
+ *					storage_class_qualifier type_specifier ID
+ *				|   storage_class_qualifier type_specifier ID = variable_initializer
+ * rariable_initializer ::= expression 						
+ *
+ * @return 	
+ */
+List<Tree> variableDefinitions():
+{
+	// a list at which a large amounts of various of definition storages. 
+    List<Tree> defs = new ArrayList<Tree>();
+    long flags = 0;
+    long flag = 0;
+    Tree type;
+    Name name;
+    Tree init = null;
+    int pos;
+}
+{
+	( 
+		t = <STATIC>  
+		{ 
+			if ( flags & Flags.STATIC != 0) 
+				throw generateParseException();
+			else
+				flags |= Flags.STATIC;
+		}
+	  | 
+	  	t = <CONST> 
+	  	{
+			if ( flags & Flags.CONST != 0) 
+				throw generateParseException();
+			else
+				flags |= Flags.CONST; 
+	  	}
+	)* 
+	{
+		if (flags != 0) pos = position();
+	}
+
+    type=type() { if (flags == 0) pos = position(); }
+    name=name() ["=" init=expression()]
+    {
+    	VarDef result = F.at(pos).VarDef(flags, name, type, init);
+        defs.add(result);
+        init = null;
+    }
+    ( "," name=name() ["=" init=expression()]
+        {
+    	VarDef result = F.at(pos).VarDef(flags, name, type, init);
+		    defs.add(result);
+            init = null;
+        }
+    )* 
+    
+    ";"
+    {
+        return defs;
+    }
+}
+
+Tree variableInit() :
+{Tree expr;}
+{
+	LOOKAHEAD ("{") 
+	"{"
+		{ return arrayInit(null);}
+	
+	| expr = expression()
+	{	
+		return expr;
+	}
+}
+
+/**
+  * ArrayInitializer = "{" [VariableInit {"," VariableInit}] [","] "}"
+  */
+Tree arrayInit(Tree type) :
+{
+	List<Tree> elems = new ArrayList<Tree>();
+	Tree res;
+	int pos = 0;
+}
+{
+	 // first, accept a left brace
+	"{" { pos = position(); }
+	
+	// second, parse the optional variable initializer for array.	
+	// "," "}" { return F.at(pos).NewArray(type, Tree.emptyList, elems); }
+	 
+	res = variableInit() 
+		{ elems.add(res); }
+	( LOOKAHEAD(2)
+		"," res = variableInit() { elems.add(res); } 
+	)* 
+	| "," "}" { return F.at(pos).NewArray(type, Tree.emptyList, elems); }
+	
+	|"}" { return F.at(pos).NewArray(type, Tree.emptyList, elems); }
+	
+	"}"	
+	{
+		return F.at(pos).NewArray(type, Tree.emptyList, elems);
+	}	
+}
+
+/**
+ * A handler to function definition.
+ 
+ * function_def ::= 
+ *				storage_class_qualifier Type Name "(" param_lists_opt ")" block
+ * param_lists_opt ::=
+ *				| param_lists
+ *  
+ * param_lists ::=
+ *				variable_declaration
+ *			|   variable_declaration "," param_list
+ 
+ * @return	A root of AST which represents a MethodDef syntax structure.
+ */
+Tree methodDeclaration():
+{
+    long flags = 0;
+    Tree rettype;
+    Name methodName;
+    List<Tree> params;
+    Tree body = null;
+    int pos = 0;
+}
+{
+	flags = storage() { if (flags != 0) pos = position(); }  
+    rettype = type() { if (flags == 0) pos = ret.pos; } 
+    
+    methodName = name() params = formalParameters() 
+    (
+    	body=block()
+    	| ";"
+    )
+    {
+        return F.at(pos).MethodDef(flags, methodName, rettype, params, body);
+    }
+}
+
+/**
+ * A storage class qualifier.
+ */
+long storage():
+{
+	long flags = 0;
+	t = null;
+}
+{
+
+	[t = <STATIC>] 
+	{
+		if (t != null)
+			return flags |= Flags.STATIC;
+		else 
+			return flags;
+	}
+}
+
+/**
+ * A method that parses parameters list at the function declaration.
+ 
+ * @return	A list of all of parameters.
+ */
+List<Tree> formalParameters():
+{
+    List<Tree> params = new ArrayList<Tree>();
+    Tree singleParam;
+}
+{
+	"(" 
+	// 向前看，判断是否是void )序列，如果是，则判断是函数是void类型，即无输入参数
+	// 否则，即为有输入参数
+	
+    [ 
+		singleParam = formalParameter()
+			{
+				params.add(singleParam);
+			}
+	  	( "," singleParam = formalParameter()
+		    {
+			    params.add(singleParam);
+		    }
+		)*
+    ]
+    ")"
+    {    return params;}
+}
+
+/**
+ * 解析函数形式参数列表中单个参数声明语句。
+ * 
+ * @return	返回一棵表示单个参数的抽象语法树。
+ */
+Tree formalParameter():
+{
+    Tree t;
+    Name n;           
+}
+{
+    t = type() { pos = position();}
+    n = name() 
+	{
+		return F.at(t.pos).VarDef(Flags.PARAMETER, n, t, null);	
+	}
+}
+
+/**
+ * 解析函数的函数体部分。
+ * Block_stmt ::=
+ *				varibale_defs stmts
+ * @return	返回一个表示函数体的抽象语法树。
+ */
+Tree block():
+{
+    int pos;
+    List<Tree> stats, res = new ArrayList<>();    
+}
+{
+    t = "{" { pos = position(); } 
+    ( stats = blockStatement()
+    	{
+    		res.addAll(stats);
+    	}
+    )*
+    	
+    "}"
+    {
+    	return F.at(pos).Block(res);
+    }    
+}
+/**
+ * Just for all statements in block statement.
+ */
+List<Tree> blockStatement():
+{
+	List<Tree> vars;
+	List<Tree> res = new ArrayList<Tree>();
+	Tree stmt;
+}
+{
+	// local variable declaration.
+	LOOKAHEAD( type() <IDENTIFIER> )
+	vars = variableDefinitions() ";"
+		{ res.addAll(vars); }
+	| 
+	stmt = statement()
+		{ res.add(stmt); }
+	{
+		return res;
+	}
+}
+
+/**
+ * A handler to type syntax construct.
+ */
+Tree type():
+{
+    Tree ref;
+}
+{
+	// basic type reference, such as void, char, int, long and so on.
+    ref = typeref_base()
+    ( 
+      "[" "]"
+        {
+        	// array type reference to no size
+            ref = F.at(ref.pos).TypeArray(ref);
+        }
+    )*
+    {
+        return ref;
+    }
+}
+
+/**
+ * Parses the base type.
+ */
+Tree typeref_base():
+{
+    int pos;
+}
+{
+      t=<VOID>          { pos = position(); return F.at(pos).TypeIdent(Type.VOID); }
+    | t=<CHAR>          { pos = position(); return F.at(pos).TypeIdent(Type.CHAR); }
+    | t=<SHORT>         { pos = position(); return F.at(pos).TypeIdent(Type.SHORT); }
+    | t=<INT>           { pos = position(); return F.at(pos).TypeIdent(Type.INT);  }
+    | t=<LONG>          { pos = position(); return F.at(pos).TypeIdent(Type.LONG);  }    
+	| t=<BOOL>			{ pos = position(); return F.at(pos).TypeIdent(Type.BOOL);  }
+}
+
+
+/**
+ * Parses single statement. 
+ * stmt ::= ;
+ *			|labeled_stmt
+ *			|expr SEMICOLON
+ *			|block
+ *			|if_stmt
+ *			|while_stmt
+ *			|dowhile_stmt
+ *			|for_stmt
+ *			|switch_stmt
+ *			|break_stmt
+ *			|continue_stmt
+ *			|goto_stmt
+ *			|return_stmt; 
+ */
+ 
+Tree statement():
+{
+	Tree tree = null, expr = null;
+}
+{
+    ( ";"
+    | LOOKAHEAD(2) tree = labeled_statement()
+    
+    | LOOKAHEAD(3) expr = expression() ";" 
+    	{ tree = F.at(tree.pos).Exec(expr); }
+    | tree = block()
+    | tree = if_statement()
+    | tree = while_statement()
+    | tree = dowhile_statement()
+    | tree = for_statement()
+    | tree = switch_statement()
+    | tree = break_statement()
+    | tree = continue_statement()
+    | tree = goto_statement()
+    | tree = return_statement()
+    )
+        {
+            return tree;
+        }
+}
+
+/**
+ * Parses labeled statement.
+ */
+Tree labeled_statement():
+{
+    Tree body;
+    int pos;
+    Name n;
+}
+{
+    n = name() { pos = position(); }
+     ":" body = statement()
+    {    	
+        return F.at(pos).Labelled(n, body);
+    }
+}
+
+/**
+ * Parses if statement.
+ */
+Tree if_statement():
+{
+    Tree cond, thenBody, elseBody = null;
+    int pos;
+}
+{
+	// this is a famous problem at c language that "dangling else".
+	// It might be solved by lookahead one token.
+	
+    t = <IF> { pos = position();} 
+    "(" cond = expression() ")" thenBody = statement()
+            [LOOKAHEAD(1) <ELSE> elseBody = statement()]
+        {
+            return F.at(pos).If(cond, thenBody, elseBody);
+        }
+}
+
+
+/**
+ * Parses while statement.
+ */
+Tree while_statement():
+{
+    Tree cond, body;
+    int pos;
+}
+{
+    t=<WHILE> {pos = position();} 
+    "(" cond=expression() ")" body = statement()
+        {
+            return F.at(pos).WhileLoop(cond, body);
+        }
+}
+
+/**
+ * Parses do while statement.
+ */
+Tree dowhile_statement():
+{
+    Tree cond, body;
+    int pos;
+}
+{
+    t = <DO> {pos = position();}
+	body = statement()
+	<WHILE> "(" cond = expression() ")" 
+	";" 
+    {
+        return F.at(pos).DoLoop(cond, body);
+    }
+}
+
+/**
+ * Parses for statement.
+ */
+Tree for_statement():
+{
+	
+	List<Tree> init = null, incr = null;
+    Tree body, cond = null;
+    int pos;
+}
+{
+    t=<FOR> {pos = position(); } 
+    "("
+    
+    (";"
+    | init = forInit() ";")
+
+	[ cond = expression() ]	
+	";"
+	[ incr = forUpdate() ]
+    ")" 
+    body = statement()
+    {
+        return F.at(pos).ForLoop(init, cond, incr, body);
+    }
+}
+
+List<Tree> forInit():
+{
+	List<Tree> res;
+}
+{
+	LOOKAHEAD( type() <IDENTIFIER>)
+		res = variableDefinitions() { return res; }
+	|  
+	res = statementExpressionList() {return res; }
+}
+
+List<Tree> statementExpressionList():
+{
+	List<Tree> stats = new ArrayList<Tree>();
+	Tree res;
+}
+{
+	res = statementExpression() {stats.add(res);}
+	(
+	"," res = statementExpression() {stats.add(res);}
+	)* 	
+	{
+		return stats;
+	}
+}
+
+/**
+ * The last expansion of this production accepts more than the legal
+ * Java expansions for StatementExpression.  This expansion does not
+ * use PostfixExpression for performance reasons.
+ */
+Tree statementExpression():
+{
+	Tree expr;
+	int pos;
+	Tree rhs;
+	int op;
+}
+{
+	t = "++" {pos = position(); } expr = unary() 
+		{ expr = F.at(pos).Unary(Tree.PREINC, expr); }
+	|
+	t = "--"  {pos = position(); } expr = unary() 
+		{ expr = F.at(pos).Unary(Tree.PREDEC, expr); }
+	|
+	expr = primary()
+	[
+		"++" { expr = F.at(expr.pos).Unary(Tree.POSTINC, expr);}
+
+		| "--" { expr = F.at(priv.pos).Unary(Tree.POSTDEC, expr);}
+		
+		| "=" rhs = expression() 
+			{ expr = F.at(expr.pos).Assign(expr, rhs);} 
+
+		| op = opassign_op() rhs = expression()
+			{ expr = F.at(expr.pos).Assignop(op ,expr, rhs);} 	
+	]
+	{		
+		return expr;
+	}
+}
+
+
+List<Tree> forUpdate():
+{
+	List<Tree> list;
+}
+{
+	list = statementExpressionList()
+ 	{	return list;}
+}
+
+/**
+ * Parses switch statement.
+ */
+ 
+Tree switch_statement():
+{
+    int pos;
+    Tree selector;
+    List<Tree> cases;
+}
+{
+    t=<SWITCH> { pos = position(); } 
+    "(" selector = expression() ")" 
+    "{" cases = switchBlockStatementGroups() "}"
+    {
+        return F.at(pos).Switch(selector, cases);
+    }
+}
+
+List<Tree> switchBlockStatementGroups():
+{
+	List<Tree> cases = new ArrayList<Tree>();
+	Tree pat;
+	List<Tree> stmts;
+	int pos;
+}
+{
+	(
+		( t = <CASE> { pos = position(); } 
+	 	pat = expression() ":"
+			{
+				
+			}
+		| t = <DEFAULT_> { pos = position(); } ":"
+			{
+				pat = null;
+			}
+		)
+		stmts = blockStatement()
+		{
+			cases.add(F.at(pos).Case(pat, stmts));
+		}
+	)*
+	{	
+		return cases;
+	}
+}
+
+/**
+ * Parses goto statement.
+ */
+Tree goto_statement():
+{
+	Name n;
+	int pos;
+}
+{
+    t=<GOTO> {pos = position(); } 
+    n = name() ";"
+    {
+        return F.at(pos).Goto(n);
+    }
+}
+
+/**
+ * Parses break statement.
+ */
+Tree break_statement():
+{ int pos; }
+{
+    t=<BREAK> {pos = position(); } 
+    ";" 
+    { return F.at(pos).Break(); }
+}
+
+/**
+ * Parses continue statement.
+ */
+Tree continue_statement():
+{ int pos; }
+{
+    t=<CONTINUE> {pos = position(); } 
+    ";" 
+    { return F.at(pos).Continue(); }
+}
+
+/**
+ * Parses return statement.
+ */
+Tree return_statement():
+{
+	Tree expr;
+	int pos;
+}
+{
+	t=<RETURN> {pos = position(); }
+	";"    
+      	{ return F.at(pos).Return(null); }
+    | expr = expression() ";"  
+    	{ return F.at(expr.pos).Return(expr); }
+}
+
+/**
+ * Parses expression statement.
+ */
+Tree expression():
+{
+    Tree lhs, rhs, expr;
+    int op;
+}
+{
+	// assignment statement
+      LOOKAHEAD(term() "=")
+      lhs = term() "=" rhs = expression()
+        {
+            return F.at(lhs.pos).Assign(lhs, rhs);
+        }
+    | LOOKAHEAD(term() opassign_op())
+      lhs = term() op = opassign_op() rhs = expression()
+        {
+			return F.at(lhs.pos).Assignop(op, lhs, rhs);
+        }
+        
+    // conditional expression
+    | expr = expr10()
+        {
+            return expr;
+        }
+}
+
+
+/**
+ * Parses operation assignment statement.
+ 
+ * such as +=, -= , *= and so on.
+ */
+int opassign_op(): {}
+{
+    ( "+="  { return Tree.PLUS_ASG; }
+    | "-="  { return Tree.MINUS_ASG; }
+    | "*="  { return Tree.MUL_ASG; }
+    | "/="  { return Tree.DIV_ASG; }
+    | "%="  { return Tree.MOD_ASG; }
+    | "&="  { return Tree.BITAND_ASG; }
+    | "|="  { return Tree.BITOR_ASG; }
+    | "^="  { return Tree.BITXOR_ASG; }
+    | "<<=" { return Tree.SL_ASG; }
+    | ">>=" { return Tree.SR_ASG; }
+    )
+}
+
+
+/**
+ * Parses conditional expression.
+ */
+Tree expr10():
+{ Tree cond, truePart, elsePart; }
+{
+	// other expr or ? : expr.
+    cond = expr9() 
+    ["?" truePart = expression() ":" elsePart = expression()
+		return F.at(cond.pos).Conditional(cond, truePart, elsePart);
+    ]
+    {
+        return cond;
+    }
+}
+
+
+/**
+ * Logical or expression.
+ */
+Tree expr9():
+{ Tree l, r; }
+{
+    l = expr8() 
+    ("||" r = expr8() 
+    	{
+    		l = F.at(l.pos).Binary(Tree.OR, l, r); 
+    	}
+    )*
+    {
+        return l;
+    }
+}
+
+
+/**
+ * Logical and expression.
+ */
+Tree expr8():
+{ Tree l, r; }
+{
+    l = expr7() 
+    ("&&" r=expr7() 
+    	{	l = F.at(l.pos).Binary(Tree.AND, l, r); }
+    )*
+    {
+        return l;
+    }
+}
+
+
+/**
+ * relational expression.
+ */
+Tree expr7():
+{ Tree l, r; }
+{
+    l = expr6() ( ">"  r=expr6() { l = F.at(l.pos).Binary(Tree.GT, l, r); }
+              | "<"  r=expr6() { l = F.at(l.pos).Binary(Tree.LT, l, r);  }
+              | ">=" r=expr6() { l = F.at(l.pos).Binary(Tree.GE, l, r);  }
+              | "<=" r=expr6() { l = F.at(l.pos).Binary(Tree.LE, l, r); }
+              | "==" r=expr6() { l = F.at(l.pos).Binary(Tree.EQ, l, r); }
+              | "!=" r=expr6() { l = F.at(l.pos).Binary(Tree.NE, l, r); } )*
+        {
+            return l;
+        }
+}
+
+
+/**
+ * Parses bitwise or expression.
+ *
+ */
+Tree expr6():
+{ Tree l, r; }
+{
+    l=expr5() ("|" r=expr5() {l = F.at(l.pos).Binary(Tree.BITOR, l, r); })*
+    {
+        return l;
+    }
+}
+
+
+/**
+ * Parses bitwise exclusive or expression.
+ *
+ */
+Tree expr5():
+{ Tree l, r; }
+{
+    l=expr4() ("^" r=expr4() { l = F.at(l.pos).Binary(Tree.BITXOR, l, r); })*
+    {
+        return l;
+    }
+}
+
+
+/**
+ * Parses bitwise and expression.
+ *
+ */
+Tree expr4():
+{ Tree l, r; }
+{
+    l=expr3() ("&" r=expr3() { l = F.at(l.pos).Binary(Tree.BITAND, l, r);})*
+    {
+        return l;
+    }
+}
+
+/**
+ * Parses right or left shift expression.
+ *
+ */
+Tree expr3():
+{ Tree l, r; }
+{
+    l=expr2() ( ">>" r=expr2() { l = F.at(l.pos).Binary(Tree.SL, l, r); }
+              | "<<" r=expr2() { l = F.at(l.pos).Binary(Tree.SR, l, r); }
+              )*
+        {
+            return l;
+        }
+}
+
+
+/**
+ * Parses plus or minus expression.
+ *
+ */
+Tree expr2():
+{ Tree l, r; }
+{
+    l=expr1() ( "+" r=expr1() {l = F.at(l.pos).Binary(Tree.PLUS, l, r); }
+              | "-" r=expr1() {l = F.at(l.pos).Binary(Tree.MINUS, l, r); }
+              )*
+        {
+            return l;
+        }
+}
+
+
+/**
+ * Parses multiplex or division or modular expression.
+ */
+Tree expr1():
+{ Tree l, r; }
+{
+    l=term() ( "*" r=term() { l = F.at(l.pos).Binary(Tree.MUL, l, r); }
+             | "/" r=term() { l = F.at(l.pos).Binary(Tree.DIV, l, r); }
+             | "%" r=term() { l = F.at(l.pos).Binary(Tree.MOD, l, r); }
+             )*
+        {
+            return l;
+        }
+}
+
+
+/**
+ * Parses type cast or unary expression
+ *
+ */
+Tree term():
+{
+    Tree type;
+    Tree n;
+}
+{
+      LOOKAHEAD("(" primitiveType())
+      "(" type = type() ")" n = term()     { return F.at(type.pos).TypeCast(type, n); }
+    | n = unary()                     { return n; }
+}
+
+void primitiveType():
+{}
+{
+  "bool"
+|
+  "char"
+|
+  "byte"
+|
+  "short"
+|
+  "int"
+|
+  "long"
+|
+  "float"
+|
+  "double"
+}
+
+/**
+ * Parses unary expression
+ */
+Tree unary():
+{
+    Tree tree;
+    int pos;
+}
+{
+      t = "++" {pos = position(); }  tree = unary()    
+      { return F.at(pos).Unary(Tree.PREINC, tree); }
+   
+    | t = "--" {pos = position(); }  tree = unary()    
+      { return F.at(pos).Unary(Tree.PREDEC, tree); }
+      
+    | "+" tree = term()      { return tree; }
+    
+    | t = "-" {pos = position(); }  tree = term()      
+    { return F.at(pos).Unary(Tree.NEG, tree); }
+    
+    | t = "!" {pos = position(); }  tree = term()      
+    { return F.at(pos).Unary(Tree.NOT, tree); }
+    
+    | t = "~" {pos = position(); }  tree = term()      
+    { return F.at(pos).Unary(Tree.COMPL, tree); }
+
+    | tree = postfix()       { return tree; }
+}
+
+
+/**
+ * Parses unary postfix expression
+ *
+ */
+Tree postfix():
+{
+    Tree expr, idx;
+    List<Tree> args;
+}
+{
+    expr = primary()
+    
+    ( "++"                  { expr = F.at(expr.pos).Unary(Tree.POSTINC, expr); }
+    | "--"                  { expr = F.at(expr.pos).Unary(Tree.POSTDEC, expr);}
+    | "[" idx = expression() "]"    { expr = F.at(expr.pos).Indexed(expr, idx); }
+    | "(" args = args() ")"   { expr = F.at(expr.pos).Apply(expr, args); }
+    )*
+    
+    {
+        return expr;
+    }
+}
+
+
+/**
+ * Parses all of arguments of the calling to function.
+ */
+List<Tree> args():
+{
+    List<Tree> args = new ArrayList<Tree>();
+    Tree arg;
+}
+{
+    [ arg = expression() { args.add(arg); }
+      ("," arg = expression() { args.add(arg); })* 
+    ]
+    {
+        return args;
+    }
+}
+
+
+/**
+ * Parses primary literal.
+ */
+Tree primary():
+{
+    Tree n;
+    int pos;
+}
+{
+	t = <INTEGER> { pos = position(); }
+        {
+        	try 
+        	{
+            	return integerNode(pos, t.image);
+        	}
+        	catch( NumberFormatException ex) 
+        	{
+				log.error(pos, "int.number.too.large", t.image);
+        	}
+        } 
+    | t = <CHARACTER> { pos = position(); }
+        {
+			return F.at(pos).Literal(Type.CHAR, new Integer(t.image.charAt(0)));
+        }
+    | t = <STRING> { pos = position(); }
+        {
+        	return F.at(pos).Literal(Type.STRING, stringValue(t.image));
+        }
+    | t = <IDENTIFIER> { pos = position(); }
+        {
+			return F.at(pos).Ident(Name.fromString(names, t.image));
+        }
+    | t = <TRUE_> { pos = position();}
+        {
+            return F.at(pos).Ident(Name.fromString(names, "true"));
+        }
+    | t= <FALSE_> { pos = position();} 
+        {
+            return F.at(pos).Ident(Name.fromString(names, "false"));
+        } 
+    | "(" n = expression() ")"
+        {
+            return n;
+        }
+}
