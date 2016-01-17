@@ -125,8 +125,10 @@ public class Name {
             n.table = table;
             n.index = nc;
             n.len = nbytes;
+            // inserts the new Name into target bucket with first insertion.
             n.next = table.hashes[h];
             table.hashes[h] = n;
+            
             table.nc = nc + nbytes;
             if (nbytes == 0)
                 table.nc++;
@@ -400,9 +402,6 @@ public class Name {
             slash = fromString("/");
             hyphen = fromString("-");
             slashequals = fromString("/=");
-            deprecated = fromString("deprecated");
-            init = fromString("<init>");
-            clinit = fromString("<clinit>");
             error = fromString("<error>");
             any = fromString("<any>");
             empty = fromString("");
@@ -413,10 +412,10 @@ public class Name {
             semicolon = fromString(";");
             asterisk = fromString("*");            
             _false = fromString("false");
-            _true = fromString("true");
-            
-            SourceFile = fromString("SourceFile");
-            
+            _true = fromString("true");            
+            Array = fromString("Array");
+            Method = fromString("Method");
+            SourceFile = fromString("SourceFile");            
         }
 
         public Table() {
@@ -455,9 +454,6 @@ public class Name {
         public final Name slash;
         public final Name hyphen;
         public final Name slashequals;
-        public final Name deprecated;
-        public final Name init;
-        public final Name clinit;
         public final Name error;
         public final Name any;
         public final Name empty;
@@ -466,8 +462,9 @@ public class Name {
         public final Name dollar;
         public final Name comma;
         public final Name semicolon;
-        public final Name asterisk;
-        
+        public final Name asterisk;        
+        public final Name Array;
+        public final Name Method;
         public final Name _false;
         public final Name _true;
         public final Name SourceFile;        

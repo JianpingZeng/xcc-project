@@ -214,7 +214,7 @@ abstract public class Tree
 	public static final int MUL = MINUS + 1;
 	public static final int DIV = MUL + 1;
 	public static final int MOD = DIV + 1;
-
+	
 	/**
 	 * Assignment operators, of type Assignop.
 	 */
@@ -765,7 +765,13 @@ abstract public class Tree
 	 */
 	public static class Apply extends Tree
 	{
+		/**
+		 * The name of callee method.
+		 */
 		public Tree meth;
+		/**
+		 * The formal parameters list.
+		 */
 		public List<Tree> args;
 
 		public Apply(Tree meth, List<Tree> args)
