@@ -8,8 +8,8 @@ import utils.Position;
 /**
  * This a internal root class that represents all of symbols in this c-flat
  * language. It contains subclasses for specific sorts of symbols, such as
- * variables, methods and operators and types. Each subclass is represented as a
- * static inner class inside Symbol.
+ * variables, methods and operators and types. Each subclass is represented 
+ * as a static inner class inside Symbol.
  * 
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 2016年1月8日 上午10:48:39
@@ -37,9 +37,9 @@ public class Symbol implements SymbolKinds, TypeTags {
 	 * The constructor that constructs a new symbol with given kind, name, type
 	 * and owner.
 	 * 
-	 * @param kind
-	 * @param name
-	 * @param type
+	 * @param kind		The kind of this symbol
+	 * @param name		The instance of {@link Name} represents name of this.
+	 * @param type		The type of this symbol that is instance of {@link Type}
 	 * @param owner
 	 */
 	public Symbol(int kind, Name name, Type type)
@@ -67,8 +67,6 @@ public class Symbol implements SymbolKinds, TypeTags {
 	/**
 	 * A description of the location of this symbol; used for error reporting.
 	 *
-	 * XXX 06/09/99 iris This method appears to be redundant and should probably
-	 * be unified with javaLocation();
 	 */
 	public String location() {
 		if (name == null || name.len == 0)
@@ -78,8 +76,8 @@ public class Symbol implements SymbolKinds, TypeTags {
 	}
 
 	/**
-	 * A class for type symbols. Type variables are represented by instances of
-	 * this class, classes and packages by instances of subclasses.
+	 * A class for type symbols. Type symbol are represented by instances of
+	 * this class, classes and packages by instances of subclasses in the future.
 	 */
 	public static class TypeSymbol extends Symbol {
 
@@ -88,14 +86,25 @@ public class Symbol implements SymbolKinds, TypeTags {
 		}
 
 		public String toString() {
-			return "type variable " + name;
+			return "type symbol " + name;
 		}
 
 	}
 
+	/**
+	 * A subclass of superclass TypeSymbol for specified sorts of CompositeType.
+	 * In the future, there all two different subclass inherited from this.	
+	 */
 	public static class CompositeTypeSymbol extends TypeSymbol 
 	{
+		/**
+		 * The scope of members of this Composite Type.
+		 */
 		public Scope members_field;
+		
+		/**
+		 * Full name.
+		 */
 		public Name fullname;
 		
 		public CompositeTypeSymbol(Name name, Type type)
@@ -113,6 +122,10 @@ public class Symbol implements SymbolKinds, TypeTags {
 	 */
 	public static class VarSymbol extends Symbol {
 
+		/**
+		 * The flags, such as storage class or qualifier, 
+		 * which restricted by {@link TypeTags}.
+		 */
 		public long flags;
 		/**
 		 * The variable's declaration position.
@@ -157,7 +170,6 @@ public class Symbol implements SymbolKinds, TypeTags {
 		public String toString() {
 			return "variable " + name;
 		}
-
 	}
 
 	/**
@@ -165,6 +177,10 @@ public class Symbol implements SymbolKinds, TypeTags {
 	 */
 	public static class MethodSymbol extends Symbol {
 
+		/**
+		 * The flags, such as storage class or qualifier, 
+		 * which restricted by {@link TypeTags}.
+		 */
 		public long flags;
 		/**
 		 * Construct a method symbol, given its flags, name, type and owner.
@@ -190,16 +206,17 @@ public class Symbol implements SymbolKinds, TypeTags {
 				s += "(" + type.paramTypes().toString() + ")";
 			}
 			return s;
-
 		}
-
 	}
 	
-
 	/**
 	 * A class for predefined operators.
 	 */
 	public static class OperatorSymbol extends MethodSymbol {
+		
+		/**
+		 * The operator code represented by different semantic.
+		 */
 		public int opcode;
 
 		public OperatorSymbol(long flags, Name name, Type type, int opcode) 
@@ -207,5 +224,36 @@ public class Symbol implements SymbolKinds, TypeTags {
 			super(flags, name, type);
 			this.opcode = opcode;
 		}
+	}
+	
+	public static class TopLevelSymbol extends TypeSymbol
+	{
+		/**
+		 * The top level scope corresponding to global compilation unit.
+		 */
+		public Scope topScope;
+		
+		/**
+		 * The name of compiled source file.
+		 */
+		public Name sourcefile;
+		
+		public TopLevelSymbol(Name name)
+        {
+	        super(name, null);
+	        this.topScope = null;
+	        this.sourcefile = null;	        
+        }
+		
+	}
+	
+	public static class ErrorSymbol extends TypeSymbol	
+	{
+
+		public ErrorSymbol(Name name)
+        {
+	        super(name, null);
+        }
+		
 	}
 }

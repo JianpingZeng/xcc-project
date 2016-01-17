@@ -25,9 +25,8 @@ public class ArrayType extends Type {
      * Constructs a instance with given element type and TypeSymbol.
      * 
      */
-    public ArrayType(Type elemType, long length, TypeSymbol arrayClass) {
+    public ArrayType(Type elemType, TypeSymbol arrayClass) {
         super(ARRAY, arrayClass);
-        this.length = length;
     	this.elemtype = elemType;
     }
 

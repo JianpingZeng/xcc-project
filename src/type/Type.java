@@ -3,7 +3,9 @@ package type;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
 import symbol.Symbol.TypeSymbol;
+import utils.Name;
 
 /**
  * The abstract root class of various type. It provides different definitions
@@ -12,7 +14,13 @@ import symbol.Symbol.TypeSymbol;
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 1.0
  */
-public class Type implements TypeTags {
+public class Type implements TypeTags
+{
+
+	/**
+	 * Constant type: no type at all.
+	 */
+	public static final Type noType = new Type(NONE, null);
 
 	public int tag;
 
@@ -23,9 +31,10 @@ public class Type implements TypeTags {
 	 * value attribute. Constant values can be set only for base type(numbers,
 	 * boolean, string).
 	 */
-	Object constValue = null;
+	public Object constValue = null;
 
-	public Type(int tag, TypeSymbol tsym) {
+	public Type(int tag, TypeSymbol tsym)
+	{
 		super();
 		this.tag = tag;
 		this.tsym = tsym;
@@ -38,7 +47,8 @@ public class Type implements TypeTags {
 	 * @param constValue
 	 * @return
 	 */
-	public Type constType(Object constValue) {
+	public Type constType(Object constValue)
+	{
 		assert tag <= BOOL;
 		Type t = new Type(tag, tsym);
 		t.constValue = constValue;
@@ -51,7 +61,8 @@ public class Type implements TypeTags {
 	 * 
 	 * @return
 	 */
-	public Type basetype() {
+	public Type basetype()
+	{
 		if (constValue == null)
 			return this;
 		else
@@ -61,9 +72,10 @@ public class Type implements TypeTags {
 	/**
 	 * Converts to string.
 	 */
-	public String toString() {
+	public String toString()
+	{
 		String s = (tsym == null || tsym.name == null) ? "null" : tsym.name
-				.toString();
+		        .toString();
 		return s;
 	}
 
@@ -73,7 +85,8 @@ public class Type implements TypeTags {
 	 * 
 	 * @return
 	 */
-	public String stringValue() {
+	public String stringValue()
+	{
 		if (tag == BOOL)
 			return ((Integer) constValue).intValue() == 0 ? "false" : "true";
 		else if (tag == CHAR)
@@ -87,9 +100,10 @@ public class Type implements TypeTags {
 	 * 
 	 * @return
 	 */
-	public boolean isFalse() {
+	public boolean isFalse()
+	{
 		return tag == BOOL && constValue != null
-				&& ((Integer) constValue).intValue() == 0;
+		        && ((Integer) constValue).intValue() == 0;
 	}
 
 	/**
@@ -97,9 +111,10 @@ public class Type implements TypeTags {
 	 * 
 	 * @return
 	 */
-	public boolean isTrue() {
+	public boolean isTrue()
+	{
 		return tag == BOOL && constValue != null
-				&& ((Integer) constValue).intValue() != 0;
+		        && ((Integer) constValue).intValue() != 0;
 	}
 
 	/**
@@ -107,11 +122,13 @@ public class Type implements TypeTags {
 	 * 
 	 * @return
 	 */
-	public Type elemType() {
+	public Type elemType()
+	{
 		return null;
 	}
 
-	public Type returnType() {
+	public Type returnType()
+	{
 		return this;
 	}
 
@@ -120,7 +137,8 @@ public class Type implements TypeTags {
 	 */
 	public static final List<Type> emptyList = new LinkedList<>();
 
-	public List<Type> paramTypes() {
+	public List<Type> paramTypes()
+	{
 		return emptyList;
 	}
 
@@ -129,33 +147,48 @@ public class Type implements TypeTags {
 	 * 
 	 * @return
 	 */
-	public int dimensions() {
+	public int dimensions()
+	{
 		return 0;
 	}
 
-	public boolean isErronuous() {
+	public boolean isErronuous()
+	{
 		return false;
+	}
+
+	public static boolean isErroneous(List<Type> ts)
+	{
+		boolean result = false;
+		for (Type t : ts)
+			if (t.isErronuous()) 
+			{
+				result = true; 
+				break;
+			}
+		return result;
 	}
 
 	/**
 	 * Is this type equivalent ot other.
 	 */
-	public boolean isSameType(Type other) {
-		if (this == other)
-			return true;
-		switch (this.tag) {
-		case BYTE:
-		case CHAR:
-		case INT:
-		case LONG:
-		case FLOAT:
-		case DOUBLE:
-		case BOOL:
-		case VOID:
-		case NONE:
-			return this.tag == other.tag;
-		default:
-			throw new AssertionError("isSameType " + this.tag);
+	public boolean isSameType(Type other)
+	{
+		if (this == other) return true;
+		switch (this.tag)
+		{
+			case BYTE:
+			case CHAR:
+			case INT:
+			case LONG:
+			case FLOAT:
+			case DOUBLE:
+			case BOOL:
+			case VOID:
+			case NONE:
+				return this.tag == other.tag;
+			default:
+				throw new AssertionError("isSameType " + this.tag);
 		}
 	}
 
@@ -166,15 +199,15 @@ public class Type implements TypeTags {
 	 * @param second
 	 * @return
 	 */
-	public boolean isSameTypes(List<Type> first, List<Type> second) {
+	public boolean isSameTypes(List<Type> first, List<Type> second)
+	{
 		Iterator<Type> it1, it2;
-		if (first.size() != second.size())
-			return false;
+		if (first.size() != second.size()) return false;
 
 		for (it1 = first.iterator(), it2 = second.iterator(); it1.hasNext()
-				&& it2.hasNext();) {
-			if (!it1.next().isSameType(it2.next()))
-				break;
+		        && it2.hasNext();)
+		{
+			if (!it1.next().isSameType(it2.next())) break;
 		}
 		return !it1.hasNext() || !it2.hasNext();
 	}
@@ -185,34 +218,35 @@ public class Type implements TypeTags {
 	 * @param that
 	 * @return
 	 */
-	public boolean isSubType(Type that) {
-		if (this == that)
-			return true;
-		switch (this.tag) {
-		case BYTE:
+	public boolean isSubType(Type that)
+	{
+		if (this == that) return true;
+		switch (this.tag)
+		{
+			case BYTE:
 
-		case CHAR:
-			return (this.tag == that.tag || this.tag + 2 <= that.tag
-					&& that.tag <= DOUBLE);
+			case CHAR:
+				return (this.tag == that.tag || this.tag + 2 <= that.tag
+				        && that.tag <= DOUBLE);
 
-		case SHORT:
+			case SHORT:
 
-		case INT:
+			case INT:
 
-		case LONG:
+			case LONG:
 
-		case FLOAT:
+			case FLOAT:
 
-		case DOUBLE:
-			return this.tag <= that.tag && that.tag <= DOUBLE;
+			case DOUBLE:
+				return this.tag <= that.tag && that.tag <= DOUBLE;
 
-		case BOOL:
+			case BOOL:
 
-		case VOID:
-			return this.tag == that.tag;
+			case VOID:
+				return this.tag == that.tag;
 
-		default:
-			throw new AssertionError("isSubType " + this.tag);
+			default:
+				throw new AssertionError("isSubType " + this.tag);
 		}
 	}
 
@@ -222,7 +256,8 @@ public class Type implements TypeTags {
 	 * @param that
 	 * @return
 	 */
-	public boolean isSuperType(Type that) {
+	public boolean isSuperType(Type that)
+	{
 		return that.isSubType(this);
 	}
 
@@ -232,27 +267,28 @@ public class Type implements TypeTags {
 	 * @param that
 	 * @return
 	 */
-	public boolean isAssignable(Type that) {
-		if (this.tag <= INT && this.constValue != null) {
+	public boolean isAssignable(Type that)
+	{
+		if (this.tag <= INT && this.constValue != null)
+		{
 			int value = ((Number) this.constValue).intValue();
-			switch (that.tag) {
-			case BYTE:
-				if (this.tag != CHAR && value >= Byte.MIN_VALUE
-						&& value <= Byte.MAX_VALUE)
-					return true;
-				break;
-			case CHAR:
-				if (value >= Character.MIN_VALUE
-						&& value <= Character.MAX_VALUE)
-					return true;
-				break;
-			case SHORT:
-				if (Short.MIN_VALUE <= value && value <= Short.MAX_VALUE)
-					return true;
-				break;
+			switch (that.tag)
+			{
+				case BYTE:
+					if (this.tag != CHAR && value >= Byte.MIN_VALUE
+					        && value <= Byte.MAX_VALUE) return true;
+					break;
+				case CHAR:
+					if (value >= Character.MIN_VALUE
+					        && value <= Character.MAX_VALUE) return true;
+					break;
+				case SHORT:
+					if (Short.MIN_VALUE <= value && value <= Short.MAX_VALUE)
+					    return true;
+					break;
 
-			case INT:
-				return true;
+				case INT:
+					return true;
 			}
 		}
 		return this.isSubType(that);
@@ -265,33 +301,34 @@ public class Type implements TypeTags {
 	 * @param that
 	 * @return
 	 */
-	public boolean isCastable(Type that) {
-		if (that.tag == ERROR)
-			return true;
-		switch (this.tag) {
-		case BYTE:
+	public boolean isCastable(Type that)
+	{
+		if (that.tag == ERROR) return true;
+		switch (this.tag)
+		{
+			case BYTE:
 
-		case CHAR:
+			case CHAR:
 
-		case SHORT:
+			case SHORT:
 
-		case INT:
+			case INT:
 
-		case LONG:
+			case LONG:
 
-		case FLOAT:
+			case FLOAT:
 
-		case DOUBLE:
-			return that.tag <= DOUBLE;
+			case DOUBLE:
+				return that.tag <= DOUBLE;
 
-		case BOOL:
-			return that.tag == BOOL;
+			case BOOL:
+				return that.tag == BOOL;
 
-		case VOID:
-			return false;
+			case VOID:
+				return false;
 
-		default:
-			throw new AssertionError();
+			default:
+				throw new AssertionError();
 		}
 	}
 
@@ -301,8 +338,110 @@ public class Type implements TypeTags {
 	 * @return 如果是，则返回true;否则返回false
 	 * @exception Error
 	 */
-	public boolean isSigned() {
+	public boolean isSigned()
+	{
 		throw new Error("#isSigned for non-integer type");
 	}
 
+	/**
+	 * The source code witch this type represented. A list 
+	 * will always be represented as a comma-seperated listing
+	 * of the elements in that list. 
+	 * 
+	 * @param argtypes
+	 * @return
+	 */
+	public static String toStringList(List<Type> argtypes)
+    {
+		if (argtypes.isEmpty())
+			return "";
+		else 
+		{
+			StringBuilder builder = new StringBuilder();
+			builder.append(argtypes.get(0).toString());
+			for (int idx = 1; idx < argtypes.size(); idx++)
+			{
+				builder.append(',');
+				builder.append(argtypes.get(idx));
+			}
+			return builder.toString();
+		}
+		
+    }
+	
+	public static class ErrorType extends Type
+	{
+		public Name name;
+
+		public ErrorType(TypeSymbol errSymbol)
+		{
+			super(ERROR, errSymbol);
+		}
+
+		public ErrorType(Name name, TypeSymbol errSymbol)
+		{
+			this(errSymbol);
+			this.name = name;
+		}
+
+		public Type constType(Object constValue)
+		{
+			return this;
+		}
+
+		public Type basetype()
+		{
+			return this;
+		}
+
+		/**
+		 * This method just for array type.
+		 * 
+		 * @return
+		 */
+		public Type elemType()
+		{
+			return this;
+		}
+
+		public Type returnType()
+		{
+			return this;
+		}
+
+		public boolean isErroneous()
+		{
+			return true;
+		}
+
+		public boolean isSameType(Type that)
+		{
+			return true;
+		}
+
+		public boolean isCastable(Type that)
+		{
+			return true;
+		}
+
+		public boolean hasSameArgs(Type that)
+		{
+			return false;
+		}
+
+		public boolean isAssignable(Type that)
+		{
+			return true;
+		}
+
+		public boolean isSubType(Type that)
+		{
+			return true;
+		}
+
+		public boolean isSuperType(Type that)
+		{
+			return true;
+		}
+	}
 }

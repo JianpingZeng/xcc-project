@@ -1,6 +1,11 @@
 package ast;
 
+import utils.Context;
+import utils.Name;
 import ast.Tree;
+import ast.Tree.Ident;
+import ast.Tree.Parens;
+import ast.Tree.Select;
 
 public class TreeInfo
 {
@@ -94,6 +99,48 @@ public class TreeInfo
 	 */
 	public static final int precCount = 16;
 
+	private static final Context.Key treeinfoKey = new Context.Key();
+	
+	public static TreeInfo instance(Context context)
+	{
+		TreeInfo instance = (TreeInfo)context.get(treeinfoKey);
+		if (instance == null)
+			instance = new TreeInfo(context);
+		return instance;
+	}
+	
+	public TreeInfo(Context context)
+	{
+		context.put(treeinfoKey, this);
+        Name.Table names = Name.Table.instance(context);
+        opname[Tree.POS - Tree.POS] = names.fromString("+");
+        opname[Tree.NEG - Tree.POS] = names.hyphen;
+        opname[Tree.NOT - Tree.POS] = names.fromString("!");
+        opname[Tree.COMPL - Tree.POS] = names.fromString("~");
+        opname[Tree.PREINC - Tree.POS] = names.fromString("++");
+        opname[Tree.PREDEC - Tree.POS] = names.fromString("--");
+        opname[Tree.POSTINC - Tree.POS] = names.fromString("++");
+        opname[Tree.POSTDEC - Tree.POS] = names.fromString("--");
+        opname[Tree.OR - Tree.POS] = names.fromString("||");
+        opname[Tree.AND - Tree.POS] = names.fromString("&&");
+        opname[Tree.EQ - Tree.POS] = names.fromString("==");
+        opname[Tree.NE - Tree.POS] = names.fromString("!=");
+        opname[Tree.LT - Tree.POS] = names.fromString("<");
+        opname[Tree.GT - Tree.POS] = names.fromString(">");
+        opname[Tree.LE - Tree.POS] = names.fromString("<=");
+        opname[Tree.GE - Tree.POS] = names.fromString(">=");
+        opname[Tree.BITOR - Tree.POS] = names.fromString("|");
+        opname[Tree.BITXOR - Tree.POS] = names.fromString("^");
+        opname[Tree.BITAND - Tree.POS] = names.fromString("&");
+        opname[Tree.SL - Tree.POS] = names.fromString("<<");
+        opname[Tree.SR - Tree.POS] = names.fromString(">>");
+        opname[Tree.PLUS - Tree.POS] = names.fromString("+");
+        opname[Tree.MINUS - Tree.POS] = names.hyphen;
+        opname[Tree.MUL - Tree.POS] = names.asterisk;
+        opname[Tree.DIV - Tree.POS] = names.slash;
+        opname[Tree.MOD - Tree.POS] = names.fromString("%");
+	}
+	
 	/**
 	 * Map operators to their precedence levels.
 	 */
@@ -219,5 +266,44 @@ public class TreeInfo
 	   return list.toString();
    }
    
+   /**
+    * If this tree is an identifier or a field or a parameterized type,
+    *  return its name, otherwise return null.
+    */
+  public static Name name(Tree tree) {
+      switch (tree.tag) {
+      case Tree.IDENT:
+          return ((Ident) tree).name;
+
+      case Tree.SELECT:
+          return ((Select) tree).name;
+
+      default:
+          return null;
+
+      }
+  }
+   
+  /**
+   * Skip parens and return the enclosed expression
+   */
+ public static Tree skipParens(Tree tree) {
+     while (tree.tag == Tree.PARENS) {
+         tree = ((Parens) tree).expr;
+     }
+     return tree;
+ }
+  
+  /**
+   * Return name of operator with given tree tag.
+   */
+ public Name operatorName(int tag) {
+     return opname[tag - Tree.POS];
+ }
+  
+ /**
+  * The names of all operators.
+  */
+private Name[] opname = new Name[Tree.MOD - Tree.POS + 1];
    private static final String[] flagName = {"static", "const"};
 }

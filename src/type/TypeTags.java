@@ -94,7 +94,7 @@ public interface TypeTags {
     /**
      * The tag of the unknowed type.
      */
-    int UNKNOW = 18;
+    int UNKNOWN = 18;
     
     /**
      * The tag of the pointer type.

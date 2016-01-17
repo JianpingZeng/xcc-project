@@ -11,9 +11,9 @@ import symbol.Symbol.TypeSymbol;
 public class MethodType extends Type {
     
 	
-	protected Type returnType;
+	public Type returnType;
      
-	protected List<Type> paramTypes;
+	public List<Type> paramTypes;
 
 
     public MethodType(Type ret, List<Type> argtypes, 
