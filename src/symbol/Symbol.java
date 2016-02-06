@@ -135,9 +135,9 @@ public class Symbol implements SymbolKinds, TypeTags {
 		/**
 		 * The variable's address. Used for different purposes during flow
 		 * analysis, translation and code generation. Flow analysis: If this is
-		 * a blank final or local variable, its sequence number. Translation: If
-		 * this is a private field, its access number. Code generation: If this
-		 * is a local variable, its logical slot number.
+		 * a blank final or local variable, its sequence id. Translation: If
+		 * this is a private field, its access id. Code generation: If this
+		 * is a local variable, its logical slot id.
 		 */
 		public int adr = -1;
 

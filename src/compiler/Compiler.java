@@ -71,7 +71,7 @@ public class Compiler
 	}
 
 	/**
-	 * The number of errors reported so far.
+	 * The id of errors reported so far.
 	 */
 	public int errorCount()
 	{

@@ -58,7 +58,7 @@ public class Convert {
       *  @param dst        The array holding the converted characters..
       *  @param sindex     The start index from which converted characters
       *                    are written.
-      *  @param len        The maximum number of bytes to convert.
+      *  @param len        The maximum id of bytes to convert.
       */
     public static int utf2chars(byte[] src, int sindex, char[] dst, int dindex,
             int len) {
@@ -84,7 +84,7 @@ public class Convert {
       * Return bytes in Utf8 representation as an array of characters.
       *  @param src        The array holding the bytes.
       *  @param sindex     The start index from which bytes are converted.
-      *  @param len        The maximum number of bytes to convert.
+      *  @param len        The maximum id of bytes to convert.
       */
     public static char[] utf2chars(byte[] src, int sindex, int len) {
         char[] dst = new char[len];
@@ -107,7 +107,7 @@ public class Convert {
       * Return bytes in Utf8 representation as a string.
       *  @param src        The array holding the bytes.
       *  @param sindex     The start index from which bytes are converted.
-      *  @param len        The maximum number of bytes to convert.
+      *  @param len        The maximum id of bytes to convert.
       */
     public static String utf2string(byte[] src, int sindex, int len) {
         char[] dst = new char[len];
@@ -134,7 +134,7 @@ public class Convert {
       *  @param dst        The array holding the converted characters..
       *  @param sindex     The start index from which converted bytes
       *                    are written.
-      *  @param len        The maximum number of characters to convert.
+      *  @param len        The maximum id of characters to convert.
       */
     public static int chars2utf(char[] src, int sindex, byte[] dst, int dindex,
             int len) {
@@ -160,7 +160,7 @@ public class Convert {
       * Return characters as an array of bytes in Utf8 representation.
       *  @param src        The array holding the characters.
       *  @param sindex     The start index from which characters are converted.
-      *  @param len        The maximum number of characters to convert.
+      *  @param len        The maximum id of characters to convert.
       */
     public static byte[] chars2utf(char[] src, int sindex, int len) {
         byte[] dst = new byte[len * 3];

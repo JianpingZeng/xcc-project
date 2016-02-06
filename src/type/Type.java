@@ -16,11 +16,14 @@ import utils.Name;
  */
 public class Type implements TypeTags
 {
-
 	/**
 	 * Constant type: no type at all.
 	 */
 	public static final Type noType = new Type(NONE, null);
+	public static final Type INTType = new Type(TypeTags.INT, null);
+	public static final Type LONGType = new Type(TypeTags.LONG, null);
+	public static final Type FLOATType = new Type(TypeTags.FLOAT, null);
+	public static final Type DOUBLEType = new Type(TypeTags.DOUBLE, null);
 
 	public int tag;
 
@@ -368,6 +371,32 @@ public class Type implements TypeTags
 		}
 		
     }
+
+	/**
+	 * Is a array type?
+	 * @return
+	 */
+    public boolean isArrayType()
+    {
+		return tag == ARRAY;
+    }
+    /**
+     * Is primitive type, such as byte, char, short, int, long etc?
+     * @return
+     */
+    public boolean isPrimitiveType()
+    {
+    	return tag >= BYTE && tag <= DOUBLE;
+    }
+    
+    /**
+     * Is assignable to integer?
+     */
+    public boolean isIntLike()
+    {
+    	return tag >= BYTE && tag <= LONG;
+    }
+    
 	
 	public static class ErrorType extends Type
 	{

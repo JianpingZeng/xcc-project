@@ -221,27 +221,27 @@ public class SimpleCharStream
     return bufline[bufpos];
   }
 
-  /** Get token end column number. */
+  /** Get token end column id. */
   public int getEndColumn() {
     return bufcolumn[bufpos];
   }
 
-  /** Get token end line number. */
+  /** Get token end line id. */
   public int getEndLine() {
      return bufline[bufpos];
   }
 
-  /** Get token beginning column number. */
+  /** Get token beginning column id. */
   public int getBeginColumn() {
     return bufcolumn[tokenBegin];
   }
 
-  /** Get token beginning line number. */
+  /** Get token beginning line id. */
   public int getBeginLine() {
     return bufline[tokenBegin];
   }
 
-/** Backup a number of characters. */
+/** Backup a id of characters. */
   public void backup(int amount) {
 
     inBuf += amount;

@@ -33,7 +33,7 @@ public class Log implements LayoutCharacters {
     public final PrintWriter noticeWriter;
 
     /**
-     * The maximum number of errors/warnings that are reported,
+     * The maximum id of errors/warnings that are reported,
      *  can be reassigned from outside.
      */
     private final int MaxErrors;
@@ -117,12 +117,12 @@ public class Log implements LayoutCharacters {
     private Name sourcename;
 
     /**
-     * The number of errors encountered so far.
+     * The id of errors encountered so far.
      */
     public int nerrors = 0;
 
     /**
-     * The number of warnings encountered so far.
+     * The id of warnings encountered so far.
      */
     public int nwarnings = 0;
 
@@ -212,8 +212,8 @@ public class Log implements LayoutCharacters {
 
     /**
       * Print a faulty source code line and point to the error.
-      *  @param line    The line number of the printed line in the current buffer.
-      *  @param col     The number of the column to be highlighted as error position.
+      *  @param line    The line id of the printed line in the current buffer.
+      *  @param col     The id of the column to be highlighted as error position.
       */
     private void printErrLine(int line, int col, PrintWriter writer) {
         try {
@@ -517,5 +517,14 @@ public class Log implements LayoutCharacters {
         }
         nwarnings++;
         errWriter.flush();
+    }
+    
+    /**
+     * Reports a unreachable warning with message s.
+     * @param s
+     */
+    public void unreachable(String s)
+    {
+    	rawWarning(Position.NOPOS, "UNREACHABLE: " + s);
     }
 }

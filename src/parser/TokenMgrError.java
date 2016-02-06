@@ -98,8 +98,8 @@ public class TokenMgrError extends Error
    * Parameters :
    *    EOFSeen     : indicates if EOF caused the lexical error
    *    curLexState : lexical state in which this error occurred
-   *    errorLine   : line number when the error occurred
-   *    errorColumn : column number when the error occurred
+   *    errorLine   : line id when the error occurred
+   *    errorColumn : column id when the error occurred
    *    errorAfter  : prefix that was seen before this error occurred
    *    curchar     : the offending character
    * Note: You can customize the lexical error message by modifying this method.

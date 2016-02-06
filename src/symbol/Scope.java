@@ -40,7 +40,7 @@ public class Scope {
     public Entry elems;
 
     /**
-     * The number of elements in this scope.
+     * The id of elements in this scope.
      */
     public int nelems = 0;
 
