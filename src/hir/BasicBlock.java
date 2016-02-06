@@ -13,12 +13,12 @@ import java.util.ListIterator;
  * exception.
  * 
  * Each basic block contains a serial of quads, a list of predecessors, a list
- * of successors. It also has an number id that is unique within its control
+ * of successors. It also has an id id that is unique within its control
  * flow graph.
  * 
  * Note that you should never create directly a basic block using the
  * constructor of {@link BasicBlock}, you should create it via a
- * {@link ControlFlowGraph} so that id number is unique.
+ * {@link ControlFlowGraph} so that id id is unique.
  * 
  * @author Jianping Zeng < z121jping@hotmail.com >
  * @see Quad
@@ -27,7 +27,7 @@ import java.util.ListIterator;
  */
 public class BasicBlock {
 
-	/** Unique id number for this basic block. */
+	/** Unique id id for this basic block. */
 	private int idNumber;
 
 	/** A list of quads. */
@@ -72,12 +72,18 @@ public class BasicBlock {
 		return new BasicBlock();
 	}
 
-	/** Creates a new basic node for exit entry. */
+	/** Creates a new basic node for exit block. */
 	static BasicBlock createEndNode(int numberOfPredecessor) {
 
 		return new BasicBlock(numberOfPredecessor);
 	}
 
+	/** Creates a new basic node for exit block without numbers of predecessors. */
+	static BasicBlock createEndNode() {
+
+		return new BasicBlock();
+	}
+	
 	/**
 	 * Create new internal basic block. Only to be called by ControlFlowGraph.
 	 */
@@ -87,6 +93,15 @@ public class BasicBlock {
 		return new BasicBlock(id, numOfPredecessors, numOfSuccessors,
 				numOfInstructions);
 	}
+	
+	/**
+	 * Create new internal basic block. Only to be called by ControlFlowGraph.
+	 */
+	static BasicBlock createBasicBlock(int id) {
+
+		return new BasicBlock(id);
+	}
+	
 
 	/**
 	 * Returns true if this is the entry basic block.
@@ -161,9 +176,9 @@ public class BasicBlock {
 	}
 
 	/**
-	 * Returns the number of quads in this basic block.
+	 * Returns the id of quads in this basic block.
 	 * 
-	 * @return the number of quads in this basic block.
+	 * @return the id of quads in this basic block.
 	 */
 	public int size() {
 		if (instructions == null)
@@ -206,9 +221,9 @@ public class BasicBlock {
 	 * @param q
 	 *            quad to add
 	 */
-	public void addQuad(int index, Quad q) {
+	public void addQuad(Quad q) {
 		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
-		instructions.add(index, q);
+		instructions.add(q);
 	}
 
 	/**

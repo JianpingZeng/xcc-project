@@ -463,7 +463,7 @@ abstract public class Tree
 	}
 
 	/**
-	 * Selects through packages and classes
+	 * Selects through packages or class for future.
 	 * 
 	 * @param selected selected Tree hierarchie
 	 * @param selector name of field to select thru

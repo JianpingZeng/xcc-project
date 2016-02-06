@@ -32,7 +32,7 @@ public class Name {
     public int index;
 
     /**
-     * The number of bytes in this name.
+     * The id of bytes in this name.
      */
     public int len;
 
@@ -384,7 +384,7 @@ public class Name {
         private int hashMask;
 
         /**
-         * The number of filled bytes in `names'.
+         * The id of filled bytes in `names'.
          */
         private int nc = 0;
 

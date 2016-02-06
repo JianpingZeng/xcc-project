@@ -102,7 +102,7 @@ public interface TypeTags {
     int POINTER = 19;
     
     /**
-     * The number of type tags.
+     * The id of type tags.
      */
     int TypeTagCount = POINTER;
     

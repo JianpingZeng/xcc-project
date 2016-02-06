@@ -443,14 +443,14 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags {
     }
 
     /**
-      * The name of synthetic parameter number `i'.
+      * The name of synthetic parameter id `i'.
       */
     public Name paramName(int i) {
         return names.fromString("x" + i);
     }
 
     /**
-      * The name of synthetic type parameter number `i'.
+      * The name of synthetic type parameter id `i'.
       */
     public Name typaramName(int i) {
         return names.fromString("A" + i);

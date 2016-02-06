@@ -10,7 +10,7 @@ import ast.Tree.*;
  * @author Jianping Zeng
  * @version 1.0
  */
-abstract public class ASTVisitor {
+public abstract class ASTVisitor {
 	
 	/**
 	 * Visits the root class represents the top level tree node.
@@ -20,71 +20,173 @@ abstract public class ASTVisitor {
         assert false;
     }
     
-	abstract public void visitTopLevel(TopLevel tree);
+	public void visitTopLevel(TopLevel tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitImport(Import tree);
+	public void visitImport(Import tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitMethodDef(MethodDef tree);
+	public void visitMethodDef(MethodDef tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitVarDef(VarDef tree);
-
-	abstract public void visitSkip(Skip tree) ;
+	public void visitVarDef(VarDef tree)
+	{
+		visitTree(tree);
+	}
 	
-	public abstract void visitBlock(Block tree);
-
-	abstract public void visitIf(If tree);
+	public void visitSkip(Skip tree) 
+	{
+		visitTree(tree);
+	}
 	
-	abstract public void visitSwitch(Switch tree);
+	public void visitBlock(Block tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitForLoop(ForLoop tree);
-
-	abstract public void visitBreak(Break tree);
-
-	abstract public void visitContinue(Continue tree);
+	public void visitIf(If tree)
+	{
+		visitTree(tree);
+	}
 	
-	abstract public void visitGoto(Goto tree);
+	public void visitSwitch(Switch tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitDoLoop(DoLoop tree);
+	public void visitForLoop(ForLoop tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitWhileLoop(WhileLoop tree);
+	public void visitBreak(Break tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitCase(Case tree);
-
-	abstract public void visitLabelled(Labelled tree);
+	public void visitContinue(Continue tree)
+	{
+		visitTree(tree);
+	}
 	
-	abstract public void visitReturn(Return tree);
+	public void visitGoto(Goto tree)
+	{
+		visitTree(tree);
+	}
 
-	abstract public void visitSelect(Select tree);
-
-	abstract public void visitApply(Apply tree);
-
-	abstract public void visitAssign(Assign tree);
-
-	abstract public void visitExec(Exec tree);
-
-	abstract public void visitConditional(Conditional tree);
-
-	abstract public void visitParens(Parens tree);
-
-	abstract public void visitAssignop(Assignop tree);
-
-	abstract public void visitUnary(Unary tree);
-
-	abstract public void visitBinary(Binary tree);
-
-	abstract public void visitTypeCast(TypeCast tree);
-
-	abstract public void visitIndexed(Indexed tree);
-
-	abstract public void visitTypeArray(TypeArray tree);
-
-	abstract public void visitTypeIdent(TypeIdent tree);
-
-	abstract public void visitLiteral(Literal tree);
-
-	abstract public void visitIdent(Ident tree);
-
-	abstract public void visitNewArray(NewArray tree);   
+	public void visitDoLoop(DoLoop tree)
+	{
+		visitTree(tree);
+	}
 	
-	abstract public void visitErroneous(Erroneous erroneous);
+	public void visitWhileLoop(WhileLoop tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitCase(Case tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitLabelled(Labelled tree)
+	{
+		visitTree(tree);
+	}
+	
+	public void visitReturn(Return tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitSelect(Select tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitApply(Apply tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitAssign(Assign tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitExec(Exec tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitConditional(Conditional tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitParens(Parens tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitAssignop(Assignop tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitUnary(Unary tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitBinary(Binary tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitTypeCast(TypeCast tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitIndexed(Indexed tree)
+	{
+		visitTree(tree);
+	}	
+
+	public void visitTypeArray(TypeArray tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitTypeIdent(TypeIdent tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitLiteral(Literal tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitIdent(Ident tree)
+	{
+		visitTree(tree);
+	}
+
+	public void visitNewArray(NewArray tree)
+	{
+		visitTree(tree);
+	}
+	
+	public void visitErroneous(Erroneous erroneous)
+	{
+		visitTree(erroneous);
+	}
 }

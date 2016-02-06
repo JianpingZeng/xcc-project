@@ -22,13 +22,13 @@ public class Token implements java.io.Serializable {
    */
   public int kind;
 
-  /** The line number of the first character of this Token. */
+  /** The line id of the first character of this Token. */
   public int beginLine;
-  /** The column number of the first character of this Token. */
+  /** The column id of the first character of this Token. */
   public int beginColumn;
-  /** The line number of the last character of this Token. */
+  /** The line id of the last character of this Token. */
   public int endLine;
-  /** The column number of the last character of this Token. */
+  /** The column id of the last character of this Token. */
   public int endColumn;
 
   /**

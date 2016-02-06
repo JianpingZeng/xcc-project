@@ -3,7 +3,7 @@ package utils;
 /**
  * A class that encodes and decodes source code positions. Source code
  *  positions are internally represented as integers that contain
- *  both column and line number information.
+ *  both column and line id information.
  */
 public class Position {
 
@@ -13,7 +13,7 @@ public class Position {
 
     /**
       * Source file positions are integers in the format:
-      *  line-number << LINESHIFT + column-number
+      *  line-id << LINESHIFT + column-id
       *  NOPOS represents an undefined position.
       */
     public static final int LINESHIFT = 10;
@@ -23,21 +23,21 @@ public class Position {
     public static final int MAXPOS = Integer.MAX_VALUE;
 
     /**
-     * The line number of the given position.
+     * The line id of the given position.
      */
     public static int line(int pos) {
         return pos >>> LINESHIFT;
     }
 
     /**
-      * The column number of the given position.
+      * The column id of the given position.
       */
     public static int column(int pos) {
         return pos & COLUMNMASK;
     }
 
     /**
-      * Form a position from a line number and a column number.
+      * Form a position from a line id and a column id.
       */
     public static int make(int line, int col) {
         return (line << LINESHIFT) + col;

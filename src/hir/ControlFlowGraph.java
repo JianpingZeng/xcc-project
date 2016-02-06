@@ -6,33 +6,34 @@ import java.util.ListIterator;
 
 public class ControlFlowGraph {
 
+	public static final int MAX_STRING_LENGTH = 65535;
+	
 	/** The function that this control flow graph represents. */
-	private DefinedFunction attachedFunction;
+	private Method attachedMethod;
 	
 	/** The entry basic block of this control flow graph.*/
-	private BasicBlock endNode;
-	/** The exit basic block of this control flow graph.*/
 	private BasicBlock startNode;
+	/** The exit basic block of this control flow graph.*/
+	private BasicBlock endNode;
 	
-    /** Current number of basic blocks, used to generate unique id's. */
+    /** Current id of basic blocks, used to generate unique id's. */
     private int bb_counter;
-    /** Current number of quads, used to generate unique id's. */
+    /** Current id of quads, used to generate unique id's. */
     private int quad_counter;
     
     /**
      * Constructor that constructs an control flow graph.
      *  
      * @param method	the method that this graph represents.
-     * @param numOfExits	the numbers of predecessor of end Tree.
      */
-    public ControlFlowGraph(DefinedFunction method, int numOfExits) {
+    public ControlFlowGraph(Method method) {
     
-    	this.attachedFunction = method;
+    	this.attachedMethod = method;
     	this.startNode = BasicBlock.createStartNode();
-    	this.endNode = BasicBlock.createEndNode(numOfExits);
-    	// number of basic block begin with one.
+    	this.endNode = BasicBlock.createEndNode();
+    	// id of basic block begin with one.
     	this.bb_counter = 1;
-    	// number of quad begin with zero.
+    	// id of quad begin with zero.
     	this.quad_counter = 0;
     }
     
@@ -55,17 +56,17 @@ public class ControlFlowGraph {
      * 
      * @return	the attached function.
      */
-    public DefinedFunction getMethod() {return this.attachedFunction; }
+    public Method getMethod() {return this.attachedMethod; }
     
     /**
      * Create a new basic block in this control flow graph.  The new basic block
-     * is given a new, unique id number.
+     * is given a new, unique id id.
      * 
-     * @param numOfPredecessors  number of predecessor basic blocks that this
+     * @param numOfPredecessors  id of predecessor basic blocks that this
                                  basic block is expected to have.
-     * @param numOfSuccessors  number of successor basic blocks that this
+     * @param numOfSuccessors  id of successor basic blocks that this
                                basic block is expected to have.
-     * @param numOfInstructions  number of instructions that this basic block
+     * @param numOfInstructions  id of instructions that this basic block
                                  is expected to have.
      * @return  the newly created basic block.
      */
@@ -76,13 +77,24 @@ public class ControlFlowGraph {
     			(++bb_counter, numOfPredecessors, numOfSuccessors, numOfInstructions);
     }
     
+    /**
+     * Create a new basic block in this control flow graph.  The new basic block
+     * is given a new, unique id id.
+     * 
+     * @return  the newly created basic block.
+     */
+    public BasicBlock createBasicBlock() {
+        
+    	return BasicBlock.createBasicBlock(++bb_counter);
+    }
+    
     /** Use with care after renumbering basic blocks. */
     void updateBBcounter(int value) { bb_counter = value-1; }
     
     /**
-     * Returns a maximum on the number of basic blocks in this control flow graph.
+     * Returns a maximum on the id of basic blocks in this control flow graph.
      * 
-     * @return  a maximum on the number of basic blocks in this control flow graph.
+     * @return  a maximum on the id of basic blocks in this control flow graph.
      */
     public int getNumberOfBasicBlocks() { return bb_counter+1; }
     
@@ -96,10 +108,10 @@ public class ControlFlowGraph {
         return total;
     }
 
-    /** Returns a new id number for a quad. */
+    /** Returns a new id id for a quad. */
     public int getNewQuadID() { return ++quad_counter; }
     
-    /** Returns the maximum id number for a quad. */
+    /** Returns the maximum id id for a quad. */
     public int getMaxQuadID() { return quad_counter; }
     
     
