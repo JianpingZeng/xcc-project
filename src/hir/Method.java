@@ -1,7 +1,10 @@
 package hir; 
 
+import type.Type;
+
 import com.sun.org.apache.xerces.internal.parsers.SecurityConfiguration;
 
+import ast.Tree;
 import ast.Tree.MethodDef;
 
 /** 

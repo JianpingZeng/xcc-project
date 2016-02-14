@@ -5,11 +5,9 @@ import type.Type;
 import hir.Operand.BasicBlockTableOperand;
 import hir.Operand.MethodOperand;
 import hir.Operand.ParamListOperand;
-import hir.Operand.RHS;
 import hir.Operand.RegisterOperand;
 import hir.Operand.TargetOperand;
 import hir.QuadVisitor;
-import hir.RegisterFactory.Register;
 
 /**
  * This class is an abstract representation of Quadruple.
@@ -25,16 +23,24 @@ public abstract class Quad
 
 	/** the id is just used for print debugging information. */
 	public int id;
+	/** The numbers of reference count with initial value 1.*/
+	public long refs = 1;
 
 	public Quad(int number)
 	{
-		this.id = number;
+		this.id = number;		
 	}
 	/**
 	 * An interface for QuadVisitor invoking.
 	 * @param visitor	The instance of QuadVisitor.
 	 */
 	public abstract void accept(QuadVisitor visitor);
+	
+	/**
+	 * Gets the text format of this Quad.
+	 * @return
+	 */
+	public abstract String toString();
 
 	/**
 	 * An abstract quad instruction representation for Assign instruction.
@@ -44,27 +50,22 @@ public abstract class Quad
 	public static abstract class Assign extends Quad
 	{
 		public RegisterOperand result;
-		public RHS operand1;
+		public Operand operand1;
 
-		public static Assign create(int id, Register result, RHS operand1,
-		        Type t)
+		public static Assign create(int id, RegisterOperand result, Operand src, Type t)
 		{
 			if (t.isIntLike())
-			    return new Assign_I(id, new RegisterOperand(result, t),
-			            operand1);
+			    return new Assign_I(id, result, src);
 			if (t == Type.FLOATType)
-			    return new Assign_F(id, new RegisterOperand(result, t),
-			            operand1);
+			    return new Assign_F(id, result, src);
 			if (t == Type.LONGType)
-			    return new Assign_L(id, new RegisterOperand(result, t),
-			            operand1);
+			    return new Assign_L(id, result, src);
 			if (t == Type.DOUBLEType)
-			    return new Assign_D(id, new RegisterOperand(result, t),
-			            operand1);
+			    return new Assign_D(id, result, src);
 			return null;
 		}
 
-		protected Assign(int id, RegisterOperand result, RHS operand1)
+		protected Assign(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id);
 		}
@@ -78,7 +79,7 @@ public abstract class Quad
 	 */
 	public static class Assign_I extends Assign
 	{
-		public Assign_I(int id, RegisterOperand result, RHS operand1)
+		public Assign_I(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -89,6 +90,12 @@ public abstract class Quad
 			// TODO Auto-generated method stub
 
 		}
+
+		@Override
+        public String toString()
+        {
+	        return null;
+        }
 	}
 
 	/**
@@ -99,7 +106,7 @@ public abstract class Quad
 	 */
 	public static class Assign_F extends Assign
 	{
-		public Assign_F(int id, RegisterOperand result, RHS operand1)
+		public Assign_F(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -110,6 +117,13 @@ public abstract class Quad
 			// TODO Auto-generated method stub
 
 		}
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
+        }
 	}
 
 	/**
@@ -120,7 +134,7 @@ public abstract class Quad
 	 */
 	public static class Assign_L extends Assign
 	{
-		public Assign_L(int id, RegisterOperand result, RHS operand1)
+		public Assign_L(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -131,6 +145,13 @@ public abstract class Quad
 			// TODO Auto-generated method stub
 
 		}
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
+        }
 	}
 
 	/**
@@ -141,7 +162,7 @@ public abstract class Quad
 	 */
 	public static class Assign_D extends Assign
 	{
-		public Assign_D(int id, RegisterOperand result, RHS operand1)
+		public Assign_D(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -152,6 +173,13 @@ public abstract class Quad
 			// TODO Auto-generated method stub
 
 		}
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
+        }
 	}
 
 	/**
@@ -170,16 +198,15 @@ public abstract class Quad
 		/**
 		 * The first and second operand of this quad.
 		 */
-		public RHS operand1, operand2;
+		public Operand operand1, operand2;
 
-		public Binary(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		protected Binary(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id);
 			this.result = result;
 			this.operand1 = operand1;
 			this.operand2 = operand2;
 		}
-
 		/**
 		 * Estimates whether this quad has side effect or not. return true if
 		 * done , otherwise return false.
@@ -193,7 +220,8 @@ public abstract class Quad
 
 	public static class ADD_I extends Binary
 	{
-		public ADD_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public ADD_I(int id, RegisterOperand result, 
+				Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -213,7 +241,7 @@ public abstract class Quad
 
 	public static class SUB_I extends Binary
 	{
-		public SUB_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SUB_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -233,7 +261,7 @@ public abstract class Quad
 
 	public static class MUL_I extends Binary
 	{
-		public MUL_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MUL_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -253,7 +281,7 @@ public abstract class Quad
 
 	public static class DIV_I extends Binary
 	{
-		public DIV_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public DIV_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -273,7 +301,7 @@ public abstract class Quad
 
 	public static class MOD_I extends Binary
 	{
-		public MOD_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MOD_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -293,7 +321,7 @@ public abstract class Quad
 
 	public static class AND_I extends Binary
 	{
-		public AND_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public AND_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -313,7 +341,7 @@ public abstract class Quad
 
 	public static class OR_I extends Binary
 	{
-		public OR_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public OR_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -333,7 +361,7 @@ public abstract class Quad
 
 	public static class XOR_I extends Binary
 	{
-		public XOR_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public XOR_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -353,7 +381,7 @@ public abstract class Quad
 
 	public static class SHL_I extends Binary
 	{
-		public SHL_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SHL_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -373,7 +401,7 @@ public abstract class Quad
 
 	public static class SHR_I extends Binary
 	{
-		public SHR_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SHR_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -398,7 +426,7 @@ public abstract class Quad
 	 */
 	public static class USHR_I extends Binary
 	{
-		public USHR_I(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public USHR_I(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -418,7 +446,7 @@ public abstract class Quad
 
 	public static class ADD_L extends Binary
 	{
-		public ADD_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public ADD_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -438,7 +466,7 @@ public abstract class Quad
 
 	public static class SUB_L extends Binary
 	{
-		public SUB_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SUB_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -458,7 +486,7 @@ public abstract class Quad
 
 	public static class MUL_L extends Binary
 	{
-		public MUL_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MUL_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -478,7 +506,7 @@ public abstract class Quad
 
 	public static class DIV_L extends Binary
 	{
-		public DIV_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public DIV_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -498,7 +526,7 @@ public abstract class Quad
 
 	public static class MOD_L extends Binary
 	{
-		public MOD_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MOD_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -518,7 +546,7 @@ public abstract class Quad
 
 	public static class AND_L extends Binary
 	{
-		public AND_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public AND_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -538,7 +566,7 @@ public abstract class Quad
 
 	public static class OR_L extends Binary
 	{
-		public OR_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public OR_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -558,7 +586,7 @@ public abstract class Quad
 
 	public static class XOR_L extends Binary
 	{
-		public XOR_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public XOR_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -578,7 +606,7 @@ public abstract class Quad
 
 	public static class SHL_L extends Binary
 	{
-		public SHL_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SHL_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -598,7 +626,7 @@ public abstract class Quad
 
 	public static class SHR_L extends Binary
 	{
-		public SHR_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SHR_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -623,7 +651,7 @@ public abstract class Quad
 	 */
 	public static class USHR_L extends Binary
 	{
-		public USHR_L(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public USHR_L(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -643,7 +671,7 @@ public abstract class Quad
 
 	public static class ADD_F extends Binary
 	{
-		public ADD_F(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public ADD_F(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -663,7 +691,7 @@ public abstract class Quad
 
 	public static class SUB_F extends Binary
 	{
-		public SUB_F(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SUB_F(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -683,7 +711,7 @@ public abstract class Quad
 
 	public static class MUL_F extends Binary
 	{
-		public MUL_F(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MUL_F(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -703,7 +731,7 @@ public abstract class Quad
 
 	public static class DIV_F extends Binary
 	{
-		public DIV_F(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public DIV_F(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -723,7 +751,7 @@ public abstract class Quad
 
 	public static class MOD_F extends Binary
 	{
-		public MOD_F(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MOD_F(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -743,7 +771,7 @@ public abstract class Quad
 
 	public static class ADD_D extends Binary
 	{
-		public ADD_D(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public ADD_D(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -763,7 +791,7 @@ public abstract class Quad
 
 	public static class SUB_D extends Binary
 	{
-		public SUB_D(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public SUB_D(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -783,7 +811,7 @@ public abstract class Quad
 
 	public static class MUL_D extends Binary
 	{
-		public MUL_D(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MUL_D(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -803,7 +831,7 @@ public abstract class Quad
 
 	public static class DIV_D extends Binary
 	{
-		public DIV_D(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public DIV_D(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -823,7 +851,7 @@ public abstract class Quad
 
 	public static class MOD_D extends Binary
 	{
-		public MOD_D(int id, RegisterOperand result, RHS operand1, RHS operand2)
+		public MOD_D(int id, RegisterOperand result, Operand operand1, Operand operand2)
 		{
 			super(id, result, operand1, operand2);
 		}
@@ -856,9 +884,9 @@ public abstract class Quad
 		/**
 		 * The first and only operand.
 		 */
-		public RHS operand1;
+		public Operand operand1;
 
-		public Unary(int id, RegisterOperand result, RHS operand1)
+		public Unary(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id);
 			this.result = result;
@@ -879,7 +907,7 @@ public abstract class Quad
 	public static class NEG_I extends Unary
 	{
 
-		public NEG_I(int id, RegisterOperand result, RHS operand1)
+		public NEG_I(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -899,7 +927,7 @@ public abstract class Quad
 
 	public static class NEG_F extends Unary
 	{
-		public NEG_F(int id, RegisterOperand result, RHS operand1)
+		public NEG_F(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -919,7 +947,7 @@ public abstract class Quad
 
 	public static class NEG_L extends Unary
 	{
-		public NEG_L(int id, RegisterOperand result, RHS operand1)
+		public NEG_L(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -941,7 +969,7 @@ public abstract class Quad
 	public static class NEG_D extends Unary
 	{
 
-		public NEG_D(int id, RegisterOperand result, RHS operand1)
+		public NEG_D(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -962,7 +990,7 @@ public abstract class Quad
 	public static class INT_2LONG extends Unary
 	{
 
-		public INT_2LONG(int id, RegisterOperand result, RHS operand1)
+		public INT_2LONG(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -983,7 +1011,7 @@ public abstract class Quad
 
 	public static class INT_2FLOAT extends Unary
 	{
-		public INT_2FLOAT(int id, RegisterOperand result, RHS operand1)
+		public INT_2FLOAT(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1005,7 +1033,7 @@ public abstract class Quad
 	public static class INT_2DOUBLE extends Unary
 	{
 
-		public INT_2DOUBLE(int id, RegisterOperand result, RHS operand1)
+		public INT_2DOUBLE(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1027,7 +1055,7 @@ public abstract class Quad
 	public static class LONG_2INT extends Unary
 	{
 
-		public LONG_2INT(int id, RegisterOperand result, RHS operand1)
+		public LONG_2INT(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1048,7 +1076,7 @@ public abstract class Quad
 
 	public static class LONG_2FLOAT extends Unary
 	{
-		public LONG_2FLOAT(int id, RegisterOperand result, RHS operand1)
+		public LONG_2FLOAT(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1069,7 +1097,7 @@ public abstract class Quad
 	public static class LONG_2DOUBLE extends Unary
 	{
 
-		public LONG_2DOUBLE(int id, RegisterOperand result, RHS operand1)
+		public LONG_2DOUBLE(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1090,7 +1118,7 @@ public abstract class Quad
 
 	public static class FLOAT_2INT extends Unary
 	{
-		public FLOAT_2INT(int id, RegisterOperand result, RHS operand1)
+		public FLOAT_2INT(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1110,7 +1138,7 @@ public abstract class Quad
 
 	public static class FLOAT_2LONG extends Unary
 	{
-		public FLOAT_2LONG(int id, RegisterOperand result, RHS operand1)
+		public FLOAT_2LONG(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1132,7 +1160,7 @@ public abstract class Quad
 	public static class FLOAT_2DOUBLE extends Unary
 	{
 
-		public FLOAT_2DOUBLE(int id, RegisterOperand result, RHS operand1)
+		public FLOAT_2DOUBLE(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1154,7 +1182,7 @@ public abstract class Quad
 	public static class DOUBLE_2INT extends Unary
 	{
 
-		public DOUBLE_2INT(int id, RegisterOperand result, RHS operand1)
+		public DOUBLE_2INT(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1175,7 +1203,7 @@ public abstract class Quad
 	public static class DOUBLE_2LONG extends Unary
 	{
 
-		public DOUBLE_2LONG(int id, RegisterOperand result, RHS operand1)
+		public DOUBLE_2LONG(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1197,7 +1225,7 @@ public abstract class Quad
 	public static class DOUBLE_2FLOAT extends Unary
 	{
 
-		public DOUBLE_2FLOAT(int id, RegisterOperand result, RHS operand1)
+		public DOUBLE_2FLOAT(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1218,7 +1246,7 @@ public abstract class Quad
 	public static class INT_2BYTE extends Unary
 	{
 
-		public INT_2BYTE(int id, RegisterOperand result, RHS operand1)
+		public INT_2BYTE(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1239,7 +1267,7 @@ public abstract class Quad
 	public static class INT_2CHAR extends Unary
 	{
 
-		public INT_2CHAR(int id, RegisterOperand result, RHS operand1)
+		public INT_2CHAR(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1260,7 +1288,7 @@ public abstract class Quad
 	public static class INT_2SHORT extends Unary
 	{
 
-		public INT_2SHORT(int id, RegisterOperand result, RHS operand1)
+		public INT_2SHORT(int id, RegisterOperand result, Operand operand1)
 		{
 			super(id, result, operand1);
 		}
@@ -1298,8 +1326,8 @@ public abstract class Quad
     public abstract static class IntIfCmp extends Branch 
     {
 		public TargetOperand target;
-		public RHS operand1, operand2;
-		public IntIfCmp(int id, RHS operand1, RHS operand2, TargetOperand target)
+		public Operand operand1, operand2;
+		protected IntIfCmp(int id, Operand operand1, Operand operand2, TargetOperand target)
 		{
 			super(id);
 			this.target = target;
@@ -1310,22 +1338,29 @@ public abstract class Quad
 	
 	public static class IfCmp_LT extends IntIfCmp
 	{
-		public IfCmp_LT(int id, RHS operand1, RHS operand2, TargetOperand target)
+		public IfCmp_LT(int id, Operand operand1, Operand operand2, TargetOperand target)
 		{
 			super(id, operand1, operand2, target);
 		}
-
+		
 		@Override
         public void accept(QuadVisitor visitor)
         {
 	        // TODO Auto-generated method stub
 	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
         }
 	}
 	
 	public static class IfCmp_LE extends IntIfCmp
 	{
-		public IfCmp_LE(int id, RHS operand1, RHS operand2, TargetOperand target)
+		public IfCmp_LE(int id, Operand operand1, Operand operand2, TargetOperand target)
 		{
 			super(id, operand1, operand2, target);
 		}
@@ -1335,12 +1370,19 @@ public abstract class Quad
         {
 	        // TODO Auto-generated method stub
 	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
         }
 	}
 	
 	public static class IfCmp_GT extends IntIfCmp
 	{
-		public IfCmp_GT(int id, RHS operand1, RHS operand2, TargetOperand target)
+		public IfCmp_GT(int id, Operand operand1, Operand operand2, TargetOperand target)
 		{
 			super(id, operand1, operand2, target);
 		}
@@ -1350,12 +1392,19 @@ public abstract class Quad
         {
 	        // TODO Auto-generated method stub
 	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
         }
 	}
 	
 	public static class IfCmp_GE extends IntIfCmp
 	{
-		public IfCmp_GE(int id, RHS operand1, RHS operand2, TargetOperand target)
+		public IfCmp_GE(int id, Operand operand1, Operand operand2, TargetOperand target)
 		{
 			super(id, operand1, operand2, target);
 		}
@@ -1365,12 +1414,19 @@ public abstract class Quad
         {
 	        // TODO Auto-generated method stub
 	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
         }
 	}
 	
 	public static class IfCmp_EQ extends IntIfCmp
 	{
-		public IfCmp_EQ(int id, RHS operand1, RHS operand2, TargetOperand target)
+		public IfCmp_EQ(int id, Operand operand1, Operand operand2, TargetOperand target)
 		{
 			super(id, operand1, operand2, target);
 		}
@@ -1381,11 +1437,18 @@ public abstract class Quad
 	        // TODO Auto-generated method stub
 	        
         }
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
+        }
 	}
 	
 	public static class IfCmp_NEQ extends IntIfCmp
 	{
-		public IfCmp_NEQ(int id, RHS operand1, RHS operand2, TargetOperand target)
+		public IfCmp_NEQ(int id, Operand operand1, Operand operand2, TargetOperand target)
 		{
 			super(id, operand1, operand2, target);
 		}
@@ -1395,6 +1458,13 @@ public abstract class Quad
         {
 	        // TODO Auto-generated method stub
 	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
         }
 	}
 	
@@ -1406,17 +1476,30 @@ public abstract class Quad
 			super(id);
 			this.target = target;
         }
+		
+		public Goto(int id, BasicBlock target)
+        {
+			super(id);
+			this.target = new TargetOperand(target);
+        }
 		@Override
         public void accept(QuadVisitor visitor)
         {
 	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
         }		
 	}
 	
 	public static class Return extends Quad
 	{
-		public RHS operand1;
-		public Return(int id, RHS operand1)
+		public Operand operand1;
+		public Return(int id, Operand operand1)
         {
 			super(id);
 			this.operand1 = operand1;
@@ -1426,6 +1509,12 @@ public abstract class Quad
         {
 	        // TODO Auto-generated method stub
 	        
+        }
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
         }
 	}
 	
@@ -1461,6 +1550,13 @@ public abstract class Quad
 		{
 				    
 		}
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
+        }
 	}
 	
 	/**
@@ -1500,5 +1596,77 @@ public abstract class Quad
 		{
 				    
 		}
+
+		@Override
+        public String toString()
+        {
+	        // TODO Auto-generated method stub
+	        return null;
+        }
+	}
+	/**
+	 * Stores an operand from source register into target stack slot of compiled method.
+	 * 
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 *
+	 */
+	public static class Store extends Quad
+	{
+		/**
+		 * The source operand of this store instruction.
+		 */
+		public RegisterOperand src;
+		public StackSlot target;
+		
+		public Store(int id, RegisterOperand src, StackSlot target)
+        {
+	        super(id);
+	        this.src = src;
+	        this.target = target;
+        }
+
+		@Override
+        public void accept(QuadVisitor visitor)
+        {
+	        // TODO Auto-generated method stub
+	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        return null;
+        }		
+	}
+	public static class Load extends Quad
+	{
+		/**
+		 * The slot of stack where target operand will be loaded.
+		 */
+		public StackSlot src;
+		/**
+		 * 
+		 */
+		public RegisterOperand target;
+		
+		public Load(int id, StackSlot src, RegisterOperand target)
+        {
+	        super(id);
+	        this.src = src;
+	        this.target = target;
+        }
+
+		@Override
+        public void accept(QuadVisitor visitor)
+        {
+	        
+        }
+
+		@Override
+        public String toString()
+        {
+	        return null;
+        }
+		
 	}
 }
