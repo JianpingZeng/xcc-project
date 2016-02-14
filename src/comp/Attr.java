@@ -31,6 +31,7 @@ import ast.ASTVisitor;
 import ast.Flags;
 import ast.Tree;
 import ast.Tree.Apply;
+import ast.Tree.Labelled;
 import ast.TreeInfo;
 import ast.Tree.*;
 
@@ -578,7 +579,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	 * @param env
 	 * @return
 	 */
-	private Tree findJumpTarget(int pos, int tag, Name label, Env env)
+	private Tree.Labelled findJumpTarget(int pos, int tag, Name label, Env env)
 	{
 		Env env1 = env;
 		LOOP:
@@ -596,10 +597,12 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 				case Tree.DOLOOP:
 				case Tree.WHILELOOP:
 				case Tree.FORLOOP:
-					if (label == null) return env1.tree;
+					if (label == null) 
+						return (Labelled) env1.tree;
 					break;
 				case Tree.SWITCH:
-					if (label == null && tag == Tree.BREAK) return env1.tree;
+					if (label == null && tag == Tree.BREAK) 
+						return (Labelled) env1.tree;
 					break;
 				case Tree.METHODDEF:
 					break LOOP;

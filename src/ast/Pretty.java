@@ -504,6 +504,7 @@ public class Pretty extends ASTVisitor
 
 	}
 
+	/**
 	@Override
 	public void visitSelect(Select tree)
 	{
@@ -511,7 +512,7 @@ public class Pretty extends ASTVisitor
         print("." + tree.name);
 
 	}
-
+	*/
 	@Override
 	public void visitApply(Apply tree)
 	{

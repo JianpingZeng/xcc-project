@@ -8,6 +8,7 @@ import java.util.List;
 
 import symbol.Scope;
 import symbol.Symbol;
+import symbol.Symbol.OperatorSymbol;
 import symbol.Symbol.MethodSymbol;
 import symbol.Symbol.VarSymbol;
 import type.Type;
@@ -187,6 +188,7 @@ abstract public class Tree
 	public static final int POS = ERRONEOUS + 1;
 	public static final int NEG = POS + 1;
 	public static final int NOT = NEG + 1;
+	/** 按位取反 */
 	public static final int COMPL = NOT + 1;
 	public static final int PREINC = COMPL + 1;
 	public static final int PREDEC = PREINC + 1;
@@ -204,9 +206,9 @@ abstract public class Tree
 	public static final int EQ = BITAND + 1;
 	public static final int NE = EQ + 1;
 	public static final int LT = NE + 1;
-	public static final int GT = LT + 1;
-	public static final int LE = GT + 1;
-	public static final int GE = LE + 1;
+	public static final int LE = LT + 1;
+	public static final int GT = LE + 1;
+	public static final int GE = GT + 1;
 	public static final int SL = GE + 1;
 	public static final int SR = SL + 1;
 	public static final int PLUS = SR + 1;
@@ -462,13 +464,14 @@ abstract public class Tree
 		}
 	}
 
+	
 	/**
 	 * Selects through packages or class for future.
 	 * 
 	 * @param selected selected Tree hierarchie
 	 * @param selector name of field to select thru
 	 * @param sym symbol of the selected class
-	 */
+	 */	
 	public static class Select extends Tree
 	{
 		public Tree selected;
@@ -488,7 +491,6 @@ abstract public class Tree
 			v.visitSelect(this);
 		}
 	}
-
 	/**
 	 * A ( ) ? ( ) : ( ) conditional expression
 	 */
@@ -586,6 +588,8 @@ abstract public class Tree
 	{
 		public Name label;
 		public Tree body;
+		/** The corresponding basic block of this label.*/
+		public hir.BasicBlock corrBB;
 
 		public Labelled(Name label, Tree body)
 		{
@@ -708,9 +712,9 @@ abstract public class Tree
 	public static class Goto extends Tree
 	{
 		public Name label;
-		public Tree target;
+		public Labelled target;
 
-		public Goto(Name label, Tree target)
+		public Goto(Name label, Labelled target)
 		{
 			super(GOTO);
 			this.label = label;
@@ -834,9 +838,9 @@ abstract public class Tree
 	{
 		public Tree lhs;
 		public Tree rhs;
-		public Symbol operator;
+		public OperatorSymbol operator;
 
-		public Assignop(int opcode, Tree lhs, Tree rhs, Symbol operator)
+		public Assignop(int opcode, Tree lhs, Tree rhs, OperatorSymbol operator)
 		{
 			super(opcode);
 			this.lhs = lhs;
@@ -856,9 +860,9 @@ abstract public class Tree
 	public static class Unary extends Tree
 	{
 		public Tree arg;
-		public Symbol operator;
+		public OperatorSymbol operator;
 
-		public Unary(int opcode, Tree arg, Symbol operator)
+		public Unary(int opcode, Tree arg, OperatorSymbol operator)
 		{
 			super(opcode);
 			this.arg = arg;
@@ -878,9 +882,9 @@ abstract public class Tree
 	{
 		public Tree lhs;
 		public Tree rhs;
-		public Symbol operator;
+		public symbol.Symbol.OperatorSymbol operator;
 
-		public Binary(int opcode, Tree lhs, Tree rhs, Symbol operator)
+		public Binary(int opcode, Tree lhs, Tree rhs, OperatorSymbol operator)
 		{
 			super(opcode);
 			this.lhs = lhs;

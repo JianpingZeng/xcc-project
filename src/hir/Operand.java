@@ -13,7 +13,7 @@ import type.Type;
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 2015年12月23日 上午9:10:45
  */
-public abstract class Operand implements Cloneable
+public abstract class Operand implements Cloneable, RHS
 {
 	/**
 	 * The instruction that this operand attached to.
@@ -44,30 +44,10 @@ public abstract class Operand implements Cloneable
 	public abstract Operand clone() throws CloneNotSupportedException;
 
 	/**
-	 * A labelled interface just for distinguishing between left hand side and
-	 * right hand side.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
-	 *
-	 */
-	public static interface LHS
-	{
-	}
-
-	/**
-	 * A labelled interface just for distinguishing between left hand side and
-	 * right hand side.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
-	 *
-	 */
-	public static interface RHS
-	{
-	}
-
-	/**
 	 * Represents a virtual register operand. Jianping Zeng
 	 * <z1215jping@hotmail.com>
 	 */
-	public static class RegisterOperand extends Operand implements LHS, RHS
+	public static class RegisterOperand extends Operand implements LHS
 	{
 		private Register register;
 		private Type type;
@@ -89,7 +69,7 @@ public abstract class Operand implements Cloneable
 		{
 			this.register = r;
 		}
-
+		
 		public Type getType()
 		{
 			return type;
@@ -149,7 +129,7 @@ public abstract class Operand implements Cloneable
 	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
 	 */
-	public static abstract class ConstOperand extends Operand implements RHS
+	public static abstract class ConstOperand extends Operand
 	{
 		/**
 		 * A abstract method for get the wrapper of this constant.
@@ -275,6 +255,12 @@ public abstract class Operand implements Cloneable
 			}
 			return res;
 		}
+
+		@Override
+        public Type getType()
+        {
+	        return Type.INTType;
+        }
 	}
 
 	/**
@@ -283,7 +269,7 @@ public abstract class Operand implements Cloneable
 	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
 	 */
-	class FConstOperand extends Const4Operand
+	public static class FConstOperand extends Const4Operand
 	{
 		/**
 		 * It indicates the value of this integer constant.
@@ -340,6 +326,12 @@ public abstract class Operand implements Cloneable
 			}
 			return res;
 		}
+
+		@Override
+        public Type getType()
+        {
+	        return Type.FLOATType;
+        }
 	}
 
 	/**
@@ -402,6 +394,12 @@ public abstract class Operand implements Cloneable
 			}
 			return res;
 		}
+
+		@Override
+        public Type getType()
+        {
+	        return Type.LONGType;
+        }
 	}
 
 	/**
@@ -464,6 +462,12 @@ public abstract class Operand implements Cloneable
 			}
 			return res;
 		}
+		
+		@Override
+        public Type getType()
+        {
+	        return Type.DOUBLEType;
+        }
 	}
 
 	/**
@@ -530,6 +534,12 @@ public abstract class Operand implements Cloneable
 			}
 			return res;
 		}
+		
+		@Override
+        public Type getType()
+        {
+	        return null;
+        }
 	}
 
 	public static class MethodOperand extends Operand
@@ -580,6 +590,12 @@ public abstract class Operand implements Cloneable
 		{
 			return target.toString();
 		}
+		
+		@Override
+        public Type getType()
+        {
+			return null;
+        }
 	}
 
 	/**
@@ -682,6 +698,12 @@ public abstract class Operand implements Cloneable
 				t2.add(op.clone());			
 			return new ParamListOperand(t2);
 		}
+		
+		@Override
+        public Type getType()
+        {
+	        return null;
+        }
 	}
 
 	public static class BasicBlockTableOperand extends Operand
@@ -738,5 +760,10 @@ public abstract class Operand implements Cloneable
 				t2.add(bb);
 			return new BasicBlockTableOperand(t2);
         }		
+		@Override
+        public Type getType()
+        {
+	        return null;
+        }
 	}
 }
