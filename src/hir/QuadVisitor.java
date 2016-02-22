@@ -1,9 +1,9 @@
 package hir;
 
-import hir.Quad.*;
+import hir.Instruction.*;
 
 /**
- * A Quad Visitor for Quad using Visitor pattern.
+ * A Instruction Visitor for Instruction using Visitor pattern.
  * @author Jianping Zeng
  * 
  */

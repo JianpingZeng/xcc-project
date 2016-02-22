@@ -1,17 +1,23 @@
 package hir; 
 
 import java.util.List;
-
 import type.Type;
 import utils.Context;
 
-/** 
- * This class is abstract for translating an AST corresponding entire program.
- * This class consists of multiple {@link Variable} and/or {@link Method}, and
- * there is an only control flow graph attached to every method declaration at 
- * the AST. Further, a sorts of basic block has filled into CFG in the execution
+/**
+ * <p>
+ * This class implements overrall container for the HIR(high-level IR) and directs
+ * its construction, optimization and finalization.
+ * </p>
+ * <p>
+ * This class consists of multiple {@link Variable} and/or {@link Method}, there
+ * is an only control flow graph attached to every method declaration at the AST.
+ * </p>
+ * <p>
+ * Further, a sorts of basic block has filled into CFG in the execution
  * order of program. At the any basic block, a large amount of quads are ordered 
- * in execution order.    
+ * in execution order.
+ * </p>
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 2016年2月4日 下午4:59:48 
  */

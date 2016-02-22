@@ -1,16 +1,15 @@
 package hir;
 
+import ci.CiConstant;
+import ci.CiKind;
 import comp.OpCodes;
-import hir.Operand.TargetOperand;
-import hir.Operand.RegisterOperand;
-import hir.Quad.IntIfCmp;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import exception.JumpError;
 import exception.SemanticError;
+import hir.Instruction.*;
 import symbol.Symbol.OperatorSymbol;
-import symbol.Symbol.VarSymbol;
 import type.Type;
 import type.TypeTags;
 import utils.Context;
@@ -64,29 +63,32 @@ import ast.TreeInfo;
  * efficient for directly constructing SSA from abstract syntax tree or
  * bytecode.
  * </p>
- *
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * 
+ * <p>
+ * 	在转换成为SSA形式的IR时，将所有的全局变量看作放在内存中，当在函数内部使用时，使用一个虚拟临时寄存器T1存储它。
+ * 	当函数返回之时，对于已经修改的变量，写回到变量中。
+ * </p>
+ * @author Jianping Zeng<z1215jping@hotmail.com>
  * @version 2016年2月3日 下午12:08:05
  */
-public class ASTToQuad extends ASTVisitor
+public class HIRGenerator extends ASTVisitor
 {
 	private final static Context.Key ASTToQuadKey = new Context.Key();
 	private Log log;
 	private Context context;
 	private List<Variable> vars;
 	private List<Method> methods;
-	private RegisterFactory rf;
 	private TreeMaker maker;
 	private Name.Table names;
 
-	public ASTToQuad(Context context)
+	public HIRGenerator(Context context)
 	{
 		this.context = context;
 		context.put(ASTToQuadKey, this);
 		this.maker = TreeMaker.instance(context);
 		this.names = Name.Table.instance(context);
 		this.log = Log.instance(context);
-		this.vars = new ArrayList<Variable>();
+		this.vars = new ArrayList<>();
 		this.methods = new ArrayList<>();
 	}
 
@@ -110,7 +112,8 @@ public class ASTToQuad extends ASTVisitor
 	 */
 	public HIR traslate(MethodDef tree)
 	{
-		return null;
+		tree.accept(this);
+		return HIR.instance(context, vars, methods);
 	}
 
 	/**
@@ -118,7 +121,7 @@ public class ASTToQuad extends ASTVisitor
 	 *
 	 * @param inst The quad to be appended.
 	 */
-	private void appendInst(Quad inst)
+	private void appendInst(Instruction inst)
 	{
 		currentBlock.addQuad(inst);
 	}
@@ -147,15 +150,14 @@ public class ASTToQuad extends ASTVisitor
 	/**
 	 * The result of expression.
 	 */
-	private Operand exprResult = null;
+	private Instruction exprResult = null;
 
 	/**
 	 * Generates IR for expression.
 	 *
 	 * @param expr
-	 * @param type
 	 */
-	private Operand genExpr(Tree expr)
+	private Instruction genExpr(Tree expr)
 	{
 		expr.accept(this);
 		return exprResult;
@@ -169,8 +171,7 @@ public class ASTToQuad extends ASTVisitor
 	private void genExprList(List<Tree> exprs)
 	{
 		if (exprs == null || exprs.isEmpty()) return;
-		for (Tree expr : exprs)
-			genExpr(expr);
+		exprs.forEach(this::genExpr);
 	}
 
 	/**
@@ -181,7 +182,7 @@ public class ASTToQuad extends ASTVisitor
 	 */
 	private void genJump(BasicBlock target)
 	{
-		Quad.Goto goto_ = new Quad.Goto(instID++, target);
+		Instruction.Goto goto_ = new Instruction.Goto(target);
 		goto_.refs++;
 		appendInst(goto_);
 
@@ -210,8 +211,8 @@ public class ASTToQuad extends ASTVisitor
 	 */
 	private Tree Not(Tree expr)
 	{
-		Binary bin = null;
-		Unary unary = null;
+		Binary bin;
+		Unary unary;
 		int[] rops = { Tree.NE, Tree.EQ, Tree.GE, Tree.GT, Tree.LE, Tree.LT };
 		switch (expr.tag)
 		{
@@ -253,9 +254,11 @@ public class ASTToQuad extends ASTVisitor
 			{
 				case Tree.IDENT:
 					Tree.Ident ident = (Tree.Ident) tree.arg;
-					if (ident.name.toString() == "true")
+					if (ident.name.toString().equals("true"))
+					{
 						return maker.Ident(Name.fromString(names, "false"));
-					else if (ident.name.toString() == "false")
+					}
+					else if (ident.name.toString().equals("false"))
 						return maker.Ident(Name.fromString(names, "true"));
 					else
 					{
@@ -267,13 +270,13 @@ public class ASTToQuad extends ASTVisitor
 					return tree;
 			}
 		}
-		return tree;
+		return null;
 	}
 
 	/**
 	 * Translates conditional branch.
 	 *
-	 * @param expr
+	 * @param expr  The relative expression.
 	 * @param trueBB the target block when condition is true.
 	 * @param falseBB the target block when condition is false.
 	 */
@@ -282,14 +285,15 @@ public class ASTToQuad extends ASTVisitor
 	{
 		BasicBlock remainderBB;
 		Binary bin;
-		Operand src1, src2;
-		IntIfCmp inst;
-		IntIfCmp[] insts = { new Quad.IfCmp_EQ(instID++, null, null, null),
-		        new Quad.IfCmp_NEQ(instID++, null, null, null),
-		        new Quad.IfCmp_LT(instID++, null, null, null),
-		        new Quad.IfCmp_LE(instID++, null, null, null),
-		        new Quad.IfCmp_GT(instID++, null, null, null),
-		        new Quad.IfCmp_GE(instID++, null, null, null) };
+		Instruction src1;
+		IntCmp inst;
+		IntCmp[] insts = { new Instruction.IfCmp_EQ(null, null, null, null),
+		        new Instruction.IfCmp_NEQ(null, null, null, null),
+		        new Instruction.IfCmp_LT(null, null, null, null),
+		        new Instruction.IfCmp_LE(null, null, null, null),
+		        new Instruction.IfCmp_GT(null, null, null, null),
+		        new Instruction.IfCmp_GE(null, null, null, null)
+		};
 		switch (expr.tag)
 		{
 			case Tree.AND:
@@ -318,11 +322,10 @@ public class ASTToQuad extends ASTVisitor
 			case Tree.GE:
 				inst = insts[expr.tag - Tree.EQ];
 				bin = (Binary) expr;
-				src1 = genExpr(bin.lhs);
-				src2 = genExpr(bin.rhs);
-				inst.operand1 = src1;
-				inst.operand2 = src2;
-				inst.target = new Operand.TargetOperand(trueBB);
+				inst.x = genExpr(bin.lhs);
+				inst.y = genExpr(bin.rhs);
+				inst.trueTarget = trueBB;
+				inst.falseTarget = falseBB;
 				inst.refs++;
 				currentBlock.addSuccessor(trueBB);
 				trueBB.addPredecessor(currentBlock);
@@ -336,17 +339,16 @@ public class ASTToQuad extends ASTVisitor
 				{
 					src1 = genCast(src1, inner_tree.type, Type.INTType);
 				}
-				inst = new Quad.IfCmp_EQ(instID++, src1,
-				        new Operand.IConstOperand(0), new TargetOperand(trueBB));
+				inst = new IfCmp_EQ(src1, Constant.forInt(0), trueBB, falseBB);
 				inst.refs++;
 				appendInst(inst);
 				currentBlock.addSuccessor(trueBB);
 				trueBB.addPredecessor(currentBlock);
 				break;
 			case Tree.IDENT:
-				if (((Ident) expr).name.toString() == "true")
+				if (((Ident) expr).name.toString().equals("true"))
 					genJump(trueBB);
-				else if (((Ident) expr).name.toString() == "false")
+				else if (((Ident) expr).name.toString().equals("false"))
 					genJump(falseBB);
 				else
 					log.error(expr.pos, "not.boolean.type.at.condition");
@@ -357,14 +359,16 @@ public class ASTToQuad extends ASTVisitor
 	}
 
 	/**
+	 * %%%%%%<h2>This method is not implemented, currently.</h2> %%%%%%%
 	 * Doing type cast.
 	 * @param src	The source operand.
 	 * @param sType	The source type of operand
 	 * @param dType	The target type that operand will be casted.
 	 * @return
 	 */
-	private Operand genCast(Operand src, Type sType, Type dType)
+	private Instruction genCast(Instruction src, Type sType, Type dType)
 	{
+		/*
 		// the original type
 		int srccode = HIR.typecode(sType);
 		// the target type
@@ -385,15 +389,19 @@ public class ASTToQuad extends ASTVisitor
 			{
 
 			}
+			// 
+			
 		}
+		*/
+		return null;
 	}
 
 	/**
-	 * Creates a temp register with given type.
+	 * Creates a temp variable with given type.
 	 */
-	private RegisterOperand createTemp(Type t)
+	private Local createTemp(Type t)
 	{
-		return this.rf.makeTempRegOp(t);
+		return new Local(type2Kind(t), null, tempNameGenerator.next());
 	}
 
 	/**
@@ -418,16 +426,15 @@ public class ASTToQuad extends ASTVisitor
 	 */
 	private ControlFlowGraph currentCFG = null;
 	private BasicBlock currentBlock = null;
-	/**
-	 * The id for instruction of cfg.
-	 */
-	private int instID = 0;
 
 	/**
 	 * Two stack for parsing the target of break and continue statement
 	 * respectively.
 	 */
 	private LinkedList<BasicBlock> continueStack, breakStack;
+
+	private TempNameGenerator tempNameGenerator =
+			TempNameGenerator.instance();
 
 	/**
 	 * Translates method definition into intermediate representation(IR).
@@ -437,29 +444,26 @@ public class ASTToQuad extends ASTVisitor
 	{
 		if (tree.body != null)
 		{
-			// creating a new register factory with every method.
-			this.rf = new RegisterFactory(context);
 			Method m = new Method(tree);
 			currentCFG = new ControlFlowGraph(m);
 			m.cfg = currentCFG;
 			this.methods.add(m);
-			this.instID = 0;
+
 			// sets the current block with entry of a cfg.
 			this.currentBlock = currentCFG.createBasicBlock();
 
 			this.continueStack = new LinkedList<>();
 			this.breakStack = new LinkedList<>();
 
+			// a generator for temporary variable.
+			this.tempNameGenerator.init();
+
 			currentCFG.entry().addSuccessor(currentBlock);
 			currentBlock.addPredecessor(currentCFG.entry());
 			// places actual parameter onto entry block
 			for (Tree t : tree.params)
 			{
-				RegisterOperand dest = rf.makeRegOp(((VarDef) t).sym);
-
-				// a IR placeholder for formal parameter at current cfg
-				genAssign(dest, null, t.type);
-
+				genAllocaForVarDecl((VarDef) t);
 			}
 			// translate method body
 			tree.body.accept(this);
@@ -474,32 +478,65 @@ public class ASTToQuad extends ASTVisitor
 	}
 
 	/**
-	 * Appends a instruction into quad list of current block.
-	 *
-	 * @param dest a register that the destination of this inst.
-	 * @param src the source operand of this inst.
-	 * @param t the type of data to be stored in dest.
+	 * generates memory {@code Alloca} instruction and initial store for variable
+	 * declaration.
+	 * @param var   The variable to be allocated.
 	 */
-	private void genAssign(RegisterOperand dest, Operand src, Type t)
+	private void genAllocaForVarDecl(VarDef var)
 	{
-		Quad.Assign inst = Quad.Assign.create(instID++, dest, src, t);
+		CiKind varKind = type2Kind(var.type);
+		Alloca inst = new Alloca(varKind);
 		inst.refs++;
 		appendInst(inst);
+		// creates a new local
+		Local local = new Local(varKind, inst, var.name.toString());
+		Instruction initValue;
+		if (var.init != null)
+		{
+			checkStringConstant(var.init.pos, var.sym.constValue);
+			// generates IR for initial expression.
+			initValue = genExpr(var.init);
+		}
+		// setting default value for different value type
+		else
+		{
+			initValue = new Constant(CiConstant.defaultValue(varKind));
+		}
+		// generats store instruction that stores initial value into specified local
+		Instruction store = new StoreInst(initValue, local);
+		store.refs++;
+		appendInst(store);
 	}
 
+	/**
+	 * Converts {@code Type} into {@code CiKind}.
+	 * @param ty
+	 * @return
+	 */
+	static CiKind type2Kind(Type ty)
+	{
+		if (ty.isIntLike())
+			return CiKind.Int;
+		else if (ty == Type.LONGType)
+			return CiKind.Long;
+		else if (ty == Type.FLOATType)
+			return CiKind.Float;
+		else if (ty == Type.DOUBLEType)
+			return CiKind.Double;
+		else if (ty == Type.VOIDType)
+			return CiKind.Void;
+		else
+			return CiKind.Illegal;
+	}
+
+	/**
+	 * Allocates memory at the stack and initializing for variable declaration.
+	 * @param tree  Variable definition or declaration.
+	 */
 	@Override
 	public void visitVarDef(VarDef tree)
 	{
-		VarSymbol v = tree.sym;
-		// create a new local register for variable definition
-		RegisterOperand newLocal = this.rf.makeRegOp(v);
-		Operand src = null;
-		if (tree.init != null)
-		{
-			checkStringConstant(tree.init.pos, v.constValue);
-			src = genExpr(tree.init);
-		}
-		genAssign(newLocal, src, v.type);
+		genAllocaForVarDecl(tree);
 	}
 
 	/**
@@ -824,16 +861,24 @@ public class ASTToQuad extends ASTVisitor
 		}
 	}
 
+	/**
+	 * Translates return statement into IR.
+	 * @param tree  The return tree node.
+	 */
 	@Override
 	public void visitReturn(Return tree)
 	{
+		Instruction.Return inst;
 		if (tree.expr != null)
 		{
-			Operand res = genExpr(tree.expr);
-			Quad.Return inst = new Quad.Return(instID++, res);
-			inst.refs++;
-			appendInst(inst);
+			Instruction res = genExpr(tree.expr);
+			inst = new Instruction.Return(res);
 		}
+		else
+			inst = new Instruction.Return(null);
+
+		inst.refs++;
+		appendInst(inst);
 		// goto the exit of current method.
 		genJump(currentCFG.exit());
 		startBasicBlock(currentCFG.createBasicBlock());
@@ -842,7 +887,7 @@ public class ASTToQuad extends ASTVisitor
 	/**
 	 * Currently, switch is not supported.
 	 *
-	 * @param tree
+	 * @param tree The {@code Switch} expression node.
 	 */
 	@Override
 	public void visitSwitch(Switch tree)
@@ -868,19 +913,35 @@ public class ASTToQuad extends ASTVisitor
 
 	}
 
+	/**
+	 * Handling function invocation expression.
+	 * @param tree  The invocation expression.
+	 */
 	@Override
 	public void visitApply(Apply tree)
 	{
-		List<RegisterOperand> args = new ArrayList<>();
+		Instruction[] args = new Instruction[tree.args.size()];
 		// translates actual parameter list
+		int idx = 0;
 		for (Tree para : tree.args)
-			args.add(0, (RegisterOperand) genExpr(para));
-		Operand.MethodOperand m = new Operand.MethodOperand(new Method(
-		        (MethodDef) tree.meth));
-		Operand.ParamListOperand params = new Operand.ParamListOperand(args);
-		Quad.Invoke inst = new Quad.Invoke(instID++, null, m, params);
+			args[idx++] = genExpr(para);
+
+		Method m = (new Method((MethodDef) tree.meth));
+		Invoke inst = new Invoke(returnKind(m), args, m);
 		inst.refs++;
 		appendInst(inst);
+		// sets the result of this expression
+		this.exprResult = inst;
+	}
+
+	/**
+	 * Gets the return kind of specified method.
+	 * @param target    The targeted method.
+	 * @return  The return kind.
+	 */
+	private CiKind returnKind(Method target)
+	{
+		return target.signature().returnKind();
 	}
 
 	@Override
@@ -902,8 +963,8 @@ public class ASTToQuad extends ASTVisitor
 	public void visitConditional(Conditional tree)
 	{
 		// a temporary register where result stores
-		RegisterOperand t = createTemp(tree.cond.type);
-		Operand t1, t2;
+		Local t = createTemp(tree.cond.type);
+		Instruction t1, t2;
 		BasicBlock trueBB, falseBB, nextBB;
 		trueBB = currentCFG.createBasicBlock();
 		falseBB = currentCFG.createBasicBlock();
@@ -916,20 +977,33 @@ public class ASTToQuad extends ASTVisitor
 		t1 = genExpr(tree.truepart);
 		if (t1 != null)
 		{
-			genAssign(t, t1, t1.getType());
+			genAssign(t.kind, t1, t);
 		}
 		genJump(nextBB);
 
 		// handles the false part
 		startBasicBlock(falseBB);
 		t2 = genExpr(tree.falsepart);
-		if (t2 != null) genAssign(t, t2, t2.getType());
+		if (t2 != null) genAssign(t.kind, t2, t);
 
 		// starts next basic block
 		startBasicBlock(nextBB);
 
 		// sets the result of this expression
 		this.exprResult = t;
+	}
+
+	/**
+	 * Generates move instrcution.
+	 * @param kind  The kind of result.
+	 * @param src   The source of move, including all of instruction.
+	 * @param dest  The target of move, which is variable, occasionally.
+	 */
+	private void genAssign(CiKind kind, Instruction src, Instruction dest)
+	{
+		Move inst = new Move(dest.kind, src, dest);
+		inst.refs++;
+		appendInst(inst);
 	}
 
 	/**
@@ -942,10 +1016,10 @@ public class ASTToQuad extends ASTVisitor
 	@Override
 	public void visitAssign(Tree.Assign tree)
 	{
-		RegisterOperand dest = (RegisterOperand) genExpr(tree.lhs);
-		Operand src = genExpr(tree.rhs);
+		Instruction lhs = genExpr(tree.lhs);
+		Instruction rhs = genExpr(tree.rhs);
 		// generates move instruction
-		genAssign(dest, src, tree.lhs.type);
+		genAssign(lhs.kind, rhs, lhs);
 	}
 
 	/**
@@ -964,25 +1038,25 @@ public class ASTToQuad extends ASTVisitor
 		}
 		else
 		{
-			RegisterOperand res = (RegisterOperand) genExpr(tree.lhs);
-			Operand rhs = genExpr(tree.rhs);
-			this.exprResult = transformAssignOp(tree.pos, tree.tag, res,
+			Instruction lhs = genExpr(tree.lhs);
+			Instruction rhs = genExpr(tree.rhs);
+			this.exprResult = transformAssignOp(tree.lhs.type, tree.pos, tree.tag, lhs,
 			        rhs);
 		}
 	}
 
 	/**
 	 * An auxiliary method for translates assignment with op into IRs.
-	 * @param pos
-	 * @param operator
-	 * @param dest
-	 * @param src
-	 * @return
+	 * @param pos   The position of this expression.
+	 * @param op    The opcode.
+	 * @param dest  The destination.
+	 * @param src   The source.
+	 * @return  Result of this instruction.
 	 */
-	private RegisterOperand transformAssignOp(int pos, int op,
-	        RegisterOperand dest, Operand src)
+	private Instruction transformAssignOp(Type ty, int pos, int op,
+	        Instruction dest, Instruction src)
 	{
-		genAssign(dest, genBin(dest.getType(), op, dest, src, pos), dest.getType());
+		genAssign(type2Kind(ty), genBin(ty, op, dest, src, pos), dest);
 		return dest;
 	}
 
@@ -991,204 +1065,211 @@ public class ASTToQuad extends ASTVisitor
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genADD(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genADD(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.ADD_I(instID++, res, lhs, res);
+			inst = new Instruction.ADD_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
+
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.ADD_L(instID++, res, lhs, res);
+			inst = new Instruction.ADD_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			Quad inst = new Quad.ADD_F(instID++, res, lhs, res);
+			inst = new Instruction.ADD_F(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			Quad inst = new Quad.ADD_D(instID++, res, lhs, res);
+			inst = new Instruction.ADD_D(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the add IR.");
+		return inst;
 	}
 	/**
 	 * Generates an sub instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genSUB(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genSUB(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.SUB_I(instID++, res, lhs, res);
+			inst = new Instruction.SUB_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.SUB_L(instID++, res, lhs, res);
+			inst = new Instruction.SUB_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			Quad inst = new Quad.SUB_F(instID++, res, lhs, res);
+			inst = new Instruction.SUB_F(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			Quad inst = new Quad.SUB_D(instID++, res, lhs, res);
+			inst = new Instruction.SUB_D(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the sub IR.");
+		return inst;
 	}
 	/**
 	 * Generates an mul instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genMUL(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genMUL(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.MUL_I(instID++, res, lhs, res);
+			inst = new Instruction.MUL_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.MUL_L(instID++, res, lhs, res);
+			inst = new Instruction.MUL_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			Quad inst = new Quad.MUL_F(instID++, res, lhs, res);
+			inst = new Instruction.MUL_F(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			Quad inst = new Quad.MUL_D(instID++, res, lhs, res);
+			inst = new Instruction.MUL_D(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the MUL IR.");
+		return inst;
 	}
 	/**
 	 * Generates an div instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genDIV(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genDIV(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.DIV_I(instID++, res, lhs, res);
+			inst = new Instruction.DIV_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.DIV_L(instID++, res, lhs, res);
+			inst = new Instruction.DIV_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			Quad inst = new Quad.DIV_F(instID++, res, lhs, res);
+			inst = new Instruction.DIV_F(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			Quad inst = new Quad.DIV_D(instID++, res, lhs, res);
+			inst = new Instruction.DIV_D(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the DIV IR.");
+		return inst;
 	}
 	/**
 	 * Generates an mod instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genMOD(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genMOD(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.MOD_I(instID++, res, lhs, res);
+			inst = new Instruction.MOD_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.MOD_L(instID++, res, lhs, res);
+			inst = new Instruction.MOD_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			Quad inst = new Quad.MOD_F(instID++, res, lhs, res);
+			inst = new Instruction.MOD_F(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			Quad inst = new Quad.MOD_D(instID++, res, lhs, res);
+			inst = new Instruction.MOD_D(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the MOD IR.");
+		return inst;
 	}
 	/**
 	 * Generates an bit-and instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genBITAND(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genBITAND(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.AND_I(instID++, res, lhs, res);
+			inst = new Instruction.AND_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.AND_L(instID++, res, lhs, res);
+			inst = new Instruction.AND_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the BIT-AND IR.");
+		return inst;
 	}
 	
 	/**
@@ -1196,96 +1277,100 @@ public class ASTToQuad extends ASTVisitor
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genBITOR(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genBITOR(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.OR_I(instID++, res, lhs, res);
+			inst = new Instruction.OR_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.OR_L(instID++, res, lhs, res);
+			inst = new Instruction.OR_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the BIT-OR IR.");
+		return inst;
 	}
 	/**
 	 * Generates an bit-and instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genBITXOR(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genBITXOR(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.XOR_I(instID++, res, lhs, res);
+			inst = new Instruction.XOR_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.XOR_L(instID++, res, lhs, res);
+			inst = new Instruction.XOR_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the BIT-XOR IR.");
+		return inst;
 	}
 	/**
 	 * Generates an sheft left instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genSHL(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genSHL(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.SHL_I(instID++, res, lhs, res);
+			inst = new Instruction.SHL_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.SHL_L(instID++, res, lhs, res);
+			inst = new Instruction.SHL_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the SHL IR.");
+		return inst;
 	}
 	/**
 	 * Generates an sheft rigth instruction and inserts into basic block.
 	 * @param ty	The data type of result.
 	 * @param lhs	The left hand side of it.
 	 * @param rhs	The right hand side of it.
-	 * @param res	The result of this instruction.
 	 */
-	private void genSHR(Type ty, Operand lhs, Operand rhs, RegisterOperand res)
+	private Instruction genSHR(Type ty, Instruction lhs, Instruction rhs)
 	{
+		Instruction inst = null;
 		if (ty.isIntLike())
 		{
-			Quad inst = new Quad.SHR_I(instID++, res, lhs, res);
+			inst = new Instruction.SHR_I(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			Quad inst = new Quad.SHR_L(instID++, res, lhs, res);
+			inst = new Instruction.SHR_L(type2Kind(ty), lhs, rhs);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else 
 			throw new SemanticError("Invalid data type in the BIT-AND IR.");
+		return inst;
 	}
 	/**
 	 * translates binary operation expression into IRs.
@@ -1294,46 +1379,45 @@ public class ASTToQuad extends ASTVisitor
 	 * @param rhs	The right hand side of it.
 	 * @return	The result of this operation.
 	 */
-	private RegisterOperand genBin(Type ty, int op, Operand lhs, Operand rhs, int pos)
+	private Instruction genBin(Type ty, int op, Instruction lhs, Instruction rhs, int pos)
 	{
-		RegisterOperand t = createTemp(ty);
+		Instruction res = null;
 		switch (op)
         {
 			case Tree.PLUS:				
-				genADD(ty, lhs, rhs, t);
+				res = genADD(ty, lhs, rhs);
 				break;
 			case Tree.MINUS:
-				genSUB(ty, lhs, rhs, t);
+				res = genSUB(ty, lhs, rhs);
 				break;
 			case Tree.MUL:
-				genMUL(ty, lhs, rhs, t);
+				res = genMUL(ty, lhs, rhs);
 				break;
 			case Tree.DIV:
-				genDIV(ty, lhs, rhs, t);
+				res = genDIV(ty, lhs, rhs);
 				break;
 			case Tree.MOD:
-				genMOD(ty, lhs, rhs, t);
+				res = genMOD(ty, lhs, rhs);
 				break;
 			case Tree.BITAND:
-				genBITAND(ty, lhs, rhs, t);
+				res = genBITAND(ty, lhs, rhs);
 				break;
 			case Tree.BITOR:
-				genBITOR(ty, lhs, rhs, t);
+				res = genBITOR(ty, lhs, rhs);
 				break;
 			case Tree.BITXOR:
-				genBITXOR(ty, lhs, rhs, t);
+				res = genBITXOR(ty, lhs, rhs);
 				break;
 			case Tree.SL:
-				genSHL(ty, lhs, rhs, t);
+				res = genSHL(ty, lhs, rhs);
 				break;
 			case Tree.SR:
-				genSHR(ty, lhs, rhs, t);
+				res = genSHR(ty, lhs, rhs);
 				break;
 			default:
-				t = null;
 				log.error(pos, "Invalid binary operation at abstract syntax tree");
 		}
-		return t;
+		return res;
 	}
 	/**
 	 * Generate intermedicate code to calculate a branch expression's value.
@@ -1349,10 +1433,10 @@ public class ASTToQuad extends ASTVisitor
 	 *     ...
 	 * </pre>
 	 */
-	private RegisterOperand translateBranchExpression(Tree expr)
+	private Instruction translateBranchExpression(Tree expr)
 	{
 		BasicBlock nextBB, trueBB, falseBB;
-		RegisterOperand t = createTemp(expr.type);
+		Local t = createTemp(expr.type);
 		nextBB = currentCFG.createBasicBlock();
 		trueBB = currentCFG.createBasicBlock();
 		falseBB = currentCFG.createBasicBlock();
@@ -1360,11 +1444,11 @@ public class ASTToQuad extends ASTVisitor
 		// do it
 		translateBranch(expr, trueBB, falseBB);
 		startBasicBlock(falseBB);
-		genAssign(t, new Operand.IConstOperand(0), expr.type);
+		genAssign(t.kind, new Instruction.Constant(CiConstant.INT_0), t);
 		genJump(nextBB);
 		
 		startBasicBlock(trueBB);
-		genAssign(t, new Operand.IConstOperand(1), expr.type);
+		genAssign(t.kind, new Instruction.Constant(CiConstant.INT_1), t);
 		
 		// next bb is upcoming
 		startBasicBlock(nextBB);
@@ -1379,37 +1463,37 @@ public class ASTToQuad extends ASTVisitor
 		{
 			this.exprResult = translateBranchExpression(tree);
 		}
-		Operand lhs = genExpr(tree.lhs);
-		Operand rhs = genExpr(tree.rhs);
+		Instruction lhs = genExpr(tree.lhs);
+		Instruction rhs = genExpr(tree.rhs);
 
 		this.exprResult = genBin(tree.type, tree.tag, lhs, rhs, tree.pos);
 	}
 	
-	private RegisterOperand translateIncrement(Unary expr)
+	private Instruction translateIncrement(Unary expr)
 	{
-		Operand res = genExpr(expr);
+		Instruction res = genExpr(expr);
 		try
         {
-	        Operand temp = res.clone();
+	        Instruction temp = res.clone();
 			switch (expr.tag)
 	        {
 				case Tree.PREDEC:
-					res = genBin(res.getType(), Tree.MINUS, res, new Operand.IConstOperand(1), expr.pos);
+					res = genBin(expr.type, Tree.MINUS, res, new Constant(CiConstant.INT_1), expr.pos);
 					this.exprResult = res;
-					return (RegisterOperand) res;
+					return res;
 				case Tree.PREINC:
-					res = genBin(res.getType(), Tree.PLUS, res, new Operand.IConstOperand(1), expr.pos);
+					res = genBin(expr.type, Tree.PLUS, res, new Constant(CiConstant.INT_1), expr.pos);
 					this.exprResult = res;
-					return (RegisterOperand) res;
+					return res;
 					
 				case Tree.POSTDEC:
-					res = genBin(res.getType(), Tree.MINUS, res, new Operand.IConstOperand(1), expr.pos);
+					res = res = genBin(expr.type, Tree.MINUS, res, new Constant(CiConstant.INT_1), expr.pos);
 					this.exprResult = temp;
-					return (RegisterOperand) temp;
+					return temp;
 				case Tree.POSTINC:
-					res = genBin(res.getType(), Tree.PLUS, res, new Operand.IConstOperand(1), expr.pos);
+					res = genBin(expr.type, Tree.PLUS, res, new Constant(CiConstant.INT_1), expr.pos);
 					this.exprResult = temp;
-					return (RegisterOperand) temp;
+					return temp;
 				default:
 					return null;
 			}
@@ -1438,7 +1522,7 @@ public class ASTToQuad extends ASTVisitor
 			this.exprResult = translateIncrement(tree);
 			return;
 		}
-		Operand operand1 = genExpr(tree.arg);
+		Instruction operand1 = genExpr(tree.arg);
 		switch (tree.tag)
         {
 			case Tree.TYPECAST:
@@ -1481,8 +1565,8 @@ public class ASTToQuad extends ASTVisitor
 	@Override
 	public void visitTypeCast(TypeCast tree)
 	{
-		Operand res = genExpr(tree.expr);
-		this.exprResult = genCast(res, res.getType(), tree.clazz.type);		
+		Instruction res = genExpr(tree.expr);
+		this.exprResult = genCast(res, tree.expr.type, tree.clazz.type);
 	}
 	
 	@Override
@@ -1490,23 +1574,24 @@ public class ASTToQuad extends ASTVisitor
 	{
 		if (tree.typetag == TypeTags.INT)
 		{
-			this.exprResult = new Operand.IConstOperand(
-			        ((Integer) tree.value).intValue());
+			this.exprResult = new Constant(new CiConstant(CiKind.Int, ((Integer)tree.value).intValue()));
 		}
 		else if (tree.typetag == TypeTags.LONG)
 		{
-			this.exprResult = new Operand.LConstOperand(
-			        ((Long) tree.value).longValue());
+			this.exprResult = new Constant(new CiConstant(CiKind.Long, ((Long)tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.FLOAT)
 		{
-			this.exprResult = new Operand.FConstOperand(
-			        ((Float) tree.value).floatValue());
+			this.exprResult = new Constant(new CiConstant(CiKind.Float, ((Float)tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.DOUBLE)
 		{
-			this.exprResult = new Operand.DConstOperand(
-			        ((Double) tree.value).doubleValue());
+			this.exprResult = new Constant(new CiConstant(CiKind.Double, ((Double)tree.value).longValue()));
+		}
+		else if (tree.typetag == TypeTags.BOOL)
+		{
+			this.exprResult = ((Boolean)tree.value).equals("true")
+					? Constant.forInt(1) : Constant.forInt(0);
 		}
 	}
 
@@ -1520,5 +1605,51 @@ public class ASTToQuad extends ASTVisitor
 	{
 		log.error(erroneous.pos, "A.errorous.tree");
 		this.exprResult = null;
+	}
+
+	/**
+	 * A Class served as generator for yielding the name postfix of a temporary variable.
+	 */
+	static class TempNameGenerator
+	{
+		private int idx;
+		private static TempNameGenerator instance = null;
+		/**
+		 * Constructor that initialize the index with {@code 0}.
+		 */
+		private TempNameGenerator()
+		{
+			idx = 0;
+		}
+
+		/**
+		 * Singleton pattern.
+ 		 * @return  The concrete instance of this class.
+		 */
+		public static TempNameGenerator instance()
+		{
+			if (instance == null)
+				instance = new TempNameGenerator();
+			return  instance;
+		}
+
+		/**
+		 * Intialize the {@TempNameGenerator##idx} with zero.
+		 */
+		public void init()
+		{
+			idx = 0;
+		}
+
+		/**
+		 * Gets the next index as string.
+		 * @return  The next index.
+		 */
+		public String next()
+		{
+			String postfix = String.valueOf(idx);
+			idx++;
+			return postfix;
+		}
 	}
 }

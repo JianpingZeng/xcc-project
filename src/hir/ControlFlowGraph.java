@@ -21,6 +21,11 @@ public class ControlFlowGraph {
     /** Current id of quads, used to generate unique id's. */
     private int quad_counter;
     
+	/**
+	 * The id for instruction of cfg.
+	 */
+	private int instID = 0;
+    
     /**
      * Constructor that constructs an control flow graph.
      *  
@@ -36,6 +41,8 @@ public class ControlFlowGraph {
     	// id of quad begin with zero.
     	this.quad_counter = 0;
     }
+    /** Get the new id of current instruction.*/
+    public int getInstID(){return this.instID++;}
     
     /**
      * Returns the entry node.
@@ -183,7 +190,7 @@ public class ControlFlowGraph {
 	 * @param quads	A list of quads. 
 	 * @return	A corresponding CFG returned.
 	 */
-	public static ControlFlowGraph computeCFG(List<Quad> quads) {
+	public static ControlFlowGraph computeCFG(List<Instruction> quads) {
 		
 		return null;
 	}
