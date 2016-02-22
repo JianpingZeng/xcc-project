@@ -20,10 +20,14 @@ public class Type implements TypeTags
 	 * Constant type: no type at all.
 	 */
 	public static final Type noType = new Type(NONE, null);
+	public static final Type CHARType = new Type(TypeTags.CHAR, null);
+	public static final Type BYTEType = new Type(TypeTags.BYTE, null);
+	public static final Type SHORTType = new Type(TypeTags.SHORT, null);
 	public static final Type INTType = new Type(TypeTags.INT, null);
 	public static final Type LONGType = new Type(TypeTags.LONG, null);
 	public static final Type FLOATType = new Type(TypeTags.FLOAT, null);
 	public static final Type DOUBLEType = new Type(TypeTags.DOUBLE, null);
+	public static final Type VOIDType = new Type(TypeTags.VOID, null);
 
 	public int tag;
 

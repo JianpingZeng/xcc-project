@@ -21,7 +21,7 @@ import java.util.ListIterator;
  * {@link ControlFlowGraph} so that id id is unique.
  * 
  * @author Jianping Zeng < z121jping@hotmail.com >
- * @see Quad
+ * @see Instruction
  * @version 1.0
  *
  */
@@ -31,7 +31,7 @@ public class BasicBlock {
 	private int idNumber;
 
 	/** A list of quads. */
-	private final List<Quad> instructions;
+	private final List<Instruction> instructions;
 
 	/** A list of predecessors. */
 	private final List<BasicBlock> predecessors;
@@ -64,7 +64,7 @@ public class BasicBlock {
 		this.predecessors = new java.util.ArrayList<BasicBlock>(
 				numOfPredecessors);
 		this.successors = new java.util.ArrayList<BasicBlock>(numOfSuccessors);
-		this.instructions = new java.util.ArrayList<Quad>(numOfInstructions);
+		this.instructions = new java.util.ArrayList<Instruction>(numOfInstructions);
 	}
 
 	/** Creates new entry node. Only to be called by ControlFlowGraph. */
@@ -126,9 +126,9 @@ public class BasicBlock {
 	 * 
 	 * @return Returns iterator over Quads in this basic block in forward order.
 	 */
-	public ListIterator<Quad> iterator() {
+	public ListIterator<Instruction> iterator() {
 		if (instructions == null)
-			return Collections.<Quad> emptyList().listIterator();
+			return Collections.<Instruction> emptyList().listIterator();
 		else
 			return instructions.listIterator();
 	}
@@ -138,12 +138,12 @@ public class BasicBlock {
 	 * 
 	 * @return Returns iterator over Quads in this basic block in forward order.
 	 */
-	public BackwardIterator<Quad> backwardIterator() {
+	public BackwardIterator<Instruction> backwardIterator() {
 		if (instructions == null)
-			return new BackwardIterator<Quad>(Collections.<Quad> emptyList()
+			return new BackwardIterator<Instruction>(Collections.<Instruction> emptyList()
 					.listIterator());
 		else
-			return new BackwardIterator<Quad>(instructions.listIterator());
+			return new BackwardIterator<Instruction>(instructions.listIterator());
 	}
 
 	/**
@@ -155,7 +155,7 @@ public class BasicBlock {
 	 *            QuadVisitor to visit the quads with.
 	 */
 	public void visitQuads(QuadVisitor qv) {
-		for (Quad q : instructions) {
+		for (Instruction q : instructions) {
 			q.accept(qv);
 		}
 	}
@@ -169,8 +169,8 @@ public class BasicBlock {
 	 *            QuadVisitor to visit the quads with.
 	 */
 	public void backwardVisitQuads(QuadVisitor qv) {
-		for (Iterator<Quad> i = backwardIterator(); i.hasNext();) {
-			Quad q = i.next();
+		for (Iterator<Instruction> i = backwardIterator(); i.hasNext();) {
+			Instruction q = i.next();
 			q.accept(qv);
 		}
 	}
@@ -186,25 +186,25 @@ public class BasicBlock {
 		return instructions.size();
 	}
 
-	public Quad getQuad(int i) {
+	public Instruction getQuad(int i) {
 		return instructions.get(i);
 	}
 
-	public Quad getLastQuad() {
+	public Instruction getLastQuad() {
 		if (size() == 0)
 			return null;
 		return instructions.get(instructions.size() - 1);
 	}
 
-	public int getQuadIndex(Quad q) {
+	public int getQuadIndex(Instruction q) {
 		return instructions == null ? -1 : instructions.indexOf(q);
 	}
 
-	public Quad removeQuad(int i) {
+	public Instruction removeQuad(int i) {
 		return instructions.remove(i);
 	}
 
-	public boolean removeQuad(Quad q) {
+	public boolean removeQuad(Instruction q) {
 		return instructions.remove(q);
 	}
 
@@ -221,7 +221,7 @@ public class BasicBlock {
 	 * @param q
 	 *            quad to add
 	 */
-	public void addQuad(Quad q) {
+	public void addQuad(Instruction q) {
 		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
 		instructions.add(q);
 	}
@@ -233,7 +233,7 @@ public class BasicBlock {
 	 * @param q
 	 *            quad to add
 	 */
-	public void appendQuad(Quad q) {
+	public void appendQuad(Instruction q) {
 		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
 		instructions.add(q);
 	}
@@ -241,7 +241,7 @@ public class BasicBlock {
 	/**
 	 * Replace the quad at position pos.
 	 * */
-	public void replaceQuad(int pos, Quad q) {
+	public void replaceQuad(int pos, Instruction q) {
 		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
 		instructions.set(pos, q);
 	}

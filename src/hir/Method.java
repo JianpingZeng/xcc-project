@@ -1,18 +1,20 @@
 package hir; 
 
-import type.Type;
-
-import com.sun.org.apache.xerces.internal.parsers.SecurityConfiguration;
-
-import ast.Tree;
 import ast.Tree.MethodDef;
+import exception.SemanticError;
+import type.ArrayType;
+import type.Type;
+import ast.Tree;
+import type.TypeTags;
 
-/** 
+/**
+ * This class is representation at the HIR(high-level IR) of a function or method.
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 2016年2月2日 下午9:10:07 
  */
 public class Method
 {
+	private Signature sign;
 	/**
 	 * An control flow graph corresponding to method compound 
 	 * of this method declaration. 
@@ -26,6 +28,96 @@ public class Method
 	
 	public Method(MethodDef m)
     {
+	    super();
 		this.m = m;
+	    // resolve return type
+	    Type ret = resolveType(m.rettype);
+		String name = m.name.toString();
+
+	    // resolve formal parameter list.
+        Type[] args = new Type[m.params.size()];
+	    for (int idx = 0; idx < m.params.size(); idx++)
+	    {
+		    args[idx] = resolveType(m.params.get(idx));
+	    }
+		this.sign = new Signature(ret, name, args);
     }
+
+	/**
+	 * Resovles type from specified abstract syntax tree.
+	 * @param ty    Tree.
+	 * @return  Type.
+	 */
+	private Type resolveType(Tree ty)
+	{
+		if (ty instanceof  Tree.TypeIdent)
+		{
+			return resovleBasicType(ty);
+		}
+		if (ty instanceof Tree.TypeArray)
+		{
+			return resolveArrayType(ty);
+		}
+		throw new SemanticError("can not convert any Tree into Type.");
+	}
+
+	/**
+	 * Resovles array type from specified abstract syntax tree.
+	 * @param ty    Tree.
+	 * @return  Array type.
+	 */
+	private Type resolveArrayType(Tree ty)
+	{
+		if (ty instanceof  Tree.TypeArray)
+		{
+			Tree.TypeArray tmp = (Tree.TypeArray)ty;
+			Type elem = resolveType(tmp.elemtype);
+			return new ArrayType(elem, null);
+		}
+		else
+			return resovleBasicType(ty);
+	}
+	/**
+	 * Resovles basic type from specified abstract syntax tree.
+	 * @param ty    Tree.
+	 * @return  Basic type.
+	 */
+	private Type resovleBasicType(Tree ty)
+	{
+		switch (((Tree.TypeIdent)ty).typetag)
+		{
+			case TypeTags.BOOL:
+				return Type.DOUBLEType;
+			case TypeTags.CHAR:
+				return  Type.CHARType;
+			case TypeTags.BYTE:
+				return Type.BYTEType;
+			case TypeTags.SHORT:
+				return Type.SHORTType;
+			case TypeTags.INT:
+				return Type.INTType;
+			case TypeTags.LONG:
+				return  Type.LONGType;
+			case TypeTags.FLOAT:
+				return Type.FLOATType;
+			case TypeTags.DOUBLE:
+				return Type.DOUBLEType;
+			default:
+				return null;
+		}
+	}
+	/**
+	 * Get the name of the function as a string.
+	 * @return  The name of the function.
+	 */
+	public String name()
+	{
+		return this.m.name.toString();
+	}
+	/**
+	 * Obtains the signature {@code Signature} of this method object.
+	 * @return  The signature.
+	 */
+	public Signature signature() {return sign;}
+
 }

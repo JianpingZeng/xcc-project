@@ -989,14 +989,15 @@ abstract public class Tree
 
 	/**
 	 * Identifies a basic type.
-	 * 
-	 * @param tag the basic type id
-	 * @see SemanticConstants
 	 */
 	public static class TypeIdent extends Tree
 	{
 		public int typetag;
 
+		/**
+		 * Constructs a new Type identifier with given {@code TypeTags} typetag.
+		 * @param typetag
+		 */
 		public TypeIdent(int typetag)
 		{
 			super(TYPEIDENT);
