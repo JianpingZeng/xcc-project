@@ -143,10 +143,12 @@ public class ControlFlowGraph {
     }
     
     /**
-     * Returns a list of basic blocks in reverse post order, starting at the given basic block.
+     * Returns a list of basic blocks in reverse post order, starting at the
+     * given basic block.
      * 
      * @param start_bb  basic block to start from.
-     * @return  a list of basic blocks in reverse post order, starting at the given basic block.
+     * @return  a list of basic blocks in reverse post order, starting at the
+     * given basic block.
      */
     public List<BasicBlock> reversePostOrder(BasicBlock start_bb) {
     	
@@ -155,16 +157,31 @@ public class ControlFlowGraph {
         reversePostOrder_helper(start_bb, visited, result, true);
         return Collections.unmodifiableList(result);
     }
-    
+
+	/**
+	 * Returns a list of basic blocks in reverse post order, starting at the
+	 * entry block.
+	 *
+	 * @return  a list of basic blocks in reverse post order, starting at
+	 * the entry.
+	 */
+	public List<BasicBlock> reversePostOrder() {
+
+		java.util.LinkedList<BasicBlock> result = new java.util.LinkedList<>();
+		boolean[] visited = new boolean[bb_counter+1];
+		reversePostOrder_helper(startNode, visited, result, true);
+		return Collections.unmodifiableList(result);
+	}
+
     /**
      * Helper function to compute reverse post order.
-     * 
+     *
      * @param b		the start node.
      * @param visited	a array that records visiting flag.
      * @param result	reverse post order of all of basic node in this graph.
      * @param direction		whether forward or backward.
      */
-	
+
     private void reversePostOrder_helper(BasicBlock b, boolean[] visited, java.util.LinkedList<BasicBlock> result, boolean direction) {
         if (visited[b.getID()]) return;
         visited[b.getID()] = true;
@@ -175,6 +192,11 @@ public class ControlFlowGraph {
         result.addFirst(b);
     }
 
+    /**
+     * Visits all of basic block in order that reverse post order with specified
+     * {@code BasicBlockVisitor} bbv.
+     * @param bbv   The instance of BasicBlockVisitor.
+     */
 	public void visitBasicBlocks(BasicBlockVisitor bbv) {
 		
 		List<BasicBlock> bblist = reversePostOrder(startNode);
@@ -182,16 +204,5 @@ public class ControlFlowGraph {
 		{
 			bbv.visitBasicBlock(bb);
 		}
-	}
-	
-	/**
-	 * Computes a control flow graph according to a list of quad.
-	 *  
-	 * @param quads	A list of quads. 
-	 * @return	A corresponding CFG returned.
-	 */
-	public static ControlFlowGraph computeCFG(List<Instruction> quads) {
-		
-		return null;
 	}
 }

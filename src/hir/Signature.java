@@ -19,7 +19,7 @@ public class Signature
 	/**
 	 * Constructs  a new signature with given return type, name of function,
 	 * parameter type list.
-	 * @param ret   The return value type.
+	 * @param ret   The return inst type.
 	 * @param name  The name of function.
 	 * @param params    The parameter type list.
 	 */

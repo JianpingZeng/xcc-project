@@ -1,45 +1,66 @@
 package hir;
 
+import ci.CiConstant;
+import ci.CiKind;
+import comp.OpCodes;
 import type.Type;
-import ci.*;
+import utils.Utils;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
  * subclass of @ {@code Instruction} represents arithmetic and logical
  * operation, control flow operators,Phi assignment, function calling
  * conditional statement.
- * 
+ *
  * @author Jianping Zeng
- * @see BasicBlock
  * @version `1.0
+ * @see BasicBlock
  */
-public abstract class Instruction implements  Cloneable
+public abstract class Instruction implements Cloneable
 {
-	/** The numbers of reference count with initial value 1. */
+	/**
+	 * The numbers of reference count with initial inst 1.
+	 */
 
 	public long refs = 1;
-	/** Mainly for register allocation. */
+	/**
+	 * Mainly for register allocation.
+	 */
 	public int id;
 	/**
-	 * The type of value produced with this instruction. The kind is
-	 * {@linkplain CiKind#Void} if this instruction produce no value.
+	 * The type of inst produced with this instruction. The kind is
+	 * {@linkplain CiKind#Void} if this instruction produce no inst.
 	 */
 	public CiKind kind;
 
-	public Instruction(CiKind kind)
+	/**
+	 * The result of operation over this instruction, it is null if this instruction
+	 * no return result.
+	 */
+	public Instruction result;
+
+	/**
+	 * Value numbering for entering SSA form.
+	 */
+	public int number;
+
+	public Instruction(CiKind kind, Instruction result)
 	{
 		this.kind = kind;
 		this.id = -1;
+		this.result = result;
 	}
 
 	/**
-	 * An interface for QuadVisitor invoking.
-	 * @param visitor The instance of QuadVisitor.
+	 * An interface for InstructionVisitor invoking.
+	 *
+	 * @param visitor The instance of InstructionVisitor.
 	 */
-	public abstract void accept(QuadVisitor visitor);
+	public abstract void accept(InstructionVisitor visitor);
 
 	/**
 	 * Gets the text format of this Instruction.
+	 *
 	 * @return
 	 */
 	public String toString()
@@ -47,10 +68,30 @@ public abstract class Instruction implements  Cloneable
 		return "";
 	}
 
-	 @Override public Instruction clone() throws CloneNotSupportedException
-	 {
-		 throw new CloneNotSupportedException();
-	 }
+	@Override public Instruction clone() throws CloneNotSupportedException
+	{
+		throw new CloneNotSupportedException();
+	}
+
+	/**
+	 * For value number to determine whether this instruction is equivalent to
+	 * that value.
+	 *
+	 * @param value Targeted instruction to be checked.
+	 * @return return false by default.
+	 */
+	public boolean valueEqual(Instruction value)
+	{
+		return false;
+	}
+
+	/**
+	 * For global or local inst numbering with initialization 0.
+	 */
+	public int valueNumber()
+	{
+		return 0;
+	}
 
 	/**
 	 * The abstract base class definition for unary operator.
@@ -64,12 +105,13 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Constructs unary operation.
-		 * @param kind The value kind of result.
-		 * @param x The sole operand.
+		 *
+		 * @param kind The inst kind of result.
+		 * @param x    The sole operand.
 		 */
-		public Op1(CiKind kind, Instruction x)
+		public Op1(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind);
+			super(kind, result);
 			this.x = x;
 		}
 
@@ -77,8 +119,8 @@ public abstract class Instruction implements  Cloneable
 
 	/**
 	 * This class just for binary operation definition.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static abstract class Op2 extends Instruction
 	{
@@ -88,9 +130,9 @@ public abstract class Instruction implements  Cloneable
 		 */
 		Instruction x, y;
 
-		public Op2(CiKind kind, Instruction x, Instruction y)
+		public Op2(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind);
+			super(kind, result);
 			this.x = x;
 			this.y = y;
 		}
@@ -99,660 +141,755 @@ public abstract class Instruction implements  Cloneable
 
 	public static class ADD_I extends Op2
 	{
-		public ADD_I(CiKind kind, Instruction x, Instruction y)
+		public ADD_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "ADD_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.iadd, x, y);
 		}
 	}
 
 	public static class SUB_I extends Op2
 	{
-		public SUB_I(CiKind kind, Instruction x, Instruction y)
+		public SUB_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SUB_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.isub, x, y);
 		}
 	}
 
 	public static class MUL_I extends Op2
 	{
-		public MUL_I(CiKind kind, Instruction x, Instruction y)
+		public MUL_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MUL_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.imul, x, y);
 		}
 	}
 
 	public static class DIV_I extends Op2
 	{
-		public DIV_I(CiKind kind, Instruction x, Instruction y)
+		public DIV_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "DIV_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.idiv, x, y);
 		}
 	}
 
 	public static class MOD_I extends Op2
 	{
-		public MOD_I(CiKind kind, Instruction x, Instruction y)
+		public MOD_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MOD_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.imod, x, y);
 		}
 	}
 
 	public static class AND_I extends Op2
 	{
-		public AND_I(CiKind kind, Instruction x, Instruction y)
+		public AND_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "AND_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.iand, x, y);
 		}
 	}
 
 	public static class OR_I extends Op2
 	{
-		public OR_I(CiKind kind, Instruction x, Instruction y)
+		public OR_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "OR_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.ior, x, y);
 		}
 	}
 
 	public static class XOR_I extends Op2
 	{
-		public XOR_I(CiKind kind, Instruction x, Instruction y)
+		public XOR_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "XOR_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.ixor, x, y);
 		}
 	}
 
 	public static class SHL_I extends Op2
 	{
-		public SHL_I(CiKind kind, Instruction x, Instruction y)
+		public SHL_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SHL_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.ishl, x, y);
 		}
 	}
 
 	public static class SHR_I extends Op2
 	{
-		public SHR_I(CiKind kind, Instruction x, Instruction y)
+		public SHR_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SHR_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.ishr, x, y);
 		}
 	}
 
 	/**
 	 * This class served as unsigned sheft right over integer operand.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static class USHR_I extends Op2
 	{
-		public USHR_I(CiKind kind, Instruction x, Instruction y)
+		public USHR_I(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "USHR_I";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.iushr, x, y);
 		}
 	}
 
 	public static class ADD_L extends Op2
 	{
-		public ADD_L(CiKind kind, Instruction x, Instruction y)
+		public ADD_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "ADD_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.ladd, x, y);
 		}
 	}
 
 	public static class SUB_L extends Op2
 	{
-		public SUB_L(CiKind kind, Instruction x, Instruction y)
+		public SUB_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SUB_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lsub, x, y);
 		}
 	}
 
 	public static class MUL_L extends Op2
 	{
-		public MUL_L(CiKind kind, Instruction x, Instruction y)
+		public MUL_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MUL_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lmul, x, y);
 		}
 	}
 
 	public static class DIV_L extends Op2
 	{
-		public DIV_L(CiKind kind, Instruction x, Instruction y)
+		public DIV_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "DIV_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.ldiv, x, y);
 		}
 	}
 
 	public static class MOD_L extends Op2
 	{
-		public MOD_L(CiKind kind, Instruction x, Instruction y)
+		public MOD_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MOD_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lmod, x, y);
 		}
 	}
 
 	public static class AND_L extends Op2
 	{
-		public AND_L(CiKind kind, Instruction x, Instruction y)
+		public AND_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "AND_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.land, x, y);
 		}
 	}
 
 	public static class OR_L extends Op2
 	{
-		public OR_L(CiKind kind, Instruction x, Instruction y)
+		public OR_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "OR_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lor, x, y);
 		}
 	}
 
 	public static class XOR_L extends Op2
 	{
-		public XOR_L(CiKind kind, Instruction x, Instruction y)
+		public XOR_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "XOR_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lxor, x, y);
 		}
 	}
 
 	public static class SHL_L extends Op2
 	{
-		public SHL_L(CiKind kind, Instruction x, Instruction y)
+		public SHL_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SHL_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lshl, x, y);
 		}
 	}
 
 	public static class SHR_L extends Op2
 	{
-		public SHR_L(CiKind kind, Instruction x, Instruction y)
+		public SHR_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SHR_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lshr, x, y);
 		}
 	}
 
 	/**
 	 * This class served as unsigned sheft right over long integer operand.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static class USHR_L extends Op2
 	{
-		public USHR_L(CiKind kind, Instruction x, Instruction y)
+		public USHR_L(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "USHR_L";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.lushr, x, y);
 		}
 	}
 
 	public static class ADD_F extends Op2
 	{
-		public ADD_F(CiKind kind, Instruction x, Instruction y)
+		public ADD_F(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "ADD_F";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.fadd, x, y);
 		}
 	}
 
 	public static class SUB_F extends Op2
 	{
-		public SUB_F(CiKind kind, Instruction x, Instruction y)
+		public SUB_F(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SUB_F";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.fsub, x, y);
 		}
 	}
 
 	public static class MUL_F extends Op2
 	{
-		public MUL_F(CiKind kind, Instruction x, Instruction y)
+		public MUL_F(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MUL_F";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.fmul, x, y);
 		}
 	}
 
 	public static class DIV_F extends Op2
 	{
-		public DIV_F(CiKind kind, Instruction x, Instruction y)
+		public DIV_F(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "DIV_F";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.fdiv, x, y);
 		}
 	}
 
 	public static class MOD_F extends Op2
 	{
-		public MOD_F(CiKind kind, Instruction x, Instruction y)
+		public MOD_F(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MOD_F";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.fmod, x, y);
 		}
 	}
 
 	public static class ADD_D extends Op2
 	{
-		public ADD_D(CiKind kind, Instruction x, Instruction y)
+		public ADD_D(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "ADD_D";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.dadd, x, y);
 		}
 	}
 
 	public static class SUB_D extends Op2
 	{
-		public SUB_D(CiKind kind, Instruction x, Instruction y)
+		public SUB_D(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "SUB_D";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.dsub, x, y);
 		}
 	}
 
 	public static class MUL_D extends Op2
 	{
-		public MUL_D(CiKind kind, Instruction x, Instruction y)
+		public MUL_D(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MUL_D";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.dmul, x, y);
 		}
 	}
 
 	public static class DIV_D extends Op2
 	{
-		public DIV_D(CiKind kind, Instruction x, Instruction y)
+		public DIV_D(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "DIV_D";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.ddiv, x, y);
 		}
 	}
 
 	public static class MOD_D extends Op2
 	{
-		public MOD_D(CiKind kind, Instruction x, Instruction y)
+		public MOD_D(CiKind kind, Instruction x, Instruction y, Instruction result)
 		{
-			super(kind, x, y);
+			super(kind, x, y, result);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			return "MOD_D";
+		}
+
+		@Override public int valueNumber()
+		{
+			return Utils.hash2(OpCodes.dmod, x, y);
 		}
 	}
 
 	public static class NEG_I extends Op1
 	{
-
-		public NEG_I(CiKind kind, Instruction x)
+		public NEG_I(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -760,19 +897,22 @@ public abstract class Instruction implements  Cloneable
 			return "NEG_I";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
+		}
 
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.ineg, x);
 		}
 	}
 
 	public static class NEG_F extends Op1
 	{
-		public NEG_F(CiKind kind, Instruction x)
+		public NEG_F(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -780,19 +920,22 @@ public abstract class Instruction implements  Cloneable
 			return "NEG_F";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
+		}
 
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.fneg, x);
 		}
 	}
 
 	public static class NEG_L extends Op1
 	{
-		public NEG_L(CiKind kind, Instruction x)
+		public NEG_L(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -800,21 +943,22 @@ public abstract class Instruction implements  Cloneable
 			return "NEG_L";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.lneg, x);
+		}
 	}
 
 	public static class NEG_D extends Op1
 	{
 
-		public NEG_D(CiKind kind, Instruction x)
+		public NEG_D(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -822,20 +966,22 @@ public abstract class Instruction implements  Cloneable
 			return "NEG_D";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.dneg, x);
 		}
 	}
 
 	public static class INT_2LONG extends Op1
 	{
 
-		public INT_2LONG(CiKind kind, Instruction x)
+		public INT_2LONG(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -843,20 +989,21 @@ public abstract class Instruction implements  Cloneable
 			return "INT_2LONG";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.i2l, x);
+		}
 	}
 
 	public static class INT_2FLOAT extends Op1
 	{
-		public INT_2FLOAT(CiKind kind, Instruction x)
+		public INT_2FLOAT(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -864,21 +1011,22 @@ public abstract class Instruction implements  Cloneable
 			return "INT_2FLOAT";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.i2f, x);
+		}
 	}
 
 	public static class INT_2DOUBLE extends Op1
 	{
 
-		public INT_2DOUBLE(CiKind kind, Instruction x)
+		public INT_2DOUBLE(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -886,21 +1034,22 @@ public abstract class Instruction implements  Cloneable
 			return "INT_2DOUBLE";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.i2d, x);
+		}
 	}
 
 	public static class LONG_2INT extends Op1
 	{
 
-		public LONG_2INT(CiKind kind, Instruction x)
+		public LONG_2INT(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -908,20 +1057,21 @@ public abstract class Instruction implements  Cloneable
 			return "LONG_2INT";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.l2i, x);
+		}
 	}
 
 	public static class LONG_2FLOAT extends Op1
 	{
-		public LONG_2FLOAT(CiKind kind, Instruction x)
+		public LONG_2FLOAT(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -929,20 +1079,22 @@ public abstract class Instruction implements  Cloneable
 			return "LONG_2FLOAT";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.l2f, x);
 		}
 	}
 
 	public static class LONG_2DOUBLE extends Op1
 	{
 
-		public LONG_2DOUBLE(CiKind kind, Instruction x)
+		public LONG_2DOUBLE(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -950,20 +1102,21 @@ public abstract class Instruction implements  Cloneable
 			return "LONG_2DOUBLE";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.l2d, x);
+		}
 	}
 
 	public static class FLOAT_2INT extends Op1
 	{
-		public FLOAT_2INT(CiKind kind, Instruction x)
+		public FLOAT_2INT(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -971,19 +1124,21 @@ public abstract class Instruction implements  Cloneable
 			return "FLOAT_2INT";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.f2i, x);
 		}
 	}
 
 	public static class FLOAT_2LONG extends Op1
 	{
-		public FLOAT_2LONG(CiKind kind, Instruction x)
+		public FLOAT_2LONG(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -991,21 +1146,22 @@ public abstract class Instruction implements  Cloneable
 			return "FLOAT_2LONG";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.f2l, x);
+		}
 	}
 
 	public static class FLOAT_2DOUBLE extends Op1
 	{
 
-		public FLOAT_2DOUBLE(CiKind kind, Instruction x)
+		public FLOAT_2DOUBLE(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -1013,21 +1169,22 @@ public abstract class Instruction implements  Cloneable
 			return "FLOAT_2DOUBLE";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.f2d, x);
+		}
 	}
 
 	public static class DOUBLE_2INT extends Op1
 	{
 
-		public DOUBLE_2INT(CiKind kind, Instruction x)
+		public DOUBLE_2INT(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -1035,20 +1192,22 @@ public abstract class Instruction implements  Cloneable
 			return "DOUBLE_2INT";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.d2i, x);
 		}
 	}
 
 	public static class DOUBLE_2LONG extends Op1
 	{
 
-		public DOUBLE_2LONG(CiKind kind, Instruction x)
+		public DOUBLE_2LONG(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -1056,21 +1215,22 @@ public abstract class Instruction implements  Cloneable
 			return "DOUBLE_2LONG";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
 		}
-
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.d2l, x);
+		}
 	}
 
 	public static class DOUBLE_2FLOAT extends Op1
 	{
 
-		public DOUBLE_2FLOAT(CiKind kind, Instruction x)
+		public DOUBLE_2FLOAT(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -1078,20 +1238,22 @@ public abstract class Instruction implements  Cloneable
 			return "DOUBLE_2FLOAT";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.d2f, x);
 		}
 	}
 
 	public static class INT_2BYTE extends Op1
 	{
 
-		public INT_2BYTE(CiKind kind, Instruction x)
+		public INT_2BYTE(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -1099,20 +1261,22 @@ public abstract class Instruction implements  Cloneable
 			return "INT_2BYTE";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.int2byte, x);
 		}
 	}
 
 	public static class INT_2CHAR extends Op1
 	{
 
-		public INT_2CHAR(CiKind kind, Instruction x)
+		public INT_2CHAR(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -1120,20 +1284,22 @@ public abstract class Instruction implements  Cloneable
 			return "INT_2CHAR";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.int2char, x);
 		}
 	}
 
 	public static class INT_2SHORT extends Op1
 	{
 
-		public INT_2SHORT(CiKind kind, Instruction x)
+		public INT_2SHORT(CiKind kind, Instruction x, Instruction result)
 		{
-			super(kind, x);
+			super(kind, x, result);
 		}
 
 		public String toString()
@@ -1141,28 +1307,31 @@ public abstract class Instruction implements  Cloneable
 			return "INT_2SHORT";
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
-
+		}
+		@Override public int valueNumber()
+		{
+			return Utils.hash1(OpCodes.int2short, x);
 		}
 	}
 
 	/**
 	 * An abstract representation of branch instruction.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static abstract class Branch extends Instruction
 	{
 		/**
-		 * Constructs a new branch instruction with specified value type.
+		 * Constructs a new branch instruction with specified inst type.
+		 *
 		 * @param kind
 		 */
 		public Branch(CiKind kind)
 		{
-			super(kind);
+			super(kind, null);
 		}
 	}
 
@@ -1192,6 +1361,7 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Gets the first operand.
+		 *
 		 * @return
 		 */
 		public Instruction x()
@@ -1201,6 +1371,7 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * The second operand.
+		 *
 		 * @return
 		 */
 		public Instruction y()
@@ -1210,6 +1381,7 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Gets the one of two direction corresponding to condition is true.
+		 *
 		 * @return
 		 */
 		public BasicBlock getTrueTarget()
@@ -1219,6 +1391,7 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Gets the one of two direction corresponding to condition is false.
+		 *
 		 * @return
 		 */
 		public BasicBlock getFalseTarget()
@@ -1230,13 +1403,14 @@ public abstract class Instruction implements  Cloneable
 	public static final class IfCmp_LT extends IntCmp
 	{
 		public IfCmp_LT(Instruction x, Instruction y, BasicBlock trueTarget,
-		        BasicBlock falseTarget)
+				BasicBlock falseTarget)
 		{
-			super(x, y ,trueTarget, falseTarget);
+			super(x, y, trueTarget, falseTarget);
 		}
 
 		/**
 		 * Swaps the operand and reverse the condition (e.g.< --> >=)
+		 *
 		 * @return
 		 */
 		public IfCmp_GE getMirror()
@@ -1244,15 +1418,13 @@ public abstract class Instruction implements  Cloneable
 			return new IfCmp_GE(y, x, trueTarget, falseTarget);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1262,13 +1434,14 @@ public abstract class Instruction implements  Cloneable
 	public static final class IfCmp_LE extends IntCmp
 	{
 		public IfCmp_LE(Instruction x, Instruction y, BasicBlock trueTarget,
-		        BasicBlock falseTarget)
+				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
 		}
 
 		/**
 		 * Swaps the operand and reverse the condition (e.g.<= --> >)
+		 *
 		 * @return
 		 */
 		public IfCmp_GT getMirror()
@@ -1276,15 +1449,13 @@ public abstract class Instruction implements  Cloneable
 			return new IfCmp_GT(y, x, trueTarget, falseTarget);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1294,12 +1465,14 @@ public abstract class Instruction implements  Cloneable
 	public static final class IfCmp_GT extends IntCmp
 	{
 		public IfCmp_GT(Instruction x, Instruction y, BasicBlock trueTarget,
-		        BasicBlock falseTarget)
+				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
 		}
+
 		/**
 		 * Swaps the operand and reverse the condition (e.g.> --> <=)
+		 *
 		 * @return
 		 */
 		public IfCmp_LE getMirror()
@@ -1307,15 +1480,13 @@ public abstract class Instruction implements  Cloneable
 			return new IfCmp_LE(y, x, trueTarget, falseTarget);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1325,12 +1496,14 @@ public abstract class Instruction implements  Cloneable
 	public static class IfCmp_GE extends IntCmp
 	{
 		public IfCmp_GE(Instruction x, Instruction y, BasicBlock trueTarget,
-		        BasicBlock falseTarget)
+				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
 		}
+
 		/**
 		 * Swaps the operand and reverse the condition (e.g.>= --> <)
+		 *
 		 * @return
 		 */
 		public IfCmp_LT getMirror()
@@ -1338,14 +1511,12 @@ public abstract class Instruction implements  Cloneable
 			return new IfCmp_LT(y, x, trueTarget, falseTarget);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1355,12 +1526,14 @@ public abstract class Instruction implements  Cloneable
 	public static final class IfCmp_EQ extends IntCmp
 	{
 		public IfCmp_EQ(Instruction x, Instruction y, BasicBlock trueTarget,
-		        BasicBlock falseTarget)
+				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
 		}
+
 		/**
 		 * Swaps the operand and reverse the condition (e.g.== --> !=)
+		 *
 		 * @return
 		 */
 		public IfCmp_NEQ getMirror()
@@ -1368,14 +1541,12 @@ public abstract class Instruction implements  Cloneable
 			return new IfCmp_NEQ(x, y, falseTarget, trueTarget);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1385,12 +1556,14 @@ public abstract class Instruction implements  Cloneable
 	public static final class IfCmp_NEQ extends IntCmp
 	{
 		public IfCmp_NEQ(Instruction x, Instruction y, BasicBlock trueTarget,
-		        BasicBlock falseTarget)
+				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
 		}
+
 		/**
 		 * Swaps the operand and reverse the condition (e.g.!= --> ==)
+		 *
 		 * @return
 		 */
 		public IfCmp_EQ getMirror()
@@ -1398,14 +1571,12 @@ public abstract class Instruction implements  Cloneable
 			return new IfCmp_EQ(y, x, falseTarget, trueTarget);
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1415,8 +1586,8 @@ public abstract class Instruction implements  Cloneable
 	/**
 	 * The {@code Goto} instruction represents the end of a block that
 	 * unconditional branches to another basic block.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static class Goto extends Branch
 	{
@@ -1427,6 +1598,7 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Constructs a new {@code Goto} instruction with specified jump target.
+		 *
 		 * @param target The target block of this unconditional jump.
 		 */
 		public Goto(BasicBlock target)
@@ -1435,14 +1607,12 @@ public abstract class Instruction implements  Cloneable
 			this.target = target;
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1451,17 +1621,18 @@ public abstract class Instruction implements  Cloneable
 
 	/**
 	 * This {@code Return} class definition.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static class Return extends Branch
 	{
 		Instruction result;
 
 		/**
-		 * Constructs a new return instruction with return value.
-		 * @param result The return value produce for this instruction, return
-		 *            void if result is {@code null}.
+		 * Constructs a new return instruction with return inst.
+		 *
+		 * @param result The return inst produce for this instruction, return
+		 *               void if result is {@code null}.
 		 */
 		public Return(Instruction result)
 		{
@@ -1471,6 +1642,7 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Gets the instruction that produces the result for the return.
+		 *
 		 * @return the instruction producing the result
 		 */
 		public Instruction result()
@@ -1478,15 +1650,13 @@ public abstract class Instruction implements  Cloneable
 			return result;
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 			// TODO Auto-generated method stub
 
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1495,8 +1665,8 @@ public abstract class Instruction implements  Cloneable
 
 	/**
 	 * Method invocation instruction.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static class Invoke extends Instruction
 	{
@@ -1509,28 +1679,28 @@ public abstract class Instruction implements  Cloneable
 		 */
 		public final Method target;
 
+		public Instruction ret;
+
 		/**
 		 * Constructs a new method calling instruction.
-		 * @param result The kind of return result.
-		 * @param args The input arguments.
-		 * @param target The called method.
-		 * @param returnType
+		 *
+		 * @param result     The kind of return result.
+		 * @param args       The input arguments.
+		 * @param target     The called method.
 		 */
-		public Invoke(CiKind result, Instruction[] args, Method target)
+		public Invoke(CiKind result, Instruction[] args, Method target, Instruction ret)
 		{
-			super(result);
+			super(result, ret);
 			this.target = target;
 			this.arguments = args;
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1540,16 +1710,11 @@ public abstract class Instruction implements  Cloneable
 	/**
 	 * The {@code Phi} instruction represents the merging of data flow in the
 	 * instruction graph. It refers to a join block and a variable.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static class Phi extends Instruction
 	{
-		/**
-		 * The return value
-		 */
-		public Instruction result;
-
 		/**
 		 * The parameters list of Phi assignment.
 		 */
@@ -1563,29 +1728,27 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Constructs a new Phi-function instruction.
-		 * @param kind The kind of result.
+		 *
+		 * @param kind   The kind of result.
 		 * @param result The return result of this instruction.
-		 * @param args The input arguments.
+		 * @param args   The input arguments.
 		 * @param blocks The one of which basic block array is corresponding to
-		 *            an input argument.
+		 *               an input argument.
 		 */
 		public Phi(CiKind kind, Instruction result, Instruction[] args,
-		        BasicBlock[] blocks)
+				BasicBlock[] blocks)
 		{
-			super(kind);
-			this.result = result;
+			super(kind, result);
 			this.args = args;
 			this.derivedBlocks = blocks;
 		}
 
-		@Override
-		public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 
 		}
 
-		@Override
-		public String toString()
+		@Override public String toString()
 		{
 			// TODO Auto-generated method stub
 			return null;
@@ -1594,12 +1757,12 @@ public abstract class Instruction implements  Cloneable
 
 	/**
 	 * The {@code Constant} instruction represents a constant such as an integer
-	 * value, long, float, object reference, address, etc.
+	 * inst, long, float, object reference, address, etc.
 	 */
 	public final static class Constant extends Instruction
 	{
 		/**
-		 * The constant value keeped with {@code Constant} instance.
+		 * The constant inst keeped with {@code Constant} instance.
 		 */
 		public CiConstant value;
 
@@ -1608,7 +1771,7 @@ public abstract class Instruction implements  Cloneable
 		 */
 		public Constant(CiConstant value)
 		{
-			super(value.kind);
+			super(value.kind, null);
 			this.value = value;
 		}
 
@@ -1619,7 +1782,8 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Creates an instruction for a double constant.
-		 * @param d the double value for which to create the instruction
+		 *
+		 * @param d the double inst for which to create the instruction
 		 * @return an instruction representing the double
 		 */
 		public static Constant forDouble(double d)
@@ -1629,7 +1793,8 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Creates an instruction for a float constant.
-		 * @param f the float value for which to create the instruction
+		 *
+		 * @param f the float inst for which to create the instruction
 		 * @return an instruction representing the float
 		 */
 		public static Constant forFloat(float f)
@@ -1639,7 +1804,8 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Creates an instruction for an long constant.
-		 * @param i the long value for which to create the instruction
+		 *
+		 * @param i the long inst for which to create the instruction
 		 * @return an instruction representing the long
 		 */
 		public static Constant forLong(long i)
@@ -1649,7 +1815,8 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Creates an instruction for an integer constant.
-		 * @param i the integer value for which to create the instruction
+		 *
+		 * @param i the integer inst for which to create the instruction
 		 * @return an instruction representing the integer
 		 */
 		public static Constant forInt(int i)
@@ -1659,7 +1826,8 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Creates an instruction for a boolean constant.
-		 * @param i the boolean value for which to create the instruction
+		 *
+		 * @param i the boolean inst for which to create the instruction
 		 * @return an instruction representing the boolean
 		 */
 		public static Constant forBoolean(boolean i)
@@ -1669,7 +1837,8 @@ public abstract class Instruction implements  Cloneable
 
 		/**
 		 * Creates an instruction for an object constant.
-		 * @param o the object value for which to create the instruction
+		 *
+		 * @param o the object inst for which to create the instruction
 		 * @return an instruction representing the object
 		 */
 		public static Constant forObject(Object o)
@@ -1682,6 +1851,7 @@ public abstract class Instruction implements  Cloneable
 			return super.toString() + "(" + value + ")";
 		}
 
+		@Override
 		public int valueNumber()
 		{
 			return 0x50000000 | value.hashCode();
@@ -1689,15 +1859,14 @@ public abstract class Instruction implements  Cloneable
 
 		public boolean valueEqual(Instruction i)
 		{
-			return i instanceof Constant
-			        && ((Constant) i).value.equivalent(this.value);
+			return i instanceof Constant && ((Constant) i).value
+					.equivalent(this.value);
 		}
 
-		@Override
-        public void accept(QuadVisitor visitor)
-        {
-	        
-        }
+		@Override public void accept(InstructionVisitor visitor)
+		{
+
+		}
 	}
 
 	/**
@@ -1706,12 +1875,12 @@ public abstract class Instruction implements  Cloneable
 	 */
 	public static class Alloca extends Instruction
 	{
-		public Alloca(CiKind kind)
+		public Alloca(CiKind kind, Instruction result)
 		{
-			super(kind);
+			super(kind, result);
 		}
 
-		@Override public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 
 		}
@@ -1720,40 +1889,42 @@ public abstract class Instruction implements  Cloneable
 	public static abstract class Var extends Instruction
 	{
 		/**
-		 * The value type of this local variable.
+		 * The inst type of this local variable.
 		 */
 		Type valueType;
 		/**
 		 * The memory address allocated by instruction {@code Alloca} is related with this variable.
 		 */
-		final Alloca memAddr;
+		public Alloca memAddr;
 		/**
 		 * The name of variable, which is similar to IR in LLVM.
 		 * For global variable and local variable, those are starts with symbol'@'
 		 * and '%' respectively.
-		 * <p>
-		 * To visit <a hrep = "http://llvm.org/docs/LangRef.html#global-variables"></a> for detail.
-		 * </p>
+		 * <p>To visit <a href = "http://llvm.org/docs/LangRef.html#global-variables">
+		 * LLVM language reference manual</a> for detail.</p>
 		 */
 		String name;
 
-		public Var(CiKind kind, Alloca mem, String name)
+		public Var(CiKind kind, String name)
 		{
-			super(kind);
-			this.memAddr = mem;
+			super(kind, null);
+			this.result = this;
 			this.name = name;
 		}
 
 		/**
-		 * Sets the value type of this declared variable.
+		 * Sets the inst type of this declared variable.
+		 *
 		 * @param valueType
 		 */
 		public void setValueType(Type valueType)
 		{
 			this.valueType = valueType;
 		}
+
 		/**
-		 * Gets the value type of this declared variable.
+		 * Gets the inst type of this declared variable.
+		 *
 		 * @return
 		 */
 		public Type getValueType()
@@ -1764,55 +1935,64 @@ public abstract class Instruction implements  Cloneable
 
 	/**
 	 * This class is served as a placeholder for Local {@code VarDef} definition.
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 *
+	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
 	public static final class Local extends Var
 	{
+		private String prefix = "%";
 		/**
 		 * Constructs a new local instance.
-		 * @param kind  The kind of value type.
-		 * @param mem   The memory address associated with instance.
-		 * @param namePrefix The name postfix of to being yielded.
+		 *
+		 * @param kind       The kind of inst type.
+		 * @param name The name postfix of to being yielded.
 		 */
-		public Local(CiKind kind, Alloca mem, String namePrefix)
+		public Local(CiKind kind, String name)
 		{
-			super(kind, mem, "%" + namePrefix);
+			super(kind, name);
 		}
-		
+
 		@Override
-        public void accept(QuadVisitor visitor)
-        {
-	        
-        }
+		public void accept(InstructionVisitor visitor)
+		{
+
+		}
+
+		@Override
+		public String toString()
+		{
+			return prefix + name;
+		}
 	}
+
 	/**
 	 * An instruction for writing data into memory.
 	 */
 	public static class StoreInst extends Instruction
 	{
 		/**
-		 * The value being writed into destination variable.
+		 * The inst being writed into destination variable.
 		 */
-		private Instruction value;
+		public Instruction value;
 		/**
 		 * The target of writing.
 		 */
-		private Local dest;
+		public Instruction dest;
 
 		/**
 		 * Constructs a new store instruction.
-		 * @param value The value to being writed into memory.
-		 * @param dest  The target memory address where value stores.
+		 *
+		 * @param value The inst to being writed into memory.
+		 * @param dest  The target memory address where inst stores.
 		 */
-		public StoreInst(Instruction value, Local dest)
+		public StoreInst(Instruction value, Instruction dest)
 		{
-			super(CiKind.Illegal);
+			super(CiKind.Illegal, null);
 			this.value = value;
 			this.dest = dest;
 		}
 
-		@Override public void accept(QuadVisitor visitor)
+		@Override public void accept(InstructionVisitor visitor)
 		{
 
 		}
@@ -1821,48 +2001,24 @@ public abstract class Instruction implements  Cloneable
 	/**
 	 * An instruction for reading data from memory.
 	 */
-	public static class LoadInst extends  Instruction
+	public static class LoadInst extends Instruction
 	{
 		/**
-		 * The source memory where desired value reading.
+		 * The source memory where desired inst reading.
 		 */
-		private Local from;
+		public Instruction from;
 
-		public LoadInst(CiKind kind, Local from)
+		public Instruction value;
+
+		public LoadInst(CiKind kind, Instruction from, Instruction value)
 		{
-			super(kind);
+			super(kind, null);
 			this.from = from;
+			this.value = value;
 		}
 
 		@Override
-		public void accept(QuadVisitor visitor)
-		{
-
-		}
-	}
-
-	/**
-	 * This class represents move instruction.
-	 */
-	public static final class Move extends Op2
-	{
-		/**
-		 * Constructs a new move instruction.
-		 * @param kind  The kind of result.
-		 * @param src   The source of move.
-		 * @param dest  The target of move.
-		 */
-		public Move(CiKind kind, Instruction src, Instruction dest)
-		{
-			super(kind, src, dest);
-		}
-
-		/**
-		 * An interface for QuadVisitor invoking.
-		 *
-		 * @param visitor The instance of QuadVisitor.
-		 */
-		@Override public void accept(QuadVisitor visitor)
+		public void accept(InstructionVisitor visitor)
 		{
 
 		}
