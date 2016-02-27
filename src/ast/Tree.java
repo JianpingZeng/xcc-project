@@ -442,9 +442,7 @@ abstract public class Tree
 
 	/**
 	 * A statement block.
-	 * 
-	 * @param stats statements
-	 * @param flags modifier
+	 *
 	 */
 	public static class Block extends Tree
 	{
@@ -467,15 +465,20 @@ abstract public class Tree
 	
 	/**
 	 * Selects through packages or class for future.
-	 * 
-	 * @param selected selected Tree hierarchie
-	 * @param selector name of field to select thru
-	 * @param sym symbol of the selected class
 	 */	
 	public static class Select extends Tree
 	{
+		/**
+		 * selected Tree hierarchie
+		 */
 		public Tree selected;
+		/**
+		 * name of field to select
+		 */
 		public Name name;
+		/**
+		 * symbol of the selected class
+		 */
 		public Symbol sym;
 
 		public Select(Tree selected, Name name, Symbol sym)
@@ -629,11 +632,12 @@ abstract public class Tree
 
 	/**
 	 * an expression statement
-	 * 
-	 * @param expr expression structure
 	 */
 	public static class Exec extends Tree
 	{
+		/**
+		 * expression structure
+		 */
 		public Tree expr;
 
 		public Exec(Tree expr)
@@ -942,9 +946,7 @@ abstract public class Tree
 
 	/**
 	 * An identifier.
-	 * 
-	 * @param idname the name
-	 * @param sym the symbol
+	 *
 	 */
 	public static class Ident extends Tree
 	{
@@ -966,8 +968,7 @@ abstract public class Tree
 
 	/**
 	 * A constant value given literally.
-	 * 
-	 * @param value value representation
+	 *
 	 */
 	public static class Literal extends Tree
 	{

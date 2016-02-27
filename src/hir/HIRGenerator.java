@@ -9,7 +9,9 @@ import java.util.List;
 import exception.JumpError;
 import exception.SemanticError;
 import hir.Instruction.*;
+import symbol.Symbol;
 import symbol.Symbol.OperatorSymbol;
+import symbol.SymbolKinds;
 import type.Type;
 import type.TypeTags;
 import utils.Context;
@@ -123,7 +125,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private void appendInst(Instruction inst)
 	{
-		currentBlock.addQuad(inst);
+		currentBlock.appendQuad(inst);
 	}
 
 	private int nerrs = 0;
@@ -133,7 +135,7 @@ public class HIRGenerator extends ASTVisitor
 	 * too large.
 	 *
 	 * @param pos The position to error reporting.
-	 * @param constValue The constant value of string.
+	 * @param constValue The constant inst of string.
 	 */
 	private void checkStringConstant(int pos, Object constValue)
 	{
@@ -377,7 +379,7 @@ public class HIRGenerator extends ASTVisitor
 			return src;
 		else
 		{
-			// the return value of truncate method at least INTcode
+			// the return inst of truncate method at least INTcode
 			int typecode1 = HIR.truncate(srccode);
 			int targetcode2 = HIR.truncate(targetcode);
 			//
@@ -401,7 +403,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Local createTemp(Type t)
 	{
-		return new Local(type2Kind(t), null, tempNameGenerator.next());
+		return new Local(type2Kind(t), tempNameGenerator.next());
 	}
 
 	/**
@@ -449,14 +451,14 @@ public class HIRGenerator extends ASTVisitor
 			m.cfg = currentCFG;
 			this.methods.add(m);
 
-			// sets the current block with entry of a cfg.
+			// sets the current block with entry of a cfg with increment number id.
 			this.currentBlock = currentCFG.createBasicBlock();
 
 			this.continueStack = new LinkedList<>();
 			this.breakStack = new LinkedList<>();
 
 			// a generator for temporary variable.
-			this.tempNameGenerator.init();
+			tempNameGenerator.init();
 
 			currentCFG.entry().addSuccessor(currentBlock);
 			currentBlock.addPredecessor(currentCFG.entry());
@@ -472,7 +474,7 @@ public class HIRGenerator extends ASTVisitor
 			currentBlock.addSuccessor(currentCFG.exit());
 			// appends current block into the predecessor list of exit block.
 			currentCFG.exit().addPredecessor(currentBlock);
-			
+			new EnterSSA(currentCFG, tempNameGenerator);
 			this.methods.add(m);
 		}
 	}
@@ -485,11 +487,18 @@ public class HIRGenerator extends ASTVisitor
 	private void genAllocaForVarDecl(VarDef var)
 	{
 		CiKind varKind = type2Kind(var.type);
-		Alloca inst = new Alloca(varKind);
+
+		// creates a new local
+		Local local = new Local(varKind, var.name.toString());
+
+		Alloca inst = new Alloca(varKind, local);
 		inst.refs++;
 		appendInst(inst);
-		// creates a new local
-		Local local = new Local(varKind, inst, var.name.toString());
+		local.memAddr = inst;
+
+		// associte its local with variable symbol
+		var.sym.varInst = local;
+
 		Instruction initValue;
 		if (var.init != null)
 		{
@@ -497,12 +506,12 @@ public class HIRGenerator extends ASTVisitor
 			// generates IR for initial expression.
 			initValue = genExpr(var.init);
 		}
-		// setting default value for different value type
+		// setting default inst for different inst type
 		else
 		{
 			initValue = new Constant(CiConstant.defaultValue(varKind));
 		}
-		// generats store instruction that stores initial value into specified local
+		// generats store instruction that stores initial inst into specified local
 		Instruction store = new StoreInst(initValue, local);
 		store.refs++;
 		appendInst(store);
@@ -927,7 +936,10 @@ public class HIRGenerator extends ASTVisitor
 			args[idx++] = genExpr(para);
 
 		Method m = (new Method((MethodDef) tree.meth));
-		Invoke inst = new Invoke(returnKind(m), args, m);
+		// creates a temporally local variable for storing return value.
+		Local ret = createTemp(m.signature().returnType());
+
+		Invoke inst = new Invoke(returnKind(m), args, m, ret);
 		inst.refs++;
 		appendInst(inst);
 		// sets the result of this expression
@@ -977,14 +989,14 @@ public class HIRGenerator extends ASTVisitor
 		t1 = genExpr(tree.truepart);
 		if (t1 != null)
 		{
-			genAssign(t.kind, t1, t);
+			genStore(t1, t);
 		}
 		genJump(nextBB);
 
 		// handles the false part
 		startBasicBlock(falseBB);
 		t2 = genExpr(tree.falsepart);
-		if (t2 != null) genAssign(t.kind, t2, t);
+		if (t2 != null) genStore(t2, t);
 
 		// starts next basic block
 		startBasicBlock(nextBB);
@@ -995,13 +1007,12 @@ public class HIRGenerator extends ASTVisitor
 
 	/**
 	 * Generates move instrcution.
-	 * @param kind  The kind of result.
 	 * @param src   The source of move, including all of instruction.
 	 * @param dest  The target of move, which is variable, occasionally.
 	 */
-	private void genAssign(CiKind kind, Instruction src, Instruction dest)
+	private void genStore(Instruction src, Instruction dest)
 	{
-		Move inst = new Move(dest.kind, src, dest);
+		StoreInst inst = new StoreInst(src.result, dest.result);
 		inst.refs++;
 		appendInst(inst);
 	}
@@ -1019,7 +1030,7 @@ public class HIRGenerator extends ASTVisitor
 		Instruction lhs = genExpr(tree.lhs);
 		Instruction rhs = genExpr(tree.rhs);
 		// generates move instruction
-		genAssign(lhs.kind, rhs, lhs);
+		genStore(rhs, lhs);
 	}
 
 	/**
@@ -1040,8 +1051,9 @@ public class HIRGenerator extends ASTVisitor
 		{
 			Instruction lhs = genExpr(tree.lhs);
 			Instruction rhs = genExpr(tree.rhs);
-			this.exprResult = transformAssignOp(tree.lhs.type, tree.pos, tree.tag, lhs,
-			        rhs);
+			this.exprResult = transformAssignOp(tree.lhs.type, tree.pos, tree.tag,
+					lhs.result,
+			        rhs.result);
 		}
 	}
 
@@ -1056,7 +1068,7 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction transformAssignOp(Type ty, int pos, int op,
 	        Instruction dest, Instruction src)
 	{
-		genAssign(type2Kind(ty), genBin(ty, op, dest, src, pos), dest);
+		genStore(genBin(ty, op, dest, src, pos), dest);
 		return dest;
 	}
 
@@ -1069,28 +1081,31 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genADD(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.ADD_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ADD_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.ADD_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ADD_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.ADD_F(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ADD_F(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			inst = new Instruction.ADD_D(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ADD_D(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1107,27 +1122,29 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genSUB(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.SUB_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SUB_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.SUB_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SUB_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.SUB_F(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SUB_F(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			inst = new Instruction.SUB_D(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SUB_D(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1144,27 +1161,30 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genMUL(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.MUL_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MUL_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.MUL_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MUL_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.MUL_F(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MUL_F(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			inst = new Instruction.MUL_D(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MUL_D(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1181,27 +1201,30 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genDIV(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.DIV_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.DIV_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.DIV_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.DIV_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.DIV_F(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.DIV_F(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			inst = new Instruction.DIV_D(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.DIV_D(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1218,27 +1241,30 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genMOD(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.MOD_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MOD_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.MOD_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MOD_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.MOD_F(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MOD_F(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType)) 
 		{
-			inst = new Instruction.MOD_D(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.MOD_D(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1255,15 +1281,18 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genBITAND(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.AND_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.AND_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.AND_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.AND_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1281,15 +1310,18 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genBITOR(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.OR_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.OR_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.OR_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.OR_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1306,15 +1338,18 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genBITXOR(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.XOR_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.XOR_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.XOR_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.XOR_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1331,15 +1366,18 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genSHL(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.SHL_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SHL_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.SHL_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SHL_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1356,15 +1394,18 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction genSHR(Type ty, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
+
+		// for storing result of this operation.
+		Instruction result = createTemp(ty);
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.SHR_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SHR_I(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
 		else if(ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.SHR_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.SHR_L(type2Kind(ty), lhs, rhs, result);
 			inst.refs++;
 			appendInst(inst);
 		}
@@ -1420,9 +1461,9 @@ public class HIRGenerator extends ASTVisitor
 		return res;
 	}
 	/**
-	 * Generate intermedicate code to calculate a branch expression's value.
+	 * Generate intermedicate code to calculate a branch expression's inst.
 	 * <pre> e.g. int a, b; a = a > b;
-	 * Introduces a new temporary t to holds the value of a > b.
+	 * Introduces a new temporary t to holds the inst of a > b.
 	 *     if a > b goto trueBB
 	 * falseBB:
 	 *     t = 0;
@@ -1444,11 +1485,11 @@ public class HIRGenerator extends ASTVisitor
 		// do it
 		translateBranch(expr, trueBB, falseBB);
 		startBasicBlock(falseBB);
-		genAssign(t.kind, new Instruction.Constant(CiConstant.INT_0), t);
+		genStore(new Instruction.Constant(CiConstant.INT_0), t);
 		genJump(nextBB);
 		
 		startBasicBlock(trueBB);
-		genAssign(t.kind, new Instruction.Constant(CiConstant.INT_1), t);
+		genStore(new Instruction.Constant(CiConstant.INT_1), t);
 		
 		// next bb is upcoming
 		startBasicBlock(nextBB);
@@ -1466,12 +1507,12 @@ public class HIRGenerator extends ASTVisitor
 		Instruction lhs = genExpr(tree.lhs);
 		Instruction rhs = genExpr(tree.rhs);
 
-		this.exprResult = genBin(tree.type, tree.tag, lhs, rhs, tree.pos);
+		this.exprResult = genBin(tree.type, tree.tag, lhs.result, rhs.result, tree.pos);
 	}
 	
 	private Instruction translateIncrement(Unary expr)
 	{
-		Instruction res = genExpr(expr);
+		Instruction res = genExpr(expr).result;
 		try
         {
 	        Instruction temp = res.clone();
@@ -1487,7 +1528,7 @@ public class HIRGenerator extends ASTVisitor
 					return res;
 					
 				case Tree.POSTDEC:
-					res = res = genBin(expr.type, Tree.MINUS, res, new Constant(CiConstant.INT_1), expr.pos);
+					res = genBin(expr.type, Tree.MINUS, res, new Constant(CiConstant.INT_1), expr.pos);
 					this.exprResult = temp;
 					return temp;
 				case Tree.POSTINC:
@@ -1522,7 +1563,7 @@ public class HIRGenerator extends ASTVisitor
 			this.exprResult = translateIncrement(tree);
 			return;
 		}
-		Instruction operand1 = genExpr(tree.arg);
+		Instruction operand1 = genExpr(tree.arg).result;
 		switch (tree.tag)
         {
 			case Tree.TYPECAST:
@@ -1596,6 +1637,41 @@ public class HIRGenerator extends ASTVisitor
 	}
 
 	/**
+	 * Generates loading instruction for local or global instruction that loads
+	 * a variable into a temporary virtual variable.
+	 * @param src   The source instruction that will be loaded into target.
+	 * @param target    A temporary virtual variable.
+	 */
+	private void genLoadInstruction(Instruction src, Local target)
+	{
+		LoadInst inst = new LoadInst(target.kind, src, target);
+		inst.refs++;
+		appendInst(inst);
+	}
+
+	/**
+	 * Translates variable reference.
+	 * @param tree  The variable identifier.
+	 */
+	@Override
+	public void visitIdent(Ident tree)
+	{
+		// parses variable
+		if (tree.sym.kind == SymbolKinds.VAR)
+		{
+			Symbol.VarSymbol sym = (Symbol.VarSymbol)tree.sym;
+
+			Local t = createTemp(sym.type);
+			genLoadInstruction(sym.varInst, t);
+		}
+		// for handling aggregate type, like array and struct
+		if (tree.sym.kind == SymbolKinds.COMPOSITE)
+		{
+
+		}
+	}
+
+	/**
 	 * Translates a erroneous abstract syntax tree.
 	 *
 	 * @param erroneous The erroneous tree.
@@ -1608,7 +1684,11 @@ public class HIRGenerator extends ASTVisitor
 	}
 
 	/**
-	 * A Class served as generator for yielding the name postfix of a temporary variable.
+	 * A Class served as generator for yielding the name of a temporary variable.
+	 * <p>
+	 *     All temporary name generated by this class is described as follow:
+	 *     $1, $2, $3.
+	 * </p>
 	 */
 	static class TempNameGenerator
 	{
@@ -1647,7 +1727,7 @@ public class HIRGenerator extends ASTVisitor
 		 */
 		public String next()
 		{
-			String postfix = String.valueOf(idx);
+			String postfix = "$" + idx;
 			idx++;
 			return postfix;
 		}

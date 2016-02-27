@@ -150,11 +150,11 @@ public class BasicBlock {
 	 * Visit all of the quads in this basic block in forward order with the
 	 * given quad visitor.
 	 * 
-	 * @see QuadVisitor
+	 * @see InstructionVisitor
 	 * @param qv
-	 *            QuadVisitor to visit the quads with.
+	 *            InstructionVisitor to visit the quads with.
 	 */
-	public void visitQuads(QuadVisitor qv) {
+	public void visitQuads(InstructionVisitor qv) {
 		for (Instruction q : instructions) {
 			q.accept(qv);
 		}
@@ -164,11 +164,11 @@ public class BasicBlock {
 	 * Visit all of the quads in this basic block in backward order with the
 	 * given quad visitor.
 	 * 
-	 * @see QuadVisitor
+	 * @see InstructionVisitor
 	 * @param qv
-	 *            QuadVisitor to visit the quads with.
+	 *            InstructionVisitor to visit the quads with.
 	 */
-	public void backwardVisitQuads(QuadVisitor qv) {
+	public void backwardVisitQuads(InstructionVisitor qv) {
 		for (Iterator<Instruction> i = backwardIterator(); i.hasNext();) {
 			Instruction q = i.next();
 			q.accept(qv);
@@ -221,9 +221,9 @@ public class BasicBlock {
 	 * @param q
 	 *            quad to add
 	 */
-	public void addQuad(Instruction q) {
-		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
-		instructions.add(q);
+	public void addQuad(Instruction q, int index) {
+		assert (instructions != null) : "Cannot add instructions to entry/exit basic block";
+		instructions.add(index, q);
 	}
 
 	/**
@@ -234,7 +234,7 @@ public class BasicBlock {
 	 *            quad to add
 	 */
 	public void appendQuad(Instruction q) {
-		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
+		assert (instructions != null) : "Cannot add instructions to entry/exit basic block";
 		instructions.add(q);
 	}
 
@@ -242,7 +242,7 @@ public class BasicBlock {
 	 * Replace the quad at position pos.
 	 * */
 	public void replaceQuad(int pos, Instruction q) {
-		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
+		assert (instructions != null) : "Cannot add instructions to entry/exit basic block";
 		instructions.set(pos, q);
 	}
 
@@ -254,7 +254,7 @@ public class BasicBlock {
 	 *            basic block to add as a predecessor
 	 */
 	public void addPredecessor(BasicBlock b) {
-		assert (predecessors == null) : "Cannot add predecessor to entry basic block";
+		assert (predecessors != null) : "Cannot add predecessor to entry basic block";
 		predecessors.add(b);
 	}
 
@@ -266,42 +266,42 @@ public class BasicBlock {
 	 *            basic block to add as a successor
 	 */
 	public void addSuccessor(BasicBlock b) {
-		assert successors == null : "Cannot add successor to exit basic block";
+		assert successors != null : "Cannot add successor to exit basic block";
 		successors.add(b);
 	}
 
 	public boolean removePredecessor(BasicBlock bb) {
-		assert predecessors == null : "Cannot remove predecessor from entry basic block";
+		assert predecessors != null : "Cannot remove predecessor from entry basic block";
 		return predecessors.remove(bb);
 	}
 
 	public void removePredecessor(int i) {
-		assert predecessors == null : "Cannot remove predecessor from entry basic block";
+		assert predecessors != null : "Cannot remove predecessor from entry basic block";
 		predecessors.remove(i);
 	}
 
 	public boolean removePredecessors(Collection<BasicBlock> bb) {
-		assert predecessors == null : "Cannot remove predecessor from entry basic block";
+		assert predecessors != null : "Cannot remove predecessor from entry basic block";
 		return predecessors.removeAll(bb);
 	}
 
 	public boolean removeSuccessor(BasicBlock bb) {
-		assert successors == null : "Cannot remove successor from exit basic block";
+		assert successors != null : "Cannot remove successor from exit basic block";
 		return successors.remove(bb);
 	}
 
 	public void removeSuccessor(int i) {
-		assert successors == null : "Cannot remove successor from exit basic block";
+		assert successors != null : "Cannot remove successor from exit basic block";
 		successors.remove(i);
 	}
 
 	public void removeAllPredecessors() {
-		assert predecessors == null : "Cannot remove predecessors from entry basic block";
+		assert predecessors != null : "Cannot remove predecessors from entry basic block";
 		predecessors.clear();
 	}
 
 	public void removeAllSuccessors() {
-		assert successors == null : "Cannot remove successors from exit basic block";
+		assert successors != null : "Cannot remove successors from exit basic block";
 		successors.clear();
 	}
 
