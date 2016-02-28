@@ -151,7 +151,7 @@ public class Symbol implements SymbolKinds, TypeTags {
 		 * The corresponding allocated Local or Global instruction for this
 		 * variable in HIR.
 		 */
-		public Instruction.Var varInst;
+		public Instruction.Alloca varInst;
 
 		/**
 		 * Construct a variable symbol, given its flags, name, type and owner.
