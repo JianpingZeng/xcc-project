@@ -299,7 +299,7 @@ public class HIRGenerator extends ASTVisitor
 		switch (expr.tag)
 		{
 			case Tree.AND:
-				remainderBB = currentCFG.createBasicBlock();
+				remainderBB = currentCFG.createBasicBlock("and.remained");
 				bin = (Binary) expr;
 				translateBranch(Not(TreeInfo.skipParens(bin.lhs)), falseBB,
 				        remainderBB);
@@ -308,7 +308,7 @@ public class HIRGenerator extends ASTVisitor
 				translateBranch(TreeInfo.skipParens(bin.rhs), trueBB, falseBB);
 				break;
 			case Tree.OR:
-				remainderBB = currentCFG.createBasicBlock();
+				remainderBB = currentCFG.createBasicBlock("or.remained");
 				bin = (Binary) expr;
 				translateBranch(TreeInfo.skipParens(bin.lhs), trueBB,
 				        remainderBB);
@@ -452,7 +452,7 @@ public class HIRGenerator extends ASTVisitor
 			this.methods.add(m);
 
 			// sets the current block with entry of a cfg with increment number id.
-			this.currentBlock = currentCFG.createBasicBlock();
+			this.currentBlock = currentCFG.createStartNode();
 
 			this.continueStack = new LinkedList<>();
 			this.breakStack = new LinkedList<>();
@@ -470,10 +470,12 @@ public class HIRGenerator extends ASTVisitor
 			// translate method body
 			tree.body.accept(this);
 
+			BasicBlock exit = currentCFG.createEndNode();
 			// appends exit block into the successor list of current block.
-			currentBlock.addSuccessor(currentCFG.exit());
+			currentBlock.addSuccessor(exit);
 			// appends current block into the predecessor list of exit block.
-			currentCFG.exit().addPredecessor(currentBlock);
+			exit.addPredecessor(currentBlock);
+
 			new EnterSSA(currentCFG, tempNameGenerator);
 			this.methods.add(m);
 		}
@@ -591,8 +593,8 @@ public class HIRGenerator extends ASTVisitor
 	@Override
 	public void visitIf(If tree)
 	{
-		BasicBlock nextBB = currentCFG.createBasicBlock();
-		BasicBlock trueBB = currentCFG.createBasicBlock();
+		BasicBlock nextBB = currentCFG.createBasicBlock("if.end");
+		BasicBlock trueBB = currentCFG.createBasicBlock("if.true");
 		if (tree.elsepart == null)
 		{
 			translateBranch(Not(tree.cond), nextBB, trueBB);
@@ -601,7 +603,7 @@ public class HIRGenerator extends ASTVisitor
 		}
 		else
 		{
-			BasicBlock falseBB = currentCFG.createBasicBlock();
+			BasicBlock falseBB = currentCFG.createBasicBlock("if.false");
 
 			translateBranch(Not(TreeInfo.skipParens(tree.cond)), falseBB,
 			        trueBB);
@@ -679,9 +681,9 @@ public class HIRGenerator extends ASTVisitor
 	public void visitWhileLoop(WhileLoop tree)
 	{
 		BasicBlock headerBB, loopBB, nextBB;
-		headerBB = currentCFG.createBasicBlock();
-		loopBB = currentCFG.createBasicBlock();
-		nextBB = currentCFG.createBasicBlock();
+		headerBB = currentCFG.createBasicBlock("while.cond");
+		loopBB = currentCFG.createBasicBlock("while.body");
+		nextBB = currentCFG.createBasicBlock("while.end");
 
 		// add the target of break and continue into stack
 		pushBreak(nextBB);
@@ -721,9 +723,9 @@ public class HIRGenerator extends ASTVisitor
 	public void visitDoLoop(DoLoop tree)
 	{
 		BasicBlock loopBB, condBB, nextBB;
-		loopBB = currentCFG.createBasicBlock();
-		condBB = currentCFG.createBasicBlock();
-		nextBB = currentCFG.createBasicBlock();
+		loopBB = currentCFG.createBasicBlock("do.body");
+		condBB = currentCFG.createBasicBlock("do.cond");
+		nextBB = currentCFG.createBasicBlock("do.end");
 
 		pushBreak(nextBB);
 		pushContinue(condBB);
@@ -764,9 +766,9 @@ public class HIRGenerator extends ASTVisitor
 	public void visitForLoop(ForLoop tree)
 	{
 		BasicBlock nextBB, condBB, loopBB;
-		nextBB = currentCFG.createBasicBlock();
-		condBB = currentCFG.createBasicBlock();
-		loopBB = currentCFG.createBasicBlock();
+		nextBB = currentCFG.createBasicBlock("for.end");
+		condBB = currentCFG.createBasicBlock("for.cond");
+		loopBB = currentCFG.createBasicBlock("for.body");
 
 		pushBreak(nextBB);
 		pushContinue(condBB);
@@ -802,11 +804,11 @@ public class HIRGenerator extends ASTVisitor
 		/* if the block corresponding to target of this stmt is null, creating a
 		 * block to be associated with it. */
 		if (tree.target.corrBB == null)
-		    tree.target.corrBB = currentCFG.createBasicBlock();
+		    tree.target.corrBB = currentCFG.createBasicBlock(tree.label.toString());
 		genJump(tree.target.corrBB);
 
 		// starts a new basic block
-		startBasicBlock(currentCFG.createBasicBlock());
+		startBasicBlock(currentCFG.createBasicBlock(""));
 	}
 
 	/**
@@ -817,7 +819,8 @@ public class HIRGenerator extends ASTVisitor
 	{
 		/* if the block corresponding to labelled statement is null, creating a
 		 * block to be associated with it. */
-		if (tree.corrBB == null) tree.corrBB = currentCFG.createBasicBlock();
+		if (tree.corrBB == null)
+			tree.corrBB = currentCFG.createBasicBlock(tree.label.toString());
 		startBasicBlock(tree.corrBB);
 		tree.body.accept(this);
 	}
@@ -890,7 +893,7 @@ public class HIRGenerator extends ASTVisitor
 		appendInst(inst);
 		// goto the exit of current method.
 		genJump(currentCFG.exit());
-		startBasicBlock(currentCFG.createBasicBlock());
+		startBasicBlock(currentCFG.createBasicBlock(""));
 	}
 
 	/**
@@ -978,9 +981,9 @@ public class HIRGenerator extends ASTVisitor
 		Local t = createTemp(tree.cond.type);
 		Instruction t1, t2;
 		BasicBlock trueBB, falseBB, nextBB;
-		trueBB = currentCFG.createBasicBlock();
-		falseBB = currentCFG.createBasicBlock();
-		nextBB = currentCFG.createBasicBlock();
+		trueBB = currentCFG.createBasicBlock("cond.true");
+		falseBB = currentCFG.createBasicBlock("cond.false");
+		nextBB = currentCFG.createBasicBlock("cond.end");
 
 		translateBranch(tree.cond, trueBB, falseBB);
 
@@ -1478,9 +1481,9 @@ public class HIRGenerator extends ASTVisitor
 	{
 		BasicBlock nextBB, trueBB, falseBB;
 		Local t = createTemp(expr.type);
-		nextBB = currentCFG.createBasicBlock();
-		trueBB = currentCFG.createBasicBlock();
-		falseBB = currentCFG.createBasicBlock();
+		nextBB = currentCFG.createBasicBlock("branch.end");
+		trueBB = currentCFG.createBasicBlock("branch.true");
+		falseBB = currentCFG.createBasicBlock("banch.false");
 		
 		// do it
 		translateBranch(expr, trueBB, falseBB);

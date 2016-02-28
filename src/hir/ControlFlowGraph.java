@@ -25,7 +25,10 @@ public class ControlFlowGraph {
 	 * The id for instruction of cfg.
 	 */
 	private int instID = 0;
-    
+
+	private final int START_ID = -1;
+	private final int END_ID = 0;
+
     /**
      * Constructor that constructs an control flow graph.
      *  
@@ -34,13 +37,24 @@ public class ControlFlowGraph {
     public ControlFlowGraph(Method method) {
     
     	this.attachedMethod = method;
-    	this.startNode = BasicBlock.createStartNode();
-    	this.endNode = BasicBlock.createEndNode();
     	// id of basic block begin with one.
     	this.bb_counter = 1;
     	// id of quad begin with zero.
     	this.quad_counter = 0;
     }
+
+	public BasicBlock createStartNode()
+	{
+		this.startNode = BasicBlock.createStartNode(START_ID, "entry");
+		return startNode;
+	}
+
+	public BasicBlock createEndNode()
+	{
+		endNode = BasicBlock.createStartNode(END_ID, "exit");
+		return endNode;
+	}
+
     /** Get the new id of current instruction.*/
     public int getInstID(){return this.instID++;}
     
@@ -68,35 +82,17 @@ public class ControlFlowGraph {
     /**
      * Create a new basic block in this control flow graph.  The new basic block
      * is given a new, unique id id.
-     * 
-     * @param numOfPredecessors  id of predecessor basic blocks that this
-                                 basic block is expected to have.
-     * @param numOfSuccessors  id of successor basic blocks that this
-                               basic block is expected to have.
-     * @param numOfInstructions  id of instructions that this basic block
-                                 is expected to have.
+     *
+     * @param bbName The name of the basic block to be constructed.
      * @return  the newly created basic block.
      */
-    public BasicBlock createBasicBlock(int numOfPredecessors, 
-    		int numOfSuccessors, int numOfInstructions) {
+    public BasicBlock createBasicBlock(String bbName) {
         
-    	return BasicBlock.createBasicBlock
-    			(++bb_counter, numOfPredecessors, numOfSuccessors, numOfInstructions);
-    }
-    
-    /**
-     * Create a new basic block in this control flow graph.  The new basic block
-     * is given a new, unique id id.
-     * 
-     * @return  the newly created basic block.
-     */
-    public BasicBlock createBasicBlock() {
-        
-    	return BasicBlock.createBasicBlock(++bb_counter);
+    	return BasicBlock.createBasicBlock(bb_counter++, bbName);
     }
     
     /** Use with care after renumbering basic blocks. */
-    void updateBBcounter(int value) { bb_counter = value-1; }
+    void updateBBcounter(int value) { bb_counter = value; }
     
     /**
      * Returns a maximum on the id of basic blocks in this control flow graph.
