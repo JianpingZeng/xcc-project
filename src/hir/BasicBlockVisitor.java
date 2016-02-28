@@ -13,7 +13,7 @@ public interface BasicBlockVisitor {
 	/**
 	 * Visit a basic block.
 	 * 
-	 * @param bb
+	 * @param block
 	 *            basic block to visit
 	 */
 	void visitBasicBlock(BasicBlock bb);
@@ -25,7 +25,7 @@ public interface BasicBlockVisitor {
 		/**
 		 * Visit a basic block.
 		 * 
-		 * @param bb
+		 * @param block
 		 *            basic block to visit
 		 */
 		public void visitBasicBlock(BasicBlock bb) {
