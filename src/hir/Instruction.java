@@ -3,7 +3,9 @@ package hir;
 import ci.CiConstant;
 import ci.CiKind;
 import comp.OpCodes;
+import exception.SemanticError;
 import type.Type;
+import utils.Name;
 import utils.Utils;
 
 /**
@@ -49,7 +51,7 @@ public abstract class Instruction implements Cloneable
 	 * LLVM language reference manual</a> for detail.</p>
 	 * </p>
 	 */
-	public String name = null;
+	public Name name = null;
 	/**
 	 * Value numbering for entering SSA form.
 	 */
@@ -1345,6 +1347,30 @@ public abstract class Instruction implements Cloneable
 		}
 	}
 
+	public static class BR extends Branch
+	{
+		Instruction x;
+		BasicBlock trueTarget, falseTarget;
+
+		public BR(Instruction x, BasicBlock trueTarget, BasicBlock falseTarget)
+		{
+			super(CiKind.Illegal);
+			this.x = x;
+			this.trueTarget = trueTarget;
+			this.falseTarget = falseTarget;
+		}
+
+		/**
+		 * An interface for InstructionVisitor invoking.
+		 *
+		 * @param visitor The instance of InstructionVisitor.
+		 */
+		@Override public void accept(InstructionVisitor visitor)
+		{
+
+		}
+	}
+
 	public static abstract class IntCmp extends Branch
 	{
 		/**
@@ -1409,7 +1435,133 @@ public abstract class Instruction implements Cloneable
 			return falseTarget;
 		}
 	}
+	
+	public static abstract class Cmp extends Op2
+	{
+		Condition cond;
+		private Cmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+        {
+			super(kind, left, right);
+			this.cond = cond;
+        }
+		
+		/**
+		 * Creates a instance of different subclass served as different date type according 
+		 * to the date type.  
+		 * @param ty	The result date type.
+		 * @param left	The left operand.
+		 * @param right	the right operand.
+		 * @param cond	The condition object.
+		 * @return	According comparison instruction.
+		 */
+		public static Cmp instance(Type ty, Instruction left, 
+				Instruction right, Condition cond)
+		{
+			CiKind kind = HIRGenerator.type2Kind(ty);
+			if (ty.isIntLike())
+			{
+				return new ICmp(kind, left, right, cond);
+			}
+			else if (ty.equals(Type.LONGType))
+			{
+				return new LCmp(kind, left, right, cond);
+			}
+			else if (ty.equals(Type.FLOATType))
+			{
+				return new FCmp(kind, left, right, cond);
+			}
+			else if (ty.equals(Type.DOUBLEType))
+			{
+				return new DCmp(kind, left, right, cond);
+			}
+			else 
+			{
+				throw new SemanticError("Invalid type in creating cmp instruction.");
+			}
+		}
+		
+	}
+	
+	public static class ICmp extends Cmp
+	{
+		public ICmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+        {
+			super(kind, left, right, cond);
+        }
 
+		@Override
+        public void accept(InstructionVisitor visitor)
+        {
+	        
+        }
+		
+		@Override
+		public String toString()
+		{	
+		    return super.toString();
+		}
+	}
+
+	public static class LCmp extends Cmp
+	{
+		public LCmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+        {
+			super(kind, left, right, cond);
+        }
+
+		@Override
+        public void accept(InstructionVisitor visitor)
+        {
+	        
+        }
+		
+		@Override
+		public String toString()
+		{	
+		    return super.toString();
+		}
+	}
+	
+	public static class FCmp extends Cmp
+	{
+		public FCmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+        {
+			super(kind, left, right, cond);
+        }
+
+		@Override
+        public void accept(InstructionVisitor visitor)
+        {
+	        
+        }
+		
+		@Override
+		public String toString()
+		{	
+		    return super.toString();
+		}
+	}
+	
+	public static class DCmp extends Cmp
+	{
+		public DCmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+        {
+			super(kind, left, right, cond);
+        }
+
+		@Override
+        public void accept(InstructionVisitor visitor)
+        {
+	        
+        }
+		
+		@Override
+		public String toString()
+		{	
+		    return super.toString();
+		}
+	}
+	
 	public static final class IfCmp_LT extends IntCmp
 	{
 		public IfCmp_LT(Instruction x, Instruction y, BasicBlock trueTarget,
@@ -1726,15 +1878,14 @@ public abstract class Instruction implements Cloneable
 	public static class Phi extends Instruction
 	{
 		/**
-		 * The parameters list of Phi assignment.
-		 */
-		public Instruction[] args;
-
-		/**
 		 * The derived basic block from owned inputed parameter of this Phi
 		 * assignment.
-		 */
-		public BasicBlock[] derivedBlocks;
+		 * 
+		 * The parameters list of Phi assignment.
+		 */	
+		private ArgBlockPair[] inputs;
+		
+		private int currIndex = 0;
 
 		/**
 		 * Constructs a new Phi-function instruction.
@@ -1749,19 +1900,110 @@ public abstract class Instruction implements Cloneable
 				BasicBlock[] blocks)
 		{
 			super(kind);
-			this.args = args;
-			this.derivedBlocks = blocks;
+			assert args.length == blocks.length;
+			inputs = new ArgBlockPair[args.length];
+			for (int idx = 0; idx < args.length; idx++)
+				inputs[idx] = new ArgBlockPair(args[idx], blocks[idx]);			
 		}
+		
+		public Phi(CiKind kind, int length)
+        {
+			super(kind);
+			this.inputs = new ArgBlockPair[length];
+        }
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override 
+		public void accept(InstructionVisitor visitor)
 		{
-
+			visitor.visitPhi(this);
 		}
 
+		/**
+		 * Appends a pair that consists of both value and block into argument list.
+		 * @param value	The instruction that phi parameter to be inserted
+		 * @param block	The according block of corresponding phi parameter.
+		 */
+		public void addIncoming(Instruction value, BasicBlock block)
+		{
+			if (value != null && block != null && currIndex < inputs.length)
+			{
+				
+				this.inputs[currIndex++] = new ArgBlockPair(value, block);
+			}
+		}
+		
+		/**
+		 * Gets the inputed parameter at given position.
+		 * @param index	The position where input parameter will be obtained.
+		 * @return	The input parameter at specified position.
+		 */
+		public Instruction getParameter(int index)
+		{
+			assert index >= 0 && index < inputs.length 
+					: "The index is beyond out the size of list";
+			return inputs[index].arg;
+		}
+		/**
+		 * Gets the input block at given position.
+		 * @param index	The position where input block will be obtained.
+		 * @return	The input block at specified position.
+		 */
+		public BasicBlock getBB(int index)
+		{
+			assert index >= 0 && index < inputs.length
+					: "The index is beyond out the size of list";
+			return inputs[index].block;
+		}
+		
+		/**
+		 * Updates the input argument at given position.
+		 * @param index	The index into argument to be updated.
+		 * @param value	
+		 */
+		public void setParameter(int index, Instruction value)
+		{
+			assert index >= 0 && index < inputs.length
+					: "The index is beyond out the size of list";
+			
+			ArgBlockPair old = inputs[index];
+			old.arg = value;
+			inputs[index] =  old;
+		}
+		
+		/**
+		 * Updates the input block at given position.
+		 * @param index	The index into block to be updated.
+		 * @param block
+		 */
+		public void setBlock(int index, BasicBlock block)
+		{
+			assert index >= 0 && index < inputs.length
+					: "The index is beyond out the size of list";
+			
+			ArgBlockPair old = inputs[index];
+			old.block = block;
+			inputs[index] = old;
+		}
+		
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
+		}
+		
+		/**
+		 * This class for a pair of phi parameter and according block.
+		 * @author Jianping Zeng <z1215jping@hotmail.com>
+		 */
+		public static class ArgBlockPair 
+		{
+			public Instruction arg;
+			public BasicBlock block;
+			
+			public ArgBlockPair(Instruction arg, BasicBlock block)
+			{
+				this.arg = arg;
+				this.block = block;
+			}
 		}
 	}
 
@@ -1907,7 +2149,7 @@ public abstract class Instruction implements Cloneable
 		 */
 		public Alloca memAddr;
 
-		public Var(CiKind kind, String name)
+		public Var(CiKind kind, Name name)
 		{
 			super(kind);
 			this.name = name;
@@ -1948,7 +2190,7 @@ public abstract class Instruction implements Cloneable
 		 * @param kind       The kind of inst type.
 		 * @param name The name postfix of to being yielded.
 		 */
-		public Local(CiKind kind, String name)
+		public Local(CiKind kind, Name name)
 		{
 			super(kind, name);
 		}

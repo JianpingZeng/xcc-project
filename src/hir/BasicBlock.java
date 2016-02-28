@@ -55,7 +55,7 @@ public class BasicBlock
 	/**
 	 * The name of this block.
 	 */
-	private final String bbName;
+	public String bbName;
 
 	/**
 	 * A private constructor for entry node

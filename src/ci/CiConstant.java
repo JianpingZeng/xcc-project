@@ -314,6 +314,24 @@ public final class CiConstant extends CiValue {
     }
 
     /**
+     * Gets the one with different data type.
+     * @param kind  The kind of data type.
+     * @return  The one for different data type.
+     */
+    public static CiConstant getOne(CiKind kind)
+    {
+        // Checkstyle: stop
+        switch (kind) {
+            case Int: return INT_1;
+            case Long: return LONG_1;
+            case Float: return FLOAT_1;
+            case Double: return DOUBLE_1;
+        }
+        // Checkstyle: resume
+        throw new IllegalArgumentException("Cannot get default CiConstant for kind " + kind);
+    }
+
+    /**
      * Gets the default value for a given kind.
      *
      * @return the default value for {@code kind}'s {@linkplain CiKind#stackKind() stack kind}
