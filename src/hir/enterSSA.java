@@ -1,10 +1,10 @@
 package hir;
 
-import hir.HIRGenerator.TempNameGenerator;
-import jdk.internal.org.objectweb.asm.tree.analysis.Value;
+import exception.MemoryPromoteError;
+import hir.Instruction.Alloca;
 
-import java.util.HashMap;
-import java.util.List;
+import javax.swing.text.html.parser.DTD;
+import java.util.ArrayList;
 import java.util.ListIterator;
 
 /**
@@ -13,44 +13,72 @@ import java.util.ListIterator;
  * instruction into IR in SSA form.
  * </p>
  * <p>
- * The method this class taken is derived from Matthias
- * Braun(matthias.braun@kit.edu)' literature,Simple and Efficient Construction
- * of Static Single Assignment Form.
+ * brief Promote the specified list of alloca instructions into scalar
+ * registers, inserting PHI nodes as appropriate.
+ *
+ * This function makes use of DominanceFrontier information.  This function
+ * does not modify the CFG of the function at all.  All allocas must be from
+ * the same function.
  * </p>
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/26.
  */
 public class EnterSSA
 {
-	private HashMap<BasicBlock, ValueMap> valueMaps;
-	/**
-	 * The size of valeuMaps by default.
-	 */
-	private final int defaultSize = 10;
-	private ControlFlowGraph cfg;
-
-	private GlobalValueNumber gvn;
+	private Method m;
 
 	/**
-	 * For numbering at value numbering.
+	 * Statistics the number of alloca instruction has been promoted finished.
 	 */
-	private volatile int id = 0;
-	/**
-	 * The list of basic block in order that first insertion first visited.
-	 */
-	private List<BasicBlock> preorderBlocks;
+	private int NumPromoted = 0;
 
-	private TempNameGenerator indexer;
-
-	public EnterSSA(ControlFlowGraph cfg, TempNameGenerator indexer)
+	public EnterSSA(Method m)
 	{
-		this.cfg = cfg;
-		this.indexer = indexer;
-		this.valueMaps = new HashMap<>(defaultSize);
-		preorderBlocks = cfg.reversePostOrder();
-		gvn = new GlobalValueNumber();
-		enter();
+		this.m = m;
+		runPromotion();
 	}
 
+	private void runPromotion()
+	{
+		// gets the entry block of given function.
+		BasicBlock entry = m.getEntryBlock();
+		boolean changed = false;
+
+		DominatorTree DT = new DominatorTree(false, m);
+		ArrayList<Alloca> allocas = new ArrayList<>();
+		while(true)
+		{
+			allocas.clear();
+
+			// find alloca instruction that are safe to promote,
+			// by looking at all instructions in the entry block.
+			 ListIterator<Instruction> itr = entry.iterator();
+			while(itr.hasNext())
+			{
+				Instruction inst = itr.next();
+				if (inst instanceof Alloca)
+					if (((Alloca)inst).isAllocaPromoteable())
+						allocas.add((Alloca)inst);
+			}
+			if (allocas.isEmpty())
+				break;
+
+			promoteToReg(allocas, DT);
+			NumPromoted += allocas.size();
+			changed = true;
+		}
+
+		if (!changed)
+		{
+			throw new MemoryPromoteError("Promotion of memory to register failured.");
+		}
+	}
+
+	private void promoteToReg(ArrayList<Alloca> allocas, DominatorTree DT)
+	{
+
+	}
+
+	/**
 	private void enter()
 	{
 		// performs algorithm iterating over list of blocks in reverse postorder
@@ -61,11 +89,13 @@ public class EnterSSA
 			gvn.tranform(currBB);
 		}
 	}
+*/
 
 	/**
 	 * An internal class for global value numbering for transforming traditional
 	 * instruction into SSA form.
 	 */
+	/*
 	private class GlobalValueNumber extends InstructionVisitor
 	{
 		private BasicBlock currentBlock;
@@ -74,7 +104,7 @@ public class EnterSSA
 		 * Constructor.
 		 *
 		 * @param block The current block.
-		 */
+
 		public void tranform(BasicBlock block)
 		{
 			this.currentBlock = block;
@@ -462,11 +492,6 @@ public class EnterSSA
 			visitInstruction(inst);
 		}
 		@Override
-		public void visitLocal(Instruction.Local inst)
-		{
-			visitInstruction(inst);
-		}
-		@Override
 		public void visitStoreInst(Instruction.StoreInst inst)
 		{
 			visitInstruction(inst);
@@ -479,6 +504,5 @@ public class EnterSSA
 
 		}
 	}
-
-
+	**/
 }

@@ -21,7 +21,6 @@ import type.TypeTags;
 import utils.Context;
 import utils.Log;
 import utils.Name;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -455,7 +454,7 @@ public class HIRGenerator extends ASTVisitor
 			// appends current block into the predecessor list of exit block.
 			exit.addPredecessor(currentBlock);
 
-			new EnterSSA(currentCFG, tempNameGenerator);
+			new EnterSSA(m);
 			this.methods.add(m);
 		}
 	}
@@ -465,6 +464,8 @@ public class HIRGenerator extends ASTVisitor
 	 * for its alloca instruction according to name.
 	 */
 	private HashMap<Name, Alloca> NameValues = new HashMap<>();
+
+	private Alloca lastAllocaInst = null;
 	
 	/**
 	 * Allocate a local variable at execution stack of current function with
@@ -484,8 +485,14 @@ public class HIRGenerator extends ASTVisitor
 		// associte its local with variable symbol
 		var.sym.varInst = inst;
 		NameValues.put(var.name, inst);
-		
-		entry.appendQuad(inst);
+
+		int index = entry.indexOf(inst);
+		if (index < 0 || index == entry.size() - 1)
+			entry.appendQuad(inst);
+		else
+			entry.addInstruction(inst, index + 1);
+
+		lastAllocaInst = inst;
 		return inst;
 	}
 
@@ -1688,8 +1695,9 @@ public class HIRGenerator extends ASTVisitor
 			this.exprResult = translateRelative(tree);
 			return;
 		}
-		Instruction lhs = genExpr(tree.lhs);
+
 		Instruction rhs = genExpr(tree.rhs);
+		Instruction lhs = genExpr(tree.lhs);
 
 		this.exprResult = genBin(tree.type, tree.pos, tree.tag, lhs, rhs);
 	}
@@ -1697,35 +1705,50 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction translateIncrement(Unary expr)
 	{
 		Instruction res = genExpr(expr);
+		if (res == null || res.name == null)
+		{
+			log.error(expr.pos, "The left hand of '=' must be a left-value");
+			return null;
+		}
 		try
 		{
 			Instruction temp = res.clone();
+			Instruction ret = null;
+			Instruction incre = null;
 			switch (expr.tag)
 			{
 				case Tree.PREDEC:
-					res = genBin(expr.type, expr.pos, Tree.MINUS, res,
+					incre = genBin(expr.type, expr.pos, Tree.MINUS, res,
 							new Constant(CiConstant.INT_1));
-					this.exprResult = res;
-					return res;
+					ret = incre;
+					break;
 				case Tree.PREINC:
-					res = genBin(expr.type, expr.pos, Tree.PLUS, res,
+					incre = genBin(expr.type, expr.pos, Tree.PLUS, res,
 							new Constant(CiConstant.INT_1));
-					this.exprResult = res;
-					return res;
-
+					ret = incre;
+					break;
 				case Tree.POSTDEC:
-					res = genBin(expr.type, expr.pos, Tree.MINUS, res,
-							new Constant(CiConstant.INT_1));
-					this.exprResult = temp;
-					return temp;
+					incre = genBin(expr.type, expr.pos, Tree.MINUS,
+							res, new Constant(CiConstant.INT_1));
+					ret = temp;
+					break;
 				case Tree.POSTINC:
-					res = genBin(expr.type, expr.pos, Tree.PLUS, res,
+					incre = genBin(expr.type, expr.pos, Tree.PLUS, res,
 							new Constant(CiConstant.INT_1));
-					this.exprResult = temp;
-					return temp;
+					ret = temp;
+					break;
 				default:
 					return null;
 			}
+			Alloca addr = NameValues.get(res.name);
+			if (addr == null)
+			{
+				log.error(expr.pos, "Unknow variable name " + res.name.toString());
+				return null;
+			}
+			// store decrement result into target address
+			genStore(incre, addr);
+			return ret;
 		}
 		catch (CloneNotSupportedException e)
 		{
@@ -1851,7 +1874,7 @@ public class HIRGenerator extends ASTVisitor
 	 * a variable into a temporary virtual variable.
 	 *
 	 * @param src    The source instruction that will be loaded into target.
-	 * @return Return the {@code LoadInst} that load value from {@link src}
+	 * @return Return the {@code LoadInst} that load value from src
 	 */
 	private Instruction genLoadInstruction(Alloca src)
 	{

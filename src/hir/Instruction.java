@@ -82,6 +82,7 @@ public abstract class Instruction implements Cloneable
 
 	@Override public Instruction clone() throws CloneNotSupportedException
 	{
+		super.clone();
 		throw new CloneNotSupportedException();
 	}
 
@@ -160,7 +161,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitADD_I(this);
 		}
 
 		@Override public String toString()
@@ -183,7 +184,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSUB_I(this);
 		}
 
 		@Override public String toString()
@@ -206,7 +207,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMUL_I(this);
 		}
 
 		@Override public String toString()
@@ -229,7 +230,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitDIV_I(this);
 		}
 
 		@Override public String toString()
@@ -252,7 +253,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMOD_I(this);
 		}
 
 		@Override public String toString()
@@ -275,7 +276,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitAND_I(this);
 		}
 
 		@Override public String toString()
@@ -298,7 +299,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitOR_I(this);
 		}
 
 		@Override public String toString()
@@ -321,7 +322,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitXOR_I(this);
 		}
 
 		@Override public String toString()
@@ -344,7 +345,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSHL_I(this);
 		}
 
 		@Override public String toString()
@@ -367,7 +368,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSHR_I(this);
 		}
 
 		@Override public String toString()
@@ -395,7 +396,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitUSHR_I(this);
 		}
 
 		@Override public String toString()
@@ -418,7 +419,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitADD_L(this);
 		}
 
 		@Override public String toString()
@@ -441,7 +442,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSUB_L(this);
 		}
 
 		@Override public String toString()
@@ -464,7 +465,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMUL_L(this);
 		}
 
 		@Override public String toString()
@@ -487,7 +488,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitDIV_L(this);
 		}
 
 		@Override public String toString()
@@ -510,7 +511,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMOD_L(this);
 		}
 
 		@Override public String toString()
@@ -533,7 +534,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitAND_L(this);
 		}
 
 		@Override public String toString()
@@ -556,7 +557,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitOR_L(this);
 		}
 
 		@Override public String toString()
@@ -579,7 +580,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitXOR_L(this);
 		}
 
 		@Override public String toString()
@@ -602,7 +603,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSHL_L(this);
 		}
 
 		@Override public String toString()
@@ -625,7 +626,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSHR_L(this);
 		}
 
 		@Override public String toString()
@@ -653,7 +654,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitUSHR_L(this);
 		}
 
 		@Override public String toString()
@@ -676,7 +677,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitADD_F(this);
 		}
 
 		@Override public String toString()
@@ -699,7 +700,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSUB_F(this);
 		}
 
 		@Override public String toString()
@@ -722,7 +723,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMUL_F(this);
 		}
 
 		@Override public String toString()
@@ -745,7 +746,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitDIV_F(this);
 		}
 
 		@Override public String toString()
@@ -768,7 +769,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMOD_F(this);
 		}
 
 		@Override public String toString()
@@ -791,7 +792,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitADD_D(this);
 		}
 
 		@Override public String toString()
@@ -814,7 +815,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitSUB_D(this);
 		}
 
 		@Override public String toString()
@@ -837,7 +838,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMUL_D(this);
 		}
 
 		@Override public String toString()
@@ -860,7 +861,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitDIV_D(this);
 		}
 
 		@Override public String toString()
@@ -883,7 +884,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitMOD_D(this);
 		}
 
 		@Override public String toString()
@@ -911,7 +912,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitNEG_I(this);
 		}
 
 		@Override public int valueNumber()
@@ -934,7 +935,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitNEG_F(this);
 		}
 
 		@Override public int valueNumber()
@@ -957,8 +958,9 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitNEG_L(this);
 		}
+
 		@Override public int valueNumber()
 		{
 			return Utils.hash1(OpCodes.lneg, x);
@@ -980,7 +982,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitNEG_D(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1003,7 +1005,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitINT_2LONG(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1025,7 +1027,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitINT_2FLOAT(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1048,7 +1050,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitINT_2DOUBLE(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1071,7 +1073,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitLONG_2INT(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1093,7 +1095,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitLONG_2FLOAT(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1116,7 +1118,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitLONG_2DOUBLE(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1138,7 +1140,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitFLOAT_2INT(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1160,7 +1162,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitFLOAT_2LONG(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1183,7 +1185,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitFLOAT_2DOUBLE(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1206,7 +1208,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitDOUBLE_2INT(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1229,7 +1231,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitDOUBLE_2LONG(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1252,7 +1254,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitDOUBLE_2FLOAT(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1275,7 +1277,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitINT_2BYTE(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1298,7 +1300,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitINT_2CHAR(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1321,7 +1323,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitINT_2SHORT(this);
 		}
 		@Override public int valueNumber()
 		{
@@ -1367,7 +1369,7 @@ public abstract class Instruction implements Cloneable
 		 */
 		@Override public void accept(InstructionVisitor visitor)
 		{
-
+			visitor.visitBR(this);
 		}
 	}
 
@@ -1492,7 +1494,7 @@ public abstract class Instruction implements Cloneable
 		@Override
         public void accept(InstructionVisitor visitor)
         {
-	        
+	        visitor.visitICmp(this);
         }
 		
 		@Override
@@ -1512,7 +1514,7 @@ public abstract class Instruction implements Cloneable
 		@Override
         public void accept(InstructionVisitor visitor)
         {
-	        
+	        visitor.visitLCmp(this);
         }
 		
 		@Override
@@ -1532,7 +1534,7 @@ public abstract class Instruction implements Cloneable
 		@Override
         public void accept(InstructionVisitor visitor)
         {
-	        
+	        visitor.visitFCmp(this);
         }
 		
 		@Override
@@ -1552,7 +1554,7 @@ public abstract class Instruction implements Cloneable
 		@Override
         public void accept(InstructionVisitor visitor)
         {
-	        
+	        visitor.visitDCmp(this);
         }
 		
 		@Override
@@ -1582,13 +1584,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
-
+			visitor.visitIfCmp_LT(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1613,13 +1613,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
-
+			visitor.visitIfCmp_LE(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1644,13 +1642,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
-
+			visitor.visitIfCmp_GT(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1675,12 +1671,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitIfCmp_GE(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1705,12 +1700,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitIfCmp_EQ(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1735,12 +1729,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
+			visitor.visitIfCmp_NEQ(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1771,12 +1764,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-
+			visitor.visitGoto(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1814,13 +1806,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-			// TODO Auto-generated method stub
-
+			visitor.visitReturn(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1859,12 +1849,11 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-
+			visitor.visitInvoke(this);
 		}
 
 		@Override public String toString()
 		{
-			// TODO Auto-generated method stub
 			return null;
 		}
 	}
@@ -1891,7 +1880,6 @@ public abstract class Instruction implements Cloneable
 		 * Constructs a new Phi-function instruction.
 		 *
 		 * @param kind   The kind of result.
-		 * @param result The return result of this instruction.
 		 * @param args   The input arguments.
 		 * @param blocks The one of which basic block array is corresponding to
 		 *               an input argument.
@@ -2117,7 +2105,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-
+			visitor.visitConstant(this);
 		}
 	}
 
@@ -2134,7 +2122,17 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
+			visitor.visitAlloca(this);
+		}
 
+		/**
+		 * Determine whether this alloca instruction is promoted into
+		 * register or not?
+		 * @return  Return true if it is pormotable.
+		 */
+		public boolean isAllocaPromoteable()
+		{
+			return false;
 		}
 	}
 
@@ -2237,7 +2235,7 @@ public abstract class Instruction implements Cloneable
 
 		@Override public void accept(InstructionVisitor visitor)
 		{
-
+			visitor.visitStoreInst(this);
 		}
 	}
 
@@ -2260,7 +2258,7 @@ public abstract class Instruction implements Cloneable
 		@Override
 		public void accept(InstructionVisitor visitor)
 		{
-
+			visitor.visitLoadInst(this);
 		}
 	}
 }
