@@ -408,6 +408,16 @@ public abstract class InstructionVisitor
 		visitInstruction(inst);
 	}
 
+	public void visitBR(BR inst) {visitInstruction(inst);}
+
+	public void visitICmp(ICmp inst){visitInstruction(inst);}
+
+	public void visitLCmp(LCmp inst){visitInstruction(inst);}
+
+	public void visitFCmp(FCmp inst){visitInstruction(inst);}
+
+	public void visitDCmp(DCmp inst){visitInstruction(inst);}
+
 	public void visitIfCmp_LT(IfCmp_LT inst)
 	{
 		visitInstruction(inst);
@@ -464,11 +474,6 @@ public abstract class InstructionVisitor
 	}
 
 	public void visitAlloca(Alloca inst)
-	{
-		visitInstruction(inst);
-	}
-
-	public void visitLocal(Local inst)
 	{
 		visitInstruction(inst);
 	}

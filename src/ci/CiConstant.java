@@ -4,7 +4,7 @@ package ci;
  * Represents a constant (boxed) value, such as an integer, floating point number, 
  * or object reference, within the compiler and across the compiler/runtime interface. 
  * Exports a set of {@code CiConstant}instances that represent frequently used 
- * constant values, such as {@link #ZERO}.
+ * constant values, such as ZERO.
  */
 public final class CiConstant extends CiValue {
 
@@ -334,7 +334,7 @@ public final class CiConstant extends CiValue {
     /**
      * Gets the default value for a given kind.
      *
-     * @return the default value for {@code kind}'s {@linkplain CiKind#stackKind() stack kind}
+     * @return the default value for {@code kind}.
      */
     public static CiConstant defaultValue(CiKind kind) {
         // Checkstyle: stop

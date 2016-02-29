@@ -180,6 +180,17 @@ public class BasicBlock
 	}
 
 	/**
+	 * Gets the index into instructions list. Return -1 if instruction no contains
+	 * specified inst. Otherwise, return the index of first occurrence.
+	 * @param inst
+	 * @return
+	 */
+	public int indexOf(Instruction inst)
+	{
+		if (inst == null) return -1;
+		return instructions.indexOf(inst);
+	}
+	/**
 	 * Returns the id of quads in this basic block.
 	 *
 	 * @return the id of quads in this basic block.
@@ -198,14 +209,9 @@ public class BasicBlock
 
 	public Instruction getLastQuad()
 	{
-		if (size() == 0)
+		if (instructions.isEmpty())
 			return null;
 		return instructions.get(instructions.size() - 1);
-	}
-
-	public int getQuadIndex(Instruction q)
-	{
-		return instructions == null ? -1 : instructions.indexOf(q);
 	}
 
 	public Instruction removeQuad(int i)
@@ -230,10 +236,12 @@ public class BasicBlock
 	 * @param index the index to add the quad
 	 * @param q     quad to add
 	 */
-	public void addQuad(Instruction q, int index)
+	public void addInstruction(Instruction q, int index)
 	{
-		assert (instructions
-				!= null) : "Cannot add instructions to entry/exit basic block";
+		assert (q != null) : "Cannot add null instruction to block";
+		assert (index >= 0 && index < instructions.size()):
+				"The index into insertion of gieven inst is bound out.";
+
 		instructions.add(index, q);
 	}
 
@@ -245,8 +253,7 @@ public class BasicBlock
 	 */
 	public void appendQuad(Instruction q)
 	{
-		assert (instructions
-				!= null) : "Cannot add instructions to entry/exit basic block";
+		assert (q != null) : "Cannot add null instructions to block";
 		instructions.add(q);
 	}
 
@@ -255,8 +262,7 @@ public class BasicBlock
 	 */
 	public void replaceQuad(int pos, Instruction q)
 	{
-		assert (instructions
-				!= null) : "Cannot add instructions to entry/exit basic block";
+		assert (q != null) : "Cannot add null instructions to block";
 		instructions.set(pos, q);
 	}
 
@@ -268,8 +274,7 @@ public class BasicBlock
 	 */
 	public void addPredecessor(BasicBlock b)
 	{
-		assert (predecessors
-				!= null) : "Cannot add predecessor to entry basic block";
+		assert (b != null) : "Cannot add null block into predecessor list";
 		predecessors.add(b);
 	}
 
@@ -281,57 +286,8 @@ public class BasicBlock
 	 */
 	public void addSuccessor(BasicBlock b)
 	{
-		assert successors != null : "Cannot add successor to exit basic block";
+		assert (b != null) : "Cannot add null block into successor list";
 		successors.add(b);
-	}
-
-	public boolean removePredecessor(BasicBlock bb)
-	{
-		assert predecessors
-				!= null : "Cannot remove predecessor from entry basic block";
-		return predecessors.remove(bb);
-	}
-
-	public void removePredecessor(int i)
-	{
-		assert predecessors
-				!= null : "Cannot remove predecessor from entry basic block";
-		predecessors.remove(i);
-	}
-
-	public boolean removePredecessors(Collection<BasicBlock> bb)
-	{
-		assert predecessors
-				!= null : "Cannot remove predecessor from entry basic block";
-		return predecessors.removeAll(bb);
-	}
-
-	public boolean removeSuccessor(BasicBlock bb)
-	{
-		assert successors
-				!= null : "Cannot remove successor from exit basic block";
-		return successors.remove(bb);
-	}
-
-	public void removeSuccessor(int i)
-	{
-		assert successors
-				!= null : "Cannot remove successor from exit basic block";
-		successors.remove(i);
-	}
-
-	public void removeAllPredecessors()
-	{
-		assert predecessors
-				!= null : "Cannot remove predecessors from entry basic block";
-		predecessors.clear();
-	}
-
-	public void removeAllSuccessors()
-	{
-		assert successors
-				!= null : "Cannot remove successors from exit basic block";
-		successors.clear();
 	}
 
 	public int getNumberOfSuccessors()

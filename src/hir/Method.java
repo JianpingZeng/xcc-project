@@ -120,4 +120,19 @@ public class Method
 	 */
 	public Signature signature() {return sign;}
 
+	/**
+	 * Gets the entry block of the CFG of this function.
+	 */
+	public BasicBlock getEntryBlock()
+	{
+		return this.cfg.entry();
+	}
+
+	/**
+	 * Gets the entry block of the CFG of this function.
+	 */
+	public BasicBlock getExitBlock()
+	{
+		return this.cfg.exit();
+	}
 }
