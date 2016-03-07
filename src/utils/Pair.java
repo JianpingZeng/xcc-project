@@ -9,11 +9,11 @@ package utils;
 /**
  * A generic class for pairs.
  */
-public class Pair {
-    public final Object fst;
-    public final Object snd;
+public class Pair<K, V> {
+    public final K fst;
+    public final V snd;
 
-    public Pair(Object fst, Object snd) {
+    public Pair(K fst, V snd) {
         super();
         this.fst = fst;
         this.snd = snd;

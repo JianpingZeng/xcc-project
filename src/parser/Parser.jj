@@ -992,30 +992,36 @@ Tree switch_statement():
     }
 }
 
-List<Tree> switchBlockStatementGroups():
+List<Case> switchBlockStatementGroups():
 {
-	List<Tree> cases = new ArrayList<Tree>();
+	List<Case> cases = new ArrayList<Case>();
 	Tree pat;
 	List<Tree> stmts;
+	ArrayList<Tree> values = new ArrayList<>();
 	int pos;
 }
 {
-	(
-		( t = <CASE> { pos = position(); } 
-	 	pat = expression() ":"
-			{
-				
-			}
-		| t = <DEFAULT_> { pos = position(); } ":"
-			{
-				pat = null;
-			}
-		)
-		stmts = blockStatement()
-		{
-			cases.add(F.at(pos).Case(pat, stmts));
-		}
-	)*
+    (
+        ( t = <CASE> { pos = position(); }
+        pat = expression() ":"
+            {
+                values.add(pat);
+            }
+        )+
+        stmts = blockStatement()
+        {
+            cases.add(F.at(pos).Case(values, stmts));
+        }
+    )*
+    [
+        t = <DEFAULT_> { pos = position(); } ":"
+            {
+            }
+        stmts = blockStatement()
+        {
+            cases.add(F.at(pos).Case(values, stmts));
+        }
+    ]
 	{	
 		return cases;
 	}

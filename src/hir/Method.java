@@ -6,13 +6,14 @@ import type.ArrayType;
 import type.Type;
 import ast.Tree;
 import type.TypeTags;
+import java.util.Iterator;
 
 /**
  * This class is representation at the HIR(high-level IR) of a function or method.
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 2016年2月2日 下午9:10:07 
  */
-public class Method
+public class Method implements Iterable<BasicBlock>
 {
 	private Signature sign;
 	/**
@@ -25,6 +26,12 @@ public class Method
 	 * and  parameter list. 
 	 */
 	public MethodDef m;
+
+	/**
+	 * For the function return value, it is null iff there is no return value
+	 * of this function.
+	 */
+	public Instruction.Alloca ReturnValue;
 	
 	public Method(MethodDef m)
     {
@@ -134,5 +141,16 @@ public class Method
 	public BasicBlock getExitBlock()
 	{
 		return this.cfg.exit();
+	}
+
+	/**
+	 * Returns an iterator over elements of type {@code T}.
+	 *
+	 * @return an Iterator.
+	 */
+	@Override
+	public Iterator<BasicBlock> iterator()
+	{
+		return this.cfg.reversePostOrder().iterator();
 	}
 }

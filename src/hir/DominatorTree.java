@@ -2,12 +2,11 @@ package hir;
 
 import java.util.*;
 
-import ast.Tree;
 import utils.Pair;
 
 /**
  * This file defines the DominatorTree class, which provides fast and efficient
- * dominance construction and queries.
+ * dominance construction and queries according to Lengauer-Tarjan algorithm.
  *
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/29.
  */
@@ -16,10 +15,20 @@ public class DominatorTree
 	/**
 	 * This class for defining actual dominator tree node.
 	 */
-	public static class DomTreeNode
+	public static class DomTreeNode implements Iterable<DomTreeNode>
 	{
+		/**
+		 * The corresponding basic block of this dominator tree node.
+		 */
 		private BasicBlock block;
+
+		/**
+		 * Immediate dominator.
+		 */
 		private DomTreeNode IDom;
+		/**
+		 * All of child node.
+		 */
 		private ArrayList<DomTreeNode> children;
 
 		private int DFSNumIn = -1;
@@ -52,6 +61,15 @@ public class DominatorTree
 		public ArrayList<DomTreeNode> getChildren()
 		{
 			return children;
+		}
+
+		@Override
+		public Iterator<DomTreeNode> iterator()
+		{
+			if (children == null)
+				return Collections.<DomTreeNode>emptyIterator();
+			else
+				return children.iterator();
 		}
 
 		public DomTreeNode(BasicBlock bb, DomTreeNode IDom)
@@ -216,7 +234,7 @@ public class DominatorTree
 		return dominateBySlowTreeWalk(A, B);
 	}
 
-	private boolean dominates(BasicBlock A, BasicBlock B)
+	public boolean dominates(BasicBlock A, BasicBlock B)
 	{
 		DomTreeNode first = DomTreeNodes.get(A);
 		DomTreeNode second = DomTreeNodes.get(B);
@@ -277,9 +295,8 @@ public class DominatorTree
 
 	/**
 	 * Recaculate - compute a dominator tree for the given function.
-	 * @param m The method to be computed.
 	 */
-	public void recaculate(Method m)
+	public void recalculate()
 	{
 		this.Vertex = new BasicBlock[m.cfg.getNumberOfBasicBlocks()];
 		if (!IsPostDominators)
@@ -299,10 +316,13 @@ public class DominatorTree
 			DomTreeNodes.put(exit, null);
 
 			// 需要修改
-			caculate();
+			//caculate();
 		}
 	}
 
+	/**
+	 * An actual calculation of dominator tree method.
+	 */
 	private void caculate()
 	{
 		boolean multipleRoots = this.roots.size() > 1;
@@ -316,32 +336,36 @@ public class DominatorTree
 
 		// Step #1: Number blocks in depth-first order and initialize variables
 		// used in later stages of the algorithm.
-		for (int idx  = 0; idx < roots.size(); idx++)
-			N = DFS(roots.get(idx), N);
+		for (BasicBlock block : roots)
+				N = DFS(block, N);
 
 		// When naively implemented, the Lengauer-Tarjan algorithm requires a separate
 		// bucket for each vertex. However, this is unnecessary, because each vertex
 		// is only placed into a single bucket (that of its semidominator), and each
 		// vertex's bucket is processed before it is added to any bucket itself.
 		//
-		// Instead of using a bucket per vertex, we use a single array Buckets that
+		// Instead of using a bucket per all vertexes, we use a single array Buckets that
 		// has two purposes. Before the vertex V with preorder number i is processed,
 		// Buckets[i] stores the index of the first element in V's bucket. After V's
 		// bucket is processed, Buckets[i] stores the index of the next element in the
 		// bucket containing V, if any.
-		ArrayList<Integer> buckets = new ArrayList<>(N + 1);
+		int[] buckets = new int[N + 1];
 		for (int idx = 1; idx <= N; idx++)
-			buckets.set(idx, idx);
+			buckets[idx] = idx;
 
+		// process all vertex one by one in decreasing order
 		for (int i = N; i >= 2; --i)
 		{
+			// the block with number i
 			BasicBlock WBlock = Vertex[i];
+
+			// the InfoRec of current block
 			InfoRecord WInfo = this.info.get(WBlock);
 
 			// Step #2: Implicitly define the immediate dominator of vertices
-			for(int j = i; buckets.get(j) != i; j = buckets.get(i))
+			for(int j = i; buckets[j] != i; j = buckets[i])
 			{
-				BasicBlock V = this.Vertex[buckets.get(j)];
+				BasicBlock V = this.Vertex[buckets[j]];
 				BasicBlock U = eval(V, i + 1);
 				this.IDoms.put(V, this.info.get(U).semi < i ? U :WBlock);
 			}
@@ -350,7 +374,7 @@ public class DominatorTree
 
 			// initialize the semi dominator to point into it's parent node
 			WInfo.semi = WInfo.parent;
-			for (BasicBlock BB : WBlock.getSuccessors())
+			for (BasicBlock BB : WBlock.getSuccs())
 			{
 				int semiU = info.get(eval(BB, i+1)).semi;
 				if (semiU < WInfo.semi)
@@ -364,16 +388,16 @@ public class DominatorTree
 				this.IDoms.put(WBlock, Vertex[WInfo.parent]);
 			else
 			{
-				buckets.set(i, buckets.get((WInfo.semi)));
-				buckets.set(WInfo.semi, i);
+				buckets[i] = buckets[WInfo.semi];
+				buckets[WInfo.semi] = i;
 			}
 
 			if (N >= 1)
 			{
 				BasicBlock root = Vertex[1];
-				for (int j = 1; buckets.get(j) != 1; j = buckets.get(j))
+				for (int j = 1; buckets[j] != 1; j = buckets[j])
 				{
-					BasicBlock V = Vertex[buckets.get(j)];
+					BasicBlock V = Vertex[buckets[j]];
 					IDoms.put(V, root);
 				}
 			}
@@ -415,8 +439,8 @@ public class DominatorTree
 
 				// add a new tree node for this Basic block, and link it as a child of
 				// IDomNode
-				DomTreeNode chidren = new DomTreeNode(W, IDomNode);
-				this.DomTreeNodes.put(W, IDomNode.addChidren(chidren));
+				DomTreeNode children = new DomTreeNode(W, IDomNode);
+				this.DomTreeNodes.put(W, IDomNode.addChidren(children));
 			}
 
 			// free temporary memory used to construct idom.
@@ -490,7 +514,7 @@ public class DominatorTree
 		// recursive algorithm due to stack depth issues.  Keep it here for
 		// documentation purposes.
 		LinkedList<Pair> worklist = new LinkedList<>();
-		ListIterator<BasicBlock> rit = root.getSuccessors().listIterator();
+		ListIterator<BasicBlock> rit = root.getSuccs().listIterator();
 
 		// add a pair of root and predecessor into worklist in the order that
 		// last firstly added.
@@ -513,7 +537,7 @@ public class DominatorTree
 			if (info.get(succ).semi == 0)
 				info.get(succ).parent = N;
 
-			rit = succ.getSuccessors().listIterator();
+			rit = succ.getSuccs().listIterator();
 			while (rit.hasPrevious())
 			{
 				worklist.addLast(new Pair(succ, rit.previous()));

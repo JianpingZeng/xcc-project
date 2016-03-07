@@ -2,6 +2,7 @@ package ast;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -446,7 +447,6 @@ abstract public class Tree
 	 */
 	public static class Block extends Tree
 	{
-
 		public List<Tree> stats;
 		public int endpos = Position.NOPOS;
 
@@ -658,9 +658,9 @@ abstract public class Tree
 	public static class Switch extends Tree
 	{
 		public Tree selector;
-		public List<Tree> cases;
+		public List<Case> cases;
 
-		public Switch(Tree selector, List<Tree> cases)
+		public Switch(Tree selector, List<Case> cases)
 		{
 			super(SWITCH);
 			this.selector = selector;
@@ -678,13 +678,13 @@ abstract public class Tree
 	 */
 	public static class Case extends Tree
 	{
-		public Tree pat;
+		public List<Tree> values;
 		public List<Tree> stats;
 
-		public Case(Tree pat, List<Tree> stats)
+		public Case(List<Tree> values, List<Tree> stats)
 		{
 			super(CASE);
-			this.pat = pat;
+			this.values = values;
 			this.stats = stats;
 		}
 
@@ -693,6 +693,8 @@ abstract public class Tree
 			v.visitCase(this);
 		}
 	}
+
+
 
 	/**
 	 * A break from a loop or switch.

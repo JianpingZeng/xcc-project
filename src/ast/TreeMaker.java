@@ -147,14 +147,14 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags {
         return tree;
     }
 
-    public Switch Switch(Tree selector, List<Tree> cases) {
+    public Switch Switch(Tree selector, List<Case> cases) {
         Switch tree = new Switch(selector, cases);
         tree.pos = pos;
         return tree;
     }
 
-    public Case Case(Tree pat, List<Tree> stats) {
-        Case tree = new Case(pat, stats);
+    public Case Case(List<Tree> values, List<Tree> stats) {
+        Case tree = new Case(values, stats);
         tree.pos = pos;
         return tree;
     }
