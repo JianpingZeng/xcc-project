@@ -2,8 +2,6 @@ package hir;
 
 import exception.MemoryPromoteError;
 import hir.Instruction.Alloca;
-
-import javax.swing.text.html.parser.DTD;
 import java.util.ArrayList;
 import java.util.ListIterator;
 
@@ -44,6 +42,8 @@ public class EnterSSA
 		boolean changed = false;
 
 		DominatorTree DT = new DominatorTree(false, m);
+		DT.recalculate();
+
 		ArrayList<Alloca> allocas = new ArrayList<>();
 		while(true)
 		{
@@ -51,7 +51,8 @@ public class EnterSSA
 
 			// find alloca instruction that are safe to promote,
 			// by looking at all instructions in the entry block.
-			 ListIterator<Instruction> itr = entry.iterator();
+			// Because all of alloca instructions reside at the entry.
+		    ListIterator<Instruction> itr = entry.iterator();
 			while(itr.hasNext())
 			{
 				Instruction inst = itr.next();
@@ -73,9 +74,25 @@ public class EnterSSA
 		}
 	}
 
+	/**
+	 * Promote the specified list of alloca instructions into scalar
+	 * registers, inserting PHI nodes as appropriate.
+	 *
+	 8 This function makes use of DominanceFrontier information.  This function
+	 * does not modify the CFG of the function at all.  All allocas must be from
+	 * the same function.
+	 *
+	 * If AST is specified, the specified tracker is updated to reflect changes
+	 * made to the IR.
+	 * @param allocas
+	 * @param DT
+	 */
 	private void promoteToReg(ArrayList<Alloca> allocas, DominatorTree DT)
 	{
+		if (allocas.isEmpty())
+			return;
 
+		new PromoteMem2Reg(allocas, DT).run();
 	}
 
 	/**

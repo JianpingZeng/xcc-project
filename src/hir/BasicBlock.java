@@ -20,9 +20,8 @@ import java.util.*;
  * @version 1.0
  * @see Instruction
  */
-public class BasicBlock
+public class BasicBlock implements Iterable<Instruction>
 {
-
 	/**
 	 * Unique id id for this basic block.
 	 */
@@ -40,17 +39,19 @@ public class BasicBlock
 	/**
 	 * A list of quads.
 	 */
-	private final List<Instruction> instructions;
+	private final LinkedList<Instruction> instructions;
 
 	/**
-	 * A list of predecessors.
+	 * A set of predecessors.
 	 */
-	private final List<BasicBlock> predecessors;
+	private final LinkedList<BasicBlock> predecessors;
 
 	/**
-	 * A list of successors.
+	 * A  of successors.
 	 */
-	private final List<BasicBlock> successors;
+	private final LinkedList<BasicBlock> successors;
+
+	private ControlFlowGraph cfg;
 
 	/**
 	 * The name of this block.
@@ -60,44 +61,46 @@ public class BasicBlock
 	/**
 	 * A private constructor for entry node
 	 */
-	private BasicBlock(int id, List<BasicBlock> pres, String bbName)
+	private BasicBlock(int id, LinkedList<BasicBlock> pres,
+			String bbName, ControlFlowGraph cfg)
 	{
-		this(id, pres, null, bbName);
+		this(id, pres, null, bbName, cfg);
 	}
 
-	private BasicBlock(int id, List<BasicBlock> pres, List<BasicBlock> succs,
-			String bbName)
+	private BasicBlock(int id, LinkedList<BasicBlock> pres, LinkedList<BasicBlock> succs,
+			String bbName, ControlFlowGraph cfg)
 	{
 		this.idNumber = id;
 		this.instructions = new LinkedList<>();
 		this.predecessors = pres;
 		this.successors = succs;
 		this.bbName = bbName;
+		this.cfg = cfg;
 	}
 
 	/**
 	 * Creates new entry node. Only to be called by ControlFlowGraph.
 	 */
-	static BasicBlock createStartNode(int id, String name)
+	static BasicBlock createStartNode(int id, String name, ControlFlowGraph cfg)
 	{
-		return new BasicBlock(id, null, name);
+		return new BasicBlock(id, null, name, cfg);
 	}
 
 	/**
 	 * Creates a new basic node for exit block without numbers of predecessors.
 	 */
-	static BasicBlock createEndNode(int id, String bbName)
+	static BasicBlock createEndNode(int id, String bbName, ControlFlowGraph cfg)
 	{
-		return new BasicBlock(id, new ArrayList<>(), null, bbName);
+		return new BasicBlock(id, new LinkedList<>(), null, bbName, cfg);
 	}
 
 	/**
 	 * Create new internal basic block. Only to be called by ControlFlowGraph.
 	 */
-	static BasicBlock createBasicBlock(int id, String bbName)
+	static BasicBlock createBasicBlock(int id, String bbName, ControlFlowGraph cfg)
 	{
 
-		return new BasicBlock(id, new ArrayList<>(), new ArrayList<>(), bbName);
+		return new BasicBlock(id, new LinkedList<>(), new LinkedList<>(), bbName, cfg);
 	}
 
 	/**
@@ -202,29 +205,17 @@ public class BasicBlock
 		return instructions.size();
 	}
 
-	public Instruction getQuad(int i)
+	public Instruction getInst(int i)
 	{
 		return instructions.get(i);
 	}
 
-	public Instruction getLastQuad()
-	{
-		if (instructions.isEmpty())
-			return null;
-		return instructions.get(instructions.size() - 1);
-	}
-
-	public Instruction removeQuad(int i)
-	{
-		return instructions.remove(i);
-	}
-
-	public boolean removeQuad(Instruction q)
+	public boolean removeInst(Instruction q)
 	{
 		return instructions.remove(q);
 	}
 
-	public void removeAllQuads()
+	public void clear()
 	{
 		instructions.clear();
 	}
@@ -236,7 +227,7 @@ public class BasicBlock
 	 * @param index the index to add the quad
 	 * @param q     quad to add
 	 */
-	public void addInstruction(Instruction q, int index)
+	public void addInst(Instruction q, int index)
 	{
 		assert (q != null) : "Cannot add null instruction to block";
 		assert (index >= 0 && index < instructions.size()):
@@ -251,19 +242,10 @@ public class BasicBlock
 	 *
 	 * @param q quad to add
 	 */
-	public void appendQuad(Instruction q)
+	public void appendInst(Instruction q)
 	{
 		assert (q != null) : "Cannot add null instructions to block";
 		instructions.add(q);
-	}
-
-	/**
-	 * Replace the quad at position pos.
-	 */
-	public void replaceQuad(int pos, Instruction q)
-	{
-		assert (q != null) : "Cannot add null instructions to block";
-		instructions.set(pos, q);
 	}
 
 	/**
@@ -272,10 +254,12 @@ public class BasicBlock
 	 *
 	 * @param b basic block to add as a predecessor
 	 */
-	public void addPredecessor(BasicBlock b)
+	public boolean addPred(BasicBlock b)
 	{
 		assert (b != null) : "Cannot add null block into predecessor list";
-		predecessors.add(b);
+		if (predecessors.contains(b))
+			return false;
+		return predecessors.add(b);
 	}
 
 	/**
@@ -284,42 +268,22 @@ public class BasicBlock
 	 *
 	 * @param b basic block to add as a successor
 	 */
-	public void addSuccessor(BasicBlock b)
+	public boolean addSucc(BasicBlock b)
 	{
 		assert (b != null) : "Cannot add null block into successor list";
-		successors.add(b);
+		if (successors.contains(b))
+			return false;
+		return successors.add(b);
 	}
 
-	public int getNumberOfSuccessors()
+	public int getNumOfSuccs()
 	{
 		return successors == null ? 0 : successors.size();
 	}
 
-	public int getNumberOfPredecessors()
+	public int getNumOfPreds()
 	{
 		return predecessors == null ? 0 : predecessors.size();
-	}
-
-	/**
-	 * Returns the fallthrough successor to this basic block, if it exists. If
-	 * there is none, returns null.
-	 *
-	 * @return the fallthrough successor, or null if there is none.
-	 */
-	public BasicBlock getFallthroughSuccessor()
-	{
-		return successors == null ? null : successors.get(0);
-	}
-
-	/**
-	 * Returns the fallthrough predecessor to this basic block, if it exists. If
-	 * there is none, returns null.
-	 *
-	 * @return the fallthrough predecessor, or null if there is none.
-	 */
-	public BasicBlock getFallthroughPredecessor()
-	{
-		return predecessors == null ? null : predecessors.get(0);
 	}
 
 	/**
@@ -327,7 +291,7 @@ public class BasicBlock
 	 *
 	 * @return a list of the successors of this basic block.
 	 */
-	public List<BasicBlock> getSuccessors()
+	public List<BasicBlock> getSuccs()
 	{
 		return successors == null ?
 				Collections.<BasicBlock>emptyList() :
@@ -339,7 +303,7 @@ public class BasicBlock
 	 *
 	 * @return an iterator of the predecessors of this basic block.
 	 */
-	public List<BasicBlock> getPredecessors()
+	public List<BasicBlock> getPreds()
 	{
 		return predecessors == null ?
 				Collections.<BasicBlock>emptyList() :
@@ -349,5 +313,39 @@ public class BasicBlock
 	public int getID()
 	{
 		return this.idNumber;
+	}
+
+	public ControlFlowGraph getCFG() {return cfg;}
+
+	public void setCFG(ControlFlowGraph cfg) {this.cfg = cfg;}
+
+	public Instruction firstInst()
+	{
+		return instructions.get(0);
+	}
+
+	public  Instruction lastInst()
+	{
+		if (instructions.isEmpty())
+			return null;
+		return instructions.get(instructions.size() - 1);
+	}
+
+	/**
+	 * Inserts a instruction into the position after the first inst of instructions
+	 * list.
+	 * @param inst
+	 */
+	public void insertAfterFirst(Instruction inst)
+	{
+		assert inst != null;
+
+		if (instructions.isEmpty())
+			instructions.addFirst(inst);
+		else
+		{
+			Instruction first = instructions.getFirst();
+			instructions.add(instructions.indexOf(first)+1, inst);
+		}
 	}
 }

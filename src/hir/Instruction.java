@@ -6,7 +6,9 @@ import comp.OpCodes;
 import exception.SemanticError;
 import type.Type;
 import utils.Name;
+import utils.Pair;
 import utils.Utils;
+import java.util.ArrayList;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -21,9 +23,9 @@ import utils.Utils;
 public abstract class Instruction implements Cloneable
 {
 	/**
-	 * The numbers of reference count with initial inst 1.
+	 * The list of all instruction which use this instruction.
 	 */
-	public long refs = 1;
+	public ArrayList<Instruction> uses;
 	/**
 	 * Mainly for register allocation.
 	 */
@@ -57,10 +59,16 @@ public abstract class Instruction implements Cloneable
 	 */
 	public int number;
 
+	private BasicBlock bb;
+
+	public BasicBlock getParent() {return bb;}
+	public void setParent(BasicBlock bb) {this.bb = bb;}
+
 	public Instruction(CiKind kind)
 	{
 		this.kind = kind;
 		this.id = -1;
+		this.uses = new ArrayList<>(8);
 	}
 
 	/**
@@ -69,6 +77,15 @@ public abstract class Instruction implements Cloneable
 	 * @param visitor The instance of InstructionVisitor.
 	 */
 	public abstract void accept(InstructionVisitor visitor);
+
+	/**
+	 * Erases this instruction from it's parent basic block.
+	 */
+	public void eraseFromBasicBlock()
+	{
+		assert (this.bb == null) : "The basic block where the instruction reside to be erased!";
+		bb.removeInst(this);
+	}
 
 	/**
 	 * Gets the text format of this Instruction.
@@ -104,6 +121,35 @@ public abstract class Instruction implements Cloneable
 	public int valueNumber()
 	{
 		return 0;
+	}
+
+	/**
+	 * Go through the uses list for this definition and make each use point
+	 * to "value" of "this". After this completes, this's uses list is empty.
+	 * @param value
+	 */
+	public void replaceAllUsesWith(Instruction value)
+	{
+		assert value != null : "Instruction.replaceAllusesWith(<null>) is invalid.";
+		assert kind == value.kind :
+				"replaceAllUses of value with new value of different tyep";
+
+		// 更新use-def链中的使用分量
+		// 暂时未完成
+
+		BasicBlock BB = value.getParent();
+		for (BasicBlock succ : BB.getSuccs())
+		{
+			for(Instruction inst : succ)
+			{
+				if (!(inst instanceof Phi))
+					break;
+				int i;
+				Phi PN = (Phi)inst;
+				if ((i = PN.getBasicBlockIndex(BB)) >= 0)
+					PN.setParameter(i, value);
+			}
+		}
 	}
 
 	/**
@@ -1876,6 +1922,8 @@ public abstract class Instruction implements Cloneable
 		
 		private int currIndex = 0;
 
+		private String nameString;
+
 		/**
 		 * Constructs a new Phi-function instruction.
 		 *
@@ -1896,9 +1944,23 @@ public abstract class Instruction implements Cloneable
 		
 		public Phi(CiKind kind, int length)
         {
+	        super(kind);
+	        this.inputs = new ArgBlockPair[length];
+	        this.nameString = "";
+        }
+
+		public Phi(CiKind kind, int length, String nameString)
+		{
 			super(kind);
 			this.inputs = new ArgBlockPair[length];
-        }
+			this.nameString = nameString;
+		}
+
+		/**
+		 * Gets the name of this phi node.
+		 * @return
+		 */
+		public String getName() {return nameString;}
 
 		@Override 
 		public void accept(InstructionVisitor visitor)
@@ -1936,7 +1998,7 @@ public abstract class Instruction implements Cloneable
 		 * @param index	The position where input block will be obtained.
 		 * @return	The input block at specified position.
 		 */
-		public BasicBlock getBB(int index)
+		public BasicBlock getBasicBlock(int index)
 		{
 			assert index >= 0 && index < inputs.length
 					: "The index is beyond out the size of list";
@@ -1977,7 +2039,22 @@ public abstract class Instruction implements Cloneable
 		{
 			return null;
 		}
-		
+
+		public int getBasicBlockIndex(BasicBlock basicBlock)
+		{
+			assert  (basicBlock != null) :
+					"Phi.getBasicBlockIndex(<null>) is invalid";
+			for (int idx = 0; idx < inputs.length;idx++)
+				if (inputs[idx].block == basicBlock)
+					return idx;
+			return -1;
+		}
+
+		public int getNumberIncomingValues()
+		{
+			return inputs.length;
+		}
+
 		/**
 		 * This class for a pair of phi parameter and according block.
 		 * @author Jianping Zeng <z1215jping@hotmail.com>
@@ -1999,7 +2076,7 @@ public abstract class Instruction implements Cloneable
 	 * The {@code Constant} instruction represents a constant such as an integer
 	 * inst, long, float, object reference, address, etc.
 	 */
-	public final static class Constant extends Instruction
+	public static class Constant extends Instruction
 	{
 		/**
 		 * The constant inst keeped with {@code Constant} instance.
@@ -2011,7 +2088,7 @@ public abstract class Instruction implements Cloneable
 		 */
 		public Constant(CiConstant value)
 		{
-			super(value.kind);
+			super(value !=null ? value.kind : CiKind.Illegal);
 			this.value = value;
 		}
 
@@ -2115,6 +2192,7 @@ public abstract class Instruction implements Cloneable
 	 */
 	public static class Alloca extends Instruction
 	{
+		private String nameString;
 		public Alloca(CiKind kind)
 		{
 			super(kind);
@@ -2126,13 +2204,19 @@ public abstract class Instruction implements Cloneable
 		}
 
 		/**
+		 * Gets the name of this alloated variable.
+		 * @return
+		 */
+		public String getName() {return  nameString;}
+
+		/**
 		 * Determine whether this alloca instruction is promoted into
 		 * register or not?
 		 * @return  Return true if it is pormotable.
 		 */
 		public boolean isAllocaPromoteable()
 		{
-			return false;
+			return true;
 		}
 	}
 
@@ -2259,6 +2343,63 @@ public abstract class Instruction implements Cloneable
 		public void accept(InstructionVisitor visitor)
 		{
 			visitor.visitLoadInst(this);
+		}
+	}
+
+	public static class UndefValue extends Constant
+	{
+
+		private UndefValue(CiKind kind)
+		{
+			super(new CiConstant(kind, 0));
+		}
+
+		public static UndefValue get(CiKind kind)
+		{
+			return new UndefValue(kind);
+		}
+	}
+
+	public static class SwitchInst extends Branch
+	{
+		private Pair<Instruction, BasicBlock>[] operands;
+		private int currIdx = 0;
+		/**
+		 * Constructs a new SwitchInst instruction with specified inst type.
+		 * @param condV  the value of selector.
+		 * @param defaultBB The default jump block when no other case match.
+		 * @param numCases  The numbers of case value.
+		 */
+		public SwitchInst(Instruction condV, BasicBlock defaultBB, int numCases)
+		{
+			super(CiKind.Illegal);
+			operands = new Pair[1 + numCases];
+			operands[currIdx++] = new Pair<>(condV, defaultBB);
+		}
+
+		/**
+		 * An interface for InstructionVisitor invoking.
+		 *
+		 * @param visitor The instance of InstructionVisitor.
+		 */
+		@Override
+		public void accept(InstructionVisitor visitor)
+		{
+
+		}
+
+		public void addCase(Instruction caseVal, BasicBlock targetBB)
+		{
+			operands[currIdx++] = new Pair<>(caseVal, targetBB);
+		}
+
+		/**
+		 * Gets the default basic block where default case clause resides.
+		 * @return  The default basic block.
+		 */
+		public BasicBlock getDefaultBlock()
+		{
+			return this.operands[0].snd;
 		}
 	}
 }

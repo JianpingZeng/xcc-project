@@ -104,7 +104,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private void appendInst(Instruction inst)
 	{
-		currentBlock.appendQuad(inst);
+		currentBlock.appendInst(inst);
 	}
 
 	private int nerrs = 0;
@@ -137,7 +137,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param expr
 	 */
-	private Instruction genExpr(Tree expr)
+	private Instruction emitExpr(Tree expr)
 	{
 		expr.accept(this);
 		return exprResult;
@@ -148,11 +148,11 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param exprs
 	 */
-	private void genExprList(List<Tree> exprs)
+	private void emitExprList(List<Tree> exprs)
 	{
 		if (exprs == null || exprs.isEmpty())
 			return;
-		exprs.forEach(this::genExpr);
+		exprs.forEach(this::emitExpr);
 	}
 
 	/**
@@ -161,107 +161,73 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param target The target of jump inst
 	 */
-	private void genJump(BasicBlock target)
+	private void emitJump(BasicBlock target)
 	{
 		Instruction.Goto goto_ = new Instruction.Goto(target);
-		goto_.refs++;
 		appendInst(goto_);
 
-		currentBlock.addSuccessor(target);
-		target.addPredecessor(currentBlock);
+		currentBlock.addSucc(target);
+		target.addPred(currentBlock);
 	}
 
 	/**
 	 * Links the given block into cfg.
 	 *
-	 * @param bb The given basic block to be insert into cfg.
+	 * @param currBB  The curent being used basic block.
+	 * @param nextBB The given basic block to be insert into cfg.
 	 */
-	private void startBasicBlock(BasicBlock bb)
+	private void startBasicBlock(BasicBlock currBB, BasicBlock nextBB)
 	{
-		currentBlock.addSuccessor(bb);
-		bb.addPredecessor(currentBlock);
+		nextBB.setCFG(currentCFG);
+		currBB.addSucc(nextBB);
+		nextBB.addPred(currBB);
 		// updates current block
-		currentBlock = bb;
+		currBB = nextBB;
 	}
+
 
 	/**
-	 * Not the expr.
+	 * Links the given block into cfg.
 	 *
-	 * @param expr
-	 * @return
+	 * @param nextBB The given basic block to be insert into cfg.
 	 */
-	private Tree Not(Tree expr)
+	private void startBasicBlock(BasicBlock nextBB)
 	{
-		Binary bin;
-		Unary unary;
-		int[] rops = { Tree.NE, Tree.EQ, Tree.GE, Tree.GT, Tree.LE, Tree.LT };
-		switch (expr.tag)
-		{
-			case Tree.OR:
-				bin = (Binary) expr;
-				bin.tag = Tree.AND;
-				bin.lhs = Not(bin.lhs);
-				bin.rhs = Not(bin.rhs);
-				return bin;
-			case Tree.AND:
-				bin = (Binary) expr;
-				bin.tag = Tree.OR;
-				bin.lhs = Not(bin.lhs);
-				bin.rhs = Not(bin.rhs);
-				return bin;
-			case Tree.EQ:
-			case Tree.NE:
-			case Tree.LT:
-			case Tree.LE:
-			case Tree.GE:
-			case Tree.GT:
-				bin = (Binary) expr;
-				bin.tag = rops[bin.tag - Tree.EQ];
-				return bin;
-			case Tree.NOT:
-				unary = (Unary) expr;
-				return unary.arg;
-			default:
-				unary = this.maker.Unary(Tree.NOT, expr);
-				return constantFold(unary);
-		}
+		nextBB.setCFG(currentCFG);
+		currentBlock.addSucc(nextBB);
+		nextBB.addPred(currentBlock);
+		// updates current block
+		currentBlock = nextBB;
 	}
 
-	private Tree constantFold(Unary tree)
+	private boolean constantFoldOnBool(Tree tree)
 	{
-		if (tree != null)
+		if (tree instanceof Literal && ((Literal)tree).typetag == TypeTags.BOOL)
 		{
-			switch (tree.arg.tag)
-			{
-				case Tree.IDENT:
-					Tree.Ident ident = (Tree.Ident) tree.arg;
-					if (ident.name.toString().equals("true"))
-					{
-						return maker.Ident(Name.fromString(names, "false"));
-					}
-					else if (ident.name.toString().equals("false"))
-						return maker.Ident(Name.fromString(names, "true"));
-					else
-					{
-						log.error(tree.pos, "not.bool.constant.at.condition");
-						return tree;
-					}
-				default:
-					log.error(tree.pos, "not.bool.constant.at.condition");
-					return tree;
-			}
+			Boolean val = (Boolean)((Literal)tree).value;
+			// true
+			if (val)
+				return true;
+			// false
+			else
+				return false;
 		}
-		return null;
+		return false;
 	}
-
 	/**
 	 * Translates conditional branch.
+	 *
+	 * <p>
+	 *     Emit a branch on a boolean condition (e.g. for an if statement) to
+	 *     the specified blocks. Based the condition, this might try to simplify
+	 *     the codegen of the conditional based on the branchs.
+	 * </p>
 	 *
 	 * @param expr    The relative expression.
 	 * @param trueBB  the target block when condition is true.
 	 * @param falseBB the target block when condition is false.
 	 */
-	private void translateBranch(Tree expr,
+	private void translateBranchOnBool(Tree expr,
 			BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
@@ -269,74 +235,196 @@ public class HIRGenerator extends ASTVisitor
 		Binary bin;
 		Instruction src1;
 		IntCmp inst;
-		IntCmp[] insts = { new Instruction.IfCmp_EQ(null, null, null, null),
-				new Instruction.IfCmp_NEQ(null, null, null, null),
-				new Instruction.IfCmp_LT(null, null, null, null),
-				new Instruction.IfCmp_LE(null, null, null, null),
-				new Instruction.IfCmp_GT(null, null, null, null),
-				new Instruction.IfCmp_GE(null, null, null, null) };
-		switch (expr.tag)
+
+		if ((expr.tag >= Tree.OR && expr.tag <= Tree.AND)
+				|| (expr.tag >= Tree.NE && expr.tag <= Tree.GE))
 		{
-			case Tree.AND:
-				remainderBB = currentCFG.createBasicBlock("and.remained");
-				bin = (Binary) expr;
-				translateBranch(Not(TreeInfo.skipParens(bin.lhs)), falseBB,
+			bin = (Binary) expr;
+			if (bin.tag == Tree.AND)
+			{
+				// if we have "true && X", or "false && X", to simpify the code
+				if (constantFoldOnBool(bin.lhs))
+				{
+					// br(true && X) => br(X)
+					translateBranchOnBool(bin.rhs, trueBB, falseBB);
+					return;
+				}
+
+				// if we have " X && true", or " X && false", to simpify the code
+				if (constantFoldOnBool(bin.rhs))
+				{
+					// br(X && true) => br(X)
+					translateBranchOnBool(bin.lhs, trueBB, falseBB);
+					return;
+				}
+
+				remainderBB = ControlFlowGraph.createBasicBlock("and.lhs.true");
+				translateBranchOnBool(TreeInfo.skipParens(bin.lhs), remainderBB, falseBB);
+				startBasicBlock(remainderBB);
+				// translates right hand side
+				translateBranchOnBool(TreeInfo.skipParens(bin.rhs), trueBB,
+						falseBB);
+				return;
+			}
+			else if (bin.tag == Tree.OR)
+			{
+				// if we have "true || X", or "false || X", to simpify the code
+				if (!constantFoldOnBool(bin.lhs))
+				{
+					// br(false || X) => br(X)
+					translateBranchOnBool(bin.rhs, trueBB, falseBB);
+					return;
+				}
+
+				// if we have " X || true", or " X || false", to simpify the code
+				if (!constantFoldOnBool(bin.rhs))
+				{
+					// br(X || false) => br(X)
+					translateBranchOnBool(bin.lhs, trueBB, falseBB);
+					return;
+				}
+
+				remainderBB = ControlFlowGraph.createBasicBlock("or.lhs.false");
+				translateBranchOnBool(TreeInfo.skipParens(bin.lhs), trueBB,
 						remainderBB);
 				startBasicBlock(remainderBB);
 				// translates right hand side
-				translateBranch(TreeInfo.skipParens(bin.rhs), trueBB, falseBB);
-				break;
-			case Tree.OR:
-				remainderBB = currentCFG.createBasicBlock("or.remained");
-				bin = (Binary) expr;
-				translateBranch(TreeInfo.skipParens(bin.lhs), trueBB,
-						remainderBB);
-				startBasicBlock(remainderBB);
-				// translates right hand side
-				translateBranch(TreeInfo.skipParens(bin.rhs), trueBB, falseBB);
-				break;
-			case Tree.EQ:
-			case Tree.NE:
-			case Tree.LT:
-			case Tree.LE:
-			case Tree.GT:
-			case Tree.GE:
+				translateBranchOnBool(TreeInfo.skipParens(bin.rhs), trueBB,
+						falseBB);
+				return;
+			}
+			else
+			{
+				IntCmp[] insts = { new Instruction.IfCmp_EQ(null, null, null, null),
+						new Instruction.IfCmp_NEQ(null, null, null, null),
+						new Instruction.IfCmp_LT(null, null, null, null),
+						new Instruction.IfCmp_LE(null, null, null, null),
+						new Instruction.IfCmp_GT(null, null, null, null),
+						new Instruction.IfCmp_GE(null, null, null, null) };
+
 				inst = insts[expr.tag - Tree.EQ];
-				bin = (Binary) expr;
-				inst.x = genExpr(bin.lhs);
-				inst.y = genExpr(bin.rhs);
+				inst.x = emitExpr(bin.lhs);
+				inst.y = emitExpr(bin.rhs);
 				inst.trueTarget = trueBB;
 				inst.falseTarget = falseBB;
-				inst.refs++;
-				currentBlock.addSuccessor(trueBB);
-				trueBB.addPredecessor(currentBlock);
+
+				currentBlock.addSucc(trueBB);
+				currentBlock.addSucc(falseBB);
+				trueBB.addPred(currentBlock);
+				falseBB.addPred(currentBlock);
 
 				// appends quad into current block
 				appendInst(inst);
-			case Tree.NOT:
-				Tree inner_tree = ((Unary) expr).arg;
-				src1 = genExpr(inner_tree);
-				if (inner_tree.type.tag < Type.INT)
-				{
-					src1 = genCast(src1, inner_tree.type, Type.INTType);
-				}
-				inst = new IfCmp_EQ(src1, Constant.forInt(0), trueBB, falseBB);
-				inst.refs++;
-				appendInst(inst);
-				currentBlock.addSuccessor(trueBB);
-				trueBB.addPredecessor(currentBlock);
-				break;
-			case Tree.IDENT:
-				if (((Ident) expr).name.toString().equals("true"))
-					genJump(trueBB);
-				else if (((Ident) expr).name.toString().equals("false"))
-					genJump(falseBB);
-				else
-					log.error(expr.pos, "not.boolean.type.at.condition");
-				break;
-			default:
-				break;
+			}
 		}
+		else
+		{
+			switch (expr.tag)
+			{
+				case Tree.NOT:
+					Tree inner_tree = TreeInfo.skipParens(((Unary) expr).arg);
+
+					// !true or !false
+					if (constantFoldOnBool(inner_tree))
+					{
+						// !true => false
+						emitJump(falseBB);
+					}
+					else
+					{
+						// !false => true
+						emitJump(trueBB);
+					}
+					translateBranchOnBool(inner_tree, falseBB, trueBB);
+					return;
+				case Tree.LITERAL:
+					if (((Literal) expr).typetag == TypeTags.BOOL)
+					{
+						Boolean val = (Boolean) ((Literal) expr).value;
+						if (val)
+							emitJump(trueBB);
+						else
+							emitJump(falseBB);
+					}
+					else
+						log.error(expr.pos, "not.boolean.type.at.condition");
+					return;
+				default:
+					break;
+			}
+		}
+	}
+
+	private void emitIfCmpNE(Instruction lhs, Instruction rhs,
+			BasicBlock trueBB, BasicBlock falseBB)
+	{
+		IfCmp_NEQ inst = new IfCmp_NEQ(lhs, rhs, trueBB, falseBB);
+		appendInst(inst);
+		currentBlock.addSucc(trueBB);
+		currentBlock.addSucc(falseBB);
+
+		trueBB.addPred(currentBlock);
+		falseBB.addPred(currentBlock);
+	}
+
+	private void emitIfCmpEQ(Instruction lhs, Instruction rhs,
+			BasicBlock trueBB, BasicBlock falseBB)
+	{
+		IfCmp_EQ inst = new IfCmp_EQ(lhs, rhs, trueBB, falseBB);
+		appendInst(inst);
+		currentBlock.addSucc(trueBB);
+		currentBlock.addSucc(falseBB);
+
+		trueBB.addPred(currentBlock);
+		falseBB.addPred(currentBlock);
+	}
+
+	private void emitIfCmpLE(Instruction lhs, Instruction rhs,
+			BasicBlock trueBB, BasicBlock falseBB)
+	{
+		IfCmp_LE inst = new IfCmp_LE(lhs, rhs, trueBB, falseBB);
+		appendInst(inst);
+		currentBlock.addSucc(trueBB);
+		currentBlock.addSucc(falseBB);
+
+		trueBB.addPred(currentBlock);
+		falseBB.addPred(currentBlock);
+	}
+
+	private void emitIfCmpLT(Instruction lhs, Instruction rhs,
+			BasicBlock trueBB, BasicBlock falseBB)
+	{
+		IfCmp_LT inst = new IfCmp_LT(lhs, rhs, trueBB, falseBB);
+		appendInst(inst);
+		currentBlock.addSucc(trueBB);
+		currentBlock.addSucc(falseBB);
+
+		trueBB.addPred(currentBlock);
+		falseBB.addPred(currentBlock);
+	}
+
+	private void emitIfCmpGT(Instruction lhs, Instruction rhs,
+			BasicBlock trueBB, BasicBlock falseBB)
+	{
+		IfCmp_GT inst = new IfCmp_GT(lhs, rhs, trueBB, falseBB);
+		appendInst(inst);
+		currentBlock.addSucc(trueBB);
+		currentBlock.addSucc(falseBB);
+
+		trueBB.addPred(currentBlock);
+		falseBB.addPred(currentBlock);
+	}
+
+	private void emitIfCmpGE(Instruction lhs, Instruction rhs,
+			BasicBlock trueBB, BasicBlock falseBB)
+	{
+		IfCmp_GE inst = new IfCmp_GE(lhs, rhs, trueBB, falseBB);
+		appendInst(inst);
+		currentBlock.addSucc(trueBB);
+		currentBlock.addSucc(falseBB);
+
+		trueBB.addPred(currentBlock);
+		falseBB.addPred(currentBlock);
 	}
 
 	/**
@@ -348,7 +436,7 @@ public class HIRGenerator extends ASTVisitor
 	 * @param dType The target type into that operand will be casted.
 	 * @return
 	 */
-	private Instruction genCast(Instruction src, Type sType, Type dType)
+	private Instruction emitCast(Instruction src, Type sType, Type dType)
 	{
 		/*
 		// the original type
@@ -424,41 +512,58 @@ public class HIRGenerator extends ASTVisitor
 	{
 		if (tree.body != null)
 		{
-			Method m = new Method(tree);
-			currentCFG = new ControlFlowGraph(m);
-			m.cfg = currentCFG;
-			this.methods.add(m);
+			// initialize some variable for emitting HIR of function.
+			Method m = enterFunctionInit(tree);
 
-			// sets the current block with entry of a cfg with increment number id.
-			this.currentBlock = currentCFG.createStartNode();
+			// initialize return value if this function have return
+			if (m.signature().returnKind() != CiKind.Void)
+				emitReturnValue(m);
 
-			this.continueStack = new LinkedList<>();
-			this.breakStack = new LinkedList<>();
-
-			// a generator for temporary variable.
-			tempNameGenerator.init();
-
-			currentCFG.entry().addSuccessor(currentBlock);
-			currentBlock.addPredecessor(currentCFG.entry());
 			// places actual parameter onto entry block
 			for (Tree t : tree.params)
 			{
-				genAllocaForVarDecl((VarDef) t);
+				emitAllocaForVarDecl((VarDef) t);
 			}
 			// translate method body
 			tree.body.accept(this);
 
-			BasicBlock exit = currentCFG.createEndNode();
-			// appends exit block into the successor list of current block.
-			currentBlock.addSuccessor(exit);
-			// appends current block into the predecessor list of exit block.
-			exit.addPredecessor(currentBlock);
+			functionExit();
 
+			// SSA construction and memory promotion.
 			new EnterSSA(m);
 			this.methods.add(m);
 		}
 	}
 
+	private Method enterFunctionInit(MethodDef tree)
+	{
+		Method m = new Method(tree);
+		currentCFG = new ControlFlowGraph(m);
+		m.cfg = currentCFG;
+		this.methods.add(m);
+
+		// sets the current block with entry of a cfg with increment number id.
+		this.currentBlock = currentCFG.createStartNode();
+
+		this.continueStack = new LinkedList<>();
+		this.breakStack = new LinkedList<>();
+
+		// a generator for temporary variable.
+		tempNameGenerator.init();
+
+		currentCFG.entry().addSucc(currentBlock);
+		currentBlock.addPred(currentCFG.entry());
+		return m;
+	}
+
+	private void functionExit()
+	{
+		BasicBlock exit = currentCFG.createEndNode();
+		// appends exit block into the successor list of current block.
+		currentBlock.addSucc(exit);
+		// appends current block into the predecessor list of exit block.
+		exit.addPred(currentBlock);
+	}
 	/**
 	 * This map that associates variable's name with it's allocation instruction
 	 * for its alloca instruction according to name.
@@ -479,23 +584,43 @@ public class HIRGenerator extends ASTVisitor
 	private Alloca createEnterBlockAlloca(CiKind kind, VarDef var)
 	{
 		BasicBlock entry = currentCFG.entry();
-		Alloca inst = new Alloca(kind);
-		inst.refs++;
-
+		Alloca inst = createEnterBlockAlloca(kind, var.name);
 		// associte its local with variable symbol
 		var.sym.varInst = inst;
-		NameValues.put(var.name, inst);
 
-		int index = entry.indexOf(inst);
+		return inst;
+	}
+
+	/**
+	 * Allocates memory for return vairable of specified method.
+	 * @param m     The handled method.
+	 */
+	private void emitReturnValue(Method m)
+	{
+		Name returnName = Name.fromString(names, "%retvalue");
+		BasicBlock entry = currentCFG.entry();
+		m.ReturnValue = createEnterBlockAlloca(m.signature().returnKind(), returnName);
+	}
+
+	private Alloca createEnterBlockAlloca(CiKind kind, Name var)
+	{
+		BasicBlock entry = currentCFG.entry();
+		Alloca inst = new Alloca(kind);
+
+		// associte its local with variable symbol
+		NameValues.put(var, inst);
+
+		int index = entry.indexOf(lastAllocaInst);
 		if (index < 0 || index == entry.size() - 1)
-			entry.appendQuad(inst);
+			entry.appendInst(inst);
 		else
-			entry.addInstruction(inst, index + 1);
+			entry.addInst(inst, index + 1);
+
+		inst.setParent(entry);
 
 		lastAllocaInst = inst;
 		return inst;
 	}
-
 
 	/**
 	 * generates memory {@code Alloca} instruction and initial store for variable
@@ -503,7 +628,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param var The variable to be allocated.
 	 */
-	private void genAllocaForVarDecl(VarDef var)
+	private void emitAllocaForVarDecl(VarDef var)
 	{
 		CiKind varKind = type2Kind(var.type);
 
@@ -515,7 +640,7 @@ public class HIRGenerator extends ASTVisitor
 		{
 			checkStringConstant(var.init.pos, var.sym.constValue);
 			// generates IR for initial expression.
-			initValue = genExpr(var.init);
+			initValue = emitExpr(var.init);
 		}
 		// setting default inst for different inst type
 		else
@@ -523,7 +648,7 @@ public class HIRGenerator extends ASTVisitor
 			initValue = new Constant(CiConstant.defaultValue(varKind));
 		}
 		// generats store instruction that stores initial inst into specified local
-		genStore(initValue, inst);	
+		emitStore(initValue, inst);
 	}
 
 	/**
@@ -555,7 +680,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	@Override public void visitVarDef(VarDef tree)
 	{
-		genAllocaForVarDecl(tree);
+		emitAllocaForVarDecl(tree);
 	}
 
 	/**
@@ -599,24 +724,24 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	@Override public void visitIf(If tree)
 	{
-		BasicBlock nextBB = currentCFG.createBasicBlock("if.end");
-		BasicBlock trueBB = currentCFG.createBasicBlock("if.true");
+		BasicBlock nextBB = ControlFlowGraph.createBasicBlock("if.end");
+		BasicBlock trueBB = ControlFlowGraph.createBasicBlock("if.true");
 		if (tree.elsepart == null)
 		{
-			translateBranch(Not(tree.cond), nextBB, trueBB);
+			translateBranchOnBool(tree.cond, nextBB, trueBB);
 			startBasicBlock(trueBB);
 			tree.thenpart.accept(this);
 		}
 		else
 		{
-			BasicBlock falseBB = currentCFG.createBasicBlock("if.false");
+			BasicBlock falseBB = ControlFlowGraph.createBasicBlock("if.false");
 
-			translateBranch(Not(TreeInfo.skipParens(tree.cond)), falseBB,
+			translateBranchOnBool(TreeInfo.skipParens(tree.cond), falseBB,
 					trueBB);
 
 			startBasicBlock(trueBB);
 			tree.thenpart.accept(this);
-			genJump(nextBB);
+			emitJump(nextBB);
 
 			startBasicBlock(falseBB);
 			tree.elsepart.accept(this);
@@ -686,9 +811,9 @@ public class HIRGenerator extends ASTVisitor
 	@Override public void visitWhileLoop(WhileLoop tree)
 	{
 		BasicBlock headerBB, loopBB, nextBB;
-		headerBB = currentCFG.createBasicBlock("while.cond");
-		loopBB = currentCFG.createBasicBlock("while.body");
-		nextBB = currentCFG.createBasicBlock("while.end");
+		headerBB = ControlFlowGraph.createBasicBlock("while.cond");
+		loopBB = ControlFlowGraph.createBasicBlock("while.body");
+		nextBB = ControlFlowGraph.createBasicBlock("while.exit");
 
 		// add the target of break and continue into stack
 		pushBreak(nextBB);
@@ -696,7 +821,7 @@ public class HIRGenerator extends ASTVisitor
 
 		// translates condition
 		startBasicBlock(headerBB);
-		translateBranch(TreeInfo.skipParens(tree.cond), loopBB, nextBB);
+		translateBranchOnBool(TreeInfo.skipParens(tree.cond), loopBB, nextBB);
 
 		// translates loop body
 		startBasicBlock(loopBB);
@@ -704,7 +829,7 @@ public class HIRGenerator extends ASTVisitor
 
 		// generates jump instruction from current block to headerB
 		// this jump may be removed by optimized int the future
-		genJump(headerBB);
+		emitJump(headerBB);
 
 		popBreak();
 		popContinue();
@@ -727,9 +852,9 @@ public class HIRGenerator extends ASTVisitor
 	@Override public void visitDoLoop(DoLoop tree)
 	{
 		BasicBlock loopBB, condBB, nextBB;
-		loopBB = currentCFG.createBasicBlock("do.body");
-		condBB = currentCFG.createBasicBlock("do.cond");
-		nextBB = currentCFG.createBasicBlock("do.end");
+		loopBB = ControlFlowGraph.createBasicBlock("do.body");
+		condBB = ControlFlowGraph.createBasicBlock("do.cond");
+		nextBB = ControlFlowGraph.createBasicBlock("do.exit");
 
 		pushBreak(nextBB);
 		pushContinue(condBB);
@@ -740,7 +865,7 @@ public class HIRGenerator extends ASTVisitor
 
 		// translates condtion
 		startBasicBlock(condBB);
-		translateBranch(tree.cond, loopBB, nextBB);
+		translateBranchOnBool(tree.cond, loopBB, nextBB);
 
 		popBreak();
 		popContinue();
@@ -769,27 +894,27 @@ public class HIRGenerator extends ASTVisitor
 	@Override public void visitForLoop(ForLoop tree)
 	{
 		BasicBlock nextBB, condBB, loopBB;
-		nextBB = currentCFG.createBasicBlock("for.end");
-		condBB = currentCFG.createBasicBlock("for.cond");
-		loopBB = currentCFG.createBasicBlock("for.body");
+		nextBB = ControlFlowGraph.createBasicBlock("for.exit");
+		condBB = ControlFlowGraph.createBasicBlock("for.cond");
+		loopBB = ControlFlowGraph.createBasicBlock("for.body");
 
 		pushBreak(nextBB);
 		pushContinue(condBB);
 
 		// starts initial BB
-		genExprList(tree.init);
+		emitExprList(tree.init);
 
 		// starts conditional BB
 		startBasicBlock(condBB);
-		translateBranch(tree.cond, loopBB, nextBB);
+		translateBranchOnBool(tree.cond, loopBB, nextBB);
 
 		// starts loopBB
 		startBasicBlock(loopBB);
 		tree.body.accept(this);
-		genExprList(tree.step);
+		emitExprList(tree.step);
 
 		// generates jump for jumping to condition BB
-		genJump(condBB);
+		emitJump(condBB);
 
 		popBreak();
 		popContinue();
@@ -806,12 +931,12 @@ public class HIRGenerator extends ASTVisitor
 		/* if the block corresponding to target of this stmt is null, creating a
 		 * block to be associated with it. */
 		if (tree.target.corrBB == null)
-			tree.target.corrBB = currentCFG
+			tree.target.corrBB = ControlFlowGraph
 					.createBasicBlock(tree.label.toString());
-		genJump(tree.target.corrBB);
+		emitJump(tree.target.corrBB);
 
 		// starts a new basic block
-		startBasicBlock(currentCFG.createBasicBlock(""));
+		startBasicBlock(ControlFlowGraph.createBasicBlock(""));
 	}
 
 	/**
@@ -822,7 +947,7 @@ public class HIRGenerator extends ASTVisitor
 		/* if the block corresponding to labelled statement is null, creating a
 		 * block to be associated with it. */
 		if (tree.corrBB == null)
-			tree.corrBB = currentCFG.createBasicBlock(tree.label.toString());
+			tree.corrBB = ControlFlowGraph.createBasicBlock(tree.label.toString());
 		startBasicBlock(tree.corrBB);
 		tree.body.accept(this);
 	}
@@ -842,7 +967,7 @@ public class HIRGenerator extends ASTVisitor
 	{
 		try
 		{
-			genJump(getCurrrentBreakTarget());
+			emitJump(getCurrrentBreakTarget());
 		}
 		catch (Exception e)
 		{
@@ -865,7 +990,7 @@ public class HIRGenerator extends ASTVisitor
 	{
 		try
 		{
-			genJump(getCurrentContinueTarget());
+			emitJump(getCurrentContinueTarget());
 		}
 		catch (Exception e)
 		{
@@ -883,18 +1008,24 @@ public class HIRGenerator extends ASTVisitor
 		Instruction.Return inst;
 		if (tree.expr != null)
 		{
-			Instruction res = genExpr(tree.expr);
+			// emit the result value even if unused, in order to the side effect.
+			Instruction res = emitExpr(tree.expr);
+
+			// stores the return value to specified memory.
+			emitStore(res, currentCFG.getMethod().ReturnValue);
 			inst = new Instruction.Return(res);
 		}
 		else
 			inst = new Instruction.Return(null);
 
-		inst.refs++;
 		appendInst(inst);
 		// goto the exit of current method.
-		genJump(currentCFG.exit());
-		startBasicBlock(currentCFG.createBasicBlock(""));
+		emitJump(currentCFG.exit());
+		startBasicBlock(ControlFlowGraph.createBasicBlock(""));
 	}
+
+	// the generated switch statement currently for nested switch.
+	private SwitchInst switchInst;
 
 	/**
 	 * Currently, switch is not supported.
@@ -903,23 +1034,147 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	@Override public void visitSwitch(Switch tree)
 	{
+		// handle nested switch statements.
+		SwitchInst savedSwitchInst = this.switchInst;
 
+		// the exit block of this switch statement.
+		BasicBlock switchExit = ControlFlowGraph.createBasicBlock("sw.epilog");
+
+
+		// At actually, the constant folding optimization should be taken.
+		// Yet it not implements that for I am lazy....~ ~.
+		Instruction condV = emitExpr(tree.selector);
+
+		// create a block to holds default case statement so that explicit case
+		// ranges test can have a place to jump to on failure.
+		BasicBlock defaultBlock = ControlFlowGraph.createBasicBlock("sw.default");
+
+		// keeps the size of jump list of switch statement.
+		int reserved = 0;
+		for (Case ca : tree.cases)
+			reserved += ca.values.size();
+
+		this.switchInst = new SwitchInst(condV, defaultBlock, reserved);
+
+		// All break statement jump to exit block.
+		pushBreak(switchExit);
+		int idx = 0;
+		HashMap<Case, BasicBlock> caseBlocks = new HashMap<>();
+		// Especially handle default case at current
+		for (Case clause : tree.cases)
+		{
+			// the default case for specially handling.
+			if (clause.values == null)
+			{
+				// hanle default case clause
+				startBasicBlock(currentBlock, defaultBlock);
+				caseBlocks.put(clause, defaultBlock);
+
+				emitDefaultCase(clause);
+			}
+			else
+			{
+				String postfix = idx > 0 ? String.valueOf(idx) : "";
+				++idx;
+				BasicBlock caseBB = ControlFlowGraph.createBasicBlock(
+						"sw.bb" + postfix);
+
+				caseBlocks.put(clause, caseBB);
+
+				startBasicBlock(currentBlock, caseBB);
+				clause.accept(this);
+			}
+		}
+		popBreak();
+
+		handleSubsequnceCases(tree, caseBlocks);
+
+		// Ifa default case was never emitted.
+		if (defaultBlock.getCFG() == null)
+		{
+			// just emits default block so that there are a place to jump
+			// when all cases are mismatch
+			defaultBlock = switchExit;
+			startBasicBlock(defaultBlock);
+		}
+		else
+			startBasicBlock(switchExit);
+
+		// restores saved switch instruction.
+		this.switchInst = savedSwitchInst;
+	}
+
+	/**
+	 * Builds pred-succ link between previous case clause and next clause,
+	 * if current case clause no contains break statement as the last.
+	 * @param tree  The switch statement.
+	 * @param caseBlocks The map that maps case clause to correspondint block.
+	 */
+	private void handleSubsequnceCases(Switch tree,
+			HashMap<Case, BasicBlock> caseBlocks)
+	{
+		for (int idx = 0; idx < tree.cases.size() - 1; idx++)
+		{
+			Case clause = tree.cases.get(idx);
+			Tree lastStmt = null;
+			if (clause.stats instanceof ArrayList)
+			{
+				lastStmt = clause.stats.get(clause.stats.size() - 1);
+			}
+			else if (clause.stats instanceof LinkedList)
+			{
+				lastStmt = ((LinkedList<Tree>)clause.stats).getLast();
+			}
+
+			// the last statement of case clause is a break.
+			// So that we should associate the basic block attached to
+			// switch with the the predecessor of current case clause.
+			if ((lastStmt != null) &&  !(lastStmt instanceof Break))
+			{
+				BasicBlock cur = caseBlocks.get(clause);
+				BasicBlock next = caseBlocks.get(tree.cases.get(idx+1));
+				cur.addSucc(next);
+				next.addPred(cur);
+			}
+		}
+	}
+
+	/**
+	 * Emits HIR for default case statement.
+	 * @param tree  The default case statement.
+	 */
+	private void emitDefaultCase(Case tree)
+	{
+		BasicBlock defaultBlock = this.switchInst.getDefaultBlock();
+		assert defaultBlock != null :
+				"emitDefaultCase: default block already defined?";
+		tree.stats.forEach(clause->clause.accept(this));
 	}
 
 	/**
 	 * Currently, Case statement is not supported.
 	 */
-	@Override public void visitCase(Case tree)
+	@Override
+	public void visitCase(Case tree)
 	{
+		for (Tree expr : tree.values)
+		{
+			Instruction RVal = emitExpr(expr);
+			this.switchInst.addCase(RVal, currentBlock);
+		}
 
+		// branch to default or switch exit block.
+		// when a break statement occures.
+		tree.stats.forEach(clause -> clause.accept(this));
 	}
 
 	/**
 	 * Just ignores.
 	 */
-	@Override public void visitSkip(Skip tree)
+	@Override
+	public void visitSkip(Skip tree)
 	{
-
+		// skip it.
 	}
 
 	/**
@@ -928,12 +1183,13 @@ public class HIRGenerator extends ASTVisitor
 	 * @param args	The arguments list passed to callee.
 	 * @return	Return null if return type is void, otherwise, return value.
 	 */
-	private Instruction genCall(Method m, Instruction[] args)
+	private Instruction emitCall(Method m, Instruction[] args)
 	{
 		CiKind ret = returnKind(m);
 		Invoke inst = new Invoke(ret, args, m);
-		inst.refs++;
+		
 		appendInst(inst);
+		inst.setParent(currentBlock);
 		// return null if it's return type is void
 		return ret == CiKind.Void ? null : inst;
 	}
@@ -949,12 +1205,12 @@ public class HIRGenerator extends ASTVisitor
 		// translates actual parameter list
 		int idx = 0;
 		for (Tree para : tree.args)
-			args[idx++] = genExpr(para);
+			args[idx++] = emitExpr(para);
 
 		Method m = (new Method((MethodDef) tree.meth));
 		
-		// generates calling expression
-		this.exprResult = genCall(m, args);
+		// emiterates calling expression
+		this.exprResult = emitCall(m, args);
 	}
 
 	/**
@@ -980,11 +1236,12 @@ public class HIRGenerator extends ASTVisitor
 	 * @param blocks	The corresponding block array.
 	 * @return	A complete {@code Phi} instruction.
 	 */
-	private Phi genPhi(CiKind kind, Instruction[] values, BasicBlock[] blocks)
+	private Phi emitPhi(CiKind kind, Instruction[] values, BasicBlock[] blocks)
 	{
 		Phi phi = new Phi(kind, values,blocks);
-		phi.refs++;
 		appendInst(phi);
+		phi.setParent(currentBlock);
+
 		return phi;
 	}
 	
@@ -1001,38 +1258,38 @@ public class HIRGenerator extends ASTVisitor
 	{
 		Instruction t1, t2;
 		BasicBlock trueBB, falseBB, nextBB;
-		trueBB = currentCFG.createBasicBlock("cond.true");
-		falseBB = currentCFG.createBasicBlock("cond.false");
-		nextBB = currentCFG.createBasicBlock("cond.end");
+		trueBB = ControlFlowGraph.createBasicBlock("cond.true");
+		falseBB = ControlFlowGraph.createBasicBlock("cond.false");
+		nextBB = ControlFlowGraph.createBasicBlock("cond.end");
 
-		translateBranch(tree.cond, trueBB, falseBB);
+		translateBranchOnBool(tree.cond, trueBB, falseBB);
 
 		// handles true portion
 		startBasicBlock(trueBB);
-		t1 = genExpr(tree.truepart);
+		t1 = emitExpr(tree.truepart);
 		if (t1 == null)
 		{
 			this.exprResult = null;
 			return;
 		}
-		genJump(nextBB);
+		emitJump(nextBB);
 
 		// handles the false part
 		startBasicBlock(falseBB);
-		t2 = genExpr(tree.falsepart);
+		t2 = emitExpr(tree.falsepart);
 		if (t2 == null)
 		{
 			this.exprResult = null;
 			return;
 		}
-		genJump(nextBB);
+		emitJump(nextBB);
 		
 		// starts next basic block
 		startBasicBlock(nextBB);
 		
 		// sets the result of this expression
-		this.exprResult = genPhi(t1.kind, new Instruction[]{t1, t2}, 
-				new BasicBlock[]{trueBB, falseBB});
+		this.exprResult = emitPhi(t1.kind, new Instruction[] { t1, t2 },
+				new BasicBlock[] { trueBB, falseBB });
 	}
 
 	/**
@@ -1041,11 +1298,12 @@ public class HIRGenerator extends ASTVisitor
 	 * @param value  The source of move, including all of instruction.
 	 * @param dest The target of move, which is variable, occasionally.
 	 */
-	private void genStore(Instruction value, Alloca dest)
+	private void emitStore(Instruction value, Alloca dest)
 	{
 		StoreInst inst = new StoreInst(value, dest);
-		inst.refs++;
+		
 		appendInst(inst);
+		inst.setParent(currentBlock);
 	}
 
 	/**
@@ -1057,9 +1315,9 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	@Override public void visitAssign(Tree.Assign tree)
 	{
-		Instruction rhs = genExpr(tree.rhs);
+		Instruction rhs = emitExpr(tree.rhs);
 
-		Instruction lhs = genExpr(tree.lhs);
+		Instruction lhs = emitExpr(tree.lhs);
 		if (rhs == null || lhs == null)
 		{
 			this.exprResult = null;
@@ -1079,7 +1337,7 @@ public class HIRGenerator extends ASTVisitor
 			return;
 		}
 		// generates move instruction
-		genStore(rhs, (Alloca) lhs);
+		emitStore(rhs, (Alloca) lhs);
 	}
 
 	/**
@@ -1097,9 +1355,9 @@ public class HIRGenerator extends ASTVisitor
 		}
 		else
 		{
-			Instruction rhs = genExpr(tree.rhs);
+			Instruction rhs = emitExpr(tree.rhs);
 
-			Instruction lhs = genExpr(tree.lhs);
+			Instruction lhs = emitExpr(tree.lhs);
 			if (rhs == null || lhs == null)
 			{
 				this.exprResult = null;
@@ -1136,7 +1394,7 @@ public class HIRGenerator extends ASTVisitor
 	private Instruction transformAssignOp(Type ty, int pos, int op,
 			Instruction src, Alloca dest)
 	{
-		genStore(genBin(ty, pos, op, dest, src), dest);
+		emitStore(emitBin(ty, pos, op, dest, src), dest);
 		return dest;
 	}
 
@@ -1148,33 +1406,33 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genADD(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitADD(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.ADD_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.ADD_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
 			inst = new Instruction.ADD_F(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
 			inst = new Instruction.ADD_D(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1192,32 +1450,32 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genSUB(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitSUB(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.SUB_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.SUB_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
 			inst = new Instruction.SUB_F(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
 			inst = new Instruction.SUB_D(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1233,32 +1491,32 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genMUL(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitMUL(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.MUL_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.MUL_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
 			inst = new Instruction.MUL_F(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
 			inst = new Instruction.MUL_D(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1274,32 +1532,32 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genDIV(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitDIV(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.DIV_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.DIV_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
 			inst = new Instruction.DIV_F(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
 			inst = new Instruction.DIV_D(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1315,32 +1573,32 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genMOD(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitMOD(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.MOD_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.MOD_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
 			inst = new Instruction.MOD_F(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
 			inst = new Instruction.MOD_D(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1356,20 +1614,20 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genBITAND(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitBITAND(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.AND_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.AND_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1385,19 +1643,19 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genBITOR(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitBITOR(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.OR_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.OR_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1413,20 +1671,20 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genBITXOR(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitBITXOR(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.XOR_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.XOR_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1442,20 +1700,20 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genSHL(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitSHL(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.SHL_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.SHL_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1471,20 +1729,20 @@ public class HIRGenerator extends ASTVisitor
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
 	 */
-	private Instruction genSHR(Type ty, int pos, Instruction lhs, Instruction rhs)
+	private Instruction emitSHR(Type ty, int pos, Instruction lhs, Instruction rhs)
 	{
 		Instruction inst = null;
 
 		if (ty.isIntLike())
 		{
 			inst = new Instruction.SHR_I(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
 			inst = new Instruction.SHR_L(type2Kind(ty), lhs, rhs);
-			inst.refs++;
+			
 			appendInst(inst);
 		}
 		else
@@ -1501,41 +1759,41 @@ public class HIRGenerator extends ASTVisitor
 	 * @param rhs The right hand side of it.
 	 * @return The result of this operation.
 	 */
-	private Instruction genBin(Type ty, int pos, int op, Instruction lhs,
+	private Instruction emitBin(Type ty, int pos, int op, Instruction lhs,
 			Instruction rhs)
 	{
 		Instruction res = null;
 		switch (op)
 		{
 			case Tree.PLUS:
-				res = genADD(ty, pos, lhs, rhs);
+				res = emitADD(ty, pos, lhs, rhs);
 				break;
 			case Tree.MINUS:
-				res = genSUB(ty, pos, lhs, rhs);
+				res = emitSUB(ty, pos, lhs, rhs);
 				break;
 			case Tree.MUL:
-				res = genMUL(ty, pos, lhs, rhs);
+				res = emitMUL(ty, pos, lhs, rhs);
 				break;
 			case Tree.DIV:
-				res = genDIV(ty, pos, lhs, rhs);
+				res = emitDIV(ty, pos, lhs, rhs);
 				break;
 			case Tree.MOD:
-				res = genMOD(ty, pos, lhs, rhs);
+				res = emitMOD(ty, pos, lhs, rhs);
 				break;
 			case Tree.BITAND:
-				res = genBITAND(ty, pos, lhs, rhs);
+				res = emitBITAND(ty, pos, lhs, rhs);
 				break;
 			case Tree.BITOR:
-				res = genBITOR(ty, pos, lhs, rhs);
+				res = emitBITOR(ty, pos, lhs, rhs);
 				break;
 			case Tree.BITXOR:
-				res = genBITXOR(ty, pos, lhs, rhs);
+				res = emitBITXOR(ty, pos, lhs, rhs);
 				break;
 			case Tree.SL:
-				res = genSHL(ty, pos, lhs, rhs);
+				res = emitSHL(ty, pos, lhs, rhs);
 				break;
 			case Tree.SR:
-				res = genSHR(ty, pos, lhs, rhs);
+				res = emitSHR(ty, pos, lhs, rhs);
 				break;
 			default:
 				log.error(pos,
@@ -1555,8 +1813,8 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Instruction translateRelative(Binary tree)
 	{
-		Instruction rhs = genExpr(tree.rhs);
-		Instruction lhs = genExpr(tree.lhs);
+		Instruction rhs = emitExpr(tree.rhs);
+		Instruction lhs = emitExpr(tree.lhs);
 		Instruction result = null;
 		switch (tree.tag)
         {
@@ -1595,14 +1853,14 @@ public class HIRGenerator extends ASTVisitor
 	{
 		BasicBlock nextBB, rhsBB;
 		Instruction rhsResult = null;
-		nextBB = currentCFG.createBasicBlock("");
-		rhsBB = currentCFG.createBasicBlock("");
+		nextBB = ControlFlowGraph.createBasicBlock("");
+		rhsBB = ControlFlowGraph.createBasicBlock("");
 
 		// saves the entry for current context.
 		BasicBlock entry = currentBlock;
 
 		// firstly, translating left hand operand
-		Instruction lhs = genExpr(expr.lhs);
+		Instruction lhs = emitExpr(expr.lhs);
 		if (lhs == null)
 		{
 			return null;
@@ -1617,25 +1875,22 @@ public class HIRGenerator extends ASTVisitor
 				nextBB.bbName = "and.end";
 				// comparison
 				Cmp cmp = Cmp.instance(expr.type, lhs, zero, Condition.GT);
-				cmp.refs++;
 				appendInst(cmp);
 				// branch
 				BR br = new BR(cmp, rhsBB, nextBB);
-				br.refs++;
 				appendInst(br);
 
 				// translate right hand side
 				startBasicBlock(rhsBB);
-				Instruction rhs = genExpr(expr.rhs);
+				Instruction rhs = emitExpr(expr.rhs);
 				if (rhs == null)
 					return null;
 
 				rhsResult = Cmp.instance(expr.type, rhs, zero, Condition.GT);
-				rhsResult.refs++;
+
 				appendInst(rhsResult);
 
 				Instruction.Goto go = new Instruction.Goto(nextBB);
-				go.refs++;
 				appendInst(go);
 
 				startBasicBlock(nextBB);
@@ -1651,25 +1906,24 @@ public class HIRGenerator extends ASTVisitor
 
 				// comparison
 				cmp = Cmp.instance(expr.type, lhs, zero, Condition.GT);
-				cmp.refs++;
 				appendInst(cmp);
 				// branch
 				br = new BR(cmp, nextBB, rhsBB);
-				br.refs++;
+
 				appendInst(br);
 
 				// translate right hand side
 				startBasicBlock(rhsBB);
-				rhs = genExpr(expr.rhs);
+				rhs = emitExpr(expr.rhs);
 				if (rhs == null)
 					return null;
 
 				rhsResult = Cmp.instance(expr.type, rhs, zero, Condition.GT);
-				rhsResult.refs++;
+
 				appendInst(rhsResult);
 
 				go = new Instruction.Goto(nextBB);
-				go.refs++;
+
 				appendInst(go);
 
 				startBasicBlock(nextBB);
@@ -1696,15 +1950,15 @@ public class HIRGenerator extends ASTVisitor
 			return;
 		}
 
-		Instruction rhs = genExpr(tree.rhs);
-		Instruction lhs = genExpr(tree.lhs);
+		Instruction rhs = emitExpr(tree.rhs);
+		Instruction lhs = emitExpr(tree.lhs);
 
-		this.exprResult = genBin(tree.type, tree.pos, tree.tag, lhs, rhs);
+		this.exprResult = emitBin(tree.type, tree.pos, tree.tag, lhs, rhs);
 	}
 
 	private Instruction translateIncrement(Unary expr)
 	{
-		Instruction res = genExpr(expr);
+		Instruction res = emitExpr(expr);
 		if (res == null || res.name == null)
 		{
 			log.error(expr.pos, "The left hand of '=' must be a left-value");
@@ -1718,22 +1972,22 @@ public class HIRGenerator extends ASTVisitor
 			switch (expr.tag)
 			{
 				case Tree.PREDEC:
-					incre = genBin(expr.type, expr.pos, Tree.MINUS, res,
+					incre = emitBin(expr.type, expr.pos, Tree.MINUS, res,
 							new Constant(CiConstant.INT_1));
 					ret = incre;
 					break;
 				case Tree.PREINC:
-					incre = genBin(expr.type, expr.pos, Tree.PLUS, res,
+					incre = emitBin(expr.type, expr.pos, Tree.PLUS, res,
 							new Constant(CiConstant.INT_1));
 					ret = incre;
 					break;
 				case Tree.POSTDEC:
-					incre = genBin(expr.type, expr.pos, Tree.MINUS,
-							res, new Constant(CiConstant.INT_1));
+					incre = emitBin(expr.type, expr.pos, Tree.MINUS, res,
+							new Constant(CiConstant.INT_1));
 					ret = temp;
 					break;
 				case Tree.POSTINC:
-					incre = genBin(expr.type, expr.pos, Tree.PLUS, res,
+					incre = emitBin(expr.type, expr.pos, Tree.PLUS, res,
 							new Constant(CiConstant.INT_1));
 					ret = temp;
 					break;
@@ -1747,7 +2001,7 @@ public class HIRGenerator extends ASTVisitor
 				return null;
 			}
 			// store decrement result into target address
-			genStore(incre, addr);
+			emitStore(incre, addr);
 			return ret;
 		}
 		catch (CloneNotSupportedException e)
@@ -1759,7 +2013,7 @@ public class HIRGenerator extends ASTVisitor
 	
 	private Instruction translateNotExpression(Unary expr)
 	{
-		Instruction res = genExpr(expr.arg);
+		Instruction res = emitExpr(expr.arg);
 		if (res == null)
 		{
 			return null;
@@ -1767,7 +2021,7 @@ public class HIRGenerator extends ASTVisitor
 		Constant zero = new Constant(CiConstant.defaultValue(res.kind));
 		
 		Cmp cmp = Cmp.instance(expr.arg.type, res, zero, Condition.LE);
-		cmp.refs++;
+
 		appendInst(cmp);
 		return cmp;
 	}
@@ -1790,11 +2044,11 @@ public class HIRGenerator extends ASTVisitor
 			this.exprResult = translateIncrement(tree);
 			return;
 		}
-		Instruction operand1 = genExpr(tree.arg);
+		Instruction operand1 = emitExpr(tree.arg);
 		switch (tree.tag)
 		{
 			case Tree.TYPECAST:
-				this.exprResult = genCast(operand1, tree.type, tree.arg.type);
+				this.exprResult = emitCast(operand1, tree.type, tree.arg.type);
 				break;
 			case Tree.NEG:
 
@@ -1803,10 +2057,10 @@ public class HIRGenerator extends ASTVisitor
 
 				break;
 			case Tree.INDEXED:
-				this.exprResult = genExpr(tree.arg);
+				this.exprResult = emitExpr(tree.arg);
 				break;
 			case Tree.APPLY:
-				this.exprResult = genExpr(tree.arg);
+				this.exprResult = emitExpr(tree.arg);
 				break;
 			case Tree.POSTDEC:
 			case Tree.POSTINC:
@@ -1835,11 +2089,11 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	@Override public void visitTypeCast(TypeCast tree)
 	{
-		Instruction res = genExpr(tree.expr);
-		this.exprResult = genCast(res, tree.expr.type, tree.clazz.type);
+		Instruction res = emitExpr(tree.expr);
+		this.exprResult = emitCast(res, tree.expr.type, tree.clazz.type);
 	}
 
-	@Override public void visitLiteral(Tree.Literal tree)
+	@Override public void visitLiteral(Literal tree)
 	{
 		if (tree.typetag == TypeTags.INT)
 		{
@@ -1876,10 +2130,10 @@ public class HIRGenerator extends ASTVisitor
 	 * @param src    The source instruction that will be loaded into target.
 	 * @return Return the {@code LoadInst} that load value from src
 	 */
-	private Instruction genLoadInstruction(Alloca src)
+	private Instruction emitLoadInstruction(Alloca src)
 	{
 		LoadInst inst = new LoadInst(src.kind, src);
-		inst.refs++;
+		
 		appendInst(inst);
 		return inst;
 	}
@@ -1900,7 +2154,7 @@ public class HIRGenerator extends ASTVisitor
 				this.exprResult = null;
 				return;
 			}
-			this.exprResult = genLoadInstruction(sym.varInst);
+			this.exprResult = emitLoadInstruction(sym.varInst);
 		}
 		// for handling aggregate type, like array and struct
 		if (tree.sym.kind == SymbolKinds.COMPOSITE)

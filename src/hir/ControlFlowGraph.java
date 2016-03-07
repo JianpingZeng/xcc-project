@@ -3,6 +3,7 @@ package hir;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 
 public class ControlFlowGraph {
 
@@ -17,7 +18,7 @@ public class ControlFlowGraph {
 	private BasicBlock endNode;
 	
     /** Current id of basic blocks, used to generate unique id's. */
-    private int bb_counter;
+    private static int bb_counter;
     /** Current id of quads, used to generate unique id's. */
     private int quad_counter;
     
@@ -45,13 +46,13 @@ public class ControlFlowGraph {
 
 	public BasicBlock createStartNode()
 	{
-		this.startNode = BasicBlock.createStartNode(START_ID, "entry");
+		this.startNode = BasicBlock.createStartNode(START_ID, "entry",this);
 		return startNode;
 	}
 
 	public BasicBlock createEndNode()
 	{
-		endNode = BasicBlock.createStartNode(END_ID, "exit");
+		endNode = BasicBlock.createEndNode(END_ID, "exit", this);
 		return endNode;
 	}
 
@@ -86,9 +87,9 @@ public class ControlFlowGraph {
      * @param bbName The name of the basic block to be constructed.
      * @return  the newly created basic block.
      */
-    public BasicBlock createBasicBlock(String bbName) {
+    public static BasicBlock createBasicBlock(String bbName) {
         
-    	return BasicBlock.createBasicBlock(bb_counter++, bbName);
+    	return BasicBlock.createBasicBlock(bb_counter++, bbName, null);
     }
     
     /** Use with care after renumbering basic blocks. */
@@ -181,7 +182,7 @@ public class ControlFlowGraph {
     private void reversePostOrder_helper(BasicBlock b, boolean[] visited, java.util.LinkedList<BasicBlock> result, boolean direction) {
         if (visited[b.getID()]) return;
         visited[b.getID()] = true;
-        List<BasicBlock> bbs = direction ? b.getSuccessors() : b.getPredecessors();
+        Set<BasicBlock> bbs = direction ? b.getSuccs() : b.getPreds();
         for (BasicBlock b2 : bbs) {
             reversePostOrder_helper(b2, visited, result, direction);
         }
