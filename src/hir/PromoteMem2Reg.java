@@ -4,6 +4,7 @@ import utils.Pair;
 import java.util.*;
 import hir.DominatorTree.DomTreeNode;
 import hir.Instruction.*;
+import hir.Value.*;
 
 /**
  * This file promotes memory references to be register references.  It promotes
@@ -96,6 +97,34 @@ public class PromoteMem2Reg
 
 	/**
 	 * Running optimization algorithm to promote alloca onto register.
+	 * <p>
+	 *   For simply, first we handle many trivial case as follow two situation.
+	 *   <br>
+	 *   <b>i.Only one stores(definition) to alloca:</b>
+	 *   Replaces all uses to load instruction that load a value from a single
+	 *   alloca with the value loaded from alloca.
+	 *   Then simply removes this load and store.
+	 *   <br>
+	 *   <b>ii.All uses to alloca are within a single basic block:</b>
+	 *   Removes useless loads and stores.
+	 * </p>
+	 *
+	 * <p>
+	 *     After, take advantage of DJ graph to place phi node with dominator
+	 *     frontier at same time, avoding inserts dead phi node.
+	 *     <br>
+	 *     The finally, performing rename algorithm as follow steps.
+	 *     <br>
+	 *     1.Aads {@code UndefValue} into incoming values of phi node.
+	 *     <br>
+	 *     2.Looks up for all uses(loads) to alloca, replace the all uses to
+	 *     loads with the current active value of current alloca, then remove
+	 *     loads from basic block.
+	 *     <br>
+	 *     3.Looks up for all definition(stores) to alloca, which modify the
+	 *     current active value of alloca, so that we updates the current active
+	 *     value of the targeted alloca of stores with the value used in store.
+	 * </p>
 	 */
 	public void run()
 	{
@@ -161,6 +190,7 @@ public class PromoteMem2Reg
 			}
 
 			// if we haven't computed dominator tree level, just do it
+			// with width-first traverse.
 			if (DomLevels.isEmpty())
 			{
 				LinkedList<DominatorTree.DomTreeNode> worklist =
@@ -212,7 +242,7 @@ public class PromoteMem2Reg
 
 		LBI.clear();
 
-		Instruction[] values = new Instruction[allocas.size()];
+		Value[] values = new Value[allocas.size()];
 		for (int idx = 0; idx < allocas.size(); idx++)
 			values[idx] = UndefValue.get(allocas.get(idx).kind);
 
@@ -309,7 +339,7 @@ public class PromoteMem2Reg
 			while(it.hasNext() && ((inst = it.next()) instanceof Phi
 			&& (phi = (Phi)inst).getNumberIncomingValues() == numBadPreds))
 			{
-				Instruction undef = UndefValue.get(phi.kind);
+				Value undef = UndefValue.get(phi.kind);
 				for (BasicBlock pred : preds)
 					phi.addIncoming(undef, pred);
 			}
@@ -334,6 +364,10 @@ public class PromoteMem2Reg
 	 * <p>
 	 * Recursively traverse the CFG of the function, renaming loads and
 	 * stores to the alloca which we are promoting.
+	 *
+	 * On the other hand, this rename algorithm is performed for promoting
+	 * alloca onto register and removing related stores and loads to alloca
+	 * promoted.
 	 * </p>
 	 * <p>
 	 *     Since the reference to alloca (variable) just contains stores and load.
@@ -345,7 +379,7 @@ public class PromoteMem2Reg
 	 * @param worklist  The list of basic blocks to be renamed.
 	 */
 	private void renamePass(BasicBlock BB, BasicBlock pred,
-			Instruction[] incomgingValues,
+			Value[] incomgingValues,
 			LinkedList<RenamePassData> worklist)
 	{
 		Instruction inst;
@@ -371,10 +405,14 @@ public class PromoteMem2Reg
 					do
 					{
 						int allocaNo = PhiToAllocaMap.get(phi);
+
+						// sets the undef value for phi node, it is reason that
+						// handling loop.
 						for (int j = 0; j < numEdges; ++j)
 							phi.addIncoming(incomgingValues[allocaNo], pred);
 
-						// the currently active variable for this block is now the phi.
+						// the currently active variable for this block is now
+						// the phi.
 						incomgingValues[allocaNo] = phi;
 
 						// no more instruction
@@ -393,10 +431,15 @@ public class PromoteMem2Reg
 			if (!visitedBlocks.add(BB))
 				return;
 
+			// handles subsequnce instruction at control flow graph.
 			Iterator<Instruction> it = BB.iterator();
 			while (it.hasNext())
 			{
 				inst = it.next();
+
+				// Only load and store to alloca instruction will be handled,
+				// because at our HIR, the uses of alloca just contains laods
+				// and stores.
 				if (inst instanceof LoadInst)
 				{
 					LoadInst LI = (LoadInst) inst;
@@ -408,7 +451,8 @@ public class PromoteMem2Reg
 					if (index == null)
 						continue;
 
-					Instruction value = incomgingValues[index];
+					// gets the active value of current alloca with index.
+					Value value = incomgingValues[index];
 					// anything using the load now uses the current value.
 					LI.replaceAllUsesWith(value);
 
@@ -759,7 +803,8 @@ public class PromoteMem2Reg
 	 * @param DT    The dominator tree for calculating dominator frontier.
 	 * @return  return true if rewriting successfully.
 	 */
-	private boolean rewriteSingleStoreAlloca(Alloca AI, AllocaInfo info, LargeBlockInfo LBI, DominatorTree DT)
+	private boolean rewriteSingleStoreAlloca(Alloca AI, AllocaInfo info,
+			LargeBlockInfo LBI, DominatorTree DT)
 	{
 		// the last definition of alloca
 		StoreInst onlyStore = info.onlyStore;
@@ -809,7 +854,7 @@ public class PromoteMem2Reg
 
 			// At this point, knows that the loads is dominated by stores
 			// So, we can safty rewrite the load with the value stores to alloca.
-			Instruction value = onlyStore.value;
+			Value value = onlyStore.value;
 			if (value == LI)
 				value = UndefValue.get(value.kind);
 			LI.replaceAllUsesWith(value);
@@ -849,7 +894,7 @@ public class PromoteMem2Reg
 	{
 		BasicBlock BB;
 		BasicBlock pred;
-		Instruction[] values;
+		Value[] values;
 
 		public RenamePassData()
 		{
@@ -858,7 +903,7 @@ public class PromoteMem2Reg
 			values = null;
 		}
 
-		public RenamePassData(BasicBlock BB, BasicBlock pred, Instruction[] values)
+		public RenamePassData(BasicBlock BB, BasicBlock pred, Value[] values)
 		{
 			this.BB = BB;
 			this.pred = pred;
@@ -878,7 +923,7 @@ public class PromoteMem2Reg
 			this.pred = otherPred;
 
 			// swap values
-			Instruction[] otherVal = this.values;
+			Value[] otherVal = this.values;
 			this.values = other.values;
 			other.values = otherVal;
 		}

@@ -1,5 +1,7 @@
 package hir;
 
+import ci.CiKind;
+
 import java.util.*;
 
 /**
@@ -20,7 +22,7 @@ import java.util.*;
  * @version 1.0
  * @see Instruction
  */
-public class BasicBlock implements Iterable<Instruction>
+public final class BasicBlock extends Value implements Iterable<Instruction>
 {
 	/**
 	 * Unique id id for this basic block.
@@ -70,6 +72,7 @@ public class BasicBlock implements Iterable<Instruction>
 	private BasicBlock(int id, LinkedList<BasicBlock> pres, LinkedList<BasicBlock> succs,
 			String bbName, ControlFlowGraph cfg)
 	{
+		super(CiKind.Illegal);
 		this.idNumber = id;
 		this.instructions = new LinkedList<>();
 		this.predecessors = pres;
