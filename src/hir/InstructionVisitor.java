@@ -468,11 +468,6 @@ public abstract class InstructionVisitor
 		visitInstruction(inst);
 	}
 
-	public void visitConstant(Constant inst)
-	{
-		visitInstruction(inst);
-	}
-
 	public void visitAlloca(Alloca inst)
 	{
 		visitInstruction(inst);

@@ -128,7 +128,7 @@ public class HIRGenerator extends ASTVisitor
 	}
 
 	/**
-	 * The result of expression.
+	 * The ret of expression.
 	 */
 	private Instruction exprResult = null;
 
@@ -1008,7 +1008,7 @@ public class HIRGenerator extends ASTVisitor
 		Instruction.Return inst;
 		if (tree.expr != null)
 		{
-			// emit the result value even if unused, in order to the side effect.
+			// emit the ret value even if unused, in order to the side effect.
 			Instruction res = emitExpr(tree.expr);
 
 			// stores the return value to specified memory.
@@ -1231,7 +1231,7 @@ public class HIRGenerator extends ASTVisitor
 
 	/**
 	 * Geneates phi node and inserts it into current block.
-	 * @param kind	The result kind.
+	 * @param kind	The ret kind.
 	 * @param values	The parameter array to be passed into Phi node.
 	 * @param blocks	The corresponding block array.
 	 * @return	A complete {@code Phi} instruction.
@@ -1287,7 +1287,7 @@ public class HIRGenerator extends ASTVisitor
 		// starts next basic block
 		startBasicBlock(nextBB);
 		
-		// sets the result of this expression
+		// sets the ret of this expression
 		this.exprResult = emitPhi(t1.kind, new Instruction[] { t1, t2 },
 				new BasicBlock[] { trueBB, falseBB });
 	}
@@ -1401,7 +1401,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an add instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1445,7 +1445,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an sub instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1486,7 +1486,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an mul instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1527,7 +1527,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an div instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1568,7 +1568,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an mod instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1609,7 +1609,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an bit-and instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1638,7 +1638,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an bit-and instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1666,7 +1666,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an bit-and instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1695,7 +1695,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an sheft left instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1724,7 +1724,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Generates an sheft rigth instruction and inserts into basic block.
 	 *
-	 * @param ty  The data type of result.
+	 * @param ty  The data type of ret.
 	 * @param pos The position to error report.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
@@ -1757,7 +1757,7 @@ public class HIRGenerator extends ASTVisitor
 	 * @param op  The operator code.
 	 * @param lhs The left hand side of it.
 	 * @param rhs The right hand side of it.
-	 * @return The result of this operation.
+	 * @return The ret of this operation.
 	 */
 	private Instruction emitBin(Type ty, int pos, int op, Instruction lhs,
 			Instruction rhs)
@@ -2000,7 +2000,7 @@ public class HIRGenerator extends ASTVisitor
 				log.error(expr.pos, "Unknow variable name " + res.name.toString());
 				return null;
 			}
-			// store decrement result into target address
+			// store decrement ret into target address
 			emitStore(incre, addr);
 			return ret;
 		}

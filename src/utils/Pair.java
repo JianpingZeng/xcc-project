@@ -10,8 +10,8 @@ package utils;
  * A generic class for pairs.
  */
 public class Pair<K, V> {
-    public final K fst;
-    public final V snd;
+    public K fst;
+    public V snd;
 
     public Pair(K fst, V snd) {
         super();

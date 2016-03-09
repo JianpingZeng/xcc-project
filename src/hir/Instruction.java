@@ -1,14 +1,11 @@
 package hir;
 
-import ci.CiConstant;
 import ci.CiKind;
 import comp.OpCodes;
 import exception.SemanticError;
 import type.Type;
-import utils.Name;
 import utils.Pair;
 import utils.Utils;
-import java.util.ArrayList;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -20,63 +17,35 @@ import java.util.ArrayList;
  * @version `1.0
  * @see BasicBlock
  */
-public abstract class Instruction implements Cloneable
+public abstract class Instruction extends Value implements Cloneable
 {
-	/**
-	 * The list of all instruction which use this instruction.
-	 */
-	public ArrayList<Instruction> uses;
 	/**
 	 * Mainly for register allocation.
 	 */
 	public int id;
-	/**
-	 * The type of inst produced with this instruction. The kind is
-	 * {@linkplain CiKind#Void} if this instruction produce no inst.
-	 */
-	public CiKind kind;
 
 	/**
-	 * The result of operation over this instruction, it is null if this instruction
-	 * no return result.
+	 * The ret of operation over this instruction, it is null if this instruction
+	 * no return ret.
 	 */
-	//public Instruction result;
-
-	/**
-	 * Obtains the name of variable. it is null for other instruction.
-	 * 
-	 * <p>
-	 * The name of variable, which is similar to IR in LLVM.
-	 * For global variable and local variable, those are starts with symbol'@'
-	 * and '%' respectively.
-	 * <p>To visit <a href = "http://llvm.org/docs/LangRef.html#global-variables">
-	 * LLVM language reference manual</a> for detail.</p>
-	 * </p>
-	 */
-	public Name name = null;
-	/**
-	 * Value numbering for entering SSA form.
-	 */
-	public int number;
+	//public Instruction ret;
 
 	private BasicBlock bb;
+
+	/**
+	 * A link to next instruction at the basic block or to itself if it not on
+	 * block.
+	 */
+	private Instruction next = this;
 
 	public BasicBlock getParent() {return bb;}
 	public void setParent(BasicBlock bb) {this.bb = bb;}
 
 	public Instruction(CiKind kind)
 	{
-		this.kind = kind;
+		super(kind);
 		this.id = -1;
-		this.uses = new ArrayList<>(8);
 	}
-
-	/**
-	 * An interface for InstructionVisitor invoking.
-	 *
-	 * @param visitor The instance of InstructionVisitor.
-	 */
-	public abstract void accept(InstructionVisitor visitor);
 
 	/**
 	 * Erases this instruction from it's parent basic block.
@@ -86,6 +55,13 @@ public abstract class Instruction implements Cloneable
 		assert (this.bb == null) : "The basic block where the instruction reside to be erased!";
 		bb.removeInst(this);
 	}
+
+	/**
+	 * An interface for InstructionVisitor invoking.
+	 *
+	 * @param visitor The instance of InstructionVisitor.
+	 */
+	public abstract void accept(InstructionVisitor visitor);
 
 	/**
 	 * Gets the text format of this Instruction.
@@ -124,35 +100,6 @@ public abstract class Instruction implements Cloneable
 	}
 
 	/**
-	 * Go through the uses list for this definition and make each use point
-	 * to "value" of "this". After this completes, this's uses list is empty.
-	 * @param value
-	 */
-	public void replaceAllUsesWith(Instruction value)
-	{
-		assert value != null : "Instruction.replaceAllusesWith(<null>) is invalid.";
-		assert kind == value.kind :
-				"replaceAllUses of value with new value of different tyep";
-
-		// 更新use-def链中的使用分量
-		// 暂时未完成
-
-		BasicBlock BB = value.getParent();
-		for (BasicBlock succ : BB.getSuccs())
-		{
-			for(Instruction inst : succ)
-			{
-				if (!(inst instanceof Phi))
-					break;
-				int i;
-				Phi PN = (Phi)inst;
-				if ((i = PN.getBasicBlockIndex(BB)) >= 0)
-					PN.setParameter(i, value);
-			}
-		}
-	}
-
-	/**
 	 * The abstract base class definition for unary operator.
 	 */
 	public static abstract class Op1 extends Instruction
@@ -160,15 +107,15 @@ public abstract class Instruction implements Cloneable
 		/**
 		 * The field represents first operand of this instruction.
 		 */
-		Instruction x;
+		public Value x;
 
 		/**
 		 * Constructs unary operation.
 		 *
-		 * @param kind The inst kind of result.
+		 * @param kind The inst kind of ret.
 		 * @param x    The sole operand.
 		 */
-		public Op1(CiKind kind, Instruction x)
+		public Op1(CiKind kind, Value x)
 		{
 			super(kind);
 			this.x = x;
@@ -187,9 +134,9 @@ public abstract class Instruction implements Cloneable
 		 * The two field represents first or second operand of this instruction
 		 * respectively.
 		 */
-		Instruction x, y;
+		public Value x, y;
 
-		public Op2(CiKind kind, Instruction x, Instruction y)
+		public Op2(CiKind kind, Value x, Value y)
 		{
 			super(kind);
 			this.x = x;
@@ -200,7 +147,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class ADD_I extends Op2
 	{
-		public ADD_I(CiKind kind, Instruction x, Instruction y)
+		public ADD_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -223,7 +170,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SUB_I extends Op2
 	{
-		public SUB_I(CiKind kind, Instruction x, Instruction y)
+		public SUB_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -246,7 +193,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MUL_I extends Op2
 	{
-		public MUL_I(CiKind kind, Instruction x, Instruction y)
+		public MUL_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -269,7 +216,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class DIV_I extends Op2
 	{
-		public DIV_I(CiKind kind, Instruction x, Instruction y)
+		public DIV_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -292,7 +239,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MOD_I extends Op2
 	{
-		public MOD_I(CiKind kind, Instruction x, Instruction y)
+		public MOD_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -315,7 +262,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class AND_I extends Op2
 	{
-		public AND_I(CiKind kind, Instruction x, Instruction y)
+		public AND_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -338,7 +285,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class OR_I extends Op2
 	{
-		public OR_I(CiKind kind, Instruction x, Instruction y)
+		public OR_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -361,7 +308,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class XOR_I extends Op2
 	{
-		public XOR_I(CiKind kind, Instruction x, Instruction y)
+		public XOR_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -384,7 +331,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SHL_I extends Op2
 	{
-		public SHL_I(CiKind kind, Instruction x, Instruction y)
+		public SHL_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -407,7 +354,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SHR_I extends Op2
 	{
-		public SHR_I(CiKind kind, Instruction x, Instruction y)
+		public SHR_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -435,7 +382,7 @@ public abstract class Instruction implements Cloneable
 	 */
 	public static class USHR_I extends Op2
 	{
-		public USHR_I(CiKind kind, Instruction x, Instruction y)
+		public USHR_I(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -458,7 +405,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class ADD_L extends Op2
 	{
-		public ADD_L(CiKind kind, Instruction x, Instruction y)
+		public ADD_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -481,7 +428,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SUB_L extends Op2
 	{
-		public SUB_L(CiKind kind, Instruction x, Instruction y)
+		public SUB_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -504,7 +451,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MUL_L extends Op2
 	{
-		public MUL_L(CiKind kind, Instruction x, Instruction y)
+		public MUL_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -527,7 +474,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class DIV_L extends Op2
 	{
-		public DIV_L(CiKind kind, Instruction x, Instruction y)
+		public DIV_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -550,7 +497,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MOD_L extends Op2
 	{
-		public MOD_L(CiKind kind, Instruction x, Instruction y)
+		public MOD_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -573,7 +520,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class AND_L extends Op2
 	{
-		public AND_L(CiKind kind, Instruction x, Instruction y)
+		public AND_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -596,7 +543,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class OR_L extends Op2
 	{
-		public OR_L(CiKind kind, Instruction x, Instruction y)
+		public OR_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -619,7 +566,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class XOR_L extends Op2
 	{
-		public XOR_L(CiKind kind, Instruction x, Instruction y)
+		public XOR_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -642,7 +589,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SHL_L extends Op2
 	{
-		public SHL_L(CiKind kind, Instruction x, Instruction y)
+		public SHL_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -665,7 +612,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SHR_L extends Op2
 	{
-		public SHR_L(CiKind kind, Instruction x, Instruction y)
+		public SHR_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -693,7 +640,7 @@ public abstract class Instruction implements Cloneable
 	 */
 	public static class USHR_L extends Op2
 	{
-		public USHR_L(CiKind kind, Instruction x, Instruction y)
+		public USHR_L(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -716,7 +663,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class ADD_F extends Op2
 	{
-		public ADD_F(CiKind kind, Instruction x, Instruction y)
+		public ADD_F(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -739,7 +686,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SUB_F extends Op2
 	{
-		public SUB_F(CiKind kind, Instruction x, Instruction y)
+		public SUB_F(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -762,7 +709,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MUL_F extends Op2
 	{
-		public MUL_F(CiKind kind, Instruction x, Instruction y)
+		public MUL_F(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -785,7 +732,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class DIV_F extends Op2
 	{
-		public DIV_F(CiKind kind, Instruction x, Instruction y)
+		public DIV_F(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -808,7 +755,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MOD_F extends Op2
 	{
-		public MOD_F(CiKind kind, Instruction x, Instruction y)
+		public MOD_F(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -831,7 +778,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class ADD_D extends Op2
 	{
-		public ADD_D(CiKind kind, Instruction x, Instruction y)
+		public ADD_D(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -854,7 +801,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class SUB_D extends Op2
 	{
-		public SUB_D(CiKind kind, Instruction x, Instruction y)
+		public SUB_D(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -877,7 +824,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MUL_D extends Op2
 	{
-		public MUL_D(CiKind kind, Instruction x, Instruction y)
+		public MUL_D(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -900,7 +847,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class DIV_D extends Op2
 	{
-		public DIV_D(CiKind kind, Instruction x, Instruction y)
+		public DIV_D(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -923,7 +870,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class MOD_D extends Op2
 	{
-		public MOD_D(CiKind kind, Instruction x, Instruction y)
+		public MOD_D(CiKind kind, Value x, Value y)
 		{
 			super(kind, x, y);
 		}
@@ -946,7 +893,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class NEG_I extends Op1
 	{
-		public NEG_I(CiKind kind, Instruction x)
+		public NEG_I(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -969,7 +916,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class NEG_F extends Op1
 	{
-		public NEG_F(CiKind kind, Instruction x)
+		public NEG_F(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -992,7 +939,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class NEG_L extends Op1
 	{
-		public NEG_L(CiKind kind, Instruction x)
+		public NEG_L(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1016,7 +963,7 @@ public abstract class Instruction implements Cloneable
 	public static class NEG_D extends Op1
 	{
 
-		public NEG_D(CiKind kind, Instruction x)
+		public NEG_D(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1039,7 +986,7 @@ public abstract class Instruction implements Cloneable
 	public static class INT_2LONG extends Op1
 	{
 
-		public INT_2LONG(CiKind kind, Instruction x)
+		public INT_2LONG(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1061,7 +1008,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class INT_2FLOAT extends Op1
 	{
-		public INT_2FLOAT(CiKind kind, Instruction x)
+		public INT_2FLOAT(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1084,7 +1031,7 @@ public abstract class Instruction implements Cloneable
 	public static class INT_2DOUBLE extends Op1
 	{
 
-		public INT_2DOUBLE(CiKind kind, Instruction x)
+		public INT_2DOUBLE(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1107,7 +1054,7 @@ public abstract class Instruction implements Cloneable
 	public static class LONG_2INT extends Op1
 	{
 
-		public LONG_2INT(CiKind kind, Instruction x)
+		public LONG_2INT(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1129,7 +1076,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class LONG_2FLOAT extends Op1
 	{
-		public LONG_2FLOAT(CiKind kind, Instruction x)
+		public LONG_2FLOAT(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1152,7 +1099,7 @@ public abstract class Instruction implements Cloneable
 	public static class LONG_2DOUBLE extends Op1
 	{
 
-		public LONG_2DOUBLE(CiKind kind, Instruction x)
+		public LONG_2DOUBLE(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1174,7 +1121,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class FLOAT_2INT extends Op1
 	{
-		public FLOAT_2INT(CiKind kind, Instruction x)
+		public FLOAT_2INT(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1196,7 +1143,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class FLOAT_2LONG extends Op1
 	{
-		public FLOAT_2LONG(CiKind kind, Instruction x)
+		public FLOAT_2LONG(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1219,7 +1166,7 @@ public abstract class Instruction implements Cloneable
 	public static class FLOAT_2DOUBLE extends Op1
 	{
 
-		public FLOAT_2DOUBLE(CiKind kind, Instruction x)
+		public FLOAT_2DOUBLE(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1242,7 +1189,7 @@ public abstract class Instruction implements Cloneable
 	public static class DOUBLE_2INT extends Op1
 	{
 
-		public DOUBLE_2INT(CiKind kind, Instruction x)
+		public DOUBLE_2INT(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1265,7 +1212,7 @@ public abstract class Instruction implements Cloneable
 	public static class DOUBLE_2LONG extends Op1
 	{
 
-		public DOUBLE_2LONG(CiKind kind, Instruction x)
+		public DOUBLE_2LONG(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1288,7 +1235,7 @@ public abstract class Instruction implements Cloneable
 	public static class DOUBLE_2FLOAT extends Op1
 	{
 
-		public DOUBLE_2FLOAT(CiKind kind, Instruction x)
+		public DOUBLE_2FLOAT(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1311,7 +1258,7 @@ public abstract class Instruction implements Cloneable
 	public static class INT_2BYTE extends Op1
 	{
 
-		public INT_2BYTE(CiKind kind, Instruction x)
+		public INT_2BYTE(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1334,7 +1281,7 @@ public abstract class Instruction implements Cloneable
 	public static class INT_2CHAR extends Op1
 	{
 
-		public INT_2CHAR(CiKind kind, Instruction x)
+		public INT_2CHAR(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1357,7 +1304,7 @@ public abstract class Instruction implements Cloneable
 	public static class INT_2SHORT extends Op1
 	{
 
-		public INT_2SHORT(CiKind kind, Instruction x)
+		public INT_2SHORT(CiKind kind, Value x)
 		{
 			super(kind, x);
 		}
@@ -1397,10 +1344,10 @@ public abstract class Instruction implements Cloneable
 
 	public static class BR extends Branch
 	{
-		Instruction x;
+		Value x;
 		BasicBlock trueTarget, falseTarget;
 
-		public BR(Instruction x, BasicBlock trueTarget, BasicBlock falseTarget)
+		public BR(Value x, BasicBlock trueTarget, BasicBlock falseTarget)
 		{
 			super(CiKind.Illegal);
 			this.x = x;
@@ -1424,16 +1371,16 @@ public abstract class Instruction implements Cloneable
 		/**
 		 * The first operand also that means left-most of this branch operation.
 		 */
-		Instruction x;
+		Value x;
 		/**
 		 * The second operand also that means right-most of this branch
 		 * operation.
 		 */
-		Instruction y;
+		Value y;
 
 		BasicBlock trueTarget, falseTarget;
 
-		IntCmp(Instruction x, Instruction y, BasicBlock trueTarget,
+		IntCmp(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
 			super(CiKind.Illegal);
@@ -1448,7 +1395,7 @@ public abstract class Instruction implements Cloneable
 		 *
 		 * @return
 		 */
-		public Instruction x()
+		public Value x()
 		{
 			return x;
 		}
@@ -1458,7 +1405,7 @@ public abstract class Instruction implements Cloneable
 		 *
 		 * @return
 		 */
-		public Instruction y()
+		public Value y()
 		{
 			return y;
 		}
@@ -1487,7 +1434,7 @@ public abstract class Instruction implements Cloneable
 	public static abstract class Cmp extends Op2
 	{
 		Condition cond;
-		private Cmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+		private Cmp(CiKind kind, Value left, Value right, Condition cond)
         {
 			super(kind, left, right);
 			this.cond = cond;
@@ -1496,14 +1443,14 @@ public abstract class Instruction implements Cloneable
 		/**
 		 * Creates a instance of different subclass served as different date type according 
 		 * to the date type.  
-		 * @param ty	The result date type.
+		 * @param ty	The ret date type.
 		 * @param left	The left operand.
 		 * @param right	the right operand.
 		 * @param cond	The condition object.
 		 * @return	According comparison instruction.
 		 */
-		public static Cmp instance(Type ty, Instruction left, 
-				Instruction right, Condition cond)
+		public static Cmp instance(Type ty, Value left,
+				Value right, Condition cond)
 		{
 			CiKind kind = HIRGenerator.type2Kind(ty);
 			if (ty.isIntLike())
@@ -1532,7 +1479,7 @@ public abstract class Instruction implements Cloneable
 	
 	public static class ICmp extends Cmp
 	{
-		public ICmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+		public ICmp(CiKind kind, Value left, Value right, Condition cond)
         {
 			super(kind, left, right, cond);
         }
@@ -1552,7 +1499,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class LCmp extends Cmp
 	{
-		public LCmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+		public LCmp(CiKind kind, Value left, Value right, Condition cond)
         {
 			super(kind, left, right, cond);
         }
@@ -1572,7 +1519,7 @@ public abstract class Instruction implements Cloneable
 	
 	public static class FCmp extends Cmp
 	{
-		public FCmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+		public FCmp(CiKind kind, Value left, Value right, Condition cond)
         {
 			super(kind, left, right, cond);
         }
@@ -1592,7 +1539,7 @@ public abstract class Instruction implements Cloneable
 	
 	public static class DCmp extends Cmp
 	{
-		public DCmp(CiKind kind, Instruction left, Instruction right, Condition cond)
+		public DCmp(CiKind kind, Value left, Value right, Condition cond)
         {
 			super(kind, left, right, cond);
         }
@@ -1612,7 +1559,7 @@ public abstract class Instruction implements Cloneable
 	
 	public static final class IfCmp_LT extends IntCmp
 	{
-		public IfCmp_LT(Instruction x, Instruction y, BasicBlock trueTarget,
+		public IfCmp_LT(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
@@ -1641,7 +1588,7 @@ public abstract class Instruction implements Cloneable
 
 	public static final class IfCmp_LE extends IntCmp
 	{
-		public IfCmp_LE(Instruction x, Instruction y, BasicBlock trueTarget,
+		public IfCmp_LE(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
@@ -1670,7 +1617,7 @@ public abstract class Instruction implements Cloneable
 
 	public static final class IfCmp_GT extends IntCmp
 	{
-		public IfCmp_GT(Instruction x, Instruction y, BasicBlock trueTarget,
+		public IfCmp_GT(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
@@ -1699,7 +1646,7 @@ public abstract class Instruction implements Cloneable
 
 	public static class IfCmp_GE extends IntCmp
 	{
-		public IfCmp_GE(Instruction x, Instruction y, BasicBlock trueTarget,
+		public IfCmp_GE(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
@@ -1728,7 +1675,7 @@ public abstract class Instruction implements Cloneable
 
 	public static final class IfCmp_EQ extends IntCmp
 	{
-		public IfCmp_EQ(Instruction x, Instruction y, BasicBlock trueTarget,
+		public IfCmp_EQ(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
@@ -1757,7 +1704,7 @@ public abstract class Instruction implements Cloneable
 
 	public static final class IfCmp_NEQ extends IntCmp
 	{
-		public IfCmp_NEQ(Instruction x, Instruction y, BasicBlock trueTarget,
+		public IfCmp_NEQ(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
 			super(x, y, trueTarget, falseTarget);
@@ -1826,28 +1773,28 @@ public abstract class Instruction implements Cloneable
 	 */
 	public static class Return extends Branch
 	{
-		Instruction result;
+		Value ret;
 
 		/**
 		 * Constructs a new return instruction with return inst.
 		 *
-		 * @param result The return inst produce for this instruction, return
-		 *               void if result is {@code null}.
+		 * @param retValue The return inst produce for this instruction, return
+		 *               void if ret is {@code null}.
 		 */
-		public Return(Instruction result)
+		public Return(Value retValue)
 		{
-			super(result == null ? CiKind.Void : result.kind);
-			this.result = result;
+			super(retValue == null ? CiKind.Void : retValue.kind);
+			this.ret = retValue;
 		}
 
 		/**
-		 * Gets the instruction that produces the result for the return.
+		 * Gets the instruction that produces the ret for the return.
 		 *
-		 * @return the instruction producing the result
+		 * @return the instruction producing the ret
 		 */
-		public Instruction result()
+		public Value result()
 		{
-			return result;
+			return ret;
 		}
 
 		@Override public void accept(InstructionVisitor visitor)
@@ -1871,22 +1818,22 @@ public abstract class Instruction implements Cloneable
 		/**
 		 * The input arguments for function calling.
 		 */
-		public final Instruction[] arguments;
+		public final Value[] arguments;
 		/**
 		 * The target of this method calling.
 		 */
 		public final Method target;
 
-		public Instruction ret;
+		public Value ret;
 
 		/**
 		 * Constructs a new method calling instruction.
 		 *
-		 * @param result     The kind of return result.
+		 * @param result     The kind of return ret.
 		 * @param args       The input arguments.
 		 * @param target     The called method.
 		 */
-		public Invoke(CiKind result, Instruction[] args, Method target)
+		public Invoke(CiKind result, Value[] args, Method target)
 		{
 			super(result);
 			this.target = target;
@@ -1918,7 +1865,7 @@ public abstract class Instruction implements Cloneable
 		 * 
 		 * The parameters list of Phi assignment.
 		 */	
-		private ArgBlockPair[] inputs;
+		private Pair<Value, BasicBlock>[] inputs;
 		
 		private int currIndex = 0;
 
@@ -1927,32 +1874,32 @@ public abstract class Instruction implements Cloneable
 		/**
 		 * Constructs a new Phi-function instruction.
 		 *
-		 * @param kind   The kind of result.
+		 * @param kind   The kind of ret.
 		 * @param args   The input arguments.
 		 * @param blocks The one of which basic block array is corresponding to
 		 *               an input argument.
 		 */
-		public Phi(CiKind kind, Instruction[] args,
+		public Phi(CiKind kind, Value[] args,
 				BasicBlock[] blocks)
 		{
 			super(kind);
 			assert args.length == blocks.length;
-			inputs = new ArgBlockPair[args.length];
+			inputs = new Pair[args.length];
 			for (int idx = 0; idx < args.length; idx++)
-				inputs[idx] = new ArgBlockPair(args[idx], blocks[idx]);			
+				inputs[idx] = new Pair<>(args[idx], blocks[idx]);
 		}
 		
 		public Phi(CiKind kind, int length)
         {
 	        super(kind);
-	        this.inputs = new ArgBlockPair[length];
+	        this.inputs = new Pair[length];
 	        this.nameString = "";
         }
 
 		public Phi(CiKind kind, int length, String nameString)
 		{
 			super(kind);
-			this.inputs = new ArgBlockPair[length];
+			this.inputs = new Pair[length];
 			this.nameString = nameString;
 		}
 
@@ -1973,12 +1920,11 @@ public abstract class Instruction implements Cloneable
 		 * @param value	The instruction that phi parameter to be inserted
 		 * @param block	The according block of corresponding phi parameter.
 		 */
-		public void addIncoming(Instruction value, BasicBlock block)
+		public void addIncoming(Value value, BasicBlock block)
 		{
 			if (value != null && block != null && currIndex < inputs.length)
 			{
-				
-				this.inputs[currIndex++] = new ArgBlockPair(value, block);
+				this.inputs[currIndex++] = new Pair<>(value, block);
 			}
 		}
 		
@@ -1987,11 +1933,11 @@ public abstract class Instruction implements Cloneable
 		 * @param index	The position where input parameter will be obtained.
 		 * @return	The input parameter at specified position.
 		 */
-		public Instruction getParameter(int index)
+		public Value getParameter(int index)
 		{
 			assert index >= 0 && index < inputs.length 
 					: "The index is beyond out the size of list";
-			return inputs[index].arg;
+			return inputs[index].fst;
 		}
 		/**
 		 * Gets the input block at given position.
@@ -2002,7 +1948,7 @@ public abstract class Instruction implements Cloneable
 		{
 			assert index >= 0 && index < inputs.length
 					: "The index is beyond out the size of list";
-			return inputs[index].block;
+			return inputs[index].snd;
 		}
 		
 		/**
@@ -2010,14 +1956,12 @@ public abstract class Instruction implements Cloneable
 		 * @param index	The index into argument to be updated.
 		 * @param value	
 		 */
-		public void setParameter(int index, Instruction value)
+		public void setParameter(int index, Value value)
 		{
 			assert index >= 0 && index < inputs.length
 					: "The index is beyond out the size of list";
-			
-			ArgBlockPair old = inputs[index];
-			old.arg = value;
-			inputs[index] =  old;
+
+			inputs[index].fst = value;
 		}
 		
 		/**
@@ -2029,10 +1973,8 @@ public abstract class Instruction implements Cloneable
 		{
 			assert index >= 0 && index < inputs.length
 					: "The index is beyond out the size of list";
-			
-			ArgBlockPair old = inputs[index];
-			old.block = block;
-			inputs[index] = old;
+
+			inputs[index].snd = block;
 		}
 		
 		@Override public String toString()
@@ -2045,146 +1987,22 @@ public abstract class Instruction implements Cloneable
 			assert  (basicBlock != null) :
 					"Phi.getBasicBlockIndex(<null>) is invalid";
 			for (int idx = 0; idx < inputs.length;idx++)
-				if (inputs[idx].block == basicBlock)
+				if (inputs[idx].snd == basicBlock)
 					return idx;
 			return -1;
 		}
 
+		/**
+		 * Obtains the numbers of incoming value of phi node.
+		 * @return
+		 */
 		public int getNumberIncomingValues()
 		{
-			return inputs.length;
-		}
-
-		/**
-		 * This class for a pair of phi parameter and according block.
-		 * @author Jianping Zeng <z1215jping@hotmail.com>
-		 */
-		public static class ArgBlockPair 
-		{
-			public Instruction arg;
-			public BasicBlock block;
-			
-			public ArgBlockPair(Instruction arg, BasicBlock block)
-			{
-				this.arg = arg;
-				this.block = block;
-			}
+			return currIndex;
 		}
 	}
 
-	/**
-	 * The {@code Constant} instruction represents a constant such as an integer
-	 * inst, long, float, object reference, address, etc.
-	 */
-	public static class Constant extends Instruction
-	{
-		/**
-		 * The constant inst keeped with {@code Constant} instance.
-		 */
-		public CiConstant value;
 
-		/**
-		 * Constructs a new instruction representing the specified constant.
-		 */
-		public Constant(CiConstant value)
-		{
-			super(value !=null ? value.kind : CiKind.Illegal);
-			this.value = value;
-		}
-
-		public void setValue(CiConstant value)
-		{
-			this.value = value;
-		}
-
-		/**
-		 * Creates an instruction for a double constant.
-		 *
-		 * @param d the double inst for which to create the instruction
-		 * @return an instruction representing the double
-		 */
-		public static Constant forDouble(double d)
-		{
-			return new Constant(CiConstant.forDouble(d));
-		}
-
-		/**
-		 * Creates an instruction for a float constant.
-		 *
-		 * @param f the float inst for which to create the instruction
-		 * @return an instruction representing the float
-		 */
-		public static Constant forFloat(float f)
-		{
-			return new Constant(CiConstant.forFloat(f));
-		}
-
-		/**
-		 * Creates an instruction for an long constant.
-		 *
-		 * @param i the long inst for which to create the instruction
-		 * @return an instruction representing the long
-		 */
-		public static Constant forLong(long i)
-		{
-			return new Constant(CiConstant.forLong(i));
-		}
-
-		/**
-		 * Creates an instruction for an integer constant.
-		 *
-		 * @param i the integer inst for which to create the instruction
-		 * @return an instruction representing the integer
-		 */
-		public static Constant forInt(int i)
-		{
-			return new Constant(CiConstant.forInt(i));
-		}
-
-		/**
-		 * Creates an instruction for a boolean constant.
-		 *
-		 * @param i the boolean inst for which to create the instruction
-		 * @return an instruction representing the boolean
-		 */
-		public static Constant forBoolean(boolean i)
-		{
-			return new Constant(CiConstant.forBoolean(i));
-		}
-
-		/**
-		 * Creates an instruction for an object constant.
-		 *
-		 * @param o the object inst for which to create the instruction
-		 * @return an instruction representing the object
-		 */
-		public static Constant forObject(Object o)
-		{
-			return new Constant(CiConstant.forObject(o));
-		}
-
-		public String toString()
-		{
-			return super.toString() + "(" + value + ")";
-		}
-
-		@Override
-		public int valueNumber()
-		{
-			return 0x50000000 | value.hashCode();
-		}
-
-		public boolean valueEqual(Instruction i)
-		{
-			return i instanceof Constant && ((Constant) i).value
-					.equivalent(this.value);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitConstant(this);
-		}
-	}
 
 	/**
 	 * This class implements allocating memory at stack frame of current
@@ -2220,76 +2038,6 @@ public abstract class Instruction implements Cloneable
 		}
 	}
 
-	public static abstract class Var extends Instruction
-	{
-		/**
-		 * The inst type of this local variable.
-		 */
-		Type valueType;
-		/**
-		 * The memory address allocated by instruction {@code Alloca} is related with this variable.
-		 */
-		public Alloca memAddr;
-
-		public Var(CiKind kind, Name name)
-		{
-			super(kind);
-			this.name = name;
-		}
-
-		/**
-		 * Sets the inst type of this declared variable.
-		 *
-		 * @param valueType
-		 */
-		public void setValueType(Type valueType)
-		{
-			this.valueType = valueType;
-		}
-
-		/**
-		 * Gets the inst type of this declared variable.
-		 *
-		 * @return
-		 */
-		public Type getValueType()
-		{
-			return valueType;
-		}
-	}
-
-	/**
-	 * This class is served as a placeholder for Local {@code VarDef} definition.
-	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
-	 */
-	public static final class Local extends Var
-	{
-		private String prefix = "%";
-		/**
-		 * Constructs a new local instance.
-		 *
-		 * @param kind       The kind of inst type.
-		 * @param name The name postfix of to being yielded.
-		 */
-		public Local(CiKind kind, Name name)
-		{
-			super(kind, name);
-		}
-
-		@Override
-		public void accept(InstructionVisitor visitor)
-		{
-
-		}
-
-		@Override
-		public String toString()
-		{
-			return prefix + name;
-		}
-	}
-
 	/**
 	 * An instruction for writing data into memory.
 	 */
@@ -2298,7 +2046,7 @@ public abstract class Instruction implements Cloneable
 		/**
 		 * The inst being writed into destination variable.
 		 */
-		public Instruction value;
+		public Value value;
 		/**
 		 * The target of writing.
 		 */
@@ -2310,7 +2058,7 @@ public abstract class Instruction implements Cloneable
 		 * @param value The inst to being writed into memory.
 		 * @param dest  The target memory address where inst stores.
 		 */
-		public StoreInst(Instruction value, Alloca dest)
+		public StoreInst(Value value, Alloca dest)
 		{
 			super(CiKind.Illegal);
 			this.value = value;
@@ -2346,23 +2094,9 @@ public abstract class Instruction implements Cloneable
 		}
 	}
 
-	public static class UndefValue extends Constant
-	{
-
-		private UndefValue(CiKind kind)
-		{
-			super(new CiConstant(kind, 0));
-		}
-
-		public static UndefValue get(CiKind kind)
-		{
-			return new UndefValue(kind);
-		}
-	}
-
 	public static class SwitchInst extends Branch
 	{
-		private Pair<Instruction, BasicBlock>[] operands;
+		private Pair<Value, BasicBlock>[] operands;
 		private int currIdx = 0;
 		/**
 		 * Constructs a new SwitchInst instruction with specified inst type.
@@ -2370,7 +2104,7 @@ public abstract class Instruction implements Cloneable
 		 * @param defaultBB The default jump block when no other case match.
 		 * @param numCases  The numbers of case value.
 		 */
-		public SwitchInst(Instruction condV, BasicBlock defaultBB, int numCases)
+		public SwitchInst(Value condV, BasicBlock defaultBB, int numCases)
 		{
 			super(CiKind.Illegal);
 			operands = new Pair[1 + numCases];
@@ -2388,7 +2122,7 @@ public abstract class Instruction implements Cloneable
 
 		}
 
-		public void addCase(Instruction caseVal, BasicBlock targetBB)
+		public void addCase(Value caseVal, BasicBlock targetBB)
 		{
 			operands[currIdx++] = new Pair<>(caseVal, targetBB);
 		}
