@@ -1,5 +1,6 @@
 package symbol;
 
+import hir.Instruction;
 import type.Type;
 import type.TypeTags;
 import utils.Name;
@@ -40,7 +41,6 @@ public class Symbol implements SymbolKinds, TypeTags {
 	 * @param kind		The kind of this symbol
 	 * @param name		The instance of {@link Name} represents name of this.
 	 * @param type		The type of this symbol that is instance of {@link Type}
-	 * @param owner
 	 */
 	public Symbol(int kind, Name name, Type type)
 	{
@@ -146,6 +146,12 @@ public class Symbol implements SymbolKinds, TypeTags {
 		 * constant value is evaluated, it points to an initalizer environment.
 		 */
 		public Object constValue;
+
+		/**
+		 * The corresponding allocated Local or Global instruction for this
+		 * variable in HIR.
+		 */
+		public Instruction.Alloca varInst;
 
 		/**
 		 * Construct a variable symbol, given its flags, name, type and owner.

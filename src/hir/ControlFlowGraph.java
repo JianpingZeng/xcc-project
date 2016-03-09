@@ -3,6 +3,7 @@ package hir;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 
 public class ControlFlowGraph {
 
@@ -17,7 +18,7 @@ public class ControlFlowGraph {
 	private BasicBlock endNode;
 	
     /** Current id of basic blocks, used to generate unique id's. */
-    private int bb_counter;
+    private static int bb_counter;
     /** Current id of quads, used to generate unique id's. */
     private int quad_counter;
     
@@ -25,7 +26,10 @@ public class ControlFlowGraph {
 	 * The id for instruction of cfg.
 	 */
 	private int instID = 0;
-    
+
+	private final int START_ID = -1;
+	private final int END_ID = 0;
+
     /**
      * Constructor that constructs an control flow graph.
      *  
@@ -34,13 +38,24 @@ public class ControlFlowGraph {
     public ControlFlowGraph(Method method) {
     
     	this.attachedMethod = method;
-    	this.startNode = BasicBlock.createStartNode();
-    	this.endNode = BasicBlock.createEndNode();
     	// id of basic block begin with one.
     	this.bb_counter = 1;
     	// id of quad begin with zero.
     	this.quad_counter = 0;
     }
+
+	public BasicBlock createStartNode()
+	{
+		this.startNode = BasicBlock.createStartNode(START_ID, "entry",this);
+		return startNode;
+	}
+
+	public BasicBlock createEndNode()
+	{
+		endNode = BasicBlock.createEndNode(END_ID, "exit", this);
+		return endNode;
+	}
+
     /** Get the new id of current instruction.*/
     public int getInstID(){return this.instID++;}
     
@@ -68,35 +83,17 @@ public class ControlFlowGraph {
     /**
      * Create a new basic block in this control flow graph.  The new basic block
      * is given a new, unique id id.
-     * 
-     * @param numOfPredecessors  id of predecessor basic blocks that this
-                                 basic block is expected to have.
-     * @param numOfSuccessors  id of successor basic blocks that this
-                               basic block is expected to have.
-     * @param numOfInstructions  id of instructions that this basic block
-                                 is expected to have.
+     *
+     * @param bbName The name of the basic block to be constructed.
      * @return  the newly created basic block.
      */
-    public BasicBlock createBasicBlock(int numOfPredecessors, 
-    		int numOfSuccessors, int numOfInstructions) {
+    public static BasicBlock createBasicBlock(String bbName) {
         
-    	return BasicBlock.createBasicBlock
-    			(++bb_counter, numOfPredecessors, numOfSuccessors, numOfInstructions);
-    }
-    
-    /**
-     * Create a new basic block in this control flow graph.  The new basic block
-     * is given a new, unique id id.
-     * 
-     * @return  the newly created basic block.
-     */
-    public BasicBlock createBasicBlock() {
-        
-    	return BasicBlock.createBasicBlock(++bb_counter);
+    	return BasicBlock.createBasicBlock(bb_counter++, bbName, null);
     }
     
     /** Use with care after renumbering basic blocks. */
-    void updateBBcounter(int value) { bb_counter = value-1; }
+    void updateBBcounter(int value) { bb_counter = value; }
     
     /**
      * Returns a maximum on the id of basic blocks in this control flow graph.
@@ -143,10 +140,12 @@ public class ControlFlowGraph {
     }
     
     /**
-     * Returns a list of basic blocks in reverse post order, starting at the given basic block.
+     * Returns a list of basic blocks in reverse post order, starting at the
+     * given basic block.
      * 
      * @param start_bb  basic block to start from.
-     * @return  a list of basic blocks in reverse post order, starting at the given basic block.
+     * @return  a list of basic blocks in reverse post order, starting at the
+     * given basic block.
      */
     public List<BasicBlock> reversePostOrder(BasicBlock start_bb) {
     	
@@ -155,26 +154,46 @@ public class ControlFlowGraph {
         reversePostOrder_helper(start_bb, visited, result, true);
         return Collections.unmodifiableList(result);
     }
-    
+
+	/**
+	 * Returns a list of basic blocks in reverse post order, starting at the
+	 * entry block.
+	 *
+	 * @return  a list of basic blocks in reverse post order, starting at
+	 * the entry.
+	 */
+	public List<BasicBlock> reversePostOrder() {
+
+		java.util.LinkedList<BasicBlock> result = new java.util.LinkedList<>();
+		boolean[] visited = new boolean[bb_counter+1];
+		reversePostOrder_helper(startNode, visited, result, true);
+		return Collections.unmodifiableList(result);
+	}
+
     /**
      * Helper function to compute reverse post order.
-     * 
+     *
      * @param b		the start node.
      * @param visited	a array that records visiting flag.
      * @param result	reverse post order of all of basic node in this graph.
      * @param direction		whether forward or backward.
      */
-	
+
     private void reversePostOrder_helper(BasicBlock b, boolean[] visited, java.util.LinkedList<BasicBlock> result, boolean direction) {
         if (visited[b.getID()]) return;
         visited[b.getID()] = true;
-        List<BasicBlock> bbs = direction ? b.getSuccessors() : b.getPredecessors();
+        Set<BasicBlock> bbs = direction ? b.getSuccs() : b.getPreds();
         for (BasicBlock b2 : bbs) {
             reversePostOrder_helper(b2, visited, result, direction);
         }
         result.addFirst(b);
     }
 
+    /**
+     * Visits all of basic block in order that reverse post order with specified
+     * {@code BasicBlockVisitor} bbv.
+     * @param bbv   The instance of BasicBlockVisitor.
+     */
 	public void visitBasicBlocks(BasicBlockVisitor bbv) {
 		
 		List<BasicBlock> bblist = reversePostOrder(startNode);
@@ -182,16 +201,5 @@ public class ControlFlowGraph {
 		{
 			bbv.visitBasicBlock(bb);
 		}
-	}
-	
-	/**
-	 * Computes a control flow graph according to a list of quad.
-	 *  
-	 * @param quads	A list of quads. 
-	 * @return	A corresponding CFG returned.
-	 */
-	public static ControlFlowGraph computeCFG(List<Instruction> quads) {
-		
-		return null;
 	}
 }

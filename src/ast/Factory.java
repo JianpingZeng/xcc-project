@@ -31,9 +31,9 @@ public interface Factory {
 
    Labelled Labelled(Name label, Tree body);
 
-   Switch Switch(Tree selector, List<Tree> cases);
+   Switch Switch(Tree selector, List<Case> cases);
 
-   Case Case(Tree pat, List<Tree> stats);
+   Case Case(List<Tree> values, List<Tree> stats);
 
    Conditional Conditional(Tree cond, Tree thenpart, Tree elsepart);
 
