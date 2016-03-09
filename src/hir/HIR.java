@@ -1,7 +1,6 @@
 package hir; 
 
 import java.util.List;
-import type.Type;
 import utils.Context;
 
 /**
@@ -61,90 +60,13 @@ public class HIR
 		this.vars = vars;
 		this.methods = methods;
 	}
-	
-	
-	public static int typecode(Type targetType)
+
+	/**
+	 * Optimize High level IR.
+	 */
+	public void optimize()
 	{
-		switch (targetType.tag)
-        {
-			case Type.BYTE:
-				return BYTEcode;
-			case Type.SHORT:
-				return SHORTcode;
-			case Type.CHAR:
-				return CHARcode;
-			case Type.BOOL:
-				return INTcode;
-			case Type.FLOAT:
-				return FLOATcode;
-			case Type.DOUBLE:
-				return DOUBLEcode;
-			case Type.LONG:
-				return LONGcode;
-			case Type.VOID:
-				return VOIDcode;
-			case Type.ARRAY:
-				return OBJECTcode;
-			default:
-		      throw new AssertionError("typecode " + targetType.tag);
-		}
+
 	}
-	public static int truncate(int typecode)
-	{
-		switch (typecode)
-        {
-			case BYTEcode:
-			case SHORTcode:
-			case CHARcode:
-				return INTcode;
-
-			default:
-				return typecode;
-		}
-	}
-    /**
-     * Type codes.
-     */
-    public final static int INTcode = 0;
-
-    /**
-     * Type codes.
-     */
-    public final static int LONGcode = 1;
-
-    /**
-     * Type codes.
-     */
-    public final static int FLOATcode = 2;
-
-    /**
-     * Type codes.
-     */
-    public final static int DOUBLEcode = 3;
-
-    /**
-     * Type codes.
-     */
-    public final static int OBJECTcode = 4;
-
-    /**
-     * Type codes.
-     */
-    public final static int BYTEcode = 5;
-
-    /**
-     * Type codes.
-     */
-    public final static int CHARcode = 6;
-
-    /**
-     * Type codes.
-     */
-    public final static int SHORTcode = 7;
-
-    /**
-     * Type codes.
-     */
-    public final static int VOIDcode = 8;
 	
 }

@@ -1,161 +1,170 @@
 package hir;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
+import ci.CiKind;
+
+import java.util.*;
 
 /**
  * Represents a basic block in the quad intermediate representation. Basic
  * blocks are single-entry regions, but not necessarily single-exit regions. Due
  * to the fact that control flow may exit a basic block early due to runtime
  * exception.
- * 
+ * <p>
  * Each basic block contains a serial of quads, a list of predecessors, a list
  * of successors. It also has an id id that is unique within its control
  * flow graph.
- * 
+ * <p>
  * Note that you should never create directly a basic block using the
  * constructor of {@link BasicBlock}, you should create it via a
  * {@link ControlFlowGraph} so that id id is unique.
- * 
- * @author Jianping Zeng < z121jping@hotmail.com >
- * @see Instruction
- * @version 1.0
  *
+ * @author Jianping Zeng < z121jping@hotmail.com >
+ * @version 1.0
+ * @see Instruction
  */
-public class BasicBlock {
-
-	/** Unique id id for this basic block. */
+public final class BasicBlock extends Value implements Iterable<Instruction>
+{
+	/**
+	 * Unique id id for this basic block.
+	 */
 	private int idNumber;
 
-	/** A list of quads. */
-	private final List<Instruction> instructions;
+	/**
+	 * The numbering when performing linear scanning.
+	 */
+	private int linearScanNumber;
+	/**
+	 * The numbering when performing depth first traveling.
+	 */
+	private int depthFirstNumber;
 
-	/** A list of predecessors. */
-	private final List<BasicBlock> predecessors;
+	/**
+	 * A list of quads.
+	 */
+	private final LinkedList<Instruction> instructions;
 
-	/** A list of successors. */
-	private final List<BasicBlock> successors;
+	/**
+	 * A set of predecessors.
+	 */
+	private final LinkedList<BasicBlock> predecessors;
 
-	/** A private constructor for entry node */
-	private BasicBlock() {
+	/**
+	 * A  of successors.
+	 */
+	private final LinkedList<BasicBlock> successors;
 
-		this.idNumber = 0;
-		this.instructions = null;
-		this.predecessors = null;
-		this.successors = new java.util.ArrayList<>();
+	private ControlFlowGraph cfg;
+
+	/**
+	 * The name of this block.
+	 */
+	public String bbName;
+
+	/**
+	 * A private constructor for entry node
+	 */
+	private BasicBlock(int id, LinkedList<BasicBlock> pres,
+			String bbName, ControlFlowGraph cfg)
+	{
+		this(id, pres, null, bbName, cfg);
 	}
 
-	/** A private constructor for exit node */
-	private BasicBlock(int numOfExits) {
-
-		this.idNumber = 1;
-		this.instructions = null;
-		this.predecessors = new java.util.ArrayList<>(numOfExits);
-		this.successors = null;
-	}
-
-	/** Private constructor for internal nodes. */
-	private BasicBlock(int id, int numOfPredecessors, int numOfSuccessors,
-			int numOfInstructions) {
+	private BasicBlock(int id, LinkedList<BasicBlock> pres, LinkedList<BasicBlock> succs,
+			String bbName, ControlFlowGraph cfg)
+	{
+		super(CiKind.Illegal);
 		this.idNumber = id;
-		this.predecessors = new java.util.ArrayList<BasicBlock>(
-				numOfPredecessors);
-		this.successors = new java.util.ArrayList<BasicBlock>(numOfSuccessors);
-		this.instructions = new java.util.ArrayList<Instruction>(numOfInstructions);
+		this.instructions = new LinkedList<>();
+		this.predecessors = pres;
+		this.successors = succs;
+		this.bbName = bbName;
+		this.cfg = cfg;
 	}
 
-	/** Creates new entry node. Only to be called by ControlFlowGraph. */
-	static BasicBlock createStartNode() {
-		return new BasicBlock();
+	/**
+	 * Creates new entry node. Only to be called by ControlFlowGraph.
+	 */
+	static BasicBlock createStartNode(int id, String name, ControlFlowGraph cfg)
+	{
+		return new BasicBlock(id, null, name, cfg);
 	}
 
-	/** Creates a new basic node for exit block. */
-	static BasicBlock createEndNode(int numberOfPredecessor) {
-
-		return new BasicBlock(numberOfPredecessor);
+	/**
+	 * Creates a new basic node for exit block without numbers of predecessors.
+	 */
+	static BasicBlock createEndNode(int id, String bbName, ControlFlowGraph cfg)
+	{
+		return new BasicBlock(id, new LinkedList<>(), null, bbName, cfg);
 	}
 
-	/** Creates a new basic node for exit block without numbers of predecessors. */
-	static BasicBlock createEndNode() {
-
-		return new BasicBlock();
-	}
-	
 	/**
 	 * Create new internal basic block. Only to be called by ControlFlowGraph.
 	 */
-	static BasicBlock createBasicBlock(int id, int numOfPredecessors,
-			int numOfSuccessors, int numOfInstructions) {
+	static BasicBlock createBasicBlock(int id, String bbName, ControlFlowGraph cfg)
+	{
 
-		return new BasicBlock(id, numOfPredecessors, numOfSuccessors,
-				numOfInstructions);
+		return new BasicBlock(id, new LinkedList<>(), new LinkedList<>(), bbName, cfg);
 	}
-	
-	/**
-	 * Create new internal basic block. Only to be called by ControlFlowGraph.
-	 */
-	static BasicBlock createBasicBlock(int id) {
-
-		return new BasicBlock(id);
-	}
-	
 
 	/**
 	 * Returns true if this is the entry basic block.
-	 * 
+	 *
 	 * @return true if this is the entry basic block.
 	 */
-	public boolean isEntry() {
+	public boolean isEntry()
+	{
 		return predecessors == null;
 	}
 
 	/**
 	 * Returns true if this is the exit basic block.
-	 * 
+	 *
 	 * @return true if this is the exit basic block.
 	 */
-	public boolean isExit() {
+	public boolean isExit()
+	{
 		return successors == null;
 	}
 
 	/**
 	 * Returns iterator over Quads in this basic block in forward order.
-	 * 
+	 *
 	 * @return Returns iterator over Quads in this basic block in forward order.
 	 */
-	public ListIterator<Instruction> iterator() {
+	public ListIterator<Instruction> iterator()
+	{
 		if (instructions == null)
-			return Collections.<Instruction> emptyList().listIterator();
+			return Collections.<Instruction>emptyList().listIterator();
 		else
 			return instructions.listIterator();
 	}
 
 	/**
 	 * Returns iterator over Quads in this basic block in forward order.
-	 * 
+	 *
 	 * @return Returns iterator over Quads in this basic block in forward order.
 	 */
-	public BackwardIterator<Instruction> backwardIterator() {
+	public BackwardIterator<Instruction> backwardIterator()
+	{
 		if (instructions == null)
-			return new BackwardIterator<Instruction>(Collections.<Instruction> emptyList()
-					.listIterator());
+			return new BackwardIterator<Instruction>(
+					Collections.<Instruction>emptyList().listIterator());
 		else
-			return new BackwardIterator<Instruction>(instructions.listIterator());
+			return new BackwardIterator<Instruction>(
+					instructions.listIterator());
 	}
 
 	/**
 	 * Visit all of the quads in this basic block in forward order with the
 	 * given quad visitor.
-	 * 
-	 * @see QuadVisitor
-	 * @param qv
-	 *            QuadVisitor to visit the quads with.
+	 *
+	 * @param qv InstructionVisitor to visit the quads with.
+	 * @see InstructionVisitor
 	 */
-	public void visitQuads(QuadVisitor qv) {
-		for (Instruction q : instructions) {
+	public void visitQuads(InstructionVisitor qv)
+	{
+		for (Instruction q : instructions)
+		{
 			q.accept(qv);
 		}
 	}
@@ -163,52 +172,54 @@ public class BasicBlock {
 	/**
 	 * Visit all of the quads in this basic block in backward order with the
 	 * given quad visitor.
-	 * 
-	 * @see QuadVisitor
-	 * @param qv
-	 *            QuadVisitor to visit the quads with.
+	 *
+	 * @param qv InstructionVisitor to visit the quads with.
+	 * @see InstructionVisitor
 	 */
-	public void backwardVisitQuads(QuadVisitor qv) {
-		for (Iterator<Instruction> i = backwardIterator(); i.hasNext();) {
+	public void backwardVisitQuads(InstructionVisitor qv)
+	{
+		for (Iterator<Instruction> i = backwardIterator(); i.hasNext(); )
+		{
 			Instruction q = i.next();
 			q.accept(qv);
 		}
 	}
 
 	/**
+	 * Gets the index into instructions list. Return -1 if instruction no contains
+	 * specified inst. Otherwise, return the index of first occurrence.
+	 * @param inst
+	 * @return
+	 */
+	public int indexOf(Instruction inst)
+	{
+		if (inst == null) return -1;
+		return instructions.indexOf(inst);
+	}
+	/**
 	 * Returns the id of quads in this basic block.
-	 * 
+	 *
 	 * @return the id of quads in this basic block.
 	 */
-	public int size() {
+	public int size()
+	{
 		if (instructions == null)
 			return 0; // entry or exit block
 		return instructions.size();
 	}
 
-	public Instruction getQuad(int i) {
+	public Instruction getInst(int i)
+	{
 		return instructions.get(i);
 	}
 
-	public Instruction getLastQuad() {
-		if (size() == 0)
-			return null;
-		return instructions.get(instructions.size() - 1);
-	}
-
-	public int getQuadIndex(Instruction q) {
-		return instructions == null ? -1 : instructions.indexOf(q);
-	}
-
-	public Instruction removeQuad(int i) {
-		return instructions.remove(i);
-	}
-
-	public boolean removeQuad(Instruction q) {
+	public boolean removeInst(Instruction q)
+	{
 		return instructions.remove(q);
 	}
 
-	public void removeAllQuads() {
+	public void clear()
+	{
 		instructions.clear();
 	}
 
@@ -216,144 +227,128 @@ public class BasicBlock {
 	 * Add a quad to this basic block at the given location. Cannot add quads to
 	 * the entry or exit basic blocks.
 	 *
-	 * @param index
-	 *            the index to add the quad
-	 * @param q
-	 *            quad to add
+	 * @param index the index to add the quad
+	 * @param q     quad to add
 	 */
-	public void addQuad(Instruction q) {
-		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
-		instructions.add(q);
+	public void addInst(Instruction q, int index)
+	{
+		assert (q != null) : "Cannot add null instruction to block";
+		assert (index >= 0 && index < instructions.size()):
+				"The index into insertion of gieven inst is bound out.";
+
+		instructions.add(index, q);
 	}
 
 	/**
 	 * Append a quad to the end of this basic block. Cannot add quads to the
 	 * entry or exit basic blocks.
-	 * 
-	 * @param q
-	 *            quad to add
+	 *
+	 * @param q quad to add
 	 */
-	public void appendQuad(Instruction q) {
-		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
+	public void appendInst(Instruction q)
+	{
+		assert (q != null) : "Cannot add null instructions to block";
 		instructions.add(q);
-	}
-
-	/**
-	 * Replace the quad at position pos.
-	 * */
-	public void replaceQuad(int pos, Instruction q) {
-		assert (instructions == null) : "Cannot add instructions to entry/exit basic block";
-		instructions.set(pos, q);
 	}
 
 	/**
 	 * Add a predecessor basic block to this basic block. Cannot add
 	 * predecessors to the entry basic block.
-	 * 
-	 * @param b
-	 *            basic block to add as a predecessor
+	 *
+	 * @param b basic block to add as a predecessor
 	 */
-	public void addPredecessor(BasicBlock b) {
-		assert (predecessors == null) : "Cannot add predecessor to entry basic block";
-		predecessors.add(b);
+	public boolean addPred(BasicBlock b)
+	{
+		assert (b != null) : "Cannot add null block into predecessor list";
+		if (predecessors.contains(b))
+			return false;
+		return predecessors.add(b);
 	}
 
 	/**
 	 * Add a successor basic block to this basic block. Cannot add successors to
 	 * the exit basic block.
-	 * 
-	 * @param b
-	 *            basic block to add as a successor
+	 *
+	 * @param b basic block to add as a successor
 	 */
-	public void addSuccessor(BasicBlock b) {
-		assert successors == null : "Cannot add successor to exit basic block";
-		successors.add(b);
+	public boolean addSucc(BasicBlock b)
+	{
+		assert (b != null) : "Cannot add null block into successor list";
+		if (successors.contains(b))
+			return false;
+		return successors.add(b);
 	}
 
-	public boolean removePredecessor(BasicBlock bb) {
-		assert predecessors == null : "Cannot remove predecessor from entry basic block";
-		return predecessors.remove(bb);
-	}
-
-	public void removePredecessor(int i) {
-		assert predecessors == null : "Cannot remove predecessor from entry basic block";
-		predecessors.remove(i);
-	}
-
-	public boolean removePredecessors(Collection<BasicBlock> bb) {
-		assert predecessors == null : "Cannot remove predecessor from entry basic block";
-		return predecessors.removeAll(bb);
-	}
-
-	public boolean removeSuccessor(BasicBlock bb) {
-		assert successors == null : "Cannot remove successor from exit basic block";
-		return successors.remove(bb);
-	}
-
-	public void removeSuccessor(int i) {
-		assert successors == null : "Cannot remove successor from exit basic block";
-		successors.remove(i);
-	}
-
-	public void removeAllPredecessors() {
-		assert predecessors == null : "Cannot remove predecessors from entry basic block";
-		predecessors.clear();
-	}
-
-	public void removeAllSuccessors() {
-		assert successors == null : "Cannot remove successors from exit basic block";
-		successors.clear();
-	}
-
-	public int getNumberOfSuccessors() {
+	public int getNumOfSuccs()
+	{
 		return successors == null ? 0 : successors.size();
 	}
 
-	public int getNumberOfPredecessors() {
+	public int getNumOfPreds()
+	{
 		return predecessors == null ? 0 : predecessors.size();
 	}
 
 	/**
-	 * Returns the fallthrough successor to this basic block, if it exists. If
-	 * there is none, returns null.
-	 * 
-	 * @return the fallthrough successor, or null if there is none.
-	 */
-	public BasicBlock getFallthroughSuccessor() {
-		return successors == null ? null : successors.get(0);
-	}
-
-	/**
-	 * Returns the fallthrough predecessor to this basic block, if it exists. If
-	 * there is none, returns null.
-	 * 
-	 * @return the fallthrough predecessor, or null if there is none.
-	 */
-	public BasicBlock getFallthroughPredecessor() {
-		return predecessors == null ? null : predecessors.get(0);
-	}
-
-	/**
 	 * Returns a list of the successors of this basic block.
-	 * 
+	 *
 	 * @return a list of the successors of this basic block.
 	 */
-	public List<BasicBlock> getSuccessors() {
-		return successors == null ? Collections.<BasicBlock> emptyList()
-				: successors;
+	public List<BasicBlock> getSuccs()
+	{
+		return successors == null ?
+				Collections.<BasicBlock>emptyList() :
+				successors;
 	}
 
 	/**
 	 * Returns an list of the predecessors of this basic block.
-	 * 
+	 *
 	 * @return an iterator of the predecessors of this basic block.
 	 */
-	public List<BasicBlock> getPredecessors() {
-		return predecessors == null ? Collections.<BasicBlock> emptyList()
-				: predecessors;
+	public List<BasicBlock> getPreds()
+	{
+		return predecessors == null ?
+				Collections.<BasicBlock>emptyList() :
+				predecessors;
 	}
 
-	public int getID() {
+	public int getID()
+	{
 		return this.idNumber;
+	}
+
+	public ControlFlowGraph getCFG() {return cfg;}
+
+	public void setCFG(ControlFlowGraph cfg) {this.cfg = cfg;}
+
+	public Instruction firstInst()
+	{
+		return instructions.get(0);
+	}
+
+	public  Instruction lastInst()
+	{
+		if (instructions.isEmpty())
+			return null;
+		return instructions.get(instructions.size() - 1);
+	}
+
+	/**
+	 * Inserts a instruction into the position after the first inst of instructions
+	 * list.
+	 * @param inst
+	 */
+	public void insertAfterFirst(Instruction inst)
+	{
+		assert inst != null;
+
+		if (instructions.isEmpty())
+			instructions.addFirst(inst);
+		else
+		{
+			Instruction first = instructions.getFirst();
+			instructions.add(instructions.indexOf(first)+1, inst);
+		}
 	}
 }

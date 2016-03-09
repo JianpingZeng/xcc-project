@@ -21,17 +21,17 @@ public class GVN
 		this.defTable = new HashMap<>();		
     }
 	
-	public long readVariable(BasicBlock bb, String variable)
+	public long readVariable(BasicBlock block, String variable)
 	{
-		ValueNum num = defTable.get(bb);
+		ValueNum num = defTable.get(block);
 		Long number = null;
 		if (num != null && (number = num.numbering.get(variable)) != null)
 			return number.longValue();
 		// global value numbering
-		return readVariableRecursive(bb, variable);
+		return readVariableRecursive(block, variable);
 	}
 	
-	private long readVariableRecursive(BasicBlock bb, String variable)
+	private long readVariableRecursive(BasicBlock block, String variable)
 	{
 		
 	}

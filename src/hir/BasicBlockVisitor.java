@@ -13,7 +13,7 @@ public interface BasicBlockVisitor {
 	/**
 	 * Visit a basic block.
 	 * 
-	 * @param bb
+	 * @param block
 	 *            basic block to visit
 	 */
 	void visitBasicBlock(BasicBlock bb);
@@ -25,7 +25,7 @@ public interface BasicBlockVisitor {
 		/**
 		 * Visit a basic block.
 		 * 
-		 * @param bb
+		 * @param block
 		 *            basic block to visit
 		 */
 		public void visitBasicBlock(BasicBlock bb) {
@@ -58,12 +58,12 @@ public interface BasicBlockVisitor {
 
 		/**
 		 * Construct a new AllBasicBlockVisitor and set the trace flag to be the
-		 * specified value.
+		 * specified inst.
 		 * 
 		 * @param bbv
 		 *            basic block visitor to visit each basic block with.
 		 * @param trace
-		 *            value of the trace flag
+		 *            inst of the trace flag
 		 */
 		public AllBasicBlockVisitor(BasicBlockVisitor bbv, boolean trace) {
 			this.bbv = bbv;

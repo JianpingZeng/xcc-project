@@ -2,6 +2,7 @@ package ast;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -442,13 +443,10 @@ abstract public class Tree
 
 	/**
 	 * A statement block.
-	 * 
-	 * @param stats statements
-	 * @param flags modifier
+	 *
 	 */
 	public static class Block extends Tree
 	{
-
 		public List<Tree> stats;
 		public int endpos = Position.NOPOS;
 
@@ -467,15 +465,20 @@ abstract public class Tree
 	
 	/**
 	 * Selects through packages or class for future.
-	 * 
-	 * @param selected selected Tree hierarchie
-	 * @param selector name of field to select thru
-	 * @param sym symbol of the selected class
 	 */	
 	public static class Select extends Tree
 	{
+		/**
+		 * selected Tree hierarchie
+		 */
 		public Tree selected;
+		/**
+		 * name of field to select
+		 */
 		public Name name;
+		/**
+		 * symbol of the selected class
+		 */
 		public Symbol sym;
 
 		public Select(Tree selected, Name name, Symbol sym)
@@ -629,11 +632,12 @@ abstract public class Tree
 
 	/**
 	 * an expression statement
-	 * 
-	 * @param expr expression structure
 	 */
 	public static class Exec extends Tree
 	{
+		/**
+		 * expression structure
+		 */
 		public Tree expr;
 
 		public Exec(Tree expr)
@@ -654,9 +658,9 @@ abstract public class Tree
 	public static class Switch extends Tree
 	{
 		public Tree selector;
-		public List<Tree> cases;
+		public List<Case> cases;
 
-		public Switch(Tree selector, List<Tree> cases)
+		public Switch(Tree selector, List<Case> cases)
 		{
 			super(SWITCH);
 			this.selector = selector;
@@ -674,13 +678,13 @@ abstract public class Tree
 	 */
 	public static class Case extends Tree
 	{
-		public Tree pat;
+		public List<Tree> values;
 		public List<Tree> stats;
 
-		public Case(Tree pat, List<Tree> stats)
+		public Case(List<Tree> values, List<Tree> stats)
 		{
 			super(CASE);
-			this.pat = pat;
+			this.values = values;
 			this.stats = stats;
 		}
 
@@ -689,6 +693,8 @@ abstract public class Tree
 			v.visitCase(this);
 		}
 	}
+
+
 
 	/**
 	 * A break from a loop or switch.
@@ -942,9 +948,7 @@ abstract public class Tree
 
 	/**
 	 * An identifier.
-	 * 
-	 * @param idname the name
-	 * @param sym the symbol
+	 *
 	 */
 	public static class Ident extends Tree
 	{
@@ -966,8 +970,7 @@ abstract public class Tree
 
 	/**
 	 * A constant value given literally.
-	 * 
-	 * @param value value representation
+	 *
 	 */
 	public static class Literal extends Tree
 	{
