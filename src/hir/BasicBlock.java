@@ -24,6 +24,9 @@ import java.util.*;
  */
 public final class BasicBlock extends Value implements Iterable<Instruction>
 {
+	public static final BasicBlock USELESSBLOCK =
+			new BasicBlock(-1, null, null, "useless", null);
+
 	/**
 	 * Unique id id for this basic block.
 	 */
@@ -104,6 +107,27 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	{
 
 		return new BasicBlock(id, new LinkedList<>(), new LinkedList<>(), bbName, cfg);
+	}
+
+	/**
+	 * Inserts an instruction into the instructions list after this itself.
+	 * @param inst  An instruction to be inserted.
+	 */
+	public void insertAfter(Instruction inst)
+	{
+		int index = instructions.lastIndexOf(inst);
+		if (index >= 0 && index < size())
+			instructions.add(index + 1, inst);
+	}
+	/**
+	 * Inserts an instruction into the instructions list before this itself.
+	 * @param inst  An instruction to be inserted.
+	 */
+	public void insertBefore(Instruction inst)
+	{
+		int index = instructions.lastIndexOf(inst);
+		if (index >= 0 && index < size())
+			instructions.add(index, inst);
 	}
 
 	/**
