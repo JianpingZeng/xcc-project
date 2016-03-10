@@ -1969,7 +1969,7 @@ public abstract class Instruction extends Value implements Cloneable
 		 * @param index	The index into block to be updated.
 		 * @param block
 		 */
-		public void setBlock(int index, BasicBlock block)
+		public void setBasicBlock(int index, BasicBlock block)
 		{
 			assert index >= 0 && index < inputs.length
 					: "The index is beyond out the size of list";
@@ -1999,6 +1999,18 @@ public abstract class Instruction extends Value implements Cloneable
 		public int getNumberIncomingValues()
 		{
 			return currIndex;
+		}
+
+		/**
+		 * Gets an array that contains all incoming basic blocks.
+		 * @return
+		 */
+		public BasicBlock[] getAllBasicBlocks()
+		{
+			BasicBlock[] blocks = new BasicBlock[inputs.length];
+			for (int idx = 0; idx < inputs.length; idx++)
+				blocks[idx] = inputs[idx].snd;
+			return blocks;
 		}
 	}
 

@@ -13,7 +13,7 @@ import hir.Instruction.Phi;
 /**
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/7.
  */
-public class Value
+public class Value implements Cloneable
 {
 	/**
 	 * The type of inst produced with this instruction. The kind is
@@ -142,6 +142,12 @@ public class Value
 		uses.add(user);
 	}
 
+	public Value clone()
+	{
+		Value ret = new Value(kind);
+		ret.name = this.name;
+		return ret;
+	}
 
 	/**
 	 * The {@code Constant} instruction represents a constant such as an integer
@@ -244,6 +250,11 @@ public class Value
 			return 0x50000000 | value.hashCode();
 		}
 
+		public Constant clone()
+		{
+			return new Constant(this.value);
+		}
+
 	}
 
 	public static class UndefValue extends Constant
@@ -257,6 +268,11 @@ public class Value
 		public static UndefValue get(CiKind kind)
 		{
 			return new UndefValue(kind);
+		}
+
+		public UndefValue clone()
+		{
+			return new UndefValue(this.kind);
 		}
 	}
 
@@ -321,6 +337,11 @@ public class Value
 		public String toString()
 		{
 			return prefix + name;
+		}
+
+		public Local clone()
+		{
+			return new Local(this.kind, this.name);
 		}
 	}
 }

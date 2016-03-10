@@ -1,6 +1,8 @@
 package hir; 
 
 import java.util.List;
+
+import optimization.DCE;
 import utils.Context;
 
 /**
@@ -59,14 +61,17 @@ public class HIR
 	{
 		this.vars = vars;
 		this.methods = methods;
+
+		optimize();
 	}
 
 	/**
 	 * Optimize High level IR.
 	 */
-	public void optimize()
+	private void optimize()
 	{
-
+		// performs dead code elimination.
+		for (Method m : methods)
+			new DCE(m).run();
 	}
-	
 }

@@ -1,14 +1,11 @@
 package optimization;
 
-import hir.BasicBlock;
-import hir.Instruction;
+import hir.*;
 import hir.Instruction.Return;
 import hir.Instruction.StoreInst;
-import hir.InstructionVisitor;
-import hir.Method;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
+import utils.Pair;
+
+import java.util.*;
 
 /**
  * This file defines a class that  performs useless instruction elimination and
@@ -37,6 +34,10 @@ public class DCE
 
 	private Method m;
 
+	private DominatorTree DT;
+
+	private HashMap<DominatorTree.DomTreeNode, Integer> DomLevels;
+
 	/**
 	 * Default constructor.
 	 *
@@ -48,6 +49,37 @@ public class DCE
 		this.usefulBlocks = new LinkedList<>();
 		this.liveInsts = new HashSet<>();
 		this.m = m;
+		this.DomLevels = new HashMap<>();
+		this.DT = new DominatorTree(true, m);
+		this.DT.recalculate();
+		init();
+	}
+
+	/**
+	 * This method used to initialize a map that maps dominator tree node
+	 * into it's depth level in the Dominator tree.
+	 */
+	private void init()
+	{
+		if (DomLevels.isEmpty())
+		{
+			LinkedList<DominatorTree.DomTreeNode> worklist
+					= new LinkedList<>();
+			DominatorTree.DomTreeNode root = DT.getRootNode();
+			worklist.addLast(root);
+			DomLevels.put(root, 0);
+			while (!worklist.isEmpty())
+			{
+				DominatorTree.DomTreeNode pop = worklist.removeLast();
+				int N = DomLevels.get(pop);
+
+				for (DominatorTree.DomTreeNode child : pop.getChildren())
+				{
+					DomLevels.put(child, N + 1);
+					worklist.addLast(child);
+				}
+			}
+		}
 	}
 
 	/**
@@ -76,7 +108,64 @@ public class DCE
 			markBranch(curr, worklist);
 		}
 		// 3. Sweep stage
+		sweep();
+	}
 
+	/**
+	 * Performs sweep stage that removes useless instruction and replace the
+	 * branch with an unconditional branch to the nearest and useful dominate
+	 * block.
+	 */
+	private void sweep()
+	{
+		for (BasicBlock BB : m)
+		{
+			for (Instruction inst : BB)
+			{
+				if (!liveInsts.contains(inst))
+				{
+					// for branch instruction in the basic block, it is special
+					// that replaces it with an unconditional branch to it's useful
+					// and nearest dominate block.
+					if (inst instanceof Instruction.Branch)
+					{
+						BasicBlock nearestDom = findNearestUsefulPostDom(BB);
+						if (nearestDom == BasicBlock.USELESSBLOCK)
+							continue;
+						Instruction.Goto go = new Instruction.Goto(nearestDom);
+						BB.insertBefore(go);
+						inst.eraseFromBasicBlock();
+					}
+					// the function invocation instruction is handled specially
+					// for conservative and safe.
+					else if (! (inst instanceof Instruction.Invoke))
+						inst.eraseFromBasicBlock();
+				}
+			}
+		}
+	}
+
+	/**
+	 * Finds the first useful and nearest basic block in the post dominator of
+	 * specified Basic Block.
+	 * @param BB    The specified basic block.
+	 * @return  The nearest and useful post dominator that dominates specified
+	 * block.
+	 */
+	private BasicBlock findNearestUsefulPostDom(BasicBlock BB)
+	{
+		DominatorTree.DomTreeNode node = DT.getTreeNodeForBlock(BB);
+		LinkedList<DominatorTree.DomTreeNode> worklist = new LinkedList<>();
+		worklist.add(node.getIDom());
+		while (!worklist.isEmpty())
+		{
+			DominatorTree.DomTreeNode currDOM = worklist.removeLast();
+			BasicBlock currBB = currDOM.getBlock();
+			if (usefulBlocks.contains(currBB))
+				return  currBB;
+			worklist.addLast(currDOM.getIDom());
+		}
+		return BasicBlock.USELESSBLOCK;
 	}
 
 	/**
@@ -109,6 +198,69 @@ public class DCE
 	private LinkedList<BasicBlock> RDF(BasicBlock BB)
 	{
 		LinkedList<BasicBlock> rdf = new LinkedList<>();
+
+		// 使用一个优先级队列，按照在支配树中的层次，越深的结点放在前面
+		PriorityQueue<Pair<DominatorTree.DomTreeNode, Integer>> PQ
+				= new PriorityQueue<>(32,
+				new Comparator<Pair<DominatorTree.DomTreeNode, Integer>>()
+				{
+					@Override
+					public int compare(Pair<DominatorTree.DomTreeNode, Integer>
+							o1, Pair<DominatorTree.DomTreeNode, Integer> o2)
+					{
+						return -1;
+					}
+				});
+
+		DominatorTree.DomTreeNode root = DT.getTreeNodeForBlock(BB);
+		PQ.add(new Pair<>(root, DomLevels.get(root)));
+
+		LinkedList<DominatorTree.DomTreeNode> worklist = new LinkedList<>();
+		HashSet<DominatorTree.DomTreeNode> visited = new HashSet<>(32);
+
+		// 从在支配树中最底层的定义块开始向上一个一个的遍历，
+		// 在每个基本块的支配边界中放入Phi结点。
+		while (!PQ.isEmpty())
+		{
+			Pair<DominatorTree.DomTreeNode, Integer> rootPair = PQ.poll();
+			DominatorTree.DomTreeNode rootNode = rootPair.fst;
+			int rootLevel = rootPair.snd;
+
+			worklist.clear();
+			worklist.addLast(rootNode);
+
+			while (!worklist.isEmpty())
+			{
+				DominatorTree.DomTreeNode Node = worklist.removeLast();
+				BasicBlock curr = Node.getBlock();
+
+				for (BasicBlock succ : curr.getSuccs())
+				{
+					DominatorTree.DomTreeNode succNode =
+							DT.getTreeNodeForBlock(succ);
+
+					// 跳过所有succ块所支配的的块
+					if (succNode.getIDom() == Node)
+						continue;
+
+					// skips those dominator tree nodes whose depth level
+					// is greater than root's level.
+					int succLevel = DomLevels.get(succNode);
+					if (succLevel > rootLevel)
+						continue;
+
+					// skip the visisted dom tree node
+					if (!visited.add(succNode))
+						continue;
+
+					rdf.add(succ);
+				}// end for successor
+
+				for (DominatorTree.DomTreeNode domNode : Node)
+					if (!visited.contains(domNode))
+						worklist.addLast(domNode);
+			}
+		}
 		return rdf;
 	}
 
@@ -705,7 +857,16 @@ public class DCE
 
 		public void visitPhi(Instruction.Phi inst)
 		{
-			visitInstruction(inst);
+			BasicBlock[] blocks = inst.getAllBasicBlocks();
+			for (int idx =0; idx < blocks.length; idx++)
+			{
+				Instruction lastInst = blocks[idx].lastInst();
+				if (lastInst instanceof Instruction.Branch)
+				{
+					liveInsts.add(lastInst);
+					usefulBlocks.add(blocks[idx]);
+				}
+			}
 		}
 
 		public void visitAlloca(Instruction.Alloca inst)
