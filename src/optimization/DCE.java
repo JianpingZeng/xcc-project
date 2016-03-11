@@ -3,7 +3,6 @@ package optimization;
 import hir.*;
 import hir.Instruction.Return;
 import hir.Instruction.StoreInst;
-import utils.Pair;
 
 import java.util.*;
 
@@ -36,8 +35,6 @@ public class DCE
 
 	private DominatorTree DT;
 
-	private HashMap<DominatorTree.DomTreeNode, Integer> DomLevels;
-
 	/**
 	 * Default constructor.
 	 *
@@ -49,37 +46,8 @@ public class DCE
 		this.usefulBlocks = new LinkedList<>();
 		this.liveInsts = new HashSet<>();
 		this.m = m;
-		this.DomLevels = new HashMap<>();
 		this.DT = new DominatorTree(true, m);
 		this.DT.recalculate();
-		init();
-	}
-
-	/**
-	 * This method used to initialize a map that maps dominator tree node
-	 * into it's depth level in the Dominator tree.
-	 */
-	private void init()
-	{
-		if (DomLevels.isEmpty())
-		{
-			LinkedList<DominatorTree.DomTreeNode> worklist
-					= new LinkedList<>();
-			DominatorTree.DomTreeNode root = DT.getRootNode();
-			worklist.addLast(root);
-			DomLevels.put(root, 0);
-			while (!worklist.isEmpty())
-			{
-				DominatorTree.DomTreeNode pop = worklist.removeLast();
-				int N = DomLevels.get(pop);
-
-				for (DominatorTree.DomTreeNode child : pop.getChildren())
-				{
-					DomLevels.put(child, N + 1);
-					worklist.addLast(child);
-				}
-			}
-		}
 	}
 
 	/**
@@ -133,7 +101,7 @@ public class DCE
 						if (nearestDom == BasicBlock.USELESSBLOCK)
 							continue;
 						Instruction.Goto go = new Instruction.Goto(nearestDom);
-						BB.insertBefore(go);
+						inst.insertBefore(go);
 						inst.eraseFromBasicBlock();
 					}
 					// the function invocation instruction is handled specially
@@ -176,7 +144,7 @@ public class DCE
 	private void markBranch(Instruction inst, LinkedList<Instruction> worklist)
 	{
 		BasicBlock BB = inst.getParent();
-		LinkedList<BasicBlock> rdf = RDF(BB);
+		LinkedList<BasicBlock> rdf = RDF.run(DT, BB);
 		for (BasicBlock block : rdf)
 		{
 			Instruction last = block.lastInst();
@@ -189,81 +157,6 @@ public class DCE
 			}
 		}
 	}
-
-	/**
-	 * Gets the reverse dominator frontier set of given basic block BB.
-	 * @param BB    The basic block computed reverse dominator frontier.
-	 * @return  The reverse dominator frontier set.
-	 */
-	private LinkedList<BasicBlock> RDF(BasicBlock BB)
-	{
-		LinkedList<BasicBlock> rdf = new LinkedList<>();
-
-		// 使用一个优先级队列，按照在支配树中的层次，越深的结点放在前面
-		PriorityQueue<Pair<DominatorTree.DomTreeNode, Integer>> PQ
-				= new PriorityQueue<>(32,
-				new Comparator<Pair<DominatorTree.DomTreeNode, Integer>>()
-				{
-					@Override
-					public int compare(Pair<DominatorTree.DomTreeNode, Integer>
-							o1, Pair<DominatorTree.DomTreeNode, Integer> o2)
-					{
-						return -1;
-					}
-				});
-
-		DominatorTree.DomTreeNode root = DT.getTreeNodeForBlock(BB);
-		PQ.add(new Pair<>(root, DomLevels.get(root)));
-
-		LinkedList<DominatorTree.DomTreeNode> worklist = new LinkedList<>();
-		HashSet<DominatorTree.DomTreeNode> visited = new HashSet<>(32);
-
-		// 从在支配树中最底层的定义块开始向上一个一个的遍历，
-		// 在每个基本块的支配边界中放入Phi结点。
-		while (!PQ.isEmpty())
-		{
-			Pair<DominatorTree.DomTreeNode, Integer> rootPair = PQ.poll();
-			DominatorTree.DomTreeNode rootNode = rootPair.fst;
-			int rootLevel = rootPair.snd;
-
-			worklist.clear();
-			worklist.addLast(rootNode);
-
-			while (!worklist.isEmpty())
-			{
-				DominatorTree.DomTreeNode Node = worklist.removeLast();
-				BasicBlock curr = Node.getBlock();
-
-				for (BasicBlock succ : curr.getSuccs())
-				{
-					DominatorTree.DomTreeNode succNode =
-							DT.getTreeNodeForBlock(succ);
-
-					// 跳过所有succ块所支配的的块
-					if (succNode.getIDom() == Node)
-						continue;
-
-					// skips those dominator tree nodes whose depth level
-					// is greater than root's level.
-					int succLevel = DomLevels.get(succNode);
-					if (succLevel > rootLevel)
-						continue;
-
-					// skip the visisted dom tree node
-					if (!visited.add(succNode))
-						continue;
-
-					rdf.add(succ);
-				}// end for successor
-
-				for (DominatorTree.DomTreeNode domNode : Node)
-					if (!visited.contains(domNode))
-						worklist.addLast(domNode);
-			}
-		}
-		return rdf;
-	}
-
 	/**
 	 * Initialize the critical instruction set to be used mark-sweep algorithm.
 	 */
