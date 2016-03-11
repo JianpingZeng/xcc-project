@@ -17,7 +17,7 @@ import utils.Utils;
  * @version `1.0
  * @see BasicBlock
  */
-public abstract class Instruction extends Value implements Cloneable
+public abstract class Instruction extends Value
 {
 	/**
 	 * Mainly for register allocation.
@@ -52,7 +52,8 @@ public abstract class Instruction extends Value implements Cloneable
 	 */
 	public void eraseFromBasicBlock()
 	{
-		assert (this.bb == null) : "The basic block where the instruction reside to be erased!";
+		assert (this.bb == null) :
+				"The basic block where the instruction reside to be erased!";
 		bb.removeInst(this);
 	}
 
@@ -73,12 +74,6 @@ public abstract class Instruction extends Value implements Cloneable
 		return "";
 	}
 
-	@Override public Instruction clone() throws CloneNotSupportedException
-	{
-		super.clone();
-		throw new CloneNotSupportedException();
-	}
-
 	/**
 	 * For value number to determine whether this instruction is equivalent to
 	 * that value.
@@ -97,6 +92,27 @@ public abstract class Instruction extends Value implements Cloneable
 	public int valueNumber()
 	{
 		return 0;
+	}
+
+	/**
+	 * Inserts an specified instruction into the instructions list after itself.
+	 * @param inst  An instruction to be inserted.
+	 */
+	public void insertAfter(Instruction inst)
+	{
+		int index = bb.lastIndexOf(inst);
+		if (index >= 0 && index < bb.size())
+			bb.addInst(inst, index + 1);
+	}
+	/**
+	 * Inserts an instruction into the instructions list before this itself.
+	 * @param inst  An instruction to be inserted.
+	 */
+	public void insertBefore(Instruction inst)
+	{
+		int index = bb.lastIndexOf(inst);
+		if (index >= 0 && index < bb.size())
+			bb.addInst(inst, index);
 	}
 
 	/**
@@ -1342,10 +1358,23 @@ public abstract class Instruction extends Value implements Cloneable
 		}
 	}
 
-	public static class BR extends Branch
+	public static abstract class ConditionalBranch extends Branch
+	{
+		public BasicBlock trueTarget, falseTarget;
+		/**
+		 * Constructs a new conditional branch instruction with specified inst type.
+		 *
+		 * @param kind
+		 */
+		public ConditionalBranch(CiKind kind)
+		{
+			super(kind);
+		}
+	}
+
+	public static class BR extends ConditionalBranch
 	{
 		Value x;
-		BasicBlock trueTarget, falseTarget;
 
 		public BR(Value x, BasicBlock trueTarget, BasicBlock falseTarget)
 		{
@@ -1366,7 +1395,7 @@ public abstract class Instruction extends Value implements Cloneable
 		}
 	}
 
-	public static abstract class IntCmp extends Branch
+	public static abstract class IntCmp extends ConditionalBranch
 	{
 		/**
 		 * The first operand also that means left-most of this branch operation.
@@ -1377,8 +1406,6 @@ public abstract class Instruction extends Value implements Cloneable
 		 * operation.
 		 */
 		Value y;
-
-		BasicBlock trueTarget, falseTarget;
 
 		IntCmp(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
@@ -1742,7 +1769,7 @@ public abstract class Instruction extends Value implements Cloneable
 		/**
 		 * The jump target of this goto instruction.
 		 */
-		BasicBlock target;
+		public BasicBlock target;
 
 		/**
 		 * Constructs a new {@code Goto} instruction with specified jump target.
@@ -1771,7 +1798,7 @@ public abstract class Instruction extends Value implements Cloneable
 	 *
 	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
-	public static class Return extends Branch
+	public static class Return extends Instruction
 	{
 		Value ret;
 

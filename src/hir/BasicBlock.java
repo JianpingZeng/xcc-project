@@ -110,27 +110,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	}
 
 	/**
-	 * Inserts an instruction into the instructions list after this itself.
-	 * @param inst  An instruction to be inserted.
-	 */
-	public void insertAfter(Instruction inst)
-	{
-		int index = instructions.lastIndexOf(inst);
-		if (index >= 0 && index < size())
-			instructions.add(index + 1, inst);
-	}
-	/**
-	 * Inserts an instruction into the instructions list before this itself.
-	 * @param inst  An instruction to be inserted.
-	 */
-	public void insertBefore(Instruction inst)
-	{
-		int index = instructions.lastIndexOf(inst);
-		if (index >= 0 && index < size())
-			instructions.add(index, inst);
-	}
-
-	/**
 	 * Returns true if this is the entry basic block.
 	 *
 	 * @return true if this is the entry basic block.
@@ -230,6 +209,17 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		if (instructions == null)
 			return 0; // entry or exit block
 		return instructions.size();
+	}
+
+	/**
+	 * Determines Wether the instructions list of this basic block is empty or not.
+	 * @return return true if this instructions list is empty or null.
+	 */
+	public boolean isEmpty()
+	{
+		if (instructions == null)
+			return true;
+		return instructions.isEmpty();
 	}
 
 	public Instruction getInst(int i)
@@ -374,5 +364,19 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			Instruction first = instructions.getFirst();
 			instructions.add(instructions.indexOf(first)+1, inst);
 		}
+	}
+
+	public int lastIndexOf(Instruction inst)
+	{
+		return instructions.lastIndexOf(inst);
+	}
+
+	public boolean removeSuccssor(BasicBlock removed)
+	{
+		if (successors.contains(removed))
+		{
+			return successors.remove(removed);
+		}
+		return false;
 	}
 }

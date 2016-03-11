@@ -3,6 +3,7 @@ package hir;
 import java.util.List;
 
 import optimization.DCE;
+import optimization.UCE;
 import utils.Context;
 
 /**
@@ -73,5 +74,16 @@ public class HIR
 		// performs dead code elimination.
 		for (Method m : methods)
 			new DCE(m).run();
+
+		// after DCE, There are useless control flow be introduced by other
+		// optimization. So that the useless control flow elimination is desired
+		// as follows.
+		// 1.merges redundant branch instruction.
+		// 2.unlinks empty basic block
+		// 3.merges basic block
+		// 4.hoist merge instruction
+		UCE uce = new UCE();
+		for (Method m : methods)
+			uce.clean(m);
 	}
 }
