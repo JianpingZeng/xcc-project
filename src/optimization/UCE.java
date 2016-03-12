@@ -141,7 +141,7 @@ public class UCE
 	}
 
 	/**
-	 * Merges both first and second into one.
+	 * Merges the second into first block.
 	 * @param first The first block to be merged.
 	 * @param second    The second block to be merged.
 	 */

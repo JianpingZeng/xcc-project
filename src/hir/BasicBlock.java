@@ -371,6 +371,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return instructions.lastIndexOf(inst);
 	}
 
+	/**
+	 * Removes this removed block and unlink it with attached successors list.
+	 * @param removed   The basic block to be remvoed.
+	 * @return
+	 */
 	public boolean removeSuccssor(BasicBlock removed)
 	{
 		if (successors.contains(removed))
@@ -378,5 +383,31 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			return successors.remove(removed);
 		}
 		return false;
+	}
+
+	/**
+	 * Removes this removed block and unlink it with attached predecessors list.
+	 * @param removed   The basic block to be remvoed.
+	 * @return
+	 */
+	public boolean removePredeccessor(BasicBlock removed)
+	{
+		if (predecessors != null && predecessors.contains(removed))
+			return predecessors.remove(removed);
+		return false;
+	}
+
+	/**
+	 * Erases itself from control flow graph.
+	 */
+	public void eraseFromParent()
+	{
+		if (predecessors != null)
+			for (BasicBlock pred : predecessors)
+				pred.removeSuccssor(this);
+
+		if (successors != null)
+			for (BasicBlock succ : successors)
+				succ.removePredeccessor(this);
 	}
 }

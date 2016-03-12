@@ -9,10 +9,20 @@ import java.util.*;
 /**
  * This file defines a class that  performs useless instruction elimination and
  * dead code elimination.
- * <br>
- * Dead code elimination perform a single pass over the function removing
- * instructions that are obviously useless.
  * <p>
+ *     Dead code elimination perform a single pass over the function removing
+ *     instructions that are obviously useless.
+ * </p>
+ * <p>
+ *    At the sweep stage, a collection of another peephole control flow optimizations
+ *    will be performed. For instance:
+ *    <br>
+ *    1.Removes basic block with no predecessors.
+ *    <br>
+ *    2.Merges a basic with it's predecessor if there is only one and the predeccessor
+ *    just only have one successor.
+ *    <br>
+ * </p>
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/8.
  */
 public class DCE
@@ -77,6 +87,9 @@ public class DCE
 		}
 		// 3. Sweep stage
 		sweep();
+
+		// peephole optimization
+		eliminateDeadBlock();
 	}
 
 	/**
@@ -113,6 +126,41 @@ public class DCE
 		}
 	}
 
+	private void eliminateDeadBlock()
+	{
+		for (BasicBlock BB: m)
+		{
+			if (BB.getNumOfPreds() == 0)
+			{
+				BB.eraseFromParent();
+			}
+			if (BB.getNumOfPreds() == 1 )
+			{
+				BasicBlock pred = BB.getPreds().get(0);
+				if (pred.getNumOfSuccs() == 0)
+					merge(pred, BB);
+			}
+		}
+	}
+
+	/**
+	 * Merges the second into first block.
+	 * @param first The first block to be merged.
+	 * @param second    The second block to be merged.
+	 */
+	private void merge(BasicBlock first, BasicBlock second)
+	{
+		for (Instruction inst : second)
+		{
+			first.appendInst(inst);
+		}
+		first.removeSuccssor(second);
+		for (BasicBlock succ : second.getSuccs())
+			first.addSucc(succ);
+
+		// enable the GC.
+		second = null;
+	}
 	/**
 	 * Finds the first useful and nearest basic block in the post dominator of
 	 * specified Basic Block.
