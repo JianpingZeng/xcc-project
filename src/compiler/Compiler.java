@@ -85,7 +85,7 @@ public class Compiler
 		long msec = System.currentTimeMillis();
 		try
 		{
-			List<Tree> trees = new LinkedList<Tree>();
+			List<Tree> trees = new LinkedList<>();
 			// make a abstract syntax tree for any source file, and add it into
 			// trees.
 			for (String file : filenames)
@@ -123,7 +123,6 @@ public class Compiler
 			List<HIR> hirLists = new LinkedList<>();
 			for (Tree t : trees)
 				hirLists.add(new HIRGenerator(context).translate(t));
-
 
 
 		}

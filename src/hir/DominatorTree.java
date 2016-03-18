@@ -295,7 +295,20 @@ public class DominatorTree
 	}
 
 	/**
-	 * Recaculate - compute a dominator tree for the given function.
+	 * Gets the dominated block of given block.
+	 * @param block
+	 * @return
+	 */
+	public BasicBlock getIDom(BasicBlock block)
+	{
+		DomTreeNode node = DomTreeNodes.get(block);
+		if (node == null)
+			return null;
+		return node.IDom.block;
+	}
+
+	/**
+	 * Recalculate - compute a dominator tree for the given function.
 	 */
 	public void recalculate()
 	{
@@ -344,7 +357,7 @@ public class DominatorTree
 
 		// When naively implemented, the Lengauer-Tarjan algorithm requires a separate
 		// bucket for each vertex. However, this is unnecessary, because each vertex
-		// is only placed into a single bucket (that of its semidominator), and each
+		// is only placed into a single bucket (that of its semi-dominator), and each
 		// vertex's bucket is processed before it is added to any bucket itself.
 		//
 		// Instead of using a bucket per all vertexes, we use a single array Buckets that
@@ -613,7 +626,7 @@ public class DominatorTree
 				work.addLast(VAncestor);
 				continue;
 			}
-			work.removeLast();
+			//work.removeLast();
 
 			// update VInfo based on the ancestor info
 			if (VInfo.parent < lastLinked)

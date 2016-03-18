@@ -67,9 +67,9 @@ public class Value implements Cloneable
 			newValue.addUser(uses.remove(0));
 		}
 
-		if (newValue instanceof Instruction)
+		if (this instanceof Instruction)
 		{
-			BasicBlock BB = ((Instruction)newValue).getParent();
+			BasicBlock BB = ((Instruction)this).getParent();
 			for (BasicBlock succ : BB.getSuccs())
 			{
 				for (Instruction inst : succ)

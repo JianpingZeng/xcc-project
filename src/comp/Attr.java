@@ -41,7 +41,7 @@ import ast.Tree.*;
  * involve auxiliary classes.
  * 
  * @see Check
- * @ConstFold
+ * @see ConstFold
  * 
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 2016年1月15日 下午6:40:50
