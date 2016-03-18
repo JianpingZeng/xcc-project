@@ -3,6 +3,7 @@ package hir;
 import java.util.List;
 
 import optimization.DCE;
+import optimization.GVN;
 import optimization.UCE;
 import utils.Context;
 
@@ -42,7 +43,8 @@ public class HIR
 	 * @param methods	Method declarations list
 	 * @return	The instance of {@link HIR}
 	 */
-	public static HIR instance(Context context, List<Variable> vars, List<Method> methods)
+	public static HIR instance(Context context, List<Variable> vars,
+			List<Method> methods)
 	{
 		HIR instance = (HIR)context.get(HIRKey);
 		if (instance == null)
@@ -85,5 +87,10 @@ public class HIR
 		UCE uce = new UCE();
 		for (Method m : methods)
 			uce.clean(m);
+
+		// performs global common subexpression elimination through global value
+		// numbering.
+		for (Method m : methods)
+			new GVN(m);
 	}
 }

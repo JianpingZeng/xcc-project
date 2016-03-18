@@ -1,9 +1,6 @@
 package hir;
 
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
 
 public class ControlFlowGraph
 {
@@ -310,18 +307,67 @@ public class ControlFlowGraph
 	}
 
 	/**
-	 * Visits all of basic block in order that reverse post order with specified
-	 * {@code BasicBlockVisitor} bbv.
-	 *
-	 * @param bbv The instance of BasicBlockVisitor.
+	 * Computes the linear scan order for current CFG and return it.
+	 * @return
 	 */
-	public void visitBasicBlocks(BasicBlockVisitor bbv)
+	public List<BasicBlock> linearScanOrder(DominatorTree DT)
 	{
+		CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
 
-		List<BasicBlock> bblist = reversePostOrder(startNode);
-		for (BasicBlock bb : bblist)
+		// #Step 1: iterate over reverse post order to find critical edge
+		List<BasicBlock> reversePosts = reversePostOrder();
+
+		for (BasicBlock block : reversePosts)
 		{
-			bbv.visitBasicBlock(bb);
+			finder.apply(block);
 		}
+
+		// #Step 2: performs split over finded critical edges list.
+		finder.splitCriticalEdges();
+
+		// #Step3: computes linear scan order.
+		return new ComputeLinearScanOrder(bb_counter, startNode, DT)
+				.linearScanOrder();
+	}
+
+	/**
+	 * Creates and inserts a new basic block into the middle between {@code from}
+	 * and {@code to}.
+	 * @param from the source block of edge.
+	 * @param to the successor block of edge.
+	 * @return the new block inserted.
+	 */
+	public BasicBlock splitEdge(BasicBlock from, BasicBlock to)
+	{
+		BasicBlock newSucc = createBasicBlock("CriticalEdge");
+
+		// creates a new goto instruction that jumps to {@code to}.
+		newSucc.appendInst(new Instruction.Goto(to));
+
+		// set the CriticalEdgeSplit flag
+		newSucc.setBlockFlags(BasicBlock.BlockFlag.CriticalEdgeSplit);
+
+		int index = from.getSuccs().indexOf(to);
+		assert  index >= 0;
+
+		from.getSuccs().set(index, newSucc);
+
+		index = to.getPreds().indexOf(from);
+		assert index >= 0;
+
+		to.getPreds().set(index, newSucc);
+		newSucc.addPred(from);
+
+		Iterator<BasicBlock> itr = to.getPreds().iterator();
+		while (itr.hasNext())
+		{
+			if (itr.next() == from)
+			{
+				itr.remove();
+				newSucc.addPred(from);
+			}
+		}
+
+		return newSucc;
 	}
 }

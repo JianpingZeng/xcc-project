@@ -35,11 +35,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	/**
 	 * The numbering when performing linear scanning.
 	 */
-	private int linearScanNumber;
-	/**
-	 * The numbering when performing depth first traveling.
-	 */
-	private int depthFirstNumber;
+	public int linearScanNumber = -1;
 
 	/**
 	 * A list of quads.
@@ -62,6 +58,27 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * The name of this block.
 	 */
 	public String bbName;
+
+	private int blockFlags;
+
+	public int loopIndex = -1;
+
+	public int loopDepth;
+
+	public boolean isCriticalEdgeSplit()
+	{
+		return (blockFlags | BlockFlag.CriticalEdgeSplit.mask) != 0;
+	}
+
+	public static enum BlockFlag
+	{
+		LinearScanLoopHeader,
+		LinearScanLoopEnd,
+		BackwardBrachTarget,
+		CriticalEdgeSplit;
+
+		public final int mask = 1 << ordinal();
+	}
 
 	/**
 	 * A private constructor for entry node
@@ -327,6 +344,31 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 				predecessors;
 	}
 
+	/**
+	 * Gets the succesor at the specified position.
+	 * @param index
+	 * @return
+	 */
+	public BasicBlock succAt(int index)
+	{
+		assert index >= 0 && index < successors.size() :
+				"The index into successor is beyond range";
+
+		return successors.get(index);
+	}
+	/**
+	 * Gets the predecessor at the specified position.
+	 * @param index
+	 * @return
+	 */
+	public BasicBlock predAt(int index)
+	{
+		assert index >= 0 && index < predecessors.size() :
+				"The index into predecessors is beyond range";
+
+		return predecessors.get(index);
+	}
+
 	public int getID()
 	{
 		return this.idNumber;
@@ -409,5 +451,20 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		if (successors != null)
 			for (BasicBlock succ : successors)
 				succ.removePredeccessor(this);
+	}
+
+	public void setBlockFlags(BlockFlag flag)
+	{
+		blockFlags |= flag.mask;
+	}
+
+	public void clearBlockFlags(BlockFlag flag)
+	{
+		blockFlags &= ~flag.mask;
+	}
+
+	public boolean checkBlockFlags(BlockFlag flag)
+	{
+		return (blockFlags & flag.mask) != 0;
 	}
 }

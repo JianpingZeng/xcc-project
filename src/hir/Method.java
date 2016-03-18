@@ -7,6 +7,7 @@ import type.Type;
 import ast.Tree;
 import type.TypeTags;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * This class is representation at the HIR(high-level IR) of a function or method.
@@ -152,5 +153,16 @@ public class Method implements Iterable<BasicBlock>
 	public Iterator<BasicBlock> iterator()
 	{
 		return this.cfg.reversePostOrder().iterator();
+	}
+
+	/**
+	 * Returns the linear scanning order of basic block at the CFG of function.
+	 *
+	 * Have not finished up to the date.
+	 * @return
+	 */
+	public List<BasicBlock> linearScanOrder(DominatorTree DT)
+	{
+		return cfg.linearScanOrder(DT);
 	}
 }
