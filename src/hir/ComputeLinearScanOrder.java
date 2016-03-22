@@ -274,7 +274,7 @@ public class ComputeLinearScanOrder
 
 		int insertIdx = workList.size() - 1;
 
-		// performs a pass of insertion sort algorithm.
+		// performs a pass of insertion sort algorithm in increment order.
 		while (insertIdx > 0 && (curWdeight <= workList
 				.get(insertIdx - 1).linearScanNumber))
 		{
