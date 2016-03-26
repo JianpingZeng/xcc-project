@@ -149,6 +149,28 @@ public class Value implements Cloneable
 		return ret;
 	}
 
+	public void accept(ValueVisitor visitor)
+	{
+		visitor.visitValue(this);
+	}
+
+	public boolean isConstant()
+	{
+		return this instanceof Constant;
+	}
+
+	/**
+	 * Converts the instance of this class to a constant if this class
+	 * is the subclass of {@code Constant}, otherwise, the null is returned.
+	 * @return
+	 */
+	public CiConstant asConstant()
+	{
+		if (this instanceof Constant)
+			return ((Constant)this).value;
+		else
+			return null;
+	}
 	/**
 	 * The {@code Constant} instruction represents a constant such as an integer
 	 * inst, long, float, object reference, address, etc.
@@ -255,6 +277,10 @@ public class Value implements Cloneable
 			return new Constant(this.value);
 		}
 
+		public void accept(ValueVisitor visitor)
+		{
+			visitor.visitConstant(this);
+		}
 	}
 
 	public static class UndefValue extends Constant
@@ -274,8 +300,14 @@ public class Value implements Cloneable
 		{
 			return new UndefValue(this.kind);
 		}
+
+		public void accept(ValueVisitor visitor)
+		{
+			visitor.visitUndef(this);
+		}
 	}
 
+	/*
 	public static abstract class Var extends Value
 	{
 		/**
@@ -283,8 +315,9 @@ public class Value implements Cloneable
 		 */
 		Type valueType;
 		/**
-		 * The memory address allocated by instruction {@code Alloca} is related with this variable.
-		 */
+		 * The memory address allocated by instruction {@code Alloca} is related
+		 * with this variable.
+		 *
 		public Instruction.Alloca memAddr;
 
 		public Var(CiKind kind, Name name)
@@ -297,7 +330,7 @@ public class Value implements Cloneable
 		 * Sets the inst type of this declared variable.
 		 *
 		 * @param valueType
-		 */
+		 *
 		public void setValueType(Type valueType)
 		{
 			this.valueType = valueType;
@@ -307,7 +340,7 @@ public class Value implements Cloneable
 		 * Gets the inst type of this declared variable.
 		 *
 		 * @return
-		 */
+		 *
 		public Type getValueType()
 		{
 			return valueType;
@@ -319,6 +352,7 @@ public class Value implements Cloneable
 	 *
 	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
+	/*
 	public static final class Local extends Var
 	{
 		private String prefix = "%";
@@ -327,7 +361,7 @@ public class Value implements Cloneable
 		 *
 		 * @param kind       The kind of inst type.
 		 * @param name The name postfix of to being yielded.
-		 */
+
 		public Local(CiKind kind, Name name)
 		{
 			super(kind, name);
@@ -344,4 +378,5 @@ public class Value implements Cloneable
 			return new Local(this.kind, this.name);
 		}
 	}
+	*/
 }

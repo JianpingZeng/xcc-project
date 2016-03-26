@@ -248,10 +248,10 @@ public class DCE
 	}
 
 	/**
-	 * A concrete instance of super class {@code InstructionVisitor}
+	 * A concrete instance of super class {@code ValueVisitor}
 	 * marks live instruction.
 	 */
-	private class MarkVisitor extends InstructionVisitor
+	private class MarkVisitor extends ValueVisitor
 	{
 		public void mark(Instruction inst)
 		{
@@ -370,32 +370,8 @@ public class DCE
 			markBinary(inst);
 		}
 
-		/**
-		 * Visits {@code SHL_I} with visitor pattern.
-		 *
-		 * @param inst The SHL_I to be visited.
-		 */
-		public void visitSHL_I(Instruction.SHL_I inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code SHR_I} with visitor pattern.
-		 *
-		 * @param inst The SHR_I to be visited.
-		 */
-		public void visitSHR_I(Instruction.SHR_I inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code USHR_I} with visitor pattern.
-		 *
-		 * @param inst The USHR_I to be visited.
-		 */
-		public void visitUSHR_I(Instruction.USHR_I inst)
+		@Override
+		public void visitShiftOp(Instruction.ShiftOp inst)
 		{
 			markBinary(inst);
 		}
@@ -481,36 +457,6 @@ public class DCE
 		}
 
 		/**
-		 * Visits {@code SHL_L} with visitor pattern.
-		 *
-		 * @param inst The SHL_L to be visited.
-		 */
-		public void visitSHL_L(Instruction.SHL_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code SHR_L} with visitor pattern.
-		 *
-		 * @param inst The SHR_L to be visited.
-		 */
-		public void visitSHR_L(Instruction.SHR_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code USHR_L} with visitor pattern.
-		 *
-		 * @param inst The USHR_L to be visited.
-		 */
-		public void visitUSHR_L(Instruction.USHR_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
 		 * Visits {@code ADD_F} with visitor pattern.
 		 *
 		 * @param inst The ADD_F to be visited.
@@ -551,16 +497,6 @@ public class DCE
 		}
 
 		/**
-		 * Visits {@code MOD_F} with visitor pattern.
-		 *
-		 * @param inst The MOD_F to be visited.
-		 */
-		public void visitMOD_F(Instruction.MOD_F inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
 		 * Visits {@code ADD_D} with visitor pattern.
 		 *
 		 * @param inst The ADD_D to be visited.
@@ -596,16 +532,6 @@ public class DCE
 		 * @param inst The DIV_D to be visited.
 		 */
 		public void visitDIV_D(Instruction.DIV_D inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code MOD_D} with visitor pattern.
-		 *
-		 * @param inst The MOD_D to be visited.
-		 */
-		public void visitMOD_D(Instruction.MOD_D inst)
 		{
 			markBinary(inst);
 		}
