@@ -46,9 +46,8 @@ import java.util.List;
  * bytecode.
  * </p>
  * <p>
- * <p>
- * 在转换成为SSA形式的IR时，将所有的全局变量看作放在内存中，当在函数内部使用时，使用一个虚拟临时寄存器T1存储它。
- * 当函数返回之时，对于已经修改的变量，写回到变量中。
+ * 在转换成为SSA形式的IR时，将所有的全局变量看作放在内存中，当在函数内部使用时，使用一个
+ * 虚拟临时寄存器T1存储它。当函数返回之时，对于已经修改的变量，写回到变量中。
  * </p>
  *
  * @author Jianping Zeng<z1215jping@hotmail.com>
@@ -1600,18 +1599,6 @@ public class HIRGenerator extends ASTVisitor
 
 			appendInst(inst);
 		}
-		else if (ty.equals(Type.FLOATType))
-		{
-			inst = new Instruction.MOD_F(type2Kind(ty), lhs, rhs);
-
-			appendInst(inst);
-		}
-		else if (ty.equals(Type.DOUBLEType))
-		{
-			inst = new Instruction.MOD_D(type2Kind(ty), lhs, rhs);
-
-			appendInst(inst);
-		}
 		else
 			throw new SemanticError("Invalid data type in the MOD IR.");
 		return inst;
@@ -1717,13 +1704,13 @@ public class HIRGenerator extends ASTVisitor
 
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.SHL_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.IShl, lhs, rhs);
 
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.SHL_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.LShl, lhs, rhs);
 
 			appendInst(inst);
 		}
@@ -1746,13 +1733,13 @@ public class HIRGenerator extends ASTVisitor
 
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.SHR_I(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.IShr, lhs, rhs);
 
 			appendInst(inst);
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.SHR_L(type2Kind(ty), lhs, rhs);
+			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.LShl, lhs, rhs);
 
 			appendInst(inst);
 		}
