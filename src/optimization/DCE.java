@@ -577,7 +577,7 @@ public class DCE
 			markUnary(inst);
 		}
 
-		public void visitINT_2LONG(Instruction.INT_2LONG inst)
+		public void visitConvert(Instruction.INT_2LONG inst)
 		{
 			markUnary(inst);
 		}

@@ -59,7 +59,7 @@ public class Canonicalizer extends ValueVisitor
 					Value.UndefValue.get(PH.kind);
 		}
 
-		// handles instruction operation
+		// handles other instruction here.
 		inst.accept(this);
 		return result;
 	}
@@ -369,79 +369,125 @@ public class Canonicalizer extends ValueVisitor
 			setDoubleConstant(-v.asConstant().asDouble());
 		}
 	}
-	public void visitINT_2LONG(Instruction.INT_2LONG inst)
-	{
-		visitValue(inst);
-	}
 
-	public void visitINT_2FLOAT(Instruction.INT_2FLOAT inst)
+	/**
+	 * Folds the type conversion operation.
+	 * @param inst  The conversion instruction to be folded.
+	 */
+	public void visitConvert(Instruction.Convert inst)
 	{
-		visitValue(inst);
-	}
+		Value val = inst.x;
+		if (val.isConstant())
+		{
+			// folds conversions between two constant
+			switch (inst.opcode)
+			{
+				case I2B:
+					setIntConstant((byte) val.asConstant().asInt());
+					return;
+				case I2S:
+					setIntConstant((short) val.asConstant().asInt());
+					return;
+				case I2C:
+					setIntConstant((char) val.asConstant().asInt());
+					return;
+				case I2L:
+					setLongConstant(val.asConstant().asInt());
+					return;
+				case I2F:
+					setFloatConstant((float) val.asConstant().asInt());
+					return;
+				case L2I:
+					setIntConstant((int)val.asConstant().asLong());
+					return;
+				case L2F:
+					setFloatConstant((float) val.asConstant().asLong());
+					return;
+				case L2D:;
+					setDoubleConstant((double) val.asConstant().asDouble());
+					return;
+				case F2D:
+					setDoubleConstant((double) val.asConstant().asFloat());
+					return;
+				case F2I:
+					setIntConstant((int)val.asConstant().asFloat());
+					return;
+				case F2L:
+					setLongConstant((long) val.asConstant().asFloat());
+					return;
+				case D2F:
+					setFloatConstant((float) val.asConstant().asDouble());
+					return;
+				case D2I:
+					setIntConstant((int) val.asConstant().asDouble());
+					return;
+				case D2L:
+					setLongConstant((long) val.asConstant().asDouble());
+					return;
+			}
+			// finished
+		}
+		CiKind kind = CiKind.Illegal;
+		// chained converts instruction like this (V)((T)val), where ((T)val) is
+		// represented as val.
+		if (val instanceof Convert)
+		{
+			Convert c = (Convert)val;
+			// where T is kind.
+			switch (c.opcode)
+			{
+				case I2B: kind = CiKind.Byte; break;
+				case I2S: kind = CiKind.Short; break;
+				case I2C: kind = CiKind.Char; break;
+			}
 
-	public void visitINT_2DOUBLE(Instruction.INT_2DOUBLE inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitLONG_2INT(Instruction.LONG_2INT inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitLONG_2FLOAT(Instruction.LONG_2FLOAT inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitLONG_2DOUBLE(Instruction.LONG_2DOUBLE inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitFLOAT_2INT(Instruction.FLOAT_2INT inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitFLOAT_2LONG(Instruction.FLOAT_2LONG inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitFLOAT_2DOUBLE(Instruction.FLOAT_2DOUBLE inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitDOUBLE_2INT(Instruction.DOUBLE_2INT inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitDOUBLE_2LONG(Instruction.DOUBLE_2LONG inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitDOUBLE_2FLOAT(Instruction.DOUBLE_2FLOAT inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitINT_2BYTE(Instruction.INT_2BYTE inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitINT_2CHAR(Instruction.INT_2CHAR inst)
-	{
-		visitValue(inst);
-	}
-
-	public void visitINT_2SHORT(Instruction.INT_2SHORT inst)
-	{
-		visitValue(inst);
+			if (kind != CiKind.Illegal)
+			{
+				switch (inst.opcode)
+				{
+					case I2B:
+						if (kind == CiKind.Byte)
+						{
+							setCanonical(val);
+						}
+						break;
+					case I2S:
+						if (kind == CiKind.Byte || kind == CiKind.Short)
+						{
+							setCanonical(val);
+						}
+						break;
+					case I2C:
+						if (kind == CiKind.Char)
+						{
+							setCanonical(val);
+						}
+						break;
+				}
+			}
+			//(V)(x op2 y), where (x op2 y) is represented as val.
+			if (val instanceof Op2)
+			{
+				// check if the operation was IAND with a constant; it may have narrowed the value already
+				Op2 op = (Op2) val;
+				// constant should be on right hand side if there is one
+				if (op.opcode == Operator.IAnd && op.y.isConstant()) {
+					int safebits = 0;
+					int mask = op.y.asConstant().asInt();
+					// Checkstyle: off
+					switch (inst.opcode) {
+						case I2B: safebits = 0x7f; break;
+						case I2S: safebits = 0x7fff; break;
+						case I2C: safebits = 0xffff; break;
+					}
+					// Checkstyle: on
+					if (safebits != 0 && (mask & ~safebits) == 0) {
+						// the mask already cleared all the upper bits necessary.
+						setCanonical(val);
+					}
+				}
+			}
+		}
 	}
 
 	public void visitICmp(Instruction.ICmp inst)
