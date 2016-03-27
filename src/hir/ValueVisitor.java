@@ -258,75 +258,7 @@ public abstract class ValueVisitor
 		
 	}
 
-	public void visitINT_2LONG(INT_2LONG inst)
-	{
-		
-	}
-	public void visitINT_2FLOAT(INT_2FLOAT inst)
-	{
-		
-	}
-	public void visitINT_2DOUBLE(INT_2DOUBLE inst)
-	{
-		
-	}
-
-	public void visitLONG_2INT(LONG_2INT inst)
-	{
-		
-	}
-
-	public void visitLONG_2FLOAT(LONG_2FLOAT inst)
-	{
-		
-	}
-
-	public void visitLONG_2DOUBLE(LONG_2DOUBLE inst)
-	{
-		
-	}
-
-	public void visitFLOAT_2INT(FLOAT_2INT inst)
-	{
-		
-	}
-
-	public void visitFLOAT_2LONG(FLOAT_2LONG inst)
-	{
-		
-	}
-
-	public void visitFLOAT_2DOUBLE(FLOAT_2DOUBLE inst)
-	{
-		
-	}
-
-	public void visitDOUBLE_2INT(DOUBLE_2INT inst)
-	{
-		
-	}
-
-	public void visitDOUBLE_2LONG(DOUBLE_2LONG inst)
-	{
-		
-	}
-
-	public void visitDOUBLE_2FLOAT(DOUBLE_2FLOAT inst)
-	{
-		
-	}
-
-	public void visitINT_2BYTE(INT_2BYTE inst)
-	{
-		
-	}
-
-	public void visitINT_2CHAR(INT_2CHAR inst)
-	{
-		
-	}
-
-	public void visitINT_2SHORT(INT_2SHORT inst)
+	public void visitConvert(Convert inst)
 	{
 		
 	}
