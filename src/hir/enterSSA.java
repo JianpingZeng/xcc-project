@@ -113,7 +113,7 @@ public class EnterSSA
 	 * instruction into SSA form.
 	 */
 	/*
-	private class GlobalValueNumber extends InstructionVisitor
+	private class GlobalValueNumber extends ValueVisitor
 	{
 		private BasicBlock currentBlock;
 
@@ -372,7 +372,7 @@ public class EnterSSA
 			visitInstruction(inst);
 		}
 		@Override
-		public void visitINT_2LONG(Instruction.INT_2LONG inst)
+		public void visitConvert(Instruction.INT_2LONG inst)
 		{
 			visitInstruction(inst);
 		}

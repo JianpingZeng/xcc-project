@@ -32,4 +32,26 @@ public class Utils
 		return 0x20000000 | (hash + 7 * System.identityHashCode(x) + 11 * System
 				.identityHashCode(y));
 	}
+
+	/**
+	 * Computes the log (base 2) of the specified integer, rounding down.
+	 * (E.g {@code log2(8) = 3}, {@code log2(21) = 4})
+	 *
+	 * @param val the value
+	 * @return the log base 2 of the value
+	 */
+	public static int log2(int val) {
+		assert val > 0 && isPowerOf2(val);
+		return 31 - Integer.numberOfLeadingZeros(val);
+	}
+
+	public static int log2(long val)
+	{
+		assert val > 0 && isPowerOf2(val);
+		return 63 - Long.numberOfLeadingZeros(val);
+	}
+	public static boolean isPowerOf2(long val)
+	{
+		return val != 0 && (val & val -1) == 0;
+	}
 }

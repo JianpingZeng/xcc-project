@@ -24,6 +24,9 @@ import java.util.*;
  */
 public final class BasicBlock extends Value implements Iterable<Instruction>
 {
+	public static final BasicBlock USELESSBLOCK =
+			new BasicBlock(-1, null, null, "useless", null);
+
 	/**
 	 * Unique id id for this basic block.
 	 */
@@ -32,11 +35,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	/**
 	 * The numbering when performing linear scanning.
 	 */
-	private int linearScanNumber;
-	/**
-	 * The numbering when performing depth first traveling.
-	 */
-	private int depthFirstNumber;
+	public int linearScanNumber = -1;
 
 	/**
 	 * A list of quads.
@@ -59,6 +58,27 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * The name of this block.
 	 */
 	public String bbName;
+
+	private int blockFlags;
+
+	public int loopIndex = -1;
+
+	public int loopDepth;
+
+	public boolean isCriticalEdgeSplit()
+	{
+		return (blockFlags | BlockFlag.CriticalEdgeSplit.mask) != 0;
+	}
+
+	public static enum BlockFlag
+	{
+		LinearScanLoopHeader,
+		LinearScanLoopEnd,
+		BackwardBrachTarget,
+		CriticalEdgeSplit;
+
+		public final int mask = 1 << ordinal();
+	}
 
 	/**
 	 * A private constructor for entry node
@@ -158,10 +178,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * Visit all of the quads in this basic block in forward order with the
 	 * given quad visitor.
 	 *
-	 * @param qv InstructionVisitor to visit the quads with.
-	 * @see InstructionVisitor
+	 * @param qv ValueVisitor to visit the quads with.
+	 * @see ValueVisitor
 	 */
-	public void visitQuads(InstructionVisitor qv)
+	public void visitQuads(ValueVisitor qv)
 	{
 		for (Instruction q : instructions)
 		{
@@ -173,10 +193,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * Visit all of the quads in this basic block in backward order with the
 	 * given quad visitor.
 	 *
-	 * @param qv InstructionVisitor to visit the quads with.
-	 * @see InstructionVisitor
+	 * @param qv ValueVisitor to visit the quads with.
+	 * @see ValueVisitor
 	 */
-	public void backwardVisitQuads(InstructionVisitor qv)
+	public void backwardVisitQuads(ValueVisitor qv)
 	{
 		for (Iterator<Instruction> i = backwardIterator(); i.hasNext(); )
 		{
@@ -206,6 +226,17 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		if (instructions == null)
 			return 0; // entry or exit block
 		return instructions.size();
+	}
+
+	/**
+	 * Determines Wether the instructions list of this basic block is empty or not.
+	 * @return return true if this instructions list is empty or null.
+	 */
+	public boolean isEmpty()
+	{
+		if (instructions == null)
+			return true;
+		return instructions.isEmpty();
 	}
 
 	public Instruction getInst(int i)
@@ -313,6 +344,31 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 				predecessors;
 	}
 
+	/**
+	 * Gets the succesor at the specified position.
+	 * @param index
+	 * @return
+	 */
+	public BasicBlock succAt(int index)
+	{
+		assert index >= 0 && index < successors.size() :
+				"The index into successor is beyond range";
+
+		return successors.get(index);
+	}
+	/**
+	 * Gets the predecessor at the specified position.
+	 * @param index
+	 * @return
+	 */
+	public BasicBlock predAt(int index)
+	{
+		assert index >= 0 && index < predecessors.size() :
+				"The index into predecessors is beyond range";
+
+		return predecessors.get(index);
+	}
+
 	public int getID()
 	{
 		return this.idNumber;
@@ -350,5 +406,65 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			Instruction first = instructions.getFirst();
 			instructions.add(instructions.indexOf(first)+1, inst);
 		}
+	}
+
+	public int lastIndexOf(Instruction inst)
+	{
+		return instructions.lastIndexOf(inst);
+	}
+
+	/**
+	 * Removes this removed block and unlink it with attached successors list.
+	 * @param removed   The basic block to be remvoed.
+	 * @return
+	 */
+	public boolean removeSuccssor(BasicBlock removed)
+	{
+		if (successors.contains(removed))
+		{
+			return successors.remove(removed);
+		}
+		return false;
+	}
+
+	/**
+	 * Removes this removed block and unlink it with attached predecessors list.
+	 * @param removed   The basic block to be remvoed.
+	 * @return
+	 */
+	public boolean removePredeccessor(BasicBlock removed)
+	{
+		if (predecessors != null && predecessors.contains(removed))
+			return predecessors.remove(removed);
+		return false;
+	}
+
+	/**
+	 * Erases itself from control flow graph.
+	 */
+	public void eraseFromParent()
+	{
+		if (predecessors != null)
+			for (BasicBlock pred : predecessors)
+				pred.removeSuccssor(this);
+
+		if (successors != null)
+			for (BasicBlock succ : successors)
+				succ.removePredeccessor(this);
+	}
+
+	public void setBlockFlags(BlockFlag flag)
+	{
+		blockFlags |= flag.mask;
+	}
+
+	public void clearBlockFlags(BlockFlag flag)
+	{
+		blockFlags &= ~flag.mask;
+	}
+
+	public boolean checkBlockFlags(BlockFlag flag)
+	{
+		return (blockFlags & flag.mask) != 0;
 	}
 }
