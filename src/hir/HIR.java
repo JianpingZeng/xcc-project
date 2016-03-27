@@ -23,7 +23,6 @@ import utils.Context;
  * in execution order.
  * </p>
  * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年2月4日 下午4:59:48 
  */
 public class HIR
 {
