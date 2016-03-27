@@ -577,77 +577,7 @@ public class DCE
 			markUnary(inst);
 		}
 
-		public void visitConvert(Instruction.INT_2LONG inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitINT_2FLOAT(Instruction.INT_2FLOAT inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitINT_2DOUBLE(Instruction.INT_2DOUBLE inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitLONG_2INT(Instruction.LONG_2INT inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitLONG_2FLOAT(Instruction.LONG_2FLOAT inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitLONG_2DOUBLE(Instruction.LONG_2DOUBLE inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitFLOAT_2INT(Instruction.FLOAT_2INT inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitFLOAT_2LONG(Instruction.FLOAT_2LONG inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitFLOAT_2DOUBLE(Instruction.FLOAT_2DOUBLE inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitDOUBLE_2INT(Instruction.DOUBLE_2INT inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitDOUBLE_2LONG(Instruction.DOUBLE_2LONG inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitDOUBLE_2FLOAT(Instruction.DOUBLE_2FLOAT inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitINT_2BYTE(Instruction.INT_2BYTE inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitINT_2CHAR(Instruction.INT_2CHAR inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitINT_2SHORT(Instruction.INT_2SHORT inst)
+		public void visitConvert(Instruction.Convert inst)
 		{
 			markUnary(inst);
 		}

@@ -8,10 +8,19 @@ import hir.Value.Constant;
 import utils.Utils;
 
 /**
- * This file defines a class for folding an instruction into a constant.
+ * <p>This file defines a class for folding an instruction into a constant.
  * Also, putting constants on the right side of comutative operators for
  * Strength reduction.
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/24.
+ *
+ * <p>This file is a member of <a href={@docRoot/optimization}>Machine Indepedence
+ * Optimization</a>.
+ *
+ * @see DCE
+ * @see ConstantProp
+ * @see GVN
+ * @see UCE
+ *
+ * @author Jianping Zeng.
  */
 public class Canonicalizer extends ValueVisitor
 {

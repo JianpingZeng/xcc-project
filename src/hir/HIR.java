@@ -2,6 +2,7 @@ package hir;
 
 import java.util.List;
 
+import optimization.ConstantProp;
 import optimization.DCE;
 import optimization.GVN;
 import optimization.UCE;
@@ -69,13 +70,19 @@ public class HIR
 	}
 
 	/**
-	 * Optimize High level IR.
+	 * Performs several Optimization approaches over High level IR.
 	 */
 	private void optimize()
 	{
 		// performs dead code elimination.
 		for (Method m : methods)
 			new DCE(m).run();
+
+		// performs constant folding and propagation
+		ConstantProp prop = new ConstantProp();
+		for (Method m : methods)
+			prop.runOnMethod(m);
+
 
 		// after DCE, There are useless control flow be introduced by other
 		// optimization. So that the useless control flow elimination is desired
