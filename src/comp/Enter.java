@@ -84,7 +84,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	 * A entry for entering sorts of symbols into corresponding scope. Every
 	 * scope is attached to adaptable symbol.
 	 * 
-	 * @param root
+	 * @param trees
 	 */
 	public void complete(List<Tree> trees)
 	{
@@ -106,7 +106,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	/**
 	 * Entering into a new scope for global symbols or local symbols.
 	 * 
-	 * @param next	the parent scope of that new local scope.
+	 * @param env	the parent scope of that new local scope.
 	 * 
 	 * @return	a new local scope.
 	 */
@@ -122,7 +122,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	 * Checks the unique symbol in the given scope.
 	 * 
 	 * @param pos	The position of symbol to be error reported.
-	 * @param v		The symbol.
+	 * @param sym		The symbol.
 	 * @param encScope	The given scope
 	 * @return
 	 */

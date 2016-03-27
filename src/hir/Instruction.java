@@ -1,11 +1,12 @@
 package hir;
 
 import ci.CiKind;
-import comp.OpCodes;
 import exception.SemanticError;
 import type.Type;
 import utils.Pair;
 import utils.Utils;
+
+import java.util.HashMap;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -17,12 +18,14 @@ import utils.Utils;
  * @version `1.0
  * @see BasicBlock
  */
-public abstract class Instruction extends Value implements Cloneable
+public abstract class Instruction extends Value
 {
 	/**
 	 * Mainly for register allocation.
 	 */
 	public int id;
+
+	public final Operator opcode;
 
 	/**
 	 * The ret of operation over this instruction, it is null if this instruction
@@ -32,19 +35,14 @@ public abstract class Instruction extends Value implements Cloneable
 
 	private BasicBlock bb;
 
-	/**
-	 * A link to next instruction at the basic block or to itself if it not on
-	 * block.
-	 */
-	private Instruction next = this;
-
 	public BasicBlock getParent() {return bb;}
 	public void setParent(BasicBlock bb) {this.bb = bb;}
 
-	public Instruction(CiKind kind)
+	public Instruction(CiKind kind, Operator opcode)
 	{
 		super(kind);
 		this.id = -1;
+		this.opcode = opcode;
 	}
 
 	/**
@@ -52,16 +50,17 @@ public abstract class Instruction extends Value implements Cloneable
 	 */
 	public void eraseFromBasicBlock()
 	{
-		assert (this.bb == null) : "The basic block where the instruction reside to be erased!";
+		assert (this.bb == null) :
+				"The basic block where the instruction reside to be erased!";
 		bb.removeInst(this);
 	}
 
 	/**
-	 * An interface for InstructionVisitor invoking.
+	 * An interface for ValueVisitor invoking.
 	 *
-	 * @param visitor The instance of InstructionVisitor.
+	 * @param visitor The instance of ValueVisitor.
 	 */
-	public abstract void accept(InstructionVisitor visitor);
+	public abstract void accept(ValueVisitor visitor);
 
 	/**
 	 * Gets the text format of this Instruction.
@@ -71,12 +70,6 @@ public abstract class Instruction extends Value implements Cloneable
 	public String toString()
 	{
 		return "";
-	}
-
-	@Override public Instruction clone() throws CloneNotSupportedException
-	{
-		super.clone();
-		throw new CloneNotSupportedException();
 	}
 
 	/**
@@ -100,6 +93,27 @@ public abstract class Instruction extends Value implements Cloneable
 	}
 
 	/**
+	 * Inserts an specified instruction into the instructions list after itself.
+	 * @param inst  An instruction to be inserted.
+	 */
+	public void insertAfter(Instruction inst)
+	{
+		int index = bb.lastIndexOf(inst);
+		if (index >= 0 && index < bb.size())
+			bb.addInst(inst, index + 1);
+	}
+	/**
+	 * Inserts an instruction into the instructions list before this itself.
+	 * @param inst  An instruction to be inserted.
+	 */
+	public void insertBefore(Instruction inst)
+	{
+		int index = bb.lastIndexOf(inst);
+		if (index >= 0 && index < bb.size())
+			bb.addInst(inst, index);
+	}
+
+	/**
 	 * The abstract base class definition for unary operator.
 	 */
 	public static abstract class Op1 extends Instruction
@@ -113,11 +127,12 @@ public abstract class Instruction extends Value implements Cloneable
 		 * Constructs unary operation.
 		 *
 		 * @param kind The inst kind of ret.
+		 * @param opcode  The operator code for this instruction.
 		 * @param x    The sole operand.
 		 */
-		public Op1(CiKind kind, Value x)
+		public Op1(CiKind kind, Operator opcode, Value x)
 		{
-			super(kind);
+			super(kind, opcode);
 			this.x = x;
 		}
 
@@ -136,23 +151,33 @@ public abstract class Instruction extends Value implements Cloneable
 		 */
 		public Value x, y;
 
-		public Op2(CiKind kind, Value x, Value y)
+		public Op2(CiKind kind, Operator opcode, Value x, Value y)
 		{
-			super(kind);
+			super(kind, opcode);
 			this.x = x;
 			this.y = y;
 		}
 
+		/**
+		 * This method is used for attempting to swap the two operands of this
+		 * binary instruction.
+		 */
+		public void swapOperands()
+		{
+			Value temp = x;
+			x = y;
+			y = temp;
+		}
 	}
 
 	public static class ADD_I extends Op2
 	{
 		public ADD_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.IAnd, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitADD_I(this);
 		}
@@ -164,7 +189,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.iadd, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -172,10 +197,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public SUB_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.ISub, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitSUB_I(this);
 		}
@@ -187,7 +212,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.isub, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -195,10 +220,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public MUL_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.IMul, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitMUL_I(this);
 		}
@@ -210,7 +235,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.imul, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -218,10 +243,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public DIV_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.IDiv, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitDIV_I(this);
 		}
@@ -233,7 +258,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.idiv, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -241,10 +266,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public MOD_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.IMod, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitMOD_I(this);
 		}
@@ -256,7 +281,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.imod, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -264,10 +289,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public AND_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.IAnd, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitAND_I(this);
 		}
@@ -279,7 +304,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.iand, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -287,10 +312,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public OR_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.IOr, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitOR_I(this);
 		}
@@ -302,7 +327,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.ior, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -310,10 +335,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public XOR_I(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.IXor, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitXOR_I(this);
 		}
@@ -325,81 +350,31 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.ixor, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
-	public static class SHL_I extends Op2
+	public static class ShiftOp extends Op2
 	{
-		public SHL_I(CiKind kind, Value x, Value y)
+
+		public ShiftOp(CiKind kind, Operator opcode, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, opcode, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
-			visitor.visitSHL_I(this);
+			visitor.visitShiftOp(this);
 		}
 
 		@Override public String toString()
 		{
-			return "SHL_I";
+			return opcode.opName;
 		}
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.ishl, x, y);
-		}
-	}
-
-	public static class SHR_I extends Op2
-	{
-		public SHR_I(CiKind kind, Value x, Value y)
-		{
-			super(kind, x, y);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitSHR_I(this);
-		}
-
-		@Override public String toString()
-		{
-			return "SHR_I";
-		}
-
-		@Override public int valueNumber()
-		{
-			return Utils.hash2(OpCodes.ishr, x, y);
-		}
-	}
-
-	/**
-	 * This class served as unsigned sheft right over integer operand.
-	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
-	 */
-	public static class USHR_I extends Op2
-	{
-		public USHR_I(CiKind kind, Value x, Value y)
-		{
-			super(kind, x, y);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitUSHR_I(this);
-		}
-
-		@Override public String toString()
-		{
-			return "USHR_I";
-		}
-
-		@Override public int valueNumber()
-		{
-			return Utils.hash2(OpCodes.iushr, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -407,10 +382,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public ADD_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LAdd, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitADD_L(this);
 		}
@@ -422,7 +397,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.ladd, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -430,10 +405,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public SUB_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LSub, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitSUB_L(this);
 		}
@@ -445,7 +420,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.lsub, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -453,10 +428,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public MUL_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LMul, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitMUL_L(this);
 		}
@@ -468,7 +443,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.lmul, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -476,10 +451,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public DIV_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LDiv, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitDIV_L(this);
 		}
@@ -491,7 +466,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.ldiv, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -499,10 +474,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public MOD_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LMod, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitMOD_L(this);
 		}
@@ -514,7 +489,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.lmod, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -522,10 +497,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public AND_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LAnd, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitAND_L(this);
 		}
@@ -537,7 +512,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.land, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -545,10 +520,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public OR_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LOr, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitOR_L(this);
 		}
@@ -560,7 +535,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.lor, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -568,10 +543,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public XOR_L(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.LXor, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitXOR_L(this);
 		}
@@ -583,81 +558,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.lxor, x, y);
-		}
-	}
-
-	public static class SHL_L extends Op2
-	{
-		public SHL_L(CiKind kind, Value x, Value y)
-		{
-			super(kind, x, y);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitSHL_L(this);
-		}
-
-		@Override public String toString()
-		{
-			return "SHL_L";
-		}
-
-		@Override public int valueNumber()
-		{
-			return Utils.hash2(OpCodes.lshl, x, y);
-		}
-	}
-
-	public static class SHR_L extends Op2
-	{
-		public SHR_L(CiKind kind, Value x, Value y)
-		{
-			super(kind, x, y);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitSHR_L(this);
-		}
-
-		@Override public String toString()
-		{
-			return "SHR_L";
-		}
-
-		@Override public int valueNumber()
-		{
-			return Utils.hash2(OpCodes.lshr, x, y);
-		}
-	}
-
-	/**
-	 * This class served as unsigned sheft right over long integer operand.
-	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
-	 */
-	public static class USHR_L extends Op2
-	{
-		public USHR_L(CiKind kind, Value x, Value y)
-		{
-			super(kind, x, y);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitUSHR_L(this);
-		}
-
-		@Override public String toString()
-		{
-			return "USHR_L";
-		}
-
-		@Override public int valueNumber()
-		{
-			return Utils.hash2(OpCodes.lushr, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -665,10 +566,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public ADD_F(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.FAdd, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitADD_F(this);
 		}
@@ -680,7 +581,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.fadd, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -688,10 +589,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public SUB_F(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.FSub, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitSUB_F(this);
 		}
@@ -703,7 +604,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.fsub, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -711,10 +612,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public MUL_F(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.FMul, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitMUL_F(this);
 		}
@@ -726,7 +627,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.fmul, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -734,10 +635,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public DIV_F(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.FDiv, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitDIV_F(this);
 		}
@@ -749,30 +650,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.fdiv, x, y);
-		}
-	}
-
-	public static class MOD_F extends Op2
-	{
-		public MOD_F(CiKind kind, Value x, Value y)
-		{
-			super(kind, x, y);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitMOD_F(this);
-		}
-
-		@Override public String toString()
-		{
-			return "MOD_F";
-		}
-
-		@Override public int valueNumber()
-		{
-			return Utils.hash2(OpCodes.fmod, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -780,10 +658,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public ADD_D(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.DAdd, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitADD_D(this);
 		}
@@ -795,7 +673,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.dadd, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -803,10 +681,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public SUB_D(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.DSub, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitSUB_D(this);
 		}
@@ -818,7 +696,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.dsub, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -826,10 +704,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public MUL_D(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.DMul, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitMUL_D(this);
 		}
@@ -841,7 +719,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.dmul, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -849,10 +727,10 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public DIV_D(CiKind kind, Value x, Value y)
 		{
-			super(kind, x, y);
+			super(kind, Operator.DDiv, x, y);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitDIV_D(this);
 		}
@@ -864,30 +742,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(OpCodes.ddiv, x, y);
-		}
-	}
-
-	public static class MOD_D extends Op2
-	{
-		public MOD_D(CiKind kind, Value x, Value y)
-		{
-			super(kind, x, y);
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitMOD_D(this);
-		}
-
-		@Override public String toString()
-		{
-			return "MOD_D";
-		}
-
-		@Override public int valueNumber()
-		{
-			return Utils.hash2(OpCodes.dmod, x, y);
+			return Utils.hash2(opcode.index, x, y);
 		}
 	}
 
@@ -895,7 +750,7 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public NEG_I(CiKind kind, Value x)
 		{
-			super(kind, x);
+			super(kind, Operator.INeg, x);
 		}
 
 		public String toString()
@@ -903,14 +758,14 @@ public abstract class Instruction extends Value implements Cloneable
 			return "NEG_I";
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitNEG_I(this);
 		}
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash1(OpCodes.ineg, x);
+			return Utils.hash1(opcode.index, x);
 		}
 	}
 
@@ -918,7 +773,7 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public NEG_F(CiKind kind, Value x)
 		{
-			super(kind, x);
+			super(kind, Operator.FNeg, x);
 		}
 
 		public String toString()
@@ -926,14 +781,14 @@ public abstract class Instruction extends Value implements Cloneable
 			return "NEG_F";
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitNEG_F(this);
 		}
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash1(OpCodes.fneg, x);
+			return Utils.hash1(opcode.index, x);
 		}
 	}
 
@@ -941,7 +796,7 @@ public abstract class Instruction extends Value implements Cloneable
 	{
 		public NEG_L(CiKind kind, Value x)
 		{
-			super(kind, x);
+			super(kind, Operator.LNeg, x);
 		}
 
 		public String toString()
@@ -949,14 +804,14 @@ public abstract class Instruction extends Value implements Cloneable
 			return "NEG_L";
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitNEG_L(this);
 		}
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash1(OpCodes.lneg, x);
+			return Utils.hash1(opcode.index, x);
 		}
 	}
 
@@ -965,7 +820,7 @@ public abstract class Instruction extends Value implements Cloneable
 
 		public NEG_D(CiKind kind, Value x)
 		{
-			super(kind, x);
+			super(kind, Operator.DNeg, x);
 		}
 
 		public String toString()
@@ -973,354 +828,41 @@ public abstract class Instruction extends Value implements Cloneable
 			return "NEG_D";
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitNEG_D(this);
 		}
 		@Override public int valueNumber()
 		{
-			return Utils.hash1(OpCodes.dneg, x);
+			return Utils.hash1(opcode.index, x);
 		}
 	}
 
-	public static class INT_2LONG extends Op1
+	public static class Convert extends Op1
 	{
-
-		public INT_2LONG(CiKind kind, Value x)
+		public Convert(CiKind kind, Operator opcode, Value x)
 		{
-			super(kind, x);
+			super(kind, opcode, x);
+		}
+
+		/**
+		 * An interface for ValueVisitor invoking.
+		 *
+		 * @param visitor The instance of ValueVisitor.
+		 */
+		@Override public void accept(ValueVisitor visitor)
+		{
+			visitor.visitConvert(this);
 		}
 
 		public String toString()
 		{
-			return "INT_2LONG";
+			return opcode.opName;
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitINT_2LONG(this);
-		}
 		@Override public int valueNumber()
 		{
-			return Utils.hash1(OpCodes.i2l, x);
-		}
-	}
-
-	public static class INT_2FLOAT extends Op1
-	{
-		public INT_2FLOAT(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "INT_2FLOAT";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitINT_2FLOAT(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.i2f, x);
-		}
-	}
-
-	public static class INT_2DOUBLE extends Op1
-	{
-
-		public INT_2DOUBLE(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "INT_2DOUBLE";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitINT_2DOUBLE(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.i2d, x);
-		}
-	}
-
-	public static class LONG_2INT extends Op1
-	{
-
-		public LONG_2INT(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "LONG_2INT";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitLONG_2INT(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.l2i, x);
-		}
-	}
-
-	public static class LONG_2FLOAT extends Op1
-	{
-		public LONG_2FLOAT(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "LONG_2FLOAT";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitLONG_2FLOAT(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.l2f, x);
-		}
-	}
-
-	public static class LONG_2DOUBLE extends Op1
-	{
-
-		public LONG_2DOUBLE(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "LONG_2DOUBLE";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitLONG_2DOUBLE(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.l2d, x);
-		}
-	}
-
-	public static class FLOAT_2INT extends Op1
-	{
-		public FLOAT_2INT(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "FLOAT_2INT";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitFLOAT_2INT(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.f2i, x);
-		}
-	}
-
-	public static class FLOAT_2LONG extends Op1
-	{
-		public FLOAT_2LONG(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "FLOAT_2LONG";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitFLOAT_2LONG(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.f2l, x);
-		}
-	}
-
-	public static class FLOAT_2DOUBLE extends Op1
-	{
-
-		public FLOAT_2DOUBLE(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "FLOAT_2DOUBLE";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitFLOAT_2DOUBLE(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.f2d, x);
-		}
-	}
-
-	public static class DOUBLE_2INT extends Op1
-	{
-
-		public DOUBLE_2INT(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "DOUBLE_2INT";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitDOUBLE_2INT(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.d2i, x);
-		}
-	}
-
-	public static class DOUBLE_2LONG extends Op1
-	{
-
-		public DOUBLE_2LONG(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "DOUBLE_2LONG";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitDOUBLE_2LONG(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.d2l, x);
-		}
-	}
-
-	public static class DOUBLE_2FLOAT extends Op1
-	{
-
-		public DOUBLE_2FLOAT(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "DOUBLE_2FLOAT";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitDOUBLE_2FLOAT(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.d2f, x);
-		}
-	}
-
-	public static class INT_2BYTE extends Op1
-	{
-
-		public INT_2BYTE(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "INT_2BYTE";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitINT_2BYTE(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.int2byte, x);
-		}
-	}
-
-	public static class INT_2CHAR extends Op1
-	{
-
-		public INT_2CHAR(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "INT_2CHAR";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitINT_2CHAR(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.int2char, x);
-		}
-	}
-
-	public static class INT_2SHORT extends Op1
-	{
-
-		public INT_2SHORT(CiKind kind, Value x)
-		{
-			super(kind, x);
-		}
-
-		public String toString()
-		{
-			return "INT_2SHORT";
-		}
-
-		@Override public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitINT_2SHORT(this);
-		}
-		@Override public int valueNumber()
-		{
-			return Utils.hash1(OpCodes.int2short, x);
+			return Utils.hash1(opcode.index, x);
 		}
 	}
 
@@ -1336,37 +878,50 @@ public abstract class Instruction extends Value implements Cloneable
 		 *
 		 * @param kind
 		 */
-		public Branch(CiKind kind)
+		public Branch(CiKind kind, Operator opcode)
 		{
-			super(kind);
+			super(kind, opcode);
 		}
 	}
 
-	public static class BR extends Branch
+	public static abstract class ConditionalBranch extends Branch
+	{
+		public BasicBlock trueTarget, falseTarget;
+		/**
+		 * Constructs a new conditional branch instruction with specified inst type.
+		 *
+		 * @param kind
+		 */
+		public ConditionalBranch(CiKind kind, Operator opcode)
+		{
+			super(kind, opcode);
+		}
+	}
+
+	public static class BR extends ConditionalBranch
 	{
 		Value x;
-		BasicBlock trueTarget, falseTarget;
 
 		public BR(Value x, BasicBlock trueTarget, BasicBlock falseTarget)
 		{
-			super(CiKind.Illegal);
+			super(CiKind.Illegal, Operator.Br);
 			this.x = x;
 			this.trueTarget = trueTarget;
 			this.falseTarget = falseTarget;
 		}
 
 		/**
-		 * An interface for InstructionVisitor invoking.
+		 * An interface for ValueVisitor invoking.
 		 *
-		 * @param visitor The instance of InstructionVisitor.
+		 * @param visitor The instance of ValueVisitor.
 		 */
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitBR(this);
 		}
 	}
 
-	public static abstract class IntCmp extends Branch
+	public static abstract class IntCmp extends ConditionalBranch
 	{
 		/**
 		 * The first operand also that means left-most of this branch operation.
@@ -1378,12 +933,10 @@ public abstract class Instruction extends Value implements Cloneable
 		 */
 		Value y;
 
-		BasicBlock trueTarget, falseTarget;
-
-		IntCmp(Value x, Value y, BasicBlock trueTarget,
+		IntCmp(Operator opcode, Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
-			super(CiKind.Illegal);
+			super(CiKind.Illegal, opcode);
 			this.x = x;
 			this.y = y;
 			this.trueTarget = trueTarget;
@@ -1429,20 +982,74 @@ public abstract class Instruction extends Value implements Cloneable
 		{
 			return falseTarget;
 		}
+
+		/**
+		 * Return the corresponding target block determinated by condition.
+		 * If the condition is true, the True Target is returned, otherwise
+		 * return false target.
+		 * @param istrue
+		 * @return
+		 */
+		public BasicBlock successor(boolean istrue)
+		{
+			return istrue ? trueTarget : falseTarget;
+		}
 	}
-	
+
+
 	public static abstract class Cmp extends Op2
 	{
 		Condition cond;
-		private Cmp(CiKind kind, Value left, Value right, Condition cond)
+		private static HashMap<Condition, Operator> intCondOpcodeMap;
+		private static HashMap<Condition, Operator> longCondOpcodeMap;
+		private static HashMap<Condition, Operator> floatCondOpcodeMap;
+		private static HashMap<Condition, Operator> doubleCondOpcodeMap;
+
+		static
+		{
+			intCondOpcodeMap = new HashMap<>();
+			longCondOpcodeMap = new HashMap<>();
+			floatCondOpcodeMap = new HashMap<>();
+			doubleCondOpcodeMap = new HashMap<>();
+
+			intCondOpcodeMap.put(Condition.EQ, Operator.ICmpEQ);
+			intCondOpcodeMap.put(Condition.NE, Operator.ICmpNE);
+			intCondOpcodeMap.put(Condition.LT, Operator.ICmpLT);
+			intCondOpcodeMap.put(Condition.LE, Operator.ICmpLE);
+			intCondOpcodeMap.put(Condition.GT, Operator.ICmpGT);
+			intCondOpcodeMap.put(Condition.GE, Operator.ICmpGE);
+
+			longCondOpcodeMap.put(Condition.EQ, Operator.LCmpEQ);
+			longCondOpcodeMap.put(Condition.NE, Operator.LCmpNE);
+			longCondOpcodeMap.put(Condition.LT, Operator.LCmpLT);
+			longCondOpcodeMap.put(Condition.LE, Operator.LCmpLE);
+			longCondOpcodeMap.put(Condition.GT, Operator.LCmpGT);
+			longCondOpcodeMap.put(Condition.GE, Operator.LCmpGE);
+
+			floatCondOpcodeMap.put(Condition.EQ, Operator.FCmpEQ);
+			floatCondOpcodeMap.put(Condition.NE, Operator.FCmpNE);
+			floatCondOpcodeMap.put(Condition.LT, Operator.FCmpLT);
+			floatCondOpcodeMap.put(Condition.LE, Operator.FCmpLE);
+			floatCondOpcodeMap.put(Condition.GT, Operator.FCmpGT);
+			floatCondOpcodeMap.put(Condition.GE, Operator.FCmpGE);
+
+			doubleCondOpcodeMap.put(Condition.EQ, Operator.DCmpEQ);
+			doubleCondOpcodeMap.put(Condition.NE, Operator.DCmpNE);
+			doubleCondOpcodeMap.put(Condition.LT, Operator.DCmpLT);
+			doubleCondOpcodeMap.put(Condition.LE, Operator.DCmpLT);
+			doubleCondOpcodeMap.put(Condition.GT, Operator.DCmpGT);
+			doubleCondOpcodeMap.put(Condition.GE, Operator.DCmpGE);
+		}
+		private Cmp(CiKind kind, Operator opcode, Value left,
+				Value right, Condition cond)
         {
-			super(kind, left, right);
+			super(kind, opcode, left, right);
 			this.cond = cond;
         }
 		
 		/**
-		 * Creates a instance of different subclass served as different date type according 
-		 * to the date type.  
+		 * Creates a instance of different subclass served as different
+		 * date type according to the date type.
 		 * @param ty	The ret date type.
 		 * @param left	The left operand.
 		 * @param right	the right operand.
@@ -1453,21 +1060,22 @@ public abstract class Instruction extends Value implements Cloneable
 				Value right, Condition cond)
 		{
 			CiKind kind = HIRGenerator.type2Kind(ty);
+
 			if (ty.isIntLike())
 			{
-				return new ICmp(kind, left, right, cond);
+				return new ICmp(kind, intCondOpcodeMap.get(cond), left, right, cond);
 			}
 			else if (ty.equals(Type.LONGType))
 			{
-				return new LCmp(kind, left, right, cond);
+				return new LCmp(kind, longCondOpcodeMap.get(cond), left, right, cond);
 			}
 			else if (ty.equals(Type.FLOATType))
 			{
-				return new FCmp(kind, left, right, cond);
+				return new FCmp(kind, floatCondOpcodeMap.get(cond), left, right, cond);
 			}
 			else if (ty.equals(Type.DOUBLEType))
 			{
-				return new DCmp(kind, left, right, cond);
+				return new DCmp(kind, doubleCondOpcodeMap.get(cond), left, right, cond);
 			}
 			else 
 			{
@@ -1479,13 +1087,14 @@ public abstract class Instruction extends Value implements Cloneable
 	
 	public static class ICmp extends Cmp
 	{
-		public ICmp(CiKind kind, Value left, Value right, Condition cond)
+		public ICmp(CiKind kind, Operator opcode, Value left, Value right,
+				Condition cond)
         {
-			super(kind, left, right, cond);
+			super(kind, opcode, left, right, cond);
         }
 
 		@Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(ValueVisitor visitor)
         {
 	        visitor.visitICmp(this);
         }
@@ -1499,13 +1108,14 @@ public abstract class Instruction extends Value implements Cloneable
 
 	public static class LCmp extends Cmp
 	{
-		public LCmp(CiKind kind, Value left, Value right, Condition cond)
-        {
-			super(kind, left, right, cond);
-        }
+		public LCmp(CiKind kind, Operator opcode, Value left, Value right,
+				Condition cond)
+		{
+			super(kind, opcode, left, right, cond);
+		}
 
 		@Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(ValueVisitor visitor)
         {
 	        visitor.visitLCmp(this);
         }
@@ -1519,13 +1129,14 @@ public abstract class Instruction extends Value implements Cloneable
 	
 	public static class FCmp extends Cmp
 	{
-		public FCmp(CiKind kind, Value left, Value right, Condition cond)
-        {
-			super(kind, left, right, cond);
-        }
+		public FCmp(CiKind kind, Operator opcode, Value left, Value right,
+				Condition cond)
+		{
+			super(kind, opcode, left, right, cond);
+		}
 
 		@Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(ValueVisitor visitor)
         {
 	        visitor.visitFCmp(this);
         }
@@ -1539,13 +1150,14 @@ public abstract class Instruction extends Value implements Cloneable
 	
 	public static class DCmp extends Cmp
 	{
-		public DCmp(CiKind kind, Value left, Value right, Condition cond)
-        {
-			super(kind, left, right, cond);
-        }
+		public DCmp(CiKind kind, Operator opcode, Value left, Value right,
+				Condition cond)
+		{
+			super(kind, opcode, left, right, cond);
+		}
 
 		@Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(ValueVisitor visitor)
         {
 	        visitor.visitDCmp(this);
         }
@@ -1562,7 +1174,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public IfCmp_LT(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
-			super(x, y, trueTarget, falseTarget);
+			super(Operator.IfLT, x, y, trueTarget, falseTarget);
 		}
 
 		/**
@@ -1575,7 +1187,7 @@ public abstract class Instruction extends Value implements Cloneable
 			return new IfCmp_GE(y, x, trueTarget, falseTarget);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitIfCmp_LT(this);
 		}
@@ -1591,7 +1203,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public IfCmp_LE(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
-			super(x, y, trueTarget, falseTarget);
+			super(Operator.IfLE, x, y, trueTarget, falseTarget);
 		}
 
 		/**
@@ -1604,7 +1216,7 @@ public abstract class Instruction extends Value implements Cloneable
 			return new IfCmp_GT(y, x, trueTarget, falseTarget);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitIfCmp_LE(this);
 		}
@@ -1620,7 +1232,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public IfCmp_GT(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
-			super(x, y, trueTarget, falseTarget);
+			super(Operator.IfGT, x, y, trueTarget, falseTarget);
 		}
 
 		/**
@@ -1633,7 +1245,7 @@ public abstract class Instruction extends Value implements Cloneable
 			return new IfCmp_LE(y, x, trueTarget, falseTarget);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitIfCmp_GT(this);
 		}
@@ -1649,7 +1261,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public IfCmp_GE(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
-			super(x, y, trueTarget, falseTarget);
+			super(Operator.IfGE, x, y, trueTarget, falseTarget);
 		}
 
 		/**
@@ -1662,7 +1274,7 @@ public abstract class Instruction extends Value implements Cloneable
 			return new IfCmp_LT(y, x, trueTarget, falseTarget);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitIfCmp_GE(this);
 		}
@@ -1678,7 +1290,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public IfCmp_EQ(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
-			super(x, y, trueTarget, falseTarget);
+			super(Operator.IfEQ, x, y, trueTarget, falseTarget);
 		}
 
 		/**
@@ -1691,7 +1303,7 @@ public abstract class Instruction extends Value implements Cloneable
 			return new IfCmp_NEQ(x, y, falseTarget, trueTarget);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitIfCmp_EQ(this);
 		}
@@ -1707,7 +1319,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public IfCmp_NEQ(Value x, Value y, BasicBlock trueTarget,
 				BasicBlock falseTarget)
 		{
-			super(x, y, trueTarget, falseTarget);
+			super(Operator.IfNE, x, y, trueTarget, falseTarget);
 		}
 
 		/**
@@ -1720,7 +1332,7 @@ public abstract class Instruction extends Value implements Cloneable
 			return new IfCmp_EQ(y, x, falseTarget, trueTarget);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitIfCmp_NEQ(this);
 		}
@@ -1742,7 +1354,7 @@ public abstract class Instruction extends Value implements Cloneable
 		/**
 		 * The jump target of this goto instruction.
 		 */
-		BasicBlock target;
+		public BasicBlock target;
 
 		/**
 		 * Constructs a new {@code Goto} instruction with specified jump target.
@@ -1751,11 +1363,11 @@ public abstract class Instruction extends Value implements Cloneable
 		 */
 		public Goto(BasicBlock target)
 		{
-			super(CiKind.Illegal);
+			super(CiKind.Illegal, Operator.Goto);
 			this.target = target;
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitGoto(this);
 		}
@@ -1771,7 +1383,7 @@ public abstract class Instruction extends Value implements Cloneable
 	 *
 	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
-	public static class Return extends Branch
+	public static class Return extends Instruction
 	{
 		Value ret;
 
@@ -1783,7 +1395,7 @@ public abstract class Instruction extends Value implements Cloneable
 		 */
 		public Return(Value retValue)
 		{
-			super(retValue == null ? CiKind.Void : retValue.kind);
+			super(retValue == null ? CiKind.Void : retValue.kind, Operator.Ret);
 			this.ret = retValue;
 		}
 
@@ -1797,7 +1409,7 @@ public abstract class Instruction extends Value implements Cloneable
 			return ret;
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitReturn(this);
 		}
@@ -1835,12 +1447,12 @@ public abstract class Instruction extends Value implements Cloneable
 		 */
 		public Invoke(CiKind result, Value[] args, Method target)
 		{
-			super(result);
+			super(result, Operator.Invoke);
 			this.target = target;
 			this.arguments = args;
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitInvoke(this);
 		}
@@ -1882,7 +1494,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public Phi(CiKind kind, Value[] args,
 				BasicBlock[] blocks)
 		{
-			super(kind);
+			super(kind, Operator.Phi);
 			assert args.length == blocks.length;
 			inputs = new Pair[args.length];
 			for (int idx = 0; idx < args.length; idx++)
@@ -1891,14 +1503,14 @@ public abstract class Instruction extends Value implements Cloneable
 		
 		public Phi(CiKind kind, int length)
         {
-	        super(kind);
+	        super(kind, Operator.Phi);
 	        this.inputs = new Pair[length];
 	        this.nameString = "";
         }
 
 		public Phi(CiKind kind, int length, String nameString)
 		{
-			super(kind);
+			super(kind, Operator.Phi);
 			this.inputs = new Pair[length];
 			this.nameString = nameString;
 		}
@@ -1910,7 +1522,7 @@ public abstract class Instruction extends Value implements Cloneable
 		public String getName() {return nameString;}
 
 		@Override 
-		public void accept(InstructionVisitor visitor)
+		public void accept(ValueVisitor visitor)
 		{
 			visitor.visitPhi(this);
 		}
@@ -1933,7 +1545,7 @@ public abstract class Instruction extends Value implements Cloneable
 		 * @param index	The position where input parameter will be obtained.
 		 * @return	The input parameter at specified position.
 		 */
-		public Value getParameter(int index)
+		public Value getIncomingValue(int index)
 		{
 			assert index >= 0 && index < inputs.length 
 					: "The index is beyond out the size of list";
@@ -1969,7 +1581,7 @@ public abstract class Instruction extends Value implements Cloneable
 		 * @param index	The index into block to be updated.
 		 * @param block
 		 */
-		public void setBlock(int index, BasicBlock block)
+		public void setBasicBlock(int index, BasicBlock block)
 		{
 			assert index >= 0 && index < inputs.length
 					: "The index is beyond out the size of list";
@@ -2000,6 +1612,18 @@ public abstract class Instruction extends Value implements Cloneable
 		{
 			return currIndex;
 		}
+
+		/**
+		 * Gets an array that contains all incoming basic blocks.
+		 * @return
+		 */
+		public BasicBlock[] getAllBasicBlocks()
+		{
+			BasicBlock[] blocks = new BasicBlock[inputs.length];
+			for (int idx = 0; idx < inputs.length; idx++)
+				blocks[idx] = inputs[idx].snd;
+			return blocks;
+		}
 	}
 
 
@@ -2013,10 +1637,10 @@ public abstract class Instruction extends Value implements Cloneable
 		private String nameString;
 		public Alloca(CiKind kind)
 		{
-			super(kind);
+			super(kind, Operator.Alloca);
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitAlloca(this);
 		}
@@ -2060,12 +1684,12 @@ public abstract class Instruction extends Value implements Cloneable
 		 */
 		public StoreInst(Value value, Alloca dest)
 		{
-			super(CiKind.Illegal);
+			super(CiKind.Illegal, Operator.Store);
 			this.value = value;
 			this.dest = dest;
 		}
 
-		@Override public void accept(InstructionVisitor visitor)
+		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitStoreInst(this);
 		}
@@ -2083,12 +1707,12 @@ public abstract class Instruction extends Value implements Cloneable
 
 		public LoadInst(CiKind kind, Alloca from)
 		{
-			super(kind);
+			super(kind, Operator.Load);
 			this.from = from;
 		}
 
 		@Override
-		public void accept(InstructionVisitor visitor)
+		public void accept(ValueVisitor visitor)
 		{
 			visitor.visitLoadInst(this);
 		}
@@ -2106,18 +1730,18 @@ public abstract class Instruction extends Value implements Cloneable
 		 */
 		public SwitchInst(Value condV, BasicBlock defaultBB, int numCases)
 		{
-			super(CiKind.Illegal);
+			super(CiKind.Illegal, Operator.Switch);
 			operands = new Pair[1 + numCases];
 			operands[currIdx++] = new Pair<>(condV, defaultBB);
 		}
 
 		/**
-		 * An interface for InstructionVisitor invoking.
+		 * An interface for ValueVisitor invoking.
 		 *
-		 * @param visitor The instance of InstructionVisitor.
+		 * @param visitor The instance of ValueVisitor.
 		 */
 		@Override
-		public void accept(InstructionVisitor visitor)
+		public void accept(ValueVisitor visitor)
 		{
 
 		}

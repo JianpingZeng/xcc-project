@@ -6,6 +6,8 @@ import comp.Attr;
 import comp.Enter;
 import comp.Env;
 import comp.Todo;
+import hir.HIR;
+import hir.HIRGenerator;
 import parser.ParseException;
 import parser.Parser;
 import utils.*;
@@ -83,7 +85,7 @@ public class Compiler
 		long msec = System.currentTimeMillis();
 		try
 		{
-			List<Tree> trees = new LinkedList<Tree>();
+			List<Tree> trees = new LinkedList<>();
 			// make a abstract syntax tree for any source file, and add it into
 			// trees.
 			for (String file : filenames)
@@ -116,7 +118,13 @@ public class Compiler
 				Name prev = log.useSource(env.toplevel.sourceFile);
 				attr.attriMethod(unattributed.pos, env.enclMethod.sym);
 			}
-			
+
+			// performs high level IR generation adn HIR optimization
+			List<HIR> hirLists = new LinkedList<>();
+			for (Tree t : trees)
+				hirLists.add(new HIRGenerator(context).translate(t));
+
+
 		}
 		finally
 		{

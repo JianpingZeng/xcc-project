@@ -13,7 +13,7 @@ import hir.Instruction.Phi;
 /**
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/7.
  */
-public class Value
+public class Value implements Cloneable
 {
 	/**
 	 * The type of inst produced with this instruction. The kind is
@@ -67,9 +67,9 @@ public class Value
 			newValue.addUser(uses.remove(0));
 		}
 
-		if (newValue instanceof Instruction)
+		if (this instanceof Instruction)
 		{
-			BasicBlock BB = ((Instruction)newValue).getParent();
+			BasicBlock BB = ((Instruction)this).getParent();
 			for (BasicBlock succ : BB.getSuccs())
 			{
 				for (Instruction inst : succ)
@@ -142,7 +142,35 @@ public class Value
 		uses.add(user);
 	}
 
+	public Value clone()
+	{
+		Value ret = new Value(kind);
+		ret.name = this.name;
+		return ret;
+	}
 
+	public void accept(ValueVisitor visitor)
+	{
+		visitor.visitValue(this);
+	}
+
+	public boolean isConstant()
+	{
+		return this instanceof Constant;
+	}
+
+	/**
+	 * Converts the instance of this class to a constant if this class
+	 * is the subclass of {@code Constant}, otherwise, the null is returned.
+	 * @return
+	 */
+	public CiConstant asConstant()
+	{
+		if (this instanceof Constant)
+			return ((Constant)this).value;
+		else
+			return null;
+	}
 	/**
 	 * The {@code Constant} instruction represents a constant such as an integer
 	 * inst, long, float, object reference, address, etc.
@@ -244,6 +272,15 @@ public class Value
 			return 0x50000000 | value.hashCode();
 		}
 
+		public Constant clone()
+		{
+			return new Constant(this.value);
+		}
+
+		public void accept(ValueVisitor visitor)
+		{
+			visitor.visitConstant(this);
+		}
 	}
 
 	public static class UndefValue extends Constant
@@ -258,8 +295,19 @@ public class Value
 		{
 			return new UndefValue(kind);
 		}
+
+		public UndefValue clone()
+		{
+			return new UndefValue(this.kind);
+		}
+
+		public void accept(ValueVisitor visitor)
+		{
+			visitor.visitUndef(this);
+		}
 	}
 
+	/*
 	public static abstract class Var extends Value
 	{
 		/**
@@ -267,8 +315,9 @@ public class Value
 		 */
 		Type valueType;
 		/**
-		 * The memory address allocated by instruction {@code Alloca} is related with this variable.
-		 */
+		 * The memory address allocated by instruction {@code Alloca} is related
+		 * with this variable.
+		 *
 		public Instruction.Alloca memAddr;
 
 		public Var(CiKind kind, Name name)
@@ -281,7 +330,7 @@ public class Value
 		 * Sets the inst type of this declared variable.
 		 *
 		 * @param valueType
-		 */
+		 *
 		public void setValueType(Type valueType)
 		{
 			this.valueType = valueType;
@@ -291,7 +340,7 @@ public class Value
 		 * Gets the inst type of this declared variable.
 		 *
 		 * @return
-		 */
+		 *
 		public Type getValueType()
 		{
 			return valueType;
@@ -303,6 +352,7 @@ public class Value
 	 *
 	 * @author Jianping Zeng <z1215jping@hotmail.com>
 	 */
+	/*
 	public static final class Local extends Var
 	{
 		private String prefix = "%";
@@ -311,7 +361,7 @@ public class Value
 		 *
 		 * @param kind       The kind of inst type.
 		 * @param name The name postfix of to being yielded.
-		 */
+
 		public Local(CiKind kind, Name name)
 		{
 			super(kind, name);
@@ -322,5 +372,11 @@ public class Value
 		{
 			return prefix + name;
 		}
+
+		public Local clone()
+		{
+			return new Local(this.kind, this.name);
+		}
 	}
+	*/
 }

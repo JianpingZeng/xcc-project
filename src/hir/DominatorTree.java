@@ -161,6 +161,7 @@ public class DominatorTree
 	{
 		this.IsPostDominators = isPostData;
 		this.m = m;
+		this.info = new HashMap<>();
 	}
 
 	/**
@@ -175,10 +176,10 @@ public class DominatorTree
 	}
 
 	/**
-	 * This returns the entry block of the CFF of the function.
-	 * If this tree represents the post-dominator relation for a function,
-	 * however, this root may be a node with the block == null. This is teh case
-	 * when there are multiple exit nodes from a particular function.
+	 * This returns the entry dominator tree node of the CFG attached to the
+	 * function. If this tree represents the post-dominator relation for a
+	 * function, however, this root may be a node with the block == null. This
+	 * is teh case when there are multiple exit nodes from a particular function.
 	 * @return
 	 */
 	public DomTreeNode getRootNode()
@@ -294,7 +295,20 @@ public class DominatorTree
 	}
 
 	/**
-	 * Recaculate - compute a dominator tree for the given function.
+	 * Gets the dominated block of given block.
+	 * @param block
+	 * @return
+	 */
+	public BasicBlock getIDom(BasicBlock block)
+	{
+		DomTreeNode node = DomTreeNodes.get(block);
+		if (node == null)
+			return null;
+		return node.IDom.block;
+	}
+
+	/**
+	 * Recalculate - compute a dominator tree for the given function.
 	 */
 	public void recalculate()
 	{
@@ -304,6 +318,7 @@ public class DominatorTree
 			// initialize the root
 			BasicBlock entry = m.getEntryBlock();
 			this.roots.add(entry);
+			this.info.put(entry, new InfoRecord());
 			this.IDoms.put(entry, null);
 			this.DomTreeNodes.put(entry, null);
 			caculate();
@@ -311,12 +326,13 @@ public class DominatorTree
 		else
 		{
 			BasicBlock exit = m.getEntryBlock();
+			info.put(exit, new InfoRecord());
 			roots.add(exit);
 			IDoms.put(exit, null);
 			DomTreeNodes.put(exit, null);
 
-			// 需要修改
-			//caculate();
+			// The desired of refinition is need in the future.
+			caculate();
 		}
 	}
 
@@ -341,7 +357,7 @@ public class DominatorTree
 
 		// When naively implemented, the Lengauer-Tarjan algorithm requires a separate
 		// bucket for each vertex. However, this is unnecessary, because each vertex
-		// is only placed into a single bucket (that of its semidominator), and each
+		// is only placed into a single bucket (that of its semi-dominator), and each
 		// vertex's bucket is processed before it is added to any bucket itself.
 		//
 		// Instead of using a bucket per all vertexes, we use a single array Buckets that
@@ -360,7 +376,7 @@ public class DominatorTree
 			BasicBlock WBlock = Vertex[i];
 
 			// the InfoRec of current block
-			InfoRecord WInfo = this.info.get(WBlock);
+			InfoRecord WInfo = info.get(WBlock);
 
 			// Step #2: Implicitly define the immediate dominator of vertices
 			for(int j = i; buckets[j] != i; j = buckets[i])
@@ -478,7 +494,7 @@ public class DominatorTree
 		thisRoot.DFSNumIn = DFSNumber++;
 		while (!worklist.isEmpty())
 		{
-			Pair top = worklist.removeLast();
+			Pair top = worklist.getLast();
 			DomTreeNode node = (DomTreeNode)top.fst;
 			ListIterator<DomTreeNode> childItr = (ListIterator<DomTreeNode>)top.snd;
 
@@ -513,38 +529,77 @@ public class DominatorTree
 		// This is more understandable as a recursive algorithm, but we can't use the
 		// recursive algorithm due to stack depth issues.  Keep it here for
 		// documentation purposes.
-		LinkedList<Pair> worklist = new LinkedList<>();
-		ListIterator<BasicBlock> rit = root.getSuccs().listIterator();
+		LinkedList<Pair<BasicBlock, ListIterator<BasicBlock>>> worklist =
+				new LinkedList<>();
 
-		// add a pair of root and predecessor into worklist in the order that
-		// last firstly added.
-		while (rit.hasPrevious())
-			worklist.addLast(new Pair(root, rit.previous()));
-
+		worklist.add(new Pair<>(root, getSuccsIterator(root)));
 		while (!worklist.isEmpty())
 		{
-			Pair top = worklist.removeLast();
-			BasicBlock curr = (BasicBlock)top.fst;
-			BasicBlock succ = (BasicBlock)top.snd;
+			Pair<BasicBlock, ListIterator<BasicBlock>> top = worklist.getLast();
+			BasicBlock curr = top.fst;
+			ListIterator<BasicBlock> succItr = top.snd;
 
-			InfoRecord BBInfo = info.get(curr);
-			BBInfo.DFSNum = BBInfo.semi = ++N;
-			BBInfo.label = curr;
-
-			// Vertex[N] = curr;
-			this.Vertex[N] = curr;
-
-			if (info.get(succ).semi == 0)
-				info.get(succ).parent = N;
-
-			rit = succ.getSuccs().listIterator();
-			while (rit.hasPrevious())
+			// first visit the current basic block.
+			if (succItr.nextIndex() == 0)
 			{
-				worklist.addLast(new Pair(succ, rit.previous()));
+				if (!info.containsKey(curr))
+					info.put(curr, new InfoRecord());
+
+				InfoRecord BBInfo = info.get(curr);
+				BBInfo.DFSNum = BBInfo.semi = ++N;
+				BBInfo.label = curr;
+
+				// Vertex[N] = curr;
+				this.Vertex[N] = curr;
+			}
+
+			// if all child have been processed, just break down this loop.
+			if (!succItr.hasNext())
+			{
+				worklist.removeLast();
+				continue;
+			}
+			BasicBlock nextSucc = succItr.next();
+
+			if (!info.containsKey(nextSucc))
+				info.put(nextSucc, new InfoRecord());
+			InfoRecord infoRecord = info.get(nextSucc);
+			if (infoRecord.semi == 0)
+			{
+				infoRecord.parent = N;
+				ListIterator<BasicBlock> it = getSuccsIterator(nextSucc);
+				if (it.hasNext())
+					worklist.add(new Pair<>(nextSucc, it));
 			}
 		}
 
 		return N;
+	}
+
+	/**
+	 * Gets the successors or predecessors iterator depend upon if
+	 * {@code #IsPostDominators} is specified of the current basic block
+	 * into the work list that will be processed in depth first search.
+	 * @param curBB The current basic block.
+	 */
+	private ListIterator<BasicBlock> getSuccsIterator(BasicBlock curBB)
+	{
+		if (IsPostDominators)
+		{
+			List<BasicBlock> preds = new LinkedList<>();
+			for (BasicBlock pred : curBB.getPreds())
+				preds.add(pred);
+			Collections.reverse(preds);
+			return preds.listIterator();
+		}
+		else
+		{
+			List<BasicBlock> succs = new LinkedList<>();
+			for (BasicBlock succ : curBB.getSuccs())
+				succs.add(succ);
+			Collections.reverse(succs);
+			return succs.listIterator();
+		}
 	}
 
 	private BasicBlock eval(BasicBlock VIn, int lastLinked)
@@ -571,7 +626,7 @@ public class DominatorTree
 				work.addLast(VAncestor);
 				continue;
 			}
-			work.removeLast();
+			//work.removeLast();
 
 			// update VInfo based on the ancestor info
 			if (VInfo.parent < lastLinked)
