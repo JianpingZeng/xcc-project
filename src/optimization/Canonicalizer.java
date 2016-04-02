@@ -11,16 +11,15 @@ import utils.Utils;
  * <p>This file defines a class for folding an instruction into a constant.
  * Also, putting constants on the right side of comutative operators for
  * Strength reduction.
- *
+ * <p>
  * <p>This file is a member of <a href={@docRoot/optimization}>Machine Indepedence
  * Optimization</a>.
  *
+ * @author Jianping Zeng.
  * @see DCE
  * @see ConstantProp
  * @see GVN
  * @see UCE
- *
- * @author Jianping Zeng.
  */
 public class Canonicalizer extends ValueVisitor
 {
@@ -381,7 +380,8 @@ public class Canonicalizer extends ValueVisitor
 
 	/**
 	 * Folds the type conversion operation.
-	 * @param inst  The conversion instruction to be folded.
+	 *
+	 * @param inst The conversion instruction to be folded.
 	 */
 	public void visitConvert(Instruction.Convert inst)
 	{
@@ -407,19 +407,20 @@ public class Canonicalizer extends ValueVisitor
 					setFloatConstant((float) val.asConstant().asInt());
 					return;
 				case L2I:
-					setIntConstant((int)val.asConstant().asLong());
+					setIntConstant((int) val.asConstant().asLong());
 					return;
 				case L2F:
 					setFloatConstant((float) val.asConstant().asLong());
 					return;
-				case L2D:;
+				case L2D:
+					;
 					setDoubleConstant((double) val.asConstant().asDouble());
 					return;
 				case F2D:
 					setDoubleConstant((double) val.asConstant().asFloat());
 					return;
 				case F2I:
-					setIntConstant((int)val.asConstant().asFloat());
+					setIntConstant((int) val.asConstant().asFloat());
 					return;
 				case F2L:
 					setLongConstant((long) val.asConstant().asFloat());
@@ -441,13 +442,19 @@ public class Canonicalizer extends ValueVisitor
 		// represented as val.
 		if (val instanceof Convert)
 		{
-			Convert c = (Convert)val;
+			Convert c = (Convert) val;
 			// where T is kind.
 			switch (c.opcode)
 			{
-				case I2B: kind = CiKind.Byte; break;
-				case I2S: kind = CiKind.Short; break;
-				case I2C: kind = CiKind.Char; break;
+				case I2B:
+					kind = CiKind.Byte;
+					break;
+				case I2S:
+					kind = CiKind.Short;
+					break;
+				case I2C:
+					kind = CiKind.Char;
+					break;
 			}
 
 			if (kind != CiKind.Illegal)
@@ -480,17 +487,26 @@ public class Canonicalizer extends ValueVisitor
 				// check if the operation was IAND with a constant; it may have narrowed the value already
 				Op2 op = (Op2) val;
 				// constant should be on right hand side if there is one
-				if (op.opcode == Operator.IAnd && op.y.isConstant()) {
+				if (op.opcode == Operator.IAnd && op.y.isConstant())
+				{
 					int safebits = 0;
 					int mask = op.y.asConstant().asInt();
 					// Checkstyle: off
-					switch (inst.opcode) {
-						case I2B: safebits = 0x7f; break;
-						case I2S: safebits = 0x7fff; break;
-						case I2C: safebits = 0xffff; break;
+					switch (inst.opcode)
+					{
+						case I2B:
+							safebits = 0x7f;
+							break;
+						case I2S:
+							safebits = 0x7fff;
+							break;
+						case I2C:
+							safebits = 0xffff;
+							break;
 					}
 					// Checkstyle: on
-					if (safebits != 0 && (mask & ~safebits) == 0) {
+					if (safebits != 0 && (mask & ~safebits) == 0)
+					{
 						// the mask already cleared all the upper bits necessary.
 						setCanonical(val);
 					}
@@ -567,6 +583,7 @@ public class Canonicalizer extends ValueVisitor
 
 	/**
 	 * Folds comparison operation over float point number.
+	 *
 	 * @param inst
 	 */
 	public void visitFCmp(Instruction.FCmp inst)
@@ -578,14 +595,16 @@ public class Canonicalizer extends ValueVisitor
 		{
 			float xval = x.asConstant().asFloat();
 			Integer res = foldFloatCompare(inst.opcode, xval, xval);
-			assert res != null : "invalid float point number on float comparion";
+			assert res
+					!= null : "invalid float point number on float comparion";
 			setIntConstant(res);
 		}
 		if (x.isConstant() && y.isConstant())
 		{
-			Integer res = foldFloatCompare(inst.opcode, x.asConstant().asFloat(),
-					y.asConstant().asFloat());
-			assert res != null : "invalid float point number on float comparion";
+			Integer res = foldFloatCompare(inst.opcode,
+					x.asConstant().asFloat(), y.asConstant().asFloat());
+			assert res
+					!= null : "invalid float point number on float comparion";
 			setIntConstant(res);
 		}
 	}
@@ -781,7 +800,7 @@ public class Canonicalizer extends ValueVisitor
 				{
 					setCanonical(
 							new Instruction.ShiftOp(x.kind, Operator.IShl, x,
-									Constant.forInt(Utils.log2(y))));
+									Constant.forInt(Utils.log2(y)), "IShl"));
 				}
 				return y == 0 ? setIntConstant(0) : null;
 			}
@@ -832,7 +851,7 @@ public class Canonicalizer extends ValueVisitor
 				{
 					setCanonical(
 							new Instruction.ShiftOp(x.kind, Operator.LShl, x,
-									Constant.forLong(Utils.log2(y))));
+									Constant.forLong(Utils.log2(y)), "LShl"));
 				}
 				return y == 0 ? setLongConstant(0) : null;
 			}
@@ -896,7 +915,7 @@ public class Canonicalizer extends ValueVisitor
 						return setCanonical(x);
 
 					return setCanonical(new ShiftOp(x.kind, s.opcode, s.x,
-							Constant.forInt((int) y)));
+							Constant.forInt((int) y), s.opcode.opName));
 				}
 				if (s.opcode == reverse && y == z)
 				{
@@ -914,7 +933,8 @@ public class Canonicalizer extends ValueVisitor
 						}
 						// reduce to (e & mask)
 						return setCanonical(
-								new AND_L(x.kind, s.x, Constant.forLong(mask)));
+								new AND_L(x.kind, s.x, Constant.forLong(mask),
+										"LAnd"));
 					}
 					else
 					{
@@ -928,7 +948,8 @@ public class Canonicalizer extends ValueVisitor
 							mask = mask << y;
 						}
 						return setCanonical(
-								new AND_I(x.kind, s.x, Constant.forInt(mask)));
+								new AND_I(x.kind, s.x, Constant.forInt(mask),
+										"IAnd"));
 					}
 				}
 			}
@@ -936,8 +957,9 @@ public class Canonicalizer extends ValueVisitor
 		if (y != shift)
 		{
 			// (y & mod) != y
-			return setCanonical(new ShiftOp(x.kind, opcode, x,
-					Constant.forInt((int) shift)));
+			return setCanonical(
+					new ShiftOp(x.kind, opcode, x, Constant.forInt((int) shift),
+							opcode.opName));
 		}
 		return null;
 	}
@@ -1011,7 +1033,8 @@ public class Canonicalizer extends ValueVisitor
 				}
 				case Double:
 				{
-					Double val = foldDoubleOp2(opcode, x.asConstant().asDouble(),
+					Double val = foldDoubleOp2(opcode,
+							x.asConstant().asDouble(),
 							y.asConstant().asDouble());
 					if (val != null)
 					{
@@ -1055,6 +1078,7 @@ public class Canonicalizer extends ValueVisitor
 	/**
 	 * Swaps the left side operand and right, if the left operand is constant
 	 * and this operator of instruction is commutative.
+	 *
 	 * @param inst
 	 */
 	private void moveConstantToRight(Op2 inst)
@@ -1063,7 +1087,7 @@ public class Canonicalizer extends ValueVisitor
 			inst.swapOperands();
 	}
 
-	private Integer foldLongCompare(Operator opcode, long x ,long y)
+	private Integer foldLongCompare(Operator opcode, long x, long y)
 	{
 		switch (opcode)
 		{
@@ -1075,7 +1099,7 @@ public class Canonicalizer extends ValueVisitor
 				return x <= y ? 1 : 0;
 			case ICmpLT:
 			case LCmpLT:
-				return x < y ? 1: 0;
+				return x < y ? 1 : 0;
 			case ICmpNE:
 			case LCmpNE:
 				return x != y ? 1 : 0;
@@ -1096,7 +1120,7 @@ public class Canonicalizer extends ValueVisitor
 			result = -1;
 		else if (x > y)
 			result = 1;
-		if(opcode == Operator.FCmpLT)
+		if (opcode == Operator.FCmpLT)
 		{
 			if (Float.isNaN(x) || Float.isNaN(y))
 				return -1;
@@ -1111,6 +1135,7 @@ public class Canonicalizer extends ValueVisitor
 		// unknown comparison opcode.
 		return null;
 	}
+
 	private Integer foldDoubleCompare(Operator opcode, double x, double y)
 	{
 		int result = 0;
@@ -1118,7 +1143,7 @@ public class Canonicalizer extends ValueVisitor
 			result = -1;
 		else if (x > y)
 			result = 1;
-		if(opcode == Operator.DCmpLT)
+		if (opcode == Operator.DCmpLT)
 		{
 			if (Double.isNaN(x) || Double.isNaN(y))
 				return -1;
@@ -1133,6 +1158,7 @@ public class Canonicalizer extends ValueVisitor
 		// unknown comparison opcode.
 		return null;
 	}
+
 	public void visitIfCmp_LT(Instruction.IfCmp_LT inst)
 	{
 		reduceIf(inst);
@@ -1178,10 +1204,12 @@ public class Canonicalizer extends ValueVisitor
 		Operator opcode = inst.opcode;
 		if (l.isConstant() && r.isConstant())
 		{
-			Boolean result = foldCondition(opcode, l.asConstant(), r.asConstant());;
+			Boolean result = foldCondition(opcode, l.asConstant(),
+					r.asConstant());
+			;
 			if (result != null)
 			{
-				setCanonical(new Goto(inst.successor(result)));
+				setCanonical(new Goto(inst.successor(result), "Goto"));
 				return;
 			}
 		}
@@ -1190,6 +1218,7 @@ public class Canonicalizer extends ValueVisitor
 	/**
 	 * Reduces the conditional branch instruction when left side operand is equal
 	 * to the right one.
+	 *
 	 * @param inst
 	 */
 	private void reduceReflexiveIf(IntCmp inst)
@@ -1200,24 +1229,27 @@ public class Canonicalizer extends ValueVisitor
 			case IfEQ:
 			case IfLE:
 			case IfGE:
-				sux = inst.successor(true);break;
+				sux = inst.successor(true);
+				break;
 			case IfNE:
 			case IfLT:
 			case IfGT:
-					sux = inst.successor(false);break;
+				sux = inst.successor(false);
+				break;
 			default:
-					throw new InternalError("should not reach here.");
+				throw new InternalError("should not reach here.");
 		}
-		setCanonical(new Goto(sux));
+		setCanonical(new Goto(sux, "Goto"));
 	}
 
 	/**
 	 * Attempts to fold two constant over the given operator, such as, LT, EQ, NE
 	 * etc, and return the result of comparison.
-	 * @param opcode    The comparison operator.
-	 * @param l The left side operand.
-	 * @param r The right side operand.
-	 * @return  The result of comparison, return true if comparison successfully
+	 *
+	 * @param opcode The comparison operator.
+	 * @param l      The left side operand.
+	 * @param r      The right side operand.
+	 * @return The result of comparison, return true if comparison successfully
 	 * in specified op, otherwise, return false. Return null when the op is illegal.
 	 */
 	private Boolean foldCondition(Operator opcode, CiConstant l, CiConstant r)
@@ -1231,12 +1263,18 @@ public class Canonicalizer extends ValueVisitor
 				int y = r.asInt();
 				switch (opcode)
 				{
-					case IfEQ: return x == y ? true : false;
-					case IfLE: return x <= y ? true : false;
-					case IfGE: return x >= y ? true : false;
-					case IfNE: return x != y ? true : false;
-					case IfLT: return x < y ? true : false;
-					case IfGT: return x > y ? true : false;
+					case IfEQ:
+						return x == y ? true : false;
+					case IfLE:
+						return x <= y ? true : false;
+					case IfGE:
+						return x >= y ? true : false;
+					case IfNE:
+						return x != y ? true : false;
+					case IfLT:
+						return x < y ? true : false;
+					case IfGT:
+						return x > y ? true : false;
 				}
 				break;
 			}
@@ -1246,12 +1284,18 @@ public class Canonicalizer extends ValueVisitor
 				long y = r.asLong();
 				switch (opcode)
 				{
-					case IfEQ: return x == y ? true : false;
-					case IfLE: return x <= y ? true : false;
-					case IfGE: return x >= y ? true : false;
-					case IfNE: return x != y ? true : false;
-					case IfLT: return x < y ? true : false;
-					case IfGT: return x > y ? true : false;
+					case IfEQ:
+						return x == y ? true : false;
+					case IfLE:
+						return x <= y ? true : false;
+					case IfGE:
+						return x >= y ? true : false;
+					case IfNE:
+						return x != y ? true : false;
+					case IfLT:
+						return x < y ? true : false;
+					case IfGT:
+						return x > y ? true : false;
 				}
 				break;
 			}

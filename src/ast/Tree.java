@@ -22,7 +22,7 @@ import utils.Position;
  * 
  * Each subclass is highly standardized. It generally contains only tree fields
  * for the syntactic subcomponents of the node. Some classes that represents
- * identifier uses or definitions also define a Symbol field that denotes the
+ * identifier usesList or definitions also define a Symbol field that denotes the
  * represented identifier. Classes for non-local jumps also carry the jump
  * target as a field. The root class {@link Tree} itself defines fields for the
  * tree's type and position. No other fields are kept in a tree node; instead
