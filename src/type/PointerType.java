@@ -3,8 +3,8 @@ package type;
 import symbol.Symbol.TypeSymbol;
 
 /**
- * 用于表示指针类型。
- * @author zeng
+ *
+ * @author JianpingZeng
  *
  */
 public class PointerType extends Type 

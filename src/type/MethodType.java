@@ -5,8 +5,8 @@ import symbol.Symbol.TypeSymbol;
 
 
 /**
- * 定义一个函数类型，由函数的返回值和函数的参数列表决定。
- * @author zeng
+ *
+ * @author JianpingZeng
  */
 public class MethodType extends Type {
     
@@ -18,7 +18,7 @@ public class MethodType extends Type {
 
     public MethodType(Type ret, List<Type> argtypes, 
     		TypeSymbol methodClass) {
-        super(METHOD, methodClass);
+        super(FUNCTION, methodClass);
     	returnType = ret;
         paramTypes = argtypes;
     }
@@ -48,7 +48,7 @@ public class MethodType extends Type {
 
     public int hashCode()
     {
-    	int h = METHOD;
+    	int h = FUNCTION;
     	for (Type t : this.paramTypes)
     	{
     		h = (h << 5) + t.hashCode();
@@ -58,7 +58,7 @@ public class MethodType extends Type {
     
     public boolean hasSameArgs(Type that) 
     {
-        return that.tag == METHOD && isSameTypes(this.paramTypes, ((MethodType)that).paramTypes);
+        return that.tag == FUNCTION && isSameTypes(this.paramTypes, ((MethodType)that).paramTypes);
     }
 
     
@@ -68,7 +68,7 @@ public class MethodType extends Type {
      * @return true returned if target type is equivalent to self, otherwise false.
      */
     public boolean isSameType(Type other) {
-        if ( other.tag != METHOD) return false;
+        if ( other.tag != FUNCTION) return false;
                 
         return returnType.isSameType(((MethodType)other).returnType)
             && hasSameArgs(other);
@@ -76,7 +76,7 @@ public class MethodType extends Type {
 
 
     public boolean isCastableTo(Type target) {
-        return target.tag == METHOD;
+        return target.tag == FUNCTION;
     }
 
     public Type returnType() {
