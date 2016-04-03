@@ -3,12 +3,8 @@ package comp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
-
-import javax.print.attribute.standard.RequestingUserName;
 
 import com.sun.jmx.remote.internal.ArrayQueue;
 
@@ -310,7 +306,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	private Type check(Tree tree, Type owntype, int ownkind, int expectKind,
 	        Type expectType)
 	{
-		if (owntype.tag != ERROR && expectType.tag != METHOD)
+		if (owntype.tag != ERROR && expectType.tag != FUNCTION)
 		{
 			if ((ownkind & ~expectKind) == 0)
 			{
