@@ -1,8 +1,8 @@
 package comp; 
 
-/** 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月17日 下午3:08:32 
+/**
+ * @author JianpingZeng
+ * @version 1.0
  */
 public interface OpCodes
 {

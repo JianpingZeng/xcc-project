@@ -1,11 +1,7 @@
 package optimization;
 
-import hir.BasicBlock;
-import hir.Instruction;
-import hir.Method;
-import hir.Value;
+import hir.*;
 
-import java.util.HashSet;
 import java.util.LinkedList;
 
 /**
@@ -14,26 +10,25 @@ import java.util.LinkedList;
  * <p>This file is a member of <a href={@docRoot/optimization}>Machine Indepedence
  * Optimization</a>.
  *
+ * @author Jianping Zeng
  * @see Canonicalizer
  * @see DCE
  * @see GVN
  * @see UCE
- *
- * @author Jianping Zeng
- *
  */
 public class ConstantProp
 {
 	private long numsInstKilled = 0;
+
 	/**
 	 * Performs constant propagation optimization upon given method.
+	 *
 	 * @param m A method where Optimization performed.
-	 * @return  Whether execution of optimization is successful.
+	 * @return Whether execution of optimization is successful.
 	 */
 	public boolean runOnMethod(Method m)
 	{
-		LinkedList<Instruction> worklist =
-				new LinkedList<>();
+		LinkedList<Instruction> worklist = new LinkedList<>();
 		// initializes the worklist to all of the instructions ready to
 		// process
 		for (BasicBlock bb : m)
@@ -56,8 +51,8 @@ public class ConstantProp
 					if (val instanceof Value.Constant)
 					{
 						// performs constant propagation
-						for (Instruction user : inst.uses)
-							worklist.addLast(user);
+						for (Use u : inst.usesList)
+							worklist.addLast((Instruction) u.getUser());
 					}
 					// constant folding and strength reduction
 					inst.replaceAllUsesWith(val);

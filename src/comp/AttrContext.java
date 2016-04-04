@@ -6,9 +6,9 @@ import symbol.Scope;
  * Contains information specific to the attribute and enter
  * passes, to be used in place of the generic field in 
  * environments.
- * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月15日 下午1:12:03 
+ *
+ * @author JianpingZeng
+ * @version 1.0
  */
 public class AttrContext
 {

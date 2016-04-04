@@ -1,28 +1,32 @@
 package hir;
 
-import utils.Pair;
-import java.util.*;
 import hir.DominatorTree.DomTreeNode;
-import hir.Instruction.*;
-import hir.Value.*;
+import hir.Instruction.Alloca;
+import hir.Instruction.LoadInst;
+import hir.Instruction.Phi;
+import hir.Instruction.StoreInst;
+import hir.Value.UndefValue;
+import utils.Pair;
+
+import java.util.*;
 
 /**
  * This file promotes memory references to be register references.  It promotes
- * alloca instructions which only have loads and stores as uses.  An alloca is
+ * alloca instructions which only have loads and stores as usesList.  An alloca is
  * transformed by using iterated dominator frontiers to place PHI nodes, then
  * traversing the function in depth-first order to rewrite loads and stores as
  * appropriate.
- *
+ * <p>
  * The algorithm used here is based on:
- *
- *   Sreedhar and Gao. A linear time algorithm for placing phi-nodes.
- *   In Proceedings of the 22nd ACM SIGPLAN-SIGACT Symposium on Principles of
- *   Programming Languages
- *   POPL '95. ACM, New York, NY, 62-73.
- *
+ * <p>
+ * Sreedhar and Gao. A linear time algorithm for placing phi-nodes.
+ * In Proceedings of the 22nd ACM SIGPLAN-SIGACT Symposium on Principles of
+ * Programming Languages
+ * POPL '95. ACM, New York, NY, 62-73.
+ * <p>
  * It has been modified to not explicitly use the DJ graph data structure and to
  * directly compute pruned SSA using per-variable liveness information.
- *
+ * <p>
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/3.
  */
 public class PromoteMem2Reg
@@ -41,7 +45,7 @@ public class PromoteMem2Reg
 
 	/**
 	 * The phi node we are adding.
-	 *
+	 * <p>
 	 * That map is used to simplify some Phi nodes as we
 	 * iterate over it, so it should have deterministic iterators.
 	 */
@@ -98,56 +102,55 @@ public class PromoteMem2Reg
 	/**
 	 * Running optimization algorithm to promote alloca onto register.
 	 * <p>
-	 *   For simply, first we handle many trivial case as follow two situation.
-	 *   <br>
-	 *   <b>i.Only one stores(definition) to alloca:</b>
-	 *   Replaces all uses to load instruction that load a value from a single
-	 *   alloca with the value loaded from alloca.
-	 *   Then simply removes this load and store.
-	 *   <br>
-	 *   <b>ii.All uses to alloca are within a single basic block:</b>
-	 *   Removes useless loads and stores.
+	 * For simply, first we handle many trivial case as follow two situation.
+	 * <br>
+	 * <b>i.Only one stores(definition) to alloca:</b>
+	 * Replaces all usesList to load instruction that load a value from a single
+	 * alloca with the value loaded from alloca.
+	 * Then simply removes this load and store.
+	 * <br>
+	 * <b>ii.All usesList to alloca are within a single basic block:</b>
+	 * Removes useless loads and stores.
 	 * </p>
-	 *
 	 * <p>
-	 *     After, take advantage of DJ graph to place phi node with dominator
-	 *     frontier at same time, avoding inserts dead phi node.
-	 *     <br>
-	 *     The finally, performing rename algorithm as follow steps.
-	 *     <br>
-	 *     1.Aads {@code UndefValue} into incoming values of phi node.
-	 *     <br>
-	 *     2.Looks up for all uses(loads) to alloca, replace the all uses to
-	 *     loads with the current active value of current alloca, then remove
-	 *     loads from basic block.
-	 *     <br>
-	 *     3.Looks up for all definition(stores) to alloca, which modify the
-	 *     current active value of alloca, so that we updates the current active
-	 *     value of the targeted alloca of stores with the value used in store.
+	 * <p>
+	 * After, take advantage of DJ graph to place phi node with dominator
+	 * frontier at same time, avoding inserts dead phi node.
+	 * <br>
+	 * The finally, performing rename algorithm as follow steps.
+	 * <br>
+	 * 1.Aads {@code UndefValue} into incoming values of phi node.
+	 * <br>
+	 * 2.Looks up for all usesList(loads) to alloca, replace the all usesList to
+	 * loads with the current active value of current alloca, then remove
+	 * loads from basic block.
+	 * <br>
+	 * 3.Looks up for all definition(stores) to alloca, which modify the
+	 * current active value of alloca, so that we updates the current active
+	 * value of the targeted alloca of stores with the value used in store.
 	 * </p>
 	 */
 	public void run()
 	{
 		Method m = this.DT.getRootNode().getBlock().getCFG().getMethod();
-		assert  (m != null) :
-				"The method of this Dominator Tree is null";
+		assert (m != null) : "The method of this Dominator Tree is null";
 		AllocaInfo info = new AllocaInfo();
 		LargeBlockInfo LBI = new LargeBlockInfo();
 
 		// promotes every alloca instruction one by one.
 		for (Alloca AI : allocas)
 		{
-			assert AI.isAllocaPromoteable() :
-					"Cann't promote non-promotable alloca";
-			assert AI.getParent().getCFG().getMethod() != m
-					: "All allocas should in the same method, which is same as DF!";
+			assert AI
+					.isAllocaPromoteable() : "Cann't promote non-promotable alloca";
+			assert AI.getParent().getCFG().getMethod()
+					!= m : "All allocas should in the same method, which is same as DF!";
 
 			// if it's use contains intrinsic instruction, just remove it from
 			// attached basic block.
 			// However, it is not finished currently
-			if (AI.uses.isEmpty())
+			if (AI.usesList.isEmpty())
 			{
-				// if there no uses of the alloca, just delete it
+				// if there no usesList of the alloca, just delete it
 				AI.eraseFromBasicBlock();
 
 				// remove the alloca out from alloca instructions list
@@ -193,8 +196,7 @@ public class PromoteMem2Reg
 			// with width-first traverse.
 			if (DomLevels.isEmpty())
 			{
-				LinkedList<DominatorTree.DomTreeNode> worklist =
-						new LinkedList<>();
+				LinkedList<DominatorTree.DomTreeNode> worklist = new LinkedList<>();
 
 				DominatorTree.DomTreeNode root = DT.getRootNode();
 				DomLevels.put(root, 0);
@@ -250,7 +252,8 @@ public class PromoteMem2Reg
 		// SSA construction algorithm and inserting the phi nodes
 		// we marked as necessary.
 		LinkedList<RenamePassData> renamePassWorkList = new LinkedList<>();
-		renamePassWorkList.addLast(new RenamePassData(m.getEntryBlock(), null, values));
+		renamePassWorkList
+				.addLast(new RenamePassData(m.getEntryBlock(), null, values));
 
 		do
 		{
@@ -259,17 +262,17 @@ public class PromoteMem2Reg
 
 			renamePass(rpd.BB, rpd.pred, rpd.values, renamePassWorkList);
 
-		}while (!renamePassWorkList.isEmpty());
+		} while (!renamePassWorkList.isEmpty());
 
 		visitedBlocks.clear();
 
 		// Remove the allocas themselves from the function.
 		for (Alloca AI : allocas)
 		{
-			// If there are any uses of the alloca instructions left, they must be in
+			// If there are any usesList of the alloca instructions left, they must be in
 			// unreachable basic blocks that were not processed by walking the dominator
 			// tree. Just delete the users now.
-			if (!AI.uses.isEmpty())
+			if (!AI.usesList.isEmpty())
 				AI.replaceAllUsesWith(UndefValue.get(AI.kind));
 			AI.eraseFromBasicBlock();
 		}
@@ -336,8 +339,9 @@ public class PromoteMem2Reg
 			Iterator<Instruction> it = BB.iterator();
 			Instruction inst;
 
-			while(it.hasNext() && ((inst = it.next()) instanceof Phi
-			&& (phi = (Phi)inst).getNumberIncomingValues() == numBadPreds))
+			while (it.hasNext() && ((inst = it.next()) instanceof Phi
+					&& (phi = (Phi) inst).getNumberIncomingValues()
+					== numBadPreds))
 			{
 				Value undef = UndefValue.get(phi.kind);
 				for (BasicBlock pred : preds)
@@ -351,6 +355,7 @@ public class PromoteMem2Reg
 	/**
 	 * See if we can compute a simplified version of phi instruction.
 	 * If not, this return null.
+	 *
 	 * @param phi
 	 * @param DT
 	 * @return
@@ -364,23 +369,23 @@ public class PromoteMem2Reg
 	 * <p>
 	 * Recursively traverse the CFG of the function, renaming loads and
 	 * stores to the alloca which we are promoting.
-	 *
+	 * <p>
 	 * On the other hand, this rename algorithm is performed for promoting
 	 * alloca onto register and removing related stores and loads to alloca
 	 * promoted.
 	 * </p>
 	 * <p>
-	 *     Since the reference to alloca (variable) just contains stores and load.
-	 *     Stores is definition of alloca, and load is uses to alloca.
+	 * Since the reference to alloca (variable) just contains stores and load.
+	 * Stores is definition of alloca, and load is usesList to alloca.
 	 * </p>
-	 * @param BB    The Basic Block where all variable (alloca) will be renamed.
-	 * @param pred  The predecessor of BB.
+	 *
+	 * @param BB              The Basic Block where all variable (alloca) will be renamed.
+	 * @param pred            The predecessor of BB.
 	 * @param incomgingValues
-	 * @param worklist  The list of basic blocks to be renamed.
+	 * @param worklist        The list of basic blocks to be renamed.
 	 */
 	private void renamePass(BasicBlock BB, BasicBlock pred,
-			Value[] incomgingValues,
-			LinkedList<RenamePassData> worklist)
+			Value[] incomgingValues, LinkedList<RenamePassData> worklist)
 	{
 		Instruction inst;
 		HashSet<BasicBlock> visitedSuccs = new HashSet<>();
@@ -423,7 +428,8 @@ public class PromoteMem2Reg
 						if (!(inst instanceof Phi))
 							break;
 						phi = (Phi) inst;
-					} while (phi.getNumberIncomingValues() == newPhiNumOperands);
+					} while (phi.getNumberIncomingValues()
+							== newPhiNumOperands);
 				}
 			}
 
@@ -438,7 +444,7 @@ public class PromoteMem2Reg
 				inst = it.next();
 
 				// Only load and store to alloca instruction will be handled,
-				// because at our HIR, the uses of alloca just contains laods
+				// because at our HIR, the usesList of alloca just contains laods
 				// and stores.
 				if (inst instanceof LoadInst)
 				{
@@ -453,7 +459,7 @@ public class PromoteMem2Reg
 
 					// gets the active value of current alloca with index.
 					Value value = incomgingValues[index];
-					// anything using the load now uses the current value.
+					// anything using the load now usesList the current value.
 					LI.replaceAllUsesWith(value);
 
 					LI.eraseFromBasicBlock();
@@ -482,11 +488,12 @@ public class PromoteMem2Reg
 			pred = BB;
 			BB = BB.getSuccs().get(0);
 			// recurse to successor
-			for (int idx = 1; idx < BB.getSuccs().size();idx++)
+			for (int idx = 1; idx < BB.getSuccs().size(); idx++)
 			{
 				BasicBlock succ = BB.getSuccs().get(idx);
 				if (visitedSuccs.add(succ))
-					worklist.addLast(new RenamePassData(succ, pred, incomgingValues));
+					worklist.addLast(
+							new RenamePassData(succ, pred, incomgingValues));
 			}
 		}
 	}
@@ -496,47 +503,52 @@ public class PromoteMem2Reg
 	 * case, avoid traversing the CFG and inserting a lot of potentially useless
 	 * PHI nodes by just performing a single linear pass over the basic block
 	 * using the Alloca.
+	 *
 	 * @param AI
 	 * @param info
 	 * @param LBI
 	 */
-	private void promoteSingleBlockAlloca(Alloca AI, AllocaInfo info, LargeBlockInfo LBI)
+	private void promoteSingleBlockAlloca(Alloca AI, AllocaInfo info,
+			LargeBlockInfo LBI)
 	{
 		// sort the stores by their index, making it efficient to do lookup.
-		TreeSet<Pair> storesByIndex = new TreeSet<>(
-				new Comparator<Pair>()
+		TreeSet<Pair> storesByIndex = new TreeSet<>(new Comparator<Pair>()
 		{
 			@Override public int compare(Pair o1, Pair o2)
 			{
-				if ((Integer)o1.fst < (Integer)o2.snd)
+				if ((Integer) o1.fst < (Integer) o2.snd)
 					return -1;
-				else if ((Integer)o1.fst == (Integer)o2.snd)
+				else if ((Integer) o1.fst == (Integer) o2.snd)
 					return 0;
 				else
 					return 1;
 			}
 		});
-		for (Instruction inst : AI.uses)
-			if (inst instanceof StoreInst)
-				storesByIndex.add(
-						new Pair(LBI.getIndexOfInstruction(inst), (StoreInst)inst));
-
+		for (Use inst : AI.usesList)
+		{
+			User user = inst.getUser();
+			if (user instanceof StoreInst)
+				storesByIndex.add(new Pair(
+						LBI.getIndexOfInstruction((Instruction) user),
+						(StoreInst) user));
+		}
 		// Walk all of the loads from this alloca, replacing them with the
 		// nearest store above them, if any.
-		for (Instruction UI : AI.uses)
+		for (Use use : AI.usesList)
 		{
+			User UI = use.getUser();
 			if (!(UI instanceof LoadInst))
 				continue;
-			LoadInst LI = (LoadInst)UI;
+			LoadInst LI = (LoadInst) UI;
 			int loadIndex = LBI.getIndexOfInstruction(LI);
 
 			Pair target = storesByIndex.floor(new Pair(loadIndex, null));
 			// if there is no stores before load, this load take undef value.
 			if (target == null)
 				LI.replaceAllUsesWith(UndefValue.get(LI.kind));
-			// otherwise, there was store before load, the load just toke its value
+				// otherwise, there was store before load, the load just toke its value
 			else
-				LI.replaceAllUsesWith(((StoreInst)target.snd).value);
+				LI.replaceAllUsesWith(((StoreInst) target.snd).value);
 
 			// now, this load instruction is not useful
 			LI.eraseFromBasicBlock();
@@ -545,12 +557,13 @@ public class PromoteMem2Reg
 
 		// 去除无用的store和alloca指令，因为从alloca中使用load指令加载进的值已经直接
 		//传送到了load的使用处，那么该store指令就不需要了。
-		for(Instruction inst : AI.uses)
+		for (Use u : AI.usesList)
 		{
+			User inst = u.getUser();
 			if (inst instanceof StoreInst)
 			{
-				((StoreInst)inst).eraseFromBasicBlock();
-				LBI.deleteValue(inst);
+				((StoreInst) inst).eraseFromBasicBlock();
+				LBI.deleteValue((Instruction) inst);
 			}
 		}
 
@@ -565,11 +578,13 @@ public class PromoteMem2Reg
 	 * Using standard SSA construction algorithm to promoting the alloca.
 	 * Determine which blocks need PHI nodes and see if we can optimize out
 	 * some work by avoiding insertion of dead phi nodes.
-	 * @param AI    The alloca to be promoted.
-	 * @param allocaNum     The index of alloca into allocas list.
-	 * @param info  The information relative to alloca.
+	 *
+	 * @param AI        The alloca to be promoted.
+	 * @param allocaNum The index of alloca into allocas list.
+	 * @param info      The information relative to alloca.
 	 */
-	private void determineInsertionPoint(Alloca AI, int allocaNum, AllocaInfo info)
+	private void determineInsertionPoint(Alloca AI, int allocaNum,
+			AllocaInfo info)
 	{
 		// 该函数的目的就是获取AI指令的支配边界集，然后放置Phi函数。
 		// 从下往上遍历支配树
@@ -581,17 +596,15 @@ public class PromoteMem2Reg
 		computeLifenessBlocks(AI, info, defBlocks, liveInBlocks);
 
 		// 使用一个优先级队列，按照在支配树中的层次，越深的结点放在前面
-		PriorityQueue<Pair<DomTreeNode, Integer>> PQ
-				= new PriorityQueue<>(32,
+		PriorityQueue<Pair<DomTreeNode, Integer>> PQ = new PriorityQueue<>(32,
 				new Comparator<Pair<DomTreeNode, Integer>>()
 				{
-					@Override
-					public int compare(Pair<DomTreeNode, Integer> o1, Pair<DomTreeNode, Integer> o2)
+					@Override public int compare(Pair<DomTreeNode, Integer> o1,
+							Pair<DomTreeNode, Integer> o2)
 					{
 						return -1;
 					}
 				});
-
 
 		DominatorTree.DomTreeNode node;
 		for (BasicBlock BB : defBlocks)
@@ -683,12 +696,12 @@ public class PromoteMem2Reg
 	/**
 	 * Queue a phi-node to be added to a basic block in dominator frontier
 	 * for a specific alloca.
-	 * @param BB    The dominator frontier block.
-	 * @param allocaNo  The number of alloca.
-	 * @param Version    The current version.
+	 *
+	 * @param BB       The dominator frontier block.
+	 * @param allocaNo The number of alloca.
+	 * @param Version  The current version.
 	 */
-	private boolean queuePhiNode(BasicBlock BB,
-			int allocaNo, int Version)
+	private boolean queuePhiNode(BasicBlock BB, int allocaNo, int Version)
 	{
 		Phi phi = newPhiNodes.get(new Pair(BBNumbers.get(BB), allocaNo));
 
@@ -699,7 +712,8 @@ public class PromoteMem2Reg
 
 		Alloca AI = allocas.get(allocaNo);
 		// create a phi node and add the phi-node into the basic block
-		phi = new Phi(AI.kind, BB.getNumOfPreds(), AI.getName() + "." + (Version++));
+		phi = new Phi(AI.kind, BB.getNumOfPreds(),
+				AI.getName() + "." + (Version++));
 		BB.insertAfterFirst(phi);
 		++numberPhiInsert;
 
@@ -709,11 +723,12 @@ public class PromoteMem2Reg
 
 	/**
 	 * Determine the block where this alloca is live.
-	 *
 	 * <p>
-	 *     Knowing that allows us to avoid inserting Phi node into blocks which
-	 *     don't lead to use(thus, the phi node inserted would be dead).
+	 * <p>
+	 * Knowing that allows us to avoid inserting Phi node into blocks which
+	 * don't lead to use(thus, the phi node inserted would be dead).
 	 * </p>
+	 *
 	 * @param AI
 	 * @param info
 	 * @param defBlocks
@@ -739,9 +754,9 @@ public class PromoteMem2Reg
 
 			for (Instruction inst : BB)
 			{
-				if (inst instanceof  StoreInst)
+				if (inst instanceof StoreInst)
 				{
-					if (((StoreInst)inst).dest != AI)
+					if (((StoreInst) inst).dest != AI)
 						continue;
 
 					// We found a store to the alloca before a load.  The alloca is not
@@ -750,9 +765,9 @@ public class PromoteMem2Reg
 					--idx;
 					break;
 				}
-				if (inst instanceof  LoadInst)
+				if (inst instanceof LoadInst)
 				{
-					LoadInst LI = (LoadInst)inst;
+					LoadInst LI = (LoadInst) inst;
 					if (LI.from != AI)
 						continue;
 
@@ -764,7 +779,7 @@ public class PromoteMem2Reg
 		}
 		// Now that we have a set of blocks where the phi is live-in, recursively add
 		// their predecessors until we find the full region the value is live.
-		while(!liveBlockWorkList.isEmpty())
+		while (!liveBlockWorkList.isEmpty())
 		{
 			BasicBlock BB = liveBlockWorkList.pollLast();
 			// if BB is already in the set, then it has already been processed.
@@ -797,11 +812,12 @@ public class PromoteMem2Reg
 	 * false there were some loads which were not dominated by the single store
 	 * and thus must be phi-ed with undef. We fall back to the standard alloca
 	 * </p>
-	 * @param AI    The alloca instruction.
-	 * @param info  Alloca information analysis for rewriting.
+	 *
+	 * @param AI   The alloca instruction.
+	 * @param info Alloca information analysis for rewriting.
 	 * @param LBI  The large block information for optimization.
-	 * @param DT    The dominator tree for calculating dominator frontier.
-	 * @return  return true if rewriting successfully.
+	 * @param DT   The dominator tree for calculating dominator frontier.
+	 * @return return true if rewriting successfully.
 	 */
 	private boolean rewriteSingleStoreAlloca(Alloca AI, AllocaInfo info,
 			LargeBlockInfo LBI, DominatorTree DT)
@@ -813,19 +829,19 @@ public class PromoteMem2Reg
 		int storeIndex = -1;
 		info.usingBlocks.clear();
 
-		// handle loads to store by traveling over uses list
-		for (Instruction UI : AI.uses)
+		// handle loads to store by traveling over usesList list
+		for (Use u : AI.usesList)
 		{
+			User UI = u.getUser();
 			if (!(UI instanceof LoadInst))
 			{
-				assert (UI instanceof StoreInst) :
-						"Should only have store/load instruction.";
+				assert (UI instanceof StoreInst) : "Should only have store/load instruction.";
 				continue;
 			}
 			// 此处，我们没必要处理使用全局变量初始化的alloca指令，因为这样的
 			// 话，任意的load都是受store支配的。
 			// 但是，目前暂时未实现全局变量。。。
-			LoadInst LI = (LoadInst)UI;
+			LoadInst LI = (LoadInst) UI;
 			// we just do than if the load dominated by store
 			// otherwise, we use rest of the mem2reg machinery
 			// to insert phi-node as appropriate.
@@ -842,8 +858,8 @@ public class PromoteMem2Reg
 					continue;
 				}
 			}
-			else if (LI.getParent() != storeBB &&
-					!DT.dominates(storeBB, LI.getParent()))
+			else if (LI.getParent() != storeBB && !DT
+					.dominates(storeBB, LI.getParent()))
 			{
 				// if load and store are in different basic block,
 				// using dominatence to check that their relationships.
@@ -862,7 +878,7 @@ public class PromoteMem2Reg
 			// remote it from it's basic block
 			LI.eraseFromBasicBlock();
 			LBI.deleteValue(LI);
-		}// end of go through uses
+		}// end of go through usesList
 
 		// Finally, after the scan, check to see whether there are stores is left
 		// if not, we will have to fall back to the remainder
@@ -880,7 +896,8 @@ public class PromoteMem2Reg
 
 	/**
 	 * Removes the processed alloca instruction out from allocas list.
-	 * @param inst  The alloca instruction to be removed.
+	 *
+	 * @param inst The alloca instruction to be removed.
 	 */
 	private void removeFromAllocasList(Instruction inst)
 	{
@@ -932,11 +949,11 @@ public class PromoteMem2Reg
 	/**
 	 * This keeps a per-bb relative ordering of load/store instructions
 	 * in the block that directly load or store an alloca.
-	 *
 	 * <p>
-	 *     This class is greatly important since it avoids scanning large
-	 *     basic blocks multiple times when promoting many allocas in the
-	 *     same block.
+	 * <p>
+	 * This class is greatly important since it avoids scanning large
+	 * basic blocks multiple times when promoting many allocas in the
+	 * same block.
 	 * </p>
 	 */
 	static class LargeBlockInfo
@@ -953,13 +970,14 @@ public class PromoteMem2Reg
 
 		/**
 		 * Gets the index of specified instruction at instructions list.
-		 * @param inst   The inst to be evaluated.
-		 * @return  return the index of it if legal, otherwise return -1.
+		 *
+		 * @param inst The inst to be evaluated.
+		 * @return return the index of it if legal, otherwise return -1.
 		 */
 		public int getIndexOfInstruction(Instruction inst)
 		{
-			assert isIntertestingInstruction(inst) :
-					"Not a load/store to/from an alloca?";
+			assert isIntertestingInstruction(
+					inst) : "Not a load/store to/from an alloca?";
 
 			// if it already exit in instNumbers list
 			if (instNumbers.containsKey(inst))
@@ -994,18 +1012,19 @@ public class PromoteMem2Reg
 
 		/**
 		 * Erases the specified value from map.
+		 *
 		 * @param inst
 		 */
 		public void deleteValue(Instruction inst)
 		{
-			assert  inst != null :
-					"LargeBlockInformation.deleteValue(<null>) is invalid";
+			assert inst
+					!= null : "LargeBlockInformation.deleteValue(<null>) is invalid";
 			instNumbers.remove(inst);
 		}
 	}
 
 	/**
-	 * A class for recording the uses and definition information
+	 * A class for recording the usesList and definition information
 	 * of {@code Alloca}instrcution.
 	 */
 	static class AllocaInfo
@@ -1016,7 +1035,7 @@ public class PromoteMem2Reg
 		 */
 		ArrayList<BasicBlock> definingBlocks = new ArrayList<>(32);
 		/**
-		 * The list of blocks where there is a loads to alloca (also, it is a uses
+		 * The list of blocks where there is a loads to alloca (also, it is a usesList
 		 * to defined variable).
 		 */
 		ArrayList<BasicBlock> usingBlocks = new ArrayList<>(32);
@@ -1054,33 +1073,35 @@ public class PromoteMem2Reg
 		}
 
 		/**
-		 * Scan that uses of the specified alloca, filling in the AllocaInfo
-		 * used by the rest of the class to reason the uses of this instruction.
-		 * @param alloca    An {@code Alloca} instruction to be analyzed.
+		 * Scan that usesList of the specified alloca, filling in the AllocaInfo
+		 * used by the rest of the class to reason the usesList of this instruction.
+		 *
+		 * @param alloca An {@code Alloca} instruction to be analyzed.
 		 */
 		void analyzeAlloca(Alloca alloca)
 		{
 			clear();
 			/*
-			 * scaning the uses of the alloca instruction, and keeping track of
+			 * scaning the usesList of the alloca instruction, and keeping track of
 			 * stores, and decide whether all of loads and stores to the alloca
 			 * are within a same basic block.
 			 */
-			for (Instruction inst : alloca.uses)
+			for (Use u : alloca.usesList)
 			{
+				Instruction inst = (Instruction) u.getUser();
 				if (inst instanceof StoreInst)
 				{
 					// remember the basic block where store instruction define a
 					// new value for alloca instruction.
 					definingBlocks.add(inst.getParent());
-					allocaPointerVar = ((StoreInst)inst).dest;
-					onlyStore = (StoreInst)inst;
+					allocaPointerVar = ((StoreInst) inst).dest;
+					onlyStore = (StoreInst) inst;
 				}
 				else
 				{
 					// otherwise it must be a load instruction, keep track of
 					// variable reads
-					LoadInst LI = (LoadInst)inst;
+					LoadInst LI = (LoadInst) inst;
 					usingBlocks.add(LI.getParent());
 					allocaPointerVar = LI.from;
 				}

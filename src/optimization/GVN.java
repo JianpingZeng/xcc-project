@@ -80,7 +80,7 @@ public class GVN
 				Instruction f = currentMap.findInsert(inst);
 				if (f != inst)
 				{
-					// replace all uses to inst with f.
+					// replace all usesList to inst with f.
 					inst.replaceAllUsesWith(f);
 				}
 			}
