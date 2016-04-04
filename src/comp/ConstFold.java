@@ -7,9 +7,9 @@ import utils.Context;
 
 /**
  * A auxiliary class for constant folding, used by attribute phares.
- * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月15日 下午8:23:02
+ *
+ * @author JianpingZeng
+ * @version 1.0
  */
 public class ConstFold implements TypeTags, OpCodes
 {
@@ -382,10 +382,6 @@ public class ConstFold implements TypeTags, OpCodes
 							return syms.intType.constType(one);
 						else
 							return syms.intType.constType(minusOne);
-
-					case string_add:
-						return syms.stringType.constType(left.stringValue()
-						        + right.stringValue());
 
 					default:
 						return null;

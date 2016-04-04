@@ -4,24 +4,26 @@ import hir.*;
 import hir.Instruction.Return;
 import hir.Instruction.StoreInst;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 
 /**
  * This file defines a class that  performs useless instruction elimination and
  * dead code elimination.
  * <p>
- *     Dead code elimination perform a single pass over the function removing
- *     instructions that are obviously useless.
+ * Dead code elimination perform a single pass over the function removing
+ * instructions that are obviously useless.
  * </p>
  * <p>
- *    At the sweep stage, a collection of another peephole control flow optimizations
- *    will be performed. For instance:
- *    <br>
- *    1.Removes basic block with no predecessors.
- *    <br>
- *    2.Merges a basic with it's predecessor if there is only one and the predeccessor
- *    just only have one successor.
- *    <br>
+ * At the sweep stage, a collection of another peephole control flow optimizations
+ * will be performed. For instance:
+ * <br>
+ * 1.Removes basic block with no predecessors.
+ * <br>
+ * 2.Merges a basic with it's predecessor if there is only one and the predeccessor
+ * just only have one successor.
+ * <br>
  * </p>
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/8.
  */
@@ -113,13 +115,14 @@ public class DCE
 						BasicBlock nearestDom = findNearestUsefulPostDom(BB);
 						if (nearestDom == BasicBlock.USELESSBLOCK)
 							continue;
-						Instruction.Goto go = new Instruction.Goto(nearestDom);
+						Instruction.Goto go = new Instruction.Goto(nearestDom,
+								"Goto");
 						inst.insertBefore(go);
 						inst.eraseFromBasicBlock();
 					}
 					// the function invocation instruction is handled specially
 					// for conservative and safe.
-					else if (! (inst instanceof Instruction.Invoke))
+					else if (!(inst instanceof Instruction.Invoke))
 						inst.eraseFromBasicBlock();
 				}
 			}
@@ -128,13 +131,13 @@ public class DCE
 
 	private void eliminateDeadBlock()
 	{
-		for (BasicBlock BB: m)
+		for (BasicBlock BB : m)
 		{
 			if (BB.getNumOfPreds() == 0)
 			{
 				BB.eraseFromParent();
 			}
-			if (BB.getNumOfPreds() == 1 )
+			if (BB.getNumOfPreds() == 1)
 			{
 				BasicBlock pred = BB.getPreds().get(0);
 				if (pred.getNumOfSuccs() == 0)
@@ -145,8 +148,9 @@ public class DCE
 
 	/**
 	 * Merges the second into first block.
-	 * @param first The first block to be merged.
-	 * @param second    The second block to be merged.
+	 *
+	 * @param first  The first block to be merged.
+	 * @param second The second block to be merged.
 	 */
 	private void merge(BasicBlock first, BasicBlock second)
 	{
@@ -161,11 +165,13 @@ public class DCE
 		// enable the GC.
 		second = null;
 	}
+
 	/**
 	 * Finds the first useful and nearest basic block in the post dominator of
 	 * specified Basic Block.
-	 * @param BB    The specified basic block.
-	 * @return  The nearest and useful post dominator that dominates specified
+	 *
+	 * @param BB The specified basic block.
+	 * @return The nearest and useful post dominator that dominates specified
 	 * block.
 	 */
 	private BasicBlock findNearestUsefulPostDom(BasicBlock BB)
@@ -178,7 +184,7 @@ public class DCE
 			DominatorTree.DomTreeNode currDOM = worklist.removeLast();
 			BasicBlock currBB = currDOM.getBlock();
 			if (usefulBlocks.contains(currBB))
-				return  currBB;
+				return currBB;
 			worklist.addLast(currDOM.getIDom());
 		}
 		return BasicBlock.USELESSBLOCK;
@@ -186,6 +192,7 @@ public class DCE
 
 	/**
 	 * Mark the branch instruction that is the last instruction in the basic block.
+	 *
 	 * @param inst
 	 * @param worklist
 	 */
@@ -205,6 +212,7 @@ public class DCE
 			}
 		}
 	}
+
 	/**
 	 * Initialize the critical instruction set to be used mark-sweep algorithm.
 	 */
@@ -290,6 +298,7 @@ public class DCE
 				usefulBlocks.add(((Instruction) inst.x).getParent());
 			}
 		}
+
 		/**
 		 * Visits {@code ADD_I} with visitor pattern.
 		 *
@@ -370,8 +379,7 @@ public class DCE
 			markBinary(inst);
 		}
 
-		@Override
-		public void visitShiftOp(Instruction.ShiftOp inst)
+		@Override public void visitShiftOp(Instruction.ShiftOp inst)
 		{
 			markBinary(inst);
 		}
@@ -536,7 +544,6 @@ public class DCE
 			markBinary(inst);
 		}
 
-
 		/**
 		 * Visits {@code NEG_I} with vistor pattern.
 		 *
@@ -655,7 +662,7 @@ public class DCE
 		public void visitPhi(Instruction.Phi inst)
 		{
 			BasicBlock[] blocks = inst.getAllBasicBlocks();
-			for (int idx =0; idx < blocks.length; idx++)
+			for (int idx = 0; idx < blocks.length; idx++)
 			{
 				Instruction lastInst = blocks[idx].lastInst();
 				if (lastInst instanceof Instruction.Branch)

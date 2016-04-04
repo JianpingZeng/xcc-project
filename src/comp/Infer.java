@@ -3,9 +3,9 @@ package comp;
 import type.TypeTags;
 import type.Type;
 
-/** 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月15日 下午7:55:23 
+/**
+ * @author JianpingZeng
+ * @version 1.0
  */
 public class Infer implements TypeTags
 {

@@ -11,7 +11,7 @@ import utils.Context;
  * In the first stage, attributes global variable definition and method
  * definition itself but no method body. just attributes the return type, name,
  * parameters list of a method and check unique method'name. Then, all of
- * uncomplete method will be added into {@link Todo} list attributed by second
+ * uncompleted method will be added into {@link Todo} list attributed by second
  * phase
  * 
  * In the second stage, attributes method body, including defined statements and
@@ -21,9 +21,9 @@ import utils.Context;
  * considers circle reference of different method, for example:
  * 
  * void A(){... B(); ...} void B(){...A();....}
- * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月16日 下午2:04:35
+ *
+ * @author JianpingZeng
+ * @version 1.0
  */
 public class Todo<E> extends java.util.ArrayDeque<E>
 {

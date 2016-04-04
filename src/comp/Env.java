@@ -43,7 +43,7 @@ public class Env {
 
     /**
      * Create an outermost environment for a given (toplevel)tree,
-     *  with a given info field.
+     * with a given info field.
      */
     public Env(Tree tree, Object info) {
         super();

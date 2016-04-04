@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * An abstraction for internal compiler strings. For efficiency reasons,
- *  GJC uses hashed strings that are stored in a common large buffer.
+ *  GJC usesList hashed strings that are stored in a common large buffer.
  *
  *  Names represent unique hashable strings. Two names are equal
  *  if their indices are equal. Utf8 representation is used

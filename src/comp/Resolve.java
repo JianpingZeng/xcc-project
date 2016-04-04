@@ -16,9 +16,9 @@ import utils.Name;
 
 /**
  * A helpful utility class for resovling method name and type.
- * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月16日 下午5:20:57
+ *
+ * @author JianpingZeng
+ * @version 1.0
  */
 public class Resolve implements TypeTags, SymbolKinds, Flags
 {
