@@ -1,12 +1,12 @@
 package type;
 
-import symbol.Symbol.TypeSymbol;
+import symbol.TypeSymbol;
 
 
 /**
  * This class represents the array type that extends from super class {@link Type}
  * 
- * @author zeng
+ * @author JianpingZeng
  * @version 1.0
  */
 public class ArrayType extends Type {

@@ -2,7 +2,6 @@ package ast;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -11,7 +10,8 @@ import symbol.Scope;
 import symbol.Symbol;
 import symbol.Symbol.OperatorSymbol;
 import symbol.Symbol.MethodSymbol;
-import symbol.Symbol.VarSymbol;
+import symbol.Symbol.TopLevelSymbol;
+import symbol.VarSymbol;
 import type.Type;
 import utils.Name;
 import utils.Position;
@@ -22,7 +22,7 @@ import utils.Position;
  * 
  * Each subclass is highly standardized. It generally contains only tree fields
  * for the syntactic subcomponents of the node. Some classes that represents
- * identifier uses or definitions also define a Symbol field that denotes the
+ * identifier usesList or definitions also define a Symbol field that denotes the
  * represented identifier. Classes for non-local jumps also carry the jump
  * target as a field. The root class {@link Tree} itself defines fields for the
  * tree's type and position. No other fields are kept in a tree node; instead
@@ -318,6 +318,7 @@ abstract public class Tree
 		public List<Tree> defs;
 		public Name sourceFile;
 		public Scope topScope = null;
+		public TopLevelSymbol compilation = null;
 		public HashMap<Object, Object> endPositions = null;
 
 		/**
@@ -326,13 +327,16 @@ abstract public class Tree
 		 * @param defs all of definitions in a source file.
 		 * @param sourceFile the name of source file.
 		 * @param topScope the corresponding scope of this source file.
+		 * @param compilation The symbol of compiled unit.
 		 */
-		public TopLevel(List<Tree> defs, Name sourceFile, Scope topScope)
+		public TopLevel(List<Tree> defs, Name sourceFile,
+				Scope topScope, TopLevelSymbol compilation)
 		{
 			super(TOPLEVEL);		
 			this.defs = defs;
 			this.sourceFile = sourceFile;
 			this.topScope = topScope;
+			this.compilation = compilation;
 		}
 
 		public void accept(ASTVisitor v)
@@ -425,7 +429,8 @@ abstract public class Tree
 		public Tree init;
 		public VarSymbol sym;
 
-		public VarDef(long flags, Name name, Tree varType, Tree init, VarSymbol sym)
+		public VarDef(long flags, Name name, Tree varType,
+				Tree init, VarSymbol sym)
 		{
 			super(VARDEF);
 			this.flags = flags;
@@ -679,13 +684,13 @@ abstract public class Tree
 	public static class Case extends Tree
 	{
 		public List<Tree> values;
-		public List<Tree> stats;
+		public Tree caseBody;
 
-		public Case(List<Tree> values, List<Tree> stats)
+		public Case(List<Tree> values, Tree caseBody)
 		{
 			super(CASE);
 			this.values = values;
-			this.stats = stats;
+			this.caseBody = caseBody;
 		}
 
 		public void accept(ASTVisitor v)

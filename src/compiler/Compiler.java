@@ -2,10 +2,7 @@ package compiler;
 
 import java.util.*;
 import java.io.*;
-import comp.Attr;
-import comp.Enter;
-import comp.Env;
-import comp.Todo;
+import comp.*;
 import hir.HIR;
 import hir.HIRGenerator;
 import parser.ParseException;
@@ -48,8 +45,12 @@ public class Compiler
 	/**
 	 * A flag that marks whether output target file.
 	 */
-	@SuppressWarnings("unused")
 	private boolean outputResult = false;
+
+	/**
+	 * A flag that marks whether attributed parsed file only.
+	 */
+	private boolean attrParseOnly = false;
 
 	public Compiler(Context context)
 	{
@@ -62,9 +63,10 @@ public class Compiler
 		this.enter = Enter.instance(context);
 		this.todo = Todo.instance(context);
 		Options options = Options.instance(context);
-		this.debugParser = options.get("--debug-Parser") != null;
-		this.outputResult = options.get("-o") != null;
-		this.verbose = options.get("-verbose") != null;
+		debugParser = options.get("--debug-Parser") != null;
+		outputResult = options.get("-o") != null;
+		verbose = options.get("-verbose") != null;
+		attrParseOnly = options.get("-attrparseonly") != null;
 	}
 
 	public static Compiler make(Context context)
@@ -73,7 +75,7 @@ public class Compiler
 	}
 
 	/**
-	 * The id of errors reported so far.
+	 * The numbers of errors reported so far.
 	 */
 	public int errorCount()
 	{
@@ -87,7 +89,7 @@ public class Compiler
 		{
 			List<Tree> trees = new LinkedList<>();
 			// make a abstract syntax tree for any source file, and add it into
-			// trees.
+			// trees list.
 			for (String file : filenames)
 				trees.add(parse(file));
 			if (errorCount() == 0)
@@ -95,6 +97,7 @@ public class Compiler
 				if (debugParser)
 				{
 					Pretty p = new Pretty(new PrintWriter(System.out), false);
+
 					// display abstract syntax tree for any source file
 					for (Tree t : trees)
 						t.accept(p);
@@ -103,20 +106,23 @@ public class Compiler
 					printVerbose("total",
 					        Long.toString(System.currentTimeMillis() - msec));
 				}
-				// fatal checking and symbol entering
-				enter.complete(trees);
+				// syntax fatal checking and symbol entering
+				enter.main(trees);
 			}
+
 			Attr attr = Attr.instance(context);
-			Iterator<Env> itr = todo.iterator();
-			while (itr.hasNext())
+			for (Env env : todo)
 			{
-				Env env = itr.next();
+				// the unattributed syntax tree
 				Tree unattributed = env.tree;
 				if (verbose)
 				    printVerbose("checking.attribution",
 				            env.enclMethod.sym.toString());
 				Name prev = log.useSource(env.toplevel.sourceFile);
 				attr.attriMethod(unattributed.pos, env.enclMethod.sym);
+				if (attrParseOnly)
+					continue;
+				log.useSource(prev);
 			}
 
 			// performs high level IR generation adn HIR optimization
@@ -124,14 +130,38 @@ public class Compiler
 			for (Tree t : trees)
 				hirLists.add(new HIRGenerator(context).translate(t));
 
+			if (verbose)
+				printVerbose("total", Long.toString(System.currentTimeMillis() - msec));
+			int errCount = errorCount();
+			if (errCount == 1)
+				printCount("error", errCount);
+			else
+				printCount("error.plural", errCount);
+		}catch (Error ex)
+		{}
 
-		}
-		finally
+	}
+
+	/**
+	 * Prints numbers of errors and warnings.
+	 * @param key   The key massage to be reported.
+	 * @param cnt   The count of errors and warnings.
+	 */
+	private void printCount(String key, int cnt)
+	{
+		if(cnt != 0)
 		{
-
+			Log.printLines(log.errWriter,
+					Log.getLocalizedString("count." + key, Integer.toString(cnt)));
+			log.flush();
 		}
 	}
 
+	/**
+	 * Prints debugging information in human readability style.
+	 * @param key
+	 * @param msg
+	 */
 	private void printVerbose(String key, String msg)
 	{
 		Log.printLines(log.noticeWriter,

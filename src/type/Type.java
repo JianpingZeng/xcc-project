@@ -4,7 +4,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-import symbol.Symbol.TypeSymbol;
+import symbol.TypeSymbol;
 import utils.Name;
 
 /**

@@ -79,7 +79,7 @@ public class ParseException extends Exception {
   public String[] tokenImage;
 
   /**
-   * It uses "currentToken" and "expectedTokenSequences" to generate a parse
+   * It usesList "currentToken" and "expectedTokenSequences" to generate a parse
    * error message and returns it.  If this object has been created
    * due to a parse error, and you do not catch it (it gets thrown
    * from the parser) the correct error message

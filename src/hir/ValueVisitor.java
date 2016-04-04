@@ -361,4 +361,9 @@ public abstract class ValueVisitor
 	{
 
 	}
+
+	public void visitSwitch(SwitchInst switchInst)
+	{
+
+	}
 }

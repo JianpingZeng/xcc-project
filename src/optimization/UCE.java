@@ -1,16 +1,20 @@
 package optimization;
 
-import hir.*;
+import hir.BasicBlock;
+import hir.DominatorTree;
+import hir.Instruction;
 import hir.Instruction.ConditionalBranch;
+import hir.Method;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- *  This file defines a class that performs useless control flow elimination.
- *  This algorithm first proposed and implemented by J.Lu:
+ * This file defines a class that performs useless control flow elimination.
+ * This algorithm first proposed and implemented by J.Lu:
  * <p>
- *  J.Lu, R.Shillner, Clean:removing useless control flow, unpublished manuscript
- *  , Department of computer science, Rice university,Houston, TX, 1994.
+ * J.Lu, R.Shillner, Clean:removing useless control flow, unpublished manuscript
+ * , Department of computer science, Rice university,Houston, TX, 1994.
  * </p>
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/11.
  */
@@ -31,6 +35,7 @@ public class UCE
 	 * 3.merges basic block
 	 * 4.hoist merge instruction
 	 * </p>
+	 *
 	 * @param m
 	 */
 	public void clean(Method m)
@@ -57,9 +62,9 @@ public class UCE
 
 	private void onePass()
 	{
-		// We must uses the index loop instead of interative loop, because
+		// We must usesList the index loop instead of interative loop, because
 		// the size of postOrder list is changing when iterating.
-		for (int idx =0; idx < postOrder.size(); idx++)
+		for (int idx = 0; idx < postOrder.size(); idx++)
 		{
 			BasicBlock curr = postOrder.get(idx);
 			if (curr.isEmpty())
@@ -75,10 +80,11 @@ public class UCE
 			//    B.j        B.j
 			if (lastInst instanceof ConditionalBranch)
 			{
-				ConditionalBranch branch = (ConditionalBranch)lastInst;
+				ConditionalBranch branch = (ConditionalBranch) lastInst;
 				if (branch.trueTarget == branch.falseTarget)
 				{
-					Instruction.Goto go = new Instruction.Goto(branch.trueTarget);
+					Instruction.Goto go = new Instruction.Goto(
+							branch.trueTarget, "Goto");
 					branch.insertBefore(go);
 					branch.eraseFromBasicBlock();
 				}
@@ -86,7 +92,7 @@ public class UCE
 			// handles unconditional jump instruction.
 			if (lastInst instanceof Instruction.Goto)
 			{
-				Instruction.Goto go = (Instruction.Goto)lastInst;
+				Instruction.Goto go = (Instruction.Goto) lastInst;
 				BasicBlock target = go.target;
 				/**
 				 * \   |
@@ -107,16 +113,18 @@ public class UCE
 						if (last != null)
 						{
 							if (last instanceof Instruction.Goto
-									&& ((Instruction.Goto)last).target == curr)
+									&& ((Instruction.Goto) last).target == curr)
 							{
-								((Instruction.Goto)last).target = target;
+								((Instruction.Goto) last).target = target;
 							}
 							else if (last instanceof ConditionalBranch)
 							{
-								if (((ConditionalBranch)last).falseTarget == curr)
-									((ConditionalBranch)last).falseTarget = target;
-								if (((ConditionalBranch)last).trueTarget == curr)
-									((ConditionalBranch)last).trueTarget = target;
+								if (((ConditionalBranch) last).falseTarget
+										== curr)
+									((ConditionalBranch) last).falseTarget = target;
+								if (((ConditionalBranch) last).trueTarget
+										== curr)
+									((ConditionalBranch) last).trueTarget = target;
 							}
 						}
 					}
@@ -129,8 +137,8 @@ public class UCE
 				if (target.getNumOfPreds() == 1)
 					merge(curr, target);
 
-				if (target.size() == 1 &&
-						(lastInst = target.lastInst()) instanceof ConditionalBranch)
+				if (target.size() == 1 && (lastInst = target
+						.lastInst()) instanceof ConditionalBranch)
 				{
 					go.insertBefore(lastInst);
 					go.eraseFromBasicBlock();
@@ -141,8 +149,9 @@ public class UCE
 
 	/**
 	 * Merges the second into first block.
-	 * @param first The first block to be merged.
-	 * @param second    The second block to be merged.
+	 *
+	 * @param first  The first block to be merged.
+	 * @param second The second block to be merged.
 	 */
 	private void merge(BasicBlock first, BasicBlock second)
 	{

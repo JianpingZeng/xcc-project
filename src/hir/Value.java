@@ -4,10 +4,9 @@ import ci.CiConstant;
 import ci.CiKind;
 import type.Type;
 import utils.Name;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
+
+import java.util.*;
+
 import hir.Instruction.Phi;
 
 /**
@@ -35,24 +34,19 @@ public class Value implements Cloneable
 	public Name name = null;
 
 	/**
-	 * The list of user who uses this value.
+	 * The list of user who usesList this value.
 	 */
-	public  List<Instruction> uses;
-
-	public Iterator<Instruction> iterator()
-	{
-		return uses.iterator();
-	}
+	public final LinkedList<Use> usesList;
 
 	public Value(CiKind kind)
 	{
 		this.kind = kind;
-		this.uses = new ArrayList<>(8);
+		this.usesList = new LinkedList<>();
 	}
 
 	/**
-	 * Go through the uses list for this definition and make each use point
-	 * to "value" of "this". After this completes, this's uses list is empty.
+	 * Go through the usesList list for this definition and make each use point
+	 * to "value" of "this". After this completes, this's usesList list is empty.
 	 * @param newValue
 	 */
 	public void replaceAllUsesWith(Value newValue)
@@ -62,9 +56,9 @@ public class Value implements Cloneable
 				== newValue.kind : "replaceAllUses of value with new value of different tyep";
 
 		// 更新use-def链中的使用分量
-		while (!uses.isEmpty())
+		while (!usesList.isEmpty())
 		{
-			newValue.addUser(uses.remove(0));
+			newValue.addUse(usesList.remove(0));
 		}
 
 		if (this instanceof Instruction)
@@ -85,23 +79,28 @@ public class Value implements Cloneable
 		}
 	}
 
-	public boolean isUseEmpty()
+
+	public Iterator<Use> iterator()
 	{
-		return uses.isEmpty();
+		return usesList.iterator();
+	}
+	public ListIterator<Use> listIterator()
+	{
+		return usesList.listIterator();
 	}
 
-	public ListIterator<Instruction> listIterator()
+	public boolean isUseEmpty()
 	{
-		return uses.listIterator();
+		return usesList.isEmpty();
 	}
 
 	/**
-	 * The numbers of this other value who uses this.
+	 * The numbers of this other value who usesList this.
 	 * @return
 	 */
 	public int getNumUses()
 	{
-		return uses.size();
+		return usesList.size();
 	}
 
 	/**
@@ -110,7 +109,7 @@ public class Value implements Cloneable
 	 */
 	public boolean hasOneUses()
 	{
-		return uses.size() == 1;
+		return usesList.size() == 1;
 	}
 
 	/**
@@ -120,7 +119,7 @@ public class Value implements Cloneable
 	 */
 	public boolean hasNUses(int N)
 	{
-		return uses.size() == N;
+		return usesList.size() == N;
 	}
 
 	/**
@@ -130,16 +129,27 @@ public class Value implements Cloneable
 	 */
 	public boolean hasNMoreUsers(int N)
 	{
-		return uses.size() > N;
+		return usesList.size() > N;
 	}
 
 	/**
-	 * Adds one user into user list.
-	 * @param user  The user who uses this to be added into uses list.
+	 * Adds one use instance into use list that represents def-use chain
+	 * between value definition and value use.
+	 * @param use  The instance of use.
 	 */
-	public void addUser(Instruction user)
+	public void addUse(Use use)
 	{
-		uses.add(user);
+		assert use != null : "the use chain must be no null";
+		usesList.add(use);
+	}
+
+	/**
+	 * Removes and unlink specified use chain from uses list.
+	 * @param use   The use to be unlinked.
+	 */
+	public void killUse(Use use)
+	{
+		usesList.remove(use);
 	}
 
 	public Value clone()
@@ -306,7 +316,6 @@ public class Value implements Cloneable
 			visitor.visitUndef(this);
 		}
 	}
-
 	/*
 	public static abstract class Var extends Value
 	{

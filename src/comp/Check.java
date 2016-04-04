@@ -13,9 +13,9 @@ import utils.Name;
 
 /**
  * This is a helpful auxiliary class for type check.
- * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月15日 下午2:12:11
+ *
+ * @author JianpingZeng
+ * @version 1.0
  */
 public class Check implements SymbolKinds, TypeTags, Flags
 {
