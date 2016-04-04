@@ -44,7 +44,7 @@ public interface TypeTags {
      */
     int DOUBLE = 7;
 
-    int STRING = 8;
+    //int STRING = 8;
     
     /**
      * The tag of the basic type `boolean'.
@@ -79,7 +79,7 @@ public interface TypeTags {
     /**
      * The tag of the type `method'.
      */
-    int METHOD = 15;
+    int FUNCTION = 15;
 
     /**
      * The tag of the missing type.

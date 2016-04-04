@@ -1,6 +1,5 @@
 package hir;
 
-import ci.CiKind;
 
 import java.util.*;
 
@@ -17,12 +16,12 @@ import java.util.*;
  * Note that you should never create directly a basic block using the
  * constructor of {@link BasicBlock}, you should create it via a
  * {@link ControlFlowGraph} so that id id is unique.
- *
+ * <p>
  * @author Jianping Zeng < z121jping@hotmail.com >
  * @version 1.0
  * @see Instruction
  */
-public final class BasicBlock extends Value implements Iterable<Instruction>
+public final class BasicBlock implements Iterable<Instruction>
 {
 	public static final BasicBlock USELESSBLOCK =
 			new BasicBlock(-1, null, null, "useless", null);
@@ -91,8 +90,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	private BasicBlock(int id, LinkedList<BasicBlock> pres, LinkedList<BasicBlock> succs,
 			String bbName, ControlFlowGraph cfg)
-	{
-		super(CiKind.Illegal);
+	{		
 		this.idNumber = id;
 		this.instructions = new LinkedList<>();
 		this.predecessors = pres;

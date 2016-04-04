@@ -2,7 +2,9 @@ package ast;
 
 import java.io.PrintWriter;
 import java.util.List;
+
 import type.*;
+import ast.Tree.Case;
 import ast.Tree.*;
 import utils.Convert;
 
@@ -221,7 +223,7 @@ public class Pretty extends ASTVisitor
 	 * 
 	 * @param list
 	 */
-	private void printStats(List<Tree> stats)
+	private void printStats(List<? extends Tree> stats)
 	{
 		for (Tree stat : stats)
 		{
@@ -376,19 +378,19 @@ public class Pretty extends ASTVisitor
 	@Override
 	public void visitCase(Case tree)
 	{
-		if (tree.pat == null)
+		if (tree.values == null)
 		{
 			print("default");
 		}
 		else
 		{
 			print("case ");
-			printExpr(tree.pat);
+			printExprs(tree.values);
 		}
 		print(": ");
 		println();
 		indent();
-		printStats(tree.stats);
+		printStat(tree.caseBody);
 		undent();
 		align();
 	}
@@ -761,11 +763,6 @@ public class Pretty extends ASTVisitor
         case TypeTags.VOID:
             print("void");
             break;
-
-        case TypeTags.STRING:
-            print("string");
-            break;  
-            
         default:
             print("error");
             break;
@@ -798,9 +795,6 @@ public class Pretty extends ASTVisitor
             print("\'" + Convert.quote(
                     String.valueOf((char)((Number) tree.value).intValue())) + "\'");
             break;
-        case Type.STRING:
-        	print("\"" + Convert.quote( (String)tree.value) + "\"");
-        	break;
         default:
             print(tree.value.toString());
         }
