@@ -16,6 +16,7 @@ import hir.Instruction.*;
 import symbol.Symbol;
 import symbol.Symbol.OperatorSymbol;
 import symbol.SymbolKinds;
+import symbol.VarSymbol;
 import type.Type;
 import type.TypeTags;
 import utils.Context;
@@ -1140,14 +1141,9 @@ public class HIRGenerator extends ASTVisitor
 		{
 			Case clause = tree.cases.get(idx);
 			Tree lastStmt = null;
-			if (clause.stats instanceof ArrayList)
-			{
-				lastStmt = clause.stats.get(clause.stats.size() - 1);
-			}
-			else if (clause.stats instanceof LinkedList)
-			{
-				lastStmt = ((LinkedList<Tree>) clause.stats).getLast();
-			}
+			Block caseBlock = (Block)clause.caseBody;
+				
+			lastStmt = caseBlock.stats.get(caseBlock.stats.size() - 1);	
 
 			// the last statement of case clause is a break.
 			// So that we should associate the basic block attached to
@@ -1172,7 +1168,7 @@ public class HIRGenerator extends ASTVisitor
 		BasicBlock defaultBlock = this.switchInst.getDefaultBlock();
 		assert defaultBlock
 				!= null : "emitDefaultCase: default block already defined?";
-		tree.stats.forEach(clause -> clause.accept(this));
+		tree.caseBody.accept(this);
 	}
 
 	/**
@@ -1188,7 +1184,7 @@ public class HIRGenerator extends ASTVisitor
 
 		// branch to default or switch exit block.
 		// when a break statement occures.
-		tree.stats.forEach(clause -> clause.accept(this));
+		tree.caseBody.accept(this);
 	}
 
 	/**
@@ -2186,7 +2182,7 @@ public class HIRGenerator extends ASTVisitor
 		// parses variable
 		if (tree.sym.kind == SymbolKinds.VAR)
 		{
-			Symbol.VarSymbol sym = (Symbol.VarSymbol) tree.sym;
+			VarSymbol sym = (VarSymbol) tree.sym;
 			if (sym.varInst == null)
 			{
 				log.error(tree.pos, "Unkown variable name");

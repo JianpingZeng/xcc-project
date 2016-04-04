@@ -48,7 +48,7 @@ public class ControlFlowGraph
 
 		this.attachedMethod = method;
 		// id of basic block begin with one.
-		this.bb_counter = 1;
+		bb_counter = 1;
 		// id of quad begin with zero.
 		this.quad_counter = 0;
 	}
@@ -342,7 +342,7 @@ public class ControlFlowGraph
 		BasicBlock newSucc = createBasicBlock("CriticalEdge");
 
 		// creates a new goto instruction that jumps to {@code to}.
-		newSucc.appendInst(new Instruction.Goto(to));
+		newSucc.appendInst(new Instruction.Goto(to, "critialEdgeGoto"));
 
 		// set the CriticalEdgeSplit flag
 		newSucc.setBlockFlags(BasicBlock.BlockFlag.CriticalEdgeSplit);

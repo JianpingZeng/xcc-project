@@ -33,7 +33,7 @@ public interface Factory {
 
    Switch Switch(Tree selector, List<Case> cases);
 
-   Case Case(List<Tree> values, List<Tree> stats);
+   Case Case(List<Tree> values, Tree caseBody);
 
    Conditional Conditional(Tree cond, Tree thenpart, Tree elsepart);
 

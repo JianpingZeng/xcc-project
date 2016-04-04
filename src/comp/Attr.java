@@ -1,20 +1,17 @@
 package comp;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import com.sun.jmx.remote.internal.ArrayQueue;
-
+import ast.ASTVisitor;
+import ast.Flags;
+import ast.Tree;
+import ast.Tree.*;
+import ast.TreeInfo;
 import exception.CompletionFailure;
 import symbol.Scope;
 import symbol.Symbol;
+import symbol.Symbol.MethodSymbol;
 import symbol.Symbol.OperatorSymbol;
 import symbol.SymbolKinds;
-import symbol.Symbol.MethodSymbol;
-import symbol.Symbol.VarSymbol;
+import symbol.VarSymbol;
 import type.ArrayType;
 import type.MethodType;
 import type.Type;
@@ -23,24 +20,20 @@ import utils.Context;
 import utils.Log;
 import utils.Name;
 import utils.Position;
-import ast.ASTVisitor;
-import ast.Flags;
-import ast.Tree;
-import ast.Tree.Apply;
-import ast.Tree.Labelled;
-import ast.TreeInfo;
-import ast.Tree.*;
+
+import java.util.*;
 
 /**
  * This is main context-dependent analysis phase in compiler internal. It
  * encompasses type checking and constant folding as sub task. Some subtask
  * involve auxiliary classes.
- * 
+ * <p>
+ *
+ * @author JianpingZeng
+ * @version 1.0
  * @see Check
  * @see ConstFold
- * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月15日 下午6:40:50
+ * @see Enter
  */
 public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 {
@@ -65,8 +58,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	private Env preenv;
 	private Log log;
 
-	@SuppressWarnings("unused")
-	private Name.Table names;
+	@SuppressWarnings("unused") private Name.Table names;
 
 	private Check check;
 	private Context context;
@@ -79,7 +71,8 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	public static Attr instance(Context context)
 	{
 		Attr instance = (Attr) context.get(attrKey);
-		if (instance == null) instance = new Attr(context);
+		if (instance == null)
+			instance = new Attr(context);
 		return instance;
 	}
 
@@ -95,14 +88,15 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		this.rs = Resolve.instance(context);
 		this.syms = Symtab.instance(context);
 		this.treeinfo = TreeInfo.instance(context);
+		methTemplateSupply = new ArrayDeque<>(10);
 	}
 
 	/**
 	 * Main method: attributes method definition associated with given method
 	 * symbol. Reporting completion failure error at given position.
-	 * 
-	 * @param pos
-	 * @param sym
+	 *
+	 * @param pos   The position encoded to be error report.
+	 * @param sym   The method symbol.
 	 */
 	public void attriMethod(int pos, MethodSymbol sym)
 	{
@@ -118,7 +112,8 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 
 	public void attriMethod(MethodSymbol sym)
 	{
-		if (sym.type.tag == ERROR) return;
+		if (sym.type.tag == ERROR)
+			return;
 
 		// no finished !!!!!! in the future
 		// check.checkNonCyclic(Position.NOPOS, sym.type);
@@ -147,6 +142,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 
 	/**
 	 * Attribute a type tree.
+	 *
 	 * @param tree
 	 * @return
 	 */
@@ -209,7 +205,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		for (Tree tree : trees)
 		{
 			argtypes.add(check.checkNonVoid(tree.pos,
-			        attribTree(tree, env, VAL, Infer.anyPoly)));
+					attribTree(tree, env, VAL, Infer.anyPoly)));
 		}
 		return argtypes;
 	}
@@ -219,9 +215,9 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	/**
 	 * Attributes a tree, catching possible completion failure exception. Return
 	 * the tree's type.
-	 * 
-	 * @param tree The tree to be visited
-	 * @param env The environment visitor argument.
+	 *
+	 * @param tree      The tree to be visited
+	 * @param env       The environment visitor argument.
 	 * @param protoKind The proto-kind of visitor argument.
 	 * @param protoType The proto-type of visitor argument.
 	 * @return
@@ -255,7 +251,6 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	 * Evaluates a const variable's initializer, unless this has already been
 	 * finished, and set variable's constant value, if the initializer is
 	 * constant.
-	 * @param sym
 	 */
 	private void evaluateInit(VarSymbol v)
 	{
@@ -264,7 +259,8 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		Type itype = attribExpr(((VarDef) evalEnv.info).init, evalEnv, v.type);
 		if (itype.constValue != null)
 		{
-			v.constValue = v.constValue = cfold.coerce(itype, v.type).constValue;
+			v.constValue = v.constValue = cfold
+					.coerce(itype, v.type).constValue;
 		}
 	}
 
@@ -272,7 +268,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	 * Optimization: To avoid allocating a new methodtype for every attribution
 	 * of an Apply node, we use a reservoir.
 	 */
-	ArrayQueue<MethodType> methTemplateSupply = new ArrayQueue<>(10);
+	ArrayDeque<MethodType> methTemplateSupply;
 
 	/**
 	 * Obtain an otherwise unused method type with given argument types. Take it
@@ -281,10 +277,10 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	Type newMethTemplate(List<Type> argtypes)
 	{
 		if (methTemplateSupply.isEmpty())
-		    methTemplateSupply.add(new MethodType(null, null, null));
+			methTemplateSupply.add(new MethodType(null, null, null));
 
 		// obtains the first element cached
-		MethodType mt = methTemplateSupply.remove(0);
+		MethodType mt = methTemplateSupply.poll();
 		mt.paramTypes = argtypes;
 		return mt;
 	}
@@ -293,18 +289,19 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	 * Checks kind and type of given tree against proto-kind and proto-type. If
 	 * checks succeeds, stores type in tree and return it. Otherwise fails,
 	 * store errType in tree and return it.
-	 * 
+	 * <p>
 	 * No checks performed if the proto-type is a method type. It is not
 	 * neccesary in this case since we know that kind and type are correct.
-	 * @param tree The tree whose kind and type is checked
-	 * @param owntype The computed type of this tree.
-	 * @param ownkind The computed kind of this tree.
+	 *
+	 * @param tree       The tree whose kind and type is checked
+	 * @param owntype    The computed type of this tree.
+	 * @param ownkind    The computed kind of this tree.
 	 * @param expectKind The expected kind of this tree.
 	 * @param expectType The expected type of this tree.
 	 * @return
 	 */
 	private Type check(Tree tree, Type owntype, int ownkind, int expectKind,
-	        Type expectType)
+			Type expectType)
 	{
 		if (owntype.tag != ERROR && expectType.tag != FUNCTION)
 		{
@@ -315,8 +312,8 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 			else
 			{
 				log.error(tree.pos, "unexpected.type",
-				        Resolve.kindNames(expectKind),
-				        Resolve.kindName(ownkind));
+						Resolve.kindNames(expectKind),
+						Resolve.kindName(ownkind));
 				owntype = new Type.ErrorType(syms.errSymbol);
 			}
 		}
@@ -336,11 +333,11 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	 * its constant type else if symbol is a method, return its result type
 	 * otherwise return its type. Otherwise return errType.
 	 *
-	 * @param tree The syntax tree representing the identifier
-	 * @param sym The symbol representing the identifier.
-	 * @param env The current environment.
+	 * @param tree  The syntax tree representing the identifier
+	 * @param sym   The symbol representing the identifier.
+	 * @param env   The current environment.
 	 * @param pkind The set of expected kinds.
-	 * @param pt The expected type.
+	 * @param pt    The expected type.
 	 */
 	Type checkId(Tree tree, Symbol sym, Env env, int pkind, Type pt)
 	{
@@ -351,7 +348,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 				VarSymbol v = (VarSymbol) sym;
 				owntype = sym.type;
 				if (v.constValue != null)
-				    owntype = owntype.constType(v.constValue);
+					owntype = owntype.constType(v.constValue);
 				break;
 
 			case ERR:
@@ -359,8 +356,8 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 				break;
 
 			default:
-				throw new AssertionError("unexpected kind: " + sym.kind
-				        + " in tree " + tree);
+				throw new AssertionError(
+						"unexpected kind: " + sym.kind + " in tree " + tree);
 
 		}
 
@@ -371,18 +368,19 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	 * Check that variable is initialized and evaluate the variable's
 	 * initializer, if not yet done. Also check that variable is not referenced
 	 * before it is defined.
+	 *
 	 * @param tree The tree making up the variable reference.
-	 * @param env The current environment.
-	 * @param v The variable's symbol.
+	 * @param env  The current environment.
+	 * @param v    The variable's symbol.
 	 */
 	private void checkInit(Ident tree, Env env, VarSymbol v)
 	{
-		if (v.pos > tree.pos
-		        && canOwnInitializer(v)
-		        && ((v.flags & STATIC) != 0) == Resolve.isStatic(env)
-		        && (env.tree.tag != Tree.ASSIGN || TreeInfo
-		                .skipParens(((Assign) env.tree).lhs) != tree))
-		    log.error(tree.pos, "illegal.forward.ref");
+		if (v.pos > tree.pos && canOwnInitializer(v)
+				&& ((v.flags & STATIC) != 0) == Resolve.isStatic(env) && (
+				env.tree.tag != Tree.ASSIGN
+						|| TreeInfo.skipParens(((Assign) env.tree).lhs)
+						!= tree))
+			log.error(tree.pos, "illegal.forward.ref");
 		evaluateInit(v);
 	}
 
@@ -396,20 +394,17 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		return (sym.kind & VAR) != 0;
 	}
 
-	@Override
-	public void visitTopLevel(TopLevel tree)
+	@Override public void visitTopLevel(TopLevel tree)
 	{
 
 	}
 
-	@Override
-	public void visitImport(Import tree)
+	@Override public void visitImport(Import tree)
 	{
 
 	}
 
-	@Override
-	public void visitMethodDef(MethodDef tree)
+	@Override public void visitMethodDef(MethodDef tree)
 	{
 		Env localEnv = enter.methodEnv(tree, env);
 		MethodSymbol m = tree.sym;
@@ -424,8 +419,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		result = tree.type = m.type;
 	}
 
-	@Override
-	public void visitVarDef(VarDef tree)
+	@Override public void visitVarDef(VarDef tree)
 	{
 		VarSymbol v = tree.sym;
 		if (tree.init != null)
@@ -436,32 +430,29 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 			else
 			{
 				Type itype = attribExpr(tree.init,
-				        enter.initEnv((VarDef) tree, env), v.type);
+						enter.initEnv((VarDef) tree, env), v.type);
 			}
 			v.pos = tree.pos;
 		}
 		result = tree.type = v.type;
 	}
 
-	@Override
-	public void visitSkip(Skip tree)
+	@Override public void visitSkip(Skip tree)
 	{
 		result = null;
 	}
 
-	@Override
-	public void visitBlock(Block tree)
+	@Override public void visitBlock(Block tree)
 	{
 		Env localEnv = env.dup(tree, ((AttrContext) env.info)
-		        .dup(((AttrContext) env.info).scope.dup()));
+				.dup(((AttrContext) env.info).scope.dup()));
 
 		attribStats(tree.stats, localEnv);
 		((AttrContext) localEnv.info).scope.leave();
 		result = null;
 	}
 
-	@Override
-	public void visitIf(If tree)
+	@Override public void visitIf(If tree)
 	{
 		attribExpr(tree.cond, env, new Type(BOOL, null));
 		attribExpr(tree.thenpart, env, pt);
@@ -472,36 +463,35 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		result = null;
 	}
 
-	@Override
-	public void visitSwitch(Switch tree)
+	@Override public void visitSwitch(Switch tree)
 	{
 		Type seltype = attribExpr(tree.selector, env, syms.intType);
 		Env switchEnv = env.dup(tree, ((AttrContext) env.info)
-		        .dup(((AttrContext) env.info).scope.dup()));
+				.dup(((AttrContext) env.info).scope.dup()));
 
 		Set labels = new HashSet();
 		boolean hasDefault = false;
-		for (Tree c : tree.cases)
+		for (Case cc : tree.cases)
 		{
-			Case cc = (Case) c;
 			Env caseEnv = switchEnv.dup(cc, ((AttrContext) env.info)
-			        .dup(((AttrContext) switchEnv.info).scope.dup()));
+					.dup(((AttrContext) switchEnv.info).scope.dup()));
 
-			if (cc.pat != null)
+			if (cc.values != null)
 			{
-				Type pattype = attribExpr(cc.pat, caseEnv, syms.intType);
+				Type pattype = attribExpr(cc.caseBody, caseEnv, syms.intType);
 				if (pattype.tag == ERROR)
 				{
 					if (pattype.constValue == null)
-						log.error(cc.pat.pos, "const.expression.required");
+						log.error(cc.pos, "const.expression.required");
 					else if (labels.contains(pattype.constValue))
-						log.error(cc.pat.pos, "duplicate.case.label");
+						log.error(cc.pos, "duplicate.case.label");
 					else
 					{
-						check.checkType(cc.pat.pos, pattype, seltype);
+						check.checkType(cc.pos, pattype, seltype);
 						labels.add(pattype.constValue);
 					}
 				}
+
 			}
 			else if (hasDefault)
 			{
@@ -511,55 +501,53 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 			{
 				hasDefault = true;
 			}
-			attribStats(cc.stats, caseEnv);
+			attribStat(cc.caseBody, caseEnv);
 			((AttrContext) caseEnv.info).scope.leave();
-			addVars(cc.stats, ((AttrContext) switchEnv.info).scope);
+			addVars((Block) cc.caseBody, ((AttrContext) switchEnv.info).scope);
 		}
 		((AttrContext) switchEnv.info).scope.leave();
 		result = null;
 	}
 
 	/**
-	 * Add any variable defined in stats into switch scope.
-	 * 
-	 * @param trees
+	 * Add any variable defined in caseBody into switch scope.
+	 *
+	 * @param caseBody
 	 * @param switchScope
 	 */
-	private void addVars(List<Tree> trees, Scope switchScope)
+	private void addVars(Block caseBody, Scope switchScope)
 	{
-		for (Tree tree : trees)
+		for (Tree tree : caseBody.stats)
 		{
 			if (tree.tag == Tree.VARDEF)
-			    switchScope.enter(((VarDef) tree).sym);
+				switchScope.enter(((VarDef) tree).sym);
 		}
 	}
 
 	private final Type boolType = new Type(BOOL, null);
 
-	@Override
-	public void visitForLoop(ForLoop tree)
+	@Override public void visitForLoop(ForLoop tree)
 	{
 		Env loopEnv = env.dup(env.tree, ((AttrContext) env.info)
-		        .dup(((AttrContext) env.info).scope.dup()));
+				.dup(((AttrContext) env.info).scope.dup()));
 
 		if (tree.init != null && !tree.init.isEmpty())
-		    attribStats(tree.init, loopEnv);
-		if (tree.cond != null) attribExpr(tree.cond, loopEnv, boolType);
+			attribStats(tree.init, loopEnv);
+		if (tree.cond != null)
+			attribExpr(tree.cond, loopEnv, boolType);
 		if (tree.step != null && !tree.step.isEmpty())
-		    attribStats(tree.step, loopEnv);
+			attribStats(tree.step, loopEnv);
 		((AttrContext) loopEnv.info).scope.leave();
 		result = null;
 	}
 
-	@Override
-	public void visitBreak(Break tree)
+	@Override public void visitBreak(Break tree)
 	{
 		tree.target = findJumpTarget(tree.pos, tree.tag, null, env);
 		result = null;
 	}
 
-	@Override
-	public void visitContinue(Continue tree)
+	@Override public void visitContinue(Continue tree)
 	{
 		tree.target = findJumpTarget(tree.pos, tree.tag, null, env);
 		result = null;
@@ -569,7 +557,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	 * Returns the jump target of break, goto and continue statement, if exists,
 	 * report error if not. Note that the target of a goto or break , continue
 	 * is the non-labelled statement tree referred to by the label.
-	 * 
+	 *
 	 * @param pos
 	 * @param tag
 	 * @param env
@@ -593,11 +581,11 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 				case Tree.DOLOOP:
 				case Tree.WHILELOOP:
 				case Tree.FORLOOP:
-					if (label == null) 
+					if (label == null)
 						return (Labelled) env1.tree;
 					break;
 				case Tree.SWITCH:
-					if (label == null && tag == Tree.BREAK) 
+					if (label == null && tag == Tree.BREAK)
 						return (Labelled) env1.tree;
 					break;
 				case Tree.METHODDEF:
@@ -616,15 +604,13 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		return null;
 	}
 
-	@Override
-	public void visitGoto(Goto tree)
+	@Override public void visitGoto(Goto tree)
 	{
 		tree.target = findJumpTarget(tree.pos, tree.tag, tree.label, env);
 		result = null;
 	}
 
-	@Override
-	public void visitDoLoop(DoLoop tree)
+	@Override public void visitDoLoop(DoLoop tree)
 	{
 		attribStat(tree.body, env.dup(tree));
 		attribExpr(tree.cond, env, boolType);
@@ -632,31 +618,28 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 
 	}
 
-	@Override
-	public void visitWhileLoop(WhileLoop tree)
+	@Override public void visitWhileLoop(WhileLoop tree)
 	{
 		attribExpr(tree.cond, env, boolType);
 		attribStat(tree.body, env.dup(tree));
 		result = null;
 	}
 
-	@Override
-	public void visitCase(Case tree)
+	@Override public void visitCase(Case tree)
 	{
 		visitTree(tree);
 	}
 
-	@Override
-	public void visitLabelled(Labelled tree)
+	@Override public void visitLabelled(Labelled tree)
 	{
 		Env env1 = env;
 		while (env1 != null && env1.tree.tag != Tree.METHODDEF)
 		{
 			if (env1.tree.tag == Tree.LABELLED
-			        && ((Tree.Labelled) env1.tree).label == tree.label)
+					&& ((Tree.Labelled) env1.tree).label == tree.label)
 			{
 				log.error(tree.pos, "label.already.in.use",
-				        tree.label.toString());
+						tree.label.toString());
 				break;
 			}
 			env1 = env1.next;
@@ -665,8 +648,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		result = null;
 	}
 
-	@Override
-	public void visitReturn(Return tree)
+	@Override public void visitReturn(Return tree)
 	{
 		if (env.enclMethod == null)
 			log.error(tree.pos, "return.outside.method.definition");
@@ -676,8 +658,8 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 			if (m.type.returnType().tag == VOID)
 			{
 				if (tree.expr != null)
-				    log.error(tree.expr.pos,
-				            "cannot.return.value.from.void.method");
+					log.error(tree.expr.pos,
+							"cannot.return.value.from.void.method");
 			}
 			else if (tree.expr == null)
 			{
@@ -691,18 +673,17 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		result = null;
 	}
 
-	@Override
-	public void visitSelect(Select tree)
+	@Override public void visitSelect(Select tree)
 	{
 		visitTree(tree);
 	}
 
 	/**
 	 * Visitor method for method invocation.
+	 *
 	 * @param tree
 	 */
-	@Override
-	public void visitApply(Apply tree)
+	@Override public void visitApply(Apply tree)
 	{
 		Env localEnv = env;
 		Name calleeName = TreeInfo.name(tree.meth);
@@ -715,125 +696,129 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		result = check(tree, mtype.returnType(), VAL, pkind, pt);
 	}
 
-	@Override
-	public void visitAssign(Assign tree)
+	@Override public void visitAssign(Assign tree)
 	{
 		Type owntype = attribTree(tree.lhs, env.dup(tree), VAR, pt);
 		attribExpr(tree.rhs, env, owntype);
 		result = check(tree, owntype, VAL, pkind, pt);
 	}
 
-	@Override
-	public void visitAssignop(Assignop tree)
+	@Override public void visitAssignop(Assignop tree)
 	{
 		List<Type> argtypes = Arrays.asList(new Type[] {
-		        attribTree(tree.lhs, env, VAR, Type.noType),
-		        attribExpr(tree.rhs, env) });
+				attribTree(tree.lhs, env, VAR, Type.noType),
+				attribExpr(tree.rhs, env) });
 
-		Symbol operator = tree.operator = rs.resolveOperator(tree.pos, tree.tag
-		        - Tree.ASGOffset, env, argtypes);
+		Symbol operator = rs
+				.resolveOperator(tree.pos, tree.tag - Tree.ASGOffset, env,
+						argtypes);
+		tree.operator = (OperatorSymbol) operator;
 		Type owntype = argtypes.get(0);
 		if (operator.kind == MTH)
 		{
 			if (owntype.tag <= DOUBLE)
 				check.checkCastable(tree.rhs.pos, operator.type.returnType(),
-				        owntype);
+						owntype);
 			else
 				check.checkType(tree.rhs.pos, operator.type.returnType(),
-				        owntype);
+						owntype);
 		}
 		result = check(tree, owntype, VAL, pkind, pt);
 	}
 
-	@Override
-	public void visitExec(Exec tree)
-	{
-        attribExpr(tree.expr, env);
-        result = null;
-
-	}
-
-	@Override
-	public void visitConditional(Conditional tree)
-	{
-        attribExpr(tree.cond, env, syms.boolType);
-        attribExpr(tree.truepart, env, pt);
-        attribExpr(tree.falsepart, env, pt);
-        result = check(tree,
-                condType(tree.pos, tree.cond.type, tree.truepart.type,
-                tree.falsepart.type), VAL, pkind, pt);
-	}
-
-    /**
-     * Compute the type of a conditional expression, after
-     *  checking that it exists. See Spec 15.25.
-     *
-     *  @param pos      The source position to be used for error diagnostics.
-     *  @param condtype The type of the expression's condition.
-     *  @param thentype The type of the expression's then-part.
-     *  @param elsetype The type of the expression's else-part.
-     */
-   private Type condType(int pos, Type condtype, Type thentype, Type elsetype) {
-       Type ctype = condType1(pos, condtype, thentype, elsetype);
-       return ((condtype.constValue != null) && (thentype.constValue != null) &&
-               (elsetype.constValue != null)) ? cfold.coerce(
-               (((Number) condtype.constValue).intValue() != 0) ? thentype :
-               elsetype, ctype):
-              ctype;
-   }
-	
-   /**
-    * Compute the type of a conditional expression, after
-    *  checking that it exists.  Does not take into
-    *  account the special case where condition and both arms are constants.
-    *
-    *  @param pos      The source position to be used for error diagnostics.
-    *  @param condtype The type of the expression's condition.
-    *  @param thentype The type of the expression's then-part.
-    *  @param elsetype The type of the expression's else-part.
-    */
-  private Type condType1(int pos, Type condtype, Type thentype, Type elsetype) {
-      if (thentype.tag < INT && elsetype.tag == INT &&
-              elsetype.isAssignable(thentype))
-          return thentype.basetype();
-      else if (elsetype.tag < INT && thentype.tag == INT &&
-              thentype.isAssignable(elsetype))
-          return elsetype.basetype();
-      else if (thentype.tag <= DOUBLE && elsetype.tag <= DOUBLE)
-          for (int i = BYTE; i <= DOUBLE; i++) {
-              Type candidate = syms.typeOfTag[i];
-              if (thentype.isSubType(candidate) && elsetype.isSubType(candidate))
-                  return candidate;
-          }
-      if (thentype.tsym == syms.stringType.tsym &&
-              elsetype.tsym == syms.stringType.tsym)
-          return syms.stringType;
-      else if (thentype.isSubType(elsetype))
-          return elsetype.basetype();
-      else if (elsetype.isSubType(thentype))
-          return thentype.basetype();
-      else {
-          log.error(pos, "neither.conditional.subtype", thentype.toString(),
-                  elsetype.toString());
-          return thentype.basetype();
-      }
-  }
-   
-	@Override
-	public void visitParens(Parens tree)
+	@Override public void visitExec(Exec tree)
 	{
 		attribExpr(tree.expr, env);
-        result = null;
+		result = null;
+
 	}
 
-	@Override
-	public void visitUnary(Unary tree)
+	@Override public void visitConditional(Conditional tree)
 	{
-		Type argtype = (Tree.PREINC <= tree.tag && tree.tag <= Tree.POSTDEC) ? attribTree(
-		        tree.arg, env, VAR, Type.noType) : check.checkNonVoid(
-		        tree.arg.pos, attribExpr(tree.arg, env));
-		Symbol operator = tree.operator = rs.resolveUnaryOperator(tree.pos,
-		        tree.tag - Tree.ASGOffset, env, argtype);
+		attribExpr(tree.cond, env, syms.boolType);
+		attribExpr(tree.truepart, env, pt);
+		attribExpr(tree.falsepart, env, pt);
+		result = check(tree,
+				condType(tree.pos, tree.cond.type, tree.truepart.type,
+						tree.falsepart.type), VAL, pkind, pt);
+	}
+
+	/**
+	 * Compute the type of a conditional expression, after
+	 * checking that it exists. See Spec 15.25.
+	 *
+	 * @param pos      The source position to be used for error diagnostics.
+	 * @param condtype The type of the expression's condition.
+	 * @param thentype The type of the expression's then-part.
+	 * @param elsetype The type of the expression's else-part.
+	 */
+	private Type condType(int pos, Type condtype, Type thentype, Type elsetype)
+	{
+		Type ctype = condType1(pos, condtype, thentype, elsetype);
+		return ((condtype.constValue != null) && (thentype.constValue != null)
+				&&
+				(elsetype.constValue != null)) ?
+				cfold.coerce((((Number) condtype.constValue).intValue() != 0) ?
+								thentype :
+								elsetype, ctype) :
+				ctype;
+	}
+
+	/**
+	 * Compute the type of a conditional expression, after
+	 * checking that it exists.  Does not take into
+	 * account the special case where condition and both arms are constants.
+	 *
+	 * @param pos      The source position to be used for error diagnostics.
+	 * @param condtype The type of the expression's condition.
+	 * @param thentype The type of the expression's then-part.
+	 * @param elsetype The type of the expression's else-part.
+	 */
+	private Type condType1(int pos, Type condtype, Type thentype, Type elsetype)
+	{
+		if (thentype.tag < INT && elsetype.tag == INT &&
+				elsetype.isAssignable(thentype))
+			return thentype.basetype();
+		else if (elsetype.tag < INT && thentype.tag == INT &&
+				thentype.isAssignable(elsetype))
+			return elsetype.basetype();
+		else if (thentype.tag <= DOUBLE && elsetype.tag <= DOUBLE)
+		{
+			for (int i = BYTE; i <= DOUBLE; i++)
+			{
+				Type candidate = syms.typeOfTag[i];
+				if (thentype.isSubType(candidate) && elsetype.isSubType(candidate))
+					return candidate;
+			}
+		}
+		if (thentype.isSubType(elsetype))
+			return elsetype.basetype();
+		else if (elsetype.isSubType(thentype))
+			return thentype.basetype();
+		else
+		{
+			log.error(pos, "neither.conditional.subtype", thentype.toString(),
+					elsetype.toString());
+			return thentype.basetype();
+		}
+	}
+
+	@Override public void visitParens(Parens tree)
+	{
+		attribExpr(tree.expr, env);
+		result = null;
+	}
+
+	@Override public void visitUnary(Unary tree)
+	{
+		Type argtype = (Tree.PREINC <= tree.tag && tree.tag <= Tree.POSTDEC) ?
+				attribTree(tree.arg, env, VAR, Type.noType) :
+				check.checkNonVoid(tree.arg.pos, attribExpr(tree.arg, env));
+		Symbol operator = rs
+				.resolveUnaryOperator(tree.pos, tree.tag - Tree.ASGOffset, env,
+						argtype);
+		tree.operator = (OperatorSymbol)operator;
+
 		Type ownType = syms.errType;
 		if (operator.kind == MTH)
 		{
@@ -842,21 +827,20 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 			if (argtype.constValue != null)
 			{
 				Type ctype = cfold.fold1(opc, argtype);
-				if (tree.arg.type.tsym == syms.stringType.tsym)
-				    tree.arg.type = syms.stringType;
 			}
 		}
 		result = check(tree, ownType, VAL, pkind, pt);
 	}
 
-	@Override
-	public void visitBinary(Binary tree)
+	@Override public void visitBinary(Binary tree)
 	{
 		Type left = check.checkNonVoid(tree.lhs.pos, attribExpr(tree.lhs, env));
 		Type right = check
-		        .checkNonVoid(tree.lhs.pos, attribExpr(tree.rhs, env));
-		Symbol operator = tree.operator = rs.resolveBinaryOperator(tree.pos,
-		        tree.tag, env, left, right);
+				.checkNonVoid(tree.lhs.pos, attribExpr(tree.rhs, env));
+
+		Symbol operator = rs
+				.resolveBinaryOperator(tree.pos, tree.tag, env, left, right);
+		tree.operator = (OperatorSymbol)operator;
 
 		Type owntype = syms.errType;
 		if (operator.kind == MTH)
@@ -866,9 +850,9 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 			// a illegal bianry operator
 			if (tree.tag < Tree.OR || tree.tag > Tree.MOD)
 			{
-				log.error(tree.lhs.pos, "operator.cant.be.applied", treeinfo
-				        .operatorName(tree.tag).toString(), left.toString()
-				        + "," + right.toString());
+				log.error(tree.lhs.pos, "operator.cant.be.applied",
+						treeinfo.operatorName(tree.tag).toString(),
+						left.toString() + "," + right.toString());
 			}
 			// process constant folding
 			if (left.constValue != null && right.constValue != null)
@@ -877,14 +861,6 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 				if (ctype != null)
 				{
 					owntype = cfold.coerce(ctype, owntype);
-					if (tree.lhs.type.tsym == syms.stringType.tsym)
-					{
-						tree.lhs.type = syms.stringType;
-					}
-					if (tree.rhs.type.tsym == syms.stringType.tsym)
-					{
-						tree.rhs.type = syms.stringType;
-					}
 				}
 			}
 		}
@@ -892,8 +868,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 
 	}
 
-	@Override
-	public void visitTypeCast(TypeCast tree)
+	@Override public void visitTypeCast(TypeCast tree)
 	{
 		Type clazztype = attribType(tree.clazz, env);
 		Type exprtype = attribExpr(tree.expr, env);
@@ -905,8 +880,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		result = check(tree, owntype, VAL, pkind, pt);
 	}
 
-	@Override
-	public void visitIndexed(Indexed tree)
+	@Override public void visitIndexed(Indexed tree)
 	{
 		Type owntype = syms.errType;
 		Type atype = attribExpr(tree.indexed, env);
@@ -914,30 +888,28 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		if (atype.tag == ARRAY)
 			owntype = atype.elemType();
 		else if (atype.tag != ERROR)
-		    log.error(tree.pos, "array.require.but.not.found", atype.toString());
+			log.error(tree.pos, "array.require.but.not.found",
+					atype.toString());
 		result = check(tree, owntype, VAR, pkind, pt);
 	}
 
-	@Override
-	public void visitTypeArray(TypeArray tree)
+	@Override public void visitTypeArray(TypeArray tree)
 	{
 		Type etype = attribType(tree.elemtype, env);
-		result = check(tree, new ArrayType(etype, syms.arrayClass), TYP,
-		        pkind, pt);
+		result = check(tree, new ArrayType(etype, syms.arrayClass), TYP, pkind,
+				pt);
 
 	}
 
-	@Override
-	public void visitTypeIdent(TypeIdent tree)
+	@Override public void visitTypeIdent(TypeIdent tree)
 	{
 		result = check(tree, syms.typeOfTag[tree.typetag], TYP, pkind, pt);
 	}
 
-	@Override
-	public void visitLiteral(Literal tree)
+	@Override public void visitLiteral(Literal tree)
 	{
 		result = check(tree, litType(tree.typetag).constType(tree.value), VAL,
-		        pkind, pt);
+				pkind, pt);
 	}
 
 	/**
@@ -950,16 +922,15 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 
 	/**
 	 * Cannot resolve used identifier at moment
+	 *
 	 * @param tree
 	 */
-	@Override
-	public void visitIdent(Ident tree)
+	@Override public void visitIdent(Ident tree)
 	{
 		result = null;
 	}
 
-	@Override
-	public void visitNewArray(NewArray tree)
+	@Override public void visitNewArray(NewArray tree)
 	{
 		Type owntype = syms.errType;
 		Type elemtype;
@@ -984,7 +955,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 				if (pt.tag != ERROR)
 				{
 					log.error(tree.pos, "illegal.initializer.for.type",
-					        pt.toString());
+							pt.toString());
 				}
 				elemtype = syms.errType;
 			}
@@ -997,8 +968,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 		result = check(tree, owntype, VAL, pkind, pt);
 	}
 
-	@Override
-	public void visitErroneous(Erroneous erroneous)
+	@Override public void visitErroneous(Erroneous erroneous)
 	{
 		result = erroneous.type = syms.errType;
 	}

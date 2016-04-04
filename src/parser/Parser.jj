@@ -701,13 +701,13 @@ Tree formalParameter():
 Tree block():
 {
     int pos;
-    List<Tree> stats, res = new ArrayList<Tree>();
+    List<Tree> caseBody, res = new ArrayList<Tree>();
 }
 {
     t = "{" { pos = position(); } 
-    ( stats = blockStatement()
+    ( caseBody = blockStatement()
     	{
-    		res.addAll(stats);
+    		res.addAll(caseBody);
     	}
     )*
     	
@@ -942,16 +942,16 @@ List<Tree> forUpdate():
  */
 List<Tree> stmtExprs():
 {
-	List<Tree> stats = new ArrayList<Tree>();
+	List<Tree> caseBody = new ArrayList<Tree>();
 	Tree res;
 }
 {
-	res = stmtExpr() {stats.add(res);}
+	res = stmtExpr() {caseBody.add(res);}
 	(
-	"," res = stmtExpr() {stats.add(res);}
+	"," res = stmtExpr() {caseBody.add(res);}
 	)*
 	{
-		return stats;
+		return caseBody;
 	}
 }
 
@@ -1027,7 +1027,7 @@ List<Case> switchBlockStatementGroups():
         )+
         stmts = blockStatement()
         {
-            cases.add(F.at(pos).Case(values, stmts));
+            cases.add(F.at(pos).Case(values, F.at(pos).Block(stmts)));
         }
     )*
     [
@@ -1036,7 +1036,7 @@ List<Case> switchBlockStatementGroups():
             }
         stmts = blockStatement()
         {
-            cases.add(F.at(pos).Case(values, stmts));
+            cases.add(F.at(pos).Case(values, F.at(pos).Block(stmts)));
         }
     ]
 	{	

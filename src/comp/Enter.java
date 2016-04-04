@@ -1,14 +1,17 @@
 package comp;
 
-
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
+
 import exception.CompletionFailure;
 import symbol.Scope;
 import symbol.Symbol;
 import symbol.Symbol.MethodSymbol;
-import symbol.Symbol.VarSymbol;
+import symbol.Symbol.TopLevelSymbol;
+import symbol.VarSymbol;
 import symbol.SymbolKinds;
 import type.Type;
 import type.TypeTags;
@@ -19,15 +22,16 @@ import ast.*;
 import ast.Tree.*;
 
 /**
- * This class enters symbols for all encountered definition into the symbol
- * table.
- * 
- * It operates over tree with descending recursively down for top level variable
- * definition, type definition and method definition.
- * 
- * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
- * @version 2016年1月14日
+ * <p>This class enters symbols for all encountered definition into the symbol
+ * table. The pass consists of two phases, orgnized as follows:
+ *
+ * <p>In the first stage, all global variable definition and function signature
+ * (except that function body) are entered into their enclosing scope.
+ * <p>In the second stage, all of function body to be completed desending recursively
+ * down.
+ *
+ * @author JianpingZeng
+ * @version 1.0
  */
 public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 {
@@ -39,7 +43,12 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	private Attr attr;
 	
 	/**
-	 * Where all of unattributed method in the stage of scope entering stores 
+	 * Where all of unattributed method in the stage of scope entering stores.
+	 *
+	 * <p>The {@code enter} class serves as entering all symbols, such as funct
+	 * ion declaration or variable definition etc, which consists of two stages,
+	 * first entering all function header except function body into scope, then
+	 * all of function body could be attributed after in second stage.
 	 */
 	private Todo<Env> todo;
 
@@ -50,9 +59,15 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	
 	/**
 	 * Maps method symbol to env attached to it.
+	 * <p>This map is used for memorizing the method symbol and corresponding
+	 * context environment, so that the uses of function can be proceded before
+	 * function declaration or definition.
 	 */
 	HashMap<MethodSymbol, Env> methodEnvs;
-	
+
+	boolean completionEnabled = true;
+
+	LinkedList<MethodSymbol> uncompleted;
 	/**
 	 * A singleton method for constructing merely instance of this class.
 	 * 
@@ -68,7 +83,10 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 		}
 		return instance;
 	}
-
+	/**
+	 * Constructs a new instance of {@code Enter}.
+	 * @param context   A instance of {@code Context}.
+	 */
 	public Enter(Context context)
 	{
 		super();
@@ -78,31 +96,76 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 		check = Check.instance(context);
 		attr = Attr.instance(context);
 		todo = Todo.instance(context);
+		uncompleted = new LinkedList<>();
+	}
+
+	public void main(List<Tree> trees)
+	{
+		complete(trees, null);
 	}
 
 	/**
-	 * A entry for entering sorts of symbols into corresponding scope. Every
-	 * scope is attached to adaptable symbol.
+	 * A entry method for entering sorts of symbols into corresponding scope.
+	 * Every scope is attached to adaptable symbol.
 	 * 
 	 * @param trees
 	 */
-	public void complete(List<Tree> trees)
+	private void complete(List<Tree> trees, TopLevelSymbol symbol)
 	{
+		LinkedList<MethodSymbol> prevUncompleted = uncompleted;
 		try
         {
-			for (Tree toplevel : trees)
-				toplevel.accept(this);
-			
-			for(java.util.Map.Entry<MethodSymbol, Env> entity 
-					: methodEnvs.entrySet())
-				todo.add(entity.getValue());			
+	        globalMemberEnter(trees, null);
+	        while (!uncompleted.isEmpty())
+	        {
+		        MethodSymbol methodSymbol = uncompleted.removeFirst();
+		        if (symbol == null || prevUncompleted == null)
+			        todo.add(methodEnvs.get(methodSymbol));
+		        else
+		            prevUncompleted.addLast(methodSymbol);
+	        }
         }
         catch (CompletionFailure e)
         {
         	e.printStackTrace();
         }
+		finally
+		{
+			uncompleted = prevUncompleted;
+		}
 	}
-	
+
+	/**
+	 * Enters global element,like global variable or function declaration into
+	 * enclosing scope.
+	 * @param trees
+	 * @param env
+	 */
+	private void globalMemberEnter(List<Tree> trees, Env env)
+	{
+		for (Tree tree : trees)
+			globalMemberEnter(tree, env);
+	}
+
+	private Type globalMemberEnter(Tree tree, Env env)
+	{
+		Env preEnv = this.env;
+		try
+		{
+			this.env = env;
+			tree.accept(this);
+			return result;
+		}
+		catch (CompletionFailure ex)
+		{
+			return check.completionError(tree.pos, ex);
+		}
+		finally
+		{
+			this.env = preEnv;
+		}
+	}
+
 	/**
 	 * Entering into a new scope for global symbols or local symbols.
 	 * 
@@ -110,7 +173,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	 * 
 	 * @return	a new local scope.
 	 */
-	private symbol.Scope enterScope(Env env)
+	private Scope enterScope(Env env)
 	{
 		// save current scope
 		return (env.tree.tag == Tree.TOPLEVEL) ? 
@@ -190,7 +253,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	{
 		// firstly, the current used environment be acquired
 		// secondly, corresponding scope also gotten 
-		symbol.Scope encScope = enterScope(env);
+		Scope encScope = enterScope(env);
 		
 		VarSymbol v = new VarSymbol(0, def.name, def.varType.type);
 		v.flags = check.checkFlags(def.pos, def.flags, v);
@@ -221,7 +284,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	private void enterMethodDef(MethodDef def)
 	{
 		// entering into the top level scope
-		symbol.Scope encScope = enterScope(env);
+		Scope encScope = enterScope(env);
 		MethodSymbol m = new MethodSymbol(0, def.name, null);
 		m.flags = check.checkFlags(def.pos, def.flags, m);
 		def.sym = m;
@@ -237,6 +300,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 		{
 			encScope.enter(m);
 		}
+		uncompleted.addLast(m);
 	}
 	
 	/**
@@ -281,13 +345,14 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	
     /**
      * Creates a fresh environment for TopLevel tree.
-     * @param tree
-     * @return
+     * @param tree  The instance of {@code TopLevel}.
+     * @return  A fresh context environment.
      */
-    Env topLevelEnv(TopLevel tree)
+    private Env topLevelEnv(TopLevel tree)
     {
     	Env localEnv = new Env(tree, new AttrContext());
     	localEnv.toplevel  = tree;
+	    tree.topScope = new Scope(tree.compilation);
     	((AttrContext)localEnv.info).scope = tree.topScope;
     	return localEnv;
     }
@@ -299,12 +364,11 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	@Override
 	public void visitTopLevel(TopLevel tree)
 	{
+		Name prev = log.useSource(tree.sourceFile);
+
 		// initialize a top level context envrionment
-		this.env = topLevelEnv(tree);
-		for (Tree def : tree.defs)
-		{
-			def.accept(this); 
-		}
+		globalMemberEnter(tree.defs, topLevelEnv(tree));
+		log.useSource(prev);
 		result = null;
 	}
 	
@@ -331,223 +395,13 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 	 */
 	@Override
 	public void visitTree(Tree that)
-	{	 
+	{
+		result = null;
 	}
 
 	@Override
     public void visitImport(Import tree)
     {
-	    // TODO Auto-generated method stub
-	    
-    }
 
-	@Override
-    public void visitSkip(Skip tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitBlock(Block tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitIf(If tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitSwitch(Switch tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitForLoop(ForLoop tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitBreak(Break tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitContinue(Continue tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitGoto(Goto tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitDoLoop(DoLoop tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitWhileLoop(WhileLoop tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitCase(Case tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitLabelled(Labelled tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitReturn(Return tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitSelect(Select tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitApply(Apply tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitAssign(Assign tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitExec(Exec tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitConditional(Conditional tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitParens(Parens tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitAssignop(Assignop tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitUnary(Unary tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitBinary(Binary tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitTypeCast(TypeCast tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitIndexed(Indexed tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitTypeArray(TypeArray tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitTypeIdent(TypeIdent tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitLiteral(Literal tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitIdent(Ident tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitNewArray(NewArray tree)
-    {
-	    // TODO Auto-generated method stub
-	    
-    }
-
-	@Override
-    public void visitErroneous(Erroneous erroneous)
-    {
-	    // TODO Auto-generated method stub
-	    
     }
 }
