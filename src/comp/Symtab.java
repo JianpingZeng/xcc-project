@@ -6,7 +6,7 @@ import exception.CompletionFailure;
 import ast.Flags;
 import utils.*;
 import symbol.*;
-import symbol.Symbol.TypeSymbol;
+import symbol.TypeSymbol;
 import symbol.Symbol.*;
 import type.*;
 import type.Type.*;
@@ -61,7 +61,6 @@ public class Symtab implements Flags, OpCodes
 	public final Type boolType;
 	public final Type voidType;
 	public final Type errType;
-	public final Type stringType;
 
 	public final TopLevelSymbol predefTopLevelSymbol;
 
@@ -156,7 +155,6 @@ public class Symtab implements Flags, OpCodes
 		doubleType = new Type(TypeTags.DOUBLE, null);
 		boolType = new Type(TypeTags.BOOL, null);
 		voidType = new Type(TypeTags.VOID, null);
-		stringType = new Type(TypeTags.STRING, null);
 		unknownType = new Type(TypeTags.UNKNOWN, null)
 		{
 
@@ -190,12 +188,11 @@ public class Symtab implements Flags, OpCodes
 		initType(doubleType, "double");
 		initType(boolType, "bool");
 		initType(voidType, "void");
-		initType(stringType, "string");
 		initType(errType, errSymbol);
 		initType(unknownType, "<any?>");
 
 		this.predefTopLevelSymbol = new TopLevelSymbol(names.empty);
-		Scope scope = new Scope();
+		Scope scope = new Scope(predefTopLevelSymbol);
 		predefTopLevelSymbol.topScope = scope;
 		scope.enter(byteType.tsym);
 		scope.enter(shortType.tsym);
@@ -231,17 +228,6 @@ public class Symtab implements Flags, OpCodes
         enterUnop("--", floatType, floatType, fsub);
         enterUnop("--", doubleType, doubleType, dsub);
         enterUnop("!", boolType, boolType, bool_not);
-        enterBinop("+", stringType, stringType, stringType, string_add);
-        enterBinop("+", stringType, intType, stringType, string_add);
-        enterBinop("+", stringType, longType, stringType, string_add);
-        enterBinop("+", stringType, floatType, stringType, string_add);
-        enterBinop("+", stringType, doubleType, stringType, string_add);
-        enterBinop("+", stringType, boolType, stringType, string_add);
-        enterBinop("+", intType, stringType, stringType, string_add);
-        enterBinop("+", longType, stringType, stringType, string_add);
-        enterBinop("+", floatType, stringType, stringType, string_add);
-        enterBinop("+", doubleType, stringType, stringType, string_add);
-        enterBinop("+", boolType, stringType, stringType, string_add);
         enterBinop("+", intType, intType, intType, iadd);
         enterBinop("+", longType, longType, longType, ladd);
         enterBinop("+", floatType, floatType, floatType, fadd);

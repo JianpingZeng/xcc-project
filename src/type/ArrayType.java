@@ -1,6 +1,6 @@
 package type;
 
-import symbol.Symbol.TypeSymbol;
+import symbol.TypeSymbol;
 
 
 /**

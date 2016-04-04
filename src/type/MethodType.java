@@ -1,7 +1,7 @@
 package type;
-import java.util.*;
 
-import symbol.Symbol.TypeSymbol;
+import java.util.*;
+import symbol.TypeSymbol;
 
 
 /**
