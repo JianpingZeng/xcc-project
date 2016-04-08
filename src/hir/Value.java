@@ -1,7 +1,7 @@
 package hir;
 
-import ci.CiConstant;
-import ci.CiKind;
+import lir.ci.CiConstant;
+import lir.ci.CiKind;
 import type.Type;
 import utils.Name;
 

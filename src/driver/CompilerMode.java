@@ -1,4 +1,4 @@
-package compiler;
+package driver;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -21,8 +21,8 @@ enum CompilerMode {
     DumpSemantic ("--dump-semantic"),
     DumpReference ("--dump-reference"),
     DumpIR ("--dump-ir"),
-    DumpAsm ("--dump-asm"),
-    PrintAsm ("--print-asm"),
+    DumpAsm ("--dump-asm.Label"),
+    PrintAsm ("--print-asm.Label"),
     Compile ("-S"),
     Assemble ("-c"),
     Link ("--link");
@@ -42,8 +42,8 @@ enum CompilerMode {
         modes.put("--dump-semantic", DumpSemantic);
         modes.put("--dump-reference", DumpReference);
         modes.put("--dump-ir", DumpIR);
-        modes.put("--dump-asm", DumpAsm);
-        modes.put("--print-asm", PrintAsm);
+        modes.put("--dump-asm.Label", DumpAsm);
+        modes.put("--print-asm.Label", PrintAsm);
         modes.put("-S", Compile);
         modes.put("-c", Assemble);
     }

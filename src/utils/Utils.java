@@ -54,4 +54,9 @@ public class Utils
 	{
 		return val != 0 && (val & val -1) == 0;
 	}
+
+	public static RuntimeException shouldNotReachHere()
+	{
+		throw new InternalError("should not reach here");
+	}
 }
