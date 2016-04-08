@@ -104,6 +104,42 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 		complete(trees, null);
 	}
 
+	public void main(Tree tree)
+	{
+		complete(tree, null);
+	}
+
+	/**
+	 * A entry method for entering sorts of symbols into corresponding scope.
+	 * Every scope is attached to adaptable symbol.
+	 *
+	 * @param tree
+	 */
+	private void complete(Tree tree, TopLevelSymbol symbol)
+	{
+		LinkedList<MethodSymbol> prevUncompleted = uncompleted;
+		try
+		{
+			globalMemberEnter(tree, null);
+			while (!uncompleted.isEmpty())
+			{
+				MethodSymbol methodSymbol = uncompleted.removeFirst();
+				if (symbol == null || prevUncompleted == null)
+					todo.add(methodEnvs.get(methodSymbol));
+				else
+					prevUncompleted.addLast(methodSymbol);
+			}
+		}
+		catch (CompletionFailure e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			uncompleted = prevUncompleted;
+		}
+	}
+
 	/**
 	 * A entry method for entering sorts of symbols into corresponding scope.
 	 * Every scope is attached to adaptable symbol.

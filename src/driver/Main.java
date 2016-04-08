@@ -1,6 +1,5 @@
-package compiler;
+package driver;
 
-import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.LinkedList;
 import java.util.List;
@@ -185,7 +184,7 @@ public class Main
 		Context context = new Context();
 		options = Options.instance(context);
 		this.filenames = new LinkedList<>();
-		Compiler comp = null;
+		CompileInterface comp = null;
 		try
 		{
 			if (args.length == 0)
@@ -210,7 +209,7 @@ public class Main
 			}
 		
 			context.put(utils.Log.outKey, out);
-			comp = Compiler.make(context);
+			comp = CompileInterface.make(context);
 			if (comp == null)
 				return EXIT_SYSERR;
 			comp.compile(filenames);
