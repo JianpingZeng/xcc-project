@@ -1,4 +1,4 @@
-package compiler;
+package driver;
 
 import java.util.HashMap;
 

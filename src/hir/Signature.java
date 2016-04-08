@@ -1,9 +1,7 @@
 package hir;
 
-import ci.CiKind;
+import lir.ci.CiKind;
 import type.Type;
-
-import java.util.List;
 
 /**
  * This class represents a signature of a function, which consists the name of

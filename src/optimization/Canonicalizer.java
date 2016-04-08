@@ -1,7 +1,7 @@
 package optimization;
 
-import ci.CiConstant;
-import ci.CiKind;
+import lir.ci.CiConstant;
+import lir.ci.CiKind;
 import hir.*;
 import hir.Instruction.*;
 import hir.Value.Constant;
