@@ -1,6 +1,6 @@
 package hir;
 
-import ci.CiKind;
+import lir.ci.CiKind;
 
 /**
  * @author Jianping Zeng

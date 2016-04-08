@@ -1,6 +1,6 @@
 package hir;
 
-import ci.CiKind;
+import lir.ci.CiKind;
 import exception.SemanticError;
 import type.Type;
 import utils.Pair;

@@ -1,6 +1,10 @@
 package hir;
 
 
+import asm.Label;
+import lir.LIRList;
+import lir.MachineBlock;
+
 import java.util.*;
 
 /**
@@ -64,9 +68,20 @@ public final class BasicBlock implements Iterable<Instruction>
 
 	public int loopDepth;
 
+	/**
+	 * A block containing Generated machine instruction corresponding to
+	 * HIR instruction for specified target.
+	 */
+	private MachineBlock machineBlock;
+
 	public boolean isCriticalEdgeSplit()
 	{
 		return (blockFlags | BlockFlag.CriticalEdgeSplit.mask) != 0;
+	}
+
+	public Label label()
+	{
+		return machineBlock.label;
 	}
 
 	public static enum BlockFlag
@@ -464,5 +479,24 @@ public final class BasicBlock implements Iterable<Instruction>
 	public boolean checkBlockFlags(BlockFlag flag)
 	{
 		return (blockFlags & flag.mask) != 0;
+	}
+
+	public void setMachineBlock(MachineBlock block)
+	{
+		assert block != null;
+		this.machineBlock = block;
+	}
+
+	public  MachineBlock getMachineBlock()
+	{
+		if (machineBlock == null)
+			machineBlock = new MachineBlock(this);
+
+		return machineBlock;
+	}
+
+	public void setLIR(LIRList lir)
+	{
+		getMachineBlock().setLIR(lir);
 	}
 }

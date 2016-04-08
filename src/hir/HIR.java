@@ -1,5 +1,6 @@
 package hir; 
 
+import java.util.Iterator;
 import java.util.List;
 
 import optimization.ConstantProp;
@@ -98,5 +99,10 @@ public class HIR
 		// numbering.
 		for (Method m : methods)
 			new GVN(m);
+	}
+
+	public Iterator<Method> iterator()
+	{
+		return methods.iterator();
 	}
 }
