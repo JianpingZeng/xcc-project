@@ -1,7 +1,7 @@
 package lir;
 
 import lir.ci.CiValue;
-
+import lir.FrameMap.StackBlock;
 /**
  * LIR instruction used in translating {@link hir.Instruction.Alloca}.
  *

@@ -1,10 +1,9 @@
 package lir;
 
-import lir.LIRInstruction;
 import lir.ci.*;
 
 /**
- * An instruction operand. If the register allocator can modify this operand
+ * An instruction LIROperand. If the register allocator can modify this LIROperand
  * (e.g. to replace a variable with a register), then it will have a corresponding
  * entry in the {@link LIRInstruction#allocatorOperands} list of an instruction.
  *
@@ -13,7 +12,7 @@ import lir.ci.*;
 public class LIROperand
 {
 	/**
-	 * The value of the operand.
+	 * The value of the LIROperand.
 	 */
 	CiValue value;
 
@@ -23,10 +22,10 @@ public class LIROperand
 	}
 
 	/**
-	 * Gets the value of this operand. This may still be a {@linkplain CiVariable}
-	 * if the register allocator has not yet assigned a register or stack address to the operand.
+	 * Gets the value of this LIROperand. This may still be a {@linkplain CiVariable}
+	 * if the register allocator has not yet assigned a register or stack address to the LIROperand.
 	 *
-	 * @param inst the instruction containing this operand
+	 * @param inst the instruction containing this LIROperand
 	 */
 	public CiValue value(LIRInstruction inst)
 	{
@@ -77,14 +76,14 @@ public class LIROperand
 	}
 
 	/**
-	 * An address operand with at least one {@linkplain CiVariable variable} constituent.
+	 * An address LIROperand with at least one {@linkplain CiVariable variable} constituent.
 	 */
 	static class LIRAddressOperand extends LIROperand
 	{
 		int base;
 		int index;
 
-		LIRAddressOperand(int base, int index, CiAddress address)
+		LIRAddressOperand(int base, int index, Address address)
 		{
 			super(address);
 			assert base != -1 || index
@@ -97,7 +96,7 @@ public class LIROperand
 		{
 			if (base != -1 || index != -1)
 			{
-				CiAddress address = (CiAddress) value;
+				Address address = (Address) value;
 				CiValue baseOperand = base == -1 ?
 						address.base :
 						inst.allocatorOperands.get(base);
@@ -119,7 +118,7 @@ public class LIROperand
 						return address;
 					}
 				}
-				value = new CiAddress(address.kind, baseOperand, indexOperand,
+				value = new Address(address.kind, baseOperand, indexOperand,
 						address.scale, address.displacement);
 				base = -1;
 				index = -1;

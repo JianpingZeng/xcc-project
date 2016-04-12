@@ -24,7 +24,7 @@ package lir.ci;
 
 /**
  * Represents a value that is yet to be bound to a machine location (such as
- * a {@linkplain CiRegister register} or stack {@linkplain CiAddress address})
+ * a {@linkplain Register register} or stack {@linkplain Address address})
  * by a register allocator.
  */
 public final class CiVariable extends CiValue
@@ -35,7 +35,8 @@ public final class CiVariable extends CiValue
 	private static final long serialVersionUID = 3894386843980093903L;
 
 	/**
-	 * The identifier of the variable. This is a non-zero index in a contiguous 0-based name space.
+	 * The identifier of the variable. This is a non-zero index in a contiguous
+	 * 0-based name space.
 	 */
 	public final int index;
 

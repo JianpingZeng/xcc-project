@@ -19,8 +19,8 @@ public class LIROp2 extends LIRInstruction
 	 *
 	 * @param opcode    the instruction's opcode
 	 * @param condition the instruction's condition
-	 * @param opr1      the first input operand
-	 * @param opr2      the second input operand
+	 * @param opr1      the first input LIROperand
+	 * @param opr2      the second input LIROperand
 	 */
 	public LIROp2(LIROpcode opcode, Condition condition, CiValue opr1,
 			CiValue opr2)
@@ -36,9 +36,9 @@ public class LIROp2 extends LIRInstruction
 	 *
 	 * @param opcode    the instruction's opcode
 	 * @param condition the instruction's condition
-	 * @param opr1      the first input operand
-	 * @param opr2      the second input operand
-	 * @param result    the operand that holds the result of this instruction
+	 * @param opr1      the first input LIROperand
+	 * @param opr2      the second input LIROperand
+	 * @param result    the LIROperand that holds the result of this instruction
 	 */
 	public LIROp2(LIROpcode opcode, Condition condition, CiValue opr1,
 			CiValue opr2, CiValue result)
@@ -53,9 +53,9 @@ public class LIROp2 extends LIRInstruction
 	 * Constructs a new LIROp2 instruction.
 	 *
 	 * @param opcode the instruction's opcode
-	 * @param opr1   the first input operand
-	 * @param opr2   the second input operand
-	 * @param result the operand that holds the result of this instruction
+	 * @param opr1   the first input LIROperand
+	 * @param opr2   the second input LIROperand
+	 * @param result the LIROperand that holds the result of this instruction
 	 * @param kind   the kind of this instruction
 	 */
 	public LIROp2(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue result,
@@ -73,10 +73,10 @@ public class LIROp2 extends LIRInstruction
 	 * Constructs a new LIROp2 instruction.
 	 *
 	 * @param opcode the instruction's opcode
-	 * @param opr1   the first input operand
-	 * @param opr2   the second input operand
-	 * @param result the operand that holds the result of this instruction
-	 * @param tmp    the temporary operand used by this instruction
+	 * @param opr1   the first input LIROperand
+	 * @param opr2   the second input LIROperand
+	 * @param result the LIROperand that holds the result of this instruction
+	 * @param tmp    the temporary LIROperand used by this instruction
 	 */
 	public LIROp2(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue result,
 			CiValue tmp)
@@ -87,11 +87,23 @@ public class LIROp2 extends LIRInstruction
 				LIROpcode.EndOp2) :
 				"The " + opcode + " is not a valid LIROp2 opcode";
 	}
+	/**
+	 * Constructs a new LIROp2 instruction.
+	 *
+	 * @param opcode the instruction's opcode
+	 * @param opr1   the first input LIROperand
+	 * @param opr2   the second input LIROperand
+	 * @param result the LIROperand that holds the result of this instruction
+	 */
+	public LIROp2(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue result)
+	{
+		this(opcode, opr1, opr2, result, CiKind.Illegal, false);
+	}
 
 	/**
-	 * Gets the first input operand.
+	 * Gets the first input LIROperand.
 	 *
-	 * @return opr1 the first input operand
+	 * @return opr1 the first input LIROperand
 	 */
 	public CiValue operand1()
 	{
@@ -99,9 +111,9 @@ public class LIROp2 extends LIRInstruction
 	}
 
 	/**
-	 * Gets the second input operand.
+	 * Gets the second input LIROperand.
 	 *
-	 * @return opr2 the second input operand
+	 * @return opr2 the second input LIROperand
 	 */
 	public CiValue operand2()
 	{
@@ -109,9 +121,9 @@ public class LIROp2 extends LIRInstruction
 	}
 
 	/**
-	 * Gets the temporary operand of this instruction.
+	 * Gets the temporary LIROperand of this instruction.
 	 *
-	 * @return tmp the temporary operand of this instruction
+	 * @return tmp the temporary LIROperand of this instruction
 	 */
 	public CiValue tmp()
 	{

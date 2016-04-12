@@ -7,6 +7,7 @@ import ast.Tree.Goto;
 import ast.Tree.Return;
 import ast.TreeInfo;
 import ast.TreeMaker;
+import hir.Value.Constant;
 import lir.ci.CiConstant;
 import lir.ci.CiKind;
 import comp.OpCodes;
@@ -51,7 +52,7 @@ import java.util.List;
  * </p>
  *
  * @author Jianping Zeng<z1215jping@hotmail.com>
- * @version 2016年2月3日 下午12:08:05
+ * @version 1.0
  */
 public class HIRGenerator extends ASTVisitor
 {
@@ -237,7 +238,7 @@ public class HIRGenerator extends ASTVisitor
 		BasicBlock remainderBB;
 		Binary bin;
 		Value src1;
-		IntCmp inst;
+		IfOp inst;
 
 		if ((expr.tag >= Tree.OR && expr.tag <= Tree.AND) || (
 				expr.tag >= Tree.NE && expr.tag <= Tree.GE))
@@ -299,25 +300,17 @@ public class HIRGenerator extends ASTVisitor
 			}
 			else
 			{
-				IntCmp[] insts = {
-						new Instruction.IfCmp_EQ(null, null, null, null,
-								Operator.IfEQ.opName),
-						new Instruction.IfCmp_NEQ(null, null, null, null,
-								Operator.IfNE.opName),
-						new Instruction.IfCmp_LT(null, null, null, null,
-								Operator.IfLT.opName),
-						new Instruction.IfCmp_LE(null, null, null, null,
-								Operator.IfLE.opName),
-						new Instruction.IfCmp_GT(null, null, null, null,
-								Operator.IfGT.opName),
-						new Instruction.IfCmp_GE(null, null, null, null,
-								Operator.IfGE.opName) };
+				Condition[] conds = {
+						Condition.EQ,
+						Condition.NE,
+						Condition.LT,
+						Condition.LE,
+						Condition.GT,
+						Condition.GE };
 
-				inst = insts[expr.tag - Tree.EQ];
-				inst.x = emitExpr(bin.lhs);
-				inst.y = emitExpr(bin.rhs);
-				inst.trueTarget = trueBB;
-				inst.falseTarget = falseBB;
+				Condition cond = conds[expr.tag - Tree.EQ];
+				Value x = emitExpr(bin.lhs);
+				Value y = emitExpr(bin.rhs);
 
 				currentBlock.addSucc(trueBB);
 				currentBlock.addSucc(falseBB);
@@ -325,7 +318,7 @@ public class HIRGenerator extends ASTVisitor
 				falseBB.addPred(currentBlock);
 
 				// appends quad into current block
-				appendInst(inst);
+				appendInst(new IfOp(x, y, trueBB, falseBB, "IfOp", cond));
 			}
 		}
 		else
@@ -369,8 +362,8 @@ public class HIRGenerator extends ASTVisitor
 	private void emitIfCmpNE(Value lhs, Value rhs, BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
-		IfCmp_NEQ inst = new IfCmp_NEQ(lhs, rhs, trueBB, falseBB,
-				Operator.IfNE.opName);
+		IfOp inst = new IfOp(lhs, rhs, trueBB, falseBB,
+				"IfOp", Condition.NE);
 		appendInst(inst);
 		currentBlock.addSucc(trueBB);
 		currentBlock.addSucc(falseBB);
@@ -382,8 +375,8 @@ public class HIRGenerator extends ASTVisitor
 	private void emitIfCmpEQ(Value lhs, Value rhs, BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
-		IfCmp_EQ inst = new IfCmp_EQ(lhs, rhs, trueBB, falseBB,
-				Operator.IfEQ.opName);
+		IfOp inst = new IfOp(lhs, rhs, trueBB, falseBB,
+				"IfOp", Condition.EQ);
 		appendInst(inst);
 		currentBlock.addSucc(trueBB);
 		currentBlock.addSucc(falseBB);
@@ -395,8 +388,8 @@ public class HIRGenerator extends ASTVisitor
 	private void emitIfCmpLE(Value lhs, Value rhs, BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
-		IfCmp_LE inst = new IfCmp_LE(lhs, rhs, trueBB, falseBB,
-				Operator.IfLE.opName);
+		IfOp inst = new IfOp(lhs, rhs, trueBB, falseBB,
+				"IfOp", Condition.LE);
 		appendInst(inst);
 		currentBlock.addSucc(trueBB);
 		currentBlock.addSucc(falseBB);
@@ -408,8 +401,8 @@ public class HIRGenerator extends ASTVisitor
 	private void emitIfCmpLT(Value lhs, Value rhs, BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
-		IfCmp_LT inst = new IfCmp_LT(lhs, rhs, trueBB, falseBB,
-				Operator.IfLT.opName);
+		IfOp inst = new IfOp(lhs, rhs, trueBB, falseBB,
+				"IfOp", Condition.LT);
 		appendInst(inst);
 		currentBlock.addSucc(trueBB);
 		currentBlock.addSucc(falseBB);
@@ -421,8 +414,8 @@ public class HIRGenerator extends ASTVisitor
 	private void emitIfCmpGT(Value lhs, Value rhs, BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
-		IfCmp_GT inst = new IfCmp_GT(lhs, rhs, trueBB, falseBB,
-				Operator.IfGT.opName);
+		IfOp inst = new IfOp(lhs, rhs, trueBB, falseBB,
+				"IfOp", Condition.GT);
 		appendInst(inst);
 		currentBlock.addSucc(trueBB);
 		currentBlock.addSucc(falseBB);
@@ -434,8 +427,8 @@ public class HIRGenerator extends ASTVisitor
 	private void emitIfCmpGE(Value lhs, Value rhs, BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
-		IfCmp_GE inst = new IfCmp_GE(lhs, rhs, trueBB, falseBB,
-				Operator.IfGE.opName);
+		IfOp inst = new IfOp(lhs, rhs, trueBB, falseBB,
+				"IfOp", Condition.GE);
 		appendInst(inst);
 		currentBlock.addSucc(trueBB);
 		currentBlock.addSucc(falseBB);
@@ -448,9 +441,9 @@ public class HIRGenerator extends ASTVisitor
 	 * %%%%%%<h2>This method is not implemented, currently.</h2> %%%%%%%
 	 * Doing type cast.
 	 *
-	 * @param src   The source operand.
-	 * @param sType The source type of operand
-	 * @param dType The target type into that operand will be casted.
+	 * @param src   The source LIROperand.
+	 * @param sType The source type of LIROperand
+	 * @param dType The target type into that LIROperand will be casted.
 	 * @return
 	 */
 	private Value emitCast(Value src, Type sType, Type dType)
@@ -625,7 +618,7 @@ public class HIRGenerator extends ASTVisitor
 	private Alloca createEnterBlockAlloca(CiKind kind, Name var)
 	{
 		BasicBlock entry = currentCFG.entry();
-		Alloca inst = new Alloca(kind, Operator.Alloca.opName);
+		Alloca inst = new Alloca(kind, Constant.forInt(1), Operator.Alloca.opName);
 
 		// associte its local with variable symbol
 		NameValues.put(var, inst);
@@ -665,7 +658,7 @@ public class HIRGenerator extends ASTVisitor
 		// setting default inst for different inst type
 		else
 		{
-			initValue = new Value.Constant(CiConstant.defaultValue(varKind));
+			initValue = new Constant(CiConstant.defaultValue(varKind));
 		}
 		// generats store instruction that stores initial inst into specified local
 		emitStore(initValue, inst);
@@ -1427,41 +1420,29 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitADD(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.ADD_I(type2Kind(ty), lhs, rhs,
-					Operator.IAdd.opName);
-
-			appendInst(inst);
-
+			opcode = Operator.IAdd;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.ADD_L(type2Kind(ty), lhs, rhs,
-					Operator.LAdd.opName);
-
-			appendInst(inst);
+			opcode = Operator.LAdd;
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.ADD_F(type2Kind(ty), lhs, rhs,
-					Operator.FAdd.opName);
-
-			appendInst(inst);
+			opcode = Operator.FAdd;
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
-			inst = new Instruction.ADD_D(type2Kind(ty), lhs, rhs,
-					Operator.DAdd.opName);
-
-			appendInst(inst);
+			opcode = Operator.DAdd;
 		}
 		else
 		{
 			log.error(pos, "Invalid data type in the add IR.");
 		}
+		Value inst = new ArithmeticOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1475,38 +1456,29 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitSUB(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.SUB_I(type2Kind(ty), lhs, rhs,
-					Operator.ISub.opName);
-
-			appendInst(inst);
+			opcode = Operator.ISub;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.SUB_L(type2Kind(ty), lhs, rhs,
-					Operator.LSub.opName);
-
-			appendInst(inst);
+			opcode = Operator.LSub;
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.SUB_F(type2Kind(ty), lhs, rhs,
-					Operator.FSub.opName);
-
-			appendInst(inst);
+			opcode = Operator.FSub;
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
-			inst = new Instruction.SUB_D(type2Kind(ty), lhs, rhs,
-					Operator.DSub.opName);
-
-			appendInst(inst);
+			opcode = Operator.DSub;
 		}
 		else
-			throw new SemanticError("Invalid data type in the sub IR.");
+		{
+			log.error(pos, "Invalid data type in the subtract IR.");
+		}
+		Value inst = new ArithmeticOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1520,38 +1492,29 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitMUL(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.MUL_I(type2Kind(ty), lhs, rhs,
-					Operator.IMul.opName);
-
-			appendInst(inst);
+			opcode = Operator.IMul;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.MUL_L(type2Kind(ty), lhs, rhs,
-					Operator.LMul.opName);
-
-			appendInst(inst);
+			opcode = Operator.LMul;
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.MUL_F(type2Kind(ty), lhs, rhs,
-					Operator.FMul.opName);
-
-			appendInst(inst);
+			opcode = Operator.FMul;
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
-			inst = new Instruction.MUL_D(type2Kind(ty), lhs, rhs,
-					Operator.DMul.opName);
-
-			appendInst(inst);
+			opcode = Operator.DMul;
 		}
 		else
-			throw new SemanticError("Invalid data type in the MUL IR.");
+		{
+			log.error(pos, "Invalid data type in the multiple IR.");
+		}
+		Value inst = new ArithmeticOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1565,38 +1528,29 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitDIV(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.DIV_I(type2Kind(ty), lhs, rhs,
-					Operator.IDiv.opName);
-
-			appendInst(inst);
+			opcode = Operator.IDiv;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.DIV_L(type2Kind(ty), lhs, rhs,
-					Operator.LDiv.opName);
-
-			appendInst(inst);
+			opcode = Operator.LDiv;
 		}
 		else if (ty.equals(Type.FLOATType))
 		{
-			inst = new Instruction.DIV_F(type2Kind(ty), lhs, rhs,
-					Operator.FDiv.opName);
-
-			appendInst(inst);
+			opcode = Operator.FDiv;
 		}
 		else if (ty.equals(Type.DOUBLEType))
 		{
-			inst = new Instruction.DIV_D(type2Kind(ty), lhs, rhs,
-					Operator.DDiv.opName);
-
-			appendInst(inst);
+			opcode = Operator.DDiv;
 		}
 		else
-			throw new SemanticError("Invalid data type in the DIV IR.");
+		{
+			log.error(pos, "Invalid data type in the division IR.");
+		}
+		Value inst = new ArithmeticOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1610,24 +1564,21 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitMOD(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.MOD_I(type2Kind(ty), lhs, rhs,
-					Operator.IMod.opName);
-
-			appendInst(inst);
+			opcode = Operator.IMod;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.MOD_L(type2Kind(ty), lhs, rhs,
-					Operator.LMod.opName);
-
-			appendInst(inst);
+			opcode = Operator.LMod;
 		}
 		else
-			throw new SemanticError("Invalid data type in the MOD IR.");
+		{
+			log.error(pos, "Invalid data type in the mod IR.");
+		}
+		Value inst = new ArithmeticOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1641,24 +1592,21 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitBITAND(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.AND_I(type2Kind(ty), lhs, rhs,
-					Operator.IAnd.opName);
-
-			appendInst(inst);
+			opcode = Operator.IAnd;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.AND_L(type2Kind(ty), lhs, rhs,
-					Operator.LAnd.opName);
-
-			appendInst(inst);
+			opcode = Operator.LAnd;
 		}
 		else
-			throw new SemanticError("Invalid data type in the BIT-AND IR.");
+		{
+			log.error(pos, "Invalid data type in the bitwise and IR.");
+		}
+		Value inst = new LogicOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1672,23 +1620,21 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitBITOR(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.OR_I(type2Kind(ty), lhs, rhs,
-					Operator.IOr.opName);
-
-			appendInst(inst);
+			opcode = Operator.IOr;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.OR_L(type2Kind(ty), lhs, rhs,
-					Operator.LOr.opName);
-
-			appendInst(inst);
+			opcode = Operator.LOr;
 		}
 		else
-			throw new SemanticError("Invalid data type in the BIT-OR IR.");
+		{
+			log.error(pos, "Invalid data type in the bitwise or IR.");
+		}
+		Value inst = new LogicOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1702,24 +1648,21 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitBITXOR(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.XOR_I(type2Kind(ty), lhs, rhs,
-					Operator.IXor.opName);
-
-			appendInst(inst);
+			opcode = Operator.IXor;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.XOR_L(type2Kind(ty), lhs, rhs,
-					Operator.LXor.opName);
-
-			appendInst(inst);
+			opcode = Operator.LXor;
 		}
 		else
-			throw new SemanticError("Invalid data type in the BIT-XOR IR.");
+		{
+			log.error(pos, "Invalid data type in the bitwise xor IR.");
+		}
+		Value inst = new LogicOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1733,24 +1676,21 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitSHL(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.IShl, lhs,
-					rhs, Operator.IShl.opName);
-
-			appendInst(inst);
+			opcode = Operator.IShl;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.LShl, lhs,
-					rhs, Operator.LShl.opName);
-
-			appendInst(inst);
+			opcode = Operator.LShl;
 		}
 		else
-			throw new SemanticError("Invalid data type in the SHL IR.");
+		{
+			log.error(pos, "Invalid data type in the shift left IR.");
+		}
+		Value inst = new ShiftOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1764,24 +1704,21 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitSHR(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Value inst = null;
-
+		Operator opcode = Operator.Illegal;
 		if (ty.isIntLike())
 		{
-			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.IShr, lhs,
-					rhs, Operator.IShr.opName);
-
-			appendInst(inst);
+			opcode = Operator.IShr;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			inst = new Instruction.ShiftOp(type2Kind(ty), Operator.LShl, lhs,
-					rhs, Operator.IShl.opName);
-
-			appendInst(inst);
+			opcode = Operator.LShr;
 		}
 		else
-			throw new SemanticError("Invalid data type in the BIT-AND IR.");
+		{
+			log.error(pos, "Invalid data type in the shift right IR.");
+		}
+		Value inst = new ShiftOp(type2Kind(ty), opcode, lhs, rhs,"");
+		appendInst(inst);
 		return inst;
 	}
 
@@ -1851,30 +1788,21 @@ public class HIRGenerator extends ASTVisitor
 		Value rhs = emitExpr(tree.rhs);
 		Value lhs = emitExpr(tree.lhs);
 		Value result = null;
-		switch (tree.tag)
+		Condition[] conds = {
+				Condition.EQ,
+				Condition.NE,
+				Condition.LT,
+				Condition.LE,
+				Condition.GT,
+				Condition.GE
+		};
+		if (tree.tag < Tree.EQ || tree.tag > Tree.GE)
 		{
-			case Tree.EQ:
-				result = Cmp.instance(tree.type, lhs, rhs, Condition.EQ, "EQ");
-				break;
-			case Tree.NE:
-				result = Cmp.instance(tree.type, lhs, rhs, Condition.NE, "NE");
-				break;
-			case Tree.LT:
-				result = Cmp.instance(tree.type, lhs, rhs, Condition.LT, "LT");
-				break;
-			case Tree.LE:
-				result = Cmp.instance(tree.type, lhs, rhs, Condition.LE, "LE");
-				break;
-			case Tree.GT:
-				result = Cmp.instance(tree.type, lhs, rhs, Condition.GT, "GT");
-				break;
-			case Tree.GE:
-				result = Cmp.instance(tree.type, lhs, rhs, Condition.GE, "GE");
-				break;
-			default:
-				break;
+			log.error(tree.pos,
+					"Invalid comparison operation at abstract syntax tree");
+			return null;
 		}
-		return result;
+		return new Cmp(type2Kind(tree.type), lhs,rhs, conds[tree.tag - Tree.EQ],"");
 	}
 
 	/**
@@ -1894,28 +1822,24 @@ public class HIRGenerator extends ASTVisitor
 		// saves the entry for current context.
 		BasicBlock entry = currentBlock;
 
-		// firstly, translating left hand operand
+		// firstly, translating left hand LIROperand
 		Value lhs = emitExpr(expr.lhs);
 		if (lhs == null)
 		{
 			return null;
 		}
-		Value.Constant zero = new Value.Constant(
+		Constant zero = new Constant(
 				CiConstant.defaultValue(lhs.kind));
-		Value.Constant one = new Value.Constant(CiConstant.getOne(lhs.kind));
+		Constant one = new Constant(CiConstant.getOne(lhs.kind));
 
 		switch (expr.tag)
 		{
 			case Tree.AND:
 				rhsBB.bbName = "and.rhs";
 				nextBB.bbName = "and.end";
-				// comparison
-				Cmp cmp = Cmp
-						.instance(expr.type, lhs, zero, Condition.GT, "GT");
-				appendInst(cmp);
 				// branch
-				BR br = new BR(cmp, rhsBB, nextBB, Operator.Br.opName);
-				appendInst(br);
+				appendInst(new IfOp(lhs, zero, rhsBB, nextBB,
+						"IfGT", Condition.GT));
 
 				// translate right hand side
 				startBasicBlock(rhsBB);
@@ -1923,8 +1847,7 @@ public class HIRGenerator extends ASTVisitor
 				if (rhs == null)
 					return null;
 
-				rhsResult = Cmp
-						.instance(expr.type, rhs, zero, Condition.GT, "GT");
+				rhsResult = new Cmp(type2Kind(expr.type), lhs, zero, Condition.GT,"GT");
 
 				appendInst(rhsResult);
 
@@ -1943,13 +1866,9 @@ public class HIRGenerator extends ASTVisitor
 				rhsBB.bbName = "or.rhs";
 				nextBB.bbName = "or.end";
 
-				// comparison
-				cmp = Cmp.instance(expr.type, lhs, zero, Condition.GT, "GT");
-				appendInst(cmp);
 				// branch
-				br = new BR(cmp, nextBB, rhsBB, Operator.Br.opName);
-
-				appendInst(br);
+				appendInst(new IfOp(lhs, zero, nextBB, rhsBB,
+						"IfGT", Condition.GT));
 
 				// translate right hand side
 				startBasicBlock(rhsBB);
@@ -1957,8 +1876,7 @@ public class HIRGenerator extends ASTVisitor
 				if (rhs == null)
 					return null;
 
-				rhsResult = Cmp
-						.instance(expr.type, rhs, zero, Condition.GT, "GT");
+				rhsResult = new Cmp(type2Kind(expr.type), rhs, zero, Condition.GT,"GT");
 
 				appendInst(rhsResult);
 
@@ -2011,22 +1929,22 @@ public class HIRGenerator extends ASTVisitor
 		{
 			case Tree.PREDEC:
 				incre = emitBin(expr.type, expr.pos, Tree.MINUS, res,
-						new Value.Constant(CiConstant.INT_1));
+						new Constant(CiConstant.INT_1));
 				ret = incre;
 				break;
 			case Tree.PREINC:
 				incre = emitBin(expr.type, expr.pos, Tree.PLUS, res,
-						new Value.Constant(CiConstant.INT_1));
+						new Constant(CiConstant.INT_1));
 				ret = incre;
 				break;
 			case Tree.POSTDEC:
 				incre = emitBin(expr.type, expr.pos, Tree.MINUS, res,
-						new Value.Constant(CiConstant.INT_1));
+						new Constant(CiConstant.INT_1));
 				ret = temp;
 				break;
 			case Tree.POSTINC:
 				incre = emitBin(expr.type, expr.pos, Tree.PLUS, res,
-						new Value.Constant(CiConstant.INT_1));
+						new Constant(CiConstant.INT_1));
 				ret = temp;
 				break;
 			default:
@@ -2050,11 +1968,9 @@ public class HIRGenerator extends ASTVisitor
 		{
 			return null;
 		}
-		Value.Constant zero = new Value.Constant(
+		Constant zero = new Constant(
 				CiConstant.defaultValue(res.kind));
-
-		Cmp cmp = Cmp.instance(expr.arg.type, res, zero, Condition.LE, "LE");
-
+		Cmp cmp = new Cmp(type2Kind(expr.arg.type), res, zero, Condition.LE,"LE");
 		appendInst(cmp);
 		return cmp;
 	}
@@ -2130,29 +2046,29 @@ public class HIRGenerator extends ASTVisitor
 	{
 		if (tree.typetag == TypeTags.INT)
 		{
-			this.exprResult = new Value.Constant(new CiConstant(CiKind.Int,
+			this.exprResult = new Constant(new CiConstant(CiKind.Int,
 					((Integer) tree.value).intValue()));
 		}
 		else if (tree.typetag == TypeTags.LONG)
 		{
-			this.exprResult = new Value.Constant(new CiConstant(CiKind.Long,
+			this.exprResult = new Constant(new CiConstant(CiKind.Long,
 					((Long) tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.FLOAT)
 		{
-			this.exprResult = new Value.Constant(new CiConstant(CiKind.Float,
+			this.exprResult = new Constant(new CiConstant(CiKind.Float,
 					((Float) tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.DOUBLE)
 		{
-			this.exprResult = new Value.Constant(new CiConstant(CiKind.Double,
+			this.exprResult = new Constant(new CiConstant(CiKind.Double,
 					((Double) tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.BOOL)
 		{
 			this.exprResult = ((Boolean) tree.value).equals("true") ?
-					Value.Constant.forInt(1) :
-					Value.Constant.forInt(0);
+					Constant.forInt(1) :
+					Constant.forInt(0);
 		}
 	}
 

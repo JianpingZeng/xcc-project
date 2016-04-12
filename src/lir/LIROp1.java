@@ -2,7 +2,7 @@ package lir;
 
 import lir.ci.CiKind;
 import lir.ci.CiValue;
-import utils.Utils;
+import utils.Util;
 
 /**
  * @author Jianping Zeng
@@ -14,15 +14,15 @@ public class LIROp1 extends LIRInstruction
 		Normal, Volatile, Unaligned
 	}
 
-	public final CiKind kind;          // the operand type
+	public final CiKind kind;          // the LIROperand type
 	public final LIRMoveKind moveKind; // flag that indicate the kind of move
 
 	/**
 	 * Constructs a new LIROp1 instruction.
 	 *
 	 * @param opcode the instruction's opcode
-	 * @param opr    the first input operand
-	 * @param result the operand that holds the result of this instruction
+	 * @param opr    the first input LIROperand
+	 * @param result the LIROperand that holds the result of this instruction
 	 * @param kind   the kind of this instruction
 	 */
 	public LIROp1(LIROpcode opcode, CiValue opr, CiValue result, CiKind kind)
@@ -38,8 +38,8 @@ public class LIROp1 extends LIRInstruction
 	 * Constructs a new LIROp1 instruction.
 	 *
 	 * @param opcode the instruction's opcode
-	 * @param opr    the first input operand
-	 * @param result the operand that holds the result of this instruction
+	 * @param opr    the first input LIROperand
+	 * @param result the LIROperand that holds the result of this instruction
 	 */
 	public LIROp1(LIROpcode opcode, CiValue opr, CiValue result)
 	{
@@ -51,8 +51,8 @@ public class LIROp1 extends LIRInstruction
 	 * Constructs a new LIROp1 instruction.
 	 *
 	 * @param moveKind the kind of move the instruction represents
-	 * @param operand  the single input operand
-	 * @param result   the operand that holds the result of this instruction
+	 * @param operand  the single input LIROperand
+	 * @param result   the LIROperand that holds the result of this instruction
 	 * @param kind     the kind of this instruction
 	 */
 	public LIROp1(LIRMoveKind moveKind, CiValue operand, CiValue result,
@@ -67,7 +67,7 @@ public class LIROp1 extends LIRInstruction
 	 * Constructs a new LIROp1 instruction.
 	 *
 	 * @param opcode the instruction's opcode
-	 * @param opr    the first input operand
+	 * @param opr    the first input LIROperand
 	 */
 	public LIROp1(LIROpcode opcode, CiValue opr)
 	{
@@ -79,9 +79,9 @@ public class LIROp1 extends LIRInstruction
 	}
 
 	/**
-	 * Gets the input operand of this instruction.
+	 * Gets the input LIROperand of this instruction.
 	 *
-	 * @return opr the input operand.
+	 * @return opr the input LIROperand.
 	 */
 	public CiValue operand()
 	{
@@ -118,7 +118,7 @@ public class LIROp1 extends LIRInstruction
 				case Volatile:
 					return "volatile_move";
 				default:
-					throw Utils.shouldNotReachHere();
+					throw Util.shouldNotReachHere();
 			}
 		}
 		else

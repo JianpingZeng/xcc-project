@@ -13,10 +13,10 @@ public class LIROp3 extends LIRInstruction
 	 * that has three input operands.
 	 *
 	 * @param opcode the instruction's opcode
-	 * @param opr1   the first input operand
-	 * @param opr2   the second input operand
-	 * @param opr3   the third input operand
-	 * @param result the result operand
+	 * @param opr1   the first input LIROperand
+	 * @param opr2   the second input LIROperand
+	 * @param opr3   the third input LIROperand
+	 * @param result the result LIROperand
 	 */
 	public LIROp3(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue opr3,
 			CiValue result)

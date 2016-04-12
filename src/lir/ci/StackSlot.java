@@ -4,7 +4,7 @@ package lir.ci;
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
  * or an incoming stack-based argument in a method's {@linkplain #inCallerFrame() caller's frame}.
  */
-public final class CiStackSlot extends CiValue
+public final class StackSlot extends CiValue
 {
 	/**
 	 *
@@ -12,43 +12,43 @@ public final class CiStackSlot extends CiValue
 	private static final long serialVersionUID = 2463192016899841921L;
 
 	/**
-	 * @see CiStackSlot#index()
+	 * @see StackSlot#index()
 	 */
 	private final int index;
 
 	/**
-	 * Gets a {@link CiStackSlot} instance representing a stack slot in the current frame
+	 * Gets a {@link StackSlot} instance representing a stack slot in the current frame
 	 * at a given index holding a value of a given kind.
 	 *
 	 * @param kind  the kind of the value stored in the stack slot
 	 * @param index the index of the stack slot
 	 */
-	public static CiStackSlot get(CiKind kind, int index)
+	public static StackSlot get(CiKind kind, int index)
 	{
 		return get(kind, index, false);
 	}
 
 	/**
-	 * Gets a {@link CiStackSlot} instance representing a stack slot at a given index
+	 * Gets a {@link StackSlot} instance representing a stack slot at a given index
 	 * holding a value of a given kind.
 	 *
 	 * @param kind          the kind of the value stored in the stack slot
 	 * @param index         the index of the stack slot
 	 * @param inCallerFrame specifies if the slot is in the current frame or in the caller's frame
 	 */
-	public static CiStackSlot get(CiKind kind, int index, boolean inCallerFrame)
+	public static StackSlot get(CiKind kind, int index, boolean inCallerFrame)
 	{
 
-		CiStackSlot[][] cache = inCallerFrame ? CALLER_FRAME_CACHE : CACHE;
-		CiStackSlot[] slots = cache[kind.ordinal()];
-		CiStackSlot slot;
+		StackSlot[][] cache = inCallerFrame ? CALLER_FRAME_CACHE : CACHE;
+		StackSlot[] slots = cache[kind.ordinal()];
+		StackSlot slot;
 		if (index < slots.length)
 		{
 			slot = slots[index];
 		}
 		else
 		{
-			slot = new CiStackSlot(kind, inCallerFrame ? -(index + 1) : index);
+			slot = new StackSlot(kind, inCallerFrame ? -(index + 1) : index);
 		}
 		assert slot.inCallerFrame() == inCallerFrame;
 		return slot;
@@ -58,7 +58,7 @@ public final class CiStackSlot extends CiValue
 	 * Private constructor to enforce use of {@link #get(CiKind, int)} so that the
 	 * shared instance {@linkplain #CACHE cache} is used.
 	 */
-	private CiStackSlot(CiKind kind, int index)
+	private StackSlot(CiKind kind, int index)
 	{
 		super(kind);
 		this.index = index;
@@ -93,9 +93,9 @@ public final class CiStackSlot extends CiValue
 		{
 			return true;
 		}
-		if (o instanceof CiStackSlot)
+		if (o instanceof StackSlot)
 		{
-			CiStackSlot l = (CiStackSlot) o;
+			StackSlot l = (StackSlot) o;
 			return l.kind == kind && l.index == index;
 		}
 		return false;
@@ -107,9 +107,9 @@ public final class CiStackSlot extends CiValue
 		{
 			return true;
 		}
-		if (o instanceof CiStackSlot)
+		if (o instanceof StackSlot)
 		{
-			CiStackSlot l = (CiStackSlot) o;
+			StackSlot l = (StackSlot) o;
 			return l.index == index;
 		}
 		return false;
@@ -131,7 +131,7 @@ public final class CiStackSlot extends CiValue
 	/**
 	 * Gets this stack slot used to pass an argument from the perspective of a caller.
 	 */
-	public CiStackSlot asOutArg()
+	public StackSlot asOutArg()
 	{
 		if (inCallerFrame())
 		{
@@ -143,7 +143,7 @@ public final class CiStackSlot extends CiValue
 	/**
 	 * Gets this stack slot used to pass an argument from the perspective of a callee.
 	 */
-	public CiStackSlot asInArg()
+	public StackSlot asInArg()
 	{
 		if (!inCallerFrame())
 		{
@@ -162,19 +162,19 @@ public final class CiStackSlot extends CiValue
 	/**
 	 * A cache of {@linkplain #inCallerFrame() non-caller-frame} stack slots.
 	 */
-	private static final CiStackSlot[][] CACHE = makeCache(CACHE_PER_KIND_SIZE,
+	private static final StackSlot[][] CACHE = makeCache(CACHE_PER_KIND_SIZE,
 			false);
 
 	/**
 	 * A cache of {@linkplain #inCallerFrame() caller-frame} stack slots.
 	 */
-	private static final CiStackSlot[][] CALLER_FRAME_CACHE = makeCache(
+	private static final StackSlot[][] CALLER_FRAME_CACHE = makeCache(
 			CALLER_FRAME_CACHE_PER_KIND_SIZE, true);
 
-	private static CiStackSlot[][] makeCache(int cachePerKindSize,
+	private static StackSlot[][] makeCache(int cachePerKindSize,
 			boolean inCallerFrame)
 	{
-		CiStackSlot[][] cache = new CiStackSlot[CiKind.VALUES.length][];
+		StackSlot[][] cache = new StackSlot[CiKind.VALUES.length][];
 		cache[CiKind.Illegal.ordinal()] = makeCacheForKind(CiKind.Illegal,
 				cachePerKindSize, inCallerFrame);
 		cache[CiKind.Int.ordinal()] = makeCacheForKind(CiKind.Int,
@@ -191,20 +191,20 @@ public final class CiStackSlot extends CiValue
 	}
 
 	/**
-	 * Creates an array of {@code CiStackSlot} objects for a given {@link CiKind}.
+	 * Creates an array of {@code StackSlot} objects for a given {@link CiKind}.
 	 * The {@link #index} values range from {@code 0} to {@code count - 1}.
 	 *
 	 * @param kind  the {@code CiKind} of the stack slot
 	 * @param count the size of the array to create
-	 * @return the generated {@code CiStackSlot} array
+	 * @return the generated {@code StackSlot} array
 	 */
-	private static CiStackSlot[] makeCacheForKind(CiKind kind, int count,
+	private static StackSlot[] makeCacheForKind(CiKind kind, int count,
 			boolean inCallerFrame)
 	{
-		CiStackSlot[] slots = new CiStackSlot[count];
+		StackSlot[] slots = new StackSlot[count];
 		for (int i = 0; i < count; ++i)
 		{
-			slots[i] = new CiStackSlot(kind, inCallerFrame ? -(i + 1) : i);
+			slots[i] = new StackSlot(kind, inCallerFrame ? -(i + 1) : i);
 		}
 		return slots;
 	}

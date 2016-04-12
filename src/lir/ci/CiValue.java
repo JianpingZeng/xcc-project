@@ -28,9 +28,9 @@ public abstract class CiValue implements Serializable
 			return "<illegal>";
 		}
 
-		@Override public CiRegister asRegister()
+		@Override public Register asRegister()
 		{
-			return CiRegister.None;
+			return Register.None;
 		}
 
 		@Override public int hashCode()
@@ -69,7 +69,7 @@ public abstract class CiValue implements Serializable
 		return this instanceof CiVariable || this instanceof CiRegisterValue;
 	}
 
-	public CiRegister asRegister()
+	public Register asRegister()
 	{
 		throw new InternalError("Not a register: " + this);
 	}
@@ -91,7 +91,7 @@ public abstract class CiValue implements Serializable
 	 */
 	public final boolean isStackSlot()
 	{
-		return this instanceof CiStackSlot;
+		return this instanceof StackSlot;
 	}
 
 	public final boolean isRegister()
@@ -106,7 +106,7 @@ public abstract class CiValue implements Serializable
 
 	public final boolean isAddress()
 	{
-		return this instanceof CiAddress;
+		return this instanceof Address;
 	}
 
 	public final boolean isConstant()
@@ -145,7 +145,7 @@ public abstract class CiValue implements Serializable
 	}
 
 	/**
-	 * Utility for specializing how a {@linkplain CiValue LIR operand} is formatted to a string.
+	 * Utility for specializing how a {@linkplain CiValue LIR LIROperand} is formatted to a string.
 	 * The {@linkplain Formatter#DEFAULT default formatter} returns the value of
 	 * {@link CiValue#toString()}.
 	 */
@@ -154,10 +154,10 @@ public abstract class CiValue implements Serializable
 		public static final Formatter DEFAULT = new Formatter();
 
 		/**
-		 * Formats a given operand as a string.
+		 * Formats a given LIROperand as a string.
 		 *
-		 * @param operand the operand to format
-		 * @return {@code operand} as a string
+		 * @param operand the LIROperand to format
+		 * @return {@code LIROperand} as a string
 		 */
 		public String format(CiValue operand)
 		{

@@ -1,9 +1,13 @@
 package utils;
 
+import hir.Method;
+import hir.Signature;
+import lir.ci.CiKind;
+
 /**
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/26.
  */
-public class Utils
+public class Util
 {
 	/**
 	 * Utility method to combine a base hash with the identity hash of one or more objects.
@@ -59,4 +63,35 @@ public class Utils
 	{
 		throw new InternalError("should not reach here");
 	}
+
+	public static boolean archKindEqual(CiKind k1, CiKind k2)
+	{
+		return k1 == k2;
+	}
+
+	public static RuntimeException unimplemented()
+	{
+		throw new InternalError("unimplemented");
+	}
+
+	public static int roundUp(int number, int mod)
+	{
+		return ((number + mod - 1) / mod) * mod;
+	}
+
+	public static CiKind[] signatureToKinds(Method method)
+	{
+		return signatureToKinds(method.signature());
+	}
+	public static CiKind[] signatureToKinds(Signature signature)
+	{
+		int args = signature.argumentCount();
+		CiKind[] result = new CiKind[args];
+		for (int i = 0; i < args; i++)
+		{
+			result[i]  = signature.argumentKindAt(i);
+		}
+		return result;
+	}
+
 }

@@ -5,7 +5,7 @@ import lir.ci.CiKind;
 import hir.*;
 import hir.Instruction.*;
 import hir.Value.Constant;
-import utils.Utils;
+import utils.Util;
 
 /**
  * <p>This file defines a class for folding an instruction into a constant.
@@ -323,11 +323,11 @@ public class Canonicalizer extends ValueVisitor
 	}
 
 	/**
-	 * Visits {@code NEG_I} with vistor pattern.
+	 * Visits {@code Negate} with vistor pattern.
 	 *
 	 * @param inst The inst to be visited.
 	 */
-	public void visitNEG_I(Instruction.NEG_I inst)
+	public void visitNegate(Negate inst)
 	{
 		Value v = inst.x;
 		if (v instanceof Constant)
@@ -659,8 +659,8 @@ public class Canonicalizer extends ValueVisitor
 	 * Attempts to fold the binary operator on two integer inputed.
 	 *
 	 * @param opcode The operator performed on x and y.
-	 * @param x      The first operand of operation.
-	 * @param y      The second operand of operation.
+	 * @param x      The first LIROperand of operation.
+	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Integer} instance representing the folding result
 	 * of two integer, if it is foldable. Otherwise, return null.
 	 */
@@ -698,8 +698,8 @@ public class Canonicalizer extends ValueVisitor
 	 * Attempts to fold the binary operator on two long integer inputed.
 	 *
 	 * @param opcode The operator performed on x and y.
-	 * @param x      The first operand of operation.
-	 * @param y      The second operand of operation.
+	 * @param x      The first LIROperand of operation.
+	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Long} instance representing the folding result
 	 * of two long integer, if it is foldable. Otherwise, return null.
 	 */
@@ -737,8 +737,8 @@ public class Canonicalizer extends ValueVisitor
 	 * Attempts to fold the binary operator on two float point fixed number inputed.
 	 *
 	 * @param opcode The operator performed on x and y.
-	 * @param x      The first operand of operation.
-	 * @param y      The second operand of operation.
+	 * @param x      The first LIROperand of operation.
+	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Float} instance representing the folding result
 	 * of two float point number, if it is foldable. Otherwise, return null.
 	 */
@@ -762,8 +762,8 @@ public class Canonicalizer extends ValueVisitor
 	 * Attempts to fold the binary operator on two double point number inputed.
 	 *
 	 * @param opcode The operator performed on x and y.
-	 * @param x      The first operand of operation.
-	 * @param y      The second operand of operation.
+	 * @param x      The first LIROperand of operation.
+	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Double} instance representing the folding result
 	 * of two double number, if it is foldable. Otherwise, return null.
 	 */
@@ -800,7 +800,7 @@ public class Canonicalizer extends ValueVisitor
 				{
 					setCanonical(
 							new Instruction.ShiftOp(x.kind, Operator.IShl, x,
-									Constant.forInt(Utils.log2(y)), "IShl"));
+									Constant.forInt(Util.log2(y)), "IShl"));
 				}
 				return y == 0 ? setIntConstant(0) : null;
 			}
@@ -851,7 +851,7 @@ public class Canonicalizer extends ValueVisitor
 				{
 					setCanonical(
 							new Instruction.ShiftOp(x.kind, Operator.LShl, x,
-									Constant.forLong(Utils.log2(y)), "LShl"));
+									Constant.forLong(Util.log2(y)), "LShl"));
 				}
 				return y == 0 ? setLongConstant(0) : null;
 			}
@@ -1076,7 +1076,7 @@ public class Canonicalizer extends ValueVisitor
 	}
 
 	/**
-	 * Swaps the left side operand and right, if the left operand is constant
+	 * Swaps the left side LIROperand and right, if the left LIROperand is constant
 	 * and this operator of instruction is commutative.
 	 *
 	 * @param inst
@@ -1189,7 +1189,7 @@ public class Canonicalizer extends ValueVisitor
 		reduceIf(inst);
 	}
 
-	private void reduceIf(IntCmp inst)
+	private void reduceIf(IfOp inst)
 	{
 		Value l = inst.x();
 		Value r = inst.y();
@@ -1216,12 +1216,12 @@ public class Canonicalizer extends ValueVisitor
 	}
 
 	/**
-	 * Reduces the conditional branch instruction when left side operand is equal
+	 * Reduces the conditional branch instruction when left side LIROperand is equal
 	 * to the right one.
 	 *
 	 * @param inst
 	 */
-	private void reduceReflexiveIf(IntCmp inst)
+	private void reduceReflexiveIf(IfOp inst)
 	{
 		BasicBlock sux = null;
 		switch (inst.opcode)
@@ -1247,8 +1247,8 @@ public class Canonicalizer extends ValueVisitor
 	 * etc, and return the result of comparison.
 	 *
 	 * @param opcode The comparison operator.
-	 * @param l      The left side operand.
-	 * @param r      The right side operand.
+	 * @param l      The left side LIROperand.
+	 * @param r      The right side LIROperand.
 	 * @return The result of comparison, return true if comparison successfully
 	 * in specified op, otherwise, return false. Return null when the op is illegal.
 	 */

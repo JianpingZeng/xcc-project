@@ -1,14 +1,18 @@
 package driver;
 
-import backend.Target;
-import backend.RegisterConfig;
-import backend.TargetMachine;
+import lir.CompilerStub;
+import lir.backend.Target;
+import lir.backend.RegisterConfig;
+import lir.backend.TargetMachine;
 import hir.BasicBlock;
 import hir.HIR;
 import hir.Method;
-import lir.LIR;
+import lir.FrameMap;
 import lir.LIRGenerator;
+
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 /**
  * This class encapsulates global information about the compilation of a specified
@@ -18,10 +22,12 @@ import java.util.Iterator;
  */
 public final class Backend
 {
-	final TargetMachine targetMachine;
-	final RegisterConfig registerConfig;
-	final Target target;
+	public final TargetMachine targetMachine;
+	public 	final RegisterConfig registerConfig;
+	public final Target target;
 	final Options opt;
+	private FrameMap frameMap;
+	public final Map<Object, CompilerStub> stubs = new HashMap<Object, CompilerStub>();
 
 	public Backend(Options opt, TargetMachine targetMachine,
 			RegisterConfig registerConfig)
@@ -52,6 +58,11 @@ public final class Backend
 	private void emitLIR(HIR hir)
 	{
 
+	}
+
+	public FrameMap frameMap()
+	{
+		return frameMap;
 	}
 
 }
