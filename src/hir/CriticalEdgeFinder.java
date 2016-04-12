@@ -19,7 +19,7 @@ public class CriticalEdgeFinder
 	private final ControlFlowGraph cfg;
 
 	/**
-	 * The graph edges represented as a map from source to target nodes.
+	 * The graph edges represented as a map from source to targetAbstractLayer nodes.
 	 * Using a linked hash map makes compilation tracing more deterministic
 	 * and thus eases debugging.
 	 */

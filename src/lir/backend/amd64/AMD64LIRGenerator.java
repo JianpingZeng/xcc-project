@@ -64,7 +64,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	/**
 	 * Implement load instructions in terms of the x86 'mov' instruction. The
 	 * load and store instructions are the only place where we need to worry about
-	 * the momory layout of the target machine.
+	 * the momory layout of the targetAbstractLayer machine.
 	 * @param inst
 	 */
 	public void visitLoadInst(Instruction.LoadInst inst)
@@ -456,7 +456,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	}
 
 	/**
-	 * Converts data from specified type to target type upon platform dependent
+	 * Converts data from specified type to targetAbstractLayer type upon platform dependent
 	 * instruction, like x86 or SPARC.
 	 * @param inst
 	 */

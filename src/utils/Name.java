@@ -125,7 +125,7 @@ public class Name {
             n.table = table;
             n.index = nc;
             n.len = nbytes;
-            // inserts the new Name into target bucket with first insertion.
+            // inserts the new Name into targetAbstractLayer bucket with first insertion.
             n.next = table.hashes[h];
             table.hashes[h] = n;
             

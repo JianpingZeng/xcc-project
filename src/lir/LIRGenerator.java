@@ -130,7 +130,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	}
 
 	/**
-	 * This method is designed to lower binary operation into target-dependent
+	 * This method is designed to lower binary operation into targetAbstractLayer-dependent
 	 * instruction.
 	 *
 	 * @param instr

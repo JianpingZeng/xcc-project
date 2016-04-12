@@ -125,9 +125,9 @@ public class Convert {
     }
 
     /**
-      * Copy characters in source array to bytes in target array,
+      * Copy characters in source array to bytes in targetAbstractLayer array,
       *  converting them to Utf8 representation.
-      *  The target array must be large enough to hold the result.
+      *  The targetAbstractLayer array must be large enough to hold the result.
       *  returns first index in `dst' past the last copied byte.
       *  @param src        The array holding the characters to convert.
       *  @param sindex     The start index from which characters are converted.

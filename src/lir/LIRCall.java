@@ -11,7 +11,7 @@ import java.util.List;
 public class LIRCall extends LIRInstruction
 {
 	/**
-	 * The target of the call.
+	 * The targetAbstractLayer of the call.
 	 */
 	public final Object target;
 
@@ -44,9 +44,9 @@ public class LIRCall extends LIRInstruction
 	}
 
 	/**
-	 * Emits target assembly code for this instruction.
+	 * Emits targetAbstractLayer assembly code for this instruction.
 	 *
-	 * @param masm the target assembler
+	 * @param masm the targetAbstractLayer assembler
 	 */
 	@Override public void emitCode(LIRAssembler masm)
 	{

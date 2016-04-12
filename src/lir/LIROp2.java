@@ -143,9 +143,9 @@ public class LIROp2 extends LIRInstruction
 	}
 
 	/**
-	 * Emit target assembly code for this instruction.
+	 * Emit targetAbstractLayer assembly code for this instruction.
 	 *
-	 * @param masm the target assembler
+	 * @param masm the targetAbstractLayer assembler
 	 */
 	@Override public void emitCode(LIRAssembler masm)
 	{

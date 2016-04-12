@@ -396,11 +396,11 @@ public class ConstFold implements TypeTags, OpCodes
 	}
 
 	/**
-	 * Coerce constant type to target type.
+	 * Coerce constant type to targetAbstractLayer type.
 	 * 
 	 * @param sourcetype The source type of the coercion, which is assumed to be
-	 *            a constant type compatible with target type.
-	 * @param targettype The target type of the coercion.
+	 *            a constant type compatible with targetAbstractLayer type.
+	 * @param targettype The targetAbstractLayer type of the coercion.
 	 */
 	Type coerce(Type sourcetype, Type targettype)
 	{

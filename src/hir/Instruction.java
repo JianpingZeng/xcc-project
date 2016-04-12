@@ -398,9 +398,9 @@ public abstract class Instruction extends User
 		}
 
 		/**
-		 * Return the corresponding target block determinated by condition.
-		 * If the condition is true, the True Target is returned, otherwise
-		 * return false target.
+		 * Return the corresponding targetAbstractLayer block determinated by condition.
+		 * If the condition is true, the True TargetAbstractLayer is returned, otherwise
+		 * return false targetAbstractLayer.
 		 *
 		 * @param istrue
 		 * @return
@@ -478,14 +478,14 @@ public abstract class Instruction extends User
 	public static class Goto extends Branch
 	{
 		/**
-		 * The jump target of this goto instruction.
+		 * The jump targetAbstractLayer of this goto instruction.
 		 */
 		public BasicBlock target;
 
 		/**
-		 * Constructs a new {@code Goto} instruction with specified jump target.
+		 * Constructs a new {@code Goto} instruction with specified jump targetAbstractLayer.
 		 *
-		 * @param target The target block of this unconditional jump.
+		 * @param target The targetAbstractLayer block of this unconditional jump.
 		 */
 		public Goto(BasicBlock target, String name)
 		{
@@ -551,7 +551,7 @@ public abstract class Instruction extends User
 		 */
 		public final Value[] arguments;
 		/**
-		 * The target of this method calling.
+		 * The targetAbstractLayer of this method calling.
 		 */
 		public final Method target;
 
@@ -814,7 +814,7 @@ public abstract class Instruction extends User
 		 */
 		public Value value;
 		/**
-		 * The target of writing.
+		 * The targetAbstractLayer of writing.
 		 */
 		public Alloca dest;
 
@@ -822,7 +822,7 @@ public abstract class Instruction extends User
 		 * Constructs a new store instruction.
 		 *
 		 * @param value The inst to being writed into memory.
-		 * @param dest  The target memory address where inst stores.
+		 * @param dest  The targetAbstractLayer memory address where inst stores.
 		 */
 		public StoreInst(Value value, Alloca dest, String name)
 		{

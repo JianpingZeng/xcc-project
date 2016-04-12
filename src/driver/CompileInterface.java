@@ -26,7 +26,7 @@ public class CompileInterface
 	private boolean verbose = false;
 
 	/**
-	 * A flag that marks whether output target file.
+	 * A flag that marks whether output targetAbstractLayer file.
 	 */
 	private boolean outputResult = false;
 
@@ -50,6 +50,8 @@ public class CompileInterface
 	{
 		long msec = System.currentTimeMillis();
 		Options opt = Options.instance(context);
+
+		// machine specific not to do now
 		Backend backend = new Backend(opt, null, null);
 		Frontend frontend = new Frontend(opt, context);
 		Optimizer optimizer = new Optimizer(context);

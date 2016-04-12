@@ -8,15 +8,14 @@ import lir.ci.CiVariable;
 import utils.Util;
 
 /**
- * A helper utility for loading the result
- * of an instruction for use by another instruction. This helper takes
- * into account the specifics of the consuming instruction such as whether
- * it requires the input LIROperand to be in memory or a register, any
- * register size requirements of the input LIROperand, and whether the
- * usage has the side-effect of overwriting the input LIROperand. To satisfy
- * these constraints, an intermediate LIROperand may be created and move
- * instruction inserted to copy the output of the producer instruction
- * into the intermediate LIROperand.
+ * A helper utility for loading the result of an instruction for being used by another
+ * instruction. This helper takes into account the specifics of the consuming
+ * instruction such as whether it requires the input LIROperand to be in memory
+ * or a register, any register size requirements of the input LIROperand, and
+ * whether the usage has the side-effect of overwriting the input LIROperand. To
+ * satisfy these constraints, an intermediate LIROperand may be created and move
+ * instruction inserted to copy the output of the producer instruction into the
+ * intermediate LIROperand.
  *
  * @author Jianping Zeng
  */

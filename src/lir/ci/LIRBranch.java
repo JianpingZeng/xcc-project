@@ -23,7 +23,7 @@ public class LIRBranch extends LIRInstruction
 	private Label label;
 
 	/**
-	 * The target block of this branch.
+	 * The targetAbstractLayer block of this branch.
 	 */
 	private BasicBlock block;
 
@@ -36,7 +36,7 @@ public class LIRBranch extends LIRInstruction
 	 * Creates a new LIRBranch instruction.
 	 *
 	 * @param cond  the branch condition
-	 * @param label target label
+	 * @param label targetAbstractLayer label
 	 */
 	public LIRBranch(Condition cond, Label label)
 	{

@@ -157,11 +157,11 @@ public class Check implements SymbolKinds, TypeTags, Flags
 	}
 
     /**
-     * Check that a given type can be cast to a given target type.
+     * Check that a given type can be cast to a given targetAbstractLayer type.
      *  Return the result of the cast.
      *  @param pos        Position to be used for error reporting.
      *  @param found      The type that is being cast.
-     *  @param req        The target type of the cast.
+     *  @param req        The targetAbstractLayer type of the cast.
      * @return 
      */
 	public Type checkCastable(int pos, Type found, Type req)

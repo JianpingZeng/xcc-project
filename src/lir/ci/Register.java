@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 
 /**
- * Represents a target machine register.
+ * Represents a targetAbstractLayer machine register.
  */
 public final class Register implements Comparable<Register>, Serializable
 {
@@ -65,7 +65,7 @@ public final class Register implements Comparable<Register>, Serializable
 	public final String name;
 
 	/**
-	 * The actual encoding in a target machine instruction for this register,
+	 * The actual encoding in a targetAbstractLayer machine instruction for this register,
 	 * which may or may not be the same as {@link #number}.
 	 */
 	public final int encoding;
@@ -113,7 +113,7 @@ public final class Register implements Comparable<Register>, Serializable
 	 * Creates a {@code Register} instance.
 	 *
 	 * @param number        unique identifier for the register
-	 * @param encoding      the target machine encoding for the register
+	 * @param encoding      the targetAbstractLayer machine encoding for the register
 	 * @param spillSlotSize the size of the stack slot used to spill the value of the register
 	 * @param name          the mnemonic name for the register
 	 * @param flags         the set of {@link RegisterFlag} values for the register

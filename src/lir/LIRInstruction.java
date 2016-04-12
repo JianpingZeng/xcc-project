@@ -401,9 +401,9 @@ public abstract class LIRInstruction
 	}
 
 	/**
-	 * Abstract method to be used to emit target code for this instruction.
+	 * Abstract method to be used to emit targetAbstractLayer code for this instruction.
 	 *
-	 * @param masm the target assembler.
+	 * @param masm the targetAbstractLayer assembler.
 	 */
 	public abstract void emitCode(LIRAssembler masm);
 
