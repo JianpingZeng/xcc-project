@@ -31,7 +31,7 @@ public final class OperandPool
 
 	/**
 	 * The physical registers occupying the head of the LIROperand pool. This is the complete
-	 * {@linkplain Architecture#registers register set} of the target architecture, not
+	 * {@linkplain Architecture#registers register set} of the targetAbstractLayer architecture, not
 	 * just the allocatable registers.
 	 */
 	private final Register[] registers;
@@ -117,7 +117,7 @@ public final class OperandPool
 	/**
 	 * Creates a new LIROperand pool.
 	 *
-	 * @param target description of the target architecture for a compilation
+	 * @param target description of the targetAbstractLayer architecture for a compilation
 	 */
 	public OperandPool(TargetMachine target)
 	{

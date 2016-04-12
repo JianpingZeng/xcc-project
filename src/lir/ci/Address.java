@@ -23,10 +23,10 @@
 package lir.ci;
 
 /**
- * Represents an address in target machine memory, specified via some combination
+ * Represents an address in targetAbstractLayer machine memory, specified via some combination
  * of a base register, an index register, a displacement and a scale. Note that
  * the base and index registers may be {@link CiVariable variable}, that is as yet
- * unassigned to target machine registers.
+ * unassigned to targetAbstractLayer machine registers.
  */
 public final class Address extends CiValue
 {
@@ -52,7 +52,7 @@ public final class Address extends CiValue
 	 */
 	public final CiValue index;
 	/**
-	 * Scaling factor for indexing, dependent on target LIROperand size.
+	 * Scaling factor for indexing, dependent on targetAbstractLayer LIROperand size.
 	 */
 	public final Scale scale;
 	/**

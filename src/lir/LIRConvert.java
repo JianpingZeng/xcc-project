@@ -26,7 +26,7 @@ public class LIRConvert extends LIROp1
 	}
 
 	/**
-	 * Emits target assembly code for this LIRConvert instruction.
+	 * Emits targetAbstractLayer assembly code for this LIRConvert instruction.
 	 *
 	 * @param masm the LIRAssembler
 	 */

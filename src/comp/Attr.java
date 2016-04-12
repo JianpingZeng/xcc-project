@@ -554,8 +554,8 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeTags, Flags
 	}
 
 	/**
-	 * Returns the jump target of break, goto and continue statement, if exists,
-	 * report error if not. Note that the target of a goto or break , continue
+	 * Returns the jump targetAbstractLayer of break, goto and continue statement, if exists,
+	 * report error if not. Note that the targetAbstractLayer of a goto or break , continue
 	 * is the non-labelled statement tree referred to by the label.
 	 *
 	 * @param pos

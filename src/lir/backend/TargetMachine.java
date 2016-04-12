@@ -3,7 +3,7 @@ package lir.backend;
 import lir.ci.CiKind;
 
 /**
- * Represents the target machine for a compiler, including the CPU architecture,
+ * Represents the targetAbstractLayer machine for a compiler, including the CPU architecture,
  * the size of pointers and references, alignment of stacks, caches, etc.
  * @author Jianping Zeng
  */
@@ -26,7 +26,7 @@ public class TargetMachine
 	private final int[] spillSlotsPerKindMap;
 
 	/**
-	 * Specifies if this target supports encoding objects inline in the machine code.
+	 * Specifies if this targetAbstractLayer supports encoding objects inline in the machine code.
 	 */
 	public final boolean inlineObjects;
 
@@ -36,7 +36,7 @@ public class TargetMachine
 	public final int spillSlotSize;
 
 	/**
-	 * The machine word size on this target.
+	 * The machine word size on this targetAbstractLayer.
 	 */
 	public final int wordSize;
 
@@ -126,7 +126,7 @@ public class TargetMachine
 	}
 
 	/**
-	 * Gets the size in bytes of the specified kind for this target.
+	 * Gets the size in bytes of the specified kind for this targetAbstractLayer.
 	 *
 	 * @param kind the kind for which to get the size
 	 * @return the size in bytes of {@code kind}
@@ -161,7 +161,7 @@ public class TargetMachine
 	}
 
 	/**
-	 * Gets the number of spill slots for a specified kind in this target.
+	 * Gets the number of spill slots for a specified kind in this targetAbstractLayer.
 	 *
 	 * @param kind the kind for which to get the spill slot count
 	 * @return the number of spill slots for {@code kind}

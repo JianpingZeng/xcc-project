@@ -1,7 +1,7 @@
 package driver;
 
 import lir.CompilerStub;
-import lir.backend.Target;
+import lir.backend.TargetAbstractLayer;
 import lir.backend.RegisterConfig;
 import lir.backend.TargetMachine;
 import hir.BasicBlock;
@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * This class encapsulates global information about the compilation of a specified
- * file(compilation unit), including a reference to the runtime, target machine etc.
+ * file(compilation unit), including a reference to the runtime, targetAbstractLayer machine etc.
  * <p>
  * @author Jianping Zeng
  */
@@ -24,7 +24,7 @@ public final class Backend
 {
 	public final TargetMachine targetMachine;
 	public 	final RegisterConfig registerConfig;
-	public final Target target;
+	public final TargetAbstractLayer targetAbstractLayer;
 	final Options opt;
 	private FrameMap frameMap;
 	public final Map<Object, CompilerStub> stubs = new HashMap<Object, CompilerStub>();
@@ -35,16 +35,16 @@ public final class Backend
 		this.opt = opt;
 		this.targetMachine = targetMachine;
 		this.registerConfig = registerConfig;
-		this.target = Target.create(targetMachine);
+		this.targetAbstractLayer = TargetAbstractLayer.create(targetMachine.arch, this);
 	}
 
 	public void emitMachineInst(HIR hir)
 	{
-		LIRGenerator lirGenerator = target.newLIRGenerator();
 		Iterator<Method> itr = hir.iterator();
 		while (itr.hasNext())
 		{
 			Method m = itr.next();
+			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator(m);
 			for (BasicBlock block : m)
 				lirGenerator.doBlock(block);
 		}

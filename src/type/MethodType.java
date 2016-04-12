@@ -65,7 +65,7 @@ public class MethodType extends Type {
         
     /**
      * Tests type equality.
-     * @return true returned if target type is equivalent to self, otherwise false.
+     * @return true returned if targetAbstractLayer type is equivalent to self, otherwise false.
      */
     public boolean isSameType(Type other) {
         if ( other.tag != FUNCTION) return false;

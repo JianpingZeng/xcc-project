@@ -155,7 +155,7 @@ public class DominatorTree
 	/**
 	 * Constructs a instance of creating dominator tree of a CFG.
 	 * @param isPostData    whether it is post dominator tree.
-	 * @param m The target function.
+	 * @param m The targetAbstractLayer function.
 	 */
 	public DominatorTree(boolean isPostData, Method m)
 	{

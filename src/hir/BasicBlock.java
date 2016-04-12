@@ -70,7 +70,7 @@ public final class BasicBlock implements Iterable<Instruction>
 
 	/**
 	 * A block containing Generated machine instruction corresponding to
-	 * HIR instruction for specified target.
+	 * HIR instruction for specified targetAbstractLayer.
 	 */
 	private MachineBlock machineBlock;
 

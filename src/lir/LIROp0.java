@@ -33,7 +33,7 @@ public class LIROp0 extends LIRInstruction
 	/**
 	 * Emit assembly code for this instruction.
 	 *
-	 * @param masm the target assembler
+	 * @param masm the targetAbstractLayer assembler
 	 */
 	@Override public void emitCode(LIRAssembler masm)
 	{

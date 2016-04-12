@@ -31,7 +31,7 @@ public interface RegisterConfig
 	 *
 	 * @param type       the type of calling convention being requested
 	 * @param parameters the types of the arguments of the call
-	 * @param target     the target platform
+	 * @param target     the targetAbstractLayer platform
 	 * @param stackOnly  ignore registers
 	 */
 	CallingConvention getCallingConvention(CallingConvention.Type type, CiKind[] parameters,

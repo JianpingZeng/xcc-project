@@ -162,7 +162,7 @@ public class HIRGenerator extends ASTVisitor
 	 * Generates a jump instruction to be inserted into instructions list of a
 	 * basic block.
 	 *
-	 * @param target The target of jump inst
+	 * @param target The targetAbstractLayer of jump inst
 	 */
 	private void emitJump(BasicBlock target)
 	{
@@ -229,8 +229,8 @@ public class HIRGenerator extends ASTVisitor
 	 * </p>
 	 *
 	 * @param expr    The relative expression.
-	 * @param trueBB  the target block when condition is true.
-	 * @param falseBB the target block when condition is false.
+	 * @param trueBB  the targetAbstractLayer block when condition is true.
+	 * @param falseBB the targetAbstractLayer block when condition is false.
 	 */
 	private void translateBranchOnBool(Tree expr, BasicBlock trueBB,
 			BasicBlock falseBB)
@@ -443,7 +443,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param src   The source LIROperand.
 	 * @param sType The source type of LIROperand
-	 * @param dType The target type into that LIROperand will be casted.
+	 * @param dType The targetAbstractLayer type into that LIROperand will be casted.
 	 * @return
 	 */
 	private Value emitCast(Value src, Type sType, Type dType)
@@ -451,7 +451,7 @@ public class HIRGenerator extends ASTVisitor
 		/*
 		// the original type
 		int srccode = HIR.typecode(sType);
-		// the target type
+		// the targetAbstractLayer type
 		int targetcode = HIR.typecode(dType);
 		if (srccode == targetcode)
 			return src;
@@ -508,7 +508,7 @@ public class HIRGenerator extends ASTVisitor
 	private BasicBlock currentBlock = null;
 
 	/**
-	 * Two stack for parsing the target of break and continue statement
+	 * Two stack for parsing the targetAbstractLayer of break and continue statement
 	 * respectively.
 	 */
 	private LinkedList<BasicBlock> continueStack, breakStack;
@@ -828,7 +828,7 @@ public class HIRGenerator extends ASTVisitor
 		loopBB = ControlFlowGraph.createBasicBlock("while.body");
 		nextBB = ControlFlowGraph.createBasicBlock("while.exit");
 
-		// add the target of break and continue into stack
+		// add the targetAbstractLayer of break and continue into stack
 		pushBreak(nextBB);
 		pushContinue(headerBB);
 
@@ -941,7 +941,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	@Override public void visitGoto(Goto tree)
 	{
-		/* if the block corresponding to target of this stmt is null, creating a
+		/* if the block corresponding to targetAbstractLayer of this stmt is null, creating a
 		 * block to be associated with it. */
 		if (tree.target.corrBB == null)
 			tree.target.corrBB = ControlFlowGraph
@@ -1308,7 +1308,7 @@ public class HIRGenerator extends ASTVisitor
 	 * Generates move instrcution.
 	 *
 	 * @param value The source of move, including all of instruction.
-	 * @param dest  The target of move, which is variable, occasionally.
+	 * @param dest  The targetAbstractLayer of move, which is variable, occasionally.
 	 */
 	private void emitStore(Value value, Alloca dest)
 	{
@@ -1956,7 +1956,7 @@ public class HIRGenerator extends ASTVisitor
 			log.error(expr.pos, "Unknow variable name " + res.name.toString());
 			return null;
 		}
-		// store decrement ret into target address
+		// store decrement ret into targetAbstractLayer address
 		emitStore(incre, addr);
 		return ret;
 	}
@@ -2076,7 +2076,7 @@ public class HIRGenerator extends ASTVisitor
 	 * Generates loading instruction for local or global instruction that loads
 	 * a variable into a temporary virtual variable.
 	 *
-	 * @param src The source instruction that will be loaded into target.
+	 * @param src The source instruction that will be loaded into targetAbstractLayer.
 	 * @return Return the {@code LoadInst} that load value from src
 	 */
 	private Value emitLoadInstruction(Alloca src)

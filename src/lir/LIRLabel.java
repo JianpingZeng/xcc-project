@@ -34,7 +34,7 @@ public class LIRLabel extends LIROp0
 	}
 
 	/**
-	 * Emits target assembly code for this LIRLabel instruction.
+	 * Emits targetAbstractLayer assembly code for this LIRLabel instruction.
 	 *
 	 * @param masm the LIRAssembler
 	 */
