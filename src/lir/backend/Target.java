@@ -1,4 +1,4 @@
-package backend;
+package lir.backend;
 
 import driver.Backend;
 import lir.LIRAssembler;

@@ -86,7 +86,7 @@ public class ConstFold implements TypeTags, OpCodes
 	 * @param opcode The operation's opcode instruction (usually a byte code),
 	 *            as entered by class Symtab. opcode's ifeq to ifge are for
 	 *            postprocessing xcmp; ifxx pairs of instructions.
-	 * @param operand The operation's operand type. Argument types are assumed
+	 * @param operand The operation's LIROperand type. Argument types are assumed
 	 *            to have non-null constValue's.
 	 */
 	Type fold1(int opcode, Type operand)
@@ -155,8 +155,8 @@ public class ConstFold implements TypeTags, OpCodes
 	 * @param opcode The operation's opcode instruction (usually a byte code),
 	 *            as entered by class Symtab. opcode's ifeq to ifge are for
 	 *            postprocessing xcmp; ifxx pairs of instructions.
-	 * @param left The type of the operation's left operand.
-	 * @param right The type of the operation's right operand.
+	 * @param left The type of the operation's left LIROperand.
+	 * @param right The type of the operation's right LIROperand.
 	 */
 	Type fold2(int opcode, Type left, Type right)
 	{

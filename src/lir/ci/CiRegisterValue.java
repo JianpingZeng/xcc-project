@@ -1,24 +1,22 @@
 package lir.ci;
 
 /**
- * Denotes a register that stores a value of a fixed kind.
- * There is exactly one (canonical) instance of {@code
- * CiRegisterValue} for each ({@link CiRegister}, {@link CiKind}) pair.
- * Use {@link CiRegister#asValue(CiKind)} to
- * retrieve the canonical {@link CiRegisterValue} instance for a given (register,kind) pair.
+ * Denotes a register that stores a value of a fixed kind. There is exactly one
+ * (canonical) instance of {@code CiRegisterValue} for each ({@link Register},
+ * {@link CiKind}) pair. Use {@link Register#asValue(CiKind)} to retrieve the
+ * canonical {@link CiRegisterValue} instance for a given (register,kind) pair.
  */
 public final class CiRegisterValue extends CiValue
 {
-
 	/**
 	 * The register.
 	 */
-	public final CiRegister reg;
+	public final Register reg;
 
 	/**
-	 * Should only be called from {@link CiRegister#CiRegister} to ensure canonicalization.
+	 * Should only be called from {@link Register#Register} to ensure canonicalization.
 	 */
-	CiRegisterValue(CiKind kind, CiRegister register)
+	CiRegisterValue(CiKind kind, Register register)
 	{
 		super(kind);
 		this.reg = register;
@@ -48,7 +46,7 @@ public final class CiRegisterValue extends CiValue
 		return reg.name;
 	}
 
-	@Override public CiRegister asRegister()
+	@Override public Register asRegister()
 	{
 		return reg;
 	}

@@ -58,6 +58,15 @@ public enum CiKind
 		this.flags = flags;
 	}
 
+	public CiKind stackKind()
+	{
+		if (isInt())
+		{
+			return Int;
+		}
+		return this;
+	}
+
 	static class Flags
 	{
 		/**

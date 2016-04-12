@@ -2,6 +2,8 @@ package hir;
 
 import lir.ci.CiConstant;
 import lir.ci.CiKind;
+import lir.ci.CiValue;
+import lir.ci.CiVariable;
 import type.Type;
 import utils.Name;
 
@@ -19,6 +21,11 @@ public class Value implements Cloneable
 	 * {@linkplain CiKind#Void} if this instruction produce no inst.
 	 */
 	public CiKind kind;
+
+	/**
+	 * Machine specific.
+	 */
+	public CiValue LIROperand;
 
 	/**
 	 * Obtains the name of variable. it is null for other instruction.
@@ -41,6 +48,7 @@ public class Value implements Cloneable
 	public Value(CiKind kind)
 	{
 		this.kind = kind;
+		this.LIROperand = CiValue.IllegalValue;
 		this.usesList = new LinkedList<>();
 	}
 
@@ -181,6 +189,36 @@ public class Value implements Cloneable
 		else
 			return null;
 	}
+
+	public void setLIROperand(CiValue LIROperand)
+	{
+		assert this.LIROperand.isIllegal() :
+				"LIROperand can not be setted twice";
+		assert LIROperand != null && LIROperand.isLegal() :
+				"LIROperand must be legal";
+		assert LIROperand.kind != this.kind;
+		this.LIROperand = LIROperand;
+	}
+
+	/**
+	 * Obtains the corresponding machine-specific operation result of this instruction.
+	 * @return
+	 */
+	public CiValue LIROperand()
+	{
+		return LIROperand;
+	}
+
+	public void clearLIROperand()
+	{
+		this.LIROperand = CiValue.IllegalValue;
+	}
+
+	public final boolean isNullConstant()
+	{
+		return this instanceof Constant && ((Constant) this).value.isNull();
+	}
+
 	/**
 	 * The {@code Constant} instruction represents a constant such as an integer
 	 * inst, long, float, object reference, address, etc.

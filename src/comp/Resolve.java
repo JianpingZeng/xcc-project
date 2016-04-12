@@ -185,7 +185,7 @@ public class Resolve implements TypeTags, SymbolKinds, Flags
 	 * @param pos The position to use for error reporting.
 	 * @param optag The tag of the operation tree.
 	 * @param env The environment current at the operation.
-	 * @param argtype The type of the operand.
+	 * @param argtype The type of the LIROperand.
 	 */
 	public Symbol resolveUnaryOperator(int pos, int optag, Env env, Type argtype)
 	{
@@ -201,8 +201,8 @@ public class Resolve implements TypeTags, SymbolKinds, Flags
 	 * @param pos The position to use for error reporting.
 	 * @param optag The tag of the operation tree.
 	 * @param env The environment current at the operation.
-	 * @param left The type of the first operand.
-	 * @param right	The type of the second operand.	
+	 * @param left The type of the first LIROperand.
+	 * @param right	The type of the second LIROperand.
 	 */
 	public Symbol resolveBinaryOperator(int pos, int optag, Env env, Type left, Type right)
 	{

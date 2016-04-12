@@ -1,12 +1,8 @@
 package hir;
 
 import lir.ci.CiKind;
-import exception.SemanticError;
-import type.Type;
 import utils.Pair;
-import utils.Utils;
-
-import java.util.HashMap;
+import utils.Util;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -163,7 +159,7 @@ public abstract class Instruction extends User
 	public static abstract class Op1 extends Instruction
 	{
 		/**
-		 * The field represents first operand of this instruction.
+		 * The field represents first LIROperand of this instruction.
 		 */
 		public Value x;
 
@@ -172,7 +168,7 @@ public abstract class Instruction extends User
 		 *
 		 * @param kind   The inst kind of ret.
 		 * @param opcode The operator code for this instruction.
-		 * @param x      The sole operand.
+		 * @param x      The sole LIROperand.
 		 */
 		public Op1(CiKind kind, Operator opcode, Value x, String name)
 		{
@@ -183,7 +179,7 @@ public abstract class Instruction extends User
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash1(opcode.index, x);
+			return Util.hash1(opcode.index, x);
 		}
 
 	}
@@ -196,7 +192,7 @@ public abstract class Instruction extends User
 	public static abstract class Op2 extends Instruction
 	{
 		/**
-		 * The two field represents first or second operand of this instruction
+		 * The two field represents first or second LIROperand of this instruction
 		 * respectively.
 		 */
 		public Value x, y;
@@ -226,111 +222,35 @@ public abstract class Instruction extends User
 
 		@Override public int valueNumber()
 		{
-			return Utils.hash2(opcode.index, x, y);
+			return Util.hash2(opcode.index, x, y);
 		}
 	}
 
-	public static class ADD_I extends Op2
+	public static class ArithmeticOp extends Op2
 	{
-		public ADD_I(CiKind kind, Value x, Value y, String name)
+		public ArithmeticOp(CiKind kind, Operator opcode, Value x, Value y,
+				String name)
 		{
-			super(kind, Operator.IAnd, x, y, name);
+			super(kind, opcode, x, y, name);
 		}
 
 		@Override public void accept(ValueVisitor visitor)
 		{
-			visitor.visitADD_I(this);
+			visitor.visitArithmeticOp(this);
 		}
 	}
 
-	public static class SUB_I extends Op2
+	public static class LogicOp extends Op2
 	{
-		public SUB_I(CiKind kind, Value x, Value y, String name)
+		public LogicOp(CiKind kind, Operator opcode, Value x, Value y,
+				String name)
 		{
-			super(kind, Operator.ISub, x, y, name);
+			super(kind, opcode, x, y, name);
 		}
 
 		@Override public void accept(ValueVisitor visitor)
 		{
-			visitor.visitSUB_I(this);
-		}
-	}
-
-	public static class MUL_I extends Op2
-	{
-		public MUL_I(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.IMul, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitMUL_I(this);
-		}
-	}
-
-	public static class DIV_I extends Op2
-	{
-		public DIV_I(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.IDiv, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitDIV_I(this);
-		}
-	}
-
-	public static class MOD_I extends Op2
-	{
-		public MOD_I(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.IMod, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitMOD_I(this);
-		}
-	}
-
-	public static class AND_I extends Op2
-	{
-		public AND_I(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.IAnd, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitAND_I(this);
-		}
-	}
-
-	public static class OR_I extends Op2
-	{
-		public OR_I(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.IOr, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitOR_I(this);
-		}
-	}
-
-	public static class XOR_I extends Op2
-	{
-		public XOR_I(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.IXor, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitXOR_I(this);
+			visitor.visitLogicOp(this);
 		}
 	}
 
@@ -349,264 +269,16 @@ public abstract class Instruction extends User
 		}
 	}
 
-	public static class ADD_L extends Op2
+	public static class Negate extends Op1
 	{
-		public ADD_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LAdd, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitADD_L(this);
-		}
-	}
-
-	public static class SUB_L extends Op2
-	{
-		public SUB_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LSub, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitSUB_L(this);
-		}
-	}
-
-	public static class MUL_L extends Op2
-	{
-		public MUL_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LMul, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitMUL_L(this);
-		}
-	}
-
-	public static class DIV_L extends Op2
-	{
-		public DIV_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LDiv, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitDIV_L(this);
-		}
-	}
-
-	public static class MOD_L extends Op2
-	{
-		public MOD_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LMod, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitMOD_L(this);
-		}
-	}
-
-	public static class AND_L extends Op2
-	{
-		public AND_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LAnd, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitAND_L(this);
-		}
-	}
-
-	public static class OR_L extends Op2
-	{
-		public OR_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LOr, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitOR_L(this);
-		}
-	}
-
-	public static class XOR_L extends Op2
-	{
-		public XOR_L(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.LXor, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitXOR_L(this);
-		}
-	}
-
-	public static class ADD_F extends Op2
-	{
-		public ADD_F(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.FAdd, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitADD_F(this);
-		}
-	}
-
-	public static class SUB_F extends Op2
-	{
-		public SUB_F(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.FSub, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitSUB_F(this);
-		}
-	}
-
-	public static class MUL_F extends Op2
-	{
-		public MUL_F(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.FMul, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitMUL_F(this);
-		}
-	}
-
-	public static class DIV_F extends Op2
-	{
-		public DIV_F(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.FDiv, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitDIV_F(this);
-		}
-	}
-
-	public static class ADD_D extends Op2
-	{
-		public ADD_D(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.DAdd, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitADD_D(this);
-		}
-	}
-
-	public static class SUB_D extends Op2
-	{
-		public SUB_D(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.DSub, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitSUB_D(this);
-		}
-	}
-
-	public static class MUL_D extends Op2
-	{
-		public MUL_D(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.DMul, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitMUL_D(this);
-		}
-	}
-
-	public static class DIV_D extends Op2
-	{
-		public DIV_D(CiKind kind, Value x, Value y, String name)
-		{
-			super(kind, Operator.DDiv, x, y, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitDIV_D(this);
-		}
-	}
-
-	public static class NEG_I extends Op1
-	{
-		public NEG_I(CiKind kind, Value x, String name)
+		public Negate(CiKind kind, Value x, String name)
 		{
 			super(kind, Operator.INeg, x, name);
 		}
 
 		@Override public void accept(ValueVisitor visitor)
 		{
-			visitor.visitNEG_I(this);
-		}
-	}
-
-	public static class NEG_F extends Op1
-	{
-		public NEG_F(CiKind kind, Value x, String name)
-		{
-			super(kind, Operator.FNeg, x, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitNEG_F(this);
-		}
-	}
-
-	public static class NEG_L extends Op1
-	{
-		public NEG_L(CiKind kind, Value x, String name)
-		{
-			super(kind, Operator.LNeg, x, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitNEG_L(this);
-		}
-	}
-
-	public static class NEG_D extends Op1
-	{
-
-		public NEG_D(CiKind kind, Value x, String name)
-		{
-			super(kind, Operator.DNeg, x, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitNEG_D(this);
+			visitor.visitNegate(this);
 		}
 	}
 
@@ -661,54 +333,32 @@ public abstract class Instruction extends User
 		}
 	}
 
-	public static class BR extends ConditionalBranch
+	public static class IfOp extends ConditionalBranch
 	{
-		Value x;
-
-		public BR(Value x, BasicBlock trueTarget, BasicBlock falseTarget,
-				String name)
-		{
-			super(CiKind.Illegal, Operator.Br, name);
-			this.x = x;
-			this.trueTarget = trueTarget;
-			this.falseTarget = falseTarget;
-		}
-
+		private Condition cond;
 		/**
-		 * An interface for ValueVisitor invoking.
-		 *
-		 * @param visitor The instance of ValueVisitor.
-		 */
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitBR(this);
-		}
-	}
-
-	public static abstract class IntCmp extends ConditionalBranch
-	{
-		/**
-		 * The first operand also that means left-most of this branch operation.
+		 * The first LIROperand also that means left-most of this branch operation.
 		 */
 		Value x;
 		/**
-		 * The second operand also that means right-most of this branch
+		 * The second LIROperand also that means right-most of this branch
 		 * operation.
 		 */
 		Value y;
 
-		IntCmp(Operator opcode, Value x, Value y, BasicBlock trueTarget,
-				BasicBlock falseTarget, String name)
+		IfOp(Value x, Value y, BasicBlock trueTarget, BasicBlock falseTarget,
+				String name, Condition cond)
 		{
-			super(CiKind.Illegal, opcode, name);
+			super(CiKind.Illegal, Operator.Br, name);
 			this.x = x;
 			this.y = y;
 			this.trueTarget = trueTarget;
 			this.falseTarget = falseTarget;
+			this.cond = cond;
 		}
 
 		/**
-		 * Gets the first operand.
+		 * Gets the first LIROperand.
 		 *
 		 * @return
 		 */
@@ -718,7 +368,7 @@ public abstract class Instruction extends User
 		}
 
 		/**
-		 * The second operand.
+		 * The second LIROperand.
 		 *
 		 * @return
 		 */
@@ -759,315 +409,63 @@ public abstract class Instruction extends User
 		{
 			return istrue ? trueTarget : falseTarget;
 		}
+
+		/**
+		 * An interface for ValueVisitor invoking.
+		 *
+		 * @param visitor The instance of ValueVisitor.
+		 */
+		@Override public void accept(ValueVisitor visitor)
+		{
+			visitor.visitIfOp(this);
+		}
+
+		/**
+		 * Swaps the LIROperand and reverse the condition (e.g.<= --> >)
+		 *
+		 * @return
+		 */
+		public IfOp getMirror()
+		{
+			return new IfOp(y, x, trueTarget, falseTarget, instName,
+					cond.mirror());
+		}
+
+		public Condition condition()
+		{
+			return cond;
+		}
 	}
 
-	public static abstract class Cmp extends Op2
+	public static class Cmp extends Op2
 	{
 		Condition cond;
-		private static HashMap<Condition, Operator> intCondOpcodeMap;
-		private static HashMap<Condition, Operator> longCondOpcodeMap;
-		private static HashMap<Condition, Operator> floatCondOpcodeMap;
-		private static HashMap<Condition, Operator> doubleCondOpcodeMap;
-
-		static
-		{
-			intCondOpcodeMap = new HashMap<>();
-			longCondOpcodeMap = new HashMap<>();
-			floatCondOpcodeMap = new HashMap<>();
-			doubleCondOpcodeMap = new HashMap<>();
-
-			intCondOpcodeMap.put(Condition.EQ, Operator.ICmpEQ);
-			intCondOpcodeMap.put(Condition.NE, Operator.ICmpNE);
-			intCondOpcodeMap.put(Condition.LT, Operator.ICmpLT);
-			intCondOpcodeMap.put(Condition.LE, Operator.ICmpLE);
-			intCondOpcodeMap.put(Condition.GT, Operator.ICmpGT);
-			intCondOpcodeMap.put(Condition.GE, Operator.ICmpGE);
-
-			longCondOpcodeMap.put(Condition.EQ, Operator.LCmpEQ);
-			longCondOpcodeMap.put(Condition.NE, Operator.LCmpNE);
-			longCondOpcodeMap.put(Condition.LT, Operator.LCmpLT);
-			longCondOpcodeMap.put(Condition.LE, Operator.LCmpLE);
-			longCondOpcodeMap.put(Condition.GT, Operator.LCmpGT);
-			longCondOpcodeMap.put(Condition.GE, Operator.LCmpGE);
-
-			floatCondOpcodeMap.put(Condition.EQ, Operator.FCmpEQ);
-			floatCondOpcodeMap.put(Condition.NE, Operator.FCmpNE);
-			floatCondOpcodeMap.put(Condition.LT, Operator.FCmpLT);
-			floatCondOpcodeMap.put(Condition.LE, Operator.FCmpLE);
-			floatCondOpcodeMap.put(Condition.GT, Operator.FCmpGT);
-			floatCondOpcodeMap.put(Condition.GE, Operator.FCmpGE);
-
-			doubleCondOpcodeMap.put(Condition.EQ, Operator.DCmpEQ);
-			doubleCondOpcodeMap.put(Condition.NE, Operator.DCmpNE);
-			doubleCondOpcodeMap.put(Condition.LT, Operator.DCmpLT);
-			doubleCondOpcodeMap.put(Condition.LE, Operator.DCmpLT);
-			doubleCondOpcodeMap.put(Condition.GT, Operator.DCmpGT);
-			doubleCondOpcodeMap.put(Condition.GE, Operator.DCmpGE);
-		}
-
-		private Cmp(CiKind kind, Operator opcode, Value left, Value right,
-				Condition cond, String name)
-		{
-			super(kind, opcode, left, right, name);
-			this.cond = cond;
-		}
 
 		/**
 		 * Creates a instance of different subclass served as different
 		 * date type according to the date type.
 		 *
-		 * @param ty    The ret date type.
-		 * @param left  The left operand.
-		 * @param right the right operand.
+		 * @param kind  The ret date type.
+		 * @param left  The left LIROperand.
+		 * @param right the right LIROperand.
 		 * @param cond  The condition object.
 		 * @return According comparison instruction.
 		 */
-		public static Cmp instance(Type ty, Value left, Value right,
-				Condition cond, String name)
+		public Cmp(CiKind kind, Value left, Value right, Condition cond,
+				String name)
 		{
-			CiKind kind = HIRGenerator.type2Kind(ty);
-
-			if (ty.isIntLike())
-			{
-				return new ICmp(kind, intCondOpcodeMap.get(cond), left, right,
-						cond, name);
-			}
-			else if (ty.equals(Type.LONGType))
-			{
-				return new LCmp(kind, longCondOpcodeMap.get(cond), left, right,
-						cond, name);
-			}
-			else if (ty.equals(Type.FLOATType))
-			{
-				return new FCmp(kind, floatCondOpcodeMap.get(cond), left, right,
-						cond, name);
-			}
-			else if (ty.equals(Type.DOUBLEType))
-			{
-				return new DCmp(kind, doubleCondOpcodeMap.get(cond), left,
-						right, cond, name);
-			}
-			else
-			{
-				throw new SemanticError(
-						"Invalid type in creating cmp instruction.");
-			}
-		}
-
-	}
-
-	public static class ICmp extends Cmp
-	{
-		public ICmp(CiKind kind, Operator opcode, Value left, Value right,
-				Condition cond, String name)
-		{
-			super(kind, opcode, left, right, cond, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitICmp(this);
-		}
-	}
-
-	public static class LCmp extends Cmp
-	{
-		public LCmp(CiKind kind, Operator opcode, Value left, Value right,
-				Condition cond, String name)
-		{
-			super(kind, opcode, left, right, cond, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitLCmp(this);
-		}
-
-		@Override public String toString()
-		{
-			return super.toString();
-		}
-	}
-
-	public static class FCmp extends Cmp
-	{
-		public FCmp(CiKind kind, Operator opcode, Value left, Value right,
-				Condition cond, String name)
-		{
-			super(kind, opcode, left, right, cond, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitFCmp(this);
-		}
-	}
-
-	public static class DCmp extends Cmp
-	{
-		public DCmp(CiKind kind, Operator opcode, Value left, Value right,
-				Condition cond, String name)
-		{
-			super(kind, opcode, left, right, cond, name);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitDCmp(this);
-		}
-	}
-
-	public static final class IfCmp_LT extends IntCmp
-	{
-		public IfCmp_LT(Value x, Value y, BasicBlock trueTarget,
-				BasicBlock falseTarget, String name)
-		{
-			super(Operator.IfLT, x, y, trueTarget, falseTarget, name);
+			super(kind, Operator.Cmp, left, right, name);
+			this.cond = cond;
 		}
 
 		/**
-		 * Swaps the operand and reverse the condition (e.g.< --> >=)
+		 * An interface for ValueVisitor invoking.
 		 *
-		 * @return
+		 * @param visitor The instance of ValueVisitor.
 		 */
-		public IfCmp_GE getMirror()
-		{
-			return new IfCmp_GE(y, x, trueTarget, falseTarget, instName);
-		}
-
 		@Override public void accept(ValueVisitor visitor)
 		{
-			visitor.visitIfCmp_LT(this);
-		}
-
-		@Override public String toString()
-		{
-			return null;
-		}
-	}
-
-	public static final class IfCmp_LE extends IntCmp
-	{
-		public IfCmp_LE(Value x, Value y, BasicBlock trueTarget,
-				BasicBlock falseTarget, String name)
-		{
-			super(Operator.IfLE, x, y, trueTarget, falseTarget, name);
-		}
-
-		/**
-		 * Swaps the operand and reverse the condition (e.g.<= --> >)
-		 *
-		 * @return
-		 */
-		public IfCmp_GT getMirror()
-		{
-			return new IfCmp_GT(y, x, trueTarget, falseTarget, instName);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitIfCmp_LE(this);
-		}
-	}
-
-	public static final class IfCmp_GT extends IntCmp
-	{
-		public IfCmp_GT(Value x, Value y, BasicBlock trueTarget,
-				BasicBlock falseTarget, String name)
-		{
-			super(Operator.IfGT, x, y, trueTarget, falseTarget, name);
-		}
-
-		/**
-		 * Swaps the operand and reverse the condition (e.g.> --> <=)
-		 *
-		 * @return
-		 */
-		public IfCmp_LE getMirror()
-		{
-			return new IfCmp_LE(y, x, trueTarget, falseTarget, instName);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitIfCmp_GT(this);
-		}
-	}
-
-	public static class IfCmp_GE extends IntCmp
-	{
-		public IfCmp_GE(Value x, Value y, BasicBlock trueTarget,
-				BasicBlock falseTarget, String name)
-		{
-			super(Operator.IfGE, x, y, trueTarget, falseTarget, name);
-		}
-
-		/**
-		 * Swaps the operand and reverse the condition (e.g.>= --> <)
-		 *
-		 * @return
-		 */
-		public IfCmp_LT getMirror()
-		{
-			return new IfCmp_LT(y, x, trueTarget, falseTarget, instName);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitIfCmp_GE(this);
-		}
-	}
-
-	public static final class IfCmp_EQ extends IntCmp
-	{
-		public IfCmp_EQ(Value x, Value y, BasicBlock trueTarget,
-				BasicBlock falseTarget, String name)
-		{
-			super(Operator.IfEQ, x, y, trueTarget, falseTarget, name);
-		}
-
-		/**
-		 * Swaps the operand and reverse the condition (e.g.== --> !=)
-		 *
-		 * @return
-		 */
-		public IfCmp_NEQ getMirror()
-		{
-			return new IfCmp_NEQ(x, y, falseTarget, trueTarget, instName);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitIfCmp_EQ(this);
-		}
-	}
-
-	public static final class IfCmp_NEQ extends IntCmp
-	{
-		public IfCmp_NEQ(Value x, Value y, BasicBlock trueTarget,
-				BasicBlock falseTarget, String name)
-		{
-			super(Operator.IfNE, x, y, trueTarget, falseTarget, name);
-		}
-
-		/**
-		 * Swaps the operand and reverse the condition (e.g.!= --> ==)
-		 *
-		 * @return
-		 */
-		public IfCmp_EQ getMirror()
-		{
-			return new IfCmp_EQ(y, x, falseTarget, trueTarget, instName);
-		}
-
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitIfCmp_NEQ(this);
-		}
-
-		@Override public String toString()
-		{
-			return null;
+			visitor.visitCompare(this);
 		}
 	}
 
@@ -1363,9 +761,20 @@ public abstract class Instruction extends User
 	 */
 	public static class Alloca extends Instruction
 	{
-		public Alloca(CiKind kind, String name)
+		private Value size;
+
+		public Alloca(CiKind kind, Value size, String name)
 		{
 			super(kind, Operator.Alloca, name);
+			this.size = size;
+		}
+
+		/**
+		 * Gets the instruction that produced the size argument.
+		 */
+		public Value size()
+		{
+			return size;
 		}
 
 		@Override public void accept(ValueVisitor visitor)
@@ -1460,6 +869,7 @@ public abstract class Instruction extends User
 	{
 		private Pair<Value, BasicBlock>[] operands;
 		private int currIdx = 0;
+		private int lowKey, highKey;
 
 		/**
 		 * Constructs a new SwitchInst instruction with specified inst type.
@@ -1499,6 +909,45 @@ public abstract class Instruction extends User
 		public BasicBlock getDefaultBlock()
 		{
 			return this.operands[0].snd;
+		}
+
+		public int numsOfCases()
+		{
+			return operands.length;
+		}
+
+		public Value[] getCaseValues()
+		{
+			Value[] vals = new Value[operands.length];
+			for (int idx = 0; idx < vals.length; idx++)
+				vals[idx] = operands[idx].fst;
+			return vals;
+		}
+
+		public BasicBlock targetAt(int idx)
+		{
+			assert idx >= 0 && idx < operands.length;
+			return operands[idx].snd;
+		}
+
+		public int getLowKey()
+		{
+			return lowKey;
+		}
+
+		public int getHighKey()
+		{
+			return highKey;
+		}
+
+		public void setLowKey(int lowKey)
+		{
+			this.lowKey = lowKey;
+		}
+
+		public void setHighKey(int highKey)
+		{
+			this.highKey = highKey;
 		}
 	}
 }

@@ -8,10 +8,10 @@ import lir.ci.CiValue;
 public class LIRNegate extends LIROp1
 {
 	/**
-	 * Constructs a new instruction LIRNegate for a given operand.
+	 * Constructs a new instruction LIRNegate for a given LIROperand.
 	 *
-	 * @param operand the input operand for this instruction
-	 * @param result  the result operand for this instruction
+	 * @param operand the input LIROperand for this instruction
+	 * @param result  the result LIROperand for this instruction
 	 */
 	public LIRNegate(CiValue operand, CiValue result)
 	{

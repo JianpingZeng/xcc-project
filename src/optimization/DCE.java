@@ -545,11 +545,11 @@ public class DCE
 		}
 
 		/**
-		 * Visits {@code NEG_I} with vistor pattern.
+		 * Visits {@code Negate} with vistor pattern.
 		 *
 		 * @param inst The inst to be visited.
 		 */
-		public void visitNEG_I(Instruction.NEG_I inst)
+		public void visitNegate(Instruction.Negate inst)
 		{
 			markUnary(inst);
 		}

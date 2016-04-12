@@ -265,7 +265,7 @@ public class Main
 	    }
 
 	    /**
-	      * Does this option take an operand?
+	      * Does this option take an LIROperand?
 	      */
 	    boolean hasArg() {
 	        return argsNameKey != null;

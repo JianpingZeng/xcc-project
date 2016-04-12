@@ -23,11 +23,12 @@
 package lir.ci;
 
 /**
- * Represents an address in target machine memory, specified via some combination of a base register, an index register,
- * a displacement and a scale. Note that the base and index registers may be {@link CiVariable variable}, that is as yet
+ * Represents an address in target machine memory, specified via some combination
+ * of a base register, an index register, a displacement and a scale. Note that
+ * the base and index registers may be {@link CiVariable variable}, that is as yet
  * unassigned to target machine registers.
  */
-public final class CiAddress extends CiValue
+public final class Address extends CiValue
 {
 	/**
 	 *
@@ -35,22 +36,23 @@ public final class CiAddress extends CiValue
 	private static final long serialVersionUID = 1639045593259310943L;
 
 	/**
-	 * A sentinel value used as a place holder in an instruction stream for an address that will be patched.
+	 * A sentinel value used as a place holder in an instruction stream for an
+	 * address that will be patched.
 	 */
-	public static final CiAddress Placeholder = new CiAddress(CiKind.Illegal,
-			CiRegister.None.asValue());
+	public static final Address Placeholder = new Address(CiKind.Illegal,
+			Register.None.asValue());
 
 	/**
 	 * Base register that defines the start of the address computation; always present.
 	 */
 	public final CiValue base;
 	/**
-	 * Optional index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
-	 * If not present, is denoted by {@link CiValue#IllegalValue}.
+	 * Optional index register, the value of which (possibly scaled by {@link #scale})
+	 * is added to {@link #base}. If not present, is denoted by {@link CiValue#IllegalValue}.
 	 */
 	public final CiValue index;
 	/**
-	 * Scaling factor for indexing, dependent on target operand size.
+	 * Scaling factor for indexing, dependent on target LIROperand size.
 	 */
 	public final Scale scale;
 	/**
@@ -59,42 +61,46 @@ public final class CiAddress extends CiValue
 	public final int displacement;
 
 	/**
-	 * Creates a {@code CiAddress} with given base register, no scaling and no displacement.
+	 * Creates a {@code Address} with given base register, no scaling and no
+	 * displacement.
 	 *
 	 * @param kind the kind of the value being addressed
 	 * @param base the base register
 	 */
-	public CiAddress(CiKind kind, CiValue base)
+	public Address(CiKind kind, CiValue base)
 	{
 		this(kind, base, IllegalValue, Scale.Times1, 0);
 	}
 
 	/**
-	 * Creates a {@code CiAddress} with given base register, no scaling and a given displacement.
+	 * Creates a {@code Address} with given base register, no scaling and a given
+	 * displacement.
 	 *
 	 * @param kind         the kind of the value being addressed
 	 * @param base         the base register
 	 * @param displacement the displacement
 	 */
-	public CiAddress(CiKind kind, CiValue base, int displacement)
+	public Address(CiKind kind, CiValue base, int displacement)
 	{
 		this(kind, base, IllegalValue, Scale.Times1, displacement);
 	}
 
 	/**
-	 * Creates a {@code CiAddress} with given base and offset registers, no scaling and no displacement.
+	 * Creates a {@code Address} with given base and offset registers, no scaling
+	 * and no displacement.
 	 *
 	 * @param kind   the kind of the value being addressed
 	 * @param base   the base register
 	 * @param offset the offset register
 	 */
-	public CiAddress(CiKind kind, CiValue base, CiValue offset)
+	public Address(CiKind kind, CiValue base, CiValue offset)
 	{
 		this(kind, base, offset, Scale.Times1, 0);
 	}
 
 	/**
-	 * Creates a {@code CiAddress} with given base and index registers, scaling and displacement.
+	 * Creates a {@code Address} with given base and index registers, scaling and
+	 * displacement.
 	 * This is the most general constructor..
 	 *
 	 * @param kind         the kind of the value being addressed
@@ -103,7 +109,7 @@ public final class CiAddress extends CiValue
 	 * @param scale        the scaling factor
 	 * @param displacement the displacement
 	 */
-	public CiAddress(CiKind kind, CiValue base, CiValue index, Scale scale,
+	public Address(CiKind kind, CiValue base, CiValue index, Scale scale,
 			int displacement)
 	{
 		super(kind);
@@ -131,7 +137,8 @@ public final class CiAddress extends CiValue
 	}
 
 	/**
-	 * A scaling factor used in complex addressing modes such as those supported by x86 platforms.
+	 * A scaling factor used in complex addressing modes such as those supported
+	 * by x86 platforms.
 	 */
 	public enum Scale
 	{
@@ -182,25 +189,25 @@ public final class CiAddress extends CiValue
 	}
 
 	/**
-	 * If the base register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
+	 * If the base register is a {@link CiRegisterValue} returns the associated {@link Register}
 	 * otherwise raises an exception..
 	 *
-	 * @return the base {@link CiRegister}
+	 * @return the base {@link Register}
 	 * @throws Error if {@code base} is not a {@link CiRegisterValue}
 	 */
-	public CiRegister base()
+	public Register base()
 	{
 		return base.asRegister();
 	}
 
 	/**
-	 * If the index register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
+	 * If the index register is a {@link CiRegisterValue} returns the associated {@link Register}
 	 * otherwise raises an exception..
 	 *
-	 * @return the base {@link CiRegister}
+	 * @return the base {@link Register}
 	 * @throws Error if {@code index} is not a {@link CiRegisterValue}
 	 */
-	public CiRegister index()
+	public Register index()
 	{
 		return index.asRegister();
 	}
@@ -218,7 +225,7 @@ public final class CiAddress extends CiValue
 	}
 
 	/**
-	 * Returns the {@link Format encoded addressing mode} that this {@code CiAddress} represents.
+	 * Returns the {@link Format encoded addressing mode} that this {@code Address} represents.
 	 *
 	 * @return the encoded addressing mode
 	 */
@@ -297,9 +304,9 @@ public final class CiAddress extends CiValue
 
 	@Override public boolean equals(Object obj)
 	{
-		if (obj instanceof CiAddress)
+		if (obj instanceof Address)
 		{
-			CiAddress addr = (CiAddress) obj;
+			Address addr = (Address) obj;
 			return kind == addr.kind && displacement == addr.displacement
 					&& base.equals(addr.base) && scale == addr.scale && index
 					.equals(addr.index);
@@ -309,9 +316,9 @@ public final class CiAddress extends CiValue
 
 	@Override public boolean equalsIgnoringKind(CiValue o)
 	{
-		if (o instanceof CiAddress)
+		if (o instanceof Address)
 		{
-			CiAddress addr = (CiAddress) o;
+			Address addr = (Address) o;
 			return displacement == addr.displacement && base
 					.equalsIgnoringKind(addr.base) && scale == addr.scale
 					&& index.equalsIgnoringKind(addr.index);

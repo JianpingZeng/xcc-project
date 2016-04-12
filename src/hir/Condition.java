@@ -34,7 +34,12 @@ public enum Condition
 	/**
 	 * Signed greater than or equal.
 	 */
-	GE(">=");
+	GE(">="),
+	/**
+	 *
+	 */
+	TRUE("TRUE"),
+	FALSE("FALSE");
 
 	public final String operator;
 

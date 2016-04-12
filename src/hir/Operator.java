@@ -5,28 +5,22 @@ import static hir.Operator.Flags.*;
  * This file defines a enumerator that contains all of operators which represents
  * as a integer in HIR instruction.
  *
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/25.
+ * Created by Jianping Zeng<z1215jping@hotmail.com>.
  */
 public enum Operator
 {
-	None("none", -1, 0),
+	Illegal("illegal", -1, 0),
 	// terminators operation.
 	Ret("ret", 0, 0),
 	Br("br", Ret.index + 1, 0),
 	Goto("goto", Br.index + 1, 0),
 	Invoke("invoke", Goto.index + 1, 0),
 	Switch("switch", Invoke.index + 1, 0),
-	IfLT("iflt", Switch.index + 1, 0),
-	IfLE("ifle", IfLT.index + 1, 0),
-	IfEQ("ifeq", IfLE.index + 1, 0),
-	IfNE("ifne", IfEQ.index + 1, 0),
-	IfGT("ifgt", IfNE.index + 1, 0),
-	IfGE("ifge", IfGT.index + 1, 0),
 
 	// binary operator
 
 	// addictive
-	IAdd("iadd", IfGE.index + 1, COMMUTATIVE | ASSOCIATIVE),
+	IAdd("iadd", Switch.index + 1, COMMUTATIVE | ASSOCIATIVE),
 	LAdd("ladd", IAdd.index + 1, COMMUTATIVE | ASSOCIATIVE),
 	FAdd("fadd", LAdd.index + 1, COMMUTATIVE | ASSOCIATIVE),
 	DAdd("dadd", FAdd.index + 1, COMMUTATIVE | ASSOCIATIVE),
@@ -50,36 +44,10 @@ public enum Operator
 	DDiv("ddiv", FDiv.index + 1, ASSOCIATIVE),
 
 	// comparison operation
-	ICmpLT("icmplt", DDiv.index + 1, 0),
-	ICmpLE("icmple", ICmpLT.index + 1, 0),
-	ICmpEQ("icmpeq", ICmpLE.index + 1, 0),
-	ICmpNE("icmpne", ICmpEQ.index + 1, 0),
-	ICmpGT("icmpgt", ICmpNE.index + 1, 0),
-	ICmpGE("icmpge", ICmpGT.index + 1, 0),
-
-	LCmpLT("lcmplt", ICmpGE.index + 1, 0),
-	LCmpLE("lcmple", LCmpLT.index + 1, 0),
-	LCmpEQ("lcmpeq", LCmpLE.index + 1, 0),
-	LCmpNE("lcmpne", LCmpEQ.index + 1, 0),
-	LCmpGT("lcmpgt", LCmpNE.index + 1, 0),
-	LCmpGE("lcmpge", LCmpGT.index + 1, 0),
-
-	FCmpLT("fcmplt", LCmpGE.index + 1, 0),
-	FCmpLE("fcmple", FCmpLT.index + 1, 0),
-	FCmpEQ("fcmpeq", FCmpLE.index + 1, 0),
-	FCmpNE("fcmpne", FCmpEQ.index + 1, 0),
-	FCmpGT("fcmpgt", FCmpNE.index + 1, 0),
-	FCmpGE("fcmpge", FCmpGT.index + 1, 0),
-
-	DCmpLT("dcmplt", FCmpGE.index + 1, 0),
-	DCmpLE("dcmple", DCmpLT.index + 1, 0),
-	DCmpEQ("dcmpeq", DCmpLE.index + 1, 0),
-	DCmpNE("dcmpne", DCmpEQ.index + 1, 0),
-	DCmpGT("dcmpgt", DCmpNE.index + 1, 0),
-	DCmpGE("dcmpge", DCmpGT.index + 1, 0),
+	Cmp("cmp", DDiv.index + 1, 0),
 
 	// mod operation
-	IMod("imod", DCmpGE.index + 1, ASSOCIATIVE),
+	IMod("imod", Cmp.index + 1, ASSOCIATIVE),
 	LMod("lmod", IMod.index + 1, ASSOCIATIVE),
 
 	// bit-operation

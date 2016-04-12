@@ -121,7 +121,7 @@ public class Symtab implements Flags, OpCodes
 	/**
 	 * Enter a unary operation into symbol table.
 	 * @param name The name of the operator.
-	 * @param arg The type of the operand.
+	 * @param arg The type of the LIROperand.
 	 * @param res The operation's result type.
 	 * @param opcode The operation's bytecode instruction.
 	 */

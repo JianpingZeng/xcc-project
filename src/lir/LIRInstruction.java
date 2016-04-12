@@ -28,19 +28,19 @@ public abstract class LIRInstruction
 	public enum OperandMode
 	{
 		/**
-		 * An operand that is defined by a LIR instruction and it is live after
+		 * An LIROperand that is defined by a LIR instruction and it is live after
 		 * of this emitted instruction.
 		 */
 		Output,
 		/**
-		 * An operand that is used by a LIR instruction and is live before the
-		 * code emitted. Unless such an operand is also an output or temp operand,
+		 * An LIROperand that is used by a LIR instruction and is live before the
+		 * code emitted. Unless such an LIROperand is also an output or temp LIROperand,
 		 * it must not be modified by a LIR instruction.
 		 */
 		Input,
 
 		/**
-		 * An operand that is both modified and used by a LIR instruction.
+		 * An LIROperand that is both modified and used by a LIR instruction.
 		 */
 		Temp
 	}
@@ -52,7 +52,7 @@ public abstract class LIRInstruction
 
 	/**
 	 * <p>
-	 * The result operand for this instruction.
+	 * The result LIROperand for this instruction.
 	 * </p>
 	 * <p>
 	 * If this instruction produce no value, then result is {@code CiValue#IllegalValue}.
@@ -77,7 +77,8 @@ public abstract class LIRInstruction
 
 	/**
 	 * The number of variable or register output operands for this instruction.
-	 * These operands are at indexes {@code [0 .. allocatorOutputCount-1]} in {@link #allocatorOperands}.
+	 * These operands are at indexes {@code [0 .. allocatorOutputCount-1]} in
+	 * {@link #allocatorOperands}.
 	 *
 	 * @see OperandMode#Output
 	 */
@@ -85,7 +86,8 @@ public abstract class LIRInstruction
 
 	/**
 	 * The number of variable or register input operands for this instruction.
-	 * These operands are at indexes {@code [allocatorOutputCount .. (allocatorInputCount+allocatorOutputCount-1)]} in {@link #allocatorOperands}.
+	 * These operands are at indexes {@code [allocatorOutputCount .. (allocator
+	 * InputCount+allocatorOutputCount-1)]} in {@link #allocatorOperands}.
 	 *
 	 * @see OperandMode#Input
 	 */
@@ -93,7 +95,9 @@ public abstract class LIRInstruction
 
 	/**
 	 * The number of variable or register temp operands for this instruction.
-	 * These operands are at indexes {@code [allocatorInputCount+allocatorOutputCount .. (allocatorTempCount+allocatorInputCount+allocatorOutputCount-1)]} in {@link #allocatorOperands}.
+	 * These operands are at indexes {@code [allocatorInputCount+allocatorOutputCount
+	 * .. (allocatorTempCount+allocatorInputCount+allocatorOutputCount-1)]} in
+	 * {@link #allocatorOperands}.
 	 *
 	 * @see OperandMode#Temp
 	 */
@@ -109,7 +113,7 @@ public abstract class LIRInstruction
 	 * or stack slot to a {@linkplain CiVariable variable} or to inform the allocator about operands
 	 * that are already fixed to a specific register.
 	 * This set excludes all constant operands as well as operands that are bound to
-	 * a stack slot in the {@linkplain CiStackSlot#inCallerFrame() caller's frame}.
+	 * a stack slot in the {@linkplain StackSlot#inCallerFrame() caller's frame}.
 	 * This array is partitioned as follows.
 	 * <pre>
 	 *
@@ -126,9 +130,11 @@ public abstract class LIRInstruction
 	 * Constructs a new LIR instruction that has no input or temp operands.
 	 *
 	 * @param opcode  the opcode of the new instruction
-	 * @param result  the operand that holds the operation result of this instruction. This will be
-	 *                {@link CiValue#IllegalValue} for instructions that do not produce a result.
-	 * @param hasCall specifies if all caller-saved registers are destroyed by this instruction
+	 * @param result  the LIROperand that holds the operation result of this instruction.
+	 *                   This will be{@link CiValue#IllegalValue} for instructions
+	 *                   that do not produce a result.
+	 * @param hasCall specifies if all caller-saved registers are destroyed by
+	 *                   this instruction
 	 */
 	public LIRInstruction(LIROpcode opcode, CiValue result, boolean hasCall)
 	{
@@ -147,11 +153,15 @@ public abstract class LIRInstruction
 	 * </pre>
 	 *
 	 * @param opcode    the opcode of the new instruction
-	 * @param result    the operand that holds the operation result of this instruction. This will be
-	 *                  {@link CiValue#IllegalValue} for instructions that do not produce a result.
-	 * @param hasCall   specifies if all caller-saved registers are destroyed by this instruction
-	 * @param tempInput the number of operands that are both {@linkplain OperandMode#Input input} and {@link OperandMode#Temp temp} operands for this instruction
-	 * @param temp      the number of operands that are {@link OperandMode#Temp temp} operands for this instruction
+	 * @param result    the LIROperand that holds the operation result of this instruction.
+	 *                     This will be{@link CiValue#IllegalValue} for instructions
+	 *                     that do not produce a result.
+	 * @param hasCall   specifies if all caller-saved registers are destroyed by
+	 *                     this instruction
+	 * @param tempInput the number of operands that are both {@linkplain OperandMode#Input input}
+	 *                     and {@link OperandMode#Temp temp} operands for this instruction
+	 * @param temp      the number of operands that are {@link OperandMode#Temp temp}
+	 *                     operands for this instruction
 	 * @param operands  the input and temp operands for the instruction
 	 */
 	public LIRInstruction(LIROpcode opcode, CiValue result, boolean hasCall,
@@ -184,7 +194,7 @@ public abstract class LIRInstruction
 		{
 			if (output.isAddress())
 			{
-				return addAddress((CiAddress) output);
+				return addAddress((Address) output);
 			}
 			if (output.isStackSlot())
 			{
@@ -226,7 +236,7 @@ public abstract class LIRInstruction
 		return -1;
 	}
 
-	private LIROperand addAddress(CiAddress address)
+	private LIROperand addAddress(Address address)
 	{
 		assert address.base.isVariableOrRegister();
 
@@ -291,10 +301,10 @@ public abstract class LIRInstruction
 	}
 
 	/**
-	 * Gets an input or temp operand of this instruction.
+	 * Gets an input or temp LIROperand of this instruction.
 	 *
-	 * @param index the index of the operand requested
-	 * @return the {@code index}'th operand
+	 * @param index the index of the LIROperand requested
+	 * @return the {@code index}'th LIROperand
 	 */
 	public final CiValue operand(int index)
 	{
@@ -316,7 +326,7 @@ public abstract class LIRInstruction
 			CiValue op = operands[i];
 			if (op.isAddress())
 			{
-				this.operands[i] = addAddress((CiAddress) op);
+				this.operands[i] = addAddress((Address) op);
 			}
 		}
 
@@ -370,9 +380,9 @@ public abstract class LIRInstruction
 	}
 
 	/**
-	 * Gets the result operand for this instruction.
+	 * Gets the result LIROperand for this instruction.
 	 *
-	 * @return return the result operand
+	 * @return return the result LIROperand
 	 */
 	public final CiValue result()
 	{

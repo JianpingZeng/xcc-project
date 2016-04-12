@@ -349,7 +349,7 @@ public class EnterSSA
 		}
 
 		@Override
-		public void visitNEG_I(Instruction.NEG_I inst)
+		public void visitNegate(Instruction.Negate inst)
 		{
 			visitInstruction(inst);
 		}

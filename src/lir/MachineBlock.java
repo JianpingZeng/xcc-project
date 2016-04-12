@@ -21,20 +21,20 @@ public final class MachineBlock
 	 * <p>Bit set specifying which operands are live in the entry to this
 	 * machine block. There are values used in this block or any of its
 	 * successors where such value are not defined in this block.
-	 * <p> The bit index of an operand is its OperandPool.
+	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
 	public BitSet livein;
 	/**
 	 * <p>Bit set specifying which operands are live in the exit from this
 	 * machine block. There are values used in this block or any of its
 	 * successors where such value are not defined in this block.
-	 * <p> The bit index of an operand is its OperandPool.
+	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
 	public BitSet liveout;
 	/**
 	 * <p>Bit set specifying which operands are used in this machine block.
 	 * There are values live in the entry to this block.
-	 * <p> The bit index of an operand is its OperandPool.
+	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
 	public BitSet livegen;
 
@@ -48,8 +48,6 @@ public final class MachineBlock
 		attachedBlock = block;
 		label = new Label();
 	}
-
-
 
 	public LIRList lir()
 	{

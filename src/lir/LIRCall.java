@@ -1,19 +1,15 @@
 package lir;
 
-/**
- * @author Jianping Zeng
- */
-
 import lir.ci.CiValue;
 
 import java.util.List;
 
 /**
  * This class represents a call instruction which calls to any function.
+ * @author Jianping Zeng
  */
 public class LIRCall extends LIRInstruction
 {
-
 	/**
 	 * The target of the call.
 	 */
@@ -40,7 +36,8 @@ public class LIRCall extends LIRInstruction
 		}
 		else
 		{
-			// The last argument is the operand holding the address for the indirect call
+			// The last argument is the LIROperand holding the address for the
+			// indirect call
 			this.targetAddressIndex = arguments.size() - 1;
 		}
 		this.target = target;

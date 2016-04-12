@@ -13,11 +13,11 @@ public class LIRConvert extends LIROp1
 	public final Operator opcode;
 
 	/**
-	 * Constructs a new instruction LIRConvert for a given operand.
+	 * Constructs a new instruction LIRConvert for a given LIROperand.
 	 *
 	 * @param opcode the opcode of this conversion
-	 * @param operand  the input operand for this instruction
-	 * @param result   the result operand for this instruction
+	 * @param operand  the input LIROperand for this instruction
+	 * @param result   the result LIROperand for this instruction
 	 */
 	public LIRConvert(Operator opcode, CiValue operand, CiValue result)
 	{
