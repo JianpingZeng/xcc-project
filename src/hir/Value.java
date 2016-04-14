@@ -1,9 +1,8 @@
 package hir;
 
-import lir.ci.CiConstant;
-import lir.ci.CiKind;
-import lir.ci.CiValue;
-import lir.ci.CiVariable;
+import lir.ci.LIRConstant;
+import lir.ci.LIRKind;
+import lir.ci.LIRValue;
 import type.Type;
 import utils.Name;
 
@@ -18,14 +17,14 @@ public class Value implements Cloneable
 {
 	/**
 	 * The type of inst produced with this instruction. The kind is
-	 * {@linkplain CiKind#Void} if this instruction produce no inst.
+	 * {@linkplain LIRKind#Void} if this instruction produce no inst.
 	 */
-	public CiKind kind;
+	public LIRKind kind;
 
 	/**
 	 * Machine specific.
 	 */
-	public CiValue LIROperand;
+	public LIRValue LIROperand;
 
 	/**
 	 * Obtains the name of variable. it is null for other instruction.
@@ -45,10 +44,10 @@ public class Value implements Cloneable
 	 */
 	public final LinkedList<Use> usesList;
 
-	public Value(CiKind kind)
+	public Value(LIRKind kind)
 	{
 		this.kind = kind;
-		this.LIROperand = CiValue.IllegalValue;
+		this.LIROperand = LIRValue.IllegalValue;
 		this.usesList = new LinkedList<>();
 	}
 
@@ -182,7 +181,7 @@ public class Value implements Cloneable
 	 * is the subclass of {@code Constant}, otherwise, the null is returned.
 	 * @return
 	 */
-	public CiConstant asConstant()
+	public LIRConstant asConstant()
 	{
 		if (this instanceof Constant)
 			return ((Constant)this).value;
@@ -190,7 +189,7 @@ public class Value implements Cloneable
 			return null;
 	}
 
-	public void setLIROperand(CiValue LIROperand)
+	public void setLIROperand(LIRValue LIROperand)
 	{
 		assert this.LIROperand.isIllegal() :
 				"LIROperand can not be setted twice";
@@ -204,14 +203,14 @@ public class Value implements Cloneable
 	 * Obtains the corresponding machine-specific operation result of this instruction.
 	 * @return
 	 */
-	public CiValue LIROperand()
+	public LIRValue LIROperand()
 	{
 		return LIROperand;
 	}
 
 	public void clearLIROperand()
 	{
-		this.LIROperand = CiValue.IllegalValue;
+		this.LIROperand = LIRValue.IllegalValue;
 	}
 
 	public final boolean isNullConstant()
@@ -228,18 +227,18 @@ public class Value implements Cloneable
 		/**
 		 * The constant inst keeped with {@code Constant} instance.
 		 */
-		public CiConstant value;
+		public LIRConstant value;
 
 		/**
 		 * Constructs a new instruction representing the specified constant.
 		 */
-		public Constant(CiConstant value)
+		public Constant(LIRConstant value)
 		{
-			super(value !=null ? value.kind : CiKind.Illegal);
+			super(value !=null ? value.kind : LIRKind.Illegal);
 			this.value = value;
 		}
 
-		public void setValue(CiConstant value)
+		public void setValue(LIRConstant value)
 		{
 			this.value = value;
 		}
@@ -252,7 +251,7 @@ public class Value implements Cloneable
 		 */
 		public static Constant forDouble(double d)
 		{
-			return new Constant(CiConstant.forDouble(d));
+			return new Constant(LIRConstant.forDouble(d));
 		}
 
 		/**
@@ -263,7 +262,7 @@ public class Value implements Cloneable
 		 */
 		public static Constant forFloat(float f)
 		{
-			return new Constant(CiConstant.forFloat(f));
+			return new Constant(LIRConstant.forFloat(f));
 		}
 
 		/**
@@ -274,7 +273,7 @@ public class Value implements Cloneable
 		 */
 		public static Constant forLong(long i)
 		{
-			return new Constant(CiConstant.forLong(i));
+			return new Constant(LIRConstant.forLong(i));
 		}
 
 		/**
@@ -285,7 +284,7 @@ public class Value implements Cloneable
 		 */
 		public static Constant forInt(int i)
 		{
-			return new Constant(CiConstant.forInt(i));
+			return new Constant(LIRConstant.forInt(i));
 		}
 
 		/**
@@ -296,7 +295,7 @@ public class Value implements Cloneable
 		 */
 		public static Constant forBoolean(boolean i)
 		{
-			return new Constant(CiConstant.forBoolean(i));
+			return new Constant(LIRConstant.forBoolean(i));
 		}
 
 		/**
@@ -307,7 +306,7 @@ public class Value implements Cloneable
 		 */
 		public static Constant forObject(Object o)
 		{
-			return new Constant(CiConstant.forObject(o));
+			return new Constant(LIRConstant.forObject(o));
 		}
 
 		public String toString()
@@ -334,12 +333,12 @@ public class Value implements Cloneable
 	public static class UndefValue extends Constant
 	{
 
-		private UndefValue(CiKind kind)
+		private UndefValue(LIRKind kind)
 		{
-			super(new CiConstant(kind, 0));
+			super(new LIRConstant(kind, 0));
 		}
 
-		public static UndefValue get(CiKind kind)
+		public static UndefValue get(LIRKind kind)
 		{
 			return new UndefValue(kind);
 		}
@@ -367,7 +366,7 @@ public class Value implements Cloneable
 		 *
 		public Instruction.Alloca memAddr;
 
-		public Var(CiKind kind, Name name)
+		public Var(LIRKind kind, Name name)
 		{
 			super(kind);
 			this.name = name;
@@ -409,7 +408,7 @@ public class Value implements Cloneable
 		 * @param kind       The kind of inst type.
 		 * @param name The name postfix of to being yielded.
 
-		public Local(CiKind kind, Name name)
+		public Local(LIRKind kind, Name name)
 		{
 			super(kind, name);
 		}

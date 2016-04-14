@@ -1,7 +1,7 @@
 package lir;
 
 import hir.Operator;
-import lir.ci.CiValue;
+import lir.ci.LIRValue;
 
 /**
  * The {@code LIRConvert} class definition.
@@ -19,7 +19,7 @@ public class LIRConvert extends LIROp1
 	 * @param operand  the input LIROperand for this instruction
 	 * @param result   the result LIROperand for this instruction
 	 */
-	public LIRConvert(Operator opcode, CiValue operand, CiValue result)
+	public LIRConvert(Operator opcode, LIRValue operand, LIRValue result)
 	{
 		super(LIROpcode.Convert, operand, result);
 		this.opcode = opcode;
@@ -38,7 +38,7 @@ public class LIRConvert extends LIROp1
 	/**
 	 * Prints this instruction to a LogStream.
 	 */
-	@Override public String operationString(CiValue.Formatter operandFmt)
+	@Override public String operationString(LIRValue.Formatter operandFmt)
 	{
 		return "[" + opcode.name() + "] " + super.operationString(operandFmt);
 	}

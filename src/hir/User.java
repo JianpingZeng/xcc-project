@@ -1,13 +1,13 @@
 package hir;
 
-import lir.ci.CiKind;
+import lir.ci.LIRKind;
 
 /**
  * @author Jianping Zeng
  */
 public abstract class User extends Value
 {
-	public User(CiKind kind)
+	public User(LIRKind kind)
 	{
 		super(kind);
 	}

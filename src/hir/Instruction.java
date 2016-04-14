@@ -1,6 +1,6 @@
 package hir;
 
-import lir.ci.CiKind;
+import lir.ci.LIRKind;
 import utils.Pair;
 import utils.Util;
 
@@ -49,7 +49,7 @@ public abstract class Instruction extends User
 		this.bb = bb;
 	}
 
-	public Instruction(CiKind kind, Operator opcode, String instName)
+	public Instruction(LIRKind kind, Operator opcode, String instName)
 	{
 		super(kind);
 		this.id = -1;
@@ -170,7 +170,7 @@ public abstract class Instruction extends User
 		 * @param opcode The operator code for this instruction.
 		 * @param x      The sole LIROperand.
 		 */
-		public Op1(CiKind kind, Operator opcode, Value x, String name)
+		public Op1(LIRKind kind, Operator opcode, Value x, String name)
 		{
 			super(kind, opcode, name);
 			this.x = x;
@@ -197,7 +197,7 @@ public abstract class Instruction extends User
 		 */
 		public Value x, y;
 
-		public Op2(CiKind kind, Operator opcode, Value x, Value y, String name)
+		public Op2(LIRKind kind, Operator opcode, Value x, Value y, String name)
 		{
 			super(kind, opcode, name);
 			this.x = x;
@@ -228,7 +228,7 @@ public abstract class Instruction extends User
 
 	public static class ArithmeticOp extends Op2
 	{
-		public ArithmeticOp(CiKind kind, Operator opcode, Value x, Value y,
+		public ArithmeticOp(LIRKind kind, Operator opcode, Value x, Value y,
 				String name)
 		{
 			super(kind, opcode, x, y, name);
@@ -242,7 +242,7 @@ public abstract class Instruction extends User
 
 	public static class LogicOp extends Op2
 	{
-		public LogicOp(CiKind kind, Operator opcode, Value x, Value y,
+		public LogicOp(LIRKind kind, Operator opcode, Value x, Value y,
 				String name)
 		{
 			super(kind, opcode, x, y, name);
@@ -257,7 +257,7 @@ public abstract class Instruction extends User
 	public static class ShiftOp extends Op2
 	{
 
-		public ShiftOp(CiKind kind, Operator opcode, Value x, Value y,
+		public ShiftOp(LIRKind kind, Operator opcode, Value x, Value y,
 				String name)
 		{
 			super(kind, opcode, x, y, name);
@@ -271,7 +271,7 @@ public abstract class Instruction extends User
 
 	public static class Negate extends Op1
 	{
-		public Negate(CiKind kind, Value x, String name)
+		public Negate(LIRKind kind, Value x, String name)
 		{
 			super(kind, Operator.INeg, x, name);
 		}
@@ -284,7 +284,7 @@ public abstract class Instruction extends User
 
 	public static class Convert extends Op1
 	{
-		public Convert(CiKind kind, Operator opcode, Value x, String name)
+		public Convert(LIRKind kind, Operator opcode, Value x, String name)
 		{
 			super(kind, opcode, x, name);
 		}
@@ -312,7 +312,7 @@ public abstract class Instruction extends User
 		 *
 		 * @param kind
 		 */
-		public Branch(CiKind kind, Operator opcode, String name)
+		public Branch(LIRKind kind, Operator opcode, String name)
 		{
 			super(kind, opcode, name);
 		}
@@ -327,7 +327,7 @@ public abstract class Instruction extends User
 		 *
 		 * @param kind
 		 */
-		public ConditionalBranch(CiKind kind, Operator opcode, String name)
+		public ConditionalBranch(LIRKind kind, Operator opcode, String name)
 		{
 			super(kind, opcode, name);
 		}
@@ -349,7 +349,7 @@ public abstract class Instruction extends User
 		IfOp(Value x, Value y, BasicBlock trueTarget, BasicBlock falseTarget,
 				String name, Condition cond)
 		{
-			super(CiKind.Illegal, Operator.Br, name);
+			super(LIRKind.Illegal, Operator.Br, name);
 			this.x = x;
 			this.y = y;
 			this.trueTarget = trueTarget;
@@ -451,7 +451,7 @@ public abstract class Instruction extends User
 		 * @param cond  The condition object.
 		 * @return According comparison instruction.
 		 */
-		public Cmp(CiKind kind, Value left, Value right, Condition cond,
+		public Cmp(LIRKind kind, Value left, Value right, Condition cond,
 				String name)
 		{
 			super(kind, Operator.Cmp, left, right, name);
@@ -489,7 +489,7 @@ public abstract class Instruction extends User
 		 */
 		public Goto(BasicBlock target, String name)
 		{
-			super(CiKind.Illegal, Operator.Goto, name);
+			super(LIRKind.Illegal, Operator.Goto, name);
 			this.target = target;
 		}
 
@@ -516,7 +516,7 @@ public abstract class Instruction extends User
 		 */
 		public Return(Value retValue, String name)
 		{
-			super(retValue == null ? CiKind.Void : retValue.kind, Operator.Ret,
+			super(retValue == null ? LIRKind.Void : retValue.kind, Operator.Ret,
 					name);
 			this.ret = retValue;
 			if (ret != null)
@@ -564,7 +564,7 @@ public abstract class Instruction extends User
 		 * @param args   The input arguments.
 		 * @param target The called method.
 		 */
-		public Invoke(CiKind result, Value[] args, Method target, String name)
+		public Invoke(LIRKind result, Value[] args, Method target, String name)
 		{
 			super(result, Operator.Invoke, name);
 			this.target = target;
@@ -579,6 +579,17 @@ public abstract class Instruction extends User
 		@Override public String toString()
 		{
 			return null;
+		}
+
+		public int getNumsOfArgs()
+		{
+			return arguments.length;
+		}
+
+		public Value argumentAt(int i)
+		{
+			assert i >= 0 && i < arguments.length;
+			return arguments[i];
 		}
 	}
 
@@ -608,7 +619,7 @@ public abstract class Instruction extends User
 		 * @param blocks The one of which basic block array is corresponding to
 		 *               an input argument.
 		 */
-		public Phi(CiKind kind, Value[] args, BasicBlock[] blocks, String name)
+		public Phi(LIRKind kind, Value[] args, BasicBlock[] blocks, String name)
 		{
 			super(kind, Operator.Phi, name);
 			assert args.length == blocks.length;
@@ -621,13 +632,13 @@ public abstract class Instruction extends User
 			}
 		}
 
-		public Phi(CiKind kind, int length)
+		public Phi(LIRKind kind, int length)
 		{
 			super(kind, Operator.Phi, "");
 			this.inputs = new Pair[length];
 		}
 
-		public Phi(CiKind kind, int length, String nameString)
+		public Phi(LIRKind kind, int length, String nameString)
 		{
 			super(kind, Operator.Phi, nameString);
 			this.inputs = new Pair[length];
@@ -661,7 +672,7 @@ public abstract class Instruction extends User
 		public Value getIncomingValue(int index)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the size of list";
+					< inputs.length : "The index is beyond out the length of list";
 			return inputs[index].fst;
 		}
 
@@ -674,7 +685,7 @@ public abstract class Instruction extends User
 		public BasicBlock getBasicBlock(int index)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the size of list";
+					< inputs.length : "The index is beyond out the length of list";
 			return inputs[index].snd;
 		}
 
@@ -687,7 +698,7 @@ public abstract class Instruction extends User
 		public void setParameter(int index, Value value)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the size of list";
+					< inputs.length : "The index is beyond out the length of list";
 
 			inputs[index].fst = value;
 		}
@@ -701,7 +712,7 @@ public abstract class Instruction extends User
 		public void setBasicBlock(int index, BasicBlock block)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the size of list";
+					< inputs.length : "The index is beyond out the length of list";
 
 			inputs[index].snd = block;
 		}
@@ -761,20 +772,20 @@ public abstract class Instruction extends User
 	 */
 	public static class Alloca extends Instruction
 	{
-		private Value size;
+		private Value length;
 
-		public Alloca(CiKind kind, Value size, String name)
+		public Alloca(LIRKind kind, Value length, String name)
 		{
 			super(kind, Operator.Alloca, name);
-			this.size = size;
+			this.length = length;
 		}
 
 		/**
-		 * Gets the instruction that produced the size argument.
+		 * Gets the instruction that produced the length argument.
 		 */
-		public Value size()
+		public Value length()
 		{
-			return size;
+			return length;
 		}
 
 		@Override public void accept(ValueVisitor visitor)
@@ -826,7 +837,7 @@ public abstract class Instruction extends User
 		 */
 		public StoreInst(Value value, Alloca dest, String name)
 		{
-			super(CiKind.Illegal, Operator.Store, name);
+			super(LIRKind.Illegal, Operator.Store, name);
 			this.value = value;
 			this.dest = dest;
 
@@ -850,7 +861,7 @@ public abstract class Instruction extends User
 		 */
 		public Alloca from;
 
-		public LoadInst(CiKind kind, Alloca from, String name)
+		public LoadInst(LIRKind kind, Alloca from, String name)
 		{
 			super(kind, Operator.Load, name);
 			this.from = from;
@@ -881,7 +892,7 @@ public abstract class Instruction extends User
 		public SwitchInst(Value condV, BasicBlock defaultBB, int numCases,
 				String name)
 		{
-			super(CiKind.Illegal, Operator.Switch, name);
+			super(LIRKind.Illegal, Operator.Switch, name);
 			operands = new Pair[1 + numCases];
 			operands[currIdx++] = new Pair<>(condV, defaultBB);
 		}

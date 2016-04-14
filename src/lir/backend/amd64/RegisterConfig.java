@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import lir.ci.CallingConvention.Type;
-import static lir.ci.Register.RegisterFlag;
+import static lir.ci.LIRRegister.RegisterFlag;
 
 /**
  * A default implementation of {@link RegisterConfig}.
@@ -26,54 +26,54 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 	public final int minRole;
 
 	/**
-	 * The map from register role IDs to registers.
+	 * The map from register role IDs to LIRRegisters.
 	 */
-	public final Register[] registersRoleMap;
+	public final LIRRegister[] registersRoleMap;
 
 	/**
-	 * The set of registers that can be used by the register allocator.
+	 * The set of LIRRegisters that can be used by the register allocator.
 	 */
-	public final Register[] allocatable;
+	public final LIRRegister[] allocatable;
 
 	/**
-	 * The set of registers that can be used by the register allocator,
-	 * {@linkplain Register#categorize(Register[]) categorized} by register
+	 * The set of LIRRegisters that can be used by the register allocator,
+	 * {@linkplain LIRRegister#categorize(LIRRegister[]) categorized} by register
 	 * {@linkplain RegisterFlag flags}.
 	 */
-	public final EnumMap<RegisterFlag, Register[]> categorized;
+	public final EnumMap<RegisterFlag, LIRRegister[]> categorized;
 
 	/**
-	 * The ordered set of registers used to pass integral arguments.
+	 * The ordered set of LIRRegisters used to pass integral arguments.
 	 */
-	public final Register[] cpuParameters;
+	public final LIRRegister[] cpuParameters;
 
 	/**
-	 * The ordered set of registers used to pass floating point arguments.
+	 * The ordered set of LIRRegisters used to pass floating point arguments.
 	 */
-	public final Register[] fpuParameters;
+	public final LIRRegister[] fpuParameters;
 
 	/**
-	 * The caller saved registers.
+	 * The caller saved LIRRegisters.
 	 */
-	public final Register[] callerSave;
+	public final LIRRegister[] callerSave;
 
 	/**
-	 * The register to which {@link Register#Frame} and {@link Register#CallerFrame} are bound.
+	 * The register to which {@link LIRRegister#Frame} and {@link LIRRegister#CallerFrame} are bound.
 	 */
-	public final Register frame;
+	public final LIRRegister frame;
 
 	/**
-	 * Register for returning an integral value.
+	 * LIRRegister for returning an integral value.
 	 */
-	public final Register integralReturn;
+	public final LIRRegister integralReturn;
 
 	/**
-	 * Register for returning a floating point value.
+	 * LIRRegister for returning a floating point value.
 	 */
-	public final Register floatingPointReturn;
+	public final LIRRegister floatingPointReturn;
 
 	/**
-	 * The map from register {@linkplain Register#number numbers} to register
+	 * The map from register {@linkplain LIRRegister#number numbers} to register
 	 * {@linkplain RegisterAttributes attributes} for this register configuration.
 	 */
 	public final RegisterAttributes[] attributesMap;
@@ -81,18 +81,18 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 	/**
 	 * The scratch register.
 	 */
-	public final Register scratch;
+	public final LIRRegister scratch;
 
 	/**
 	 * The frame offset of the first stack argument for each calling convention {@link CallingConvention.Type}.
 	 */
 	public final int[] stackArg0Offsets = new int[CallingConvention.Type.VALUES.length];
 
-	public RegisterConfig(Register frame, Register integralReturn,
-			Register floatingPointReturn, Register scratch,
-			Register[] allocatable, Register[] callerSave,
-			Register[] parameters, CalleeSaveLayout csl,
-			Register[] allRegisters, Map<Integer, Register> roles)
+	public RegisterConfig(LIRRegister frame, LIRRegister integralReturn,
+			LIRRegister floatingPointReturn, LIRRegister scratch,
+			LIRRegister[] allocatable, LIRRegister[] callerSave,
+			LIRRegister[] parameters, CalleeSaveLayout csl,
+			LIRRegister[] allLIRRegisters, Map<Integer, LIRRegister> roles)
 	{
 		this.frame = frame;
 		this.csl = csl;
@@ -100,17 +100,17 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 		this.callerSave = callerSave;
 		assert !Arrays.asList(allocatable).contains(scratch);
 		this.scratch = scratch;
-		EnumMap<Register.RegisterFlag, Register[]> categorizedParameters = Register
+		EnumMap<LIRRegister.RegisterFlag, LIRRegister[]> categorizedParameters = LIRRegister
 				.categorize(parameters);
 		this.cpuParameters = categorizedParameters.get(RegisterFlag.CPU);
 		this.fpuParameters = categorizedParameters.get(RegisterFlag.FPU);
-		categorized = Register.categorize(allocatable);
-		attributesMap = RegisterAttributes.createMap(this, allRegisters);
+		categorized = LIRRegister.categorize(allocatable);
+		attributesMap = RegisterAttributes.createMap(this, allLIRRegisters);
 		this.floatingPointReturn = floatingPointReturn;
 		this.integralReturn = integralReturn;
 		int minRoleId = Integer.MAX_VALUE;
 		int maxRoleId = Integer.MIN_VALUE;
-		for (Map.Entry<Integer, Register> e : roles.entrySet())
+		for (Map.Entry<Integer, LIRRegister> e : roles.entrySet())
 		{
 			int id = e.getKey();
 			assert id >= 0;
@@ -123,8 +123,8 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 				maxRoleId = id;
 			}
 		}
-		registersRoleMap = new Register[(maxRoleId - minRoleId) + 1];
-		for (Map.Entry<Integer, Register> e : roles.entrySet())
+		registersRoleMap = new LIRRegister[(maxRoleId - minRoleId) + 1];
+		for (Map.Entry<Integer, LIRRegister> e : roles.entrySet())
 		{
 			int id = e.getKey();
 			registersRoleMap[id] = e.getValue();
@@ -155,7 +155,7 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 	 *
 	 * @param kind
 	 */
-	public Register getReturnRegister(CiKind kind)
+	public LIRRegister getReturnRegister(LIRKind kind)
 	{
 		if (kind.isDouble() || kind.isFloat())
 		{
@@ -164,12 +164,12 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 		return integralReturn;
 	}
 
-	public Register getFrameRegister()
+	public LIRRegister getFrameRegister()
 	{
 		return frame;
 	}
 
-	public Register getScratchRegister()
+	public LIRRegister getScratchRegister()
 	{
 		return scratch;
 	}
@@ -177,13 +177,13 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 	/**
 	 * {@inheritDoc}
 	 * <p>
-	 * This implementation assigns all available registers to parameters before assigning
+	 * This implementation assigns all available LIRRegisters to parameters before assigning
 	 * any stack slots to parameters.
 	 */
 	public CallingConvention getCallingConvention(CallingConvention.Type type,
-			CiKind[] parameters, TargetMachine target, boolean stackOnly)
+			LIRKind[] parameters, TargetMachine target, boolean stackOnly)
 	{
-		CiValue[] locations = new CiValue[parameters.length];
+		LIRValue[] locations = new LIRValue[parameters.length];
 
 		int currentGeneral = 0;
 		int currentXMM = 0;
@@ -193,7 +193,7 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 
 		for (int i = 0; i < parameters.length; i++)
 		{
-			final CiKind kind = parameters[i];
+			final LIRKind kind = parameters[i];
 
 			switch (kind)
 			{
@@ -206,8 +206,8 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 				case Object:
 					if (!stackOnly && currentGeneral < cpuParameters.length)
 					{
-						Register register = cpuParameters[currentGeneral++];
-						locations[i] = register.asValue(kind);
+						LIRRegister LIRRegister = cpuParameters[currentGeneral++];
+						locations[i] = LIRRegister.asValue(kind);
 					}
 					break;
 
@@ -215,8 +215,8 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 				case Double:
 					if (!stackOnly && currentXMM < fpuParameters.length)
 					{
-						Register register = fpuParameters[currentXMM++];
-						locations[i] = register.asValue(kind);
+						LIRRegister LIRRegister = fpuParameters[currentXMM++];
+						locations[i] = LIRRegister.asValue(kind);
 					}
 					break;
 
@@ -237,7 +237,7 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 				(currentStackIndex - firstStackIndex) * target.spillSlotSize);
 	}
 
-	public Register[] getCallingConventionRegisters(CallingConvention.Type type,
+	public LIRRegister[] getCallingConventionRegisters(CallingConvention.Type type,
 			RegisterFlag flag)
 	{
 		if (flag == RegisterFlag.CPU)
@@ -248,17 +248,17 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 		return fpuParameters;
 	}
 
-	public Register[] getAllocatableRegisters()
+	public LIRRegister[] getAllocatableRegisters()
 	{
 		return allocatable;
 	}
 
-	public EnumMap<RegisterFlag, Register[]> getCategorizedAllocatableRegisters()
+	public EnumMap<RegisterFlag, LIRRegister[]> getCategorizedAllocatableRegisters()
 	{
 		return categorized;
 	}
 
-	public Register[] getCallerSaveRegisters()
+	public LIRRegister[] getCallerSaveRegisters()
 	{
 		return callerSave;
 	}
@@ -273,7 +273,7 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 		return attributesMap;
 	}
 
-	public Register getRegisterForRole(int id)
+	public LIRRegister getRegisterForRole(int id)
 	{
 		return registersRoleMap[id - minRole];
 	}
@@ -283,7 +283,7 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 		StringBuilder roleMap = new StringBuilder();
 		for (int i = 0; i < registersRoleMap.length; ++i)
 		{
-			Register reg = registersRoleMap[i];
+			LIRRegister reg = registersRoleMap[i];
 			if (reg != null)
 			{
 				if (roleMap.length() != 0)

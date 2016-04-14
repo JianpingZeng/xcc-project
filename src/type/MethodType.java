@@ -92,7 +92,7 @@ public class MethodType extends Type {
     }
 
     public long size() {
-        throw new Error("MethodType#size called");
+        throw new Error("MethodType#length called");
     }
 
     public String toString() {

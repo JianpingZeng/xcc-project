@@ -12,7 +12,7 @@ import java.util.ListIterator;
  * </p>
  * <p>
  * brief Promote the specified list of alloca instructions into scalar
- * registers, inserting PHI nodes as appropriate.
+ * LIRRegisters, inserting PHI nodes as appropriate.
  *
  * This function makes use of DominanceFrontier information.  This function
  * does not modify the CFG of the function at all.  All allocas must be from
@@ -76,7 +76,7 @@ public class EnterSSA
 
 	/**
 	 * Promote the specified list of alloca instructions into scalar
-	 * registers, inserting PHI nodes as appropriate.
+	 * LIRRegisters, inserting PHI nodes as appropriate.
 	 *
 	 8 This function makes use of DominanceFrontier information.  This function
 	 * does not modify the CFG of the function at all.  All allocas must be from

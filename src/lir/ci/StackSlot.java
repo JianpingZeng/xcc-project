@@ -4,7 +4,7 @@ package lir.ci;
  * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
  * or an incoming stack-based argument in a method's {@linkplain #inCallerFrame() caller's frame}.
  */
-public final class StackSlot extends CiValue
+public final class StackSlot extends LIRValue
 {
 	/**
 	 *
@@ -23,7 +23,7 @@ public final class StackSlot extends CiValue
 	 * @param kind  the kind of the value stored in the stack slot
 	 * @param index the index of the stack slot
 	 */
-	public static StackSlot get(CiKind kind, int index)
+	public static StackSlot get(LIRKind kind, int index)
 	{
 		return get(kind, index, false);
 	}
@@ -36,7 +36,7 @@ public final class StackSlot extends CiValue
 	 * @param index         the index of the stack slot
 	 * @param inCallerFrame specifies if the slot is in the current frame or in the caller's frame
 	 */
-	public static StackSlot get(CiKind kind, int index, boolean inCallerFrame)
+	public static StackSlot get(LIRKind kind, int index, boolean inCallerFrame)
 	{
 
 		StackSlot[][] cache = inCallerFrame ? CALLER_FRAME_CACHE : CACHE;
@@ -55,10 +55,10 @@ public final class StackSlot extends CiValue
 	}
 
 	/**
-	 * Private constructor to enforce use of {@link #get(CiKind, int)} so that the
+	 * Private constructor to enforce use of {@link #get(LIRKind, int)} so that the
 	 * shared instance {@linkplain #CACHE cache} is used.
 	 */
-	private StackSlot(CiKind kind, int index)
+	private StackSlot(LIRKind kind, int index)
 	{
 		super(kind);
 		this.index = index;
@@ -101,7 +101,7 @@ public final class StackSlot extends CiValue
 		return false;
 	}
 
-	@Override public boolean equalsIgnoringKind(CiValue o)
+	@Override public boolean equalsIgnoringKind(LIRValue o)
 	{
 		if (o == this)
 		{
@@ -153,7 +153,7 @@ public final class StackSlot extends CiValue
 	}
 
 	/**
-	 * Default size of the cache to generate per kind.
+	 * Default length of the cache to generate per kind.
 	 */
 	private static final int CACHE_PER_KIND_SIZE = 100;
 
@@ -174,31 +174,31 @@ public final class StackSlot extends CiValue
 	private static StackSlot[][] makeCache(int cachePerKindSize,
 			boolean inCallerFrame)
 	{
-		StackSlot[][] cache = new StackSlot[CiKind.VALUES.length][];
-		cache[CiKind.Illegal.ordinal()] = makeCacheForKind(CiKind.Illegal,
+		StackSlot[][] cache = new StackSlot[LIRKind.VALUES.length][];
+		cache[LIRKind.Illegal.ordinal()] = makeCacheForKind(LIRKind.Illegal,
 				cachePerKindSize, inCallerFrame);
-		cache[CiKind.Int.ordinal()] = makeCacheForKind(CiKind.Int,
+		cache[LIRKind.Int.ordinal()] = makeCacheForKind(LIRKind.Int,
 				cachePerKindSize, inCallerFrame);
-		cache[CiKind.Long.ordinal()] = makeCacheForKind(CiKind.Long,
+		cache[LIRKind.Long.ordinal()] = makeCacheForKind(LIRKind.Long,
 				cachePerKindSize, inCallerFrame);
-		cache[CiKind.Float.ordinal()] = makeCacheForKind(CiKind.Float,
+		cache[LIRKind.Float.ordinal()] = makeCacheForKind(LIRKind.Float,
 				cachePerKindSize, inCallerFrame);
-		cache[CiKind.Double.ordinal()] = makeCacheForKind(CiKind.Double,
+		cache[LIRKind.Double.ordinal()] = makeCacheForKind(LIRKind.Double,
 				cachePerKindSize, inCallerFrame);
-		cache[CiKind.Object.ordinal()] = makeCacheForKind(CiKind.Object,
+		cache[LIRKind.Object.ordinal()] = makeCacheForKind(LIRKind.Object,
 				cachePerKindSize, inCallerFrame);
 		return cache;
 	}
 
 	/**
-	 * Creates an array of {@code StackSlot} objects for a given {@link CiKind}.
+	 * Creates an array of {@code StackSlot} objects for a given {@link LIRKind}.
 	 * The {@link #index} values range from {@code 0} to {@code count - 1}.
 	 *
-	 * @param kind  the {@code CiKind} of the stack slot
-	 * @param count the size of the array to create
+	 * @param kind  the {@code LIRKind} of the stack slot
+	 * @param count the length of the array to create
 	 * @return the generated {@code StackSlot} array
 	 */
-	private static StackSlot[] makeCacheForKind(CiKind kind, int count,
+	private static StackSlot[] makeCacheForKind(LIRKind kind, int count,
 			boolean inCallerFrame)
 	{
 		StackSlot[] slots = new StackSlot[count];

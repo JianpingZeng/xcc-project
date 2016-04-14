@@ -9,7 +9,7 @@ public class CallingConvention
 {
 	/**
 	 * Constants denoting the type of a call for which a calling convention is
-	 * {@linkplain RegisterConfig#getCallingConvention(Type, CiKind[],
+	 * {@linkplain RegisterConfig#getCallingConvention(Type, LIRKind[],
 	 * lir.backend.TargetMachine, boolean) requested}.
 	 */
 	public enum Type
@@ -57,9 +57,9 @@ public class CallingConvention
 	/**
 	 * The locations in which the arguments are placed. This array ordered by argument index.
 	 */
-	public final CiValue[] locations;
+	public final LIRValue[] locations;
 
-	public CallingConvention(CiValue[] locations, int stackSize)
+	public CallingConvention(LIRValue[] locations, int stackSize)
 	{
 		this.locations = locations;
 		this.stackSize = stackSize;
@@ -70,7 +70,7 @@ public class CallingConvention
 	{
 		StringBuilder result = new StringBuilder();
 		result.append("CallingConvention[");
-		for (CiValue op : locations)
+		for (LIRValue op : locations)
 		{
 			result.append(op.toString()).append(" ");
 		}
@@ -82,7 +82,7 @@ public class CallingConvention
 	{
 		for (int i = 0; i < locations.length; i++)
 		{
-			CiValue location = locations[i];
+			LIRValue location = locations[i];
 			assert location.isStackSlot() || location.isRegister();
 		}
 		return true;

@@ -2,10 +2,11 @@ package lir;
 
 import hir.Condition;
 import lir.ci.*;
-import lir.ci.CiValue.Formatter;
+import lir.ci.LIRValue.Formatter;
 
 /**
- * The{@code LIROp2} class represents a LIR instruction that performs an operation on two operands.
+ * The{@code LIROp2} class represents a LIR instruction that performs an operation
+ * on two operands.
  * @author Jianping Zeng
  */
 
@@ -22,10 +23,10 @@ public class LIROp2 extends LIRInstruction
 	 * @param opr1      the first input LIROperand
 	 * @param opr2      the second input LIROperand
 	 */
-	public LIROp2(LIROpcode opcode, Condition condition, CiValue opr1,
-			CiValue opr2)
+	public LIROp2(LIROpcode opcode, Condition condition, LIRValue opr1,
+			LIRValue opr2)
 	{
-		super(opcode, CiValue.IllegalValue, false, 0, 0, opr1, opr2);
+		super(opcode, LIRValue.IllegalValue, false, 0, 0, opr1, opr2);
 		this.condition = condition;
 		assert opcode
 				== LIROpcode.Cmp : "Instruction opcode should be of type LIROpcode.Cmp";
@@ -40,8 +41,8 @@ public class LIROp2 extends LIRInstruction
 	 * @param opr2      the second input LIROperand
 	 * @param result    the LIROperand that holds the result of this instruction
 	 */
-	public LIROp2(LIROpcode opcode, Condition condition, CiValue opr1,
-			CiValue opr2, CiValue result)
+	public LIROp2(LIROpcode opcode, Condition condition, LIRValue opr1,
+			LIRValue opr2, LIRValue result)
 	{
 		super(opcode, result, false, 0, 0, opr1, opr2);
 		this.condition = condition;
@@ -57,9 +58,10 @@ public class LIROp2 extends LIRInstruction
 	 * @param opr2   the second input LIROperand
 	 * @param result the LIROperand that holds the result of this instruction
 	 * @param kind   the kind of this instruction
+     * @param hasCall
 	 */
-	public LIROp2(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue result,
-			CiKind kind, boolean hasCall)
+	public LIROp2(LIROpcode opcode, LIRValue opr1, LIRValue opr2, LIRValue result,
+			LIRKind kind, boolean hasCall)
 	{
 		super(opcode, result, hasCall, 0, 0, opr1, opr2);
 		this.condition = null;
@@ -78,8 +80,8 @@ public class LIROp2 extends LIRInstruction
 	 * @param result the LIROperand that holds the result of this instruction
 	 * @param tmp    the temporary LIROperand used by this instruction
 	 */
-	public LIROp2(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue result,
-			CiValue tmp)
+	public LIROp2(LIROpcode opcode, LIRValue opr1, LIRValue opr2, LIRValue result,
+			LIRValue tmp)
 	{
 		super(opcode, result, false, 0, 1, opr1, opr2, tmp);
 		this.condition = null;
@@ -95,9 +97,9 @@ public class LIROp2 extends LIRInstruction
 	 * @param opr2   the second input LIROperand
 	 * @param result the LIROperand that holds the result of this instruction
 	 */
-	public LIROp2(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue result)
+	public LIROp2(LIROpcode opcode, LIRValue opr1, LIRValue opr2, LIRValue result)
 	{
-		this(opcode, opr1, opr2, result, CiKind.Illegal, false);
+		this(opcode, opr1, opr2, result, LIRKind.Illegal, false);
 	}
 
 	/**
@@ -105,7 +107,7 @@ public class LIROp2 extends LIRInstruction
 	 *
 	 * @return opr1 the first input LIROperand
 	 */
-	public CiValue operand1()
+	public LIRValue operand1()
 	{
 		return operand(0);
 	}
@@ -115,7 +117,7 @@ public class LIROp2 extends LIRInstruction
 	 *
 	 * @return opr2 the second input LIROperand
 	 */
-	public CiValue operand2()
+	public LIRValue operand2()
 	{
 		return operand(1);
 	}
@@ -125,7 +127,7 @@ public class LIROp2 extends LIRInstruction
 	 *
 	 * @return tmp the temporary LIROperand of this instruction
 	 */
-	public CiValue tmp()
+	public LIRValue tmp()
 	{
 		return operand(2);
 	}

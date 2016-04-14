@@ -1,7 +1,7 @@
 package lir;
 
 import asm.Label;
-import lir.ci.CiValue;
+import lir.ci.LIRValue;
 
 /**
  * The {@code LIRLabel} class definition.
@@ -18,7 +18,7 @@ public class LIRLabel extends LIROp0
 	 */
 	public LIRLabel(Label label)
 	{
-		super(LIROpcode.Label, CiValue.IllegalValue);
+		super(LIROpcode.Label, LIRValue.IllegalValue);
 		assert label != null;
 		this.label = label;
 	}
@@ -46,7 +46,7 @@ public class LIRLabel extends LIROp0
 	/**
 	 * Prints this instruction to a LogStream.
 	 */
-	@Override public String operationString(CiValue.Formatter operandFmt)
+	@Override public String operationString(LIRValue.Formatter operandFmt)
 	{
 		return label.isBound() ? String.valueOf(label.position()) : "?";
 	}

@@ -31,7 +31,7 @@ import java.util.EnumMap;
 /**
  * Represents a targetAbstractLayer machine register.
  */
-public final class Register implements Comparable<Register>, Serializable
+public final class LIRRegister implements Comparable<LIRRegister>, Serializable
 {
 	/**
 	 *
@@ -41,20 +41,20 @@ public final class Register implements Comparable<Register>, Serializable
 	/**
 	 * Invalid register.
 	 */
-	public static final Register None = new Register(-1, -1, 0, "noreg");
+	public static final LIRRegister None = new LIRRegister(-1, -1, 0, "noreg");
 
 	/**
 	 * Frame pointer of the current method. All spill slots and outgoing stack-based arguments
 	 * are addressed relative to this register.
 	 */
-	public static final Register Frame = new Register(-2, -2, 0, "framereg",
+	public static final LIRRegister Frame = new LIRRegister(-2, -2, 0, "framereg",
 			RegisterFlag.CPU);
 
-	public static final Register CallerFrame = new Register(-3, -3, 0,
+	public static final LIRRegister CallerFrame = new LIRRegister(-3, -3, 0,
 			"callerframereg", RegisterFlag.CPU);
 
 	/**
-	 * The identifier for this register that is unique across all the registers
+	 * The identifier for this register that is unique across all the LIRRegisters
 	 * in a {@link Architecture}. A valid register has {@code number > 0}.
 	 */
 	public final int number;
@@ -71,7 +71,7 @@ public final class Register implements Comparable<Register>, Serializable
 	public final int encoding;
 
 	/**
-	 * The size of the stack slot used to spill the value of this register.
+	 * The length of the stack slot used to spill the value of this register.
 	 */
 	public final int spillSlotSize;
 
@@ -81,10 +81,10 @@ public final class Register implements Comparable<Register>, Serializable
 	private final int flags;
 
 	/**
-	 * An array of {@link CiRegisterValue} objects, for this register, with one entry
-	 * per {@link CiKind}, indexed by {@link CiKind#ordinal}.
+	 * An array of {@link LIRRegisterValue} objects, for this register, with one entry
+	 * per {@link LIRKind}, indexed by {@link LIRKind#ordinal}.
 	 */
-	private final CiRegisterValue[] values;
+	private final LIRRegisterValue[] values;
 
 	/**
 	 * Attributes that characterize a register in a useful way.
@@ -110,15 +110,15 @@ public final class Register implements Comparable<Register>, Serializable
 	}
 
 	/**
-	 * Creates a {@code Register} instance.
+	 * Creates a {@code LIRRegister} instance.
 	 *
 	 * @param number        unique identifier for the register
 	 * @param encoding      the targetAbstractLayer machine encoding for the register
-	 * @param spillSlotSize the size of the stack slot used to spill the value of the register
+	 * @param spillSlotSize the length of the stack slot used to spill the value of the register
 	 * @param name          the mnemonic name for the register
 	 * @param flags         the set of {@link RegisterFlag} values for the register
 	 */
-	public Register(int number, int encoding, int spillSlotSize, String name,
+	public LIRRegister(int number, int encoding, int spillSlotSize, String name,
 			RegisterFlag... flags)
 	{
 		this.number = number;
@@ -127,10 +127,10 @@ public final class Register implements Comparable<Register>, Serializable
 		this.flags = createMask(flags);
 		this.encoding = encoding;
 
-		values = new CiRegisterValue[CiKind.VALUES.length];
-		for (CiKind kind : CiKind.VALUES)
+		values = new LIRRegisterValue[LIRKind.VALUES.length];
+		for (LIRKind kind : LIRKind.VALUES)
 		{
-			values[kind.ordinal()] = new CiRegisterValue(kind, this);
+			values[kind.ordinal()] = new LIRRegisterValue(kind, this);
 		}
 	}
 
@@ -150,24 +150,24 @@ public final class Register implements Comparable<Register>, Serializable
 	}
 
 	/**
-	 * Gets this register as a {@linkplain CiRegisterValue value} with a specified kind.
+	 * Gets this register as a {@linkplain LIRRegisterValue value} with a specified kind.
 	 *
 	 * @param kind the specified kind
-	 * @return the {@link CiRegisterValue}
+	 * @return the {@link LIRRegisterValue}
 	 */
-	public CiRegisterValue asValue(CiKind kind)
+	public LIRRegisterValue asValue(LIRKind kind)
 	{
 		return values[kind.ordinal()];
 	}
 
 	/**
-	 * Gets this register as a {@linkplain CiRegisterValue value} with no particular kind.
+	 * Gets this register as a {@linkplain LIRRegisterValue value} with no particular kind.
 	 *
-	 * @return a {@link CiRegisterValue} with {@link CiKind#Illegal} kind.
+	 * @return a {@link LIRRegisterValue} with {@link LIRKind#Illegal} kind.
 	 */
-	public CiRegisterValue asValue()
+	public LIRRegisterValue asValue()
 	{
-		return asValue(CiKind.Illegal);
+		return asValue(LIRKind.Illegal);
 	}
 
 	/**
@@ -207,42 +207,42 @@ public final class Register implements Comparable<Register>, Serializable
 	}
 
 	/**
-	 * Categorizes a set of registers by {@link RegisterFlag}.
+	 * Categorizes a set of LIRRegisters by {@link RegisterFlag}.
 	 *
-	 * @param registers a list of registers to be categorized
-	 * @return a map from each {@link RegisterFlag} constant to the list of registers for which the flag is
+	 * @param LIRRegisters a list of LIRRegisters to be categorized
+	 * @return a map from each {@link RegisterFlag} constant to the list of LIRRegisters for which the flag is
 	 * {@linkplain #isSet(RegisterFlag) set}
 	 */
-	public static EnumMap<RegisterFlag, Register[]> categorize(
-			Register[] registers)
+	public static EnumMap<RegisterFlag, LIRRegister[]> categorize(
+			LIRRegister[] LIRRegisters)
 	{
-		EnumMap<RegisterFlag, Register[]> result = new EnumMap<RegisterFlag, Register[]>(
+		EnumMap<RegisterFlag, LIRRegister[]> result = new EnumMap<RegisterFlag, LIRRegister[]>(
 				RegisterFlag.class);
 		for (RegisterFlag flag : RegisterFlag.values())
 		{
-			ArrayList<Register> list = new ArrayList<Register>();
-			for (Register r : registers)
+			ArrayList<LIRRegister> list = new ArrayList<LIRRegister>();
+			for (LIRRegister r : LIRRegisters)
 			{
 				if (r.isSet(flag))
 				{
 					list.add(r);
 				}
 			}
-			result.put(flag, list.toArray(new Register[list.size()]));
+			result.put(flag, list.toArray(new LIRRegister[list.size()]));
 		}
 		return result;
 	}
 
 	/**
-	 * Gets the maximum register {@linkplain #number number} in a given set of registers.
+	 * Gets the maximum register {@linkplain #number number} in a given set of LIRRegisters.
 	 *
-	 * @param registers the set of registers to process
-	 * @return the maximum register number for any register in {@code registers}
+	 * @param LIRRegisters the set of LIRRegisters to process
+	 * @return the maximum register number for any register in {@code LIRRegisters}
 	 */
-	public static int maxRegisterNumber(Register[] registers)
+	public static int maxRegisterNumber(LIRRegister[] LIRRegisters)
 	{
 		int max = Integer.MIN_VALUE;
-		for (Register r : registers)
+		for (LIRRegister r : LIRRegisters)
 		{
 			if (r.number > max)
 			{
@@ -253,15 +253,15 @@ public final class Register implements Comparable<Register>, Serializable
 	}
 
 	/**
-	 * Gets the maximum register {@linkplain #encoding encoding} in a given set of registers.
+	 * Gets the maximum register {@linkplain #encoding encoding} in a given set of LIRRegisters.
 	 *
-	 * @param registers the set of registers to process
-	 * @return the maximum register encoding for any register in {@code registers}
+	 * @param LIRRegisters the set of LIRRegisters to process
+	 * @return the maximum register encoding for any register in {@code LIRRegisters}
 	 */
-	public static int maxRegisterEncoding(Register[] registers)
+	public static int maxRegisterEncoding(LIRRegister[] LIRRegisters)
 	{
 		int max = Integer.MIN_VALUE;
-		for (Register r : registers)
+		for (LIRRegister r : LIRRegisters)
 		{
 			if (r.encoding > max)
 			{
@@ -276,7 +276,7 @@ public final class Register implements Comparable<Register>, Serializable
 		return name;
 	}
 
-	@Override public int compareTo(Register o)
+	@Override public int compareTo(LIRRegister o)
 	{
 		if (number < o.number)
 		{

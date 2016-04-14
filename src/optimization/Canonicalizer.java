@@ -1,7 +1,7 @@
 package optimization;
 
-import lir.ci.CiConstant;
-import lir.ci.CiKind;
+import lir.ci.LIRConstant;
+import lir.ci.LIRKind;
 import hir.*;
 import hir.Instruction.*;
 import hir.Value.Constant;
@@ -437,7 +437,7 @@ public class Canonicalizer extends ValueVisitor
 			}
 			// finished
 		}
-		CiKind kind = CiKind.Illegal;
+		LIRKind kind = LIRKind.Illegal;
 		// chained converts instruction like this (V)((T)val), where ((T)val) is
 		// represented as val.
 		if (val instanceof Convert)
@@ -447,34 +447,34 @@ public class Canonicalizer extends ValueVisitor
 			switch (c.opcode)
 			{
 				case I2B:
-					kind = CiKind.Byte;
+					kind = LIRKind.Byte;
 					break;
 				case I2S:
-					kind = CiKind.Short;
+					kind = LIRKind.Short;
 					break;
 				case I2C:
-					kind = CiKind.Char;
+					kind = LIRKind.Char;
 					break;
 			}
 
-			if (kind != CiKind.Illegal)
+			if (kind != LIRKind.Illegal)
 			{
 				switch (inst.opcode)
 				{
 					case I2B:
-						if (kind == CiKind.Byte)
+						if (kind == LIRKind.Byte)
 						{
 							setCanonical(val);
 						}
 						break;
 					case I2S:
-						if (kind == CiKind.Byte || kind == CiKind.Short)
+						if (kind == LIRKind.Byte || kind == LIRKind.Short)
 						{
 							setCanonical(val);
 						}
 						break;
 					case I2C:
-						if (kind == CiKind.Char)
+						if (kind == LIRKind.Char)
 						{
 							setCanonical(val);
 						}
@@ -993,7 +993,7 @@ public class Canonicalizer extends ValueVisitor
 					return;
 			}
 		}
-		CiKind kind = inst.kind;
+		LIRKind kind = inst.kind;
 		if (x.isConstant() && y.isConstant())
 		{
 			switch (kind)
@@ -1252,9 +1252,9 @@ public class Canonicalizer extends ValueVisitor
 	 * @return The result of comparison, return true if comparison successfully
 	 * in specified op, otherwise, return false. Return null when the op is illegal.
 	 */
-	private Boolean foldCondition(Operator opcode, CiConstant l, CiConstant r)
+	private Boolean foldCondition(Operator opcode, LIRConstant l, LIRConstant r)
 	{
-		CiKind lk = l.kind;
+		LIRKind lk = l.kind;
 		switch (lk)
 		{
 			case Int:

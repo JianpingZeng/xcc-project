@@ -1,7 +1,7 @@
 package lir.backend;
 
-import lir.ci.Register;
-import lir.ci.Register.RegisterFlag;
+import lir.ci.LIRRegister;
+import lir.ci.LIRRegister.RegisterFlag;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -9,21 +9,21 @@ import java.util.HashMap;
 /**
  * /**
  * Represents a CPU architecture, including information such as its endianness, CPU
- * registers, word width, etc.
+ * LIRRegisters, word width, etc.
  *
  * @author Jianping Zeng
  */
 public abstract class Architecture
 {
 	/**
-	 * The number of bits required in a bit map covering all the registers that
+	 * The number of bits required in a bit map covering all the LIRRegisters that
 	 * may store references. The bit position of a register in the map is the
-	 * register's {@linkplain Register#number number}.
+	 * register's {@linkplain LIRRegister#number number}.
 	 */
 	public final int registerReferenceMapBitCount;
 
 	/**
-	 * Represents the natural size of words (typically registers and pointers)
+	 * Represents the natural length of words (typically LIRRegisters and pointers)
 	 * of this architecture, in bytes.
 	 */
 	public final int wordSize;
@@ -34,15 +34,15 @@ public abstract class Architecture
 	public final String name;
 
 	/**
-	 * Array of all available registers on this architecture. The index of each
-	 * register in this array is equal to its {@linkplain Register#number number}.
+	 * Array of all available LIRRegisters on this architecture. The index of each
+	 * register in this array is equal to its {@linkplain LIRRegister#number number}.
 	 */
-	public final Register[] registers;
+	public final LIRRegister[] LIRRegisters;
 
 	/**
-	 * Map of all registers keyed by their {@linkplain Register#name names}.
+	 * Map of all LIRRegisters keyed by their {@linkplain LIRRegister#name names}.
 	 */
-	public final HashMap<String, Register> registersByName;
+	public final HashMap<String, LIRRegister> registersByName;
 
 	/**
 	 * The byte ordering can be either little or big endian.
@@ -55,58 +55,58 @@ public abstract class Architecture
 	public final int machineCodeCallDisplacementOffset;
 
 	/**
-	 * The size of the return address pushed to the stack by a call instruction.
-	 * A value of 0 denotes that call linkage uses registers instead (e.g. SPARC).
+	 * The length of the return address pushed to the stack by a call instruction.
+	 * A value of 0 denotes that call linkage uses LIRRegisters instead (e.g. SPARC).
 	 */
 	public final int returnAddressSize;
 
-	private final EnumMap<Register.RegisterFlag, Register[]> registersByTypeAndEncoding;
+	private final EnumMap<LIRRegister.RegisterFlag, LIRRegister[]> registersByTypeAndEncoding;
 
 	/**
-	 * Gets the register for a given {@linkplain Register#encoding encoding} and type.
+	 * Gets the register for a given {@linkplain LIRRegister#encoding encoding} and type.
 	 *
 	 * @param encoding a register value as used in a machine instruction
 	 * @param type     the type of the register
 	 */
-	public Register registerFor(int encoding, Register.RegisterFlag type)
+	public LIRRegister registerFor(int encoding, LIRRegister.RegisterFlag type)
 	{
-		Register[] regs = registersByTypeAndEncoding.get(type);
+		LIRRegister[] regs = registersByTypeAndEncoding.get(type);
 		assert encoding >= 0 && encoding < regs.length;
-		Register reg = regs[encoding];
+		LIRRegister reg = regs[encoding];
 		assert reg != null;
 		return reg;
 	}
 
 	protected Architecture(String name, int wordSize, ByteOrder byteOrder,
-			Register[] registers, int nativeCallDisplacementOffset,
+			LIRRegister[] LIRRegisters, int nativeCallDisplacementOffset,
 			int registerReferenceMapBitCount,
 			int returnAddressSize)
 	{
 		this.name = name;
-		this.registers = registers;
+		this.LIRRegisters = LIRRegisters;
 		this.wordSize = wordSize;
 		this.byteOrder = byteOrder;
 		this.machineCodeCallDisplacementOffset = nativeCallDisplacementOffset;
 		this.registerReferenceMapBitCount = registerReferenceMapBitCount;
 		this.returnAddressSize = returnAddressSize;
 
-		registersByName = new HashMap<String, Register>(registers.length);
-		for (Register register : registers)
+		registersByName = new HashMap<String, LIRRegister>(LIRRegisters.length);
+		for (LIRRegister LIRRegister : LIRRegisters)
 		{
-			registersByName.put(register.name, register);
-			assert registers[register.number] == register;
+			registersByName.put(LIRRegister.name, LIRRegister);
+			assert LIRRegisters[LIRRegister.number] == LIRRegister;
 		}
 
-		registersByTypeAndEncoding = new EnumMap<RegisterFlag, Register[]>(
+		registersByTypeAndEncoding = new EnumMap<RegisterFlag, LIRRegister[]>(
 				RegisterFlag.class);
-		EnumMap<RegisterFlag, Register[]> categorizedRegs = Register
-				.categorize(registers);
+		EnumMap<RegisterFlag, LIRRegister[]> categorizedRegs = LIRRegister
+				.categorize(LIRRegisters);
 		for (RegisterFlag type : RegisterFlag.values())
 		{
-			Register[] regs = categorizedRegs.get(type);
-			int max = Register.maxRegisterEncoding(regs);
-			Register[] regsByEnc = new Register[max + 1];
-			for (Register reg : regs)
+			LIRRegister[] regs = categorizedRegs.get(type);
+			int max = LIRRegister.maxRegisterEncoding(regs);
+			LIRRegister[] regsByEnc = new LIRRegister[max + 1];
+			for (LIRRegister reg : regs)
 			{
 				regsByEnc[reg.encoding] = reg;
 			}

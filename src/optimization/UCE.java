@@ -63,7 +63,7 @@ public class UCE
 	private void onePass()
 	{
 		// We must usesList the index loop instead of interative loop, because
-		// the size of postOrder list is changing when iterating.
+		// the length of postOrder list is changing when iterating.
 		for (int idx = 0; idx < postOrder.size(); idx++)
 		{
 			BasicBlock curr = postOrder.get(idx);

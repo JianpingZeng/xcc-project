@@ -55,7 +55,7 @@ public class Scope
 	private static final Entry sentinel = new Entry(null, null, null, null);
 
 	/**
-	 * The hash entityTable's initial size.
+	 * The hash entityTable's initial length.
 	 */
 	private static final int INITIAL_SIZE = 128;
 
@@ -128,7 +128,7 @@ public class Scope
 	}
 
 	/**
-	 * Double size of hash entityTable.
+	 * Double length of hash entityTable.
 	 */
 	private void dble()
 	{
@@ -177,7 +177,7 @@ public class Scope
 	public void enter(Symbol sym, Scope s)
 	{
 
-		// double the size of entity entityTable if the loading factor no greater than 2/3
+		// double the length of entity entityTable if the loading factor no greater than 2/3
 		if (nelems * 3 >= hashMask * 2)
 			dble();
 		int hash = sym.name.index & hashMask;

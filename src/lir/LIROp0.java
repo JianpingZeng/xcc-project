@@ -1,6 +1,6 @@
 package lir;
 
-import lir.ci.CiValue;
+import lir.ci.LIRValue;
 
 /**
  * @author Jianping Zeng
@@ -14,7 +14,7 @@ public class LIROp0 extends LIRInstruction
 	 */
 	public LIROp0(LIROpcode opcode)
 	{
-		this(opcode, CiValue.IllegalValue);
+		this(opcode, LIRValue.IllegalValue);
 	}
 
 	/**
@@ -23,7 +23,7 @@ public class LIROp0 extends LIRInstruction
 	 * @param opcode the opcode of the new instruction
 	 * @param result the result LIROperand to the new instruction
 	 */
-	public LIROp0(LIROpcode opcode, CiValue result)
+	public LIROp0(LIROpcode opcode, LIRValue result)
 	{
 		super(opcode, result, false);
 		assert isInRange(opcode, LIROpcode.BeginOp0, LIROpcode.EndOp0) :

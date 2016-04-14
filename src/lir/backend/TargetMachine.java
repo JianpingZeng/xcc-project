@@ -1,17 +1,17 @@
 package lir.backend;
 
-import lir.ci.CiKind;
+import lir.ci.LIRKind;
 
 /**
  * Represents the targetAbstractLayer machine for a compiler, including the CPU architecture,
- * the size of pointers and references, alignment of stacks, caches, etc.
+ * the length of pointers and references, alignment of stacks, caches, etc.
  * @author Jianping Zeng
  */
 public class TargetMachine
 {
 	public Architecture arch;
 	/**
-	 * The OS page size.
+	 * The OS page length.
 	 */
 	public final int pageSize;
 
@@ -31,19 +31,19 @@ public class TargetMachine
 	public final boolean inlineObjects;
 
 	/**
-	 * The spill slot size for values that occupy 1 slot.
+	 * The spill slot length for values that occupy 1 slot.
 	 */
 	public final int spillSlotSize;
 
 	/**
-	 * The machine word size on this targetAbstractLayer.
+	 * The machine word length on this targetAbstractLayer.
 	 */
 	public final int wordSize;
 
 	/**
-	 * The CiKind to be used for representing raw pointers and CPU registers.
+	 * The LIRKind to be used for representing raw pointers and CPU LIRRegisters.
 	 */
-	public final CiKind wordKind;
+	public final LIRKind wordKind;
 
 	/**
 	 * The stack alignment requirement of the platform. For example,
@@ -98,21 +98,21 @@ public class TargetMachine
 		this.wordSize = arch.wordSize;
 		if (wordSize == 8)
 		{
-			this.wordKind = CiKind.Long;
+			this.wordKind = LIRKind.Long;
 		}
 		else
 		{
-			this.wordKind = CiKind.Int;
+			this.wordKind = LIRKind.Int;
 		}
 		this.stackAlignment = stackAlignment;
 		this.stackBias = 0; // TODO: configure with param once SPARC port exists
 		this.cacheAlignment = cacheAlignment;
 		this.inlineObjects = inlineObjects;
-		this.spillSlotsPerKindMap = new int[CiKind.values().length];
+		this.spillSlotsPerKindMap = new int[LIRKind.values().length];
 		this.debugInfoDoubleWordsInSecondSlot = debugInfoDoubleWordsInSecondSlot;
 		this.invokeSnippetAfterArguments = invokeSnippetAfterArguments;
 
-		for (CiKind k : CiKind.values())
+		for (LIRKind k : LIRKind.values())
 		{
 			// initialize the number of spill slots required for each kind
 			int size = sizeInBytes(k);
@@ -126,12 +126,12 @@ public class TargetMachine
 	}
 
 	/**
-	 * Gets the size in bytes of the specified kind for this targetAbstractLayer.
+	 * Gets the length in bytes of the specified kind for this targetAbstractLayer.
 	 *
-	 * @param kind the kind for which to get the size
-	 * @return the size in bytes of {@code kind}
+	 * @param kind the kind for which to get the length
+	 * @return the length in bytes of {@code kind}
 	 */
-	public int sizeInBytes(CiKind kind)
+	public int sizeInBytes(LIRKind kind)
 	{
 		// Checkstyle: stop
 		switch (kind)
@@ -166,17 +166,17 @@ public class TargetMachine
 	 * @param kind the kind for which to get the spill slot count
 	 * @return the number of spill slots for {@code kind}
 	 */
-	public int spillSlots(CiKind kind)
+	public int spillSlots(LIRKind kind)
 	{
 		return spillSlotsPerKindMap[kind.ordinal()];
 	}
 
 	/**
-	 * Aligns the given frame size (without return instruction pointer) to the stack
-	 * alignment size and return the aligned size (without return instruction pointer).
+	 * Aligns the given frame length (without return instruction pointer) to the stack
+	 * alignment length and return the aligned length (without return instruction pointer).
 	 *
-	 * @param frameSize the initial frame size to be aligned
-	 * @return the aligned frame size
+	 * @param frameSize the initial frame length to be aligned
+	 * @return the aligned frame length
 	 */
 	public int alignFrameSize(int frameSize)
 	{

@@ -3,14 +3,12 @@ package lir.backend.amd64;
 import driver.Backend;
 import hir.*;
 import hir.Value.Constant;
-import lir.CompilerStub;
 import lir.LIRGenerator;
 import lir.LIRItem;
-import lir.backend.amd64.AMD64;
-import lir.ci.CiKind;
-import lir.ci.CiRegisterValue;
-import lir.ci.CiValue;
-import lir.ci.CiVariable;
+import lir.StackFrame;
+import lir.ci.*;
+import lir.ci.LIRVariable;
+import lir.ci.LIRValue;
 import utils.NumUtil;
 import utils.Util;
 
@@ -19,22 +17,22 @@ import utils.Util;
  */
 public final class AMD64LIRGenerator extends LIRGenerator
 {
-	private static final CiRegisterValue RAX_I = AMD64.rax.asValue(CiKind.Int);
-	private static final CiRegisterValue RAX_L = AMD64.rax.asValue(CiKind.Long);
-	private static final CiRegisterValue RDX_I = AMD64.rdx.asValue(CiKind.Int);
-	private static final CiRegisterValue RDX_L = AMD64.rdx.asValue(CiKind.Long);
+	private static final LIRRegisterValue RAX_I = AMD64.rax.asValue(LIRKind.Int);
+	private static final LIRRegisterValue RAX_L = AMD64.rax.asValue(LIRKind.Long);
+	private static final LIRRegisterValue RDX_I = AMD64.rdx.asValue(LIRKind.Int);
+	private static final LIRRegisterValue RDX_L = AMD64.rdx.asValue(LIRKind.Long);
 
-	private static final CiRegisterValue LDIV_TMP = RDX_L;
+	private static final LIRRegisterValue LDIV_TMP = RDX_L;
 
 	/**
 	 * The register in which MUL puts the result for 64-bit multiplication.
 	 */
-	private static final CiRegisterValue LMUL_OUT = RAX_L;
+	private static final LIRRegisterValue LMUL_OUT = RAX_L;
 
-	private static final CiRegisterValue SHIFT_COUNT_IN = AMD64.rcx
-			.asValue(CiKind.Int);
+	private static final LIRRegisterValue SHIFT_COUNT_IN = AMD64.rcx
+			.asValue(LIRKind.Int);
 
-	protected static final CiValue ILLEGAL = CiValue.IllegalValue;
+	protected static final LIRValue ILLEGAL = LIRValue.IllegalValue;
 
 	public AMD64LIRGenerator(Backend backend, Method method)
 	{
@@ -50,15 +48,26 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	{
 
 	}
+	// memory access
 
+	public void visitAlloca(Instruction.Alloca inst)
+	{
+		LIRValue result = createResultVariable(inst);
+		assert inst.length().isConstant() :
+				"Alloca instruction 'length' is not a constant" + inst.length();
+		int size = inst.length().asConstant().asInt();
+		StackFrame.StackBlock stackBlock = backend.frameMap()
+				.reserveStackBlock(size, false);
+		lir.alloca(stackBlock, result);
+	}
 	/**
 	 * Implements store instructions in terms of the x86 'mov' instruction.
 	 * @param inst
 	 */
 	public void visitStoreInst(Instruction.StoreInst inst)
 	{
-		CiVariable valReg = createResultVariable(inst.value);
-		CiVariable addrReg= createResultVariable(inst.dest);
+		LIRVariable valReg = createResultVariable(inst.value);
+		LIRVariable addrReg= createResultVariable(inst.dest);
 	}
 
 	/**
@@ -69,11 +78,15 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	 */
 	public void visitLoadInst(Instruction.LoadInst inst)
 	{
-		CiVariable srcAddrReg = createResultVariable(inst.from);
-		CiVariable destReg = createResultVariable(inst);
+		LIRVariable srcAddrReg = createResultVariable(inst.from);
+		LIRVariable destReg = createResultVariable(inst);
 		if (inst.kind.isLong())
 		{
-
+			/**
+			srcAddrReg = new LIRAddress(LIRKind.Double,
+					srcAddrReg.base(), srcAddrReg.index,
+					srcAddrReg.scale(), srcAddrReg.disp());
+			 */
 		}
 		else
 		{
@@ -82,7 +95,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	}
 	@Override protected void doIfCmp(Instruction.IfOp instr)
 	{
-		CiKind kind = instr.x().kind;
+		LIRKind kind = instr.x().kind;
 
 		Condition cond = instr.condition();
 
@@ -118,8 +131,8 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 		setNoResult(instr);
 
-		CiValue left = xin.result();
-		CiValue right = yin.result();
+		LIRValue left = xin.result();
+		LIRValue right = yin.result();
 		lir.cmp(cond, left, right);
 		if (instr.x().kind.isFloat() || instr.x().kind.isDouble())
 		{
@@ -133,9 +146,9 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	}
 
 	@Override
-	protected boolean canStoreAsConstant(Value v, CiKind kind)
+	protected boolean canStoreAsConstant(Value v, LIRKind kind)
 	{
-		if (kind == CiKind.Short || kind == CiKind.Char)
+		if (kind == LIRKind.Short || kind == LIRKind.Char)
 		{
 			// there is no immediate move of word values in asemblerI486 or later.
 			return false;
@@ -146,7 +159,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	@Override
 	protected boolean canInlineAsConstant(Value v)
 	{
-		if (v.kind == CiKind.Long)
+		if (v.kind == LIRKind.Long)
 		{
 			if (v.isConstant() && NumUtil.isInt(v.asConstant().asLong()))
 			{
@@ -154,7 +167,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			}
 			return false;
 		}
-		return v.kind != CiKind.Object || v.isNullConstant();
+		return v.kind != LIRKind.Object || v.isNullConstant();
 	}
 
 	protected void arithmeticOp2Float(Instruction.Op2 instr)
@@ -180,7 +193,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			left.loadItem();
 		right.loadItem();
 
-		CiVariable reg;
+		LIRVariable reg;
 		reg = newVariable(instr.kind);
 		arithmeticOpFpu(instr.opcode, reg, left.result(), right.result(),
 				ILLEGAL);
@@ -209,12 +222,12 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		// emit inline 64-bit code
 		if (opcode == Operator.LDiv || opcode == Operator.LMod)
 		{
-			CiValue dividend = force(instr.x, RAX_L); // dividend must be in RAX
-			CiValue divisor = load(
+			LIRValue dividend = force(instr.x, RAX_L); // dividend must be in RAX
+			LIRValue divisor = load(
 					instr.y);            // divisor can be in any (other) register
 
-			CiValue result = createResultVariable(instr);
-			CiValue resultReg;
+			LIRValue result = createResultVariable(instr);
+			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
 				resultReg = RDX_L; // remainder result is produced in rdx
@@ -240,18 +253,18 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			// copied to a new register.
 			right.setDestroysRegister();
 
-			CiValue left = load(instr.x);
+			LIRValue left = load(instr.x);
 			right.loadItem();
 
 			arithmeticOpLong(opcode, LMUL_OUT, left, right.result());
-			CiValue result = createResultVariable(instr);
+			LIRValue result = createResultVariable(instr);
 			lir.move(LMUL_OUT, result);
 		}
 		else
 		{
 			LIRItem right = new LIRItem(instr.y, this);
 
-			CiValue left = load(instr.x);
+			LIRValue left = load(instr.x);
 			// don't load constants to save register
 			right.loadNonconstant();
 			createResultVariable(instr);
@@ -259,16 +272,16 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		}
 	}
 
-	protected CiValue force(Value instr, CiValue operand)
+	protected LIRValue force(Value instr, LIRValue operand)
 	{
-		CiValue result = makeOperand(instr);
+		LIRValue result = makeOperand(instr);
 		if (result != operand)
 		{
-			assert result.kind != CiKind.Illegal;
+			assert result.kind != LIRKind.Illegal;
 			if (!Util.archKindEqual(result.kind, operand.kind))
 			{
 				// moves between different types need an intervening spill slot
-				CiValue tmp = forceToSpill(result, operand.kind, false);
+				LIRValue tmp = forceToSpill(result, operand.kind, false);
 				lir.move(tmp, operand);
 			}
 			else
@@ -286,17 +299,17 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		{
 			// emit code for integer division or modulus
 
-			CiValue dividend = force(instr.x, RAX_I); // dividend must be in RAX
-			CiValue divisor = load(
+			LIRValue dividend = force(instr.x, RAX_I); // dividend must be in RAX
+			LIRValue divisor = load(
 					instr.y);          // divisor can be in any (other) register
 
 			// idiv and irem use rdx in their implementation so the
 			// register allocator must not assign it to an interval that overlaps
 			// this division instruction.
-			CiRegisterValue tmp = RDX_I;
+			LIRRegisterValue tmp = RDX_I;
 
-			CiValue result = createResultVariable(instr);
-			CiValue resultReg;
+			LIRValue result = createResultVariable(instr);
+			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
 				resultReg = tmp; // remainder result is produced in rdx
@@ -359,10 +372,10 @@ public final class AMD64LIRGenerator extends LIRGenerator
 				{
 					rightArg.loadItem();
 				}
-				CiValue tmp = ILLEGAL;
+				LIRValue tmp = ILLEGAL;
 				if (useTmp)
 				{
-					tmp = newVariable(CiKind.Int);
+					tmp = newVariable(LIRKind.Int);
 				}
 				createResultVariable(instr);
 
@@ -372,7 +385,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			else
 			{
 				createResultVariable(instr);
-				CiValue tmp = ILLEGAL;
+				LIRValue tmp = ILLEGAL;
 				arithmeticOpInt(opcode, instr.LIROperand(), leftArg.result(),
 						rightArg.result(), tmp);
 			}
@@ -384,14 +397,14 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		LIRItem value = new LIRItem(instr.x, this);
 		value.setDestroysRegister();
 		value.loadItem();
-		CiVariable reg = newVariable(instr.kind);
+		LIRVariable reg = newVariable(instr.kind);
 		lir.negate(value.result(), reg);
 		setResult(instr, reg);
 	}
 
 	@Override
-	protected boolean strengthReduceMultiply(CiValue left, int c,
-			CiValue result, CiValue tmp)
+	protected boolean strengthReduceMultiply(LIRValue left, int c,
+			LIRValue result, LIRValue tmp)
 	{
 		if (tmp.isLegal())
 		{
@@ -429,7 +442,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadNonconstant();
-		CiVariable reg = createResultVariable(instr);
+		LIRVariable reg = createResultVariable(instr);
 		logicOp(op, left.result(), right.result(), reg);
 	}
 
@@ -441,16 +454,16 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	public void visitShiftOp(Instruction.ShiftOp inst)
 	{
 		// count must always be in rcx
-		CiValue count = makeOperand(inst.y);
-		boolean mustLoadCount = !count.isConstant() || inst.kind == CiKind.Long;
+		LIRValue count = makeOperand(inst.y);
+		boolean mustLoadCount = !count.isConstant() || inst.kind == LIRKind.Long;
 		if (mustLoadCount)
 		{
 			// count for long must be in register
 			count = force(inst.y, SHIFT_COUNT_IN);
 		}
 
-		CiValue value = load(inst.x);
-		CiValue reg = createResultVariable(inst);
+		LIRValue value = load(inst.x);
+		LIRValue reg = createResultVariable(inst);
 
 		shiftOp(inst.opcode, reg, value, count, ILLEGAL);
 	}
@@ -463,8 +476,8 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	@Override
 	public void visitConvert(Instruction.Convert inst)
 	{
-		CiValue input = load(inst.x);
-		CiVariable result = newVariable(inst.kind);
+		LIRValue input = load(inst.x);
+		LIRVariable result = newVariable(inst.kind);
 
 		lir.convert(inst.opcode, input, result);
 		setResult(inst, result);
@@ -480,7 +493,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadItem();
-		CiValue reg = createResultVariable(inst);
+		LIRValue reg = createResultVariable(inst);
 		if (inst.x.kind.isFloatOrDouble())
 		{
 			lir.fcmp2int(left.result(), right.result(), reg);

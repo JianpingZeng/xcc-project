@@ -25,10 +25,10 @@ package lir.ci;
 /**
  * Represents an address in targetAbstractLayer machine memory, specified via some combination
  * of a base register, an index register, a displacement and a scale. Note that
- * the base and index registers may be {@link CiVariable variable}, that is as yet
- * unassigned to targetAbstractLayer machine registers.
+ * the base and index LIRRegisters may be {@link LIRVariable variable}, that is as yet
+ * unassigned to targetAbstractLayer machine LIRRegisters.
  */
-public final class Address extends CiValue
+public final class LIRAddress extends LIRValue
 {
 	/**
 	 *
@@ -39,20 +39,20 @@ public final class Address extends CiValue
 	 * A sentinel value used as a place holder in an instruction stream for an
 	 * address that will be patched.
 	 */
-	public static final Address Placeholder = new Address(CiKind.Illegal,
-			Register.None.asValue());
+	public static final LIRAddress Placeholder = new LIRAddress(LIRKind.Illegal,
+			LIRRegister.None.asValue());
 
 	/**
 	 * Base register that defines the start of the address computation; always present.
 	 */
-	public final CiValue base;
+	public final LIRValue base;
 	/**
 	 * Optional index register, the value of which (possibly scaled by {@link #scale})
-	 * is added to {@link #base}. If not present, is denoted by {@link CiValue#IllegalValue}.
+	 * is added to {@link #base}. If not present, is denoted by {@link LIRValue#IllegalValue}.
 	 */
-	public final CiValue index;
+	public final LIRValue index;
 	/**
-	 * Scaling factor for indexing, dependent on targetAbstractLayer LIROperand size.
+	 * Scaling factor for indexing, dependent on targetAbstractLayer LIROperand length.
 	 */
 	public final Scale scale;
 	/**
@@ -61,45 +61,45 @@ public final class Address extends CiValue
 	public final int displacement;
 
 	/**
-	 * Creates a {@code Address} with given base register, no scaling and no
+	 * Creates a {@code LIRAddress} with given base register, no scaling and no
 	 * displacement.
 	 *
 	 * @param kind the kind of the value being addressed
 	 * @param base the base register
 	 */
-	public Address(CiKind kind, CiValue base)
+	public LIRAddress(LIRKind kind, LIRValue base)
 	{
 		this(kind, base, IllegalValue, Scale.Times1, 0);
 	}
 
 	/**
-	 * Creates a {@code Address} with given base register, no scaling and a given
+	 * Creates a {@code LIRAddress} with given base register, no scaling and a given
 	 * displacement.
 	 *
 	 * @param kind         the kind of the value being addressed
 	 * @param base         the base register
 	 * @param displacement the displacement
 	 */
-	public Address(CiKind kind, CiValue base, int displacement)
+	public LIRAddress(LIRKind kind, LIRValue base, int displacement)
 	{
 		this(kind, base, IllegalValue, Scale.Times1, displacement);
 	}
 
 	/**
-	 * Creates a {@code Address} with given base and offset registers, no scaling
+	 * Creates a {@code LIRAddress} with given base and offset LIRRegisters, no scaling
 	 * and no displacement.
 	 *
 	 * @param kind   the kind of the value being addressed
 	 * @param base   the base register
 	 * @param offset the offset register
 	 */
-	public Address(CiKind kind, CiValue base, CiValue offset)
+	public LIRAddress(LIRKind kind, LIRValue base, LIRValue offset)
 	{
 		this(kind, base, offset, Scale.Times1, 0);
 	}
 
 	/**
-	 * Creates a {@code Address} with given base and index registers, scaling and
+	 * Creates a {@code LIRAddress} with given base and index LIRRegisters, scaling and
 	 * displacement.
 	 * This is the most general constructor..
 	 *
@@ -109,14 +109,14 @@ public final class Address extends CiValue
 	 * @param scale        the scaling factor
 	 * @param displacement the displacement
 	 */
-	public Address(CiKind kind, CiValue base, CiValue index, Scale scale,
+	public LIRAddress(LIRKind kind, LIRValue base, LIRValue index, Scale scale,
 			int displacement)
 	{
 		super(kind);
 
 		if (index.isConstant())
 		{
-			long longIndex = ((CiConstant) index).asLong();
+			long longIndex = ((LIRConstant) index).asLong();
 			long longDisp = displacement + longIndex * scale.value;
 			if ((int) longIndex != longIndex || (int) longDisp != longDisp)
 			{
@@ -189,27 +189,33 @@ public final class Address extends CiValue
 	}
 
 	/**
-	 * If the base register is a {@link CiRegisterValue} returns the associated {@link Register}
+	 * If the base register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
 	 * otherwise raises an exception..
 	 *
-	 * @return the base {@link Register}
-	 * @throws Error if {@code base} is not a {@link CiRegisterValue}
+	 * @return the base {@link LIRRegister}
+	 * @throws Error if {@code base} is not a {@link LIRRegisterValue}
 	 */
-	public Register base()
+	public LIRRegister base()
 	{
 		return base.asRegister();
 	}
 
 	/**
-	 * If the index register is a {@link CiRegisterValue} returns the associated {@link Register}
+	 * If the index register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
 	 * otherwise raises an exception..
 	 *
-	 * @return the base {@link Register}
-	 * @throws Error if {@code index} is not a {@link CiRegisterValue}
+	 * @return the base {@link LIRRegister}
+	 * @throws Error if {@code index} is not a {@link LIRRegisterValue}
 	 */
-	public Register index()
+	public LIRRegister index()
 	{
 		return index.asRegister();
+	}
+
+	@Override
+	public LIRAddress asAddress()
+	{
+		return this;
 	}
 
 	/**
@@ -225,7 +231,7 @@ public final class Address extends CiValue
 	}
 
 	/**
-	 * Returns the {@link Format encoded addressing mode} that this {@code Address} represents.
+	 * Returns the {@link Format encoded addressing mode} that this {@code LIRAddress} represents.
 	 *
 	 * @return the encoded addressing mode
 	 */
@@ -260,14 +266,14 @@ public final class Address extends CiValue
 		}
 	}
 
-	private static String s(CiValue location)
+	private static String s(LIRValue location)
 	{
 		if (location.isRegister())
 		{
 			return location.asRegister().name;
 		}
 		assert location.isVariable();
-		return "v" + ((CiVariable) location).index;
+		return "v" + ((LIRVariable) location).index;
 	}
 
 	private static String signed(int i)
@@ -304,9 +310,9 @@ public final class Address extends CiValue
 
 	@Override public boolean equals(Object obj)
 	{
-		if (obj instanceof Address)
+		if (obj instanceof LIRAddress)
 		{
-			Address addr = (Address) obj;
+			LIRAddress addr = (LIRAddress) obj;
 			return kind == addr.kind && displacement == addr.displacement
 					&& base.equals(addr.base) && scale == addr.scale && index
 					.equals(addr.index);
@@ -314,11 +320,11 @@ public final class Address extends CiValue
 		return false;
 	}
 
-	@Override public boolean equalsIgnoringKind(CiValue o)
+	@Override public boolean equalsIgnoringKind(LIRValue o)
 	{
-		if (o instanceof Address)
+		if (o instanceof LIRAddress)
 		{
-			Address addr = (Address) o;
+			LIRAddress addr = (LIRAddress) o;
 			return displacement == addr.displacement && base
 					.equalsIgnoringKind(addr.base) && scale == addr.scale
 					&& index.equalsIgnoringKind(addr.index);

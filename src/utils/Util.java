@@ -2,7 +2,7 @@ package utils;
 
 import hir.Method;
 import hir.Signature;
-import lir.ci.CiKind;
+import lir.ci.LIRKind;
 
 /**
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/26.
@@ -64,7 +64,7 @@ public class Util
 		throw new InternalError("should not reach here");
 	}
 
-	public static boolean archKindEqual(CiKind k1, CiKind k2)
+	public static boolean archKindEqual(LIRKind k1, LIRKind k2)
 	{
 		return k1 == k2;
 	}
@@ -79,14 +79,14 @@ public class Util
 		return ((number + mod - 1) / mod) * mod;
 	}
 
-	public static CiKind[] signatureToKinds(Method method)
+	public static LIRKind[] signatureToKinds(Method method)
 	{
 		return signatureToKinds(method.signature());
 	}
-	public static CiKind[] signatureToKinds(Signature signature)
+	public static LIRKind[] signatureToKinds(Signature signature)
 	{
 		int args = signature.argumentCount();
-		CiKind[] result = new CiKind[args];
+		LIRKind[] result = new LIRKind[args];
 		for (int i = 0; i < args; i++)
 		{
 			result[i]  = signature.argumentKindAt(i);

@@ -24,10 +24,10 @@ package lir.ci;
 
 /**
  * Represents a value that is yet to be bound to a machine location (such as
- * a {@linkplain Register register} or stack {@linkplain Address address})
+ * a {@linkplain LIRRegister register} or stack {@linkplain LIRAddress address})
  * by a register allocator.
  */
-public final class CiVariable extends CiValue
+public final class LIRVariable extends LIRValue
 {
 	/**
 	 *
@@ -46,18 +46,18 @@ public final class CiVariable extends CiValue
 	 * @param kind
 	 * @param index
 	 */
-	private CiVariable(CiKind kind, int index)
+	private LIRVariable(LIRKind kind, int index)
 	{
 		super(kind);
 		this.index = index;
 	}
 
-	private static CiVariable[] generate(CiKind kind, int count)
+	private static LIRVariable[] generate(LIRKind kind, int count)
 	{
-		CiVariable[] variables = new CiVariable[count];
+		LIRVariable[] variables = new LIRVariable[count];
 		for (int i = 0; i < count; i++)
 		{
-			variables[i] = new CiVariable(kind, i);
+			variables[i] = new LIRVariable(kind, i);
 		}
 		return variables;
 	}
@@ -67,12 +67,12 @@ public final class CiVariable extends CiValue
 	/**
 	 * Cache of common variables.
 	 */
-	private static final CiVariable[][] cache = new CiVariable[CiKind
+	private static final LIRVariable[][] cache = new LIRVariable[LIRKind
 			.values().length][];
 
 	static
 	{
-		for (CiKind kind : CiKind.values())
+		for (LIRKind kind : LIRKind.values())
 		{
 			cache[kind.ordinal()] = generate(kind, CACHE_PER_KIND_SIZE);
 		}
@@ -83,18 +83,18 @@ public final class CiVariable extends CiValue
 	 *
 	 * @param kind
 	 * @param index
-	 * @return the corresponding {@code CiVariable}
+	 * @return the corresponding {@code LIRVariable}
 	 */
-	public static CiVariable get(CiKind kind, int index)
+	public static LIRVariable get(LIRKind kind, int index)
 	{
 		//assert kind == kind.stackKind() : "Variables can be only created for stack kinds";
 		assert index >= 0;
-		CiVariable[] cachedVars = cache[kind.ordinal()];
+		LIRVariable[] cachedVars = cache[kind.ordinal()];
 		if (index < cachedVars.length)
 		{
 			return cachedVars[index];
 		}
-		return new CiVariable(kind, index);
+		return new LIRVariable(kind, index);
 	}
 
 	@Override public boolean equals(Object obj)
@@ -103,23 +103,23 @@ public final class CiVariable extends CiValue
 		{
 			return true;
 		}
-		if (obj instanceof CiVariable)
+		if (obj instanceof LIRVariable)
 		{
-			CiVariable var = (CiVariable) obj;
+			LIRVariable var = (LIRVariable) obj;
 			return kind == var.kind && index == var.index;
 		}
 		return false;
 	}
 
-	@Override public boolean equalsIgnoringKind(CiValue o)
+	@Override public boolean equalsIgnoringKind(LIRValue o)
 	{
 		if (this == o)
 		{
 			return true;
 		}
-		if (o instanceof CiVariable)
+		if (o instanceof LIRVariable)
 		{
-			CiVariable var = (CiVariable) o;
+			LIRVariable var = (LIRVariable) o;
 			return index == var.index;
 		}
 		return false;

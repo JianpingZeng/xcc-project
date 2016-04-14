@@ -5,7 +5,6 @@ import hir.Method;
 import lir.ci.*;
 import lir.ci.CallingConvention.Type;
 import utils.Util;
-
 import java.util.BitSet;
 
 /**
@@ -37,7 +36,7 @@ import java.util.BitSet;
  *          | ALLOCA block 0                 | Current frame     |
  *          +--------------------------------+    ---            |
  *          | spill slot n                   |     ^           frame
- *          :     ...                        :     |           size
+ *          :     ...                        :     |           length
  *          | spill slot 0                   |  shared           |
  *          +- - - - - - - - - - - - - - - - +   slot            |
  *          | outgoing overflow argument n   |  indexes          |
@@ -50,30 +49,30 @@ import java.util.BitSet;
  *   -------+--------------------------------+----------------  ---
  *
  * </pre>
- * Note that the size of {@link hir.Instruction.Alloca ALLOCA} blocks and
- * {@code monitor}s in the frame may be greater than the size of a {@linkplain
+ * Note that the length of {@link hir.Instruction.Alloca ALLOCA} blocks and
+ * {@code monitor}s in the frame may be greater than the length of a {@linkplain
  * lir.backend.TargetMachine#spillSlotSize spill slot}. Note also that the layout of
  * the caller frame shown only applies if the caller was also compiled with C1X.
  * In particular, native frames won't have a custom area if the native ABI specifies
  * that stack arguments are at the bottom of the frame (e.g. System V ABI on AMD64).
  */
-public final class FrameMap
+public final class StackFrame
 {
 
 	private final Backend backend;
 	private final CallingConvention incomingArguments;
 
 	/**
-	 * The final frame size.
+	 * The final frame length.
 	 * Value is only set after register allocation is complete.
 	 */
 	private int frameSize;
 
 	/**
 	 * The number of spill slots allocated by the register allocator.
-	 * The value {@code -2} means that the size of outgoing argument stack slots
+	 * The value {@code -2} means that the length of outgoing argument stack slots
 	 * is not yet fixed. The value {@code -1} means that the register
-	 * allocator has started allocating spill slots and so the size of
+	 * allocator has started allocating spill slots and so the length of
 	 * outgoing stack slots cannot change as outgoing stack slots and
 	 * spill slots share the same slot index address space.
 	 */
@@ -101,19 +100,16 @@ public final class FrameMap
 	 *
 	 * @param backend the lir.backend context
 	 * @param method      the outermost method being compiled
-	 * @param monitors    the number of monitors allocated on the stack for this method
 	 */
-	public FrameMap(Backend backend, Method method,
-			int monitors)
+	public StackFrame(Backend backend, Method method)
 	{
 		this.backend = backend;
 		this.frameSize = -1;
 		this.spillSlotCount = -2;
 
-		assert monitors >= 0 : "not set";
 		if (method == null)
 		{
-			incomingArguments = new CallingConvention(new CiValue[0], 0);
+			incomingArguments = new CallingConvention(new LIRValue[0], 0);
 		}
 		else
 		{
@@ -129,7 +125,7 @@ public final class FrameMap
 	 * @param signature the signature of the arguments
 	 * @return a {@link CallingConvention} instance describing the location of parameters and the return value
 	 */
-	public CallingConvention getCallingConvention(CiKind[] signature,
+	public CallingConvention getCallingConvention(LIRKind[] signature,
 			Type type)
 	{
 		CallingConvention cc = backend.registerConfig
@@ -142,7 +138,7 @@ public final class FrameMap
 		}
 		else if (type.out)
 		{
-			assert frameSize == -1 : "frame size must not yet be fixed!";
+			assert frameSize == -1 : "frame length must not yet be fixed!";
 			reserveOutgoing(cc.stackSize);
 		}
 		return cc;
@@ -159,20 +155,20 @@ public final class FrameMap
 	}
 
 	/**
-	 * Gets the frame size of the compiled frame.
+	 * Gets the frame length of the compiled frame.
 	 *
-	 * @return the size in bytes of the frame
+	 * @return the length in bytes of the frame
 	 */
 	public int frameSize()
 	{
-		assert this.frameSize != -1 : "frame size not computed yet";
+		assert this.frameSize != -1 : "frame length not computed yet";
 		return frameSize;
 	}
 
 	/**
-	 * Sets the frame size for this frame.
+	 * Sets the frame length for this frame.
 	 *
-	 * @param frameSize the frame size in bytes
+	 * @param frameSize the frame length in bytes
 	 */
 	public void setFrameSize(int frameSize)
 	{
@@ -181,7 +177,7 @@ public final class FrameMap
 	}
 
 	/**
-	 * Computes the frame size for this frame, given the number of spill slots.
+	 * Computes the frame length for this frame, given the number of spill slots.
 	 *
 	 * @param spillSlotCount the number of spill slots
 	 */
@@ -208,7 +204,7 @@ public final class FrameMap
 	 * @param slot a stack slot
 	 * @return a stack address
 	 */
-	public Address toStackAddress(StackSlot slot)
+	public LIRAddress toStackAddress(StackSlot slot)
 	{
 		int size = backend.targetMachine.sizeInBytes(slot.kind);
 		if (slot.inCallerFrame())
@@ -218,12 +214,12 @@ public final class FrameMap
 			final int callerFrameOffset =
 					slot.index() * backend.targetMachine.spillSlotSize;
 			int offset = callerFrame + callerFrameOffset;
-			return new Address(slot.kind, Register.Frame.asValue(), offset);
+			return new LIRAddress(slot.kind, LIRRegister.Frame.asValue(), offset);
 		}
 		else
 		{
 			int offset = offsetForOutgoingOrSpillSlot(slot.index(), size);
-			return new Address(slot.kind, Register.Frame.asValue(), offset);
+			return new LIRAddress(slot.kind, LIRRegister.Frame.asValue(), offset);
 		}
 	}
 
@@ -233,9 +229,9 @@ public final class FrameMap
 	 * @param stackBlock the value returned from {@link #reserveStackBlock(int, boolean)} identifying the stack block
 	 * @return a representation of the stack location
 	 */
-	public Address toStackAddress(StackBlock stackBlock)
+	public LIRAddress toStackAddress(StackBlock stackBlock)
 	{
-		return new Address(backend.targetMachine.wordKind,
+		return new LIRAddress(backend.targetMachine.wordKind,
 				backend.registerConfig.getFrameRegister()
 						.asValue(backend.targetMachine.wordKind),
 				offsetForStackBlock(stackBlock));
@@ -258,12 +254,12 @@ public final class FrameMap
 	}
 
 	/**
-	 * Encapsulates the details of a stack block reserved by a call to {@link FrameMap#reserveStackBlock(int, boolean)}.
+	 * Encapsulates the details of a stack block reserved by a call to {@link StackFrame#reserveStackBlock(int, boolean)}.
 	 */
 	public static final class StackBlock
 	{
 		/**
-		 * The size of this stack block.
+		 * The length of this stack block.
 		 */
 		public final int size;
 
@@ -295,7 +291,7 @@ public final class FrameMap
 	 * @param refs specifies if the block is all references
 	 * @return a descriptor of the reserved block that can be used with
 	 * {@link #toStackAddress(StackBlock)} once register
-	 * allocation is complete and the size of the frame has been
+	 * allocation is complete and the length of the frame has been
 	 * {@linkplain #finalizeFrame(int) finalized}.
 	 */
 	public StackBlock reserveStackBlock(int size, boolean refs)

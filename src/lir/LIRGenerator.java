@@ -4,16 +4,14 @@ import asm.Label;
 import driver.Backend;
 import hir.*;
 import hir.Instruction.Phi;
-import lir.FrameMap.StackBlock;
+import lir.StackFrame.StackBlock;
 import lir.alloc.OperandPool;
 import lir.ci.*;
 import utils.Util;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
-import static lir.ci.CiRegisterValue.IllegalValue;
+import static lir.ci.LIRRegisterValue.IllegalValue;
 
 /**
  * @author Jianping Zeng
@@ -33,8 +31,8 @@ public abstract class LIRGenerator extends ValueVisitor
 	public OperandPool operands;
 	protected LIRList lir;
 	private final boolean isTwoOperand;
-	private List<CiConstant> constants;
-	private List<CiVariable> variablesForConstants;
+	private List<LIRConstant> constants;
+	private List<LIRVariable> variablesForConstants;
 
 	public LIRGenerator(Backend backend, Method method)
 	{
@@ -42,7 +40,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		this.method = method;
 		this.isTwoOperand = backend.targetMachine.arch.twoOperandMode();
 		constants = new ArrayList<>(16);
-		variablesForConstants = new ArrayList<CiVariable>();
+		variablesForConstants = new ArrayList<LIRVariable>();
 	}
 
 	protected abstract void traceBlockEntry(BasicBlock block);
@@ -63,10 +61,10 @@ public abstract class LIRGenerator extends ValueVisitor
 
 	protected abstract void doLogicOp(Instruction.Op2 instr);
 
-	protected abstract boolean strengthReduceMultiply(CiValue left,
-			int constant, CiValue result, CiValue tmp);
+	protected abstract boolean strengthReduceMultiply(LIRValue left,
+			int constant, LIRValue result, LIRValue tmp);
 
-	protected abstract boolean canStoreAsConstant(Value i, CiKind kind);
+	protected abstract boolean canStoreAsConstant(Value i, LIRKind kind);
 
 	protected abstract void doIfCmp(Instruction.IfOp instr);
 
@@ -182,18 +180,20 @@ public abstract class LIRGenerator extends ValueVisitor
 	 *
 	 * @param inst The inst to be visited.
 	 */
-	@Override public void visitNegate(Instruction.Negate inst)
+	@Override
+	public void visitNegate(Instruction.Negate inst)
 	{
 		doNegateOp(inst);
 	}
 
-	@Override public void visitCompare(Instruction.Cmp inst)
+	@Override
+	public void visitCompare(Instruction.Cmp inst)
 	{
 		doCompare(inst);
 	}
 
-	protected void logicOp(Operator opcode, CiValue leftOp, CiValue rightOp,
-			CiValue resultOp)
+	protected void logicOp(Operator opcode, LIRValue leftOp, LIRValue rightOp,
+			LIRValue resultOp)
 	{
 		if (isTwoOperand && leftOp != resultOp)
 		{
@@ -258,7 +258,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		condV.loadItem();
 		setNoResult(switchInst);
 
-		CiValue value = condV.result();
+		LIRValue value = condV.result();
 
 		if (isTableSwitch)
 		{
@@ -270,14 +270,14 @@ public abstract class LIRGenerator extends ValueVisitor
 			// first, do not to tackle default case
 			for (int idx = 1; idx < vals.length; idx++)
 			{
-				lir.cmp(Condition.EQ, value, CiConstant.forInt(idx + lo));
-				lir.branch(Condition.EQ, CiKind.Int, switchInst.targetAt(idx));
+				lir.cmp(Condition.EQ, value, LIRConstant.forInt(idx + lo));
+				lir.branch(Condition.EQ, LIRKind.Int, switchInst.targetAt(idx));
 			}
 			lir.jump(switchInst.getDefaultBlock());
 		}
 	}
 
-	private void doSwitchRanges(SwitchRange[] x, CiValue value,
+	private void doSwitchRanges(SwitchRange[] x, LIRValue value,
 			BasicBlock defaultSux)
 	{
 		for (int i = 1; i < x.length; i++)
@@ -288,23 +288,23 @@ public abstract class LIRGenerator extends ValueVisitor
 			BasicBlock dest = oneRange.sux;
 			if (lowKey == highKey)
 			{
-				lir.cmp(Condition.EQ, value, CiConstant.forInt(lowKey));
-				lir.branch(Condition.EQ, CiKind.Int, dest);
+				lir.cmp(Condition.EQ, value, LIRConstant.forInt(lowKey));
+				lir.branch(Condition.EQ, LIRKind.Int, dest);
 			}
 			else if (highKey - lowKey == 1)
 			{
-				lir.cmp(Condition.EQ, value, CiConstant.forInt(lowKey));
-				lir.branch(Condition.EQ, CiKind.Int, dest);
-				lir.cmp(Condition.EQ, value, CiConstant.forInt(highKey));
-				lir.branch(Condition.EQ, CiKind.Int, dest);
+				lir.cmp(Condition.EQ, value, LIRConstant.forInt(lowKey));
+				lir.branch(Condition.EQ, LIRKind.Int, dest);
+				lir.cmp(Condition.EQ, value, LIRConstant.forInt(highKey));
+				lir.branch(Condition.EQ, LIRKind.Int, dest);
 			}
 			else
 			{
 				Label label = new Label();
-				lir.cmp(Condition.LT, value, CiConstant.forInt(lowKey));
+				lir.cmp(Condition.LT, value, LIRConstant.forInt(lowKey));
 				lir.branch(Condition.LT, label);
-				lir.cmp(Condition.LE, value, CiConstant.forInt(highKey));
-				lir.branch(Condition.LE, CiKind.Int, dest);
+				lir.cmp(Condition.LE, value, LIRConstant.forInt(highKey));
+				lir.branch(Condition.LE, LIRKind.Int, dest);
 				lir.branchDestination(label);
 			}
 		}
@@ -363,6 +363,8 @@ public abstract class LIRGenerator extends ValueVisitor
 	{
 		setNoResult(inst);
 		BasicBlock nextBB = getBlockAfter(inst.getParent());
+		// if the target of this instruction is equal to next basic block
+		// just fall through rather than redundant jump.
 		if (inst.target != nextBB)
 		{
 			lir.jump(inst.target);
@@ -384,8 +386,8 @@ public abstract class LIRGenerator extends ValueVisitor
 	// the calling to function and return from function
 
 	/**
-	 * 'ret' instruction - Here we are interested in meeting the x86 ABI.  As such,
-	 * we have the following possibilities:
+	 * 'ret' instruction - Here we are interested in meeting the x86 ABI.
+	 * As such, we have the following possibilities:
 	 * <ol>ret void: No return value, simply emit a 'ret' instruction</ol>
 	 * <ol>ret sbyte, ubyte : Extend value into EAX and return</ol>
 	 * <ol>ret short, ushort: Extend value into EAX and return</ol>
@@ -399,39 +401,115 @@ public abstract class LIRGenerator extends ValueVisitor
 		if (inst.kind.isVoid())
 		{
 			// obtains the caller, no finished currently
-
+			lir.returnOp(IllegalValue);
 		}
 		else
 		{
-			CiValue operand = resultOperandFor(inst.kind);
-			CiValue result = force(inst.result(), operand);
-			// obtains the caller, no finished currently
+			LIRValue reg = resultOperandFor(inst.kind);
+			LIRItem result = new LIRItem(inst.result(), this);
+			result.loadItemForce(reg);
 
+			lir.returnOp(result.result());
+			//LIRValue result = force(inst.result(), operand);
 		}
+		setNoResult(inst);
 	}
 
+	/**
+	 * The invoke with receiver has following phases:
+	 *   a) traverse all arguments -> item-array (invoke_visit_argument)
+	 *   b) load each of the items and push on stack
+	 *   c) lock result LIRRegisters and emit call operation
+	 *
+	 * Before issuing a call, we must spill-save all values on stack
+	 * that are in caller-save register. "spill-save" moves thos LIRRegisters
+	 * either in a free callee-save register or spills them if no free
+	 * callee save register is available.
+	 *
+	 * The problem is where to invoke spill-save.
+	 * - if invoked between b) and c), we may lock callee save
+	 *   register in "spill-save" that destroys the receiver register
+	 *   before f) is executed
+ 	 */
 	public void visitInvoke(Instruction.Invoke inst)
 	{
+		CallingConvention cc = backend.frameMap().getCallingConvention
+				(Util.signatureToKinds(inst.target),
+				CallingConvention.Type.JavaCallee);
 
+		// an array of the stack slots where real arguments passing into called function store
+		LIRValue[] locations = cc.locations;
+		LIRItem[] args = invokeVisitArgument(inst);
+
+		LIRValue[] argValues = new LIRValue[args.length];
+
+		for (int i=0; i < argValues.length; i++)
+			argValues[i]  = args[i].result();
+
+		// set up the result register
+		LIRVariable resultReg = null;
+		if (inst.kind != LIRKind.Void)
+		{
+			resultReg = newVariable(inst.kind);
+		}
+
+		invokeLoadArguments(inst, args, locations);
+
+		// emit invocation code
+		lir.callDirect(inst.target, resultReg, argValues, locations);
+	}
+
+	private void invokeLoadArguments(Instruction.Invoke inst,
+			LIRItem[] args, LIRValue[] locations)
+	{
+		assert args.length == locations.length :
+				"numbers of argguments and stack slots should be equivalent";
+		for (int i = 0; i < args.length; i++)
+		{
+			LIRItem param = args[i];
+			LIRValue loca = locations[i];
+			if (loca.isRegister())
+			{
+				param.loadItemForce(loca);
+			}
+			else
+			{
+				LIRAddress addr = loca.asAddress();
+				param.loadForStore(addr.kind);
+				if (addr.kind == LIRKind.Object)
+				{
+					lir.move_wide(param.result(), addr);
+				}
+				else
+				{
+					if (addr.kind == LIRKind.Long ||
+							addr.kind == LIRKind.Double)
+					{
+						lir.unalignedMove(param.result(), addr);;
+					}
+					else
+					{
+						lir.move(param.result(), addr);
+					}
+				}
+			}
+		}
+	}
+	private LIRItem[] invokeVisitArgument(Instruction.Invoke instr)
+	{
+		ArrayList<LIRItem> argumentItems = new ArrayList<>();
+		for (int i = 0; i < instr.getNumsOfArgs(); i++)
+		{
+			LIRItem param = new LIRItem(instr.argumentAt(i), this);
+			argumentItems.add(param);
+		}
+		return argumentItems.toArray(new LIRItem[argumentItems.size()]);
 	}
 
 	// A special instruction, phi function.
 	public void visitPhi(Instruction.Phi inst)
 	{
 
-	}
-
-	// memory access
-
-	public void visitAlloca(Instruction.Alloca inst)
-	{
-		CiValue result = createResultVariable(inst);
-		assert inst.size().isConstant() :
-				"Alloca instruction 'size' is not a constant" + inst.size();
-		int size = inst.size().asConstant().asInt();
-		StackBlock stackBlock = backend.frameMap()
-				.reserveStackBlock(size, false);
-		lir.alloca(stackBlock, result);
 	}
 
 	/**
@@ -443,16 +521,16 @@ public abstract class LIRGenerator extends ValueVisitor
 	 *                    must be available
 	 * @return {@code operand}
 	 */
-	protected CiValue force(Value instruction, CiValue operand)
+	protected LIRValue force(Value instruction, LIRValue operand)
 	{
-		CiValue result = makeOperand(instruction);
+		LIRValue result = makeOperand(instruction);
 		if (result != operand)
 		{
-			assert result.kind != CiKind.Illegal;
+			assert result.kind != LIRKind.Illegal;
 			if (!Util.archKindEqual(result.kind, operand.kind))
 			{
 				// moves between different types need an intervening spill slot
-				CiValue tmp = forceToSpill(result, operand.kind, false);
+				LIRValue tmp = forceToSpill(result, operand.kind, false);
 				lir.move(tmp, operand);
 			}
 			else
@@ -471,15 +549,15 @@ public abstract class LIRGenerator extends ValueVisitor
 	 * @return the operand representing the ABI defined location used return a
 	 * value of kind {@code kind}
 	 */
-	protected CiValue resultOperandFor(CiKind kind)
+	protected LIRValue resultOperandFor(LIRKind kind)
 	{
-		if (kind == CiKind.Void)
+		if (kind == LIRKind.Void)
 		{
 			return IllegalValue;
 		}
-		Register returnRegister = backend.registerConfig
+		LIRRegister returnLIRRegister = backend.registerConfig
 				.getReturnRegister(kind);
-		return returnRegister.asValue(kind);
+		return returnLIRRegister.asValue(kind);
 	}
 
 	/**
@@ -497,7 +575,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 		else
 		{
-			CiValue res = Const.LIROperand;
+			LIRValue res = Const.LIROperand;
 			if (!res.isLegal())
 				res = Const.asConstant();
 			if (res.isConstant())
@@ -505,10 +583,10 @@ public abstract class LIRGenerator extends ValueVisitor
 				if (Const.hasOneUses())
 				{
 					// unpinned constants are handled specially so that they can be
-					// put into registers when they are used multiple times within a
+					// put into LIRRegisters when they are used multiple times within a
 					// block.  After the block completes their operand will be
 					// cleared so that other blocks can't refer to that register.
-					CiVariable reg = createResultVariable(Const);
+					LIRVariable reg = createResultVariable(Const);
 					lir.move(res, reg);
 				}
 				else
@@ -518,17 +596,17 @@ public abstract class LIRGenerator extends ValueVisitor
 			}
 			else
 			{
-				setResult(Const, (CiVariable) res);
+				setResult(Const, (LIRVariable) res);
 			}
 		}
 	}
 
-	private CiVariable loadConstant(Value.Constant x)
+	private LIRVariable loadConstant(Value.Constant x)
 	{
 		return loadConstant(x.asConstant(), x.kind);
 	}
 
-	protected CiVariable loadConstant(CiConstant c, CiKind kind)
+	protected LIRVariable loadConstant(LIRConstant c, LIRKind kind)
 	{
 		// XXX: linear search might be kind of slow for big basic blocks
 		int index = constants.indexOf(c);
@@ -537,7 +615,7 @@ public abstract class LIRGenerator extends ValueVisitor
 			return variablesForConstants.get(index);
 		}
 
-		CiVariable result = newVariable(kind);
+		LIRVariable result = newVariable(kind);
 		lir.move(c, result);
 		constants.add(c);
 		variablesForConstants.add(result);
@@ -560,12 +638,12 @@ public abstract class LIRGenerator extends ValueVisitor
 		throw Util.shouldNotReachHere();
 	}
 
-	public CiVariable newVariable(CiKind kind)
+	public LIRVariable newVariable(LIRKind kind)
 	{
 		return operands.newVariable(kind);
 	}
 
-	public void setResult(Value x, CiVariable opr)
+	public void setResult(Value x, LIRVariable opr)
 	{
 		x.setLIROperand(opr);
 	}
@@ -577,14 +655,14 @@ public abstract class LIRGenerator extends ValueVisitor
 	}
 
 	/**
-	 * Ensures that an operand has been {@linkplain Value#setLIROperand(CiValue)} initialized
+	 * Ensures that an operand has been {@linkplain Value#setLIROperand(LIRValue)} initialized
 	 * for storing the result of an val.
 	 *
 	 * @param val an val that produces a result value
 	 */
-	public CiValue makeOperand(Value val)
+	public LIRValue makeOperand(Value val)
 	{
-		CiValue operand = val.LIROperand;
+		LIRValue operand = val.LIROperand;
 		if (operand.isIllegal())
 		{
 			if (val instanceof Instruction.Phi)
@@ -602,20 +680,20 @@ public abstract class LIRGenerator extends ValueVisitor
 		return operand;
 	}
 
-	private CiValue operandForPhi(Phi phi)
+	private LIRValue operandForPhi(Phi phi)
 	{
 		if (phi.LIROperand().isIllegal())
 		{
 			// allocate a variable for this phi
-			CiVariable operand = newVariable(phi.kind);
+			LIRVariable operand = newVariable(phi.kind);
 			setResult(phi, operand);
 		}
 		return phi.LIROperand();
 	}
 
-	CiValue operandForInstruction(Value x)
+	LIRValue operandForInstruction(Value x)
 	{
-		CiValue operand = x.LIROperand();
+		LIRValue operand = x.LIROperand();
 		if (operand.isIllegal())
 		{
 			if (x instanceof Value.Constant)
@@ -640,29 +718,29 @@ public abstract class LIRGenerator extends ValueVisitor
 	 * @param x an instruction that produces a result
 	 * @return the variable assigned to hold the result produced by {@code x}
 	 */
-	protected CiVariable createResultVariable(Value x)
+	protected LIRVariable createResultVariable(Value x)
 	{
-		CiVariable operand = newVariable(x.kind);
+		LIRVariable operand = newVariable(x.kind);
 		setResult(x, operand);
 		return operand;
 	}
 
-	protected CiValue load(Value val)
+	protected LIRValue load(Value val)
 	{
-		CiValue result = makeOperand(val);
+		LIRValue result = makeOperand(val);
 		if (!result.isVariableOrRegister())
 		{
-			CiVariable operand = newVariable(val.kind);
+			LIRVariable operand = newVariable(val.kind);
 			lir.move(result, operand);
 			return operand;
 		}
 		return result;
 	}
 
-	protected void arithmeticOpFpu(Operator opcode, CiValue result,
-			CiValue left, CiValue right, CiValue temp)
+	protected void arithmeticOpFpu(Operator opcode, LIRValue result,
+			LIRValue left, LIRValue right, LIRValue temp)
 	{
-		CiValue leftOp = left;
+		LIRValue leftOp = left;
 
 		if (isTwoOperand && leftOp != result)
 		{
@@ -694,10 +772,10 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 	}
 
-	protected void arithmeticOpLong(Operator code, CiValue result, CiValue left,
-			CiValue right)
+	protected void arithmeticOpLong(Operator code, LIRValue result, LIRValue left,
+			LIRValue right)
 	{
-		CiValue leftOp = left;
+		LIRValue leftOp = left;
 
 		if (isTwoOperand && leftOp != result)
 		{
@@ -723,14 +801,14 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 	}
 
-	protected CiValue forceToSpill(CiValue value, CiKind kind,
+	protected LIRValue forceToSpill(LIRValue value, LIRKind kind,
 			boolean mustStayOnStack)
 	{
 		assert value.isLegal() : "value should not be illegal";
 		if (!value.isVariableOrRegister())
 		{
 			// force into a variable that must start in memory
-			CiValue operand = operands.newVariable(value.kind, mustStayOnStack ?
+			LIRValue operand = operands.newVariable(value.kind, mustStayOnStack ?
 					OperandPool.VariableFlag.MustStayInMemory :
 					OperandPool.VariableFlag.MustStartInMemory);
 			lir.move(value, operand);
@@ -738,7 +816,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 
 		// create a spill location
-		CiValue operand = operands.newVariable(kind, mustStayOnStack ?
+		LIRValue operand = operands.newVariable(kind, mustStayOnStack ?
 				OperandPool.VariableFlag.MustStayInMemory :
 				OperandPool.VariableFlag.MustStartInMemory);
 		// move from register to spill
@@ -746,10 +824,10 @@ public abstract class LIRGenerator extends ValueVisitor
 		return operand;
 	}
 
-	protected void arithmeticOpInt(Operator code, CiValue result, CiValue left,
-			CiValue right, CiValue tmp)
+	protected void arithmeticOpInt(Operator code, LIRValue result, LIRValue left,
+			LIRValue right, LIRValue tmp)
 	{
-		CiValue leftOp = left;
+		LIRValue leftOp = left;
 
 		if (isTwoOperand && leftOp != result)
 		{
@@ -767,7 +845,7 @@ public abstract class LIRGenerator extends ValueVisitor
 				boolean didStrengthReduce = false;
 				if (right.isConstant())
 				{
-					CiConstant rightConstant = (CiConstant) right;
+					LIRConstant rightConstant = (LIRConstant) right;
 					int c = rightConstant.asInt();
 					if (Util.isPowerOf2(c))
 					{
@@ -796,8 +874,8 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 	}
 
-	protected void shiftOp(Operator opcode, CiValue resultOp, CiValue value,
-			CiValue count, CiValue tmp)
+	protected void shiftOp(Operator opcode, LIRValue resultOp, LIRValue value,
+			LIRValue count, LIRValue tmp)
 	{
 		if (isTwoOperand && value != resultOp)
 		{
