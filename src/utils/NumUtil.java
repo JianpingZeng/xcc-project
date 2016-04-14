@@ -14,4 +14,14 @@ public class NumUtil
 	{
 		return (int)v == v;
 	}
+
+	public static boolean isUShort(int s)
+	{
+		return s == (s & 0xFFFF);
+	}
+
+	public static boolean isUByte(int x)
+	{
+		return (x & 0xff) == x;
+	}
 }

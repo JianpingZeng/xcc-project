@@ -390,9 +390,9 @@ public class Name {
 
         /**
          * Allocator
-         *  @param hashSize the (constant) size to be used for the hash entityTable
+         *  @param hashSize the (constant) length to be used for the hash entityTable
          *                  needs to be a power of two.
-         *  @param nameSize the initial size of the name entityTable.
+         *  @param nameSize the initial length of the name entityTable.
          */
         public Table(int hashSize, int nameSize) {
             super();

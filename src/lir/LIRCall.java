@@ -1,6 +1,7 @@
 package lir;
 
-import lir.ci.CiValue;
+import hir.Method;
+import lir.ci.LIRValue;
 
 import java.util.List;
 
@@ -13,20 +14,20 @@ public class LIRCall extends LIRInstruction
 	/**
 	 * The targetAbstractLayer of the call.
 	 */
-	public final Object target;
+	public final Method target;
 
 	private final int targetAddressIndex;
 
-	public final List<CiValue> pointerSlots;
+	public final List<LIRValue> pointerSlots;
 
-	private static CiValue[] toArray(List<CiValue> arguments)
+	private static LIRValue[] toArray(List<LIRValue> arguments)
 	{
-		return arguments.toArray(new CiValue[arguments.size()]);
+		return arguments.toArray(new LIRValue[arguments.size()]);
 	}
 
-	public LIRCall(LIROpcode opcode, Object target, CiValue result,
-			List<CiValue> arguments,
-			boolean calleeSaved, List<CiValue> pointerSlots)
+	public LIRCall(LIROpcode opcode, Method target, LIRValue result,
+			List<LIRValue> arguments,
+			boolean calleeSaved, List<LIRValue> pointerSlots)
 	{
 		super(opcode, result, !calleeSaved, 0, 0, toArray(arguments));
 		this.pointerSlots = pointerSlots;
@@ -58,12 +59,12 @@ public class LIRCall extends LIRInstruction
 	 *
 	 * @return the receiver
 	 */
-	public CiValue receiver()
+	public LIRValue receiver()
 	{
 		return operand(0);
 	}
 
-	public CiValue targetAddress()
+	public LIRValue targetAddress()
 	{
 		if (targetAddressIndex >= 0)
 		{
@@ -72,7 +73,7 @@ public class LIRCall extends LIRInstruction
 		return null;
 	}
 
-	@Override public String operationString(CiValue.Formatter operandFmt)
+	@Override public String operationString(LIRValue.Formatter operandFmt)
 	{
 		StringBuilder buf = new StringBuilder();
 		if (result().isLegal())

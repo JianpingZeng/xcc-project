@@ -1098,7 +1098,7 @@ public class Parser implements ParserConstants
 				}
 				jj_consume_token(60);
 				jj_consume_token(61);
-				// array type reference to no size
+				// array type reference to no length
 				ref = F.at(ref.pos).TypeArray(ref);
 			}
 			{

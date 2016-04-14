@@ -24,15 +24,15 @@ package lir.ci;
 
 import sun.misc.Unsafe;
 
-import static lir.ci.CiKind.Flags.*;
+import static lir.ci.LIRKind.Flags.*;
 
 /**
  * Denotes the basic kinds of types in cc IR, including the all the primitive types,
- * for example, {@link CiKind#Int} for {@code int}.
+ * for example, {@link LIRKind#Int} for {@code int}.
  * A kind has a single character short name, a CC name, and a set of flags
  * further describing its behavior.
  */
-public enum CiKind
+public enum LIRKind
 {
 	Boolean('z', "boolean", VAR_TYPE | RETURN_TYPE | PRIMITIVE),
 	Byte('b', "byte", VAR_TYPE | RETURN_TYPE | PRIMITIVE),
@@ -46,19 +46,19 @@ public enum CiKind
 	Void('v', "void", RETURN_TYPE),
 	Illegal('-', "illegal", 0);
 
-	public static final CiKind[] VALUES = values();
-	public static final CiKind[] JAVA_VALUES = new CiKind[] { CiKind.Boolean,
-			CiKind.Byte, CiKind.Short, CiKind.Char, CiKind.Int, CiKind.Float,
-			CiKind.Long, CiKind.Double };
+	public static final LIRKind[] VALUES = values();
+	public static final LIRKind[] JAVA_VALUES = new LIRKind[] { LIRKind.Boolean,
+			LIRKind.Byte, LIRKind.Short, LIRKind.Char, LIRKind.Int, LIRKind.Float,
+			LIRKind.Long, LIRKind.Double };
 
-	CiKind(char ch, String name, int flags)
+	LIRKind(char ch, String name, int flags)
 	{
 		this.typeChar = ch;
 		this.cflatName = name;
 		this.flags = flags;
 	}
 
-	public CiKind stackKind()
+	public LIRKind stackKind()
 	{
 		if (isInt())
 		{
@@ -130,11 +130,11 @@ public enum CiKind
 		return (flags & PRIMITIVE) != 0;
 	}
 
-	public static CiKind fromTypeString(String typeString)
+	public static LIRKind fromTypeString(String typeString)
 	{
 		assert typeString.length() > 0;
 		final char first = typeString.charAt(0);
-		return CiKind.fromPrimitiveOrVoidTypeChar(first);
+		return LIRKind.fromPrimitiveOrVoidTypeChar(first);
 	}
 
 	/**
@@ -143,7 +143,7 @@ public enum CiKind
 	 * @param ch the character
 	 * @return the kind
 	 */
-	public static CiKind fromPrimitiveOrVoidTypeChar(char ch)
+	public static LIRKind fromPrimitiveOrVoidTypeChar(char ch)
 	{
 		// Checkstyle: stop
 		switch (ch)
@@ -179,7 +179,7 @@ public enum CiKind
 	 */
 	public final boolean isInt()
 	{
-		return this == CiKind.Int;
+		return this == LIRKind.Int;
 	}
 
 	/**
@@ -189,7 +189,7 @@ public enum CiKind
 	 */
 	public final boolean isVoid()
 	{
-		return this == CiKind.Void;
+		return this == LIRKind.Void;
 	}
 
 	/**
@@ -199,7 +199,7 @@ public enum CiKind
 	 */
 	public final boolean isLong()
 	{
-		return this == CiKind.Long;
+		return this == LIRKind.Long;
 	}
 
 	/**
@@ -209,7 +209,7 @@ public enum CiKind
 	 */
 	public final boolean isFloat()
 	{
-		return this == CiKind.Float;
+		return this == LIRKind.Float;
 	}
 
 	/**
@@ -219,7 +219,7 @@ public enum CiKind
 	 */
 	public final boolean isDouble()
 	{
-		return this == CiKind.Double;
+		return this == LIRKind.Double;
 	}
 
 	/**
@@ -229,7 +229,7 @@ public enum CiKind
 	 */
 	public final boolean isFloatOrDouble()
 	{
-		return this == CiKind.Double || this == CiKind.Float;
+		return this == LIRKind.Double || this == LIRKind.Float;
 	}
 
 	/**
@@ -239,7 +239,7 @@ public enum CiKind
 	 */
 	public final boolean isObject()
 	{
-		return this == CiKind.Object;
+		return this == LIRKind.Object;
 	}
 
 	/**
@@ -251,7 +251,7 @@ public enum CiKind
 	}
 
 	/**
-	 * Marker interface for types that should be {@linkplain CiKind#format(Object) formatted}
+	 * Marker interface for types that should be {@linkplain LIRKind#format(Object) formatted}
 	 * with their {@link Object#toString()} value.
 	 */
 	public interface FormatWithToString
@@ -263,29 +263,29 @@ public enum CiKind
 		return Character.toUpperCase(typeChar);
 	}
 
-	public CiConstant readUnsafeConstant(Object value, long displacement)
+	public LIRConstant readUnsafeConstant(Object value, long displacement)
 	{
 		Unsafe u = Unsafe.getUnsafe();
 		switch (this)
 		{
 			case Boolean:
-				return CiConstant.forBoolean(u.getBoolean(value, displacement));
+				return LIRConstant.forBoolean(u.getBoolean(value, displacement));
 			case Byte:
-				return CiConstant.forByte(u.getByte(value, displacement));
+				return LIRConstant.forByte(u.getByte(value, displacement));
 			case Char:
-				return CiConstant.forChar(u.getChar(value, displacement));
+				return LIRConstant.forChar(u.getChar(value, displacement));
 			case Short:
-				return CiConstant.forShort(u.getShort(value, displacement));
+				return LIRConstant.forShort(u.getShort(value, displacement));
 			case Int:
-				return CiConstant.forInt(u.getInt(value, displacement));
+				return LIRConstant.forInt(u.getInt(value, displacement));
 			case Long:
-				return CiConstant.forLong(u.getLong(value, displacement));
+				return LIRConstant.forLong(u.getLong(value, displacement));
 			case Float:
-				return CiConstant.forFloat(u.getFloat(value, displacement));
+				return LIRConstant.forFloat(u.getFloat(value, displacement));
 			case Double:
-				return CiConstant.forDouble(u.getDouble(value, displacement));
+				return LIRConstant.forDouble(u.getDouble(value, displacement));
 			case Object:
-				return CiConstant.forObject(u.getObject(value, displacement));
+				return LIRConstant.forObject(u.getObject(value, displacement));
 			default:
 				assert false : "unexpected kind: " + this;
 				return null;

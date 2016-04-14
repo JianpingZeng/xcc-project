@@ -4,19 +4,19 @@ import java.io.Serializable;
 
 /**
  * Abstract base class for values manipulated by the compiler.
- * All values have a {@linkplain CiKind kind} and are immutable.
+ * All values have a {@linkplain LIRKind kind} and are immutable.
  *
  * @author Jianping Zeng
  * @version 1.0
  */
-public abstract class CiValue implements Serializable
+public abstract class LIRValue implements Serializable
 {
 	/**
 	 *
 	 */
 	private static final long serialVersionUID = 1L;
 
-	public static CiValue IllegalValue = new CiValue(CiKind.Illegal)
+	public static LIRValue IllegalValue = new LIRValue(LIRKind.Illegal)
 	{
 		/**
 		 *
@@ -28,9 +28,9 @@ public abstract class CiValue implements Serializable
 			return "<illegal>";
 		}
 
-		@Override public Register asRegister()
+		@Override public LIRRegister asRegister()
 		{
-			return Register.None;
+			return LIRRegister.None;
 		}
 
 		@Override public int hashCode()
@@ -43,7 +43,7 @@ public abstract class CiValue implements Serializable
 			return obj == this;
 		}
 
-		@Override public boolean equalsIgnoringKind(CiValue other)
+		@Override public boolean equalsIgnoringKind(LIRValue other)
 		{
 			return other == this;
 		}
@@ -52,26 +52,31 @@ public abstract class CiValue implements Serializable
 	/**
 	 * The kind of this value.
 	 */
-	public final CiKind kind;
+	public final LIRKind kind;
 
 	/**
 	 * Initializes a new value of the specified kind.
 	 *
 	 * @param kind the kind
 	 */
-	protected CiValue(CiKind kind)
+	protected LIRValue(LIRKind kind)
 	{
 		this.kind = kind;
 	}
 
 	public final boolean isVariableOrRegister()
 	{
-		return this instanceof CiVariable || this instanceof CiRegisterValue;
+		return this instanceof LIRVariable || this instanceof LIRRegisterValue;
 	}
 
-	public Register asRegister()
+	public LIRRegister asRegister()
 	{
 		throw new InternalError("Not a register: " + this);
+	}
+
+	public LIRAddress asAddress()
+	{
+		throw new InternalError("Not a address: " + this);
 	}
 
 	public final boolean isIllegal()
@@ -96,22 +101,22 @@ public abstract class CiValue implements Serializable
 
 	public final boolean isRegister()
 	{
-		return this instanceof CiRegisterValue;
+		return this instanceof LIRRegisterValue;
 	}
 
 	public final boolean isVariable()
 	{
-		return this instanceof CiVariable;
+		return this instanceof LIRVariable;
 	}
 
 	public final boolean isAddress()
 	{
-		return this instanceof Address;
+		return this instanceof LIRAddress;
 	}
 
 	public final boolean isConstant()
 	{
-		return this instanceof CiConstant;
+		return this instanceof LIRConstant;
 	}
 
 	/**
@@ -121,7 +126,7 @@ public abstract class CiValue implements Serializable
 
 	@Override public abstract boolean equals(Object obj);
 
-	public abstract boolean equalsIgnoringKind(CiValue other);
+	public abstract boolean equalsIgnoringKind(LIRValue other);
 
 	@Override public abstract int hashCode();
 
@@ -132,7 +137,7 @@ public abstract class CiValue implements Serializable
 
 	public final String kindSuffix()
 	{
-		if (kind == CiKind.Illegal)
+		if (kind == LIRKind.Illegal)
 		{
 			return "";
 		}
@@ -141,13 +146,13 @@ public abstract class CiValue implements Serializable
 
 	public final boolean isConstant0()
 	{
-		return isConstant() && ((CiConstant) this).asInt() == 0;
+		return isConstant() && ((LIRConstant) this).asInt() == 0;
 	}
 
 	/**
-	 * Utility for specializing how a {@linkplain CiValue LIR LIROperand} is formatted to a string.
+	 * Utility for specializing how a {@linkplain LIRValue LIR LIROperand} is formatted to a string.
 	 * The {@linkplain Formatter#DEFAULT default formatter} returns the value of
-	 * {@link CiValue#toString()}.
+	 * {@link LIRValue#toString()}.
 	 */
 	public static class Formatter
 	{
@@ -159,7 +164,7 @@ public abstract class CiValue implements Serializable
 		 * @param operand the LIROperand to format
 		 * @return {@code LIROperand} as a string
 		 */
-		public String format(CiValue operand)
+		public String format(LIRValue operand)
 		{
 			return operand.toString();
 		}

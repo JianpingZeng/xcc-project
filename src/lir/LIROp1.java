@@ -1,7 +1,7 @@
 package lir;
 
-import lir.ci.CiKind;
-import lir.ci.CiValue;
+import lir.ci.LIRKind;
+import lir.ci.LIRValue;
 import utils.Util;
 
 /**
@@ -14,7 +14,7 @@ public class LIROp1 extends LIRInstruction
 		Normal, Volatile, Unaligned
 	}
 
-	public final CiKind kind;          // the LIROperand type
+	public final LIRKind kind;          // the LIROperand type
 	public final LIRMoveKind moveKind; // flag that indicate the kind of move
 
 	/**
@@ -25,7 +25,7 @@ public class LIROp1 extends LIRInstruction
 	 * @param result the LIROperand that holds the result of this instruction
 	 * @param kind   the kind of this instruction
 	 */
-	public LIROp1(LIROpcode opcode, CiValue opr, CiValue result, CiKind kind)
+	public LIROp1(LIROpcode opcode, LIRValue opr, LIRValue result, LIRKind kind)
 	{
 		super(opcode, result, false, 0, 0, opr);
 		this.kind = kind;
@@ -40,10 +40,29 @@ public class LIROp1 extends LIRInstruction
 	 * @param opcode the instruction's opcode
 	 * @param opr    the first input LIROperand
 	 * @param result the LIROperand that holds the result of this instruction
+	 * @param kind   the kind of this instruction
+	 * @param moveKind the instance of {@code LIRMoveKind} for specifying the the kind of move
 	 */
-	public LIROp1(LIROpcode opcode, CiValue opr, CiValue result)
+	public LIROp1(LIROpcode opcode, LIRValue opr, LIRValue result, LIRKind kind,
+			LIRMoveKind moveKind)
 	{
-		this(opcode, opr, result, CiKind.Illegal);
+		super(opcode, result, false, 0, 0, opr);
+		this.kind = kind;
+		this.moveKind = moveKind;
+		assert isInRange(opcode, LIROpcode.BeginOp1, LIROpcode.EndOp1) :
+				"The " + opcode + " is not a valid LIROp1 opcode";
+	}
+
+	/**
+	 * Constructs a new LIROp1 instruction.
+	 *
+	 * @param opcode the instruction's opcode
+	 * @param opr    the first input LIROperand
+	 * @param result the LIROperand that holds the result of this instruction
+	 */
+	public LIROp1(LIROpcode opcode, LIRValue opr, LIRValue result)
+	{
+		this(opcode, opr, result, LIRKind.Illegal);
 	}
 
 
@@ -55,8 +74,8 @@ public class LIROp1 extends LIRInstruction
 	 * @param result   the LIROperand that holds the result of this instruction
 	 * @param kind     the kind of this instruction
 	 */
-	public LIROp1(LIRMoveKind moveKind, CiValue operand, CiValue result,
-			CiKind kind)
+	public LIROp1(LIRMoveKind moveKind, LIRValue operand, LIRValue result,
+			LIRKind kind)
 	{
 		super(LIROpcode.Move, result, false, 0, 0, operand);
 		this.kind = kind;
@@ -69,10 +88,10 @@ public class LIROp1 extends LIRInstruction
 	 * @param opcode the instruction's opcode
 	 * @param opr    the first input LIROperand
 	 */
-	public LIROp1(LIROpcode opcode, CiValue opr)
+	public LIROp1(LIROpcode opcode, LIRValue opr)
 	{
-		super(opcode, CiValue.IllegalValue, false, 0, 0, opr);
-		this.kind = CiKind.Illegal;
+		super(opcode, LIRValue.IllegalValue, false, 0, 0, opr);
+		this.kind = LIRKind.Illegal;
 		this.moveKind = LIRMoveKind.Normal;
 		assert isInRange(opcode, LIROpcode.BeginOp1, LIROpcode.EndOp1) :
 				"The " + opcode + " is not a valid LIROp1 opcode";
@@ -83,7 +102,7 @@ public class LIROp1 extends LIRInstruction
 	 *
 	 * @return opr the input LIROperand.
 	 */
-	public CiValue operand()
+	public LIRValue operand()
 	{
 		return operand(0);
 	}

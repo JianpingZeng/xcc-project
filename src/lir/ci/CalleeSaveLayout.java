@@ -5,10 +5,10 @@ import java.util.Arrays;
 
 /**
  * The callee save area (CSA) is a contiguous space in a stack frame
- * used to save (and restore) the values of the caller's registers.
+ * used to save (and restore) the values of the caller's LIRRegisters.
  * This class describes the layout of a CSA in terms of its
- * {@linkplain #size size}, {@linkplain #slotSize slot size} and
- * the {@linkplain #registers callee save registers} covered by the CSA.
+ * {@linkplain #size length}, {@linkplain #slotSize slot length} and
+ * the {@linkplain #LIRRegisters callee save LIRRegisters} covered by the CSA.
  *
  * @author Jianping Zeng
  */
@@ -16,27 +16,27 @@ public class CalleeSaveLayout
 {
 
 	/**
-	 * The size (in bytes) of the CSA.
+	 * The length (in bytes) of the CSA.
 	 */
 	public final int size;
 
 	/**
-	 * The size (in bytes) of an {@linkplain #registerAt(int)} indexable}
+	 * The length (in bytes) of an {@linkplain #registerAt(int)} indexable}
 	 * slot in the CSA.
 	 */
 	public final int slotSize;
 
 	/**
-	 * Map from {@linkplain Register#number register numbers} to slot indexes in the CSA.
+	 * Map from {@linkplain LIRRegister#number register numbers} to slot indexes in the CSA.
 	 */
 	private final int[] regNumToIndex;
 
-	private final Register[] indexToReg;
+	private final LIRRegister[] indexToReg;
 
 	/**
-	 * The list of registers {@linkplain ##contains(Register)}contained} by this CSA.
+	 * The list of LIRRegisters {@linkplain ##contains(LIRRegister)}contained} by this CSA.
 	 */
-	public final Register[] registers;
+	public final LIRRegister[] LIRRegisters;
 
 	/**
 	 * The offset from the frame pointer to the CSA. If this is not known, then this field
@@ -47,23 +47,23 @@ public class CalleeSaveLayout
 	/**
 	 * Creates a CSA layout.
 	 *
-	 * @param size      size (in bytes) of the CSA. If this is {@code -1}, then
-	 *                     the CSA size will be computed from {@code registers}.
-	 * @param slotSize  the size (in bytes) of an {@linkplain #registerAt(int)}
+	 * @param size      length (in bytes) of the CSA. If this is {@code -1}, then
+	 *                     the CSA length will be computed from {@code LIRRegisters}.
+	 * @param slotSize  the length (in bytes) of an {@linkplain #registerAt(int)}
 	 *                  indexable} slot in the CSA
-	 * @param registers the registers that can be saved in the CSA
+	 * @param LIRRegisters the LIRRegisters that can be saved in the CSA
 	 */
 	public CalleeSaveLayout(int frameOffsetToCSA, int size, int slotSize,
-			Register... registers)
+			LIRRegister... LIRRegisters)
 	{
 		this.frameOffsetToCSA = frameOffsetToCSA;
 		assert slotSize == 0 || Util.isPowerOf2(slotSize);
 		this.slotSize = slotSize;
 		int maxRegNum = -1;
 		int maxOffset = 0;
-		this.registers = registers;
+		this.LIRRegisters = LIRRegisters;
 		int offset = 0;
-		for (Register reg : registers)
+		for (LIRRegister reg : LIRRegisters)
 		{
 			assert offset % slotSize == 0;
 			assert reg.number >= 0;
@@ -90,11 +90,11 @@ public class CalleeSaveLayout
 
 		this.regNumToIndex = new int[maxRegNum + 1];
 		this.indexToReg = offset == 0 ?
-				new Register[0] :
-				new Register[offset / slotSize];
+				new LIRRegister[0] :
+				new LIRRegister[offset / slotSize];
 		Arrays.fill(regNumToIndex, -1);
 		offset = 0;
-		for (Register reg : registers)
+		for (LIRRegister reg : LIRRegisters)
 		{
 			int index = offset / slotSize;
 			regNumToIndex[reg.number] = index;
@@ -135,7 +135,7 @@ public class CalleeSaveLayout
 	 * @return the offset (in bytes) of {@code reg} in the CSA
 	 * @throws IllegalArgumentException if {@code reg} does not have a slot in the CSA
 	 */
-	public int offsetOf(Register reg)
+	public int offsetOf(LIRRegister reg)
 	{
 		return offsetOf(reg.number);
 	}
@@ -160,7 +160,7 @@ public class CalleeSaveLayout
 	 * {@code null} if {@code index} does not denote a
 	 * slot in the CSA aligned with a register
 	 */
-	public Register registerAt(int index)
+	public LIRRegister registerAt(int index)
 	{
 		if (index < 0 || index >= indexToReg.length)
 		{
@@ -172,7 +172,7 @@ public class CalleeSaveLayout
 	@Override public String toString()
 	{
 		StringBuilder sb = new StringBuilder("[");
-		for (Register reg : registers)
+		for (LIRRegister reg : LIRRegisters)
 		{
 			if (sb.length() != 1)
 			{
@@ -180,7 +180,7 @@ public class CalleeSaveLayout
 			}
 			sb.append(reg).append("{+").append(offsetOf(reg)).append('}');
 		}
-		return sb.append("] size=").append(size).toString();
+		return sb.append("] length=").append(size).toString();
 	}
 }
 

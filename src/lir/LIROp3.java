@@ -1,6 +1,6 @@
 package lir;
 
-import lir.ci.CiValue;
+import lir.ci.LIRValue;
 
 /**
  * The {@code LIROp3} class definition.
@@ -18,8 +18,8 @@ public class LIROp3 extends LIRInstruction
 	 * @param opr3   the third input LIROperand
 	 * @param result the result LIROperand
 	 */
-	public LIROp3(LIROpcode opcode, CiValue opr1, CiValue opr2, CiValue opr3,
-			CiValue result)
+	public LIROp3(LIROpcode opcode, LIRValue opr1, LIRValue opr2, LIRValue opr3,
+			LIRValue result)
 	{
 		super(opcode, result, false, 1, 1, opr1, opr2, opr3);
 		assert isInRange(opcode, LIROpcode.BeginOp3, LIROpcode.EndOp3) :
@@ -31,7 +31,7 @@ public class LIROp3 extends LIRInstruction
 	 *
 	 * @return the opr1
 	 */
-	public CiValue opr1()
+	public LIRValue opr1()
 	{
 		return operand(0);
 	}
@@ -41,7 +41,7 @@ public class LIROp3 extends LIRInstruction
 	 *
 	 * @return the opr2
 	 */
-	public CiValue opr2()
+	public LIRValue opr2()
 	{
 		return operand(1);
 	}

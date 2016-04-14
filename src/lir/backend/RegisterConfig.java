@@ -2,12 +2,12 @@ package lir.backend;
 
 import lir.ci.*;
 import java.util.EnumMap;
-import static lir.ci.Register.RegisterFlag;
+import static lir.ci.LIRRegister.RegisterFlag;
 import lir.ci.CallingConvention.Type;
 
 /**
  * A register configuration binds roles and {@linkplain lir.ci.RegisterAttributes
- * attributes} to physical registers.
+ * attributes} to physical LIRRegisters.
  *
  * @author Jianping Zeng
  */
@@ -16,15 +16,15 @@ public interface RegisterConfig
 	/**
 	 * Gets the register to be used for returning a value of a given kind.
 	 */
-	Register getReturnRegister(CiKind kind);
+	LIRRegister getReturnRegister(LIRKind kind);
 
 	/**
-	 * Gets the register to which {@link Register#Frame} and {@link Register
+	 * Gets the register to which {@link LIRRegister#Frame} and {@link LIRRegister
 	 * #CallerFrame} are bound.
 	 */
-	Register getFrameRegister();
+	LIRRegister getFrameRegister();
 
-	Register getScratchRegister();
+	LIRRegister getScratchRegister();
 
 	/**
 	 * Gets the calling convention describing how arguments are passed.
@@ -32,44 +32,44 @@ public interface RegisterConfig
 	 * @param type       the type of calling convention being requested
 	 * @param parameters the types of the arguments of the call
 	 * @param target     the targetAbstractLayer platform
-	 * @param stackOnly  ignore registers
+	 * @param stackOnly  ignore LIRRegisters
 	 */
-	CallingConvention getCallingConvention(CallingConvention.Type type, CiKind[] parameters,
+	CallingConvention getCallingConvention(CallingConvention.Type type, LIRKind[] parameters,
 			TargetMachine target, boolean stackOnly);
 
 	/**
-	 * Gets the ordered set of registers that are can be used to pass parameters
+	 * Gets the ordered set of LIRRegisters that are can be used to pass parameters
 	 * according to a given calling convention.
 	 *
 	 * @param type the type of calling convention
-	 * @param flag specifies whether registers for {@linkplain Register.RegisterFlag#
+	 * @param flag specifies whether LIRRegisters for {@linkplain LIRRegister.RegisterFlag#
 	 *              CPU integral} or {@linkplain} RegisterFlag#FPU floating
 	 *              point} parameters are being requested
-	 * @return the ordered set of registers that may be used to pass parameters
+	 * @return the ordered set of LIRRegisters that may be used to pass parameters
 	 *              in a call conforming to {@code type}
 	 */
-	Register[] getCallingConventionRegisters(Type type, Register.RegisterFlag flag);
+	LIRRegister[] getCallingConventionRegisters(Type type, LIRRegister.RegisterFlag flag);
 
 	/**
-	 * Gets the set of registers that can be used by the register allocator.
+	 * Gets the set of LIRRegisters that can be used by the register allocator.
 	 */
-	Register[] getAllocatableRegisters();
+	LIRRegister[] getAllocatableRegisters();
 
 	/**
-	 * Gets the set of registers that can be used by the register allocator,
-	 * {@linkplain Register#categorize(Register[]) categorized} by register
+	 * Gets the set of LIRRegisters that can be used by the register allocator,
+	 * {@linkplain LIRRegister#categorize(LIRRegister[]) categorized} by register
 	 * {@linkplain RegisterFlag flags}.
 	 *
 	 * @return a map from each {@link RegisterFlag} constant to the list of
-	 * {@linkplain #getAllocatableRegisters() allocatable} registers for which
+	 * {@linkplain #getAllocatableRegisters() allocatable} LIRRegisters for which
 	 * the flag is RegisterFlag setted}
 	 */
-	EnumMap<RegisterFlag, Register[]> getCategorizedAllocatableRegisters();
+	EnumMap<RegisterFlag, LIRRegister[]> getCategorizedAllocatableRegisters();
 
 	/**
-	 * Gets the registers whose values must be preserved by a method across any call it makes.
+	 * Gets the LIRRegisters whose values must be preserved by a method across any call it makes.
 	 */
-	Register[] getCallerSaveRegisters();
+	LIRRegister[] getCallerSaveRegisters();
 
 	/**
 	 * Gets the layout of the callee save area of this register configuration.
@@ -79,11 +79,11 @@ public interface RegisterConfig
 	CalleeSaveLayout getCalleeSaveLayout();
 
 	/**
-	 * Gets a map from register {@linkplain Register#number numbers} to register
+	 * Gets a map from register {@linkplain LIRRegister#number numbers} to register
 	 * {@linkplain RegisterAttributes attributes} for this register configuration.
 	 *
 	 * @return an array where an element at index i holds the attributes of the register whose number is i
-	 * @see Register#categorize(Register[])
+	 * @see LIRRegister#categorize(LIRRegister[])
 	 */
 	RegisterAttributes[] getAttributesMap();
 
@@ -93,5 +93,5 @@ public interface RegisterConfig
 	 * @param id the identifier of a runtime-defined register role
 	 * @return the register playing the role specified by {@code id}
 	 */
-	Register getRegisterForRole(int id);
+	LIRRegister getRegisterForRole(int id);
 }

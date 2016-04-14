@@ -1,6 +1,6 @@
 package hir;
 
-import lir.ci.CiKind;
+import lir.ci.LIRKind;
 import type.Type;
 
 /**
@@ -53,7 +53,7 @@ public class Signature
 	 * @param index The index into the parmaeters, with {@code 0} hints that first argument.
 	 * @return  The {@code index}'th argument kind.
 	 */
-	public CiKind argumentKindAt(int index)
+	public LIRKind argumentKindAt(int index)
 	{
 		assert ( index >= 0 && index < params.length);
 		return HIRGenerator.type2Kind(params[index]);
@@ -72,7 +72,7 @@ public class Signature
 	 * Gets the return kind of this signature.
 	 * @return
 	 */
-	public CiKind returnKind()
+	public LIRKind returnKind()
 	{
 		return HIRGenerator.type2Kind(ret);
 	}

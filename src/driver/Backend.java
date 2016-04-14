@@ -7,7 +7,7 @@ import lir.backend.TargetMachine;
 import hir.BasicBlock;
 import hir.HIR;
 import hir.Method;
-import lir.FrameMap;
+import lir.StackFrame;
 import lir.LIRGenerator;
 
 import java.util.HashMap;
@@ -26,7 +26,7 @@ public final class Backend
 	public 	final RegisterConfig registerConfig;
 	public final TargetAbstractLayer targetAbstractLayer;
 	final Options opt;
-	private FrameMap frameMap;
+	private StackFrame stackFrame;
 	public final Map<Object, CompilerStub> stubs = new HashMap<Object, CompilerStub>();
 
 	public Backend(Options opt, TargetMachine targetMachine,
@@ -60,9 +60,9 @@ public final class Backend
 
 	}
 
-	public FrameMap frameMap()
+	public StackFrame frameMap()
 	{
-		return frameMap;
+		return stackFrame;
 	}
 
 }

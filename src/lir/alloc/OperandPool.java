@@ -7,19 +7,20 @@ package lir.alloc;
 import lir.backend.Architecture;
 import lir.backend.TargetMachine;
 import hir.Value;
-import lir.ci.CiKind;
-import lir.ci.Register;
-import lir.ci.CiValue;
-import lir.ci.CiVariable;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegister;
+import lir.ci.LIRVariable;
+import lir.ci.LIRValue;
 
 import java.util.ArrayList;
 import java.util.BitSet;
 
 /**
  * An ordered, 0-based indexable pool of instruction operands for a method being compiled.
- * The physical {@linkplain Register registers} of the platform occupy the front of the
- * pool (starting at index 0) followed by {@linkplain CiVariable variable} operands.
- * The index of an LIROperand in the pool is its {@linkplain #operandNumber(CiValue) LIROperand number}.
+ * The physical {@linkplain LIRRegister LIRRegisters} of the platform occupy the front of the
+ * pool (starting at index 0) followed by {@linkplain LIRVariable variable} operands.
+ * The index of an LIROperand in the pool is its {@linkplain #operandNumber(LIRValue)
+ * LIROperand number}.
  * <p>
  * In the original HotSpot C1 source code, this pool corresponds to the
  * "flat register file" mentioned in c1_LinearScan.cpp.
@@ -30,28 +31,28 @@ public final class OperandPool
 	public static final int INITIAL_VARIABLE_CAPACITY = 20;
 
 	/**
-	 * The physical registers occupying the head of the LIROperand pool. This is the complete
-	 * {@linkplain Architecture#registers register set} of the targetAbstractLayer architecture, not
-	 * just the allocatable registers.
+	 * The physical LIRRegisters occupying the head of the LIROperand pool. This is the complete
+	 * {@linkplain Architecture#LIRRegisters register set} of the targetAbstractLayer architecture, not
+	 * just the allocatable LIRRegisters.
 	 */
-	private final Register[] registers;
+	private final LIRRegister[] LIRRegisters;
 
 	/**
-	 * The variable operands allocated from this pool. The {@linkplain #operandNumber(CiValue) number}
+	 * The variable operands allocated from this pool. The {@linkplain #operandNumber(LIRValue) number}
 	 * of the first variable LIROperand in this pool is one greater than the number of the last
 	 * register LIROperand in the pool.
 	 */
-	private final ArrayList<CiVariable> variables;
+	private final ArrayList<LIRVariable> variables;
 
 	/**
-	 * Map from a {@linkplain CiVariable#index variable index} to the instruction whose result is stored in the denoted variable.
+	 * Map from a {@linkplain LIRVariable#index variable index} to the instruction whose result is stored in the denoted variable.
 	 * This map is only populated and used if  is {@code true}.
 	 */
 	private final ArrayList<Value> variableDefs;
 
 	/**
-	 * The {@linkplain #operandNumber(CiValue) number} of the first variable LIROperand
-	 * {@linkplain #newVariable(CiKind) allocated} from this pool.
+	 * The {@linkplain #operandNumber(LIRValue) number} of the first variable LIROperand
+	 * {@linkplain #newVariable(LIRKind) allocated} from this pool.
 	 */
 	private final int firstVariableNumber;
 
@@ -71,7 +72,7 @@ public final class OperandPool
 	private BitSet mustStayInMemory;
 
 	/**
-	 * Flags that can be set for {@linkplain CiValue#isVariable() variable} operands.
+	 * Flags that can be set for {@linkplain LIRValue#isVariable() variable} operands.
 	 */
 	public enum VariableFlag
 	{
@@ -95,7 +96,7 @@ public final class OperandPool
 		public static final VariableFlag[] VALUES = values();
 	}
 
-	private static BitSet set(BitSet map, CiVariable variable)
+	private static BitSet set(BitSet map, LIRVariable variable)
 	{
 		if (map == null || map.size() <= variable.index)
 		{
@@ -105,7 +106,7 @@ public final class OperandPool
 		return map;
 	}
 
-	private static boolean get(BitSet map, CiVariable variable)
+	private static boolean get(BitSet map, LIRVariable variable)
 	{
 		if (map == null || map.size() <= variable.index)
 		{
@@ -121,38 +122,38 @@ public final class OperandPool
 	 */
 	public OperandPool(TargetMachine target)
 	{
-		Register[] registers = target.arch.registers;
-		this.firstVariableNumber = registers.length;
-		this.registers = registers;
-		variables = new ArrayList<CiVariable>(INITIAL_VARIABLE_CAPACITY);
+		LIRRegister[] LIRRegisters = target.arch.LIRRegisters;
+		this.firstVariableNumber = LIRRegisters.length;
+		this.LIRRegisters = LIRRegisters;
+		variables = new ArrayList<LIRVariable>(INITIAL_VARIABLE_CAPACITY);
 		variableDefs = new ArrayList<Value>(INITIAL_VARIABLE_CAPACITY);
 	}
 
 	/**
-	 * Creates a new {@linkplain CiVariable variable} LIROperand.
+	 * Creates a new {@linkplain LIRVariable variable} LIROperand.
 	 *
 	 * @param kind the kind of the variable
 	 * @return a new variable
 	 */
-	public CiVariable newVariable(CiKind kind)
+	public LIRVariable newVariable(LIRKind kind)
 	{
-		return newVariable(kind, kind == CiKind.Boolean || kind == CiKind.Byte ?
+		return newVariable(kind, kind == LIRKind.Boolean || kind == LIRKind.Byte ?
 				VariableFlag.MustBeByteRegister :
 				null);
 	}
 
 	/**
-	 * Creates a new {@linkplain CiVariable variable} LIROperand.
+	 * Creates a new {@linkplain LIRVariable variable} LIROperand.
 	 *
 	 * @param kind the kind of the variable
 	 * @param flag a flag that is set for the new variable LIROperand (ignored if {@code null})
 	 * @return a new variable LIROperand
 	 */
-	public CiVariable newVariable(CiKind kind, VariableFlag flag)
+	public LIRVariable newVariable(LIRKind kind, VariableFlag flag)
 	{
-		assert kind != CiKind.Void;
+		assert kind != LIRKind.Void;
 		int varIndex = variables.size();
-		CiVariable var = CiVariable.get(kind, varIndex);
+		LIRVariable var = LIRVariable.get(kind, varIndex);
 		if (flag == VariableFlag.MustBeByteRegister)
 		{
 			mustBeByteRegister = set(mustBeByteRegister, var);
@@ -177,9 +178,9 @@ public final class OperandPool
 	 * Gets the unique number for an LIROperand contained in this pool.
 	 *
 	 * @param operand an LIROperand
-	 * @return the unique number for {@code LIROperand} in the range {@code [0 .. size())}
+	 * @return the unique number for {@code LIROperand} in the range {@code [0 .. length())}
 	 */
-	public int operandNumber(CiValue operand)
+	public int operandNumber(LIRValue operand)
 	{
 		if (operand.isRegister())
 		{
@@ -188,24 +189,24 @@ public final class OperandPool
 			return number;
 		}
 		assert operand.isVariable();
-		return firstVariableNumber + ((CiVariable) operand).index;
+		return firstVariableNumber + ((LIRVariable) operand).index;
 	}
 
 	/**
 	 * Gets the LIROperand in this pool denoted by a given LIROperand number.
 	 *
-	 * @param operandNumber a value that must be in the range {@code [0 .. size())}
+	 * @param operandNumber a value that must be in the range {@code [0 .. length())}
 	 * @return the LIROperand in this pool denoted by {@code operandNumber}
 	 */
-	public CiValue operandFor(int operandNumber)
+	public LIRValue operandFor(int operandNumber)
 	{
 		if (operandNumber < firstVariableNumber)
 		{
 			assert operandNumber >= 0;
-			return registers[operandNumber].asValue();
+			return LIRRegisters[operandNumber].asValue();
 		}
 		int index = operandNumber - firstVariableNumber;
-		CiVariable variable = variables.get(index);
+		LIRVariable variable = variables.get(index);
 		assert variable.index == index;
 		return variable;
 	}
@@ -216,7 +217,7 @@ public final class OperandPool
 	 * @param result      the variable storing the result of {@code instruction}
 	 * @param instruction an instruction that produces a result (i.e. pushes a value to the stack)
 	 */
-	public void recordResult(CiVariable result, Value instruction)
+	public void recordResult(LIRVariable result, Value instruction)
 	{
 		while (variableDefs.size() <= result.index)
 		{
@@ -231,7 +232,7 @@ public final class OperandPool
 	 * @param result the variable storing the result of an instruction
 	 * @return the instruction that stores its result in {@code result}
 	 */
-	public Value instructionForResult(CiVariable result)
+	public Value instructionForResult(LIRVariable result)
 	{
 		if (variableDefs.size() > result.index)
 		{
@@ -240,30 +241,30 @@ public final class OperandPool
 		return null;
 	}
 
-	public boolean mustStartInMemory(CiVariable operand)
+	public boolean mustStartInMemory(LIRVariable operand)
 	{
 		return get(mustStartInMemory, operand) || get(mustStayInMemory,
 				operand);
 	}
 
-	public boolean mustStayInMemory(CiVariable operand)
+	public boolean mustStayInMemory(LIRVariable operand)
 	{
 		return get(mustStayInMemory, operand);
 	}
 
-	public boolean mustBeByteRegister(CiValue operand)
+	public boolean mustBeByteRegister(LIRValue operand)
 	{
-		return get(mustBeByteRegister, (CiVariable) operand);
+		return get(mustBeByteRegister, (LIRVariable) operand);
 	}
 
-	public void setMustBeByteRegister(CiVariable operand)
+	public void setMustBeByteRegister(LIRVariable operand)
 	{
 		mustBeByteRegister = set(mustBeByteRegister, operand);
 	}
 
 	/**
 	 * Gets the number of operands in this pool. This value will increase by 1 for
-	 * each new variable LIROperand {@linkplain #newVariable(CiKind) allocated} from this pool.
+	 * each new variable LIROperand {@linkplain #newVariable(LIRKind) allocated} from this pool.
 	 */
 	public int size()
 	{

@@ -2,16 +2,16 @@ package lir;
 
 import hir.Value;
 import lir.alloc.OperandPool;
-import lir.ci.CiKind;
-import lir.ci.CiValue;
-import lir.ci.CiVariable;
+import lir.ci.LIRKind;
+import lir.ci.LIRValue;
+import lir.ci.LIRVariable;
 import utils.Util;
 
 /**
  * A helper utility for loading the result of an instruction for being used by another
  * instruction. This helper takes into account the specifics of the consuming
  * instruction such as whether it requires the input LIROperand to be in memory
- * or a register, any register size requirements of the input LIROperand, and
+ * or a register, any register length requirements of the input LIROperand, and
  * whether the usage has the side-effect of overwriting the input LIROperand. To
  * satisfy these constraints, an intermediate LIROperand may be created and move
  * instruction inserted to copy the output of the producer instruction into the
@@ -37,7 +37,7 @@ public class LIRItem
 	/**
 	 * The LIROperand holding the result of this item's {@linkplain #instruction}.
 	 */
-	private CiValue resultOperand;
+	private LIRValue resultOperand;
 
 	/**
 	 * Denotes if the use of the instruction's {@linkplain #resultOperand result LIROperand}
@@ -51,7 +51,7 @@ public class LIRItem
 	/**
 	 * @see #destructive
 	 */
-	private CiValue intermediateOperand;
+	private LIRValue intermediateOperand;
 
 	public LIRItem(Value value, LIRGenerator gen)
 	{
@@ -68,9 +68,9 @@ public class LIRItem
 		}
 		else
 		{
-			resultOperand = CiValue.IllegalValue;
+			resultOperand = LIRValue.IllegalValue;
 		}
-		intermediateOperand = CiValue.IllegalValue;
+		intermediateOperand = LIRValue.IllegalValue;
 	}
 
 	public LIRItem(LIRGenerator gen)
@@ -79,9 +79,9 @@ public class LIRItem
 		setInstruction(null);
 	}
 
-	public void loadItem(CiKind kind)
+	public void loadItem(LIRKind kind)
 	{
-		if (kind == CiKind.Byte || kind == CiKind.Boolean)
+		if (kind == LIRKind.Byte || kind == LIRKind.Boolean)
 		{
 			loadByteItem();
 		}
@@ -91,7 +91,7 @@ public class LIRItem
 		}
 	}
 
-	public void loadForStore(CiKind kind)
+	public void loadForStore(LIRKind kind)
 	{
 		if (gen.canStoreAsConstant(instruction, kind))
 		{
@@ -101,7 +101,7 @@ public class LIRItem
 				resultOperand = instruction.asConstant();
 			}
 		}
-		else if (kind == CiKind.Byte || kind == CiKind.Boolean)
+		else if (kind == LIRKind.Byte || kind == LIRKind.Boolean)
 		{
 			loadByteItem();
 		}
@@ -111,10 +111,10 @@ public class LIRItem
 		}
 	}
 
-	public CiValue result()
+	public LIRValue result()
 	{
 		assert !destructive || !resultOperand
-				.isRegister() : "shouldn't use setDestroysRegister with physical registers";
+				.isRegister() : "shouldn't use setDestroysRegister with physical LIRRegisters";
 		if (destructive && (resultOperand.isVariable() || resultOperand
 				.isConstant()))
 		{
@@ -158,14 +158,14 @@ public class LIRItem
 		if (gen.backend.targetMachine.arch.isX86())
 		{
 			loadItem();
-			CiValue res = result();
+			LIRValue res = result();
 
 			if (!res.isVariable() || !gen.operands.mustBeByteRegister(res))
 			{
 				// make sure that it is a byte register
 				assert !instruction.kind.isFloat() && !instruction.kind
 						.isDouble() : "can't load floats in byte register";
-				CiValue reg = gen.operands.newVariable(CiKind.Byte,
+				LIRValue reg = gen.operands.newVariable(LIRKind.Byte,
 						OperandPool.VariableFlag.MustBeByteRegister);
 				gen.lir.move(res, reg);
 				resultOperand = reg;
@@ -185,7 +185,7 @@ public class LIRItem
 	{
 		if (gen.backend.targetMachine.arch.isX86())
 		{
-			CiValue r = instruction.LIROperand();
+			LIRValue r = instruction.LIROperand();
 			if (r.isConstant())
 			{
 				resultOperand = r;
@@ -197,7 +197,7 @@ public class LIRItem
 		}
 		else if (gen.backend.targetMachine.arch.isSPARC())
 		{
-			CiValue r = instruction.LIROperand();
+			LIRValue r = instruction.LIROperand();
 			if (gen.canInlineAsConstant(instruction))
 			{
 				if (!r.isConstant())
@@ -217,7 +217,7 @@ public class LIRItem
 		}
 	}
 
-	private void setResult(CiVariable operand)
+	private void setResult(LIRVariable operand)
 	{
 		gen.setResult(instruction, operand);
 		resultOperand = operand;
@@ -233,10 +233,10 @@ public class LIRItem
 			// update the item's result
 			resultOperand = instruction.LIROperand();
 		}
-		CiValue result = result();
+		LIRValue result = result();
 		if (!result.isVariableOrRegister())
 		{
-			CiVariable operand;
+			LIRVariable operand;
 			operand = gen.newVariable(instruction.kind);
 			gen.lir.move(result, operand);
 			if (result.isConstant())
@@ -250,9 +250,25 @@ public class LIRItem
 		}
 	}
 
-	@Override public String toString()
+	@Override
+	public String toString()
 	{
 		return result().toString();
+	}
+
+	public void loadItemForce(LIRValue reg)
+	{
+		LIRValue r = result();
+		if (r != reg)
+		{
+			if (r.kind != reg.kind)
+			{
+				// moves between different types need an intervening spill slot
+				r = gen.forceToSpill(r, reg.kind, true);
+			}
+			gen.lir.move(r, reg);
+			resultOperand = reg;
+		}
 	}
 }
 

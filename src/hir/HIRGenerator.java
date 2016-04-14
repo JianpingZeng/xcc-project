@@ -8,11 +8,10 @@ import ast.Tree.Return;
 import ast.TreeInfo;
 import ast.TreeMaker;
 import hir.Value.Constant;
-import lir.ci.CiConstant;
-import lir.ci.CiKind;
+import lir.ci.LIRConstant;
+import lir.ci.LIRKind;
 import comp.OpCodes;
 import exception.JumpError;
-import exception.SemanticError;
 import hir.Instruction.*;
 import symbol.Symbol.OperatorSymbol;
 import symbol.SymbolKinds;
@@ -526,7 +525,7 @@ public class HIRGenerator extends ASTVisitor
 			Method m = enterFunctionInit(tree);
 
 			// initialize return value if this function have return
-			if (m.signature().returnKind() != CiKind.Void)
+			if (m.signature().returnKind() != LIRKind.Void)
 				emitReturnValue(m);
 
 			// places actual parameter onto entry block
@@ -592,7 +591,7 @@ public class HIRGenerator extends ASTVisitor
 	 * @param var  The tree node that represents a local variable.
 	 * @return An alloca instruction.
 	 */
-	private Alloca createEnterBlockAlloca(CiKind kind, VarDef var)
+	private Alloca createEnterBlockAlloca(LIRKind kind, VarDef var)
 	{
 		BasicBlock entry = currentCFG.entry();
 		Alloca inst = createEnterBlockAlloca(kind, var.name);
@@ -615,7 +614,7 @@ public class HIRGenerator extends ASTVisitor
 				returnName);
 	}
 
-	private Alloca createEnterBlockAlloca(CiKind kind, Name var)
+	private Alloca createEnterBlockAlloca(LIRKind kind, Name var)
 	{
 		BasicBlock entry = currentCFG.entry();
 		Alloca inst = new Alloca(kind, Constant.forInt(1), Operator.Alloca.opName);
@@ -643,7 +642,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private void emitAllocaForVarDecl(VarDef var)
 	{
-		CiKind varKind = type2Kind(var.type);
+		LIRKind varKind = type2Kind(var.type);
 
 		// allocates stack slot for local variable definition
 		Alloca inst = createEnterBlockAlloca(varKind, var);
@@ -658,32 +657,32 @@ public class HIRGenerator extends ASTVisitor
 		// setting default inst for different inst type
 		else
 		{
-			initValue = new Constant(CiConstant.defaultValue(varKind));
+			initValue = new Constant(LIRConstant.defaultValue(varKind));
 		}
 		// generats store instruction that stores initial inst into specified local
 		emitStore(initValue, inst);
 	}
 
 	/**
-	 * Converts {@code Type} into {@code CiKind}.
+	 * Converts {@code Type} into {@code LIRKind}.
 	 *
 	 * @param ty
 	 * @return
 	 */
-	static CiKind type2Kind(Type ty)
+	static LIRKind type2Kind(Type ty)
 	{
 		if (ty.isIntLike())
-			return CiKind.Int;
+			return LIRKind.Int;
 		else if (ty == Type.LONGType)
-			return CiKind.Long;
+			return LIRKind.Long;
 		else if (ty == Type.FLOATType)
-			return CiKind.Float;
+			return LIRKind.Float;
 		else if (ty == Type.DOUBLEType)
-			return CiKind.Double;
+			return LIRKind.Double;
 		else if (ty == Type.VOIDType)
-			return CiKind.Void;
+			return LIRKind.Void;
 		else
-			return CiKind.Illegal;
+			return LIRKind.Illegal;
 	}
 
 	/**
@@ -1063,7 +1062,7 @@ public class HIRGenerator extends ASTVisitor
 		BasicBlock defaultBlock = ControlFlowGraph
 				.createBasicBlock("sw.default");
 
-		// keeps the size of jump list of switch statement.
+		// keeps the length of jump list of switch statement.
 		int reserved = 0;
 		for (Case ca : tree.cases)
 			reserved += ca.values.size();
@@ -1196,13 +1195,13 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitCall(Method m, Value[] args)
 	{
-		CiKind ret = returnKind(m);
+		LIRKind ret = returnKind(m);
 		Invoke inst = new Invoke(ret, args, m, Operator.Invoke.opName);
 
 		appendInst(inst);
 		inst.setParent(currentBlock);
 		// return null if it's return type is void
-		return ret == CiKind.Void ? null : inst;
+		return ret == LIRKind.Void ? null : inst;
 	}
 
 	/**
@@ -1230,7 +1229,7 @@ public class HIRGenerator extends ASTVisitor
 	 * @param target The targeted method.
 	 * @return The return kind.
 	 */
-	private CiKind returnKind(Method target)
+	private LIRKind returnKind(Method target)
 	{
 		return target.signature().returnKind();
 	}
@@ -1248,7 +1247,7 @@ public class HIRGenerator extends ASTVisitor
 	 * @param blocks The corresponding block array.
 	 * @return A complete {@code Phi} instruction.
 	 */
-	private Phi emitPhi(CiKind kind, Value[] values, BasicBlock[] blocks)
+	private Phi emitPhi(LIRKind kind, Value[] values, BasicBlock[] blocks)
 	{
 		Phi phi = new Phi(kind, values, blocks, Operator.Phi.opName);
 		appendInst(phi);
@@ -1829,8 +1828,8 @@ public class HIRGenerator extends ASTVisitor
 			return null;
 		}
 		Constant zero = new Constant(
-				CiConstant.defaultValue(lhs.kind));
-		Constant one = new Constant(CiConstant.getOne(lhs.kind));
+				LIRConstant.defaultValue(lhs.kind));
+		Constant one = new Constant(LIRConstant.getOne(lhs.kind));
 
 		switch (expr.tag)
 		{
@@ -1929,22 +1928,22 @@ public class HIRGenerator extends ASTVisitor
 		{
 			case Tree.PREDEC:
 				incre = emitBin(expr.type, expr.pos, Tree.MINUS, res,
-						new Constant(CiConstant.INT_1));
+						new Constant(LIRConstant.INT_1));
 				ret = incre;
 				break;
 			case Tree.PREINC:
 				incre = emitBin(expr.type, expr.pos, Tree.PLUS, res,
-						new Constant(CiConstant.INT_1));
+						new Constant(LIRConstant.INT_1));
 				ret = incre;
 				break;
 			case Tree.POSTDEC:
 				incre = emitBin(expr.type, expr.pos, Tree.MINUS, res,
-						new Constant(CiConstant.INT_1));
+						new Constant(LIRConstant.INT_1));
 				ret = temp;
 				break;
 			case Tree.POSTINC:
 				incre = emitBin(expr.type, expr.pos, Tree.PLUS, res,
-						new Constant(CiConstant.INT_1));
+						new Constant(LIRConstant.INT_1));
 				ret = temp;
 				break;
 			default:
@@ -1969,7 +1968,7 @@ public class HIRGenerator extends ASTVisitor
 			return null;
 		}
 		Constant zero = new Constant(
-				CiConstant.defaultValue(res.kind));
+				LIRConstant.defaultValue(res.kind));
 		Cmp cmp = new Cmp(type2Kind(expr.arg.type), res, zero, Condition.LE,"LE");
 		appendInst(cmp);
 		return cmp;
@@ -2046,22 +2045,22 @@ public class HIRGenerator extends ASTVisitor
 	{
 		if (tree.typetag == TypeTags.INT)
 		{
-			this.exprResult = new Constant(new CiConstant(CiKind.Int,
+			this.exprResult = new Constant(new LIRConstant(LIRKind.Int,
 					((Integer) tree.value).intValue()));
 		}
 		else if (tree.typetag == TypeTags.LONG)
 		{
-			this.exprResult = new Constant(new CiConstant(CiKind.Long,
+			this.exprResult = new Constant(new LIRConstant(LIRKind.Long,
 					((Long) tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.FLOAT)
 		{
-			this.exprResult = new Constant(new CiConstant(CiKind.Float,
+			this.exprResult = new Constant(new LIRConstant(LIRKind.Float,
 					((Float) tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.DOUBLE)
 		{
-			this.exprResult = new Constant(new CiConstant(CiKind.Double,
+			this.exprResult = new Constant(new LIRConstant(LIRKind.Double,
 					((Double) tree.value).longValue()));
 		}
 		else if (tree.typetag == TypeTags.BOOL)

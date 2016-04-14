@@ -19,7 +19,7 @@ public class LIRBranch extends LIRInstruction
 {
 
 	private Condition cond;
-	private CiKind kind;
+	private LIRKind kind;
 	private Label label;
 
 	/**
@@ -40,7 +40,7 @@ public class LIRBranch extends LIRInstruction
 	 */
 	public LIRBranch(Condition cond, Label label)
 	{
-		super(LIROpcode.Branch, CiValue.IllegalValue, false);
+		super(LIROpcode.Branch, LIRValue.IllegalValue, false);
 		this.cond = cond;
 		this.label = label;
 	}
@@ -52,9 +52,9 @@ public class LIRBranch extends LIRInstruction
 	 * @param kind
 	 * @param block
 	 */
-	public LIRBranch(Condition cond, CiKind kind, BasicBlock block)
+	public LIRBranch(Condition cond, LIRKind kind, BasicBlock block)
 	{
-		super(LIROpcode.Branch, CiValue.IllegalValue, false);
+		super(LIROpcode.Branch, LIRValue.IllegalValue, false);
 		this.cond = cond;
 		this.kind = kind;
 		this.label = block.label();
@@ -62,10 +62,10 @@ public class LIRBranch extends LIRInstruction
 		this.unorderedBlock = null;
 	}
 
-	public LIRBranch(Condition cond, CiKind kind, BasicBlock block,
+	public LIRBranch(Condition cond, LIRKind kind, BasicBlock block,
 			BasicBlock ublock)
 	{
-		super(LIROpcode.CondFloatBranch, CiValue.IllegalValue, false);
+		super(LIROpcode.CondFloatBranch, LIRValue.IllegalValue, false);
 		this.cond = cond;
 		this.kind = kind;
 		this.label = block.label();
@@ -121,7 +121,7 @@ public class LIRBranch extends LIRInstruction
 		//masm.emitBranch(this);
 	}
 
-	@Override public String operationString(CiValue.Formatter operandFmt)
+	@Override public String operationString(LIRValue.Formatter operandFmt)
 	{
 		StringBuilder buf = new StringBuilder(cond().operator).append(' ');
 		if (block() != null)

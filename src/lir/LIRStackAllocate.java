@@ -1,7 +1,7 @@
 package lir;
 
-import lir.ci.CiValue;
-import lir.FrameMap.StackBlock;
+import lir.ci.LIRValue;
+import lir.StackFrame.StackBlock;
 /**
  * LIR instruction used in translating {@link hir.Instruction.Alloca}.
  *
@@ -17,7 +17,7 @@ public class LIRStackAllocate extends LIRInstruction
 	 *
 	 * @param result
 	 */
-	public LIRStackAllocate(CiValue result, StackBlock stackBlock)
+	public LIRStackAllocate(LIRValue result, StackBlock stackBlock)
 	{
 		super(LIROpcode.Alloca, result, false);
 		this.stackBlock = stackBlock;

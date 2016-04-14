@@ -55,7 +55,7 @@ public class ValueMap
 	private int count;
 
 	/**
-	 * The maximun size of hash table allowed. It will be resized when load
+	 * The maximun length of hash table allowed. It will be resized when load
 	 * factor is no less than 0.75.
 	 */
 	private int max;

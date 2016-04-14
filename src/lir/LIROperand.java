@@ -14,20 +14,21 @@ public class LIROperand
 	/**
 	 * The value of the LIROperand.
 	 */
-	CiValue value;
+	LIRValue value;
 
-	LIROperand(CiValue value)
+	LIROperand(LIRValue value)
 	{
 		this.value = value;
 	}
 
 	/**
-	 * Gets the value of this LIROperand. This may still be a {@linkplain CiVariable}
-	 * if the register allocator has not yet assigned a register or stack address to the LIROperand.
+	 * Gets the value of this LIROperand. This may still be a {@linkplain LIRVariable}
+	 * if the register allocator has not yet assigned a register or stack address
+	 * to the LIROperand.
 	 *
 	 * @param inst the instruction containing this LIROperand
 	 */
-	public CiValue value(LIRInstruction inst)
+	public LIRValue value(LIRInstruction inst)
 	{
 		return value;
 	}
@@ -51,11 +52,11 @@ public class LIROperand
 			this.index = index;
 		}
 
-		@Override public CiValue value(LIRInstruction inst)
+		@Override public LIRValue value(LIRInstruction inst)
 		{
 			if (value == null)
 			{
-				CiValue value = inst.allocatorOperands.get(index);
+				LIRValue value = inst.allocatorOperands.get(index);
 				if (value.isVariable())
 				{
 					return value;
@@ -76,50 +77,50 @@ public class LIROperand
 	}
 
 	/**
-	 * An address LIROperand with at least one {@linkplain CiVariable variable} constituent.
+	 * An address LIROperand with at least one {@linkplain LIRVariable variable} constituent.
 	 */
 	static class LIRAddressOperand extends LIROperand
 	{
 		int base;
 		int index;
 
-		LIRAddressOperand(int base, int index, Address address)
+		LIRAddressOperand(int base, int index, LIRAddress LIRAddress)
 		{
-			super(address);
+			super(LIRAddress);
 			assert base != -1 || index
-					!= -1 : "address should have at least one variable part";
+					!= -1 : "LIRAddress should have at least one variable part";
 			this.base = base;
 			this.index = index;
 		}
 
-		@Override public CiValue value(LIRInstruction inst)
+		@Override public LIRValue value(LIRInstruction inst)
 		{
 			if (base != -1 || index != -1)
 			{
-				Address address = (Address) value;
-				CiValue baseOperand = base == -1 ?
-						address.base :
+				LIRAddress LIRAddress = (LIRAddress) value;
+				LIRValue baseOperand = base == -1 ?
+						LIRAddress.base :
 						inst.allocatorOperands.get(base);
-				CiValue indexOperand = index == -1 ?
-						address.index :
+				LIRValue indexOperand = index == -1 ?
+						LIRAddress.index :
 						inst.allocatorOperands.get(index);
-				if (address.index.isLegal())
+				if (LIRAddress.index.isLegal())
 				{
 					assert indexOperand.isVariableOrRegister();
 					if (baseOperand.isVariable() || indexOperand.isVariable())
 					{
-						return address;
+						return LIRAddress;
 					}
 				}
 				else
 				{
 					if (baseOperand.isVariable())
 					{
-						return address;
+						return LIRAddress;
 					}
 				}
-				value = new Address(address.kind, baseOperand, indexOperand,
-						address.scale, address.displacement);
+				value = new LIRAddress(LIRAddress.kind, baseOperand, indexOperand,
+						LIRAddress.scale, LIRAddress.displacement);
 				base = -1;
 				index = -1;
 			}

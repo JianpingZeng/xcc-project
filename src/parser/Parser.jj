@@ -751,7 +751,7 @@ Tree type():
     ( 
       "[" "]"
         {
-        	// array type reference to no size
+        	// array type reference to no length
             ref = F.at(ref.pos).TypeArray(ref);
         }
     )*

@@ -1,0 +1,58 @@
+package asm;
+
+import lir.backend.ByteOrder;
+import lir.backend.TargetMachine;
+
+/**
+ * The platform-independent base class for assembler.
+ *
+ * @author Jianping Zeng
+ */
+public abstract class AbstractAssembler
+{
+	public final TargetMachine target;
+	public final Buffer codeBuffer;
+
+	public AbstractAssembler(TargetMachine target)
+	{
+		this.target = target;
+
+		if (target.arch.byteOrder == ByteOrder.BigEndian)
+		{
+			this.codeBuffer = new Buffer.BigEndian();
+		}
+		else
+		{
+			this.codeBuffer = new Buffer.LittleEndian();
+		}
+	}
+
+	public final void bind(Label l)
+	{
+		assert !l.isBound() : "can bind label only once";
+		l.bind(codeBuffer.position());
+		l.patchInstructions(this);
+	}
+
+	protected abstract void patchJumpTarget(int branch, int target);
+
+	protected final void emitByte(int x)
+	{
+		codeBuffer.emitByte(x);
+	}
+
+	protected final void emitShort(int x)
+	{
+		codeBuffer.emitShort(x);
+	}
+
+	protected final void emitInt(int x)
+	{
+		codeBuffer.emitInt(x);
+	}
+
+	protected final void emitLong(long x)
+	{
+		codeBuffer.emitLong(x);
+	}
+}

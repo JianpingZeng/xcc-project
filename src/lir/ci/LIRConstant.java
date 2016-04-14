@@ -3,48 +3,48 @@ package lir.ci;
 /**
  * Represents a constant (boxed) value, such as an integer, floating point number,
  * or object reference, within the compiler and across the compiler/runtime interface.
- * Exports a set of {@code CiConstant}instances that represent frequently used
+ * Exports a set of {@code LIRConstant}instances that represent frequently used
  * constant values, such as ZERO.
  */
-public final class CiConstant extends CiValue
+public final class LIRConstant extends LIRValue
 {
 	/**
 	 *
 	 */
 	private static final long serialVersionUID = 1897221263708494020L;
-	private static final CiConstant[] INT_CONSTANT_CACHE = new CiConstant[100];
+	private static final LIRConstant[] INT_CONSTANT_CACHE = new LIRConstant[100];
 
 	static
 	{
 		for (int i = 0; i < INT_CONSTANT_CACHE.length; ++i)
 		{
-			INT_CONSTANT_CACHE[i] = new CiConstant(CiKind.Int, i);
+			INT_CONSTANT_CACHE[i] = new LIRConstant(LIRKind.Int, i);
 		}
 	}
 
-	public static final CiConstant NULL_OBJECT = new CiConstant(CiKind.Object,
+	public static final LIRConstant NULL_OBJECT = new LIRConstant(LIRKind.Object,
 			null);
-	public static final CiConstant INT_MINUS_1 = new CiConstant(CiKind.Int, -1);
-	public static final CiConstant INT_0 = forInt(0);
-	public static final CiConstant INT_1 = forInt(1);
-	public static final CiConstant INT_2 = forInt(2);
-	public static final CiConstant INT_3 = forInt(3);
-	public static final CiConstant INT_4 = forInt(4);
-	public static final CiConstant INT_5 = forInt(5);
-	public static final CiConstant LONG_0 = new CiConstant(CiKind.Long, 0L);
-	public static final CiConstant LONG_1 = new CiConstant(CiKind.Long, 1L);
-	public static final CiConstant FLOAT_0 = new CiConstant(CiKind.Float,
+	public static final LIRConstant INT_MINUS_1 = new LIRConstant(LIRKind.Int, -1);
+	public static final LIRConstant INT_0 = forInt(0);
+	public static final LIRConstant INT_1 = forInt(1);
+	public static final LIRConstant INT_2 = forInt(2);
+	public static final LIRConstant INT_3 = forInt(3);
+	public static final LIRConstant INT_4 = forInt(4);
+	public static final LIRConstant INT_5 = forInt(5);
+	public static final LIRConstant LONG_0 = new LIRConstant(LIRKind.Long, 0L);
+	public static final LIRConstant LONG_1 = new LIRConstant(LIRKind.Long, 1L);
+	public static final LIRConstant FLOAT_0 = new LIRConstant(LIRKind.Float,
 			Float.floatToRawIntBits(0.0F));
-	public static final CiConstant FLOAT_1 = new CiConstant(CiKind.Float,
+	public static final LIRConstant FLOAT_1 = new LIRConstant(LIRKind.Float,
 			Float.floatToRawIntBits(1.0F));
-	public static final CiConstant FLOAT_2 = new CiConstant(CiKind.Float,
+	public static final LIRConstant FLOAT_2 = new LIRConstant(LIRKind.Float,
 			Float.floatToRawIntBits(2.0F));
-	public static final CiConstant DOUBLE_0 = new CiConstant(CiKind.Double,
+	public static final LIRConstant DOUBLE_0 = new LIRConstant(LIRKind.Double,
 			Double.doubleToRawLongBits(0.0D));
-	public static final CiConstant DOUBLE_1 = new CiConstant(CiKind.Double,
+	public static final LIRConstant DOUBLE_1 = new LIRConstant(LIRKind.Double,
 			Double.doubleToRawLongBits(1.0D));
-	public static final CiConstant TRUE = new CiConstant(CiKind.Boolean, 1L);
-	public static final CiConstant FALSE = new CiConstant(CiKind.Boolean, 0L);
+	public static final LIRConstant TRUE = new LIRConstant(LIRKind.Boolean, 1L);
+	public static final LIRConstant FALSE = new LIRConstant(LIRKind.Boolean, 0L);
 
 	static
 	{
@@ -83,7 +83,7 @@ public final class CiConstant extends CiValue
 	 * @param kind   the type of this constant
 	 * @param object the value of this constant
 	 */
-	private CiConstant(CiKind kind, Object object)
+	private LIRConstant(LIRKind kind, Object object)
 	{
 		super(kind);
 		this.object = object;
@@ -96,7 +96,7 @@ public final class CiConstant extends CiValue
 	 * @param kind      the type of this constant
 	 * @param primitive the value of this constant
 	 */
-	public CiConstant(CiKind kind, long primitive)
+	public LIRConstant(LIRKind kind, long primitive)
 	{
 		super(kind);
 		this.object = null;
@@ -125,7 +125,7 @@ public final class CiConstant extends CiValue
 
 	@Override public String name()
 	{
-		return "const[" + kind.format(boxedValue()) + (kind != CiKind.Object ?
+		return "const[" + kind.format(boxedValue()) + (kind != LIRKind.Object ?
 				"|0x" + Long.toHexString(primitive) :
 				"") + "]";
 	}
@@ -178,7 +178,7 @@ public final class CiConstant extends CiValue
 	 * @param kind the kind of the boxed value to be returned
 	 * @return the value of this constant
 	 */
-	public Object boxedValue(CiKind kind)
+	public Object boxedValue(LIRKind kind)
 	{
 		// Checkstyle: stop
 		switch (kind)
@@ -206,7 +206,7 @@ public final class CiConstant extends CiValue
 		throw new IllegalArgumentException();
 	}
 
-	private boolean valueEqual(CiConstant other, boolean ignoreKind)
+	private boolean valueEqual(LIRConstant other, boolean ignoreKind)
 	{
 		// must have equivalent kinds to be equal
 		if (!ignoreKind && kind != other.kind)
@@ -241,7 +241,7 @@ public final class CiConstant extends CiValue
 	 */
 	public boolean asBoolean()
 	{
-		if (kind == CiKind.Boolean)
+		if (kind == LIRKind.Boolean)
 		{
 			return primitive != 0L;
 		}
@@ -352,14 +352,14 @@ public final class CiConstant extends CiValue
 	 */
 	@Override public boolean equals(Object o)
 	{
-		return o == this || o instanceof CiConstant && valueEqual(
-				(CiConstant) o, false);
+		return o == this || o instanceof LIRConstant && valueEqual(
+				(LIRConstant) o, false);
 	}
 
-	@Override public boolean equalsIgnoringKind(CiValue o)
+	@Override public boolean equalsIgnoringKind(LIRValue o)
 	{
-		return o == this || o instanceof CiConstant && valueEqual(
-				(CiConstant) o, true);
+		return o == this || o instanceof LIRConstant && valueEqual(
+				(LIRConstant) o, true);
 	}
 
 	/**
@@ -368,7 +368,7 @@ public final class CiConstant extends CiValue
 	 * @param other the constant to compare for equality against this constant
 	 * @return {@code true} if this constant is equivalent to {@code other}
 	 */
-	public boolean equivalent(CiConstant other)
+	public boolean equivalent(LIRConstant other)
 	{
 		return other == this || valueEqual(other, false);
 	}
@@ -396,7 +396,7 @@ public final class CiConstant extends CiValue
 		}
 		// Checkstyle: resume
 		throw new IllegalArgumentException(
-				"Cannot det default CiConstant for kind " + kind);
+				"Cannot det default LIRConstant for kind " + kind);
 	}
 
 	/**
@@ -405,7 +405,7 @@ public final class CiConstant extends CiValue
 	 * @param kind The kind of data type.
 	 * @return The one for different data type.
 	 */
-	public static CiConstant getOne(CiKind kind)
+	public static LIRConstant getOne(LIRKind kind)
 	{
 		// Checkstyle: stop
 		switch (kind)
@@ -421,7 +421,7 @@ public final class CiConstant extends CiValue
 		}
 		// Checkstyle: resume
 		throw new IllegalArgumentException(
-				"Cannot get default CiConstant for kind " + kind);
+				"Cannot get default LIRConstant for kind " + kind);
 	}
 
 	/**
@@ -429,7 +429,7 @@ public final class CiConstant extends CiValue
 	 *
 	 * @return the default value for {@code kind}.
 	 */
-	public static CiConstant defaultValue(CiKind kind)
+	public static LIRConstant defaultValue(LIRKind kind)
 	{
 		// Checkstyle: stop
 		switch (kind)
@@ -447,7 +447,7 @@ public final class CiConstant extends CiValue
 		}
 		// Checkstyle: resume
 		throw new IllegalArgumentException(
-				"Cannot get default CiConstant for kind " + kind);
+				"Cannot get default LIRConstant for kind " + kind);
 	}
 
 	/**
@@ -456,7 +456,7 @@ public final class CiConstant extends CiValue
 	 * @param d the double value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forDouble(double d)
+	public static LIRConstant forDouble(double d)
 	{
 		if (Double.compare(0.0D, d) == 0)
 		{
@@ -466,7 +466,7 @@ public final class CiConstant extends CiValue
 		{
 			return DOUBLE_1;
 		}
-		return new CiConstant(CiKind.Double, Double.doubleToRawLongBits(d));
+		return new LIRConstant(LIRKind.Double, Double.doubleToRawLongBits(d));
 	}
 
 	/**
@@ -475,7 +475,7 @@ public final class CiConstant extends CiValue
 	 * @param f the float value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forFloat(float f)
+	public static LIRConstant forFloat(float f)
 	{
 		if (Float.compare(f, 0.0F) == 0)
 		{
@@ -489,7 +489,7 @@ public final class CiConstant extends CiValue
 		{
 			return FLOAT_2;
 		}
-		return new CiConstant(CiKind.Float, Float.floatToRawIntBits(f));
+		return new LIRConstant(LIRKind.Float, Float.floatToRawIntBits(f));
 	}
 
 	/**
@@ -498,11 +498,11 @@ public final class CiConstant extends CiValue
 	 * @param i the long value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forLong(long i)
+	public static LIRConstant forLong(long i)
 	{
 		return i == 0 ?
 				LONG_0 :
-				i == 1 ? LONG_1 : new CiConstant(CiKind.Long, i);
+				i == 1 ? LONG_1 : new LIRConstant(LIRKind.Long, i);
 	}
 
 	/**
@@ -511,7 +511,7 @@ public final class CiConstant extends CiValue
 	 * @param i the integer value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forInt(int i)
+	public static LIRConstant forInt(int i)
 	{
 		if (i == -1)
 		{
@@ -521,7 +521,7 @@ public final class CiConstant extends CiValue
 		{
 			return INT_CONSTANT_CACHE[i];
 		}
-		return new CiConstant(CiKind.Int, i);
+		return new LIRConstant(LIRKind.Int, i);
 	}
 
 	/**
@@ -530,9 +530,9 @@ public final class CiConstant extends CiValue
 	 * @param i the byte value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forByte(byte i)
+	public static LIRConstant forByte(byte i)
 	{
-		return new CiConstant(CiKind.Byte, i);
+		return new LIRConstant(LIRKind.Byte, i);
 	}
 
 	/**
@@ -541,7 +541,7 @@ public final class CiConstant extends CiValue
 	 * @param i the boolean value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forBoolean(boolean i)
+	public static LIRConstant forBoolean(boolean i)
 	{
 		return i ? TRUE : FALSE;
 	}
@@ -552,9 +552,9 @@ public final class CiConstant extends CiValue
 	 * @param i the char value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forChar(char i)
+	public static LIRConstant forChar(char i)
 	{
-		return new CiConstant(CiKind.Char, i);
+		return new LIRConstant(LIRKind.Char, i);
 	}
 
 	/**
@@ -563,9 +563,9 @@ public final class CiConstant extends CiValue
 	 * @param i the short value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forShort(short i)
+	public static LIRConstant forShort(short i)
 	{
-		return new CiConstant(CiKind.Short, i);
+		return new LIRConstant(LIRKind.Short, i);
 	}
 
 	/**
@@ -574,13 +574,13 @@ public final class CiConstant extends CiValue
 	 * @param o the object value to box
 	 * @return a boxed copy of {@code value}
 	 */
-	public static CiConstant forObject(Object o)
+	public static LIRConstant forObject(Object o)
 	{
 		if (o == null)
 		{
 			return NULL_OBJECT;
 		}
-		return new CiConstant(CiKind.Object, o);
+		return new LIRConstant(LIRKind.Object, o);
 	}
 
 	/**
@@ -588,10 +588,10 @@ public final class CiConstant extends CiValue
 	 * The object needs to be of the Java boxed type corresponding to the kind.
 	 *
 	 * @param kind  the kind of the constant to create
-	 * @param value the Java boxed value: a Byte instance for CiKind Byte, etc.
+	 * @param value the Java boxed value: a Byte instance for LIRKind Byte, etc.
 	 * @return the boxed copy of {@code value}
 	 */
-	public static CiConstant forBoxed(CiKind kind, Object value)
+	public static LIRConstant forBoxed(LIRKind kind, Object value)
 	{
 		switch (kind)
 		{
@@ -613,7 +613,7 @@ public final class CiConstant extends CiValue
 				return forObject(value);
 			default:
 				throw new RuntimeException(
-						"cannot create CiConstant for boxed " + kind
+						"cannot create LIRConstant for boxed " + kind
 								+ " value");
 		}
 	}
