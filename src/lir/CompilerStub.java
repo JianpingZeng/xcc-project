@@ -5,19 +5,18 @@ import lir.ci.StackSlot;
 import static lir.ci.LIRKind.*;
 
 /**
- * A compiler stub is a shared routine that performs an operation on behalf of compiled code.
- * Typically the routine is too large to inline, is infrequent, or requires runtime support.
- * Compiler stubs are called with a callee-save convention; the compiler stub must save any
- * LIRRegisters it may destroy and then restore them upon return. This allows the register
- * allocator to ignore calls to compiler stubs. Parameters to compiler stubs are
- * passed on the stack in order to preserve LIRRegisters for the rest of the code.
+ * A compiler stub is a shared routine that performs an operation on behalf of
+ * compiled code. Typically the routine is too large to inline, is infrequent,
+ * or requires runtime support. Compiler stubs are called with a callee-save
+ * convention; the compiler stub must save any LIRRegisters it may destroy and
+ * then restore them upon return. This allows the register allocator to ignore
+ * calls to compiler stubs. Parameters to compiler stubs are passed on the stack
+ * in order to preserve LIRRegisters for the rest of the code.
  */
 public class CompilerStub
 {
-
 	public enum Id
 	{
-
 		fneg(Float, Float),
 		dneg(Double, Double),
 		f2i(Int, Float),
