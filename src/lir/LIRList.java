@@ -45,48 +45,48 @@ public class LIRList
 		append(new LIROp1(LIROpcode.Move, src, dest, src.kind,
 				LIROp1.LIRMoveKind.Unaligned));
 	}
-	public void lrem(LIRValue dividend, LIRValue divisor, LIRValue resultReg,
-			LIRRegisterValue ldivTmp)
+	public void lrem(LIRValue left, LIRValue right, LIRValue res,
+			LIRValue tmp)
 	{
-
+		append(new LIROp3(LIROpcode.Lrem, left, right, tmp, res));
 	}
 
-	public void ldiv(LIRValue dividend, LIRValue divisor, LIRValue resultReg,
-			LIRRegisterValue ldivTmp)
+	public void ldiv(LIRValue left, LIRValue right, LIRValue res,
+			LIRValue tmp)
 	{
-
+		append(new LIROp3(LIROpcode.Ldiv, left, right, tmp, res));
 	}
 
-	public void add(LIRValue leftOp, LIRValue right, LIRValue result)
+	public void add(LIRValue left, LIRValue right, LIRValue result)
 	{
-
+		append(new LIROp2(LIROpcode.Add, left, right, result));
 	}
 
-	public void mul(LIRValue leftOp, LIRValue right, LIRValue result)
+	public void mul(LIRValue left, LIRValue right, LIRValue result)
 	{
-
+		append(new LIROp2(LIROpcode.Mul, left, right, result));
 	}
 
-	public void sub(LIRValue leftOp, LIRValue right, LIRValue result)
+	public void sub(LIRValue left, LIRValue right, LIRValue result)
 	{
-
+		append(new LIROp2(LIROpcode.Sub, left, right, result));
 	}
 
-	public void irem(LIRValue dividend, LIRValue divisor, LIRValue resultReg,
-			LIRRegisterValue tmp)
+	public void irem(LIRValue left, LIRValue right, LIRValue res,
+			LIRValue tmp)
 	{
-
+		append(new LIROp3(LIROpcode.Irem, left, right, tmp, res));
 	}
 
-	public void idiv(LIRValue dividend, LIRValue divisor, LIRValue resultReg,
-			LIRRegisterValue tmp)
+	public void idiv(LIRValue left, LIRValue right, LIRValue res,
+			LIRValue tmp)
 	{
-
+		append(new LIROp3(LIROpcode.Idiv, left, right, tmp, res));
 	}
 
 	public void cmp(Condition opcode, LIRValue left, LIRValue right)
 	{
-
+		append(new LIROp2(LIROpcode.Cmp, opcode, left, right));
 	}
 
 	public void negate(LIRValue src, LIRValue dest)
@@ -117,8 +117,6 @@ public class LIRList
 	{
 		append(new LIROp2(LIROpcode.Ushr, value, count, dst, tmp));
 	}
-
-
 
 	public void div(LIRValue left, LIRValue right, LIRValue res)
 	{
