@@ -83,7 +83,6 @@ public class TargetMachine
 	/**
 	 * Temporary flag to distinguish between the semantics necessary for HotSpot and Maxine.
 	 */
-	// TODO This should go away when XIR goes away, and the logic be part of the VM-specific lowering.
 	public final boolean invokeSnippetAfterArguments;
 
 	public TargetMachine(Architecture arch, boolean isMP, int spillSlotSize,

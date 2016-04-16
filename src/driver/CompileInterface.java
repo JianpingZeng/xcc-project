@@ -2,6 +2,9 @@ package driver;
 
 import ast.Tree;
 import hir.HIR;
+import lir.backend.TargetMachine;
+import lir.backend.amd64.AMD64;
+import lir.backend.amd64.AMD64RegisterConfig;
 import utils.Context;
 import utils.Log;
 import utils.Name;
@@ -52,7 +55,9 @@ public class CompileInterface
 		Options opt = Options.instance(context);
 
 		// machine specific not to do now
-		Backend backend = new Backend(opt, null, null);
+
+		Backend backend = new Backend(opt, AMD64.target(),
+				AMD64RegisterConfig.newInstance());
 		Frontend frontend = new Frontend(opt, context);
 		Optimizer optimizer = new Optimizer(context);
 

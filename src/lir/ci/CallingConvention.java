@@ -3,7 +3,8 @@ package lir.ci;
 import lir.backend.RegisterConfig;
 
 /**
- * A calling convention describes the locations in which the arguments for a call are placed.
+ * A calling convention describes the locations where the arguments for a call
+ * are placed.
  */
 public class CallingConvention
 {
@@ -50,12 +51,20 @@ public class CallingConvention
 	}
 
 	/**
-	 * The amount of stack space (in bytes) required for the stack-based arguments of the call.
+	 * The amount of stack space (in bytes) required for the stack-based arguments
+	 * of the call.
 	 */
 	public final int stackSize;
 
 	/**
-	 * The locations in which the arguments are placed. This array ordered by argument index.
+	 * The locations in which the arguments are placed. This array ordered by
+	 * argument index, which is organized as follows:
+	 * <pre>
+	 *  |--leftmost param|-----|--right most param--|
+	 *  |--locations[0]--|-----|--locations[n-1]--|
+	 * </pre>
+	 *  where, n is the numbers of real parameters being passed into callee function.
+	 * according to <a href="http://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-manual-325462.pdf">AMD64 calling convention</a>.
 	 */
 	public final LIRValue[] locations;
 

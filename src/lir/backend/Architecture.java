@@ -182,4 +182,11 @@ public abstract class Architecture
 		return false;
 	}
 
+	/**
+	 * Obtains the instance of {@code TargetMachine} corresponding to specified
+	 * architecture.
+	 * @return
+	 */
+	public abstract static TargetMachine target();
+
 }

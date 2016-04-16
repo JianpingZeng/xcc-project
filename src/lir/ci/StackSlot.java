@@ -1,8 +1,9 @@
 package lir.ci;
 
 /**
- * Represents a compiler spill slot or an outgoing stack-based argument in a method's frame
- * or an incoming stack-based argument in a method's {@linkplain #inCallerFrame() caller's frame}.
+ * Represents a compiler spill slot or an outgoing stack-based argument in a
+ * method's frame or an incoming stack-based argument in a method's
+ * {@linkplain #inCallerFrame() caller's frame}.
  */
 public final class StackSlot extends LIRValue
 {

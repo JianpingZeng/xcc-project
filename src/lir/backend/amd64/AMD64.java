@@ -2,53 +2,58 @@ package lir.backend.amd64;
 
 import lir.backend.Architecture;
 import lir.backend.ByteOrder;
+import lir.backend.TargetMachine;
 import lir.ci.LIRRegister;
-import lir.ci.LIRRegister.RegisterFlag;
 import lir.ci.LIRRegisterValue;
 import static lir.ci.LIRKind.Long;
 import static lir.ci.LIRRegister.RegisterFlag.CPU;
 import static lir.ci.LIRRegister.RegisterFlag.FPU;
+import static lir.ci.LIRRegister.RegisterFlag.Byte;
 
 /**
  * Represents the AMD64 architecture.
  */
 public class AMD64 extends Architecture
 {
-
 	// General purpose CPU LIRRegisters
+
+	// caller-saved register group
 	public static final LIRRegister rax = new LIRRegister(0, 0, 8, "rax", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister rcx = new LIRRegister(1, 1, 8, "rcx", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister rdx = new LIRRegister(2, 2, 8, "rdx", CPU,
-			RegisterFlag.Byte);
+			Byte);
+
+	// callee-saved register group
 	public static final LIRRegister rbx = new LIRRegister(3, 3, 8, "rbx", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister rsp = new LIRRegister(4, 4, 8, "rsp", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister rbp = new LIRRegister(5, 5, 8, "rbp", CPU,
-			RegisterFlag.Byte);
+			Byte);
+
 	public static final LIRRegister rsi = new LIRRegister(6, 6, 8, "rsi", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister rdi = new LIRRegister(7, 7, 8, "rdi", CPU,
-			RegisterFlag.Byte);
+			Byte);
 
 	public static final LIRRegister r8 = new LIRRegister(8, 8, 8, "r8", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister r9 = new LIRRegister(9, 9, 8, "r9", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister r10 = new LIRRegister(10, 10, 8, "r10", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister r11 = new LIRRegister(11, 11, 8, "r11", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister r12 = new LIRRegister(12, 12, 8, "r12", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister r13 = new LIRRegister(13, 13, 8, "r13", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister r14 = new LIRRegister(14, 14, 8, "r14", CPU,
-			RegisterFlag.Byte);
+			Byte);
 	public static final LIRRegister r15 = new LIRRegister(15, 15, 8, "r15", CPU,
-			RegisterFlag.Byte);
+			Byte);
 
 	public static final LIRRegister[] CPU_LIR_REGISTERs = { rax, rcx, rdx, rbx, rsp,
 			rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15 };
@@ -115,4 +120,8 @@ public class AMD64 extends Architecture
 		return true;
 	}
 
+	public static TargetMachine target()
+	{
+		return new TargetMachine(new AMD64(), false, 4, 4, 4096, 1<<20, false, false, false);
+	}
 }

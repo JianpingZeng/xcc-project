@@ -4,8 +4,8 @@ import asm.Label;
 import driver.Backend;
 import hir.*;
 import hir.Instruction.Phi;
-import lir.StackFrame.StackBlock;
 import lir.alloc.OperandPool;
+import lir.alloc.OperandPool.VariableFlag;
 import lir.ci.*;
 import utils.Util;
 import java.util.ArrayList;
@@ -18,6 +18,22 @@ import static lir.ci.LIRRegisterValue.IllegalValue;
  */
 public abstract class LIRGenerator extends ValueVisitor
 {
+	/**
+	 * the range of values in a switch statement.
+	 */
+	private static final class SwitchRange
+	{
+		final int lowKey;
+		int highKey;
+		final BasicBlock sux;
+
+		SwitchRange(int lowKey, BasicBlock sux)
+		{
+			this.lowKey = lowKey;
+			this.highKey = lowKey;
+			this.sux = sux;
+		}
+	}
 
 	public static int RangeTestsSwitchDensity = 5;
 
@@ -40,34 +56,8 @@ public abstract class LIRGenerator extends ValueVisitor
 		this.method = method;
 		this.isTwoOperand = backend.targetMachine.arch.twoOperandMode();
 		constants = new ArrayList<>(16);
-		variablesForConstants = new ArrayList<LIRVariable>();
+		variablesForConstants = new ArrayList<>();
 	}
-
-	protected abstract void traceBlockEntry(BasicBlock block);
-
-	protected abstract void traceBlockExit(BasicBlock block);
-
-	protected abstract void arithmeticOp2Float(Instruction.Op2 instr);
-
-	protected abstract void arithmeticOp2Long(Instruction.Op2 instr);
-
-	protected abstract void arithmeticOp2Int(Instruction.Op2 instr);
-
-	protected abstract void doNegateOp(Instruction.Op1 instr);
-
-	protected abstract boolean canInlineAsConstant(Value v);
-
-	protected abstract void doCompare(Instruction.Cmp inst);
-
-	protected abstract void doLogicOp(Instruction.Op2 instr);
-
-	protected abstract boolean strengthReduceMultiply(LIRValue left,
-			int constant, LIRValue result, LIRValue tmp);
-
-	protected abstract boolean canStoreAsConstant(Value i, LIRKind kind);
-
-	protected abstract void doIfCmp(Instruction.IfOp instr);
-
 	/**
 	 * generates LIR instruction for specified basic block.
 	 *
@@ -109,22 +99,23 @@ public abstract class LIRGenerator extends ValueVisitor
 		block.setLIR(lir);
 
 		lir.branchDesination(block.label());
-
 		// inserts prolog code for entry of function
-		if (block == method.getEntryBlock())
+		/**if (block == method.getEntryBlock())
 		{
 			traceBlockEntry(block);
-		}
+		}*/
 	}
 
 	private void blockDoEpilog(BasicBlock block)
 	{
 		// print debug information
+		/*
 		if (block == method.getExitBlock())
 		{
 			// restores register value saved in stack frame
 			traceBlockExit(block);
 		}
+		*/
 	}
 
 	/**
@@ -256,7 +247,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		LIRItem condV = new LIRItem(vals[defaultIndex], this);
 		condV.setDestroysRegister();
 		condV.loadItem();
-		setNoResult(switchInst);
+		clearResult(switchInst);
 
 		LIRValue value = condV.result();
 
@@ -361,7 +352,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 */
 	public void visitGoto(Instruction.Goto inst)
 	{
-		setNoResult(inst);
+		clearResult(inst);
 		BasicBlock nextBB = getBlockAfter(inst.getParent());
 		// if the target of this instruction is equal to next basic block
 		// just fall through rather than redundant jump.
@@ -412,7 +403,7 @@ public abstract class LIRGenerator extends ValueVisitor
 			lir.returnOp(result.result());
 			//LIRValue result = force(inst.result(), operand);
 		}
-		setNoResult(inst);
+		clearResult(inst);
 	}
 
 	/**
@@ -442,7 +433,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		LIRItem[] args = invokeVisitArgument(inst);
 
 		LIRValue[] argValues = new LIRValue[args.length];
-
+		// computes all of real arguments
 		for (int i=0; i < argValues.length; i++)
 			argValues[i]  = args[i].result();
 
@@ -452,7 +443,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		{
 			resultReg = newVariable(inst.kind);
 		}
-
+		// assign the real arguments into specified position
 		invokeLoadArguments(inst, args, locations);
 
 		// emit invocation code
@@ -511,55 +502,6 @@ public abstract class LIRGenerator extends ValueVisitor
 	{
 
 	}
-
-	/**
-	 * Forces the result of a given instruction to be available in a given operand,
-	 * inserting move instructions if necessary.
-	 *
-	 * @param instruction an instruction that produces a {@linkplain Value#LIROperand() result}
-	 * @param operand     the operand in which the result of {@code instruction}
-	 *                    must be available
-	 * @return {@code operand}
-	 */
-	protected LIRValue force(Value instruction, LIRValue operand)
-	{
-		LIRValue result = makeOperand(instruction);
-		if (result != operand)
-		{
-			assert result.kind != LIRKind.Illegal;
-			if (!Util.archKindEqual(result.kind, operand.kind))
-			{
-				// moves between different types need an intervening spill slot
-				LIRValue tmp = forceToSpill(result, operand.kind, false);
-				lir.move(tmp, operand);
-			}
-			else
-			{
-				lir.move(result, operand);
-			}
-		}
-		return operand;
-	}
-
-	/**
-	 * Gets the ABI specific operand used to return a value of a given kind from
-	 * a method.
-	 *
-	 * @param kind the kind of value being returned
-	 * @return the operand representing the ABI defined location used return a
-	 * value of kind {@code kind}
-	 */
-	protected LIRValue resultOperandFor(LIRKind kind)
-	{
-		if (kind == LIRKind.Void)
-		{
-			return IllegalValue;
-		}
-		LIRRegister returnLIRRegister = backend.registerConfig
-				.getReturnRegister(kind);
-		return returnLIRRegister.asValue(kind);
-	}
-
 	/**
 	 * Code for a constant is generated lazily unless the constant is frequently
 	 * used and can't be inlined.
@@ -610,11 +552,12 @@ public abstract class LIRGenerator extends ValueVisitor
 	{
 		// XXX: linear search might be kind of slow for big basic blocks
 		int index = constants.indexOf(c);
+
 		if (index != -1)
 		{
 			return variablesForConstants.get(index);
 		}
-
+		// first visits, just append it into constants table
 		LIRVariable result = newVariable(kind);
 		lir.move(c, result);
 		constants.add(c);
@@ -636,105 +579,6 @@ public abstract class LIRGenerator extends ValueVisitor
 	public void visitUndef(Value.UndefValue undef)
 	{
 		throw Util.shouldNotReachHere();
-	}
-
-	public LIRVariable newVariable(LIRKind kind)
-	{
-		return operands.newVariable(kind);
-	}
-
-	public void setResult(Value x, LIRVariable opr)
-	{
-		x.setLIROperand(opr);
-	}
-
-	protected void setNoResult(Instruction x)
-	{
-		assert !x.hasOneUses() : "can't have use";
-		x.clearLIROperand();
-	}
-
-	/**
-	 * Ensures that an operand has been {@linkplain Value#setLIROperand(LIRValue)} initialized
-	 * for storing the result of an val.
-	 *
-	 * @param val an val that produces a result value
-	 */
-	public LIRValue makeOperand(Value val)
-	{
-		LIRValue operand = val.LIROperand;
-		if (operand.isIllegal())
-		{
-			if (val instanceof Instruction.Phi)
-			{
-				// a phi may not have an operand yet if it is for an exception block
-				operand = operandForPhi((Instruction.Phi) val);
-			}
-			else if (val instanceof Value.Constant)
-			{
-				operand = operandForInstruction(val);
-			}
-		}
-		// the value must be a constant or have a valid operand
-		assert operand.isLegal() : "this root has not been visited yet";
-		return operand;
-	}
-
-	private LIRValue operandForPhi(Phi phi)
-	{
-		if (phi.LIROperand().isIllegal())
-		{
-			// allocate a variable for this phi
-			LIRVariable operand = newVariable(phi.kind);
-			setResult(phi, operand);
-		}
-		return phi.LIROperand();
-	}
-
-	LIRValue operandForInstruction(Value x)
-	{
-		LIRValue operand = x.LIROperand();
-		if (operand.isIllegal())
-		{
-			if (x instanceof Value.Constant)
-			{
-				x.setLIROperand(x.asConstant());
-			}
-			else
-			{
-				assert x instanceof Phi;
-				//|| x instanceof Local : "only for Phi and Local";
-				// allocate a variable for this local or phi
-				createResultVariable(x);
-			}
-		}
-		return x.LIROperand();
-	}
-
-	/**
-	 * Allocates a variable LIROperand to hold the result of a given instruction.
-	 * This can only be performed once for any given instruction.
-	 *
-	 * @param x an instruction that produces a result
-	 * @return the variable assigned to hold the result produced by {@code x}
-	 */
-	protected LIRVariable createResultVariable(Value x)
-	{
-		LIRVariable operand = newVariable(x.kind);
-		setResult(x, operand);
-		return operand;
-	}
-
-	protected LIRValue load(Value val)
-	{
-		LIRValue result = makeOperand(val);
-		if (!result.isVariableOrRegister())
-		{
-			LIRVariable operand = newVariable(val.kind);
-			lir.move(result, operand);
-			return operand;
-		}
-		return result;
 	}
 
 	protected void arithmeticOpFpu(Operator opcode, LIRValue result,
@@ -799,29 +643,6 @@ public abstract class LIRGenerator extends ValueVisitor
 				// ldiv and lrem are handled elsewhere
 				Util.shouldNotReachHere();
 		}
-	}
-
-	protected LIRValue forceToSpill(LIRValue value, LIRKind kind,
-			boolean mustStayOnStack)
-	{
-		assert value.isLegal() : "value should not be illegal";
-		if (!value.isVariableOrRegister())
-		{
-			// force into a variable that must start in memory
-			LIRValue operand = operands.newVariable(value.kind, mustStayOnStack ?
-					OperandPool.VariableFlag.MustStayInMemory :
-					OperandPool.VariableFlag.MustStartInMemory);
-			lir.move(value, operand);
-			return operand;
-		}
-
-		// create a spill location
-		LIRValue operand = operands.newVariable(kind, mustStayOnStack ?
-				OperandPool.VariableFlag.MustStayInMemory :
-				OperandPool.VariableFlag.MustStartInMemory);
-		// move from register to spill
-		lir.move(value, operand);
-		return operand;
 	}
 
 	protected void arithmeticOpInt(Operator code, LIRValue result, LIRValue left,
@@ -904,20 +725,207 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 	}
 
-	/**
-	 * the range of values in a switch statement.
-	 */
-	private static final class SwitchRange
-	{
-		final int lowKey;
-		int highKey;
-		final BasicBlock sux;
+	protected abstract void traceBlockEntry(BasicBlock block);
 
-		SwitchRange(int lowKey, BasicBlock sux)
+	protected abstract void traceBlockExit(BasicBlock block);
+
+	protected abstract void arithmeticOp2Float(Instruction.Op2 instr);
+
+	protected abstract void arithmeticOp2Long(Instruction.Op2 instr);
+
+	protected abstract void arithmeticOp2Int(Instruction.Op2 instr);
+
+	protected abstract void doNegateOp(Instruction.Op1 instr);
+
+	protected abstract boolean canInlineAsConstant(Value v);
+
+	protected abstract void doCompare(Instruction.Cmp inst);
+
+	protected abstract void doLogicOp(Instruction.Op2 instr);
+
+	protected abstract boolean strengthReduceMultiply(LIRValue left,
+			int constant, LIRValue result, LIRValue tmp);
+
+	protected abstract boolean canStoreAsConstant(Value i, LIRKind kind);
+
+	protected abstract void doIfCmp(Instruction.IfOp instr);
+
+
+	/**
+	 * Forces the result of a given instruction to be available in a given operand,
+	 * inserting move instructions if necessary.
+	 *
+	 * @param instruction an instruction that produces a {@linkplain Value#LIROperand() result}
+	 * @param operand     the operand in which the result of {@code instruction}
+	 *                    must be available
+	 * @return {@code operand}
+	 */
+	protected LIRValue force(Value instruction, LIRValue operand)
+	{
+		LIRValue result = makeOperand(instruction);
+		if (result != operand)
 		{
-			this.lowKey = lowKey;
-			this.highKey = lowKey;
-			this.sux = sux;
+			assert result.kind != LIRKind.Illegal;
+			if (!Util.archKindEqual(result.kind, operand.kind))
+			{
+				// moves between different types need an intervening spill slot
+				LIRValue tmp = forceToSpill(result, operand.kind, false);
+				lir.move(tmp, operand);
+			}
+			else
+			{
+				// just move the result of instruction into operation being used
+				// when both kind of two LIROperand is equivalent
+				lir.move(result, operand);
+			}
 		}
+		return operand;
+	}
+
+	/**
+	 * Gets the ABI specific operand used to return a value of a given kind from
+	 * a method.
+	 *
+	 * @param kind the kind of value being returned
+	 * @return the operand representing the ABI defined location used return a
+	 * value of kind {@code kind}
+	 */
+	protected LIRValue resultOperandFor(LIRKind kind)
+	{
+		if (kind == LIRKind.Void)
+		{
+			return IllegalValue;
+		}
+		LIRRegister returnLIRRegister = backend.registerConfig
+				.getReturnRegister(kind);
+		return returnLIRRegister.asValue(kind);
+	}
+
+	protected LIRValue forceToSpill(LIRValue value, LIRKind kind,
+			boolean mustStayOnStack)
+	{
+		assert value.isLegal() : "value should not be illegal";
+		if (!value.isVariableOrRegister())
+		{
+			// force into a variable that must start in memory
+			LIRValue r = operands.newVariable(value.kind, mustStayOnStack ?
+					VariableFlag.MustStayInMemory :
+					VariableFlag.MustStartInMemory);
+			lir.move(value, r);
+			value = r;
+		}
+
+		// create a spill location
+		LIRValue tmp = operands.newVariable(kind, mustStayOnStack ?
+				VariableFlag.MustStayInMemory :
+				VariableFlag.MustStartInMemory);
+		// move from register to spill
+		lir.move(value, tmp);
+		return tmp;
+	}
+
+	public LIRVariable newVariable(LIRKind kind)
+	{
+		return operands.newVariable(kind);
+	}
+
+	public void setResult(Value x, LIRVariable opr)
+	{
+		x.setLIROperand(opr);
+	}
+
+	protected void clearResult(Instruction x)
+	{
+		assert !x.hasOneUses() : "can't have use";
+		x.clearLIROperand();
+	}
+
+	/**
+	 * Ensures that an operand has been {@linkplain Value#setLIROperand(LIRValue)}
+	 * initialized for storing the result of an {@code Value} instance.
+	 *
+	 * @param val an instance of {@code Value} that produces a result value.
+	 */
+	public LIRValue makeOperand(Value val)
+	{
+		LIRValue operand = val.LIROperand;
+		if (operand.isIllegal())
+		{
+			if (val instanceof Instruction.Phi)
+			{
+				// a phi may not have an operand yet if it is for an exception block
+				operand = operandForPhi((Instruction.Phi) val);
+			}
+			else if (val instanceof Value.Constant)
+			{
+				operand = operandForInstruction(val);
+			}
+		}
+		// the value must be a constant or have a valid operand
+		assert operand.isLegal() : "this root has not been visited yet";
+		return operand;
+	}
+
+	private LIRValue operandForPhi(Phi phi)
+	{
+		if (phi.LIROperand().isIllegal())
+		{
+			// allocate a variable for this phi
+			LIRVariable operand = newVariable(phi.kind);
+			setResult(phi, operand);
+		}
+		return phi.LIROperand();
+	}
+
+	LIRValue operandForInstruction(Value x)
+	{
+		LIRValue operand = x.LIROperand();
+		if (operand.isIllegal())
+		{
+			if (x instanceof Value.Constant)
+			{
+				x.setLIROperand(x.asConstant());
+			}
+			else
+			{
+				assert x instanceof Phi;
+				//|| x instanceof Local : "only for Phi and Local";
+				// allocate a variable for this local or phi
+				createResultVariable(x);
+			}
+		}
+		return x.LIROperand();
+	}
+
+	/**
+	 * Allocates a variable LIROperand to hold the result of a given instruction.
+	 * This can only be performed once for any given instruction.
+	 *
+	 * @param x an instruction that produces a result
+	 * @return the variable assigned to hold the result produced by {@code x}
+	 */
+	protected LIRVariable createResultVariable(Value x)
+	{
+		LIRVariable operand = newVariable(x.kind);
+		setResult(x, operand);
+		return operand;
+	}
+
+	/**
+	 * Loads the result of specified {@code Value} into virtual resiger to be
+	 * assigned into physical register.
+	 * @param val
+	 * @return
+	 */
+	protected LIRValue load(Value val)
+	{
+		LIRValue result = makeOperand(val);
+		if (!result.isVariableOrRegister())
+		{
+			LIRVariable operand = newVariable(val.kind);
+			lir.move(result, operand);
+			return operand;
+		}
+		return result;
 	}
 }
