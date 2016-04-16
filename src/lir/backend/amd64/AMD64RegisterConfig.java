@@ -2,17 +2,18 @@ package lir.backend.amd64;
 
 import lir.backend.TargetMachine;
 import lir.ci.*;
-
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import lir.ci.CallingConvention.Type;
+import static lir.backend.amd64.AMD64.*;
 import static lir.ci.LIRRegister.RegisterFlag;
 
 /**
- * A default implementation of {@link RegisterConfig}.
+ * A default implementation of {@link AMD64RegisterConfig}.
  */
-public class RegisterConfig implements lir.backend.RegisterConfig
+public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 {
 
 	/**
@@ -84,11 +85,36 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 	public final LIRRegister scratch;
 
 	/**
-	 * The frame offset of the first stack argument for each calling convention {@link CallingConvention.Type}.
+	 * The frame offset of the first stack argument for each calling convention
+	 * {@link CallingConvention.Type}.
 	 */
 	public final int[] stackArg0Offsets = new int[CallingConvention.Type.VALUES.length];
 
-	public RegisterConfig(LIRRegister frame, LIRRegister integralReturn,
+	private static AMD64RegisterConfig instance = null;
+
+	/**
+	 * Gets only a instance of {@code AMD64RegisterConfig} by this factory method.
+	 * @return
+	 */
+	public static AMD64RegisterConfig newInstance()
+	{
+		if (instance == null)
+		{
+			instance = new AMD64RegisterConfig(rbp, rax, xmm0, rbx,
+					new LIRRegister[] { rax, rcx, rdx, rsi, rdi, r8, r9, r10,
+							r11, r12, r13, r14, r15, xmm8, xmm9, xmm10, xmm11,
+							xmm12, xmm13, xmm14, xmm15 },
+					new LIRRegister[] { rax, rdx, rcx },
+					new LIRRegister[] { rcx, rdx, rsi, rdi, r8, r9, xmm0, xmm1,
+							xmm2, xmm3, xmm4, xmm5, xmm6, xmm7 },
+					new CalleeSaveLayout(0, 8, -1,
+							new LIRRegister[] { rbx, rbp, r12, r13, r14, r15 }),
+					ALL_LIR_REGISTERs, Collections.<Integer, LIRRegister>emptyMap());
+		}
+		return instance;
+	}
+
+	private AMD64RegisterConfig(LIRRegister frame, LIRRegister integralReturn,
 			LIRRegister floatingPointReturn, LIRRegister scratch,
 			LIRRegister[] allocatable, LIRRegister[] callerSave,
 			LIRRegister[] parameters, CalleeSaveLayout csl,
@@ -132,7 +158,7 @@ public class RegisterConfig implements lir.backend.RegisterConfig
 		minRole = minRoleId;
 	}
 
-	public RegisterConfig(RegisterConfig src, CalleeSaveLayout csl)
+	public AMD64RegisterConfig(AMD64RegisterConfig src, CalleeSaveLayout csl)
 	{
 		this.frame = src.frame;
 		this.csl = csl;

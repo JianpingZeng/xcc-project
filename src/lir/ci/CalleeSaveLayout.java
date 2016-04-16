@@ -27,26 +27,30 @@ public class CalleeSaveLayout
 	public final int slotSize;
 
 	/**
-	 * Map from {@linkplain LIRRegister#number register numbers} to slot indexes in the CSA.
+	 * Map from {@linkplain LIRRegister#number register numbers} to slot indexes
+	 * in the CSA.
 	 */
 	private final int[] regNumToIndex;
 
 	private final LIRRegister[] indexToReg;
 
 	/**
-	 * The list of LIRRegisters {@linkplain ##contains(LIRRegister)}contained} by this CSA.
+	 * The list of LIRRegisters {@linkplain ##contains(LIRRegister)}contained}
+	 * by this CSA.
 	 */
 	public final LIRRegister[] LIRRegisters;
 
 	/**
-	 * The offset from the frame pointer to the CSA. If this is not known, then this field
-	 * will have the value {@link Integer#MAX_VALUE}.
+	 * The offset from the frame pointer(also %rbp register in AMD64) to the CSA.
+	 * If this is not known, then this field will have the value
+	 * {@link Integer#MAX_VALUE}.
 	 */
 	public final int frameOffsetToCSA;
 
 	/**
 	 * Creates a CSA layout.
 	 *
+	 * @param frameOffsetToCSA
 	 * @param size      length (in bytes) of the CSA. If this is {@code -1}, then
 	 *                     the CSA length will be computed from {@code LIRRegisters}.
 	 * @param slotSize  the length (in bytes) of an {@linkplain #registerAt(int)}

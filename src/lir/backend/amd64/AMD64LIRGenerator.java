@@ -48,6 +48,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	{
 
 	}
+
 	// memory access
 
 	public void visitAlloca(Instruction.Alloca inst)
@@ -129,7 +130,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			yin.loadItem();
 		}
 
-		setNoResult(instr);
+		clearResult(instr);
 
 		LIRValue left = xin.result();
 		LIRValue right = yin.result();
