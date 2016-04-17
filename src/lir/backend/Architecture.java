@@ -149,7 +149,7 @@ public abstract class Architecture
 
 	/**
 	 * Checks whether this architecture's normal arithmetic instructions use a
-	 * two-LIROperand form (e.g. x86 which overwrites one LIROperand register with the
+	 * two-LIROperand form (e.g. X86 which overwrites one LIROperand register with the
 	 * result when adding).
 	 *
 	 * @return {@code true} if this architecture uses two-LIROperand mode
@@ -163,9 +163,9 @@ public abstract class Architecture
 	// than use instanceof comparisons in code that cares?
 
 	/**
-	 * Checks whether the architecture is x86.
+	 * Checks whether the architecture is X86.
 	 *
-	 * @return {@code true} if the architecture is x86
+	 * @return {@code true} if the architecture is X86
 	 */
 	public boolean isX86()
 	{

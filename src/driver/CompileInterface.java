@@ -5,6 +5,7 @@ import hir.HIR;
 import lir.backend.TargetMachine;
 import lir.backend.amd64.AMD64;
 import lir.backend.amd64.AMD64RegisterConfig;
+import lir.backend.x86.X86;
 import utils.Context;
 import utils.Log;
 import utils.Name;
@@ -56,7 +57,7 @@ public class CompileInterface
 
 		// machine specific not to do now
 
-		Backend backend = new Backend(opt, AMD64.target(),
+		Backend backend = new Backend(opt, X86.target(),
 				AMD64RegisterConfig.newInstance());
 		Frontend frontend = new Frontend(opt, context);
 		Optimizer optimizer = new Optimizer(context);

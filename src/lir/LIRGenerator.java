@@ -377,7 +377,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	// the calling to function and return from function
 
 	/**
-	 * 'ret' instruction - Here we are interested in meeting the x86 ABI.
+	 * 'ret' instruction - Here we are interested in meeting the X86 ABI.
 	 * As such, we have the following possibilities:
 	 * <ol>ret void: No return value, simply emit a 'ret' instruction</ol>
 	 * <ol>ret sbyte, ubyte : Extend value into EAX and return</ol>
