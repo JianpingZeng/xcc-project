@@ -10,7 +10,7 @@ import java.util.BitSet;
 /**
  * This class is used to build the stack frame layout for a compiled method.
  * <p>
- * This is the format of a stack frame on an x86 (i.e. IA32 or X64) platform:
+ * This is the format of a stack frame on an X86 (i.e. IA32 or X64) platform:
  * <pre>
  *   Base       Contents
  *

@@ -1,40 +1,40 @@
-package lir.backend.amd64;
+package lir.backend.x86;
 
 import driver.Backend;
 import hir.*;
-import hir.Value.Constant;
 import lir.LIRGenerator;
 import lir.LIRItem;
 import lir.StackFrame;
-import lir.ci.*;
-import lir.ci.LIRVariable;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegisterValue;
 import lir.ci.LIRValue;
+import lir.ci.LIRVariable;
 import utils.NumUtil;
 import utils.Util;
 
 /**
  * @author Jianping Zeng
  */
-public final class AMD64LIRGenerator extends LIRGenerator
+public final class X86LIRGenerator extends LIRGenerator
 {
-	private static final LIRRegisterValue RAX_I = AMD64.rax.asValue(LIRKind.Int);
-	private static final LIRRegisterValue RAX_L = AMD64.rax.asValue(LIRKind.Long);
-	private static final LIRRegisterValue RDX_I = AMD64.rdx.asValue(LIRKind.Int);
-	private static final LIRRegisterValue RDX_L = AMD64.rdx.asValue(LIRKind.Long);
+	private static final LIRRegisterValue EAX_I = X86.eax.asValue(LIRKind.Int);
+	private static final LIRRegisterValue EAX_L = X86.eax.asValue(LIRKind.Long);
+	private static final LIRRegisterValue EDX_I = X86.edx.asValue(LIRKind.Int);
+	private static final LIRRegisterValue EDX_L = X86.edx.asValue(LIRKind.Long);
 
-	private static final LIRRegisterValue LDIV_TMP = RDX_L;
+	private static final LIRRegisterValue LDIV_TMP = EDX_L;
 
 	/**
-	 * The register in which MUL puts the result for 64-bit multiplication.
+	 * The register in which MUL puts the result for 32-bit multiplication.
 	 */
-	private static final LIRRegisterValue LMUL_OUT = RAX_L;
+	private static final LIRRegisterValue LMUL_OUT = EAX_L;
 
-	private static final LIRRegisterValue SHIFT_COUNT_IN = AMD64.rcx
+	private static final LIRRegisterValue SHIFT_COUNT_IN = X86.ecx
 			.asValue(LIRKind.Int);
 
 	protected static final LIRValue ILLEGAL = LIRValue.IllegalValue;
 
-	public AMD64LIRGenerator(Backend backend, Method method)
+	public X86LIRGenerator(Backend backend, Method method)
 	{
 		super(backend, method);
 	}
@@ -154,7 +154,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			// there is no immediate move of word values in asemblerI486 or later.
 			return false;
 		}
-		return v instanceof Constant;
+		return v instanceof Value.Constant;
 	}
 
 	@Override
@@ -223,7 +223,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		// emit inline 64-bit code
 		if (opcode == Operator.LDiv || opcode == Operator.LMod)
 		{
-			LIRValue dividend = force(instr.x, RAX_L); // dividend must be in RAX
+			LIRValue dividend = force(instr.x, EAX_L); // dividend must be in RAX
 			LIRValue divisor = load(
 					instr.y);            // divisor can be in any (other) register
 
@@ -231,12 +231,12 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
-				resultReg = RDX_L; // remainder result is produced in rdx
+				resultReg = EDX_L; // remainder result is produced in rdx
 				lir.lrem(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else if (opcode == Operator.LMod)
 			{
-				resultReg = RAX_L; // division result is produced in rax
+				resultReg = EAX_L; // division result is produced in rax
 				lir.ldiv(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else
@@ -300,14 +300,14 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		{
 			// emit code for integer division or modulus
 
-			LIRValue dividend = force(instr.x, RAX_I); // dividend must be in RAX
+			LIRValue dividend = force(instr.x, EAX_I); // dividend must be in RAX
 			LIRValue divisor = load(
 					instr.y);          // divisor can be in any (other) register
 
 			// idiv and irem use rdx in their implementation so the
 			// register allocator must not assign it to an interval that overlaps
 			// this division instruction.
-			LIRRegisterValue tmp = RDX_I;
+			LIRRegisterValue tmp = EDX_I;
 
 			LIRValue result = createResultVariable(instr);
 			LIRValue resultReg;
@@ -318,7 +318,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			}
 			else if (opcode == Operator.IDiv)
 			{
-				resultReg = RAX_I; // division result is produced in rax
+				resultReg = EAX_I; // division result is produced in rax
 				lir.idiv(dividend, divisor, resultReg, tmp);
 			}
 			else

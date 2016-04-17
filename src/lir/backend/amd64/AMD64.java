@@ -122,6 +122,6 @@ public class AMD64 extends Architecture
 
 	public static TargetMachine target()
 	{
-		return new TargetMachine(new AMD64(), false, 4, 4, 4096, 1<<20, false, false, false);
+		return new TargetMachine(new AMD64(), false, 8, 8, 4096, 1<<20, false, false, false);
 	}
 }

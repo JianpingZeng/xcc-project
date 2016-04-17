@@ -138,7 +138,7 @@ public final class LIRAddress extends LIRValue
 
 	/**
 	 * A scaling factor used in complex addressing modes such as those supported
-	 * by x86 platforms.
+	 * by X86 platforms.
 	 */
 	public enum Scale
 	{

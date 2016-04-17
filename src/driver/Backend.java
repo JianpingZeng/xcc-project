@@ -42,7 +42,7 @@ public final class Backend
 	}
 	/**
 	 * Yield machine code for a single compilation unit upon specified architecture
-	 * (like x86 or AMD64). Note that, every HIR instance takes role in representing
+	 * (like X86 or AMD64). Note that, every HIR instance takes role in representing
 	 * a single compilation unit.
 	 * @param hir
 	 */
@@ -60,7 +60,7 @@ public final class Backend
 
 	/**
 	 * Yield machine code for multiple compilation units upon specified architecture
-	 *  (like x86 or AMD64). Note that, every HIR instance takes role in representing
+	 *  (like X86 or AMD64). Note that, every HIR instance takes role in representing
 	 *  a single compilation unit.
 	 * @param hirs
 	 */
