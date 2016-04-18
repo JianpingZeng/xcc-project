@@ -42,6 +42,8 @@ public final class MachineBlock
 	 * Bitset specifying which operands are defined/rewrited in this block.
 	 */
 	public BitSet livekill;
+	public int firstLIRInstructionID;
+	public int lastLIRInstructionID;
 
 	public MachineBlock(BasicBlock block)
 	{

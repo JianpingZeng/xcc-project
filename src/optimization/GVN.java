@@ -32,7 +32,7 @@ public class GVN
 		DT = new DominatorTree(false, m);
 		DT.recalculate();
 
-		List<BasicBlock> blocks = m.linearScanOrder(DT);
+		List<BasicBlock> blocks = m.linearScanOrder();
 		this.valueMaps = new HashMap<>(blocks.size());
 		currentMap = null;
 		optimize(blocks);

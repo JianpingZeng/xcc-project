@@ -624,4 +624,9 @@ public class ComputeLinearScanOrder
 	{
 		activeBlocks.set(block.getID());
 	}
+
+	public int numLoops()
+	{
+		return numLoops;
+	}
 }

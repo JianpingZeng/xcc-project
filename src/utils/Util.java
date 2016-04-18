@@ -2,7 +2,10 @@ package utils;
 
 import hir.Method;
 import hir.Signature;
+import lir.alloc.Interval;
 import lir.ci.LIRKind;
+
+import java.util.List;
 
 /**
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/26.
@@ -54,6 +57,7 @@ public class Util
 		assert val > 0 && isPowerOf2(val);
 		return 63 - Long.numberOfLeadingZeros(val);
 	}
+
 	public static boolean isPowerOf2(long val)
 	{
 		return val != 0 && (val & val -1) == 0;
@@ -94,4 +98,49 @@ public class Util
 		return result;
 	}
 
+	/**
+	 * Sets the element at a given position of a list and ensures that this
+	 * position exists. If the list is current shorter than the position, intermediate
+	 * positions are filled with a given value.
+	 *
+	 * @param list the list to put the element into
+	 * @param pos the position at which to insert the element
+	 * @param x the element that should be inserted
+	 * @param filler the filler element that is used for the intermediate positions in case the
+	 *                  list is shorter than pos
+	 */
+	public static <T> void atPutGrow(List<T> list, int pos, T x, T filler)
+	{
+		if (list.size() < pos + 1)
+		{
+			while (list.size() < pos + 1)
+			{
+				list.add(filler);
+			}
+			assert list.size() == pos + 1;
+		}
+
+		assert list.size() >= pos + 1;
+		list.set(pos, x);
+	}
+
+	/**
+	 * checks out whether specified number is odd or not.
+	 * @param num
+	 * @return
+	 */
+	public static boolean isOdd(int num)
+	{
+		return (num & 0x1) != 0;
+	}
+
+	/**
+	 * checks whether specified number is even or not.
+	 * @param num
+	 * @return
+	 */
+	public static boolean isEven(int num)
+	{
+		return (num & 0x1) == 0;
+	}
 }

@@ -99,6 +99,9 @@ public class HIR
 		// numbering.
 		for (Method m : methods)
 			new GVN(m);
+
+
+		
 	}
 
 	public Iterator<Method> iterator()

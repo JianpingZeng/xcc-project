@@ -84,6 +84,16 @@ public final class BasicBlock implements Iterable<Instruction>
 		return machineBlock.label;
 	}
 
+	public void setFirstLIRInstruction(int firstLIRInstructionID)
+	{
+		machineBlock.firstLIRInstructionID = firstLIRInstructionID;
+	}
+
+	public void setLastLIRInstructionId(int lastLIRInstructionID)
+	{
+		machineBlock.lastLIRInstructionID = lastLIRInstructionID;
+	}
+
 	public static enum BlockFlag
 	{
 		LinearScanLoopHeader,
@@ -112,6 +122,8 @@ public final class BasicBlock implements Iterable<Instruction>
 		this.successors = succs;
 		this.bbName = bbName;
 		this.cfg = cfg;
+		// add the numbers of block in CFG
+		cfg.stats.blockCount++;
 	}
 
 	/**
@@ -135,7 +147,6 @@ public final class BasicBlock implements Iterable<Instruction>
 	 */
 	static BasicBlock createBasicBlock(int id, String bbName, ControlFlowGraph cfg)
 	{
-
 		return new BasicBlock(id, new LinkedList<>(), new LinkedList<>(), bbName, cfg);
 	}
 

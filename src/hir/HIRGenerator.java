@@ -261,7 +261,7 @@ public class HIRGenerator extends ASTVisitor
 					return;
 				}
 
-				remainderBB = ControlFlowGraph.createBasicBlock("and.lhs.true");
+				remainderBB = currentCFG.createBasicBlock("and.lhs.true");
 				translateBranchOnBool(TreeInfo.skipParens(bin.lhs), remainderBB,
 						falseBB);
 				startBasicBlock(remainderBB);
@@ -288,7 +288,7 @@ public class HIRGenerator extends ASTVisitor
 					return;
 				}
 
-				remainderBB = ControlFlowGraph.createBasicBlock("or.lhs.false");
+				remainderBB = currentCFG.createBasicBlock("or.lhs.false");
 				translateBranchOnBool(TreeInfo.skipParens(bin.lhs), trueBB,
 						remainderBB);
 				startBasicBlock(remainderBB);
@@ -736,8 +736,8 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	@Override public void visitIf(If tree)
 	{
-		BasicBlock nextBB = ControlFlowGraph.createBasicBlock("if.end");
-		BasicBlock trueBB = ControlFlowGraph.createBasicBlock("if.true");
+		BasicBlock nextBB = currentCFG.createBasicBlock("if.end");
+		BasicBlock trueBB = currentCFG.createBasicBlock( "if.true");
 		if (tree.elsepart == null)
 		{
 			translateBranchOnBool(tree.cond, nextBB, trueBB);
@@ -746,7 +746,7 @@ public class HIRGenerator extends ASTVisitor
 		}
 		else
 		{
-			BasicBlock falseBB = ControlFlowGraph.createBasicBlock("if.false");
+			BasicBlock falseBB = currentCFG.createBasicBlock("if.false");
 
 			translateBranchOnBool(TreeInfo.skipParens(tree.cond), falseBB,
 					trueBB);
@@ -823,9 +823,9 @@ public class HIRGenerator extends ASTVisitor
 	@Override public void visitWhileLoop(WhileLoop tree)
 	{
 		BasicBlock headerBB, loopBB, nextBB;
-		headerBB = ControlFlowGraph.createBasicBlock("while.cond");
-		loopBB = ControlFlowGraph.createBasicBlock("while.body");
-		nextBB = ControlFlowGraph.createBasicBlock("while.exit");
+		headerBB = currentCFG.createBasicBlock("while.cond");
+		loopBB = currentCFG.createBasicBlock("while.body");
+		nextBB = currentCFG.createBasicBlock("while.exit");
 
 		// add the targetAbstractLayer of break and continue into stack
 		pushBreak(nextBB);
@@ -864,9 +864,9 @@ public class HIRGenerator extends ASTVisitor
 	@Override public void visitDoLoop(DoLoop tree)
 	{
 		BasicBlock loopBB, condBB, nextBB;
-		loopBB = ControlFlowGraph.createBasicBlock("do.body");
-		condBB = ControlFlowGraph.createBasicBlock("do.cond");
-		nextBB = ControlFlowGraph.createBasicBlock("do.exit");
+		loopBB = currentCFG.createBasicBlock("do.body");
+		condBB = currentCFG.createBasicBlock("do.cond");
+		nextBB = currentCFG.createBasicBlock("do.exit");
 
 		pushBreak(nextBB);
 		pushContinue(condBB);
@@ -906,9 +906,9 @@ public class HIRGenerator extends ASTVisitor
 	@Override public void visitForLoop(ForLoop tree)
 	{
 		BasicBlock nextBB, condBB, loopBB;
-		nextBB = ControlFlowGraph.createBasicBlock("for.exit");
-		condBB = ControlFlowGraph.createBasicBlock("for.cond");
-		loopBB = ControlFlowGraph.createBasicBlock("for.body");
+		nextBB = currentCFG.createBasicBlock("for.exit");
+		condBB = currentCFG.createBasicBlock("for.cond");
+		loopBB = currentCFG.createBasicBlock("for.body");
 
 		pushBreak(nextBB);
 		pushContinue(condBB);
@@ -943,12 +943,12 @@ public class HIRGenerator extends ASTVisitor
 		/* if the block corresponding to targetAbstractLayer of this stmt is null, creating a
 		 * block to be associated with it. */
 		if (tree.target.corrBB == null)
-			tree.target.corrBB = ControlFlowGraph
+			tree.target.corrBB = currentCFG
 					.createBasicBlock(tree.label.toString());
 		emitJump(tree.target.corrBB);
 
 		// starts a new basic block
-		startBasicBlock(ControlFlowGraph.createBasicBlock(""));
+		startBasicBlock(currentCFG.createBasicBlock(""));
 	}
 
 	/**
@@ -959,7 +959,7 @@ public class HIRGenerator extends ASTVisitor
 		/* if the block corresponding to labelled statement is null, creating a
 		 * block to be associated with it. */
 		if (tree.corrBB == null)
-			tree.corrBB = ControlFlowGraph
+			tree.corrBB = currentCFG
 					.createBasicBlock(tree.label.toString());
 		startBasicBlock(tree.corrBB);
 		tree.body.accept(this);
@@ -1034,7 +1034,7 @@ public class HIRGenerator extends ASTVisitor
 		appendInst(inst);
 		// goto the exit of current method.
 		emitJump(currentCFG.exit());
-		startBasicBlock(ControlFlowGraph.createBasicBlock(""));
+		startBasicBlock(currentCFG.createBasicBlock(""));
 	}
 
 	// the generated switch statement currently for nested switch.
@@ -1051,7 +1051,7 @@ public class HIRGenerator extends ASTVisitor
 		SwitchInst savedSwitchInst = this.switchInst;
 
 		// the exit block of this switch statement.
-		BasicBlock switchExit = ControlFlowGraph.createBasicBlock("sw.epilog");
+		BasicBlock switchExit = currentCFG.createBasicBlock("sw.epilog");
 
 		// At actually, the constant folding optimization should be taken.
 		// Yet it not implements that for I am lazy....~ ~.
@@ -1059,7 +1059,7 @@ public class HIRGenerator extends ASTVisitor
 
 		// create a block to holds default case statement so that explicit case
 		// ranges test can have a place to jump to on failure.
-		BasicBlock defaultBlock = ControlFlowGraph
+		BasicBlock defaultBlock = currentCFG
 				.createBasicBlock("sw.default");
 
 		// keeps the length of jump list of switch statement.
@@ -1090,7 +1090,7 @@ public class HIRGenerator extends ASTVisitor
 			{
 				String postfix = idx > 0 ? String.valueOf(idx) : "";
 				++idx;
-				BasicBlock caseBB = ControlFlowGraph
+				BasicBlock caseBB = currentCFG
 						.createBasicBlock("sw.bb" + postfix);
 
 				caseBlocks.put(clause, caseBB);
@@ -1269,9 +1269,9 @@ public class HIRGenerator extends ASTVisitor
 	{
 		Value t1, t2;
 		BasicBlock trueBB, falseBB, nextBB;
-		trueBB = ControlFlowGraph.createBasicBlock("cond.true");
-		falseBB = ControlFlowGraph.createBasicBlock("cond.false");
-		nextBB = ControlFlowGraph.createBasicBlock("cond.end");
+		trueBB = currentCFG.createBasicBlock("cond.true");
+		falseBB = currentCFG.createBasicBlock("cond.false");
+		nextBB = currentCFG.createBasicBlock("cond.end");
 
 		translateBranchOnBool(tree.cond, trueBB, falseBB);
 
@@ -1815,8 +1815,8 @@ public class HIRGenerator extends ASTVisitor
 	{
 		BasicBlock nextBB, rhsBB;
 		Value rhsResult = null;
-		nextBB = ControlFlowGraph.createBasicBlock("");
-		rhsBB = ControlFlowGraph.createBasicBlock("");
+		nextBB = currentCFG.createBasicBlock("");
+		rhsBB = currentCFG.createBasicBlock("");
 
 		// saves the entry for current context.
 		BasicBlock entry = currentBlock;

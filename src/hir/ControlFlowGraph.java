@@ -20,15 +20,12 @@ public class ControlFlowGraph
 	 * The exit basic block of this control flow graph.
 	 */
 	private BasicBlock endNode;
-
-	/**
-	 * Current id of basic blocks, used to generate unique id's.
-	 */
-	private static int bb_counter;
 	/**
 	 * Current id of quads, used to generate unique id's.
 	 */
 	private int quad_counter;
+
+	public int bbCounter = 0;
 
 	/**
 	 * The id for instruction of cfg.
@@ -37,7 +34,12 @@ public class ControlFlowGraph
 
 	private final int START_ID = -1;
 	private final int END_ID = 0;
+	public Statistics stats;
 
+	/**
+	 * The linear-scan ordered list of blocks.
+	 */
+	private List<BasicBlock> orderedBlocks;
 	/**
 	 * Constructor that constructs an control flow graph.
 	 *
@@ -48,9 +50,11 @@ public class ControlFlowGraph
 
 		this.attachedMethod = method;
 		// id of basic block begin with one.
-		bb_counter = 1;
+		stats.blockCount = 1;
 		// id of quad begin with zero.
 		this.quad_counter = 0;
+
+		this.stats = new Statistics();
 	}
 
 	public BasicBlock createStartNode()
@@ -110,10 +114,10 @@ public class ControlFlowGraph
 	 * @param bbName The name of the basic block to be constructed.
 	 * @return the newly created basic block.
 	 */
-	public static BasicBlock createBasicBlock(String bbName)
+	public BasicBlock createBasicBlock( String bbName)
 	{
 
-		return BasicBlock.createBasicBlock(bb_counter++, bbName, null);
+		return BasicBlock.createBasicBlock(bbCounter++, bbName, this);
 	}
 
 	/**
@@ -121,7 +125,7 @@ public class ControlFlowGraph
 	 */
 	void updateBBcounter(int value)
 	{
-		bb_counter = value;
+		stats.blockCount = value;
 	}
 
 	/**
@@ -131,7 +135,7 @@ public class ControlFlowGraph
 	 */
 	public int getNumberOfBasicBlocks()
 	{
-		return bb_counter + 1;
+		return stats.blockCount + 1;
 	}
 
 	public int getNumberOfQuads()
@@ -198,7 +202,7 @@ public class ControlFlowGraph
 	{
 
 		java.util.LinkedList<BasicBlock> result = new java.util.LinkedList<>();
-		boolean[] visited = new boolean[bb_counter + 1];
+		boolean[] visited = new boolean[stats.blockCount + 1];
 		reversePostOrder_helper(start_bb, visited, result, true);
 		return Collections.unmodifiableList(result);
 	}
@@ -214,7 +218,7 @@ public class ControlFlowGraph
 	{
 
 		java.util.LinkedList<BasicBlock> result = new java.util.LinkedList<>();
-		boolean[] visited = new boolean[bb_counter + 1];
+		boolean[] visited = new boolean[stats.blockCount + 1];
 		reversePostOrder_helper(startNode, visited, result, true);
 		return Collections.unmodifiableList(result);
 	}
@@ -228,7 +232,7 @@ public class ControlFlowGraph
 	public List<BasicBlock> postOrder()
 	{
 		java.util.LinkedList<BasicBlock> result = new java.util.LinkedList<>();
-		boolean[] visited = new boolean[bb_counter + 1];
+		boolean[] visited = new boolean[stats.blockCount + 1];
 
 		postOrderHelper(startNode, visited, result, true);
 		return result;
@@ -312,22 +316,27 @@ public class ControlFlowGraph
 	 */
 	public List<BasicBlock> linearScanOrder(DominatorTree DT)
 	{
-		CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
-
-		// #Step 1: iterate over reverse post order to find critical edge
-		List<BasicBlock> reversePosts = reversePostOrder();
-
-		for (BasicBlock block : reversePosts)
+		if (orderedBlocks == null)
 		{
-			finder.apply(block);
+			CriticalEdgeFinder finder = new CriticalEdgeFinder(this);
+
+			// #Step 1: iterate over reverse post order to find critical edge
+			List<BasicBlock> reversePosts = reversePostOrder();
+
+			for (BasicBlock block : reversePosts)
+			{
+				finder.apply(block);
+			}
+
+			// #Step 2: performs split over finded critical edges list.
+			finder.splitCriticalEdges();
+
+			// #Step3: computes linear scan order.
+			ComputeLinearScanOrder com = new ComputeLinearScanOrder(stats.blockCount, startNode, DT);
+			orderedBlocks = com.linearScanOrder();
+			stats.loopCount = com.numLoops();
 		}
-
-		// #Step 2: performs split over finded critical edges list.
-		finder.splitCriticalEdges();
-
-		// #Step3: computes linear scan order.
-		return new ComputeLinearScanOrder(bb_counter, startNode, DT)
-				.linearScanOrder();
+		return orderedBlocks;
 	}
 
 	/**

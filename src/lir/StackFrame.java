@@ -386,7 +386,8 @@ public final class StackFrame
 
 	/**
 	 * Gets the index of the first available spill slot relative to the base of the frame.
-	 * After this call, no further outgoing stack slots can be {@linkplain #reserveOutgoing(int) reserved}.
+	 * After this call, no further outgoing stack slots can be {@linkplain #reserveOutgoing(int)
+	 * reserved}.
 	 *
 	 * @return the index of the first available spill slot
 	 */
