@@ -56,6 +56,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		this.method = method;
 		this.isTwoOperand = backend.targetMachine.arch.twoOperandMode();
 		constants = new ArrayList<>(16);
+		this.operands = new OperandPool(backend.targetMachine);
 		variablesForConstants = new ArrayList<>();
 	}
 	/**

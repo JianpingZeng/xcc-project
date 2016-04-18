@@ -79,15 +79,15 @@ public final class LIRVariable extends LIRValue
 	}
 
 	/**
-	 * Gets a variable for a given kind and index.
-	 *
+	 * Gets variable for a given kind and index or creates a new one if the it
+	 * no exist at {@code #cache}.
 	 * @param kind
 	 * @param index
 	 * @return the corresponding {@code LIRVariable}
 	 */
 	public static LIRVariable get(LIRKind kind, int index)
 	{
-		//assert kind == kind.stackKind() : "Variables can be only created for stack kinds";
+		assert kind == kind.stackKind() : "Variables can be only created for stack kinds";
 		assert index >= 0;
 		LIRVariable[] cachedVars = cache[kind.ordinal()];
 		if (index < cachedVars.length)

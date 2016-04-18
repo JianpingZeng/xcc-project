@@ -1,6 +1,7 @@
 package driver;
 
 import lir.CompilerStub;
+import lir.alloc.LinearScan;
 import lir.backend.TargetAbstractLayer;
 import lir.backend.RegisterConfig;
 import lir.backend.TargetMachine;
@@ -30,7 +31,7 @@ public final class Backend
 	final Options opt;
 	// stack frame
 	private StackFrame stackFrame;
-	public final Map<Object, CompilerStub> stubs = new HashMap<Object, CompilerStub>();
+	public final Map<Object, CompilerStub> stubs = new HashMap<>();
 
 	public Backend(Options opt, TargetMachine targetMachine,
 			RegisterConfig registerConfig)
@@ -49,12 +50,16 @@ public final class Backend
 	public void emitMachineInst(HIR hir)
 	{
 		Iterator<Method> itr = hir.iterator();
+		LinearScan allocator = null;
 		while (itr.hasNext())
 		{
 			Method m = itr.next();
 			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator(m);
+			allocator = new LinearScan(this, m, lirGenerator, frameMap());
 			for (BasicBlock block : m)
 				lirGenerator.doBlock(block);
+
+
 		}
 	}
 

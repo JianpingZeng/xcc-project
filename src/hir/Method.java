@@ -60,7 +60,7 @@ public class Method implements Iterable<BasicBlock>
 	{
 		if (ty instanceof  Tree.TypeIdent)
 		{
-			return resovleBasicType(ty);
+			return resolveBasicType(ty);
 		}
 		if (ty instanceof Tree.TypeArray)
 		{
@@ -83,14 +83,14 @@ public class Method implements Iterable<BasicBlock>
 			return new ArrayType(elem, null);
 		}
 		else
-			return resovleBasicType(ty);
+			return resolveBasicType(ty);
 	}
 	/**
 	 * Resovles basic type from specified abstract syntax tree.
 	 * @param ty    Tree.
 	 * @return  Basic type.
 	 */
-	private Type resovleBasicType(Tree ty)
+	private Type resolveBasicType(Tree ty)
 	{
 		switch (((Tree.TypeIdent)ty).typetag)
 		{
@@ -161,8 +161,15 @@ public class Method implements Iterable<BasicBlock>
 	 * Have not finished up to the date.
 	 * @return
 	 */
-	public List<BasicBlock> linearScanOrder(DominatorTree DT)
+	public List<BasicBlock> linearScanOrder()
 	{
+		DominatorTree DT = new DominatorTree(false, this);
+		DT.recalculate();
 		return cfg.linearScanOrder(DT);
+	}
+
+	public int numLoops()
+	{
+		return cfg.stats.loopCount;
 	}
 }

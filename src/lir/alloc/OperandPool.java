@@ -16,14 +16,14 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 /**
- * An ordered, 0-based indexable pool of instruction operands for a method being compiled.
- * The physical {@linkplain LIRRegister LIRRegisters} of the platform occupy the front of the
- * pool (starting at index 0) followed by {@linkplain LIRVariable variable} operands.
- * The index of an LIROperand in the pool is its {@linkplain #operandNumber(LIRValue)
- * LIROperand number}.
+ * An ordered, 0-based indexable pool of instruction operands for a method being
+ * compiled. The physical {@linkplain LIRRegister LIRRegisters} of the platform
+ * occupy the front of the pool (starting at index 0) followed by {@linkplain
+ * LIRVariable variable} operands. The index of an LIROperand in the pool is its
+ * {@linkplain #operandNumber(LIRValue) LIROperand number}.
  * <p>
- * In the original HotSpot C1 source code, this pool corresponds to the
- * "flat register file" mentioned in c1_LinearScan.cpp.
+ * This source code refers to the original HotSpot C1 source code, this pool
+ * corresponds to the "flat register file" mentioned in c1_LinearScan.cpp.
  */
 public final class OperandPool
 {
@@ -32,7 +32,7 @@ public final class OperandPool
 
 	/**
 	 * The physical LIRRegisters occupying the head of the LIROperand pool. This is the complete
-	 * {@linkplain Architecture#LIRRegisters register set} of the targetAbstractLayer architecture, not
+	 * {@linkplain Architecture#LIRRegisters register set} of the target architecture, not
 	 * just the allocatable LIRRegisters.
 	 */
 	private final LIRRegister[] LIRRegisters;
@@ -116,7 +116,7 @@ public final class OperandPool
 	}
 
 	/**
-	 * Creates a new LIROperand pool.
+	 * Creates a new LIROperand pool from certainly target machine.
 	 *
 	 * @param target description of the targetAbstractLayer architecture for a compilation
 	 */
@@ -125,12 +125,13 @@ public final class OperandPool
 		LIRRegister[] LIRRegisters = target.arch.LIRRegisters;
 		this.firstVariableNumber = LIRRegisters.length;
 		this.LIRRegisters = LIRRegisters;
-		variables = new ArrayList<LIRVariable>(INITIAL_VARIABLE_CAPACITY);
-		variableDefs = new ArrayList<Value>(INITIAL_VARIABLE_CAPACITY);
+		variables = new ArrayList<>(INITIAL_VARIABLE_CAPACITY);
+		variableDefs = new ArrayList<>(INITIAL_VARIABLE_CAPACITY);
 	}
 
 	/**
-	 * Creates a new {@linkplain LIRVariable variable} LIROperand.
+	 * Creates a new {@linkplain LIRVariable variable} LIROperand with specified
+	 * {@code LIRKind}.
 	 *
 	 * @param kind the kind of the variable
 	 * @return a new variable
@@ -146,12 +147,14 @@ public final class OperandPool
 	 * Creates a new {@linkplain LIRVariable variable} LIROperand.
 	 *
 	 * @param kind the kind of the variable
-	 * @param flag a flag that is set for the new variable LIROperand (ignored if {@code null})
+	 * @param flag a flag that is set for the new variable LIROperand (ignored
+	 *                if {@code null})
 	 * @return a new variable LIROperand
 	 */
 	public LIRVariable newVariable(LIRKind kind, VariableFlag flag)
 	{
 		assert kind != LIRKind.Void;
+
 		int varIndex = variables.size();
 		LIRVariable var = LIRVariable.get(kind, varIndex);
 		if (flag == VariableFlag.MustBeByteRegister)
@@ -264,7 +267,8 @@ public final class OperandPool
 
 	/**
 	 * Gets the number of operands in this pool. This value will increase by 1 for
-	 * each new variable LIROperand {@linkplain #newVariable(LIRKind) allocated} from this pool.
+	 * each new variable LIROperand {@linkplain #newVariable(LIRKind) allocated}
+	 * from this pool.
 	 */
 	public int size()
 	{
@@ -272,8 +276,8 @@ public final class OperandPool
 	}
 
 	/**
-	 * Gets the highest LIROperand number for a register LIROperand in this pool. This value will
-	 * never change for the lifetime of this pool.
+	 * Gets the highest LIROperand number for a register LIROperand in this pool.
+	 * This value will never change for the lifetime of this pool.
 	 */
 	public int maxRegisterNumber()
 	{
