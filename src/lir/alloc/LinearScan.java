@@ -10,10 +10,13 @@ import lir.backend.RegisterConfig;
 import lir.ci.*;
 import utils.BitMap;
 import utils.BitMap2D;
+import utils.Pair;
 import utils.TTY;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import static utils.Util.isEven;
 import static utils.Util.isOdd;
@@ -542,6 +545,20 @@ public final class LinearScan
 		return intervals[operandNumber];
 	}
 
+	/**
+	 * Creates a interval for the input operand of {@linkplain LIRInstruction}.
+	 * Input operands uses LIRValues that calculated before the start of current
+	 * operation, but the actual position is not known yet. So a range from the
+	 * start of the current block to the position of LIRInstruction is added into
+	 * range list. It may be shortened later when output operands are processed.
+	 *
+	 * @param operand
+	 * @param from
+	 * @param to
+	 * @param priority
+	 * @param kind
+	 * @return
+	 */
 	private Interval addUse(LIRValue operand, int from, int to,
 			RegisterPriority priority, LIRKind kind)
 	{
@@ -564,6 +581,8 @@ public final class LinearScan
 		{
 			interval.setKind(kind);
 		}
+
+		// whether this operand must stay in memory and never reloaded into register
 		if (operand.isVariable() && gen.operands
 				.mustStayInMemory((LIRVariable) operand))
 		{
@@ -734,8 +753,8 @@ public final class LinearScan
 				interval.setSpillState(Interval.SpillState.NoSpillStore);
 				break;
 			case NoSpillStore:
-				assert defPos <= interval
-						.spillDefinitionPos() : "positions are processed in reverse order when intervals are created";
+				assert defPos <= interval.spillDefinitionPos() :
+						"positions are processed in reverse order when intervals are created";
 				if (defPos < interval.spillDefinitionPos() - 2)
 				{
 					interval.setSpillState(Interval.SpillState.NoOptimization);
@@ -804,6 +823,18 @@ public final class LinearScan
 		}
 	}
 
+	/**
+	 * Creates a interval for the result operand of {@linkplain LIRInstruction}.
+	 * Output operands of the {@linkplain LIRInstruction} shorten the first range
+	 * of the interval of given operand. The definition overwrites any previous
+	 * value of the operand, so the operand cnanot live immediately before this
+	 * operation.
+	 *
+	 * @param operand   The result operand.
+	 * @param defPos    The id of specified LIRInstruction that defines operand.
+	 * @param priority  For register spill.
+	 * @param kind
+	 */
 	private void addDef(LIRValue operand, int defPos, RegisterPriority priority,
 			LIRKind kind)
 	{
@@ -830,7 +861,7 @@ public final class LinearScan
 			}
 			else
 			{
-				// dead value - make vacuous interval
+				// dead value - make meaningless interval
 				interval.addRange(defPos, defPos + 1);
 				interval.addUsePos(defPos, priority);
 				TTY.println(
@@ -943,9 +974,9 @@ public final class LinearScan
 								&& op2.operand2() == operand)
 						{
 							assert (op2.result().isVariableOrRegister()
-									|| instr.opcode == LIROpcode.Cmp) && op2
-									.operand1()
-									.isVariableOrRegister() : "cannot mark second operand as stack if others are not in register";
+									|| instr.opcode == LIROpcode.Cmp
+									) && op2.operand1().isVariableOrRegister() :
+									"cannot mark second operand as stack if others are not in register";
 							return RegisterPriority.ShouldHavaRegister;
 						}
 					}
@@ -1070,6 +1101,10 @@ public final class LinearScan
 
 				// print debug information here in the future
 
+				// the entire range of the block is added--this is necessary if
+				// the operand does not occur in any operation of the block.
+				// if the operand is defined in the block, than the range would
+				// be shortened to the definition position later.
 				addUse(operand, blockFrom, blockTo + 2, RegisterPriority.None,
 						LIRKind.Illegal);
 
@@ -1121,7 +1156,7 @@ public final class LinearScan
 							operand.kind.stackKind());
 				}
 
-				// visits temporary operands
+				// visits temporary operands equal to output operands
 				n = opr.operandCount(LIRInstruction.OperandMode.Temp);
 				for (int k = 0; k < n; k++)
 				{
@@ -1162,7 +1197,7 @@ public final class LinearScan
 		} // end of block iteration
 
 		// add the range [0, 1] to all fixed intervals
-		// the register allocator need not handler unhandled fixed intervals
+		// the register allocator need not handle unhandled fixed intervals
 		for (Interval interval : intervals)
 		{
 			if (interval != null && interval.operand.isRegister())
@@ -1172,14 +1207,132 @@ public final class LinearScan
 		}
 	}
 
+	/**
+	 * Sorts the interval list in increasing the start position of interval.
+	 */
 	private void sortIntervalListBeforeAllocation()
 	{
+		// count the numbers of element is not null in intervals array
+		int sortedLen = (int)Arrays.asList(intervals).stream().
+				filter((i) -> { return i != null;}).count();
 
+		Interval[] sortedList = new Interval[sortedLen];
+		int sortedIdx = 0;
+		int sortedFromMax = -1;
+		List<Interval> temp = Arrays.asList(intervals).stream().
+				filter((i)->{return i!=null;}).collect(Collectors.toList());
+
+		for (Interval i : temp)
+		{
+			int from = i.from();
+			if (sortedFromMax <= from)
+			{
+				sortedList[sortedIdx] = i;
+				sortedFromMax = i.from();
+			}
+			else
+			{
+				// when the start position of current interval is less than the
+				// last element in array sortedList[0...sortedIdx]
+				// so this interval (denoting by i) must be sorted in manually
+				// using intertion sort algorithm
+				int j;
+				for (j = sortedIdx - 1; j>= 0 && from < sortedList[j].from(); j--)
+				{
+					sortedList[j + 1] = sortedList[j];
+				}
+				sortedList[j + 1] = i;
+			}
+			sortedIdx++;
+		}
+		this.sortedIntervals = sortedList;
+	}
+	private boolean isSorted(Interval[] intervals)
+	{
+		boolean isSorted = true;
+		for (int i = 1; i < intervals.length; i++)
+		{
+			if (intervals[i].from() < intervals[i -1].from())
+			{
+				isSorted = false;
+				break;
+			}
+		}
+		return isSorted;
+	}
+
+	private Interval addToList(Interval head, Interval prev, Interval tobe)
+	{
+		Interval newFirst = head;
+		if (prev != null)
+		{
+			prev.next = tobe;
+		}
+		else
+		{
+			newFirst = tobe;
+		}
+		return newFirst;
+	}
+
+	private Pair<Interval, Interval> createUnhandledLists(IntervalPredicate isList1,
+			IntervalPredicate isList2)
+	{
+		assert isSorted(sortedIntervals) : "intervals list must be sorted";
+
+		Interval list1 = Interval.EndMarker;
+		Interval list2 = Interval.EndMarker;
+		Interval list1Prev = null, list2Prev = null;
+
+		int n = sortedIntervals.length;
+		List<Interval> temp = Arrays.asList(sortedIntervals).stream().filter(
+				 (x) -> {return x != null;}).collect(Collectors.toList());
+
+		for (Interval i : temp)
+		{
+			if (isList1.apply(i))
+			{
+				list1 = addToList(list1, list1Prev, i);
+				list1Prev = i;
+			}
+			else if (isList2.apply(i))
+			{
+				list2 = addToList(list2, list2Prev, i);
+				list2Prev = i;
+			}
+		}
+
+		if (list1Prev != null)
+		{
+			list1Prev.next = Interval.EndMarker;
+		}
+		if (list2Prev != null)
+		{
+			list2Prev.next = Interval.EndMarker;
+		}
+		assert list1Prev == null || list1Prev.next == Interval.EndMarker :
+				"linear list ends must with sentinal";
+		assert list2Prev == null || list2Prev.next == Interval.EndMarker:
+				"linear list ends must with sentinal";
+		return new Pair<>(list1, list2);
 	}
 
 	private void allocateRegisters()
 	{
+		Interval precoloredIntervals;
+		Interval notPrecolredIntervals;
 
+		Pair<Interval, Interval> result = createUnhandledLists(IS_PRECOLORED_INTERVAL, IS_VARIABLE_INTERVAL);
+
+		// fixed register
+		precoloredIntervals = result.fst;
+		// virtual register waiting to be colored
+		notPrecolredIntervals = result.snd;
+
+		// allocate cpu register no fpu
+		LinearScanWalker walker = new LinearScanWalker(this, precoloredIntervals, notPrecolredIntervals);
+		walker.walk();
+		walker.finishAllocation();
 	}
 
 	private void resolveDataFlow()
@@ -1202,6 +1355,33 @@ public final class LinearScan
 
 	}
 
+	private void printIntervals(String label)
+	{
+		int i;
+		TTY.println();
+		TTY.println(label);
+
+		for (Interval interval : intervals)
+		{
+			if (interval != null)
+			{
+				TTY.out().println(interval.logString(this));
+			}
+		}
+
+		TTY.println();
+		TTY.println("--- Basic Blocks ---");
+		for (i = 0; i < blockCount(); i++)
+		{
+			BasicBlock block = blockAt(i);
+			TTY.print("B%d [%d, %d, %d, %d] ", block.getID(), block.getLIRBlock()
+					.firstLIRInstructionID, block.getID(), block.getLIRBlock()
+					.lastLIRInstructionID, block.loopIndex, block.loopDepth);
+		}
+		TTY.println();
+		TTY.println();
+	}
+
 	/**
 	 * the main entry for linear scanning register allocation.
 	 */
@@ -1212,6 +1392,8 @@ public final class LinearScan
 		computeGlobalLiveSet();
 
 		buildIntervalList();
+
+		printIntervals("Before register allocation");
 		sortIntervalListBeforeAllocation();
 
 		allocateRegisters();
