@@ -151,7 +151,7 @@ public class LIRBranch extends LIRInstruction
 		if (block == oldBlock)
 		{
 			block = newBlock;
-			LIRInstruction instr = newBlock.getMachineBlock().lir()
+			LIRInstruction instr = newBlock.getLIRBlock().lir()
 					.instructionsList().get(0);
 			assert instr instanceof LIRLabel : "first instruction of block must be label";
 			label = ((LIRLabel) instr).label();

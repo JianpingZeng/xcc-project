@@ -23,15 +23,12 @@
 package lir.ci;
 
 /**
- * Represents a value that is yet to be bound to a machine location (such as
- * a {@linkplain LIRRegister register} or stack {@linkplain LIRAddress address})
- * by a register allocator.
+ * Represents a virtual variable that is yet to be bound to a machine location
+ * (such as a {@linkplain LIRRegister register} or stack {@linkplain LIRAddress
+ * address}) by a register allocator.
  */
 public final class LIRVariable extends LIRValue
 {
-	/**
-	 *
-	 */
 	private static final long serialVersionUID = 3894386843980093903L;
 
 	/**

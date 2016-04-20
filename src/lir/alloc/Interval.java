@@ -170,10 +170,9 @@ public final class Interval
 	}
 
 	/**
-	 * Constants denoting the register usage priority for an
-	 * interval. The constants are declared in increasing order of priority are
-	 * used to optimize spilling when multiple overlapping intervals
-	 * compete for limited registers.
+	 * Constants denoting the register usage priority for an interval. The constants
+	 * are declared in increasing order of priority are used to optimize spilling
+	 * when multiple overlapping intervals compete for limited registers.
 	 */
 	enum RegisterPriority
 	{
@@ -209,7 +208,7 @@ public final class Interval
 	}
 
 	/**
-	 * Constants denoting the linear scan state of an interval may be with respect
+	 * Constants denoting the state of an interval on linear scan may be with respect
 	 * to the {@linkplain Interval#from() start} {@code position} of the interval
 	 * being processed.
 	 */
@@ -218,7 +217,7 @@ public final class Interval
 		/**
 		 * An interval that starts after {@code position}.
 		 */
-		Unhanlded,
+		Unhandled,
 
 		/**
 		 * An interval that {@linkplain Interval#covers covers} {@code position}
@@ -395,8 +394,7 @@ public final class Interval
 
 	/**
 	 * The {@linkplain lir.ci.LIRRegisterValue register} or
-	 * {@linkplain lir.ci.LIRVariable variable}
-	 * for register allocation.
+	 * {@linkplain lir.ci.LIRVariable variable} for register allocation.
 	 */
 	public final LIRValue operand;
 
@@ -449,15 +447,18 @@ public final class Interval
 	Interval next;
 
 	/**
-	 * The linear-scan state of this interval.
+	 * The linear-scan state of this interval, which is chosed from states set
+	 * among {@link lir.alloc.Interval.State#Active}, {@link lir.alloc.Interval.State#Handled},
+	 * {@link lir.alloc.Interval.State#Unhandled} and {@link lir.alloc.Interval.State#Inactive}.
 	 */
 	State state;
 
-	private int cachedTo; // cached value: to of last range (-1: not cached)
+	// cached value: to of last range (-1: not cached)
+	private int cachedTo;
 
 	/**
-	 * The interval from which this one is derived. If this is a {@linkplain #isSplitParent()
-	 * split parent}, it points to itself.
+	 * The interval from which this one is derived. If this is a
+	 * {@linkplain #isSplitParent() split parent}, it points to itself.
 	 */
 	private Interval splitParent;
 

@@ -54,6 +54,7 @@ public final class Backend
 		while (itr.hasNext())
 		{
 			Method m = itr.next();
+			// create LIRGenerator for every method
 			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator(m);
 			allocator = new LinearScan(this, m, lirGenerator, frameMap());
 			for (BasicBlock block : m)
