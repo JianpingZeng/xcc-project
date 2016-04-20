@@ -2,15 +2,14 @@ package lir;
 
 import asm.Label;
 import hir.BasicBlock;
-
-import java.util.BitSet;
+import utils.BitMap;
 
 /**
  * This file defines a class that represents a subsequnce of machine instruction
  * but no terminal instruction in middle.
  * @author Jianping Zeng
  */
-public final class MachineBlock
+public final class LIRBlock
 {
 	public final BasicBlock attachedBlock;
 	public final Label label;
@@ -23,29 +22,29 @@ public final class MachineBlock
 	 * successors where such value are not defined in this block.
 	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
-	public BitSet livein;
+	public BitMap livein;
 	/**
 	 * <p>Bit set specifying which operands are live in the exit from this
 	 * machine block. There are values used in this block or any of its
 	 * successors where such value are not defined in this block.
 	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
-	public BitSet liveout;
+	public BitMap liveout;
 	/**
 	 * <p>Bit set specifying which operands are used in this machine block.
 	 * There are values live in the entry to this block.
 	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
-	public BitSet livegen;
+	public BitMap livegen;
 
 	/**
 	 * Bitset specifying which operands are defined/rewrited in this block.
 	 */
-	public BitSet livekill;
+	public BitMap livekill;
 	public int firstLIRInstructionID;
 	public int lastLIRInstructionID;
 
-	public MachineBlock(BasicBlock block)
+	public LIRBlock(BasicBlock block)
 	{
 		attachedBlock = block;
 		label = new Label();

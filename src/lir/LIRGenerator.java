@@ -94,7 +94,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	{
 		// print debug information
 
-		assert block.getMachineBlock()
+		assert block.getLIRBlock()
 				== null : "Machine block already be computed for this block";
 		LIRList lir = new LIRList(this);
 		block.setLIR(lir);

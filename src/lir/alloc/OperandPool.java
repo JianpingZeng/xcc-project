@@ -11,7 +11,9 @@ import lir.ci.LIRKind;
 import lir.ci.LIRRegister;
 import lir.ci.LIRVariable;
 import lir.ci.LIRValue;
-
+import static lir.alloc.OperandPool.VariableFlag.MustBeByteRegister;
+import static lir.alloc.OperandPool.VariableFlag.MustStartInMemory;
+import static lir.alloc.OperandPool.VariableFlag.MustStayInMemory;
 import java.util.ArrayList;
 import java.util.BitSet;
 
@@ -31,28 +33,29 @@ public final class OperandPool
 	public static final int INITIAL_VARIABLE_CAPACITY = 20;
 
 	/**
-	 * The physical LIRRegisters occupying the head of the LIROperand pool. This is the complete
-	 * {@linkplain Architecture#LIRRegisters register set} of the target architecture, not
-	 * just the allocatable LIRRegisters.
+	 * The physical LIRRegisters occupying the front part of the LIROperand pool.
+	 * This is the complete {@linkplain Architecture#LIRRegisters register set}
+	 * of the target architecture, not just the allocatable LIRRegisters.
 	 */
 	private final LIRRegister[] LIRRegisters;
 
 	/**
 	 * The variable operands allocated from this pool. The {@linkplain #operandNumber(LIRValue) number}
-	 * of the first variable LIROperand in this pool is one greater than the number of the last
-	 * register LIROperand in the pool.
+	 * of the first variable LIROperand in this pool is one greater than the
+	 * number of the last physical register LIROperand in the pool.
 	 */
 	private final ArrayList<LIRVariable> variables;
 
 	/**
-	 * Map from a {@linkplain LIRVariable#index variable index} to the instruction whose result is stored in the denoted variable.
-	 * This map is only populated and used if  is {@code true}.
+	 * Map from a {@linkplain LIRVariable#index variable index} to the instruction
+	 * whose result is stored in the denoted variable. This map is only populated
+	 * and used if is {@code true}.
 	 */
 	private final ArrayList<Value> variableDefs;
 
 	/**
-	 * The {@linkplain #operandNumber(LIRValue) number} of the first variable LIROperand
-	 * {@linkplain #newVariable(LIRKind) allocated} from this pool.
+	 * The {@linkplain #operandNumber(LIRValue) number} of the first variable
+	 * LIROperand {@linkplain #newVariable(LIRKind) allocated} from this pool.
 	 */
 	private final int firstVariableNumber;
 
@@ -100,7 +103,7 @@ public final class OperandPool
 	{
 		if (map == null || map.size() <= variable.index)
 		{
-			map = new BitSet(variable.index + 1);
+			map = new BitSet(2*variable.index + 1);
 		}
 		map.set(variable.index);
 		return map;
@@ -130,8 +133,13 @@ public final class OperandPool
 	}
 
 	/**
-	 * Creates a new {@linkplain LIRVariable variable} LIROperand with specified
-	 * {@code LIRKind}.
+	 * Allocates a new {@linkplain LIRVariable variable} LIROperand with specified
+	 * {@code LIRKind} from {@linkplain OperandPool}.
+	 * <p>
+	 *     <strong>Note that</strong> if the specified kind is qualified by
+	 *     {@linkplain LIRKind#Boolean} or {@linkplain LIRKind#Byte}, the flag of
+	 *     this virtual register must be seted with {@linkplain VariableFlag#MustBeByteRegister}
+	 * </p>
 	 *
 	 * @param kind the kind of the variable
 	 * @return a new variable
@@ -139,12 +147,13 @@ public final class OperandPool
 	public LIRVariable newVariable(LIRKind kind)
 	{
 		return newVariable(kind, kind == LIRKind.Boolean || kind == LIRKind.Byte ?
-				VariableFlag.MustBeByteRegister :
+				MustBeByteRegister :
 				null);
 	}
 
 	/**
-	 * Creates a new {@linkplain LIRVariable variable} LIROperand.
+	 * Creates a new {@linkplain LIRVariable variable} LIROperand with {@link LIRKind}
+	 * and {@link lir.alloc.OperandPool.VariableFlag}.
 	 *
 	 * @param kind the kind of the variable
 	 * @param flag a flag that is set for the new variable LIROperand (ignored
@@ -157,7 +166,7 @@ public final class OperandPool
 
 		int varIndex = variables.size();
 		LIRVariable var = LIRVariable.get(kind, varIndex);
-		if (flag == VariableFlag.MustBeByteRegister)
+		if (flag == MustBeByteRegister)
 		{
 			mustBeByteRegister = set(mustBeByteRegister, var);
 		}
@@ -218,7 +227,8 @@ public final class OperandPool
 	 * Records that the result of {@code instruction} is stored in {@code result}.
 	 *
 	 * @param result      the variable storing the result of {@code instruction}
-	 * @param instruction an instruction that produces a result (i.e. pushes a value to the stack)
+	 * @param instruction an instruction that produces a result (i.e. pushes a
+	 *                       value to the stack)
 	 */
 	public void recordResult(LIRVariable result, Value instruction)
 	{

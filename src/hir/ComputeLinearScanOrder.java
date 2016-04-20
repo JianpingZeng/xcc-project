@@ -1,6 +1,6 @@
 package hir;
 
-import utils.BitSet2D;
+import utils.BitMap2D;
 import utils.Pair;
 import utils.TTY;
 import java.util.*;
@@ -52,7 +52,7 @@ public class ComputeLinearScanOrder
 
 	private int numBlocks;
 
-	private BitSet2D bitset;
+	private BitMap2D bitset;
 
 	/**
 	 * A list of all loop end block collected during traverse recursively.
@@ -540,7 +540,7 @@ public class ComputeLinearScanOrder
 		TTY.println("-----------Marking loops");
 
 		workList.clear();
-		bitset = new BitSet2D(numLoops, maxBlockID);
+		bitset = new BitMap2D(numLoops, maxBlockID);
 
 		for (int idx = loopEndBlocks.size() - 1; idx >= 0; idx--)
 		{

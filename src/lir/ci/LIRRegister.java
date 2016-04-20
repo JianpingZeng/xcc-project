@@ -29,13 +29,10 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 
 /**
- * Represents a targetAbstractLayer machine register.
+ * Represents a register relative to target machine.
  */
 public final class LIRRegister implements Comparable<LIRRegister>, Serializable
 {
-	/**
-	 *
-	 */
 	private static final long serialVersionUID = -8716409387825941222L;
 
 	/**

@@ -3,7 +3,7 @@ package hir;
 
 import asm.Label;
 import lir.LIRList;
-import lir.MachineBlock;
+import lir.LIRBlock;
 
 import java.util.*;
 
@@ -72,7 +72,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * A block containing Generated machine instruction corresponding to
 	 * HIR instruction for specified targetAbstractLayer.
 	 */
-	private MachineBlock machineBlock;
+	private LIRBlock LIRBlock;
 
 	public boolean isCriticalEdgeSplit()
 	{
@@ -81,19 +81,27 @@ public final class BasicBlock implements Iterable<Instruction>
 
 	public Label label()
 	{
-		return machineBlock.label;
+		return LIRBlock.label;
 	}
 
 	public void setFirstLIRInstruction(int firstLIRInstructionID)
 	{
-		machineBlock.firstLIRInstructionID = firstLIRInstructionID;
+		LIRBlock.firstLIRInstructionID = firstLIRInstructionID;
 	}
 
 	public void setLastLIRInstructionId(int lastLIRInstructionID)
 	{
-		machineBlock.lastLIRInstructionID = lastLIRInstructionID;
+		LIRBlock.lastLIRInstructionID = lastLIRInstructionID;
 	}
 
+	public int firstLIRInstructionId()
+	{
+		return LIRBlock.firstLIRInstructionID;
+	}
+	public int lastLIRInstructionId()
+	{
+		return LIRBlock.lastLIRInstructionID;
+	}
 	public static enum BlockFlag
 	{
 		LinearScanLoopHeader,
@@ -492,22 +500,22 @@ public final class BasicBlock implements Iterable<Instruction>
 		return (blockFlags & flag.mask) != 0;
 	}
 
-	public void setMachineBlock(MachineBlock block)
+	public void setLIRBlock(LIRBlock block)
 	{
 		assert block != null;
-		this.machineBlock = block;
+		this.LIRBlock = block;
 	}
 
-	public  MachineBlock getMachineBlock()
+	public LIRBlock getLIRBlock()
 	{
-		if (machineBlock == null)
-			machineBlock = new MachineBlock(this);
+		if (LIRBlock == null)
+			LIRBlock = new LIRBlock(this);
 
-		return machineBlock;
+		return LIRBlock;
 	}
 
 	public void setLIR(LIRList lir)
 	{
-		getMachineBlock().setLIR(lir);
+		getLIRBlock().setLIR(lir);
 	}
 }

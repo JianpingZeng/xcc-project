@@ -7,7 +7,7 @@ import java.util.BitSet;
  * This class implements a two-dimensional bitset.
  * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/18.
  */
-public final class BitSet2D
+public final class BitMap2D
 {
 	private BitSet set;
 	private final int bitsPerSlot;
@@ -22,7 +22,7 @@ public final class BitSet2D
 		return index < bitsPerSlot;
 	}
 
-	public BitSet2D(int sizeInSlots, int bitsInSlot)
+	public BitMap2D(int sizeInSlots, int bitsInSlot)
 	{
 		set = new BitSet(sizeInSlots * bitsInSlot);
 		this.bitsPerSlot = bitsInSlot;
