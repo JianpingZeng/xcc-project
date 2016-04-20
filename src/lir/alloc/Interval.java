@@ -20,7 +20,7 @@ public final class Interval
 	/**
 	 * A set of interval lists ,one per {@linkplain RegisterBinding binding} type.
 	 */
-	static final class ReigsterBindingLists
+	static final class RegisterBindingLists
 	{
 		/**
 		 * List of intervals whose binding is currently {@link lir.alloc.Interval.RegisterBinding#Fixed}
@@ -31,7 +31,7 @@ public final class Interval
 		 */
 		public Interval any;
 
-		public ReigsterBindingLists(Interval fixed, Interval any)
+		public RegisterBindingLists(Interval fixed, Interval any)
 		{
 			this.fixed = fixed;
 			this.any = any;
