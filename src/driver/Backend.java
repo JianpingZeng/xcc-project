@@ -20,6 +20,7 @@ import java.util.Map;
  * This class encapsulates global information about the compilation of a specified
  * file(compilation unit), including a reference to the runtime, targetAbstractLayer
  * machine etc.
+ *
  * @author Jianping Zeng
  */
 public final class Backend
@@ -49,6 +50,12 @@ public final class Backend
 	 */
 	public void emitMachineInst(HIR hir)
 	{
+		emitLIR(hir);
+		emitCode(hir);
+	}
+
+	private void emitLIR(HIR hir)
+	{
 		Iterator<Method> itr = hir.iterator();
 		LinearScan allocator = null;
 		while (itr.hasNext())
@@ -56,12 +63,18 @@ public final class Backend
 			Method m = itr.next();
 			// create LIRGenerator for every method
 			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator(m);
-			allocator = new LinearScan(this, m, lirGenerator, frameMap());
+
 			for (BasicBlock block : m)
 				lirGenerator.doBlock(block);
 
-
+			new LinearScan(this, m, lirGenerator, frameMap()).allocate();
 		}
+	}
+
+
+	private void emitCode(HIR hir)
+	{
+
 	}
 
 	/**
@@ -82,14 +95,7 @@ public final class Backend
 
 		for (int i = 0; i < hirs.length;i++)
 		{
-			Iterator<Method> itr = hirs[i].iterator();
-			while (itr.hasNext())
-			{
-				Method m = itr.next();
-				LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator(m);
-				for (BasicBlock block : m)
-					lirGenerator.doBlock(block);
-			}
+			emitMachineInst(hirs[i]);
 		}
 	}
 

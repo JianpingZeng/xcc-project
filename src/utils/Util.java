@@ -2,6 +2,7 @@ package utils;
 
 import hir.Method;
 import hir.Signature;
+import lir.LIRInstruction;
 import lir.alloc.Interval;
 import lir.ci.LIRKind;
 
@@ -142,5 +143,13 @@ public class Util
 	public static boolean isEven(int num)
 	{
 		return (num & 0x1) == 0;
+	}
+
+	public static void truncate(List<?> list, int length)
+	{
+		while (list.size() > length)
+		{
+			list.remove(list.size() - 1);
+		}
 	}
 }

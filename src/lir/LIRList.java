@@ -5,6 +5,7 @@ import hir.BasicBlock;
 import hir.Condition;
 import hir.Method;
 import hir.Operator;
+import lir.alloc.LIRInsertionBuffer;
 import lir.ci.*;
 
 import java.util.ArrayList;
@@ -207,5 +208,41 @@ public class LIRList
 	public void returnOp(LIRValue result)
 	{
 		append(new LIROp1(LIROpcode.Return, result));
+	}
+
+	public void append(LIRInsertionBuffer buffer)
+	{
+		assert this == buffer.lirList() : "wrong lir list";
+		int n = operations.size();
+
+		if (buffer.numberOfOps() > 0) {
+			// increase size of instructions list
+			for (int i = 0; i < buffer.numberOfOps(); i++) {
+				operations.add(null);
+			}
+			// insert ops from buffer into instructions list
+			int opIndex = buffer.numberOfOps() - 1;
+			int ipIndex = buffer.numberOfInsertionPoints() - 1;
+			int fromIndex = n - 1;
+			int toIndex = operations.size() - 1;
+			for (; ipIndex >= 0; ipIndex--) {
+				int index = buffer.indexAt(ipIndex);
+				// make room after insertion point
+				while (index < fromIndex) {
+					operations.set(toIndex--, operations.get(fromIndex--));
+				}
+				// insert ops from buffer
+				for (int i = buffer.countAt(ipIndex); i > 0; i--) {
+					operations.set(toIndex--, buffer.opAt(opIndex--));
+				}
+			}
+		}
+
+		buffer.finish();
+	}
+
+	public void insertBefore(int i, LIRInstruction op)
+	{
+		operations.add(i, op);
 	}
 }

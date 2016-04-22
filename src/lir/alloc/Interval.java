@@ -178,7 +178,7 @@ public final class Interval
 	{
 		None,
 		LiveAtLoopEnd,
-		ShouldHavaRegister,
+		ShouldHaveRegister,
 		MustHaveRegister;
 
 		public static final RegisterPriority[] VALUES = values();
@@ -974,7 +974,14 @@ public final class Interval
 		}
 	}
 
-	// Note: use positions are sorted descending . first use has highest index
+	/**
+	 * <p>Finds out the first usage position whose register priority is not less than
+	 * specified minRegisterPriority.
+	 *
+	 * <p>Note: use positions are sorted descending . first use has highest index
+	 * @param minRegisterPriority
+	 * @return
+	 */
 	int firstUsage(RegisterPriority minRegisterPriority)
 	{
 		assert operand
@@ -1156,6 +1163,8 @@ public final class Interval
 		// split the ranges
 		Range prev = null;
 		Range cur = first;
+
+		// to search the first interval whose to isn't less then splitPos
 		while (cur != Range.EndMarker && cur.to <= splitPos)
 		{
 			prev = cur;
@@ -1164,6 +1173,15 @@ public final class Interval
 		assert cur
 				!= Range.EndMarker : "split interval after end of last range";
 
+		/**
+		 * <pre>
+		 *     splitPos
+		 *       |
+		 * |----------------|
+		 * ^                ^
+		 * cur.from      cur.to
+		 * </pre>
+		 */
 		if (cur.from < splitPos)
 		{
 			result.first = new Range(splitPos, cur.to, cur.next);
@@ -1171,6 +1189,16 @@ public final class Interval
 			cur.next = Range.EndMarker;
 
 		}
+		/**
+		 * <pre>
+		 * splitPos
+		 * |
+		 * |----------------|
+		 * ^                ^
+		 * cur.from      cur.to
+		 * where, splitPos <= cur.from
+		 * </pre>
+		 */
 		else
 		{
 			assert prev != null : "split before start of first range";

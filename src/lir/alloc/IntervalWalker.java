@@ -48,9 +48,11 @@ public class IntervalWalker
 
 	/**
 	 * Processes the {@linkplain #current} interval in an attempt to allocate a physical
-	 * register to it and thus allow it to be moved to a list of {@linkplain #activeLists active} intervals.
+	 * register to it and thus allow it to be moved to a list of {@linkplain #activeLists
+	 * active} intervals.
 	 *
-	 * @return {@code true} if a register was allocated to the {@linkplain #current} interval
+	 * @return {@code true} if a register was allocated to the {@linkplain #current}
+	 * interval
 	 */
 	boolean activateCurrent()
 	{
@@ -71,8 +73,10 @@ public class IntervalWalker
 	 * Creates a new interval walker.
 	 *
 	 * @param allocator      the register allocator context
-	 * @param unhandledFixed the list of unhandled {@linkplain RegisterBinding#Fixed fixed} intervals
-	 * @param unhandledAny   the list of unhandled {@linkplain RegisterBinding#Any non-fixed} intervals
+	 * @param unhandledFixed the list of unhandled {@linkplain RegisterBinding#Fixed
+	 *                          fixed} intervals
+	 * @param unhandledAny   the list of unhandled {@linkplain RegisterBinding#Any
+	 *                          non-fixed} intervals
 	 */
 	IntervalWalker(LinearScan allocator, Interval unhandledFixed,
 			Interval unhandledAny)
@@ -234,6 +238,11 @@ public class IntervalWalker
 		current.rewindRange();
 	}
 
+	/**
+	 * Walks through all intervals.
+	 *
+	 * @param toOpId
+	 */
 	void walkTo(int toOpId)
 	{
 		assert currentPosition <= toOpId : "can not walk backwards";
@@ -242,7 +251,8 @@ public class IntervalWalker
 			boolean isActive = current.from() <= toOpId;
 			int opId = isActive ? current.from() : toOpId;
 
-			if (TTY.isSuppressed())
+			// for debug information display
+			if (!TTY.isSuppressed())
 			{
 				if (currentPosition < opId)
 				{
@@ -254,8 +264,9 @@ public class IntervalWalker
 			// set currentPosition prior to call of walkTo
 			currentPosition = opId;
 
-			// call walkTo even if currentPosition == id
+			// checks for intervals in active that are expired or inactive
 			walkTo(Active, opId);
+			// checks for intervals in inactive that are expired or active
 			walkTo(Inactive, opId);
 
 			if (isActive)
@@ -265,8 +276,8 @@ public class IntervalWalker
 				{
 					activeLists.addToListSortedByCurrentFromPositions(
 							currentBinding, current);
-					intervalMoved(current, currentBinding, State.Unhandled,
-							Active);
+					intervalMoved(current, currentBinding,
+							Interval.State.Unhandled, Active);
 				}
 
 				nextInterval();
@@ -277,7 +288,6 @@ public class IntervalWalker
 			}
 		}
 	}
-
 	private void intervalMoved(Interval interval, RegisterBinding kind,
 			State from, State to)
 	{

@@ -495,8 +495,8 @@ public class DominatorTree
 		while (!worklist.isEmpty())
 		{
 			Pair top = worklist.getLast();
-			DomTreeNode node = (DomTreeNode)top.fst;
-			ListIterator<DomTreeNode> childItr = (ListIterator<DomTreeNode>)top.snd;
+			DomTreeNode node = (DomTreeNode)top.first;
+			ListIterator<DomTreeNode> childItr = (ListIterator<DomTreeNode>)top.second;
 
 			// If we visited all of the children of this node, "recurse" back up the
 			// stack setting the DFOutNum.
@@ -536,8 +536,8 @@ public class DominatorTree
 		while (!worklist.isEmpty())
 		{
 			Pair<BasicBlock, ListIterator<BasicBlock>> top = worklist.getLast();
-			BasicBlock curr = top.fst;
-			ListIterator<BasicBlock> succItr = top.snd;
+			BasicBlock curr = top.first;
+			ListIterator<BasicBlock> succItr = top.second;
 
 			// first visit the current basic block.
 			if (succItr.nextIndex() == 0)

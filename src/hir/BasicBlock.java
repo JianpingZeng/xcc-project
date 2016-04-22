@@ -102,6 +102,12 @@ public final class BasicBlock implements Iterable<Instruction>
 	{
 		return LIRBlock.lastLIRInstructionID;
 	}
+
+	public boolean isPredecessor(BasicBlock block)
+	{
+		return successors.contains(block);
+	}
+
 	public static enum BlockFlag
 	{
 		LinearScanLoopHeader,
