@@ -10,13 +10,13 @@ package utils;
  * A generic class for pairs.
  */
 public class Pair<K, V> {
-    public K fst;
-    public V snd;
+    public K first;
+    public V second;
 
-    public Pair(K fst, V snd) {
+    public Pair(K first, V second) {
         super();
-        this.fst = fst;
-        this.snd = snd;
+        this.first = first;
+        this.second = second;
     }
 
     private static boolean equals(Object x, Object y) {
@@ -24,16 +24,16 @@ public class Pair<K, V> {
     }
 
     public boolean equals(Object other) {
-        return other instanceof Pair && equals(fst, ((Pair) other).fst) &&
-                equals(snd, ((Pair) other).snd);
+        return other instanceof Pair && equals(first, ((Pair) other).first) &&
+                equals(second, ((Pair) other).second);
     }
 
     public int hashCode() {
-        if (fst == null)
-            return snd.hashCode() + 1;
-        else if (snd == null)
-            return fst.hashCode() + 2;
+        if (first == null)
+            return second.hashCode() + 1;
+        else if (second == null)
+            return first.hashCode() + 2;
         else
-            return fst.hashCode() * snd.hashCode();
+            return first.hashCode() * second.hashCode();
     }
 }

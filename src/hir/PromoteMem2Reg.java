@@ -516,9 +516,9 @@ public class PromoteMem2Reg
 		{
 			@Override public int compare(Pair o1, Pair o2)
 			{
-				if ((Integer) o1.fst < (Integer) o2.snd)
+				if ((Integer) o1.first < (Integer) o2.second)
 					return -1;
-				else if ((Integer) o1.fst == (Integer) o2.snd)
+				else if ((Integer) o1.first == (Integer) o2.second)
 					return 0;
 				else
 					return 1;
@@ -548,7 +548,7 @@ public class PromoteMem2Reg
 				LI.replaceAllUsesWith(UndefValue.get(LI.kind));
 				// otherwise, there was store before load, the load just toke its value
 			else
-				LI.replaceAllUsesWith(((StoreInst) target.snd).value);
+				LI.replaceAllUsesWith(((StoreInst) target.second).value);
 
 			// now, this load instruction is not useful
 			LI.eraseFromBasicBlock();
@@ -622,8 +622,8 @@ public class PromoteMem2Reg
 		while (!PQ.isEmpty())
 		{
 			Pair<DomTreeNode, Integer> rootPair = PQ.poll();
-			DomTreeNode rootNode = rootPair.fst;
-			int rootLevel = rootPair.snd;
+			DomTreeNode rootNode = rootPair.first;
+			int rootLevel = rootPair.second;
 
 			worklist.clear();
 			worklist.addLast(rootNode);
@@ -676,9 +676,9 @@ public class PromoteMem2Reg
 						public int compare(Pair<Integer, BasicBlock> o1,
 								Pair<Integer, BasicBlock> o2)
 						{
-							if (o1.fst < o2.fst)
+							if (o1.first < o2.first)
 								return -1;
-							else if (o1.fst == o2.fst)
+							else if (o1.first == o2.first)
 								return 0;
 							else
 								return 1;
@@ -689,7 +689,7 @@ public class PromoteMem2Reg
 		int currentVersion = 0;
 		for (int idx = 0, e = DFBlocks.size(); idx != e; ++idx)
 		{
-			queuePhiNode(DFBlocks.get(idx).snd, allocaNum, currentVersion);
+			queuePhiNode(DFBlocks.get(idx).second, allocaNum, currentVersion);
 		}
 	}
 

@@ -673,7 +673,7 @@ public abstract class Instruction extends User
 		{
 			assert index >= 0 && index
 					< inputs.length : "The index is beyond out the length of list";
-			return inputs[index].fst;
+			return inputs[index].first;
 		}
 
 		/**
@@ -686,7 +686,7 @@ public abstract class Instruction extends User
 		{
 			assert index >= 0 && index
 					< inputs.length : "The index is beyond out the length of list";
-			return inputs[index].snd;
+			return inputs[index].second;
 		}
 
 		/**
@@ -700,7 +700,7 @@ public abstract class Instruction extends User
 			assert index >= 0 && index
 					< inputs.length : "The index is beyond out the length of list";
 
-			inputs[index].fst = value;
+			inputs[index].first = value;
 		}
 
 		/**
@@ -714,7 +714,7 @@ public abstract class Instruction extends User
 			assert index >= 0 && index
 					< inputs.length : "The index is beyond out the length of list";
 
-			inputs[index].snd = block;
+			inputs[index].second = block;
 		}
 
 		@Override public String toString()
@@ -727,7 +727,7 @@ public abstract class Instruction extends User
 			assert (basicBlock
 					!= null) : "Phi.getBasicBlockIndex(<null>) is invalid";
 			for (int idx = 0; idx < inputs.length; idx++)
-				if (inputs[idx].snd == basicBlock)
+				if (inputs[idx].second == basicBlock)
 					return idx;
 			return -1;
 		}
@@ -751,7 +751,7 @@ public abstract class Instruction extends User
 		{
 			BasicBlock[] blocks = new BasicBlock[inputs.length];
 			for (int idx = 0; idx < inputs.length; idx++)
-				blocks[idx] = inputs[idx].snd;
+				blocks[idx] = inputs[idx].second;
 			return blocks;
 		}
 
@@ -919,7 +919,7 @@ public abstract class Instruction extends User
 		 */
 		public BasicBlock getDefaultBlock()
 		{
-			return this.operands[0].snd;
+			return this.operands[0].second;
 		}
 
 		public int numsOfCases()
@@ -931,14 +931,14 @@ public abstract class Instruction extends User
 		{
 			Value[] vals = new Value[operands.length];
 			for (int idx = 0; idx < vals.length; idx++)
-				vals[idx] = operands[idx].fst;
+				vals[idx] = operands[idx].first;
 			return vals;
 		}
 
 		public BasicBlock targetAt(int idx)
 		{
 			assert idx >= 0 && idx < operands.length;
-			return operands[idx].snd;
+			return operands[idx].second;
 		}
 
 		public int getLowKey()

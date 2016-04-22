@@ -77,8 +77,8 @@ public class RDF
 		while (!PQ.isEmpty())
 		{
 			Pair<DominatorTree.DomTreeNode, Integer> rootPair = PQ.poll();
-			DominatorTree.DomTreeNode rootNode = rootPair.fst;
-			int rootLevel = rootPair.snd;
+			DominatorTree.DomTreeNode rootNode = rootPair.first;
+			int rootLevel = rootPair.second;
 
 			worklist.clear();
 			worklist.addLast(rootNode);
