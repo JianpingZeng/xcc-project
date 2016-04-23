@@ -236,8 +236,6 @@ public class HIRGenerator extends ASTVisitor
 	{
 		BasicBlock remainderBB;
 		Binary bin;
-		Value src1;
-		IfOp inst;
 
 		if ((expr.tag >= Tree.OR && expr.tag <= Tree.AND) || (
 				expr.tag >= Tree.NE && expr.tag <= Tree.GE))
@@ -593,7 +591,6 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Alloca createEnterBlockAlloca(LIRKind kind, VarDef var)
 	{
-		BasicBlock entry = currentCFG.entry();
 		Alloca inst = createEnterBlockAlloca(kind, var.name);
 		// associte its local with variable symbol
 		var.sym.varInst = inst;
@@ -609,7 +606,6 @@ public class HIRGenerator extends ASTVisitor
 	private void emitReturnValue(Method m)
 	{
 		Name returnName = Name.fromString(names, "%retvalue");
-		BasicBlock entry = currentCFG.entry();
 		m.ReturnValue = createEnterBlockAlloca(m.signature().returnKind(),
 				returnName);
 	}
@@ -1419,7 +1415,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitADD(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IAdd;
@@ -1455,7 +1451,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitSUB(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.ISub;
@@ -1491,7 +1487,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitMUL(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IMul;
@@ -1527,7 +1523,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitDIV(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IDiv;
@@ -1563,7 +1559,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitMOD(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IMod;
@@ -1591,7 +1587,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitBITAND(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IAnd;
@@ -1619,7 +1615,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitBITOR(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IOr;
@@ -1647,7 +1643,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitBITXOR(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IXor;
@@ -1675,7 +1671,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitSHL(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IShl;
@@ -1703,7 +1699,7 @@ public class HIRGenerator extends ASTVisitor
 	 */
 	private Value emitSHR(Type ty, int pos, Value lhs, Value rhs)
 	{
-		Operator opcode = Operator.Illegal;
+		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
 			opcode = Operator.IShr;

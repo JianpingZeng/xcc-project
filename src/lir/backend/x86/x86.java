@@ -23,19 +23,19 @@ public final class X86 extends Architecture
 	// general purpose register for cpu
 	public static final LIRRegister eax = new LIRRegister(0, 0, 4, "eax", CPU,
 			Byte);
-	public static final LIRRegister edx = new LIRRegister(1, 0, 4, "edx", CPU,
+	public static final LIRRegister edx = new LIRRegister(1, 1, 4, "edx", CPU,
 			Byte);
-	public static final LIRRegister ecx = new LIRRegister(2, 0, 4, "ecx", CPU,
+	public static final LIRRegister ecx = new LIRRegister(2, 2, 4, "ecx", CPU,
 			Byte);
-	public static final LIRRegister ebx = new LIRRegister(3, 0, 4, "ebx", CPU,
+	public static final LIRRegister ebx = new LIRRegister(3, 3, 4, "ebx", CPU,
 			Byte);
-	public static final LIRRegister ebp = new LIRRegister(4, 0, 4, "ebp", CPU,
+	public static final LIRRegister ebp = new LIRRegister(4, 4, 4, "ebp", CPU,
 			Byte);
-	public static final LIRRegister esi = new LIRRegister(5, 0, 4, "esi", CPU,
+	public static final LIRRegister esi = new LIRRegister(5, 5, 4, "esi", CPU,
 			Byte);
-	public static final LIRRegister edi = new LIRRegister(6, 0, 4, "edi", CPU,
+	public static final LIRRegister edi = new LIRRegister(6, 6, 4, "edi", CPU,
 			Byte);
-	public static final LIRRegister esp = new LIRRegister(7, 0, 4, "esp", CPU,
+	public static final LIRRegister esp = new LIRRegister(7, 7, 4, "esp", CPU,
 			Byte);
 
 	/**
@@ -44,21 +44,21 @@ public final class X86 extends Architecture
 	public static final LIRRegister[] CPU_LIR_REGISTERs = new LIRRegister[]
 			{eax, edx, ecx, ebx, ebp, esi, edi, esp};
 
-	// float point register
-	public static final LIRRegister st0 = new LIRRegister(8, 0, 4, "st0", FPU);
-	public static final LIRRegister st1 = new LIRRegister(9, 0, 4, "st1", FPU);
-	public static final LIRRegister st2 = new LIRRegister(10, 0, 4, "st2", FPU);
-	public static final LIRRegister st3 = new LIRRegister(11, 0, 4, "st3", FPU);
-	public static final LIRRegister st4 = new LIRRegister(12, 0, 4, "st4", FPU);
-	public static final LIRRegister st5 = new LIRRegister(13, 0, 4, "st5", FPU);
-	public static final LIRRegister st6 = new LIRRegister(14, 0, 4, "st6", FPU);
-	public static final LIRRegister st7 = new LIRRegister(15, 0, 4, "st7", FPU);
+	// xmm register
+	public static final LIRRegister xmm0 = new LIRRegister(8, 0, 16, "xmm0", FPU);
+	public static final LIRRegister xmm1 = new LIRRegister(9, 1, 16, "xmm1", FPU);
+	public static final LIRRegister xmm2 = new LIRRegister(10, 2, 16, "xmm2", FPU);
+	public static final LIRRegister xmm3 = new LIRRegister(11, 3, 16, "xmm3", FPU);
+	public static final LIRRegister xmm4 = new LIRRegister(12, 4, 16, "xmm4", FPU);
+	public static final LIRRegister xmm5 = new LIRRegister(13, 5, 16, "xmm5", FPU);
+	public static final LIRRegister xmm6 = new LIRRegister(14, 6, 16, "xmm6", FPU);
+	public static final LIRRegister xmm7 = new LIRRegister(15, 7, 16, "xmm7", FPU);
 
 	/**
 	 * All float point registers.
 	 */
 	public static final LIRRegister[] FLOAT_LIR_REGISTERs = new LIRRegister[]
-			{st0, st1, st2, st3, st4, st5, st6, st7};
+			{ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7 };
 
 	/**
 	 * All registers including integer register and float point in {@code X86}
@@ -66,8 +66,8 @@ public final class X86 extends Architecture
 	 */
 	public static final LIRRegister[] CPU_FLOAT_LIR_REGISTERs =
 			new LIRRegister[]
-			{eax, edx, ecx, ebx, ebp, esi, edi, esp,
-			st0, st1, st2, st3, st4, st5, st6, st7};
+			{eax, edx, ecx, ebx, ebp, esi, edi, esp, xmm0, xmm1, xmm2, xmm3,
+					xmm4, xmm5, xmm6, xmm7 };
 
 	/**
 	 * This register just used for constructing instruction-relative address.
@@ -79,15 +79,15 @@ public final class X86 extends Architecture
 	 * architecture.
 	 */
 	public static final LIRRegister[] ALL_LIR_REGISTERs = new LIRRegister[]
-			{eax, edx, ecx, ebx, ebp, esi, edi, esp,
-					st0, st1, st2, st3, st4, st5, st6, st7, eip};
+			{eax, edx, ecx, ebx, ebp, esi, edi, esp, xmm0, xmm1, xmm2, xmm3,
+					xmm4, xmm5, xmm6, xmm7, eip};
 
 	public static final LIRRegisterValue ESP = esp.asValue(Long);
 
 	public X86()
 	{
 		super("X86", 4, ByteOrder.LittleEndian,
-				ALL_LIR_REGISTERs, 1, st7.encoding+1, 4);
+				ALL_LIR_REGISTERs, 1, xmm7.encoding+1, 4);
 	}
 
 	@Override public boolean isX86()

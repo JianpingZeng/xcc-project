@@ -266,16 +266,6 @@ public class DCE
 			inst.accept(this);
 		}
 
-		/**
-		 * Visits {@code Instruction} with visitor pattern.
-		 *
-		 * @param inst The instruction to be visited.
-		 */
-		public void visitInstruction(Instruction inst)
-		{
-			assert false;
-		}
-
 		private void markBinary(Instruction.Op2 inst)
 		{
 			if (inst.x instanceof Instruction)
@@ -299,249 +289,38 @@ public class DCE
 			}
 		}
 
-		/**
-		 * Visits {@code ADD_I} with visitor pattern.
-		 *
-		 * @param inst The ADD_I to be visited.
-		 */
-		public void visitADD_I(Instruction.ADD_I inst)
+		@Override
+		public void visitArithmeticOp(Instruction.ArithmeticOp inst)
 		{
 			markBinary(inst);
 		}
 
-		/**
-		 * Visits {@code SUB_I} with visitor pattern.
-		 *
-		 * @param inst The SUB_I to be visited.
-		 */
-		public void visitSUB_I(Instruction.SUB_I inst)
+		@Override
+		public void visitLogicOp(Instruction.LogicOp inst)
 		{
 			markBinary(inst);
 		}
 
-		/**
-		 * Visits {@code MUL_I} with visitor pattern.
-		 *
-		 * @param inst The MUL_I to be visited.
-		 */
-		public void visitMUL_I(Instruction.MUL_I inst)
+		@Override
+		public void visitShiftOp(Instruction.ShiftOp inst)
 		{
 			markBinary(inst);
 		}
 
-		/**
-		 * Visits {@code DIV_I} with visitor pattern.
-		 *
-		 * @param inst The DIV_I to be visited.
-		 */
-		public void visitDIV_I(Instruction.DIV_I inst)
+		@Override
+		public void visitCompare(Instruction.Cmp inst)
 		{
 			markBinary(inst);
 		}
 
-		/**
-		 * Visits {@code MOD_I} with visitor pattern.
-		 *
-		 * @param inst The MOD_I to be visited.
-		 */
-		public void visitMOD_I(Instruction.MOD_I inst)
+		public void visitIfOp(Instruction.IfOp inst)
 		{
-			markBinary(inst);
+			visitInstruction(inst);
 		}
 
-		/**
-		 * Visits {@code AND_I} with visitor pattern.
-		 *
-		 * @param inst The AND_I to be visited.
-		 */
-		public void visitAND_I(Instruction.AND_I inst)
+		public void visitSwitch(Instruction.SwitchInst inst)
 		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code OR_I} with visitor pattern.
-		 *
-		 * @param inst The OR_I to be visited.
-		 */
-		public void visitOR_I(Instruction.OR_I inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code XOR_I} with visitor pattern.
-		 *
-		 * @param inst The XOR_I to be visited.
-		 */
-		public void visitXOR_I(Instruction.XOR_I inst)
-		{
-			markBinary(inst);
-		}
-
-		@Override public void visitShiftOp(Instruction.ShiftOp inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code ADD_L} with visitor pattern.
-		 *
-		 * @param inst The ADD_L to be visited.
-		 */
-		public void visitADD_L(Instruction.ADD_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code SUB_I} with visitor pattern.
-		 *
-		 * @param inst The SUB_I to be visited.
-		 */
-		public void visitSUB_L(Instruction.SUB_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code MUL_L} with visitor pattern.
-		 *
-		 * @param inst The MUL_L to be visited.
-		 */
-		public void visitMUL_L(Instruction.MUL_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code DIV_L} with visitor pattern.
-		 *
-		 * @param inst The DIV_L to be visited.
-		 */
-		public void visitDIV_L(Instruction.DIV_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code MOD_L} with visitor pattern.
-		 *
-		 * @param inst The MOD_L to be visited.
-		 */
-		public void visitMOD_L(Instruction.MOD_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code AND_L} with visitor pattern.
-		 *
-		 * @param inst The AND_L to be visited.
-		 */
-		public void visitAND_L(Instruction.AND_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code OR_L} with visitor pattern.
-		 *
-		 * @param inst The OR_L to be visited.
-		 */
-		public void visitOR_L(Instruction.OR_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code XOR_L} with visitor pattern.
-		 *
-		 * @param inst The XOR_L to be visited.
-		 */
-		public void visitXOR_L(Instruction.XOR_L inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code ADD_F} with visitor pattern.
-		 *
-		 * @param inst The ADD_F to be visited.
-		 */
-		public void visitADD_F(Instruction.ADD_F inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code SUB_F} with visitor pattern.
-		 *
-		 * @param inst The SUB_F to be visited.
-		 */
-		public void visitSUB_F(Instruction.SUB_F inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code MUL_F} with visitor pattern.
-		 *
-		 * @param inst The MUL_F to be visited.
-		 */
-		public void visitMUL_F(Instruction.MUL_F inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code DIV_F} with visitor pattern.
-		 *
-		 * @param inst The DIV_F to be visited.
-		 */
-		public void visitDIV_F(Instruction.DIV_F inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code ADD_D} with visitor pattern.
-		 *
-		 * @param inst The ADD_D to be visited.
-		 */
-		public void visitADD_D(Instruction.ADD_D inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code SUB_D} with visitor pattern.
-		 *
-		 * @param inst The SUB_D to be visited.
-		 */
-		public void visitSUB_D(Instruction.SUB_D inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code MUL_D} with visitor pattern.
-		 *
-		 * @param inst The MUL_D to be visited.
-		 */
-		public void visitMUL_D(Instruction.MUL_D inst)
-		{
-			markBinary(inst);
-		}
-
-		/**
-		 * Visits {@code DIV_D} with visitor pattern.
-		 *
-		 * @param inst The DIV_D to be visited.
-		 */
-		public void visitDIV_D(Instruction.DIV_D inst)
-		{
-			markBinary(inst);
+			visitInstruction(inst);
 		}
 
 		/**
@@ -554,94 +333,9 @@ public class DCE
 			markUnary(inst);
 		}
 
-		/**
-		 * Visits {@code NEG_L} with vistor pattern.
-		 *
-		 * @param inst The inst to be visited.
-		 */
-		public void visitNEG_L(Instruction.NEG_L inst)
-		{
-			markUnary(inst);
-		}
-
-		/**
-		 * Visits {@code NEG_F} with vistor pattern.
-		 *
-		 * @param inst The inst to be visited.
-		 */
-		public void visitNEG_F(Instruction.NEG_F inst)
-		{
-			markUnary(inst);
-		}
-
-		/**
-		 * Visits {@code NEG_D} with vistor pattern.
-		 *
-		 * @param inst The inst to be visited.
-		 */
-		public void visitNEG_D(Instruction.NEG_D inst)
-		{
-			markUnary(inst);
-		}
-
 		public void visitConvert(Instruction.Convert inst)
 		{
 			markUnary(inst);
-		}
-
-		public void visitBR(Instruction.BR inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitICmp(Instruction.ICmp inst)
-		{
-			markBinary(inst);
-		}
-
-		public void visitLCmp(Instruction.LCmp inst)
-		{
-			markBinary(inst);
-		}
-
-		public void visitFCmp(Instruction.FCmp inst)
-		{
-			markBinary(inst);
-		}
-
-		public void visitDCmp(Instruction.DCmp inst)
-		{
-			markBinary(inst);
-		}
-
-		public void visitIfCmp_LT(Instruction.IfCmp_LT inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitIfCmp_LE(Instruction.IfCmp_LE inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitIfCmp_GT(Instruction.IfCmp_GT inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitIfCmp_GE(Instruction.IfCmp_GE inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitIfCmp_EQ(Instruction.IfCmp_EQ inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitIfCmp_NEQ(Instruction.IfCmp_NEQ inst)
-		{
-			visitInstruction(inst);
 		}
 
 		public void visitGoto(Instruction.Goto inst)
