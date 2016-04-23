@@ -9,7 +9,7 @@ import static hir.Operator.Flags.*;
  */
 public enum Operator
 {
-	Illegal("illegal", -1, 0),
+	None("illegal", -1, 0),
 	// terminators operation.
 	Ret("ret", 0, 0),
 	Br("br", Ret.index + 1, 0),

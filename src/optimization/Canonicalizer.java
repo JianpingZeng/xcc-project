@@ -1,10 +1,10 @@
 package optimization;
 
-import lir.ci.LIRConstant;
-import lir.ci.LIRKind;
 import hir.*;
 import hir.Instruction.*;
 import hir.Value.Constant;
+import lir.ci.LIRConstant;
+import lir.ci.LIRKind;
 import utils.Util;
 
 /**
@@ -73,251 +73,11 @@ public class Canonicalizer extends ValueVisitor
 	}
 
 	/**
-	 * Visits {@code ADD_I} with visitor pattern.
-	 *
-	 * @param inst The ADD_I to be visited.
-	 */
-	public void visitADD_I(Instruction.ADD_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code SUB_I} with visitor pattern.
-	 *
-	 * @param inst The SUB_I to be visited.
-	 */
-	public void visitSUB_I(Instruction.SUB_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code MUL_I} with visitor pattern.
-	 *
-	 * @param inst The MUL_I to be visited.
-	 */
-	public void visitMUL_I(Instruction.MUL_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code DIV_I} with visitor pattern.
-	 *
-	 * @param inst The DIV_I to be visited.
-	 */
-	public void visitDIV_I(Instruction.DIV_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code MOD_I} with visitor pattern.
-	 *
-	 * @param inst The MOD_I to be visited.
-	 */
-	public void visitMOD_I(Instruction.MOD_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
 	 * Visits {@code ShiftOp} with visitor pattern.
 	 *
 	 * @param inst The ShiftOp to be visited.
 	 */
 	public void visitShiftOp(ShiftOp inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code AND_I} with visitor pattern.
-	 *
-	 * @param inst The AND_I to be visited.
-	 */
-	public void visitAND_I(AND_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code OR_I} with visitor pattern.
-	 *
-	 * @param inst The OR_I to be visited.
-	 */
-	public void visitOR_I(Instruction.OR_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code XOR_I} with visitor pattern.
-	 *
-	 * @param inst The XOR_I to be visited.
-	 */
-	public void visitXOR_I(Instruction.XOR_I inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code ADD_L} with visitor pattern.
-	 *
-	 * @param inst The ADD_L to be visited.
-	 */
-	public void visitADD_L(Instruction.ADD_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code SUB_I} with visitor pattern.
-	 *
-	 * @param inst The SUB_I to be visited.
-	 */
-	public void visitSUB_L(Instruction.SUB_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code MUL_L} with visitor pattern.
-	 *
-	 * @param inst The MUL_L to be visited.
-	 */
-	public void visitMUL_L(Instruction.MUL_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code DIV_L} with visitor pattern.
-	 *
-	 * @param inst The DIV_L to be visited.
-	 */
-	public void visitDIV_L(Instruction.DIV_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code MOD_L} with visitor pattern.
-	 *
-	 * @param inst The MOD_L to be visited.
-	 */
-	public void visitMOD_L(Instruction.MOD_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code AND_L} with visitor pattern.
-	 *
-	 * @param inst The AND_L to be visited.
-	 */
-	public void visitAND_L(AND_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code OR_L} with visitor pattern.
-	 *
-	 * @param inst The OR_L to be visited.
-	 */
-	public void visitOR_L(Instruction.OR_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code XOR_L} with visitor pattern.
-	 *
-	 * @param inst The XOR_L to be visited.
-	 */
-	public void visitXOR_L(Instruction.XOR_L inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code ADD_F} with visitor pattern.
-	 *
-	 * @param inst The ADD_F to be visited.
-	 */
-	public void visitADD_F(Instruction.ADD_F inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code SUB_F} with visitor pattern.
-	 *
-	 * @param inst The SUB_F to be visited.
-	 */
-	public void visitSUB_F(Instruction.SUB_F inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code MUL_F} with visitor pattern.
-	 *
-	 * @param inst The MUL_F to be visited.
-	 */
-	public void visitMUL_F(Instruction.MUL_F inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code DIV_F} with visitor pattern.
-	 *
-	 * @param inst The DIV_F to be visited.
-	 */
-	public void visitDIV_F(Instruction.DIV_F inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code ADD_D} with visitor pattern.
-	 *
-	 * @param inst The ADD_D to be visited.
-	 */
-	public void visitADD_D(Instruction.ADD_D inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code SUB_D} with visitor pattern.
-	 *
-	 * @param inst The SUB_D to be visited.
-	 */
-	public void visitSUB_D(Instruction.SUB_D inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code MUL_D} with visitor pattern.
-	 *
-	 * @param inst The MUL_D to be visited.
-	 */
-	public void visitMUL_D(Instruction.MUL_D inst)
-	{
-		handleOp2(inst);
-	}
-
-	/**
-	 * Visits {@code DIV_D} with visitor pattern.
-	 *
-	 * @param inst The DIV_D to be visited.
-	 */
-	public void visitDIV_D(Instruction.DIV_D inst)
 	{
 		handleOp2(inst);
 	}
@@ -333,48 +93,6 @@ public class Canonicalizer extends ValueVisitor
 		if (v instanceof Constant)
 		{
 			setIntConstant(-v.asConstant().asInt());
-		}
-	}
-
-	/**
-	 * Visits {@code NEG_L} with vistor pattern.
-	 *
-	 * @param inst The inst to be visited.
-	 */
-	public void visitNEG_L(Instruction.NEG_L inst)
-	{
-		Value v = inst.x;
-		if (v instanceof Constant)
-		{
-			setLongConstant(-v.asConstant().asLong());
-		}
-	}
-
-	/**
-	 * Visits {@code NEG_F} with vistor pattern.
-	 *
-	 * @param inst The inst to be visited.
-	 */
-	public void visitNEG_F(Instruction.NEG_F inst)
-	{
-		Value v = inst.x;
-		if (v instanceof Constant)
-		{
-			setFloatConstant(-v.asConstant().asFloat());
-		}
-	}
-
-	/**
-	 * Visits {@code NEG_D} with vistor pattern.
-	 *
-	 * @param inst The inst to be visited.
-	 */
-	public void visitNEG_D(Instruction.NEG_D inst)
-	{
-		Value v = inst.x;
-		if (v instanceof Constant)
-		{
-			setDoubleConstant(-v.asConstant().asDouble());
 		}
 	}
 
@@ -512,121 +230,6 @@ public class Canonicalizer extends ValueVisitor
 					}
 				}
 			}
-		}
-	}
-
-	public void visitICmp(Instruction.ICmp inst)
-	{
-		Value x = inst.x;
-		Value y = inst.y;
-		Operator opcode = inst.opcode;
-		// if the two inputs operands are same
-		// the reduce it
-		if (x == y)
-		{
-			switch (opcode)
-			{
-				case ICmpNE:
-				case ICmpLT:
-				case ICmpGT:
-					setIntConstant(0);
-					return;
-				case ICmpEQ:
-				case ICmpLE:
-				case ICmpGE:
-					setIntConstant(1);
-					return;
-			}
-		}
-		if (x.isConstant() && y.isConstant())
-		{
-			Integer res = foldLongCompare(opcode, x.asConstant().asInt(),
-					y.asConstant().asInt());
-			assert res != null;
-			setIntConstant(res);
-			return;
-		}
-	}
-
-	public void visitLCmp(Instruction.LCmp inst)
-	{
-		Value x = inst.x;
-		Value y = inst.y;
-		Operator opcode = inst.opcode;
-		// if the two inputs operands are same
-		// the reduce it
-		if (x == y)
-		{
-			switch (opcode)
-			{
-				case LCmpNE:
-				case LCmpLT:
-				case LCmpGT:
-					setIntConstant(0);
-					return;
-				case LCmpEQ:
-				case LCmpLE:
-				case LCmpGE:
-					setIntConstant(1);
-					return;
-			}
-		}
-		if (x.isConstant() && y.isConstant())
-		{
-			Integer res = foldLongCompare(opcode, x.asConstant().asLong(),
-					y.asConstant().asLong());
-			assert res != null;
-			setIntConstant(res);
-			return;
-		}
-	}
-
-	/**
-	 * Folds comparison operation over float point number.
-	 *
-	 * @param inst
-	 */
-	public void visitFCmp(Instruction.FCmp inst)
-	{
-		Value x = inst.x;
-		Value y = inst.y;
-
-		if (x == y && x.isConstant())
-		{
-			float xval = x.asConstant().asFloat();
-			Integer res = foldFloatCompare(inst.opcode, xval, xval);
-			assert res
-					!= null : "invalid float point number on float comparion";
-			setIntConstant(res);
-		}
-		if (x.isConstant() && y.isConstant())
-		{
-			Integer res = foldFloatCompare(inst.opcode,
-					x.asConstant().asFloat(), y.asConstant().asFloat());
-			assert res
-					!= null : "invalid float point number on float comparion";
-			setIntConstant(res);
-		}
-	}
-
-	public void visitDCmp(Instruction.DCmp inst)
-	{
-		Value x = inst.x;
-		Value y = inst.y;
-
-		if (x == y && x.isConstant())
-		{
-			double xval = x.asConstant().asDouble();
-			Integer res = foldDoubleCompare(inst.opcode, xval, xval);
-			assert res != null : "invalid double point number on comparion op";
-			setIntConstant(res);
-		}
-		if (x.isConstant() && y.isConstant())
-		{
-			Integer res = foldDoubleCompare(inst.opcode,
-					x.asConstant().asDouble(), y.asConstant().asDouble());
-			assert res != null : "invalid double point number on comparion op";
-			setIntConstant(res);
 		}
 	}
 
@@ -933,8 +536,8 @@ public class Canonicalizer extends ValueVisitor
 						}
 						// reduce to (e & mask)
 						return setCanonical(
-								new AND_L(x.kind, s.x, Constant.forLong(mask),
-										"LAnd"));
+								new ArithmeticOp(x.kind, Operator.LAnd, s.x,
+										Constant.forLong(mask), "LAnd"));
 					}
 					else
 					{
@@ -948,8 +551,8 @@ public class Canonicalizer extends ValueVisitor
 							mask = mask << y;
 						}
 						return setCanonical(
-								new AND_I(x.kind, s.x, Constant.forInt(mask),
-										"IAnd"));
+								new ArithmeticOp(x.kind, Operator.IAnd, s.x,
+										Constant.forInt(mask), "IAnd"));
 					}
 				}
 			}
@@ -1087,45 +690,39 @@ public class Canonicalizer extends ValueVisitor
 			inst.swapOperands();
 	}
 
-	private Integer foldLongCompare(Operator opcode, long x, long y)
+	private Integer foldLongCompare(Condition cond, long x, long y)
 	{
-		switch (opcode)
+		switch (cond)
 		{
-			case ICmpEQ:
-			case LCmpEQ:
+			case EQ:
 				return x == y ? 1 : 0;
-			case ICmpLE:
-			case LCmpLE:
+			case LE:
 				return x <= y ? 1 : 0;
-			case ICmpLT:
-			case LCmpLT:
+			case LT:
 				return x < y ? 1 : 0;
-			case ICmpNE:
-			case LCmpNE:
+			case NE:
 				return x != y ? 1 : 0;
-			case ICmpGE:
-			case LCmpGE:
+			case GE:
 				return x >= y ? 1 : 0;
-			case ICmpGT:
-			case LCmpGT:
+			case GT:
 				return x > y ? 1 : 0;
 		}
 		return null;
 	}
 
-	private Integer foldFloatCompare(Operator opcode, float x, float y)
+	private Integer foldFloatCompare(Condition cond, float x, float y)
 	{
 		int result = 0;
 		if (x < y)
 			result = -1;
 		else if (x > y)
 			result = 1;
-		if (opcode == Operator.FCmpLT)
+		if (cond == Condition.LT)
 		{
 			if (Float.isNaN(x) || Float.isNaN(y))
 				return -1;
 		}
-		else if (opcode == Operator.FCmpGT)
+		else if (cond == Condition.GT)
 		{
 			if (Float.isNaN(x) || Float.isNaN(y))
 				return 1;
@@ -1136,19 +733,19 @@ public class Canonicalizer extends ValueVisitor
 		return null;
 	}
 
-	private Integer foldDoubleCompare(Operator opcode, double x, double y)
+	private Integer foldDoubleCompare(Condition cond, double x, double y)
 	{
 		int result = 0;
 		if (x < y)
 			result = -1;
 		else if (x > y)
 			result = 1;
-		if (opcode == Operator.DCmpLT)
+		if (cond == Condition.LT)
 		{
 			if (Double.isNaN(x) || Double.isNaN(y))
 				return -1;
 		}
-		else if (opcode == Operator.FCmpGT)
+		else if (cond ==  Condition.GT)
 		{
 			if (Double.isNaN(x) || Double.isNaN(y))
 				return 1;
@@ -1157,36 +754,6 @@ public class Canonicalizer extends ValueVisitor
 		}
 		// unknown comparison opcode.
 		return null;
-	}
-
-	public void visitIfCmp_LT(Instruction.IfCmp_LT inst)
-	{
-		reduceIf(inst);
-	}
-
-	public void visitIfCmp_LE(Instruction.IfCmp_LE inst)
-	{
-		reduceIf(inst);
-	}
-
-	public void visitIfCmp_GT(Instruction.IfCmp_GT inst)
-	{
-		reduceIf(inst);
-	}
-
-	public void visitIfCmp_GE(Instruction.IfCmp_GE inst)
-	{
-		reduceIf(inst);
-	}
-
-	public void visitIfCmp_EQ(Instruction.IfCmp_EQ inst)
-	{
-		reduceIf(inst);
-	}
-
-	public void visitIfCmp_NEQ(Instruction.IfCmp_NEQ inst)
-	{
-		reduceIf(inst);
 	}
 
 	private void reduceIf(IfOp inst)
@@ -1201,10 +768,10 @@ public class Canonicalizer extends ValueVisitor
 			reduceReflexiveIf(inst);
 			return;
 		}
-		Operator opcode = inst.opcode;
+
 		if (l.isConstant() && r.isConstant())
 		{
-			Boolean result = foldCondition(opcode, l.asConstant(),
+			Boolean result = foldCondition(inst.condition(), l.asConstant(),
 					r.asConstant());
 			;
 			if (result != null)
@@ -1224,16 +791,16 @@ public class Canonicalizer extends ValueVisitor
 	private void reduceReflexiveIf(IfOp inst)
 	{
 		BasicBlock sux = null;
-		switch (inst.opcode)
+		switch (inst.condition())
 		{
-			case IfEQ:
-			case IfLE:
-			case IfGE:
+			case EQ:
+			case LE:
+			case GE:
 				sux = inst.successor(true);
 				break;
-			case IfNE:
-			case IfLT:
-			case IfGT:
+			case NE:
+			case LT:
+			case GT:
 				sux = inst.successor(false);
 				break;
 			default:
@@ -1246,13 +813,13 @@ public class Canonicalizer extends ValueVisitor
 	 * Attempts to fold two constant over the given operator, such as, LT, EQ, NE
 	 * etc, and return the result of comparison.
 	 *
-	 * @param opcode The comparison operator.
+	 * @param cond The comparison operator.
 	 * @param l      The left side LIROperand.
 	 * @param r      The right side LIROperand.
 	 * @return The result of comparison, return true if comparison successfully
 	 * in specified op, otherwise, return false. Return null when the op is illegal.
 	 */
-	private Boolean foldCondition(Operator opcode, LIRConstant l, LIRConstant r)
+	private Boolean foldCondition(Condition cond, LIRConstant l, LIRConstant r)
 	{
 		LIRKind lk = l.kind;
 		switch (lk)
@@ -1261,20 +828,20 @@ public class Canonicalizer extends ValueVisitor
 			{
 				int x = l.asInt();
 				int y = r.asInt();
-				switch (opcode)
+				switch (cond)
 				{
-					case IfEQ:
-						return x == y ? true : false;
-					case IfLE:
-						return x <= y ? true : false;
-					case IfGE:
-						return x >= y ? true : false;
-					case IfNE:
-						return x != y ? true : false;
-					case IfLT:
-						return x < y ? true : false;
-					case IfGT:
-						return x > y ? true : false;
+					case EQ:
+						return x == y;
+					case LE:
+						return x <= y;
+					case GE:
+						return x >= y;
+					case NE:
+						return x != y;
+					case LT:
+						return x < y;
+					case GT:
+						return x > y;
 				}
 				break;
 			}
@@ -1282,24 +849,137 @@ public class Canonicalizer extends ValueVisitor
 			{
 				long x = l.asLong();
 				long y = r.asLong();
-				switch (opcode)
+				switch (cond)
 				{
-					case IfEQ:
-						return x == y ? true : false;
-					case IfLE:
-						return x <= y ? true : false;
-					case IfGE:
-						return x >= y ? true : false;
-					case IfNE:
-						return x != y ? true : false;
-					case IfLT:
-						return x < y ? true : false;
-					case IfGT:
-						return x > y ? true : false;
+					case EQ:
+						return x == y;
+					case LE:
+						return x <= y;
+					case GE:
+						return x >= y;
+					case NE:
+						return x != y;
+					case LT:
+						return x < y;
+					case GT:
+						return x > y;
 				}
 				break;
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Visits Arithmetic Operation with visitor pattern.
+	 *
+	 * @param inst The operation to be visited.
+	 */
+	public void visitArithmeticOp(ArithmeticOp inst)
+	{
+		handleOp2(inst);
+	}
+
+	/**
+	 * Visits Logical Operation with visitor pattern.
+	 *
+	 * @param inst The operation to be visited.
+	 */
+	public void visitLogicOp(LogicOp inst)
+	{
+		handleOp2(inst);
+	}
+
+	public void visitCompare(Cmp inst)
+	{
+		assert inst.kind != LIRKind.Void;
+
+		Value x = inst.x;
+		Value y = inst.y;
+
+		Condition cond = inst.condition();
+		// if the two operands are same
+		// then reduce it
+		if (x == y)
+		{
+			switch (inst.kind)
+			{
+				case Int:
+				case Long:
+					setIntConstant(0);
+					break;
+				case Float:
+					if (x.isConstant())
+					{
+						float xval = x.asConstant().asFloat();
+						Integer res = foldFloatCompare(cond, x.asConstant().asFloat(), y.asConstant().asFloat());
+						assert res
+								!= null : "invalid comparison operation in float";
+						setIntConstant(res);
+					}
+					break;
+				case Double:
+					if (x.isConstant())
+					{
+						double xval = x.asConstant().asDouble();
+						Integer res = foldDoubleCompare(cond, x.asConstant().asDouble(), y.asConstant().asDouble());
+						assert res != null : "invalid comparison in double";
+						setIntConstant(res);
+					}
+					break;
+			}
+		}
+		if (x.isConstant() && y.isConstant())
+		{
+			// both x and y are the constant
+			switch (inst.kind)
+			{
+				case Long:
+				case Int:
+				{
+					setIntConstant(
+							foldLongCompare(cond, x.asConstant().asLong(),
+									x.asConstant().asLong()));
+					break;
+				}
+				case Float:
+				{
+					Integer val = foldFloatCompare(cond,
+							x.asConstant().asFloat(), y.asConstant().asFloat());
+					assert val
+							!= null : "invalid operation in float comparison";
+					setIntConstant(val);
+					break;
+				}
+				case Double:
+				{
+					Integer val = foldDoubleCompare(cond,
+							x.asConstant().asDouble(),
+							y.asConstant().asDouble());
+					assert val
+							!= null : "invalid operation in float comparison";
+					setIntConstant(val);
+					break;
+				}
+			}
+		}
+		assert Util.archKindEqual(inst.kind, result.kind);
+	}
+
+	/**
+	 * Go through the value {@code Value}. Usually, this method is not used
+	 * instead of calling to the visitor to it's subclass, like {@code Constant}.
+	 *
+	 * @param val The instance of {@code Value} to be visited.
+	 */
+	public void visitValue(Value val)
+	{
+		Util.shouldNotReachHere();
+	}
+
+
+	public void visitUndef(Value.UndefValue undef)
+	{
+		Util.shouldNotReachHere();
 	}
 }

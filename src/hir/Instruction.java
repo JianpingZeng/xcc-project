@@ -439,7 +439,7 @@ public abstract class Instruction extends User
 
 	public static class Cmp extends Op2
 	{
-		Condition cond;
+		private Condition cond;
 
 		/**
 		 * Creates a instance of different subclass served as different
@@ -467,6 +467,11 @@ public abstract class Instruction extends User
 		{
 			visitor.visitCompare(this);
 		}
+		
+		public Condition condition()
+        {
+	        return this.cond;
+        }
 	}
 
 	/**

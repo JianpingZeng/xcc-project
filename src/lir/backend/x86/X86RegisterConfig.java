@@ -99,7 +99,7 @@ public final class X86RegisterConfig implements RegisterConfig
 	{
 		if (instance == null)
 		{
-			instance = new X86RegisterConfig(ebp, eax, st0, ebx,
+			instance = new X86RegisterConfig(ebp, eax, xmm0, ebx,
 					new LIRRegister[] { eax, ebx, ecx, edx, esi, edi},
 					new LIRRegister[] { eax, edx, ecx },
 					new LIRRegister[] { ecx, edx, esi, edi},

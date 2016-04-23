@@ -1341,7 +1341,7 @@ public final class LinearScan
 	private void allocateRegisters()
 	{
 		Interval precoloredIntervals;
-		Interval notPrecolredIntervals;
+		Interval notPrecoloredIntervals;
 
 		Pair<Interval, Interval> result = createUnhandledLists(
 				IS_PRECOLORED_INTERVAL, IS_VARIABLE_INTERVAL);
@@ -1349,13 +1349,18 @@ public final class LinearScan
 		// fixed register
 		precoloredIntervals = result.first;
 		// virtual register waiting to be colored
-		notPrecolredIntervals = result.second;
+		notPrecoloredIntervals = result.second;
 
 		// allocate cpu register no fpu
 		LinearScanWalker walker = new LinearScanWalker(this,
-				precoloredIntervals, notPrecolredIntervals);
+				precoloredIntervals, notPrecoloredIntervals);
 		walker.walk();
 		walker.finishAllocation();
+
+
+		// allocates gpu register as follows if current processor is not supported
+		// with SSE/SSE2 instruction set
+
 	}
 
 	private void resolveDataFlow()

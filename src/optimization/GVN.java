@@ -50,7 +50,7 @@ public class GVN
 		assert startBlock == m.getEntryBlock() &&
 				startBlock.getNumOfPreds() == 0 &&
 				DT.getIDom(startBlock) == null:
-				"Illegal start block of CFG.";
+				"None start block of CFG.";
 
 		valueMaps.put(startBlock, new ValueMap());
 
