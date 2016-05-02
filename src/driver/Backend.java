@@ -63,6 +63,7 @@ public final class Backend
 			Method m = itr.next();
 			// create LIRGenerator for every method
 			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator(m);
+			this.stackFrame = new StackFrame(this, m);
 
 			for (BasicBlock block : m)
 				lirGenerator.doBlock(block);

@@ -18,13 +18,9 @@ import java.util.BitSet;
  *          | incoming overflow argument n   |
  *          |     ...                        |
  *          | incoming overflow argument 0   |
- *          +--------------------------------+ Caller frame
- *          |                                |
- *          : custom area*                   :
- *          |                                |
- *   -------+--------------------------------+---------------------
+ *        --+--------------------------------+--Caller frame
  *          | return address                 |
- *          +--------------------------------+                  ---
+ * %ebp --> +--------------------------------+                  ---
  *          |                                |                   ^
  *          : callee save area               :                   |
  *          |                                |                   |
@@ -41,12 +37,8 @@ import java.util.BitSet;
  *          +- - - - - - - - - - - - - - - - +   slot            |
  *          | outgoing overflow argument n   |  indexes          |
  *          |     ...                        |     |             |
- *          | outgoing overflow argument 0   |     v             |
- *          +--------------------------------+    ---            |
- *          |                                |                   |
- *          : custom area                    :                   |
- *    %sp   |                                |                   v
- *   -------+--------------------------------+----------------  ---
+ *          | outgoing overflow argument 0   |     v             v
+ *  %esp--> +--------------------------------+----------------  ---
  *
  * </pre>
  * Note that the length of {@link hir.Instruction.Alloca ALLOCA} blocks and
@@ -123,7 +115,8 @@ public final class StackFrame
 	 *
 	 * @param type      the type of calling convention being requested
 	 * @param signature the signature of the arguments
-	 * @return a {@link CallingConvention} instance describing the location of parameters and the return value
+	 * @return a {@link CallingConvention} instance describing the location of
+	 *                  parameters and the return value
 	 */
 	public CallingConvention getCallingConvention(LIRKind[] signature,
 			Type type)
@@ -189,6 +182,7 @@ public final class StackFrame
 
 		this.spillSlotCount = spillSlotCount;
 		int frameSize = offsetToStackBlocksEnd();
+
 		CalleeSaveLayout csl = backend.registerConfig
 				.getCalleeSaveLayout();
 		if (csl != null)
@@ -226,7 +220,8 @@ public final class StackFrame
 	/**
 	 * Gets the stack address within this frame for a given reserved stack block.
 	 *
-	 * @param stackBlock the value returned from {@link #reserveStackBlock(int, boolean)} identifying the stack block
+	 * @param stackBlock the value returned from {@link #reserveStackBlock(int, boolean)}
+	 *                      identifying the stack block
 	 * @return a representation of the stack location
 	 */
 	public LIRAddress toStackAddress(StackBlock stackBlock)
@@ -254,7 +249,8 @@ public final class StackFrame
 	}
 
 	/**
-	 * Encapsulates the details of a stack block reserved by a call to {@link StackFrame#reserveStackBlock(int, boolean)}.
+	 * Encapsulates the details of a stack block reserved by a call to
+	 * {@link StackFrame#reserveStackBlock(int, boolean)}.
 	 */
 	public static final class StackBlock
 	{
@@ -288,11 +284,11 @@ public final class StackFrame
 	 * Reserves a block of memory in the frame of the method being compiled.
 	 *
 	 * @param size the number of bytes to reserve
-	 * @param refs specifies if the block is all references
+	 * @param refs specifies if the block is references
 	 * @return a descriptor of the reserved block that can be used with
-	 * {@link #toStackAddress(StackBlock)} once register
+	 *              {@link #toStackAddress(StackBlock)} once register
 	 * allocation is complete and the length of the frame has been
-	 * {@linkplain #finalizeFrame(int) finalized}.
+	 *              {@linkplain #finalizeFrame(int) finalized}.
 	 */
 	public StackBlock reserveStackBlock(int size, boolean refs)
 	{
@@ -329,42 +325,53 @@ public final class StackFrame
 		assert offset <= (frameSize() - size) : "slot outside of frame";
 		return offset;
 	}
+
+	/**
+	 * The offset to the beginning of spill area from stack pointer(%sp).
+	 * @return
+	 */
 	private int offsetToSpillArea()
 	{
-		return outgoingSize + customAreaSize();
+		return outgoingSize;
 	}
-
+	/**
+	 * The offset to the ending of spill area from stack pointer(%sp).
+	 * @return
+	 */
 	private int offsetToSpillEnd()
 	{
 		return offsetToSpillArea()
 				+ spillSlotCount * backend.targetMachine.spillSlotSize;
 	}
 
-	private int offsetToMonitors()
+	/*
+	public int customAreaSize()
+	{
+		return backend.runtime.getCustomStackAreaSize();
+	}*/
+
+	/*public int offsetToCustomArea()
+	{
+		return 0;
+	}*/
+
+	/**
+	 * The offset to the beginning of stack block area from stack pointer(%sp).
+	 * @return
+	 */
+	private int offsetToStackBlocks()
 	{
 		return offsetToSpillEnd();
 	}
 
-	public int customAreaSize()
-	{
-		return backend.runtime.getCustomStackAreaSize();
-	}
-
-	public int offsetToCustomArea()
-	{
-		return 0;
-	}
-
-	private int offsetToStackBlocks()
-	{
-		return offsetToMonitorsEnd();
-	}
-
+	/**
+	 * The offset to the ending position of stack block area from stack pointer(%sp).
+	 * @return
+	 */
 	private int offsetToStackBlocksEnd()
 	{
 		return offsetToStackBlocks() + stackBlocksSize;
 	}
-
 	public int offsetToCalleeSaveAreaStart()
 	{
 		CalleeSaveLayout csl = backend.registerConfig
@@ -397,8 +404,7 @@ public final class StackFrame
 		{
 			spillSlotCount = -1;
 		}
-		return (outgoingSize + customAreaSize())
-				/ backend.targetMachine.spillSlotSize;
+		return (outgoingSize) / backend.targetMachine.spillSlotSize;
 	}
 
 	/**
@@ -424,6 +430,5 @@ public final class StackFrame
 		}
 		return frameRefMap;
 	}
-
 }
 

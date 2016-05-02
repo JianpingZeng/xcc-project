@@ -358,7 +358,7 @@ public class Value implements Cloneable
 	{
 		/**
 		 * The inst type of this local variable.
-		 */
+
 		Type valueType;
 		/**
 		 * The memory address allocated by instruction {@code Alloca} is related

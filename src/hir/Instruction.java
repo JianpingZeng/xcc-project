@@ -677,7 +677,7 @@ public abstract class Instruction extends User
 		public Value getIncomingValue(int index)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the length of list";
+					< inputs.length : "The index is beyond out the num of list";
 			return inputs[index].first;
 		}
 
@@ -690,7 +690,7 @@ public abstract class Instruction extends User
 		public BasicBlock getBasicBlock(int index)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the length of list";
+					< inputs.length : "The index is beyond out the num of list";
 			return inputs[index].second;
 		}
 
@@ -703,7 +703,7 @@ public abstract class Instruction extends User
 		public void setParameter(int index, Value value)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the length of list";
+					< inputs.length : "The index is beyond out the num of list";
 
 			inputs[index].first = value;
 		}
@@ -717,7 +717,7 @@ public abstract class Instruction extends User
 		public void setBasicBlock(int index, BasicBlock block)
 		{
 			assert index >= 0 && index
-					< inputs.length : "The index is beyond out the length of list";
+					< inputs.length : "The index is beyond out the num of list";
 
 			inputs[index].second = block;
 		}
@@ -772,25 +772,36 @@ public abstract class Instruction extends User
 	}
 
 	/**
-	 * This class implements allocating memory at stack frame of current
-	 * executed function.
+	 * This class was served functionally as allocating memory at stack frame.
+	 * <b>Note that </b>all of heap allocation is accomplished by invoking the
+	 * C language library function, currently.
 	 */
 	public static class Alloca extends Instruction
 	{
-		private Value length;
+		/**
+		 * The number of elements if allocating is used for array.
+		 */
+		private Value num;
 
-		public Alloca(LIRKind kind, Value length, String name)
+		/**
+		 * Creates a new {@linkplain Alloca} HIR that allocates memory for specified
+		 * {@LIRKind kind} and the numbers of to be allocated element.
+		 * @param kind  The data kind of allocated data which is instance of {@linkplain LIRKind}.
+		 * @param num   The number of elements if allocating is used for array.
+		 * @param name The name of this instruction for debugging.
+		 */
+		public Alloca(LIRKind kind, Value num, String name)
 		{
 			super(kind, Operator.Alloca, name);
-			this.length = length;
+			this.num = num;
 		}
 
 		/**
-		 * Gets the instruction that produced the length argument.
+		 * Gets the instruction that produced the num argument.
 		 */
 		public Value length()
 		{
-			return length;
+			return num;
 		}
 
 		@Override public void accept(ValueVisitor visitor)
