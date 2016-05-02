@@ -53,7 +53,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 	public void visitAlloca(Instruction.Alloca inst)
 	{
-		LIRValue result = createResultVariable(inst);
+		LIRValue result = createResultVR(inst);
 		assert inst.length().isConstant() :
 				"Alloca instruction 'length' is not a constant" + inst.length();
 		int size = inst.length().asConstant().asInt();
@@ -67,8 +67,8 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	 */
 	public void visitStoreInst(Instruction.StoreInst inst)
 	{
-		LIRVariable valReg = createResultVariable(inst.value);
-		LIRVariable addrReg= createResultVariable(inst.dest);
+		LIRVariable valReg = createResultVR(inst.value);
+		LIRVariable addrReg= createResultVR(inst.dest);
 	}
 
 	/**
@@ -79,8 +79,8 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	 */
 	public void visitLoadInst(Instruction.LoadInst inst)
 	{
-		LIRVariable srcAddrReg = createResultVariable(inst.from);
-		LIRVariable destReg = createResultVariable(inst);
+		LIRVariable srcAddrReg = createResultVR(inst.from);
+		LIRVariable destReg = createResultVR(inst);
 		if (inst.kind.isLong())
 		{
 			/**
@@ -227,7 +227,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			LIRValue divisor = load(
 					instr.y);            // divisor can be in any (other) register
 
-			LIRValue result = createResultVariable(instr);
+			LIRValue result = createResultVR(instr);
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
@@ -258,7 +258,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			right.loadItem();
 
 			arithmeticOpLong(opcode, LMUL_OUT, left, right.result());
-			LIRValue result = createResultVariable(instr);
+			LIRValue result = createResultVR(instr);
 			lir.move(LMUL_OUT, result);
 		}
 		else
@@ -268,7 +268,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			LIRValue left = load(instr.x);
 			// don't load constants to save register
 			right.loadNonconstant();
-			createResultVariable(instr);
+			createResultVR(instr);
 			arithmeticOpLong(opcode, instr.LIROperand(), left, right.result());
 		}
 	}
@@ -309,7 +309,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			// this division instruction.
 			LIRRegisterValue tmp = RDX_I;
 
-			LIRValue result = createResultVariable(instr);
+			LIRValue result = createResultVR(instr);
 			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
@@ -378,14 +378,14 @@ public final class AMD64LIRGenerator extends LIRGenerator
 				{
 					tmp = newVariable(LIRKind.Int);
 				}
-				createResultVariable(instr);
+				createResultVR(instr);
 
 				arithmeticOpInt(opcode, instr.LIROperand(), leftArg.result(),
 						rightArg.result(), tmp);
 			}
 			else
 			{
-				createResultVariable(instr);
+				createResultVR(instr);
 				LIRValue tmp = ILLEGAL;
 				arithmeticOpInt(opcode, instr.LIROperand(), leftArg.result(),
 						rightArg.result(), tmp);
@@ -443,7 +443,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadNonconstant();
-		LIRVariable reg = createResultVariable(instr);
+		LIRVariable reg = createResultVR(instr);
 		logicOp(op, left.result(), right.result(), reg);
 	}
 
@@ -464,7 +464,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		}
 
 		LIRValue value = load(inst.x);
-		LIRValue reg = createResultVariable(inst);
+		LIRValue reg = createResultVR(inst);
 
 		shiftOp(inst.opcode, reg, value, count, ILLEGAL);
 	}
@@ -494,7 +494,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadItem();
-		LIRValue reg = createResultVariable(inst);
+		LIRValue reg = createResultVR(inst);
 		if (inst.x.kind.isFloatOrDouble())
 		{
 			lir.fcmp2int(left.result(), right.result(), reg);

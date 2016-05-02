@@ -59,6 +59,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		this.operands = new OperandPool(backend.targetMachine);
 		variablesForConstants = new ArrayList<>();
 	}
+
 	/**
 	 * generates LIR instruction for specified basic block.
 	 *
@@ -444,7 +445,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		{
 			resultReg = newVariable(inst.kind);
 		}
-		// assign the real arguments into specified position
+		// assign the real arguments into specified position where is stack usually
 		invokeLoadArguments(inst, args, locations);
 
 		// emit invocation code
@@ -487,6 +488,7 @@ public abstract class LIRGenerator extends ValueVisitor
 			}
 		}
 	}
+
 	private LIRItem[] invokeVisitArgument(Instruction.Invoke instr)
 	{
 		ArrayList<LIRItem> argumentItems = new ArrayList<>();
@@ -498,10 +500,50 @@ public abstract class LIRGenerator extends ValueVisitor
 		return argumentItems.toArray(new LIRItem[argumentItems.size()]);
 	}
 
-	// A special instruction, phi function.
+	/**
+	 * The Swreedbar's algorithm was adopted for transforming back CSSA (conventional
+	 * SSA) to non-SSA. Currently, we can just implements the first method which is
+	 * such naive that too many redundant copy operation will be introduced. Future,
+	 * we might implements the third method proposed by Swreedbar for improving the
+	 * efficiency, like the size of generating code. Please visits following links
+	 * about the Swreedbar's algorithm for more detaisl.
+	 * <a href="https://www.tjhsst.edu/~rlatimer/papers/sreedharTranslatingOutOfStaticSingleAssignmentForm.pdf">Translating Out of Static Single Assignment Form</a>
+	 * @param inst
+	 */
 	public void visitPhi(Instruction.Phi inst)
 	{
+		assert (inst != null) && inst.kind != LIRKind.Illegal :
+		"illegal phi can not be resolved";
+		// creates vritual register for this phi function
+		LIRValue phiRes = operandForPhi(inst);
+		LIRVariable phiTemp = newVariable(inst.kind);
 
+		int idx = inst.getNumberIncomingValues() - 1;
+		while (idx>= 0)
+		{
+			Value x1 = inst.getIncomingValue(idx);
+			LIRValue operand = IllegalValue;
+			if (x1 instanceof Phi)
+			{
+				operand = operandForPhi((Phi)x1);
+			}
+			// the ith incoming argument is not phi
+			if (operand.isIllegal())
+			{
+				assert x1 instanceof Value.Constant ||
+						x1 instanceof Instruction;
+				operand = operandForInstruction(x1);
+			}
+
+			// creates temporary virtual variable
+			LIRVariable t = newVariable(x1.kind);
+
+			BasicBlock pred = inst.getBasicBlock(idx);
+
+			pred.getLIRBlock().lir().move(operand, t);
+			pred.getLIRBlock().lir().move(t, phiTemp);
+		}
+		lir.move(phiTemp, phiRes);
 	}
 	/**
 	 * Code for a constant is generated lazily unless the constant is frequently
@@ -529,7 +571,7 @@ public abstract class LIRGenerator extends ValueVisitor
 					// put into LIRRegisters when they are used multiple times within a
 					// block.  After the block completes their operand will be
 					// cleared so that other blocks can't refer to that register.
-					LIRVariable reg = createResultVariable(Const);
+					LIRVariable reg = createResultVR(Const);
 					lir.move(res, reg);
 				}
 				else
@@ -892,20 +934,20 @@ public abstract class LIRGenerator extends ValueVisitor
 				assert x instanceof Phi;
 				//|| x instanceof Local : "only for Phi and Local";
 				// allocate a variable for this local or phi
-				createResultVariable(x);
+				createResultVR(x);
 			}
 		}
 		return x.LIROperand();
 	}
 
 	/**
-	 * Allocates a variable LIROperand to hold the result of a given instruction.
-	 * This can only be performed once for any given instruction.
+	 * Allocates a virtual register (variable LIROperand ) to hold the result of
+	 * a given instruction. This can only be performed once for any given instruction.
 	 *
 	 * @param x an instruction that produces a result
 	 * @return the variable assigned to hold the result produced by {@code x}
 	 */
-	protected LIRVariable createResultVariable(Value x)
+	protected LIRVariable createResultVR(Value x)
 	{
 		LIRVariable operand = newVariable(x.kind);
 		setResult(x, operand);

@@ -592,7 +592,7 @@ public class HIRGenerator extends ASTVisitor
 	private Alloca createEnterBlockAlloca(LIRKind kind, VarDef var)
 	{
 		Alloca inst = createEnterBlockAlloca(kind, var.name);
-		// associte its local with variable symbol
+		// associate its local with variable symbol
 		var.sym.varInst = inst;
 
 		return inst;

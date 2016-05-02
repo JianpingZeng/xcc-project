@@ -12,6 +12,8 @@ import lir.ci.LIRVariable;
 import utils.NumUtil;
 import utils.Util;
 
+import java.util.HashMap;
+
 /**
  * @author Jianping Zeng
  */
@@ -53,22 +55,39 @@ public final class X86LIRGenerator extends LIRGenerator
 
 	public void visitAlloca(Instruction.Alloca inst)
 	{
-		LIRValue result = createResultVariable(inst);
+		LIRValue result = createResultVR(inst);
 		assert inst.length().isConstant() :
-				"Alloca instruction 'length' is not a constant" + inst.length();
-		int size = inst.length().asConstant().asInt();
+				"Alloca instruction 'length' is not a constant " + inst.length();
+
+		int len = inst.length().asConstant().asInt();
+
+		// the memory size occupied of one element in Byte
+		int elemSize = backend.targetMachine.sizeInBytes(inst.kind);
+
 		StackFrame.StackBlock stackBlock = backend.frameMap()
-				.reserveStackBlock(size, false);
+				.reserveStackBlock(len * elemSize, false);
+		allocaStackBlock.put(inst, stackBlock);
+
 		lir.alloca(stackBlock, result);
 	}
+
+	/**
+	 * This hashmap just for mapping from Alloca instruction to its allocated
+	 * Stack Block.
+	 */
+	private HashMap<Instruction.Alloca, StackFrame.StackBlock> allocaStackBlock
+			= new HashMap<>();
+
 	/**
 	 * Implements store instructions in terms of the X86 'mov' instruction.
 	 * @param inst
 	 */
 	public void visitStoreInst(Instruction.StoreInst inst)
 	{
-		LIRVariable valReg = createResultVariable(inst.value);
-		LIRVariable addrReg= createResultVariable(inst.dest);
+		LIRVariable valReg = createResultVR(inst.value);
+		StackFrame.StackBlock stackBlock = allocaStackBlock.get(inst.dest);
+		assert stackBlock != null: "Alloca isn't allocated in stack";
+		lir.move(valReg, backend.frameMap().toStackAddress(stackBlock));
 	}
 
 	/**
@@ -79,21 +98,14 @@ public final class X86LIRGenerator extends LIRGenerator
 	 */
 	public void visitLoadInst(Instruction.LoadInst inst)
 	{
-		LIRVariable srcAddrReg = createResultVariable(inst.from);
-		LIRVariable destReg = createResultVariable(inst);
-		if (inst.kind.isLong())
-		{
-			/**
-			 srcAddrReg = new LIRAddress(LIRKind.Double,
-			 srcAddrReg.base(), srcAddrReg.index,
-			 srcAddrReg.scale(), srcAddrReg.disp());
-			 */
-		}
-		else
-		{
+		LIRVariable srcReg = createResultVR(inst.from);
+		StackFrame.StackBlock stackBlock = allocaStackBlock.get(inst.from);
 
-		}
+		assert stackBlock != null: "Alloca isn't allocated in stack";
+
+		lir.move(backend.frameMap().toStackAddress(stackBlock), srcReg);
 	}
+
 	@Override protected void doIfCmp(Instruction.IfOp instr)
 	{
 		LIRKind kind = instr.x().kind;
@@ -227,7 +239,7 @@ public final class X86LIRGenerator extends LIRGenerator
 			LIRValue divisor = load(
 					instr.y);            // divisor can be in any (other) register
 
-			LIRValue result = createResultVariable(instr);
+			LIRValue result = createResultVR(instr);
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
@@ -258,7 +270,7 @@ public final class X86LIRGenerator extends LIRGenerator
 			right.loadItem();
 
 			arithmeticOpLong(opcode, LMUL_OUT, left, right.result());
-			LIRValue result = createResultVariable(instr);
+			LIRValue result = createResultVR(instr);
 			lir.move(LMUL_OUT, result);
 		}
 		else
@@ -268,7 +280,7 @@ public final class X86LIRGenerator extends LIRGenerator
 			LIRValue left = load(instr.x);
 			// don't load constants to save register
 			right.loadNonconstant();
-			createResultVariable(instr);
+			createResultVR(instr);
 			arithmeticOpLong(opcode, instr.LIROperand(), left, right.result());
 		}
 	}
@@ -309,7 +321,7 @@ public final class X86LIRGenerator extends LIRGenerator
 			// this division instruction.
 			LIRRegisterValue tmp = EDX_I;
 
-			LIRValue result = createResultVariable(instr);
+			LIRValue result = createResultVR(instr);
 			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
@@ -378,14 +390,14 @@ public final class X86LIRGenerator extends LIRGenerator
 				{
 					tmp = newVariable(LIRKind.Int);
 				}
-				createResultVariable(instr);
+				createResultVR(instr);
 
 				arithmeticOpInt(opcode, instr.LIROperand(), leftArg.result(),
 						rightArg.result(), tmp);
 			}
 			else
 			{
-				createResultVariable(instr);
+				createResultVR(instr);
 				LIRValue tmp = ILLEGAL;
 				arithmeticOpInt(opcode, instr.LIROperand(), leftArg.result(),
 						rightArg.result(), tmp);
@@ -443,7 +455,7 @@ public final class X86LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadNonconstant();
-		LIRVariable reg = createResultVariable(instr);
+		LIRVariable reg = createResultVR(instr);
 		logicOp(op, left.result(), right.result(), reg);
 	}
 
@@ -464,7 +476,7 @@ public final class X86LIRGenerator extends LIRGenerator
 		}
 
 		LIRValue value = load(inst.x);
-		LIRValue reg = createResultVariable(inst);
+		LIRValue reg = createResultVR(inst);
 
 		shiftOp(inst.opcode, reg, value, count, ILLEGAL);
 	}
@@ -494,7 +506,7 @@ public final class X86LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadItem();
-		LIRValue reg = createResultVariable(inst);
+		LIRValue reg = createResultVR(inst);
 		if (inst.x.kind.isFloatOrDouble())
 		{
 			lir.fcmp2int(left.result(), right.result(), reg);
