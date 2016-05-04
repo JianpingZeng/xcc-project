@@ -84,7 +84,7 @@ public final class BasicBlock implements Iterable<Instruction>
 		return LIRBlock.label;
 	}
 
-	public void setFirstLIRInstruction(int firstLIRInstructionID)
+	public void setFirstLIRInstructionId(int firstLIRInstructionID)
 	{
 		LIRBlock.firstLIRInstructionID = firstLIRInstructionID;
 	}

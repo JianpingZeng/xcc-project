@@ -6,11 +6,14 @@ import lir.LIRInstruction;
 import lir.LIROp1;
 import lir.LIROpcode;
 import lir.ci.LIRBranch;
-
 import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * This class is served as eliminating moves operation between predecessor and
+ * successor, while the last move instruction of all predecessors are same, removing
+ * those and inserting those into the head of current block.
+ *
  * @author Jianping Zeng
  */
 public final class EdgeMoveOptimizer
@@ -24,7 +27,7 @@ public final class EdgeMoveOptimizer
 	{
 		EdgeMoveOptimizer optimizer = new EdgeMoveOptimizer();
 
-		// ignore the first block in the list (index 0 is not processed)
+		// ignore the first block in the list (so, index 0 is not processed)
 		for (int i = blockList.size() - 1; i >= 1; i--)
 		{
 			BasicBlock block = blockList.get(i);
@@ -44,17 +47,18 @@ public final class EdgeMoveOptimizer
 
 	private EdgeMoveOptimizer()
 	{
-		edgeInstructionSeqences = new ArrayList<List<LIRInstruction>>(4);
+		edgeInstructionSeqences = new ArrayList<>(4);
 	}
 
 	/**
 	 * Determines if two operations are both {@linkplain LIROpcode#Move moves}
-	 * that have the same {@linkplain LIROp1#operand() source} and {@linkplain LIROp1#result() destination}
-	 * operands.
+	 * that have the same {@linkplain LIROp1#operand() source} and
+	 * {@linkplain LIROp1#result() destination} operands.
 	 *
 	 * @param op1 the first instruction to compare
 	 * @param op2 the second instruction to compare
-	 * @return {@opcode true} if {@opcode op1} and {@opcode op2} are the same by the above algorithm
+	 * @return {@opcode true} if {@opcode op1} and {@opcode op2} are the same by
+	 *                          the above algorithm
 	 */
 	private boolean same(LIRInstruction op1, LIRInstruction op2)
 	{
@@ -105,8 +109,8 @@ public final class EdgeMoveOptimizer
 
 			if (pred.getNumOfSuccs() != 1)
 			{
-				// this can happen with switch-statements where multiple edges are between
-				// the same blocks.
+				// this can happen with switch-statements where multiple edges
+				// are between the same blocks.
 				return;
 			}
 
@@ -125,9 +129,13 @@ public final class EdgeMoveOptimizer
 			edgeInstructionSeqences.add(seq);
 		}
 
-		// process lir-instructions while all predecessors end with the same instruction
+		// process lir-instructions while all predecessors end with the same
+		// instruction
 		while (true)
 		{
+			if (edgeInstructionSeqences.isEmpty())
+				return;
+
 			List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
 			if (seq.isEmpty())
 			{
@@ -163,11 +171,11 @@ public final class EdgeMoveOptimizer
 	 */
 	private void optimizeMovesAtBlockBegin(BasicBlock block)
 	{
-
 		edgeInstructionSeqences.clear();
 		int numSux = block.getNumOfSuccs();
 
-		List<LIRInstruction> instructions = block.getLIRBlock().lir().instructionsList();
+		List<LIRInstruction> instructions =
+				block.getLIRBlock().lir().instructionsList();
 
 		assert numSux == 2 : "method should not be called otherwise";
 		assert instructions.get(instructions.size() - 1).opcode
@@ -183,13 +191,14 @@ public final class EdgeMoveOptimizer
 				&& branch.opcode != LIROpcode.CondFloatBranch))
 		{
 			// not a valid case for optimization
-			// currently, only blocks that end with two branches (conditional branch followed
-			// by unconditional branch) are optimized
+			// currently, only blocks that end with two branches (conditional
+			// branch followed by unconditional branch) are optimized
 			return;
 		}
 
 		// now it is guaranteed that the block ends with two branch instructions.
-		// the instructions are inserted at the end of the block before these two branches
+		// the instructions are inserted at the end of the block before these
+		// two branches
 		int insertIdx = instructions.size() - 2;
 		
 		{
@@ -210,15 +219,16 @@ public final class EdgeMoveOptimizer
 		for (int i = 0; i < numSux; i++)
 		{
 			BasicBlock sux = block.succAt(i);
-			List<LIRInstruction> suxInstructions = sux.getLIRBlock().lir().instructionsList();
+			List<LIRInstruction> suxInstructions =
+					sux.getLIRBlock().lir().instructionsList();
 
 			assert suxInstructions.get(0).opcode
 					== LIROpcode.Label : "block must start with label";
 
 			if (sux.getNumOfPreds() != 1)
 			{
-				// this can happen with switch-statements where multiple edges are between
-				// the same blocks.
+				// this can happen with switch-statements where multiple edges
+				// are between the same blocks.
 				return;
 			}
 			assert sux.predAt(0) == block : "invalid control flow";
@@ -229,7 +239,8 @@ public final class EdgeMoveOptimizer
 			edgeInstructionSeqences.add(seq);
 		}
 
-		// process LIR instructions while all successors begin with the same instruction
+		// process LIR instructions while all successors begin with the same
+		// instruction
 		while (true)
 		{
 			List<LIRInstruction> seq = edgeInstructionSeqences.get(0);

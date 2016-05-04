@@ -86,24 +86,27 @@ public final class Interval
 			Interval list = get(binding);
 			Interval prev = null;
 			Interval cur = list;
-			while (cur.currentFrom() < interval.currentFrom())
+
+			// a insertion sort algorithm was adopted
+			while (interval.currentFrom() >= cur.currentFrom())
 			{
 				prev = cur;
 				cur = cur.next;
 			}
-			Interval result = list;
+
 			if (prev == null)
 			{
 				// add to head of list
-				result = interval;
+				list = interval;
 			}
 			else
 			{
 				// add before 'cur'
 				prev.next = interval;
 			}
+			// extracts common expression out of if-else statement
 			interval.next = cur;
-			set(binding, result);
+			set(binding, list);
 		}
 
 		/**
@@ -117,6 +120,7 @@ public final class Interval
 		public void addToListSortedByStartAndUsePositions(
 				RegisterBinding binding, Interval interval)
 		{
+			// get he interval list corresponding to binding
 			Interval list = get(binding);
 			Interval prev = null;
 			Interval cur = list;
@@ -141,7 +145,7 @@ public final class Interval
 		}
 
 		/**
-		 * Removes an interval from a list.
+		 * Removes an interval from a list corresponding to given binding.
 		 *
 		 * @param binding  specifies the list to be updated
 		 * @param i the interval to remove
@@ -166,6 +170,8 @@ public final class Interval
 			{
 				prev.next = cur.next;
 			}
+			// unlink the cur with list
+			cur.next = null;
 		}
 	}
 
@@ -372,7 +378,7 @@ public final class Interval
 		public void setRegisterPriority(int index,
 				RegisterPriority registerPriority)
 		{
-			list.set(index * 2, registerPriority.ordinal());
+			list.set(index << 1 + 1, registerPriority.ordinal());
 		}
 
 		@Override public String toString()
@@ -495,6 +501,10 @@ public final class Interval
 	 */
 	private Interval locationHint;
 
+	/**
+	 * Assigns a stack or register to this interval.
+	 * @param location
+	 */
 	void assignLocation(LIRValue location)
 	{
 		if (location.isRegister())
@@ -1140,13 +1150,15 @@ public final class Interval
 	}
 
 	/**
-	 * Splits this interval at a specified position and returns the remainder as a new <i>child</i> interval
-	 * of this interval's {@linkplain #splitParent() parent} interval.
+	 * Splits this interval at a specified position and returns the remainder as
+	 * a new <i>child</i> interval of this interval's {@linkplain #splitParent()
+	 * parent} interval.
 	 * <p>
-	 * When an interval is split, a bi-directional link is established between the original <i>parent</i>
-	 * interval and the <i>children</i> intervals that are split off this interval.
-	 * When a split child is split again, the new created interval is a direct child
-	 * of the original parent. That is, there is no tree of split children stored, just a flat list.
+	 * When an interval is split, a bi-directional link is established between
+	 * the original <i>parent</i>interval and the <i>children</i> intervals that
+	 * are split off this interval. When a split child is split again, the new
+	 * created interval is a direct child of the original parent. That is, there
+	 * is no tree of split children stored, just a flat list.
 	 * All split children are spilled to the same {@linkplain #spillSlot spill slot}.
 	 *
 	 * @param splitPos  the position at which to split this interval
@@ -1229,7 +1241,8 @@ public final class Interval
 	 * Splits this interval at a specified position and returns
 	 * the head as a new interval (this interval is the tail).
 	 * <p>
-	 * Currently, only the first range can be split, and the new interval must not have split positions
+	 * Currently, only the first range can be split, and the new interval must
+	 * not have split positions
 	 */
 	Interval splitFromStart(int splitPos, LinearScan allocator)
 	{
@@ -1353,7 +1366,8 @@ public final class Interval
 	}
 
 	/**
-	 * Gets a single line string for logging the details of this interval to a log stream.
+	 * Gets a single line string for logging the details of this interval to a
+	 * log stream.
 	 *
 	 * @param allocator the register allocator context
 	 */

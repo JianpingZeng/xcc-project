@@ -22,12 +22,15 @@ public class IntervalWalker
 	RegisterBindingLists unhandledLists;
 
 	/**
-	 * Sorted list of intervals, live at the current position.
+	 * Sorted list of intervals assigned with physic register and intersects with
+	 * current handling interval.
 	 */
 	RegisterBindingLists activeLists;
 
 	/**
-	 * Sorted list of intervals in a life time hole at the current position.
+	 * Sorted list of intervals assigned with a physical register, but in a life
+	 * time hole at the current position, this list just for optimal allocation
+	 * through making use of the hole of interval.
 	 */
 	RegisterBindingLists inactiveLists;
 
@@ -37,12 +40,14 @@ public class IntervalWalker
 	protected Interval current;
 
 	/**
-	 * The current position (intercept point through the intervals).
+	 * The current position (the starting position of {@linkplain #current Current
+	 * handling Interval}).
 	 */
 	protected int currentPosition;
 
 	/**
-	 * The binding of the current interval being processed.
+	 * The binding of the current interval being processed used for selecting which
+	 * Interval list, either precolored interval or un precolored interval.
 	 */
 	protected RegisterBinding currentBinding;
 
@@ -85,6 +90,7 @@ public class IntervalWalker
 		this.allocator = allocator;
 
 		unhandledLists = new RegisterBindingLists(unhandledFixed, unhandledAny);
+
 		activeLists = new RegisterBindingLists(Interval.EndMarker,
 				Interval.EndMarker);
 		inactiveLists = new RegisterBindingLists(Interval.EndMarker,
@@ -110,12 +116,15 @@ public class IntervalWalker
 	void walkTo(State state, int from)
 	{
 		assert state == Active || state == Inactive : "wrong state";
+
+		// handles precolored and unprecolored interval in Active or Inactive list
 		for (RegisterBinding binding : RegisterBinding.VALUES)
 		{
 			Interval prevprev = null;
 			Interval prev = (state == Active) ?
 					activeLists.get(binding) :
 					inactiveLists.get(binding);
+
 			Interval next = prev;
 			while (next.currentFrom() <= from)
 			{
@@ -135,7 +144,7 @@ public class IntervalWalker
 
 				if (rangeHasChanged)
 				{
-					// remove cur from list
+					// Step#1: remove cur from list
 					if (prevprev == null)
 					{
 						if (state == Active)
@@ -152,6 +161,7 @@ public class IntervalWalker
 						prevprev.next = next;
 					}
 					prev = next;
+					// Step#2: take insertion that append the cur into handled list
 					if (cur.currentAtEnd())
 					{
 						// move to handled state (not maintained as a list)
@@ -198,12 +208,19 @@ public class IntervalWalker
 		}
 	}
 
+	/**
+	 * Removes the first interval from {@linkplain #unhandledLists UnhandledLists}
+	 * for register allocation.
+	 */
 	void nextInterval()
 	{
 		RegisterBinding binding;
+
 		Interval any = unhandledLists.any;
 		Interval fixed = unhandledLists.fixed;
 
+		// first, choose the fixed list or any list according to whether the starting
+		// position of the first fixed interval is before
 		if (any != Interval.EndMarker)
 		{
 			// intervals may start at same position . prefer fixed interval
@@ -216,6 +233,7 @@ public class IntervalWalker
 					.from()
 					|| binding == RegisterBinding.Any && any.from() <= fixed
 					.from() : "wrong interval!!!";
+
 			assert any == Interval.EndMarker || fixed == Interval.EndMarker
 					|| any.from() != fixed.from() || binding
 					== RegisterBinding.Fixed :
@@ -233,8 +251,13 @@ public class IntervalWalker
 		}
 		currentBinding = binding;
 		current = unhandledLists.get(binding);
+
+		// after removing the first Interval which sources from fixed list or any list
+		// according to the binding
 		unhandledLists.set(binding, current.next);
 		current.next = Interval.EndMarker;
+
+		// reset the first range of current interval
 		current.rewindRange();
 	}
 
@@ -251,7 +274,7 @@ public class IntervalWalker
 			boolean isActive = current.from() <= toOpId;
 			int opId = isActive ? current.from() : toOpId;
 
-			// for debug information display
+			// for debugging information display
 			if (!TTY.isSuppressed())
 			{
 				if (currentPosition < opId)
@@ -272,8 +295,12 @@ public class IntervalWalker
 			if (isActive)
 			{
 				current.state = Active;
+
+				// activating current that just means assigning the register to
+				// current interval
 				if (activateCurrent())
 				{
+					// add current interval into the active list
 					activeLists.addToListSortedByCurrentFromPositions(
 							currentBinding, current);
 					intervalMoved(current, currentBinding,
@@ -288,11 +315,14 @@ public class IntervalWalker
 			}
 		}
 	}
+
 	private void intervalMoved(Interval interval, RegisterBinding kind,
 			State from, State to)
 	{
-		// intervalMoved() is called whenever an interval moves from one interval list to another.
-		// In the implementation of this method it is prohibited to move the interval to any list.
+		// intervalMoved() is called whenever an interval moves from one interval
+		// list to another. In the implementation of this method it is prohibited
+		// to move the interval to any list.
+
 		if (!TTY.isSuppressed())
 		{
 			TTY.print(from.toString() + " to " + to.toString());
