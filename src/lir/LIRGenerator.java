@@ -514,7 +514,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	{
 		assert (inst != null) && inst.kind != LIRKind.Illegal :
 		"illegal phi can not be resolved";
-		// creates vritual register for this phi function
+		// creates virtual register for this phi function
 		LIRValue phiRes = operandForPhi(inst);
 		LIRVariable phiTemp = newVariable(inst.kind);
 
@@ -522,6 +522,8 @@ public abstract class LIRGenerator extends ValueVisitor
 		while (idx>= 0)
 		{
 			Value x1 = inst.getIncomingValue(idx);
+			assert x1.kind != LIRKind.Illegal;
+
 			LIRValue operand = IllegalValue;
 			if (x1 instanceof Phi)
 			{
@@ -545,6 +547,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 		lir.move(phiTemp, phiRes);
 	}
+
 	/**
 	 * Code for a constant is generated lazily unless the constant is frequently
 	 * used and can't be inlined.
