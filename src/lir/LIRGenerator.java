@@ -14,7 +14,12 @@ import java.util.List;
 import static lir.ci.LIRRegisterValue.IllegalValue;
 
 /**
+ * This file defines a class that responsible for translating HIR into LIR in SSA
+ * form which owns so many beneficial properties that Linear scan register allocation
+ * operates is feasibility.
+ *
  * @author Jianping Zeng
+ * @Version 0.1
  */
 public abstract class LIRGenerator extends ValueVisitor
 {
@@ -111,22 +116,15 @@ public abstract class LIRGenerator extends ValueVisitor
 	private void blockDoEpilog(BasicBlock block)
 	{
 		// print debug information
-		/*
-		if (block == method.getExitBlock())
-		{
-			// restores register value saved in stack frame
-			traceBlockExit(block);
-		}
-		*/
 	}
 
 	/**
-	 * This method is designed to lower binary operation into targetAbstractLayer-dependent
+	 * This method is designed to lower binary operation into target-dependent
 	 * instruction.
 	 *
 	 * @param instr
 	 */
-	private void lowerOp2(Instruction.Op2 instr)
+	private void doArithmeticOp2(Instruction.Op2 instr)
 	{
 		assert Util.archKindEqual(instr.x.kind, instr.kind) && Util
 				.archKindEqual(instr.y.kind, instr.kind) :
@@ -155,7 +153,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 */
 	@Override public void visitArithmeticOp(Instruction.ArithmeticOp inst)
 	{
-		lowerOp2(inst);
+		doArithmeticOp2(inst);
 	}
 
 	/**
@@ -510,6 +508,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 * <a href="https://www.tjhsst.edu/~rlatimer/papers/sreedharTranslatingOutOfStaticSingleAssignmentForm.pdf">Translating Out of Static Single Assignment Form</a>
 	 * @param inst
 	 */
+	/*
 	public void visitPhi(Instruction.Phi inst)
 	{
 		assert (inst != null) && inst.kind != LIRKind.Illegal :
@@ -546,6 +545,25 @@ public abstract class LIRGenerator extends ValueVisitor
 			pred.getLIRBlock().lir().move(t, phiTemp);
 		}
 		lir.move(phiTemp, phiRes);
+	}*/
+
+	public void visitPhi(Instruction.Phi inst)
+	{
+		for (int i = 0; i < inst.getNumberIncomingValues(); ++i)
+		{
+			Value incoming = inst.getIncomingValue(i);
+			assert incoming.kind != LIRKind.Illegal;
+
+			LIRItem item = new LIRItem(incoming, this);
+			item.loadItem();
+
+			incoming.setLIROperand(item.result());
+		}
+		if (inst.LIROperand == IllegalValue)
+		{
+			LIRVariable var = newVariable(inst.kind);
+			setResult(inst, var);
+		}
 	}
 
 	/**
@@ -574,7 +592,7 @@ public abstract class LIRGenerator extends ValueVisitor
 					// put into LIRRegisters when they are used multiple times within a
 					// block.  After the block completes their operand will be
 					// cleared so that other blocks can't refer to that register.
-					LIRVariable reg = createResultVR(Const);
+					LIRVariable reg = createResultVirtualRegister(Const);
 					lir.move(res, reg);
 				}
 				else
@@ -887,8 +905,8 @@ public abstract class LIRGenerator extends ValueVisitor
 	}
 
 	/**
-	 * Ensures that an operand has been {@linkplain Value#setLIROperand(LIRValue)}
-	 * initialized for storing the result of an {@code Value} instance.
+	 * Ensures that an operand has been {@linkplain Value#setLIROperand(LIRValue)
+	 * initialized} for storing the result of an {@code Value} instance.
 	 *
 	 * @param val an instance of {@code Value} that produces a result value.
 	 */
@@ -937,7 +955,7 @@ public abstract class LIRGenerator extends ValueVisitor
 				assert x instanceof Phi;
 				//|| x instanceof Local : "only for Phi and Local";
 				// allocate a variable for this local or phi
-				createResultVR(x);
+				createResultVirtualRegister(x);
 			}
 		}
 		return x.LIROperand();
@@ -950,7 +968,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 * @param x an instruction that produces a result
 	 * @return the variable assigned to hold the result produced by {@code x}
 	 */
-	protected LIRVariable createResultVR(Value x)
+	protected LIRVariable createResultVirtualRegister(Value x)
 	{
 		LIRVariable operand = newVariable(x.kind);
 		setResult(x, operand);
