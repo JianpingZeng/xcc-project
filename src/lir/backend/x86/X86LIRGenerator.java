@@ -55,7 +55,7 @@ public final class X86LIRGenerator extends LIRGenerator
 
 	public void visitAlloca(Instruction.Alloca inst)
 	{
-		LIRValue result = createResultVR(inst);
+		LIRValue result = createResultVirtualRegister(inst);
 		assert inst.length().isConstant() :
 				"Alloca instruction 'length' is not a constant " + inst.length();
 
@@ -84,7 +84,7 @@ public final class X86LIRGenerator extends LIRGenerator
 	 */
 	public void visitStoreInst(Instruction.StoreInst inst)
 	{
-		LIRVariable valReg = createResultVR(inst.value);
+		LIRVariable valReg = createResultVirtualRegister(inst.value);
 		StackFrame.StackBlock stackBlock = allocaStackBlock.get(inst.dest);
 		assert stackBlock != null: "Alloca isn't allocated in stack";
 		lir.move(valReg, backend.frameMap().toStackAddress(stackBlock));
@@ -98,7 +98,7 @@ public final class X86LIRGenerator extends LIRGenerator
 	 */
 	public void visitLoadInst(Instruction.LoadInst inst)
 	{
-		LIRVariable srcReg = createResultVR(inst.from);
+		LIRVariable srcReg = createResultVirtualRegister(inst.from);
 		StackFrame.StackBlock stackBlock = allocaStackBlock.get(inst.from);
 
 		assert stackBlock != null: "Alloca isn't allocated in stack";
@@ -163,7 +163,7 @@ public final class X86LIRGenerator extends LIRGenerator
 	{
 		if (kind == LIRKind.Short || kind == LIRKind.Char)
 		{
-			// there is no immediate move of word values in asemblerI486 or later.
+			// there is no immediate move of word values in assembler I486 or later.
 			return false;
 		}
 		return v instanceof Value.Constant;
@@ -239,7 +239,7 @@ public final class X86LIRGenerator extends LIRGenerator
 			LIRValue divisor = load(
 					instr.y);            // divisor can be in any (other) register
 
-			LIRValue result = createResultVR(instr);
+			LIRValue result = createResultVirtualRegister(instr);
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
@@ -270,7 +270,7 @@ public final class X86LIRGenerator extends LIRGenerator
 			right.loadItem();
 
 			arithmeticOpLong(opcode, LMUL_OUT, left, right.result());
-			LIRValue result = createResultVR(instr);
+			LIRValue result = createResultVirtualRegister(instr);
 			lir.move(LMUL_OUT, result);
 		}
 		else
@@ -280,7 +280,7 @@ public final class X86LIRGenerator extends LIRGenerator
 			LIRValue left = load(instr.x);
 			// don't load constants to save register
 			right.loadNonconstant();
-			createResultVR(instr);
+			createResultVirtualRegister(instr);
 			arithmeticOpLong(opcode, instr.LIROperand(), left, right.result());
 		}
 	}
@@ -312,16 +312,19 @@ public final class X86LIRGenerator extends LIRGenerator
 		{
 			// emit code for integer division or modulus
 
-			LIRValue dividend = force(instr.x, EAX_I); // dividend must be in RAX
-			LIRValue divisor = load(
-					instr.y);          // divisor can be in any (other) register
+			// dividend must be in RAX
+			LIRValue dividend = force(instr.x, EAX_I);
+
+			// divisor can be in any (other) register
+			LIRValue divisor = load(instr.y);
 
 			// idiv and irem use rdx in their implementation so the
 			// register allocator must not assign it to an interval that overlaps
 			// this division instruction.
 			LIRRegisterValue tmp = EDX_I;
 
-			LIRValue result = createResultVR(instr);
+			LIRValue result = createResultVirtualRegister(instr);
+
 			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
@@ -390,14 +393,14 @@ public final class X86LIRGenerator extends LIRGenerator
 				{
 					tmp = newVariable(LIRKind.Int);
 				}
-				createResultVR(instr);
+				createResultVirtualRegister(instr);
 
 				arithmeticOpInt(opcode, instr.LIROperand(), leftArg.result(),
 						rightArg.result(), tmp);
 			}
 			else
 			{
-				createResultVR(instr);
+				createResultVirtualRegister(instr);
 				LIRValue tmp = ILLEGAL;
 				arithmeticOpInt(opcode, instr.LIROperand(), leftArg.result(),
 						rightArg.result(), tmp);
@@ -455,7 +458,7 @@ public final class X86LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadNonconstant();
-		LIRVariable reg = createResultVR(instr);
+		LIRVariable reg = createResultVirtualRegister(instr);
 		logicOp(op, left.result(), right.result(), reg);
 	}
 
@@ -476,7 +479,7 @@ public final class X86LIRGenerator extends LIRGenerator
 		}
 
 		LIRValue value = load(inst.x);
-		LIRValue reg = createResultVR(inst);
+		LIRValue reg = createResultVirtualRegister(inst);
 
 		shiftOp(inst.opcode, reg, value, count, ILLEGAL);
 	}
@@ -506,7 +509,7 @@ public final class X86LIRGenerator extends LIRGenerator
 
 		left.loadItem();
 		right.loadItem();
-		LIRValue reg = createResultVR(inst);
+		LIRValue reg = createResultVirtualRegister(inst);
 		if (inst.x.kind.isFloatOrDouble())
 		{
 			lir.fcmp2int(left.result(), right.result(), reg);
