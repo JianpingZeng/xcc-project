@@ -2,18 +2,22 @@ package lir.alloc;
 
 import exception.CiBailout;
 import hir.BasicBlock;
+import hir.ControlFlowGraph;
 import lir.LIRInstruction;
 import lir.LIROp1;
 import lir.LIROpcode;
+import lir.LIRPhi;
 import lir.alloc.Interval.RegisterBinding;
-import lir.ci.LIRKind;
-import lir.ci.LIRRegister;
-import lir.ci.LIRValue;
-import lir.ci.LIRVariable;
+import lir.ci.*;
+import utils.BitMap;
+import utils.IntList;
 import utils.TTY;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
+
+import java.lang.reflect.Array;
+import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
 import static lir.LIRInstruction.OperandMode.Input;
 import static lir.LIRInstruction.OperandMode.Output;
 import static lir.alloc.Interval.RegisterBinding.Any;
@@ -39,7 +43,8 @@ public final class LinearScanWalker extends IntervalWalker
 	/** freeUntilPos*/
 	int[] usePos;
 	/**
-	 *
+	 * For {@linkplain #allocateBlockedReg(Interval) AllocateBlockedRegister method},
+	 * to compute nextUsePos for any available register described in original literate.
 	 */
 	int[] blockPos;
 
@@ -74,6 +79,9 @@ public final class LinearScanWalker extends IntervalWalker
 
 	public void finishAllocation()
 	{
+		// phi function destruction before finishing allocation
+		phiDestruction();
+
 		// must be called when all intervals are allocated.
 		moveResolver.resolveAppendMove();
 	}
@@ -274,8 +282,8 @@ public final class LinearScanWalker extends IntervalWalker
 		// when the split position at the block begin or no hole, the insert of
 		// move is desired.
 		boolean moveNecessary =
-				!allocator.isBlockBegin(optimalSplitPos)
-				&& !interval.hasHoleBetween(optimalSplitPos - 1, optimalSplitPos);
+				allocator.isBlockBegin(optimalSplitPos)
+				|| !interval.hasHoleBetween(optimalSplitPos - 1, optimalSplitPos);
 
 		if (!allocator.isBlockBegin(optimalSplitPos))
 		{
@@ -283,10 +291,12 @@ public final class LinearScanWalker extends IntervalWalker
 			optimalSplitPos = (optimalSplitPos - 1) | 1;
 		}
 
-		assert allocator.isBlockBegin(optimalSplitPos) || (optimalSplitPos % 2
-				== 1) : "split pos must be odd when not on block boundary";
-		assert !allocator.isBlockBegin(optimalSplitPos) || (optimalSplitPos % 2
-				== 0) : "split pos must be even on block boundary";
+		assert allocator.isBlockBegin(optimalSplitPos) ||
+				(optimalSplitPos % 2 == 1)
+				: "split pos must be odd when not on block boundary";
+		assert !allocator.isBlockBegin(optimalSplitPos) ||
+				(optimalSplitPos % 2 == 0)
+				: "split pos must be even on block boundary";
 
 		// the right part to be added into unhandled list
 		Interval splitPart = interval.split(optimalSplitPos, allocator);
@@ -516,7 +526,7 @@ public final class LinearScanWalker extends IntervalWalker
 					availableRegs.length - 1].number)
 			{
 				// choose the lower value
-				if (this.usePos[i] > usePos)
+				if (usePos < this.usePos[i])
 				{
 					this.usePos[i] = usePos;
 				}
@@ -560,6 +570,8 @@ public final class LinearScanWalker extends IntervalWalker
 			{
 				assert interval.location().isRegister()
 						: "active interval must have a register assigned";
+
+				// exclude the active interval, which means set the usePos[interval] = 0
 				excludeFromUse(interval);
 				interval = interval.next;
 			}
@@ -591,8 +603,20 @@ public final class LinearScanWalker extends IntervalWalker
 		Interval interval = inactiveLists.get(Any);
 		while (interval != Interval.EndMarker)
 		{
-			setUsePos(interval, interval.currentIntersectsAt(current), true);
-			interval = interval.next;
+			// they are inactive and thus have a lifetime hole at the current
+			// interval, so they don't intersect with the current, witch is guaranteed
+			// by SSA form properties.
+			if (current.to() <= interval.currentFrom())
+			{
+				assert interval.currentIntersectsAt(current)
+						== -1 : "must not intersect";
+				setUsePos(interval, interval.currentFrom(), true);
+			}
+			else
+			{
+				setUsePos(interval, interval.currentIntersectsAt(current), true);
+				interval = interval.next;
+			}
 		}
 	}
 
@@ -666,7 +690,10 @@ public final class LinearScanWalker extends IntervalWalker
 		Interval interval = inactiveLists.get(Any);
 		while (interval != Interval.EndMarker)
 		{
-			if (interval.currentIntersects(current))
+			// when current is the result of an interval split, then intersect check is needed
+			// for SSA form
+			if (interval.splitParent() != null
+					&& interval.currentIntersects(current))
 			{
 				setUsePos(interval, Math.min(
 						interval.nextUsage(LiveAtLoopEnd, currentPosition),
@@ -676,6 +703,19 @@ public final class LinearScanWalker extends IntervalWalker
 		}
 	}
 
+	/**
+	 * <ol>
+	 *     <li>Inserts move instruction was inserted in split position, when an interval is split
+	 *         within a basic block.
+	 *     </li>
+ *         <li>If the location of interval at the end of predecessor and begin of successor
+	 *         differ, appropriate move instruction are inserted.
+	 *     </li>
+	 * </ol>
+	 * @param opId
+	 * @param srcIt
+	 * @param dstIt
+     */
 	void insertMove(int opId, Interval srcIt, Interval dstIt)
 	{
 		// output all moves here. When source and target are equal, the move is
@@ -710,6 +750,13 @@ public final class LinearScanWalker extends IntervalWalker
 		moveResolver.addMapping(srcIt, dstIt);
 	}
 
+	/**
+	 * Splits the specified interval when only partial register is available,
+	 * which can greatly improves the quality of generating code in terms of CISC cpu,
+	 * like x86.
+	 * @param interval
+	 * @param registerAvailableUntil
+     */
 	void splitWhenPartialRegisterAvailable(Interval interval,
 			int registerAvailableUntil)
 	{
@@ -787,9 +834,11 @@ public final class LinearScanWalker extends IntervalWalker
 		// the reason for as minimum as possible: avoiding waste
 		LIRRegister minFullReg = null;
 		// the reason for as maximum as possible: lead to more part of current
-		// interval been assigned with a register.
+		// interval could been assigned with a register.
 		LIRRegister maxPartialReg = null;
 
+		// walk through all of available register, to find a register witch can entirely
+		// or partially holds wrap the current interval
 		for (int i = 0; i < availableRegs.length; ++i)
 		{
 			LIRRegister availableReg = availableRegs[i];
@@ -798,10 +847,11 @@ public final class LinearScanWalker extends IntervalWalker
 			// this register is free for the full interval
 			if (usePos[number] >= intervalTo)
 			{
+				// in this condition, we takes advantage of register hints to
+				// optimizes the allocation
 				if (minFullReg == null || availableReg == hint ||
 						(usePos[number] < usePos[minFullReg.number]
-								&& minFullReg != hint
-						))
+								&& minFullReg != hint))
 				{
 					minFullReg = availableReg;
 				}
@@ -817,11 +867,11 @@ public final class LinearScanWalker extends IntervalWalker
 				}
 			}
 		}
-		// if no full available register, then split the current interval
 		if (minFullReg != null)
 		{
 			reg = minFullReg;
 		}
+		// if no entirely available register, then splitting of current interval is unavoidable
 		else if (maxPartialReg != null)
 		{
 			needSplit = true;
@@ -991,7 +1041,7 @@ public final class LinearScanWalker extends IntervalWalker
 	}
 
 	/**
-	 * Split and spill current interval into stack slot, or the interval in active list.
+	 * Split and spill specified interval into stack slot, or the interval in active list.
 	 * @param interval
 	 */
 	void splitAndSpillInterval(Interval interval)
@@ -1033,7 +1083,8 @@ public final class LinearScanWalker extends IntervalWalker
 	/**
 	 * Split an Interval and spill it to memory so that cur can be placed in a
 	 * register.
-	 * @param interval
+	 * @param interval	The current interval being partial or entirely assigned
+	 *                     to a register or stack slot.
 	 */
 	void allocateBlockedReg(Interval interval)
 	{
@@ -1073,7 +1124,7 @@ public final class LinearScanWalker extends IntervalWalker
 		LIRRegister ignore = interval.location() != null && interval.location()
 				.isRegister() ? interval.location().asRegister() : null;
 
-		// to find the last most used physical register.
+		// to find the last most(also the maximum use position) used physical register.
 		for (LIRRegister availableReg : availableRegs)
 		{
 			int number = availableReg.number;
@@ -1090,14 +1141,15 @@ public final class LinearScanWalker extends IntervalWalker
 			}
 		}
 
-		if (reg == null || usePos[reg.number] <= firstUsage)
+		if (reg == null || firstUsage >= usePos[reg.number])
 		{
+			// all other intervals are used before current
+			// so it is best to spill current
 			// the first use of cur is later than the spilling position -> spill cur
-			{
-				TTY.println(
-						"able to spill current interval. firstUsage(register): %d, usePos: %d",
-						firstUsage, reg == null ? 0 : usePos[reg.number]);
-			}
+
+			TTY.println(
+					"able to spill current interval. firstUsage(register): %d, usePos: %d",
+					firstUsage, reg == null ? 0 : usePos[reg.number]);
 
 			if (firstUsage <= interval.from() + 1)
 			{
@@ -1148,6 +1200,55 @@ public final class LinearScanWalker extends IntervalWalker
 			Interval interval = spillIntervals[reg.number].get(i);
 			removeFromList(interval);
 			splitAndSpillInterval(interval);
+		}
+	}
+
+	/**
+	 * destructs phi function by inserting move instruction.
+	 */
+	private void phiDestruction()
+	{
+		BasicBlock entry = allocator.m.getEntryBlock();
+		LinkedList<Integer> worklist = new LinkedList<>();
+		BitMap visited = new BitMap(allocator.blockCount());
+		worklist.addLast(entry.linearScanNumber);
+		HashMap<Integer, BasicBlock> blockToID = new HashMap<>();
+		blockToID.put(entry.linearScanNumber, entry);
+
+		while (!worklist.isEmpty())
+		{
+			int id = worklist.removeFirst();
+			BasicBlock pred =  blockToID.get(id);
+			visited.set(id);
+			for (int i = 0; i < pred.getNumOfSuccs(); i++)
+			{
+				BasicBlock sux = pred.succAt(i);
+
+				// skips visited block
+				if (visited.get(sux.linearScanNumber))
+					continue;
+
+				List<LIRInstruction> allPhis = sux.getLIRBlock().lir().instructionsList().
+						stream().filter(inst ->
+								(inst instanceof LIRPhi)).
+						collect(Collectors.toList());
+				for (LIRInstruction inst : allPhis)
+				{
+					int num = allocator.operandNumber(inst.result());
+					assert num>= 0 && num < allocator.intervalsSize;
+
+					Interval interval = allocator.intervals[num];
+					LIRValue opd = ((LIRPhi)inst).incomingValueAt(i);
+					Interval previous = allocator.intervals[allocator.operandNumber(opd)];
+					if (interval.location() != previous.location())
+					{
+						insertMove(interval.from(), previous, interval);
+					}
+				}
+
+				// add all successors of pred into worklist
+				worklist.add(sux.linearScanNumber);
+			}
 		}
 	}
 
@@ -1225,7 +1326,9 @@ public final class LinearScanWalker extends IntervalWalker
 
 			insertMove(interval.from(), interval.currentSplitChild(), interval);
 		}
+
 		interval.makeCurrentSplitChild();
+
 		// when true, the interval is moved to active list
 		return result;
 	}
