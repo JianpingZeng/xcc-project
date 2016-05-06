@@ -549,6 +549,9 @@ public abstract class LIRGenerator extends ValueVisitor
 
 	public void visitPhi(Instruction.Phi inst)
 	{
+		LIRValue[] args = new LIRValue[inst.getNumberIncomingValues()];
+		BasicBlock[] blocks = new BasicBlock[inst.getNumberIncomingValues()];
+
 		for (int i = 0; i < inst.getNumberIncomingValues(); ++i)
 		{
 			Value incoming = inst.getIncomingValue(i);
@@ -558,12 +561,15 @@ public abstract class LIRGenerator extends ValueVisitor
 			item.loadItem();
 
 			incoming.setLIROperand(item.result());
+			args[i] = item.result();
+			blocks[i] = inst.getBasicBlock(i);
 		}
 		if (inst.LIROperand == IllegalValue)
 		{
 			LIRVariable var = newVariable(inst.kind);
 			setResult(inst, var);
 		}
+		lir.phi(args, blocks, inst.LIROperand());
 	}
 
 	/**

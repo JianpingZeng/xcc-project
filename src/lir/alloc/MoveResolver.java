@@ -50,7 +50,6 @@ public class MoveResolver
 
 	MoveResolver(LinearScan allocator)
 	{
-
 		this.allocator = allocator;
 		this.multipleReadsAllowed = false;
 		this.mappingFrom = new ArrayList<Interval>(8);

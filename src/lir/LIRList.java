@@ -245,4 +245,9 @@ public class LIRList
 	{
 		operations.add(i, op);
 	}
+
+	public void phi(LIRValue[] args, BasicBlock[] blocks, LIRValue result)
+	{
+		append(new LIRPhi(LIROpcode.Phi, args, blocks, result));
+	}
 }

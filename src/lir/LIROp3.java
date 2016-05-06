@@ -46,6 +46,11 @@ public class LIROp3 extends LIRInstruction
 		return operand(1);
 	}
 
+	public LIRValue opr3()
+	{
+		return operand(2);
+	}
+
 	/**
 	 * Emits assembly code for this instruction.
 	 *
