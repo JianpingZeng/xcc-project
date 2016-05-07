@@ -11,7 +11,15 @@ import java.util.HashSet;
 import java.util.List;
 
 /**
+ * Linear scan register allocation with splitting of lifetime intervals requires a
+ * resolution phase after the actual register allocation. Because the control flow
+ * graph is reduced into a linear block list, control flow is possible between
+ * blocks that are not adjacent in the list. When the location of an interval is
+ * different at the end of predecessor and starts of successor, a move instruction
+ * must be inserted to resole the conflict.
+ *
  * @author Jianping Zeng
+ * @version 0.1
  */
 public class MoveResolver
 {
@@ -19,7 +27,10 @@ public class MoveResolver
 
 	private LIRList insertList;
 	private int insertIdx;
-	private LIRInsertionBuffer insertionBuffer; // buffer where moves are inserted
+	/**
+	 * buffer where moves are inserted
+	 */
+	private LIRInsertionBuffer insertionBuffer;
 
 	private final List<Interval> mappingFrom;
 	private final List<LIRValue> mappingFromOpr;
@@ -52,9 +63,9 @@ public class MoveResolver
 	{
 		this.allocator = allocator;
 		this.multipleReadsAllowed = false;
-		this.mappingFrom = new ArrayList<Interval>(8);
-		this.mappingFromOpr = new ArrayList<LIRValue>(8);
-		this.mappingTo = new ArrayList<Interval>(8);
+		this.mappingFrom = new ArrayList<>(8);
+		this.mappingFromOpr = new ArrayList<>(8);
+		this.mappingTo = new ArrayList<>(8);
 		this.insertIdx = -1;
 		this.insertionBuffer = new LIRInsertionBuffer();
 		this.registerBlocked = new int[allocator.registers.length];
@@ -371,7 +382,9 @@ public class MoveResolver
 
 	void moveInsertPosition(LIRList insertList, int insertIdx)
 	{
-		//if (C1XOptions.TraceLinearScanLevel >= 4) TTY.println("MoveResolver: moving insert position to Block B%d, index %d", (insertList != null && insertList.block() != null) ? insertList.block().blockID : -1, insertIdx);
+		// TTY.println("MoveResolver: moving insert position to Block B%d, index
+		// %d", (insertList != null && insertList.block() != null) ? insertList.
+		// block().blockID : -1, insertIdx);
 
 		if (this.insertList != null && (this.insertList != insertList
 				|| this.insertIdx != insertIdx))
@@ -422,16 +435,7 @@ public class MoveResolver
 		mappingTo.add(toInterval);
 	}
 
-	void resolveAndAppendMoves()
-	{
-		if (hasMappings())
-		{
-			resolveMappings();
-		}
-		appendInsertionBuffer();
-	}
-
-	public void resolveAppendMove()
+	public void resolveAndAppendMoves()
 	{
 		if (hasMappings())
 		{

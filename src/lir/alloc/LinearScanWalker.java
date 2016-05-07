@@ -2,7 +2,6 @@ package lir.alloc;
 
 import exception.CiBailout;
 import hir.BasicBlock;
-import hir.ControlFlowGraph;
 import lir.LIRInstruction;
 import lir.LIROp1;
 import lir.LIROpcode;
@@ -10,12 +9,9 @@ import lir.LIRPhi;
 import lir.alloc.Interval.RegisterBinding;
 import lir.ci.*;
 import utils.BitMap;
-import utils.IntList;
 import utils.TTY;
 
-import java.lang.reflect.Array;
 import java.util.*;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import static lir.LIRInstruction.OperandMode.Input;
@@ -42,9 +38,12 @@ public final class LinearScanWalker extends IntervalWalker
 
 	/** freeUntilPos*/
 	int[] usePos;
+
 	/**
-	 * For {@linkplain #allocateBlockedReg(Interval) AllocateBlockedRegister method},
-	 * to compute nextUsePos for any available register described in original literate.
+	 * blockPos[reg] stores a hard limit to each register where the register cannot be
+	 * freed by spilling. This position is setted with {@linkplain Integer#MAX_VALUE}
+	 * by the fixed active and inactives that model the operations requiring operands
+	 * in fixed registers.
 	 */
 	int[] blockPos;
 
@@ -77,13 +76,14 @@ public final class LinearScanWalker extends IntervalWalker
 
 	}
 
+	/**
+	 * Finishes the linear scan register allocation, makes destructing of phi function
+	 * and resolving data flow.
+	 */
 	public void finishAllocation()
 	{
-		// phi function destruction before finishing allocation
-		phiDestruction();
-
 		// must be called when all intervals are allocated.
-		moveResolver.resolveAppendMove();
+		moveResolver.resolveAndAppendMoves();
 	}
 
 	private int findOptimalSplitPos(BasicBlock minBlock, BasicBlock maxBlock,
@@ -712,7 +712,7 @@ public final class LinearScanWalker extends IntervalWalker
 	 *         differ, appropriate move instruction are inserted.
 	 *     </li>
 	 * </ol>
-	 * @param opId
+	 * @param opId The op id of first LIRInstruction of this interval.
 	 * @param srcIt
 	 * @param dstIt
      */
@@ -721,6 +721,7 @@ public final class LinearScanWalker extends IntervalWalker
 		// output all moves here. When source and target are equal, the move is
 		// optimized away later in assignRegNums
 
+		// the second instruction
 		opId = (opId + 1) & ~1;
 		BasicBlock opBlock = allocator.blockForId(opId);
 		assert opId > 0 && allocator.blockForId(opId - 2)
@@ -1168,6 +1169,7 @@ public final class LinearScanWalker extends IntervalWalker
 			return;
 		}
 
+		// usually, splitting is not needed.
 		boolean needSplit = blockPos[reg.number] <= intervalTo;
 
 		int splitPos = blockPos[reg.number];
@@ -1191,6 +1193,14 @@ public final class LinearScanWalker extends IntervalWalker
 		splitAndSpillIntersectingIntervals(reg);
 	}
 
+	/**
+	 * First, splits the specified interval whose value resides in specified register at
+	 * a optimal position by invoking {@linkplain #splitAndSpillInterval(Interval)}.
+	 * </br>
+	 * Second, spills the first part of interval and appends the split child interval into
+	 * the last of unhandled list.
+	 * @param reg
+     */
 	void splitAndSpillIntersectingIntervals(LIRRegister reg)
 	{
 		assert reg != null : "no register assigned";
@@ -1203,54 +1213,6 @@ public final class LinearScanWalker extends IntervalWalker
 		}
 	}
 
-	/**
-	 * destructs phi function by inserting move instruction.
-	 */
-	private void phiDestruction()
-	{
-		BasicBlock entry = allocator.m.getEntryBlock();
-		LinkedList<Integer> worklist = new LinkedList<>();
-		BitMap visited = new BitMap(allocator.blockCount());
-		worklist.addLast(entry.linearScanNumber);
-		HashMap<Integer, BasicBlock> blockToID = new HashMap<>();
-		blockToID.put(entry.linearScanNumber, entry);
-
-		while (!worklist.isEmpty())
-		{
-			int id = worklist.removeFirst();
-			BasicBlock pred =  blockToID.get(id);
-			visited.set(id);
-			for (int i = 0; i < pred.getNumOfSuccs(); i++)
-			{
-				BasicBlock sux = pred.succAt(i);
-
-				// skips visited block
-				if (visited.get(sux.linearScanNumber))
-					continue;
-
-				List<LIRInstruction> allPhis = sux.getLIRBlock().lir().instructionsList().
-						stream().filter(inst ->
-								(inst instanceof LIRPhi)).
-						collect(Collectors.toList());
-				for (LIRInstruction inst : allPhis)
-				{
-					int num = allocator.operandNumber(inst.result());
-					assert num>= 0 && num < allocator.intervalsSize;
-
-					Interval interval = allocator.intervals[num];
-					LIRValue opd = ((LIRPhi)inst).incomingValueAt(i);
-					Interval previous = allocator.intervals[allocator.operandNumber(opd)];
-					if (interval.location() != previous.location())
-					{
-						insertMove(interval.from(), previous, interval);
-					}
-				}
-
-				// add all successors of pred into worklist
-				worklist.add(sux.linearScanNumber);
-			}
-		}
-	}
 
 	/**
 	 * Allocates a physical register or memory location to an interval.
