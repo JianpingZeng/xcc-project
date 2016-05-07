@@ -11,9 +11,7 @@ import lir.backend.RegisterConfig;
 import lir.ci.*;
 import utils.*;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static lir.alloc.Interval.SpillState.StoreAtDefinition;
@@ -1404,6 +1402,92 @@ public final class LinearScan
 		// with SSE/SSE2 instruction set, currently, however, it no supported.
 	}
 
+
+	/**
+	 * destructs phi function by inserting move instruction.
+	 */
+	private void phiDestruction()
+	{
+		MoveResolver moveResolver = new MoveResolver(this);
+
+		int numBlocks = blockCount();
+		BitMap alreadyResolved = new BitMap(numBlocks);
+
+		for (int i = 0; i < numBlocks; i++)
+		{
+			BasicBlock fromBlock = blockAt(i);
+			for (BasicBlock toBlock : fromBlock.getSuccs())
+			{
+				if (!alreadyResolved.get(toBlock.linearScanNumber))
+				{
+					alreadyResolved.get(toBlock.linearScanNumber);
+
+					List<LIRInstruction> allPhis = toBlock.getLIRBlock().lir()
+							.instructionsList().
+							stream().filter(inst ->
+							(inst instanceof LIRPhi)).
+							collect(Collectors.toList());
+
+					for (LIRInstruction inst : allPhis)
+					{
+						int num = operandNumber(inst.result());
+						assert num>= 0 && num < intervalsSize;
+
+						Interval resultIt = intervals[num];
+						LIRValue opd = ((LIRPhi)inst).incomingValueAt(i);
+						Interval oprIt = intervals[operandNumber(opd)];
+
+						if (resultIt.location() != oprIt.location())
+						{
+							// collect all intervals that have been split between
+							// fromBlock and toBlock
+							// insert new instruction before instruction at position index
+							setInsertPosOfPhiResolution(fromBlock, moveResolver);
+							moveResolver.addMapping(resultIt, oprIt);
+
+							if (moveResolver.hasMappings())
+							{
+								moveResolver.resolveAndAppendMoves();
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Sets the insert position when resolving phi destructing.
+	 * @param pred  The predecessor where the incoming argument of phi comes.
+	 * @param moveResolver  A instance of {@linkplain MoveResolver}.
+	 */
+	private void setInsertPosOfPhiResolution(BasicBlock pred,
+			MoveResolver moveResolver)
+	{
+		List<LIRInstruction> instructions = pred.getLIRBlock().lir()
+				.instructionsList();
+		LIRInstruction instr = instructions.get(instructions.size() - 1);
+		if (instr instanceof LIRBranch)
+		{
+			LIRBranch branch = (LIRBranch) instr;
+			// insert moves before branch
+			assert branch.cond()
+					== Condition.TRUE :
+					"block does not end with an unconditional jump";
+			moveResolver.setInsertPosition(pred.getLIRBlock().lir(),
+					instructions.size() - 2);
+		}
+		else
+		{
+			moveResolver.setInsertPosition(pred.getLIRBlock().lir(),
+					instructions.size() - 1);
+		}
+	}
+
+	/**
+	 * When an interval is split, a move instruction is inserted from the old to
+	 * the new location at the split position.
+	 */
 	private void resolveDataFlow()
 	{
 		int numBlocks = blockCount();
@@ -1532,8 +1616,9 @@ public final class LinearScan
 					.get(operandNum) : "interval not live at this edge";
 
 			LIRValue liveOperand = operands.operandFor(operandNum);
-			Interval fromInterval = intervalAtBlockEnd(from, liveOperand);
+
 			Interval toInterval = intervalAtBlockBegin(to, liveOperand);
+			Interval fromInterval = intervalAtBlockEnd(from, liveOperand);
 
 			if (fromInterval != toInterval && (fromInterval.location()
 					!= toInterval.location()))
@@ -1999,6 +2084,10 @@ public final class LinearScan
 		allocateRegisters();
 
 		resolveDataFlow();
+
+		// phi function destruction before finishing allocation
+		phiDestruction();
+
 		// fill in number of spill spot into stack frame
 		frameMap.finalizeFrame(maxSpills);
 

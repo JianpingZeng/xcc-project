@@ -41,19 +41,19 @@ public class LIRList
 	{
 		append(new LIROp1(LIROpcode.Move, src, dest, dest.kind));
 	}
+
 	public void unalignedMove(LIRValue src, LIRAddress dest)
 	{
 		append(new LIROp1(LIROpcode.Move, src, dest, src.kind,
 				LIROp1.LIRMoveKind.Unaligned));
 	}
-	public void lrem(LIRValue left, LIRValue right, LIRValue res,
-			LIRValue tmp)
+
+	public void lrem(LIRValue left, LIRValue right, LIRValue res, LIRValue tmp)
 	{
 		append(new LIROp3(LIROpcode.Lrem, left, right, tmp, res));
 	}
 
-	public void ldiv(LIRValue left, LIRValue right, LIRValue res,
-			LIRValue tmp)
+	public void ldiv(LIRValue left, LIRValue right, LIRValue res, LIRValue tmp)
 	{
 		append(new LIROp3(LIROpcode.Ldiv, left, right, tmp, res));
 	}
@@ -73,14 +73,12 @@ public class LIRList
 		append(new LIROp2(LIROpcode.Sub, left, right, result));
 	}
 
-	public void irem(LIRValue left, LIRValue right, LIRValue res,
-			LIRValue tmp)
+	public void irem(LIRValue left, LIRValue right, LIRValue res, LIRValue tmp)
 	{
 		append(new LIROp3(LIROpcode.Irem, left, right, tmp, res));
 	}
 
-	public void idiv(LIRValue left, LIRValue right, LIRValue res,
-			LIRValue tmp)
+	public void idiv(LIRValue left, LIRValue right, LIRValue res, LIRValue tmp)
 	{
 		append(new LIROp3(LIROpcode.Idiv, left, right, tmp, res));
 	}
@@ -143,6 +141,7 @@ public class LIRList
 	{
 		append(new LIROp2(LIROpcode.Ucmpfd2i, left, right, dst));
 	}
+
 	public void lcmp2int(LIRValue left, LIRValue right, LIRValue dst)
 	{
 		append(new LIROp2(LIROpcode.Cmpl2i, left, right, dst));
@@ -156,17 +155,18 @@ public class LIRList
 	public void branch(Condition cond, LIRKind kind, BasicBlock trueTarget,
 			BasicBlock falseTarget)
 	{
-		assert kind == LIRKind.Float || kind == LIRKind.Double :
-				"fp comparisons only";
+		assert kind == LIRKind.Float
+				|| kind == LIRKind.Double : "fp comparisons only";
 		append(new LIRBranch(cond, kind, trueTarget, falseTarget));
 	}
 
 	public void branch(Condition cond, LIRKind kind, BasicBlock trueTarget)
 	{
-		assert kind != LIRKind.Float && kind != LIRKind.Double :
-				"no fp comparisons";
+		assert kind != LIRKind.Float
+				&& kind != LIRKind.Double : "no fp comparisons";
 		append(new LIRBranch(cond, kind, trueTarget));
 	}
+
 	public void branch(Condition cond, Label lbl)
 	{
 		append(new LIRBranch(cond, lbl));
@@ -201,8 +201,7 @@ public class LIRList
 			LIRValue[] locations)
 	{
 		append(new LIRCall(LIROpcode.DirectCall, target, result,
-				Arrays.asList(args), false,
-				Arrays.asList(locations)));
+				Arrays.asList(args), false, Arrays.asList(locations)));
 	}
 
 	public void returnOp(LIRValue result)
@@ -215,9 +214,11 @@ public class LIRList
 		assert this == buffer.lirList() : "wrong lir list";
 		int n = operations.size();
 
-		if (buffer.numberOfOps() > 0) {
+		if (buffer.numberOfOps() > 0)
+		{
 			// increase size of instructions list
-			for (int i = 0; i < buffer.numberOfOps(); i++) {
+			for (int i = 0; i < buffer.numberOfOps(); i++)
+			{
 				operations.add(null);
 			}
 			// insert ops from buffer into instructions list
@@ -225,14 +226,17 @@ public class LIRList
 			int ipIndex = buffer.numberOfInsertionPoints() - 1;
 			int fromIndex = n - 1;
 			int toIndex = operations.size() - 1;
-			for (; ipIndex >= 0; ipIndex--) {
+			for (; ipIndex >= 0; ipIndex--)
+			{
 				int index = buffer.indexAt(ipIndex);
 				// make room after insertion point
-				while (index < fromIndex) {
+				while (index < fromIndex)
+				{
 					operations.set(toIndex--, operations.get(fromIndex--));
 				}
 				// insert ops from buffer
-				for (int i = buffer.countAt(ipIndex); i > 0; i--) {
+				for (int i = buffer.countAt(ipIndex); i > 0; i--)
+				{
 					operations.set(toIndex--, buffer.opAt(opIndex--));
 				}
 			}

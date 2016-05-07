@@ -105,6 +105,11 @@ public final class LIRInsertionBuffer
 
 	// Implementation of LIRInsertionBuffer
 
+	/**
+	 * Appends a LIRInstruction into the ops list.
+	 * @param index
+	 * @param op
+     */
 	private void append(int index, LIRInstruction op)
 	{
 		assert indexAndCount.size() % 2
