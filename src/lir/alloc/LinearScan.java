@@ -1422,11 +1422,15 @@ public final class LinearScan
 				{
 					alreadyResolved.get(toBlock.linearScanNumber);
 
+					final BitMap liveIn = toBlock.getLIRBlock().livein;
+
+					// filter out non phi instruction and no live in the begin of toBlock
 					List<LIRInstruction> allPhis = toBlock.getLIRBlock().lir()
 							.instructionsList().
 							stream().filter(inst ->
-							(inst instanceof LIRPhi)).
-							collect(Collectors.toList());
+							(inst instanceof LIRPhi)
+							&& liveIn.get(operandNumber(inst.result()))
+							).collect(Collectors.toList());
 
 					for (LIRInstruction inst : allPhis)
 					{
