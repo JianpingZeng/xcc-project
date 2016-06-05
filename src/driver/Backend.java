@@ -1,7 +1,7 @@
 package driver;
 
 import lir.CompilerStub;
-import lir.alloc.LinearScan;
+import lir.linearScan.LinearScan;
 import lir.backend.TargetAbstractLayer;
 import lir.backend.RegisterConfig;
 import lir.backend.TargetMachine;

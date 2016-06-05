@@ -1,7 +1,7 @@
 package lir;
 
 import hir.Value;
-import lir.alloc.OperandPool;
+import lir.linearScan.OperandPool;
 import lir.ci.LIRKind;
 import lir.ci.LIRValue;
 import lir.ci.LIRVariable;
