@@ -5,7 +5,6 @@ import hir.BasicBlock;
 import hir.Condition;
 import hir.Method;
 import hir.Operator;
-import lir.alloc.LIRInsertionBuffer;
 import lir.ci.*;
 
 import java.util.ArrayList;
@@ -32,7 +31,7 @@ public class LIRList
 		append(new LIRLabel(label));
 	}
 
-	private void append(LIRInstruction inst)
+	private void append(lir.LIRInstruction inst)
 	{
 		operations.add(inst);
 	}
@@ -209,7 +208,7 @@ public class LIRList
 		append(new LIROp1(LIROpcode.Return, result));
 	}
 
-	public void append(LIRInsertionBuffer buffer)
+	public void append(lir.linearScan.LIRInsertionBuffer buffer)
 	{
 		assert this == buffer.lirList() : "wrong lir list";
 		int n = operations.size();
@@ -245,6 +244,43 @@ public class LIRList
 		buffer.finish();
 	}
 
+	public void append(lir.alloc.LIRInsertionBuffer buffer)
+	{
+		assert this == buffer.lirList() : "wrong lir list";
+		int n = operations.size();
+
+		if (buffer.numberOfOps() > 0)
+		{
+			// increase size of instructions list
+			for (int i = 0; i < buffer.numberOfOps(); i++)
+			{
+				operations.add(null);
+			}
+			// insert ops from buffer into instructions list
+			int opIndex = buffer.numberOfOps() - 1;
+			int ipIndex = buffer.numberOfInsertionPoints() - 1;
+			int fromIndex = n - 1;
+			int toIndex = operations.size() - 1;
+			for (; ipIndex >= 0; ipIndex--)
+			{
+				int index = buffer.indexAt(ipIndex);
+				// make room after insertion point
+				while (index < fromIndex)
+				{
+					operations.set(toIndex--, operations.get(fromIndex--));
+				}
+				// insert ops from buffer
+				for (int i = buffer.countAt(ipIndex); i > 0; i--)
+				{
+					operations.set(toIndex--, buffer.opAt(opIndex--));
+				}
+			}
+		}
+
+		buffer.finish();
+	}
+
+	
 	public void insertBefore(int i, LIRInstruction op)
 	{
 		operations.add(i, op);

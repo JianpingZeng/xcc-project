@@ -1,7 +1,7 @@
 package lir;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class CodeBlob
 {
@@ -42,5 +42,4 @@ public class CodeBlob
 	 * size of stack frame.
 	 */
 	private int frameSize;
-	private int
 }

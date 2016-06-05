@@ -2,8 +2,6 @@ package utils;
 
 import hir.Method;
 import hir.Signature;
-import lir.LIRInstruction;
-import lir.alloc.Interval;
 import lir.ci.LIRKind;
 
 import java.util.List;
