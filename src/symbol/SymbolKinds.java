@@ -26,7 +26,7 @@ public interface SymbolKinds {
     int VAR = 2;
 
     /**
-     * The kind of values (variables or non-variable expressions), includes VAR.
+     * The kind of VALUES (variables or non-variable expressions), includes VAR.
      */
     int VAL = 4 | VAR;
 

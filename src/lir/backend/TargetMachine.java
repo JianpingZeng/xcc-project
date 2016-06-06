@@ -31,7 +31,7 @@ public class TargetMachine
 	public final boolean inlineObjects;
 
 	/**
-	 * The spill slot length for values that occupy 1 slot.
+	 * The spill slot length for VALUES that occupy 1 slot.
 	 */
 	public final int spillSlotSize;
 

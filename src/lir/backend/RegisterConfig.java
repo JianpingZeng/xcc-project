@@ -9,7 +9,7 @@ import lir.ci.CallingConvention.Type;
  * A register configuration binds roles and {@linkplain lir.ci.RegisterAttributes
  * attributes} to physical LIRRegisters.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public interface RegisterConfig
 {
@@ -67,7 +67,7 @@ public interface RegisterConfig
 	EnumMap<RegisterFlag, LIRRegister[]> getCategorizedAllocatableRegisters();
 
 	/**
-	 * Gets the LIRRegisters whose values must be preserved by a method across any call it makes.
+	 * Gets the LIRRegisters whose VALUES must be preserved by a method across any call it makes.
 	 */
 	LIRRegister[] getCallerSaveRegisters();
 

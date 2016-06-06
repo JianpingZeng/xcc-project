@@ -10,92 +10,92 @@ import ast.Tree.Select;
 public class TreeInfo
 {
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int notExpression = -1;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int noPrec = 0;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int assignPrec = 1;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int assignopPrec = 2;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int condPrec = 3;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int orPrec = 4;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int andPrec = 5;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int bitorPrec = 6;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int bitxorPrec = 7;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int bitandPrec = 8;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int eqPrec = 9;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int ordPrec = 10;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int shiftPrec = 11;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int addPrec = 12;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int mulPrec = 13;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int prefixPrec = 14;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int postfixPrec = 15;
 
 	/**
-	 * Operator precedences values.
+	 * Operator precedences VALUES.
 	 */
 	public static final int precCount = 16;
 

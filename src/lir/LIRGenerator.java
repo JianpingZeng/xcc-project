@@ -24,7 +24,7 @@ import static lir.ci.LIRRegisterValue.IllegalValue;
 public abstract class LIRGenerator extends ValueVisitor
 {
 	/**
-	 * the range of values in a switch statement.
+	 * the range of VALUES in a switch statement.
 	 */
 	private static final class SwitchRange
 	{
@@ -239,7 +239,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		long lookupSpaceCost = 3 + 2 * (long) vals.length;
 		long lookupTimeCost = vals.length;
 
-		// determines how to implement switch instruction according to case values
+		// determines how to implement switch instruction according to case VALUES
 		//
 		boolean isTableSwitch = vals.length > 0
 				&& tableSpaceCost + 3 * tableTimeCost
@@ -412,7 +412,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 *   b) load each of the items and push on stack
 	 *   c) lock result LIRRegisters and emit call operation
 	 *
-	 * Before issuing a call, we must spill-save all values on stack
+	 * Before issuing a call, we must spill-save all VALUES on stack
 	 * that are in caller-save register. "spill-save" moves thos LIRRegisters
 	 * either in a free callee-save register or spills them if no free
 	 * callee save register is available.

@@ -5,7 +5,7 @@ import lir.backend.RegisterConfig;
 import java.util.Arrays;
 
 /**
- * A collection of register attributes. The specific attribute values for a
+ * A collection of register attributes. The specific attribute VALUES for a
  * register may be local to a compilation context. For example, a {@link RegisterConfig}
  * in use during a compilation will determine which LIRRegisters are callee saved.
  */

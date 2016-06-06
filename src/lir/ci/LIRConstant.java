@@ -4,7 +4,7 @@ package lir.ci;
  * Represents a constant (boxed) value, such as an integer, floating point number,
  * or object reference, within the compiler and across the compiler/runtime interface.
  * Exports a set of {@code LIRConstant}instances that represent frequently used
- * constant values, such as ZERO.
+ * constant VALUES, such as ZERO.
  */
 public final class LIRConstant extends LIRValue
 {
@@ -72,7 +72,7 @@ public final class LIRConstant extends LIRValue
 
 	/**
 	 * The boxed primitive value as a {@code long}. This is ignored iff {@code kind.isObject()}.
-	 * For {@code float} and {@code double} values, this value is the result of
+	 * For {@code float} and {@code double} VALUES, this value is the result of
 	 * {@link Float#floatToRawIntBits(float)} and {@link Double#doubleToRawLongBits(double)} respectively.
 	 */
 	private final long primitive;

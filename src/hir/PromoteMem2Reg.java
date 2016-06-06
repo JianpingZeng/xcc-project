@@ -119,7 +119,7 @@ public class PromoteMem2Reg
 	 * <br>
 	 * The finally, performing rename algorithm as follow steps.
 	 * <br>
-	 * 1.Aads {@code UndefValue} into incoming values of phi node.
+	 * 1.Aads {@code UndefValue} into incoming VALUES of phi node.
 	 * <br>
 	 * 2.Looks up for all usesList(loads) to alloca, replace the all usesList to
 	 * loads with the current active value of current alloca, then remove
@@ -278,8 +278,8 @@ public class PromoteMem2Reg
 		}
 
 		// Loop over all of the PHI nodes and see if there are any that we can
-		// get rid of because they merge all of the same incoming values.  This can
-		// happen due to undef values coming into the PHI nodes.  This process is
+		// get rid of because they merge all of the same incoming VALUES.  This can
+		// happen due to undef VALUES coming into the PHI nodes.  This process is
 		// iterative, because eliminating one PHI node can cause others to be removed.
 		boolean eliminatedAPHI = true;
 
@@ -306,8 +306,8 @@ public class PromoteMem2Reg
 		// At this point, the renamer has added entries to PHI nodes for all reachable
 		// code.  Unfortunately, there may be unreachable blocks which the renamer
 		// hasn't traversed.  If this is the case, the PHI nodes may not
-		// have incoming values for all predecessors.  Loop over all PHI nodes we have
-		// created, inserting undef values if they are missing any incoming values.
+		// have incoming VALUES for all predecessors.  Loop over all PHI nodes we have
+		// created, inserting undef VALUES if they are missing any incoming VALUES.
 		//
 		for (Map.Entry<Pair, Phi> entity : newPhiNodes.entrySet())
 		{
@@ -319,7 +319,7 @@ public class PromoteMem2Reg
 			if (BB.firstInst() != phi)
 				continue;
 
-			// Only do work here if the phi node are missing incoming values.
+			// Only do work here if the phi node are missing incoming VALUES.
 			if (phi.getNumberIncomingValues() == BB.getNumOfPreds())
 				continue;
 
@@ -939,7 +939,7 @@ public class PromoteMem2Reg
 			other.pred = this.pred;
 			this.pred = otherPred;
 
-			// swap values
+			// swap VALUES
 			Value[] otherVal = this.values;
 			this.values = other.values;
 			other.values = otherVal;

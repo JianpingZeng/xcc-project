@@ -5,7 +5,7 @@ import java.util.ArrayList;
 /**
  * This class represents a label presdo instruction within assembly code.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class Label
 {
@@ -43,18 +43,28 @@ public final class Label
 		this.position = pos;
 		assert isBound();
 	}
-
+	
+	/**
+	 * Checks if this label is bound to a physical memory location.
+	 * @return
+	 */
 	public boolean isBound()
 	{
 		return position >= 0;
 	}
-
+	/**
+	 * Add a reference to branch instruction into a list of patch position.
+	 * @param branchLocation
+	 */
 	public void addPatchAt(int branchLocation)
 	{
 		assert !isBound() : "Label is already bound";
 		patchPositions.add(branchLocation);
 	}
-
+	/**
+	 * Set the branch target of these instructions which reference to this label. 
+	 * @param masm
+	 */
 	protected void patchInstructions(AbstractAssembler masm)
 	{
 		assert isBound() : "Label should be bound";
@@ -66,7 +76,8 @@ public final class Label
 		}
 	}
 
-	@Override public String toString()
+	@Override 
+	public String toString()
 	{
 		return isBound() ? String.valueOf(position()) : "?";
 	}

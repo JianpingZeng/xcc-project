@@ -193,7 +193,7 @@ public final class StackSlot extends LIRValue
 
 	/**
 	 * Creates an array of {@code StackSlot} objects for a given {@link LIRKind}.
-	 * The {@link #index} values range from {@code 0} to {@code count - 1}.
+	 * The {@link #index} VALUES range from {@code 0} to {@code count - 1}.
 	 *
 	 * @param kind  the {@code LIRKind} of the stack slot
 	 * @param count the length of the array to create

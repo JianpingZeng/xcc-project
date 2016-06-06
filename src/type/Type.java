@@ -35,7 +35,7 @@ public class Type implements TypeTags
 
 	/**
 	 * The constant of this type, null if this type does not have a constant
-	 * value attribute. Constant values can be set only for base type(numbers,
+	 * value attribute. Constant VALUES can be set only for base type(numbers,
 	 * boolean, string).
 	 */
 	public Object constValue = null;
