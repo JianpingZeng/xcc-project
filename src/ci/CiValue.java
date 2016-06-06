@@ -3,8 +3,8 @@ package ci;
 import java.io.Serializable;
 
 /**
- * Abstract base class for values manipulated by the compiler. 
- * All values have a {@linkplain CiKind kind} and are immutable. 
+ * Abstract base class for VALUES manipulated by the compiler. 
+ * All VALUES have a {@linkplain CiKind kind} and are immutable. 
  * 
  * @author Jianping Zeng <z1215jping@hotmail.com>
  * @version 2016年2月15日 下午9:49:26 
@@ -73,7 +73,7 @@ public abstract class CiValue implements Serializable {
     }
 
     /**
-     * Determines if this value represents a slot on a stack. These values are created
+     * Determines if this value represents a slot on a stack. These VALUES are created
      * by the register allocator for spill slots. They are also used to model method
      * parameters passed on the stack according to a specific calling convention.
      */

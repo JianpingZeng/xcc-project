@@ -40,10 +40,10 @@ public final class IntList
 	/**
 	 * Makes a new int list by copying a range from a given int list.
 	 *
-	 * @param other      the list from which a range of values is to be copied
+	 * @param other      the list from which a range of VALUES is to be copied
 	 *                      into the new list
 	 * @param startIndex the index in {@code other} at which to start copying
-	 * @param length     the number of values to copy from {@code other}
+	 * @param length     the number of VALUES to copy from {@code other}
 	 * @return a new int list whose {@linkplain #size() size} and capacity is
 	 *                      {@code length}
 	 */
@@ -55,9 +55,9 @@ public final class IntList
 	/**
 	 * Makes a new int list by copying a range from a given int list.
 	 *
-	 * @param other           the list from which a range of values is to be copied into the new list
+	 * @param other           the list from which a range of VALUES is to be copied into the new list
 	 * @param startIndex      the index in {@code other} at which to start copying
-	 * @param length          the number of values to copy from {@code other}
+	 * @param length          the number of VALUES to copy from {@code other}
 	 * @param initialCapacity the initial capacity of the new int list (must be greater or equal to {@code length})
 	 * @return a new int list whose {@linkplain #size() size} is {@code length}
 	 */

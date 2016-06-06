@@ -4,13 +4,19 @@ import lir.backend.ByteOrder;
 import lir.backend.TargetMachine;
 
 /**
- * The platform-independent base class for assembler.
+ * The platform-independent abstract base class for assembler.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public abstract class AbstractAssembler
 {
+	/**
+	 * The target machine this assembler used for.
+	 */
 	public final TargetMachine target;
+	/**
+	 * Code buffer.
+	 */
 	public final Buffer codeBuffer;
 
 	public AbstractAssembler(TargetMachine target)

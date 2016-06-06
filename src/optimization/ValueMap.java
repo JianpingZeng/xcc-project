@@ -120,7 +120,7 @@ public class ValueMap
 	}
 
 	/**
-	 * Kills all values in this local inst map.
+	 * Kills all VALUES in this local inst map.
 	 */
 	public void killAll()
 	{

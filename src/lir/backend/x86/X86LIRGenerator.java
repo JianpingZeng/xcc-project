@@ -163,7 +163,7 @@ public final class X86LIRGenerator extends LIRGenerator
 	{
 		if (kind == LIRKind.Short || kind == LIRKind.Char)
 		{
-			// there is no immediate move of word values in assembler I486 or later.
+			// there is no immediate move of word VALUES in assembler I486 or later.
 			return false;
 		}
 		return v instanceof Value.Constant;

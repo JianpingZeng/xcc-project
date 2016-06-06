@@ -1239,7 +1239,7 @@ public class HIRGenerator extends ASTVisitor
 	 * Geneates phi node and inserts it into current block.
 	 *
 	 * @param kind   The ret kind.
-	 * @param values The parameter array to be passed into Phi node.
+	 * @param VALUES The parameter array to be passed into Phi node.
 	 * @param blocks The corresponding block array.
 	 * @return A complete {@code Phi} instruction.
 	 */

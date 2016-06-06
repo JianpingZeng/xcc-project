@@ -1090,7 +1090,7 @@ private static final boolean jjCanMove_0(int hiByte, int i1, int i2, long l1, lo
    }
 }
 
-/** Token literal values. */
+/** Token literal VALUES. */
 public static final String[] jjstrLiteralImages = {
 "", null, null, null, null, null, "\166\157\151\144", "\142\171\164\145", 
 "\143\150\141\162", "\163\150\157\162\164", "\151\156\164", "\154\157\156\147", 

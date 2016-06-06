@@ -151,7 +151,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	{
 		if (kind == LIRKind.Short || kind == LIRKind.Char)
 		{
-			// there is no immediate move of word values in asemblerI486 or later.
+			// there is no immediate move of word VALUES in asemblerI486 or later.
 			return false;
 		}
 		return v instanceof Constant;

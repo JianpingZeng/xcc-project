@@ -165,7 +165,7 @@ public final class CiStackSlot extends CiValue {
 
     /**
      * Creates an array of {@code CiStackSlot} objects for a given {@link CiKind}.
-     * The {@link #index} values range from {@code 0} to {@code count - 1}.
+     * The {@link #index} VALUES range from {@code 0} to {@code count - 1}.
      *
      * @param kind the {@code CiKind} of the stack slot
      * @param count the size of the array to create

@@ -194,7 +194,7 @@ public final class LinearScan
 		{
 			if (isOdd(maxSpills))
 			{
-				// alignment of double slot values
+				// alignment of double slot VALUES
 				assert unusedSpillSlot == null : "wasting a spill slot";
 				unusedSpillSlot = StackSlot.get(kind, maxSpills);
 				maxSpills++;
@@ -1430,7 +1430,7 @@ public final class LinearScan
 
 		if (hasDead)
 		{
-			// iterate all instructions of the block and remove all null-values.
+			// iterate all instructions of the block and remove all null-VALUES.
 
 			// the insertPoint records the index into null value
 			int insertPoint = 0;

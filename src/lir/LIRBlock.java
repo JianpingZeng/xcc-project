@@ -18,21 +18,21 @@ public final class LIRBlock
 
 	/**
 	 * <p>Bit set specifying which operands are live in the entry to this
-	 * machine block. There are values used in this block or any of its
+	 * machine block. There are VALUES used in this block or any of its
 	 * successors where such value are not defined in this block.
 	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
 	public BitMap livein;
 	/**
 	 * <p>Bit set specifying which operands are live in the exit from this
-	 * machine block. There are values used in this block or any of its
+	 * machine block. There are VALUES used in this block or any of its
 	 * successors where such value are not defined in this block.
 	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
 	public BitMap liveout;
 	/**
 	 * <p>Bit set specifying which operands are used in this machine block.
-	 * There are values live in the entry to this block.
+	 * There are VALUES live in the entry to this block.
 	 * <p> The bit index of an LIROperand is its OperandPool.
 	 */
 	public BitMap livegen;

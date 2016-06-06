@@ -6,6 +6,8 @@ import lir.LIRAssembler;
 import lir.LIRGenerator;
 import lir.backend.amd64.AMD64;
 import lir.backend.amd64.AMD64TargetAbstractLayer;
+import lir.backend.x86.X86;
+import lir.backend.x86.X86TargetAbstractLayer;
 
 /**
  * @author Jianping Zeng
@@ -23,6 +25,8 @@ public abstract class TargetAbstractLayer
 	{
 		if (arch instanceof AMD64)
 			return new AMD64TargetAbstractLayer(backend);
+		if (arch instanceof X86)
+			return new X86TargetAbstractLayer(backend);
 		return null;
 	}
 

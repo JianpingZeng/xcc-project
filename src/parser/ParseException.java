@@ -67,7 +67,7 @@ public class ParseException extends Exception {
   /**
    * Each entry in this array is an array of integers.  Each array
    * of integers represents a sequence of tokens (by their ordinal
-   * values) that is expected at this point of the parse.
+   * VALUES) that is expected at this point of the parse.
    */
   public int[][] expectedTokenSequences;
 

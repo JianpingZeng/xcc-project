@@ -1,8 +1,10 @@
 package lir;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
+ * @version 0.1
  */
-public class LIRAssembler
+public abstract class LIRAssembler
 {
+	
 }

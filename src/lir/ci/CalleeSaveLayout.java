@@ -5,7 +5,7 @@ import java.util.Arrays;
 
 /**
  * The callee save area (CSA) is a contiguous space in a stack frame
- * used to save (and restore) the values of the caller's LIRRegisters.
+ * used to save (and restore) the VALUES of the caller's LIRRegisters.
  * This class describes the layout of a CSA in terms of its
  * {@linkplain #size length}, {@linkplain #slotSize slot length} and
  * the {@linkplain #LIRRegisters callee save LIRRegisters} covered by the CSA.

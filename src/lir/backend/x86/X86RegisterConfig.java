@@ -10,7 +10,7 @@ import java.util.Map;
 import static lir.backend.x86.X86.*;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class X86RegisterConfig implements RegisterConfig
 {

@@ -265,7 +265,7 @@ public final class StackFrame
 		public final int offset;
 
 		/**
-		 * Specifies if this block holds object values.
+		 * Specifies if this block holds object VALUES.
 		 */
 		public final boolean refs;
 

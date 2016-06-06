@@ -21,7 +21,7 @@ import java.util.Map;
  * file(compilation unit), including a reference to the runtime, targetAbstractLayer
  * machine etc.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class Backend
 {
@@ -57,7 +57,7 @@ public final class Backend
 	private void emitLIR(HIR hir)
 	{
 		Iterator<Method> itr = hir.iterator();
-		LinearScan allocator = null;
+	
 		while (itr.hasNext())
 		{
 			Method m = itr.next();
@@ -71,11 +71,13 @@ public final class Backend
 			new LinearScan(this, m, lirGenerator, frameMap()).allocate();
 		}
 	}
-
-
+	/**
+	 * Emits assembly code for specified HIR instance. 
+	 * @param hir
+	 */
 	private void emitCode(HIR hir)
 	{
-
+		
 	}
 
 	/**

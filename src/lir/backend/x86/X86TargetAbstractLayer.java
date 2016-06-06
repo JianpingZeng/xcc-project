@@ -8,20 +8,23 @@ import lir.backend.TargetAbstractLayer;
 import lir.backend.amd64.AMD64LIRGenerator;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
-public class X86TAL extends TargetAbstractLayer
+public final class X86TargetAbstractLayer extends TargetAbstractLayer
 {
-	public X86TAL(Backend backend)
+	public X86TargetAbstractLayer(Backend backend)
 	{
 		super(backend);
 	}
-	@Override public LIRGenerator newLIRGenerator(Method m)
+	
+	@Override 
+	public LIRGenerator newLIRGenerator(Method m)
 	{
 		return new AMD64LIRGenerator(backend, m);
 	}
 
-	@Override public LIRAssembler newLIRAssember()
+	@Override 
+	public LIRAssembler newLIRAssember()
 	{
 		return null;
 	}
