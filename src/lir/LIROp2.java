@@ -7,7 +7,7 @@ import lir.ci.LIRValue.Formatter;
 /**
  * The{@code LIROp2} class represents a LIR instruction that performs an operation
  * on two operands.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 
 public class LIROp2 extends LIRInstruction

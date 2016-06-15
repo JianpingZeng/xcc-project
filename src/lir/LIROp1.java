@@ -5,7 +5,7 @@ import lir.ci.LIRValue;
 import utils.Util;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIROp1 extends LIRInstruction
 {

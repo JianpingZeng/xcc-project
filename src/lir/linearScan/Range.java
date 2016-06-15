@@ -7,7 +7,7 @@ package lir.linearScan;
  *     [start...end).
  * </pre>
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @version 0.1
  */
 public final class Range

@@ -5,7 +5,7 @@ package symbol;
  *  different subclasses of Symbol. Symbol kinds are organized so they can be
  *  or'ed to sets.
  *  
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  * @version 2016年1月8日 上午10:50:01 
  */
 public interface SymbolKinds {

@@ -25,12 +25,12 @@ import java.util.LinkedList;
  * just only have one successor.
  * <br>
  * </p>
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/8.
+ * Created by Jianping Zeng  on 2016/3/8.
  */
 public class DCE
 {
 	/**
-	 * The list where all critical instruction in HIR term resides.
+	 * The list where all critical instruction in Module term resides.
 	 */
 	private LinkedList<Instruction> criticalInst;
 	/**
@@ -72,7 +72,7 @@ public class DCE
 	 * <br>
 	 * <b>iii.Sweep stage</b>
 	 */
-	public void run()
+	public void runOnMethod()
 	{
 		// 1.Initialization stage
 		initCriticalInst();
@@ -236,9 +236,9 @@ public class DCE
 
 	/**
 	 * Determines whether the specified instruction is a critical or not in term
-	 * of HIR.
+	 * of Module.
 	 * <br>
-	 * In the term of HIR, a critical instruction must meets one of two conditons:
+	 * In the term of Module, a critical instruction must meets one of two conditons:
 	 * it is either a return statement, or it "may have side effects".
 	 * The second condition means that it may write data into memory. That is a
 	 * safe and conservative approach due to the difficulty of disambiguating

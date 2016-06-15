@@ -7,7 +7,7 @@ import utils.Name;
  * A class for type symbols. Type symbol are represented by instances of
  * this class, classes and packages by instances of subclasses in the future.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class TypeSymbol extends Symbol
 {

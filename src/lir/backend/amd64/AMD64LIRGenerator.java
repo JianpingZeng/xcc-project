@@ -13,7 +13,7 @@ import utils.NumUtil;
 import utils.Util;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class AMD64LIRGenerator extends LIRGenerator
 {

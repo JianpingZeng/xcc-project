@@ -3,7 +3,7 @@ package lir;
 import lir.ci.LIRValue;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIROp0 extends LIRInstruction
 {

@@ -3,7 +3,7 @@ package utils;
 import java.util.BitSet;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class BitMap extends BitSet
 {

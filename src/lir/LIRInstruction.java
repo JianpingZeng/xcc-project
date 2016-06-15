@@ -8,12 +8,12 @@ import lir.ci.LIRValue.Formatter;
 
 /**
  * <p>This file defines a base class of all LIR instruction that explicitly owns
- * several operands and result variable, which is different from HIR instruction
+ * several operands and result variable, which is different from Module instruction
  * which represents both operation and result of operation itself.
  * <p>It is designed to assign register to variable and lifetime computation
  * conveniently.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public abstract class LIRInstruction
 {

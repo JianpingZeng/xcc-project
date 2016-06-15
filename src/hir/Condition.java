@@ -2,7 +2,7 @@ package hir;
 
 /**
  * Condition codes used in conditionals.
- * Created by Jianping Zeng <z1215jping@hotmail.com>
+ * Created by Jianping Zeng  
  */
 public enum Condition
 {

@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class LIRInsertionBuffer
 {

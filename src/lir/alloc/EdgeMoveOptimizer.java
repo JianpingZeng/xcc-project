@@ -14,7 +14,7 @@ import java.util.List;
  * successor, while the last move instruction of all predecessors are same, removing
  * those and inserting those into the head of current block.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class EdgeMoveOptimizer
 {

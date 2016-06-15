@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Represents an interval in the {@linkplain LinearScan linear scanning register allocator}.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class Interval
 {

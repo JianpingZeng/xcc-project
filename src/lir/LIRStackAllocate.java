@@ -5,7 +5,7 @@ import lir.StackFrame.StackBlock;
 /**
  * LIR instruction used in translating {@link hir.Instruction.Alloca}.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIRStackAllocate extends LIRInstruction
 {

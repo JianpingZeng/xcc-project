@@ -8,7 +8,7 @@ import utils.Position;
 
 /**
  * A class for variable symbols
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class VarSymbol extends Symbol
 {
@@ -40,7 +40,7 @@ public class VarSymbol extends Symbol
 
 	/**
 	 * The corresponding allocated Local or Global instruction for this
-	 * variable in HIR.
+	 * variable in Module.
 	 */
 	public Instruction.Alloca varInst;
 

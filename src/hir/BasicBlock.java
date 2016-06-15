@@ -4,6 +4,7 @@ package hir;
 import asm.Label;
 import lir.LIRList;
 import lir.LIRBlock;
+import hir.Instruction.Branch;
 
 import java.util.*;
 
@@ -21,7 +22,7 @@ import java.util.*;
  * constructor of {@link BasicBlock}, you should create it via a
  * {@link ControlFlowGraph} so that id id is unique.
  * <p>
- * @author Jianping Zeng < z121jping@hotmail.com >
+ * @author Xlous.zeng
  * @version 1.0
  * @see Instruction
  */
@@ -70,7 +71,7 @@ public final class BasicBlock implements Iterable<Instruction>
 
 	/**
 	 * A block containing Generated machine instruction corresponding to
-	 * HIR instruction for specified targetAbstractLayer.
+	 * Module instruction for specified targetAbstractLayer.
 	 */
 	private LIRBlock LIRBlock;
 
@@ -121,14 +122,21 @@ public final class BasicBlock implements Iterable<Instruction>
 	/**
 	 * A private constructor for entry node
 	 */
-	private BasicBlock(int id, LinkedList<BasicBlock> pres,
-			String bbName, ControlFlowGraph cfg)
+	private BasicBlock(
+			int id, 
+			LinkedList<BasicBlock> pres,
+			String bbName, 
+			ControlFlowGraph cfg)
 	{
 		this(id, pres, null, bbName, cfg);
 	}
 
-	private BasicBlock(int id, LinkedList<BasicBlock> pres, LinkedList<BasicBlock> succs,
-			String bbName, ControlFlowGraph cfg)
+	private BasicBlock(
+			int id, 
+			LinkedList<BasicBlock> pres, 
+			LinkedList<BasicBlock> succs,
+			String bbName, 
+			ControlFlowGraph cfg)
 	{		
 		this.idNumber = id;
 		this.instructions = new LinkedList<>();
@@ -143,7 +151,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	/**
 	 * Creates new entry node. Only to be called by ControlFlowGraph.
 	 */
-	static BasicBlock createStartNode(int id, String name, ControlFlowGraph cfg)
+	public static BasicBlock createStartNode(int id, String name, ControlFlowGraph cfg)
 	{
 		return new BasicBlock(id, null, name, cfg);
 	}
@@ -151,7 +159,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	/**
 	 * Creates a new basic node for exit block without numbers of predecessors.
 	 */
-	static BasicBlock createEndNode(int id, String bbName, ControlFlowGraph cfg)
+	public static BasicBlock createEndNode(int id, String bbName, ControlFlowGraph cfg)
 	{
 		return new BasicBlock(id, new LinkedList<>(), null, bbName, cfg);
 	}
@@ -159,7 +167,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	/**
 	 * Create new internal basic block. Only to be called by ControlFlowGraph.
 	 */
-	static BasicBlock createBasicBlock(int id, String bbName, ControlFlowGraph cfg)
+	public static BasicBlock createBasicBlock(int id, String bbName, ControlFlowGraph cfg)
 	{
 		return new BasicBlock(id, new LinkedList<>(), new LinkedList<>(), bbName, cfg);
 	}
@@ -299,7 +307,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * @param index the index to add the quad
 	 * @param q     quad to add
 	 */
-	public void addInst(Instruction q, int index)
+	public void insertAt(Instruction q, int index)
 	{
 		assert (q != null) : "Cannot add null instruction to block";
 		assert (index >= 0 && index < instructions.size()):
@@ -312,12 +320,23 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * Append a quad to the end of this basic block. Cannot add quads to the
 	 * entry or exit basic blocks.
 	 *
-	 * @param q quad to add
+	 * @param inst quad to add
 	 */
-	public void appendInst(Instruction q)
+	public void appendInst(Instruction inst)
 	{
-		assert (q != null) : "Cannot add null instructions to block";
-		instructions.add(q);
+		assert (inst != null) : "Cannot add null instructions to block";
+		if (instructions.isEmpty() || !(instructions.getLast() instanceof Branch))
+		{
+			instructions.add(inst);
+			return;
+		}
+		else 
+		{
+			assert !(inst instanceof Branch) : 
+				"Can not insert more than one branch in basic block";
+			insertAt(inst, instructions.size() - 1);
+			return;
+		}
 	}
 
 	/**
@@ -427,6 +446,32 @@ public final class BasicBlock implements Iterable<Instruction>
 			return null;
 		return instructions.get(instructions.size() - 1);
 	}
+	
+	public void insertAfter(Instruction inst, Instruction after)
+	{
+		assert instructions.contains(inst);
+		assert !(after instanceof Branch);
+		
+		int idx = instructions.indexOf(after);
+		if (idx < 0) return;
+		if (idx == instructions.size())
+		{	
+			instructions.add(inst);
+			return;
+		}
+		
+		instructions.add(idx + 1, inst);
+	}
+	
+	public void insertBefore(Instruction inst, Instruction before)
+	{
+		assert instructions.contains(inst);
+		assert !(before instanceof Branch);
+			
+		int idx = instructions.indexOf(before);
+		if (idx < 0) return;		
+		instructions.add(idx, inst);
+	}
 
 	/**
 	 * Inserts a instruction into the position after the first inst of instructions
@@ -490,7 +535,22 @@ public final class BasicBlock implements Iterable<Instruction>
 			for (BasicBlock succ : successors)
 				succ.removePredeccessor(this);
 	}
-
+	/**
+	 * Returns the terminator instruction if the block is well formed or
+	 * return null if block is not well formed.
+	 * @return
+	 */
+	public Branch getTerminator()
+	{
+		Instruction inst = instructions.getLast();
+		if (inst instanceof Branch)
+		{
+			return (Branch)inst;
+		}
+		else 
+			return null;
+	}
+	
 	public void setBlockFlags(BlockFlag flag)
 	{
 		blockFlags |= flag.mask;

@@ -1,7 +1,7 @@
 package lir;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIR
 {

@@ -2,7 +2,7 @@ package lir;
 
 /**
  * This enum defines a various of opcode for LIR instruction.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public enum LIROpcode
 {

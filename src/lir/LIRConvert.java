@@ -5,7 +5,7 @@ import lir.ci.LIRValue;
 
 /**
  * The {@code LIRConvert} class definition.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIRConvert extends LIROp1
 {

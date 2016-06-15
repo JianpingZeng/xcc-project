@@ -10,7 +10,7 @@ import lir.ci.*;
 /**
  * * Represents an interval in the {@linkplain LinearScan linear scanning register allocator}.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @version 0.1
  */
 public final class Interval

@@ -6,7 +6,7 @@ import lir.backend.TargetAbstractLayer;
 import lir.backend.RegisterConfig;
 import lir.backend.TargetMachine;
 import hir.BasicBlock;
-import hir.HIR;
+import hir.Module;
 import hir.Method;
 import lir.StackFrame;
 import lir.LIRGenerator;
@@ -44,17 +44,17 @@ public final class Backend
 	}
 	/**
 	 * Yield machine code for a single compilation unit upon specified architecture
-	 * (like X86 or AMD64). Note that, every HIR instance takes role in representing
+	 * (like X86 or AMD64). Note that, every Module instance takes role in representing
 	 * a single compilation unit.
 	 * @param hir
 	 */
-	public void emitMachineInst(HIR hir)
+	public void emitMachineInst(Module hir)
 	{
 		emitLIR(hir);
 		emitCode(hir);
 	}
 
-	private void emitLIR(HIR hir)
+	private void emitLIR(Module hir)
 	{
 		Iterator<Method> itr = hir.iterator();
 	
@@ -72,21 +72,21 @@ public final class Backend
 		}
 	}
 	/**
-	 * Emits assembly code for specified HIR instance. 
+	 * Emits assembly code for specified Module instance. 
 	 * @param hir
 	 */
-	private void emitCode(HIR hir)
+	private void emitCode(Module hir)
 	{
 		
 	}
 
 	/**
 	 * Yield machine code for multiple compilation units upon specified architecture
-	 *  (like X86 or AMD64). Note that, every HIR instance takes role in representing
+	 *  (like X86 or AMD64). Note that, every Module instance takes role in representing
 	 *  a single compilation unit.
 	 * @param hirs
 	 */
-	public void emitMachineInst(HIR[] hirs)
+	public void emitMachineInst(Module[] hirs)
 	{
 		if (hirs.length < 1)
 			return;

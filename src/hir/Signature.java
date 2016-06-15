@@ -6,7 +6,7 @@ import type.Type;
 /**
  * This class represents a signature of a function, which consists the name of
  * function, parameter list etc.
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/22.
+ * @author Xlous.zeng
  */
 public class Signature
 {

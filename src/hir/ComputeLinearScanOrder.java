@@ -6,10 +6,12 @@ import utils.TTY;
 import java.util.*;
 
 /**
- * This class defined for computing the linear scanning order of given control
- * flow graph.
  * <p>
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/17.
+ * This class defined for computing the linear scanning order upon given control
+ * flow graph.
+ * </p>
+ * @author Xlous.zeng
+ * @version 0.1
  */
 public class ComputeLinearScanOrder
 {
@@ -33,7 +35,6 @@ public class ComputeLinearScanOrder
 	 * A stack simulated by LinkedList that used for explicitly recursively
 	 * traverse CFG.
 	 */
-	private LinkedList<Pair<BasicBlock, BasicBlock>> worklist;
 
 	private LinkedList<BasicBlock> workList;
 	/**
@@ -74,8 +75,7 @@ public class ComputeLinearScanOrder
 		activeBlocks = new BitSet(maxBlockID);
 		forwardBranches = new int[maxBlockID];
 		this.DT = DT;
-		loopEndBlocks = new ArrayList<>(8);
-		worklist = new LinkedList<>();
+		loopEndBlocks = new ArrayList<>(8);		
 
 		workList = new LinkedList<>();
 

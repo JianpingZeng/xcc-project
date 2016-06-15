@@ -18,7 +18,7 @@ import java.util.ListIterator;
  * does not modify the CFG of the function at all.  All allocas must be from
  * the same function.
  * </p>
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/26.
+ * @author Xlous.zeng.
  */
 public class EnterSSA
 {

@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * This class represents a call instruction which calls to any function.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIRCall extends LIRInstruction
 {

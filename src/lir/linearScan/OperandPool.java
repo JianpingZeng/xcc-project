@@ -1,7 +1,7 @@
 package lir.linearScan;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 
 import lir.backend.Architecture;

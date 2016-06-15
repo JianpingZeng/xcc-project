@@ -5,7 +5,7 @@ import java.util.BitSet;
 /**
  * /**
  * This class implements a two-dimensional bitset.
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/18.
+ * Created by Jianping Zeng  on 2016/3/18.
  */
 public final class BitMap2D
 {

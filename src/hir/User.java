@@ -3,7 +3,7 @@ package hir;
 import lir.ci.LIRKind;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public abstract class User extends Value
 {

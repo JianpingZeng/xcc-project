@@ -10,7 +10,7 @@ import utils.Util;
  * operation, control flow operators,Phi assignment, function calling
  * conditional statement.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @version 1.0
  * @see BasicBlock
  * @see User
@@ -116,7 +116,7 @@ public abstract class Instruction extends User
 	{
 		int index = bb.lastIndexOf(inst);
 		if (index >= 0 && index < bb.size())
-			bb.addInst(inst, index + 1);
+			bb.insertAt(inst, index + 1);
 	}
 
 	/**
@@ -128,7 +128,7 @@ public abstract class Instruction extends User
 	{
 		int index = bb.lastIndexOf(inst);
 		if (index >= 0 && index < bb.size())
-			bb.addInst(inst, index);
+			bb.insertAt(inst, index);
 	}
 
 	/**
@@ -187,7 +187,7 @@ public abstract class Instruction extends User
 	/**
 	 * This class just for binary operation definition.
 	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 */
 	public static abstract class Op2 extends Instruction
 	{
@@ -269,6 +269,43 @@ public abstract class Instruction extends User
 		}
 	}
 
+	public static class Cmp extends Op2
+	{
+		private Condition cond;
+
+		/**
+		 * Creates a instance of different subclass served as different
+		 * date type according to the date type.
+		 *
+		 * @param kind  The ret date type.
+		 * @param left  The left LIROperand.
+		 * @param right the right LIROperand.
+		 * @param cond  The condition object.
+		 * @return According comparison instruction.
+		 */
+		public Cmp(LIRKind kind, Value left, Value right, Condition cond,
+				String name)
+		{
+			super(kind, Operator.Cmp, left, right, name);
+			this.cond = cond;
+		}
+
+		/**
+		 * An interface for ValueVisitor invoking.
+		 *
+		 * @param visitor The instance of ValueVisitor.
+		 */
+		@Override public void accept(ValueVisitor visitor)
+		{
+			visitor.visitCompare(this);
+		}
+		
+		public Condition condition()
+        {
+	        return this.cond;
+        }
+	}
+	
 	public static class Negate extends Op1
 	{
 		public Negate(LIRKind kind, Value x, String name)
@@ -303,7 +340,7 @@ public abstract class Instruction extends User
 	/**
 	 * An abstract representation of branch instruction.
 	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 */
 	public static abstract class Branch extends Instruction
 	{
@@ -316,6 +353,12 @@ public abstract class Instruction extends User
 		{
 			super(kind, opcode, name);
 		}
+		/**
+		 * Substitute all occurrence of branching target oldBB of new one.
+		 * @param oldBB	The old target of this branch.
+		 * @param newBB	The new target of this branch.
+		 */
+		public abstract void replaceTargetWith(BasicBlock oldBB, BasicBlock newBB);	
 	}
 
 	public static abstract class ConditionalBranch extends Branch
@@ -435,50 +478,22 @@ public abstract class Instruction extends User
 		{
 			return cond;
 		}
-	}
-
-	public static class Cmp extends Op2
-	{
-		private Condition cond;
-
-		/**
-		 * Creates a instance of different subclass served as different
-		 * date type according to the date type.
-		 *
-		 * @param kind  The ret date type.
-		 * @param left  The left LIROperand.
-		 * @param right the right LIROperand.
-		 * @param cond  The condition object.
-		 * @return According comparison instruction.
-		 */
-		public Cmp(LIRKind kind, Value left, Value right, Condition cond,
-				String name)
-		{
-			super(kind, Operator.Cmp, left, right, name);
-			this.cond = cond;
-		}
-
-		/**
-		 * An interface for ValueVisitor invoking.
-		 *
-		 * @param visitor The instance of ValueVisitor.
-		 */
-		@Override public void accept(ValueVisitor visitor)
-		{
-			visitor.visitCompare(this);
-		}
 		
-		public Condition condition()
-        {
-	        return this.cond;
-        }
+		@Override
+		public void replaceTargetWith(BasicBlock oldBB, BasicBlock newBB)
+		{
+			if (trueTarget == oldBB)
+				trueTarget = newBB;
+			if (falseTarget == oldBB)
+				falseTarget = newBB;
+		}
 	}
 
 	/**
 	 * The {@code Goto} instruction represents the end of a block that
 	 * unconditional branches to another basic block.
 	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 */
 	public static class Goto extends Branch
 	{
@@ -502,12 +517,18 @@ public abstract class Instruction extends User
 		{
 			visitor.visitGoto(this);
 		}
+		@Override
+		public void replaceTargetWith(BasicBlock oldBB, BasicBlock newBB)
+		{
+			if (target == oldBB)
+				target = newBB;
+		}
 	}
 
 	/**
 	 * This {@code Return} class definition.
 	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 */
 	public static class Return extends Instruction
 	{
@@ -547,7 +568,7 @@ public abstract class Instruction extends User
 	/**
 	 * Method invocation instruction.
 	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 */
 	public static class Invoke extends Instruction
 	{
@@ -602,7 +623,7 @@ public abstract class Instruction extends User
 	 * The {@code Phi} instruction represents the merging of data flow in the
 	 * instruction graph. It refers to a join block and a variable.
 	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 */
 	public static class Phi extends Instruction
 	{
@@ -680,6 +701,16 @@ public abstract class Instruction extends User
 					< inputs.length : "The index is beyond out the num of list";
 			return inputs[index].first;
 		}
+		
+		public Value getIncomingValueForBlock(BasicBlock bb)
+		{
+			for (Pair<Value, BasicBlock> pair : inputs)
+			{
+				if (pair.second == bb)
+					return pair.first;
+			}
+			return null;
+		}
 
 		/**
 		 * Gets the input block at given position.
@@ -687,11 +718,28 @@ public abstract class Instruction extends User
 		 * @param index The position where input block will be obtained.
 		 * @return The input block at specified position.
 		 */
-		public BasicBlock getBasicBlock(int index)
+		public BasicBlock getIncomingBlock(int index)
 		{
 			assert index >= 0 && index
 					< inputs.length : "The index is beyond out the num of list";
 			return inputs[index].second;
+		}
+		
+		public Value removeIncomingValue(int index)
+		{
+			assert index >= 0 && index
+					< inputs.length : "The index is beyond out the num of list";
+			Pair<Value, BasicBlock>[] newInputs = new Pair[inputs.length -1];
+			int i =0;
+			for (; i < index; i++)
+				newInputs[i] = inputs[i];
+			Value oldValue = inputs[i].first;
+			i++;
+			for (; i < inputs.length; i++)
+				newInputs[i] = inputs[i];
+			
+			inputs = newInputs;
+			return oldValue;
 		}
 
 		/**
@@ -784,7 +832,7 @@ public abstract class Instruction extends User
 		private Value num;
 
 		/**
-		 * Creates a new {@linkplain Alloca} HIR that allocates memory for specified
+		 * Creates a new {@linkplain Alloca} Module that allocates memory for specified
 		 * {@LIRKind kind} and the numbers of to be allocated element.
 		 * @param kind  The data kind of allocated data which is instance of {@linkplain LIRKind}.
 		 * @param num   The number of elements if allocating is used for array.
@@ -975,6 +1023,15 @@ public abstract class Instruction extends User
 		public void setHighKey(int highKey)
 		{
 			this.highKey = highKey;
+		}
+		@Override
+		public void replaceTargetWith(BasicBlock oldBB, BasicBlock newBB)
+		{
+			for (Pair<Value, BasicBlock> pair : operands)
+			{
+				if (pair.second== oldBB)
+					pair.second = newBB;
+			}
 		}
 	}
 }

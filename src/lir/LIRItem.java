@@ -17,7 +17,7 @@ import utils.Util;
  * instruction inserted to copy the output of the producer instruction into the
  * intermediate LIROperand.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIRItem
 {

@@ -13,7 +13,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIRList
 {

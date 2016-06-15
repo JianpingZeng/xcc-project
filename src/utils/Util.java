@@ -7,7 +7,7 @@ import lir.ci.LIRKind;
 import java.util.List;
 
 /**
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/26.
+ * @author Xlous.zeng.
  */
 public class Util
 {

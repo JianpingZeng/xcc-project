@@ -1,6 +1,6 @@
 package hir; 
 /** 
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  */
 public class Variable
 {

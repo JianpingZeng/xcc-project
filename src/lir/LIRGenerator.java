@@ -14,11 +14,11 @@ import java.util.List;
 import static lir.ci.LIRRegisterValue.IllegalValue;
 
 /**
- * This file defines a class that responsible for translating HIR into LIR in SSA
+ * This file defines a class that responsible for translating Module into LIR in SSA
  * form which owns so many beneficial properties that Linear scan register allocation
  * operates is feasibility.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @Version 0.1
  */
 public abstract class LIRGenerator extends ValueVisitor
@@ -562,7 +562,7 @@ public abstract class LIRGenerator extends ValueVisitor
 
 			incoming.setLIROperand(item.result());
 			args[i] = item.result();
-			blocks[i] = inst.getBasicBlock(i);
+			blocks[i] = inst.getIncomingBlock(i);
 		}
 		if (inst.LIROperand == IllegalValue)
 		{

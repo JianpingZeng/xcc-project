@@ -11,7 +11,7 @@ import utils.Name;
  * The abstract root class of various type. It provides different definitions
  * for it's concrete subclass.
  * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  * @version 1.0
  */
 public class Type implements TypeTags

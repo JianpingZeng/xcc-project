@@ -27,7 +27,7 @@ import java.util.*;
  * It has been modified to not explicitly use the DJ graph data structure and to
  * directly compute pruned SSA using per-variable liveness information.
  * <p>
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/3.
+ * Created by Jianping Zeng  on 2016/3/3.
  */
 public class PromoteMem2Reg
 {
@@ -330,7 +330,7 @@ public class PromoteMem2Reg
 			// and remove them from preds list.
 			for (int idx = 0; idx < phi.getNumberIncomingValues(); idx++)
 			{
-				BasicBlock incomingBlock = phi.getBasicBlock(idx);
+				BasicBlock incomingBlock = phi.getIncomingBlock(idx);
 				if (preds.contains(incomingBlock))
 					preds.remove(incomingBlock);
 			}
@@ -397,7 +397,7 @@ public class PromoteMem2Reg
 			{
 				Phi phi = (Phi) inst;
 				// to distinguish between phi node being inserted by this invocation
-				// of mem2reg from those phi nodes that already existed in the HIR
+				// of mem2reg from those phi nodes that already existed in the Module
 				// before mem2reg was run.
 				if (PhiToAllocaMap.containsKey(phi))
 				{
@@ -444,7 +444,7 @@ public class PromoteMem2Reg
 				inst = it.next();
 
 				// Only load and store to alloca instruction will be handled,
-				// because at our HIR, the usesList of alloca just contains laods
+				// because at our Module, the usesList of alloca just contains laods
 				// and stores.
 				if (inst instanceof LoadInst)
 				{

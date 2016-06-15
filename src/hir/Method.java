@@ -10,8 +10,8 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * This class is representation at the HIR(high-level IR) of a function or method.
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * This class is representation at the Module(high-level IR) of a function or method.
+ * @author Xlous.zeng  
  * @version 2016年2月2日 下午9:10:07 
  */
 public class Method implements Iterable<BasicBlock>

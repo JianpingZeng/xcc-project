@@ -11,21 +11,21 @@ import utils.Context;
 
 /**
  * <p>
- * This class implements overrall container for the HIR(high-level IR) and directs
- * its construction, optimization and finalization.
+ * This class was served as representing a compilation unit, e.g. a source or header 
+ * file in c/c++. and implementing a overall container for the Module(high-level IR)
  * </p>
  * <p>
- * This class consists of multiple {@link Variable} and/or {@link Method}, there
- * is an only control flow graph attached to every method declaration at the AST.
+ * There are multiple {@link Variable} and/or {@link Method} in this class, instead of 
+ * only a control flow graph corresponding to each method declared at the AST.
  * </p>
  * <p>
  * Further, a sorts of basic block has filled into CFG in the execution
  * order of program. At the any basic block, a large amount of quads are ordered 
  * in execution order.
  * </p>
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng
  */
-public class HIR
+public class Module
 {
 	private static final Context.Key HIRKey = new Context.Key();
 	/**
@@ -42,15 +42,15 @@ public class HIR
 	 * @param context	An context environment.
 	 * @param vars	Variable declarations list.
 	 * @param methods	Method declarations list
-	 * @return	The instance of {@link HIR}
+	 * @return	The instance of {@link Module}
 	 */
-	public static HIR instance(Context context, List<Variable> vars,
+	public static Module instance(Context context, List<Variable> vars,
 			List<Method> methods)
 	{
-		HIR instance = (HIR)context.get(HIRKey);
+		Module instance = (Module)context.get(HIRKey);
 		if (instance == null)
 		{
-			instance = new HIR(vars, methods);
+			instance = new Module(vars, methods);
 			context.put(HIRKey, instance);
 		}
 		return instance;
@@ -61,7 +61,7 @@ public class HIR
 	 * @param vars
 	 * @param methods
 	 */
-	private HIR(List<Variable> vars, List<Method> methods)
+	private Module(List<Variable> vars, List<Method> methods)
 	{
 		this.vars = vars;
 		this.methods = methods;
@@ -76,7 +76,7 @@ public class HIR
 	{
 		// performs dead code elimination.
 		for (Method m : methods)
-			new DCE(m).run();
+			new DCE(m).runOnMethod();
 
 		// performs constant folding and propagation
 		ConstantProp prop = new ConstantProp();

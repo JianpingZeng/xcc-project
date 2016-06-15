@@ -4,7 +4,7 @@ package type;
  * An interfaces for type tag VALUES, which distinguish between 
  * different sorts of types.
  * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  * @version 1.0
  */
 public interface TypeTags {

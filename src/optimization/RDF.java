@@ -8,7 +8,8 @@ import java.util.*;
 /**
  * This file defines a helpful method for obtains the reverse dominator frontier
  *
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/11.
+ * @author Xlous.zeng
+ * @version 0.1
  */
 public class RDF
 {

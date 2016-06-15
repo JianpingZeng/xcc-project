@@ -16,7 +16,7 @@ import static lir.ci.LIRRegister.RegisterFlag.FPU;
  * moreover, there are many register for advanced vector computation. Please visit
  * the website <a href="http://www.sco.com/developers/devspecs/abi386-4.pdf">
  *     System V Application Binary Interface</a> for more details.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class X86 extends Architecture
 {

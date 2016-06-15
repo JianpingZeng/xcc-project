@@ -16,7 +16,8 @@ import java.util.List;
  * J.Lu, R.Shillner, Clean:removing useless control flow, unpublished manuscript
  * , Department of computer science, Rice university,Houston, TX, 1994.
  * </p>
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/11.
+ * @author Xlous.zeng
+ * @version 0.1
  */
 public class UCE
 {
