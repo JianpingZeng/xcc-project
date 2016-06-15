@@ -10,7 +10,7 @@ import java.util.LinkedList;
  * <p>This file is a member of <a href={@docRoot/optimization}>Machine Indepedence
  * Optimization</a>.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @see Canonicalizer
  * @see DCE
  * @see GVN

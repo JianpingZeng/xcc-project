@@ -3,9 +3,9 @@ package hir;
 import static hir.Operator.Flags.*;
 /**
  * This file defines a enumerator that contains all of operators which represents
- * as a integer in HIR instruction.
+ * as a integer in Module instruction.
  *
- * Created by Jianping Zeng<z1215jping@hotmail.com>.
+ * Created by Jianping Zeng .
  */
 public enum Operator
 {

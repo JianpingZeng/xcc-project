@@ -10,7 +10,9 @@ import java.util.HashMap;
 /**
  * An internal class for global value numbering which is desired when performing
  * global common subexpression elimination.
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/17.
+ * 
+ * @author xlous.zeng
+ * @version 0.1
  */
 public class GVN
 {

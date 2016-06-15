@@ -17,7 +17,7 @@ import java.util.List;
  * different at the end of predecessor and starts of successor, a move instruction
  * must be inserted to resole the conflict.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @version 0.1
  */
 public class MoveResolver

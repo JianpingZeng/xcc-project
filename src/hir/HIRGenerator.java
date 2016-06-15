@@ -50,7 +50,7 @@ import java.util.List;
  * 虚拟临时寄存器T1存储它。当函数返回之时，对于已经修改的变量，写回到变量中。
  * </p>
  *
- * @author Jianping Zeng<z1215jping@hotmail.com>
+ * @author Xlous.zeng 
  * @version 1.0
  */
 public class HIRGenerator extends ASTVisitor
@@ -77,13 +77,13 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * A translation method for converting from abstract syntax tree into IR.
 	 *
-	 * @return HIR An instance of IR in SSA form representing single compilation
+	 * @return Module An instance of IR in SSA form representing single compilation
 	 * file.
 	 */
-	public HIR translate(Tree tree)
+	public Module translate(Tree tree)
 	{
 		tree.accept(this);
-		return HIR.instance(context, vars, methods);
+		return Module.instance(context, vars, methods);
 	}
 
 	/**
@@ -92,10 +92,10 @@ public class HIRGenerator extends ASTVisitor
 	 * @param tree
 	 * @return
 	 */
-	public HIR traslate(MethodDef tree)
+	public Module traslate(MethodDef tree)
 	{
 		tree.accept(this);
-		return HIR.instance(context, vars, methods);
+		return Module.instance(context, vars, methods);
 	}
 
 	/**
@@ -447,16 +447,16 @@ public class HIRGenerator extends ASTVisitor
 	{
 		/*
 		// the original type
-		int srccode = HIR.typecode(sType);
+		int srccode = Module.typecode(sType);
 		// the targetAbstractLayer type
-		int targetcode = HIR.typecode(dType);
+		int targetcode = Module.typecode(dType);
 		if (srccode == targetcode)
 			return src;
 		else
 		{
 			// the return inst of truncate method at least INTcode
-			int typecode1 = HIR.truncate(srccode);
-			int targetcode2 = HIR.truncate(targetcode);
+			int typecode1 = Module.truncate(srccode);
+			int targetcode2 = Module.truncate(targetcode);
 			//
 			if (typecode1 != targetcode2)
 			{
@@ -519,7 +519,7 @@ public class HIRGenerator extends ASTVisitor
 	{
 		if (tree.body != null)
 		{
-			// initialize some variable for emitting HIR of function.
+			// initialize some variable for emitting Module of function.
 			Method m = enterFunctionInit(tree);
 
 			// initialize return value if this function have return
@@ -622,7 +622,7 @@ public class HIRGenerator extends ASTVisitor
 		if (index < 0 || index == entry.size() - 1)
 			entry.appendInst(inst);
 		else
-			entry.addInst(inst, index + 1);
+			entry.insertAt(inst, index + 1);
 
 		inst.setParent(entry);
 
@@ -1146,7 +1146,7 @@ public class HIRGenerator extends ASTVisitor
 	}
 
 	/**
-	 * Emits HIR for default case statement.
+	 * Emits Module for default case statement.
 	 *
 	 * @param tree The default case statement.
 	 */
@@ -1183,7 +1183,7 @@ public class HIRGenerator extends ASTVisitor
 	}
 
 	/**
-	 * Generates HIR for function call.
+	 * Generates Module for function call.
 	 *
 	 * @param m    The targeted method.
 	 * @param args The arguments list passed to callee.

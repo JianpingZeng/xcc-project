@@ -5,7 +5,7 @@ import lir.ci.LIRKind;
 /**
  * Represents the targetAbstractLayer machine for a compiler, including the CPU architecture,
  * the length of pointers and references, alignment of stacks, caches, etc.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class TargetMachine
 {

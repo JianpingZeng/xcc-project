@@ -6,7 +6,7 @@ package heap;
  * for creating new object, like Array(current, not supported), variable used in
  * internal and others.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public abstract class HeapManager
 {

@@ -12,7 +12,7 @@ import utils.Position;
  * variables, methods and operators and types. Each subclass is represented
  * as a static inner class inside Symbol.
  *
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  * @version 2016年1月8日 上午10:48:39
  */
 public class Symbol implements SymbolKinds, TypeTags

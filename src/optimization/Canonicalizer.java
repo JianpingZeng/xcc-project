@@ -9,13 +9,13 @@ import utils.Util;
 
 /**
  * <p>This file defines a class for folding an instruction into a constant.
- * Also, putting constants on the right side of comutative operators for
+ * Also, putting constants on the right side of commutative operators for
  * Strength reduction.
  * <p>
- * <p>This file is a member of <a href={@docRoot/optimization}>Machine Indepedence
+ * <p>This file is a member of <a href={@docRoot/optimization}>Machine Independence
  * Optimization</a>.
  *
- * @author Jianping Zeng.
+ * @author Xlous.zeng
  * @see DCE
  * @see ConstantProp
  * @see GVN

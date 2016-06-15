@@ -3,7 +3,7 @@ package ast;
 /**
  * storage and qualified flags for c-flat method and variable.
  * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  */
 public interface Flags {
 	int STATIC = 1 << 0;

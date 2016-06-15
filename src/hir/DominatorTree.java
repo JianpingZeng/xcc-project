@@ -8,7 +8,7 @@ import utils.Pair;
  * This file defines the DominatorTree class, which provides fast and efficient
  * dominance construction and queries according to Lengauer-Tarjan algorithm.
  *
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/29.
+ * Created by Jianping Zeng  on 2016/2/29.
  */
 public class DominatorTree
 {
@@ -162,6 +162,14 @@ public class DominatorTree
 		this.IsPostDominators = isPostData;
 		this.m = m;
 		this.info = new HashMap<>();
+	}
+	/**
+	 * Constructs a instance of creating dominator tree of a CFG.
+	 * @param m The targetAbstractLayer function.
+	 */
+	public DominatorTree(Method m)
+	{
+		this(false, m);
 	}
 
 	/**
@@ -478,14 +486,14 @@ public class DominatorTree
 		LinkedList<Pair> worklist = new LinkedList<>();
 
 		DomTreeNode thisRoot = getRootNode();
+		if (thisRoot == null)
+			return;
+		
 		ListIterator<DomTreeNode> rit = thisRoot.children.listIterator();
 
 		// add a pair of root and predecessor into worklist in the order that
 		// last firstly added.
-		worklist.addLast(new Pair(thisRoot, rit));
-
-		if (thisRoot == null)
-			return;
+		worklist.addLast(new Pair(thisRoot, rit));		
 
 		// Even in the case of multiple exits that form the post dominator root
 		// nodes, do not iterate over all exits, but start from the virtual root

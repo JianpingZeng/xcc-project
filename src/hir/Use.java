@@ -7,7 +7,7 @@ package hir;
  * its all usesList list.
  * <p>
  * @see Value
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class Use
 {

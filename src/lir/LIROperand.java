@@ -7,7 +7,7 @@ import lir.ci.*;
  * (e.g. to replace a variable with a register), then it will have a corresponding
  * entry in the {@link LIRInstruction#allocatorOperands} list of an instruction.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class LIROperand
 {

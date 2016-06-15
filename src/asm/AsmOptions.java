@@ -1,7 +1,7 @@
 package asm;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class AsmOptions
 {

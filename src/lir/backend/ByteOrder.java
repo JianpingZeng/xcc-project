@@ -1,7 +1,7 @@
 package lir.backend;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public enum ByteOrder
 {

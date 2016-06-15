@@ -11,7 +11,7 @@ import hir.Instruction;
  * Thanks to Maxime virtual machine team, because this source code mainly references
  * to it's contribution.
  * <br>
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/17.
+ * Created by Jianping Zeng  on 2016/3/17.
  * @see GVN
  */
 public class ValueMap

@@ -1,7 +1,7 @@
 package utils;
 
 /**
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/26.
+ * @author Xlous.zeng.
  */
 public class Utils
 {

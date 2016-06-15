@@ -7,7 +7,7 @@ import ast.Tree.*;
  * using Visitor pattern. So that the semantic analysis and code generation 
  * can be implemented as same format. 
  * 
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @version 1.0
  */
 public abstract class ASTVisitor {

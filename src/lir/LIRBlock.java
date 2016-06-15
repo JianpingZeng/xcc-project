@@ -7,7 +7,7 @@ import utils.BitMap;
 /**
  * This file defines a class that represents a subsequnce of machine instruction
  * but no terminal instruction in middle.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class LIRBlock
 {

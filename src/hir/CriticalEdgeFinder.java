@@ -11,7 +11,7 @@ import java.util.Set;
  * has more than one successor and {@code B} has more than one predecessor. Such
  * edges are split by adding a block between the two blocks.
  * <br>
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/17.
+ * Created by Jianping Zeng  on 2016/3/17.
  */
 public class CriticalEdgeFinder
 {

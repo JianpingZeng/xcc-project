@@ -10,7 +10,7 @@ import lir.backend.x86.X86;
 import lir.backend.x86.X86TargetAbstractLayer;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public abstract class TargetAbstractLayer
 {

@@ -1,7 +1,7 @@
 package driver;
 
 import ast.Tree;
-import hir.HIR;
+import hir.Module;
 import lir.backend.TargetMachine;
 import lir.backend.amd64.AMD64;
 import lir.backend.amd64.AMD64RegisterConfig;
@@ -66,10 +66,10 @@ public class CompileInterface
 		{
 			Tree[] trees = frontend.doParseAttribute(filenames);
 
-			// performs high level IR generation and HIR optimization
-			HIR[] hirs = optimizer.emitHIR(trees);
+			// performs high level IR generation and Module optimization
+			Module[] hirs = optimizer.emitHIR(trees);
 
-			// emits machine instruction for HIR instance of any TopLevel instance
+			// emits machine instruction for Module instance of any TopLevel instance
 			backend.emitMachineInst(hirs);
 
 			if (verbose)

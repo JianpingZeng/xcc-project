@@ -33,7 +33,7 @@ import utils.Position;
  * other package. The abstract class {@link ASTVisitor} is the abstract root
  * class for visiting different tree.
  * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  * @version 1.0
  *
  */
@@ -310,7 +310,7 @@ abstract public class Tree
 	/**
 	 * Everything in one source file is kept in a TopLevel structure.
 	 * 
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 * @version 2016年1月9日 下午4:05:29
 	 */
 	public static class TopLevel extends Tree
@@ -346,7 +346,7 @@ abstract public class Tree
 	}
 
 	/**
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 * @version 2016年1月9日 下午4:29:09
 	 */
 	public static class Import extends Tree
@@ -366,7 +366,7 @@ abstract public class Tree
 	}
 
 	/**
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 * @version 2016年1月9日 下午4:40:56
 	 */
 	public static class Skip extends Tree
@@ -384,7 +384,7 @@ abstract public class Tree
 	}
 
 	/**
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 * @version 2016年1月9日 下午4:32:56
 	 */
 	public static class MethodDef extends Tree
@@ -415,7 +415,7 @@ abstract public class Tree
 	}
 
 	/**
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 * @version 2016年1月9日 下午4:38:11
 	 */
 	public static class VarDef extends Tree

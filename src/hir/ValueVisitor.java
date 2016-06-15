@@ -4,7 +4,7 @@ import hir.Instruction.*;
 
 /**
  * A Value Visitor for Instruction or Value using Visitor pattern.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * 
  */
 public abstract class ValueVisitor

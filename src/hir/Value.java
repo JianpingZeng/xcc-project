@@ -11,7 +11,7 @@ import java.util.*;
 import hir.Instruction.Phi;
 
 /**
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/3/7.
+ * Created by Jianping Zeng  on 2016/3/7.
  */
 public class Value implements Cloneable
 {
@@ -396,7 +396,7 @@ public class Value implements Cloneable
 	/**
 	 * This class is served as a placeholder for Local {@code VarDef} definition.
 	 *
-	 * @author Jianping Zeng <z1215jping@hotmail.com>
+	 * @author Xlous.zeng  
 	 */
 	/*
 	public static final class Local extends Var

@@ -1,7 +1,7 @@
 package exception;
 
 /**
- * Created by Jianping Zeng<z1215jping@hotmail.com> on 2016/2/29.
+ * Created by Jianping Zeng  on 2016/2/29.
  */
 public class MemoryPromoteError extends Error
 {

@@ -4,7 +4,7 @@ import symbol.Symbol;
 
 /** 
  * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  */
 public class CompletionFailure extends RuntimeException
 {

@@ -5,7 +5,7 @@ import lir.ci.LIRValue;
 
 /**
  * The class definition of {@linkplain LIRPhi}.
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class LIRPhi extends LIRInstruction
 {

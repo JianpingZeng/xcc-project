@@ -6,7 +6,7 @@ import java.io.Serializable;
  * Abstract base class for VALUES manipulated by the compiler. 
  * All VALUES have a {@linkplain CiKind kind} and are immutable. 
  * 
- * @author Jianping Zeng <z1215jping@hotmail.com>
+ * @author Xlous.zeng  
  * @version 2016年2月15日 下午9:49:26 
  */
 public abstract class CiValue implements Serializable {

@@ -6,7 +6,7 @@ import java.io.Serializable;
  * Abstract base class for VALUES manipulated by the compiler.
  * All VALUES have a {@linkplain LIRKind kind} and are immutable.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  * @version 1.0
  */
 public abstract class LIRValue implements Serializable

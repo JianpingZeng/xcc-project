@@ -11,7 +11,7 @@ import java.util.HashMap;
  * Represents a CPU architecture, including information such as its endianness, CPU
  * LIRRegisters, word width, etc.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public abstract class Architecture
 {

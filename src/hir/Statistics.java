@@ -1,11 +1,10 @@
 package hir;
 
 /**
- * /**
  * Contains statistics gathered during the compilation of a method and reported back
  * from the compiler as the result of compilation.
  *
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class Statistics
 {

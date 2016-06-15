@@ -15,7 +15,7 @@ import utils.Util;
 import java.util.HashMap;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class X86LIRGenerator extends LIRGenerator
 {

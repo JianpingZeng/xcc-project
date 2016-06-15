@@ -6,7 +6,7 @@ import comp.Attr;
 import comp.Enter;
 import comp.Env;
 import comp.Todo;
-import hir.HIR;
+import hir.Module;
 import hir.HIRGenerator;
 import parser.ParseException;
 import parser.Parser;
@@ -119,8 +119,8 @@ public class Compiler
 				attr.attriMethod(unattributed.pos, env.enclMethod.sym);
 			}
 
-			// performs high level IR generation adn HIR optimization
-			List<HIR> hirLists = new LinkedList<>();
+			// performs high level IR generation adn Module optimization
+			List<Module> hirLists = new LinkedList<>();
 			for (Tree t : trees)
 				hirLists.add(new HIRGenerator(context).translate(t));
 

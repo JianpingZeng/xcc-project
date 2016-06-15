@@ -1,12 +1,12 @@
 package driver;
 
 import ast.Tree;
-import hir.HIR;
+import hir.Module;
 import hir.HIRGenerator;
 import utils.Context;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public final class Optimizer
 {
@@ -19,15 +19,15 @@ public final class Optimizer
 	}
 
 	/**
-	 * Emits HIR(High level Intermediate Representation) for speicifed TopLevel
+	 * Emits Module(High level Intermediate Representation) for speicifed TopLevel
 	 * tree.
 	 * @param trees a list of {@code TopLevel} instance to be HIRifed.
-	 * @return  a array of Emitted HIR instance.
+	 * @return  a array of Emitted Module instance.
 	 */
 
-	public HIR[] emitHIR(Tree[] trees)
+	public Module[] emitHIR(Tree[] trees)
 	{
-		HIR[] hirs = new HIR[trees.length];
+		Module[] hirs = new Module[trees.length];
 		int idx = 0;
 		for (Tree tree : trees)
 			hirs[idx++]  = hirGenerator.translate(tree);
@@ -35,13 +35,13 @@ public final class Optimizer
 	}
 
 	/**
-	 * Emits HIR(High level Intermediate Representation) for speicifed TopLevel
+	 * Emits Module(High level Intermediate Representation) for speicifed TopLevel
 	 * tree.
 	 * @param tree  the {@code TopLevel} instance to be HIRifed.
-	 * @return  emitted HIR instance.
+	 * @return  emitted Module instance.
 	 */
 
-	public HIR emitHIR(Tree tree)
+	public Module emitHIR(Tree tree)
 	{
 		return hirGenerator.translate(tree);
 	}

@@ -18,7 +18,7 @@ import static lir.alloc.Interval.State.Handled;
 import static lir.alloc.Interval.State.Inactive;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class SimpleWalker
 {

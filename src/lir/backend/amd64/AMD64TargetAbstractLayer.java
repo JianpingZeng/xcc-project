@@ -7,7 +7,7 @@ import lir.LIRGenerator;
 import lir.backend.TargetAbstractLayer;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class AMD64TargetAbstractLayer extends TargetAbstractLayer
 {

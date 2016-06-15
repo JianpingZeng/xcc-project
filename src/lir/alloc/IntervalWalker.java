@@ -8,7 +8,7 @@ import static lir.alloc.Interval.State;
 import static lir.alloc.Interval.State.*;
 
 /**
- * @author Jianping Zeng
+ * @author Xlous.zeng
  */
 public class IntervalWalker
 {
