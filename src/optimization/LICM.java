@@ -55,8 +55,9 @@ public final class LICM
 	{
 		dt = new DominatorTree(method);
 		dt.recalculate();
-		LoopAnalysis identifier = new LoopAnalysis(method);
-		loops = identifier.getLoopList();
+		loops = method.getLoops();
+		assert loops != null: "must performed after loop analysis pass";
+		
 		marked = new boolean[loops.length];
 		int maxLoopIndex = -1;
 		for (Loop l : loops)

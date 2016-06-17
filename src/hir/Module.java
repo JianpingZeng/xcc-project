@@ -6,6 +6,9 @@ import java.util.List;
 import optimization.ConstantProp;
 import optimization.DCE;
 import optimization.GVN;
+import optimization.LICM;
+import optimization.LoopAnalysis;
+import optimization.LoopInversion;
 import optimization.UCE;
 import utils.Context;
 
@@ -74,34 +77,39 @@ public class Module
 	 */
 	private void optimize()
 	{
-		// performs dead code elimination.
-		for (Method m : methods)
-			new DCE(m).runOnMethod();
-
 		// performs constant folding and propagation
 		ConstantProp prop = new ConstantProp();
-		for (Method m : methods)
-			prop.runOnMethod(m);
-
-
-		// after DCE, There are useless control flow be introduced by other
-		// optimization. So that the useless control flow elimination is desired
-		// as follows.
-		// 1.merges redundant branch instruction.
-		// 2.unlinks empty basic block
-		// 3.merges basic block
-		// 4.hoist merge instruction
 		UCE uce = new UCE();
 		for (Method m : methods)
+		{
+    		// performs dead code elimination.
+    		
+			new DCE(m).runOnMethod();
+
+			prop.runOnMethod(m);
+    
+    		// after DCE, There are useless control flow be introduced by other
+    		// optimization. So that the useless control flow elimination is desired
+    		// as follows.
+    		// 1.merges redundant branch instruction.
+    		// 2.unlinks empty basic block
+    		// 3.merges basic block
+    		// 4.hoist merge instruction
+
 			uce.clean(m);
 
-		// performs global common subexpression elimination through global value
-		// numbering.
-		for (Method m : methods)
+    		// performs global common subexpression elimination through global value
+    		// numbering.
 			new GVN(m);
-
-
-		
+    
+    		// perform loop analysis and optimization
+			// 1. perform loop analysis
+    		new LoopAnalysis(m).runOnFunction();       	
+    		// 2. perform loop inversion
+    		new LoopInversion(m).runOnLoops();
+    		// 3.perform loop invariant code motion
+    		new LICM(m).runOnLoop();    		
+		}	
 	}
 
 	public Iterator<Method> iterator()

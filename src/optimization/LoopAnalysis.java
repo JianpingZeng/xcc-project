@@ -3,7 +3,6 @@ package optimization;
 import hir.BasicBlock;
 import hir.BasicBlock.BlockFlag;
 import hir.Method;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -61,10 +60,10 @@ public class LoopAnalysis
 	 */
 	private BasicBlock[] IdToBasicBlock;
 
-	private Loop[] loops;
-
+	private Method m;
 	public LoopAnalysis(Method method)
     {
+		this.m = method;
 		maxBlockID = method.cfg.getNumberOfBasicBlocks();
 		IdToBasicBlock = new BasicBlock[maxBlockID];		
 		visitedBlocks = new BitSet(maxBlockID);
@@ -86,11 +85,7 @@ public class LoopAnalysis
 			markLoops();
 			clearNonNatureLoops();
 			assignLoopDepth(entry);
-		}
-		
-		loops = createLoops();
-		// set loops for given function being compiled
-		method.setLoops(loops);
+		}		
     }
 
 	/**
@@ -105,7 +100,7 @@ public class LoopAnalysis
 		}
 	}
 	
-	private Loop[] createLoops()
+	public void runOnFunction()
 	{
 		LinkedList<BasicBlock> list = new LinkedList<>();
 		ArrayList<Loop> loops = new ArrayList<>();
@@ -170,7 +165,9 @@ public class LoopAnalysis
 		markNested(loops);
 		Loop[] sortedLoops = loops.toArray(new Loop[loops.size()]);
 		sortedByLoopDepth(sortedLoops);
-		return sortedLoops;
+		
+		// set loops for given function being compiled
+		m.setLoops(sortedLoops);
 	}
 	
 	/**
@@ -199,15 +196,6 @@ public class LoopAnalysis
 		return false;
 	}
 	
-	/**
-	 * Retrieves an array of {@linkplain Loop} whose each item represents a loop in 
-	 * control flow graph. 
-	 * @return
-	 */
-	public Loop[] getLoopList()
-	{
-		return loops;
-	}
 	
 	/**
 	 * Sorts the specified array of {@linkplain Loop} in decreasing the 
