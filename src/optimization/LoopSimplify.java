@@ -5,5 +5,5 @@ package optimization;
  */
 public final class LoopSimplify
 {
-
+	
 }

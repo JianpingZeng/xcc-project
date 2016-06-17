@@ -1,5 +1,6 @@
 package hir;
 
+import java.util.Arrays;
 import lir.ci.LIRKind;
 import utils.Pair;
 import utils.Util;
@@ -358,7 +359,9 @@ public abstract class Instruction extends User
 		 * @param oldBB	The old target of this branch.
 		 * @param newBB	The new target of this branch.
 		 */
-		public abstract void replaceTargetWith(BasicBlock oldBB, BasicBlock newBB);	
+		public abstract void replaceTargetWith(BasicBlock oldBB, BasicBlock newBB);		
+		
+		public abstract Branch clone();
 	}
 
 	public static abstract class ConditionalBranch extends Branch
@@ -374,6 +377,8 @@ public abstract class Instruction extends User
 		{
 			super(kind, opcode, name);
 		}
+		
+		public abstract ConditionalBranch clone();
 	}
 
 	public static class IfOp extends ConditionalBranch
@@ -487,6 +492,13 @@ public abstract class Instruction extends User
 			if (falseTarget == oldBB)
 				falseTarget = newBB;
 		}
+		
+		@Override
+		public IfOp clone()
+		{
+			return new IfOp(x.clone(), y.clone(), 
+					trueTarget, falseTarget, name.toString(), cond);
+		}
 	}
 
 	/**
@@ -522,6 +534,12 @@ public abstract class Instruction extends User
 		{
 			if (target == oldBB)
 				target = newBB;
+		}
+		
+		@Override
+		public Goto clone()
+		{
+			return new Goto(target, name.toString());
 		}
 	}
 
@@ -1032,6 +1050,17 @@ public abstract class Instruction extends User
 				if (pair.second== oldBB)
 					pair.second = newBB;
 			}
+		}
+		
+		public SwitchInst clone()
+		{
+			Pair<Value, BasicBlock>[] copy = Arrays.copyOf(operands, operands.length);		
+			SwitchInst inst = new SwitchInst(null, null, 0, name.toString());
+			inst.currIdx = this.currIdx;
+			inst.highKey = this.highKey;
+			inst.lowKey = this.lowKey;
+			inst.operands = copy;
+			return inst;
 		}
 	}
 }

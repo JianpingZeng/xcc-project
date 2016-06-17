@@ -8,14 +8,17 @@ import ast.Tree;
 import type.TypeTags;
 import java.util.Iterator;
 import java.util.List;
+import optimization.Loop;
 
 /**
  * This class is representation at the Module(high-level IR) of a function or method.
  * @author Xlous.zeng  
- * @version 2016年2月2日 下午9:10:07 
+ * @version 0.1
  */
 public class Method implements Iterable<BasicBlock>
 {
+	private Loop[] loops;
+	
 	private Signature sign;
 	/**
 	 * An control flow graph corresponding to method compound 
@@ -51,8 +54,19 @@ public class Method implements Iterable<BasicBlock>
 		this.sign = new Signature(ret, name, args);
     }
 
+	public void setLoops(Loop[] loops)
+	{
+		assert loops != null && loops.length > 0;
+		this.loops = loops;
+	}
+	
+	public Loop[] getLoops()
+	{
+		return loops;
+	}
+	
 	/**
-	 * Resovles type from specified abstract syntax tree.
+	 * Resolve type from specified abstract syntax tree.
 	 * @param ty    Tree.
 	 * @return  Type.
 	 */
@@ -86,7 +100,7 @@ public class Method implements Iterable<BasicBlock>
 			return resolveBasicType(ty);
 	}
 	/**
-	 * Resovles basic type from specified abstract syntax tree.
+	 * Resolve basic type from specified abstract syntax tree.
 	 * @param ty    Tree.
 	 * @return  Basic type.
 	 */

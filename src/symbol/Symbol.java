@@ -10,7 +10,7 @@ import utils.Position;
  * This a internal root class that represents all of symbols in this c-flat
  * language. It contains subclasses for specific sorts of symbols, such as
  * variables, methods and operators and types. Each subclass is represented
- * as a static inner class inside Symbol.
+ * as a static subLoops class inside Symbol.
  *
  * @author Xlous.zeng  
  * @version 2016年1月8日 上午10:48:39

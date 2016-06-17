@@ -329,7 +329,7 @@ public class Resolve implements TypeTags, SymbolKinds, Flags
    
    /**
     * An environment is "static" if its static level is greater than
-    *  the one of its outer environment
+    *  the one of its outerLoop environment
     */
    static boolean isStatic(Env env) {
        return ((AttrContext) env.info).staticLevel >
