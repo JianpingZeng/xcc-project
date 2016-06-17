@@ -33,6 +33,7 @@ public final class LoopInversion
 	public LoopInversion(Method method)
 	{
 		this.loops = method.getLoops();
+		assert loops!= null : "must performed after loop analysis pass";
 	}
 	
 	/**
