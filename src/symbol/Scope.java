@@ -12,14 +12,14 @@ import utils.Name;
  * <p>
  * Scopes are implemented
  * as hash tables. Scopes can be nested; the next field of a scope points
- * to its next outer scope. Nested scopes can share their hash tables.
+ * to its next outerLoop scope. Nested scopes can share their hash tables.
  */
 public class Scope
 {
 	/**
 	 * Next enclosing scope with whom this scope shares a hashtable.
 	 * <p>
-	 * Travels the nested scope from current scope to outer which denoted as next field.
+	 * Travels the nested scope from current scope to outerLoop which denoted as next field.
 	 */
 	public Scope next;
 
@@ -92,7 +92,7 @@ public class Scope
 
 	/**
 	 * Construct a fresh scope within this scope, with same next filed,
-	 * which shares its entityTable with the outer scope. Used in connection with
+	 * which shares its entityTable with the outerLoop scope. Used in connection with
 	 * method leave if scope access is stack-like in order to avoid allocation
 	 * of fresh tables.
 	 */
@@ -104,7 +104,7 @@ public class Scope
 	/**
 	 * Construct a fresh scope within this scope, with same owner,
 	 * with a new hash entityTable, whose contents initially are those of
-	 * the entityTable of its outer scope.
+	 * the entityTable of its outerLoop scope.
 	 */
 	public Scope dupUnshared()
 	{

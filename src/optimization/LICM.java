@@ -1,7 +1,6 @@
 package optimization; 
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import utils.Pair;
 import utils.TTY;
@@ -21,14 +20,16 @@ import hir.Value.Constant;
 import hir.Value.UndefValue;
 
 /** 
- * </p>This class performs loop invariant code motion, attempting to remove
+ * </p>
+ * This class performs loop invariant code motion, attempting to remove
  * as much code from the body of a loop as possible. It does this by either
- * hoisting code into the preheader block, or by sinking code to the exit 
+ * hoisting code into the pre-header block, or by sinking code to the exit 
  * block if it is safe. Currently, this class does not use alias analysis
  * so that the all optimization operated upon memory access are excluded.
  * </p>
  * 
- * <p>This pass expected to run after {@linkplain LoopInversion Loop Inversion} 
+ * <p>This pass expected to run after {@linkplain LoopInversion Loop Inversion}
+ * and {@linkplain LoopAnalysis pass}. 
  * performed.
  * </p>
  * 
@@ -39,188 +40,10 @@ import hir.Value.UndefValue;
  * @version 0.1
  */
 public final class LICM
-{
-	/** 
-	 * <p>
-	 * This class describe the concept of loop in a control flow graph of a method, 
-	 * which usually used for {@linkplain LoopIdentifier} when performing loop 
-	 * optimization.
-	 * </p>
-	 * <p>Note that only reducible loop can be identified and optimized. 
-	 * In other word, all of irreducible loops were ignored when performing 
-	 * loop optimization. 
-	 * </p>
-	 * @author Xlous.zeng
-	 * @version 0.1
-	 */
-	public static class Loop
-	{
-		/**
-		 * <p>
-		 * A sequence of block Id. 
-		 * <br>
-		 * The first item must be a loop header block and last one is loop end block.
-		 * <br>
-		 * Also all of block id are sorted in descending the {@linkplain #loopDepth} 
-		 * by an instance of {@linkplain Comparator}.   
-		 * </p>
-		 */
-		final int[] blocks;
-		/**
-		 * The index of this loop.
-		 */
-		final int loopIndex;
-		/**
-		 * The nested depth of this loop.
-		 */
-		final int loopDepth;
-		/**
-		 * A pointer to its outer loop which contains this.
-		 */
-		Loop outer;
-		/**
-		 * A pointer to its inner loop contained in this.
-		 */
-		Loop inner;
-		/**
-		 * The number of end basic block.
-		 */
-		final int numEndBlocks;
-		
-		private BasicBlock[] IdToBasicBlock; 
-		
-		public Loop(int[] blocks, int loopIndex, int loopDepth, int numEndBlocks)
-		{
-			this.blocks = blocks;
-			this.loopIndex = loopIndex;
-			this.loopDepth = loopDepth;
-			this.numEndBlocks = numEndBlocks;
-		}
-		
-		public Loop(Integer[] blocks, int loopIndex, int loopDepth, int numEndBlocks)	
-		{
-			this.blocks = new int[blocks.length];
-			for (int i = 0; i < blocks.length; i++)
-				this.blocks[i] = blocks[i];
-			this.loopIndex = loopIndex;
-			this.loopDepth = loopDepth;
-			this.numEndBlocks = numEndBlocks;
-		}
-		public void setIdToBasicBlock(BasicBlock[] IdToBasicBlock)
-		{
-			this.IdToBasicBlock = IdToBasicBlock;				
-		}
-		/**
-		 * Retrieves the index of a basic block at the specified position where indexed by a index 
-		 * variable. 
-		 * @param index	A index that indexed into specified position where target block located.
-		 * @return	A basic block.
-		 */
-		public int getBlockId(int index)
-		{
-			assert index >= 0 && index < blocks.length;
-			return blocks[index];
-		}
-		/**
-		 * Obtains all end basic blocks as an array in this loop.
-		 * @return
-		 */
-		public int[] endBlocks()
-		{
-			int[] res = new int[numEndBlocks];
-			int j = blocks.length - 1;
-			for (int i = numEndBlocks - 1; i >= 0; i--)
-			{
-				res[i] = blocks[j--];
-			}
-			return res;
-		}
-		
-		public BasicBlock getHeaderBlock()
-		{
-			return IdToBasicBlock[blocks[0]];				
-		}
-		
-		public int getNumOfBlocks()
-		{
-			return blocks.length;
-		}
-		/**
-		 * <p>
-		 * If there is a preheader for this loop, return it.  A loop has a preheader 
-		 * if there is only one edge to the header of the loop from outside of the 
-		 * loop.  If this is the case, the block branching to the header of the loop 
-		 * is the preheader node.
-		 * </p>
-		 * <p>This method returns null if there is no preheader for the loop.</p>
-		 * @return
-		 */
-		public BasicBlock getPreheader()
-		{
-			// keep track of blocks outside the loop branching to the header
-			BasicBlock out = getLoopPrecedessor();
-			if (out == null) return null;
-			
-			// make sure there is exactly one exit out of the preheader
-			if (out.getNumOfSuccs() > 1)
-				return null;
-			// the predecessor has exactly one successor, so it is 
-			// a preheader.
-			return out;
-		}
-		
-		/**
-		 * If given loop's header has exactly one predecessor outside of loop,
-		 * return it, otherwise, return null.
-		 * @return
-		 */
-		private BasicBlock getLoopPrecedessor()
-		{
-			BasicBlock header = getHeaderBlock();
-			BasicBlock outer = null;
-			for (BasicBlock pred : header.getPreds())
-			{
-				if (!contains(pred))
-				{
-					if (outer != null && outer != pred)
-						return null;
-					outer = pred;
-				}
-			}
-			return outer;
-		}
-		/**
-		 * If given basic block is contained in this loop, return true,
-		 * otherwise false returned.
-		 * @param block
-		 * @return
-		 */
-		public boolean contains(BasicBlock block)
-		{
-			int blkID = block.getID();
-			for (int id : blocks)
-			{
-				if (id == blkID)
-					return true;
-			}
-			return false;
-		}
-		/**
-		 * If given instruction is contained in this loop, return true,
-		 * otherwise false returned
-		 * @param inst
-		 * @return
-		 */
-		public boolean contains(Instruction inst)
-		{
-			return contains(inst.getParent());
-		}
-	}
-	
+{	
 	private final Loop[] loops;
 	private boolean[] marked;
 	private Loop[] loopIdToLoops;
-	private BasicBlock[] IdToBasicBlock;
 	private boolean[][] instInvariant;
 	private ArrayList<Pair<Integer, Integer>> invarOrder;
 	private DominatorTree dt;
@@ -232,9 +55,8 @@ public final class LICM
 	{
 		dt = new DominatorTree(method);
 		dt.recalculate();
-		LoopIdentifier identifier = new LoopIdentifier(method);
+		LoopAnalysis identifier = new LoopAnalysis(method);
 		loops = identifier.getLoopList();
-		IdToBasicBlock = identifier.IdToBasicBlock;
 		marked = new boolean[loops.length];
 		int maxLoopIndex = -1;
 		for (Loop l : loops)
@@ -255,7 +77,7 @@ public final class LICM
 	 */
 	public void runOnLoop()
 	{
-		// go through all loop from nested depth-most loop to outer
+		// go through all loop from nested depth-most loop to outerLoop
 		// to mark invariant and take code motion
 		for (Loop loop : loops)
 		{
@@ -270,8 +92,8 @@ public final class LICM
 					moveInvariant(loop);
 					// 
 					marked[loop.loopIndex] =true;
-					loop = loop.outer;
-				}while (loop.outer != null);
+					loop = loop.outerLoop;
+				}while (loop.outerLoop != null);
 			}
 		}
 	}	
@@ -279,14 +101,14 @@ public final class LICM
 	private void markInvariant(Loop loop)
 	{
 		// initialize some necessarily data structure
-		int nblocks = loop.blocks.length;
+		int nblocks = loop.getNumOfBlocks();
 		// represents which instruction is invariant
 		instInvariant = new boolean[nblocks][];		
 		invarOrder.clear();
 		
 		for (int i = 0; i < nblocks; i++)
 		{
-			BasicBlock bb = IdToBasicBlock[loop.blocks[i]];
+			BasicBlock bb = loop.getBlock(i);
 			boolean[] insts = new boolean[bb.size()];
 			for (int j = 0; j < bb.size(); j++)
 			{
@@ -298,15 +120,15 @@ public final class LICM
 		// then call markBlock() for each block
 		do
         {
-			for (int i = 0; i < loop.blocks.length; i++)
+			for (int i = 0; i < loop.getNumOfBlocks(); i++)
 			{
-				BasicBlock bb = IdToBasicBlock[loop.blocks[i]];
-				changed |= markBlock(loop.blocks, IdToBasicBlock[loop.blocks[0]], bb, i);
+				BasicBlock bb = loop.getBlock(i);
+				changed |= markBlock(loop.blocks, loop.getHeaderBlock(), bb, i);
 			}
         } while (changed);
 	}
 	
-	private boolean markBlock(int[] blocks, BasicBlock entry, BasicBlock bb, int i)
+	private boolean markBlock(List<BasicBlock> blocks, BasicBlock entry, BasicBlock bb, int i)
 	{
 		boolean changed = false;
 		Instruction inst = null;
@@ -370,7 +192,7 @@ public final class LICM
 	 * @param operand
 	 * @return
 	 */
-	private boolean reachDefsOut(int[] blocks, Value operand)
+	private boolean reachDefsOut(List<BasicBlock> blocks, Value operand)
 	{
 		if (operand instanceof Instruction)
 		{
@@ -390,11 +212,11 @@ public final class LICM
 	 * @return If there no block with specified blockId existed in nblocks, return -1
 	 * , otherwise, return its index.
 	 */
-	private int blockIndex(int blockId, int[] nblocks)
+	private int blockIndex(int blockId, List<BasicBlock> blocks)
 	{
-		for (int i = 0; i < nblocks.length; i++)			
+		for (int i = 0; i < blocks.size(); i++)			
 		{
-			int Id = nblocks[i];
+			int Id = blocks.get(i).getID();
 			if (blockId == Id)
 				return i; 
 		}
@@ -413,7 +235,7 @@ public final class LICM
 	 * @param operand
 	 * @return
 	 */
-	private boolean reachDefsIn(int[] blocks, Value operand)	
+	private boolean reachDefsIn(List<BasicBlock> blocks, Value operand)	
 	{
 		if (operand instanceof Instruction)
 		{
@@ -446,14 +268,12 @@ public final class LICM
 	 */
 	private void moveInvariant(Loop loop)
 	{
-		int blockId;
 		BasicBlock bb;
 		Instruction inst;
 		BasicBlock preheader = insertPreheader(loop);		
 		for (Pair<Integer, Integer> coor : invarOrder)
 		{
-			blockId = loop.getBlockId(coor.first);
-			bb = IdToBasicBlock[blockId];
+			bb = loop.getBlock(coor.first);
 			inst = bb.getInst(coor.second);			
 			if (domAllExits(bb, loop) && domAllUses(bb, inst.usesList))
 			{
@@ -484,12 +304,9 @@ public final class LICM
 	 */
 	private boolean domAllExits(BasicBlock bb, Loop loop)
 	{
-		int[] exitIds = loop.endBlocks();
-		BasicBlock exit;
-		for (int i : exitIds)
+		for (BasicBlock exitBB : loop.exitBlocks())
 		{
-			exit = IdToBasicBlock[i];
-			if (!dt.dominates(bb, exit))
+			if (!dt.dominates(bb, exitBB))
 				return false;
 		}
 		return true;

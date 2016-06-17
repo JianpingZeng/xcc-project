@@ -11,8 +11,6 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
-
-import optimization.LICM.Loop;
 import utils.BitMap2D;
 
 /**
@@ -20,10 +18,10 @@ import utils.BitMap2D;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LoopIdentifier
+public class LoopAnalysis
 {	
 	/**
-	 * The maximun block id at given cfg.
+	 * The maximum block id at given cfg.
 	 */
 	private final int maxBlockID;
 	/**
@@ -61,9 +59,11 @@ public class LoopIdentifier
 	/**
 	 * A mapping from id to basic block.
 	 */
-	BasicBlock[] IdToBasicBlock;
+	private BasicBlock[] IdToBasicBlock;
 
-	public LoopIdentifier(Method method)
+	private Loop[] loops;
+
+	public LoopAnalysis(Method method)
     {
 		maxBlockID = method.cfg.getNumberOfBasicBlocks();
 		IdToBasicBlock = new BasicBlock[maxBlockID];		
@@ -87,7 +87,12 @@ public class LoopIdentifier
 			clearNonNatureLoops();
 			assignLoopDepth(entry);
 		}
+		
+		loops = createLoops();
+		// set loops for given function being compiled
+		method.setLoops(loops);
     }
+
 	/**
 	 * Associates the block id with basic block.
 	 * @param method
@@ -99,20 +104,19 @@ public class LoopIdentifier
 			IdToBasicBlock[bb.getID()] = bb;
 		}
 	}
-	/**
-	 * Retrieves an array of {@linkplain Loop} whose each item represents a loop in 
-	 * control flow graph. 
-	 * @return
-	 */
-	public Loop[] getLoopList()
+	
+	private Loop[] createLoops()
 	{
-		LinkedList<Integer> list = new LinkedList<>();
+		LinkedList<BasicBlock> list = new LinkedList<>();
 		ArrayList<Loop> loops = new ArrayList<>();
-		int headerBlock = -1;
-		List<Integer> endBlocks = new ArrayList<>();
+		BasicBlock headerBlock = null;
+		List<BasicBlock> exitBlocks = new ArrayList<>();
+		BasicBlock followBlock = null;
+		
 		for (int i = 0; i < numLoops; i++)
 		{
 			list.clear();					
+			exitBlocks.clear();
 			
 			// walk through all block bit instead of skipping 
 			// those block that does not contained in loop			
@@ -125,46 +129,84 @@ public class LoopIdentifier
 					
 					if (bb.checkBlockFlags(BlockFlag.LinearScanLoopHeader))
 					{					
-						headerBlock = j;
+						headerBlock = bb;
 						continue;
 					}
-					if (bb.checkBlockFlags(BlockFlag.LinearScanLoopEnd))
+					
+					if (isExitBlock(bb, i, followBlock))
 					{
-						endBlocks.add(j);
-						continue;
+						exitBlocks.add(bb);
 					}
-					list.add(j);			
+					
+					list.add(bb);			
 				}
 			}
+			// ignore empty loop
+			if (list.isEmpty())
+				continue;
 			
-			assert headerBlock >= 0 : "No header block found in loop";
-			assert endBlocks.size() > 0 : "No end block found in loop";
-			
+			assert headerBlock != null : "No header block found in loop";			
+			assert !exitBlocks.isEmpty() : "No exit block found in loop";
 			// a loop consists of a single block
-			if (endBlocks.size() == 1 && headerBlock == endBlocks.get(0))
+			if (list.isEmpty() && headerBlock != null)
 			{
 				list.add(headerBlock);
 			}
 			else 
 			{
 				list.addFirst(headerBlock);
-				list.addAll(endBlocks);
 			}
-			if (!list.isEmpty())
-			{
-				Integer[] arr = list.toArray(new Integer[list.size()]);
-				BasicBlock bb = IdToBasicBlock[headerBlock];
-				Loop loop = new Loop(arr, bb.loopIndex, bb.loopDepth, endBlocks.size());
-				loop.setIdToBasicBlock(IdToBasicBlock);
-				loops.add(loop);
-			}
+			
+			Loop loop = new Loop(list, exitBlocks, followBlock);
+			
+			// set containing loop
+			for (BasicBlock bb : list)
+				bb.setOutLoop(loop);
+			
+			loops.add(loop);		
 		}
 		
-		// creates a linked list of nested relation using pointer outer and inner 
+		// creates a linked list of nested relation using pointer outerLoop and subLoops 
 		markNested(loops);
 		Loop[] sortedLoops = loops.toArray(new Loop[loops.size()]);
 		sortedByLoopDepth(sortedLoops);
 		return sortedLoops;
+	}
+	
+	/**
+	 * Check if specified basic block is a exit block in a loop.
+	 * When it is return true, otherwise return false.
+	 * @param bb	A basic block to be checked.
+	 * @param rowIdx	The loop index.
+	 * @return
+	 */
+	private boolean isExitBlock(BasicBlock bb, int rowIdx, BasicBlock followBlock)
+	{
+		assert bb != null && rowIdx>= 0 && rowIdx < bitset.sizeInSlots();
+		// go through all successors of bb to check
+		for (BasicBlock sux : bb.getSuccs())
+		{
+			int id = sux.getID();			
+			// if there is at least one successor that not contained in loop
+			// , it is must be an exit block.
+			if (!bitset.at(rowIdx, id)) 
+			{
+				followBlock = sux;
+				return true;
+			}
+		}
+		followBlock = null;
+		return false;
+	}
+	
+	/**
+	 * Retrieves an array of {@linkplain Loop} whose each item represents a loop in 
+	 * control flow graph. 
+	 * @return
+	 */
+	public Loop[] getLoopList()
+	{
+		return loops;
 	}
 	
 	/**
@@ -190,8 +232,8 @@ public class LoopIdentifier
 	}
 	
 	/**
-	 * find out the relationship of nested among loops, and outer loop is indexed by 
-	 * {@linkplain Loop#outer} and {@linkplain Loop#inner} is responsible for inner nest.
+	 * find out the relationship of nested among loops, and outerLoop loop is indexed by 
+	 * {@linkplain Loop#outerLoop} and {@linkplain Loop#subLoops} is responsible for subLoops nest.
 	 * @param loops
 	 */
 	private void markNested(ArrayList<Loop> loops)
@@ -207,28 +249,29 @@ public class LoopIdentifier
 				else if (first.loopDepth > second.loopDepth
 						&& contains(second, first))
 				{
-					second.inner = first;
-					first.outer = second;
+					second.subLoops.add(first);
+					first.outerLoop = second;
 				}
 				else if (first.loopDepth < second.loopDepth
 						&& contains(first, second))
 				{
-					first.inner = second;
-					second.outer = first;
+					first.subLoops.add(second);
+					second.outerLoop = first;
 				}
 			}
 		}
 	}
 	/**
 	 * checks if the loop {@code src} contains another loop {@code dest}
-	 * @param src	The outer loop
-	 * @param dest	The inner loop.
+	 * @param src	The outerLoop loop
+	 * @param dest	The subLoops loop.
 	 * @return	return true if condition satisfied, otherwise return false. 
 	 */
 	private boolean contains(Loop src, Loop dest)
 	{
-		for(int bbId : dest.blocks)
+		for(BasicBlock bb : dest.blocks)
 		{
+			int bbId = bb.getID();
 			if (!bitset.at(src.loopIndex, bbId))
 				return false;
 		}

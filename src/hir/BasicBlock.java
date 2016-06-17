@@ -8,6 +8,8 @@ import hir.Instruction.Branch;
 
 import java.util.*;
 
+import optimization.Loop;
+
 /**
  * Represents a basic block in the quad intermediate representation. Basic
  * blocks are single-entry regions, but not necessarily single-exit regions. Due
@@ -74,6 +76,28 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * Module instruction for specified targetAbstractLayer.
 	 */
 	private LIRBlock LIRBlock;
+	
+	/**
+	 * A field of loop containing this basic block.
+	 */
+	private Loop outLoop;
+	
+	/**
+	 * Obtains a loop containing this basic block.
+	 * @return
+	 */
+	public Loop getOuterLoop()
+	{
+		return this.outLoop;
+	}
+	/**
+	 * Update the loop containing this basic block with a new loop.
+	 * @param loop
+	 */
+	public void setOutLoop(Loop loop)
+	{
+		this.outLoop = loop;
+	}
 
 	public boolean isCriticalEdgeSplit()
 	{

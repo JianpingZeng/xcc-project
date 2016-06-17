@@ -92,11 +92,11 @@ public class Pretty extends ASTVisitor
 	}
 
 	/**
-	 * Leave precedence level. Emit a `)' if inner precedence level is less than
+	 * Leave precedence level. Emit a `)' if subLoops precedence level is less than
 	 * precedence level we revert to.
 	 * 
 	 * @param contextPrec The precedence level we revert to.
-	 * @param ownPrec The inner precedence level.
+	 * @param ownPrec The subLoops precedence level.
 	 */
 	void close(int contextPrec, int ownPrec)
 	{
