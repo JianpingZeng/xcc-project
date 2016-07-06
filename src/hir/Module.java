@@ -82,8 +82,8 @@ public class Module
 		UCE uce = new UCE();
 		for (Method m : methods)
 		{
-    		// performs dead code elimination.
-    		
+			/****** C1 optimization stage ***/
+    		// performs dead code elimination.    		
 			new DCE(m).runOnMethod();
 
 			prop.runOnMethod(m);
@@ -95,9 +95,10 @@ public class Module
     		// 2.unlinks empty basic block
     		// 3.merges basic block
     		// 4.hoist merge instruction
-
 			uce.clean(m);
-
+			
+			
+			/** C2 optimization stage*/
     		// performs global common subexpression elimination through global value
     		// numbering.
 			new GVN(m);
@@ -108,7 +109,14 @@ public class Module
     		// 2. perform loop inversion
     		new LoopInversion(m).runOnLoops();
     		// 3.perform loop invariant code motion
-    		new LICM(m).runOnLoop();    		
+    		new LICM(m).runOnLoop();    	
+    		
+    		// performs dead code elimination.    		
+			new DCE(m).runOnMethod();
+			/** C3 optimization stage */
+			
+			/** C4 optimization stage */
+			
 		}	
 	}
 

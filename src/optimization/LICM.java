@@ -94,7 +94,7 @@ public final class LICM
 					// 
 					marked[loop.loopIndex] =true;
 					loop = loop.outerLoop;
-				}while (loop.outerLoop != null);
+				}while (loop != null);
 			}
 		}
 	}	
