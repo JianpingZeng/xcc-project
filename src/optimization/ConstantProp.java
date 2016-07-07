@@ -28,19 +28,19 @@ public class ConstantProp
 	 */
 	public boolean runOnMethod(Method m)
 	{
-		LinkedList<Instruction> worklist = new LinkedList<>();
+		LinkedList<Value> worklist = new LinkedList<>();
 		// initializes the worklist to all of the instructions ready to
 		// process
 		for (BasicBlock bb : m)
 		{
-			for (Instruction inst : bb)
+			for (Value inst : bb)
 				worklist.add(inst);
 		}
 		boolean changed = false;
 		Canonicalizer can = new Canonicalizer();
 		while (!worklist.isEmpty())
 		{
-			Instruction inst = worklist.removeFirst();
+			Value inst = worklist.removeFirst();
 			// ignores it if no other instruction use it
 			if (!inst.isUseEmpty())
 			{

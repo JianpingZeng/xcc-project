@@ -5,6 +5,7 @@ import hir.DominatorTree;
 import hir.Instruction;
 import hir.Instruction.ConditionalBranch;
 import hir.Method;
+import hir.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +72,7 @@ public class UCE
 			if (curr.isEmpty())
 				continue;
 
-			Instruction lastInst = curr.lastInst();
+			Value lastInst = curr.lastInst();
 			// handles conditional branch instruction ends in the basic block as
 			// follow.
 			//    |          |
@@ -110,7 +111,7 @@ public class UCE
 					List<BasicBlock> rdf = RDF.run(RDT, curr);
 					for (BasicBlock pred : rdf)
 					{
-						Instruction last = pred.lastInst();
+						Value last = pred.lastInst();
 						if (last != null)
 						{
 							if (last instanceof Instruction.Goto
@@ -156,7 +157,7 @@ public class UCE
 	 */
 	private void merge(BasicBlock first, BasicBlock second)
 	{
-		for (Instruction inst : second)
+		for (Value inst : second)
 		{
 			first.appendInst(inst);
 		}

@@ -4,6 +4,7 @@ import hir.BasicBlock;
 import hir.Instruction;
 import hir.Instruction.Branch;
 import hir.Method;
+import hir.Value;
 
 /** 
  * <p>
@@ -63,7 +64,7 @@ public final class LoopInversion
 		// newHeader in original order
 		for (int i = 0; i < header.size() - 1; i++)
 		{
-			Instruction inst = header.getInst(i);
+			Value inst = header.getInst(i);
 			inst.eraseFromBasicBlock();
 			newHeader.appendInst(inst);
 		}
@@ -160,7 +161,7 @@ public final class LoopInversion
 	 */
 	private boolean isNeededRotation(Loop loop)
 	{
-		Instruction lastInst = loop.getHeaderBlock().lastInst();
+		Value lastInst = loop.getHeaderBlock().lastInst();
 		return (lastInst instanceof Branch);		
 	}
 }

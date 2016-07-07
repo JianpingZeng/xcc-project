@@ -125,4 +125,13 @@ public enum Operator
 	{
 		return ((this.flags & 0xff) & COMMUTATIVE) != 0;
 	}
+	/**
+	 * Check if this operator is an additive operation. Return true if 
+	 * condition is satisfied, otherwise return false.
+	 * @return
+	 */
+	public boolean isAdd()
+	{
+		return this.index >= IAdd.index && this.index <= DAdd.index;
+	}	
 }

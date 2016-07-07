@@ -1,6 +1,7 @@
 package optimization;
 
 import hir.Instruction;
+import hir.Value;
 /**
  * This file defines a class that implements a nested hash table that maps
  * {@code Instruction} to an integer.
@@ -23,7 +24,7 @@ public class ValueMap
 	{
 		final ValueMap map;
 		final int valueNumber;
-		final Instruction value;
+		final Value value;
 		final Link next;
 
 		/**
@@ -33,7 +34,7 @@ public class ValueMap
 		 * @param value
 		 * @param next
 		 */
-		Link(ValueMap map, int number, Instruction value, Link next)
+		Link(ValueMap map, int number, Value value, Link next)
 		{
 			this.map = map;
 			this.valueNumber = number;
@@ -85,7 +86,7 @@ public class ValueMap
 	 * @return the inst with which to replace the specified instruction, or the specified
 	 * instruction if there is no replacement
 	 */
-	public Instruction findInsert(Instruction x)
+	public Value findInsert(Value x)
 	{
 		int valueNumber = x.valueNumber();
 

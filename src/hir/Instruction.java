@@ -28,27 +28,9 @@ public abstract class Instruction extends User
 	public final Operator opcode;
 
 	/**
-	 * The ret of operation over this instruction, it is null if this instruction
-	 * no return ret.
-	 */
-	//public Instruction ret;
-
-	private BasicBlock bb;
-
-	/**
 	 * The name of this instruction.
 	 */
 	protected String instName;
-
-	public BasicBlock getParent()
-	{
-		return bb;
-	}
-
-	public void setParent(BasicBlock bb)
-	{
-		this.bb = bb;
-	}
 
 	public Instruction(LIRKind kind, Operator opcode, String instName)
 	{
@@ -56,16 +38,6 @@ public abstract class Instruction extends User
 		this.id = -1;
 		this.opcode = opcode;
 		this.instName = instName;
-	}
-
-	/**
-	 * Erases this instruction from it's parent basic block.
-	 */
-	public void eraseFromBasicBlock()
-	{
-		assert (this.bb
-				== null) : "The basic block where the instruction reside to be erased!";
-		bb.removeInst(this);
 	}
 
 	/**
@@ -86,50 +58,6 @@ public abstract class Instruction extends User
 			return opcode.opName;
 		else
 			return "";
-	}
-
-	/**
-	 * For value number to determine whether this instruction is equivalent to
-	 * that value.
-	 *
-	 * @param value Targeted instruction to be checked.
-	 * @return return false by default.
-	 */
-	public boolean valueEqual(Instruction value)
-	{
-		return false;
-	}
-
-	/**
-	 * For global or local inst numbering with initialization 0.
-	 */
-	public int valueNumber()
-	{
-		return 0;
-	}
-
-	/**
-	 * Inserts an specified instruction into the instructions list after itself.
-	 *
-	 * @param inst An instruction to be inserted.
-	 */
-	public void insertAfter(Instruction inst)
-	{
-		int index = bb.lastIndexOf(inst);
-		if (index >= 0 && index < bb.size())
-			bb.insertAt(inst, index + 1);
-	}
-
-	/**
-	 * Inserts an instruction into the instructions list before this itself.
-	 *
-	 * @param inst An instruction to be inserted.
-	 */
-	public void insertBefore(Instruction inst)
-	{
-		int index = bb.lastIndexOf(inst);
-		if (index >= 0 && index < bb.size())
-			bb.insertAt(inst, index);
 	}
 
 	/**
@@ -182,7 +110,19 @@ public abstract class Instruction extends User
 		{
 			return Util.hash1(opcode.index, x);
 		}
-
+		
+		@Override
+		public boolean equals(Object other)
+		{
+			if (other == null) return false;
+			if (other == this) return true;
+			if (!(other instanceof Op1))		
+				return false;
+			
+			Op1 op = (Op1)other;
+			return kind == op.kind && opcode.equals(op.opcode)
+					&& x.equals(op.x);
+		}
 	}
 
 	/**
@@ -204,8 +144,8 @@ public abstract class Instruction extends User
 			this.x = x;
 			this.y = y;
 
-			assert x.kind
-					== y.kind : "Cannot create binary operator with two operands of differing type!";
+			assert x.kind == y.kind : 
+						"Cann't create binary operator with two operands of differing type.";
 			use(x, this);
 			use(y, this);
 		}
@@ -225,6 +165,19 @@ public abstract class Instruction extends User
 		{
 			return Util.hash2(opcode.index, x, y);
 		}
+		
+		@Override
+		public boolean equals(Object other)
+		{
+			if (other == null) return false;
+			if (other == this) return true;
+			if (!(other instanceof Op2))		
+				return false;
+			
+			Op2 op = (Op2)other;
+			return kind == op.kind && opcode.equals(op.opcode)
+					&& x.equals(op.x) && y.equals(op.y);
+		}
 	}
 
 	public static class ArithmeticOp extends Op2
@@ -235,10 +188,11 @@ public abstract class Instruction extends User
 			super(kind, opcode, x, y, name);
 		}
 
-		@Override public void accept(ValueVisitor visitor)
+		@Override 
+		public void accept(ValueVisitor visitor)
 		{
 			visitor.visitArithmeticOp(this);
-		}
+		}		
 	}
 
 	public static class LogicOp extends Op2
@@ -252,7 +206,7 @@ public abstract class Instruction extends User
 		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitLogicOp(this);
-		}
+		}	
 	}
 
 	public static class ShiftOp extends Op2
@@ -267,7 +221,7 @@ public abstract class Instruction extends User
 		@Override public void accept(ValueVisitor visitor)
 		{
 			visitor.visitShiftOp(this);
-		}
+		}	
 	}
 
 	public static class Cmp extends Op2

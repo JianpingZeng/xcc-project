@@ -28,7 +28,7 @@ import optimization.Loop;
  * @version 1.0
  * @see Instruction
  */
-public final class BasicBlock implements Iterable<Instruction>
+public final class BasicBlock implements Iterable<Value>
 {
 	public static final BasicBlock USELESSBLOCK =
 			new BasicBlock(-1, null, null, "useless", null);
@@ -46,7 +46,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	/**
 	 * A list of quads.
 	 */
-	private final LinkedList<Instruction> instructions;
+	private final LinkedList<Value> instructions;
 
 	/**
 	 * A set of predecessors.
@@ -217,14 +217,14 @@ public final class BasicBlock implements Iterable<Instruction>
 	}
 
 	/**
-	 * Returns iterator over Quads in this basic block in forward order.
+	 * Returns iterator over Values in this basic block in forward order.
 	 *
-	 * @return Returns iterator over Quads in this basic block in forward order.
+	 * @return Returns iterator over Values in this basic block in forward order.
 	 */
-	public ListIterator<Instruction> iterator()
+	public ListIterator<Value> iterator()
 	{
 		if (instructions == null)
-			return Collections.<Instruction>emptyList().listIterator();
+			return Collections.<Value>emptyList().listIterator();
 		else
 			return instructions.listIterator();
 	}
@@ -234,13 +234,13 @@ public final class BasicBlock implements Iterable<Instruction>
 	 *
 	 * @return Returns iterator over Quads in this basic block in forward order.
 	 */
-	public BackwardIterator<Instruction> backwardIterator()
+	public BackwardIterator<Value> backwardIterator()
 	{
 		if (instructions == null)
-			return new BackwardIterator<Instruction>(
-					Collections.<Instruction>emptyList().listIterator());
+			return new BackwardIterator<Value>(
+					Collections.<Value>emptyList().listIterator());
 		else
-			return new BackwardIterator<Instruction>(
+			return new BackwardIterator<Value>(
 					instructions.listIterator());
 	}
 
@@ -251,9 +251,9 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * @param qv ValueVisitor to visit the quads with.
 	 * @see ValueVisitor
 	 */
-	public void visitQuads(ValueVisitor qv)
+	public void visitValues(ValueVisitor qv)
 	{
-		for (Instruction q : instructions)
+		for (Value q : instructions)
 		{
 			q.accept(qv);
 		}
@@ -268,9 +268,9 @@ public final class BasicBlock implements Iterable<Instruction>
 	 */
 	public void backwardVisitQuads(ValueVisitor qv)
 	{
-		for (Iterator<Instruction> i = backwardIterator(); i.hasNext(); )
+		for (Iterator<Value> i = backwardIterator(); i.hasNext(); )
 		{
-			Instruction q = i.next();
+			Value q = i.next();
 			q.accept(qv);
 		}
 	}
@@ -281,7 +281,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * @param inst
 	 * @return
 	 */
-	public int indexOf(Instruction inst)
+	public int indexOf(Value inst)
 	{
 		if (inst == null) return -1;
 		return instructions.indexOf(inst);
@@ -309,12 +309,12 @@ public final class BasicBlock implements Iterable<Instruction>
 		return instructions.isEmpty();
 	}
 
-	public Instruction getInst(int i)
+	public Value getInst(int i)
 	{
 		return instructions.get(i);
 	}
 
-	public boolean removeInst(Instruction q)
+	public boolean removeInst(Value q)
 	{
 		return instructions.remove(q);
 	}
@@ -329,15 +329,15 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * the entry or exit basic blocks.
 	 *
 	 * @param index the index to add the quad
-	 * @param q     quad to add
+	 * @param value     quad to add
 	 */
-	public void insertAt(Instruction q, int index)
+	public void insertAt(Value value, int index)
 	{
-		assert (q != null) : "Cannot add null instruction to block";
+		assert (value != null) : "Cannot add null instruction to block";
 		assert (index >= 0 && index < instructions.size()):
 				"The index into insertion of gieven inst is bound out.";
 
-		instructions.add(index, q);
+		instructions.add(index, value);
 	}
 
 	/**
@@ -346,7 +346,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	 *
 	 * @param inst quad to add
 	 */
-	public void appendInst(Instruction inst)
+	public void appendInst(Value inst)
 	{
 		assert (inst != null) : "Cannot add null instructions to block";
 		if (instructions.isEmpty() || !(instructions.getLast() instanceof Branch))
@@ -459,19 +459,19 @@ public final class BasicBlock implements Iterable<Instruction>
 
 	public void setCFG(ControlFlowGraph cfg) {this.cfg = cfg;}
 
-	public Instruction firstInst()
+	public Value firstInst()
 	{
 		return instructions.get(0);
 	}
 
-	public  Instruction lastInst()
+	public Value lastInst()
 	{
 		if (instructions.isEmpty())
 			return null;
 		return instructions.get(instructions.size() - 1);
 	}
 	
-	public void insertAfter(Instruction inst, Instruction after)
+	public void insertAfter(Value inst, Value after)
 	{
 		assert instructions.contains(inst);
 		assert !(after instanceof Branch);
@@ -487,7 +487,7 @@ public final class BasicBlock implements Iterable<Instruction>
 		instructions.add(idx + 1, inst);
 	}
 	
-	public void insertBefore(Instruction inst, Instruction before)
+	public void insertBefore(Value inst, Value before)
 	{
 		assert instructions.contains(inst);
 		assert !(before instanceof Branch);
@@ -502,7 +502,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	 * list.
 	 * @param inst
 	 */
-	public void insertAfterFirst(Instruction inst)
+	public void insertAfterFirst(Value inst)
 	{
 		assert inst != null;
 
@@ -510,12 +510,12 @@ public final class BasicBlock implements Iterable<Instruction>
 			instructions.addFirst(inst);
 		else
 		{
-			Instruction first = instructions.getFirst();
+			Value first = instructions.getFirst();
 			instructions.add(instructions.indexOf(first)+1, inst);
 		}
 	}
 
-	public int lastIndexOf(Instruction inst)
+	public int lastIndexOf(Value inst)
 	{
 		return instructions.lastIndexOf(inst);
 	}
@@ -566,7 +566,7 @@ public final class BasicBlock implements Iterable<Instruction>
 	 */
 	public Branch getTerminator()
 	{
-		Instruction inst = instructions.getLast();
+		Value inst = instructions.getLast();
 		if (inst instanceof Branch)
 		{
 			return (Branch)inst;

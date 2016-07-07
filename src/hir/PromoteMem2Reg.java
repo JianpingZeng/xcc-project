@@ -336,8 +336,8 @@ public class PromoteMem2Reg
 			}
 
 			int numBadPreds = phi.getNumberIncomingValues();
-			Iterator<Instruction> it = BB.iterator();
-			Instruction inst;
+			Iterator<Value> it = BB.iterator();
+			Value inst;
 
 			while (it.hasNext() && ((inst = it.next()) instanceof Phi
 					&& (phi = (Phi) inst).getNumberIncomingValues()
@@ -387,7 +387,7 @@ public class PromoteMem2Reg
 	private void renamePass(BasicBlock BB, BasicBlock pred,
 			Value[] incomgingValues, LinkedList<RenamePassData> worklist)
 	{
-		Instruction inst;
+		Value inst;
 		HashSet<BasicBlock> visitedSuccs = new HashSet<>();
 
 		while (true)
@@ -438,7 +438,7 @@ public class PromoteMem2Reg
 				return;
 
 			// handles subsequnce instruction at control flow graph.
-			Iterator<Instruction> it = BB.iterator();
+			Iterator<Value> it = BB.iterator();
 			while (it.hasNext())
 			{
 				inst = it.next();
@@ -555,8 +555,8 @@ public class PromoteMem2Reg
 			LBI.deleteValue(LI);
 		}
 
-		// 去除无用的store和alloca指令，因为从alloca中使用load指令加载进的值已经直接
-		//传送到了load的使用处，那么该store指令就不需要了。
+		// 鍘婚櫎鏃犵敤鐨剆tore鍜宎lloca鎸囦护锛屽洜涓轰粠alloca涓娇鐢╨oad鎸囦护鍔犺浇杩涚殑鍊煎凡缁忕洿鎺�
+		//浼犻�佸埌浜唋oad鐨勪娇鐢ㄥ锛岄偅涔堣store鎸囦护灏变笉闇�瑕佷簡銆�
 		for (Use u : AI.usesList)
 		{
 			User inst = u.getUser();
@@ -567,7 +567,7 @@ public class PromoteMem2Reg
 			}
 		}
 
-		// 此时，也可以删除该alloca指令
+		// 姝ゆ椂锛屼篃鍙互鍒犻櫎璇lloca鎸囦护
 		AI.eraseFromBasicBlock();
 		LBI.deleteValue(AI);
 
@@ -586,16 +586,16 @@ public class PromoteMem2Reg
 	private void determineInsertionPoint(Alloca AI, int allocaNum,
 			AllocaInfo info)
 	{
-		// 该函数的目的就是获取AI指令的支配边界集，然后放置Phi函数。
-		// 从下往上遍历支配树
+		// 璇ュ嚱鏁扮殑鐩殑灏辨槸鑾峰彇AI鎸囦护鐨勬敮閰嶈竟鐣岄泦锛岀劧鍚庢斁缃甈hi鍑芥暟銆�
+		// 浠庝笅寰�涓婇亶鍘嗘敮閰嶆爲
 		HashSet<BasicBlock> defBlocks = new HashSet<>();
 		defBlocks.addAll(info.definingBlocks);
 
-		// 判断该值在哪一个基本块中是活跃的
+		// 鍒ゆ柇璇ュ�煎湪鍝竴涓熀鏈潡涓槸娲昏穬鐨�
 		HashSet<BasicBlock> liveInBlocks = new HashSet<>();
 		computeLifenessBlocks(AI, info, defBlocks, liveInBlocks);
 
-		// 使用一个优先级队列，按照在支配树中的层次，越深的结点放在前面
+		// 浣跨敤涓�涓紭鍏堢骇闃熷垪锛屾寜鐓у湪鏀厤鏍戜腑鐨勫眰娆★紝瓒婃繁鐨勭粨鐐规斁鍦ㄥ墠闈�
 		PriorityQueue<Pair<DomTreeNode, Integer>> PQ = new PriorityQueue<>(32,
 				new Comparator<Pair<DomTreeNode, Integer>>()
 				{
@@ -611,14 +611,14 @@ public class PromoteMem2Reg
 			if ((node = DT.getTreeNodeForBlock(BB)) != null)
 				PQ.add(new Pair<>(node, DomLevels.get(node)));
 
-		// 存储该Alloca的支配边界集
+		// 瀛樺偍璇lloca鐨勬敮閰嶈竟鐣岄泦
 		ArrayList<Pair<Integer, BasicBlock>> DFBlocks = new ArrayList<>(32);
 
 		LinkedList<DomTreeNode> worklist = new LinkedList<>();
 		HashSet<DomTreeNode> visited = new HashSet<>(32);
 
-		// 从在支配树中最底层的定义块开始向上一个一个的遍历，
-		// 在每个基本块的支配边界中放入Phi结点。
+		// 浠庡湪鏀厤鏍戜腑鏈�搴曞眰鐨勫畾涔夊潡寮�濮嬪悜涓婁竴涓竴涓殑閬嶅巻锛�
+		// 鍦ㄦ瘡涓熀鏈潡鐨勬敮閰嶈竟鐣屼腑鏀惧叆Phi缁撶偣銆�
 		while (!PQ.isEmpty())
 		{
 			Pair<DomTreeNode, Integer> rootPair = PQ.poll();
@@ -637,7 +637,7 @@ public class PromoteMem2Reg
 				{
 					DomTreeNode succNode = DT.getTreeNodeForBlock(succ);
 
-					// 跳过所有BB块所支配的的块
+					// 璺宠繃鎵�鏈塀B鍧楁墍鏀厤鐨勭殑鍧�
 					if (succNode.getIDom() == Node)
 						continue;
 
@@ -666,7 +666,7 @@ public class PromoteMem2Reg
 			}
 		}
 
-		// 按照编号从下到大的方式依次排序
+		// 鎸夌収缂栧彿浠庝笅鍒板ぇ鐨勬柟寮忎緷娆℃帓搴�
 		if (DFBlocks.size() > 1)
 		{
 			Collections
@@ -685,7 +685,7 @@ public class PromoteMem2Reg
 						}
 					});
 		}
-		// 插入phi函数
+		// 鎻掑叆phi鍑芥暟
 		int currentVersion = 0;
 		for (int idx = 0, e = DFBlocks.size(); idx != e; ++idx)
 		{
@@ -752,7 +752,7 @@ public class PromoteMem2Reg
 			if (!defBlocks.contains(BB))
 				continue;
 
-			for (Instruction inst : BB)
+			for (Value inst : BB)
 			{
 				if (inst instanceof StoreInst)
 				{
@@ -838,9 +838,9 @@ public class PromoteMem2Reg
 				assert (UI instanceof StoreInst) : "Should only have store/load instruction.";
 				continue;
 			}
-			// 此处，我们没必要处理使用全局变量初始化的alloca指令，因为这样的
-			// 话，任意的load都是受store支配的。
-			// 但是，目前暂时未实现全局变量。。。
+			// 姝ゅ锛屾垜浠病蹇呰澶勭悊浣跨敤鍏ㄥ眬鍙橀噺鍒濆鍖栫殑alloca鎸囦护锛屽洜涓鸿繖鏍风殑
+			// 璇濓紝浠绘剰鐨刲oad閮芥槸鍙梥tore鏀厤鐨勩��
+			// 浣嗘槸锛岀洰鍓嶆殏鏃舵湭瀹炵幇鍏ㄥ眬鍙橀噺銆傘�傘��
 			LoadInst LI = (LoadInst) UI;
 			// we just do than if the load dominated by store
 			// otherwise, we use rest of the mem2reg machinery
@@ -961,9 +961,9 @@ public class PromoteMem2Reg
 		/**
 		 * Keeps the index of instruction for each instruction that we tack.
 		 */
-		Map<Instruction, Integer> instNumbers;
+		Map<Value, Integer> instNumbers;
 
-		public boolean isIntertestingInstruction(Instruction inst)
+		public boolean isIntertestingInstruction(Value inst)
 		{
 			return (inst instanceof LoadInst) || (inst instanceof StoreInst);
 		}
@@ -989,7 +989,7 @@ public class PromoteMem2Reg
 			// scanning
 			BasicBlock BB = inst.getParent();
 			int no = 0;
-			for (Instruction it : BB)
+			for (Value it : BB)
 			{
 				if (isIntertestingInstruction(it))
 					instNumbers.put(it, no++);
