@@ -4,6 +4,8 @@ import hir.BasicBlock;
 import hir.DominatorTree;
 import hir.Instruction;
 import hir.Method;
+import hir.Value;
+
 import java.util.List;
 import java.util.HashMap;
 
@@ -76,10 +78,10 @@ public class GVN
 					"The predecssors list must contains dominator";
 
 			// visit all instructions in current block
-			for (Instruction inst : block)
+			for (hir.Value inst : block)
 			{
 				// attemp value numbering
-				Instruction f = currentMap.findInsert(inst);
+				Value f = currentMap.findInsert(inst);
 				if (f != inst)
 				{
 					// replace all usesList to inst with f.

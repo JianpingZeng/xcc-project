@@ -33,7 +33,7 @@ public class Canonicalizer extends ValueVisitor
 	 * @param inst The instruction to be folded.
 	 * @return The result constant if successfully, otherwise, null returned.
 	 */
-	public Value constantFoldInstruction(Instruction inst)
+	public Value constantFoldInstruction(Value inst)
 	{
 		// handle phi nodes here
 		if (inst instanceof Phi)

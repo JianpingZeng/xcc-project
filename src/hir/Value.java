@@ -3,15 +3,16 @@ package hir;
 import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
 import lir.ci.LIRValue;
-import type.Type;
 import utils.Name;
 
 import java.util.*;
 
+import com.sun.xml.internal.ws.server.sei.ValueGetter;
+
 import hir.Instruction.Phi;
 
 /**
- * Created by Jianping Zeng  on 2016/3/7.
+ * Created by xlous.zeng  on 2016/3/7.
  */
 public class Value implements Cloneable
 {
@@ -43,14 +44,72 @@ public class Value implements Cloneable
 	 * The list of user who usesList this value.
 	 */
 	public final LinkedList<Use> usesList;
-
+	/**
+	 * The basic block containing this Value.
+	 */
+	private BasicBlock bb;
+	
+	public BasicBlock getParent()
+	{
+		return bb;
+	}
+	public void setParent(BasicBlock bb)
+	{
+		this.bb = bb;
+	}
+	
 	public Value(LIRKind kind)
 	{
 		this.kind = kind;
 		this.LIROperand = LIRValue.IllegalValue;
 		this.usesList = new LinkedList<>();
 	}
+	
+	/**
+	 * For value number to determine whether this instruction is equivalent to
+	 * that value.
+	 *
+	 * @param value Targeted instruction to be checked.
+	 * @return return false by default.
+	 */
+	public boolean valueEqual(Value value)
+	{
+		return this.kind == value.kind && LIROperand.equals(value.LIROperand);
+	}
+	/**
+	 * Erases this instruction from it's parent basic block.
+	 */
+	public void eraseFromBasicBlock()
+	{
+		assert (this.bb
+				== null) : "The basic block where the instruction reside to be erased!";
+		bb.removeInst(this);
+	}
+	
+	/**
+	 * Inserts an specified instruction into the instructions list after itself.
+	 *
+	 * @param inst An instruction to be inserted.
+	 */
+	public void insertAfter(Instruction inst)
+	{
+		int index = bb.lastIndexOf(inst);
+		if (index >= 0 && index < bb.size())
+			bb.insertAt(inst, index + 1);
+	}
 
+	/**
+	 * Inserts an instruction into the instructions list before this itself.
+	 *
+	 * @param inst An instruction to be inserted.
+	 */
+	public void insertBefore(Value inst)
+	{
+		int index = bb.lastIndexOf(inst);
+		if (index >= 0 && index < bb.size())
+			bb.insertAt(inst, index);
+	}
+	
 	/**
 	 * Go through the usesList list for this definition and make each use point
 	 * to "value" of "this". After this completes, this's usesList list is empty.
@@ -62,7 +121,7 @@ public class Value implements Cloneable
 		assert kind
 				== newValue.kind : "replaceAllUses of value with new value of different tyep";
 
-		// 更新use-def链中的使用分量
+		// 鏇存柊use-def閾句腑鐨勪娇鐢ㄥ垎閲�
 		while (!usesList.isEmpty())
 		{
 			newValue.addUse(usesList.remove(0));
@@ -73,7 +132,7 @@ public class Value implements Cloneable
 			BasicBlock BB = ((Instruction)this).getParent();
 			for (BasicBlock succ : BB.getSuccs())
 			{
-				for (Instruction inst : succ)
+				for (Value inst : succ)
 				{
 					if (!(inst instanceof Phi))
 						break;
@@ -159,13 +218,6 @@ public class Value implements Cloneable
 		usesList.remove(use);
 	}
 
-	public Value clone()
-	{
-		Value ret = new Value(kind);
-		ret.name = this.name;
-		return ret;
-	}
-
 	public void accept(ValueVisitor visitor)
 	{
 		visitor.visitValue(this);
@@ -216,6 +268,12 @@ public class Value implements Cloneable
 	public final boolean isNullConstant()
 	{
 		return this instanceof Constant && ((Constant) this).value.isNull();
+	}
+	
+	@Override
+	public Value clone()
+	{
+	    return new Value(this.kind);
 	}
 
 	/**
@@ -328,6 +386,17 @@ public class Value implements Cloneable
 		{
 			visitor.visitConstant(this);
 		}
+		
+		@Override
+		public boolean equals(Object other)
+		{
+			if (other == null) return false;
+			if (other == this) return true;
+			if (!(other instanceof Constant))
+				return false;
+			Constant c = (Constant)other;
+			return c.value.equals(c.value);
+		}
 	}
 
 	public static class UndefValue extends Constant
@@ -425,4 +494,9 @@ public class Value implements Cloneable
 		}
 	}
 	*/
+
+	public int valueNumber()
+    {
+	    return 0;
+    }
 }

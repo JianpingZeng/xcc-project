@@ -48,7 +48,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 */
 	private final Method method;
 	private BasicBlock currentBlock;
-	private Instruction currentInstr;
+	private Value currentInstr;
 	public OperandPool operands;
 	protected LIRList lir;
 	private final boolean isTwoOperand;
@@ -75,16 +75,16 @@ public abstract class LIRGenerator extends ValueVisitor
 		blockDoProlog(block);
 		currentBlock = block;
 
-		for (Iterator<Instruction> itr = block.iterator(); itr.hasNext(); )
+		for (Iterator<Value> itr = block.iterator(); itr.hasNext(); )
 		{
-			Instruction inst = itr.next();
+			Value inst = itr.next();
 			doRoot(inst);
 		}
 		currentBlock = null;
 		blockDoEpilog(block);
 	}
 
-	private void doRoot(Instruction instr)
+	private void doRoot(Value instr)
 	{
 		// lacks of debug information and error checking, currently
 		this.currentInstr = instr;

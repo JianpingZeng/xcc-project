@@ -32,7 +32,7 @@ public class DCE
 	/**
 	 * The list where all critical instruction in Module term resides.
 	 */
-	private LinkedList<Instruction> criticalInst;
+	private LinkedList<Value> criticalInst;
 	/**
 	 * The list that contains more than one critical instruction.
 	 */
@@ -41,7 +41,7 @@ public class DCE
 	/**
 	 * The list contains all of no dead instruction.
 	 */
-	private HashSet<Instruction> liveInsts;
+	private HashSet<Value> liveInsts;
 
 	private Method m;
 
@@ -76,12 +76,12 @@ public class DCE
 	{
 		// 1.Initialization stage
 		initCriticalInst();
-		LinkedList<Instruction> worklist = new LinkedList<>(criticalInst);
+		LinkedList<Value> worklist = new LinkedList<>(criticalInst);
 		MarkVisitor marker = new MarkVisitor();
 		// 2.Mark stage
 		while (!worklist.isEmpty())
 		{
-			Instruction curr = worklist.removeLast();
+			Value curr = worklist.removeLast();
 			marker.mark(curr);
 
 			// marks branch instruction.
@@ -103,7 +103,7 @@ public class DCE
 	{
 		for (BasicBlock BB : m)
 		{
-			for (Instruction inst : BB)
+			for (Value inst : BB)
 			{
 				if (!liveInsts.contains(inst))
 				{
@@ -154,7 +154,7 @@ public class DCE
 	 */
 	private void merge(BasicBlock first, BasicBlock second)
 	{
-		for (Instruction inst : second)
+		for (Value inst : second)
 		{
 			first.appendInst(inst);
 		}
@@ -196,13 +196,13 @@ public class DCE
 	 * @param inst
 	 * @param worklist
 	 */
-	private void markBranch(Instruction inst, LinkedList<Instruction> worklist)
+	private void markBranch(Value inst, LinkedList<Value> worklist)
 	{
 		BasicBlock BB = inst.getParent();
 		LinkedList<BasicBlock> rdf = RDF.run(DT, BB);
 		for (BasicBlock block : rdf)
 		{
-			Instruction last = block.lastInst();
+			Value last = block.lastInst();
 			// Only branch instruction will be handled.
 			if (last instanceof Instruction.Branch)
 			{
@@ -223,7 +223,7 @@ public class DCE
 		while (itr.hasNext())
 		{
 			BasicBlock curr = itr.next();
-			for (Instruction inst : curr)
+			for (Value inst : curr)
 			{
 				if (isCritical(inst))
 				{
@@ -247,7 +247,7 @@ public class DCE
 	 * @param inst
 	 * @return
 	 */
-	private boolean isCritical(Instruction inst)
+	private boolean isCritical(Value inst)
 	{
 		if (inst instanceof Return || inst instanceof StoreInst)
 			return true;
@@ -261,7 +261,7 @@ public class DCE
 	 */
 	private class MarkVisitor extends ValueVisitor
 	{
-		public void mark(Instruction inst)
+		public void mark(Value inst)
 		{
 			inst.accept(this);
 		}
@@ -358,7 +358,7 @@ public class DCE
 			BasicBlock[] blocks = inst.getAllBasicBlocks();
 			for (int idx = 0; idx < blocks.length; idx++)
 			{
-				Instruction lastInst = blocks[idx].lastInst();
+				Value lastInst = blocks[idx].lastInst();
 				if (lastInst instanceof Instruction.Branch)
 				{
 					liveInsts.add(lastInst);

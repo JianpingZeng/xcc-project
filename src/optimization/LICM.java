@@ -132,7 +132,7 @@ public final class LICM
 	private boolean markBlock(List<BasicBlock> blocks, BasicBlock entry, BasicBlock bb, int i)
 	{
 		boolean changed = false;
-		Instruction inst = null;
+		Value inst = null;
 		for (int j = 0; j < bb.size(); j++)
 		{
 			// check whether each instruction in this block has loop invariant
@@ -270,7 +270,7 @@ public final class LICM
 	private void moveInvariant(Loop loop)
 	{
 		BasicBlock bb;
-		Instruction inst;
+		Value inst;
 		BasicBlock preheader = insertPreheader(loop);		
 		for (Pair<Integer, Integer> coor : invarOrder)
 		{
@@ -290,7 +290,7 @@ public final class LICM
 	 * @param inst
 	 * @param preheader
 	 */
-	private void appendPreheader(Instruction inst, BasicBlock preheader)
+	private void appendPreheader(Value inst, BasicBlock preheader)
 	{
 		assert inst != null && preheader != null;
 		preheader.appendInst(inst);
@@ -391,7 +391,7 @@ public final class LICM
 		if (outsideBlocks.isEmpty())
 		{
 			// insert dummy values as the incoming value
-			for (Instruction i : header)
+			for (Value i : header)
 			{
 				if (i instanceof Phi)
 				{
@@ -417,7 +417,7 @@ public final class LICM
 	private void updatePhiNodes(BasicBlock originBB, BasicBlock newBB, 
 			ArrayList<BasicBlock> preds, Branch inst, boolean hasLoopExit)
 	{
-		for (Instruction i : originBB)
+		for (Value i : originBB)
 		{
 			if (!(i instanceof Phi))
 				continue;

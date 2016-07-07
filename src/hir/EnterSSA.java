@@ -52,10 +52,10 @@ public class EnterSSA
 			// find alloca instruction that are safe to promote,
 			// by looking at all instructions in the entry block.
 			// Because all of alloca instructions reside at the entry.
-		    ListIterator<Instruction> itr = entry.iterator();
+		    ListIterator<Value> itr = entry.iterator();
 			while(itr.hasNext())
 			{
-				Instruction inst = itr.next();
+				Value inst = itr.next();
 				if (inst instanceof Alloca)
 					if (((Alloca)inst).isAllocaPromoteable())
 						allocas.add((Alloca)inst);

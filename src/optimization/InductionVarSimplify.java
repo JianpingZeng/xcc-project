@@ -1,12 +1,16 @@
 package optimization;
 
 import java.util.ArrayList;
+import java.util.List;
+
 import hir.BasicBlock;
 import hir.DominatorTree;
 import hir.Instruction;
+import hir.Operator;
 import hir.Instruction.Op2;
 import hir.Method;
 import hir.Value;
+import hir.Value.Constant;
 
 /**
  * <p>
@@ -123,12 +127,12 @@ public final class InductionVarSimplify
 		{
 			// search for instructions that compute fundamental induction 
 			// variable and accumulate informations about them in inductionVars
-			for (Instruction inst : bb)
+			for (Value inst : bb)
 			{
 				if (inst instanceof Op2)
 				{
 					Op2 op = (Op2)inst;
-					if (ivPattern(inst, op.x, op.y)
+					if (ivPattern(op, op.x, op.y)
 							|| ivPattern(op, op.y, op.x))
 					{
 						inductionVars.add(new IVRecord(op, op, 1, 0));
@@ -145,7 +149,7 @@ public final class InductionVarSimplify
 			{
 				// check for dependent induction variables 
 				// and accumulate information in list inductionVars.
-				for (Instruction inst : bb)
+				for (Value inst : bb)
 				{
 					if (inst instanceof Op2)
 					{
@@ -160,15 +164,107 @@ public final class InductionVarSimplify
 		}while(change);
 	}
 	
-	private boolean ivPattern(Instruction inst, Value op1, Value op2)
+	private boolean isContainedInductionVars(Instruction inst)
 	{
+		for (IVRecord rec : inductionVars)
+		{
+			if (rec.tiv.equals(inst))
+				return true;
+		}
 		return false;
 	}
-	private boolean isMulIV(Instruction inst, Value op1, Value op2)
+	/**
+	 * Obtains the index by which the specified block will be indexed. 
+	 * @param blockId	The id of specified basic block.
+	 * @param nblocks	The array of block id.
+	 * @return If there no block with specified blockId existed in nblocks, return -1
+	 * , otherwise, return its index.
+	 */
+	private int blockIndex(int blockId, List<BasicBlock> blocks)
 	{
+		for (int i = 0; i < blocks.size(); i++)			
+		{
+			int Id = blocks.get(i).getID();
+			if (blockId == Id)
+				return i; 
+		}
+		return -1;
+	}
+	/**
+	 * <p>Checks if the basic block where the operand defined was out of this loop.</p>
+	 * <p>Return true if it is out of Loop, otherwise false returned.</p>
+	 * @param blocks
+	 * @param operand
+	 * @return
+	 */
+	private boolean reachDefsOut(List<BasicBlock> blocks, Value operand)
+	{
+		if (operand instanceof Instruction)
+		{
+			Instruction inst = (Instruction)operand;
+			BasicBlock bb = inst.getParent();
+			if (blockIndex(bb.getID(), blocks) >= 0)
+				return false;
+			else 
+				return true;			
+		}
 		return false;
 	}
-	private boolean isAddIV(Instruction inst, Value op1, Value op2)
+	
+	private boolean isLoopConstant(Value v)
+	{
+		List<BasicBlock> list = v.getParent().getOuterLoop().blocks;
+		return v.isConstant() || reachDefsOut(list, v);
+	}
+	/**
+	 * Performs a pattern matching on specified binary operation.
+	 * @param inst
+	 * @param op1
+	 * @param op2
+	 * @return
+	 */
+	private boolean ivPattern(Op2 inst, Value op1, Value op2)
+	{
+		return inst == op1 && inst.opcode.isAdd()
+				&& op2.isConstant()
+				&& isLoopConstant(inst)
+				&& isContainedInductionVars(inst);
+	}
+	/**
+	 * <pre>
+	 * Assignment types that may generate dependent induction variables.
+	 * j = i*e;
+	 * j = e*i;
+	 * </pre>
+	 * @param inst
+	 * @param op1
+	 * @param op2
+	 * @return
+	 */
+	private boolean isMulIV(Op2 inst, Value op1, Value op2)
+	{
+		IVRecord r1, r2;
+		if (isLoopConstant(inst.x))
+		{
+			
+		}
+		return false;
+	}
+	/**
+	 * <pre>
+	 * Assignment types that may generate dependent induction variables.
+	 * j = i+e;
+	 * j = e+i;
+	 * j = i-e;
+	 * j = e-i;
+	 * j = -i; 
+	 * </pre>
+	 * @param inst
+	 * @param op1
+	 * @param op2
+	 * @return
+	 */
+	private boolean isAddIV(Op2 inst, Value op1, Value op2)
 	{
 		return false;
 	}
