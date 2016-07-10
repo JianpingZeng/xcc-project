@@ -489,5 +489,4 @@ public final class LICM
 		    phi.addIncoming(newPHI, newBB);
 		}
 	}
-
 }

@@ -1,6 +1,7 @@
 package hir;
 
 import static hir.Operator.Flags.*;
+import lir.ci.LIRKind;
 /**
  * This file defines a enumerator that contains all of operators which represents
  * as a integer in Module instruction.
@@ -133,5 +134,46 @@ public enum Operator
 	public boolean isAdd()
 	{
 		return this.index >= IAdd.index && this.index <= DAdd.index;
-	}	
+	}
+	
+	public boolean isSub()
+	{
+		return index >= ISub.index && index <= DSub.index;
+	}
+	/**
+	 * Determines whether this operator is Multiple operator.
+	 * @return
+	 */
+	public boolean isMul()
+    {
+	    return index >= IMul.index && index<= DMul.index;
+    }	
+	
+	public static Operator getMulByKind(LIRKind kind)
+	{
+		if (kind.isDouble())
+			return DMul;
+		else if (kind.isFloat())
+			return Operator.FMul;
+		else if (kind.isInt())
+			return IMul;
+		else if (kind.isLong())
+			return LMul;
+		else 
+			return null;
+	}
+	
+	public static Operator getAddByKind(LIRKind kind)
+	{
+		if (kind.isDouble())
+			return Operator.DAdd;
+		else if (kind.isFloat())
+			return Operator.FAdd;
+		else if (kind.isInt())
+			return Operator.IAdd;
+		else if (kind.isLong())
+			return Operator.LAdd;
+		else 
+			return null;
+	}
 }

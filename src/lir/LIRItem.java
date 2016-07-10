@@ -98,7 +98,7 @@ public class LIRItem
 			resultOperand = instruction.LIROperand();
 			if (!resultOperand.isConstant())
 			{
-				resultOperand = instruction.asConstant();
+				resultOperand = instruction.asLIRConstant();
 			}
 		}
 		else if (kind == LIRKind.Byte || kind == LIRKind.Boolean)
@@ -202,7 +202,7 @@ public class LIRItem
 			{
 				if (!r.isConstant())
 				{
-					r = instruction.asConstant();
+					r = instruction.asLIRConstant();
 				}
 				resultOperand = r;
 			}

@@ -8,7 +8,7 @@ import optimization.DCE;
 import optimization.GVN;
 import optimization.LICM;
 import optimization.LoopAnalysis;
-import optimization.LoopInversion;
+import optimization.LoopSimplify;
 import optimization.UCE;
 import utils.Context;
 
@@ -80,6 +80,7 @@ public class Module
 		// performs constant folding and propagation
 		ConstantProp prop = new ConstantProp();
 		UCE uce = new UCE();
+		LoopSimplify simplificator = new LoopSimplify();
 		for (Method m : methods)
 		{
 			/****** C1 optimization stage ***/
@@ -106,8 +107,10 @@ public class Module
     		// perform loop analysis and optimization
 			// 1. perform loop analysis
     		new LoopAnalysis(m).runOnFunction();       	
-    		// 2. perform loop inversion
-    		new LoopInversion(m).runOnLoops();
+    		
+    		// 2. perform loop simplification
+    		simplificator.runOnFunction(m);
+    		
     		// 3.perform loop invariant code motion
     		new LICM(m).runOnLoop();    	
     		

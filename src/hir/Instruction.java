@@ -187,6 +187,11 @@ public abstract class Instruction extends User
 		{
 			super(kind, opcode, x, y, name);
 		}
+		
+		public ArithmeticOp(LIRKind kind, Operator opcode, Value x, Value y)
+		{
+			super(kind, opcode, x, y, null);
+		}
 
 		@Override 
 		public void accept(ValueVisitor visitor)
