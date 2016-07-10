@@ -224,7 +224,7 @@ public class HIRGenerator extends ASTVisitor
 	 * <p>
 	 * Emit a branch on a boolean condition (e.g. for an if statement) to
 	 * the specified blocks. Based the condition, this might try to simplify
-	 * the codegen of the conditional based on the branchs.
+	 * the codegen of the conditional based on the branches.
 	 * </p>
 	 *
 	 * @param expr    The relative expression.
@@ -615,7 +615,7 @@ public class HIRGenerator extends ASTVisitor
 		BasicBlock entry = currentCFG.entry();
 		Alloca inst = new Alloca(kind, Constant.forInt(1), Operator.Alloca.opName);
 
-		// associte its local with variable symbol
+		// associate its local with variable symbol
 		NameValues.put(var, inst);
 
 		int index = entry.indexOf(lastAllocaInst);

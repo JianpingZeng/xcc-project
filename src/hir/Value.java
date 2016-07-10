@@ -4,11 +4,7 @@ import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
 import lir.ci.LIRValue;
 import utils.Name;
-
 import java.util.*;
-
-import com.sun.xml.internal.ws.server.sei.ValueGetter;
-
 import hir.Instruction.Phi;
 
 /**
@@ -233,10 +229,18 @@ public class Value implements Cloneable
 	 * is the subclass of {@code Constant}, otherwise, the null is returned.
 	 * @return
 	 */
-	public LIRConstant asConstant()
+	public LIRConstant asLIRConstant()
 	{
 		if (this instanceof Constant)
 			return ((Constant)this).value;
+		else
+			return null;
+	}
+	
+	public Constant asConstant()
+	{
+		if (this instanceof Constant)
+			return ((Constant)this);
 		else
 			return null;
 	}
@@ -282,6 +286,10 @@ public class Value implements Cloneable
 	 */
 	public static class Constant extends Value
 	{
+		public static Constant CONSTANT_INT_0 = Constant.forInt(0);
+		public static Constant CONSTANT_INT_1 = Constant.forInt(1);
+		public static Constant CONSTANT_INT_MINUS_1 = Constant.forInt(-1);
+		
 		/**
 		 * The constant inst keeped with {@code Constant} instance.
 		 */
@@ -396,6 +404,53 @@ public class Value implements Cloneable
 				return false;
 			Constant c = (Constant)other;
 			return c.value.equals(c.value);
+		}
+		/**
+		 * Return the production result of both Constant, c1 and c2.
+		 * @param c1
+		 * @param c2
+		 */
+		public static Constant multiple(Constant c1, Constant c2)
+		{
+			assert c1.kind.isPrimitive() && c2.kind.isPrimitive()
+				:"No non-primitive type allowed for induction variable";				
+			long l1 = c1.value.asPrimitive();
+			long l2 = c2.value.asPrimitive();
+			
+			return Constant.forLong(l1 * l2);
+		}
+		/**
+		 * Return the sum of both Constant, c1 and c2.
+		 * @param c1
+		 * @param c2
+		 */
+		public static Constant add(Constant c1, Constant c2)
+		{
+			assert c1.kind.isPrimitive() && c2.kind.isPrimitive()
+			:"No non-primitive type allowed for induction variable";				
+			long l1 = c1.value.asPrimitive();
+			long l2 = c2.value.asPrimitive();
+		
+			return Constant.forLong(l1 + l2);
+		}
+		
+		public static Constant sub(Constant c1, Constant c2)
+		{
+			assert c1.kind.isPrimitive() && c2.kind.isPrimitive()
+			:"No non-primitive type allowed for induction variable";				
+			long l1 = c1.value.asPrimitive();
+			long l2 = c2.value.asPrimitive();
+		
+			return Constant.forLong(l1 - l2);
+		}
+		
+		public static Constant sub(int c1, Constant c2)
+		{
+			assert c2.kind.isPrimitive()
+			:"No non-primitive type allowed for induction variable";				
+			long l2 = c2.value.asPrimitive();
+		
+			return Constant.forLong(c1 - l2);
 		}
 	}
 

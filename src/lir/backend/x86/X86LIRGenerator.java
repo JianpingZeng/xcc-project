@@ -59,7 +59,7 @@ public final class X86LIRGenerator extends LIRGenerator
 		assert inst.length().isConstant() :
 				"Alloca instruction 'length' is not a constant " + inst.length();
 
-		int len = inst.length().asConstant().asInt();
+		int len = inst.length().asLIRConstant().asInt();
 
 		// the memory size occupied of one element in Byte
 		int elemSize = backend.targetMachine.sizeInBytes(inst.kind);
@@ -131,7 +131,7 @@ public final class X86LIRGenerator extends LIRGenerator
 		}
 		xin.loadItem();
 		if (kind.isLong() && yin.result().isConstant()
-				&& yin.instruction.asConstant().asLong() == 0 && (
+				&& yin.instruction.asLIRConstant().asLong() == 0 && (
 				cond == Condition.EQ || cond == Condition.NE))
 		{
 			// dont load item
@@ -174,7 +174,7 @@ public final class X86LIRGenerator extends LIRGenerator
 	{
 		if (v.kind == LIRKind.Long)
 		{
-			if (v.isConstant() && NumUtil.isInt(v.asConstant().asLong()))
+			if (v.isConstant() && NumUtil.isInt(v.asLIRConstant().asLong()))
 			{
 				return true;
 			}
@@ -369,7 +369,7 @@ public final class X86LIRGenerator extends LIRGenerator
 				boolean useTmp = false;
 				if (rightArg.result().isConstant())
 				{
-					int iconst = rightArg.instruction.asConstant().asInt();
+					int iconst = rightArg.instruction.asLIRConstant().asInt();
 					if (iconst > 0)
 					{
 						if (Util.isPowerOf2(iconst))

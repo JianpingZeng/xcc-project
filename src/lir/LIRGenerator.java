@@ -224,7 +224,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		Value[] vals = switchInst.getCaseValues();
 		for (int i = 0; i < vals.length; i++)
 		{
-			int val = vals[i].asConstant().asInt();
+			int val = vals[i].asLIRConstant().asInt();
 			labels[i] = val;
 			if (val < lo)
 				lo = val;
@@ -589,7 +589,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		{
 			LIRValue res = Const.LIROperand;
 			if (!res.isLegal())
-				res = Const.asConstant();
+				res = Const.asLIRConstant();
 			if (res.isConstant())
 			{
 				if (Const.hasOneUses())
@@ -615,7 +615,7 @@ public abstract class LIRGenerator extends ValueVisitor
 
 	private LIRVariable loadConstant(Value.Constant x)
 	{
-		return loadConstant(x.asConstant(), x.kind);
+		return loadConstant(x.asLIRConstant(), x.kind);
 	}
 
 	protected LIRVariable loadConstant(LIRConstant c, LIRKind kind)
@@ -954,7 +954,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		{
 			if (x instanceof Value.Constant)
 			{
-				x.setLIROperand(x.asConstant());
+				x.setLIROperand(x.asLIRConstant());
 			}
 			else
 			{

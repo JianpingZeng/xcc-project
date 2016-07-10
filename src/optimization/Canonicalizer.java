@@ -92,7 +92,7 @@ public class Canonicalizer extends ValueVisitor
 		Value v = inst.x;
 		if (v instanceof Constant)
 		{
-			setIntConstant(-v.asConstant().asInt());
+			setIntConstant(-v.asLIRConstant().asInt());
 		}
 	}
 
@@ -110,47 +110,47 @@ public class Canonicalizer extends ValueVisitor
 			switch (inst.opcode)
 			{
 				case I2B:
-					setIntConstant((byte) val.asConstant().asInt());
+					setIntConstant((byte) val.asLIRConstant().asInt());
 					return;
 				case I2S:
-					setIntConstant((short) val.asConstant().asInt());
+					setIntConstant((short) val.asLIRConstant().asInt());
 					return;
 				case I2C:
-					setIntConstant((char) val.asConstant().asInt());
+					setIntConstant((char) val.asLIRConstant().asInt());
 					return;
 				case I2L:
-					setLongConstant(val.asConstant().asInt());
+					setLongConstant(val.asLIRConstant().asInt());
 					return;
 				case I2F:
-					setFloatConstant((float) val.asConstant().asInt());
+					setFloatConstant((float) val.asLIRConstant().asInt());
 					return;
 				case L2I:
-					setIntConstant((int) val.asConstant().asLong());
+					setIntConstant((int) val.asLIRConstant().asLong());
 					return;
 				case L2F:
-					setFloatConstant((float) val.asConstant().asLong());
+					setFloatConstant((float) val.asLIRConstant().asLong());
 					return;
 				case L2D:
 					;
-					setDoubleConstant((double) val.asConstant().asDouble());
+					setDoubleConstant((double) val.asLIRConstant().asDouble());
 					return;
 				case F2D:
-					setDoubleConstant((double) val.asConstant().asFloat());
+					setDoubleConstant((double) val.asLIRConstant().asFloat());
 					return;
 				case F2I:
-					setIntConstant((int) val.asConstant().asFloat());
+					setIntConstant((int) val.asLIRConstant().asFloat());
 					return;
 				case F2L:
-					setLongConstant((long) val.asConstant().asFloat());
+					setLongConstant((long) val.asLIRConstant().asFloat());
 					return;
 				case D2F:
-					setFloatConstant((float) val.asConstant().asDouble());
+					setFloatConstant((float) val.asLIRConstant().asDouble());
 					return;
 				case D2I:
-					setIntConstant((int) val.asConstant().asDouble());
+					setIntConstant((int) val.asLIRConstant().asDouble());
 					return;
 				case D2L:
-					setLongConstant((long) val.asConstant().asDouble());
+					setLongConstant((long) val.asLIRConstant().asDouble());
 					return;
 			}
 			// finished
@@ -208,7 +208,7 @@ public class Canonicalizer extends ValueVisitor
 				if (op.opcode == Operator.IAnd && op.y.isConstant())
 				{
 					int safebits = 0;
-					int mask = op.y.asConstant().asInt();
+					int mask = op.y.asLIRConstant().asInt();
 					// Checkstyle: off
 					switch (inst.opcode)
 					{
@@ -506,7 +506,7 @@ public class Canonicalizer extends ValueVisitor
 			// where x is equal to (s op1 z)
 			if (s.y.isConstant())
 			{
-				long z = s.y.asConstant().asLong();
+				long z = s.y.asLIRConstant().asLong();
 				// if this expression like this (s >> z) >> y
 				if (s.opcode == opcode)
 				{
@@ -603,8 +603,8 @@ public class Canonicalizer extends ValueVisitor
 			{
 				case Int:
 				{
-					Integer val = foldIntOp2(opcode, x.asConstant().asInt(),
-							y.asConstant().asInt());
+					Integer val = foldIntOp2(opcode, x.asLIRConstant().asInt(),
+							y.asLIRConstant().asInt());
 					if (val != null)
 					{
 						setIntConstant(val);
@@ -614,8 +614,8 @@ public class Canonicalizer extends ValueVisitor
 				}
 				case Long:
 				{
-					Long val = foldLongOp2(opcode, x.asConstant().asLong(),
-							y.asConstant().asLong());
+					Long val = foldLongOp2(opcode, x.asLIRConstant().asLong(),
+							y.asLIRConstant().asLong());
 					if (val != null)
 					{
 						setLongConstant(val);
@@ -625,8 +625,8 @@ public class Canonicalizer extends ValueVisitor
 				}
 				case Float:
 				{
-					Float val = foldFloatOp2(opcode, x.asConstant().asFloat(),
-							y.asConstant().asFloat());
+					Float val = foldFloatOp2(opcode, x.asLIRConstant().asFloat(),
+							y.asLIRConstant().asFloat());
 					if (val != null)
 					{
 						setFloatConstant(val);
@@ -637,8 +637,8 @@ public class Canonicalizer extends ValueVisitor
 				case Double:
 				{
 					Double val = foldDoubleOp2(opcode,
-							x.asConstant().asDouble(),
-							y.asConstant().asDouble());
+							x.asLIRConstant().asDouble(),
+							y.asLIRConstant().asDouble());
 					if (val != null)
 					{
 						setDoubleConstant(val);
@@ -662,14 +662,14 @@ public class Canonicalizer extends ValueVisitor
 			{
 				case Int:
 				{
-					if (reduceIntOp2(opcode, inst.x, y.asConstant().asInt())
+					if (reduceIntOp2(opcode, inst.x, y.asLIRConstant().asInt())
 							!= null)
 						return;
 					break;
 				}
 				case Long:
 				{
-					if (reduceLongOp2(opcode, inst.x, y.asConstant().asLong())
+					if (reduceLongOp2(opcode, inst.x, y.asLIRConstant().asLong())
 							!= null)
 						return;
 					break;
@@ -771,8 +771,8 @@ public class Canonicalizer extends ValueVisitor
 
 		if (l.isConstant() && r.isConstant())
 		{
-			Boolean result = foldCondition(inst.condition(), l.asConstant(),
-					r.asConstant());
+			Boolean result = foldCondition(inst.condition(), l.asLIRConstant(),
+					r.asLIRConstant());
 			;
 			if (result != null)
 			{
@@ -911,8 +911,8 @@ public class Canonicalizer extends ValueVisitor
 				case Float:
 					if (x.isConstant())
 					{
-						float xval = x.asConstant().asFloat();
-						Integer res = foldFloatCompare(cond, x.asConstant().asFloat(), y.asConstant().asFloat());
+						float xval = x.asLIRConstant().asFloat();
+						Integer res = foldFloatCompare(cond, x.asLIRConstant().asFloat(), y.asLIRConstant().asFloat());
 						assert res
 								!= null : "invalid comparison operation in float";
 						setIntConstant(res);
@@ -921,8 +921,8 @@ public class Canonicalizer extends ValueVisitor
 				case Double:
 					if (x.isConstant())
 					{
-						double xval = x.asConstant().asDouble();
-						Integer res = foldDoubleCompare(cond, x.asConstant().asDouble(), y.asConstant().asDouble());
+						double xval = x.asLIRConstant().asDouble();
+						Integer res = foldDoubleCompare(cond, x.asLIRConstant().asDouble(), y.asLIRConstant().asDouble());
 						assert res != null : "invalid comparison in double";
 						setIntConstant(res);
 					}
@@ -938,14 +938,14 @@ public class Canonicalizer extends ValueVisitor
 				case Int:
 				{
 					setIntConstant(
-							foldLongCompare(cond, x.asConstant().asLong(),
-									x.asConstant().asLong()));
+							foldLongCompare(cond, x.asLIRConstant().asLong(),
+									x.asLIRConstant().asLong()));
 					break;
 				}
 				case Float:
 				{
 					Integer val = foldFloatCompare(cond,
-							x.asConstant().asFloat(), y.asConstant().asFloat());
+							x.asLIRConstant().asFloat(), y.asLIRConstant().asFloat());
 					assert val
 							!= null : "invalid operation in float comparison";
 					setIntConstant(val);
@@ -954,8 +954,8 @@ public class Canonicalizer extends ValueVisitor
 				case Double:
 				{
 					Integer val = foldDoubleCompare(cond,
-							x.asConstant().asDouble(),
-							y.asConstant().asDouble());
+							x.asLIRConstant().asDouble(),
+							y.asLIRConstant().asDouble());
 					assert val
 							!= null : "invalid operation in float comparison";
 					setIntConstant(val);
