@@ -87,7 +87,7 @@ public class Value implements Cloneable
 	 *
 	 * @param inst An instruction to be inserted.
 	 */
-	public void insertAfter(Instruction inst)
+	public void insertAfter(Value inst)
 	{
 		int index = bb.lastIndexOf(inst);
 		if (index >= 0 && index < bb.size())

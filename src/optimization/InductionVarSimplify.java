@@ -1,10 +1,8 @@
 package optimization;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import sun.security.pkcs11.Secmod.DbMode;
 import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
 import hir.BasicBlock;
@@ -468,7 +466,23 @@ public final class InductionVarSimplify
         				appendPreheader(insts3, preheaderBB);
         				
         				/** tj=tj+db*/
+        				t1 = new ArithmeticOp(tj.kind, Operator.getAddByKind(tj.kind), tj, db);        				
+        				s1 = new StoreInst(t1, tj, "");
+        				Value[] after = {t1, s1};
+        				insertAfter(r2.div, after);
         				
+        				/** replaces all uses of jth instruction by tj.*/
+        				r2.div.replaceAllUsesWith(tj);
+        				
+        				/** remove the jth instruction from the basic block containing it.*/
+        				r2.div.eraseFromBasicBlock();
+        				
+        				/** 
+        				 * append tj to the class of induction variables based on i
+        				 * with linear equation tj = b*i + c.
+        				 */
+        				Constant factor = Constant.multiple(r1.factor, r2.factor); 
+        				inductionVars.add(new IVRecord(tj, r1.biv, factor, r2.diff));        				        				        			
         			}        			
         		}
 			}
@@ -481,12 +495,12 @@ public final class InductionVarSimplify
 	 * @param inst
 	 * @param preheader
 	 */
-	private void appendPreheader(Value inst, BasicBlock preheader)
+	@SuppressWarnings("unused")
+    private void appendPreheader(Value inst, BasicBlock preheader)
 	{
 		assert inst != null && preheader != null;
 		preheader.appendInst(inst);
-	}
-	
+	}	
 	
 	/**
 	 * Append an instruction have been removed from original basic block
@@ -499,5 +513,22 @@ public final class InductionVarSimplify
 		assert insts != null && preheader != null;
 		for (Value inst : insts)
 			preheader.appendInst(inst);
+	}
+	/**
+	 * Appends a sorts of instruction into position after {@code target} instruction.
+	 * @param target
+	 * @param after
+	 */
+	private void insertAfter(Value target, Value[] after)
+	{
+		assert target != null && after!=null;	
+		// if the length of after is not greater zero, just immediately return.
+		if (after.length <= 0) return;
+		
+		target.insertAfter(after[0]);
+		for (int i = 1; i < after.length; i++)
+		{
+			after[i - 1].insertAfter(after[i]);
+		}
 	}
 }
