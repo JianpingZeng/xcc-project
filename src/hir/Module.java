@@ -6,6 +6,7 @@ import java.util.List;
 import optimization.ConstantProp;
 import optimization.DCE;
 import optimization.GVN;
+import optimization.InductionVarSimplify;
 import optimization.LICM;
 import optimization.LoopAnalysis;
 import optimization.LoopSimplify;
@@ -81,6 +82,8 @@ public class Module
 		ConstantProp prop = new ConstantProp();
 		UCE uce = new UCE();
 		LoopSimplify simplificator = new LoopSimplify();
+		InductionVarSimplify ivSimplicator = new InductionVarSimplify();
+		
 		for (Method m : methods)
 		{
 			/****** C1 optimization stage ***/
@@ -116,10 +119,14 @@ public class Module
     		
     		// performs dead code elimination.    		
 			new DCE(m).runOnMethod();
+			
 			/** C3 optimization stage */
+			ivSimplicator.runOnLoop(m);			
 			
-			/** C4 optimization stage */
+			// for removal of useless induction variables.
+			new DCE(m).runOnMethod();
 			
+			/** C4 optimization stage */			
 		}	
 	}
 
