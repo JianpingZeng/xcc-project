@@ -1,7 +1,6 @@
 package optimization; 
 
 import hir.BasicBlock;
-import hir.Instruction;
 import hir.Instruction.Branch;
 import hir.Method;
 import hir.Value;

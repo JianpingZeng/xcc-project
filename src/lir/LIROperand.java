@@ -1,6 +1,8 @@
 package lir;
 
-import lir.ci.*;
+import lir.ci.LIRAddress;
+import lir.ci.LIRValue;
+import lir.ci.LIRVariable;
 
 /**
  * An instruction LIROperand. If the register allocator can modify this LIROperand

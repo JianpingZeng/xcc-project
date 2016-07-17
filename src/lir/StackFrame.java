@@ -1,6 +1,6 @@
 package lir;
 
-import driver.Backend;
+import compiler.Backend;
 import hir.Method;
 import lir.ci.*;
 import lir.ci.CallingConvention.Type;

@@ -5,20 +5,27 @@ package lir.linearScan;
  * @version 0.1
  */
 
+import static lir.ci.LIRRegister.RegisterFlag.Byte;
+import static lir.ci.LIRRegister.RegisterFlag.CPU;
+import static lir.ci.LIRRegister.RegisterFlag.FPU;
+import static lir.linearScan.Interval.RegisterBinding.Any;
+import static lir.linearScan.Interval.RegisterBinding.Fixed;
+import static utils.Util.isOdd;
 import hir.BasicBlock;
+
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+
 import lir.LIRInstruction;
 import lir.LIROp1;
 import lir.LIROpcode;
-import lir.linearScan.Interval;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegister;
+import lir.ci.LIRValue;
+import lir.ci.LIRVariable;
 import lir.linearScan.Interval.RegisterBinding;
-import lir.ci.*;
 import utils.TTY;
-import java.util.*;
-import static lir.linearScan.Interval.RegisterBinding.Any;
-import static lir.linearScan.Interval.RegisterBinding.Fixed;
-import static lir.ci.LIRRegister.RegisterFlag.Byte;
-import static lir.ci.LIRRegister.RegisterFlag.*;
-import static utils.Util.isOdd;
 
 /**
  * This file defines a class that takes a important role in implementing register

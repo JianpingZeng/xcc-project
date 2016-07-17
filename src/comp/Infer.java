@@ -1,7 +1,7 @@
 package comp; 
 
-import type.TypeTags;
 import type.Type;
+import type.TypeTags;
 
 /**
  * @author JianpingZeng

@@ -1,21 +1,22 @@
 package optimization;
 
+import hir.BasicBlock;
+import hir.DominatorTree;
+import hir.Instruction;
+import hir.Instruction.Alloca;
+import hir.Instruction.ArithmeticOp;
+import hir.Instruction.Op2;
+import hir.Instruction.StoreInst;
+import hir.Method;
+import hir.Operator;
+import hir.Value;
+import hir.Value.Constant;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
-import hir.BasicBlock;
-import hir.DominatorTree;
-import hir.Instruction;
-import hir.Instruction.ArithmeticOp;
-import hir.Operator;
-import hir.Instruction.Alloca;
-import hir.Instruction.Op2;
-import hir.Instruction.StoreInst;
-import hir.Method;
-import hir.Value;
-import hir.Value.Constant;
 
 /**
  * <p>

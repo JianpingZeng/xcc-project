@@ -1,7 +1,7 @@
 package lir;
 
-import asm.Label;
 import lir.ci.LIRValue;
+import asm.Label;
 
 /**
  * The {@code LIRLabel} class definition.

@@ -22,8 +22,9 @@
  */
 package ci;
 
-import java.io.*;
-import java.util.*;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.EnumMap;
 
 /**
  * Represents a target machine register.

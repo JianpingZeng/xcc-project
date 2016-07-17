@@ -1,9 +1,14 @@
 package lir.backend;
 
-import lir.ci.*;
 import java.util.EnumMap;
-import static lir.ci.LIRRegister.RegisterFlag;
+
+import lir.ci.CalleeSaveLayout;
+import lir.ci.CallingConvention;
 import lir.ci.CallingConvention.Type;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegister;
+import lir.ci.LIRRegister.RegisterFlag;
+import lir.ci.RegisterAttributes;
 
 /**
  * A register configuration binds roles and {@linkplain lir.ci.RegisterAttributes

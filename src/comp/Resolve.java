@@ -2,8 +2,7 @@ package comp;
 
 import java.util.Arrays;
 import java.util.List;
-import ast.Flags;
-import ast.TreeInfo;
+
 import symbol.Scope;
 import symbol.Scope.Entry;
 import symbol.Symbol;
@@ -13,6 +12,8 @@ import type.TypeTags;
 import utils.Context;
 import utils.Log;
 import utils.Name;
+import ast.Flags;
+import ast.TreeInfo;
 
 /**
  * A helpful utility class for resovling method name and type.

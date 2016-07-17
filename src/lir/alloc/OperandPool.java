@@ -4,18 +4,18 @@ package lir.alloc;
  * @author Xlous.zeng
  */
 
-import lir.backend.Architecture;
-import lir.backend.TargetMachine;
-import hir.Value;
-import lir.ci.LIRKind;
-import lir.ci.LIRRegister;
-import lir.ci.LIRVariable;
-import lir.ci.LIRValue;
 import static lir.alloc.OperandPool.VariableFlag.MustBeByteRegister;
-import static lir.alloc.OperandPool.VariableFlag.MustStartInMemory;
-import static lir.alloc.OperandPool.VariableFlag.MustStayInMemory;
+import hir.Value;
+
 import java.util.ArrayList;
 import java.util.BitSet;
+
+import lir.backend.Architecture;
+import lir.backend.TargetMachine;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegister;
+import lir.ci.LIRValue;
+import lir.ci.LIRVariable;
 
 /**
  * An ordered, 0-based indexable pool of instruction operands for a method being

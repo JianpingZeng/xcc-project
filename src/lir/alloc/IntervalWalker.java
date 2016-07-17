@@ -1,11 +1,13 @@
 package lir.alloc;
 
-import driver.Backend;
+import static lir.alloc.Interval.State.Active;
+import static lir.alloc.Interval.State.Handled;
+import static lir.alloc.Interval.State.Inactive;
 import lir.alloc.Interval.RegisterBinding;
 import lir.alloc.Interval.RegisterBindingLists;
+import lir.alloc.Interval.State;
 import utils.TTY;
-import static lir.alloc.Interval.State;
-import static lir.alloc.Interval.State.*;
+import compiler.*;
 
 /**
  * @author Xlous.zeng

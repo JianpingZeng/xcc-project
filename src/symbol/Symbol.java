@@ -1,10 +1,8 @@
 package symbol;
 
-import hir.Instruction;
 import type.Type;
 import type.TypeTags;
 import utils.Name;
-import utils.Position;
 
 /**
  * This a internal root class that represents all of symbols in this c-flat

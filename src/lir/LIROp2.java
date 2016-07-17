@@ -1,7 +1,8 @@
 package lir;
 
 import hir.Condition;
-import lir.ci.*;
+import lir.ci.LIRKind;
+import lir.ci.LIRValue;
 import lir.ci.LIRValue.Formatter;
 
 /**

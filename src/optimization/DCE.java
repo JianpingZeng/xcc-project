@@ -1,8 +1,13 @@
 package optimization;
 
-import hir.*;
+import hir.BasicBlock;
+import hir.DominatorTree;
+import hir.Instruction;
 import hir.Instruction.Return;
 import hir.Instruction.StoreInst;
+import hir.Method;
+import hir.Value;
+import hir.ValueVisitor;
 
 import java.util.HashSet;
 import java.util.Iterator;

@@ -22,9 +22,10 @@
  */
 package lir.ci;
 
+import static lir.ci.LIRKind.Flags.PRIMITIVE;
+import static lir.ci.LIRKind.Flags.RETURN_TYPE;
+import static lir.ci.LIRKind.Flags.VAR_TYPE;
 import sun.misc.Unsafe;
-
-import static lir.ci.LIRKind.Flags.*;
 
 /**
  * Denotes the basic kinds of types in cc IR, including the all the primitive types,

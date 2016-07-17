@@ -1,9 +1,5 @@
 package optimization; 
 
-import java.util.ArrayList;
-import java.util.List;
-import utils.Pair;
-import utils.TTY;
 import hir.BasicBlock;
 import hir.ControlFlowGraph;
 import hir.DominatorTree;
@@ -18,6 +14,12 @@ import hir.Use;
 import hir.Value;
 import hir.Value.Constant;
 import hir.Value.UndefValue;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import utils.Pair;
+import utils.TTY;
 
 /** 
  * </p>

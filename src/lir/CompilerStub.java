@@ -1,8 +1,11 @@
 package lir;
 
+import static lir.ci.LIRKind.Double;
+import static lir.ci.LIRKind.Float;
+import static lir.ci.LIRKind.Int;
+import static lir.ci.LIRKind.Long;
 import lir.ci.LIRKind;
 import lir.ci.StackSlot;
-import static lir.ci.LIRKind.*;
 
 /**
  * A compiler stub is a shared routine that performs an operation on behalf of

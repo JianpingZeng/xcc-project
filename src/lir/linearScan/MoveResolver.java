@@ -1,13 +1,14 @@
 package lir.linearScan;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
 import lir.LIRList;
 import lir.ci.LIRValue;
 import lir.ci.StackSlot;
 import utils.TTY;
 import utils.Util;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 
 /**
  * Linear scan register allocation with splitting of lifetime intervals requires a

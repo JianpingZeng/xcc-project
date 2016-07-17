@@ -1,11 +1,12 @@
 package comp;
 
-import ast.ASTVisitor;
-import ast.Flags;
-import ast.Tree;
-import ast.Tree.*;
-import ast.TreeInfo;
-import exception.CompletionFailure;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import symbol.Scope;
 import symbol.Symbol;
 import symbol.Symbol.MethodSymbol;
@@ -20,8 +21,45 @@ import utils.Context;
 import utils.Log;
 import utils.Name;
 import utils.Position;
-
-import java.util.*;
+import ast.ASTVisitor;
+import ast.Flags;
+import ast.Tree;
+import ast.Tree.Apply;
+import ast.Tree.Assign;
+import ast.Tree.Assignop;
+import ast.Tree.Binary;
+import ast.Tree.Block;
+import ast.Tree.Break;
+import ast.Tree.Case;
+import ast.Tree.Conditional;
+import ast.Tree.Continue;
+import ast.Tree.DoLoop;
+import ast.Tree.Erroneous;
+import ast.Tree.Exec;
+import ast.Tree.ForLoop;
+import ast.Tree.Goto;
+import ast.Tree.Ident;
+import ast.Tree.If;
+import ast.Tree.Import;
+import ast.Tree.Indexed;
+import ast.Tree.Labelled;
+import ast.Tree.Literal;
+import ast.Tree.MethodDef;
+import ast.Tree.NewArray;
+import ast.Tree.Parens;
+import ast.Tree.Return;
+import ast.Tree.Select;
+import ast.Tree.Skip;
+import ast.Tree.Switch;
+import ast.Tree.TopLevel;
+import ast.Tree.TypeArray;
+import ast.Tree.TypeCast;
+import ast.Tree.TypeIdent;
+import ast.Tree.Unary;
+import ast.Tree.VarDef;
+import ast.Tree.WhileLoop;
+import ast.TreeInfo;
+import exception.CompletionFailure;
 
 /**
  * This is main context-dependent analysis phase in compiler internal. It

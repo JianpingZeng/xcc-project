@@ -1,16 +1,17 @@
 package optimization; 
 
-import java.util.ArrayList;
-
-import utils.TTY;
 import hir.BasicBlock;
 import hir.ControlFlowGraph;
-import hir.Method;
-import hir.Value;
 import hir.Instruction.Branch;
 import hir.Instruction.Goto;
 import hir.Instruction.Phi;
+import hir.Method;
+import hir.Value;
 import hir.Value.UndefValue;
+
+import java.util.ArrayList;
+
+import utils.TTY;
 
 
 /** 

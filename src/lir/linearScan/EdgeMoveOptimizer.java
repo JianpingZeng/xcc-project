@@ -2,12 +2,14 @@ package lir.linearScan;
 
 import hir.BasicBlock;
 import hir.Condition;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import lir.LIRInstruction;
 import lir.LIROp1;
 import lir.LIROpcode;
 import lir.ci.LIRBranch;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class is served as eliminating moves operation between predecessor and

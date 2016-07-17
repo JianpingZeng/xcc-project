@@ -1,6 +1,6 @@
 package lir.alloc;
 
-import driver.Backend;
+import compiler.*;
 import exception.CiBailout;
 import hir.BasicBlock;
 import hir.Condition;

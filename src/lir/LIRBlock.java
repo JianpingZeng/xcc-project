@@ -1,8 +1,8 @@
 package lir;
 
-import asm.Label;
 import hir.BasicBlock;
 import utils.BitMap;
+import asm.Label;
 
 /**
  * This file defines a class that represents a subsequnce of machine instruction
