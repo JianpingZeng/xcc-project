@@ -1,13 +1,29 @@
 package lir.backend.x86;
 
-import lir.backend.RegisterConfig;
-import lir.backend.TargetMachine;
-import lir.ci.*;
+import static lir.backend.x86.X86.ALL_LIR_REGISTERs;
+import static lir.backend.x86.X86.eax;
+import static lir.backend.x86.X86.ebp;
+import static lir.backend.x86.X86.ebx;
+import static lir.backend.x86.X86.ecx;
+import static lir.backend.x86.X86.edi;
+import static lir.backend.x86.X86.edx;
+import static lir.backend.x86.X86.esi;
+import static lir.backend.x86.X86.xmm0;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
-import static lir.backend.x86.X86.*;
+
+import lir.backend.RegisterConfig;
+import lir.backend.TargetMachine;
+import lir.ci.CalleeSaveLayout;
+import lir.ci.CallingConvention;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegister;
+import lir.ci.LIRValue;
+import lir.ci.RegisterAttributes;
+import lir.ci.StackSlot;
 
 /**
  * @author Xlous.zeng

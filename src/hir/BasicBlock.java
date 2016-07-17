@@ -1,14 +1,18 @@
 package hir;
 
 
-import asm.Label;
-import lir.LIRList;
-import lir.LIRBlock;
 import hir.Instruction.Branch;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
 
+import lir.LIRBlock;
+import lir.LIRList;
 import optimization.Loop;
+import asm.Label;
 
 /**
  * Represents a basic block in the quad intermediate representation. Basic

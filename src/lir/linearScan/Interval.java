@@ -5,7 +5,11 @@ package lir.linearScan;
  * @version 0.1
  */
 import lir.LIRInstruction;
-import lir.ci.*;
+import lir.ci.LIRAddress;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegisterValue;
+import lir.ci.LIRValue;
+import lir.ci.StackSlot;
 
 /**
  * * Represents an interval in the {@linkplain LinearScan linear scanning register allocator}.

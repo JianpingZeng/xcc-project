@@ -6,7 +6,6 @@ import ast.Tree.*;
 import ast.Tree.Goto;
 import ast.Tree.Return;
 import ast.TreeInfo;
-import ast.TreeMaker;
 import hir.Value.Constant;
 import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
@@ -60,14 +59,12 @@ public class HIRGenerator extends ASTVisitor
 	private Context context;
 	private List<Variable> vars;
 	private List<Method> methods;
-	private TreeMaker maker;
 	private Name.Table names;
 
 	public HIRGenerator(Context context)
 	{
 		this.context = context;
 		context.put(ASTToQuadKey, this);
-		this.maker = TreeMaker.instance(context);
 		this.names = Name.Table.instance(context);
 		this.log = Log.instance(context);
 		this.vars = new ArrayList<>();

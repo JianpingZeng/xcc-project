@@ -1,16 +1,22 @@
 package lir.backend.amd64;
 
-import driver.Backend;
-import hir.*;
+import hir.BasicBlock;
+import hir.Condition;
+import hir.Instruction;
+import hir.Method;
+import hir.Operator;
+import hir.Value;
 import hir.Value.Constant;
 import lir.LIRGenerator;
 import lir.LIRItem;
 import lir.StackFrame;
-import lir.ci.*;
-import lir.ci.LIRVariable;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegisterValue;
 import lir.ci.LIRValue;
+import lir.ci.LIRVariable;
 import utils.NumUtil;
 import utils.Util;
+import compiler.*;
 
 /**
  * @author Xlous.zeng

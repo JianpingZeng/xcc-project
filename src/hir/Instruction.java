@@ -1,6 +1,7 @@
 package hir;
 
 import java.util.Arrays;
+
 import lir.ci.LIRKind;
 import utils.Pair;
 import utils.Util;

@@ -2,6 +2,9 @@ package compiler;
 
 import java.util.*;
 import java.io.*;
+
+import lir.backend.amd64.AMD64RegisterConfig;
+import lir.backend.x86.X86;
 import comp.Attr;
 import comp.Enter;
 import comp.Env;
@@ -42,8 +45,12 @@ public class Compiler
 	 * A flag that marks whether debug parer.
 	 */
 	private boolean debugParser = false;
-
+	
 	private boolean verbose = false;
+	/**
+	 * optimization level.
+	 */
+	private String opt_level;
 
 	/**
 	 * A flag that marks whether output target file.
@@ -62,9 +69,11 @@ public class Compiler
 		this.enter = Enter.instance(context);
 		this.todo = Todo.instance(context);
 		Options options = Options.instance(context);
+		
 		this.debugParser = options.get("--debug-Parser") != null;
 		this.outputResult = options.get("-o") != null;
-		this.verbose = options.get("-verbose") != null;
+		this.opt_level = options.get("-O");
+		
 	}
 
 	public static Compiler make(Context context)
@@ -80,58 +89,68 @@ public class Compiler
 		return log.nerrors;
 	}
 
-	public void compile(List<String> filenames)
+	public void compile(List<SourceFile> filenames)
 	{
 		long msec = System.currentTimeMillis();
+		Options opt = Options.instance(context);
+
+		// machine specific not to do now
+
+		Backend backend = new Backend(opt, X86.target(),
+				AMD64RegisterConfig.newInstance());
+		Frontend frontend = new Frontend(opt, context);
+		Optimizer optimizer = new Optimizer(context);
+
 		try
 		{
-			List<Tree> trees = new LinkedList<>();
-			// make a abstract syntax tree for any source file, and add it into
-			// trees.
-			for (String file : filenames)
-				trees.add(parse(file));
-			if (errorCount() == 0)
-			{
-				if (debugParser)
-				{
-					Pretty p = new Pretty(new PrintWriter(System.out), false);
-					// display abstract syntax tree for any source file
-					for (Tree t : trees)
-						t.accept(p);
+			Tree[] trees = frontend.doParseAttribute(filenames);
 
-					// display total spent time.
-					printVerbose("total",
-					        Long.toString(System.currentTimeMillis() - msec));
-				}
-				// fatal checking and symbol entering
-				enter.main(trees);
-			}
-			Attr attr = Attr.instance(context);
-			Iterator<Env> itr = todo.iterator();
-			while (itr.hasNext())
-			{
-				Env env = itr.next();
-				Tree unattributed = env.tree;
-				if (verbose)
-				    printVerbose("checking.attribution",
-				            env.enclMethod.sym.toString());
-				Name prev = log.useSource(env.toplevel.sourceFile);
-				attr.attriMethod(unattributed.pos, env.enclMethod.sym);
-			}
-
-			// performs high level IR generation adn Module optimization
-			List<Module> hirLists = new LinkedList<>();
+			// performs high level IR generation and Module optimization
+			Module[] hirLists = new Module[trees.length]; 
+			int i = 0;
 			for (Tree t : trees)
-				hirLists.add(new HIRGenerator(context).translate(t));
+				hirLists[i++] = (new HIRGenerator(context).translate(t));
+			
+			// performs high level IR generation and Module optimization
+			optimizer.runOnModules(hirLists);
 
+			// emits machine instruction for Module instance of any TopLevel instance
+			backend.emitMachineInst(hirLists);
 
+			if (verbose)
+			{
+				printVerbose("total", Long.
+						toString(System.currentTimeMillis() - msec));
+			}
+			int errCount = errorCount();
+			if (errCount == 1)				
+				printCount("error", errCount);
+			else
+				printCount("error.plural", errCount);
+		}
+		catch (Error ex)
+		{
 		}
 		finally
 		{
 
 		}
 	}
-
+	/**
+	 * Prints numbers of errors and warnings.
+	 *
+	 * @param key The key massage to be reported.
+	 * @param cnt The count of errors and warnings.
+	 */
+	private void printCount(String key, int cnt)
+	{
+		if (cnt != 0)
+		{
+			Log.printLines(log.errWriter, Log.getLocalizedString("count." + key,
+					Integer.toString(cnt)));
+			log.flush();
+		}
+	}
 	private void printVerbose(String key, String msg)
 	{
 		Log.printLines(log.noticeWriter,

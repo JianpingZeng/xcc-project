@@ -4,7 +4,7 @@ package lir.linearScan;
  * @author Xlous.zeng
  * @version 0.1
  */
-import driver.Backend;
+import compiler.*;
 import exception.CiBailout;
 import hir.BasicBlock;
 import hir.Condition;

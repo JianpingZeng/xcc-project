@@ -1,5 +1,6 @@
 package utils;
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
 
 public class Cursor<T> implements Iterator {
     protected List<T> list;

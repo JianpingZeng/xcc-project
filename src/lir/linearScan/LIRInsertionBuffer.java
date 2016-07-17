@@ -1,14 +1,14 @@
 package lir.linearScan;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import lir.LIRInstruction;
 import lir.LIRList;
 import lir.LIROp1;
 import lir.LIROpcode;
 import lir.ci.LIRValue;
 import utils.IntList;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Xlous.zeng

@@ -1,6 +1,8 @@
 package type;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+
 import symbol.TypeSymbol;
 
 

@@ -1,16 +1,22 @@
 package lir;
 
-import asm.Label;
 import hir.BasicBlock;
 import hir.Condition;
 import hir.Method;
 import hir.Operator;
-import lir.ci.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import lir.ci.LIRAddress;
+import lir.ci.LIRBranch;
+import lir.ci.LIRConstant;
+import lir.ci.LIRKind;
+import lir.ci.LIRValue;
+import lir.ci.LIRVariable;
+import asm.Label;
 
 /**
  * @author Xlous.zeng

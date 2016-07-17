@@ -1,6 +1,5 @@
 package compiler;
 
-import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.LinkedList;
 import java.util.List;
@@ -51,39 +50,72 @@ public class Main
 	 */
 	static final int EXIT_ABNORMAL = 4;
 
+	public static final String VERSION = "0.1";
+	public static final String NAME = "scc";
+
 	/**
-	 * The array of recoginization Option. 
+	 * The array of recognization Option.
 	 */
-	private Option[] recognizedOptions = {
-			new Option("--debug-Parser", "opt.debug.Parser"),
-			
-			new Option("-o", "opt.output.filename") {
-                boolean matches(String s) {
-                    return s.startsWith("-o");
-                }
-                boolean process(String option)
-                {
-                	String suboption = option.substring(2);
-                	options.put("-o", suboption);
-                	return false;
-                }
-			},
-			new HiddenOption("sourcefile") {
+	private Option[] recognizedOptions = 
+		{
+	        new Option("-o", "<file>", "Place the output into <file>"),
+	        new Option("-E", "",
+	                "Preprocess only, no compile, assembly or link"),
+	        new Option("-c", "", "Compile and assemble but no link"),
+	        new Option("-S", "", "Compile only, no assembly or link"),
+	        new Option("-O", "Specify the level of optimization")
+	        {
+		        @Override
+		        boolean matches(String arg)
+		        {
+			        return arg.startsWith("-O");
+		        };
 
-                String s;
+		        @Override
+		        boolean process(String option)
+		        {
+			        String type = option.substring(2);
+			        // obtains level of optimization.
+			        if (!type.matches("^[0123s]|)$"))
+			        {
+				        error("unknown optimization switch: " + option);
+				        return true;
+			        }
+			        options.put(name, option);
+			        return false;
+		        };
+	        }, 
+	        new Option("--debug-Parser", "Display the process of parser"),
+	        new Option("--dump-ast", "Display abstract syntax tree"),
+	        new Option("--dump-hir", "display higher level ir"),
+	        new Option("--dump-lir", "display lower level ir"),
+	        new Option("-g", "Generate debug infortion for output file"),
+	        new Option("-h", "Display help information")
+	        {
+		        @Override
+		        boolean matches(String arg)
+		        {
+			        return arg.equals("-h") || arg.equals("--help");
+		        }
 
-                boolean matches(String s) {
-                    this.s = s;
-                    return s.endsWith(".java");
-                }
-
-                boolean process(String option) {
-                    filenames.add(s);
-                    return false;
-                }
-            }
+		        @Override
+		        boolean process(String option)
+		        {
+			        printUsage();
+			        return false;
+		        }
+	        },
+	        new Option("-v", "Display the version information")
+	        {
+		        @Override
+		        boolean process(String option)
+		        {
+			        version();
+			        return false;
+		        }
+	        }
 		};
-	
+
 	/**
 	 * Construct a compiler instance with error output by default.
 	 */
@@ -115,62 +147,81 @@ public class Main
 	/**
 	 * Print a string that explains usage.
 	 */
-	void help()
+	private void printUsage()
 	{
+		out.println("Usage: scc <options> files...");
+		for (int i = 0; i < recognizedOptions.length; i++)
+		{
+			recognizedOptions[i].help();
+		}
+		out.println();
+		System.exit(0);
+	}
 
+	private void version()
+	{
+		out.printf("%s version %s\n", NAME, VERSION);
+		System.exit(0);
 	}
 
 	private void error(String msg, String arg)
 	{
-		Log.printLines(out, msg + ":" + arg); 
-		help();		
+		Log.printLines(out, msg + ":" + arg);
+		printUsage();
 	}
 
 	private void error(String msg)
 	{
 		error(msg, "");
 	}
+
 	/**
-      * Process command line arguments: store all command line options
-      *  in `options' table and return all source filenames.
-      *  
-	 * @param args	An array of all of arguments.
+	 * Process command line arguments: store all command line options in
+	 * `options' table and return all source filenames.
+	 * 
+	 * @param args An array of all of arguments.
 	 * @return
 	 */
-	private List<String> processArgs(String[] args)
+	private List<SourceFile> processArgs(String[] args)
 	{
-		List<String> files = new LinkedList<String>();
+		List<SourceFile> files = new LinkedList<SourceFile>();
 		int ac = 0;
 		while (ac < args.length)
 		{
 			String arg = args[ac++];
-			int idx = 0;
-			for (; idx < recognizedOptions.length; idx++)
-				if (recognizedOptions[idx].matches(arg))
-					break;
-            if (idx == recognizedOptions.length) {
-                error("err.invalid.commanline.arg", arg);
-                return null;
-            }
-            Option option = recognizedOptions[idx];
-            if (option.hasArg())
-            {
-            	if (ac == args.length)
-            	{
-            		error("err.argument.lack", arg);
-            		return null;
-            	}
-            	String operand = args[ac];
-            	ac++;
-            	if (option.process(arg, operand))
-            		return null;            	
-            }
-            else 
-            {
-                if (option.process(arg))
-                    return null;
-            }
-            
+			// compilation options
+			if (arg.startsWith("-"))
+			{
+				int idx = 0;
+				for (; idx < recognizedOptions.length; idx++)
+					if (recognizedOptions[idx].matches(arg)) break;
+				if (idx == recognizedOptions.length)
+				{
+					error("err.invalid.commandline.arg", arg);
+					return null;
+				}
+				Option option = recognizedOptions[idx];
+				if (option.hasArg())
+				{
+					if (ac == args.length)
+					{
+						error("err.argument.lack", arg);
+						return null;
+					}
+					String operand = args[ac];
+					ac++;
+					if (option.process(arg, operand)) return null;
+				}
+				else
+				{
+					if (option.process(arg)) return null;
+				}
+			}		
+			else
+			{
+				// source file
+				files.add(new SourceFile(arg));
+			}
 		}
 		return files;
 	}
@@ -180,6 +231,7 @@ public class Main
 	 * 
 	 * @param args The command line parameters.
 	 */
+	@SuppressWarnings("finally")
 	public int compile(String[] args)
 	{
 		Context context = new Context();
@@ -190,11 +242,11 @@ public class Main
 		{
 			if (args.length == 0)
 			{
-				help();
+				printUsage();
 				return EXIT_CMDERR;
 			}
-			List<String> filenames;
-			
+			List<SourceFile> filenames;
+
 			// process command line arguments
 			filenames = processArgs(args);
 			if (filenames == null)
@@ -203,19 +255,17 @@ public class Main
 			}
 			else if (filenames.isEmpty())
 			{
-				if (options.get("-help") != null)
-					return EXIT_OK;
+				if (options.get("-h") != null) return EXIT_OK;
+
 				error("err.no.source.files");
 				return EXIT_CMDERR;
 			}
-		
+
 			context.put(utils.Log.outKey, out);
 			comp = Compiler.make(context);
-			if (comp == null)
-				return EXIT_SYSERR;
+			if (comp == null) return EXIT_SYSERR;
 			comp.compile(filenames);
-            if (comp.errorCount() != 0)
-                return EXIT_ERROR;
+			if (comp.errorCount() != 0) return EXIT_ERROR;
 		}
 		finally
 		{
@@ -227,107 +277,96 @@ public class Main
 			}
 			return EXIT_OK;
 		}
-
 	}
-	
 
 	/**
-	 * This class represents a single option derived from command line,
-	 * when command line mode is used.
+	 * This class represents a single option derived from command line, when
+	 * command line mode is used.
 	 * 
 	 * @author zeng
 	 */
 	private class Option
 	{
-	    /**
-	     * Option string.
-	     */
-	    String name;
+		/**
+		 * Option string.
+		 */
+		String name;
 
-	    /**
-	     * Documentation key for arguments.
-	     */
-	    String argsNameKey;
+		/**
+		 * Documentation key for arguments.
+		 */
+		String argsNameKey;
 
-	    /**
-	     * Documentation key for description.
-	     */
-	    String descrKey;
+		/**
+		 * Documentation key for description.
+		 */
+		String descrKey;
 
-	    Option(String name, String argsNameKey, String descrKey) {
-	        super();
-	        this.name = name;
-	        this.argsNameKey = argsNameKey;
-	        this.descrKey = descrKey;
-	    }
+		Option(String name, String argsNameKey, String descrKey)
+		{
+			super();
+			this.name = name;
+			this.argsNameKey = argsNameKey;
+			this.descrKey = descrKey;
+		}
 
-	    Option(String name, String descrKey) {
-	        this(name, null, descrKey);
-	    }
+		Option(String name, String descrKey)
+		{
+			this(name, null, descrKey);
+		}
 
-	    /**
-	      * Does this option take an operand?
-	      */
-	    boolean hasArg() {
-	        return argsNameKey != null;
-	    }
+		/**
+		 * Does this option take an operand?
+		 */
+		boolean hasArg()
+		{
+			return argsNameKey != null;
+		}
 
-	    /**
-	      * Does argument string match option pattern?
-	      * 
-	      *  @param arg        The command line argument string.
-	      */
-	    boolean matches(String arg) {
-	        return name.equals(arg);
-	    }
-	    
-	      /**
-         * Print a line of documentation describing this standard option.
-         */
-       void help() {
-           String s = "  " + helpSynopsis();
-           out.print(s);
-           for (int j = s.length(); j < 28; j++)
-               out.print(" ");
-           utils.Log.printLines(out, descrKey);
-       }
+		/**
+		 * Does argument string match option pattern?
+		 * 
+		 * @param arg The command line argument string.
+		 */
+		boolean matches(String arg)
+		{
+			return name.equals(arg);
+		}
 
-       String helpSynopsis() {
-           String s = name + " ";
-           if (argsNameKey != null)
-               s += argsNameKey;
-           return s;
-       }
+		/**
+		 * Print a line of documentation describing this standard option.
+		 */
+		void help()
+		{
+			String s = "  " + helpSynopsis();
+			out.print(s);
+			for (int j = s.length(); j < 28; j++)
+				out.print(" ");
+			utils.Log.printLines(out, descrKey);
+		}
 
-       /**
-         * Process the option (with arg). Return true if error detected.
-         */
-       boolean process(String option, String arg) {
-           options.put(option, arg);
-           return false;
-       }
+		String helpSynopsis()
+		{
+			String s = name + " ";
+			if (argsNameKey != null) s += argsNameKey;
+			return s;
+		}
 
-       /**
-         * Process the option (without arg). Return true if error detected.
-         */
-       boolean process(String option) {
-           return process(option, option);
-       }
+		/**
+		 * Process the option (with arg). Return true if error detected.
+		 */
+		boolean process(String option, String arg)
+		{
+			options.put(option, arg);
+			return false;
+		}
+
+		/**
+		 * Process the option (without arg). Return true if error detected.
+		 */
+		boolean process(String option)
+		{
+			return process(option, option);
+		}
 	}
-    /**
-     * A hidden (implementor) option
-     */
-   private class HiddenOption extends Option {
-
-       HiddenOption(String name) {
-           super(name, null, null);
-       }
-
-       void help() {
-       }
-
-       void xhelp() {
-       }
-   }
-	
 }

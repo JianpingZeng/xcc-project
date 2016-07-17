@@ -1,10 +1,10 @@
 package lir;
 
 import hir.Value;
-import lir.linearScan.OperandPool;
 import lir.ci.LIRKind;
 import lir.ci.LIRValue;
 import lir.ci.LIRVariable;
+import lir.linearScan.OperandPool;
 import utils.Util;
 
 /**

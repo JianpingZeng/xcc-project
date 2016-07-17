@@ -2,8 +2,14 @@ package optimization;
 
 import hir.BasicBlock;
 import hir.DominatorTree;
+
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.PriorityQueue;
+
 import utils.Pair;
-import java.util.*;
 
 /**
  * This file defines a helpful method for obtains the reverse dominator frontier

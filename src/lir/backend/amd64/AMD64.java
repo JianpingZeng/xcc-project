@@ -1,14 +1,14 @@
 package lir.backend.amd64;
 
+import static lir.ci.LIRKind.Long;
+import static lir.ci.LIRRegister.RegisterFlag.Byte;
+import static lir.ci.LIRRegister.RegisterFlag.CPU;
+import static lir.ci.LIRRegister.RegisterFlag.FPU;
 import lir.backend.Architecture;
 import lir.backend.ByteOrder;
 import lir.backend.TargetMachine;
 import lir.ci.LIRRegister;
 import lir.ci.LIRRegisterValue;
-import static lir.ci.LIRKind.Long;
-import static lir.ci.LIRRegister.RegisterFlag.CPU;
-import static lir.ci.LIRRegister.RegisterFlag.FPU;
-import static lir.ci.LIRRegister.RegisterFlag.Byte;
 
 /**
  * Represents the AMD64 architecture.

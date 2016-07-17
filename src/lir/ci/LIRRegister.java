@@ -22,11 +22,11 @@
  */
 package lir.ci;
 
-import lir.backend.Architecture;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.EnumMap;
+
+import lir.backend.Architecture;
 
 /**
  * Represents a register relative to target machine.

@@ -1,9 +1,11 @@
 package hir;
 
-import exception.MemoryPromoteError;
 import hir.Instruction.Alloca;
+
 import java.util.ArrayList;
 import java.util.ListIterator;
+
+import exception.MemoryPromoteError;
 
 /**
  * <p>

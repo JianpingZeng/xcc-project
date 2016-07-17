@@ -3,6 +3,7 @@ package optimization;
 import hir.BasicBlock;
 import hir.BasicBlock.BlockFlag;
 import hir.Method;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -10,6 +11,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+
 import utils.BitMap2D;
 
 /**

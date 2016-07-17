@@ -1,6 +1,6 @@
 package lir.linearScan;
 
-import driver.Backend;
+import compiler.*;
 import lir.linearScan.Interval.RegisterBinding;
 import lir.linearScan.Interval.RegisterBindingLists;
 import utils.TTY;

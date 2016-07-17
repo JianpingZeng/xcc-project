@@ -1,8 +1,5 @@
 package comp;
 
-import exception.CompletionFailure;
-import ast.Flags;
-import ast.TreeInfo;
 import symbol.Symbol;
 import symbol.SymbolKinds;
 import type.Type;
@@ -10,6 +7,9 @@ import type.TypeTags;
 import utils.Context;
 import utils.Log;
 import utils.Name;
+import ast.Flags;
+import ast.TreeInfo;
+import exception.CompletionFailure;
 
 /**
  * This is a helpful auxiliary class for type check.

@@ -1,7 +1,14 @@
 package lir.backend.x86;
 
-import driver.Backend;
-import hir.*;
+import hir.BasicBlock;
+import hir.Condition;
+import hir.Instruction;
+import hir.Method;
+import hir.Operator;
+import hir.Value;
+
+import java.util.HashMap;
+
 import lir.LIRGenerator;
 import lir.LIRItem;
 import lir.StackFrame;
@@ -11,8 +18,7 @@ import lir.ci.LIRValue;
 import lir.ci.LIRVariable;
 import utils.NumUtil;
 import utils.Util;
-
-import java.util.HashMap;
+import compiler.*;
 
 /**
  * @author Xlous.zeng

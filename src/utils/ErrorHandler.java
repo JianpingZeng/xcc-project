@@ -1,6 +1,7 @@
 package utils;
 
-import java.io.*;
+import java.io.OutputStream;
+import java.io.PrintStream;
 
 public class ErrorHandler {
     protected String programId;

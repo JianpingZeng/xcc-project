@@ -1,6 +1,20 @@
 package hir;
 
-import hir.Instruction.*;
+import hir.Instruction.Alloca;
+import hir.Instruction.ArithmeticOp;
+import hir.Instruction.Cmp;
+import hir.Instruction.Convert;
+import hir.Instruction.Goto;
+import hir.Instruction.IfOp;
+import hir.Instruction.Invoke;
+import hir.Instruction.LoadInst;
+import hir.Instruction.LogicOp;
+import hir.Instruction.Negate;
+import hir.Instruction.Phi;
+import hir.Instruction.Return;
+import hir.Instruction.ShiftOp;
+import hir.Instruction.StoreInst;
+import hir.Instruction.SwitchInst;
 
 /**
  * A Value Visitor for Instruction or Value using Visitor pattern.

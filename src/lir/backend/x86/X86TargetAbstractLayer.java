@@ -1,11 +1,11 @@
 package lir.backend.x86;
 
-import driver.Backend;
 import hir.Method;
 import lir.LIRAssembler;
 import lir.LIRGenerator;
 import lir.backend.TargetAbstractLayer;
 import lir.backend.amd64.AMD64LIRGenerator;
+import compiler.*;
 
 /**
  * @author Xlous.zeng

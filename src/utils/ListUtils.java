@@ -1,7 +1,7 @@
 package utils;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.ArrayList;
 
 public abstract class ListUtils {
     static public <T> List<T> reverse(List<T> list) {

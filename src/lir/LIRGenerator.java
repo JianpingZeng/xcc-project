@@ -1,7 +1,7 @@
 package lir;
 
 import asm.Label;
-import driver.Backend;
+import compiler.*;
 import hir.*;
 import hir.Instruction.Phi;
 import lir.linearScan.OperandPool;

@@ -1,21 +1,20 @@
 package lir.alloc;
 
-import driver.Backend;
+import static lir.alloc.Interval.EndMarker;
+import static lir.alloc.Interval.State.Active;
+import static lir.alloc.Interval.State.Handled;
+import static lir.alloc.Interval.State.Inactive;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import lir.alloc.Interval.RegisterBinding;
 import lir.alloc.Interval.RegisterBindingLists;
 import lir.ci.LIRRegister;
 import lir.ci.LIRValue;
 import lir.ci.LIRVariable;
 import utils.TTY;
-
-import java.net.InterfaceAddress;
-import java.util.ArrayList;
-import java.util.List;
-
-import static lir.alloc.Interval.EndMarker;
-import static lir.alloc.Interval.State.Active;
-import static lir.alloc.Interval.State.Handled;
-import static lir.alloc.Interval.State.Inactive;
+import compiler.*;
 
 /**
  * @author Xlous.zeng

@@ -4,13 +4,13 @@ package lir.ci;
  * @author Xlous.zeng
  */
 
-import asm.Label;
 import hir.BasicBlock;
 import hir.Condition;
 import lir.LIRAssembler;
 import lir.LIRInstruction;
 import lir.LIRLabel;
 import lir.LIROpcode;
+import asm.Label;
 
 /**
  *

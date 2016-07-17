@@ -1,14 +1,19 @@
 package lir.alloc;
 
-import exception.CiBailout;
-import lir.LIRInstruction;
-import lir.ci.*;
-import utils.IntList;
-import utils.TTY;
-import utils.Util;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import lir.LIRInstruction;
+import lir.ci.LIRAddress;
+import lir.ci.LIRKind;
+import lir.ci.LIRRegisterValue;
+import lir.ci.LIRValue;
+import lir.ci.StackSlot;
+import utils.IntList;
+import utils.TTY;
+import utils.Util;
+import exception.CiBailout;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scanning register allocator}.

@@ -1,8 +1,8 @@
 package lir.ci;
 
-import lir.backend.RegisterConfig;
-
 import java.util.Arrays;
+
+import lir.backend.RegisterConfig;
 
 /**
  * A collection of register attributes. The specific attribute VALUES for a
