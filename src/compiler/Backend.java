@@ -3,11 +3,9 @@ package compiler;
 import hir.BasicBlock;
 import hir.Method;
 import hir.Module;
-
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
 import lir.CompilerStub;
 import lir.LIRGenerator;
 import lir.StackFrame;
@@ -35,10 +33,10 @@ public final class Backend
 	private StackFrame stackFrame;
 	public final Map<Object, CompilerStub> stubs = new HashMap<>();
 
-	public Backend(Options opt, TargetMachine targetMachine,
+	public Backend(utils.Context context, TargetMachine targetMachine,
 			RegisterConfig registerConfig)
 	{
-		this.opt = opt;
+		this.opt = Options.instance(context);
 		this.targetMachine = targetMachine;
 		this.registerConfig = registerConfig;
 		this.targetAbstractLayer = TargetAbstractLayer.create(targetMachine.arch, this);
@@ -63,7 +61,7 @@ public final class Backend
 		{
 			Method m = itr.next();
 			// create LIRGenerator for every method
-			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator(m);
+			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator();
 			this.stackFrame = new StackFrame(this, m);
 
 			for (BasicBlock block : m)

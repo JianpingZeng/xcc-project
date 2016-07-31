@@ -72,7 +72,7 @@ public final class X86 extends Architecture
 	/**
 	 * This register just used for constructing instruction-relative address.
 	 */
-	public static final LIRRegister eip = new LIRRegister(16, -1, 0, "rip");
+	public static final LIRRegister eip = new LIRRegister(16, -1, 0, "eip");
 
 	/**
 	 * All registers including integer register and float point in {@code X86}

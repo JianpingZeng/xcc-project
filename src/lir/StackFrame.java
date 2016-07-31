@@ -3,70 +3,72 @@ package lir;
 import compiler.Backend;
 import hir.Method;
 import lir.ci.*;
-import lir.ci.CallingConvention.Type;
 import utils.Util;
 import java.util.BitSet;
 
 /**
  * This class is used to build the stack frame layout for a compiled method.
  * <p>
- * This is the format of a stack frame on an X86 (i.e. IA32 or X64) platform:
+ * This is the format of a stack frame on an IA32 platform:
+ * 
  * <pre>
  *   Base       Contents
- *
+ * 
  *          :                                :
  *          | incoming overflow argument n   |
  *          |     ...                        |
  *          | incoming overflow argument 0   |
  *        --+--------------------------------+--Caller frame
  *          | return address                 |
+ *        --+--------------------------------+--
+ *        	| old %ebp                       |	  
  * %ebp --> +--------------------------------+                  ---
  *          |                                |                   ^
- *          : callee save area               :                   |
+ *          : callee saved registers         :                   |
  *          |                                |                   |
  *          +--------------------------------+                   |
  *          | alignment padding              |                   |
  *          +--------------------------------+                   |
- *          | ALLOCA block n                 |                   |
+ *          | ALLOCA block 0                 |                   |
  *          :     ...                        :                   |
- *          | ALLOCA block 0                 | Current frame     |
- *          +--------------------------------+    ---            |
- *          | spill slot n                   |     ^           frame
- *          :     ...                        :     |           length
- *          | spill slot 0                   |  shared           |
- *          +- - - - - - - - - - - - - - - - +   slot            |
- *          | outgoing overflow argument n   |  indexes          |
- *          |     ...                        |     |             |
- *          | outgoing overflow argument 0   |     v             v
+ *          | ALLOCA block n                 | Current frame     |
+ *          +--------------------------------+                 frame	 
+ *          | spill slot 0                   |                 length
+ *          :     ...                        :                   |
+ *          | spill slot n                   |            		 v   
+ *          +--------------------------------+
+ *          | outgoing function arguments n  |
+ *          :	  ...                        :
+ *          | outgoing function arguments 0  |                                                               
  *  %esp--> +--------------------------------+----------------  ---
  *
  * </pre>
+ * 
  * Note that the length of {@link hir.Instruction.Alloca ALLOCA} blocks and
- * {@code monitor}s in the frame may be greater than the length of a {@linkplain
- * lir.backend.TargetMachine#spillSlotSize spill slot}. Note also that the layout of
- * the caller frame shown only applies if the caller was also compiled with C1X.
- * In particular, native frames won't have a custom area if the native ABI specifies
- * that stack arguments are at the bottom of the frame (e.g. System V ABI on AMD64).
+ * {@code monitor}s in the frame may be greater than the length of a
+ * {@linkplain lir.backend.TargetMachine#spillSlotSize spill slot}.
+ * 
+ * @author xlous.zeng
+ * @version 0.1
  */
 public final class StackFrame
 {
-
 	private final Backend backend;
 	private final CallingConvention incomingArguments;
 
 	/**
-	 * The final frame length.
-	 * Value is only set after register allocation is complete.
+	 * The final frame length. Value is only set after register allocation is
+	 * complete.
 	 */
 	private int frameSize;
 
 	/**
-	 * The number of spill slots allocated by the register allocator.
-	 * The value {@code -2} means that the length of outgoing argument stack slots
-	 * is not yet fixed. The value {@code -1} means that the register
-	 * allocator has started allocating spill slots and so the length of
-	 * outgoing stack slots cannot change as outgoing stack slots and
-	 * spill slots share the same slot index address space.
+	 * The number of spill slots allocated by the register allocator. The value
+	 * {@code -2} means that the length of outgoing argument stack slots is not
+	 * yet fixed. The value {@code -1} means that the register allocator has
+	 * started allocating spill slots and so the length of outgoing stack slots
+	 * cannot change as outgoing stack slots and spill slots share the same slot
+	 * index address space.
 	 */
 	private int spillSlotCount;
 
@@ -83,15 +85,14 @@ public final class StackFrame
 
 	/**
 	 * Area occupied by outgoing overflow arguments.
-	 * This value is adjusted as calling conventions for outgoing calls are retrieved.
 	 */
 	private int outgoingSize;
 
 	/**
 	 * Creates a new frame map for the specified method.
 	 *
-	 * @param backend the lir.backend context
-	 * @param method      the outermost method being compiled
+	 * @param backend the lir.backend context.
+	 * @param method the function being compiled.
 	 */
 	public StackFrame(Backend backend, Method method)
 	{
@@ -100,45 +101,30 @@ public final class StackFrame
 		this.spillSlotCount = -2;
 
 		if (method == null)
-		{
 			incomingArguments = new CallingConvention(new LIRValue[0], 0);
-		}
 		else
-		{
-			incomingArguments = getCallingConvention(
-					Util.signatureToKinds(method), Type.JavaCallee);
-		}
+			incomingArguments = getCallingConvention(Util
+			        .signatureToKinds(method));
 	}
 
 	/**
 	 * Gets the calling convention for a call with the specified signature.
 	 *
-	 * @param type      the type of calling convention being requested
 	 * @param signature the signature of the arguments
 	 * @return a {@link CallingConvention} instance describing the location of
-	 *                  parameters and the return value
+	 *         parameters and the return value
 	 */
-	public CallingConvention getCallingConvention(LIRKind[] signature,
-			Type type)
+	public CallingConvention getCallingConvention(LIRKind[] signature)
 	{
-		CallingConvention cc = backend.registerConfig
-				.getCallingConvention(type, signature, backend.targetMachine,
-						false);
-		if (type == Type.RuntimeCall)
-		{
-			assert cc.stackSize
-					== 0 : "runtime call should not have stack arguments";
-		}
-		else if (type.out)
-		{
-			assert frameSize == -1 : "frame length must not yet be fixed!";
-			reserveOutgoing(cc.stackSize);
-		}
+		// conform ia32 calling convention, all parameters were lived in stack.
+		CallingConvention cc = backend.registerConfig.getCallingConvention(
+		        signature, backend.targetMachine, true);
 		return cc;
 	}
 
 	/**
-	 * Gets the calling convention for the incoming arguments to the compiled method.
+	 * Gets the calling convention for the incoming arguments to the compiled
+	 * method.
 	 *
 	 * @return the calling convention for incoming arguments
 	 */
@@ -170,7 +156,8 @@ public final class StackFrame
 	}
 
 	/**
-	 * Computes the frame length for this frame, given the number of spill slots.
+	 * Computes the frame length for this frame, given the number of spill
+	 * slots.
 	 *
 	 * @param spillSlotCount the number of spill slots
 	 */
@@ -181,14 +168,8 @@ public final class StackFrame
 		assert spillSlotCount >= 0 : "must be positive";
 
 		this.spillSlotCount = spillSlotCount;
-		int frameSize = offsetToStackBlocksEnd();
-
-		CalleeSaveLayout csl = backend.registerConfig
-				.getCalleeSaveLayout();
-		if (csl != null)
-		{
-			frameSize += csl.size;
-		}
+		
+		int frameSize = offsetToSpillEnd();
 		this.frameSize = backend.targetMachine.alignFrameSize(frameSize);
 	}
 
@@ -201,50 +182,56 @@ public final class StackFrame
 	public LIRAddress toStackAddress(StackSlot slot)
 	{
 		int size = backend.targetMachine.sizeInBytes(slot.kind);
+		LIRRegister bp = backend.registerConfig.getFrameRegister();
 		if (slot.inCallerFrame())
 		{
-			int callerFrame =
-					frameSize() + backend.targetMachine.arch.returnAddressSize;
-			final int callerFrameOffset =
-					slot.index() * backend.targetMachine.spillSlotSize;
+			int callerFrame = backend.targetMachine.arch.returnAddressSize
+			        + bp.spillSlotSize;
+
+			final int callerFrameOffset = slot.index()
+			        * backend.targetMachine.spillSlotSize;
 			int offset = callerFrame + callerFrameOffset;
-			return new LIRAddress(slot.kind, LIRRegister.Frame.asValue(), offset);
+			return new LIRAddress(slot.kind, bp.asValue(), offset);
 		}
 		else
 		{
 			int offset = offsetForOutgoingOrSpillSlot(slot.index(), size);
-			return new LIRAddress(slot.kind, LIRRegister.Frame.asValue(), offset);
+			// note that, since the stack of ia32 is growed descended from
+			// higher address to lower address.
+			return new LIRAddress(slot.kind, bp.asValue(), -offset);
 		}
 	}
 
 	/**
-	 * Gets the stack address within this frame for a given reserved stack block.
+	 * Gets the stack address within this frame for a given reserved stack
+	 * block.
 	 *
-	 * @param stackBlock the value returned from {@link #reserveStackBlock(int, boolean)}
-	 *                      identifying the stack block
+	 * @param stackBlock the value returned from
+	 *            {@link #reserveStackBlock(int, boolean)} identifying the stack
+	 *            block
 	 * @return a representation of the stack location
 	 */
 	public LIRAddress toStackAddress(StackBlock stackBlock)
 	{
 		return new LIRAddress(backend.targetMachine.wordKind,
-				backend.registerConfig.getFrameRegister()
-						.asValue(backend.targetMachine.wordKind),
-				offsetForStackBlock(stackBlock));
+		        backend.registerConfig.getFrameRegister().asValue(
+		                backend.targetMachine.wordKind),
+		        offsetForStackBlock(stackBlock));
 	}
 
 	/**
 	 * Reserves space for stack-based outgoing arguments.
 	 *
-	 * @param argsSize the amount of space to reserve for stack-based outgoing arguments
+	 * @param argsSize the amount of space to reserve for stack-based outgoing
+	 *            arguments
 	 */
 	public void reserveOutgoing(int argsSize)
 	{
-		assert spillSlotCount == -2 :
-				"cannot reserve outgoing stack slot space once register allocation has started";
+		assert spillSlotCount == -2 : "cannot reserve outgoing stack slot space once register allocation has started";
 		if (argsSize > outgoingSize)
 		{
-			outgoingSize = Util
-					.roundUp(argsSize, backend.targetMachine.spillSlotSize);
+			outgoingSize = Util.roundUp(argsSize,
+			        backend.targetMachine.spillSlotSize);
 		}
 	}
 
@@ -260,7 +247,8 @@ public final class StackFrame
 		public final int size;
 
 		/**
-		 * The offset of this stack block within the frame space reserved for stack blocks.
+		 * The offset of this stack block within the frame space reserved for
+		 * stack blocks.
 		 */
 		public final int offset;
 
@@ -286,43 +274,48 @@ public final class StackFrame
 	 * @param size the number of bytes to reserve
 	 * @param refs specifies if the block is references
 	 * @return a descriptor of the reserved block that can be used with
-	 *              {@link #toStackAddress(StackBlock)} once register
-	 * allocation is complete and the length of the frame has been
-	 *              {@linkplain #finalizeFrame(int) finalized}.
+	 *         {@link #toStackAddress(StackBlock)} once register allocation is
+	 *         complete and the length of the frame has been
+	 *         {@linkplain #finalizeFrame(int) finalized}.
 	 */
 	public StackBlock reserveStackBlock(int size, boolean refs)
 	{
 		int wordSize = backend.targetMachine.wordSize;
 		assert (size % wordSize) == 0;
 		StackBlock block = new StackBlock(stackBlocks, size, stackBlocksSize,
-				refs);
+		        refs);
 		stackBlocksSize += size;
 		stackBlocks = block;
 		return block;
 	}
 
+	/**
+	 * Obtains the offset of stack block saved in stack to base pointer(%ebp).
+	 * @param stackBlock
+	 * @return
+	 */
 	private int offsetForStackBlock(StackBlock stackBlock)
 	{
-		assert stackBlock.offset >= 0 && stackBlock.offset + stackBlock.size
-				<= stackBlocksSize : "invalid stack block";
+		assert stackBlock.offset >= 0
+		        && stackBlock.offset + stackBlock.size <= stackBlocksSize : "invalid stack block";
 		int offset = offsetToStackBlocks() + stackBlock.offset;
-		assert offset <= (frameSize()
-				- stackBlock.size) : "spill outside of frame";
+		assert offset <= offsetToStackBlocksEnd() : "spill outside of frame";
 		return offset;
 	}
 
 	/**
-	 * Gets the stack pointer offset for a outgoing stack argument or compiler spill slot.
+	 * Gets the stack pointer offset for a compiler spill slot.
 	 *
-	 * @param slotIndex the index of the stack slot within the slot index space reserved for
+	 * @param slotIndex the index of the stack slot within the slot index space
+	 *            reserved for
 	 * @param size
 	 */
 	private int offsetForOutgoingOrSpillSlot(int slotIndex, int size)
 	{
-		assert slotIndex >= 0 && slotIndex < (initialSpillSlot()
-				+ spillSlotCount) : "invalid spill slot";
+		assert slotIndex >= 0
+		        && slotIndex < (initialSpillSlot() + spillSlotCount) : "invalid spill slot";
 		int offset = slotIndex * backend.targetMachine.spillSlotSize;
-		assert offset <= (frameSize() - size) : "slot outside of frame";
+		assert offset <= offsetToSpillEnd() : "slot outside of frame";
 		return offset;
 	}
 
@@ -332,28 +325,18 @@ public final class StackFrame
 	 */
 	private int offsetToSpillArea()
 	{
-		return outgoingSize;
+		return offsetToStackBlocksEnd();
 	}
+
 	/**
 	 * The offset to the ending of spill area from stack pointer(%sp).
 	 * @return
 	 */
 	private int offsetToSpillEnd()
 	{
-		return offsetToSpillArea()
-				+ spillSlotCount * backend.targetMachine.spillSlotSize;
+		return offsetToSpillArea() + spillSlotCount
+		        * backend.targetMachine.spillSlotSize;
 	}
-
-	/*
-	public int customAreaSize()
-	{
-		return backend.runtime.getCustomStackAreaSize();
-	}*/
-
-	/*public int offsetToCustomArea()
-	{
-		return 0;
-	}*/
 
 	/**
 	 * The offset to the beginning of stack block area from stack pointer(%sp).
@@ -361,40 +344,41 @@ public final class StackFrame
 	 */
 	private int offsetToStackBlocks()
 	{
-		return offsetToSpillEnd();
+		return offsetToCalleeSaveAreaEnd();
 	}
 
 	/**
-	 * The offset to the ending position of stack block area from stack pointer(%sp).
+	 * The offset to the ending position of stack block area from stack
+	 * pointer(%sp).
 	 * @return
 	 */
 	private int offsetToStackBlocksEnd()
 	{
 		return offsetToStackBlocks() + stackBlocksSize;
 	}
+
 	public int offsetToCalleeSaveAreaStart()
 	{
-		CalleeSaveLayout csl = backend.registerConfig
-				.getCalleeSaveLayout();
-		if (csl != null)
-		{
-			return offsetToCalleeSaveAreaEnd() - csl.size;
-		}
-		else
-		{
-			return offsetToCalleeSaveAreaEnd();
-		}
+		return 0;
 	}
 
 	public int offsetToCalleeSaveAreaEnd()
 	{
-		return frameSize;
+		CalleeSaveLayout csl = backend.registerConfig.getCalleeSaveLayout();
+		if (csl != null)
+		{
+			return offsetToCalleeSaveAreaStart() + csl.size;
+		}
+		else
+		{
+			return offsetToCalleeSaveAreaStart();
+		}
 	}
 
 	/**
-	 * Gets the index of the first available spill slot relative to the base of the frame.
-	 * After this call, no further outgoing stack slots can be {@linkplain #reserveOutgoing(int)
-	 * reserved}.
+	 * Gets the index of the first available spill slot relative to the base of
+	 * the frame. After this call, no further outgoing stack slots can be
+	 * {@linkplain #reserveOutgoing(int) reserved}.
 	 *
 	 * @return the index of the first available spill slot
 	 */
@@ -419,8 +403,8 @@ public final class StackFrame
 		{
 			if (sb.refs)
 			{
-				int firstSlot =
-						offsetForStackBlock(sb) / backend.targetMachine.wordSize;
+				int firstSlot = offsetForStackBlock(sb)
+				        / backend.targetMachine.wordSize;
 				int words = sb.size / backend.targetMachine.wordSize;
 				for (int i = 0; i < words; i++)
 				{
@@ -431,4 +415,3 @@ public final class StackFrame
 		return frameRefMap;
 	}
 }
-

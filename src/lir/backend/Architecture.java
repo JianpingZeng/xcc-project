@@ -29,7 +29,7 @@ public abstract class Architecture
 	public final int wordSize;
 
 	/**
-	 * The name of this architecture (e.g. "AMD64", "SPARCv9").
+	 * The name of this architecture (e.g. "IA32", "SPARCv9").
 	 */
 	public final String name;
 

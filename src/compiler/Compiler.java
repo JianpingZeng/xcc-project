@@ -3,9 +3,8 @@ package compiler;
 import java.util.*;
 import java.io.*;
 
-import lir.backend.amd64.AMD64RegisterConfig;
 import lir.backend.x86.X86;
-import comp.Attr;
+import lir.backend.x86.X86RegisterConfig;
 import comp.Enter;
 import comp.Env;
 import comp.Todo;
@@ -96,9 +95,9 @@ public class Compiler
 
 		// machine specific not to do now
 
-		Backend backend = new Backend(opt, X86.target(),
-				AMD64RegisterConfig.newInstance());
-		Frontend frontend = new Frontend(opt, context);
+		Backend backend = new Backend(context, X86.target(),
+				X86RegisterConfig.newInstance());
+		Frontend frontend = new Frontend(context);
 		Optimizer optimizer = new Optimizer(context);
 
 		try

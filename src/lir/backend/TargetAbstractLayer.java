@@ -1,6 +1,5 @@
 package lir.backend;
 
-import hir.Method;
 import lir.LIRAssembler;
 import lir.LIRGenerator;
 import lir.backend.amd64.AMD64;
@@ -30,7 +29,7 @@ public abstract class TargetAbstractLayer
 		return null;
 	}
 
-	public abstract LIRGenerator newLIRGenerator(Method m);
+	public abstract LIRGenerator newLIRGenerator();
 	public abstract LIRAssembler newLIRAssember();
 
 }

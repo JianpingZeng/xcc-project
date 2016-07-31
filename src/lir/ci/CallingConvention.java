@@ -1,55 +1,11 @@
 package lir.ci;
 
-import lir.backend.RegisterConfig;
-
 /**
  * A calling convention describes the locations where the arguments for a call
  * are placed.
  */
 public class CallingConvention
 {
-	/**
-	 * Constants denoting the type of a call for which a calling convention is
-	 * {@linkplain RegisterConfig#getCallingConvention(Type, LIRKind[],
-	 * lir.backend.TargetMachine, boolean) requested}.
-	 */
-	public enum Type
-	{
-		/**
-		 * A request for the outgoing argument locations at a call site to Java code.
-		 */
-		JavaCall(true),
-
-		/**
-		 * A request for the incoming argument locations.
-		 */
-		JavaCallee(false),
-
-		/**
-		 * A request for the outgoing argument locations at a call site to the
-		 * runtime (which may be Java or native code).
-		 */
-		RuntimeCall(true),
-
-		/**
-		 * A request for the outgoing argument locations at a call site to
-		 * external native code that complies with the platform ABI.
-		 */
-		NativeCall(true);
-
-		/**
-		 * Determines if this is a request for the outgoing argument locations at a call site.
-		 */
-		public final boolean out;
-
-		public static final Type[] VALUES = values();
-
-		private Type(boolean out)
-		{
-			this.out = out;
-		}
-	}
-
 	/**
 	 * The amount of stack space (in bytes) required for the stack-based arguments
 	 * of the call.

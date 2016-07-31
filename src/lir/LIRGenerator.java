@@ -46,7 +46,6 @@ public abstract class LIRGenerator extends ValueVisitor
 	/**
 	 * The function to be Lirified.
 	 */
-	private final Method method;
 	private BasicBlock currentBlock;
 	private Value currentInstr;
 	public OperandPool operands;
@@ -55,10 +54,9 @@ public abstract class LIRGenerator extends ValueVisitor
 	private List<LIRConstant> constants;
 	private List<LIRVariable> variablesForConstants;
 
-	public LIRGenerator(Backend backend, Method method)
+	public LIRGenerator(Backend backend)
 	{
 		this.backend = backend;
-		this.method = method;
 		this.isTwoOperand = backend.targetMachine.arch.twoOperandMode();
 		constants = new ArrayList<>(16);
 		this.operands = new OperandPool(backend.targetMachine);
@@ -142,8 +140,9 @@ public abstract class LIRGenerator extends ValueVisitor
 			case Int:
 				arithmeticOp2Int(instr);
 				return;
+			default:
+				throw Util.shouldNotReachHere();
 		}
-		throw Util.shouldNotReachHere();
 	}
 
 	/**
@@ -425,8 +424,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	public void visitInvoke(Instruction.Invoke inst)
 	{
 		CallingConvention cc = backend.frameMap().getCallingConvention
-				(Util.signatureToKinds(inst.target),
-				CallingConvention.Type.JavaCallee);
+				(Util.signatureToKinds(inst.target));
 
 		// an array of the stack slots where real arguments passing into called function store
 		LIRValue[] locations = cc.locations;
@@ -454,7 +452,7 @@ public abstract class LIRGenerator extends ValueVisitor
 			LIRItem[] args, LIRValue[] locations)
 	{
 		assert args.length == locations.length :
-				"numbers of argguments and stack slots should be equivalent";
+				"numbers of arguments and stack slots should be equivalent";
 		for (int i = 0; i < args.length; i++)
 		{
 			LIRItem param = args[i];

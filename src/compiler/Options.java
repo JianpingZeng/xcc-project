@@ -11,8 +11,10 @@ import utils.Context;
  */
 public class Options extends HashMap<String, String>
 {
-
-	private static final long serialVersionUID = -7422210845134728655L;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 4537436982708186456L;
 	/**
 	 * The context key for the options.
 	 */
@@ -34,18 +36,110 @@ public class Options extends HashMap<String, String>
 		context.put(optionsKey, this);
 	}
 
-	public String remove(String x0)
+	public String remove(String key)
 	{
-		return super.remove(x0);
+		return super.remove(key);
 	}
 
-	public String put(String x0, String x1)
+	public String put(String key, String msg)
 	{
-		return super.put(x0, x1);
+		return super.put(key, msg);
 	}
 
-	public String get(String x0)
+	public String get(String key)
 	{
-		return super.get(x0);
+		return super.get(key);
+	}
+	/**
+	 * Checks if enable debug parser.
+	 * @return if enable to debug parser, return true, otherwise return false.
+	 */
+	public boolean isDebugParser()
+	{
+		return get("--debug-Parser") != null;
+	}
+	/** 
+	 * Checks if dump ast. 
+	 * @return return true when enable to dump ast, otherwise false returned.
+	 */
+	public boolean isDumpAst()
+	{
+		return get("--dump-ast") != null;
+	}
+	/** 
+	 * Checks if dump lir(Lower Immediate Representation). 
+	 * @return return true when enable to dump lir, otherwise false returned.
+	 */
+	public boolean isDumpLIR()
+	{
+		return get("--dump-lir") != null;
+	}
+	/** 
+	 * Checks if dump hir(Higher Immediate Representation). 
+	 * @return return true when enable to dump hir, otherwise false returned.
+	 */
+	public boolean isDumpHIR()
+	{
+		return get("--dump-hir") != null;
+	}
+	/** 
+	 * Checks if turns on debugging information in preferred format for target. 
+	 * @return return true when debugging is enabled, otherwise, return false.
+	 */
+	public boolean enableDebug()
+	{
+		return get("-g") != null;
+	}
+	/** 
+	 * Checks if enable preprocessing. 
+	 * @return return true when pre-processing is enabled.
+	 */
+	public boolean enablePreprocess()
+	{
+		return get("-E") != null;
+	}
+	/** 
+	 * Checks if just working through compilation rather than no code emission. 
+	 */
+	public boolean enableCompiled()
+	{
+		return get("-C") != null;
+	}
+	
+	public boolean enableAssembled()
+	{
+		return get("-S") != null;
+	}
+	/**
+	 * Specify the name of generated output file.
+	 * @return
+	 */
+	public String outputFile()
+	{
+		return get("-o");
+	}
+	/**
+	 * Obtains the specified level of optimization. 
+	 * @return
+	 */
+	public String optLevel()
+	{
+		return get("-O");				
+	}
+	/**
+	 * Determines if display help information.
+	 * @return
+	 */
+	public boolean displayHelp()
+	{
+		return get("-h") != null;
+	}
+	/**
+	 * Checks if display version information onto screen.
+	 * @return
+	 */
+	public boolean displayVersion()
+	{
+		return get("-v") != null;
 	}
 }

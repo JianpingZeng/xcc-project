@@ -1,6 +1,5 @@
 package lir.backend.x86;
 
-import hir.Method;
 import lir.LIRAssembler;
 import lir.LIRGenerator;
 import lir.backend.TargetAbstractLayer;
@@ -18,9 +17,9 @@ public final class X86TargetAbstractLayer extends TargetAbstractLayer
 	}
 	
 	@Override 
-	public LIRGenerator newLIRGenerator(Method m)
+	public LIRGenerator newLIRGenerator()
 	{
-		return new AMD64LIRGenerator(backend, m);
+		return new AMD64LIRGenerator(backend);
 	}
 
 	@Override 
