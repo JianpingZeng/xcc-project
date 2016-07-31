@@ -4,7 +4,6 @@ import java.util.EnumMap;
 
 import lir.ci.CalleeSaveLayout;
 import lir.ci.CallingConvention;
-import lir.ci.CallingConvention.Type;
 import lir.ci.LIRKind;
 import lir.ci.LIRRegister;
 import lir.ci.LIRRegister.RegisterFlag;
@@ -34,26 +33,24 @@ public interface RegisterConfig
 	/**
 	 * Gets the calling convention describing how arguments are passed.
 	 *
-	 * @param type       the type of calling convention being requested
 	 * @param parameters the types of the arguments of the call
 	 * @param target     the targetAbstractLayer platform
 	 * @param stackOnly  ignore LIRRegisters
 	 */
-	CallingConvention getCallingConvention(CallingConvention.Type type, LIRKind[] parameters,
+	CallingConvention getCallingConvention(LIRKind[] parameters,
 			TargetMachine target, boolean stackOnly);
 
 	/**
 	 * Gets the ordered set of LIRRegisters that are can be used to pass parameters
 	 * according to a given calling convention.
 	 *
-	 * @param type the type of calling convention
 	 * @param flag specifies whether LIRRegisters for {@linkplain LIRRegister.RegisterFlag#
 	 *              CPU integral} or {@linkplain} RegisterFlag#FPU floating
 	 *              point} parameters are being requested
 	 * @return the ordered set of LIRRegisters that may be used to pass parameters
 	 *              in a call conforming to {@code type}
 	 */
-	LIRRegister[] getCallingConventionRegisters(Type type, LIRRegister.RegisterFlag flag);
+	LIRRegister[] getCallingConventionRegisters(LIRRegister.RegisterFlag flag);
 
 	/**
 	 * Gets the set of LIRRegisters that can be used by the register allocator.

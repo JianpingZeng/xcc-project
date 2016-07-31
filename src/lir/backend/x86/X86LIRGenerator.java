@@ -3,12 +3,9 @@ package lir.backend.x86;
 import hir.BasicBlock;
 import hir.Condition;
 import hir.Instruction;
-import hir.Method;
 import hir.Operator;
 import hir.Value;
-
 import java.util.HashMap;
-
 import lir.LIRGenerator;
 import lir.LIRItem;
 import lir.StackFrame;
@@ -42,9 +39,9 @@ public final class X86LIRGenerator extends LIRGenerator
 
 	protected static final LIRValue ILLEGAL = LIRValue.IllegalValue;
 
-	public X86LIRGenerator(Backend backend, Method method)
+	public X86LIRGenerator(Backend backend)
 	{
-		super(backend, method);
+		super(backend);
 	}
 
 	protected void traceBlockEntry(BasicBlock block)

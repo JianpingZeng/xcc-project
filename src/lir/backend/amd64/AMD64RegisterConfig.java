@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
-import lir.ci.CallingConvention.Type;
 import static lir.backend.amd64.AMD64.*;
 import static lir.ci.LIRRegister.RegisterFlag;
 
@@ -88,7 +87,7 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 	 * The frame offset of the first stack argument for each calling convention
 	 * {@link CallingConvention.Type}.
 	 */
-	public final int[] stackArg0Offsets = new int[CallingConvention.Type.VALUES.length];
+	public final int[] stackArg0Offsets = null;// = new int[CallingConvention.Type.VALUES.length];
 
 	private static AMD64RegisterConfig instance = null;
 
@@ -206,9 +205,11 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 	 * This implementation assigns all available LIRRegisters to parameters before assigning
 	 * any stack slots to parameters.
 	 */
-	public CallingConvention getCallingConvention(CallingConvention.Type type,
+	public CallingConvention getCallingConvention(
 			LIRKind[] parameters, TargetMachine target, boolean stackOnly)
 	{
+		return null;
+		/*
 		LIRValue[] locations = new LIRValue[parameters.length];
 
 		int currentGeneral = 0;
@@ -261,9 +262,10 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 
 		return new CallingConvention(locations,
 				(currentStackIndex - firstStackIndex) * target.spillSlotSize);
+				*/
 	}
 
-	public LIRRegister[] getCallingConventionRegisters(CallingConvention.Type type,
+	public LIRRegister[] getCallingConventionRegisters(
 			RegisterFlag flag)
 	{
 		if (flag == RegisterFlag.CPU)
@@ -320,15 +322,7 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 			}
 		}
 		StringBuilder stackArg0OffsetsMap = new StringBuilder();
-		for (CallingConvention.Type t : Type.VALUES)
-		{
-			if (stackArg0OffsetsMap.length() != 0)
-			{
-				stackArg0OffsetsMap.append(", ");
-			}
-			stackArg0OffsetsMap.append(t).append(" -> ")
-					.append(stackArg0Offsets[t.ordinal()]);
-		}
+
 		String res = String.format("Allocatable: " + Arrays
 				.toString(getAllocatableRegisters()) + "%n" +
 				"CallerSave:  " + Arrays.toString(getCallerSaveRegisters())

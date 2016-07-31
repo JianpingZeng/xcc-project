@@ -28,7 +28,6 @@ import comp.Todo;
 public final class Frontend
 {
 	private final boolean debugParser;
-	private final boolean verbose;
 
 	private Context context;
 	private final Name.Table names;
@@ -36,12 +35,11 @@ public final class Frontend
 	private final TreeMaker make;
 	private Enter enter;
 	private Todo<Env> todo;
-
-	public Frontend(Options options, Context context)
+	private Options opt;
+	public Frontend(Context context)
 	{
-		debugParser = options.get("--debug-Parser") != null;
-		verbose = options.get("--verbose") != null;
-		
+		opt = Options.instance(context);		
+		debugParser = opt.isDebugParser();		
 		this.context = context;
 		this.names = Name.Table.instance(context);
 		this.log = Log.instance(context);
@@ -79,9 +77,10 @@ public final class Frontend
 			{
 				// the unattributed syntax tree
 				Tree unattributed = env.tree;
-				if (verbose)
+				/*if (verbose)
 					printVerbose("checking.attribution",
 							env.enclMethod.sym.toString());
+				*/
 				Name prev = log.useSource(env.toplevel.sourceFile);
 				attr.attriMethod(unattributed.pos, env.enclMethod.sym);				
 				log.useSource(prev);
@@ -118,9 +117,10 @@ public final class Frontend
 			{
 				// the unattributed syntax tree
 				Tree unattributed = env.tree;
-				if (verbose)
+				/*if (verbose)
 					printVerbose("checking.attribution",
 							env.enclMethod.sym.toString());
+				*/
 				Name prev = log.useSource(env.toplevel.sourceFile);
 				attr.attriMethod(unattributed.pos, env.enclMethod.sym);
 				log.useSource(prev);

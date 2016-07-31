@@ -1,10 +1,5 @@
 package asm.x86;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.sun.xml.internal.bind.v2.runtime.output.Encoded;
-
 import lir.backend.RegisterConfig;
 import lir.backend.TargetMachine;
 import lir.ci.LIRKind;

@@ -98,13 +98,6 @@ public final class X86RegisterConfig implements RegisterConfig
 	 * The scratch register.
 	 */
 	public final LIRRegister scratch;
-
-	/**
-	 * The frame offset of the first stack argument for each calling convention
-	 * {@link CallingConvention.Type}.
-	 */
-	public final int[] stackArg0Offsets = new int[CallingConvention.Type.VALUES.length];
-
 	private static X86RegisterConfig instance = null;
 
 	/**
@@ -186,8 +179,6 @@ public final class X86RegisterConfig implements RegisterConfig
 		this.integralReturn = src.integralReturn;
 		this.registersRoleMap = src.registersRoleMap;
 		this.minRole = src.minRole;
-		System.arraycopy(src.stackArg0Offsets, 0, stackArg0Offsets, 0,
-				stackArg0Offsets.length);
 	}
 	/**
 	 * Gets the register to be used for returning a value of a given kind.
@@ -219,16 +210,14 @@ public final class X86RegisterConfig implements RegisterConfig
 	 * This implementation assigns all available LIRRegisters to parameters before
 	 * assigning any stack slots to parameters.
 	 */
-	public CallingConvention getCallingConvention(CallingConvention.Type type,
+	public CallingConvention getCallingConvention(
 			LIRKind[] parameters, TargetMachine target, boolean stackOnly)
 	{
 		LIRValue[] locations = new LIRValue[parameters.length];
 
 		int currentGeneral = 0;
 		int currentXMM = 0;
-		int firstStackIndex =
-				(stackArg0Offsets[type.ordinal()]) / target.spillSlotSize;
-		int currentStackIndex = firstStackIndex;
+		int currentStackIndex = 0;
 
 		for (int i = 0; i < parameters.length; i++)
 		{
@@ -267,16 +256,16 @@ public final class X86RegisterConfig implements RegisterConfig
 			if (locations[i] == null)
 			{
 				locations[i] = StackSlot
-						.get(kind.stackKind(), currentStackIndex, !type.out);
+						.get(kind.stackKind(), currentStackIndex, true);
 				currentStackIndex += target.spillSlots(kind);
 			}
 		}
 
 		return new CallingConvention(locations,
-				(currentStackIndex - firstStackIndex) * target.spillSlotSize);
+				currentStackIndex * target.spillSlotSize);
 	}
 
-	public LIRRegister[] getCallingConventionRegisters(CallingConvention.Type type,
+	public LIRRegister[] getCallingConventionRegisters(
 			LIRRegister.RegisterFlag flag)
 	{
 		if (flag == LIRRegister.RegisterFlag.CPU)
@@ -334,15 +323,6 @@ public final class X86RegisterConfig implements RegisterConfig
 			}
 		}
 		StringBuilder stackArg0OffsetsMap = new StringBuilder();
-		for (CallingConvention.Type t : CallingConvention.Type.VALUES)
-		{
-			if (stackArg0OffsetsMap.length() != 0)
-			{
-				stackArg0OffsetsMap.append(", ");
-			}
-			stackArg0OffsetsMap.append(t).append(" -> ")
-					.append(stackArg0Offsets[t.ordinal()]);
-		}
 		String res = String.format("Allocatable: " + Arrays
 				.toString(getAllocatableRegisters()) + "%n" +
 				"CallerSave:  " + Arrays.toString(getCallerSaveRegisters())

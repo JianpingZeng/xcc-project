@@ -3,7 +3,6 @@ package lir.backend.amd64;
 import hir.BasicBlock;
 import hir.Condition;
 import hir.Instruction;
-import hir.Method;
 import hir.Operator;
 import hir.Value;
 import hir.Value.Constant;
@@ -40,9 +39,9 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 	protected static final LIRValue ILLEGAL = LIRValue.IllegalValue;
 
-	public AMD64LIRGenerator(Backend backend, Method method)
+	public AMD64LIRGenerator(Backend backend)
 	{
-		super(backend, method);
+		super(backend);
 	}
 
 	protected void traceBlockEntry(BasicBlock block)
