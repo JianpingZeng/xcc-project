@@ -2,9 +2,6 @@ package ast;
 
 import utils.Context;
 import utils.Name;
-import ast.Tree;
-import ast.Tree.Ident;
-import ast.Tree.Parens;
 import ast.Tree.Select;
 
 public class TreeInfo
@@ -245,7 +242,7 @@ public class TreeInfo
 	}
 
 	/**
-     * Return flags as a string, separated by " ".
+     * ReturnInst flags as a string, separated by " ".
      */
    public static String flagNames(long flags) 
    {
@@ -267,13 +264,13 @@ public class TreeInfo
    }
    
    /**
-    * If this tree is an identifier or a field or a parameterized type,
+    * IfStmt this tree is an identifier or a field or a parameterized type,
     *  return its name, otherwise return null.
     */
   public static Name name(Tree tree) {
       switch (tree.tag) {
       case Tree.IDENT:
-          return ((Ident) tree).name;
+          return ((Tree.DeclRefExpr) tree).name;
 
       case Tree.SELECT:
           return ((Select) tree).name;
@@ -288,14 +285,14 @@ public class TreeInfo
    * Skip parens and return the enclosed expression
    */
  public static Tree skipParens(Tree tree) {
-     while (tree.tag == Tree.PARENS) {
-         tree = ((Parens) tree).expr;
+     while (tree.tag == Tree.ParenExprClass) {
+         tree = ((Tree.ParenExpr) tree).subExpr;
      }
      return tree;
  }
   
   /**
-   * Return name of operator with given tree tag.
+   * ReturnInst name of operator with given tree tag.
    */
  public Name operatorName(int tag) {
      return opname[tag - Tree.POS];

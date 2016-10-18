@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map.Entry;
 
 import exception.CompletionFailure;
 import symbol.Scope;
@@ -13,6 +12,7 @@ import symbol.Symbol.MethodSymbol;
 import symbol.Symbol.TopLevelSymbol;
 import symbol.VarSymbol;
 import symbol.SymbolKinds;
+import type.FunctionType;
 import type.Type;
 import type.TypeTags;
 import utils.Context;
@@ -33,7 +33,7 @@ import ast.Tree.*;
  * @author JianpingZeng
  * @version 1.0
  */
-public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
+public class Enter extends AstVisitor implements TypeTags, SymbolKinds, Flags
 {
 
 	private static final Context.Key enterKey = new Context.Key();
@@ -272,7 +272,7 @@ public class Enter extends ASTVisitor implements TypeTags, SymbolKinds, Flags
 			argbuf.add(attr.attribType(t, env));
 		Type resType = rettype == null ? new Type(VOID, null) 
 			: attr.attribType(rettype, env);
-		Type mtype = new type.MethodType(resType, argbuf, null);
+		Type mtype = new FunctionType(resType, argbuf, null);
 		return mtype;
 	} 
 	

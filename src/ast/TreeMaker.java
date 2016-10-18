@@ -12,38 +12,35 @@ import type.TypeTags;
 import utils.Context;
 import utils.Name;
 import utils.Position;
-import ast.Tree.Apply;
+import ast.Tree.CallExpr;
 import ast.Tree.Assign;
-import ast.Tree.Assignop;
-import ast.Tree.Binary;
+import ast.Tree.BinaryExpr;
 import ast.Tree.Block;
-import ast.Tree.Break;
-import ast.Tree.Case;
-import ast.Tree.Conditional;
-import ast.Tree.Continue;
+import ast.Tree.BreakStmt;
+import ast.Tree.CaseStmt;
+import ast.Tree.ConditionalExpr;
+import ast.Tree.ContinueStmt;
 import ast.Tree.DoLoop;
 import ast.Tree.Erroneous;
 import ast.Tree.Exec;
 import ast.Tree.ForLoop;
 import ast.Tree.Goto;
-import ast.Tree.Ident;
-import ast.Tree.If;
+import ast.Tree.DeclRefExpr;
+import ast.Tree.IfStmt;
 import ast.Tree.Import;
-import ast.Tree.Indexed;
-import ast.Tree.Labelled;
+import ast.Tree.ArraySubscriptExpr;
+import ast.Tree.LabelledStmt;
 import ast.Tree.Literal;
 import ast.Tree.MethodDef;
 import ast.Tree.NewArray;
-import ast.Tree.Parens;
-import ast.Tree.Return;
+import ast.Tree.ParenExpr;
 import ast.Tree.Select;
 import ast.Tree.Skip;
-import ast.Tree.Switch;
 import ast.Tree.TopLevel;
 import ast.Tree.TypeArray;
-import ast.Tree.TypeCast;
+import ast.Tree.CastExpr;
 import ast.Tree.TypeIdent;
-import ast.Tree.Unary;
+import ast.Tree.UnaryExpr;
 import ast.Tree.VarDef;
 import ast.Tree.WhileLoop;
 
@@ -192,37 +189,37 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 		return tree;
 	}
 
-	public Labelled Labelled(Name label, Tree body)
+	public LabelledStmt Labelled(Name label, Tree body)
 	{
-		Labelled tree = new Labelled(label, body);
+		LabelledStmt tree = new Tree.LabelledStmt(label, body);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Switch Switch(Tree selector, List<Case> cases)
+	public Tree.SwitchStmt Switch(Tree selector, List<CaseStmt> cases)
 	{
-		Switch tree = new Switch(selector, cases);
+		Tree.SwitchStmt tree = new Tree.SwitchStmt(selector, cases);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Case Case(List<Tree> values, Tree caseBody)
+	public Tree.CaseStmt Case(List<Tree> values, Tree caseBody)
 	{
-		Case tree = new Case(values, caseBody);
+		Tree.CaseStmt tree = new Tree.CaseStmt(values, caseBody);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Conditional Conditional(Tree cond, Tree thenpart, Tree elsepart)
+	public ConditionalExpr Conditional(Tree cond, Tree thenpart, Tree elsepart)
 	{
-		Conditional tree = new Conditional(cond, thenpart, elsepart);
+		Tree.ConditionalExpr tree = new Tree.ConditionalExpr(cond, thenpart, elsepart);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public If If(Tree cond, Tree thenpart, Tree elsepart)
+	public IfStmt If(Tree cond, Tree thenpart, Tree elsepart)
 	{
-		If tree = new If(cond, thenpart, elsepart);
+		IfStmt tree = new IfStmt(cond, thenpart, elsepart);
 		tree.pos = pos;
 		return tree;
 	}
@@ -234,16 +231,16 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 		return tree;
 	}
 
-	public Break Break()
+	public BreakStmt Break()
 	{
-		Break tree = new Break(null);
+		Tree.BreakStmt tree = new Tree.BreakStmt(null);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Continue Continue()
+	public ContinueStmt Continue()
 	{
-		Continue tree = new Continue(null);
+		ContinueStmt tree = new ContinueStmt(null);
 		tree.pos = pos;
 		return tree;
 	}
@@ -255,23 +252,23 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 		return go;
 	}
 
-	public Return Return(Tree expr)
+	public Tree.ReturnStmt Return(Tree expr)
 	{
-		Return tree = new Return(expr);
+		Tree.ReturnStmt tree = new Tree.ReturnStmt(expr);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Apply Apply(Tree fn, List<Tree> args)
+	public CallExpr Apply(Tree fn, List<Tree> args)
 	{
-		Apply tree = new Apply(fn, args);
+		CallExpr tree = new CallExpr(fn, args);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Parens Parens(Tree expr)
+	public Tree.ParenExpr Parens(Tree expr)
 	{
-		Parens tree = new Parens(expr);
+		Tree.ParenExpr tree = new ParenExpr(expr);
 		tree.pos = pos;
 		return tree;
 	}
@@ -283,37 +280,37 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 		return tree;
 	}
 
-	public Assignop Assignop(int opcode, Tree lhs, Tree rhs)
+	public Tree.OpAssign Assignop(int opcode, Tree lhs, Tree rhs)
 	{
-		Assignop tree = new Assignop(opcode, lhs, rhs, null);
+		Tree.OpAssign tree = new Tree.OpAssign(opcode, lhs, rhs, null);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Unary Unary(int opcode, Tree arg)
+	public Tree.UnaryExpr Unary(int opcode, Tree arg)
 	{
-		Unary tree = new Unary(opcode, arg, null);
+		UnaryExpr tree = new Tree.UnaryExpr(opcode, arg, null);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Binary Binary(int opcode, Tree lhs, Tree rhs)
+	public BinaryExpr Binary(int opcode, Tree lhs, Tree rhs)
 	{
-		Binary tree = new Binary(opcode, lhs, rhs, null);
+		Tree.BinaryExpr tree = new BinaryExpr(opcode, lhs, rhs, null);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public TypeCast TypeCast(Tree clazz, Tree expr)
+	public CastExpr TypeCast(Tree clazz, Tree expr)
 	{
-		TypeCast tree = new TypeCast(clazz, expr);
+		Tree.CastExpr tree = new Tree.CastExpr(clazz, expr);
 		tree.pos = pos;
 		return tree;
 	}
 
-	public Indexed Indexed(Tree indexed, Tree index)
+	public ArraySubscriptExpr Indexed(Tree indexed, Tree index)
 	{
-		Indexed tree = new Indexed(indexed, index);
+		ArraySubscriptExpr tree = new ArraySubscriptExpr(indexed, index);
 		tree.pos = pos;
 		return tree;
 	}
@@ -325,9 +322,9 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 		return tree;
 	}
 
-	public Ident Ident(Name name)
+	public DeclRefExpr Ident(Name name)
 	{
-		Ident tree = new Ident(name, null);
+		DeclRefExpr tree = new DeclRefExpr(name, null);
 		tree.pos = pos;
 		return tree;
 	}
@@ -365,7 +362,7 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 	 */
 	public Tree Ident(Symbol sym)
 	{
-		return new Ident(sym.name, sym).setPos(pos).setType(sym.type);
+		return new DeclRefExpr(sym.name, sym).setPos(pos).setType(sym.type);
 	}
 
 	/**
@@ -391,11 +388,11 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 	 * Create a list of identifiers referring to the variables declared
 	 * in given list of variable declarations.
 	 */
-	public List<Ident> Idents(List<VarDef> params)
+	public List<Tree.DeclRefExpr> Idents(List<VarDef> params)
 	{
-		List<Ident> ids = new ArrayList<Tree.Ident>();
+		List<DeclRefExpr> ids = new ArrayList<DeclRefExpr>();
 		for (VarDef def : params)
-			ids.add((ast.Tree.Ident) Ident(def));
+			ids.add((DeclRefExpr) Ident(def));
 		return ids;
 	}
 
@@ -437,7 +434,7 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 				tp = TypeIdent(t.tag);
 				break;
 
-			case ARRAY:
+			case ConstantArray:
 				tp = TypeArray(Type(t.elemType()));
 				break;
 

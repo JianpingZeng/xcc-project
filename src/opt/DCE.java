@@ -1,13 +1,8 @@
-package optimization;
+package opt;
 
+import hir.*;
 import hir.BasicBlock;
-import hir.DominatorTree;
-import hir.Instruction;
-import hir.Instruction.Return;
 import hir.Instruction.StoreInst;
-import hir.Method;
-import hir.Value;
-import hir.ValueVisitor;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,16 +34,16 @@ public class DCE
 	 */
 	private LinkedList<Value> criticalInst;
 	/**
-	 * The list that contains more than one critical instruction.
+	 * The list that isDeclScope more than one critical instruction.
 	 */
 	private LinkedList<BasicBlock> usefulBlocks;
 
 	/**
-	 * The list contains all of no dead instruction.
+	 * The list isDeclScope all of no dead instruction.
 	 */
 	private HashSet<Value> liveInsts;
 
-	private Method m;
+	private Function m;
 
 	private DominatorTree DT;
 
@@ -57,7 +52,7 @@ public class DCE
 	 *
 	 * @param m The method where {@code DCE} will be performed.
 	 */
-	public DCE(Method m)
+	public DCE(Function m)
 	{
 		this.criticalInst = new LinkedList<>();
 		this.usefulBlocks = new LinkedList<>();
@@ -95,7 +90,7 @@ public class DCE
 		// 3. Sweep stage
 		sweep();
 
-		// peephole optimization
+		// peephole opt
 		eliminateDeadBlock();
 	}
 
@@ -115,10 +110,10 @@ public class DCE
 					// for branch instruction in the basic block, it is special
 					// that replaces it with an unconditional branch to it's useful
 					// and nearest dominate block.
-					if (inst instanceof Instruction.Branch)
+					if (inst instanceof Instruction.BranchInst)
 					{
 						BasicBlock nearestDom = findNearestUsefulPostDom(BB);
-						if (nearestDom == BasicBlock.USELESSBLOCK)
+						if (nearestDom == BasicBlock.USELESS_BLOCK)
 							continue;
 						Instruction.Goto go = new Instruction.Goto(nearestDom,
 								"Goto");
@@ -127,7 +122,7 @@ public class DCE
 					}
 					// the function invocation instruction is handled specially
 					// for conservative and safe.
-					else if (!(inst instanceof Instruction.Invoke))
+					else if (!(inst instanceof Instruction.InvokeInst))
 						inst.eraseFromBasicBlock();
 				}
 			}
@@ -192,7 +187,7 @@ public class DCE
 				return currBB;
 			worklist.addLast(currDOM.getIDom());
 		}
-		return BasicBlock.USELESSBLOCK;
+		return BasicBlock.USELESS_BLOCK;
 	}
 
 	/**
@@ -209,7 +204,7 @@ public class DCE
 		{
 			Value last = block.lastInst();
 			// Only branch instruction will be handled.
-			if (last instanceof Instruction.Branch)
+			if (last instanceof Instruction.BranchInst)
 			{
 				liveInsts.add(last);
 				usefulBlocks.add(block);
@@ -254,17 +249,17 @@ public class DCE
 	 */
 	private boolean isCritical(Value inst)
 	{
-		if (inst instanceof Return || inst instanceof StoreInst)
+		if (inst instanceof Instruction.ReturnInst || inst instanceof StoreInst)
 			return true;
 		else
 			return false;
 	}
 
 	/**
-	 * A concrete instance of super class {@code ValueVisitor}
+	 * A concrete instance of super class {@code InstructionVisitor}
 	 * marks live instruction.
 	 */
-	private class MarkVisitor extends ValueVisitor
+	private class MarkVisitor extends InstructionVisitor
 	{
 		public void mark(Value inst)
 		{
@@ -338,7 +333,7 @@ public class DCE
 			markUnary(inst);
 		}
 
-		public void visitConvert(Instruction.Convert inst)
+		public void visitConvert(Instruction.CastInst inst)
 		{
 			markUnary(inst);
 		}
@@ -348,23 +343,23 @@ public class DCE
 			visitInstruction(inst);
 		}
 
-		public void visitReturn(Return inst)
+		public void visitReturn(Instruction.ReturnInst inst)
 		{
 			visitInstruction(inst);
 		}
 
-		public void visitInvoke(Instruction.Invoke inst)
+		public void visitInvoke(Instruction.InvokeInst inst)
 		{
 			visitInstruction(inst);
 		}
 
-		public void visitPhi(Instruction.Phi inst)
+		public void visitPhi(Instruction.PhiNode inst)
 		{
 			BasicBlock[] blocks = inst.getAllBasicBlocks();
 			for (int idx = 0; idx < blocks.length; idx++)
 			{
 				Value lastInst = blocks[idx].lastInst();
-				if (lastInst instanceof Instruction.Branch)
+				if (lastInst instanceof Instruction.BranchInst)
 				{
 					liveInsts.add(lastInst);
 					usefulBlocks.add(blocks[idx]);
@@ -372,7 +367,7 @@ public class DCE
 			}
 		}
 
-		public void visitAlloca(Instruction.Alloca inst)
+		public void visitAlloca(Instruction.AllocaInst inst)
 		{
 			visitInstruction(inst);
 		}

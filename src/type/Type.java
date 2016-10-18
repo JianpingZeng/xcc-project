@@ -1,480 +1,466 @@
 package type;
 
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-
-import symbol.TypeSymbol;
-import utils.Name;
+import cparser.DeclSpec;
+import exception.SemanticError;
+import utils.Util;
 
 /**
  * The abstract root class of various type. It provides different definitions
  * for it's concrete subclass.
- * 
- * @author Xlous.zeng  
- * @version 1.0
+ *
+ * @author Xlous.zeng
+ * @version 0.1
  */
-public class Type implements TypeTags
+public abstract class Type implements TypeTags
 {
-	/**
-	 * Constant type: no type at all.
-	 */
-	public static final Type noType = new Type(NONE, null);
-	public static final Type CHARType = new Type(TypeTags.CHAR, null);
-	public static final Type BYTEType = new Type(TypeTags.BYTE, null);
-	public static final Type SHORTType = new Type(TypeTags.SHORT, null);
-	public static final Type INTType = new Type(TypeTags.INT, null);
-	public static final Type LONGType = new Type(TypeTags.LONG, null);
-	public static final Type FLOATType = new Type(TypeTags.FLOAT, null);
-	public static final Type DOUBLEType = new Type(TypeTags.DOUBLE, null);
-	public static final Type VOIDType = new Type(TypeTags.VOID, null);
+    public static QualType VoidTy = new QualType(VoidType.New());
 
-	public int tag;
+    public static QualType BoolTy = new QualType(new IntegerType(1, false));
 
-	public TypeSymbol tsym;
+    public static QualType CharTy = new QualType(new IntegerType(1, true));
+    public static QualType UnsignedCharTy = new QualType(new IntegerType(1, false));
 
-	/**
-	 * The constant of this type, null if this type does not have a constant
-	 * value attribute. Constant VALUES can be set only for base type(numbers,
-	 * boolean, string).
-	 */
-	public Object constValue = null;
+    public static QualType ShortTy = new QualType(new IntegerType(2, true));
+    public static QualType UnsignedShortTy = new QualType(
+            new IntegerType(2, false));
 
-	public Type(int tag, TypeSymbol tsym)
-	{
-		super();
-		this.tag = tag;
-		this.tsym = tsym;
-	}
+    public static QualType IntTy = new QualType(new IntegerType(4, true));
+    public static QualType UnsignedIntTy = new QualType(
+            new IntegerType(4, false));
 
-	/**
-	 * Define a constant type with same kind of this type and given constant
-	 * value.
-	 * 
-	 * @param constValue
-	 * @return
-	 */
-	public Type constType(Object constValue)
-	{
-		assert tag <= BOOL;
-		Type t = new Type(tag, tsym);
-		t.constValue = constValue;
-		return t;
-	}
+    public static QualType LongTy = new QualType(new IntegerType(4, true));
+    public static QualType UnsignedLongTy = new QualType(new IntegerType(4, false));
 
-	/**
-	 * If this is a constant type, returns its realistic type. Otherwise, return
-	 * the type itself.
-	 * 
-	 * @return
-	 */
-	public Type basetype()
-	{
-		if (constValue == null)
-			return this;
-		else
-			return tsym.type;
-	}
+    public static QualType FloatTy = new QualType(new RealType(4, "float"));
+    public static QualType DoubleTy = new QualType(new RealType(8, "double"));
 
-	/**
-	 * Converts to string.
-	 */
-	public String toString()
-	{
-		String s = (tsym == null || tsym.name == null) ? "null" : tsym.name
-		        .toString();
-		return s;
-	}
-
-	/**
-	 * The constant value of this type, converted to string. Note that: Type has
-	 * a non-null constValue field.
-	 * 
-	 * @return
-	 */
-	public String stringValue()
-	{
-		if (tag == BOOL)
-			return ((Integer) constValue).intValue() == 0 ? "false" : "true";
-		else if (tag == CHAR)
-			return String.valueOf((char) ((Integer) constValue).intValue());
-		else
-			return constValue.toString();
-	}
-
-	/**
-	 * Is this constant type whose value is false ?
-	 * 
-	 * @return
-	 */
-	public boolean isFalse()
-	{
-		return tag == BOOL && constValue != null
-		        && ((Integer) constValue).intValue() == 0;
-	}
-
-	/**
-	 * Is this constant type whose value is true ?
-	 * 
-	 * @return
-	 */
-	public boolean isTrue()
-	{
-		return tag == BOOL && constValue != null
-		        && ((Integer) constValue).intValue() != 0;
-	}
-
-	/**
-	 * This method just for array type.
-	 * 
-	 * @return
-	 */
-	public Type elemType()
-	{
-		return null;
-	}
-
-	public Type returnType()
-	{
-		return this;
-	}
-
-	/**
-	 * An empty list of types.
-	 */
-	public static final List<Type> emptyList = new LinkedList<>();
-
-	public List<Type> paramTypes()
-	{
-		return emptyList;
-	}
-
-	/**
-	 * This method just for array type.
-	 * 
-	 * @return
-	 */
-	public int dimensions()
-	{
-		return 0;
-	}
-
-	public boolean isErronuous()
-	{
-		return false;
-	}
-
-	public static boolean isErroneous(List<Type> ts)
-	{
-		boolean result = false;
-		for (Type t : ts)
-			if (t.isErronuous()) 
-			{
-				result = true; 
-				break;
-			}
-		return result;
-	}
-
-	/**
-	 * Is this type equivalent ot other.
-	 */
-	public boolean isSameType(Type other)
-	{
-		if (this == other) return true;
-		switch (this.tag)
-		{
-			case BYTE:
-			case CHAR:
-			case INT:
-			case LONG:
-			case FLOAT:
-			case DOUBLE:
-			case BOOL:
-			case VOID:
-			case NONE:
-				return this.tag == other.tag;
-			default:
-				throw new AssertionError("isSameType " + this.tag);
-		}
-	}
-
-	/**
-	 * Estimates the equality of two type list.
-	 * 
-	 * @param first
-	 * @param second
-	 * @return
-	 */
-	public boolean isSameTypes(List<Type> first, List<Type> second)
-	{
-		Iterator<Type> it1, it2;
-		if (first.size() != second.size()) return false;
-
-		for (it1 = first.iterator(), it2 = second.iterator(); it1.hasNext()
-		        && it2.hasNext();)
-		{
-			if (!it1.next().isSameType(it2.next())) break;
-		}
-		return !it1.hasNext() || !it2.hasNext();
-	}
-
-	/**
-	 * Is this type a sub-type of that type? (not defined for Method)
-	 * 
-	 * @param that
-	 * @return
-	 */
-	public boolean isSubType(Type that)
-	{
-		if (this == that) return true;
-		switch (this.tag)
-		{
-			case BYTE:
-
-			case CHAR:
-				return (this.tag == that.tag || this.tag + 2 <= that.tag
-				        && that.tag <= DOUBLE);
-
-			case SHORT:
-
-			case INT:
-
-			case LONG:
-
-			case FLOAT:
-
-			case DOUBLE:
-				return this.tag <= that.tag && that.tag <= DOUBLE;
-
-			case BOOL:
-
-			case VOID:
-				return this.tag == that.tag;
-
-			default:
-				throw new AssertionError("isSubType " + this.tag);
-		}
-	}
-
-	/**
-	 * Is this type a super type of that type?
-	 * 
-	 * @param that
-	 * @return
-	 */
-	public boolean isSuperType(Type that)
-	{
-		return that.isSubType(this);
-	}
-
-	/**
-	 * Is this type assignable to that type?
-	 * 
-	 * @param that
-	 * @return
-	 */
-	public boolean isAssignable(Type that)
-	{
-		if (this.tag <= INT && this.constValue != null)
-		{
-			int value = ((Number) this.constValue).intValue();
-			switch (that.tag)
-			{
-				case BYTE:
-					if (this.tag != CHAR && value >= Byte.MIN_VALUE
-					        && value <= Byte.MAX_VALUE) return true;
-					break;
-				case CHAR:
-					if (value >= Character.MIN_VALUE
-					        && value <= Character.MAX_VALUE) return true;
-					break;
-				case SHORT:
-					if (Short.MIN_VALUE <= value && value <= Short.MAX_VALUE)
-					    return true;
-					break;
-
-				case INT:
-					return true;
-			}
-		}
-		return this.isSubType(that);
-	}
-
-	/**
-	 * If this type is castable to that type, return the result of the cast,
-	 * otherwise null returned.
-	 * 
-	 * @param that
-	 * @return
-	 */
-	public boolean isCastable(Type that)
-	{
-		if (that.tag == ERROR) return true;
-		switch (this.tag)
-		{
-			case BYTE:
-
-			case CHAR:
-
-			case SHORT:
-
-			case INT:
-
-			case LONG:
-
-			case FLOAT:
-
-			case DOUBLE:
-				return that.tag <= DOUBLE;
-
-			case BOOL:
-				return that.tag == BOOL;
-
-			case VOID:
-				return false;
-
-			default:
-				throw new AssertionError();
-		}
-	}
-
-	/**
-	 * 判断该类型是否是有符号类型
-	 * 
-	 * @return 如果是，则返回true;否则返回false
-	 * @exception Error
-	 */
-	public boolean isSigned()
-	{
-		throw new Error("#isSigned for non-integer type");
-	}
-
-	/**
-	 * The source code witch this type represented. A list 
-	 * will always be represented as a comma-seperated listing
-	 * of the elements in that list. 
-	 * 
-	 * @param argtypes
-	 * @return
-	 */
-	public static String toStringList(List<Type> argtypes)
-    {
-		if (argtypes.isEmpty())
-			return "";
-		else 
-		{
-			StringBuilder builder = new StringBuilder();
-			builder.append(argtypes.get(0).toString());
-			for (int idx = 1; idx < argtypes.size(); idx++)
-			{
-				builder.append(',');
-				builder.append(argtypes.get(idx));
-			}
-			return builder.toString();
-		}
-		
-    }
-
-	/**
-	 * Is a array type?
-	 * @return
-	 */
-    public boolean isArrayType()
-    {
-		return tag == ARRAY;
-    }
     /**
-     * Is primitive type, such as byte, char, short, int, long etc?
+     * The kind of a tag type.
+     */
+    public enum TagTypeKind
+    {
+        TTK_struct, TTK_union, TTK_enum;
+
+        public static TagTypeKind getTagTypeKindForTypeSpec(DeclSpec.TST tagType)
+        {
+            switch (tagType)
+            {
+                case TST_struct:
+                    return TTK_struct;
+                case TST_union:
+                    return TTK_union;
+                case TST_enum:
+                    return TTK_enum;
+                default:
+                    Util.shouldNotReachHere("Type specifier is not a tag type kind");
+                    return TTK_union;
+            }
+        }
+    }
+
+    static final public long sizeUnknown = -1;
+
+    protected int tag;
+
+    /**
+     * Constructor with one parameter which represents the kind of type
+     * for reason of comparison convenient.
+     *
+     * @param tag
+     */
+    public Type(int tag)
+    {
+        this.tag = tag;
+    }
+
+    /**
+     * Returns the size of the specified type in bits.
+     * </br>
+     * This method doesn't work on incomplete types.
+     *
+     * @return
+     */
+    public abstract long getTypeSize();
+
+    /**
+     * Indicates the number of memory spaces in bytes.
+     *
+     * @return
+     */
+    public long allocSize()
+    {
+        return getTypeSize();
+    }
+
+    /**
+     * The length of memory alignment in bytes.
+     *
+     * @return
+     */
+    public long alignment()
+    {
+        return allocSize();
+    }
+
+    /*
+     * Checks if this the kind of this type is same as other.
+     */
+    public abstract boolean isSameType(Type other);
+
+    /**
+     * Checks if this {@linkplain Type} is primitive type.
+     *
      * @return
      */
     public boolean isPrimitiveType()
     {
-    	return tag >= BYTE && tag <= DOUBLE;
+        return tag >= BOOLEAN && tag <= REAL || (tag == USER_DEF
+                && ((UserType) this).getActual().isPrimitiveType());
     }
-    
+
     /**
-     * Is assignable to integer?
+     * Returns true if this type is void.
+     *
+     * @return
      */
-    public boolean isIntLike()
+    public boolean isVoidType()
     {
-    	return tag >= BYTE && tag <= LONG;
+        return tag == VOID || (tag == USER_DEF && ((UserType) this).getActual()
+                .isVoidType());
     }
-    
-	
-	public static class ErrorType extends Type
-	{
-		public Name name;
 
-		public ErrorType(TypeSymbol errSymbol)
-		{
-			super(ERROR, errSymbol);
-		}
+    /**
+     * Returns true if this tpe is integral type.
+     *
+     * @return
+     */
+    public boolean isIntegerType()
+    {
+        return tag == INT || (tag == USER_DEF && ((UserType) this).getActual()
+                .isIntegerType());
+    }
 
-		public ErrorType(Name name, TypeSymbol errSymbol)
-		{
-			this(errSymbol);
-			this.name = name;
-		}
+    /**
+     * Returns true if this type is real type.
+     */
+    public boolean isRealType()
+    {
+        return tag == REAL || (tag == USER_DEF && ((UserType) this).getActual()
+                .isRealType());
+    }
 
-		public Type constType(Object constValue)
-		{
-			return this;
-		}
+    /**
+     * Returns true if this type is complex type.
+     *
+     * @return
+     */
+    public boolean isComplexType()
+    {
+        return tag == COMPLEX || (tag == USER_DEF && ((UserType) this)
+                .getActual().isComplexType());
+    }
 
-		public Type basetype()
-		{
-			return this;
-		}
+    /**
+     * Returns true if this type is boolean type.
+     *
+     * @return
+     */
+    public boolean isBooleanType()
+    {
+        return tag == BOOLEAN || (tag == USER_DEF && ((UserType) this)
+                .getActual().isBooleanType());
+    }
 
-		/**
-		 * This method just for array type.
-		 * 
-		 * @return
-		 */
-		public Type elemType()
-		{
-			return this;
-		}
+    /**
+     * Checks whether this type is integral and qualified with signed.
+     *
+     * @return
+     * @throws Error
+     */
+    public boolean isSignedType()
+    {
+        throw new Error("#isSignedType for non-integer type");
+    }
 
-		public Type returnType()
-		{
-			return this;
-		}
+    /**
+     * Checks if this type is a pointer to actual type object.
+     *
+     * @return
+     */
+    public boolean isPointerType()
+    {
+        return tag == POINTER || (tag == USER_DEF && ((UserType) this)
+                .getActual().isPointerType());
+    }
 
-		public boolean isErroneous()
-		{
-			return true;
-		}
+    /**
+     * Checks if this type is reference type.
+     *
+     * @return
+     */
+    public boolean isReferenceType()
+    {
+        return tag == REFERENCE || (tag == USER_DEF && ((UserType) this)
+                .getActual().isReferenceType());
+    }
 
-		public boolean isSameType(Type that)
-		{
-			return true;
-		}
+    /**
+     * Checks if this type is a formal function type in C or static member function type in C++.
+     *
+     * @return
+     */
+    public boolean isFunctionType()
+    {
+        return tag == FUNCTION || (tag == USER_DEF && ((UserType) this)
+                .getActual().isFunctionType());
+    }
 
-		public boolean isCastable(Type that)
-		{
-			return true;
-		}
+    /**
+     * Checks if this type is member function type of a class in C++.
+     *
+     * @return
+     */
+    public boolean isMethodType()
+    {
+        return tag == METHOD || (tag == USER_DEF && ((UserType) this)
+                .getActual().isMethodType());
+    }
 
-		public boolean hasSameArgs(Type that)
-		{
-			return false;
-		}
+    /**
+     * Checks if this type is array type.
+     *
+     * @return
+     */
+    public boolean isArrayType()
+    {
+        return tag == ConstantArray || (tag == USER_DEF && ((UserType) this).getActual()
+                .isArrayType());
+    }
 
-		public boolean isAssignable(Type that)
-		{
-			return true;
-		}
+    /**
+     * Determine whether this type is record type or not.
+     *
+     * @return return true if it is record, otherwise return false.
+     */
+    public boolean isRecordType()
+    {
+        return tag == STRUCT || (tag == USER_DEF && ((UserType) this)
+                .getActual().isRecordType());
+    }
 
-		public boolean isSubType(Type that)
-		{
-			return true;
-		}
+    /**
+     * Checks if this type is union type.
+     *
+     * @return
+     */
+    public boolean isUnionType()
+    {
+        return tag == UNION || (tag == USER_DEF && ((UserType) this).getActual()
+                .isUnionType());
+    }
 
-		public boolean isSuperType(Type that)
-		{
-			return true;
-		}
-	}
+    /**
+     * Checks if this type is enumeration type.
+     *
+     * @return
+     */
+    public boolean isEnumType()
+    {
+        return tag == ENUM || (tag == USER_DEF && ((UserType) this).getActual()
+                .isEnumType());
+    }
+
+    /**
+     * Checks if this type is type-name type.
+     *
+     * @return
+     */
+    public boolean isUserType()
+    {
+        return tag == USER_DEF;
+    }
+
+    // Ability methods (unary)
+    public boolean isAllocatedArray()
+    {
+        return false;
+    }
+
+    public boolean isIncompleteArray()
+    {
+        return false;
+    }
+
+    public boolean isScalarType()
+    {
+        if (isPrimitiveType())
+            return tag > VOID && tag <= REAL;
+        if (isEnumType())
+        {
+            return ((EnumType) this).getDecl().isCompleteDefinition();
+        }
+        return isPointerType() || isComplexType();
+    }
+
+    public boolean isCallable()
+    {
+        return false;
+    }
+
+    /**
+     * Indicates if this type can be wrapped with other type.
+     *
+     * @param other
+     * @return
+     */
+    public abstract boolean isCompatible(Type other);
+
+    /**
+     * Indicates if this type can be casted into target type.
+     *
+     * @param target
+     * @return
+     */
+    public abstract boolean isCastableTo(Type target);
+
+    /**
+     * 对于引用类型返回起基类型，该方法需要具体的子类进行覆盖。
+     *
+     * @return
+     */
+    public Type baseType()
+    {
+        throw new SemanticError("#baseType called for undereferable type");
+    }
+
+    // Cast methods
+    public IntegerType getIntegerType()
+    {
+        return (IntegerType) this;
+    }
+
+    public RealType getRealType()
+    {
+        return (RealType) this;
+    }
+
+    public ComplexType getComplexTye()
+    {
+        return (ComplexType) this;
+    }
+
+    public PointerType getPointerType()
+    {
+        return (PointerType) this;
+    }
+
+    public FunctionType getFunctionType()
+    {
+        return (FunctionType) this;
+    }
+
+    public RecordType getRecordType()
+    {
+        return (RecordType) this;
+    }
+
+    public UnionType getUnionType()
+    {
+        return (UnionType) this;
+    }
+
+    public ArrayType getArrayType()
+    {
+        return (ArrayType) this;
+    }
+
+    public EnumType getEnumType()
+    {
+        return (EnumType) this;
+    }
+
+    /**
+     * Checks if this type is integral or enumeration.
+     *
+     * @return {@code true} returned if this type is integral or enumeration,
+     * otherwise, return {@code false}.
+     */
+    public boolean isIntegralOrEnumerationType()
+    {
+        if (isIntegerType() || isBooleanType())
+            return true;
+        if (isEnumType())
+            return getEnumType().getDecl().isCompleteDefinition();
+        return false;
+    }
+
+    public int getTypeKind()
+    {
+        return tag;
+    }
+
+    public boolean isArithmeticType()
+    {
+        if (isPrimitiveType())
+        {
+            return tag >= BOOLEAN && tag <= REAL;
+        }
+        if (isEnumType())
+        {
+            // GCC allows forward declaration of enum types (forbid by C99 6.7.2.3p2).
+            // If a body isn't seen by the time we get here, return false.
+            return getEnumType().getDecl().isCompleteDefinition();
+        }
+        return isComplexType();
+    }
+
+    public QualType getPointee()
+    {
+        if (isPointerType())
+            return getPointerType().getPointee();
+        return new QualType();
+    }
+
+    /**
+     * Return true if this is an incomplete type (C99 6.2.5p1)
+     * <br>
+     * a type that can describe objects, but which lacks information needed to
+     * determine its size.
+     * @return
+     */
+    public boolean isIncompleteType()
+    {
+        if (isPrimitiveType())
+        {
+            // Void is the only incomplete builtin type.  Per C99 6.2.5p19, it can never
+            // be completed.
+            return isVoidType();
+        }
+        switch (tag)
+        {
+            case STRUCT:
+            case UNION:
+                return !((TagType)this).getDecl().isCompleteDefinition();
+            case ConstantArray:
+                // An array is incomplete if its element type is incomplete
+                return ((ArrayType)this).getElementType().isIncompleteType();
+            case IncompleteArray:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Return true if this is not a variable sized type,
+     * according to the rules of C99 6.7.5p3.  It is not legal to call this on
+     * incomplete types
+     * @return
+     */
+    public boolean isConstantSizeType()
+    {
+        assert !isIncompleteType():"This doesn't make sense for incomplete types";
+
+        return !(this instanceof ArrayType.VariableArrayType);
+    }
 }

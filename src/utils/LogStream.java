@@ -28,7 +28,6 @@ import java.io.PrintStream;
  */
 public class LogStream
 {
-
 	/**
 	 * Null output stream that simply swallows any output sent to it.
 	 */

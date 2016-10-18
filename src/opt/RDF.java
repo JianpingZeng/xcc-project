@@ -1,4 +1,4 @@
-package optimization;
+package opt;
 
 import hir.BasicBlock;
 import hir.DominatorTree;

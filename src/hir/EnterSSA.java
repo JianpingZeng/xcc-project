@@ -1,7 +1,5 @@
 package hir;
 
-import hir.Instruction.Alloca;
-
 import java.util.ArrayList;
 import java.util.ListIterator;
 
@@ -24,14 +22,14 @@ import exception.MemoryPromoteError;
  */
 public class EnterSSA
 {
-	private Method m;
+	private Function m;
 
 	/**
 	 * Statistics the number of alloca instruction has been promoted finished.
 	 */
 	private int NumPromoted = 0;
 
-	public EnterSSA(Method m)
+	public EnterSSA(Function m)
 	{
 		this.m = m;
 		runPromotion();
@@ -46,7 +44,7 @@ public class EnterSSA
 		DominatorTree DT = new DominatorTree(false, m);
 		DT.recalculate();
 
-		ArrayList<Alloca> allocas = new ArrayList<>();
+		ArrayList<Instruction.AllocaInst> allocas = new ArrayList<>();
 		while(true)
 		{
 			allocas.clear();
@@ -58,9 +56,9 @@ public class EnterSSA
 			while(itr.hasNext())
 			{
 				Value inst = itr.next();
-				if (inst instanceof Alloca)
-					if (((Alloca)inst).isAllocaPromoteable())
-						allocas.add((Alloca)inst);
+				if (inst instanceof Instruction.AllocaInst)
+					if (((Instruction.AllocaInst)inst).isAllocaPromotable())
+						allocas.add((Instruction.AllocaInst)inst);
 			}
 			if (allocas.isEmpty())
 				break;
@@ -84,12 +82,12 @@ public class EnterSSA
 	 * does not modify the CFG of the function at all.  All allocas must be from
 	 * the same function.
 	 *
-	 * If AST is specified, the specified tracker is updated to reflect changes
+	 * IfStmt AST is specified, the specified tracker is updated to reflect changes
 	 * made to the IR.
 	 * @param allocas
 	 * @param DT
 	 */
-	private void promoteToReg(ArrayList<Alloca> allocas, DominatorTree DT)
+	private void promoteToReg(ArrayList<Instruction.AllocaInst> allocas, DominatorTree DT)
 	{
 		if (allocas.isEmpty())
 			return;
@@ -115,7 +113,7 @@ public class EnterSSA
 	 * instruction into SSA form.
 	 */
 	/*
-	private class GlobalValueNumber extends ValueVisitor
+	private class GlobalValueNumber extends InstructionVisitor
 	{
 		private BasicBlock currentBlock;
 
@@ -485,18 +483,18 @@ public class EnterSSA
 		}
 
 		@Override
-		public void visitReturn(Instruction.Return inst)
+		public void visitReturn(Instruction.ReturnInst inst)
 		{
 			visitInstruction(inst);
 		}
 
 		@Override
-		public void visitInvoke(Instruction.Invoke inst)
+		public void visitInvoke(Instruction.InvokeInst inst)
 		{
 			visitInstruction(inst);
 		}
 		@Override
-		public void visitPhi(Instruction.Phi inst)
+		public void visitPhi(Instruction.PhiNode inst)
 		{
 			visitInstruction(inst);
 		}
@@ -506,7 +504,7 @@ public class EnterSSA
 			visitInstruction(inst);
 		}
 		@Override
-		public void visitAlloca(Instruction.Alloca inst)
+		public void visitAlloca(Instruction.AllocaInst inst)
 		{
 			visitInstruction(inst);
 		}

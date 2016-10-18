@@ -5,10 +5,11 @@ import lir.ci.LIRKind;
 import lir.ci.LIRValue;
 import utils.Name;
 import java.util.*;
-import hir.Instruction.Phi;
+import hir.Instruction.PhiNode;
 
 /**
- * Created by xlous.zeng  on 2016/3/7.
+ * @author xlous.zeng
+ * @version 0.1
  */
 public class Value implements Cloneable
 {
@@ -40,19 +41,6 @@ public class Value implements Cloneable
 	 * The list of user who usesList this value.
 	 */
 	public final LinkedList<Use> usesList;
-	/**
-	 * The basic block containing this Value.
-	 */
-	private BasicBlock bb;
-	
-	public BasicBlock getParent()
-	{
-		return bb;
-	}
-	public void setParent(BasicBlock bb)
-	{
-		this.bb = bb;
-	}
 	
 	public Value(LIRKind kind)
 	{
@@ -72,39 +60,6 @@ public class Value implements Cloneable
 	{
 		return this.kind == value.kind && LIROperand.equals(value.LIROperand);
 	}
-	/**
-	 * Erases this instruction from it's parent basic block.
-	 */
-	public void eraseFromBasicBlock()
-	{
-		assert (this.bb
-				== null) : "The basic block where the instruction reside to be erased!";
-		bb.removeInst(this);
-	}
-	
-	/**
-	 * Inserts an specified instruction into the instructions list after itself.
-	 *
-	 * @param inst An instruction to be inserted.
-	 */
-	public void insertAfter(Value inst)
-	{
-		int index = bb.lastIndexOf(inst);
-		if (index >= 0 && index < bb.size())
-			bb.insertAt(inst, index + 1);
-	}
-
-	/**
-	 * Inserts an instruction into the instructions list before this itself.
-	 *
-	 * @param inst An instruction to be inserted.
-	 */
-	public void insertBefore(Value inst)
-	{
-		int index = bb.lastIndexOf(inst);
-		if (index >= 0 && index < bb.size())
-			bb.insertAt(inst, index);
-	}
 	
 	/**
 	 * Go through the usesList list for this definition and make each use point
@@ -113,11 +68,12 @@ public class Value implements Cloneable
 	 */
 	public void replaceAllUsesWith(Value newValue)
 	{
-		assert newValue != null : "Instruction.replaceAllusesWith(<null>) is invalid.";
-		assert kind
-				== newValue.kind : "replaceAllUses of value with new value of different tyep";
+		assert newValue != null
+				: "Instruction.replaceAllusesWith(<null>) is invalid.";
+		assert kind == newValue.kind
+                : "replaceAllUses of value with new value of different type";
 
-		// 鏇存柊use-def閾句腑鐨勪娇鐢ㄥ垎閲�
+		// replaces all old uses with new one.
 		while (!usesList.isEmpty())
 		{
 			newValue.addUse(usesList.remove(0));
@@ -130,31 +86,27 @@ public class Value implements Cloneable
 			{
 				for (Value inst : succ)
 				{
-					if (!(inst instanceof Phi))
+					if (!(inst instanceof Instruction.PhiNode))
 						break;
 					int i;
-					Phi PN = (Phi) inst;
+					Instruction.PhiNode PN = (PhiNode) inst;
 					if ((i = PN.getBasicBlockIndex(BB)) >= 0)
-						PN.setParameter(i, newValue);
+						PN.setIncomingValue(i, newValue);
 				}
 			}
 		}
-	}
-
-
-	public Iterator<Use> iterator()
-	{
-		return usesList.iterator();
-	}
-	public ListIterator<Use> listIterator()
-	{
-		return usesList.listIterator();
 	}
 
 	public boolean isUseEmpty()
 	{
 		return usesList.isEmpty();
 	}
+
+	public Use useAt(int index)
+    {
+        assert(index >= 0 && index < usesList.size());
+        return usesList.get(index);
+    }
 
 	/**
 	 * The numbers of this other value who usesList this.
@@ -214,7 +166,7 @@ public class Value implements Cloneable
 		usesList.remove(use);
 	}
 
-	public void accept(ValueVisitor visitor)
+	public void accept(InstructionVisitor visitor)
 	{
 		visitor.visitValue(this);
 	}
@@ -256,7 +208,7 @@ public class Value implements Cloneable
 	}
 
 	/**
-	 * Obtains the corresponding machine-specific operation result of this instruction.
+	 * Obtains the corresponding machine-specific operation getReturnValue of this instruction.
 	 * @return
 	 */
 	public LIRValue LIROperand()
@@ -390,7 +342,7 @@ public class Value implements Cloneable
 			return new Constant(this.value);
 		}
 
-		public void accept(ValueVisitor visitor)
+		public void accept(InstructionVisitor visitor)
 		{
 			visitor.visitConstant(this);
 		}
@@ -406,7 +358,7 @@ public class Value implements Cloneable
 			return c.value.equals(c.value);
 		}
 		/**
-		 * Return the production result of both Constant, c1 and c2.
+		 * ReturnInst the production getReturnValue of both Constant, c1 and c2.
 		 * @param c1
 		 * @param c2
 		 */
@@ -420,7 +372,7 @@ public class Value implements Cloneable
 			return Constant.forLong(l1 * l2);
 		}
 		/**
-		 * Return the sum of both Constant, c1 and c2.
+		 * ReturnInst the sum of both Constant, c1 and c2.
 		 * @param c1
 		 * @param c2
 		 */
@@ -472,7 +424,7 @@ public class Value implements Cloneable
 			return new UndefValue(this.kind);
 		}
 
-		public void accept(ValueVisitor visitor)
+		public void accept(InstructionVisitor visitor)
 		{
 			visitor.visitUndef(this);
 		}
@@ -485,10 +437,10 @@ public class Value implements Cloneable
 
 		Type valueType;
 		/**
-		 * The memory address allocated by instruction {@code Alloca} is related
+		 * The memory address allocated by instruction {@code AllocaInst} is related
 		 * with this variable.
 		 *
-		public Instruction.Alloca memAddr;
+		public Instruction.AllocaInst memAddr;
 
 		public Var(LIRKind kind, Name name)
 		{

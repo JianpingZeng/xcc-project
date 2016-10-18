@@ -6,37 +6,28 @@ import java.util.List;
 import type.Type;
 import type.TypeTags;
 import utils.Convert;
-import ast.Tree.Apply;
 import ast.Tree.Assign;
-import ast.Tree.Assignop;
-import ast.Tree.Binary;
+import ast.Tree.BinaryExpr;
 import ast.Tree.Block;
-import ast.Tree.Break;
-import ast.Tree.Case;
-import ast.Tree.Conditional;
-import ast.Tree.Continue;
+import ast.Tree.CaseStmt;
+import ast.Tree.ConditionalExpr;
+import ast.Tree.ContinueStmt;
 import ast.Tree.DoLoop;
 import ast.Tree.Erroneous;
 import ast.Tree.Exec;
 import ast.Tree.ForLoop;
 import ast.Tree.Goto;
-import ast.Tree.Ident;
-import ast.Tree.If;
+import ast.Tree.DeclRefExpr;
 import ast.Tree.Import;
-import ast.Tree.Indexed;
-import ast.Tree.Labelled;
 import ast.Tree.Literal;
 import ast.Tree.MethodDef;
 import ast.Tree.NewArray;
-import ast.Tree.Parens;
-import ast.Tree.Return;
+import ast.Tree.ParenExpr;
+import ast.Tree.ReturnStmt;
 import ast.Tree.Skip;
-import ast.Tree.Switch;
 import ast.Tree.TopLevel;
 import ast.Tree.TypeArray;
-import ast.Tree.TypeCast;
 import ast.Tree.TypeIdent;
-import ast.Tree.Unary;
 import ast.Tree.VarDef;
 import ast.Tree.WhileLoop;
 
@@ -48,7 +39,7 @@ import ast.Tree.WhileLoop;
  * 
  * @author zeng
  */
-public class Pretty extends ASTVisitor
+public class Pretty extends AstVisitor
 {
 
 	public Pretty(PrintWriter out, boolean sourceOutput)
@@ -59,7 +50,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	/**
-	 * Set when we are producing source output. If we're not producing source
+	 * Set when we are producing source output. IfStmt we're not producing source
 	 * output, we can sometimes give more detail in the output even though that
 	 * detail would not be valid java soruce.
 	 */
@@ -362,10 +353,10 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitIf(If tree)
+	public void visitIf(Tree.IfStmt tree)
 	{
 		print("if ");
-		if (tree.cond.tag == Tree.PARENS)
+		if (tree.cond.tag == Tree.ParenExprClass)
 		{
 			printExpr(tree.cond);
 		}
@@ -385,10 +376,10 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitSwitch(Switch tree)
+	public void visitSwitch(Tree.SwitchStmt tree)
 	{
 		print("switch ");
-		if (tree.selector.tag == Tree.PARENS)
+		if (tree.selector.tag == Tree.ParenExprClass)
 		{
 			printExpr(tree.selector);
 		}
@@ -408,7 +399,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitCase(Case tree)
+	public void visitCase(CaseStmt tree)
 	{
 		if (tree.values == null)
 		{
@@ -422,7 +413,7 @@ public class Pretty extends ASTVisitor
 		print(": ");
 		println();
 		indent();
-		printStat(tree.caseBody);
+		printStat(tree.subStmt);
 		undent();
 		align();
 	}
@@ -462,13 +453,13 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitBreak(Break tree)
+	public void visitBreak(Tree.BreakStmt tree)
 	{
 		print("break;");
 	}
 
 	@Override
-	public void visitContinue(Continue tree)
+	public void visitContinue(ContinueStmt tree)
 	{
 		print("continue;");
 
@@ -490,7 +481,7 @@ public class Pretty extends ASTVisitor
         printStat(tree.body);
         align();
         print(" while ");
-        if (tree.cond.tag == Tree.PARENS) {
+        if (tree.cond.tag == Tree.ParenExprClass) {
             printExpr(tree.cond);
         } else {
             print("(");
@@ -505,7 +496,7 @@ public class Pretty extends ASTVisitor
 	public void visitWhileLoop(WhileLoop tree)
 	{
         print("while ");
-        if (tree.cond.tag == Tree.PARENS) {
+        if (tree.cond.tag == Tree.ParenExprClass) {
             printExpr(tree.cond);
         } else {
             print("(");
@@ -518,7 +509,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitLabelled(Labelled tree)
+	public void visitLabelled(Tree.LabelledStmt tree)
 	{
         print(tree.label + ": ");
         printStat(tree.body);
@@ -526,7 +517,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitReturn(Return tree)
+	public void visitReturn(ReturnStmt tree)
 	{
 		print("return");
 		if (tree.expr != null) {
@@ -548,9 +539,9 @@ public class Pretty extends ASTVisitor
 	}
 	*/
 	@Override
-	public void visitApply(Apply tree)
+	public void visitApply(Tree.CallExpr tree)
 	{
-        printExpr(tree.meth);
+        printExpr(tree.fn);
         print("(");
         printExprs(tree.args);
         print(")");
@@ -577,7 +568,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitConditional(Conditional tree)
+	public void visitConditional(ConditionalExpr tree)
 	{
         open(prec, TreeInfo.condPrec);
         printExpr(tree.cond, TreeInfo.condPrec);
@@ -589,10 +580,10 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitParens(Parens tree)
+	public void visitParens(ParenExpr tree)
 	{
 		print(")");
-		printExpr(tree.expr);
+		printExpr(tree.subExpr);
 		print(")");
 	}
 
@@ -683,7 +674,7 @@ public class Pretty extends ASTVisitor
         }
     }
 
-    public void visitAssignop(Assignop tree) {
+    public void visitAssignop(Tree.OpAssign tree) {
         open(prec, TreeInfo.assignopPrec);
         printExpr(tree.lhs, TreeInfo.assignopPrec + 1);
         print(" " + operatorName(tree.tag - Tree.ASGOffset) + "= ");
@@ -692,7 +683,7 @@ public class Pretty extends ASTVisitor
     }
 
 	@Override
-	public void visitUnary(Unary tree)
+	public void visitUnary(Tree.UnaryExpr tree)
 	{
 		int ownprec = TreeInfo.opPrec(tree.tag);
 		String opname = operatorName(tree.tag).toString();
@@ -714,7 +705,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitBinary(Binary tree)
+	public void visitBinary(BinaryExpr tree)
 	{
         int ownprec = TreeInfo.opPrec(tree.tag);
         String opname = operatorName(tree.tag).toString();
@@ -727,7 +718,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitTypeCast(TypeCast tree)
+	public void visitTypeCast(Tree.CastExpr tree)
 	{
         open(prec, TreeInfo.prefixPrec);
         print("(");
@@ -739,7 +730,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitIndexed(Indexed tree)
+	public void visitIndexed(Tree.ArraySubscriptExpr tree)
 	{
         printExpr(tree.indexed, TreeInfo.postfixPrec);
         print("[");
@@ -834,7 +825,7 @@ public class Pretty extends ASTVisitor
 	}
 
 	@Override
-	public void visitIdent(Ident tree)
+	public void visitIdent(DeclRefExpr tree)
 	{
         print(tree.name.toString());
 

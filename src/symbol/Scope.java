@@ -34,12 +34,12 @@ public class Scope
 	public Entry[] entityTable;
 
 	/**
-	 * Mask for hash codes, always equal to (entityTable.length - 1).
+	 * Mask for hash codes, always equal to (entityTable.getArraySize - 1).
 	 */
 	int hashMask;
 
 	/**
-	 * A linear list that also contains all entries in
+	 * A linear list that also isDeclScope all entries in
 	 * reverse order of appearance (i.e later entries are pushed on top).
 	 */
 	public Entry elems;
@@ -55,7 +55,7 @@ public class Scope
 	private static final Entry sentinel = new Entry(null, null, null, null);
 
 	/**
-	 * The hash entityTable's initial length.
+	 * The hash entityTable's initial getArraySize.
 	 */
 	private static final int INITIAL_SIZE = 128;
 
@@ -66,7 +66,7 @@ public class Scope
 
 	/**
 	 * Construct a new scope, within scope next, with given owner, using
-	 * given entityTable. The entityTable's length must be an exponent of 2.
+	 * given entityTable. The entityTable's getArraySize must be an exponent of 2.
 	 */
 	Scope(Scope next, Symbol owner,  Entry[] table)
 	{
@@ -81,7 +81,7 @@ public class Scope
 
 	/**
 	 * Construct a new scope at which all of entity stores is sentinel,
-	 * with next field is null using a fresh entityTable of length INITIAL_SIZE.
+	 * with next field is null using a fresh entityTable of getArraySize INITIAL_SIZE.
 	 */
 	public Scope(Symbol owner)
 	{
@@ -128,7 +128,7 @@ public class Scope
 	}
 
 	/**
-	 * Double length of hash entityTable.
+	 * Double getArraySize of hash entityTable.
 	 */
 	private void dble()
 	{
@@ -177,7 +177,7 @@ public class Scope
 	public void enter(Symbol sym, Scope s)
 	{
 
-		// double the length of entity entityTable if the loading factor no greater than 2/3
+		// double the getArraySize of entity entityTable if the loading factor no greater than 2/3
 		if (nelems * 3 >= hashMask * 2)
 			dble();
 		int hash = sym.name.index & hashMask;
@@ -203,8 +203,8 @@ public class Scope
 	}
 
 	/**
-	 * Return the entry associated with given name, starting in
-	 * this scope and proceeding outwards. If no entry was found,
+	 * ReturnInst the entry associated with given name, starting in
+	 * this scope and proceeding outwards. IfStmt no entry was found,
 	 * return the sentinel, which is characterized by having a null in
 	 * both its scope and sym fields, whereas both fields are non-null
 	 * for regular entries.
@@ -255,7 +255,7 @@ public class Scope
 		}
 
 		/**
-		 * Return next entry with the same name as this entry, proceeding
+		 * ReturnInst next entry with the same name as this entry, proceeding
 		 * outwards if not found in this scope.
 		 */
 		public Entry next()

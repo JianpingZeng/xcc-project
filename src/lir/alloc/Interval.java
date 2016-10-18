@@ -247,7 +247,7 @@ public final class Interval
 	}
 
 	/**
-	 * Constant used in optimization of spilling of an interval.
+	 * Constant used in opt of spilling of an interval.
 	 */
 	enum SpillState
 	{
@@ -468,7 +468,7 @@ public final class Interval
 	private int cachedTo;
 
 	/**
-	 * The interval from which this one is derived. If this is a
+	 * The interval from which this one is derived. IfStmt this is a
 	 * {@linkplain #isSplitParent() split parent}, it points to itself.
 	 */
 	private Interval splitParent;
@@ -492,7 +492,7 @@ public final class Interval
 	private boolean insertMoveWhenActivated;
 
 	/**
-	 * For spill move optimization.
+	 * For spill move opt.
 	 */
 	private SpillState spillState;
 
@@ -642,7 +642,7 @@ public final class Interval
 		insertMoveWhenActivated = b;
 	}
 
-	// for spill optimization
+	// for spill opt
 	public SpillState spillState()
 	{
 		return splitParent().spillState;
@@ -923,12 +923,12 @@ public final class Interval
 						&& opId < interval.to() + toOffset)
 				{
 					TTY.println(String.format(
-							"two valid result intervals found for opId %d: %d and %d",
+							"two valid getReturnValue intervals found for opId %d: %d and %d",
 							opId, result.operandNumber,
 							interval.operandNumber));
 					TTY.println(result.logString(allocator));
 					TTY.println(interval.logString(allocator));
-					throw new CiBailout("two valid result intervals found");
+					throw new CiBailout("two valid getReturnValue intervals found");
 				}
 			}
 		}
@@ -1080,7 +1080,7 @@ public final class Interval
 			/*
 			if (C1XOptions.DetailedAsserts)
 			{
-				for (int i = 0; i < usePosList.size(); i++)
+				for (int i = 0; i < usePosList.getTypeSize(); i++)
 				{
 					assert pos <= usePosList
 							.usePos(i) : "already added a use-position with lower position";
@@ -1230,13 +1230,13 @@ public final class Interval
 		/*
 		if (C1XOptions.DetailedAsserts)
 		{
-			for (int i = 0; i < usePosList.size(); i++)
+			for (int i = 0; i < usePosList.getTypeSize(); i++)
 			{
 				assert usePosList.usePos(i) < splitPos;
 			}
-			for (int i = 0; i < result.usePosList.size(); i++)
+			for (int i = 0; i < getReturnValue.usePosList.getTypeSize(); i++)
 			{
-				assert result.usePosList.usePos(i) >= splitPos;
+				assert getReturnValue.usePosList.usePos(i) >= splitPos;
 			}
 		}*/
 		return result;
@@ -1305,7 +1305,7 @@ public final class Interval
 	}
 
 	// returns true if the interval has any hole between holeFrom and holeTo
-	// (even if the hole has only the length 1)
+	// (even if the hole has only the getArraySize 1)
 	boolean hasHoleBetween(int holeFrom, int holeTo)
 	{
 		assert holeFrom < holeTo : "check";

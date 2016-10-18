@@ -6,7 +6,7 @@ import utils.Name;
 
 /**
  * This a internal root class that represents all of symbols in this c-flat
- * language. It contains subclasses for specific sorts of symbols, such as
+ * language. It isDeclScope subclasses for specific sorts of symbols, such as
  * variables, methods and operators and types. Each subclass is represented
  * as a static subLoops class inside Symbol.
  *

@@ -421,7 +421,7 @@ public class SimpleCharStream
   }
 
   /**
-   * Method to adjust line and column numbers for the start of a token.
+   * Function to adjust line and column numbers for the start of a token.
    */
   public void adjustBeginLineColumn(int newLine, int newCol)
   {

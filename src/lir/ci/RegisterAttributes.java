@@ -53,7 +53,7 @@ public class RegisterAttributes
 	 *
 	 * @param registerConfig a register configuration
 	 * @param LIRRegisters      a set of LIRRegisters
-	 * @return an array whose length is the max register number in {@code LIRRegisters}
+	 * @return an array whose getArraySize is the max register number in {@code LIRRegisters}
 	 * plus 1. An element at index i holds the attributes of the register whose
 	 * number is i.
 	 */

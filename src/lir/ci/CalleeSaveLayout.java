@@ -8,7 +8,7 @@ import utils.Util;
  * The callee save area (CSA) is a contiguous space in a stack frame
  * used to save (and restore) the VALUES of the caller's LIRRegisters.
  * This class describes the layout of a CSA in terms of its
- * {@linkplain #size length}, {@linkplain #slotSize slot length} and
+ * {@linkplain #size getArraySize}, {@linkplain #slotSize slot getArraySize} and
  * the {@linkplain #LIRRegisters callee save LIRRegisters} covered by the CSA.
  *
  * @author Xlous.zeng
@@ -17,12 +17,12 @@ public class CalleeSaveLayout
 {
 
 	/**
-	 * The length (in bytes) of the CSA.
+	 * The getArraySize (in bytes) of the CSA.
 	 */
 	public final int size;
 
 	/**
-	 * The length (in bytes) of an {@linkplain #registerAt(int)} indexable}
+	 * The getArraySize (in bytes) of an {@linkplain #registerAt(int)} indexable}
 	 * slot in the CSA.
 	 */
 	public final int slotSize;
@@ -43,7 +43,7 @@ public class CalleeSaveLayout
 
 	/**
 	 * The offset from the frame pointer(also %rbp register in AMD64) to the CSA.
-	 * If this is not known, then this field will have the value
+	 * IfStmt this is not known, then this field will have the value
 	 * {@link Integer#MAX_VALUE}.
 	 */
 	public final int frameOffsetToCSA;
@@ -52,9 +52,9 @@ public class CalleeSaveLayout
 	 * Creates a CSA layout.
 	 *
 	 * @param frameOffsetToCSA
-	 * @param size      length (in bytes) of the CSA. If this is {@code -1}, then
-	 *                     the CSA length will be computed from {@code LIRRegisters}.
-	 * @param slotSize  the length (in bytes) of an {@linkplain #registerAt(int)}
+	 * @param size      getArraySize (in bytes) of the CSA. IfStmt this is {@code -1}, then
+	 *                     the CSA getArraySize will be computed from {@code LIRRegisters}.
+	 * @param slotSize  the getArraySize (in bytes) of an {@linkplain #registerAt(int)}
 	 *                  indexable} slot in the CSA
 	 * @param LIRRegisters the LIRRegisters that can be saved in the CSA
 	 */
@@ -149,7 +149,7 @@ public class CalleeSaveLayout
 	 * Determines if the CSA includes a slot for a given register.
 	 *
 	 * @param reg the register to test
-	 * @return true if the CSA contains a slot for {@code reg}
+	 * @return true if the CSA isDeclScope a slot for {@code reg}
 	 */
 	public boolean contains(int reg)
 	{
@@ -185,7 +185,7 @@ public class CalleeSaveLayout
 			}
 			sb.append(reg).append("{+").append(offsetOf(reg)).append('}');
 		}
-		return sb.append("] length=").append(size).toString();
+		return sb.append("] getArraySize=").append(size).toString();
 	}
 }
 

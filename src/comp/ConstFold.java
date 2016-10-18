@@ -34,7 +34,7 @@ public class ConstFold implements TypeTags, OpCodes
 	static Integer one = new Integer(1);
 
 	/**
-	 * Convert boolean to integer (true = 1, false = 0).
+	 * CastInst boolean to integer (true = 1, false = 0).
 	 */
 	private static Integer b2i(boolean b)
 	{
@@ -63,11 +63,11 @@ public class ConstFold implements TypeTags, OpCodes
 
 	/**
 	 * Fold binary or unary operation, returning constant type reflecting the
-	 * operations result. Return null if fold failed due to an arithmetic
+	 * operations getReturnValue. ReturnInst null if fold failed due to an arithmetic
 	 * exception.
 	 * @param opcode The operation's opcode instruction.
 	 * 
-	 * @param argtypes The operation's argument types (a list of length 1 or 2).
+	 * @param argtypes The operation's argument types (a list of getArraySize 1 or 2).
 	 *            Argument types are assumed to have non-null constValue's.
 	 */
 	Type fold(int opcode, List<Type> argtypes)

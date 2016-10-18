@@ -1,8 +1,8 @@
-package optimization; 
+package opt; 
 
 import hir.BasicBlock;
 import hir.BasicBlock.BlockFlag;
-import hir.Method;
+import hir.Function;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,23 +60,23 @@ public class LoopAnalysis
 	/**
 	 * A mapping from id to basic block.
 	 */
-	private BasicBlock[] IdToBasicBlock;
+	private BasicBlock[] idToBasicBlock;
 
-	private Method m;
-	public LoopAnalysis(Method method)
+	private Function m;
+	public LoopAnalysis(Function function)
     {
-		this.m = method;
-		maxBlockID = method.cfg.getNumberOfBasicBlocks();
-		IdToBasicBlock = new BasicBlock[maxBlockID];		
+		this.m = function;
+		maxBlockID = function.cfg.getNumberOfBasicBlocks();
+		idToBasicBlock = new BasicBlock[maxBlockID];
 		visitedBlocks = new BitSet(maxBlockID);
 		activeBlocks = new BitSet(maxBlockID);
 		forwardBranches = new int[maxBlockID];
 		loopEndBlocks = new ArrayList<>(8);		
 
 		workList = new LinkedList<>();
-		BasicBlock entry = method.getEntryBlock();
+		BasicBlock entry = function.getEntryBlock();
 		
-		createIdToBlockMap(method);
+		createIdToBlockMap(function);
 		
 		// depth first traverse to count loop
 		countLoops(entry, null);
@@ -92,13 +92,13 @@ public class LoopAnalysis
 
 	/**
 	 * Associates the block id with basic block.
-	 * @param method
+	 * @param function
 	 */
-	private void createIdToBlockMap(Method method)
+	private void createIdToBlockMap(Function function)
 	{
-		for (BasicBlock bb : method)
+		for (BasicBlock bb : function)
 		{
-			IdToBasicBlock[bb.getID()] = bb;
+			idToBasicBlock[bb.getID()] = bb;
 		}
 	}
 	
@@ -122,7 +122,7 @@ public class LoopAnalysis
 				BasicBlock bb = null;
 				if (bitset.at(i, j))
 				{
-					bb = IdToBasicBlock[j];
+					bb = idToBasicBlock[j];
 					
 					if (bb.checkBlockFlags(BlockFlag.LinearScanLoopHeader))
 					{					
@@ -179,7 +179,8 @@ public class LoopAnalysis
 	 * @param rowIdx	The loop index.
 	 * @return
 	 */
-	private boolean isExitBlock(BasicBlock bb, int rowIdx, BasicBlock followBlock)
+	private boolean isExitBlock(
+            BasicBlock bb, int rowIdx, BasicBlock followBlock)
 	{
 		assert bb != null && rowIdx>= 0 && rowIdx < bitset.sizeInSlots();
 		// go through all successors of bb to check
@@ -252,7 +253,7 @@ public class LoopAnalysis
 		}
 	}
 	/**
-	 * checks if the loop {@code src} contains another loop {@code dest}
+	 * checks if the loop {@code src} isDeclScope another loop {@code dest}
 	 * @param src	The outerLoop loop
 	 * @param dest	The subLoops loop.
 	 * @return	return true if condition satisfied, otherwise return false. 
@@ -280,7 +281,7 @@ public class LoopAnalysis
 		int headers = 0;
 		for (int idx = numLoops - 1; idx >= 0; idx--)
 		{		
-			// loop i contains the entry block of method
+			// loop i isDeclScope the entry block of method
 			// this is not a natural loop, so ignore it
 			for (int blockID = maxBlockID - 1; 
 					blockID >= 0;
@@ -290,7 +291,7 @@ public class LoopAnalysis
 				if (!bitset.at(idx, blockID))
 					continue;
 				
-				if (IdToBasicBlock[blockID].checkBlockFlags(BlockFlag.LinearScanLoopHeader))
+				if (idToBasicBlock[blockID].checkBlockFlags(BlockFlag.LinearScanLoopHeader))
 				{
 					headers++;
 				}

@@ -10,7 +10,7 @@ import utils.Context;
  * file in c/c++. and implementing a overall container for the Module(high-level IR)
  * </p>
  * <p>
- * There are multiple {@link Variable} and/or {@link Method} in this class, instead of 
+ * There are multiple {@link Variable} and/or {@link Function} in this class, instead of
  * only a control flow graph corresponding to each method declared at the AST.
  * </p>
  * <p>
@@ -20,7 +20,7 @@ import utils.Context;
  * </p>
  * @author Xlous.zeng
  */
-public final class Module implements Iterable<Method>
+public final class Module implements Iterable<Function>
 {
 	private static final Context.Key HIRKey = new Context.Key();
 	/**
@@ -30,22 +30,22 @@ public final class Module implements Iterable<Method>
 	/**
 	 * A sorts of method declaration.
 	 */
-	List<Method> methods;
+	List<Function> functions;
 	
 	/**
 	 * An singleton method for instantiating an instance of this class.
 	 * @param context	An context environment.
 	 * @param vars	Variable declarations list.
-	 * @param methods	Method declarations list
+	 * @param functions	Function declarations list
 	 * @return	The instance of {@link Module}
 	 */
 	public static Module instance(Context context, List<Variable> vars,
-			List<Method> methods)
+			List<Function> functions)
 	{
 		Module instance = (Module)context.get(HIRKey);
 		if (instance == null)
 		{
-			instance = new Module(vars, methods);
+			instance = new Module(vars, functions);
 			context.put(HIRKey, instance);
 		}
 		return instance;
@@ -54,15 +54,15 @@ public final class Module implements Iterable<Method>
 	/**
 	 * Constructor.
 	 * @param vars
-	 * @param methods
+	 * @param functions
 	 */
-	private Module(List<Variable> vars, List<Method> methods)
+	private Module(List<Variable> vars, List<Function> functions)
 	{
 		this.vars = vars;
-		this.methods = methods;
+		this.functions = functions;
 	}
-	public Iterator<Method> iterator()
+	public Iterator<Function> iterator()
 	{
-		return methods.iterator();
+		return functions.iterator();
 	}
 }

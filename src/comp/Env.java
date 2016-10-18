@@ -84,7 +84,7 @@ public class Env {
     }
 
     /**
-      * Return closest enclosing environment which points to a tree with given tag.
+      * ReturnInst closest enclosing environment which points to a tree with given tag.
       */
     public Env enclosing(int tag) {
         Env env1 = this;

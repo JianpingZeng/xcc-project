@@ -3,37 +3,29 @@ package ast;
 import java.util.List;
 
 import utils.Name;
-import ast.Tree.Apply;
+import ast.Tree.CallExpr;
 import ast.Tree.Assign;
-import ast.Tree.Assignop;
-import ast.Tree.Binary;
+import ast.Tree.OpAssign;
 import ast.Tree.Block;
-import ast.Tree.Break;
-import ast.Tree.Case;
-import ast.Tree.Conditional;
-import ast.Tree.Continue;
+import ast.Tree.CaseStmt;
 import ast.Tree.DoLoop;
 import ast.Tree.Erroneous;
 import ast.Tree.Exec;
 import ast.Tree.ForLoop;
 import ast.Tree.Goto;
-import ast.Tree.Ident;
-import ast.Tree.If;
 import ast.Tree.Import;
-import ast.Tree.Indexed;
-import ast.Tree.Labelled;
+import ast.Tree.ArraySubscriptExpr;
+import ast.Tree.LabelledStmt;
 import ast.Tree.Literal;
 import ast.Tree.MethodDef;
 import ast.Tree.NewArray;
-import ast.Tree.Parens;
-import ast.Tree.Return;
+import ast.Tree.ReturnStmt;
 import ast.Tree.Skip;
-import ast.Tree.Switch;
+import ast.Tree.SwitchStmt;
 import ast.Tree.TopLevel;
 import ast.Tree.TypeArray;
-import ast.Tree.TypeCast;
+import ast.Tree.CastExpr;
 import ast.Tree.TypeIdent;
-import ast.Tree.Unary;
 import ast.Tree.VarDef;
 import ast.Tree.WhileLoop;
 
@@ -61,43 +53,43 @@ public interface Factory {
 
    ForLoop ForLoop(List<Tree> init, Tree cond, List<Tree> step, Tree body);
 
-   Labelled Labelled(Name label, Tree body);
+   LabelledStmt Labelled(Name label, Tree body);
 
-   Switch Switch(Tree selector, List<Case> cases);
+   SwitchStmt Switch(Tree selector, List<CaseStmt> cases);
 
-   Case Case(List<Tree> values, Tree caseBody);
+   CaseStmt Case(List<Tree> values, Tree caseBody);
 
-   Conditional Conditional(Tree cond, Tree thenpart, Tree elsepart);
+   Tree.ConditionalExpr Conditional(Tree cond, Tree thenpart, Tree elsepart);
 
-   If If(Tree cond, Tree thenpart, Tree elsepart);
+   Tree.IfStmt If(Tree cond, Tree thenpart, Tree elsepart);
 
    Exec Exec(Tree expr);
 
-   Break Break();
+   Tree.BreakStmt Break();
 
-   Continue Continue();
+   Tree.ContinueStmt Continue();
 
    Goto Goto(Name label);
    
-   Return Return(Tree expr);     
+   ReturnStmt Return(Tree expr);
 
-   Apply Apply(Tree fn, List<Tree> args);
+   CallExpr Apply(Tree fn, List<Tree> args);
 
-   Parens Parens(Tree expr);
+   Tree.ParenExpr Parens(Tree expr);
 
    Assign Assign(Tree lhs, Tree rhs);
 
-   Assignop Assignop(int opcode, Tree lhs, Tree rhs);
+   OpAssign Assignop(int opcode, Tree lhs, Tree rhs);
 
-   Unary Unary(int opcode, Tree arg);
+   Tree.UnaryExpr Unary(int opcode, Tree arg);
 
-   Binary Binary(int opcode, Tree lhs, Tree rhs);
+   Tree.BinaryExpr Binary(int opcode, Tree lhs, Tree rhs);
 
-   TypeCast TypeCast(Tree expr, Tree type);
+   CastExpr TypeCast(Tree expr, Tree type);
 
-   Indexed Indexed(Tree indexed, Tree index);
+   ArraySubscriptExpr Indexed(Tree indexed, Tree index);
 
-   Ident Ident(Name idname);
+   Tree.DeclRefExpr Ident(Name idname);
 
    Literal Literal(int tag, Object value);
 

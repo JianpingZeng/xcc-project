@@ -1,7 +1,6 @@
 package hir;
 
 import utils.BitMap2D;
-import utils.Pair;
 import utils.TTY;
 import java.util.*;
 
@@ -331,9 +330,9 @@ public class ComputeLinearScanOrder
 		}
 		curBit--;
 
-		if (!(cur.lastInst() instanceof Instruction.Return) && (
+		if (!(cur.lastInst() instanceof Instruction.ReturnInst) && (
 				singleSux == null || !(singleSux
-						.lastInst() instanceof Instruction.Return)))
+						.lastInst() instanceof Instruction.ReturnInst)))
 		{
 			weight |= 1 << curBit;
 		}
@@ -442,7 +441,7 @@ public class ComputeLinearScanOrder
 		{
 			if (isBlockInLoop(idx, entry))
 			{
-				// loop i contains the entry block of method
+				// loop i isDeclScope the entry block of method
 				// this is not a natural loop, so ignore it
 				for (int blockID = maxBlockID - 1; blockID >= 0; blockID--)
 					bitset.clearBit(idx, blockID);

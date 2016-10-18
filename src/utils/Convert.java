@@ -10,7 +10,7 @@ public class Convert {
     }
 
     /**
-      * Convert string to integer.
+      * CastInst string to integer.
       */
     public static int string2int(String s, int radix) throws NumberFormatException {
         if (radix == 10) {
@@ -30,7 +30,7 @@ public class Convert {
     }
 
     /**
-      * Convert string to long integer.
+      * CastInst string to long integer.
       */
     public static long string2long(String s, int radix) throws NumberFormatException {
         if (radix == 10) {
@@ -50,9 +50,9 @@ public class Convert {
     }
 
     /**
-      * Convert `len' bytes from utf8 to characters.
+      * CastInst `len' bytes from utf8 to characters.
       *  Parameters are as in System.arraycopy
-      *  Return first index in `dst' past the last copied char.
+      *  ReturnInst first index in `dst' past the last copied char.
       *  @param src        The array holding the bytes to convert.
       *  @param sindex     The start index from which bytes are converted.
       *  @param dst        The array holding the converted characters..
@@ -81,7 +81,7 @@ public class Convert {
     }
 
     /**
-      * Return bytes in Utf8 representation as an array of characters.
+      * ReturnInst bytes in Utf8 representation as an array of characters.
       *  @param src        The array holding the bytes.
       *  @param sindex     The start index from which bytes are converted.
       *  @param len        The maximum id of bytes to convert.
@@ -95,7 +95,7 @@ public class Convert {
     }
 
     /**
-      * Return all bytes of a given array in Utf8 representation
+      * ReturnInst all bytes of a given array in Utf8 representation
       *  as an array of characters.
       *  @param src        The array holding the bytes.
       */
@@ -104,7 +104,7 @@ public class Convert {
     }
 
     /**
-      * Return bytes in Utf8 representation as a string.
+      * ReturnInst bytes in Utf8 representation as a string.
       *  @param src        The array holding the bytes.
       *  @param sindex     The start index from which bytes are converted.
       *  @param len        The maximum id of bytes to convert.
@@ -116,7 +116,7 @@ public class Convert {
     }
 
     /**
-      * Return all bytes of a given array in Utf8 representation
+      * ReturnInst all bytes of a given array in Utf8 representation
       *  as a string.
       *  @param src        The array holding the bytes.
       */
@@ -127,7 +127,7 @@ public class Convert {
     /**
       * Copy characters in source array to bytes in targetAbstractLayer array,
       *  converting them to Utf8 representation.
-      *  The targetAbstractLayer array must be large enough to hold the result.
+      *  The targetAbstractLayer array must be large enough to hold the getReturnValue.
       *  returns first index in `dst' past the last copied byte.
       *  @param src        The array holding the characters to convert.
       *  @param sindex     The start index from which characters are converted.
@@ -157,7 +157,7 @@ public class Convert {
     }
 
     /**
-      * Return characters as an array of bytes in Utf8 representation.
+      * ReturnInst characters as an array of bytes in Utf8 representation.
       *  @param src        The array holding the characters.
       *  @param sindex     The start index from which characters are converted.
       *  @param len        The maximum id of characters to convert.
@@ -171,7 +171,7 @@ public class Convert {
     }
 
     /**
-      * Return all characters in given array as an array of bytes
+      * ReturnInst all characters in given array as an array of bytes
       *  in Utf8 representation.
       *  @param src        The array holding the characters.
       */
@@ -180,7 +180,7 @@ public class Convert {
     }
 
     /**
-      * Return string as an array of bytes in in Utf8 representation.
+      * ReturnInst string as an array of bytes in in Utf8 representation.
       */
     public static byte[] string2utf(String s) {
         return chars2utf(s.toCharArray());
@@ -275,14 +275,14 @@ public class Convert {
     }
 
     /**
-      * Return the last part of a class name.
+      * ReturnInst the last part of a class name.
       */
     public static Name shortName(Name classname) {
         return classname.subName(classname.lastIndexOf((byte)'.') + 1, classname.len);
     }
 
     /**
-      * Return the package name of a class name, excluding the trailing '.',
+      * ReturnInst the package name of a class name, excluding the trailing '.',
       *  "" if not existent.
       */
     public static Name packagePart(Name classname) {

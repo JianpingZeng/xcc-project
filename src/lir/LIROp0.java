@@ -21,7 +21,7 @@ public class LIROp0 extends LIRInstruction
 	 * Creates a LIROp0 instruction.
 	 *
 	 * @param opcode the opcode of the new instruction
-	 * @param result the result LIROperand to the new instruction
+	 * @param result the getReturnValue LIROperand to the new instruction
 	 */
 	public LIROp0(LIROpcode opcode, LIRValue result)
 	{

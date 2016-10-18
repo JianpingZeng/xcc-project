@@ -96,7 +96,7 @@ public class DominatorTree
 		public final void clearChidren() {children.clear();}
 
 		/**
-		 * Return true if this node is dominated by other.
+		 * ReturnInst true if this node is dominated by other.
 		 * Use this only if DFS info is valid.
 		 * @param other
 		 * @return
@@ -157,14 +157,14 @@ public class DominatorTree
 
 	private int slowQueries = 0;
 
-	private Method m;
+	private Function m;
 
 	/**
 	 * Constructs a instance of creating dominator tree of a CFG.
 	 * @param isPostData    whether it is post dominator tree.
 	 * @param m The targetAbstractLayer function.
 	 */
-	public DominatorTree(boolean isPostData, Method m)
+	public DominatorTree(boolean isPostData, Function m)
 	{
 		this.IsPostDominators = isPostData;
 		this.m = m;
@@ -174,7 +174,7 @@ public class DominatorTree
 	 * Constructs a instance of creating dominator tree of a CFG.
 	 * @param m The targetAbstractLayer function.
 	 */
-	public DominatorTree(Method m)
+	public DominatorTree(Function m)
 	{
 		this(false, m);
 	}
@@ -192,7 +192,7 @@ public class DominatorTree
 
 	/**
 	 * This returns the entry dominator tree node of the CFG attached to the
-	 * function. If this tree represents the post-dominator relation for a
+	 * function. IfStmt this tree represents the post-dominator relation for a
 	 * function, however, this root may be a node with the block == null. This
 	 * is teh case when there are multiple exit nodes from a particular function.
 	 * @return
@@ -222,7 +222,7 @@ public class DominatorTree
 	 * Determine whether A dominates B.
 	 * @param A
 	 * @param B
-	 * @return  Return true iff A dominates B.
+	 * @return  ReturnInst true iff A dominates B.
 	 */
 	public boolean dominates(DomTreeNode A, DomTreeNode B)
 	{
@@ -238,7 +238,7 @@ public class DominatorTree
 		if (DFSInfoValid)
 			return B.dominatedBy(A);
 
-		// If we end up with too many slow queries, just update the
+		// IfStmt we end up with too many slow queries, just update the
 		// DFS numbers on the theory that we are going to keep querying.
 		slowQueries++;
 		if (slowQueries > 32)
@@ -273,7 +273,7 @@ public class DominatorTree
 	}
 
 	/**
-	 * Return true if B dominated by A, but A != B.
+	 * ReturnInst true if B dominated by A, but A != B.
 	 * @param A
 	 * @param B
 	 * @return
@@ -412,7 +412,7 @@ public class DominatorTree
 					WInfo.semi = semiU;
 			}
 
-			// If V is a non-root vertex and sdom(V) = parent(V), then idom(V) is
+			// IfStmt V is a non-root vertex and sdom(V) = parent(V), then idom(V) is
 			// necessarily parent(V). In this case, set idom(V) here and avoid placing
 			// V into a bucket.
 			if (WInfo.semi == WInfo.parent)
@@ -513,7 +513,7 @@ public class DominatorTree
 			DomTreeNode node = (DomTreeNode)top.first;
 			ListIterator<DomTreeNode> childItr = (ListIterator<DomTreeNode>)top.second;
 
-			// If we visited all of the children of this node, "recurse" back up the
+			// IfStmt we visited all of the children of this node, "recurse" back up the
 			// stack setting the DFOutNum.
 			if (!childItr.hasNext())
 			{

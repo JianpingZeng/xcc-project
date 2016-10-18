@@ -25,9 +25,9 @@ public class VarSymbol extends Symbol
 
 	/**
 	 * The variable's address. Used for different purposes during flow
-	 * analysis, translation and code generation. Flow analysis: If this is
-	 * a blank final or local variable, its sequence id. Translation: If
-	 * this is a private field, its access id. Code generation: If this
+	 * analysis, translation and code generation. Flow analysis: IfStmt this is
+	 * a blank final or local variable, its sequence id. Translation: IfStmt
+	 * this is a private field, its access id. Code generation: IfStmt this
 	 * is a local variable, its logical slot id.
 	 */
 	public int adr = -1;
@@ -42,7 +42,7 @@ public class VarSymbol extends Symbol
 	 * The corresponding allocated Local or Global instruction for this
 	 * variable in Module.
 	 */
-	public Instruction.Alloca varInst;
+	public Instruction.AllocaInst varInst;
 
 	/**
 	 * Construct a variable symbol, given its flags, name, type and owner.

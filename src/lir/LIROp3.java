@@ -16,7 +16,7 @@ public class LIROp3 extends LIRInstruction
 	 * @param opr1   the first input LIROperand
 	 * @param opr2   the second input LIROperand
 	 * @param opr3   the third input LIROperand
-	 * @param result the result LIROperand
+	 * @param result the getReturnValue LIROperand
 	 */
 	public LIROp3(LIROpcode opcode, LIRValue opr1, LIRValue opr2, LIRValue opr3,
 			LIRValue result)

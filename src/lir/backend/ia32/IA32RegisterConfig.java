@@ -1,14 +1,14 @@
-package lir.backend.x86;
+package lir.backend.ia32;
 
-import static lir.backend.x86.X86.ALL_LIR_REGISTERs;
-import static lir.backend.x86.X86.eax;
-import static lir.backend.x86.X86.ebp;
-import static lir.backend.x86.X86.ebx;
-import static lir.backend.x86.X86.ecx;
-import static lir.backend.x86.X86.edi;
-import static lir.backend.x86.X86.edx;
-import static lir.backend.x86.X86.esi;
-import static lir.backend.x86.X86.xmm0;
+import static lir.backend.ia32.IA32.ALL_LIR_REGISTERs;
+import static lir.backend.ia32.IA32.eax;
+import static lir.backend.ia32.IA32.ebp;
+import static lir.backend.ia32.IA32.ebx;
+import static lir.backend.ia32.IA32.ecx;
+import static lir.backend.ia32.IA32.edi;
+import static lir.backend.ia32.IA32.edx;
+import static lir.backend.ia32.IA32.esi;
+import static lir.backend.ia32.IA32.xmm0;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -16,7 +16,7 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import lir.backend.RegisterConfig;
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
 import lir.ci.CalleeSaveLayout;
 import lir.ci.CallingConvention;
 import lir.ci.LIRKind;
@@ -28,7 +28,7 @@ import lir.ci.StackSlot;
 /**
  * @author Xlous.zeng
  */
-public final class X86RegisterConfig implements RegisterConfig
+public final class IA32RegisterConfig implements RegisterConfig
 {
 	/**
 	 * The object describing the callee save area of this register configuration.
@@ -98,17 +98,17 @@ public final class X86RegisterConfig implements RegisterConfig
 	 * The scratch register.
 	 */
 	public final LIRRegister scratch;
-	private static X86RegisterConfig instance = null;
+	private static IA32RegisterConfig instance = null;
 
 	/**
-	 * Gets only a instance of {@code X86RegisterConfig} by this factory method.
+	 * Gets only a instance of {@code IA32RegisterConfig} by this factory method.
 	 * @return
 	 */
-	public static X86RegisterConfig newInstance()
+	public static IA32RegisterConfig newInstance()
 	{
 		if (instance == null)
 		{
-			instance = new X86RegisterConfig(ebp, eax, xmm0, ebx,
+			instance = new IA32RegisterConfig(ebp, eax, xmm0, ebx,
 					new LIRRegister[] { eax, ebx, ecx, edx, esi, edi},
 					new LIRRegister[] { eax, edx, ecx },
 					new LIRRegister[] { ecx, edx, esi, edi},
@@ -120,7 +120,7 @@ public final class X86RegisterConfig implements RegisterConfig
 		return instance;
 	}
 
-	private X86RegisterConfig(LIRRegister frame, LIRRegister integralReturn,
+	private IA32RegisterConfig(LIRRegister frame, LIRRegister integralReturn,
 			LIRRegister floatingPointReturn, LIRRegister scratch,
 			LIRRegister[] allocatable, LIRRegister[] callerSave,
 			LIRRegister[] parameters, CalleeSaveLayout csl,
@@ -164,7 +164,7 @@ public final class X86RegisterConfig implements RegisterConfig
 		minRole = minRoleId;
 	}
 
-	public X86RegisterConfig(X86RegisterConfig src, CalleeSaveLayout csl)
+	public IA32RegisterConfig(IA32RegisterConfig src, CalleeSaveLayout csl)
 	{
 		this.frame = src.frame;
 		this.csl = csl;
@@ -211,7 +211,7 @@ public final class X86RegisterConfig implements RegisterConfig
 	 * assigning any stack slots to parameters.
 	 */
 	public CallingConvention getCallingConvention(
-			LIRKind[] parameters, TargetMachine target, boolean stackOnly)
+			LIRKind[] parameters, MachineInfo target, boolean stackOnly)
 	{
 		LIRValue[] locations = new LIRValue[parameters.length];
 

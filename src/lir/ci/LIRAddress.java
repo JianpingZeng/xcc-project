@@ -48,11 +48,11 @@ public final class LIRAddress extends LIRValue
 	public final LIRValue base;
 	/**
 	 * Optional index register, the value of which (possibly scaled by {@link #scale})
-	 * is added to {@link #base}. If not present, is denoted by {@link LIRValue#IllegalValue}.
+	 * is added to {@link #base}. IfStmt not present, is denoted by {@link LIRValue#IllegalValue}.
 	 */
 	public final LIRValue index;
 	/**
-	 * Scaling factor for indexing, dependent on targetAbstractLayer LIROperand length.
+	 * Scaling factor for indexing, dependent on targetAbstractLayer LIROperand getArraySize.
 	 */
 	public final Scale scale;
 	/**
@@ -138,7 +138,7 @@ public final class LIRAddress extends LIRValue
 
 	/**
 	 * A scaling factor used in complex addressing modes such as those supported
-	 * by X86 platforms.
+	 * by IA32 platforms.
 	 */
 	public enum Scale
 	{
@@ -189,7 +189,7 @@ public final class LIRAddress extends LIRValue
 	}
 
 	/**
-	 * If the base register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
+	 * IfStmt the base register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
 	 * otherwise raises an exception..
 	 *
 	 * @return the base {@link LIRRegister}
@@ -201,7 +201,7 @@ public final class LIRAddress extends LIRValue
 	}
 
 	/**
-	 * If the index register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
+	 * IfStmt the index register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
 	 * otherwise raises an exception..
 	 *
 	 * @return the base {@link LIRRegister}

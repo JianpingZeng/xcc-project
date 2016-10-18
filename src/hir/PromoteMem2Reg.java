@@ -1,9 +1,9 @@
 package hir;
 
 import hir.DominatorTree.DomTreeNode;
-import hir.Instruction.Alloca;
+import hir.Instruction.AllocaInst;
 import hir.Instruction.LoadInst;
-import hir.Instruction.Phi;
+import hir.Instruction.PhiNode;
 import hir.Instruction.StoreInst;
 import hir.Value.UndefValue;
 
@@ -43,26 +43,26 @@ import utils.Pair;
 public class PromoteMem2Reg
 {
 	/**
-	 * The list of {@code Alloca} to be promoted.
+	 * The list of {@code AllocaInst} to be promoted.
 	 */
-	private List<Instruction.Alloca> allocas;
+	private List<Instruction.AllocaInst> allocas;
 
 	private DominatorTree DT;
 
 	/**
 	 * A reverse mapping of allocas
 	 */
-	private HashMap<Instruction.Alloca, Integer> allocaLookup;
+	private HashMap<AllocaInst, Integer> allocaLookup;
 
 	/**
 	 * The phi node we are adding.
 	 * <p>
-	 * That map is used to simplify some Phi nodes as we
+	 * That map is used to simplify some PhiNode nodes as we
 	 * iterate over it, so it should have deterministic iterators.
 	 */
-	private HashMap<Pair, Phi> newPhiNodes;
+	private HashMap<Pair, PhiNode> newPhiNodes;
 
-	private HashMap<Phi, Integer> PhiToAllocaMap;
+	private HashMap<Instruction.PhiNode, Integer> PhiToAllocaMap;
 
 	/**
 	 * The set of basic block the renamaer has already visited.
@@ -98,7 +98,7 @@ public class PromoteMem2Reg
 	 */
 	private HashMap<DominatorTree.DomTreeNode, Integer> DomLevels;
 
-	public PromoteMem2Reg(ArrayList<Alloca> allocas, DominatorTree DT)
+	public PromoteMem2Reg(ArrayList<Instruction.AllocaInst> allocas, DominatorTree DT)
 	{
 		this.allocas = allocas;
 		this.DT = DT;
@@ -111,7 +111,7 @@ public class PromoteMem2Reg
 	}
 
 	/**
-	 * Running optimization algorithm to promote alloca onto register.
+	 * Running opt algorithm to promote alloca onto register.
 	 * <p>
 	 * For simply, first we handle many trivial case as follow two situation.
 	 * <br>
@@ -143,20 +143,20 @@ public class PromoteMem2Reg
 	 */
 	public void run()
 	{
-		Method m = this.DT.getRootNode().getBlock().getCFG().getMethod();
+		Function m = this.DT.getRootNode().getBlock().getCFG().getMethod();
 		assert (m != null) : "The method of this Dominator Tree is null";
 		AllocaInfo info = new AllocaInfo();
 		LargeBlockInfo LBI = new LargeBlockInfo();
 
 		// promotes every alloca instruction one by one.
-		for (Alloca AI : allocas)
+		for (AllocaInst AI : allocas)
 		{
 			assert AI
-					.isAllocaPromoteable() : "Cann't promote non-promotable alloca";
+					.isAllocaPromotable() : "Cann't promote non-promotable alloca";
 			assert AI.getParent().getCFG().getMethod()
 					!= m : "All allocas should in the same method, which is same as DF!";
 
-			// if it's use contains intrinsic instruction, just remove it from
+			// if it's use isDeclScope intrinsic instruction, just remove it from
 			// attached basic block.
 			// However, it is not finished currently
 			if (AI.usesList.isEmpty())
@@ -191,7 +191,7 @@ public class PromoteMem2Reg
 				}
 			}
 
-			// If the alloca is only read and written in one block.
+			// IfStmt the alloca is only read and written in one block.
 			// just perform a linear scan sweep over the block to
 			// eliminate it.
 			if (info.onlyUsedOneBlock)
@@ -226,7 +226,7 @@ public class PromoteMem2Reg
 				}
 			}
 
-			// If we haven't computed a numbering for the BB's in the function, do so
+			// IfStmt we haven't computed a numbering for the BB's in the function, do so
 			// now.
 			if (BBNumbers.isEmpty())
 			{
@@ -235,7 +235,7 @@ public class PromoteMem2Reg
 					BBNumbers.put(BB, Integer.valueOf(id));
 			}
 
-			// If we haven't computed a numbering for the BB's in the function,
+			// IfStmt we haven't computed a numbering for the BB's in the function,
 			// do so now.
 
 			int allocaNum = allocas.indexOf(AI);
@@ -278,9 +278,9 @@ public class PromoteMem2Reg
 		visitedBlocks.clear();
 
 		// Remove the allocas themselves from the function.
-		for (Alloca AI : allocas)
+		for (Instruction.AllocaInst AI : allocas)
 		{
-			// If there are any usesList of the alloca instructions left, they must be in
+			// IfStmt there are any usesList of the alloca instructions left, they must be in
 			// unreachable basic blocks that were not processed by walking the dominator
 			// tree. Just delete the users now.
 			if (!AI.usesList.isEmpty())
@@ -297,16 +297,16 @@ public class PromoteMem2Reg
 		while (eliminatedAPHI)
 		{
 			eliminatedAPHI = false;
-			for (Map.Entry<Pair, Phi> entity : newPhiNodes.entrySet())
+			for (Map.Entry<Pair, Instruction.PhiNode> entity : newPhiNodes.entrySet())
 			{
-				Phi phi = entity.getValue();
+				PhiNode phiNode = entity.getValue();
 
 				Instruction V;
-				// if the phi merges one value and/or undefs, get the value
-				if ((V = simplifyInstruction(phi, DT)) != null)
+				// if the phiNode merges one value and/or undefs, get the value
+				if ((V = simplifyInstruction(phiNode, DT)) != null)
 				{
-					phi.replaceAllUsesWith(V);
-					phi.eraseFromBasicBlock();
+					phiNode.replaceAllUsesWith(V);
+					phiNode.eraseFromBasicBlock();
 					newPhiNodes.remove(entity);
 					eliminatedAPHI = true;
 					continue;
@@ -316,47 +316,47 @@ public class PromoteMem2Reg
 
 		// At this point, the renamer has added entries to PHI nodes for all reachable
 		// code.  Unfortunately, there may be unreachable blocks which the renamer
-		// hasn't traversed.  If this is the case, the PHI nodes may not
+		// hasn't traversed.  IfStmt this is the case, the PHI nodes may not
 		// have incoming VALUES for all predecessors.  Loop over all PHI nodes we have
 		// created, inserting undef VALUES if they are missing any incoming VALUES.
 		//
-		for (Map.Entry<Pair, Phi> entity : newPhiNodes.entrySet())
+		for (Map.Entry<Pair, Instruction.PhiNode> entity : newPhiNodes.entrySet())
 		{
-			Phi phi = entity.getValue();
-			BasicBlock BB = phi.getParent();
+			PhiNode phiNode = entity.getValue();
+			BasicBlock BB = phiNode.getParent();
 
 			// We want to do this once per basic block.  As such, only process a block
 			// when we find the PHI that is the first entry in the block.
-			if (BB.firstInst() != phi)
+			if (BB.firstInst() != phiNode)
 				continue;
 
-			// Only do work here if the phi node are missing incoming VALUES.
-			if (phi.getNumberIncomingValues() == BB.getNumOfPreds())
+			// Only do work here if the phiNode node are missing incoming VALUES.
+			if (phiNode.getNumberIncomingValues() == BB.getNumOfPreds())
 				continue;
 
 			List<BasicBlock> preds = new LinkedList<>();
 			preds.addAll(BB.getPreds());
 
-			// loop through all BB which have entity in specified phi
+			// loop through all BB which have entity in specified phiNode
 			// and remove them from preds list.
-			for (int idx = 0; idx < phi.getNumberIncomingValues(); idx++)
+			for (int idx = 0; idx < phiNode.getNumberIncomingValues(); idx++)
 			{
-				BasicBlock incomingBlock = phi.getIncomingBlock(idx);
+				BasicBlock incomingBlock = phiNode.getIncomingBlock(idx);
 				if (preds.contains(incomingBlock))
 					preds.remove(incomingBlock);
 			}
 
-			int numBadPreds = phi.getNumberIncomingValues();
+			int numBadPreds = phiNode.getNumberIncomingValues();
 			Iterator<Value> it = BB.iterator();
 			Value inst;
 
-			while (it.hasNext() && ((inst = it.next()) instanceof Phi
-					&& (phi = (Phi) inst).getNumberIncomingValues()
+			while (it.hasNext() && ((inst = it.next()) instanceof Instruction.PhiNode
+					&& (phiNode = (Instruction.PhiNode) inst).getNumberIncomingValues()
 					== numBadPreds))
 			{
-				Value undef = UndefValue.get(phi.kind);
+				Value undef = UndefValue.get(phiNode.kind);
 				for (BasicBlock pred : preds)
-					phi.addIncoming(undef, pred);
+					phiNode.addIncoming(undef, pred);
 			}
 		}// end of
 
@@ -364,14 +364,14 @@ public class PromoteMem2Reg
 	}
 
 	/**
-	 * See if we can compute a simplified version of phi instruction.
-	 * If not, this return null.
+	 * See if we can compute a simplified version of phiNode instruction.
+	 * IfStmt not, this return null.
 	 *
-	 * @param phi
+	 * @param phiNode
 	 * @param DT
 	 * @return
 	 */
-	private Instruction simplifyInstruction(Phi phi, DominatorTree DT)
+	private Instruction simplifyInstruction(Instruction.PhiNode phiNode, DominatorTree DT)
 	{
 		return null;
 	}
@@ -386,7 +386,7 @@ public class PromoteMem2Reg
 	 * promoted.
 	 * </p>
 	 * <p>
-	 * Since the reference to alloca (variable) just contains stores and load.
+	 * Since the reference to alloca (variable) just isDeclScope stores and load.
 	 * Stores is definition of alloca, and load is usesList to alloca.
 	 * </p>
 	 *
@@ -396,7 +396,7 @@ public class PromoteMem2Reg
 	 * @param worklist        The list of basic blocks to be renamed.
 	 */
 	private void renamePass(BasicBlock BB, BasicBlock pred,
-			Value[] incomgingValues, LinkedList<RenamePassData> worklist)
+                            Value[] incomgingValues, LinkedList<RenamePassData> worklist)
 	{
 		Value inst;
 		HashSet<BasicBlock> visitedSuccs = new HashSet<>();
@@ -404,15 +404,15 @@ public class PromoteMem2Reg
 		while (true)
 		{
 			// determine whether any phi node already be in the block.
-			if ((inst = BB.firstInst()) instanceof Phi)
+			if ((inst = BB.firstInst()) instanceof Instruction.PhiNode)
 			{
-				Phi phi = (Phi) inst;
-				// to distinguish between phi node being inserted by this invocation
-				// of mem2reg from those phi nodes that already existed in the Module
+				Instruction.PhiNode phiNode = (Instruction.PhiNode) inst;
+				// to distinguish between phiNode node being inserted by this invocation
+				// of mem2reg from those phiNode nodes that already existed in the Module
 				// before mem2reg was run.
-				if (PhiToAllocaMap.containsKey(phi))
+				if (PhiToAllocaMap.containsKey(phiNode))
 				{
-					int newPhiNumOperands = phi.getNumberIncomingValues();
+					int newPhiNumOperands = phiNode.getNumberIncomingValues();
 					int numEdges = Collections.frequency(pred.getSuccs(), BB);
 					assert numEdges
 							> 0 : "Must be at least one edge form pred to BB!";
@@ -420,26 +420,26 @@ public class PromoteMem2Reg
 					int idx = 1;
 					do
 					{
-						int allocaNo = PhiToAllocaMap.get(phi);
+						int allocaNo = PhiToAllocaMap.get(phiNode);
 
-						// sets the undef value for phi node, it is reason that
+						// sets the undef value for phiNode node, it is reason that
 						// handling loop.
 						for (int j = 0; j < numEdges; ++j)
-							phi.addIncoming(incomgingValues[allocaNo], pred);
+							phiNode.addIncoming(incomgingValues[allocaNo], pred);
 
 						// the currently active variable for this block is now
-						// the phi.
-						incomgingValues[allocaNo] = phi;
+						// the phiNode.
+						incomgingValues[allocaNo] = phiNode;
 
 						// no more instruction
 						if (idx >= BB.size())
 							break;
 						inst = BB.getInst(idx++);
-						// the handling phi node has finished!
-						if (!(inst instanceof Phi))
+						// the handling phiNode node has finished!
+						if (!(inst instanceof Instruction.PhiNode))
 							break;
-						phi = (Phi) inst;
-					} while (phi.getNumberIncomingValues()
+						phiNode = (Instruction.PhiNode) inst;
+					} while (phiNode.getNumberIncomingValues()
 							== newPhiNumOperands);
 				}
 			}
@@ -455,12 +455,12 @@ public class PromoteMem2Reg
 				inst = it.next();
 
 				// Only load and store to alloca instruction will be handled,
-				// because at our Module, the usesList of alloca just contains laods
+				// because at our Module, the usesList of alloca just isDeclScope laods
 				// and stores.
 				if (inst instanceof LoadInst)
 				{
 					LoadInst LI = (LoadInst) inst;
-					Alloca src = LI.from;
+					Instruction.AllocaInst src = LI.from;
 					if (src == null)
 						continue;
 
@@ -478,7 +478,7 @@ public class PromoteMem2Reg
 				else if (inst instanceof StoreInst)
 				{
 					StoreInst SI = (StoreInst) inst;
-					Alloca dest = SI.dest;
+					AllocaInst dest = SI.dest;
 					if (dest == null)
 						continue;
 
@@ -510,16 +510,16 @@ public class PromoteMem2Reg
 	}
 
 	/**
-	 * Many allocas are only used within a single basic block.  If this is the
+	 * Many allocas are only used within a single basic block.  IfStmt this is the
 	 * case, avoid traversing the CFG and inserting a lot of potentially useless
 	 * PHI nodes by just performing a single linear pass over the basic block
-	 * using the Alloca.
+	 * using the AllocaInst.
 	 *
 	 * @param AI
 	 * @param info
 	 * @param LBI
 	 */
-	private void promoteSingleBlockAlloca(Alloca AI, AllocaInfo info,
+	private void promoteSingleBlockAlloca(Instruction.AllocaInst AI, AllocaInfo info,
 			LargeBlockInfo LBI)
 	{
 		// sort the stores by their index, making it efficient to do lookup.
@@ -594,7 +594,7 @@ public class PromoteMem2Reg
 	 * @param allocaNum The index of alloca into allocas list.
 	 * @param info      The information relative to alloca.
 	 */
-	private void determineInsertionPoint(Alloca AI, int allocaNum,
+	private void determineInsertionPoint(Instruction.AllocaInst AI, int allocaNum,
 			AllocaInfo info)
 	{
 		// 璇ュ嚱鏁扮殑鐩殑灏辨槸鑾峰彇AI鎸囦护鐨勬敮閰嶈竟鐣岄泦锛岀劧鍚庢斁缃甈hi鍑芥暟銆�
@@ -714,21 +714,21 @@ public class PromoteMem2Reg
 	 */
 	private boolean queuePhiNode(BasicBlock BB, int allocaNo, int Version)
 	{
-		Phi phi = newPhiNodes.get(new Pair(BBNumbers.get(BB), allocaNo));
+		Instruction.PhiNode phiNode = newPhiNodes.get(new Pair(BBNumbers.get(BB), allocaNo));
 
-		// if the specific BB already has a phi node added for the i-th alloca
+		// if the specific BB already has a phiNode node added for the i-th alloca
 		// and the we have done.
-		if (phi != null)
+		if (phiNode != null)
 			return false;
 
-		Alloca AI = allocas.get(allocaNo);
-		// create a phi node and add the phi-node into the basic block
-		phi = new Phi(AI.kind, BB.getNumOfPreds(),
-				AI.getName() + "." + (Version++));
-		BB.insertAfterFirst(phi);
+		AllocaInst AI = allocas.get(allocaNo);
+		// create a phiNode node and add the phiNode-node into the basic block
+		phiNode = new Instruction.PhiNode(AI.kind, BB.getNumOfPreds(),
+				AI.name() + "." + (Version++));
+		BB.insertAfterFirst(phiNode);
 		++numberPhiInsert;
 
-		PhiToAllocaMap.put(phi, allocaNo);
+		PhiToAllocaMap.put(phiNode, allocaNo);
 		return true;
 	}
 
@@ -736,7 +736,7 @@ public class PromoteMem2Reg
 	 * Determine the block where this alloca is live.
 	 * <p>
 	 * <p>
-	 * Knowing that allows us to avoid inserting Phi node into blocks which
+	 * Knowing that allows us to avoid inserting PhiNode node into blocks which
 	 * don't lead to use(thus, the phi node inserted would be dead).
 	 * </p>
 	 *
@@ -745,8 +745,8 @@ public class PromoteMem2Reg
 	 * @param defBlocks
 	 * @param liveInBlocks
 	 */
-	private void computeLifenessBlocks(Alloca AI, AllocaInfo info,
-			HashSet<BasicBlock> defBlocks, HashSet<BasicBlock> liveInBlocks)
+	private void computeLifenessBlocks(AllocaInst AI, AllocaInfo info,
+                                       HashSet<BasicBlock> defBlocks, HashSet<BasicBlock> liveInBlocks)
 	{
 		// To determine liveness, we must iterate through the predecessors of blocks
 		// where the def is live.  Blocks are added to the worklist if we need to
@@ -754,8 +754,8 @@ public class PromoteMem2Reg
 		LinkedList<BasicBlock> liveBlockWorkList = new LinkedList<>();
 		liveBlockWorkList.addAll(info.usingBlocks);
 
-		// If any of the using blocks is also a definition block, check to see if the
-		// definition occurs before or after the use.  If it happens before the use,
+		// IfStmt any of the using blocks is also a definition block, check to see if the
+		// definition occurs before or after the use.  IfStmt it happens before the use,
 		// the value isn't really live-in.
 		for (int idx = 0; idx < liveBlockWorkList.size(); ++idx)
 		{
@@ -814,23 +814,23 @@ public class PromoteMem2Reg
 	/**
 	 * <p>
 	 * Rewrites the loads of it that directly dominated by the a single store
-	 * to this Alloca instruction with the value stored.
+	 * to this AllocaInst instruction with the value stored.
 	 * </p>
 	 * <p>
 	 * When there is only a single store, we can use the domtree to trivially
 	 * replace all of the dominated loads with the stored value. Do so, and return
-	 * true if this has successfully promoted the alloca entirely. If this returns
+	 * true if this has successfully promoted the alloca entirely. IfStmt this returns
 	 * false there were some loads which were not dominated by the single store
 	 * and thus must be phi-ed with undef. We fall back to the standard alloca
 	 * </p>
 	 *
 	 * @param AI   The alloca instruction.
-	 * @param info Alloca information analysis for rewriting.
-	 * @param LBI  The large block information for optimization.
+	 * @param info AllocaInst information analysis for rewriting.
+	 * @param LBI  The large block information for opt.
 	 * @param DT   The dominator tree for calculating dominator frontier.
 	 * @return return true if rewriting successfully.
 	 */
-	private boolean rewriteSingleStoreAlloca(Alloca AI, AllocaInfo info,
+	private boolean rewriteSingleStoreAlloca(Instruction.AllocaInst AI, AllocaInfo info,
 			LargeBlockInfo LBI, DominatorTree DT)
 	{
 		// the last definition of alloca
@@ -860,7 +860,7 @@ public class PromoteMem2Reg
 			{
 				// if the load and store are in a same block, compare the
 				// indices of the two instrcution to see which one come first.
-				// If the load came before the store, don't handle it.
+				// IfStmt the load came before the store, don't handle it.
 				if (storeIndex < 0)
 					storeIndex = LBI.getIndexOfInstruction(onlyStore);
 				if (storeIndex > LBI.getIndexOfInstruction(LI))
@@ -1036,7 +1036,7 @@ public class PromoteMem2Reg
 
 	/**
 	 * A class for recording the usesList and definition information
-	 * of {@code Alloca}instrcution.
+	 * of {@code AllocaInst}instrcution.
 	 */
 	static class AllocaInfo
 	{
@@ -1087,9 +1087,9 @@ public class PromoteMem2Reg
 		 * Scan that usesList of the specified alloca, filling in the AllocaInfo
 		 * used by the rest of the class to reason the usesList of this instruction.
 		 *
-		 * @param alloca An {@code Alloca} instruction to be analyzed.
+		 * @param alloca An {@code AllocaInst} instruction to be analyzed.
 		 */
-		void analyzeAlloca(Alloca alloca)
+		void analyzeAlloca(Instruction.AllocaInst alloca)
 		{
 			clear();
 			/*

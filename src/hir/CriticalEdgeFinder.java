@@ -40,7 +40,7 @@ public class CriticalEdgeFinder
 				if (succ.getNumOfPreds() >= 2)
 				{
 					// Probably we don't have to make it a critical
-					// edge if succ only contains the _same_ predecessor multiple times.
+					// edge if succ only isDeclScope the _same_ predecessor multiple times.
 
 					// That is not needed to take Condition above described into
 					// consideration, due to useless control flow elimination.

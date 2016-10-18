@@ -8,7 +8,7 @@ import lir.linearScan.OperandPool;
 import utils.Util;
 
 /**
- * A helper utility for loading the result of an instruction for being used by another
+ * A helper utility for loading the getReturnValue of an instruction for being used by another
  * instruction. This helper takes into account the specifics of the consuming
  * instruction such as whether it requires the input LIROperand to be in memory
  * or a register, any register length requirements of the input LIROperand, and
@@ -24,7 +24,7 @@ public class LIRItem
 
 	/**
 	 * The instruction whose usage by another instruction is being modeled by this object.
-	 * An instruction {@code x} uses instruction {@code y} if the LIROperand result
+	 * An instruction {@code x} uses instruction {@code y} if the LIROperand getReturnValue
 	 * of {@code y} is an input LIROperand of {@code x}.
 	 */
 	public Value instruction;
@@ -35,12 +35,12 @@ public class LIRItem
 	private final LIRGenerator gen;
 
 	/**
-	 * The LIROperand holding the result of this item's {@linkplain #instruction}.
+	 * The LIROperand holding the getReturnValue of this item's {@linkplain #instruction}.
 	 */
 	private LIRValue resultOperand;
 
 	/**
-	 * Denotes if the use of the instruction's {@linkplain #resultOperand result LIROperand}
+	 * Denotes if the use of the instruction's {@linkplain #resultOperand getReturnValue LIROperand}
 	 * overwrites the value in the LIROperand. That is, the use both uses and defines the
 	 * LIROperand. In this case, an {@linkplain #intermediateOperand intermediate LIROperand}
 	 * is created for the use so that other consumers of this item's {@linkplain #instruction}
@@ -155,7 +155,7 @@ public class LIRItem
 
 	public void loadByteItem()
 	{
-		if (gen.backend.targetMachine.arch.isX86())
+		if (gen.backend.machineInfo.arch.isX86())
 		{
 			loadItem();
 			LIRValue res = result();
@@ -171,7 +171,7 @@ public class LIRItem
 				resultOperand = reg;
 			}
 		}
-		else if (gen.backend.targetMachine.arch.isSPARC())
+		else if (gen.backend.machineInfo.arch.isSPARC())
 		{
 			loadItem();
 		}
@@ -183,7 +183,7 @@ public class LIRItem
 
 	public void loadNonconstant()
 	{
-		if (gen.backend.targetMachine.arch.isX86())
+		if (gen.backend.machineInfo.arch.isX86())
 		{
 			LIRValue r = instruction.LIROperand();
 			if (r.isConstant())
@@ -195,7 +195,7 @@ public class LIRItem
 				loadItem();
 			}
 		}
-		else if (gen.backend.targetMachine.arch.isSPARC())
+		else if (gen.backend.machineInfo.arch.isSPARC())
 		{
 			LIRValue r = instruction.LIROperand();
 			if (gen.canInlineAsConstant(instruction))
@@ -224,13 +224,13 @@ public class LIRItem
 	}
 
 	/**
-	 * Creates an LIROperand containing the result of {@linkplain #instruction input instruction}.
+	 * Creates an LIROperand containing the getReturnValue of {@linkplain #instruction input instruction}.
 	 */
 	public void loadItem()
 	{
 		if (result().isIllegal())
 		{
-			// update the item's result
+			// update the item's getReturnValue
 			resultOperand = instruction.LIROperand();
 		}
 		LIRValue result = result();

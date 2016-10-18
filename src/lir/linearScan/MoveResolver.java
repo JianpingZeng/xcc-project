@@ -89,8 +89,8 @@ public class MoveResolver
 	private boolean verifyBeforeResolve()
 	{
 		assert mappingFrom.size() == mappingFromOpr
-				.size() : "length must be equal";
-		assert mappingFrom.size() == mappingTo.size() : "length must be equal";
+				.size() : "getArraySize must be equal";
+		assert mappingFrom.size() == mappingTo.size() : "getArraySize must be equal";
 		assert insertList != null
 				&& insertIdx != -1 : "insert position not set";
 

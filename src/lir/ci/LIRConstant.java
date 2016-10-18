@@ -72,7 +72,7 @@ public final class LIRConstant extends LIRValue
 
 	/**
 	 * The boxed primitive value as a {@code long}. This is ignored iff {@code kind.isObject()}.
-	 * For {@code float} and {@code double} VALUES, this value is the result of
+	 * For {@code float} and {@code double} VALUES, this value is the getReturnValue of
 	 * {@link Float#floatToRawIntBits(float)} and {@link Double#doubleToRawLongBits(double)} respectively.
 	 */
 	private final long primitive;

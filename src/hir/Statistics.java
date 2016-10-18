@@ -2,7 +2,7 @@ package hir;
 
 /**
  * Contains statistics gathered during the compilation of a method and reported back
- * from the compiler as the result of compilation.
+ * from the compiler as the getReturnValue of compilation.
  *
  * @author Xlous.zeng
  */
@@ -24,12 +24,12 @@ public class Statistics
 	public int loopCount;
 
 	/**
-	 * The number of methods inlined.
+	 * The number of functions inlined.
 	 */
 	public int inlineCount;
 
 	/**
-	 * The number of methods folded (i.e. evaluated).
+	 * The number of functions folded (i.e. evaluated).
 	 */
 	public int foldCount;
 

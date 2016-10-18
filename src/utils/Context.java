@@ -45,7 +45,7 @@ public class Context {
    /**
      *
      * The underlying map storing the data.
-     * We maintain the invariant that this entityTable contains only
+     * We maintain the invariant that this entityTable isDeclScope only
      * mappings of the form
      *     Key<T> -> T
      */

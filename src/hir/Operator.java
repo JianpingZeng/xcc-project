@@ -3,10 +3,10 @@ package hir;
 import static hir.Operator.Flags.*;
 import lir.ci.LIRKind;
 /**
- * This file defines a enumerator that contains all of operators which represents
+ * This file defines a enumerator that isDeclScope all of operators which represents
  * as a integer in Module instruction.
  *
- * Created by Jianping Zeng .
+ * @author xlous.zeng
  */
 public enum Operator
 {
@@ -119,7 +119,7 @@ public enum Operator
 	}
 
 	/**
-	 * Determinates if this operator is commutative.
+	 * Determines if this operator is commutative.
 	 * @return
 	 */
 	public boolean isCommutative()
@@ -127,7 +127,7 @@ public enum Operator
 		return ((this.flags & 0xff) & COMMUTATIVE) != 0;
 	}
 	/**
-	 * Check if this operator is an additive operation. Return true if 
+	 * Check if this operator is an additive operation. ReturnInst true if
 	 * condition is satisfied, otherwise return false.
 	 * @return
 	 */
@@ -135,7 +135,10 @@ public enum Operator
 	{
 		return this.index >= IAdd.index && this.index <= DAdd.index;
 	}
-	
+    /**
+     * Determines whether this operator is subtraction operator.
+     * @return
+     */
 	public boolean isSub()
 	{
 		return index >= ISub.index && index <= DSub.index;
@@ -151,29 +154,35 @@ public enum Operator
 	
 	public static Operator getMulByKind(LIRKind kind)
 	{
-		if (kind.isDouble())
-			return DMul;
-		else if (kind.isFloat())
-			return Operator.FMul;
-		else if (kind.isInt())
-			return IMul;
-		else if (kind.isLong())
-			return LMul;
-		else 
-			return null;
+		switch (kind)
+        {
+            case Int:
+                return IMul;
+            case Float:
+                return FMul;
+            case Long:
+                return LMul;
+            case Double:
+                return DMul;
+            default:
+                return None;
+        }
 	}
 	
 	public static Operator getAddByKind(LIRKind kind)
 	{
-		if (kind.isDouble())
-			return Operator.DAdd;
-		else if (kind.isFloat())
-			return Operator.FAdd;
-		else if (kind.isInt())
-			return Operator.IAdd;
-		else if (kind.isLong())
-			return Operator.LAdd;
-		else 
-			return null;
+	    switch (kind)
+        {
+            case Double:
+                return DAdd;
+            case Float:
+                return FAdd;
+            case Long:
+                return LAdd;
+            case Int:
+                return IAdd;
+            default:
+                return None;
+        }
 	}
 }

@@ -1,10 +1,7 @@
-package optimization;
+package opt;
 
+import hir.*;
 import hir.BasicBlock;
-import hir.DominatorTree;
-import hir.Instruction;
-import hir.Method;
-import hir.Value;
 
 import java.util.List;
 import java.util.HashMap;
@@ -18,7 +15,7 @@ import java.util.HashMap;
  */
 public class GVN
 {
-	private final Method m;
+	private final Function m;
 
 	private final HashMap<BasicBlock, ValueMap> valueMaps;
 
@@ -30,7 +27,7 @@ public class GVN
 	 * Creates a new Global value numbering with given method.
 	 * @param m The method whose CFG where global value number optimized.
 	 */
-	public GVN(Method m)
+	public GVN(Function m)
 	{
 		this.m = m;
 		DT = new DominatorTree(false, m);
@@ -43,7 +40,7 @@ public class GVN
 	}
 
 	/**
-	 * Performs optimization.
+	 * Performs opt.
 	 * @param blocks    A list of all basic block in linear scan order.
 	 */
 	private void optimize(List<BasicBlock> blocks)
@@ -75,7 +72,7 @@ public class GVN
 			// creates a new value map with parent map
 			currentMap = new ValueMap(valueMaps.get(dominator));
 			assert block.getPreds().contains(dominator) :
-					"The predecssors list must contains dominator";
+					"The predecssors list must isDeclScope dominator";
 
 			// visit all instructions in current block
 			for (hir.Value inst : block)

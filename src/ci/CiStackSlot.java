@@ -59,7 +59,7 @@ public final class CiStackSlot extends CiValue {
     }
 
     /**
-     * Gets the index of this stack slot. If this is a spill slot or outgoing stack argument to a call,
+     * Gets the index of this stack slot. IfStmt this is a spill slot or outgoing stack argument to a call,
      * then the return value is relative to the stack pointer. Otherwise this is an incoming stack
      * argument and the return value is relative to the frame pointer.
      *
@@ -136,7 +136,7 @@ public final class CiStackSlot extends CiValue {
     }
 
     /**
-     * Default size of the cache to generate per kind.
+     * Default getTypeSize of the cache to generate per kind.
      */
     private static final int CACHE_PER_KIND_SIZE = 100;
 
@@ -168,7 +168,7 @@ public final class CiStackSlot extends CiValue {
      * The {@link #index} VALUES range from {@code 0} to {@code count - 1}.
      *
      * @param kind the {@code CiKind} of the stack slot
-     * @param count the size of the array to create
+     * @param count the getTypeSize of the array to create
      * @return the generated {@code CiStackSlot} array
      */
     private static CiStackSlot[] makeCacheForKind(CiKind kind, int count, boolean inCallerFrame) {

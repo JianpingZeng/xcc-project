@@ -63,7 +63,7 @@ public class Main
 	                "Preprocess only, no compile, assembly or link"),
 	        new Option("-c", "", "Compile and assemble but no link"),
 	        new Option("-S", "", "Compile only, no assembly or link"),
-	        new Option("-O", "Specify the level of optimization")
+	        new Option("-O", "Specify the level of opt")
 	        {
 		        @Override
 		        boolean matches(String arg)
@@ -75,10 +75,10 @@ public class Main
 		        boolean process(String option)
 		        {
 			        String type = option.substring(2);
-			        // obtains level of optimization.
+			        // obtains level of opt.
 			        if (!type.matches("^[0123s]|)$"))
 			        {
-				        error("unknown optimization switch: " + option);
+				        error("unknown opt switch: " + option);
 				        return true;
 			        }
 			        options.put(name, option);
@@ -353,7 +353,7 @@ public class Main
 		}
 
 		/**
-		 * Process the option (with arg). Return true if error detected.
+		 * Process the option (with arg). ReturnInst true if error detected.
 		 */
 		boolean process(String option, String arg)
 		{
@@ -362,7 +362,7 @@ public class Main
 		}
 
 		/**
-		 * Process the option (without arg). Return true if error detected.
+		 * Process the option (without arg). ReturnInst true if error detected.
 		 */
 		boolean process(String option)
 		{

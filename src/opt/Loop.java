@@ -1,4 +1,4 @@
-package optimization; 
+package opt; 
 
 import hir.BasicBlock;
 import hir.Instruction;
@@ -12,11 +12,11 @@ import java.util.List;
  * <p>
  * This class describe the concept of loop in a control flow graph of a method, 
  * which usually used for {@linkplain LoopAnalysis} when performing loop 
- * optimization.
+ * opt.
  * </p>
  * <p>Note that only reducible loop, so called natural loop, can be identified 
  * and optimized. In other word, all of irreducible loops were ignored when 
- * performing loop optimization. 
+ * performing loop opt. 
  * </p>
  * @author Xlous.zeng
  * @version 0.1
@@ -42,7 +42,7 @@ public class Loop
 	 */
 	final int loopDepth;
 	/**
-	 * A pointer to its outer loop loop which contains this.
+	 * A pointer to its outer loop loop which isDeclScope this.
 	 */
 	Loop outerLoop;
 	/**
@@ -59,7 +59,7 @@ public class Loop
 	 */
 	private BasicBlock followBlock;
 	
-	public Loop(LinkedList<BasicBlock> blocks, 
+	public Loop(LinkedList<BasicBlock> blocks,
 			List<BasicBlock> exitBlocks,
 			BasicBlock followBlock)
 	{
@@ -120,9 +120,9 @@ public class Loop
 	}
 	/**
 	 * <p>
-	 * If there is a preheader for this loop, return it.  A loop has a preheader 
+	 * IfStmt there is a preheader for this loop, return it.  A loop has a preheader
 	 * if there is only one edge to the header of the loop from outside of the 
-	 * loop.  If this is the case, the block branching to the header of the loop 
+	 * loop.  IfStmt this is the case, the block branching to the header of the loop
 	 * is the preheader node.
 	 * </p>
 	 * <p>This method returns null if there is no preheader for the loop.</p>
@@ -143,7 +143,7 @@ public class Loop
 	}
 	
 	/**
-	 * If given loop's header has exactly one predecessor outside of loop,
+	 * IfStmt given loop's header has exactly one predecessor outside of loop,
 	 * return it, otherwise, return null.
 	 * @return
 	 */
@@ -163,7 +163,7 @@ public class Loop
 		return outer;
 	}
 	/**
-	 * If given basic block is contained in this loop, return true,
+	 * IfStmt given basic block is contained in this loop, return true,
 	 * otherwise false returned.
 	 * @param block
 	 * @return
@@ -173,7 +173,7 @@ public class Loop
 		return blocks.contains(block);		
 	}
 	/**
-	 * If given instruction is contained in this loop, return true,
+	 * IfStmt given instruction is contained in this loop, return true,
 	 * otherwise false returned
 	 * @param inst
 	 * @return
@@ -184,7 +184,7 @@ public class Loop
 	}
 	
 	/**
-	 * Return true if the specified loop contained in this. 
+	 * ReturnInst true if the specified loop contained in this.
 	 * @param loop
 	 * @return
 	 */

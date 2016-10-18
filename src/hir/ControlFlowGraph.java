@@ -10,7 +10,7 @@ public class ControlFlowGraph
 	/**
 	 * The function that this control flow graph represents.
 	 */
-	private Method attachedMethod;
+	private Function attachedFunction;
 
 	/**
 	 * The entry basic block of this control flow graph.
@@ -43,12 +43,12 @@ public class ControlFlowGraph
 	/**
 	 * Constructor that constructs an control flow graph.
 	 *
-	 * @param method the method that this graph represents.
+	 * @param function the function that this graph represents.
 	 */
-	public ControlFlowGraph(Method method)
+	public ControlFlowGraph(Function function)
 	{
 
-		this.attachedMethod = method;
+		this.attachedFunction = function;
 		// id of basic block begin with one.
 		stats.blockCount = 1;
 		// id of quad begin with zero.
@@ -102,9 +102,9 @@ public class ControlFlowGraph
 	 *
 	 * @return the attached function.
 	 */
-	public Method getMethod()
+	public Function getMethod()
 	{
-		return this.attachedMethod;
+		return this.attachedFunction;
 	}
 
 	/**
@@ -114,7 +114,7 @@ public class ControlFlowGraph
 	 * @param bbName The name of the basic block to be constructed.
 	 * @return the newly created basic block.
 	 */
-	public BasicBlock createBasicBlock( String bbName)
+	public BasicBlock createBasicBlock(String bbName)
 	{
 
 		return BasicBlock.createBasicBlock(bbCounter++, bbName, this);
@@ -239,7 +239,7 @@ public class ControlFlowGraph
 	}
 
 	private void postOrderHelper(BasicBlock entry,
-			boolean[] visited, LinkedList<BasicBlock> result, boolean direction)
+                                 boolean[] visited, LinkedList<BasicBlock> result, boolean direction)
 	{
 		if (visited[entry.getID()])
 			return;
@@ -277,7 +277,7 @@ public class ControlFlowGraph
 	 */
 
 	private void reversePostOrder_helper(BasicBlock b, boolean[] visited,
-			java.util.LinkedList<BasicBlock> result, boolean direction)
+                                         java.util.LinkedList<BasicBlock> result, boolean direction)
 	{
 		/**
 		 There is a more understandable method that recursively traverse the CFG
@@ -287,9 +287,9 @@ public class ControlFlowGraph
 		 List<BasicBlock> bbs = direction ? b.getSuccs() : b.getPreds();
 		 for (BasicBlock b2 : bbs)
 		 {
-		 reversePostOrder_helper(b2, visited, result, direction);
+		 reversePostOrder_helper(b2, visited, getReturnValue, direction);
 		 }
-		 result.addFirst(b);
+		 getReturnValue.addFirst(b);
 		 */
 
 		if (visited[b.getID()])

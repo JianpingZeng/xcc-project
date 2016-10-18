@@ -68,7 +68,7 @@ public final class LIRRegister implements Comparable<LIRRegister>, Serializable
 	public final int encoding;
 
 	/**
-	 * The length of the stack slot used to spill the value of this register.
+	 * The getArraySize of the stack slot used to spill the value of this register.
 	 */
 	public final int spillSlotSize;
 
@@ -111,7 +111,7 @@ public final class LIRRegister implements Comparable<LIRRegister>, Serializable
 	 *
 	 * @param number        unique identifier for the register
 	 * @param encoding      the targetAbstractLayer machine encoding for the register
-	 * @param spillSlotSize the length of the stack slot used to spill the value of the register
+	 * @param spillSlotSize the getArraySize of the stack slot used to spill the value of the register
 	 * @param name          the mnemonic name for the register
 	 * @param flags         the set of {@link RegisterFlag} VALUES for the register
 	 */

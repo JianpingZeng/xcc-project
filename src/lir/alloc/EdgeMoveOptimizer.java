@@ -53,7 +53,7 @@ public final class EdgeMoveOptimizer
 	/**
 	 * Determines if two operations are both {@linkplain LIROpcode#Move moves}
 	 * that have the same {@linkplain LIROp1#operand() source} and
-	 * {@linkplain LIROp1#result() destination} operands.
+	 * {@linkplain LIROp1#result() destination} reservedOperands.
 	 *
 	 * @param op1 the first instruction to compare
 	 * @param op2 the second instruction to compare
@@ -190,7 +190,7 @@ public final class EdgeMoveOptimizer
 		if ((branch.opcode != LIROpcode.Branch
 				&& branch.opcode != LIROpcode.CondFloatBranch))
 		{
-			// not a valid case for optimization
+			// not a valid case for opt
 			// currently, only blocks that end with two branches (conditional
 			// branch followed by unconditional branch) are optimized
 			return;
@@ -256,7 +256,7 @@ public final class EdgeMoveOptimizer
 				if (otherSeq.isEmpty() || !same(op, first(otherSeq)))
 				{
 					// these instructions are different and cannot be optimized .
-					// no further optimization possible
+					// no further opt possible
 					return;
 				}
 			}

@@ -38,7 +38,7 @@ public interface RegisterConfig
 	 * @param stackOnly  ignore LIRRegisters
 	 */
 	CallingConvention getCallingConvention(LIRKind[] parameters,
-			TargetMachine target, boolean stackOnly);
+			MachineInfo target, boolean stackOnly);
 
 	/**
 	 * Gets the ordered set of LIRRegisters that are can be used to pass parameters

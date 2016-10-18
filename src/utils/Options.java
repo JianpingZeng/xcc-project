@@ -10,8 +10,8 @@ import java.util.Hashtable;
 
 /**
  * A table of all command-line options.
- *  If an option has an argument, the option name is mapped to the argument.
- *  If a set option has no argument, it is mapped to itself.
+ *  IfStmt an option has an argument, the option name is mapped to the argument.
+ *  IfStmt a set option has no argument, it is mapped to itself.
  */
 public class Options extends Hashtable {
 
