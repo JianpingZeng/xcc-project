@@ -40,7 +40,7 @@ public class LIROp2 extends LIRInstruction
 	 * @param condition the instruction's condition
 	 * @param opr1      the first input LIROperand
 	 * @param opr2      the second input LIROperand
-	 * @param result    the LIROperand that holds the result of this instruction
+	 * @param result    the LIROperand that holds the getReturnValue of this instruction
 	 */
 	public LIROp2(LIROpcode opcode, Condition condition, LIRValue opr1,
 			LIRValue opr2, LIRValue result)
@@ -57,7 +57,7 @@ public class LIROp2 extends LIRInstruction
 	 * @param opcode the instruction's opcode
 	 * @param opr1   the first input LIROperand
 	 * @param opr2   the second input LIROperand
-	 * @param result the LIROperand that holds the result of this instruction
+	 * @param result the LIROperand that holds the getReturnValue of this instruction
 	 * @param kind   the kind of this instruction
      * @param hasCall
 	 */
@@ -78,7 +78,7 @@ public class LIROp2 extends LIRInstruction
 	 * @param opcode the instruction's opcode
 	 * @param opr1   the first input LIROperand
 	 * @param opr2   the second input LIROperand
-	 * @param result the LIROperand that holds the result of this instruction
+	 * @param result the LIROperand that holds the getReturnValue of this instruction
 	 * @param tmp    the temporary LIROperand used by this instruction
 	 */
 	public LIROp2(LIROpcode opcode, LIRValue opr1, LIRValue opr2, LIRValue result,
@@ -96,7 +96,7 @@ public class LIROp2 extends LIRInstruction
 	 * @param opcode the instruction's opcode
 	 * @param opr1   the first input LIROperand
 	 * @param opr2   the second input LIROperand
-	 * @param result the LIROperand that holds the result of this instruction
+	 * @param result the LIROperand that holds the getReturnValue of this instruction
 	 */
 	public LIROp2(LIROpcode opcode, LIRValue opr1, LIRValue opr2, LIRValue result)
 	{

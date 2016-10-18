@@ -1,4 +1,4 @@
-package optimization;
+package opt;
 
 import hir.Instruction;
 import hir.Value;
@@ -56,7 +56,7 @@ public class ValueMap
 	private int count;
 
 	/**
-	 * The maximun length of hash table allowed. It will be resized when load
+	 * The maximun getArraySize of hash table allowed. It will be resized when load
 	 * factor is no less than 0.75.
 	 */
 	private int max;

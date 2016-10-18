@@ -42,7 +42,7 @@ public final class BitMap extends BitSet
 	public void setFrom(BitMap other)
 	{
 		assert length() == other.length() :
-				"must have same length";
+				"must have same getArraySize";
 		for (int i = 0; i < length(); i++)
 			set(i, other.get(i));
 	}
@@ -54,7 +54,7 @@ public final class BitMap extends BitSet
 	public void diff(BitMap other)
 	{
 		assert length() == other.length() :
-				"must have same length";
+				"must have same getArraySize";
 		for (int i = 0; i < length(); i++)
 		{
 			boolean tmp = get(i);

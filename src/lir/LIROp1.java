@@ -22,7 +22,7 @@ public class LIROp1 extends LIRInstruction
 	 *
 	 * @param opcode the instruction's opcode
 	 * @param opr    the first input LIROperand
-	 * @param result the LIROperand that holds the result of this instruction
+	 * @param result the LIROperand that holds the getReturnValue of this instruction
 	 * @param kind   the kind of this instruction
 	 */
 	public LIROp1(LIROpcode opcode, LIRValue opr, LIRValue result, LIRKind kind)
@@ -39,7 +39,7 @@ public class LIROp1 extends LIRInstruction
 	 *
 	 * @param opcode the instruction's opcode
 	 * @param opr    the first input LIROperand
-	 * @param result the LIROperand that holds the result of this instruction
+	 * @param result the LIROperand that holds the getReturnValue of this instruction
 	 * @param kind   the kind of this instruction
 	 * @param moveKind the instance of {@code LIRMoveKind} for specifying the the kind of move
 	 */
@@ -58,7 +58,7 @@ public class LIROp1 extends LIRInstruction
 	 *
 	 * @param opcode the instruction's opcode
 	 * @param opr    the first input LIROperand
-	 * @param result the LIROperand that holds the result of this instruction
+	 * @param result the LIROperand that holds the getReturnValue of this instruction
 	 */
 	public LIROp1(LIROpcode opcode, LIRValue opr, LIRValue result)
 	{
@@ -71,7 +71,7 @@ public class LIROp1 extends LIRInstruction
 	 *
 	 * @param moveKind the kind of move the instruction represents
 	 * @param operand  the single input LIROperand
-	 * @param result   the LIROperand that holds the result of this instruction
+	 * @param result   the LIROperand that holds the getReturnValue of this instruction
 	 * @param kind     the kind of this instruction
 	 */
 	public LIROp1(LIRMoveKind moveKind, LIRValue operand, LIRValue result,
@@ -152,7 +152,7 @@ public class LIROp1 extends LIRInstruction
 		{
 			case Move:
 				assert (operand().isLegal()) && (result()
-						.isLegal()) : "Operand and result must be valid in a LIROp1 move instruction.";
+						.isLegal()) : "Operand and getReturnValue must be valid in a LIROp1 move instruction.";
 				break;
 			case Return:
 				assert operand().isVariableOrRegister() || operand()

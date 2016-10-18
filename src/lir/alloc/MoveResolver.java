@@ -89,8 +89,8 @@ public class MoveResolver
 	private boolean verifyBeforeResolve()
 	{
 		assert mappingFrom.size() == mappingFromOpr
-				.size() : "length must be equal";
-		assert mappingFrom.size() == mappingTo.size() : "length must be equal";
+				.size() : "getArraySize must be equal";
+		assert mappingFrom.size() == mappingTo.size() : "getArraySize must be equal";
 		assert insertList != null
 				&& insertIdx != -1 : "insert position not set";
 
@@ -271,7 +271,7 @@ public class MoveResolver
 	{
 		assert verifyBeforeResolve();
 
-		// Block all registers that are used as input operands of a move.
+		// Block all registers that are used as input reservedOperands of a move.
 		// When a register is blocked, no move to this register is emitted.
 		// This is necessary for detecting cycles in moves.
 		int i;

@@ -1,10 +1,8 @@
-package lir.backend.x86;
+package lir.backend.ia32;
 
+import hir.*;
 import hir.BasicBlock;
-import hir.Condition;
-import hir.Instruction;
-import hir.Operator;
-import hir.Value;
+
 import java.util.HashMap;
 import lir.LIRGenerator;
 import lir.LIRItem;
@@ -20,26 +18,26 @@ import compiler.*;
 /**
  * @author Xlous.zeng
  */
-public final class X86LIRGenerator extends LIRGenerator
+public final class IA32LIRGenerator extends LIRGenerator
 {
-	private static final LIRRegisterValue EAX_I = X86.eax.asValue(LIRKind.Int);
-	private static final LIRRegisterValue EAX_L = X86.eax.asValue(LIRKind.Long);
-	private static final LIRRegisterValue EDX_I = X86.edx.asValue(LIRKind.Int);
-	private static final LIRRegisterValue EDX_L = X86.edx.asValue(LIRKind.Long);
+	private static final LIRRegisterValue EAX_I = IA32.eax.asValue(LIRKind.Int);
+	private static final LIRRegisterValue EAX_L = IA32.eax.asValue(LIRKind.Long);
+	private static final LIRRegisterValue EDX_I = IA32.edx.asValue(LIRKind.Int);
+	private static final LIRRegisterValue EDX_L = IA32.edx.asValue(LIRKind.Long);
 
 	private static final LIRRegisterValue LDIV_TMP = EDX_L;
 
 	/**
-	 * The register in which MUL puts the result for 32-bit multiplication.
+	 * The register in which MUL puts the getReturnValue for 32-bit multiplication.
 	 */
 	private static final LIRRegisterValue LMUL_OUT = EAX_L;
 
-	private static final LIRRegisterValue SHIFT_COUNT_IN = X86.ecx
+	private static final LIRRegisterValue SHIFT_COUNT_IN = IA32.ecx
 			.asValue(LIRKind.Int);
 
 	protected static final LIRValue ILLEGAL = LIRValue.IllegalValue;
 
-	public X86LIRGenerator(Backend backend)
+	public IA32LIRGenerator(Backend backend)
 	{
 		super(backend);
 	}
@@ -56,16 +54,16 @@ public final class X86LIRGenerator extends LIRGenerator
 
 	// memory access
 
-	public void visitAlloca(Instruction.Alloca inst)
+	public void visitAlloca(Instruction.AllocaInst inst)
 	{
 		LIRValue result = createResultVirtualRegister(inst);
-		assert inst.length().isConstant() :
-				"Alloca instruction 'length' is not a constant " + inst.length();
+		assert inst.getArraySize().isConstant() :
+				"AllocaInst instruction 'getArraySize' is not a constant " + inst.getArraySize();
 
-		int len = inst.length().asLIRConstant().asInt();
+		int len = inst.getArraySize().asLIRConstant().asInt();
 
-		// the memory size occupied of one element in Byte
-		int elemSize = backend.targetMachine.sizeInBytes(inst.kind);
+		// the memory getTypeSize occupied of one element in Byte
+		int elemSize = backend.machineInfo.sizeInBytes(inst.kind);
 
 		StackFrame.StackBlock stackBlock = backend.frameMap()
 				.reserveStackBlock(len * elemSize, false);
@@ -75,26 +73,26 @@ public final class X86LIRGenerator extends LIRGenerator
 	}
 
 	/**
-	 * This hashmap just for mapping from Alloca instruction to its allocated
+	 * This hashmap just for mapping from AllocaInst instruction to its allocated
 	 * Stack Block.
 	 */
-	private HashMap<Instruction.Alloca, StackFrame.StackBlock> allocaStackBlock
+	private HashMap<Instruction.AllocaInst, StackFrame.StackBlock> allocaStackBlock
 			= new HashMap<>();
 
 	/**
-	 * Implements store instructions in terms of the X86 'mov' instruction.
+	 * Implements store instructions in terms of the IA32 'mov' instruction.
 	 * @param inst
 	 */
 	public void visitStoreInst(Instruction.StoreInst inst)
 	{
 		LIRVariable valReg = createResultVirtualRegister(inst.value);
 		StackFrame.StackBlock stackBlock = allocaStackBlock.get(inst.dest);
-		assert stackBlock != null: "Alloca isn't allocated in stack";
+		assert stackBlock != null: "AllocaInst isn't allocated in stack";
 		lir.move(valReg, backend.frameMap().toStackAddress(stackBlock));
 	}
 
 	/**
-	 * Implement load instructions in terms of the X86 'mov' instruction. The
+	 * Implement load instructions in terms of the IA32 'mov' instruction. The
 	 * load and store instructions are the only place where we need to worry about
 	 * the momory layout of the targetAbstractLayer machine.
 	 * @param inst
@@ -104,7 +102,7 @@ public final class X86LIRGenerator extends LIRGenerator
 		LIRVariable srcReg = createResultVirtualRegister(inst.from);
 		StackFrame.StackBlock stackBlock = allocaStackBlock.get(inst.from);
 
-		assert stackBlock != null: "Alloca isn't allocated in stack";
+		assert stackBlock != null: "AllocaInst isn't allocated in stack";
 
 		lir.move(backend.frameMap().toStackAddress(stackBlock), srcReg);
 	}
@@ -191,9 +189,9 @@ public final class X86LIRGenerator extends LIRGenerator
 		LIRItem left = new LIRItem(instr.x, this);
 		LIRItem right = new LIRItem(instr.y, this);
 		assert !left.isStack() || !right
-				.isStack() : "cann't both be momory operands";
+				.isStack() : "cann't both be momory reservedOperands";
 
-		// both are register LIROperand, swap operands such that the short-living
+		// both are register LIROperand, swap reservedOperands such that the short-living
 		// one is on the left side
 		if (instr.opcode.isCommutative() && left.isRegisterOrVariable() &&
 				right.isRegisterOrVariable())
@@ -246,12 +244,12 @@ public final class X86LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
-				resultReg = EDX_L; // remainder result is produced in rdx
+				resultReg = EDX_L; // remainder getReturnValue is produced in rdx
 				lir.lrem(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else if (opcode == Operator.LMod)
 			{
-				resultReg = EAX_L; // division result is produced in rax
+				resultReg = EAX_L; // division getReturnValue is produced in rax
 				lir.ldiv(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else
@@ -331,12 +329,12 @@ public final class X86LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
-				resultReg = tmp; // remainder result is produced in rdx
+				resultReg = tmp; // remainder getReturnValue is produced in rdx
 				lir.irem(dividend, divisor, resultReg, tmp);
 			}
 			else if (opcode == Operator.IDiv)
 			{
-				resultReg = EAX_I; // division result is produced in rax
+				resultReg = EAX_I; // division getReturnValue is produced in rax
 				lir.idiv(dividend, divisor, resultReg, tmp);
 			}
 			else
@@ -489,11 +487,11 @@ public final class X86LIRGenerator extends LIRGenerator
 
 	/**
 	 * Converts data from specified type to targetAbstractLayer type upon platform dependent
-	 * instruction, like X86 or SPARC.
+	 * instruction, like IA32 or SPARC.
 	 * @param inst
 	 */
 	@Override
-	public void visitConvert(Instruction.Convert inst)
+	public void visitConvert(Instruction.CastInst inst)
 	{
 		LIRValue input = load(inst.x);
 		LIRVariable result = newVariable(inst.kind);

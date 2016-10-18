@@ -1,10 +1,10 @@
 package hir;
 
-import ast.ASTVisitor;
+import ast.AstVisitor;
 import ast.Tree;
 import ast.Tree.*;
 import ast.Tree.Goto;
-import ast.Tree.Return;
+import ast.Tree.ReturnStmt;
 import ast.TreeInfo;
 import hir.Value.Constant;
 import lir.ci.LIRConstant;
@@ -45,30 +45,35 @@ import java.util.List;
  * bytecode.
  * </p>
  * <p>
- * 在转换成为SSA形式的IR时，将所有的全局变量看作放在内存中，当在函数内部使用时，使用一个
- * 虚拟临时寄存器T1存储它。当函数返回之时，对于已经修改的变量，写回到变量中。
+ * When we performs that translating normal IR into IR in SSA form, all of global
+ * variables will be ignored since the benefit of performing Memory-SSA can not
+ * make up for loss of time and memory.
+ *
+ * Instead of a virtual register will be used for handling the global variable,
+ * all of operations performed over global variable will takes effect on virtual
+ * register.
  * </p>
  *
  * @author Xlous.zeng 
  * @version 1.0
  */
-public class HIRGenerator extends ASTVisitor
+public class HIRGenerator extends AstVisitor
 {
-	private final static Context.Key ASTToQuadKey = new Context.Key();
+	private final static Context.Key AstToCfgKey = new Context.Key();
 	private Log log;
 	private Context context;
 	private List<Variable> vars;
-	private List<Method> methods;
+	private List<Function> functions;
 	private Name.Table names;
 
 	public HIRGenerator(Context context)
 	{
 		this.context = context;
-		context.put(ASTToQuadKey, this);
+		context.put(AstToCfgKey, this);
 		this.names = Name.Table.instance(context);
 		this.log = Log.instance(context);
 		this.vars = new ArrayList<>();
-		this.methods = new ArrayList<>();
+		this.functions = new ArrayList<>();
 	}
 
 	/**
@@ -80,7 +85,7 @@ public class HIRGenerator extends ASTVisitor
 	public Module translate(Tree tree)
 	{
 		tree.accept(this);
-		return Module.instance(context, vars, methods);
+		return Module.instance(context, vars, functions);
 	}
 
 	/**
@@ -92,7 +97,7 @@ public class HIRGenerator extends ASTVisitor
 	public Module traslate(MethodDef tree)
 	{
 		tree.accept(this);
-		return Module.instance(context, vars, methods);
+		return Module.instance(context, vars, functions);
 	}
 
 	/**
@@ -232,12 +237,12 @@ public class HIRGenerator extends ASTVisitor
 			BasicBlock falseBB)
 	{
 		BasicBlock remainderBB;
-		Binary bin;
+		BinaryExpr bin;
 
 		if ((expr.tag >= Tree.OR && expr.tag <= Tree.AND) || (
 				expr.tag >= Tree.NE && expr.tag <= Tree.GE))
 		{
-			bin = (Binary) expr;
+			bin = (BinaryExpr) expr;
 			if (bin.tag == Tree.AND)
 			{
 				// if we have "true && X", or "false && X", to simpify the code
@@ -320,7 +325,7 @@ public class HIRGenerator extends ASTVisitor
 			switch (expr.tag)
 			{
 				case Tree.NOT:
-					Tree inner_tree = TreeInfo.skipParens(((Unary) expr).arg);
+					Tree inner_tree = TreeInfo.skipParens(((UnaryExpr) expr).arg);
 
 					// !true or !false
 					if (constantFoldOnBool(inner_tree))
@@ -517,7 +522,7 @@ public class HIRGenerator extends ASTVisitor
 		if (tree.body != null)
 		{
 			// initialize some variable for emitting Module of function.
-			Method m = enterFunctionInit(tree);
+			Function m = enterFunctionInit(tree);
 
 			// initialize return value if this function have return
 			if (m.signature().returnKind() != LIRKind.Void)
@@ -535,16 +540,16 @@ public class HIRGenerator extends ASTVisitor
 
 			// SSA construction and memory promotion.
 			new EnterSSA(m);
-			this.methods.add(m);
+			this.functions.add(m);
 		}
 	}
 
-	private Method enterFunctionInit(MethodDef tree)
+	private Function enterFunctionInit(MethodDef tree)
 	{
-		Method m = new Method(tree);
+		Function m = new Function(tree);
 		currentCFG = new ControlFlowGraph(m);
 		m.cfg = currentCFG;
-		this.methods.add(m);
+		this.functions.add(m);
 
 		// sets the current block with entry of a cfg with increment number id.
 		this.currentBlock = currentCFG.createStartNode();
@@ -573,22 +578,22 @@ public class HIRGenerator extends ASTVisitor
 	 * This map that associates variable's name with it's allocation instruction
 	 * for its alloca instruction according to name.
 	 */
-	private HashMap<Name, Alloca> NameValues = new HashMap<>();
+	private HashMap<Name, AllocaInst> NameValues = new HashMap<>();
 
-	private Alloca lastAllocaInst = null;
+	private AllocaInst lastAllocaInst = null;
 
 	/**
 	 * Allocate a local variable at execution stack of current function with
-	 * instruction {@code Alloca}, all alloca instruction of a cfg are stores
+	 * instruction {@code AllocaInst}, all alloca instruction of a cfg are stores
 	 * at the entry block of current control flow graph.
 	 *
 	 * @param kind The kind of data value to be allocated.
 	 * @param var  The tree node that represents a local variable.
 	 * @return An alloca instruction.
 	 */
-	private Alloca createEnterBlockAlloca(LIRKind kind, VarDef var)
+	private AllocaInst createEnterBlockAlloca(LIRKind kind, VarDef var)
 	{
-		Alloca inst = createEnterBlockAlloca(kind, var.name);
+		AllocaInst inst = createEnterBlockAlloca(kind, var.name);
 		// associate its local with variable symbol
 		var.sym.varInst = inst;
 
@@ -600,17 +605,17 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param m The handled method.
 	 */
-	private void emitReturnValue(Method m)
+	private void emitReturnValue(Function m)
 	{
 		Name returnName = Name.fromString(names, "%retvalue");
 		m.ReturnValue = createEnterBlockAlloca(m.signature().returnKind(),
 				returnName);
 	}
 
-	private Alloca createEnterBlockAlloca(LIRKind kind, Name var)
+	private AllocaInst createEnterBlockAlloca(LIRKind kind, Name var)
 	{
 		BasicBlock entry = currentCFG.entry();
-		Alloca inst = new Alloca(kind, Constant.forInt(1), Operator.Alloca.opName);
+		AllocaInst inst = new AllocaInst(kind, Constant.forInt(1), Operator.Alloca.opName);
 
 		// associate its local with variable symbol
 		NameValues.put(var, inst);
@@ -628,7 +633,7 @@ public class HIRGenerator extends ASTVisitor
 	}
 
 	/**
-	 * generates memory {@code Alloca} instruction and initial store for variable
+	 * generates memory {@code AllocaInst} instruction and initial store for variable
 	 * declaration.
 	 *
 	 * @param var The variable to be allocated.
@@ -638,7 +643,7 @@ public class HIRGenerator extends ASTVisitor
 		LIRKind varKind = type2Kind(var.type);
 
 		// allocates stack slot for local variable definition
-		Alloca inst = createEnterBlockAlloca(varKind, var);
+		AllocaInst inst = createEnterBlockAlloca(varKind, var);
 
 		Value initValue;
 		if (var.init != null)
@@ -709,16 +714,16 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Translates if statement.
 	 * <p>
-	 * if (expr) statement is translated into follow presentation if !expr goto
+	 * if (subExpr) statement is translated into follow presentation if !subExpr goto
 	 * <p>
 	 * <pre>
 	 * nextBB trueBB: ..... nextBB: .....
 	 * </pre>
 	 * <p>
-	 * if (expr) stmt1 else stmt2 is translated into follow presentation
+	 * if (subExpr) stmt1 else stmt2 is translated into follow presentation
 	 * <p>
 	 * <pre>
-	 * if !expr goto falseBB
+	 * if !subExpr goto falseBB
 	 * trueBB:
 	 * 		.....
 	 * falseBB:
@@ -727,7 +732,7 @@ public class HIRGenerator extends ASTVisitor
 	 * 		.....
 	 * </pre>
 	 */
-	@Override public void visitIf(If tree)
+	@Override public void visitIf(IfStmt tree)
 	{
 		BasicBlock nextBB = currentCFG.createBasicBlock("if.end");
 		BasicBlock trueBB = currentCFG.createBasicBlock( "if.true");
@@ -799,12 +804,12 @@ public class HIRGenerator extends ASTVisitor
 	}
 
 	/**
-	 * Translates while loop statement into IR. while (expr) stmt is translated
+	 * Translates while loop statement into IR. while (subExpr) stmt is translated
 	 * into:
 	 * <p>
 	 * <pre>
 	 * headerBB:
-	 * if (!expr) goto nextBB
+	 * if (!subExpr) goto nextBB
 	 * loopBB:
 	 *     stmt
 	 * goto headerBB
@@ -849,7 +854,7 @@ public class HIRGenerator extends ASTVisitor
 	 * loopBB:
 	 *     stmt
 	 * condBB:
-	 *     if (expr) goto loopBB
+	 *     if (subExpr) goto loopBB
 	 * nextBB:
 	 *     ...
 	 * </pre>
@@ -947,7 +952,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Translates labelled statement.
 	 */
-	@Override public void visitLabelled(Labelled tree)
+	@Override public void visitLabelled(LabelledStmt tree)
 	{
 		/* if the block corresponding to labelled statement is null, creating a
 		 * block to be associated with it. */
@@ -969,7 +974,7 @@ public class HIRGenerator extends ASTVisitor
 	 * nextBB:
 	 * </pre>
 	 */
-	@Override public void visitBreak(Break tree)
+	@Override public void visitBreak(BreakStmt tree)
 	{
 		try
 		{
@@ -992,7 +997,7 @@ public class HIRGenerator extends ASTVisitor
 	 * nextBB:
 	 * </pre>
 	 */
-	@Override public void visitContinue(Continue tree)
+	@Override public void visitContinue(ContinueStmt tree)
 	{
 		try
 		{
@@ -1009,9 +1014,9 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree The return tree node.
 	 */
-	@Override public void visitReturn(Return tree)
+	@Override public void visitReturn(ReturnStmt tree)
 	{
-		Instruction.Return inst;
+		ReturnInst inst;
 		if (tree.expr != null)
 		{
 			// emit the ret value even if unused, in order to the side effect.
@@ -1019,10 +1024,10 @@ public class HIRGenerator extends ASTVisitor
 
 			// stores the return value to specified memory.
 			emitStore(res, currentCFG.getMethod().ReturnValue);
-			inst = new Instruction.Return(res, Operator.Ret.opName);
+			inst = new ReturnInst(res, Operator.Ret.opName);
 		}
 		else
-			inst = new Instruction.Return(null, Operator.Ret.opName);
+			inst = new ReturnInst(null, Operator.Ret.opName);
 
 		appendInst(inst);
 		// goto the exit of current method.
@@ -1036,9 +1041,9 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Currently, switch is not supported.
 	 *
-	 * @param tree The {@code Switch} expression node.
+	 * @param tree The {@code SwitchStmt} expression node.
 	 */
-	@Override public void visitSwitch(Switch tree)
+	@Override public void visitSwitch(SwitchStmt tree)
 	{
 		// handle nested switch statements.
 		SwitchInst savedSwitchInst = this.switchInst;
@@ -1046,7 +1051,7 @@ public class HIRGenerator extends ASTVisitor
 		// the exit block of this switch statement.
 		BasicBlock switchExit = currentCFG.createBasicBlock("sw.epilog");
 
-		// At actually, the constant folding optimization should be taken.
+		// At actually, the constant folding opt should be taken.
 		// Yet it not implements that for I am lazy....~ ~.
 		Value condV = emitExpr(tree.selector);
 
@@ -1055,9 +1060,9 @@ public class HIRGenerator extends ASTVisitor
 		BasicBlock defaultBlock = currentCFG
 				.createBasicBlock("sw.default");
 
-		// keeps the length of jump list of switch statement.
+		// keeps the getArraySize of jump list of switch statement.
 		int reserved = 0;
-		for (Case ca : tree.cases)
+		for (CaseStmt ca : tree.cases)
 			reserved += ca.values.size();
 
 		this.switchInst = new SwitchInst(condV, defaultBlock, reserved,
@@ -1066,9 +1071,9 @@ public class HIRGenerator extends ASTVisitor
 		// All break statement jump to exit block.
 		pushBreak(switchExit);
 		int idx = 0;
-		HashMap<Case, BasicBlock> caseBlocks = new HashMap<>();
+		HashMap<CaseStmt, BasicBlock> caseBlocks = new HashMap<>();
 		// Especially handle default case at current
-		for (Case clause : tree.cases)
+		for (CaseStmt clause : tree.cases)
 		{
 			// the default case for specially handling.
 			if (clause.values == null)
@@ -1113,26 +1118,26 @@ public class HIRGenerator extends ASTVisitor
 
 	/**
 	 * Builds pred-succ link between previous case clause and next clause,
-	 * if current case clause no contains break statement as the last.
+	 * if current case clause no isDeclScope break statement as the last.
 	 *
 	 * @param tree       The switch statement.
 	 * @param caseBlocks The map that maps case clause to correspondint block.
 	 */
-	private void handleSubsequnceCases(Switch tree,
-			HashMap<Case, BasicBlock> caseBlocks)
+	private void handleSubsequnceCases(SwitchStmt tree,
+			HashMap<CaseStmt, BasicBlock> caseBlocks)
 	{
 		for (int idx = 0; idx < tree.cases.size() - 1; idx++)
 		{
-			Case clause = tree.cases.get(idx);
+			CaseStmt clause = tree.cases.get(idx);
 			Tree lastStmt = null;
-			Block caseBlock = (Block)clause.caseBody;
+			Block caseBlock = (Block)clause.subStmt;
 				
 			lastStmt = caseBlock.stats.get(caseBlock.stats.size() - 1);	
 
 			// the last statement of case clause is a break.
 			// So that we should associate the basic block attached to
 			// switch with the the predecessor of current case clause.
-			if ((lastStmt != null) && !(lastStmt instanceof Break))
+			if ((lastStmt != null) && !(lastStmt instanceof BreakStmt))
 			{
 				BasicBlock cur = caseBlocks.get(clause);
 				BasicBlock next = caseBlocks.get(tree.cases.get(idx + 1));
@@ -1147,18 +1152,18 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree The default case statement.
 	 */
-	private void emitDefaultCase(Case tree)
+	private void emitDefaultCase(CaseStmt tree)
 	{
 		BasicBlock defaultBlock = this.switchInst.getDefaultBlock();
 		assert defaultBlock
 				!= null : "emitDefaultCase: default block already defined?";
-		tree.caseBody.accept(this);
+		tree.subStmt.accept(this);
 	}
 
 	/**
-	 * Currently, Case statement is not supported.
+	 * Currently, CaseStmt statement is not supported.
 	 */
-	@Override public void visitCase(Case tree)
+	@Override public void visitCase(CaseStmt tree)
 	{
 		for (Tree expr : tree.values)
 		{
@@ -1168,7 +1173,7 @@ public class HIRGenerator extends ASTVisitor
 
 		// branch to default or switch exit block.
 		// when a break statement occures.
-		tree.caseBody.accept(this);
+		tree.subStmt.accept(this);
 	}
 
 	/**
@@ -1184,12 +1189,12 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param m    The targeted method.
 	 * @param args The arguments list passed to callee.
-	 * @return Return null if return type is void, otherwise, return value.
+	 * @return ReturnInst null if return type is void, otherwise, return value.
 	 */
-	private Value emitCall(Method m, Value[] args)
+	private Value emitCall(Function m, Value[] args)
 	{
 		LIRKind ret = returnKind(m);
-		Invoke inst = new Invoke(ret, args, m, Operator.Invoke.opName);
+		InvokeInst inst = new InvokeInst(ret, args, m, Operator.Invoke.opName);
 
 		appendInst(inst);
 		inst.setParent(currentBlock);
@@ -1202,7 +1207,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree The invocation expression.
 	 */
-	@Override public void visitApply(Apply tree)
+	@Override public void visitApply(CallExpr tree)
 	{
 		Value[] args = new Value[tree.args.size()];
 		// translates actual parameter list
@@ -1210,7 +1215,7 @@ public class HIRGenerator extends ASTVisitor
 		for (Tree para : tree.args)
 			args[idx++] = emitExpr(para);
 
-		Method m = (new Method((MethodDef) tree.meth));
+		Function m = (new Function((MethodDef) tree.fn));
 
 		// emiterates calling expression
 		this.exprResult = emitCall(m, args);
@@ -1222,12 +1227,12 @@ public class HIRGenerator extends ASTVisitor
 	 * @param target The targeted method.
 	 * @return The return kind.
 	 */
-	private LIRKind returnKind(Method target)
+	private LIRKind returnKind(Function target)
 	{
 		return target.signature().returnKind();
 	}
 
-	@Override public void visitParens(Parens tree)
+	@Override public void visitParens(ParenExpr tree)
 	{
 		TreeInfo.skipParens(tree).accept(this);
 	}
@@ -1236,17 +1241,17 @@ public class HIRGenerator extends ASTVisitor
 	 * Geneates phi node and inserts it into current block.
 	 *
 	 * @param kind   The ret kind.
-	 * @param VALUES The parameter array to be passed into Phi node.
+	 * @param values The parameter array to be passed into PhiNode node.
 	 * @param blocks The corresponding block array.
-	 * @return A complete {@code Phi} instruction.
+	 * @return A complete {@code PhiNode} instruction.
 	 */
-	private Phi emitPhi(LIRKind kind, Value[] values, BasicBlock[] blocks)
+	private PhiNode emitPhi(LIRKind kind, Value[] values, BasicBlock[] blocks)
 	{
-		Phi phi = new Phi(kind, values, blocks, Operator.Phi.opName);
-		appendInst(phi);
-		phi.setParent(currentBlock);
+		PhiNode phiNode = new PhiNode(kind, values, blocks, Operator.Phi.opName);
+		appendInst(phiNode);
+		phiNode.setParent(currentBlock);
 
-		return phi;
+		return phiNode;
 	}
 
 	/**
@@ -1255,10 +1260,10 @@ public class HIRGenerator extends ASTVisitor
 	 * </p>
 	 * <p>
 	 * <pre>
-	 * (relation expr) ? expr : expr;
+	 * (relation subExpr) ? subExpr : subExpr;
 	 * </pre>
 	 */
-	@Override public void visitConditional(Conditional tree)
+	@Override public void visitConditional(ConditionalExpr tree)
 	{
 		Value t1, t2;
 		BasicBlock trueBB, falseBB, nextBB;
@@ -1302,7 +1307,7 @@ public class HIRGenerator extends ASTVisitor
 	 * @param value The source of move, including all of instruction.
 	 * @param dest  The targetAbstractLayer of move, which is variable, occasionally.
 	 */
-	private void emitStore(Value value, Alloca dest)
+	private void emitStore(Value value, AllocaInst dest)
 	{
 		StoreInst inst = new StoreInst(value, dest, Operator.Store.opName);
 
@@ -1327,13 +1332,13 @@ public class HIRGenerator extends ASTVisitor
 			this.exprResult = null;
 			return;
 		}
-		if (!(lhs instanceof Alloca) || lhs.name == null)
+		if (!(lhs instanceof AllocaInst) || lhs.name == null)
 		{
 			log.error(tree.pos, "destination of '=' must be a variable");
 			this.exprResult = null;
 			return;
 		}
-		Alloca alloca = NameValues.get(lhs.name);
+		AllocaInst alloca = NameValues.get(lhs.name);
 		if (alloca == null)
 		{
 			log.error(tree.pos, "Unkonw variable name");
@@ -1341,7 +1346,7 @@ public class HIRGenerator extends ASTVisitor
 			return;
 		}
 		// generates move instruction
-		emitStore(rhs, (Alloca) lhs);
+		emitStore(rhs, (AllocaInst) lhs);
 	}
 
 	/**
@@ -1349,7 +1354,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree The tree to be transformed.
 	 */
-	@Override public void visitAssignop(Tree.Assignop tree)
+	@Override public void visitAssignop(OpAssign tree)
 	{
 		OperatorSymbol operator = (OperatorSymbol) tree.operator;
 		if (operator.opcode == OpCodes.string_add)
@@ -1367,13 +1372,13 @@ public class HIRGenerator extends ASTVisitor
 				this.exprResult = null;
 				return;
 			}
-			if (!(lhs instanceof Alloca) || lhs.name == null)
+			if (!(lhs instanceof AllocaInst) || lhs.name == null)
 			{
 				log.error(tree.pos, "destination of '=' must be a variable");
 				this.exprResult = null;
 				return;
 			}
-			Alloca alloca = NameValues.get(lhs.name);
+			AllocaInst alloca = NameValues.get(lhs.name);
 			if (alloca == null)
 			{
 				log.error(tree.pos, "Unkonw variable name");
@@ -1382,7 +1387,7 @@ public class HIRGenerator extends ASTVisitor
 			}
 
 			this.exprResult = transformAssignOp(tree.lhs.type, tree.pos,
-					tree.tag, rhs, (Alloca) lhs);
+					tree.tag, rhs, (AllocaInst) lhs);
 		}
 	}
 
@@ -1396,7 +1401,7 @@ public class HIRGenerator extends ASTVisitor
 	 * @return Result of this instruction.
 	 */
 	private Value transformAssignOp(Type ty, int pos, int op, Value src,
-			Alloca dest)
+			AllocaInst dest)
 	{
 		emitStore(emitBin(ty, pos, op, dest, src), dest);
 		return dest;
@@ -1775,7 +1780,7 @@ public class HIRGenerator extends ASTVisitor
 	 * store %tmp, %a;
 	 * </pre>
 	 */
-	private Value translateRelative(Binary tree)
+	private Value translateRelative(BinaryExpr tree)
 	{
 		Value rhs = emitExpr(tree.rhs);
 		Value lhs = emitExpr(tree.lhs);
@@ -1804,7 +1809,7 @@ public class HIRGenerator extends ASTVisitor
 	 * <p>
 	 * </pre>
 	 */
-	private Value translateLogicalExpression(Binary expr)
+	private Value translateLogicalExpression(BinaryExpr expr)
 	{
 		BasicBlock nextBB, rhsBB;
 		Value rhsResult = null;
@@ -1848,11 +1853,11 @@ public class HIRGenerator extends ASTVisitor
 				appendInst(go);
 
 				startBasicBlock(nextBB);
-				// phi
-				Phi phi = new Phi(lhs.kind, 2);
-				phi.addIncoming(zero, entry);
-				phi.addIncoming(rhsResult, rhsBB);
-				return phi;
+				// phiNode
+				PhiNode phiNode = new PhiNode(lhs.kind, 2);
+				phiNode.addIncoming(zero, entry);
+				phiNode.addIncoming(rhsResult, rhsBB);
+				return phiNode;
 
 			case Tree.OR:
 				rhsBB.bbName = "or.rhs";
@@ -1877,17 +1882,17 @@ public class HIRGenerator extends ASTVisitor
 				appendInst(go);
 
 				startBasicBlock(nextBB);
-				// phi
-				phi = new Phi(lhs.kind, 2);
-				phi.addIncoming(one, entry);
-				phi.addIncoming(rhsResult, rhsBB);
-				return phi;
+				// phiNode
+				phiNode = new PhiNode(lhs.kind, 2);
+				phiNode.addIncoming(one, entry);
+				phiNode.addIncoming(rhsResult, rhsBB);
+				return phiNode;
 			default:
 				return null;
 		}
 	}
 
-	@Override public void visitBinary(Binary tree)
+	@Override public void visitBinary(BinaryExpr tree)
 	{
 		if (tree.tag == Tree.OR || tree.tag == Tree.AND)
 		{
@@ -1906,7 +1911,7 @@ public class HIRGenerator extends ASTVisitor
 		this.exprResult = emitBin(tree.type, tree.pos, tree.tag, lhs, rhs);
 	}
 
-	private Value translateIncrement(Unary expr)
+	private Value translateIncrement(UnaryExpr expr)
 	{
 		Value res = emitExpr(expr);
 		if (res == null || res.name == null)
@@ -1942,7 +1947,7 @@ public class HIRGenerator extends ASTVisitor
 			default:
 				return null;
 		}
-		Alloca addr = NameValues.get(res.name);
+		AllocaInst addr = NameValues.get(res.name);
 		if (addr == null)
 		{
 			log.error(expr.pos, "Unknow variable name " + res.name.toString());
@@ -1953,7 +1958,7 @@ public class HIRGenerator extends ASTVisitor
 		return ret;
 	}
 
-	private Value translateNotExpression(Unary expr)
+	private Value translateNotExpression(UnaryExpr expr)
 	{
 		Value res = emitExpr(expr.arg);
 		if (res == null)
@@ -1972,7 +1977,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree The expression to be translated.
 	 */
-	@Override public void visitUnary(Unary tree)
+	@Override public void visitUnary(UnaryExpr tree)
 	{
 		// firstly, prefix operation is handled
 		if (tree.tag == Tree.NOT)
@@ -1988,7 +1993,7 @@ public class HIRGenerator extends ASTVisitor
 		Value operand1 = emitExpr(tree.arg);
 		switch (tree.tag)
 		{
-			case Tree.TYPECAST:
+			case Tree.ImplicitCast:
 				this.exprResult = emitCast(operand1, tree.type, tree.arg.type);
 				break;
 			case Tree.NEG:
@@ -1997,10 +2002,10 @@ public class HIRGenerator extends ASTVisitor
 			case Tree.COMPL:
 
 				break;
-			case Tree.INDEXED:
+			case Tree.ArraySubscriptExprClass:
 				this.exprResult = emitExpr(tree.arg);
 				break;
-			case Tree.APPLY:
+			case Tree.CallExprClass:
 				this.exprResult = emitExpr(tree.arg);
 				break;
 			case Tree.POSTDEC:
@@ -2018,7 +2023,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree
 	 */
-	@Override public void visitIndexed(Indexed tree)
+	@Override public void visitIndexed(ArraySubscriptExpr tree)
 	{
 
 	}
@@ -2028,7 +2033,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree
 	 */
-	@Override public void visitTypeCast(TypeCast tree)
+	@Override public void visitTypeCast(CastExpr tree)
 	{
 		Value res = emitExpr(tree.expr);
 		this.exprResult = emitCast(res, tree.expr.type, tree.clazz.type);
@@ -2069,9 +2074,9 @@ public class HIRGenerator extends ASTVisitor
 	 * a variable into a temporary virtual variable.
 	 *
 	 * @param src The source instruction that will be loaded into targetAbstractLayer.
-	 * @return Return the {@code LoadInst} that load value from src
+	 * @return ReturnInst the {@code LoadInst} that load value from src
 	 */
-	private Value emitLoadInstruction(Alloca src)
+	private Value emitLoadInstruction(AllocaInst src)
 	{
 		LoadInst inst = new LoadInst(src.kind, src, Operator.Load.opName);
 
@@ -2084,7 +2089,7 @@ public class HIRGenerator extends ASTVisitor
 	 *
 	 * @param tree The variable identifier.
 	 */
-	@Override public void visitIdent(Ident tree)
+	@Override public void visitIdent(DeclRefExpr tree)
 	{
 		// parses variable
 		if (tree.sym.kind == SymbolKinds.VAR)

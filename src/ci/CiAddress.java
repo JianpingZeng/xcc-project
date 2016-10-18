@@ -45,11 +45,11 @@ public final class CiAddress extends CiValue {
     public final CiValue base;
     /**
      * Optional index register, the value of which (possibly scaled by {@link #scale}) is added to {@link #base}.
-     * If not present, is denoted by {@link CiValue#IllegalValue}.
+     * IfStmt not present, is denoted by {@link CiValue#IllegalValue}.
      */
     public final CiValue index;
     /**
-     * Scaling factor for indexing, dependent on target operand size.
+     * Scaling factor for indexing, dependent on target operand getTypeSize.
      */
     public final Scale scale;
     /**
@@ -159,7 +159,7 @@ public final class CiAddress extends CiValue {
     }
 
     /**
-     * If the base register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
+     * IfStmt the base register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
      * otherwise raises an exception..
      * @return the base {@link CiRegister}
      * @exception Error  if {@code base} is not a {@link CiRegisterValue}
@@ -169,7 +169,7 @@ public final class CiAddress extends CiValue {
     }
 
     /**
-     * If the index register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
+     * IfStmt the index register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
      * otherwise raises an exception..
      * @return the base {@link CiRegister}
      * @exception Error  if {@code index} is not a {@link CiRegisterValue}

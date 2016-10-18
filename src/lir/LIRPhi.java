@@ -17,7 +17,7 @@ public final class LIRPhi extends LIRInstruction
 	{
 		super(opcode, result, false, 1, 1, values);
 		assert values.length == blocks.length;
-		assert opcode == LIROpcode.Phi : "This must be Phi instruction";
+		assert opcode == LIROpcode.Phi : "This must be PhiNode instruction";
 
 		incomings = values.length;
 		this.args = values;

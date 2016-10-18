@@ -30,7 +30,7 @@ import sun.misc.Unsafe;
 /**
  * Denotes the basic kinds of types in cc IR, including the all the primitive types,
  * for example, {@link LIRKind#Int} for {@code int}.
- * A kind has a single character short name, a CC name, and a set of flags
+ * A kind has a single character short name, a Compiler name, and a set of flags
  * further describing its behavior.
  */
 public enum LIRKind
@@ -44,6 +44,7 @@ public enum LIRKind
 	Long('l', "long", VAR_TYPE | RETURN_TYPE | PRIMITIVE),
 	Double('d', "double", VAR_TYPE | RETURN_TYPE | PRIMITIVE),
 	Object('a', "object", VAR_TYPE | RETURN_TYPE),
+	FunctionType('t', "funtype", VAR_TYPE | RETURN_TYPE),
 	Void('v', "void", RETURN_TYPE),
 	Illegal('-', "illegal", 0);
 
@@ -75,7 +76,7 @@ public enum LIRKind
 		 */
 		public static final int VAR_TYPE = 0x0001;
 		/**
-		 * Can be result type of a method.
+		 * Can be getReturnValue type of a method.
 		 */
 		public static final int RETURN_TYPE = 0x0002;
 		/**

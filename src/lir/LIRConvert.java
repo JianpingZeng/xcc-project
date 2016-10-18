@@ -17,7 +17,7 @@ public class LIRConvert extends LIROp1
 	 *
 	 * @param opcode the opcode of this conversion
 	 * @param operand  the input LIROperand for this instruction
-	 * @param result   the result LIROperand for this instruction
+	 * @param result   the getReturnValue LIROperand for this instruction
 	 */
 	public LIRConvert(Operator opcode, LIRValue operand, LIRValue result)
 	{
@@ -30,7 +30,8 @@ public class LIRConvert extends LIROp1
 	 *
 	 * @param masm the LIRAssembler
 	 */
-	@Override public void emitCode(LIRAssembler masm)
+	@Override 
+	public void emitCode(LIRAssembler masm)
 	{
 		//masm.emitConvert(this);
 	}

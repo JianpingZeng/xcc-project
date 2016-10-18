@@ -1,17 +1,11 @@
-package optimization; 
+package opt; 
 
+import hir.*;
 import hir.BasicBlock;
-import hir.ControlFlowGraph;
-import hir.DominatorTree;
-import hir.Instruction;
-import hir.Instruction.Branch;
 import hir.Instruction.Goto;
 import hir.Instruction.Op1;
 import hir.Instruction.Op2;
-import hir.Instruction.Phi;
-import hir.Method;
-import hir.Use;
-import hir.Value;
+import hir.Instruction.PhiNode;
 import hir.Value.Constant;
 import hir.Value.UndefValue;
 
@@ -27,7 +21,7 @@ import utils.TTY;
  * as much code from the body of a loop as possible. It does this by either
  * hoisting code into the pre-header block, or by sinking code to the exit 
  * block if it is safe. Currently, this class does not use alias analysis
- * so that the all optimization operated upon memory access are excluded.
+ * so that the all opt operated upon memory access are excluded.
  * </p>
  * 
  * <p>This pass expected to run after {@linkplain LoopInversion Loop Inversion}
@@ -35,7 +29,7 @@ import utils.TTY;
  * performed.
  * </p>
  * 
- * <p>This file is a member of <a href={@docRoot/optimization}>Machine Independence
+ * <p>This file is a member of <a href={@docRoot/opt}>Machine Independence
  * Optimization</a>
  * </p>.
  * @author Xlous.zeng
@@ -53,11 +47,11 @@ public final class LICM
 	 * Constructor.
 	 * @param hir	The control flow graph of function being compiled.
 	 */
-	public LICM(Method method)
+	public LICM(Function function)
 	{
-		dt = new DominatorTree(method);
+		dt = new DominatorTree(function);
 		dt.recalculate();
-		loops = method.getLoops();
+		loops = function.getLoops();
 		assert loops != null: "must performed after loop analysis pass";
 		
 		marked = new boolean[loops.length];
@@ -76,7 +70,7 @@ public final class LICM
 	}
 	
 	/**
-	 * Starting to perform optimization of loop invariant code motion.
+	 * Starting to perform opt of loop invariant code motion.
 	 */
 	public void runOnLoop()
 	{
@@ -138,7 +132,7 @@ public final class LICM
 		for (int j = 0; j < bb.size(); j++)
 		{
 			// check whether each instruction in this block has loop invariant
-			// operands and appropriate reaching definition; if so, mark it as
+			// reservedOperands and appropriate reaching definition; if so, mark it as
 			// loop invariant.
 			if (!instInvariant[i][j])
 			{
@@ -190,7 +184,7 @@ public final class LICM
 	}
 	/**
 	 * <p>Checks if the basic block where the operand defined was out of this loop.</p>
-	 * <p>Return true if it is out of Loop, otherwise false returned.</p>
+	 * <p>ReturnInst true if it is out of Loop, otherwise false returned.</p>
 	 * @param blocks
 	 * @param operand
 	 * @return
@@ -212,7 +206,7 @@ public final class LICM
 	 * Obtains the index by which the specified block will be indexed. 
 	 * @param blockId	The id of specified basic block.
 	 * @param nblocks	The array of block id.
-	 * @return If there no block with specified blockId existed in nblocks, return -1
+	 * @return IfStmt there no block with specified blockId existed in nblocks, return -1
 	 * , otherwise, return its index.
 	 */
 	private int blockIndex(int blockId, List<BasicBlock> blocks)
@@ -238,7 +232,7 @@ public final class LICM
 	 * @param operand
 	 * @return
 	 */
-	private boolean reachDefsIn(List<BasicBlock> blocks, Value operand)	
+	private boolean reachDefsIn(List<BasicBlock> blocks, Value operand)
 	{
 		if (operand instanceof Instruction)
 		{
@@ -273,7 +267,7 @@ public final class LICM
 	{
 		BasicBlock bb;
 		Value inst;
-		BasicBlock preheader = insertPreheader(loop);		
+		BasicBlock preheader = insertPreheader(loop);
 		for (Pair<Integer, Integer> coor : invarOrder)
 		{
 			bb = loop.getBlock(coor.first);
@@ -362,7 +356,7 @@ public final class LICM
 	}
 	
 	private BasicBlock splitBlockPredecessor(
-			BasicBlock header, 
+			BasicBlock header,
 			ArrayList<BasicBlock> outsideBlocks,
 			String suffix,
 			Loop loop)
@@ -395,9 +389,9 @@ public final class LICM
 			// insert dummy values as the incoming value
 			for (Value i : header)
 			{
-				if (i instanceof Phi)
+				if (i instanceof PhiNode)
 				{
-					((Phi)i).addIncoming(UndefValue.get(i.kind), newBB);
+					((PhiNode)i).addIncoming(UndefValue.get(i.kind), newBB);
 				}
 			}
 			return newBB;
@@ -416,28 +410,28 @@ public final class LICM
 	 * @param inst
 	 * @param hasLoopExit
 	 */
-	private void updatePhiNodes(BasicBlock originBB, BasicBlock newBB, 
-			ArrayList<BasicBlock> preds, Branch inst, boolean hasLoopExit)
+	private void updatePhiNodes(BasicBlock originBB, BasicBlock newBB,
+                                ArrayList<BasicBlock> preds, Instruction.BranchInst inst, boolean hasLoopExit)
 	{
 		for (Value i : originBB)
 		{
-			if (!(i instanceof Phi))
+			if (!(i instanceof PhiNode))
 				continue;
 			
-			Phi phi = (Phi)i;
-			// check to see if all of the values coming in are same. If so, 
-			// we don't need to create a new phi node, unless it's needed for LCSSA.
+			Instruction.PhiNode phiNode = (PhiNode)i;
+			// check to see if all of the values coming in are same. IfStmt so,
+			// we don't need to create a new phiNode node, unless it's needed for LCSSA.
 			Value inVal = null;
 			if (!hasLoopExit)
 			{
-				inVal = phi.getIncomingValueForBlock(preds.get(0));
-				for (int j =0, e = phi.getNumberIncomingValues(); j != e; j++)
+				inVal = phiNode.getIncomingValueForBlock(preds.get(0));
+				for (int j = 0, e = phiNode.getNumberIncomingValues(); j != e; j++)
 				{
-					if (!preds.contains(phi.getIncomingBlock(j)))
+					if (!preds.contains(phiNode.getIncomingBlock(j)))
 						continue;
 					if (inVal == null)
-						inVal = phi.getIncomingValue(j);
-					else if (inVal != phi.getIncomingValue(j))
+						inVal = phiNode.getIncomingValue(j);
+					else if (inVal != phiNode.getIncomingValue(j))
 					{
 						inVal = null;
 						break;
@@ -447,7 +441,7 @@ public final class LICM
 			
 			if (inVal != null)
 			{
-				// If all incoming values for the new PHI would be the same, just don't
+				// IfStmt all incoming values for the new PHI would be the same, just don't
 				// make a new PHI.  Instead, just remove the incoming values from the old
 				// PHI.
 
@@ -455,23 +449,24 @@ public final class LICM
 				// the cost of removal if we end up removing a large number of values, and
 				// second off, this ensures that the indices for the incoming values
 				// aren't invalidated when we remove one.
-				for (int j = phi.getNumberIncomingValues() - 1; j >= 0; j--)
+				for (int j = phiNode.getNumberIncomingValues() - 1; j >= 0; j--)
 				{
-					if (preds.contains(phi.getIncomingBlock(j)))
+					if (preds.contains(phiNode.getIncomingBlock(j)))
 					{
-						phi.removeIncomingValue(j);
+						phiNode.removeIncomingValue(j);
 					}
 				}
-				// add an incoming value to the phi node in the loop for the preheader edge.
-				phi.addIncoming(inVal, newBB);
+				// add an incoming value to the phiNode node in the loop for the preheader edge.
+				phiNode.addIncoming(inVal, newBB);
 				continue;
 			}
 			
-			// If the values coming into the block are not the same, we need a new
+			// IfStmt the values coming into the block are not the same, we need a new
 		    // PHI.
 		    // Create the new PHI node, insert it into NewBB at the end of the block		   
-		    Phi newPHI = new Phi(phi.kind, preds.size(), phi.getName() + ".ph");
-			newBB.appendInst(newPHI);
+		    PhiNode newPHINode = new PhiNode(
+                    phiNode.kind, preds.size(), phiNode.name() + ".ph");
+			newBB.appendInst(newPHINode);
 			newBB.appendInst(inst);
 			
 			
@@ -479,16 +474,16 @@ public final class LICM
 		    // the cost of removal if we end up removing a large number of values, and
 		    // second off, this ensures that the indices for the incoming values aren't
 		    // invalidated when we remove one.
-		    for (int j = phi.getNumberIncomingValues() - 1; j >= 0; --j) 
+		    for (int j = phiNode.getNumberIncomingValues() - 1; j >= 0; --j)
 		    {
-		    	BasicBlock incomingBB = phi.getIncomingBlock(j);
+		    	BasicBlock incomingBB = phiNode.getIncomingBlock(j);
 		      	if (preds.contains(incomingBB)) 
 		      	{
-		        	Value V = phi.removeIncomingValue(j);
-		        	newPHI.addIncoming(V, incomingBB);
+		        	Value V = phiNode.removeIncomingValue(j);
+		        	newPHINode.addIncoming(V, incomingBB);
 		      	}
 	    	}
-		    phi.addIncoming(newPHI, newBB);
+		    phiNode.addIncoming(newPHINode, newBB);
 		}
 	}
 }

@@ -1,18 +1,23 @@
 package compiler;
 
-import optimization.ConstantProp;
-import optimization.DCE;
-import optimization.GVN;
-import optimization.InductionVarSimplify;
-import optimization.LICM;
-import optimization.LoopAnalysis;
-import optimization.LoopSimplify;
-import optimization.UCE;
-import hir.Method;
+import hir.Function;
+import opt.ConstantProp;
+import opt.DCE;
+import opt.GVN;
+import opt.InductionVarSimplify;
+import opt.LICM;
+import opt.LoopAnalysis;
+import opt.LoopSimplify;
+import opt.UCE;
 import hir.Module;
 import utils.Context;
 
 /**
+ * This class just was used for calling different optimization procedures
+ * in specific order by hand written. Maybe the order of optimization passes
+ * were applied to would be re-written guided by machine learning algorithm
+ * or other approaches.
+ * 
  * @author Xlous.zeng
  */
 public final class Optimizer
@@ -45,16 +50,16 @@ public final class Optimizer
 		LoopSimplify simplificator = new LoopSimplify();
 		InductionVarSimplify ivSimplicator = new InductionVarSimplify();
 		
-		for (Method m : hir)
+		for (Function m : hir)
 		{
-			/****** C1 optimization stage ***/
+			/****** C1 opt stage ***/
     		// performs dead code elimination.    		
 			new DCE(m).runOnMethod();
 
 			prop.runOnMethod(m);
     
     		// after DCE, There are useless control flow be introduced by other
-    		// optimization. So that the useless control flow elimination is desired
+    		// opt. So that the useless control flow elimination is desired
     		// as follows.
     		// 1.merges redundant branch instruction.
     		// 2.unlinks empty basic block
@@ -63,12 +68,12 @@ public final class Optimizer
 			uce.clean(m);
 			
 			
-			/** C2 optimization stage*/
+			/** C2 opt stage*/
     		// performs global common subexpression elimination through global value
     		// numbering.
 			new GVN(m);
     
-    		// perform loop analysis and optimization
+    		// perform loop analysis and opt
 			// 1. perform loop analysis
     		new LoopAnalysis(m).runOnFunction();       	
     		
@@ -81,14 +86,13 @@ public final class Optimizer
     		// performs dead code elimination.    		
 			new DCE(m).runOnMethod();
 			
-			/** C3 optimization stage */
+			/** C3 opt stage */
 			ivSimplicator.runOnLoop(m);			
 			
 			// for removal of useless induction variables.
 			new DCE(m).runOnMethod();
 			
-			/** C4 optimization stage */			
+			/** C4 opt stage */			
 		}	
 	}
-
 }

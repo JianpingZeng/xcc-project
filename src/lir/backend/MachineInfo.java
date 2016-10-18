@@ -3,15 +3,16 @@ package lir.backend;
 import lir.ci.LIRKind;
 
 /**
- * Represents the targetAbstractLayer machine for a compiler, including the CPU architecture,
- * the length of pointers and references, alignment of stacks, caches, etc.
+ * Represents the targetAbstractLayer machine for a compiler, including the 
+ * CPU architecture, the getArraySize of pointers and references, alignment of stacks,
+ * caches, etc. 
  * @author Xlous.zeng
  */
-public class TargetMachine
+public class MachineInfo
 {
 	public Architecture arch;
 	/**
-	 * The OS page length.
+	 * The OS page getArraySize.
 	 */
 	public final int pageSize;
 
@@ -31,12 +32,12 @@ public class TargetMachine
 	public final boolean inlineObjects;
 
 	/**
-	 * The spill slot length for VALUES that occupy 1 slot.
+	 * The spill slot getArraySize for VALUES that occupy 1 slot.
 	 */
 	public final int spillSlotSize;
 
 	/**
-	 * The machine word length on this targetAbstractLayer.
+	 * The machine word getArraySize on this targetAbstractLayer.
 	 */
 	public final int wordSize;
 
@@ -75,7 +76,7 @@ public class TargetMachine
 	 * holds the first raw word of the native long or double representation.
 	 * This is actually reasonable, since locals and stack arrays
 	 * grow downwards in all implementations.
-	 * If, on some machine, the interpreter's Java locals or stack
+	 * IfStmt, on some machine, the interpreter's Java locals or stack
 	 * were to grow upwards, the embedded doubles would be word-swapped.)
 	 */
 	public final boolean debugInfoDoubleWordsInSecondSlot;
@@ -85,7 +86,7 @@ public class TargetMachine
 	 */
 	public final boolean invokeSnippetAfterArguments;
 
-	public TargetMachine(Architecture arch, boolean isMP, int spillSlotSize,
+	public MachineInfo(Architecture arch, boolean isMP, int spillSlotSize,
 			int stackAlignment, int pageSize, int cacheAlignment,
 			boolean inlineObjects, boolean debugInfoDoubleWordsInSecondSlot,
 			boolean invokeSnippetAfterArguments)
@@ -125,10 +126,10 @@ public class TargetMachine
 	}
 
 	/**
-	 * Gets the length in bytes of the specified kind for this targetAbstractLayer.
+	 * Gets the getArraySize in bytes of the specified kind for this targetAbstractLayer.
 	 *
-	 * @param kind the kind for which to get the length
-	 * @return the length in bytes of {@code kind}
+	 * @param kind the kind for which to get the getArraySize
+	 * @return the getArraySize in bytes of {@code kind}
 	 */
 	public int sizeInBytes(LIRKind kind)
 	{
@@ -171,11 +172,11 @@ public class TargetMachine
 	}
 
 	/**
-	 * Aligns the given frame length (without return instruction pointer) to the stack
-	 * alignment length and return the aligned length (without return instruction pointer).
+	 * Aligns the given frame getArraySize (without return instruction pointer) to the stack
+	 * alignment getArraySize and return the aligned getArraySize (without return instruction pointer).
 	 *
-	 * @param frameSize the initial frame length to be aligned
-	 * @return the aligned frame length
+	 * @param frameSize the initial frame getArraySize to be aligned
+	 * @return the aligned frame getArraySize
 	 */
 	public int alignFrameSize(int frameSize)
 	{

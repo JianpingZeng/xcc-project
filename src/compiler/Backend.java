@@ -1,49 +1,60 @@
 package compiler;
 
 import hir.BasicBlock;
-import hir.Method;
+import hir.Function;
 import hir.Module;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+
+import asm.AbstractAssembler;
 import lir.CompilerStub;
+import lir.LIRAssembler;
 import lir.LIRGenerator;
 import lir.StackFrame;
+import lir.backend.Architecture;
 import lir.backend.RegisterConfig;
-import lir.backend.TargetAbstractLayer;
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
+import lir.backend.TargetFunctionAssembler;
 import lir.linearScan.LinearScan;
 
 /**
  * <p>
- * This class encapsulates global information about the compilation of a specified
- * file(compilation unit), including a reference to the runtime, targetAbstractLayer
- * machine etc.
+ * This class encapsulates some global information about the compilation of a 
+ * specified file(compilation unit), including target machine information, 
+ * OS-specific information etc.
  *
  * @author Xlous.zeng
  */
-public final class Backend
+public abstract class Backend
 {
-	public final TargetMachine targetMachine;
-	public 	final RegisterConfig registerConfig;
-	public final TargetAbstractLayer targetAbstractLayer;
-	// compilation options
+    /**
+     * A class which encapsulates many informations about specific machine.
+     */
+	public final MachineInfo machineInfo;
+	public final RegisterConfig registerConfig;
+	/**
+	 * compilation options.
+	 */
 	final Options opt;
-	// stack frame
+	/**
+	 * stack frame.
+	 */
 	private StackFrame stackFrame;
 	public final Map<Object, CompilerStub> stubs = new HashMap<>();
-
-	public Backend(utils.Context context, TargetMachine targetMachine,
+	private TargetFunctionAssembler assember;
+	
+	Backend(utils.Context context, MachineInfo machineInfo,
 			RegisterConfig registerConfig)
 	{
 		this.opt = Options.instance(context);
-		this.targetMachine = targetMachine;
+		this.machineInfo = machineInfo;
 		this.registerConfig = registerConfig;
-		this.targetAbstractLayer = TargetAbstractLayer.create(targetMachine.arch, this);
 	}
 	/**
-	 * Yield machine code for a single compilation unit upon specified architecture
-	 * (like X86 or AMD64). Note that, every Module instance takes role in representing
+	 * Emits machine code for a single compilation unit upon specified architecture
+	 * (like IA32 or AMD64). Note that, every Module instance takes role in representing
 	 * a single compilation unit.
 	 * @param hir
 	 */
@@ -52,44 +63,51 @@ public final class Backend
 		emitLIR(hir);
 		emitCode(hir);
 	}
-
+	/**
+	 * Translates hir code into lir format.
+	 * @param hir
+	 */
 	private void emitLIR(Module hir)
 	{
-		Iterator<Method> itr = hir.iterator();
-	
+		Iterator<Function> itr = hir.iterator();
 		while (itr.hasNext())
 		{
-			Method m = itr.next();
+			Function m = itr.next();
 			// create LIRGenerator for every method
-			LIRGenerator lirGenerator = targetAbstractLayer.newLIRGenerator();
-			this.stackFrame = new StackFrame(this, m);
-
+			LIRGenerator lirGenerator = newLIRGenerator(machineInfo.arch, this);
+			stackFrame = new StackFrame(this, m);
 			for (BasicBlock block : m)
 				lirGenerator.doBlock(block);
-
+			
+			// perform register allocation with linear scanning algorithm.
 			new LinearScan(this, m, lirGenerator, frameMap()).allocate();
 		}
 	}
 	/**
-	 * Emits assembly code for specified Module instance. 
+	 * Emits assembly code for specified Module, Currently.
+	 * In the future, there will have a generator responsible for generating
+	 *  immediately executable code.
 	 * @param hir
 	 */
 	private void emitCode(Module hir)
 	{
-		
-	}
+	    final LIRAssembler lirAssembler = newLIRAssember(this, assember());
+	    for (Function m : hir) {
+	        lirAssembler.emitCode(m.linearScanOrder());
+	        
+	    }
+	}	
 
 	/**
 	 * Yield machine code for multiple compilation units upon specified architecture
-	 *  (like X86 or AMD64). Note that, every Module instance takes role in representing
+	 *  (like IA32 or AMD64). Note that, every Module instance takes role in representing
 	 *  a single compilation unit.
 	 * @param hirs
 	 */
 	public void emitMachineInst(Module[] hirs)
 	{
-		if (hirs.length < 1)
-			return;
-		else if (hirs.length == 1)
+	    assert(hirs.length > 0) : "No empty module list permitted.";
+		if (hirs.length == 1)
 		{
 			emitMachineInst(hirs[0]);
 			return;
@@ -105,5 +123,17 @@ public final class Backend
 	{
 		return stackFrame;
 	}
-
+	public TargetFunctionAssembler assember()
+	{
+	    if (assember == null)
+        {
+            AbstractAssembler asm = newAssember(registerConfig);
+            TargetFunctionAssembler tasm = new TargetFunctionAssembler(asm);
+            tasm.setFrameSize(stackFrame.frameSize());          
+        }
+        return assember;
+	}
+	public abstract LIRAssembler newLIRAssember(Backend backend, TargetFunctionAssembler tasm);
+	public abstract LIRGenerator newLIRGenerator(Architecture arch, Backend backend);
+	public abstract AbstractAssembler newAssember(RegisterConfig registerConfig);	
 }

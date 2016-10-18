@@ -1332,7 +1332,7 @@ private void jjCheckNAddStates(int start, int end)
     SwitchTo(lexState);
   }
 
-  /** Switch to specified lex state. */
+  /** SwitchStmt to specified lex state. */
   public void SwitchTo(int lexState)
   {
     if (lexState >= 5 || lexState < 0)

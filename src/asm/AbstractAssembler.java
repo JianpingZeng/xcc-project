@@ -1,7 +1,7 @@
 package asm;
 
 import lir.backend.ByteOrder;
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
 
 /**
  * The platform-independent abstract base class for assembler.
@@ -13,13 +13,13 @@ public abstract class AbstractAssembler
 	/**
 	 * The target machine this assembler used for.
 	 */
-	public final TargetMachine target;
+	public final MachineInfo target;
 	/**
 	 * Code buffer.
 	 */
 	public final Buffer codeBuffer;
 
-	public AbstractAssembler(TargetMachine target)
+	public AbstractAssembler(MachineInfo target)
 	{
 		this.target = target;
 

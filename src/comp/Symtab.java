@@ -9,7 +9,6 @@ import symbol.*;
 import symbol.TypeSymbol;
 import symbol.Symbol.*;
 import type.*;
-import type.Type.*;
 
 /**
  * A class that defines all predefined constants and operators as well as
@@ -98,7 +97,7 @@ public class Symtab implements Flags, OpCodes
 	{
 		OperatorSymbol sym = new OperatorSymbol(0,
 		        names.fromString(name),
-		        new MethodType(res, Arrays.asList(left, right), methodClass),
+		        new FunctionType(res, Arrays.asList(left, right), methodClass),
 		        opcode);
 		predefTopLevelSymbol.topScope.enter(sym);
 	}
@@ -113,7 +112,7 @@ public class Symtab implements Flags, OpCodes
 	{
 		OperatorSymbol sym = new OperatorSymbol(0,
 		        names.fromString(name),
-		        new MethodType(res, Arrays.asList(left, right), methodClass),
+		        new FunctionType(res, Arrays.asList(left, right), methodClass),
 		        opcode1 >> OpCodes.preShift + opcode2);
 		predefTopLevelSymbol.topScope.enter(sym);
 	}
@@ -129,7 +128,7 @@ public class Symtab implements Flags, OpCodes
 	{
 		OperatorSymbol sym = new OperatorSymbol(0,
 		        names.fromString(name),
-		        new MethodType(res, Arrays.asList(arg), methodClass),
+		        new FunctionType(res, Arrays.asList(arg), methodClass),
 		        opcode);
 		predefTopLevelSymbol.topScope.enter(sym);
 		return sym;

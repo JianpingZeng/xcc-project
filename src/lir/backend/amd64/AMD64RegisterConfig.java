@@ -1,6 +1,6 @@
 package lir.backend.amd64;
 
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
 import lir.ci.*;
 import java.util.Arrays;
 import java.util.Collections;
@@ -87,7 +87,7 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 	 * The frame offset of the first stack argument for each calling convention
 	 * {@link CallingConvention.Type}.
 	 */
-	public final int[] stackArg0Offsets = null;// = new int[CallingConvention.Type.VALUES.length];
+	public final int[] stackArg0Offsets = null;// = new int[CallingConvention.Type.VALUES.getArraySize];
 
 	private static AMD64RegisterConfig instance = null;
 
@@ -206,11 +206,11 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 	 * any stack slots to parameters.
 	 */
 	public CallingConvention getCallingConvention(
-			LIRKind[] parameters, TargetMachine target, boolean stackOnly)
+			LIRKind[] parameters, MachineInfo target, boolean stackOnly)
 	{
 		return null;
 		/*
-		LIRValue[] locations = new LIRValue[parameters.length];
+		LIRValue[] locations = new LIRValue[parameters.getArraySize];
 
 		int currentGeneral = 0;
 		int currentXMM = 0;
@@ -218,7 +218,7 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 				(stackArg0Offsets[type.ordinal()]) / target.spillSlotSize;
 		int currentStackIndex = firstStackIndex;
 
-		for (int i = 0; i < parameters.length; i++)
+		for (int i = 0; i < parameters.getArraySize; i++)
 		{
 			final LIRKind kind = parameters[i];
 
@@ -231,7 +231,7 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 				case Int:
 				case Long:
 				case Object:
-					if (!stackOnly && currentGeneral < cpuParameters.length)
+					if (!stackOnly && currentGeneral < cpuParameters.getArraySize)
 					{
 						LIRRegister LIRRegister = cpuParameters[currentGeneral++];
 						locations[i] = LIRRegister.asValue(kind);
@@ -240,7 +240,7 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 
 				case Float:
 				case Double:
-					if (!stackOnly && currentXMM < fpuParameters.length)
+					if (!stackOnly && currentXMM < fpuParameters.getArraySize)
 					{
 						LIRRegister LIRRegister = fpuParameters[currentXMM++];
 						locations[i] = LIRRegister.asValue(kind);

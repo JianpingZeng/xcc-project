@@ -3,14 +3,21 @@ package lir;
 import asm.Label;
 import compiler.*;
 import hir.*;
-import hir.Instruction.Phi;
+import hir.Instruction.PhiNode;
 import lir.linearScan.OperandPool;
 import lir.linearScan.OperandPool.VariableFlag;
+import lir.backend.Architecture;
+import lir.backend.amd64.AMD64;
+import lir.backend.amd64.AMD64LIRGenerator;
+import lir.backend.ia32.IA32;
+import lir.backend.ia32.IA32LIRGenerator;
 import lir.ci.*;
 import utils.Util;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
 import static lir.ci.LIRRegisterValue.IllegalValue;
 
 /**
@@ -21,7 +28,7 @@ import static lir.ci.LIRRegisterValue.IllegalValue;
  * @author Xlous.zeng
  * @Version 0.1
  */
-public abstract class LIRGenerator extends ValueVisitor
+public abstract class LIRGenerator extends InstructionVisitor
 {
 	/**
 	 * the range of VALUES in a switch statement.
@@ -43,11 +50,6 @@ public abstract class LIRGenerator extends ValueVisitor
 	public static int RangeTestsSwitchDensity = 5;
 
 	public final Backend backend;
-	/**
-	 * The function to be Lirified.
-	 */
-	private BasicBlock currentBlock;
-	private Value currentInstr;
 	public OperandPool operands;
 	protected LIRList lir;
 	private final boolean isTwoOperand;
@@ -57,12 +59,36 @@ public abstract class LIRGenerator extends ValueVisitor
 	public LIRGenerator(Backend backend)
 	{
 		this.backend = backend;
-		this.isTwoOperand = backend.targetMachine.arch.twoOperandMode();
+		this.isTwoOperand = backend.machineInfo.arch.twoOperandMode();
 		constants = new ArrayList<>(16);
-		this.operands = new OperandPool(backend.targetMachine);
+		this.operands = new OperandPool(backend.machineInfo);
 		variablesForConstants = new ArrayList<>();
 	}
-
+	/**
+	 * A interface method for creating different instance of {@linkplain LIRGenerator}
+	 * according to specified architecture.
+	 * @param arch A architecture for specify different subclass of {@linkplain LIRGenerator}.
+	 * @param backend  Backend instance.
+	 * @return The instance of sub class of {@linkplain LIRGenerator}.
+	 */
+	public static LIRGenerator create(Architecture arch, Backend  backend)
+	{
+	    if (arch instanceof IA32)
+	    {
+	        return new IA32LIRGenerator(backend);
+	    }
+	    else if (arch instanceof AMD64) 
+	    {
+	        return new AMD64LIRGenerator(backend);
+	    }
+	    else 
+	    {
+	        // TODO: current, other architectures are not supported rather than
+	        // ia32 and amd64.
+	        Util.shouldNotReachHere();
+	        return null;
+	    }
+	}
 	/**
 	 * generates LIR instruction for specified basic block.
 	 *
@@ -71,21 +97,16 @@ public abstract class LIRGenerator extends ValueVisitor
 	public void doBlock(BasicBlock block)
 	{
 		blockDoProlog(block);
-		currentBlock = block;
-
 		for (Iterator<Value> itr = block.iterator(); itr.hasNext(); )
 		{
 			Value inst = itr.next();
 			doRoot(inst);
 		}
-		currentBlock = null;
 		blockDoEpilog(block);
 	}
 
 	private void doRoot(Value instr)
 	{
-		// lacks of debug information and error checking, currently
-		this.currentInstr = instr;
 		instr.accept(this);
 	}
 
@@ -126,7 +147,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	{
 		assert Util.archKindEqual(instr.x.kind, instr.kind) && Util
 				.archKindEqual(instr.y.kind, instr.kind) :
-				"Wrong parameter type of: " + instr.getName() + " in: "
+				"Wrong parameter type of: " + instr.name() + " in: "
 						+ instr.opcode.opName;
 		switch (instr.kind)
 		{
@@ -219,7 +240,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		int lo = Integer.MAX_VALUE;
 		int hi = Integer.MIN_VALUE;
 		int defaultIndex = 0;
-		int[] labels = new int[switchInst.numsOfCases()];
+		int[] labels = new int[switchInst.getNumOfCases()];
 		Value[] vals = switchInst.getCaseValues();
 		for (int i = 0; i < vals.length; i++)
 		{
@@ -303,7 +324,7 @@ public abstract class LIRGenerator extends ValueVisitor
 
 	private SwitchRange[] createLookupRanges(Instruction.SwitchInst inst)
 	{
-		int len = inst.numsOfCases();
+		int len = inst.getNumOfCases();
 		ArrayList<SwitchRange> res = new ArrayList<>(len);
 		if (len > 0)
 		{
@@ -376,7 +397,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	// the calling to function and return from function
 
 	/**
-	 * 'ret' instruction - Here we are interested in meeting the X86 ABI.
+	 * 'ret' instruction - Here we are interested in meeting the IA32 ABI.
 	 * As such, we have the following possibilities:
 	 * <ol>ret void: No return value, simply emit a 'ret' instruction</ol>
 	 * <ol>ret sbyte, ubyte : Extend value into EAX and return</ol>
@@ -386,7 +407,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 * <ol>ret long, ulong  : Move value into EAX/EDX and return</ol>
 	 * <ol>ret float/double : Top of FP stack</ol>
 	 */
-	public void visitReturn(Instruction.Return inst)
+	public void visitReturn(Instruction.ReturnInst inst)
 	{
 		if (inst.kind.isVoid())
 		{
@@ -396,11 +417,11 @@ public abstract class LIRGenerator extends ValueVisitor
 		else
 		{
 			LIRValue reg = resultOperandFor(inst.kind);
-			LIRItem result = new LIRItem(inst.result(), this);
+			LIRItem result = new LIRItem(inst.getReturnValue(), this);
 			result.loadItemForce(reg);
 
 			lir.returnOp(result.result());
-			//LIRValue result = force(inst.result(), operand);
+			//LIRValue getReturnValue = force(inst.getReturnValue(), operand);
 		}
 		clearResult(inst);
 	}
@@ -409,7 +430,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 * The invoke with receiver has following phases:
 	 *   a) traverse all arguments -> item-array (invoke_visit_argument)
 	 *   b) load each of the items and push on stack
-	 *   c) lock result LIRRegisters and emit call operation
+	 *   c) lock getReturnValue LIRRegisters and emit call operation
 	 *
 	 * Before issuing a call, we must spill-save all VALUES on stack
 	 * that are in caller-save register. "spill-save" moves thos LIRRegisters
@@ -421,7 +442,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	 *   register in "spill-save" that destroys the receiver register
 	 *   before f) is executed
  	 */
-	public void visitInvoke(Instruction.Invoke inst)
+	public void visitInvoke(Instruction.InvokeInst inst)
 	{
 		CallingConvention cc = backend.frameMap().getCallingConvention
 				(Util.signatureToKinds(inst.target));
@@ -435,7 +456,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		for (int i=0; i < argValues.length; i++)
 			argValues[i]  = args[i].result();
 
-		// set up the result register
+		// set up the getReturnValue register
 		LIRVariable resultReg = null;
 		if (inst.kind != LIRKind.Void)
 		{
@@ -448,7 +469,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		lir.callDirect(inst.target, resultReg, argValues, locations);
 	}
 
-	private void invokeLoadArguments(Instruction.Invoke inst,
+	private void invokeLoadArguments(Instruction.InvokeInst inst,
 			LIRItem[] args, LIRValue[] locations)
 	{
 		assert args.length == locations.length :
@@ -485,7 +506,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		}
 	}
 
-	private LIRItem[] invokeVisitArgument(Instruction.Invoke instr)
+	private LIRItem[] invokeVisitArgument(Instruction.InvokeInst instr)
 	{
 		ArrayList<LIRItem> argumentItems = new ArrayList<>();
 		for (int i = 0; i < instr.getNumsOfArgs(); i++)
@@ -501,13 +522,13 @@ public abstract class LIRGenerator extends ValueVisitor
 	 * SSA) to non-SSA. Currently, we can just implements the first method which is
 	 * such naive that too many redundant copy operation will be introduced. Future,
 	 * we might implements the third method proposed by Swreedbar for improving the
-	 * efficiency, like the size of generating code. Please visits following links
+	 * efficiency, like the getTypeSize of generating code. Please visits following links
 	 * about the Swreedbar's algorithm for more detaisl.
 	 * <a href="https://www.tjhsst.edu/~rlatimer/papers/sreedharTranslatingOutOfStaticSingleAssignmentForm.pdf">Translating Out of Static Single Assignment Form</a>
 	 * @param inst
 	 */
 	/*
-	public void visitPhi(Instruction.Phi inst)
+	public void visitPhi(Instruction.PhiNode inst)
 	{
 		assert (inst != null) && inst.kind != LIRKind.Illegal :
 		"illegal phi can not be resolved";
@@ -522,9 +543,9 @@ public abstract class LIRGenerator extends ValueVisitor
 			assert x1.kind != LIRKind.Illegal;
 
 			LIRValue operand = IllegalValue;
-			if (x1 instanceof Phi)
+			if (x1 instanceof PhiNode)
 			{
-				operand = operandForPhi((Phi)x1);
+				operand = operandForPhi((PhiNode)x1);
 			}
 			// the ith incoming argument is not phi
 			if (operand.isIllegal())
@@ -545,7 +566,7 @@ public abstract class LIRGenerator extends ValueVisitor
 		lir.move(phiTemp, phiRes);
 	}*/
 
-	public void visitPhi(Instruction.Phi inst)
+	public void visitPhi(Instruction.PhiNode inst)
 	{
 		LIRValue[] args = new LIRValue[inst.getNumberIncomingValues()];
 		BasicBlock[] blocks = new BasicBlock[inst.getNumberIncomingValues()];
@@ -820,11 +841,11 @@ public abstract class LIRGenerator extends ValueVisitor
 
 
 	/**
-	 * Forces the result of a given instruction to be available in a given operand,
+	 * Forces the getReturnValue of a given instruction to be available in a given operand,
 	 * inserting move instructions if necessary.
 	 *
-	 * @param instruction an instruction that produces a {@linkplain Value#LIROperand() result}
-	 * @param operand     the operand in which the result of {@code instruction}
+	 * @param instruction an instruction that produces a {@linkplain Value#LIROperand() getReturnValue}
+	 * @param operand     the operand in which the getReturnValue of {@code instruction}
 	 *                    must be available
 	 * @return {@code operand}
 	 */
@@ -842,7 +863,7 @@ public abstract class LIRGenerator extends ValueVisitor
 			}
 			else
 			{
-				// just move the result of instruction into operation being used
+				// just move the getReturnValue of instruction into operation being used
 				// when both kind of two LIROperand is equivalent
 				lir.move(result, operand);
 			}
@@ -910,19 +931,19 @@ public abstract class LIRGenerator extends ValueVisitor
 
 	/**
 	 * Ensures that an operand has been {@linkplain Value#setLIROperand(LIRValue)
-	 * initialized} for storing the result of an {@code Value} instance.
+	 * initialized} for storing the getReturnValue of an {@code Value} instance.
 	 *
-	 * @param val an instance of {@code Value} that produces a result value.
+	 * @param val an instance of {@code Value} that produces a getReturnValue value.
 	 */
 	public LIRValue makeOperand(Value val)
 	{
 		LIRValue operand = val.LIROperand;
 		if (operand.isIllegal())
 		{
-			if (val instanceof Instruction.Phi)
+			if (val instanceof PhiNode)
 			{
 				// a phi may not have an operand yet if it is for an exception block
-				operand = operandForPhi((Instruction.Phi) val);
+				operand = operandForPhi((PhiNode) val);
 			}
 			else if (val instanceof Value.Constant)
 			{
@@ -934,15 +955,15 @@ public abstract class LIRGenerator extends ValueVisitor
 		return operand;
 	}
 
-	private LIRValue operandForPhi(Phi phi)
+	private LIRValue operandForPhi(PhiNode phiNode)
 	{
-		if (phi.LIROperand().isIllegal())
+		if (phiNode.LIROperand().isIllegal())
 		{
-			// allocate a variable for this phi
-			LIRVariable operand = newVariable(phi.kind);
-			setResult(phi, operand);
+			// allocate a variable for this phiNode
+			LIRVariable operand = newVariable(phiNode.kind);
+			setResult(phiNode, operand);
 		}
-		return phi.LIROperand();
+		return phiNode.LIROperand();
 	}
 
 	LIRValue operandForInstruction(Value x)
@@ -956,8 +977,8 @@ public abstract class LIRGenerator extends ValueVisitor
 			}
 			else
 			{
-				assert x instanceof Phi;
-				//|| x instanceof Local : "only for Phi and Local";
+				assert x instanceof PhiNode;
+				//|| x instanceof Local : "only for PhiNode and Local";
 				// allocate a variable for this local or phi
 				createResultVirtualRegister(x);
 			}
@@ -966,11 +987,11 @@ public abstract class LIRGenerator extends ValueVisitor
 	}
 
 	/**
-	 * Allocates a virtual register (variable LIROperand ) to hold the result of
+	 * Allocates a virtual register (variable LIROperand ) to hold the getReturnValue of
 	 * a given instruction. This can only be performed once for any given instruction.
 	 *
-	 * @param x an instruction that produces a result
-	 * @return the variable assigned to hold the result produced by {@code x}
+	 * @param x an instruction that produces a getReturnValue
+	 * @return the variable assigned to hold the getReturnValue produced by {@code x}
 	 */
 	protected LIRVariable createResultVirtualRegister(Value x)
 	{
@@ -980,7 +1001,7 @@ public abstract class LIRGenerator extends ValueVisitor
 	}
 
 	/**
-	 * Loads the result of specified {@code Value} into virtual resiger to be
+	 * Loads the getReturnValue of specified {@code Value} into virtual resiger to be
 	 * assigned into physical register.
 	 * @param val
 	 * @return

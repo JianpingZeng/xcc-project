@@ -5,8 +5,8 @@ import java.util.HashMap;
 import utils.Context;
 
 /**
- * A table of all command-line options. If an option has an argument, the option
- * name is mapped to the argument. If a set option has no argument, it is mapped
+ * A table of all command-line options. IfStmt an option has an argument, the option
+ * name is mapped to the argument. IfStmt a set option has no argument, it is mapped
  * to itself.
  */
 public class Options extends HashMap<String, String>
@@ -119,7 +119,7 @@ public class Options extends HashMap<String, String>
 		return get("-o");
 	}
 	/**
-	 * Obtains the specified level of optimization. 
+	 * Obtains the specified level of opt. 
 	 * @return
 	 */
 	public String optLevel()

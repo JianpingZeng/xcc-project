@@ -1,4 +1,4 @@
-package optimization;
+package opt;
 
 import hir.*;
 
@@ -7,7 +7,7 @@ import java.util.LinkedList;
 /**
  * <p>This defines a class which implements constant propgation
  * and constant folding as subtask.
- * <p>This file is a member of <a href={@docRoot/optimization}>Machine Indepedence
+ * <p>This file is a member of <a href={@docRoot/opt}>Machine Indepedence
  * Optimization</a>.
  *
  * @author Xlous.zeng
@@ -21,12 +21,12 @@ public class ConstantProp
 	private long numsInstKilled = 0;
 
 	/**
-	 * Performs constant propagation optimization upon given method.
+	 * Performs constant propagation opt upon given method.
 	 *
 	 * @param m A method where Optimization performed.
-	 * @return Whether execution of optimization is successful.
+	 * @return Whether execution of opt is successful.
 	 */
-	public boolean runOnMethod(Method m)
+	public boolean runOnMethod(Function m)
 	{
 		LinkedList<Value> worklist = new LinkedList<>();
 		// initializes the worklist to all of the instructions ready to

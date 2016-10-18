@@ -58,7 +58,7 @@ public class ParseException extends Exception {
 
 
   /**
-   * This is the last token that has been consumed successfully.  If
+   * This is the last token that has been consumed successfully.  IfStmt
    * this object has been created due to a parse error, the token
    * followng this token will (therefore) be the first error token.
    */
@@ -80,7 +80,7 @@ public class ParseException extends Exception {
 
   /**
    * It usesList "currentToken" and "expectedTokenSequences" to generate a parse
-   * error message and returns it.  If this object has been created
+   * error message and returns it.  IfStmt this object has been created
    * due to a parse error, and you do not catch it (it gets thrown
    * from the parser) the correct error message
    * gets displayed.

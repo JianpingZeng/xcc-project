@@ -1,9 +1,10 @@
 package lir;
 
+import hir.Instruction;
 import lir.ci.LIRValue;
 import lir.StackFrame.StackBlock;
 /**
- * LIR instruction used in translating {@link hir.Instruction.Alloca}.
+ * LIR instruction used in translating {@link Instruction.AllocaInst}.
  *
  * @author Xlous.zeng
  */
@@ -25,6 +26,6 @@ public class LIRStackAllocate extends LIRInstruction
 
 	@Override public void emitCode(LIRAssembler masm)
 	{
-		//masm.emitStackAllocate(stackBlock, this.result());
+		//masm.emitStackAllocate(stackBlock, this.getReturnValue());
 	}
 }

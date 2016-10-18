@@ -1,15 +1,11 @@
-package optimization;
+package opt;
 
+import hir.*;
 import hir.BasicBlock;
-import hir.DominatorTree;
-import hir.Instruction;
-import hir.Instruction.Alloca;
+import hir.Instruction.AllocaInst;
 import hir.Instruction.ArithmeticOp;
 import hir.Instruction.Op2;
 import hir.Instruction.StoreInst;
-import hir.Method;
-import hir.Operator;
-import hir.Value;
 import hir.Value.Constant;
 
 import java.util.ArrayList;
@@ -71,7 +67,7 @@ public final class InductionVarSimplify
 		}
 	}
 	/**
-	 * A list contains all of induction variable records in this function being optimized.
+	 * A list isDeclScope all of induction variable records in this function being optimized.
 	 */
 	private ArrayList<IVRecord> inductionVars;
 	private Loop[] loops;
@@ -85,13 +81,13 @@ public final class InductionVarSimplify
 	private boolean[][] SRdone;
 	
 	/**
-	 * A interface to run on method being compiled.
-	 * @param method
+	 * A interface to run on function being compiled.
+	 * @param function
 	 */
-	public void runOnLoop(Method method)
+	public void runOnLoop(Function function)
 	{
 		this.inductionVars = new ArrayList<>();		
-		initialize(method);
+		initialize(function);
 		
 		for (Loop loop : loops)
 		{
@@ -112,13 +108,13 @@ public final class InductionVarSimplify
 	}
 	/**
 	 * Initialize some helpful data structure as needed.
-	 * @param method
+	 * @param function
 	 */
-	private void initialize(Method method)
+	private void initialize(Function function)
 	{
-		dt = new DominatorTree(method);
+		dt = new DominatorTree(function);
 		dt.recalculate();
-		loops = method.getLoops();
+		loops = function.getLoops();
 		assert loops != null && loops.length > 0
 				: "must performed after loop analysis pass";
 		
@@ -137,8 +133,8 @@ public final class InductionVarSimplify
 			loopIdToLoops[l.loopIndex] = l;	
 		
 		// instantiate a array of type boolean which keeps track of 
-		SRdone = new boolean[method.cfg.getNumberOfBasicBlocks()][];
-		for (BasicBlock bb : method)
+		SRdone = new boolean[function.cfg.getNumberOfBasicBlocks()][];
+		for (BasicBlock bb : function)
 			SRdone[bb.getID()] = new boolean[bb.size()];
 	}
 	/**
@@ -202,7 +198,7 @@ public final class InductionVarSimplify
 	 * Obtains the index by which the specified block will be indexed. 
 	 * @param blockId	The id of specified basic block.
 	 * @param nblocks	The array of block id.
-	 * @return If there no block with specified blockId existed in nblocks, return -1
+	 * @return IfStmt there no block with specified blockId existed in nblocks, return -1
 	 * , otherwise, return its index.
 	 */
 	private int blockIndex(int blockId, List<BasicBlock> blocks)
@@ -217,7 +213,7 @@ public final class InductionVarSimplify
 	}
 	/**
 	 * <p>Checks if the basic block where the operand defined was out of this loop.</p>
-	 * <p>Return true if it is out of Loop, otherwise false returned.</p>
+	 * <p>ReturnInst true if it is out of Loop, otherwise false returned.</p>
 	 * @param blocks
 	 * @param operand
 	 * @return
@@ -252,7 +248,7 @@ public final class InductionVarSimplify
 	}
 	/**
 	 * find out a IVRecord by one value.
-	 * If there no found result, then {@code null} will be returned.
+	 * IfStmt there no found getReturnValue, then {@code null} will be returned.
 	 * Otherwise return the found IVRecord object.
 	 * @param inst
 	 * @return
@@ -433,8 +429,8 @@ public final class InductionVarSimplify
         				 * 						tj = tj + db;
         				 */
         				LIRKind kind = r2.div.kind;
-        				Alloca tj = new Alloca(kind, Constant.forInt(1), "%tj");
-        				Alloca db = new Alloca(r2.factor.kind, Constant.forInt(1), "%db");
+        				AllocaInst tj = new AllocaInst(kind, Constant.forInt(1), "%tj");
+        				Instruction.AllocaInst db = new Instruction.AllocaInst(r2.factor.kind, Constant.forInt(1), "%db");
         				
         				int i = r2.div.getParent().getID();
         				int j = ((Instruction)r2.div).id;
@@ -523,7 +519,7 @@ public final class InductionVarSimplify
 	private void insertAfter(Value target, Value[] after)
 	{
 		assert target != null && after!=null;	
-		// if the length of after is not greater zero, just immediately return.
+		// if the getArraySize of after is not greater zero, just immediately return.
 		if (after.length <= 0) return;
 		
 		target.insertAfter(after[0]);

@@ -109,7 +109,7 @@ public class Check implements SymbolKinds, TypeTags, Flags
 	}
 
 	/**
-	 * Check that a given type is assignable to a given proto-type. If it is,
+	 * Check that a given type is assignable to a given proto-type. IfStmt it is,
 	 * return the type, otherwise return errType.
 	 * @param pos Position to be used for error reporting.
 	 * @param found The type that was found.
@@ -158,7 +158,7 @@ public class Check implements SymbolKinds, TypeTags, Flags
 
     /**
      * Check that a given type can be cast to a given targetAbstractLayer type.
-     *  Return the result of the cast.
+     *  ReturnInst the getReturnValue of the cast.
      *  @param pos        Position to be used for error reporting.
      *  @param found      The type that is being cast.
      *  @param req        The targetAbstractLayer type of the cast.
@@ -178,14 +178,14 @@ public class Check implements SymbolKinds, TypeTags, Flags
     /**
      * Check that (arrays of) interfaces do not each define a method
      *  with same name and arguments but different return types.
-     *  If either argument type is not an (array of) interface type, do
+     *  IfStmt either argument type is not an (array of) interface type, do
      *  nothing.
      *  @param pos          Position to be used for error reporting.
      *  @param t1           The first argument type.
      *  @param t2           The second argument type.
      */
    public boolean checkCompatible(int pos, Type t1, Type t2) {
-       if (t1.tag == ARRAY && t2.tag == ARRAY) {
+       if (t1.tag == ConstantArray && t2.tag == ConstantArray) {
            checkCompatible(pos, t1.elemType(), t2.elemType());
        }
        return true;

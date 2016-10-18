@@ -1,6 +1,6 @@
 package lir;
 
-import hir.Method;
+import hir.Function;
 import lir.ci.LIRValue;
 
 import java.util.List;
@@ -14,7 +14,7 @@ public class LIRCall extends LIRInstruction
 	/**
 	 * The targetAbstractLayer of the call.
 	 */
-	public final Method target;
+	public final Function target;
 
 	private final int targetAddressIndex;
 
@@ -25,7 +25,7 @@ public class LIRCall extends LIRInstruction
 		return arguments.toArray(new LIRValue[arguments.size()]);
 	}
 
-	public LIRCall(LIROpcode opcode, Method target, LIRValue result,
+	public LIRCall(LIROpcode opcode, Function target, LIRValue result,
 			List<LIRValue> arguments,
 			boolean calleeSaved, List<LIRValue> pointerSlots)
 	{

@@ -7,15 +7,15 @@ public class CodeBlob
 {
 	private String name;
 	/**
-	 * total size of CodeBlob in bytes.
+	 * total getTypeSize of CodeBlob in bytes.
 	 */
 	private int size;
 	/**
-	 * size of header (depends on subclass).
+	 * getTypeSize of header (depends on subclass).
 	 */
 	private int headerSize;
 	/**
-	 * size of relocation.
+	 * getTypeSize of relocation.
 	 */
 	private int relocationSize;
 	/**
@@ -39,7 +39,7 @@ public class CodeBlob
 	private int dataOffset;
 
 	/**
-	 * size of stack frame.
+	 * getTypeSize of stack frame.
 	 */
 	private int frameSize;
 }

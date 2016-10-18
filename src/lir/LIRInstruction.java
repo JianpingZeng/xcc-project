@@ -8,8 +8,8 @@ import lir.ci.LIRValue.Formatter;
 
 /**
  * <p>This file defines a base class of all LIR instruction that explicitly owns
- * several operands and result variable, which is different from Module instruction
- * which represents both operation and result of operation itself.
+ * several reservedOperands and getReturnValue variable, which is different from Module instruction
+ * which represents both operation and getReturnValue of operation itself.
  * <p>It is designed to assign register to variable and lifetime computation
  * conveniently.
  *
@@ -55,16 +55,16 @@ public abstract class LIRInstruction
 
 	/**
 	 * <p>
-	 * The result LIROperand for this instruction.
+	 * The getReturnValue LIROperand for this instruction.
 	 * </p>
 	 * <p>
-	 * If this instruction produce no value, then result is {@code LIRValue#IllegalValue}.
+	 * IfStmt this instruction produce no value, then getReturnValue is {@code LIRValue#IllegalValue}.
 	 * </p>
 	 */
 	private final LIROperand result;
 
 	/**
-	 * The input and temporary operands of this instruction.
+	 * The input and temporary reservedOperands of this instruction.
 	 */
 	protected final LIROperand[] operands;
 
@@ -79,8 +79,8 @@ public abstract class LIRInstruction
 	public final boolean hasCall;
 
 	/**
-	 * The number of variable or register output operands for this instruction.
-	 * These operands are at indexes {@code [0 .. allocatorOutputCount-1]} in
+	 * The number of variable or register output reservedOperands for this instruction.
+	 * These reservedOperands are at indexes {@code [0 .. allocatorOutputCount-1]} in
 	 * {@link #allocatorOperands}.
 	 *
 	 * @see OperandMode#Output
@@ -88,8 +88,8 @@ public abstract class LIRInstruction
 	private byte allocatorOutputCount;
 
 	/**
-	 * The number of variable or register input operands for this instruction.
-	 * These operands are at indexes {@code [allocatorOutputCount .. (allocator
+	 * The number of variable or register input reservedOperands for this instruction.
+	 * These reservedOperands are at indexes {@code [allocatorOutputCount .. (allocator
 	 * InputCount+allocatorOutputCount-1)]} in {@link #allocatorOperands}.
 	 *
 	 * @see OperandMode#Input
@@ -97,8 +97,8 @@ public abstract class LIRInstruction
 	private byte allocatorInputCount;
 
 	/**
-	 * The number of variable or register temp operands for this instruction.
-	 * These operands are at indexes {@code [allocatorInputCount+allocatorOutputCount
+	 * The number of variable or register temp reservedOperands for this instruction.
+	 * These reservedOperands are at indexes {@code [allocatorInputCount+allocatorOutputCount
 	 * .. (allocatorTempCount+allocatorInputCount+allocatorOutputCount-1)]} in
 	 * {@link #allocatorOperands}.
 	 *
@@ -107,22 +107,22 @@ public abstract class LIRInstruction
 	private byte allocatorTempCount;
 
 	/**
-	 * The number of variable or register input or temp operands for this instruction.
+	 * The number of variable or register input or temp reservedOperands for this instruction.
 	 */
 	private byte allocatorTempInputCount;
 
 	/**
-	 * The set of operands that must be known to the register allocator either to
+	 * The set of reservedOperands that must be known to the register allocator either to
 	 * bind a register or stack slot to a {@linkplain LIRVariable variable} or to
-	 * inform the allocator about operands that are already fixed to a specific
-	 * register. This set excludes all constant operands as well as operands that
+	 * inform the allocator about reservedOperands that are already fixed to a specific
+	 * register. This set excludes all constant reservedOperands as well as reservedOperands that
 	 * are bound to a stack slot in the {@linkplain StackSlot#inCallerFrame()
 	 * caller's frame}. This array is partitioned as follows.
 	 * <pre>
 	 *
 	 *   <-- allocatorOutputCount --> <-- allocatorInputCount --> <-- allocatorTempCount -->
 	 *  +----------------------------+---------------------------+--------------------------+
-	 *  |       output operands      |       input operands      |      temp operands       |
+	 *  |       output reservedOperands      |       input reservedOperands      |      temp reservedOperands       |
 	 *  +----------------------------+---------------------------+--------------------------+
 	 *
 	 * </pre>
@@ -130,12 +130,12 @@ public abstract class LIRInstruction
 	final List<LIRValue> allocatorOperands;
 
 	/**
-	 * Constructs a new LIR instruction that has no input or temp operands.
+	 * Constructs a new LIR instruction that has no input or temp reservedOperands.
 	 *
 	 * @param opcode  the opcode of the new instruction
-	 * @param result  the LIROperand that holds the operation result of this instruction.
+	 * @param result  the LIROperand that holds the operation getReturnValue of this instruction.
 	 *                   This will be{@link LIRValue#IllegalValue} for instructions
-	 *                   that do not produce a result.
+	 *                   that do not produce a getReturnValue.
 	 * @param hasCall specifies if all caller-saved LIRRegisters are destroyed by
 	 *                   this instruction
 	 */
@@ -145,27 +145,27 @@ public abstract class LIRInstruction
 	}
 
 	/**
-	 * Constructs a new LIR instruction. The {@code operands} array is partitioned as follows:
+	 * Constructs a new LIR instruction. The {@code reservedOperands} array is partitioned as follows:
 	 * <pre>
 	 *
 	 *                              <------- tempInput -------> <--------- temp --------->
 	 *  +--------------------------+---------------------------+--------------------------+
-	 *  |       input operands     |   input+temp operands     |      temp operands       |
+	 *  |       input reservedOperands     |   input+temp reservedOperands     |      temp reservedOperands       |
 	 *  +--------------------------+---------------------------+--------------------------+
 	 *
 	 * </pre>
 	 *
 	 * @param opcode    the opcode of the new instruction
-	 * @param result    the LIROperand that holds the operation result of this instruction.
+	 * @param result    the LIROperand that holds the operation getReturnValue of this instruction.
 	 *                     This will be{@link LIRValue#IllegalValue} for instructions
-	 *                     that do not produce a result.
+	 *                     that do not produce a getReturnValue.
 	 * @param hasCall   specifies if all caller-saved LIRRegisters are destroyed by
 	 *                     this instruction
-	 * @param tempInput the number of operands that are both {@linkplain OperandMode#Input input}
-	 *                     and {@link OperandMode#Temp temp} operands for this instruction
-	 * @param temp      the number of operands that are {@link OperandMode#Temp temp}
-	 *                     operands for this instruction
-	 * @param operands  the input and temp operands for the instruction
+	 * @param tempInput the number of reservedOperands that are both {@linkplain OperandMode#Input input}
+	 *                     and {@link OperandMode#Temp temp} reservedOperands for this instruction
+	 * @param temp      the number of reservedOperands that are {@link OperandMode#Temp temp}
+	 *                     reservedOperands for this instruction
+	 * @param operands  the input and temp reservedOperands for the instruction
 	 */
 	public LIRInstruction(LIROpcode opcode, LIRValue result, boolean hasCall,
 			int tempInput, int temp, LIRValue... operands)
@@ -217,9 +217,9 @@ public abstract class LIRInstruction
 
 	/**
 	 * Adds a {@linkplain LIRValue#isLegal() legal} value that is part of an address to
-	 * the list of {@linkplain #allocatorOperands register allocator operands}. If
+	 * the list of {@linkplain #allocatorOperands register allocator reservedOperands}. IfStmt
 	 * the value is {@linkplain LIRVariable variable}, then its index into the list
-	 * of register allocator operands is returned. Otherwise, {@code -1} is returned.
+	 * of register allocator reservedOperands is returned. Otherwise, {@code -1} is returned.
 	 */
 	private int addAddressPart(LIRValue part)
 	{
@@ -334,7 +334,7 @@ public abstract class LIRInstruction
 		}
 
 		int z = 0;
-		// Input-only operands
+		// Input-only reservedOperands
 		for (int i = 0; i < operands.length - tempInputCount - tempCount; i++)
 		{
 			if (this.operands[z] == null)
@@ -354,7 +354,7 @@ public abstract class LIRInstruction
 			z++;
 		}
 
-		// Temp-only operands
+		// Temp-only reservedOperands
 		for (int i = 0; i < tempCount; i++)
 		{
 			if (this.operands[z] == null)
@@ -376,16 +376,16 @@ public abstract class LIRInstruction
 		{
 			assert operand != null;
 			assert operand.isVariableOrRegister() :
-					"LIR operands can only be variables and LIRRegisters initially, not "
+					"LIR reservedOperands can only be variables and LIRRegisters initially, not "
 							+ operand.getClass().getSimpleName();
 		}
 		return true;
 	}
 
 	/**
-	 * Gets the result LIROperand for this instruction.
+	 * Gets the getReturnValue LIROperand for this instruction.
 	 *
-	 * @return return the result LIROperand
+	 * @return return the getReturnValue LIROperand
 	 */
 	public final LIRValue result()
 	{
@@ -411,7 +411,7 @@ public abstract class LIRInstruction
 	public abstract void emitCode(LIRAssembler masm);
 
 	/**
-	 * Gets the operation performed by this instruction in terms of its operands as a string.
+	 * Gets the operation performed by this instruction in terms of its reservedOperands as a string.
 	 */
 	public String operationString(Formatter operandFmt)
 	{

@@ -1,12 +1,8 @@
-package optimization; 
+package opt; 
 
-import hir.BasicBlock;
-import hir.ControlFlowGraph;
-import hir.Instruction.Branch;
+import hir.*;
 import hir.Instruction.Goto;
-import hir.Instruction.Phi;
-import hir.Method;
-import hir.Value;
+import hir.Instruction.PhiNode;
 import hir.Value.UndefValue;
 
 import java.util.ArrayList;
@@ -16,9 +12,9 @@ import utils.TTY;
 
 /** 
  * This is a pass which responsible for performing simplification of loop contained 
- * in specified {@linkplain Method function}.
+ * in specified {@linkplain Function function}.
  * 
- * <b>Note that</b> only two kinds of optimization yet have been implemented in here,
+ * <b>Note that</b> only two kinds of opt yet have been implemented in here,
  * <b>Loop inversion(also called of <a href ="http://llvm.org/docs/doxygen/html/LoopSimplify_8cpp_source.html">
  * Loop rotation</a>)</b> and <b>Insertion of pre-header</b>.
  * 
@@ -27,7 +23,7 @@ import utils.TTY;
  */
 public final class LoopSimplify
 {
-	public void runOnFunction(Method m)
+	public void runOnFunction(Function m)
 	{
 		assert m != null && m.numLoops() > 0 
 				: "it is no needed for there no loops in function";
@@ -69,7 +65,7 @@ public final class LoopSimplify
 	
 	
 	private BasicBlock splitBlockPredecessor(
-			BasicBlock header, 
+			BasicBlock header,
 			ArrayList<BasicBlock> outsideBlocks,
 			String suffix,
 			Loop loop)
@@ -102,9 +98,9 @@ public final class LoopSimplify
 			// insert dummy values as the incoming value
 			for (Value i : header)
 			{
-				if (i instanceof Phi)
+				if (i instanceof PhiNode)
 				{
-					((Phi)i).addIncoming(UndefValue.get(i.kind), newBB);
+					((Instruction.PhiNode)i).addIncoming(UndefValue.get(i.kind), newBB);
 				}
 			}
 			return newBB;
@@ -123,28 +119,28 @@ public final class LoopSimplify
 	 * @param inst
 	 * @param hasLoopExit
 	 */
-	private void updatePhiNodes(BasicBlock originBB, BasicBlock newBB, 
-			ArrayList<BasicBlock> preds, Branch inst, boolean hasLoopExit)
+	private void updatePhiNodes(BasicBlock originBB, BasicBlock newBB,
+                                ArrayList<BasicBlock> preds, Instruction.BranchInst inst, boolean hasLoopExit)
 	{
 		for (Value i : originBB)
 		{
-			if (!(i instanceof Phi))
+			if (!(i instanceof Instruction.PhiNode))
 				continue;
 			
-			Phi phi = (Phi)i;
-			// check to see if all of the values coming in are same. If so, 
-			// we don't need to create a new phi node, unless it's needed for LCSSA.
+			Instruction.PhiNode phiNode = (Instruction.PhiNode)i;
+			// check to see if all of the values coming in are same. IfStmt so,
+			// we don't need to create a new phiNode node, unless it's needed for LCSSA.
 			Value inVal = null;
 			if (!hasLoopExit)
 			{
-				inVal = phi.getIncomingValueForBlock(preds.get(0));
-				for (int j =0, e = phi.getNumberIncomingValues(); j != e; j++)
+				inVal = phiNode.getIncomingValueForBlock(preds.get(0));
+				for (int j = 0, e = phiNode.getNumberIncomingValues(); j != e; j++)
 				{
-					if (!preds.contains(phi.getIncomingBlock(j)))
+					if (!preds.contains(phiNode.getIncomingBlock(j)))
 						continue;
 					if (inVal == null)
-						inVal = phi.getIncomingValue(j);
-					else if (inVal != phi.getIncomingValue(j))
+						inVal = phiNode.getIncomingValue(j);
+					else if (inVal != phiNode.getIncomingValue(j))
 					{
 						inVal = null;
 						break;
@@ -154,7 +150,7 @@ public final class LoopSimplify
 			
 			if (inVal != null)
 			{
-				// If all incoming values for the new PHI would be the same, just don't
+				// IfStmt all incoming values for the new PHI would be the same, just don't
 				// make a new PHI.  Instead, just remove the incoming values from the old
 				// PHI.
 
@@ -162,23 +158,24 @@ public final class LoopSimplify
 				// the cost of removal if we end up removing a large number of values, and
 				// second off, this ensures that the indices for the incoming values
 				// aren't invalidated when we remove one.
-				for (int j = phi.getNumberIncomingValues() - 1; j >= 0; j--)
+				for (int j = phiNode.getNumberIncomingValues() - 1; j >= 0; j--)
 				{
-					if (preds.contains(phi.getIncomingBlock(j)))
+					if (preds.contains(phiNode.getIncomingBlock(j)))
 					{
-						phi.removeIncomingValue(j);
+						phiNode.removeIncomingValue(j);
 					}
 				}
-				// add an incoming value to the phi node in the loop for the preheader edge.
-				phi.addIncoming(inVal, newBB);
+				// add an incoming value to the phiNode node in the loop for the preheader edge.
+				phiNode.addIncoming(inVal, newBB);
 				continue;
 			}
 			
-			// If the values coming into the block are not the same, we need a new
+			// IfStmt the values coming into the block are not the same, we need a new
 		    // PHI.
 		    // Create the new PHI node, insert it into NewBB at the end of the block		   
-		    Phi newPHI = new Phi(phi.kind, preds.size(), phi.getName() + ".ph");
-			newBB.appendInst(newPHI);
+		    Instruction.PhiNode newPHINode = new Instruction.PhiNode(phiNode.kind, preds.size(), phiNode
+                    .name() + ".ph");
+			newBB.appendInst(newPHINode);
 			newBB.appendInst(inst);
 			
 			
@@ -186,16 +183,16 @@ public final class LoopSimplify
 		    // the cost of removal if we end up removing a large number of values, and
 		    // second off, this ensures that the indices for the incoming values aren't
 		    // invalidated when we remove one.
-		    for (int j = phi.getNumberIncomingValues() - 1; j >= 0; --j) 
+		    for (int j = phiNode.getNumberIncomingValues() - 1; j >= 0; --j)
 		    {
-		    	BasicBlock incomingBB = phi.getIncomingBlock(j);
+		    	BasicBlock incomingBB = phiNode.getIncomingBlock(j);
 		      	if (preds.contains(incomingBB)) 
 		      	{
-		        	Value V = phi.removeIncomingValue(j);
-		        	newPHI.addIncoming(V, incomingBB);
+		        	Value V = phiNode.removeIncomingValue(j);
+		        	newPHINode.addIncoming(V, incomingBB);
 		      	}
 	    	}
-		    phi.addIncoming(newPHI, newBB);
+		    phiNode.addIncoming(newPHINode, newBB);
 		}
 	}
 }

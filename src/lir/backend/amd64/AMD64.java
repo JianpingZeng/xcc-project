@@ -6,7 +6,7 @@ import static lir.ci.LIRRegister.RegisterFlag.CPU;
 import static lir.ci.LIRRegister.RegisterFlag.FPU;
 import lir.backend.Architecture;
 import lir.backend.ByteOrder;
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
 import lir.ci.LIRRegister;
 import lir.ci.LIRRegisterValue;
 
@@ -120,8 +120,8 @@ public class AMD64 extends Architecture
 		return true;
 	}
 
-	public static TargetMachine target()
+	public static MachineInfo target()
 	{
-		return new TargetMachine(new AMD64(), false, 8, 8, 4096, 1<<20, false, false, false);
+		return new MachineInfo(new AMD64(), false, 8, 8, 4096, 1<<20, false, false, false);
 	}
 }

@@ -4,11 +4,10 @@ package parser;
 
 import ast.Flags;
 import ast.Tree;
-import ast.Tree.Case;
+import ast.Tree.CaseStmt;
 import ast.Tree.Literal;
 import ast.Tree.VarDef;
 import ast.TreeMaker;
-import ast.Tree.Block;
 import type.Type;
 import utils.Context;
 import utils.Log;
@@ -494,7 +493,7 @@ public class Parser implements ParserConstants
 	 * variable_def ::=
 	 * 					storage_class_qualifier type_specifier ID
 	 * 				|   storage_class_qualifier type_specifier ID = variable_initializer
-	 * rariable_initializer ::= expr
+	 * rariable_initializer ::= subExpr
 	 * </pre>
 	 *
 	 * @return
@@ -1098,7 +1097,7 @@ public class Parser implements ParserConstants
 				}
 				jj_consume_token(60);
 				jj_consume_token(61);
-				// array type reference to no length
+				// array type reference to no getArraySize
 				ref = F.at(ref.pos).TypeArray(ref);
 			}
 			{
@@ -1202,7 +1201,7 @@ public class Parser implements ParserConstants
 	 * <pre>
 	 * stmt ::= ;
 	 * 			|labeled_stmt
-	 * 			|expr SEMICOLON
+	 * 			|subExpr SEMICOLON
 	 * 			|block
 	 * 			|if_stmt
 	 * 			|while_stmt
@@ -1619,7 +1618,7 @@ public class Parser implements ParserConstants
 	}
 
 	/**
-	 * Parses expr statement sequences.
+	 * Parses subExpr statement sequences.
 	 */
 	final public List<Tree> stmtExprs() throws ParseException
 	{
@@ -1794,7 +1793,7 @@ public class Parser implements ParserConstants
 		{
 			int pos;
 			Tree selector;
-			List<Case> cases;
+			List<CaseStmt> cases;
 			t = jj_consume_token(SWITCH);
 			pos = position();
 			jj_consume_token(54);
@@ -1815,12 +1814,12 @@ public class Parser implements ParserConstants
 		}
 	}
 
-	final public List<Case> switchBlockStatementGroups() throws ParseException
+	final public List<Tree.CaseStmt> switchBlockStatementGroups() throws ParseException
 	{
 		trace_call("switchBlockStatementGroups");
 		try
 		{
-			List<Case> cases = new ArrayList<Case>();
+			List<Tree.CaseStmt> cases = new ArrayList<CaseStmt>();
 			Tree pat;
 			List<Tree> stmts;
 			ArrayList<Tree> values = new ArrayList<Tree>();
@@ -2015,7 +2014,7 @@ public class Parser implements ParserConstants
 	 */
 	final public Tree expr() throws ParseException
 	{
-		trace_call("expr");
+		trace_call("subExpr");
 		try
 		{
 			Tree lhs, rhs, expr;
@@ -2063,7 +2062,7 @@ public class Parser implements ParserConstants
 		}
 		finally
 		{
-			trace_return("expr");
+			trace_return("subExpr");
 		}
 	}
 
@@ -2150,7 +2149,7 @@ public class Parser implements ParserConstants
 		try
 		{
 			Tree cond, truePart, elsePart;
-			// other expr or ? : expr.
+			// other subExpr or ? : subExpr.
 			cond = expr9();
 			switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk)
 			{
@@ -2215,7 +2214,7 @@ public class Parser implements ParserConstants
 	}
 
 	/**
-	 * Logical and expr.
+	 * Logical and subExpr.
 	 */
 	final public Tree expr8() throws ParseException
 	{
@@ -2250,7 +2249,7 @@ public class Parser implements ParserConstants
 	}
 
 	/**
-	 * relational expr.
+	 * relational subExpr.
 	 */
 	final public Tree expr7() throws ParseException
 	{
@@ -2495,7 +2494,7 @@ public class Parser implements ParserConstants
 	}
 
 	/**
-	 * Parses plus or minus expr.
+	 * Parses plus or minus subExpr.
 	 */
 	final public Tree expr2() throws ParseException
 	{
@@ -2549,7 +2548,7 @@ public class Parser implements ParserConstants
 	}
 
 	/**
-	 * Parses multiplex or division or modular expr.
+	 * Parses multiplex or division or modular subExpr.
 	 */
 	final public Tree expr1() throws ParseException
 	{
@@ -2611,7 +2610,7 @@ public class Parser implements ParserConstants
 	}
 
 	/**
-	 * Parses type cast or unary expr
+	 * Parses type cast or unary subExpr
 	 */
 	final public Tree term() throws ParseException
 	{
@@ -4543,7 +4542,7 @@ public class Parser implements ParserConstants
 		if (trace_enabled)
 		{
 			for (int i = 0; i < trace_indent; i++) { System.out.print(" "); }
-			System.out.println("Return: " + s);
+			System.out.println("ReturnInst: " + s);
 		}
 	}
 

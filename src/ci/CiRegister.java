@@ -67,7 +67,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
     public final int encoding;
 
     /**
-     * The size of the stack slot used to spill the value of this register.
+     * The getTypeSize of the stack slot used to spill the value of this register.
      */
     public final int spillSlotSize;
 
@@ -110,7 +110,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      *
      * @param number unique identifier for the register
      * @param encoding the target machine encoding for the register
-     * @param spillSlotSize the size of the stack slot used to spill the value of the register
+     * @param spillSlotSize the getTypeSize of the stack slot used to spill the value of the register
      * @param name the mnemonic name for the register
      * @param flags the set of {@link RegisterFlag} VALUES for the register
      */

@@ -128,7 +128,7 @@ public class Resolve implements TypeTags, SymbolKinds, Flags
 	}
 
 	/**
-	 * If `sym' is a bad symbol: report error and return errSymbol else pass
+	 * IfStmt `sym' is a bad symbol: report error and return errSymbol else pass
 	 * through unchanged, additional arguments duplicate what has been used in
 	 * trying to find the symbol (--> flyweight pattern). This improves
 	 * performance since we expect misses to happen frequently.

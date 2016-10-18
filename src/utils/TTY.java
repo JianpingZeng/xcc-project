@@ -20,7 +20,6 @@ import java.util.regex.Pattern;
  */
 public class TTY
 {
-
 	/**
 	 * Support for thread-local suppression of {@link TTY}.
 	 */
@@ -35,8 +34,8 @@ public class TTY
 		 * suppression state to how it was before this call, the {@link #remove()}
 		 * method must be called on the suppression object.
 		 *
-		 * @param filter the pattern for matching. If {@code null}, then the match
-		 *               is successful. If it starts with "~",
+		 * @param filter the pattern for matching. IfStmt {@code null}, then the match
+		 *               is successful. IfStmt it starts with "~",
 		 *               then a regular expression {@linkplain Pattern#matches
 		 *               (String, CharSequence) match} is performed
 		 *               where the regular expression is specified by {@code filter}

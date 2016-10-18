@@ -5,7 +5,7 @@ import lir.ci.LIRValue;
 import lir.ci.LIRVariable;
 
 /**
- * An instruction LIROperand. If the register allocator can modify this LIROperand
+ * An instruction LIROperand. IfStmt the register allocator can modify this LIROperand
  * (e.g. to replace a variable with a register), then it will have a corresponding
  * entry in the {@link LIRInstruction#allocatorOperands} list of an instruction.
  *
@@ -44,7 +44,7 @@ public class LIROperand
 	{
 		/**
 		 * Index into an instruction's {@linkplain LIRInstruction#allocatorOperands
-		 * allocator operands}.
+		 * allocator reservedOperands}.
 		 */
 		final int index;
 
@@ -72,7 +72,7 @@ public class LIROperand
 		{
 			if (value == null)
 			{
-				return "operands[" + index + "]";
+				return "reservedOperands[" + index + "]";
 			}
 			return value.toString();
 		}

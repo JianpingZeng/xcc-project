@@ -1,7 +1,8 @@
 package lir;
 
 import compiler.Backend;
-import hir.Method;
+import hir.Function;
+import hir.Instruction;
 import lir.ci.*;
 import utils.Util;
 import java.util.BitSet;
@@ -44,9 +45,9 @@ import java.util.BitSet;
  *
  * </pre>
  * 
- * Note that the length of {@link hir.Instruction.Alloca ALLOCA} blocks and
+ * Note that the length of {@link Instruction.AllocaInst ALLOCA} blocks and
  * {@code monitor}s in the frame may be greater than the length of a
- * {@linkplain lir.backend.TargetMachine#spillSlotSize spill slot}.
+ * {@linkplain lir.backend.MachineInfo#spillSlotSize spill slot}.
  * 
  * @author xlous.zeng
  * @version 0.1
@@ -74,7 +75,7 @@ public final class StackFrame
 
 	/**
 	 * The amount of memory allocated within the frame for uses of
-	 * {@link hir.Instruction.Alloca ALLOCA}
+	 * {@link Instruction.AllocaInst ALLOCA}
 	 */
 	private int stackBlocksSize;
 
@@ -89,22 +90,22 @@ public final class StackFrame
 	private int outgoingSize;
 
 	/**
-	 * Creates a new frame map for the specified method.
+	 * Creates a new frame map for the specified function.
 	 *
 	 * @param backend the lir.backend context.
-	 * @param method the function being compiled.
+	 * @param function the function being compiled.
 	 */
-	public StackFrame(Backend backend, Method method)
+	public StackFrame(Backend backend, Function function)
 	{
 		this.backend = backend;
 		this.frameSize = -1;
 		this.spillSlotCount = -2;
 
-		if (method == null)
+		if (function == null)
 			incomingArguments = new CallingConvention(new LIRValue[0], 0);
 		else
 			incomingArguments = getCallingConvention(Util
-			        .signatureToKinds(method));
+			        .signatureToKinds(function));
 	}
 
 	/**
@@ -118,7 +119,7 @@ public final class StackFrame
 	{
 		// conform ia32 calling convention, all parameters were lived in stack.
 		CallingConvention cc = backend.registerConfig.getCallingConvention(
-		        signature, backend.targetMachine, true);
+		        signature, backend.machineInfo, true);
 		return cc;
 	}
 
@@ -170,7 +171,7 @@ public final class StackFrame
 		this.spillSlotCount = spillSlotCount;
 		
 		int frameSize = offsetToSpillEnd();
-		this.frameSize = backend.targetMachine.alignFrameSize(frameSize);
+		this.frameSize = backend.machineInfo.alignFrameSize(frameSize);
 	}
 
 	/**
@@ -181,15 +182,15 @@ public final class StackFrame
 	 */
 	public LIRAddress toStackAddress(StackSlot slot)
 	{
-		int size = backend.targetMachine.sizeInBytes(slot.kind);
+		int size = backend.machineInfo.sizeInBytes(slot.kind);
 		LIRRegister bp = backend.registerConfig.getFrameRegister();
 		if (slot.inCallerFrame())
 		{
-			int callerFrame = backend.targetMachine.arch.returnAddressSize
+			int callerFrame = backend.machineInfo.arch.returnAddressSize
 			        + bp.spillSlotSize;
 
 			final int callerFrameOffset = slot.index()
-			        * backend.targetMachine.spillSlotSize;
+			        * backend.machineInfo.spillSlotSize;
 			int offset = callerFrame + callerFrameOffset;
 			return new LIRAddress(slot.kind, bp.asValue(), offset);
 		}
@@ -213,9 +214,9 @@ public final class StackFrame
 	 */
 	public LIRAddress toStackAddress(StackBlock stackBlock)
 	{
-		return new LIRAddress(backend.targetMachine.wordKind,
+		return new LIRAddress(backend.machineInfo.wordKind,
 		        backend.registerConfig.getFrameRegister().asValue(
-		                backend.targetMachine.wordKind),
+		                backend.machineInfo.wordKind),
 		        offsetForStackBlock(stackBlock));
 	}
 
@@ -231,7 +232,7 @@ public final class StackFrame
 		if (argsSize > outgoingSize)
 		{
 			outgoingSize = Util.roundUp(argsSize,
-			        backend.targetMachine.spillSlotSize);
+			        backend.machineInfo.spillSlotSize);
 		}
 	}
 
@@ -280,7 +281,7 @@ public final class StackFrame
 	 */
 	public StackBlock reserveStackBlock(int size, boolean refs)
 	{
-		int wordSize = backend.targetMachine.wordSize;
+		int wordSize = backend.machineInfo.wordSize;
 		assert (size % wordSize) == 0;
 		StackBlock block = new StackBlock(stackBlocks, size, stackBlocksSize,
 		        refs);
@@ -314,7 +315,7 @@ public final class StackFrame
 	{
 		assert slotIndex >= 0
 		        && slotIndex < (initialSpillSlot() + spillSlotCount) : "invalid spill slot";
-		int offset = slotIndex * backend.targetMachine.spillSlotSize;
+		int offset = slotIndex * backend.machineInfo.spillSlotSize;
 		assert offset <= offsetToSpillEnd() : "slot outside of frame";
 		return offset;
 	}
@@ -335,7 +336,7 @@ public final class StackFrame
 	private int offsetToSpillEnd()
 	{
 		return offsetToSpillArea() + spillSlotCount
-		        * backend.targetMachine.spillSlotSize;
+		        * backend.machineInfo.spillSlotSize;
 	}
 
 	/**
@@ -388,7 +389,7 @@ public final class StackFrame
 		{
 			spillSlotCount = -1;
 		}
-		return (outgoingSize) / backend.targetMachine.spillSlotSize;
+		return (outgoingSize) / backend.machineInfo.spillSlotSize;
 	}
 
 	/**
@@ -397,15 +398,15 @@ public final class StackFrame
 	public BitSet initFrameRefMap()
 	{
 		int frameSize = frameSize();
-		int frameWords = frameSize / backend.targetMachine.spillSlotSize;
+		int frameWords = frameSize / backend.machineInfo.spillSlotSize;
 		BitSet frameRefMap = new BitSet(frameWords);
 		for (StackBlock sb = stackBlocks; sb != null; sb = sb.next)
 		{
 			if (sb.refs)
 			{
 				int firstSlot = offsetForStackBlock(sb)
-				        / backend.targetMachine.wordSize;
-				int words = sb.size / backend.targetMachine.wordSize;
+				        / backend.machineInfo.wordSize;
+				int words = sb.size / backend.machineInfo.wordSize;
 				for (int i = 0; i < words; i++)
 				{
 					frameRefMap.set(firstSlot + i);

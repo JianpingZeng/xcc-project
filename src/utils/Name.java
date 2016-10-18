@@ -145,7 +145,7 @@ public class Name {
     }
 
     /**
-      * Return the Utf8 representation of this name.
+      * ReturnInst the Utf8 representation of this name.
       */
     public byte[] toUtf() {
         byte[] bs = new byte[len];
@@ -154,7 +154,7 @@ public class Name {
     }
 
     /**
-      * Return the string representation of this name.
+      * ReturnInst the string representation of this name.
       */
     public String toString() {
         return Convert.utf2string(table.names, index, len);
@@ -168,7 +168,7 @@ public class Name {
     }
 
     /**
-      * Return the hash value of this name.
+      * ReturnInst the hash value of this name.
       */
     public int hashCode() {
         return index;
@@ -204,7 +204,7 @@ public class Name {
     }
 
     /**
-      * Returns the length of this name.
+      * Returns the getArraySize of this name.
       */
     public int length() {
         return len;
@@ -299,7 +299,7 @@ public class Name {
     }
 
     /**
-      * Return the concatenation of this name and name `n'.
+      * ReturnInst the concatenation of this name and name `n'.
       */
     public Name append(Name n) {
         byte[] bs = new byte[len + n.len];
@@ -309,7 +309,7 @@ public class Name {
     }
 
     /**
-      * Return the concatenation of this name, the given ASCII
+      * ReturnInst the concatenation of this name, the given ASCII
       *  character, and name `n'.
       */
     public Name append(char c, Name n) {
@@ -321,7 +321,7 @@ public class Name {
     }
 
     /**
-      * Return the concatenation of all names in the array `ns'.
+      * ReturnInst the concatenation of all names in the array `ns'.
       */
     public static Name concat(Table table, Name[] ns) {
         int len = 0;
@@ -390,9 +390,9 @@ public class Name {
 
         /**
          * Allocator
-         *  @param hashSize the (constant) length to be used for the hash entityTable
+         *  @param hashSize the (constant) getArraySize to be used for the hash entityTable
          *                  needs to be a power of two.
-         *  @param nameSize the initial length of the name entityTable.
+         *  @param nameSize the initial getArraySize of the name entityTable.
          */
         public Table(int hashSize, int nameSize) {
             super();
@@ -414,7 +414,7 @@ public class Name {
             _false = fromString("false");
             _true = fromString("true");            
             Array = fromString("Array");
-            Method = fromString("Method");
+            Method = fromString("Function");
             SourceFile = fromString("SourceFile");            
         }
 

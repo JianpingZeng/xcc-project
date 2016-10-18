@@ -1,8 +1,8 @@
-package optimization; 
+package opt; 
 
 import hir.BasicBlock;
-import hir.Instruction.Branch;
-import hir.Method;
+import hir.Function;
+import hir.Instruction;
 import hir.Value;
 
 /** 
@@ -30,9 +30,9 @@ public final class LoopInversion
 {
 	private Loop[] loops;
 	
-	public LoopInversion(Method method)
+	public LoopInversion(Function function)
 	{
-		this.loops = method.getLoops();
+		this.loops = function.getLoops();
 		assert loops!= null : "must performed after loop analysis pass";
 	}
 	
@@ -55,7 +55,7 @@ public final class LoopInversion
 			return;
 		
 		BasicBlock header = loop.getHeaderBlock();
-		Branch br = (Branch)header.lastInst();
+		Instruction.BranchInst br = (Instruction.BranchInst)header.lastInst();
 		
 		BasicBlock newHeader = header.getCFG().createBasicBlock(header.bbName + ".newheader");
 		
@@ -88,9 +88,9 @@ public final class LoopInversion
 				header.removePredeccessor(pred);
 				pred.removeSuccssor(header);
 				
-				if (pred.lastInst() instanceof Branch)
+				if (pred.lastInst() instanceof Instruction.BranchInst)
 				{
-					Branch br2 = (Branch) pred.lastInst();
+					Instruction.BranchInst br2 = (Instruction.BranchInst) pred.lastInst();
 					br2.replaceTargetWith(header, newHeader);
 				}
 			}
@@ -105,7 +105,7 @@ public final class LoopInversion
 		BasicBlock exitBlock = header.getCFG().createBasicBlock(header.bbName + ".newExit");
 		
 		// append a new branch in new exit block
-		Branch newBR = br.clone();
+		Instruction.BranchInst newBR = br.clone();
 		
 		// replace the true target of branch with new header
 		newBR.replaceTargetWith(header, newHeader);		
@@ -113,9 +113,9 @@ public final class LoopInversion
 		
 		for (BasicBlock bb : loop.exitBlocks())
 		{
-			if (bb.lastInst() instanceof Branch)
+			if (bb.lastInst() instanceof Instruction.BranchInst)
 			{
-				Branch br2 = (Branch)bb.lastInst();
+				Instruction.BranchInst br2 = (Instruction.BranchInst)bb.lastInst();
 				br2.replaceTargetWith(loop.getFollowBlock(), exitBlock);
 				bb.removeSuccssor(loop.getFollowBlock());
 				loop.getFollowBlock().removePredeccessor(bb);
@@ -140,9 +140,9 @@ public final class LoopInversion
 			if (!loop.contains(pred) || loop.isExitBlock(pred))
 				continue;
 			
-			if (pred.lastInst() instanceof Branch)
+			if (pred.lastInst() instanceof Instruction.BranchInst)
 			{
-				Branch br2 = (Branch)pred.lastInst();
+				Instruction.BranchInst br2 = (Instruction.BranchInst)pred.lastInst();
 				br2.replaceTargetWith(newHeader, exitBlock);
 				pred.removeSuccssor(newHeader);
 				newHeader.removePredeccessor(pred);
@@ -161,6 +161,6 @@ public final class LoopInversion
 	private boolean isNeededRotation(Loop loop)
 	{
 		Value lastInst = loop.getHeaderBlock().lastInst();
-		return (lastInst instanceof Branch);		
+		return (lastInst instanceof Instruction.BranchInst);
 	}
 }

@@ -4,7 +4,7 @@ import compiler.*;
 import exception.CiBailout;
 import hir.BasicBlock;
 import hir.Condition;
-import hir.Method;
+import hir.Function;
 import lir.*;
 import lir.alloc.Interval.RegisterPriority;
 import lir.backend.RegisterConfig;
@@ -45,7 +45,7 @@ public final class LinearScan
 	}
 
 	final Backend backend;
-	final Method m;
+	final Function m;
 	final LIRGenerator gen;
 	final StackFrame frameMap;
 	final RegisterAttributes[] registerAttributes;
@@ -112,7 +112,7 @@ public final class LinearScan
 	 */
 	BitMap2D intervalInLoop;
 
-	public LinearScan(Backend backend, Method m, LIRGenerator gen,
+	public LinearScan(Backend backend, Function m, LIRGenerator gen,
 			StackFrame frameMap)
 	{
 		this.backend = backend;
@@ -204,7 +204,7 @@ public final class LinearScan
 		}
 		else if (unusedSpillSlot != null)
 		{
-			// reuse hole that was the result of a preceded double word alignment
+			// reuse hole that was the getReturnValue of a preceded double word alignment
 			// stack slot
 			slot = unusedSpillSlot;
 			unusedSpillSlot = null;
@@ -220,7 +220,7 @@ public final class LinearScan
 
 	public int numOfSpillSlots(LIRKind kind)
 	{
-		return backend.targetMachine.spillSlots(kind);
+		return backend.machineInfo.spillSlots(kind);
 	}
 
 	/**
@@ -369,9 +369,9 @@ public final class LinearScan
 	}
 
 	/**
-	 * Gets the size of the {@link LIRBlock#livein} and {@link LIRBlock#liveout}
-	 * sets for a basic block. These sets do not include any operands allocated
-	 * as a result of creating {@linkplain #createDerivedInterval(Interval) derived
+	 * Gets the getTypeSize of the {@link LIRBlock#livein} and {@link LIRBlock#liveout}
+	 * sets for a basic block. These sets do not include any reservedOperands allocated
+	 * as a getReturnValue of creating {@linkplain #createDerivedInterval(Interval) derived
 	 * intervals}.
 	 */
 	private int liveSetSize()
@@ -421,7 +421,7 @@ public final class LinearScan
 			{
 				final LIRInstruction opr = instructions.get(j);
 
-				// iterate input operands of instruction
+				// iterate input reservedOperands of instruction
 				int n = opr.operandCount(LIRInstruction.OperandMode.Input);
 				for (int k = 0; k < n; k++)
 				{
@@ -444,7 +444,7 @@ public final class LinearScan
 					}
 				}// end of handling input operand
 
-				// iterate temp operands of specified instruction as same as Output
+				// iterate temp reservedOperands of specified instruction as same as Output
 				// operand
 				n = opr.operandCount(LIRInstruction.OperandMode.Temp);
 				for (int k = 0; k < n; k++)
@@ -579,10 +579,10 @@ public final class LinearScan
 
 	/**
 	 * Creates a interval for the input operand of {@linkplain LIRInstruction}.
-	 * Input operands uses LIRValues that calculated before the start of current
+	 * Input reservedOperands uses LIRValues that calculated before the start of current
 	 * operation, but the actual position is not known yet. So a range from the
 	 * start of the current block to the position of LIRInstruction is added into
-	 * range list. It may be shortened later when output operands are processed.
+	 * range list. It may be shortened later when output reservedOperands are processed.
 	 *
 	 * @param operand
 	 * @param from
@@ -656,7 +656,7 @@ public final class LinearScan
 		{
 			interval.setKind(kind);
 		}
-		// its length of range is seted with one
+		// its getArraySize of range is seted with one
 		interval.addRange(tempPos, tempPos + 1);
 		interval.addUsePos(tempPos, priority);
 	}
@@ -669,7 +669,7 @@ public final class LinearScan
 	private void pdAddTemps(LIRInstruction op)
 	{
 		// currently, only x86 platform was considered.
-		assert backend.targetMachine.arch.isX86();
+		assert backend.machineInfo.arch.isX86();
 
 		switch (op.opcode)
 		{
@@ -680,7 +680,7 @@ public final class LinearScan
 				// The slow path for these functions may need to save and
 				// restore all live registers but we don't want to save and
 				// restore everything all the time, so mark the xmms as being
-				// killed. If the slow path were explicit or we could propagate
+				// killed. IfStmt the slow path were explicit or we could propagate
 				// live register masks down to the assembly we could do better
 				// but we don't have any easy way to do that right now. We
 				// could also consider not killing all xmm registers if we
@@ -730,7 +730,7 @@ public final class LinearScan
 	}
 
 	/**
-	 * Determines the register priority for an instruction's output/result operand.
+	 * Determines the register priority for an instruction's output/getReturnValue operand.
 	 */
 	private RegisterPriority registerPriorityOfOutputOperand(
 			LIRInstruction instr, LIRValue operand)
@@ -764,17 +764,17 @@ public final class LinearScan
 		if (operand.isVariable() && operands
 				.mustStartInMemory((LIRVariable) operand))
 		{
-			// result is a stack-slot, so prevent immediate reloading
+			// getReturnValue is a stack-slot, so prevent immediate reloading
 			return RegisterPriority.None;
 		}
 
-		// all other operands require a register
+		// all other reservedOperands require a register
 		return RegisterPriority.MustHaveRegister;
 	}
 
 	/**
 	 * Eliminates moves from register to stack if the stack slot is known to be
-	 * correct. This is a heuristic optimization strategy for taking positive effect
+	 * correct. This is a heuristic opt strategy for taking positive effect
 	 * on the quality of generated code.
 	 */
 	private void changeSpillDefinitionPos(Interval interval, int defPos)
@@ -863,13 +863,13 @@ public final class LinearScan
 	}
 
 	/**
-	 * Creates a interval for the result operand of {@linkplain LIRInstruction}.
-	 * Output operands of the {@linkplain LIRInstruction} shorten the first range
+	 * Creates a interval for the getReturnValue operand of {@linkplain LIRInstruction}.
+	 * Output reservedOperands of the {@linkplain LIRInstruction} shorten the first range
 	 * of the interval of given operand. The definition overwrites any previous
 	 * value of the operand, so the operand cnanot live immediately before this
 	 * operation.
 	 *
-	 * @param operand  The result operand.
+	 * @param operand  The getReturnValue operand.
 	 * @param defPos   The id of specified LIRInstruction that defines operand.
 	 * @param priority For register spill.
 	 * @param kind
@@ -961,9 +961,9 @@ public final class LinearScan
 			}
 		}
 
-		if (backend.targetMachine.arch.isX86())
+		if (backend.machineInfo.arch.isX86())
 		{
-			// handle stack operands using conditional move
+			// handle stack reservedOperands using conditional move
 			// to avoid stop pipeline
 			if (instr.opcode == LIROpcode.Cmove)
 			{
@@ -1031,7 +1031,7 @@ public final class LinearScan
 			}
 		}// end of x86
 
-		// all other operands require a register
+		// all other reservedOperands require a register
 		return RegisterPriority.MustHaveRegister;
 	}
 
@@ -1065,7 +1065,7 @@ public final class LinearScan
 	 * The mostly frequently occurring instruction are moves from one virtual
 	 * register to other. When two intervals are connected only by a move instruction
 	 * , the interval for the move target stores the source of the move as its
-	 * register hint. If possible, the target then gets the same register assigned
+	 * register hint. IfStmt possible, the target then gets the same register assigned
 	 * as the source.
 	 * @param instr
 	 */
@@ -1147,7 +1147,7 @@ public final class LinearScan
 			assert blockFrom == instructions.get(0).id;
 			assert blockTo == instructions.get(instructions.size() - 1).id;
 
-			// update intervals for operands live at the end of this block
+			// update intervals for reservedOperands live at the end of this block
 			BitMap liveOut = block.getLIRBlock().liveout;
 			for (int operandNum = liveOut.nextSetBit(0);
 			     operandNum >= 0; operandNum = liveOut
@@ -1202,7 +1202,7 @@ public final class LinearScan
 				// add any platform dependent temps that can not implemented in x86
 				pdAddTemps(opr);
 
-				// visit definition (output and temp operands)
+				// visit definition (output and temp reservedOperands)
 				int n = opr.operandCount(LIRInstruction.OperandMode.Output);
 				for (int k = 0; k < n; k++)
 				{
@@ -1214,7 +1214,7 @@ public final class LinearScan
 							operand.kind.stackKind());
 				}
 
-				// visits temporary operands equal to output operands
+				// visits temporary reservedOperands equal to output reservedOperands
 				n = opr.operandCount(LIRInstruction.OperandMode.Temp);
 				for (int k = 0; k < n; k++)
 				{
@@ -1225,7 +1225,7 @@ public final class LinearScan
 							tmp.kind.stackKind());
 				}
 
-				// visits uses (input operands)
+				// visits uses (input reservedOperands)
 				n = opr.operandCount(LIRInstruction.OperandMode.Input);
 				for (int k = 0; k < n; k++)
 				{
@@ -1249,7 +1249,7 @@ public final class LinearScan
 				addRegisterHints(opr);
 			}// end of instruction iteration
 
-			// make sure that no spil store optimization is applied for phi
+			// make sure that no spil store opt is applied for phi
 			// instructions
 
 		} // end of block iteration
@@ -1473,7 +1473,7 @@ public final class LinearScan
 	 * @param moveResolver  A instance of {@linkplain MoveResolver}.
 	 */
 	private void setInsertPosOfPhiResolution(BasicBlock pred,
-			MoveResolver moveResolver)
+                                             MoveResolver moveResolver)
 	{
 		List<LIRInstruction> instructions = pred.getLIRBlock().lir()
 				.instructionsList();
@@ -1533,7 +1533,7 @@ public final class LinearScan
 					BasicBlock pred = block.predAt(0);
 					BasicBlock sux = block.succAt(0);
 
-					// prevent optimization of two consecutive blocks
+					// prevent opt of two consecutive blocks
 					if (!blockCompleted.get(pred.linearScanNumber)
 							&& !blockCompleted.get(sux.linearScanNumber))
 					{
@@ -1608,7 +1608,7 @@ public final class LinearScan
 	}
 
 	private void resolveCollectMappings(BasicBlock from, BasicBlock to,
-			MoveResolver moveResolver)
+                                        MoveResolver moveResolver)
 	{
 		assert moveResolver.checkEmpty();
 
@@ -1641,7 +1641,7 @@ public final class LinearScan
 	}
 
 	private void resolveFindInsertPos(BasicBlock from, BasicBlock to,
-			MoveResolver moveResolver)
+                                      MoveResolver moveResolver)
 	{
 		if (from.getNumOfSuccs() <= 1)
 		{
@@ -1902,7 +1902,7 @@ public final class LinearScan
 				}
 			}
 
-			// operands are not changed when an interval is split during allocation,
+			// reservedOperands are not changed when an interval is split during allocation,
 			// so search the right interval here
 			interval = splitChildAtOpId(interval, opId, mode);
 		}
@@ -1946,7 +1946,7 @@ public final class LinearScan
 				continue;
 			}
 
-			// iterate all modes of the visitor and process all virtual operands
+			// iterate all modes of the visitor and process all virtual reservedOperands
 			for (LIRInstruction.OperandMode mode : LIRInstruction.OPERAND_MODES)
 			{
 				int n = op.operandCount(mode);
@@ -2103,7 +2103,7 @@ public final class LinearScan
 
 		sortIntervalListAfterAllocation();
 
-		// make local optimization
+		// make local opt
 		eliminateSpillMove();
 		assignLocations();
 

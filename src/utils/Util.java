@@ -1,10 +1,10 @@
 package utils;
 
-import hir.Method;
+import hir.Function;
 import hir.Signature;
 import lir.ci.LIRKind;
-
 import java.util.List;
+
 
 /**
  * @author Xlous.zeng.
@@ -67,6 +67,11 @@ public class Util
 		throw new InternalError("should not reach here");
 	}
 
+	public static RuntimeException shouldNotReachHere(String msg)
+	{
+		throw new InternalError("should not reach here, " + msg);
+	}
+
 	public static boolean archKindEqual(LIRKind k1, LIRKind k2)
 	{
 		return k1 == k2;
@@ -82,9 +87,9 @@ public class Util
 		return ((number + mod - 1) / mod) * mod;
 	}
 
-	public static LIRKind[] signatureToKinds(Method method)
+	public static LIRKind[] signatureToKinds(Function function)
 	{
-		return signatureToKinds(method.signature());
+		return signatureToKinds(function.signature());
 	}
 	public static LIRKind[] signatureToKinds(Signature signature)
 	{
@@ -99,7 +104,7 @@ public class Util
 
 	/**
 	 * Sets the element at a given position of a list and ensures that this
-	 * position exists. If the list is current shorter than the position, intermediate
+	 * position exists. IfStmt the list is current shorter than the position, intermediate
 	 * positions are filled with a given value.
 	 *
 	 * @param list the list to put the element into
@@ -149,5 +154,17 @@ public class Util
 		{
 			list.remove(list.size() - 1);
 		}
+	}
+
+    /**
+     * Swap the reference of two object.
+     * @param obj1
+     * @param obj2
+     */
+	public static void swap(Object obj1, Object obj2)
+	{
+		Object temp = obj1;
+        obj1 = obj2;
+        obj2 = temp;
 	}
 }

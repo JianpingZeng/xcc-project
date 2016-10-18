@@ -107,7 +107,7 @@ public class Parser {
     }
         
 	/**	
-	 * A auxiliary method for extracting a integer or long value.
+	 * A auxiliary function for extracting a integer or long value.
 	 */	        
     private long integerValue(String image)
     {
@@ -127,7 +127,7 @@ public class Parser {
     }
 
 	/**	
-	 * A auxiliary method for extracting a character node.
+	 * A auxiliary function for extracting a character node.
 	 */	 
     private long characterCode(String image) throws ParseException
     {
@@ -140,7 +140,7 @@ public class Parser {
     }
 
 	/**	
-	 * A auxiliary method for extracting a string value.
+	 * A auxiliary function for extracting a string value.
 	 */	 
     private String stringValue(String _image) throws ParseException
     {
@@ -644,7 +644,7 @@ long storage():
 }
 
 /**
- * A method that parses parameters list in the function declaration.
+ * A function that parses parameters list in the function declaration.
  
  * @return	A list of all of parameters.
  */

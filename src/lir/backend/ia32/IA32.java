@@ -1,8 +1,8 @@
-package lir.backend.x86;
+package lir.backend.ia32;
 
 import lir.backend.Architecture;
 import lir.backend.ByteOrder;
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
 import lir.ci.LIRRegister;
 import lir.ci.LIRRegisterValue;
 import static lir.ci.LIRKind.Long;
@@ -11,14 +11,14 @@ import static lir.ci.LIRRegister.RegisterFlag.CPU;
 import static lir.ci.LIRRegister.RegisterFlag.FPU;
 
 /**
- * This file defines a class named of {@code X86} which represents the X86 architecture,
- * including available generable register, frame register and stack register,
+ * This file defines a class named of {@code IA32} which represents the IA32 architecture,
+ * including available generic register, frame register and stack register,
  * moreover, there are many register for advanced vector computation. Please visit
  * the website <a href="http://www.sco.com/developers/devspecs/abi386-4.pdf">
- *     System V Application Binary Interface</a> for more details.
+ *     System V Application BinaryExpr Interface</a> for more details.
  * @author Xlous.zeng
  */
-public final class X86 extends Architecture
+public final class IA32 extends Architecture
 {
 	// general purpose register for cpu
 	public static final LIRRegister eax = new LIRRegister(0, 0, 4, "eax", CPU,
@@ -61,7 +61,7 @@ public final class X86 extends Architecture
 			{ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7 };
 
 	/**
-	 * All registers including integer register and float point in {@code X86}
+	 * All registers including integer register and float point in {@code IA32}
 	 * architecture excepts that {@code eip} register.
 	 */
 	public static final LIRRegister[] CPU_FLOAT_LIR_REGISTERs =
@@ -75,7 +75,7 @@ public final class X86 extends Architecture
 	public static final LIRRegister eip = new LIRRegister(16, -1, 0, "eip");
 
 	/**
-	 * All registers including integer register and float point in {@code X86}
+	 * All registers including integer register and float point in {@code IA32}
 	 * architecture.
 	 */
 	public static final LIRRegister[] ALL_LIR_REGISTERs = new LIRRegister[]
@@ -84,9 +84,9 @@ public final class X86 extends Architecture
 
 	public static final LIRRegisterValue ESP = esp.asValue(Long);
 
-	public X86()
+	public IA32()
 	{
-		super("X86", 4, ByteOrder.LittleEndian,
+		super("IA32", 4, ByteOrder.LittleEndian,
 				ALL_LIR_REGISTERs, 1, xmm7.encoding+1, 4);
 	}
 
@@ -100,9 +100,9 @@ public final class X86 extends Architecture
 		return true;
 	}
 
-	public static TargetMachine target()
+	public static MachineInfo target()
 	{
-		return new TargetMachine(new X86(), false, 4, 4, 4096,
+		return new MachineInfo(new IA32(), false, 4, 4, 4096,
 				1<<20, false, false, false);
 	}
 }

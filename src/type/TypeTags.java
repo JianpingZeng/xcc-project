@@ -1,5 +1,7 @@
 package type;
 
+import com.sun.xml.internal.bind.v2.runtime.reflect.opt.Const;
+
 /**
  * An interfaces for type tag VALUES, which distinguish between 
  * different sorts of types.
@@ -7,108 +9,42 @@ package type;
  * @author Xlous.zeng  
  * @version 1.0
  */
-public interface TypeTags {
+public interface TypeTags
+{
 
-    /**
-     * The tag of the basic type `byte'.
-     */
-    int BYTE = 1;
+    int VOID = 1;
+    int BOOLEAN = VOID + 1;
+    int UCHAR = BOOLEAN + 1;
+    int USHORT = UCHAR + 1;
+    int UINT = USHORT + 1;
+    int ULONG = UINT + 1;
 
-    /**
-     * The tag of the basic type `char'.
-     */
-    int CHAR = 2;
+    int CHAR = ULONG + 1;
+    int SHORT = CHAR + 1;
+    int INT = SHORT + 1;
+    int LONG = INT + 1;
 
-    /**
-     * The tag of the basic type `short'.
-     */
-    int SHORT = 3;
-
-    /**
-     * The tag of the basic type `int'.
-     */
-    int INT = 4;
-
-    /**
-     * The tag of the basic type `long'.
-     */
-    int LONG = 5;
-
-    /**
-     * The tag of the basic type `float'.
-     */
-    int FLOAT = 6;
-
-    /**
-     * The tag of the basic type `double'.
-     */
-    int DOUBLE = 7;
-
-    //int STRING = 8;
-    
-    /**
-     * The tag of the basic type `boolean'.
-     */
-    int BOOL = 9;
-
-    /**
-     * The tag of the type `void'.
-     */
-    int VOID = 10;    
-
-    /**
-     * The tag of the type `array'.
-     */
-    int ARRAY = 11;
-    
-    /**
-     * The tag of the type `struct'.
-     */
-    int STRUCT = 12;
-
-    /**
-     * The tag of the type `union'.
-     */
-    int UNION = 13;
-    
-    /**
-     * The tag of the type `enum'.
-     */
-    int ENUM = 14;    
-
-    /**
-     * The tag of the type `method'.
-     */
-    int FUNCTION = 15;
-
+    int REAL = LONG + 1;
+    int COMPLEX = REAL + 1;
+    int ENUMERATE = COMPLEX + 1;
+    int POINTER = ENUMERATE + 1;
+    int REFERENCE = POINTER + 1;
+    int FUNCTION = REFERENCE + 1;
+    int METHOD = FUNCTION + 1;
+    int ConstantArray = METHOD + 1;
+    int IncompleteArray = ConstantArray + 1;
+    int VariableArray = IncompleteArray + 1;
+    int STRUCT = VariableArray + 1;
+    int UNION = STRUCT + 1;
+    int ENUM = UNION + 1;
+    int USER_DEF = ENUM + 1;
     /**
      * The tag of the missing type.
      */
-    int NONE = 16;
+    int NONE = USER_DEF + 1;
     
     /**
      * The tag of the error type.
      */
-    int ERROR = 17;
-
-    /**
-     * The tag of the unknowed type.
-     */
-    int UNKNOWN = 18;
-    
-    /**
-     * The tag of the pointer type.
-     */
-    int POINTER = 19;
-    
-    /**
-     * The id of type tags.
-     */
-    int TypeTagCount = POINTER;
-    
-    /**
-     * The maximum tag of a basic type.
-     */
-    int lastBaseTag = BOOL;
-    
+    int ERROR = NONE + 1;
 }

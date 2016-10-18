@@ -25,7 +25,7 @@ public final class Interval
 	public static Interval EndMarker = new Interval(LIRValue.IllegalValue, -1) ;
 
 	/**
-	 * Constant used in optimization of spilling of an interval.
+	 * Constant used in opt of spilling of an interval.
 	 */
 	enum SpillState
 	{
@@ -293,7 +293,7 @@ public final class Interval
 	private StackSlot spillSlot;
 
 	/**
-	 * For spill move optimization.
+	 * For spill move opt.
 	 */
 	private SpillState spillState;
 	
@@ -625,7 +625,7 @@ public final class Interval
 	}
 	
 	/**
-	 * for spill optimization.
+	 * for spill opt.
 	 * @return
 	 */
 	public SpillState spillState()

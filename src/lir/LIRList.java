@@ -2,7 +2,7 @@ package lir;
 
 import hir.BasicBlock;
 import hir.Condition;
-import hir.Method;
+import hir.Function;
 import hir.Operator;
 
 import java.util.ArrayList;
@@ -202,7 +202,7 @@ public class LIRList
 		move(src, dest);
 	}
 
-	public void callDirect(Method target, LIRVariable result, LIRValue[] args,
+	public void callDirect(Function target, LIRVariable result, LIRValue[] args,
 			LIRValue[] locations)
 	{
 		append(new LIRCall(LIROpcode.DirectCall, target, result,
@@ -221,7 +221,7 @@ public class LIRList
 
 		if (buffer.numberOfOps() > 0)
 		{
-			// increase size of instructions list
+			// increase getTypeSize of instructions list
 			for (int i = 0; i < buffer.numberOfOps(); i++)
 			{
 				operations.add(null);
@@ -257,7 +257,7 @@ public class LIRList
 
 		if (buffer.numberOfOps() > 0)
 		{
-			// increase size of instructions list
+			// increase getTypeSize of instructions list
 			for (int i = 0; i < buffer.numberOfOps(); i++)
 			{
 				operations.add(null);

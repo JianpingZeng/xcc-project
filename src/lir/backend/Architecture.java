@@ -23,7 +23,7 @@ public abstract class Architecture
 	public final int registerReferenceMapBitCount;
 
 	/**
-	 * Represents the natural length of words (typically LIRRegisters and pointers)
+	 * Represents the natural getArraySize of words (typically LIRRegisters and pointers)
 	 * of this architecture, in bytes.
 	 */
 	public final int wordSize;
@@ -55,7 +55,7 @@ public abstract class Architecture
 	public final int machineCodeCallDisplacementOffset;
 
 	/**
-	 * The length of the return address pushed to the stack by a call instruction.
+	 * The getArraySize of the return address pushed to the stack by a call instruction.
 	 * A value of 0 denotes that call linkage uses LIRRegisters instead (e.g. SPARC).
 	 */
 	public final int returnAddressSize;
@@ -149,7 +149,7 @@ public abstract class Architecture
 
 	/**
 	 * Checks whether this architecture's normal arithmetic instructions use a
-	 * two-LIROperand form (e.g. X86 which overwrites one LIROperand register with the
+	 * two-LIROperand form (e.g. IA32 which overwrites one LIROperand register with the
 	 * result when adding).
 	 *
 	 * @return {@code true} if this architecture uses two-LIROperand mode
@@ -163,9 +163,9 @@ public abstract class Architecture
 	// than use instanceof comparisons in code that cares?
 
 	/**
-	 * Checks whether the architecture is X86.
+	 * Checks whether the architecture is IA32.
 	 *
-	 * @return {@code true} if the architecture is X86
+	 * @return {@code true} if the architecture is IA32
 	 */
 	public boolean isX86()
 	{

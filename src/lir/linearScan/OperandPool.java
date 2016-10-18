@@ -11,17 +11,17 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import lir.backend.Architecture;
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
 import lir.ci.LIRKind;
 import lir.ci.LIRRegister;
 import lir.ci.LIRValue;
 import lir.ci.LIRVariable;
 
 /**
- * An ordered, 0-based indexable pool of instruction operands for a method being
+ * An ordered, 0-based indexable pool of instruction reservedOperands for a method being
  * compiled. The physical {@linkplain LIRRegister LIRRegisters} of the platform
  * occupy the front of the pool (starting at index 0) followed by {@linkplain
- * LIRVariable variable} operands. The index of an LIROperand in the pool is its
+ * LIRVariable variable} reservedOperands. The index of an LIROperand in the pool is its
  * {@linkplain #operandNumber(LIRValue) LIROperand number}.
  * <p>
  * This source code refers to the original HotSpot C1 source code, this pool
@@ -40,7 +40,7 @@ public final class OperandPool
 	private final LIRRegister[] LIRRegisters;
 
 	/**
-	 * The variable operands allocated from this pool. The {@linkplain #operandNumber(LIRValue) number}
+	 * The variable reservedOperands allocated from this pool. The {@linkplain #operandNumber(LIRValue) number}
 	 * of the first variable LIROperand in this pool is one greater than the
 	 * number of the last physical register LIROperand in the pool.
 	 */
@@ -48,7 +48,7 @@ public final class OperandPool
 
 	/**
 	 * Map from a {@linkplain LIRVariable#index variable index} to the instruction
-	 * whose result is stored in the denoted variable. This map is only populated
+	 * whose getReturnValue is stored in the denoted variable. This map is only populated
 	 * and used if is {@code true}.
 	 */
 	private final ArrayList<Value> variableDefs;
@@ -60,22 +60,22 @@ public final class OperandPool
 	private final int firstVariableNumber;
 
 	/**
-	 * Records which variable operands have the {@link VariableFlag#MustBeByteRegister} flag set.
+	 * Records which variable reservedOperands have the {@link VariableFlag#MustBeByteRegister} flag set.
 	 */
 	private BitSet mustBeByteRegister;
 
 	/**
-	 * Records which variable operands have the {@link VariableFlag#MustStartInMemory} flag set.
+	 * Records which variable reservedOperands have the {@link VariableFlag#MustStartInMemory} flag set.
 	 */
 	private BitSet mustStartInMemory;
 
 	/**
-	 * Records which variable operands have the {@link VariableFlag#MustStayInMemory} flag set.
+	 * Records which variable reservedOperands have the {@link VariableFlag#MustStayInMemory} flag set.
 	 */
 	private BitSet mustStayInMemory;
 
 	/**
-	 * Flags that can be set for {@linkplain LIRValue#isVariable() variable} operands.
+	 * Flags that can be set for {@linkplain LIRValue#isVariable() variable} reservedOperands.
 	 */
 	public enum VariableFlag
 	{
@@ -123,7 +123,7 @@ public final class OperandPool
 	 *
 	 * @param target description of the targetAbstractLayer architecture for a compilation
 	 */
-	public OperandPool(TargetMachine target)
+	public OperandPool(MachineInfo target)
 	{
 		LIRRegister[] LIRRegisters = target.arch.LIRRegisters;
 		this.firstVariableNumber = LIRRegisters.length;
@@ -190,7 +190,7 @@ public final class OperandPool
 	 * Gets the unique number for an LIROperand contained in this pool.
 	 *
 	 * @param operand an LIROperand
-	 * @return the unique number for {@code LIROperand} in the range {@code [0 .. length())}
+	 * @return the unique number for {@code LIROperand} in the range {@code [0 .. getArraySize())}
 	 */
 	public int operandNumber(LIRValue operand)
 	{
@@ -207,7 +207,7 @@ public final class OperandPool
 	/**
 	 * Gets the LIROperand in this pool denoted by a given LIROperand number.
 	 *
-	 * @param operandNumber a value that must be in the range {@code [0 .. length())}
+	 * @param operandNumber a value that must be in the range {@code [0 .. getArraySize())}
 	 * @return the LIROperand in this pool denoted by {@code operandNumber}
 	 */
 	public LIRValue operandFor(int operandNumber)
@@ -224,10 +224,10 @@ public final class OperandPool
 	}
 
 	/**
-	 * Records that the result of {@code instruction} is stored in {@code result}.
+	 * Records that the getReturnValue of {@code instruction} is stored in {@code getReturnValue}.
 	 *
-	 * @param result      the variable storing the result of {@code instruction}
-	 * @param instruction an instruction that produces a result (i.e. pushes a
+	 * @param result      the variable storing the getReturnValue of {@code instruction}
+	 * @param instruction an instruction that produces a getReturnValue (i.e. pushes a
 	 *                       value to the stack)
 	 */
 	public void recordResult(LIRVariable result, Value instruction)
@@ -240,10 +240,10 @@ public final class OperandPool
 	}
 
 	/**
-	 * Gets the instruction whose result is recorded in a given variable.
+	 * Gets the instruction whose getReturnValue is recorded in a given variable.
 	 *
-	 * @param result the variable storing the result of an instruction
-	 * @return the instruction that stores its result in {@code result}
+	 * @param result the variable storing the getReturnValue of an instruction
+	 * @return the instruction that stores its getReturnValue in {@code getReturnValue}
 	 */
 	public Value instructionForResult(LIRVariable result)
 	{
@@ -276,7 +276,7 @@ public final class OperandPool
 	}
 
 	/**
-	 * Gets the number of operands in this pool. This value will increase by 1 for
+	 * Gets the number of reservedOperands in this pool. This value will increase by 1 for
 	 * each new variable LIROperand {@linkplain #newVariable(LIRKind) allocated}
 	 * from this pool.
 	 */

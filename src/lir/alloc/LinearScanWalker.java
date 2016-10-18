@@ -5,14 +5,11 @@ import hir.BasicBlock;
 import lir.LIRInstruction;
 import lir.LIROp1;
 import lir.LIROpcode;
-import lir.LIRPhi;
 import lir.alloc.Interval.RegisterBinding;
 import lir.ci.*;
-import utils.BitMap;
 import utils.TTY;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static lir.LIRInstruction.OperandMode.Input;
 import static lir.LIRInstruction.OperandMode.Output;
@@ -42,7 +39,7 @@ public final class LinearScanWalker extends IntervalWalker
 	/**
 	 * blockPos[reg] stores a hard limit to each register where the register cannot be
 	 * freed by spilling. This position is setted with {@linkplain Integer#MAX_VALUE}
-	 * by the fixed active and inactives that model the operations requiring operands
+	 * by the fixed active and inactives that model the operations requiring reservedOperands
 	 * in fixed registers.
 	 */
 	int[] blockPos;
@@ -87,7 +84,7 @@ public final class LinearScanWalker extends IntervalWalker
 	}
 
 	private int findOptimalSplitPos(BasicBlock minBlock, BasicBlock maxBlock,
-			int maxSplitPos)
+                                    int maxSplitPos)
 	{
 		int fromBlockNr = minBlock.linearScanNumber;
 		int toBlockNr = maxBlock.linearScanNumber;
@@ -98,7 +95,7 @@ public final class LinearScanWalker extends IntervalWalker
 				.blockCount() : "out of range";
 		assert fromBlockNr < toBlockNr : "must cross block boundary";
 
-		// Try to split at end of maxBlock. If this would be after
+		// Try to split at end of maxBlock. IfStmt this would be after
 		// maxSplitPos, then use the begin of maxBlock
 		int optimalSplitPos = maxBlock.lastLIRInstructionId() + 2;
 		if (optimalSplitPos > maxSplitPos)
@@ -143,7 +140,7 @@ public final class LinearScanWalker extends IntervalWalker
 		int optimalSplitPos = -1;
 		if (minSplitPos == maxSplitPos)
 		{
-			// trivial case, no optimization of split position possible
+			// trivial case, no opt of split position possible
 			optimalSplitPos = minSplitPos;
 		}
 		else
@@ -177,7 +174,7 @@ public final class LinearScanWalker extends IntervalWalker
 						&& !allocator.isBlockBegin(maxSplitPos))
 				{
 					// Do not move split position if the interval has a hole before
-					// maxSplitPos. Intervals resulting from Phi-Functions have
+					// maxSplitPos. Intervals resulting from PhiNode-Functions have
 					// more than one definition (marked as mustHaveRegister) with
 					// a hole before each definition. When the register is needed
 					// for the second definition : an earlier reloading is unnecessary.
@@ -190,7 +187,7 @@ public final class LinearScanWalker extends IntervalWalker
 
 					if (doLoopOptimization)
 					{
-						// Loop optimization: if a loop-end marker is found between
+						// Loop opt: if a loop-end marker is found between
 						// min- and max-position : then split before this loop
 						int loopEndPos = interval.nextUsageExact(
 								Interval.RegisterPriority.LiveAtLoopEnd,
@@ -202,7 +199,7 @@ public final class LinearScanWalker extends IntervalWalker
 							// loop-end marker found between min- and max-position
 							// if it is not the end marker for the same loop as the
 							// min-position : then move the max-position to this loop block.
-							// Desired result: uses tagged as shouldHaveRegister
+							// Desired getReturnValue: uses tagged as shouldHaveRegister
 							// inside a loop cause a reloading of the interval
 							// (normally, only mustHaveRegister causes a reloading)
 							BasicBlock loopBlock = allocator
@@ -226,7 +223,7 @@ public final class LinearScanWalker extends IntervalWalker
 
 					if (optimalSplitPos == -1)
 					{
-						// not calculated by loop optimization
+						// not calculated by loop opt
 						optimalSplitPos = findOptimalSplitPos(minBlock,
 								maxBlock, maxSplitPos);
 					}
@@ -348,7 +345,7 @@ public final class LinearScanWalker extends IntervalWalker
 	}
 
 	/**
-	 * optimization (especially for phi functions of nested loops):
+	 * opt (especially for phi functions of nested loops):
 	 * assign same spill slot to non-intersecting intervals using Register Hints.
 	 * @param interval
 	 */
@@ -356,7 +353,7 @@ public final class LinearScanWalker extends IntervalWalker
 	{
 		if (interval.isSplitChild())
 		{
-			// optimization is only suitable for split parents
+			// opt is only suitable for split parents
 			return;
 		}
 
@@ -373,7 +370,7 @@ public final class LinearScanWalker extends IntervalWalker
 				|| registerHint.spillState() != NoOptimization)
 		{
 			// combining the stack slots for intervals where spill move
-			// optimization is applied is not benefitial and would cause problems
+			// opt is applied is not benefitial and would cause problems
 			return;
 		}
 
@@ -455,14 +452,14 @@ public final class LinearScanWalker extends IntervalWalker
 	boolean noAllocationPossible(Interval interval)
 	{
 		// specially handling for x86
-		if (backend.targetMachine.arch.isX86())
+		if (backend.machineInfo.arch.isX86())
 		{
 			// fast calculation of intervals that can never get a register
 			// because the the next instruction is a call that blocks all registers
 			// Note: this does not work if callee-saved registers are available
 			// (e.g. on Sparc)
 
-			// check if this interval is the result of a split operation
+			// check if this interval is the getReturnValue of a split operation
 			// (an interval got a register until this position)
 			int pos = interval.from();
 			if (isOdd(pos))
@@ -666,7 +663,7 @@ public final class LinearScanWalker extends IntervalWalker
 			else
 			{
 				assert interval.currentIntersectsAt(current)
-						== -1 : "invalid optimization: intervals intersect";
+						== -1 : "invalid opt: intervals intersect";
 			}
 
 			interval = interval.next;
@@ -690,7 +687,7 @@ public final class LinearScanWalker extends IntervalWalker
 		Interval interval = inactiveLists.get(Any);
 		while (interval != Interval.EndMarker)
 		{
-			// when current is the result of an interval split, then intersect check is needed
+			// when current is the getReturnValue of an interval split, then intersect check is needed
 			// for SSA form
 			if (interval.splitParent() != null
 					&& interval.currentIntersects(current))
@@ -708,7 +705,7 @@ public final class LinearScanWalker extends IntervalWalker
 	 *     <li>Inserts move instruction was inserted in split position, when an interval is split
 	 *         within a basic block.
 	 *     </li>
- *         <li>If the location of interval at the end of predecessor and begin of successor
+ *         <li>IfStmt the location of interval at the end of predecessor and begin of successor
 	 *         differ, appropriate move instruction are inserted.
 	 *     </li>
 	 * </ol>
@@ -730,7 +727,7 @@ public final class LinearScanWalker extends IntervalWalker
 		// calculate index of instruction inside instruction list of current block
 		// the minimal index (for a block with no spill moves) can be calculated
 		// because the numbering of instructions is known. When the block already
-		// contains spill moves, the index must be increased until the correct
+		// isDeclScope spill moves, the index must be increased until the correct
 		// index is reached.
 
 		List<LIRInstruction> list = opBlock.getLIRBlock().lir()
@@ -792,7 +789,7 @@ public final class LinearScanWalker extends IntervalWalker
 				"must not have unhandled fixed intervals"
 						+ " because all fixed intervals have a use at position 0";
 
-		// usePos contains the start of the next interval that has this register assigned
+		// usePos isDeclScope the start of the next interval that has this register assigned
 		// (either as a fixed register or a normal allocated register in the past)
 		// only intervals overlapping with cur are processed, non-overlapping
 		// invervals can be ignored safely
@@ -1115,7 +1112,7 @@ public final class LinearScanWalker extends IntervalWalker
 		// the register must be free at least until this position
 		int firstUsage = interval.firstUsage(MustHaveRegister);
 
-		// a little heuristic optimization
+		// a little heuristic opt
 		int regNeededUntil = Math.min(firstUsage, interval.from() + 1);
 		int intervalTo = interval.to();
 		assert regNeededUntil > 0

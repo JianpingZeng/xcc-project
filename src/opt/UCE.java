@@ -1,11 +1,7 @@
-package optimization;
+package opt;
 
+import hir.*;
 import hir.BasicBlock;
-import hir.DominatorTree;
-import hir.Instruction;
-import hir.Instruction.ConditionalBranch;
-import hir.Method;
-import hir.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +18,7 @@ import java.util.List;
  */
 public class UCE
 {
-	private Method m;
+	private Function m;
 	private boolean changed = true;
 	private List<BasicBlock> postOrder;
 
@@ -30,7 +26,7 @@ public class UCE
 	 * The beginning clean method.
 	 * <p>
 	 * After DCE, There are useless control flow be introduced by other
-	 * optimization. So that the useless control flow elimination is desired
+	 * opt. So that the useless control flow elimination is desired
 	 * as follows.
 	 * 1.merges redundant branch instruction.
 	 * 2.unlinks empty basic block
@@ -40,7 +36,7 @@ public class UCE
 	 *
 	 * @param m
 	 */
-	public void clean(Method m)
+	public void clean(Function m)
 	{
 		postOrder = new ArrayList<>(m.cfg.postOrder());
 		while (changed)
@@ -65,7 +61,7 @@ public class UCE
 	private void onePass()
 	{
 		// We must usesList the index loop instead of interative loop, because
-		// the length of postOrder list is changing when iterating.
+		// the getArraySize of postOrder list is changing when iterating.
 		for (int idx = 0; idx < postOrder.size(); idx++)
 		{
 			BasicBlock curr = postOrder.get(idx);
@@ -80,9 +76,9 @@ public class UCE
 			//  |   \    ==  |
 			//  \   |        |
 			//    B.j        B.j
-			if (lastInst instanceof ConditionalBranch)
+			if (lastInst instanceof Instruction.ConditionalBranchInst)
 			{
-				ConditionalBranch branch = (ConditionalBranch) lastInst;
+				Instruction.ConditionalBranchInst branch = (Instruction.ConditionalBranchInst) lastInst;
 				if (branch.trueTarget == branch.falseTarget)
 				{
 					Instruction.Goto go = new Instruction.Goto(
@@ -119,14 +115,14 @@ public class UCE
 							{
 								((Instruction.Goto) last).target = target;
 							}
-							else if (last instanceof ConditionalBranch)
+							else if (last instanceof Instruction.ConditionalBranchInst)
 							{
-								if (((ConditionalBranch) last).falseTarget
+								if (((Instruction.ConditionalBranchInst) last).falseTarget
 										== curr)
-									((ConditionalBranch) last).falseTarget = target;
-								if (((ConditionalBranch) last).trueTarget
+									((Instruction.ConditionalBranchInst) last).falseTarget = target;
+								if (((Instruction.ConditionalBranchInst) last).trueTarget
 										== curr)
-									((ConditionalBranch) last).trueTarget = target;
+									((Instruction.ConditionalBranchInst) last).trueTarget = target;
 							}
 						}
 					}
@@ -140,7 +136,7 @@ public class UCE
 					merge(curr, target);
 
 				if (target.size() == 1 && (lastInst = target
-						.lastInst()) instanceof ConditionalBranch)
+						.lastInst()) instanceof Instruction.ConditionalBranchInst)
 				{
 					go.insertBefore(lastInst);
 					go.eraseFromBasicBlock();

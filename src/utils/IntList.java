@@ -27,8 +27,8 @@ public final class IntList
 	 * Creates an int list with a specified initial array.
 	 *
 	 * @param array       the initial array used for the list (no copy is made)
-	 * @param initialSize the initial {@linkplain #size() size} of the list (must
-	 *                    be less than or equal to {@code array.length}
+	 * @param initialSize the initial {@linkplain #size() getTypeSize} of the list (must
+	 *                    be less than or equal to {@code array.getArraySize}
 	 */
 	public IntList(int[] array, int initialSize)
 	{
@@ -44,8 +44,8 @@ public final class IntList
 	 *                      into the new list
 	 * @param startIndex the index in {@code other} at which to start copying
 	 * @param length     the number of VALUES to copy from {@code other}
-	 * @return a new int list whose {@linkplain #size() size} and capacity is
-	 *                      {@code length}
+	 * @return a new int list whose {@linkplain #size() getTypeSize} and capacity is
+	 *                      {@code getArraySize}
 	 */
 	public static IntList copy(IntList other, int startIndex, int length)
 	{
@@ -58,13 +58,13 @@ public final class IntList
 	 * @param other           the list from which a range of VALUES is to be copied into the new list
 	 * @param startIndex      the index in {@code other} at which to start copying
 	 * @param length          the number of VALUES to copy from {@code other}
-	 * @param initialCapacity the initial capacity of the new int list (must be greater or equal to {@code length})
-	 * @return a new int list whose {@linkplain #size() size} is {@code length}
+	 * @param initialCapacity the initial capacity of the new int list (must be greater or equal to {@code getArraySize})
+	 * @return a new int list whose {@linkplain #size() getTypeSize} is {@code getArraySize}
 	 */
 	public static IntList copy(IntList other, int startIndex, int length,
 			int initialCapacity)
 	{
-		assert initialCapacity >= length : "initialCapacity < length";
+		assert initialCapacity >= length : "initialCapacity < getArraySize";
 		int[] array = new int[initialCapacity];
 		System.arraycopy(other.array, startIndex, array, 0, length);
 		return new IntList(array, length);
@@ -76,7 +76,7 @@ public final class IntList
 	}
 
 	/**
-	 * Appends a value to the end of this list, increasing its {@linkplain #size() size} by 1.
+	 * Appends a value to the end of this list, increasing its {@linkplain #size() getTypeSize} by 1.
 	 *
 	 * @param value the value to append
 	 */
@@ -94,7 +94,7 @@ public final class IntList
 	 * Gets the value in this list at a given index.
 	 *
 	 * @param index the index of the element to return
-	 * @throws IndexOutOfBoundsException if {@code index < 0 || index >= size()}
+	 * @throws IndexOutOfBoundsException if {@code index < 0 || index >= getTypeSize()}
 	 */
 	public int get(int index)
 	{
@@ -107,7 +107,7 @@ public final class IntList
 	}
 
 	/**
-	 * Sets the size of this list to 0.
+	 * Sets the getTypeSize of this list to 0.
 	 */
 	public void clear()
 	{
@@ -119,7 +119,7 @@ public final class IntList
 	 *
 	 * @param index the index of the element to update
 	 * @param value the new value of the element
-	 * @throws IndexOutOfBoundsException if {@code index < 0 || index >= size()}
+	 * @throws IndexOutOfBoundsException if {@code index < 0 || index >= getTypeSize()}
 	 */
 	public void set(int index, int value)
 	{
@@ -132,13 +132,13 @@ public final class IntList
 	}
 
 	/**
-	 * Adjusts the {@linkplain #size() size} of this int list.
+	 * Adjusts the {@linkplain #size() getTypeSize} of this int list.
 	 * <p>
-	 * If {@code newSize < size()}, the size is changed to {@code newSize}.
-	 * If {@code newSize > size()}, sufficient 0 elements are {@linkplain #add(int) added}
-	 * until {@code size() == newSize}.
+	 * IfStmt {@code newSize < getTypeSize()}, the getTypeSize is changed to {@code newSize}.
+	 * IfStmt {@code newSize > getTypeSize()}, sufficient 0 elements are {@linkplain #add(int) added}
+	 * until {@code getTypeSize() == newSize}.
 	 *
-	 * @param newSize the new size of this int list
+	 * @param newSize the new getTypeSize of this int list
 	 */
 	public void setSize(int newSize)
 	{

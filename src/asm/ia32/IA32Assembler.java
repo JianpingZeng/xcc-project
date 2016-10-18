@@ -1,7 +1,7 @@
-package asm.x86;
+package asm.ia32;
 
 import lir.backend.RegisterConfig;
-import lir.backend.TargetMachine;
+import lir.backend.MachineInfo;
 import lir.ci.LIRKind;
 import lir.ci.LIRRegister;
 import asm.AbstractAssembler;
@@ -11,7 +11,7 @@ import asm.AbstractAssembler;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class X86Assembler extends AbstractAssembler
+public class IA32Assembler extends AbstractAssembler
 {
 	/**
 	 * The x86 condition codes used for conditional jumps/moves.
@@ -81,7 +81,7 @@ public class X86Assembler extends AbstractAssembler
 	 * @param target	The target machine for which this assembler was constructed.
 	 * @param config	The register configuration.
 	 */
-	public X86Assembler(TargetMachine target, RegisterConfig config)
+	public IA32Assembler(MachineInfo target, RegisterConfig config)
 	{
 		super(target);
 		this.frameRegister = config == null ? null : config.getFrameRegister();

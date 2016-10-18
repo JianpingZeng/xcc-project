@@ -1,4 +1,4 @@
-package optimization;
+package opt;
 
 import hir.*;
 import hir.Instruction.*;
@@ -12,7 +12,7 @@ import utils.Util;
  * Also, putting constants on the right side of commutative operators for
  * Strength reduction.
  * <p>
- * <p>This file is a member of <a href={@docRoot/optimization}>Machine Independence
+ * <p>This file is a member of <a href={@docRoot/opt}>Machine Independence
  * Optimization</a>.
  *
  * @author Xlous.zeng
@@ -21,25 +21,25 @@ import utils.Util;
  * @see GVN
  * @see UCE
  */
-public class Canonicalizer extends ValueVisitor
+public class Canonicalizer extends InstructionVisitor
 {
 	private Value result;
 
 	/**
 	 * This method attempts to fold specified exprssion to constant.
-	 * If successfully, the constant result is result returned, otherwise, null
+	 * IfStmt successfully, the constant getReturnValue is getReturnValue returned, otherwise, null
 	 * is desired.
 	 *
 	 * @param inst The instruction to be folded.
-	 * @return The result constant if successfully, otherwise, null returned.
+	 * @return The getReturnValue constant if successfully, otherwise, null returned.
 	 */
 	public Value constantFoldInstruction(Value inst)
 	{
 		// handle phi nodes here
-		if (inst instanceof Phi)
+		if (inst instanceof PhiNode)
 		{
 			Constant commonValue = null;
-			Phi PH = (Phi) inst;
+			PhiNode PH = (PhiNode) inst;
 			for (int i = 0; i < PH.getNumberIncomingValues(); i++)
 			{
 				Value incomingValue = PH.getIncomingValue(i);
@@ -47,7 +47,7 @@ public class Canonicalizer extends ValueVisitor
 				// if the incoming value is undef and then skip it.
 				// Note that while we could skip the valeu if th is equal to the
 				// phi node itself because that would break the rules that constant
-				// folding only applied if all operands are constant.
+				// folding only applied if all reservedOperands are constant.
 				if (incomingValue instanceof Value.UndefValue)
 					continue;
 
@@ -56,7 +56,7 @@ public class Canonicalizer extends ValueVisitor
 					return null;
 
 				Constant constant = (Constant) incomingValue;
-				// folds the phi's operands
+				// folds the phi's reservedOperands
 				if (commonValue != null && constant != commonValue)
 					return null;
 				commonValue = constant;
@@ -101,7 +101,7 @@ public class Canonicalizer extends ValueVisitor
 	 *
 	 * @param inst The conversion instruction to be folded.
 	 */
-	public void visitConvert(Instruction.Convert inst)
+	public void visitConvert(CastInst inst)
 	{
 		Value val = inst.x;
 		if (val.isConstant())
@@ -158,9 +158,9 @@ public class Canonicalizer extends ValueVisitor
 		LIRKind kind = LIRKind.Illegal;
 		// chained converts instruction like this (V)((T)val), where ((T)val) is
 		// represented as val.
-		if (val instanceof Convert)
+		if (val instanceof CastInst)
 		{
-			Convert c = (Convert) val;
+			CastInst c = (CastInst) val;
 			// where T is kind.
 			switch (c.opcode)
 			{
@@ -264,7 +264,7 @@ public class Canonicalizer extends ValueVisitor
 	 * @param opcode The operator performed on x and y.
 	 * @param x      The first LIROperand of operation.
 	 * @param y      The second LIROperand of operation.
-	 * @return An {@code Integer} instance representing the folding result
+	 * @return An {@code Integer} instance representing the folding getReturnValue
 	 * of two integer, if it is foldable. Otherwise, return null.
 	 */
 	private Integer foldIntOp2(Operator opcode, int x, int y)
@@ -303,7 +303,7 @@ public class Canonicalizer extends ValueVisitor
 	 * @param opcode The operator performed on x and y.
 	 * @param x      The first LIROperand of operation.
 	 * @param y      The second LIROperand of operation.
-	 * @return An {@code Long} instance representing the folding result
+	 * @return An {@code Long} instance representing the folding getReturnValue
 	 * of two long integer, if it is foldable. Otherwise, return null.
 	 */
 	private Long foldLongOp2(Operator opcode, long x, long y)
@@ -342,7 +342,7 @@ public class Canonicalizer extends ValueVisitor
 	 * @param opcode The operator performed on x and y.
 	 * @param x      The first LIROperand of operation.
 	 * @param y      The second LIROperand of operation.
-	 * @return An {@code Float} instance representing the folding result
+	 * @return An {@code Float} instance representing the folding getReturnValue
 	 * of two float point number, if it is foldable. Otherwise, return null.
 	 */
 	private Float foldFloatOp2(Operator opcode, float x, float y)
@@ -367,7 +367,7 @@ public class Canonicalizer extends ValueVisitor
 	 * @param opcode The operator performed on x and y.
 	 * @param x      The first LIROperand of operation.
 	 * @param y      The second LIROperand of operation.
-	 * @return An {@code Double} instance representing the folding result
+	 * @return An {@code Double} instance representing the folding getReturnValue
 	 * of two double number, if it is foldable. Otherwise, return null.
 	 */
 	private Double foldDoubleOp2(Operator opcode, double x, double y)
@@ -763,7 +763,7 @@ public class Canonicalizer extends ValueVisitor
 
 		if (l == r && !l.kind.isFloatOrDouble())
 		{
-			// skips the optimization for flort/double
+			// skips the opt for flort/double
 			// due to NaN issue.
 			reduceReflexiveIf(inst);
 			return;
@@ -811,13 +811,13 @@ public class Canonicalizer extends ValueVisitor
 
 	/**
 	 * Attempts to fold two constant over the given operator, such as, LT, EQ, NE
-	 * etc, and return the result of comparison.
+	 * etc, and return the getReturnValue of comparison.
 	 *
 	 * @param cond The comparison operator.
 	 * @param l      The left side LIROperand.
 	 * @param r      The right side LIROperand.
-	 * @return The result of comparison, return true if comparison successfully
-	 * in specified op, otherwise, return false. Return null when the op is illegal.
+	 * @return The getReturnValue of comparison, return true if comparison successfully
+	 * in specified op, otherwise, return false. ReturnInst null when the op is illegal.
 	 */
 	private Boolean foldCondition(Condition cond, LIRConstant l, LIRConstant r)
 	{
@@ -898,7 +898,7 @@ public class Canonicalizer extends ValueVisitor
 		Value y = inst.y;
 
 		Condition cond = inst.condition();
-		// if the two operands are same
+		// if the two reservedOperands are same
 		// then reduce it
 		if (x == y)
 		{

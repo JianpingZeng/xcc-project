@@ -1,10 +1,7 @@
 package lir.backend.amd64;
 
+import hir.*;
 import hir.BasicBlock;
-import hir.Condition;
-import hir.Instruction;
-import hir.Operator;
-import hir.Value;
 import hir.Value.Constant;
 import lir.LIRGenerator;
 import lir.LIRItem;
@@ -30,7 +27,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	private static final LIRRegisterValue LDIV_TMP = RDX_L;
 
 	/**
-	 * The register in which MUL puts the result for 64-bit multiplication.
+	 * The register in which MUL puts the getReturnValue for 64-bit multiplication.
 	 */
 	private static final LIRRegisterValue LMUL_OUT = RAX_L;
 
@@ -56,18 +53,18 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 	// memory access
 
-	public void visitAlloca(Instruction.Alloca inst)
+	public void visitAlloca(Instruction.AllocaInst inst)
 	{
 		LIRValue result = createResultVirtualRegister(inst);
-		assert inst.length().isConstant() :
-				"Alloca instruction 'length' is not a constant" + inst.length();
-		int size = inst.length().asLIRConstant().asInt();
+		assert inst.getArraySize().isConstant() :
+				"AllocaInst instruction 'getArraySize' is not a constant" + inst.getArraySize();
+		int size = inst.getArraySize().asLIRConstant().asInt();
 		StackFrame.StackBlock stackBlock = backend.frameMap()
 				.reserveStackBlock(size, false);
 		lir.alloca(stackBlock, result);
 	}
 	/**
-	 * Implements store instructions in terms of the X86 'mov' instruction.
+	 * Implements store instructions in terms of the IA32 'mov' instruction.
 	 * @param inst
 	 */
 	public void visitStoreInst(Instruction.StoreInst inst)
@@ -77,7 +74,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	}
 
 	/**
-	 * Implement load instructions in terms of the X86 'mov' instruction. The
+	 * Implement load instructions in terms of the IA32 'mov' instruction. The
 	 * load and store instructions are the only place where we need to worry about
 	 * the momory layout of the targetAbstractLayer machine.
 	 * @param inst
@@ -181,9 +178,9 @@ public final class AMD64LIRGenerator extends LIRGenerator
 		LIRItem left = new LIRItem(instr.x, this);
 		LIRItem right = new LIRItem(instr.y, this);
 		assert !left.isStack() || !right
-				.isStack() : "cann't both be momory operands";
+				.isStack() : "cann't both be momory reservedOperands";
 
-		// both are register LIROperand, swap operands such that the short-living
+		// both are register LIROperand, swap reservedOperands such that the short-living
 		// one is on the left side
 		if (instr.opcode.isCommutative() && left.isRegisterOrVariable() &&
 				right.isRegisterOrVariable())
@@ -236,12 +233,12 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
-				resultReg = RDX_L; // remainder result is produced in rdx
+				resultReg = RDX_L; // remainder getReturnValue is produced in rdx
 				lir.lrem(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else if (opcode == Operator.LMod)
 			{
-				resultReg = RAX_L; // division result is produced in rax
+				resultReg = RAX_L; // division getReturnValue is produced in rax
 				lir.ldiv(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else
@@ -318,12 +315,12 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
-				resultReg = tmp; // remainder result is produced in rdx
+				resultReg = tmp; // remainder getReturnValue is produced in rdx
 				lir.irem(dividend, divisor, resultReg, tmp);
 			}
 			else if (opcode == Operator.IDiv)
 			{
-				resultReg = RAX_I; // division result is produced in rax
+				resultReg = RAX_I; // division getReturnValue is produced in rax
 				lir.idiv(dividend, divisor, resultReg, tmp);
 			}
 			else
@@ -476,11 +473,11 @@ public final class AMD64LIRGenerator extends LIRGenerator
 
 	/**
 	 * Converts data from specified type to targetAbstractLayer type upon platform dependent
-	 * instruction, like X86 or SPARC.
+	 * instruction, like IA32 or SPARC.
 	 * @param inst
 	 */
 	@Override
-	public void visitConvert(Instruction.Convert inst)
+	public void visitConvert(Instruction.CastInst inst)
 	{
 		LIRValue input = load(inst.x);
 		LIRVariable result = newVariable(inst.kind);
