@@ -1,7 +1,7 @@
 package symbol;
 
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Name;
 
 /**
@@ -13,7 +13,7 @@ import utils.Name;
  * @author Xlous.zeng  
  * @version 2016年1月8日 上午10:48:39
  */
-public class Symbol implements SymbolKinds, TypeTags
+public class Symbol implements SymbolKinds, TypeClass
 {
 
 	/**
@@ -84,7 +84,7 @@ public class Symbol implements SymbolKinds, TypeTags
 
 		/**
 		 * The flags, such as storage class or qualifier,
-		 * which restricted by {@link TypeTags}.
+		 * which restricted by {@link TypeClass}.
 		 */
 		public long flags;
 

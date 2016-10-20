@@ -102,11 +102,11 @@ public class Parser implements ParserConstants
 		long i = integerValue(image);
 		if (image.endsWith("L"))
 		{
-			return F.at(pos).Literal(Type.LONG, new Long(i));
+			return F.at(pos).Literal(Type.LongInteger, new Long(i));
 		}
 		else
 		{
-			return F.at(pos).Literal(Type.INT, new Integer((int) i));
+			return F.at(pos).Literal(Type.Int, new Integer((int) i));
 		}
 	}
 
@@ -1129,7 +1129,7 @@ public class Parser implements ParserConstants
 					pos = position();
 					{
 
-						return F.at(pos).TypeIdent(Type.VOID);
+						return F.at(pos).TypeIdent(Type.Void);
 					}
 
 				}
@@ -1139,7 +1139,7 @@ public class Parser implements ParserConstants
 					pos = position();
 					{
 
-						return F.at(pos).TypeIdent(Type.CHAR);
+						return F.at(pos).TypeIdent(Type.Char);
 					}
 
 				}
@@ -1149,7 +1149,7 @@ public class Parser implements ParserConstants
 					pos = position();
 					{
 
-						return F.at(pos).TypeIdent(Type.SHORT);
+						return F.at(pos).TypeIdent(Type.Short);
 					}
 
 				}
@@ -1159,7 +1159,7 @@ public class Parser implements ParserConstants
 					pos = position();
 					{
 
-						return F.at(pos).TypeIdent(Type.INT);
+						return F.at(pos).TypeIdent(Type.Int);
 					}
 
 				}
@@ -1169,7 +1169,7 @@ public class Parser implements ParserConstants
 					pos = position();
 					{
 
-						return F.at(pos).TypeIdent(Type.LONG);
+						return F.at(pos).TypeIdent(Type.LongInteger);
 					}
 
 				}
@@ -2959,7 +2959,7 @@ public class Parser implements ParserConstants
 					pos = position();
 					{
 
-						return F.at(pos).Literal(Type.CHAR,
+						return F.at(pos).Literal(Type.Char,
 								new Integer(t.image.charAt(0)));
 					}
 

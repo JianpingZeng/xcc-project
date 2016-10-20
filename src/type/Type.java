@@ -2,6 +2,8 @@ package type;
 
 import cparser.DeclSpec;
 import exception.SemanticError;
+import type.ArrayType.ConstantArrayType;
+import type.ArrayType.VariableArrayType;
 import utils.Util;
 
 /**
@@ -11,7 +13,7 @@ import utils.Util;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class Type implements TypeTags
+public abstract class Type implements TypeClass
 {
     public static QualType VoidTy = new QualType(VoidType.New());
 
@@ -73,6 +75,11 @@ public abstract class Type implements TypeTags
         this.tag = tag;
     }
 
+    public int getTypeClass()
+    {
+        return tag;
+    }
+
     /**
      * Returns the size of the specified type in bits.
      * </br>
@@ -93,7 +100,7 @@ public abstract class Type implements TypeTags
     }
 
     /**
-     * The length of memory alignment in bytes.
+     * The getSize of memory alignment in bytes.
      *
      * @return
      */
@@ -114,7 +121,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isPrimitiveType()
     {
-        return tag >= BOOLEAN && tag <= REAL || (tag == USER_DEF
+        return tag >= Bool && tag <= Real || (tag == UserDef
                 && ((UserType) this).getActual().isPrimitiveType());
     }
 
@@ -125,7 +132,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isVoidType()
     {
-        return tag == VOID || (tag == USER_DEF && ((UserType) this).getActual()
+        return tag == Void || (tag == UserDef && ((UserType) this).getActual()
                 .isVoidType());
     }
 
@@ -136,7 +143,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isIntegerType()
     {
-        return tag == INT || (tag == USER_DEF && ((UserType) this).getActual()
+        return tag == Int || (tag == UserDef && ((UserType) this).getActual()
                 .isIntegerType());
     }
 
@@ -145,7 +152,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isRealType()
     {
-        return tag == REAL || (tag == USER_DEF && ((UserType) this).getActual()
+        return tag == Real || (tag == UserDef && ((UserType) this).getActual()
                 .isRealType());
     }
 
@@ -156,7 +163,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isComplexType()
     {
-        return tag == COMPLEX || (tag == USER_DEF && ((UserType) this)
+        return tag == Complex || (tag == UserDef && ((UserType) this)
                 .getActual().isComplexType());
     }
 
@@ -167,7 +174,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isBooleanType()
     {
-        return tag == BOOLEAN || (tag == USER_DEF && ((UserType) this)
+        return tag == Bool || (tag == UserDef && ((UserType) this)
                 .getActual().isBooleanType());
     }
 
@@ -189,7 +196,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isPointerType()
     {
-        return tag == POINTER || (tag == USER_DEF && ((UserType) this)
+        return tag == Pointer || (tag == UserDef && ((UserType) this)
                 .getActual().isPointerType());
     }
 
@@ -200,7 +207,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isReferenceType()
     {
-        return tag == REFERENCE || (tag == USER_DEF && ((UserType) this)
+        return tag == Reference || (tag == UserDef && ((UserType) this)
                 .getActual().isReferenceType());
     }
 
@@ -211,7 +218,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isFunctionType()
     {
-        return tag == FUNCTION || (tag == USER_DEF && ((UserType) this)
+        return tag == Function || (tag == UserDef && ((UserType) this)
                 .getActual().isFunctionType());
     }
 
@@ -222,7 +229,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isMethodType()
     {
-        return tag == METHOD || (tag == USER_DEF && ((UserType) this)
+        return tag == Method || (tag == UserDef && ((UserType) this)
                 .getActual().isMethodType());
     }
 
@@ -233,7 +240,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isArrayType()
     {
-        return tag == ConstantArray || (tag == USER_DEF && ((UserType) this).getActual()
+        return tag == ConstantArray || (tag == UserDef && ((UserType) this).getActual()
                 .isArrayType());
     }
 
@@ -244,7 +251,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isRecordType()
     {
-        return tag == STRUCT || (tag == USER_DEF && ((UserType) this)
+        return tag == Struct || (tag == UserDef && ((UserType) this)
                 .getActual().isRecordType());
     }
 
@@ -255,7 +262,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isUnionType()
     {
-        return tag == UNION || (tag == USER_DEF && ((UserType) this).getActual()
+        return tag == Union || (tag == UserDef && ((UserType) this).getActual()
                 .isUnionType());
     }
 
@@ -266,7 +273,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isEnumType()
     {
-        return tag == ENUM || (tag == USER_DEF && ((UserType) this).getActual()
+        return tag == Enum || (tag == UserDef && ((UserType) this).getActual()
                 .isEnumType());
     }
 
@@ -277,7 +284,7 @@ public abstract class Type implements TypeTags
      */
     public boolean isUserType()
     {
-        return tag == USER_DEF;
+        return tag == UserDef;
     }
 
     // Ability methods (unary)
@@ -294,7 +301,7 @@ public abstract class Type implements TypeTags
     public boolean isScalarType()
     {
         if (isPrimitiveType())
-            return tag > VOID && tag <= REAL;
+            return tag > Void && tag <= Real;
         if (isEnumType())
         {
             return ((EnumType) this).getDecl().isCompleteDefinition();
@@ -306,14 +313,6 @@ public abstract class Type implements TypeTags
     {
         return false;
     }
-
-    /**
-     * Indicates if this type can be wrapped with other type.
-     *
-     * @param other
-     * @return
-     */
-    public abstract boolean isCompatible(Type other);
 
     /**
      * Indicates if this type can be casted into target type.
@@ -364,16 +363,6 @@ public abstract class Type implements TypeTags
         return (RecordType) this;
     }
 
-    public UnionType getUnionType()
-    {
-        return (UnionType) this;
-    }
-
-    public ArrayType getArrayType()
-    {
-        return (ArrayType) this;
-    }
-
     public EnumType getEnumType()
     {
         return (EnumType) this;
@@ -403,7 +392,7 @@ public abstract class Type implements TypeTags
     {
         if (isPrimitiveType())
         {
-            return tag >= BOOLEAN && tag <= REAL;
+            return tag >= Bool && tag <= Real;
         }
         if (isEnumType())
         {
@@ -432,18 +421,18 @@ public abstract class Type implements TypeTags
     {
         if (isPrimitiveType())
         {
-            // Void is the only incomplete builtin type.  Per C99 6.2.5p19, it can never
-            // be completed.
+            // Void is the only incomplete builtin type.  Per C99 6.2.5p19,
+            // it can never be completed.
             return isVoidType();
         }
         switch (tag)
         {
-            case STRUCT:
-            case UNION:
+            case Struct:
+            case Union:
                 return !((TagType)this).getDecl().isCompleteDefinition();
             case ConstantArray:
                 // An array is incomplete if its element type is incomplete
-                return ((ArrayType)this).getElementType().isIncompleteType();
+                return ((ConstantArrayType)this).getElemType().isIncompleteType();
             case IncompleteArray:
                 return true;
             default:
@@ -461,6 +450,6 @@ public abstract class Type implements TypeTags
     {
         assert !isIncompleteType():"This doesn't make sense for incomplete types";
 
-        return !(this instanceof ArrayType.VariableArrayType);
+        return !(this instanceof VariableArrayType);
     }
 }

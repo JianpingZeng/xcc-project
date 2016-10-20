@@ -131,8 +131,7 @@ public class Canonicalizer extends InstructionVisitor
 					setFloatConstant((float) val.asLIRConstant().asLong());
 					return;
 				case L2D:
-					;
-					setDoubleConstant((double) val.asLIRConstant().asDouble());
+                    setDoubleConstant(val.asLIRConstant().asDouble());
 					return;
 				case F2D:
 					setDoubleConstant((double) val.asLIRConstant().asFloat());
@@ -773,8 +772,7 @@ public class Canonicalizer extends InstructionVisitor
 		{
 			Boolean result = foldCondition(inst.condition(), l.asLIRConstant(),
 					r.asLIRConstant());
-			;
-			if (result != null)
+            if (result != null)
 			{
 				setCanonical(new Goto(inst.successor(result), "Goto"));
 				return;

@@ -227,8 +227,8 @@ public final class LIRAddress extends LIRValue
 		BASE_DISP,
 		BASE_INDEX,
 		BASE_INDEX_DISP,
-		PLACEHOLDER;
-	}
+		PLACEHOLDER
+    }
 
 	/**
 	 * Returns the {@link Format encoded addressing mode} that this {@code LIRAddress} represents.

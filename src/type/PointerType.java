@@ -27,7 +27,7 @@ public final class PointerType extends Type
 
     public PointerType(long size, QualType baseType)
     {
-        super(POINTER);
+        super(Pointer);
         this.size = size;
         this.pointeeType = baseType;
     }
@@ -76,20 +76,6 @@ public final class PointerType extends Type
                 isSameType(((PointerType) other).pointeeType);
     }
 
-    @Override public boolean isCompatible(Type other)
-    {
-        if (!other.isPointerType())
-            return false;
-        if (pointeeType.isVoidType())
-        {
-            return true;
-        }
-        if (other.baseType().isVoidType())
-        {
-            return true;
-        }
-        return pointeeType.isCompatible(other.baseType());
-    }
 
     public boolean isCastableTo(Type other)
     {

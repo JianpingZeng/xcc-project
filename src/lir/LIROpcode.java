@@ -75,5 +75,5 @@ public enum LIROpcode
 	DirectCall,
 	IndirectCall,
 
-	Phi;
+	Phi
 }

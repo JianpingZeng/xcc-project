@@ -14,7 +14,7 @@ import symbol.VarSymbol;
 import symbol.SymbolKinds;
 import type.FunctionType;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Context;
 import utils.Log;
 import utils.Name;
@@ -33,7 +33,7 @@ import ast.Tree.*;
  * @author JianpingZeng
  * @version 1.0
  */
-public class Enter extends AstVisitor implements TypeTags, SymbolKinds, Flags
+public class Enter extends AstVisitor implements TypeClass, SymbolKinds, Flags
 {
 
 	private static final Context.Key enterKey = new Context.Key();
@@ -270,7 +270,7 @@ public class Enter extends AstVisitor implements TypeTags, SymbolKinds, Flags
 		java.util.List<Type> argbuf = new ArrayList<>();
 		for (Tree t : params)
 			argbuf.add(attr.attribType(t, env));
-		Type resType = rettype == null ? new Type(VOID, null) 
+		Type resType = rettype == null ? new Type(Void, null)
 			: attr.attribType(rettype, env);
 		Type mtype = new FunctionType(resType, argbuf, null);
 		return mtype;

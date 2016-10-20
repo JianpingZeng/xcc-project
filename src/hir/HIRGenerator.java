@@ -16,7 +16,7 @@ import symbol.Symbol.OperatorSymbol;
 import symbol.SymbolKinds;
 import symbol.VarSymbol;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Context;
 import utils.Log;
 import utils.Name;
@@ -207,15 +207,12 @@ public class HIRGenerator extends AstVisitor
 	private boolean constantFoldOnBool(Tree tree)
 	{
 		if (tree instanceof Literal
-				&& ((Literal) tree).typetag == TypeTags.BOOL)
+				&& ((Literal) tree).typetag == TypeClass.BOOL)
 		{
 			Boolean val = (Boolean) ((Literal) tree).value;
 			// true
-			if (val)
-				return true;
-				// false
-			else
-				return false;
+            // false
+            return val;
 		}
 		return false;
 	}
@@ -341,7 +338,7 @@ public class HIRGenerator extends AstVisitor
 					translateBranchOnBool(inner_tree, falseBB, trueBB);
 					return;
 				case Tree.LITERAL:
-					if (((Literal) expr).typetag == TypeTags.BOOL)
+					if (((Literal) expr).typetag == TypeClass.BOOL)
 					{
 						Boolean val = (Boolean) ((Literal) expr).value;
 						if (val)
@@ -2041,27 +2038,27 @@ public class HIRGenerator extends AstVisitor
 
 	@Override public void visitLiteral(Literal tree)
 	{
-		if (tree.typetag == TypeTags.INT)
+		if (tree.typetag == TypeClass.Int)
 		{
 			this.exprResult = new Constant(new LIRConstant(LIRKind.Int,
 					((Integer) tree.value).intValue()));
 		}
-		else if (tree.typetag == TypeTags.LONG)
+		else if (tree.typetag == TypeClass.LongInteger)
 		{
 			this.exprResult = new Constant(new LIRConstant(LIRKind.Long,
 					((Long) tree.value).longValue()));
 		}
-		else if (tree.typetag == TypeTags.FLOAT)
+		else if (tree.typetag == TypeClass.FLOAT)
 		{
 			this.exprResult = new Constant(new LIRConstant(LIRKind.Float,
 					((Float) tree.value).longValue()));
 		}
-		else if (tree.typetag == TypeTags.DOUBLE)
+		else if (tree.typetag == TypeClass.DOUBLE)
 		{
 			this.exprResult = new Constant(new LIRConstant(LIRKind.Double,
 					((Double) tree.value).longValue()));
 		}
-		else if (tree.typetag == TypeTags.BOOL)
+		else if (tree.typetag == TypeClass.BOOL)
 		{
 			this.exprResult = ((Boolean) tree.value).equals("true") ?
 					Constant.forInt(1) :

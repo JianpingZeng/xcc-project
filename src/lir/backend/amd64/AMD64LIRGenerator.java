@@ -164,12 +164,8 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	{
 		if (v.kind == LIRKind.Long)
 		{
-			if (v.isConstant() && NumUtil.isInt(v.asLIRConstant().asLong()))
-			{
-				return true;
-			}
-			return false;
-		}
+            return v.isConstant() && NumUtil.isInt(v.asLIRConstant().asLong());
+        }
 		return v.kind != LIRKind.Object || v.isNullConstant();
 	}
 

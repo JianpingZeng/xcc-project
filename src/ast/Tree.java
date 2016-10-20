@@ -870,7 +870,7 @@ abstract public class Tree
          * Represents the left value which the address-of(&) operator could be
          * applied to.
          */
-        EVK_LValue;
+        EVK_LValue
     }
     /**
      * This class represents an expression. Note that{@linkplain, Expr} is the
@@ -973,8 +973,8 @@ abstract public class Tree
         {
             if (type.getType().isPrimitiveType())
             {
-                return type.getType().getTypeKind() >= TypeTags.CHAR
-                        && type.getType().getTypeKind() <= TypeTags.LONG;
+                return type.getType().getTypeKind() >= TypeClass.Char
+                        && type.getType().getTypeKind() <= TypeClass.LongInteger;
             }
 
             if (type.getType().isEnumType())

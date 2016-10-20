@@ -1164,7 +1164,7 @@ public abstract class Instruction extends User
         public PhiNode(LIRKind kind, int numReservedValues,
                 String name)
         {
-            this(kind, numReservedValues, name, (Instruction)null);
+            this(kind, numReservedValues, name, null);
         }
 
         public PhiNode(LIRKind kind, int numReservedValues,

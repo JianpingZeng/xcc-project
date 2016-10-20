@@ -529,7 +529,7 @@ public class PromoteMem2Reg
 			{
 				if ((Integer) o1.first < (Integer) o2.second)
 					return -1;
-				else if ((Integer) o1.first == (Integer) o2.second)
+				else if (o1.first == o2.second)
 					return 0;
 				else
 					return 1;
@@ -540,8 +540,7 @@ public class PromoteMem2Reg
 			User user = inst.getUser();
 			if (user instanceof StoreInst)
 				storesByIndex.add(new Pair(
-						LBI.getIndexOfInstruction((Instruction) user),
-						(StoreInst) user));
+						LBI.getIndexOfInstruction((Instruction) user), user));
 		}
 		// Walk all of the loads from this alloca, replacing them with the
 		// nearest store above them, if any.

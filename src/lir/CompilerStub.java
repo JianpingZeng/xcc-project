@@ -30,7 +30,7 @@ public class CompilerStub
 		public final LIRKind resultKind;
 		public final LIRKind[] arguments;
 
-		private Id(LIRKind resultKind, LIRKind... args)
+		Id(LIRKind resultKind, LIRKind... args)
 		{
 			this.resultKind = resultKind;
 			this.arguments = args;

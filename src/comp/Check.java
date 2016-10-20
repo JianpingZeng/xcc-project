@@ -3,7 +3,7 @@ package comp;
 import symbol.Symbol;
 import symbol.SymbolKinds;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Context;
 import utils.Log;
 import utils.Name;
@@ -17,7 +17,7 @@ import exception.CompletionFailure;
  * @author JianpingZeng
  * @version 1.0
  */
-public class Check implements SymbolKinds, TypeTags, Flags
+public class Check implements SymbolKinds, TypeClass, Flags
 {
 	private static final Context.Key checkKey = new Context.Key();
 	private Name.Table names;
@@ -83,7 +83,7 @@ public class Check implements SymbolKinds, TypeTags, Flags
 	 */
 	public Type checkNonVoid(int pos, Type t)
 	{
-		if (t.tag == VOID)
+		if (t.tag == Void)
 		{
 			log.error(pos, "void.not.allowed.here");
 			return syms.errType;
@@ -117,11 +117,11 @@ public class Check implements SymbolKinds, TypeTags, Flags
 	 */
 	Type checkType(int pos, Type found, Type req)
 	{
-		if (req.tag == ERROR)
+		if (req.tag == Error)
 		{
 			return req;
 		}
-		else if (req.tag == NONE)
+		else if (req.tag == None)
 		{
 			return found;
 		}
@@ -133,9 +133,9 @@ public class Check implements SymbolKinds, TypeTags, Flags
 		{
 			String problem;
 			if (found.tag <= DOUBLE && req.tag <= DOUBLE)
-				problem = log.getLocalizedString("possible.loss.of.precision");
+				problem = Log.getLocalizedString("possible.loss.of.precision");
 			else
-				problem = log.getLocalizedString("incompatible.types");
+				problem = Log.getLocalizedString("incompatible.types");
 			return typeError(pos, problem, found, req);
 		}
 	}

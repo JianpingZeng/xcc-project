@@ -495,8 +495,8 @@ public abstract class LIRGenerator extends InstructionVisitor
 					if (addr.kind == LIRKind.Long ||
 							addr.kind == LIRKind.Double)
 					{
-						lir.unalignedMove(param.result(), addr);;
-					}
+						lir.unalignedMove(param.result(), addr);
+                    }
 					else
 					{
 						lir.move(param.result(), addr);

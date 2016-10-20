@@ -36,14 +36,14 @@ public class Options extends Hashtable {
     }
 
     /*synthetic*/ public Object remove(Object x0) {
-        return super.remove((String) x0);
+        return super.remove(x0);
     }
 
     /*synthetic*/ public Object put(Object x0, Object x1) {
-        return super.put((String) x0, (String) x1);
+        return super.put(x0, x1);
     }
 
     /*synthetic*/ public Object get(Object x0) {
-        return super.get((String) x0);
+        return super.get(x0);
     }
 }

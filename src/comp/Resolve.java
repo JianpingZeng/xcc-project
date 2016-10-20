@@ -8,7 +8,7 @@ import symbol.Scope.Entry;
 import symbol.Symbol;
 import symbol.SymbolKinds;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Context;
 import utils.Log;
 import utils.Name;
@@ -21,7 +21,7 @@ import ast.TreeInfo;
  * @author JianpingZeng
  * @version 1.0
  */
-public class Resolve implements TypeTags, SymbolKinds, Flags
+public class Resolve implements TypeClass, SymbolKinds, Flags
 {
 	private TreeInfo treeinfo;
 	private static final Context.Key resolveKey = new Context.Key();
@@ -192,7 +192,7 @@ public class Resolve implements TypeTags, SymbolKinds, Flags
 	{
 		// obtains the name of this operator
 		Name name = treeinfo.operatorName(optag);
-		List<Type> argtypes =  Arrays.asList(new Type[]{argtype});
+		List<Type> argtypes =  Arrays.asList(argtype);
 		return access(findOperator(env, name, argtypes), pos, name, argtypes);		
 	}
 	
@@ -209,7 +209,7 @@ public class Resolve implements TypeTags, SymbolKinds, Flags
 	{
 		// obtains the name of this operator
 		Name name = treeinfo.operatorName(optag);
-		List<Type> argtypes =  Arrays.asList(new Type[]{left, right});
+		List<Type> argtypes =  Arrays.asList(left, right);
 		return access(findOperator(env, name, argtypes), pos, name, argtypes);
 		
 	}
@@ -341,7 +341,7 @@ public class Resolve implements TypeTags, SymbolKinds, Flags
 	 * Root class for resolve errors. Instances of this class indicate
 	 * "Symbol not found". Instances of subclass indicate other errors.
 	 */
-	private static class ResolveError extends Symbol implements TypeTags
+	private static class ResolveError extends Symbol implements TypeClass
 	{
 
 		ResolveError(int kind, Symbol sym, String debugName)

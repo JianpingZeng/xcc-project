@@ -195,10 +195,7 @@ public final class LICM
 		{
 			Instruction inst = (Instruction)operand;
 			BasicBlock bb = inst.getParent();
-			if (blockIndex(bb.getID(), blocks) >= 0)
-				return false;
-			else 
-				return true;			
+            return blockIndex(bb.getID(), blocks) < 0;
 		}
 		return false;
 	}

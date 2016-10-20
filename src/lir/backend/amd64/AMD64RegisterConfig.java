@@ -106,9 +106,8 @@ public class AMD64RegisterConfig implements lir.backend.RegisterConfig
 					new LIRRegister[] { rax, rdx, rcx },
 					new LIRRegister[] { rcx, rdx, rsi, rdi, r8, r9, xmm0, xmm1,
 							xmm2, xmm3, xmm4, xmm5, xmm6, xmm7 },
-					new CalleeSaveLayout(0, 8, -1,
-							new LIRRegister[] { rbx, rbp, r12, r13, r14, r15 }),
-					ALL_LIR_REGISTERs, Collections.<Integer, LIRRegister>emptyMap());
+					new CalleeSaveLayout(0, 8, -1, rbx, rbp, r12, r13, r14, r15),
+					ALL_LIR_REGISTERs, Collections.emptyMap());
 		}
 		return instance;
 	}

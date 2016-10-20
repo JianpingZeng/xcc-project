@@ -243,8 +243,8 @@ public final class Interval
 		/**
 		 * An interval that ends before {@code position} or and spilled to memory.
 		 */
-		Handled;
-	}
+		Handled
+    }
 
 	/**
 	 * Constant used in opt of spilling of an interval.

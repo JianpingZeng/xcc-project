@@ -74,7 +74,7 @@ public class Symtab implements Flags, OpCodes
 	/**
 	 * The predefined type that belongs to a tag.
 	 */
-	public final Type[] typeOfTag = new Type[TypeTags.TypeTagCount];
+	public final Type[] typeOfTag = new Type[TypeClass.TypeTagCount];
 
 	public void initType(Type type, TypeSymbol c)
 	{
@@ -145,16 +145,16 @@ public class Symtab implements Flags, OpCodes
 		super();
 		context.put(symtabKey, this);
 		names = Name.Table.instance(context);
-		byteType = new Type(TypeTags.BYTE, null);
-		charType = new Type(TypeTags.CHAR, null);
-		shortType = new Type(TypeTags.SHORT, null);
-		intType = new Type(TypeTags.INT, null);
-		longType = new Type(TypeTags.LONG, null);
-		floatType = new Type(TypeTags.FLOAT, null);
-		doubleType = new Type(TypeTags.DOUBLE, null);
-		boolType = new Type(TypeTags.BOOL, null);
-		voidType = new Type(TypeTags.VOID, null);
-		unknownType = new Type(TypeTags.UNKNOWN, null)
+		byteType = new Type(TypeClass.BYTE, null);
+		charType = new Type(TypeClass.Char, null);
+		shortType = new Type(TypeClass.Short, null);
+		intType = new Type(TypeClass.Int, null);
+		longType = new Type(TypeClass.LongInteger, null);
+		floatType = new Type(TypeClass.FLOAT, null);
+		doubleType = new Type(TypeClass.DOUBLE, null);
+		boolType = new Type(TypeClass.BOOL, null);
+		voidType = new Type(TypeClass.Void, null);
+		unknownType = new Type(TypeClass.UNKNOWN, null)
 		{
 
 			public boolean isSameType(Type that)

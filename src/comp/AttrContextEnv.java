@@ -16,6 +16,6 @@ public class AttrContextEnv extends Env {
     }
 
     /*synthetic*/ public Env dup(Tree x0, Object x1) {
-        return super.dup(x0, (AttrContext) x1);
+        return super.dup(x0, x1);
     }
 }

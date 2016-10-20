@@ -74,7 +74,7 @@ public class DominatorTree
 		public Iterator<DomTreeNode> iterator()
 		{
 			if (children == null)
-				return Collections.<DomTreeNode>emptyIterator();
+				return Collections.emptyIterator();
 			else
 				return children.iterator();
 		}

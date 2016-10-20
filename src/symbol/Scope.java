@@ -108,7 +108,7 @@ public class Scope
 	 */
 	public Scope dupUnshared()
 	{
-		return new Scope(this, owner, (Entry[]) this.entityTable.clone());
+		return new Scope(this, owner, this.entityTable.clone());
 	}
 
 	/**
@@ -285,7 +285,7 @@ public class Scope
 
 		public Scope dupUnshared()
 		{
-			return new ErrorScope(this, owner, (Entry[]) entityTable.clone());
+			return new ErrorScope(this, owner, entityTable.clone());
 		}
 
 		public Entry lookup(Name name)

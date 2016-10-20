@@ -68,9 +68,9 @@ public class RegisterAttributes
 				CalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
 				RegisterAttributes attr = new RegisterAttributes(
 						Arrays.asList(registerConfig.getCallerSaveRegisters())
-								.contains(reg), csl == null ?
-						false :
-						Arrays.asList(csl.LIRRegisters).contains(reg),
+								.contains(reg),
+                        csl != null && Arrays.asList(csl.LIRRegisters)
+                                .contains(reg),
 						Arrays.asList(registerConfig.getAllocatableRegisters())
 								.contains(reg));
 				if (map.length <= reg.number)

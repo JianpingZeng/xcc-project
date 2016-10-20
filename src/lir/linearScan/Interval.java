@@ -266,8 +266,8 @@ public final class Interval
 		/**
 		 * An interval that ends before {@code position} or and spilled to memory.
 		 */
-		Handled;
-	}
+		Handled
+    }
 
 	/**
 	 * The {@linkplain lir.ci.LIRRegisterValue register} or
