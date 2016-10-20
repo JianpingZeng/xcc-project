@@ -8,7 +8,7 @@ import symbol.Symbol.MethodSymbol;
 import symbol.SymbolKinds;
 import symbol.VarSymbol;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Context;
 import utils.Name;
 import utils.Position;
@@ -47,7 +47,7 @@ import ast.Tree.WhileLoop;
 /**
  * Factory class for trees
  */
-public class TreeMaker implements Factory, SymbolKinds, TypeTags
+public class TreeMaker implements Factory, SymbolKinds, TypeClass
 {
 
 	/**
@@ -416,13 +416,13 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 		{
 			case BYTE:
 
-			case CHAR:
+			case Char:
 
-			case SHORT:
+			case Short:
 
-			case INT:
+			case Int:
 
-			case LONG:
+			case LongInteger:
 
 			case FLOAT:
 
@@ -430,7 +430,7 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 
 			case BOOL:
 
-			case VOID:
+			case Void:
 				tp = TypeIdent(t.tag);
 				break;
 
@@ -438,8 +438,8 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 				tp = TypeArray(Type(t.elemType()));
 				break;
 
-			case ERROR:
-				tp = TypeIdent(ERROR);
+			case Error:
+				tp = TypeIdent(Error);
 				break;
 
 			default:
@@ -516,9 +516,8 @@ public class TreeMaker implements Factory, SymbolKinds, TypeTags
 	 */
 	public Tree Call(Tree apply)
 	{
-		return apply.type.tag == VOID ?
-				(Tree) Exec(apply) :
-				(Tree) Return(apply);
+		return apply.type.tag == Void ?
+				(Tree) Exec(apply) : Return(apply);
 	}
 
 	/**

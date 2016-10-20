@@ -2,7 +2,7 @@ package comp;
 
 import java.util.List;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Context;
 
 /**
@@ -11,7 +11,7 @@ import utils.Context;
  * @author JianpingZeng
  * @version 1.0
  */
-public class ConstFold implements TypeTags, OpCodes
+public class ConstFold implements TypeClass, OpCodes
 {
 	private static final Context.Key constFoldKey = new Context.Key();
 	private Symtab syms;
@@ -416,18 +416,18 @@ public class ConstFold implements TypeTags, OpCodes
 					return syms.byteType.constType(new Integer(
 					        (byte) intValue(n)));
 
-				case CHAR:
+				case Char:
 					return syms.charType.constType(new Integer(
 					        (char) intValue(n)));
 
-				case SHORT:
+				case Short:
 					return syms.shortType.constType(new Integer(
 					        (short) intValue(n)));
 
-				case INT:
+				case Int:
 					return syms.intType.constType(new Integer(intValue(n)));
 
-				case LONG:
+				case LongInteger:
 					return syms.longType.constType(new Long(longValue(n)));
 
 				case FLOAT:

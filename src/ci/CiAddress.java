@@ -186,7 +186,7 @@ public final class CiAddress extends CiValue {
         BASE_DISP,
         BASE_INDEX,
         BASE_INDEX_DISP,
-        PLACEHOLDER;
+        PLACEHOLDER
     }
 
     /**

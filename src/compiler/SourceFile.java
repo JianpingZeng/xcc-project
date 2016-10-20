@@ -10,7 +10,7 @@ import java.io.File;
  */
 public class SourceFile
 {
-	public static enum FileType
+	public enum FileType
 	{
 		EXT_C_SOURCE(".c"),
 		EXT_ASSEMBLY_SOURCE(".s"),

@@ -112,10 +112,9 @@ public final class IA32RegisterConfig implements RegisterConfig
 					new LIRRegister[] { eax, ebx, ecx, edx, esi, edi},
 					new LIRRegister[] { eax, edx, ecx },
 					new LIRRegister[] { ecx, edx, esi, edi},
-					new CalleeSaveLayout(0, 4, -1,
-							new LIRRegister[] { ebx, esi, edi }),
+					new CalleeSaveLayout(0, 4, -1, ebx, esi, edi),
 					ALL_LIR_REGISTERs, Collections
-					.<Integer, LIRRegister>emptyMap());
+					.emptyMap());
 		}
 		return instance;
 	}

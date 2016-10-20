@@ -339,7 +339,7 @@ public final class LinearScanWalker extends IntervalWalker
 		assert op instanceof LIROp1 : "move must be LIROp1";
 
 		LIRValue input = ((LIROp1) op).operand();
-		LIRValue result = ((LIROp1) op).result();
+		LIRValue result = op.result();
 		return input.isVariable() && result.isVariable()
 				&& input == from.operand && result == to.operand;
 	}

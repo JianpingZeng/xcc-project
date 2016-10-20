@@ -13,10 +13,10 @@ import symbol.Symbol.MethodSymbol;
 import symbol.Symbol.OperatorSymbol;
 import symbol.SymbolKinds;
 import symbol.VarSymbol;
-import type.ArrayType;
+import type.ConstantArrayType;
 import type.FunctionType;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Context;
 import utils.Log;
 import utils.Name;
@@ -67,7 +67,7 @@ import exception.CompletionFailure;
  * @see ConstFold
  * @see Enter
  */
-public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
+public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 {
 	private static final Context.Key attrKey = new Context.Key();
 
@@ -144,7 +144,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 
 	public void attriMethod(MethodSymbol sym)
 	{
-		if (sym.type.tag == ERROR)
+		if (sym.type.tag == Error)
 			return;
 
 		// no finished !!!!!! in the future
@@ -335,7 +335,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 	private Type check(Tree tree, Type owntype, int ownkind, int expectKind,
 			Type expectType)
 	{
-		if (owntype.tag != ERROR && expectType.tag != FUNCTION)
+		if (owntype.tag != Error && expectType.tag != Function)
 		{
 			if ((ownkind & ~expectKind) == 0)
 			{
@@ -462,7 +462,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 			else
 			{
 				Type itype = attribExpr(tree.init,
-						enter.initEnv((VarDef) tree, env), v.type);
+						enter.initEnv(tree, env), v.type);
 			}
 			v.pos = tree.pos;
 		}
@@ -511,7 +511,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 			if (cc.values != null)
 			{
 				Type pattype = attribExpr(cc.subStmt, caseEnv, syms.intType);
-				if (pattype.tag == ERROR)
+				if (pattype.tag == Error)
 				{
 					if (pattype.constValue == null)
 						log.error(cc.pos, "const.expression.required");
@@ -687,7 +687,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 		else
 		{
 			Symbol m = env.enclMethod.sym;
-			if (m.type.returnType().tag == VOID)
+			if (m.type.returnType().tag == Void)
 			{
 				if (tree.expr != null)
 					log.error(tree.expr.pos,
@@ -737,9 +737,8 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 
 	@Override public void visitAssignop(OpAssign tree)
 	{
-		List<Type> argtypes = Arrays.asList(new Type[] {
-				attribTree(tree.lhs, env, VAR, Type.noType),
-				attribExpr(tree.rhs, env) });
+		List<Type> argtypes = Arrays.asList(attribTree(tree.lhs, env, VAR, Type.noType),
+                attribExpr(tree.rhs, env));
 
 		Symbol operator = rs
 				.resolveOperator(tree.pos, tree.tag - Tree.ASGOffset, env,
@@ -808,10 +807,10 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 	 */
 	private Type condType1(int pos, Type condtype, Type thentype, Type elsetype)
 	{
-		if (thentype.tag < INT && elsetype.tag == INT &&
+		if (thentype.tag < Int && elsetype.tag == Int &&
 				elsetype.isAssignable(thentype))
 			return thentype.basetype();
-		else if (elsetype.tag < INT && thentype.tag == INT &&
+		else if (elsetype.tag < Int && thentype.tag == Int &&
 				thentype.isAssignable(elsetype))
 			return elsetype.basetype();
 		else if (thentype.tag <= DOUBLE && elsetype.tag <= DOUBLE)
@@ -919,7 +918,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 		attribExpr(tree.index, env, syms.intType);
 		if (atype.tag == ConstantArray)
 			owntype = atype.elemType();
-		else if (atype.tag != ERROR)
+		else if (atype.tag != Error)
 			log.error(tree.pos, "array.require.but.not.found",
 					atype.toString());
 		result = check(tree, owntype, VAR, pkind, pt);
@@ -928,7 +927,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 	@Override public void visitTypeArray(TypeArray tree)
 	{
 		Type etype = attribType(tree.elemtype, env);
-		result = check(tree, new ArrayType(etype, syms.arrayClass), TYP, pkind,
+		result = check(tree, new ConstantArrayType(etype, syms.arrayClass), TYP, pkind,
 				pt);
 
 	}
@@ -973,7 +972,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 			for (Tree l : tree.dims)
 			{
 				attribExpr(l, env, syms.intType);
-				owntype = new ArrayType(owntype, syms.arrayClass);
+				owntype = new ConstantArrayType(owntype, syms.arrayClass);
 			}
 		}
 		else
@@ -984,7 +983,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 			}
 			else
 			{
-				if (pt.tag != ERROR)
+				if (pt.tag != Error)
 				{
 					log.error(tree.pos, "illegal.initializer.for.type",
 							pt.toString());
@@ -995,7 +994,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeTags, Flags
 		if (tree.elems != null)
 		{
 			attribExprs(tree.elems, env, elemtype);
-			owntype = new ArrayType(elemtype, syms.arrayClass);
+			owntype = new ConstantArrayType(elemtype, syms.arrayClass);
 		}
 		result = check(tree, owntype, VAL, pkind, pt);
 	}

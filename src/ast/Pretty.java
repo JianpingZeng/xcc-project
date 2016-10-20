@@ -4,7 +4,7 @@ import java.io.PrintWriter;
 import java.util.List;
 
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Convert;
 import ast.Tree.Assign;
 import ast.Tree.BinaryExpr;
@@ -751,39 +751,39 @@ public class Pretty extends AstVisitor
 	public void visitTypeIdent(TypeIdent tree)
 	{
         switch (tree.typetag) {
-        case TypeTags.BYTE:
+        case TypeClass.BYTE:
             print("byte");
             break;
 
-        case TypeTags.CHAR:
+        case TypeClass.Char:
             print("char");
             break;
 
-        case TypeTags.SHORT:
+        case TypeClass.Short:
             print("short");
             break;
 
-        case TypeTags.INT:
+        case TypeClass.Int:
             print("int");
             break;
 
-        case TypeTags.LONG:
+        case TypeClass.LongInteger:
             print("long");
             break;
 
-        case TypeTags.FLOAT:
+        case TypeClass.FLOAT:
             print("float");
             break;
 
-        case TypeTags.DOUBLE:
+        case TypeClass.DOUBLE:
             print("double");
             break;
 
-        case TypeTags.BOOL:
+        case TypeClass.BOOL:
             print("bool");
             break;
 
-        case TypeTags.VOID:
+        case TypeClass.Void:
             print("void");
             break;
         default:
@@ -798,11 +798,11 @@ public class Pretty extends AstVisitor
 	public void visitLiteral(Literal tree)
 	{
         switch (tree.typetag) {
-        case Type.INT:
+        case Type.Int:
             print(tree.value.toString());
             break;
 
-        case Type.LONG:
+        case Type.LongInteger:
             print(tree.value.toString() + "L");
             break;
 
@@ -814,7 +814,7 @@ public class Pretty extends AstVisitor
             print(tree.value.toString());
             break;
 
-        case Type.CHAR:
+        case Type.Char:
             print("\'" + Convert.quote(
                     String.valueOf((char)((Number) tree.value).intValue())) + "\'");
             break;
@@ -865,7 +865,7 @@ public class Pretty extends AstVisitor
 	@Override
 	public void visitErroneous(Erroneous erroneous)
 	{
-        print("(ERROR)");
+        print("(Error)");
 
 	}
 	

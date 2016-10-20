@@ -15,32 +15,32 @@ public interface LayoutCharacters {
     /**
      * Tabulator column increment.
      */
-    static final int TabInc = 8;
+    int TabInc = 8;
 
     /**
      * Tabulator character.
      */
-    static final byte TAB = 8;
+    byte TAB = 8;
 
     /**
      * Line feed character.
      */
-    static final byte LF = 10;
+    byte LF = 10;
 
     /**
      * Form feed character.
      */
-    static final byte FF = 12;
+    byte FF = 12;
 
     /**
      * Carriage return character.
      */
-    static final byte CR = 13;
+    byte CR = 13;
 
     /**
      * End of input character.  Used as a sentinel to denote the
      *  character one beyond the last defined character in a
      *  source file.
      */
-    static final byte EOI = 26;
+    byte EOI = 26;
 }

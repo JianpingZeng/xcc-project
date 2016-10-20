@@ -69,9 +69,9 @@ public class Main
 		        boolean matches(String arg)
 		        {
 			        return arg.startsWith("-O");
-		        };
+		        }
 
-		        @Override
+                @Override
 		        boolean process(String option)
 		        {
 			        String type = option.substring(2);
@@ -83,8 +83,8 @@ public class Main
 			        }
 			        options.put(name, option);
 			        return false;
-		        };
-	        }, 
+		        }
+            },
 	        new Option("--debug-Parser", "Display the process of parser"),
 	        new Option("--dump-ast", "Display abstract syntax tree"),
 	        new Option("--dump-hir", "display higher level ir"),

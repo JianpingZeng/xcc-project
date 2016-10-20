@@ -34,7 +34,7 @@ import java.util.BitSet;
  *          :     ...                        :                   |
  *          | ALLOCA block n                 | Current frame     |
  *          +--------------------------------+                 frame	 
- *          | spill slot 0                   |                 length
+ *          | spill slot 0                   |                 getSize
  *          :     ...                        :                   |
  *          | spill slot n                   |            		 v   
  *          +--------------------------------+
@@ -45,8 +45,8 @@ import java.util.BitSet;
  *
  * </pre>
  * 
- * Note that the length of {@link Instruction.AllocaInst ALLOCA} blocks and
- * {@code monitor}s in the frame may be greater than the length of a
+ * Note that the getSize of {@link Instruction.AllocaInst ALLOCA} blocks and
+ * {@code monitor}s in the frame may be greater than the getSize of a
  * {@linkplain lir.backend.MachineInfo#spillSlotSize spill slot}.
  * 
  * @author xlous.zeng
@@ -58,16 +58,16 @@ public final class StackFrame
 	private final CallingConvention incomingArguments;
 
 	/**
-	 * The final frame length. Value is only set after register allocation is
+	 * The final frame getSize. Value is only set after register allocation is
 	 * complete.
 	 */
 	private int frameSize;
 
 	/**
 	 * The number of spill slots allocated by the register allocator. The value
-	 * {@code -2} means that the length of outgoing argument stack slots is not
+	 * {@code -2} means that the getSize of outgoing argument stack slots is not
 	 * yet fixed. The value {@code -1} means that the register allocator has
-	 * started allocating spill slots and so the length of outgoing stack slots
+	 * started allocating spill slots and so the getSize of outgoing stack slots
 	 * cannot change as outgoing stack slots and spill slots share the same slot
 	 * index address space.
 	 */
@@ -135,20 +135,20 @@ public final class StackFrame
 	}
 
 	/**
-	 * Gets the frame length of the compiled frame.
+	 * Gets the frame getSize of the compiled frame.
 	 *
-	 * @return the length in bytes of the frame
+	 * @return the getSize in bytes of the frame
 	 */
 	public int frameSize()
 	{
-		assert this.frameSize != -1 : "frame length not computed yet";
+		assert this.frameSize != -1 : "frame getSize not computed yet";
 		return frameSize;
 	}
 
 	/**
-	 * Sets the frame length for this frame.
+	 * Sets the frame getSize for this frame.
 	 *
-	 * @param frameSize the frame length in bytes
+	 * @param frameSize the frame getSize in bytes
 	 */
 	public void setFrameSize(int frameSize)
 	{

@@ -43,7 +43,7 @@ public enum Condition
 
 	public final String operator;
 
-	private Condition(String operator)
+	Condition(String operator)
 	{
 		this.operator = operator;
 	}

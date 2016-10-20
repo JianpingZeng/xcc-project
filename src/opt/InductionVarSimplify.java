@@ -221,10 +221,7 @@ public final class InductionVarSimplify
 	private boolean reachDefsOut(List<BasicBlock> blocks, Value operand)
 	{
 			BasicBlock bb = operand.getParent();
-			if (blockIndex(bb.getID(), blocks) >= 0)
-				return false;
-			else 
-				return true;			
+        return blockIndex(bb.getID(), blocks) < 0;
 	}
 	
 	private boolean isLoopConstant(Value v)

@@ -469,7 +469,7 @@ public abstract class LIRInstruction
 
 	public boolean hasOperands()
 	{
-		return hasCall ? true : allocatorOperands.size() > 0;
+		return hasCall || allocatorOperands.size() > 0;
 	}
 
 	public final int operandCount(OperandMode mode)

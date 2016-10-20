@@ -249,10 +249,8 @@ public class DCE
 	 */
 	private boolean isCritical(Value inst)
 	{
-		if (inst instanceof Instruction.ReturnInst || inst instanceof StoreInst)
-			return true;
-		else
-			return false;
+        return inst instanceof Instruction.ReturnInst
+                || inst instanceof StoreInst;
 	}
 
 	/**

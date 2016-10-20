@@ -2,7 +2,7 @@ package symbol;
 
 import hir.Instruction;
 import type.Type;
-import type.TypeTags;
+import type.TypeClass;
 import utils.Name;
 import utils.Position;
 
@@ -15,7 +15,7 @@ public class VarSymbol extends Symbol
 
 	/**
 	 * The flags, such as storage class or qualifier,
-	 * which restricted by {@link TypeTags}.
+	 * which restricted by {@link TypeClass}.
 	 */
 	public long flags;
 	/**

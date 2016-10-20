@@ -53,7 +53,7 @@ public class IA32Assembler extends AbstractAssembler
 			}
 		}
 
-		private ConditionFlag(int value)
+		ConditionFlag(int value)
 		{
 			this.value = value;
 		}

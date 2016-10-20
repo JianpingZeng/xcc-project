@@ -52,7 +52,7 @@ public class ConstantProp
 					{
 						// performs constant propagation
 						for (Use u : inst.usesList)
-							worklist.addLast((Instruction) u.getUser());
+							worklist.addLast(u.getUser());
 					}
 					// constant folding and strength reduction
 					inst.replaceAllUsesWith(val);
