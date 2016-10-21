@@ -1,6 +1,11 @@
-*
-!.gitignore
-!.git
-!src
-!LICENSE
-!README.md
+.classpath
+.gitattributes
+.idea
+.project
+[B|b]in
+cc.imi
+document
+[O|o]ut
+
+
+
