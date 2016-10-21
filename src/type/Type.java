@@ -122,8 +122,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isPrimitiveType()
     {
-        return tag >= Bool && tag <= Real || (tag == TypeDef
-                && ((TypeDefType) this).getActual().isPrimitiveType());
+        return tag >= Bool && tag <= Real;
     }
 
     /**
@@ -133,8 +132,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isVoidType()
     {
-        return tag == Void || (tag == TypeDef && ((TypeDefType) this).getActual()
-                .isVoidType());
+        return tag == Void;
     }
 
     /**
@@ -144,8 +142,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isIntegerType()
     {
-        return tag == Int || (tag == TypeDef && ((TypeDefType) this).getActual()
-                .isIntegerType());
+        return false;
     }
 
     /**
@@ -153,8 +150,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isRealType()
     {
-        return tag == Real || (tag == TypeDef && ((TypeDefType) this).getActual()
-                .isRealType());
+        return tag == Real;
     }
 
     /**
@@ -164,8 +160,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isComplexType()
     {
-        return tag == Complex || (tag == TypeDef && ((TypeDefType) this)
-                .getActual().isComplexType());
+        return tag == Complex;
     }
 
     /**
@@ -175,8 +170,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isBooleanType()
     {
-        return tag == Bool || (tag == TypeDef && ((TypeDefType) this)
-                .getActual().isBooleanType());
+        return tag == Bool;
     }
 
     /**
@@ -197,8 +191,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isPointerType()
     {
-        return tag == Pointer || (tag == TypeDef && ((TypeDefType) this)
-                .getActual().isPointerType());
+        return tag == Pointer;
     }
 
     /**
@@ -208,8 +201,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isReferenceType()
     {
-        return tag == Reference || (tag == TypeDef && ((TypeDefType) this)
-                .getActual().isReferenceType());
+        return tag == Reference;
     }
 
     /**
@@ -219,8 +211,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isFunctionType()
     {
-        return tag == Function || (tag == TypeDef && ((TypeDefType) this)
-                .getActual().isFunctionType());
+        return tag == Function;
     }
 
     /**
@@ -230,8 +221,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isMethodType()
     {
-        return tag == Method || (tag == TypeDef && ((TypeDefType) this)
-                .getActual().isMethodType());
+        return tag == Method;
     }
 
     /**
@@ -241,8 +231,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isArrayType()
     {
-        return tag == ConstantArray || (tag == TypeDef && ((TypeDefType) this).getActual()
-                .isArrayType());
+        return tag == ConstantArray;
     }
 
     /**
@@ -252,19 +241,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isRecordType()
     {
-        return tag == Struct || (tag == TypeDef && ((TypeDefType) this)
-                .getActual().isRecordType());
-    }
-
-    /**
-     * Checks if this type is union type.
-     *
-     * @return
-     */
-    public boolean isUnionType()
-    {
-        return tag == Union || (tag == TypeDef && ((TypeDefType) this).getActual()
-                .isUnionType());
+        return tag == Struct || tag == Union;
     }
 
     /**
@@ -274,8 +251,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isEnumType()
     {
-        return tag == Enum || (tag == TypeDef && ((TypeDefType) this).getActual()
-                .isEnumType());
+        return tag == Enum;
     }
 
     /**
