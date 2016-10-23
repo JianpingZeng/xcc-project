@@ -390,7 +390,7 @@ public class PromoteMem2Reg
 	 * Stores is definition of alloca, and load is usesList to alloca.
 	 * </p>
 	 *
-	 * @param BB              The Basic Block where all variable (alloca) will be renamed.
+	 * @param BB              The Basic CompoundStmt where all variable (alloca) will be renamed.
 	 * @param pred            The predecessor of BB.
 	 * @param incomgingValues
 	 * @param worklist        The list of basic blocks to be renamed.

@@ -1,8 +1,8 @@
 package cparser;
 
 import ast.Tree;
-import ast.Tree.Block;
-import ast.Tree.Expr;
+import ast.Tree.CompoundStmt;
+import ast.Tree.ExprStmt;
 import ast.Tree.InitListExpr;
 import ast.Tree.Stmt;
 import cparser.DeclSpec.DeclaratorChunk;
@@ -439,7 +439,7 @@ public class Parser implements Tag
             return null;
         }
 
-        return new ActionResult<>(new Block(stmts, startLoc));
+        return new ActionResult<>(new CompoundStmt(stmts, startLoc));
     }
 
     /**
@@ -543,7 +543,7 @@ public class Parser implements Tag
             {
                 // null statement
                 int loc = consumeToken();
-                return new ActionResult<Stmt>(new Tree.Skip(loc));
+                return new ActionResult<Stmt>(new Tree.NullStmt(loc));
             }
             case IF:
             {
@@ -592,7 +592,7 @@ public class Parser implements Tag
 
         ActionResult<Stmt> res = parseStatement();
         if (res.isInvalid())
-            return new ActionResult<Stmt>(new Tree.Skip(colonLoc));
+            return new ActionResult<Stmt>(new Tree.NullStmt(colonLoc));
 
         LabelDecl ld = action.lookupOrCreateLabel(((Ident)identTok).name, identTok.loc);
 
@@ -640,7 +640,7 @@ public class Parser implements Tag
             int caseLoc = consumeToken();
 
             // parse the constant subExpr after'case'
-            ActionResult<Expr> expr = parseConstantExpression();
+            ActionResult<ExprStmt> expr = parseConstantExpression();
             if (expr.isInvalid())
             {
                 skipUntil(COLON, true);
@@ -818,8 +818,8 @@ public class Parser implements Tag
         // the case for C90.
         // But we take the parser working in the C99 mode for convenience.
         ParseScope ifScope = new ParseScope(this, ScopeFlags.DeclScope.value);
-        ActionResult<Expr> condExpr = null;
-        ActionResult<Expr>[] res = new ActionResult[1];
+        ActionResult<ExprStmt> condExpr = null;
+        ActionResult<Tree.ExprStmt>[] res = new ActionResult[1];
         if (parseParenExpression(res, ifLoc, true))
             return  stmtError();
 
@@ -875,9 +875,9 @@ public class Parser implements Tag
 
         // Now if both are invalid, replace with a ';'
         if (thenStmt.isInvalid())
-            thenStmt = new ActionResult<Stmt>(new Tree.Skip(thenStmtLoc), true);
+            thenStmt = new ActionResult<Stmt>(new Tree.NullStmt(thenStmtLoc), true);
         if (elseStmt.isInvalid())
-            elseStmt = new ActionResult<Stmt>(new Tree.Skip(elseStmtLoc), true);
+            elseStmt = new ActionResult<Stmt>(new Tree.NullStmt(elseStmtLoc), true);
 
         return action.actOnIfStmt(ifLoc, condExpr, thenStmt.get(), elseStmt.get());
     }
@@ -915,7 +915,7 @@ public class Parser implements Tag
      * @param rParenLoc
      * @return
      */
-    private ActionResult<Expr> parseParenExpression(
+    private ActionResult<ExprStmt> parseParenExpression(
             OutParamWrapper<ParenParseOption> exprType,
             boolean stopIfCastExpr,
             boolean isTypeCast,
@@ -925,7 +925,7 @@ public class Parser implements Tag
         assert nextTokenIs(LPAREN):"Not a paren expression.";
         // eat the '('.
         int lParenLoc = consumeToken();
-        ActionResult<Expr> result = new ActionResult<>(true);
+        ActionResult<ExprStmt> result = new ActionResult<>(true);
 
         if (exprType.get().ordinal()>= CompoundLiteral.ordinal())
         {
@@ -957,7 +957,7 @@ public class Parser implements Tag
                 {
                     ActionResult<QualType> ty = action.actOnTypeName(getCurScope(), declaratorInfo);
                     castTy.set(ty.get());
-                    return new ActionResult<Expr>();
+                    return new ActionResult<ExprStmt>();
                 }
 
                 // Parse the cast-expression that follows it next.
@@ -976,7 +976,7 @@ public class Parser implements Tag
         }
         else if (isTypeCast)
         {
-            ArrayList<Expr> exprs = new ArrayList<>();
+            ArrayList<ExprStmt> exprs = new ArrayList<>();
             ArrayList<Integer> commaLocs = new ArrayList<>();
 
             if (!parseExpressionList(exprs, commaLocs))
@@ -1017,12 +1017,12 @@ public class Parser implements Tag
      * @return
      */
     private boolean parseExpressionList(
-            ArrayList<Expr> exprs,
+            ArrayList<Tree.ExprStmt> exprs,
             ArrayList<Integer> commaLocs)
     {
         while(true)
         {
-            ActionResult<Expr> res = parseAssignExpression();
+            ActionResult<ExprStmt> res = parseAssignExpression();
             if (res.isInvalid())
                 return true;
 
@@ -1045,7 +1045,7 @@ public class Parser implements Tag
      * @param convertToBoolean
      * @return
      */
-    private boolean parseParenExpression(ActionResult<Expr>[] cond,
+    private boolean parseParenExpression(ActionResult<ExprStmt>[] cond,
             int loc,
             boolean convertToBoolean)
     {
@@ -1151,9 +1151,9 @@ public class Parser implements Tag
      * </pre>
      * @return
      */
-    private ActionResult<Expr> parseExpression()
+    private ActionResult<Tree.ExprStmt> parseExpression()
     {
-        ActionResult<Expr> lhs = parseAssignExpression();
+        ActionResult<ExprStmt> lhs = parseAssignExpression();
         return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Comma);
     }
 
@@ -1184,8 +1184,8 @@ public class Parser implements Tag
         ScopeFlags.ControlScope.value);
 
         // Parse the condition exprsesion.
-        ActionResult<Expr> condExpr = null;
-        ActionResult<Expr>[] res = new ActionResult[1];
+        ActionResult<ExprStmt> condExpr = null;
+        ActionResult<ExprStmt>[] res = new ActionResult[1];
         if (parseParenExpression(res, switchLoc, false))
         {
             return stmtError();
@@ -1220,7 +1220,7 @@ public class Parser implements Tag
         switchScope.exit();
 
         if (body.isInvalid())
-            body = new ActionResult<Stmt>(new Tree.Skip(switchLoc));
+            body = new ActionResult<Stmt>(new Tree.NullStmt(switchLoc));
 
         return  action.actOnFinishSwitchStmt(switchLoc, switchStmt.get(), body.get());
     }
@@ -1254,13 +1254,13 @@ public class Parser implements Tag
                 | ScopeFlags.DeclScope.value;
 
         ParseScope whileScope = new ParseScope(this, scopeFlags);
-        ActionResult<Expr>[] wrapper = new ActionResult[1];
+        ActionResult<ExprStmt>[] wrapper = new ActionResult[1];
 
         // parse the condition.
         if (parseParenExpression(wrapper, whileLoc, true))
             return stmtError();
 
-        ActionResult<Expr> cond = wrapper[0];
+        ActionResult<ExprStmt> cond = wrapper[0];
 
         // C99 6.8.5p5 - In C99, the body of the if statement is a scope, even if
         // there is no compound stmt.  C90 does not have this clause.  We only do this
@@ -1329,7 +1329,7 @@ public class Parser implements Tag
         }
 
         int lParenLoc = consumeToken();  // eat '('.
-        ActionResult<Expr> cond = parseExpression();
+        ActionResult<ExprStmt> cond = parseExpression();
         int rParenLoc = consumeToken();  // eat ')'.
         doScope.exit();
 
@@ -1369,9 +1369,9 @@ public class Parser implements Tag
         ParseScope forScope = new ParseScope(this, scopeFlags);
         int lParenLoc = consumeToken();
 
-        ActionResult<Expr> value;
+        ActionResult<Tree.ExprStmt> value;
         ActionResult<Stmt> firstPart = new ActionResult<Stmt>();
-        ActionResult<Expr> secondPart = new ActionResult<Expr>();
+        ActionResult<ExprStmt> secondPart = new ActionResult<ExprStmt>();
         boolean secondPartIsInvalid = false;
 
         // parse the first part
@@ -1431,7 +1431,7 @@ public class Parser implements Tag
         }
         else
         {
-            ActionResult<Expr> second = parseExpression();
+            ActionResult<ExprStmt> second = parseExpression();
             if (!second.isInvalid())
                 second = action.actOnBooleanCondition(getCurScope(),
                         forLoc,
@@ -1453,7 +1453,7 @@ public class Parser implements Tag
             consumeToken();
 
         // parse the third part of for specifier
-        ActionResult<Expr> thirdPart = null;
+        ActionResult<ExprStmt> thirdPart = null;
         if (nextTokenIsNot(RPAREN))
         {
             // for (...;...;...)
@@ -1662,7 +1662,7 @@ public class Parser implements Tag
             // eat the '='.
             consumeToken();
             // Parses the initializer expression after than '='.
-            ActionResult<Expr> init = parseInitializer();
+            ActionResult<ExprStmt> init = parseInitializer();
             if (init.isInvalid())
             {
                 skipUntil(COMMA, true);
@@ -1689,7 +1689,7 @@ public class Parser implements Tag
      *   '{' ...
      * @return
      */
-    private ActionResult<Expr> parseInitializer()
+    private ActionResult<ExprStmt> parseInitializer()
     {
         if (nextTokenIsNot(LBRACE))
             return parseAssignmentExpression();
@@ -1709,24 +1709,24 @@ public class Parser implements Tag
      *     initializer-list ',' initializer
      * @return
      */
-    private ActionResult<Expr> parseAssignmentExpression()
+    private ActionResult<ExprStmt> parseAssignmentExpression()
     {
         assert nextTokenIs(LBRACE);
 
         int lBraceLoc = consumeToken(); // eat '{'
-        ArrayList<Expr> initExpr = new ArrayList<>();
+        ArrayList<ExprStmt> initExpr = new ArrayList<>();
 
         if (nextTokenIs(RBRACE))
         {
             int rBraceLoc = consumeToken();
             syntaxError(lBraceLoc, "use of GNU empty initializer extension");
-            return new ActionResult<Expr>(new InitListExpr(lBraceLoc, rBraceLoc, new ArrayList<>()));
+            return new ActionResult<ExprStmt>(new InitListExpr(lBraceLoc, rBraceLoc, new ArrayList<>()));
         }
 
         boolean initExprOk = true;
         while (true)
         {
-            ActionResult<Expr> subInit = parseInitializer();
+            ActionResult<ExprStmt> subInit = parseInitializer();
 
             if (!subInit.isInvalid())
                 initExpr.add(subInit.get());
@@ -1753,19 +1753,19 @@ public class Parser implements Tag
         int rBraceLoc = consumeToken();
         if (initExprOk && close)
         {
-            return new ActionResult<Expr>(new InitListExpr(lBraceLoc, rBraceLoc, initExpr));
+            return new ActionResult<ExprStmt>(new InitListExpr(lBraceLoc, rBraceLoc, initExpr));
         }
         return exprError();
     }
 
-    public static ActionResult<Expr> exprError()
+    public static ActionResult<ExprStmt> exprError()
     {
-        return new ActionResult<Expr>(true);
+        return new ActionResult<ExprStmt>(true);
     }
 
-    private ActionResult<Expr> parseBraceInitializer()
+    private ActionResult<ExprStmt> parseBraceInitializer()
     {
-        ActionResult<Expr> lhs = parseCastExpression(
+        ActionResult<ExprStmt> lhs = parseCastExpression(
                 /*isUnaryExpression=*/false, false, false, 0);
         return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Assignment);
     }
@@ -1840,7 +1840,7 @@ public class Parser implements Tag
         assert tokenIs(tok, RETURN):"Not a return stmt!";
         int returnLoc = consumeToken();
 
-        ActionResult<Expr> res = new ActionResult<>();
+        ActionResult<ExprStmt> res = new ActionResult<>();
         if (nextTokenIsNot(SEMI))
         {
             // The case of return expression ';'.
@@ -1890,7 +1890,7 @@ public class Parser implements Tag
     {
         Token oldTok = peekToken();
 
-        ActionResult<Expr> res = parseExpression();
+        ActionResult<ExprStmt> res = parseExpression();
         if (res.isInvalid())
         {
             // If the expression is invalid, skip ahead to the next semicolon
@@ -2384,7 +2384,7 @@ public class Parser implements Tag
             int identLoc = consumeToken();
 
             int equalLoc = Position.NOPOS;
-            ActionResult<Expr> val = null;
+            ActionResult<ExprStmt> val = null;
             if (nextTokenIs(EQ))
             {
                 equalLoc = consumeToken();
@@ -2693,8 +2693,8 @@ public class Parser implements Tag
     private void parseStructOrUnionBody(int recordLoc, DeclSpec.TST tagType,
             Decl tagDecl)
     {
-        accept(LBRACE);
-        int lBraceLoc = consumeToken();
+        // expect a '{'.
+        int lBraceLoc = expect(LBRACE);
 
         // obtains the struct or union specifier name.
         String structOrUnion = DeclSpec.getSpecifierName(tagType);
@@ -2707,7 +2707,6 @@ public class Parser implements Tag
         // Empty structs are an extension in C (C99 6.7.2.1p7)
         if (nextTokenIs(RBRACE))
         {
-            // TODO report error.
             consumeToken();
             syntaxWarning(lBraceLoc, "empty %s is a GNU extension", structOrUnion);
             skipUntil(SEMI, true);
@@ -2722,8 +2721,7 @@ public class Parser implements Tag
             // each iteration of this loop reads one struct-declaration.
             if (nextTokenIs(SEMI))
             {
-                // TODO report error.
-                syntaxError(peekToken().loc,
+                syntaxWarning(peekToken().loc,
                         "extra semicolon in struct or union specified");
                 consumeToken();
                 continue;
@@ -2740,13 +2738,11 @@ public class Parser implements Tag
                 consumeToken();
             else if (nextTokenIs(RBRACE))
             {
-                //TODO report error
                 syntaxError(peekToken().loc, "expected a ';' at the end.");
                 break;
             }
             else
             {
-                //TODO report error
                 syntaxError(peekToken().loc, "expected a ';' at the end.");
                 skipUntil(RBRACE, true);
                 // if we stopped at a ';', consume it.
@@ -2820,7 +2816,7 @@ public class Parser implements Tag
             if (nextTokenIs(COLON))
             {
                 consumeToken();
-                ActionResult<Expr> result = parseConstantExpression();
+                ActionResult<ExprStmt> result = parseConstantExpression();
                 if (result.isInvalid())
                     skipUntil(SEMI, true);
                 else
@@ -3342,7 +3338,7 @@ public class Parser implements Tag
                 && tokenIs(peekAheadToken(), RBRACKET))
         {
             // [4] is evey common. parse the number
-            ActionResult<Expr> numOfSize = action.actOnNumericConstant(peekToken());
+            ActionResult<ExprStmt> numOfSize = action.actOnNumericConstant(peekToken());
 
             // eat the ']'.
             rbracketLoc = consumeToken();
@@ -3449,7 +3445,7 @@ public class Parser implements Tag
      * @param minPrec
      * @return
      */
-    private ActionResult<Expr> parseRHSOfBinaryExpression(ActionResult<Expr> lhs,
+    private ActionResult<ExprStmt> parseRHSOfBinaryExpression(ActionResult<ExprStmt> lhs,
             int minPrec)
     {
         int nextTokPrec = getBinOpPrecedence(peekToken().tag);
@@ -3467,7 +3463,7 @@ public class Parser implements Tag
             consumeToken();
 
             // Special case handling for the ternary (?...:...) operator.
-            ActionResult<Expr> ternaryMiddle = new ActionResult<>(true);
+            ActionResult<ExprStmt> ternaryMiddle = new ActionResult<>(true);
             if (nextTokPrec == PrecedenceLevel.Conditional)
             {
                 if(nextTokenIsNot(COLON))
@@ -3506,7 +3502,7 @@ public class Parser implements Tag
             // Parse another leaf here for the RHS of the operator.
             // ParseCastExpression works here because all RHS expressions in C
             // have it as a prefix, at least.
-            ActionResult<Expr> rhs = parseCastExpression(false, false, false, 0);
+            ActionResult<ExprStmt> rhs = parseCastExpression(false, false, false, 0);
 
             if (rhs.isInvalid())
                 lhs = exprError();
@@ -3554,7 +3550,7 @@ public class Parser implements Tag
         }
     }
 
-    private ActionResult<Expr>
+    private ActionResult<ExprStmt>
         parseCastExpression(
             boolean isUnaryExpression,
             boolean isAddressOfOperand,
@@ -3562,7 +3558,7 @@ public class Parser implements Tag
             int placeHolder)
     {
         OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
-        ActionResult<Expr> res = parseCastExpression(isUnaryExpression,
+        ActionResult<ExprStmt> res = parseCastExpression(isUnaryExpression,
                 isAddressOfOperand, isTypeCast, x);
         if (x.get())
             syntaxError(peekToken().loc, "expected an expression.");
@@ -3584,7 +3580,7 @@ public class Parser implements Tag
      * @param isUnaryExpression
      * @return A pair of both cast-expr and notCastExpr of type boolean.
      */
-    private ActionResult<Expr>
+    private ActionResult<Tree.ExprStmt>
         parseCastExpression(
             boolean isUnaryExpression,
             boolean isAddressOfOperand,
@@ -3592,7 +3588,7 @@ public class Parser implements Tag
             OutParamWrapper<Boolean> notCastExpr)
     {
         // TODO parseCastExpression
-        ActionResult<Expr> res = null;
+        ActionResult<Tree.ExprStmt> res = null;
         Token nextTok = peekToken();
         int savedKind = nextTok.tag;
         notCastExpr.set(false);
@@ -3711,7 +3707,7 @@ public class Parser implements Tag
         }
 
         // These can be followed by postfix-expr pieces.
-        ActionResult<Expr> postfixExpr = parsePostfixExpressionSuffix(res);
+        ActionResult<ExprStmt> postfixExpr = parsePostfixExpressionSuffix(res);
         return postfixExpr;
     }
     /**
@@ -3734,7 +3730,7 @@ public class Parser implements Tag
      * </pre>
      * @return
      */
-    private ActionResult<Expr> parseUnaryExpression()
+    private ActionResult<ExprStmt> parseUnaryExpression()
     {
         assert nextTokenIs(SIZEOF):"Not a sizeof expression!";
         Token opTok = peekToken();
@@ -3766,7 +3762,7 @@ public class Parser implements Tag
      * @param lhs
      * @return
      */
-    private  ActionResult<Expr> parsePostfixExpressionSuffix(ActionResult<Expr> lhs)
+    private  ActionResult<ExprStmt> parsePostfixExpressionSuffix(ActionResult<ExprStmt> lhs)
     {
         int loc;
         while(true)
@@ -3781,7 +3777,7 @@ public class Parser implements Tag
                 {
                     // postfix-expression: p-e '[' expression ']'
                     int lBracket = consumeToken();
-                    ActionResult<Expr> idx = parseExpression();
+                    ActionResult<ExprStmt> idx = parseExpression();
 
                     int rBracketLoc = peekToken().loc;
                     if (!lhs.isInvalid() && !idx.isInvalid() && nextTokenIs(RBRACKET))
@@ -3798,7 +3794,7 @@ public class Parser implements Tag
                 {
                     // p-e: p-e '(' argument-expression-list[opt] ')'
                     loc = consumeToken();
-                    ArrayList<Expr> exprs = new ArrayList<>();
+                    ArrayList<ExprStmt> exprs = new ArrayList<>();
                     ArrayList<Integer> commaLocs = new ArrayList<>();
 
                     if (!lhs.isInvalid())
@@ -3862,7 +3858,7 @@ public class Parser implements Tag
      * </pre>
      * @return
      */
-    private ActionResult<Expr> parseStringLiteralExpression()
+    private ActionResult<Tree.ExprStmt> parseStringLiteralExpression()
     {
         assert nextTokenIs(STRINGLITERAL):"Not a string literal!";
 
@@ -3945,19 +3941,19 @@ public class Parser implements Tag
      * a subexpression that is not evaluated.
      * @return
      */
-    private ActionResult<Expr> parseConstantExpression()
+    private ActionResult<ExprStmt> parseConstantExpression()
     {
-        ActionResult<Expr> lhs = parseCastExpression(false, false, false, 0);
-        ActionResult<Expr> res = parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Conditional);
+        ActionResult<Tree.ExprStmt> lhs = parseCastExpression(false, false, false, 0);
+        ActionResult<ExprStmt> res = parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Conditional);
 
         // evaluate if res is a constant epxression.
         // TODO  IntegerEvaluator 2016.10.18.
         return null;
     }
 
-    private ActionResult<Expr> parseAssignExpression()
+    private ActionResult<ExprStmt> parseAssignExpression()
     {
-        ActionResult<Expr> lhs = parseCastExpression(false, false, false, 1);
+        ActionResult<ExprStmt> lhs = parseCastExpression(false, false, false, 1);
         return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Assignment);
     }
 
@@ -4196,6 +4192,9 @@ public class Parser implements Tag
                     tok.loc;
             syntaxError(pos, "expected a", keywords.token2string(token));
         }
+        skipUntil(LBRACE, true);
+        if (nextTokenIs(SEMI))
+            consumeToken();
     }
 
     public void syntaxError(int pos, String key, String arg1, String arg2)

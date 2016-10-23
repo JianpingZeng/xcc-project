@@ -32,7 +32,7 @@ public class SelfReferenceChecker
         this.originDecl = originDec;
     }
 
-    public void visitExpr(Tree.Expr expr)
+    public void visitExpr(Tree.ExprStmt expr)
     {
 
     }

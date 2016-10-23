@@ -33,7 +33,7 @@ import ast.Tree.*;
  * @author JianpingZeng
  * @version 1.0
  */
-public class Enter extends AstVisitor implements TypeClass, SymbolKinds, Flags
+public class Enter extends ASTVisitor implements TypeClass, SymbolKinds, Flags
 {
 
 	private static final Context.Key enterKey = new Context.Key();
@@ -212,7 +212,7 @@ public class Enter extends AstVisitor implements TypeClass, SymbolKinds, Flags
 	private Scope enterScope(Env env)
 	{
 		// save current scope
-		return (env.tree.tag == Tree.TOPLEVEL) ? 
+		return (env.tree.tag == Tree.TopLevelClass) ?
 				((TopLevel)env.tree).topScope : 
 					((AttrContext)env.info).scope;
 	}

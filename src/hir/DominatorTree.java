@@ -533,7 +533,7 @@ public class DominatorTree
 	}
 
 	/**
-	 * Traveling the CFG with root node Block in depth-first order. And, number
+	 * Traveling the CFG with root node CompoundStmt in depth-first order. And, number
 	 * every root with an integer.
 	 * @param root The root block of a CFG.
 	 * @param N The initialization value of counter.

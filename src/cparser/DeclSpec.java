@@ -1,6 +1,6 @@
 package cparser;
 
-import ast.Tree.Expr;
+import ast.Tree.ExprStmt;
 import cparser.Declarator.TheContext;
 import sema.Decl;
 import type.QualType;
@@ -74,7 +74,7 @@ public class DeclSpec
             // true if this dimension was [*].
             boolean isStar;
             // This is the getTypeSize of the array, or null if [] or [*] was specified.
-            Expr numElts;
+            ExprStmt numElts;
         }
 
         public static class FunctionTypeInfo
@@ -144,7 +144,7 @@ public class DeclSpec
                 getArray(int typeQuals,
                 boolean isStatic,
                 boolean isStar,
-                Expr numElts,
+                ExprStmt numElts,
                 int lBracketLoc,
                 int rBracketLoc)
         {
@@ -215,7 +215,7 @@ public class DeclSpec
     static class FieldDeclarator
     {
         Declarator declarator;
-        Expr bitFieldSize;
+        ExprStmt bitFieldSize;
 
         FieldDeclarator(DeclSpec ds)
         {
@@ -411,7 +411,7 @@ public class DeclSpec
      */
     private QualType typeRep;
     private Decl declRep;
-    private Expr exprRep;
+    private ExprStmt exprRep;
 
     private int storageClassLoc = Position.NOPOS,
             TSWLoc = Position.NOPOS,

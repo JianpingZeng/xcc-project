@@ -405,7 +405,7 @@ public class ComputeLinearScanOrder
 			if (!isVisited(curr))
 			{
 				setVisited(curr);
-				TTY.println("computing loop-depth for Block%d", curr.getID());
+				TTY.println("computing loop-depth for CompoundStmt%d", curr.getID());
 
 				int minLoopIndex = -1;
 				int loopDepth = 0;
@@ -526,7 +526,7 @@ public class ComputeLinearScanOrder
 			assert start.loopIndex
 					== -1 : "Can not set the loop index twice";
 
-			TTY.println("Block B%d is loop header of loop %d",
+			TTY.println("CompoundStmt B%d is loop header of loop %d",
 					start.getID(), numLoops);
 			start.loopIndex = numLoops++;
 		}
@@ -565,7 +565,7 @@ public class ComputeLinearScanOrder
 			do
 			{
 				BasicBlock top = workList.removeLast();
-				TTY.println("-----------Processing Block%d", top.getID());
+				TTY.println("-----------Processing CompoundStmt%d", top.getID());
 
 				assert isBlockInLoop(loopIndex,
 						top) : "bit in loop map must be set when block is in work list";

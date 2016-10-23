@@ -1,11 +1,10 @@
 package hir;
 
-import ast.AstVisitor;
+import ast.ASTVisitor;
 import ast.Tree;
 import ast.Tree.*;
-import ast.Tree.Goto;
+import ast.Tree.GotoStmt;
 import ast.Tree.ReturnStmt;
-import ast.TreeInfo;
 import hir.Value.Constant;
 import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
@@ -57,7 +56,7 @@ import java.util.List;
  * @author Xlous.zeng 
  * @version 1.0
  */
-public class HIRGenerator extends AstVisitor
+public class HIRGenerator extends ASTVisitor
 {
 	private final static Context.Key AstToCfgKey = new Context.Key();
 	private Log log;
@@ -492,7 +491,7 @@ public class HIRGenerator extends AstVisitor
 		{
 			// firstly, donn't handle import clause and global variable
 			// definition
-			if (t.tag == Tree.METHODDEF)
+			if (t.tag == Tree.MethodDefStmtClass)
 				t.accept(this);
 		}
 	}
@@ -693,7 +692,7 @@ public class HIRGenerator extends AstVisitor
 	/**
 	 * Translates program block surrounding with a pair of braces.
 	 */
-	@Override public void visitBlock(Block tree)
+	@Override public void visitBlock(CompoundStmt tree)
 	{
 		for (Tree t : tree.stats)
 			t.accept(this);
@@ -815,7 +814,7 @@ public class HIRGenerator extends AstVisitor
 	 *     ...
 	 * </pre>
 	 */
-	@Override public void visitWhileLoop(WhileLoop tree)
+	@Override public void visitWhileLoop(WhileStmt tree)
 	{
 		BasicBlock headerBB, loopBB, nextBB;
 		headerBB = currentCFG.createBasicBlock("while.cond");
@@ -856,7 +855,7 @@ public class HIRGenerator extends AstVisitor
 	 *     ...
 	 * </pre>
 	 */
-	@Override public void visitDoLoop(DoLoop tree)
+	@Override public void visitDoLoop(DoStmt tree)
 	{
 		BasicBlock loopBB, condBB, nextBB;
 		loopBB = currentCFG.createBasicBlock("do.body");
@@ -898,7 +897,7 @@ public class HIRGenerator extends AstVisitor
 	 * nextBB:
 	 * </pre>
 	 */
-	@Override public void visitForLoop(ForLoop tree)
+	@Override public void visitForLoop(ForStmt tree)
 	{
 		BasicBlock nextBB, condBB, loopBB;
 		nextBB = currentCFG.createBasicBlock("for.exit");
@@ -933,7 +932,7 @@ public class HIRGenerator extends AstVisitor
 	/**
 	 * Translates goto statement into IR.
 	 */
-	@Override public void visitGoto(Goto tree)
+	@Override public void visitGoto(GotoStmt tree)
 	{
 		/* if the block corresponding to targetAbstractLayer of this stmt is null, creating a
 		 * block to be associated with it. */
@@ -1127,7 +1126,7 @@ public class HIRGenerator extends AstVisitor
 		{
 			CaseStmt clause = tree.cases.get(idx);
 			Tree lastStmt = null;
-			Block caseBlock = (Block)clause.subStmt;
+			CompoundStmt caseBlock = (CompoundStmt)clause.subStmt;
 				
 			lastStmt = caseBlock.stats.get(caseBlock.stats.size() - 1);	
 
@@ -1176,7 +1175,7 @@ public class HIRGenerator extends AstVisitor
 	/**
 	 * Just ignores.
 	 */
-	@Override public void visitSkip(Skip tree)
+	@Override public void visitSkip(NullStmt tree)
 	{
 		// skip it.
 	}
@@ -2112,7 +2111,7 @@ public class HIRGenerator extends AstVisitor
 	 *
 	 * @param erroneous The erroneous tree.
 	 */
-	@Override public void visitErroneous(Tree.Erroneous erroneous)
+	@Override public void visitErroneous(ErroneousTree erroneous)
 	{
 		log.error(erroneous.pos, "A.errorous.tree");
 		this.exprResult = null;

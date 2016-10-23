@@ -11,7 +11,6 @@ import cparser.DeclSpec.SourceRange;
 import sema.*;
 import hir.BasicBlock;
 import sema.Decl.*;
-import symbol.Scope;
 import symbol.Symbol;
 import symbol.Symbol.MethodSymbol;
 import symbol.VarSymbol;
@@ -32,7 +31,7 @@ import static type.Type.UnsignedIntTy;
  * specific tree nodes as subclasses. There are 40 such subclasses.
  * 
  * Each subclass is highly standardized. It generally isDeclScope only tree fields
- * for the syntactic subcomponents of the node. Some classes that represents
+ * for the syntactic sub-components of the node. Some classes that represents
  * identifier usesList or definitions also define a Symbol field that denotes the
  * represented identifier. Classes for non-local jumps also carry the jump
  * targetAbstractLayer as a field. The root class {@link Tree} itself defines fields for the
@@ -41,7 +40,7 @@ import static type.Type.UnsignedIntTy;
  * 
  * The only method defined in subclasses is 'visit' which applies a given
  * visitor to the tree. The actual tree processing is done by visitor classes in
- * other package. The abstract class {@link AstVisitor} is the abstract root
+ * other package. The abstract class {@link ASTVisitor} is the abstract root
  * class for visiting different tree.
  * 
  * @author Xlous.zeng  
@@ -53,102 +52,102 @@ abstract public class Tree
 	/*
 	 * TopLevel nodes, of type TopLevel, representing entire source files.
 	 */
-	public static final int TOPLEVEL = 1;
+	public static final int TopLevelClass = 1;
 
-	public static final int IMPORT = TOPLEVEL + 1;
+	public static final int ImportStmtClass = TopLevelClass + 1;
 
-	public static final int SELECT = IMPORT + 1;
+	public static final int SelectExprClass = ImportStmtClass + 1;
 
 	/**
 	 * Function definitions, of type MethodDef.
 	 */
-	public static final int METHODDEF = SELECT + 1;
+	public static final int MethodDefStmtClass = SelectExprClass + 1;
 
 	/**
 	 * Variable definitions, of type VarDef.
 	 */
-	public static final int VARDEF = METHODDEF + 1;
+	public static final int VarDefStmtClass = MethodDefStmtClass + 1;
 
 	/**
-	 * The no-op statement ";", of type Skip.
+	 * The no-op statement ";", of type NullStmt.
 	 */
-	public static final int SKIP = VARDEF + 1;
+	public static final int NullStmtClass = VarDefStmtClass + 1;
 
-    public static final int DECLSTMT = SKIP + 1;
+    public static final int DeclStmtClass = NullStmtClass + 1;
 
 	/**
-	 * Blocks, of type Block.
+	 * Blocks, of type CompoundStmt.
 	 */
-	public static final int BLOCK = DECLSTMT + 1;
+	public static final int CompoundStmtClass = DeclStmtClass + 1;
 
 	/**
 	 * Do-while loop statement, of type Doloop.
 	 */
-	public static final int DOLOOP = BLOCK + 1;
+	public static final int DoStmtClass = CompoundStmtClass + 1;
 
 	/**
 	 * While loop statement, of type Whileloop.
 	 */
-	public static final int WHILELOOP = DOLOOP + 1;
+	public static final int WhileStmtClass = DoStmtClass + 1;
 
 	/**
 	 * For-loop, of type Forloop.
 	 */
-	public static final int FORLOOP = WHILELOOP + 1;
+	public static final int ForStmtClass = WhileStmtClass + 1;
 
 	/**
 	 * LabelledStmt statement, of type LabelledStmt.
 	 */
-	public static final int LABELLED = FORLOOP + 1;
+	public static final int LabelledStmtClass = ForStmtClass + 1;
 
 	/**
 	 * SwitchStmt statement, of type SwitchStmt.
 	 */
-	public static final int SWITCH = LABELLED + 1;
+	public static final int SwitchStmtClass = LabelledStmtClass + 1;
 
 	/**
 	 * CaseStmt portions in switch statement, of type CaseStmt.
 	 */
-	public static final int CASE = SWITCH + 1;
+	public static final int CaseStmtClass = SwitchStmtClass + 1;
 
-    public static final int DEFAULT = CASE + 1;
+    public static final int DefaultStmtClass = CaseStmtClass + 1;
 
 	/**
 	 * ConditionalExpr expression, of type ConditionalExpr.
 	 */
-	public static final int CondtionalOperatorClass = CASE + 1;
+	public static final int CondtionalOperatorClass = CaseStmtClass + 1;
 
 	/**
 	 * IfStmt statements, of type IfStmt.
 	 */
-	public static final int IF = CondtionalOperatorClass + 1;
+	public static final int IfStmtClass = CondtionalOperatorClass + 1;
 
 	/**
 	 * Expression statements, of type Exec.
 	 */
-	public static final int EXEC = IF + 1;
+	public static final int ExprStmtClass = IfStmtClass + 1;
 
 	/**
 	 * BreakStmt statements, of type BreakStmt.
 	 */
-	public static final int BREAK = EXEC + 1;
+	public static final int BreakStmtClass = ExprStmtClass + 1;
 
-	public static final int GOTO = BREAK + 1;
+	public static final int GotoStmtClass = BreakStmtClass + 1;
 
 	/**
 	 * ContinueStmt statements, of type ContinueStmt.
 	 */
-	public static final int CONTINUE = BREAK + 1;
+	public static final int ContinueStmtClass = BreakStmtClass + 1;
 
 	/**
 	 * ReturnInst statements, of type ReturnInst.
 	 */
-	public static final int RETURN = CONTINUE + 1;
+	public static final int ReturnStmtClass = ContinueStmtClass + 1;
 
 	/**
 	 * Function invocation expressions, of type CallExpr.
 	 */
-	public static final int CallExprClass = RETURN + 1;
+	public static final int CallExprClass = ReturnStmtClass + 1;
 
 	/**
 	 * Parenthesized subexpressions of type ParenExpr.
@@ -157,12 +156,8 @@ abstract public class Tree
 
     public static final int ParenListExprClass = ParenExprClass + 1;
 
-	/**
-	 * Assignment expressions, of type Assign.
-	 */
-	public static final int ASSIGN = ParenListExprClass + 1;
 
-    public static final int InitListExpr = ASSIGN + 1;
+    public static final int InitListExpr = ParenListExprClass + 1;
 
 	/**
 	 * Implicit type cast expressions.
@@ -179,14 +174,35 @@ abstract public class Tree
 	/**
 	 * Simple identifiers, of type DeclRefExpr.
 	 */
-	public static final int IDENT = ArraySubscriptExprClass + 1;
+	public static final int DeclRefExprClass = ArraySubscriptExprClass + 1;
+
+    /**
+     * Assignment expressions, of type Assign.
+     */
+    public static final int AssignExprOperator = DeclRefExprClass + 1;
+
+    /**
+     * Assignment operators, of type OpAssign.
+     */
+    public static final int CompoundAssignOperatorClass = AssignExprOperator + 1;
 
 	/**
-	 * Literals, of type Literal.
+	 * UnaryExpr operators, of type UnaryExpr.
 	 */
-	public static final int LITERAL = IDENT + 1;
+	public static final int UnaryOperatorClass = AssignExprOperator + 1;
 
-    public static final int IntegerLiteralClass = IDENT + 1;
+	public static final int UnaryExprOrTypeTraitClass = UnaryOperatorClass + 1;
+
+	/**
+	 * BinaryExpr operators, of type BinaryExpr.
+	 */
+	public static final int BinaryOperatorClass = UnaryExprOrTypeTraitClass + 1;
+
+	public static final int MemberExprClass = BinaryOperatorClass + 1;
+
+	public static final int CompoundLiteralExprClass = MemberExprClass + 1;
+
+    public static final int IntegerLiteralClass = DeclRefExprClass + 1;
 
     public static final int FloatLiteralClass = IntegerLiteralClass + 1;
 
@@ -195,42 +211,9 @@ abstract public class Tree
     public static final int StringLiteralClass = CharacterLiteralClass + 1;
 
 	/**
-	 * Basic type identifiers, of type TypeIdent.
+	 * Error Trees, of type ErroneousTree.
 	 */
-	public static final int TYPEIDENT = IntegerLiteralClass + 1;
-
-	/**
-	 * Array types ,of type TypeArray.
-	 */
-	public static final int ARRAYTYPE = TYPEIDENT + 1;
-
-	public static final int NEWARRAY = ARRAYTYPE + 1;
-
-	/**
-	 * Error Trees, of type Erroneous.
-	 */
-	public static final int ERRONEOUS = ARRAYTYPE + 1;
-
-	/**
-	 * UnaryExpr operators, of type UnaryExpr.
-	 */
-	public static final int UnaryOperatorClass = ERRONEOUS + 1;
-
-    public static final int UnaryExprOrTypeTraitClass = UnaryOperatorClass + 1;
-
-	/**
-	 * BinaryExpr operators, of type BinaryExpr.
-	 */
-	public static final int BinaryOperatorClass = UnaryExprOrTypeTraitClass + 1;
-
-    /**
-     * Assignment operators, of type OpAssign.
-     */
-    public static final int CompoundAssignOperatorClass = BinaryOperatorClass + 1;
-
-    public static final int MemberExprClass = CompoundAssignOperatorClass + 1;
-
-    public static final int CompoundLiteralExprClass = MemberExprClass + 1;
+	public static final int ErroneousStmtClass = StringLiteralClass + 1;
 
 	public static List<Tree> emptyList = new LinkedList<>();
 
@@ -280,10 +263,7 @@ abstract public class Tree
 	/**
 	 * Visit this tree with a given visitor.
 	 */
-	public void accept(AstVisitor v)
-	{
-		v.visitTree(this);
-	}
+	public abstract void accept(ASTVisitor v);
 
 	/**
 	 * Everything in one source file is kept in a TopLevel structure.
@@ -296,27 +276,30 @@ abstract public class Tree
 		/**
 		 * Represents all declarations in a compilation unit file.
 		 */
-		public List<Decl> decls;
-		public Name sourceFile;
-		public Scope topScope = null;
+		private ArrayList<DeclStmt> decls;
+		private String sourceFile;
 
 		/**
 		 * Constructs TopLevel tree node that represents a source file.
 		 * 
 		 * @param decls all of definitions in a source file.
 		 * @param sourceFile the name of source file.
-		 * @param topScope the corresponding scope of this source file.
 		 */
-		public TopLevel(List<Decl> decls, Name sourceFile,
-				Scope topScope)
+		public TopLevel(ArrayList<DeclStmt> decls, String sourceFile)
 		{
-			super(TOPLEVEL);		
+			super(TopLevelClass);
 			this.decls = decls;
 			this.sourceFile = sourceFile;
-			this.topScope = topScope;
 		}
 
-		public void accept(AstVisitor v)
+		public String getSourceFile() { return sourceFile; }
+		public void setSourceFile(String file) {sourceFile = file;}
+
+		public ArrayList<DeclStmt> getDecls() {return decls;}
+		public void setDecls(ArrayList<DeclStmt> decls) {this.decls = decls;}
+
+        @Override
+		public void accept(ASTVisitor v)
 		{
 			v.visitTopLevel(this);
 		}
@@ -326,18 +309,18 @@ abstract public class Tree
 	 * @author Xlous.zeng  
 	 * @version 0.1
 	 */
-	public static class Skip extends Stmt
+	public static class NullStmt extends Stmt
 	{
 	    final int loc;
-		public Skip(int loc)
+		public NullStmt(int loc)
 		{
-			super(SKIP);
+			super(NullStmtClass);
             this.loc = loc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitSkip(this);
+			v.visitNullStmt(this);
 		}
 	}
 
@@ -357,7 +340,7 @@ abstract public class Tree
 		public MethodDef(Long flags, Name name, Tree rettype, 
 				List<Tree> params, Tree body, MethodSymbol sym)
 		{
-			super(METHODDEF);
+			super(MethodDefStmtClass);
 			this.flags = flags;
 			this.name = name;
 			this.rettype = rettype;
@@ -366,9 +349,9 @@ abstract public class Tree
 			this.sym = sym;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitMethodDef(this);
+
 		}
 	}
 
@@ -390,7 +373,7 @@ abstract public class Tree
 		public VarDef(long flags, Name name, Tree varType,
 				Tree init, VarSymbol sym)
 		{
-			super(VARDEF);
+			super(VarDefStmtClass);
 			this.flags = flags;
 			this.name = name;
 			this.varType = varType;
@@ -398,13 +381,13 @@ abstract public class Tree
 			this.sym = sym;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitVarDef(this);
+			//v.visitVarDef(this);
 		}
 	}
 
-	public static class Stmt extends Tree
+	public abstract static class Stmt extends Tree
     {
         Stmt(int tag)
         {
@@ -421,15 +404,15 @@ abstract public class Tree
         final int declStart, declEnd;
 	    public DeclStmt(ArrayList<Decl> decls, int declStart, int declEnd)
 	    {
-		    super(DECLSTMT);
+		    super(DeclStmtClass);
             this.decls = decls;
             this.declStart = declStart;
             this.declEnd = declEnd;
 	    }
 
-        public void accept(AstVisitor v)
+        public void accept(ASTVisitor v)
         {
-
+            v.visitDeclStmt(this);
         }
 
         public Iterator<Decl> iterator()
@@ -442,21 +425,21 @@ abstract public class Tree
 	 * A statement block.
 	 *
 	 */
-	public static class Block extends Stmt
+	public static class CompoundStmt extends Stmt
 	{
 		public List<Stmt> stats;
 		public int endpos = Position.NOPOS;
 
-		public Block(List<Stmt> stats, int loc)
+		public CompoundStmt(List<Stmt> stats, int loc)
 		{
-			super(BLOCK);
+			super(CompoundStmtClass);
 			this.stats = stats;
             this.endpos = loc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitBlock(this);
+			v.visitCompoundStmt(this);
 		}
 	}
 
@@ -464,7 +447,7 @@ abstract public class Tree
 	/**
 	 * Selects through packages or class for future.
 	 */	
-	public static class Select extends Stmt
+	public static class SelectStmt extends Stmt
 	{
 		/**
 		 * selected Tree hierarchie
@@ -479,32 +462,32 @@ abstract public class Tree
 		 */
 		public Symbol sym;
 
-		public Select(Tree selected, Name name, Symbol sym)
+		public SelectStmt(Tree selected, Name name, Symbol sym)
 		{
-			super(SELECT);
+			super(SelectExprClass);
 			this.selected = selected;
 			this.name = name;
 			this.sym = sym;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitSelect(this);
+			v.visitSelectStmt(this);
 		}
 	}
 	/**
 	 * A do loop
 	 */
-	public static class DoLoop extends Stmt
+	public static class DoStmt extends Stmt
 	{
 		public Stmt body;
-		public Expr cond;
+		public ExprStmt cond;
         public int doLoc, whileLoc, rParenLoc;
 
-		public DoLoop(Stmt body, Expr cond, int doLoc,
+		public DoStmt(Stmt body, ExprStmt cond, int doLoc,
                 int whileLoc, int rParenLoc)
 		{
-			super(DOLOOP);
+			super(DoStmtClass);
 			this.body = body;
 			this.cond = cond;
             this.doLoc = doLoc;
@@ -517,29 +500,29 @@ abstract public class Tree
             return new SourceRange(doLoc, rParenLoc);
         }
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitDoLoop(this);
+			v.visitDoStmt(this);
 		}
 	}
 
 	/**
 	 * A for loop.
 	 */
-	public static class ForLoop extends Stmt
+	public static class ForStmt extends Stmt
 	{
 		public Stmt init;
-		public Expr cond;
-		public Expr step;
+		public ExprStmt cond;
+		public ExprStmt step;
 		public Stmt body;
         public final int lParenLoc, rParenLoc, forLoc;
 
-		public ForLoop(int forLoc,
+		public ForStmt(int forLoc,
                 int lParenLoc,
-                Stmt init, Expr cond, Expr step, Stmt body,
+                Stmt init, ExprStmt cond, ExprStmt step, Stmt body,
                 int rParenLoc)
 		{
-			super(FORLOOP);
+			super(ForStmtClass);
 			this.init = init;
 			this.cond = cond;
 			this.step = step;
@@ -549,31 +532,31 @@ abstract public class Tree
             this.rParenLoc = rParenLoc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitForLoop(this);
+			v.visitForStmt(this);
 		}
 	}
 
 	/**
 	 * A while loop
 	 */
-	public static class WhileLoop extends Stmt
+	public static class WhileStmt extends Stmt
 	{
-		public Expr cond;
+		public ExprStmt cond;
 		public Stmt body;
         public int whileLoc;
-		public WhileLoop(Expr cond, Stmt body, int whileLoc)
+		public WhileStmt(ExprStmt cond, Stmt body, int whileLoc)
 		{
-			super(WHILELOOP);
+			super(WhileStmtClass);
 			this.cond = cond;
 			this.body = body;
             this.whileLoc = whileLoc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitWhileLoop(this);
+			v.visitWhileStmt(this);
 		}
 	}
 
@@ -590,15 +573,15 @@ abstract public class Tree
 
 		public LabelledStmt(LabelDecl label, Stmt body, int loc)
 		{
-			super(LABELLED);
+			super(LabelledStmtClass);
 			this.label = label;
 			this.body = body;
             this.loc = loc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitLabelled(this);
+			v.visitLabelledStmt(this);
 		}
 	}
 
@@ -607,22 +590,22 @@ abstract public class Tree
 	 */
 	public static class IfStmt extends Stmt
 	{
-		public Expr cond;
+		public ExprStmt cond;
 		public Stmt thenpart;
 		public Stmt elsepart;
         public final int ifLoc;
-		public IfStmt(Expr cond, Stmt thenpart, Stmt elsepart, int ifLoc)
+		public IfStmt(ExprStmt cond, Stmt thenpart, Stmt elsepart, int ifLoc)
 		{
-			super(IF);
+			super(IfStmtClass);
 			this.cond = cond;
 			this.thenpart = thenpart;
 			this.elsepart = elsepart;
             this.ifLoc = ifLoc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitIf(this);
+			v.visitIfStmt(this);
 		}
 	}
 
@@ -631,7 +614,7 @@ abstract public class Tree
 	 */
 	public static class SwitchStmt extends Stmt
 	{
-		private Expr cond;
+		private ExprStmt cond;
 		private CaseStmt firstCase;
         private Stmt body;
         private int switchLoc;
@@ -641,9 +624,9 @@ abstract public class Tree
          */
         private boolean allEnumCasesCovered;
 
-		public SwitchStmt(Expr cond, int switchLoc)
+		public SwitchStmt(ExprStmt cond, int switchLoc)
 		{
-			super(SWITCH);
+			super(SwitchStmtClass);
             this.cond = cond;
             this.switchLoc = switchLoc;
 		}
@@ -653,17 +636,19 @@ abstract public class Tree
             this.body = body;
         }
 
-        public Expr getCond()
+        public ExprStmt getCond()
         {
             return cond;
         }
+
         public int getSwitchLoc()
         {
             return switchLoc;
         }
-		public void accept(AstVisitor v)
+
+		public void accept(ASTVisitor v)
 		{
-			v.visitSwitch(this);
+			v.visitSwitchStmt(this);
 		}
 
         public CaseStmt getSwitchCaseList()
@@ -681,6 +666,7 @@ abstract public class Tree
             return allEnumCasesCovered;
         }
     }
+
     public static abstract class SwitchCase extends Stmt
     {
         public SwitchCase(int tag)
@@ -697,14 +683,14 @@ abstract public class Tree
 	 */
 	public static class CaseStmt extends SwitchCase
     {
-        public Expr value;
+        public ExprStmt value;
         public Stmt subStmt;
         public final int caseLoc;
         public final int colonLoc;
 
-        public CaseStmt(Expr value, Stmt caseBody, int caseLoc, int colonLoc)
+        public CaseStmt(ExprStmt value, Stmt caseBody, int caseLoc, int colonLoc)
         {
-            super(CASE);
+            super(CaseStmtClass);
             this.value = value;
             this.subStmt = caseBody;
             this.caseLoc = caseLoc;
@@ -720,26 +706,27 @@ abstract public class Tree
         {
             return colonLoc;
         }
-		public void accept(AstVisitor v)
+
+		public void accept(ASTVisitor v)
 		{
-			v.visitCase(this);
+			v.visitCaseStmt(this);
 		}
 
         @Override
         public SwitchCase getNextCaseStmt()
         {
-            if (subStmt.tag == CASE)
+            if (subStmt.tag == CaseStmtClass)
                 return (CaseStmt)subStmt;
             else
                 return null;
         }
 
-        public Expr getCondExpr()
+        public ExprStmt getCondExpr()
         {
             return value;
         }
 
-        public void setCondExpr(Expr val)
+        public void setCondExpr(ExprStmt val)
         {
             value = val;
         }
@@ -752,7 +739,7 @@ abstract public class Tree
         public Stmt subStmt;
         public DefaultStmt(int defaultLoc, int colonLoc, Stmt subStmt)
         {
-            super(DEFAULT);
+            super(DefaultStmtClass);
             this.defaultLoc =defaultLoc;
             this.colonLoc = colonLoc;
         }
@@ -760,7 +747,7 @@ abstract public class Tree
         @Override
         public SwitchCase getNextCaseStmt()
         {
-            if (subStmt.tag == CASE)
+            if (subStmt.tag == CaseStmtClass)
                 return (DefaultStmt)subStmt;
             else
                 return null;
@@ -776,6 +763,12 @@ abstract public class Tree
         {
             return defaultLoc;
         }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitDefaultStmt(this);
+        }
     }
 
 	/**
@@ -787,31 +780,31 @@ abstract public class Tree
 
 		public BreakStmt(int breakLoc)
 		{
-			super(BREAK);
+			super(BreakStmtClass);
 			this.breakLoc = breakLoc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitBreak(this);
+			v.visitBreakStmt(this);
 		}
 	}
 
-	public static class Goto extends Stmt
+	public static class GotoStmt extends Stmt
 	{
 		public LabelDecl label;
 		public final int gotoLoc, labelLoc;
 
-		public Goto(LabelDecl label, int gotoLoc, int labelLoc)
+		public GotoStmt(LabelDecl label, int gotoLoc, int labelLoc)
 		{
-			super(GOTO);
+			super(GotoStmtClass);
 			this.label = label;
 			this.gotoLoc = gotoLoc;
             this.labelLoc = labelLoc;
 		}
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitGoto(this);
+			v.visitGotoStmt(this);
 		}
 	}
 
@@ -824,13 +817,13 @@ abstract public class Tree
 
 		public ContinueStmt(int continueLoc)
 		{
-			super(CONTINUE);
+			super(ContinueStmtClass);
 			this.continueLoc = continueLoc;
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitContinue(this);
+			v.visitContinueStmt(this);
 		}
 	}
 
@@ -839,11 +832,11 @@ abstract public class Tree
 	 */
 	public static class ReturnStmt extends Stmt
 	{
-		public Expr expr;
+		public ExprStmt expr;
         public final int returnloc;
-		public ReturnStmt(int returnloc, Expr expr)
+		public ReturnStmt(int returnloc, ExprStmt expr)
 		{
-			super(RETURN);
+			super(ReturnStmtClass);
             this.returnloc = returnloc;
 			this.expr = expr;
 		}
@@ -853,9 +846,9 @@ abstract public class Tree
             this(returnloc, null);
         }
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitReturn(this);
+			v.visitReturnStmt(this);
 		}
 	}
 
@@ -873,17 +866,17 @@ abstract public class Tree
         EVK_LValue
     }
     /**
-     * This class represents an expression. Note that{@linkplain, Expr} is the
+     * This class represents an expression. Note that{@linkplain, ExprStmt} is the
      * subclass of {@linkplain Stmt}. This allows an expression to be transparently
      * used on any scenerio where a {@linkplain Stmt} rquired.
      */
-	public static class Expr extends Stmt
+	public abstract static class ExprStmt extends Stmt
     {
         private QualType type;
         private ExprValueKind valuekind;
         private int loc;
 
-        public Expr(int tag, QualType type, ExprValueKind valuekind, int loc)
+        public ExprStmt(int tag, QualType type, ExprValueKind valuekind, int loc)
         {
             super(tag);
             this.valuekind = valuekind;
@@ -891,7 +884,7 @@ abstract public class Tree
             this.loc = loc;
         }
 
-        public Expr(int tag, int loc)
+        public ExprStmt(int tag, int loc)
         {
             this(tag, null, null, loc);
         }
@@ -935,13 +928,13 @@ abstract public class Tree
 
         public FieldDecl getBitField()
         {
-            Expr e = ignoreParens();
+            ExprStmt e = ignoreParens();
             return null;
         }
 
-        public Expr ignoreParens()
+        public ExprStmt ignoreParens()
         {
-            Expr e = this;
+            ExprStmt e = this;
             while (true)
             {
                 if (e.tag == ParenExprClass)
@@ -1019,9 +1012,9 @@ abstract public class Tree
             return valuekind;
         }
 
-        public Expr ignoreParensImpCasts()
+        public ExprStmt ignoreParensImpCasts()
         {
-            Expr e = this;
+            ExprStmt e = this;
             while (true)
             {
                 if (e.tag == ParenExprClass)
@@ -1038,9 +1031,9 @@ abstract public class Tree
             }
         }
 
-        public Expr ignoreParenCasts()
+        public ExprStmt ignoreParenCasts()
         {
-            Expr e = this;
+            ExprStmt e = this;
             while (true)
             {
                 if (e.tag == ParenExprClass)
@@ -1073,7 +1066,7 @@ abstract public class Tree
             private boolean hasSideEffects;
 
             private String diag;
-            private final Expr diagExpr;
+            private final ExprStmt diagExpr;
             private int diagLoc;
 
             EvalResult()
@@ -1102,7 +1095,7 @@ abstract public class Tree
      * function name (in which case it is a function designator).
      *
      */
-    public static class DeclRefExpr extends Expr
+    public static class DeclRefExpr extends ExprStmt
     {
         private String name;
 
@@ -1120,15 +1113,16 @@ abstract public class Tree
                 ExprValueKind valueKind,
                 int loc)
         {
-            super(IDENT, ty, valueKind, loc);
+            super(DeclRefExprClass, ty, valueKind, loc);
             this.name = name;
             this.d = d;
             location = loc;
         }
 
-        public void accept(AstVisitor v)
+        @Override
+        public void accept(ASTVisitor v)
         {
-            v.visitIdent(this);
+            v.visitDeclRefExpr(this);
         }
 
         public ValueDecl getDecl()
@@ -1158,7 +1152,7 @@ abstract public class Tree
         }
     }
 
-    public static class IntegerLiteral extends Expr
+    public static class IntegerLiteral extends ExprStmt
     {
         public final APInt val;
         public IntegerLiteral(
@@ -1172,9 +1166,15 @@ abstract public class Tree
                     :"Integer type is not the correct size for constant.";
             val = value;
         }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitIntegerLiteral(this);
+        }
     }
 
-    public static class FloatLiteral extends Expr
+    public static class FloatLiteral extends ExprStmt
     {
         private BigDecimal val;
         public FloatLiteral(QualType type,
@@ -1193,9 +1193,15 @@ abstract public class Tree
         {
             return val;
         }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitFloatLiteral(this);
+        }
     }
 
-    public static class CharacterLiteral extends Expr
+    public static class CharacterLiteral extends ExprStmt
     {
         private char val;
         public CharacterLiteral(
@@ -1217,9 +1223,15 @@ abstract public class Tree
         {
             return val;
         }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitCharacterLiteral(this);
+        }
     }
 
-    public static class StringLiteral extends Expr
+    public static class StringLiteral extends ExprStmt
     {
         public StringLiteral(
                 QualType type,
@@ -1233,18 +1245,24 @@ abstract public class Tree
         {
             super(CharacterLiteralClass, loc);
         }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitStringLiteral(this);
+        }
     }
 
     /**
      * A parenthesized subexpression, e.g. (1).
      * This AST node is only formed if full location information was requested.
      */
-    public static class ParenExpr extends Expr
+    public static class ParenExpr extends ExprStmt
     {
-        public Expr subExpr;
+        public ExprStmt subExpr;
         public int lParenLoc, rParenLoc;
 
-        public ParenExpr(Expr expr, int l, int r)
+        public ParenExpr(ExprStmt expr, int l, int r)
         {
             super(ParenExprClass, l);
             this.subExpr = expr;
@@ -1256,20 +1274,20 @@ abstract public class Tree
         {
             return new SourceRange(lParenLoc, rParenLoc);
         }
-        public void accept(AstVisitor v)
+        public void accept(ASTVisitor v)
         {
-            v.visitParens(this);
+            v.visitParenExpr(this);
         }
     }
 
-    public static class ParenListExpr extends Expr
+    public static class ParenListExpr extends ExprStmt
     {
-        private ArrayList<Expr> exprs;
+        private ArrayList<ExprStmt> exprs;
         private int lParenLoc, rParenLoc;
 
         public ParenListExpr(
                 int lParenLoc,
-                ArrayList<Expr> exprs,
+                ArrayList<ExprStmt> exprs,
                 int rParenLoc,
                 QualType type)
         {
@@ -1279,7 +1297,7 @@ abstract public class Tree
             this.rParenLoc = rParenLoc;
         }
 
-        public Expr getExpr(int idx)
+        public ExprStmt getExpr(int idx)
         {
             assert idx>= 0&& idx< exprs.size();
             return exprs.get(idx);
@@ -1294,6 +1312,12 @@ abstract public class Tree
         {
             return Position.NOPOS;
         }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitParenListExpr(this);
+        }
     }
 
     //===============================================================//
@@ -1303,14 +1327,14 @@ abstract public class Tree
     /**
      * A type cast.
      */
-    public static abstract class CastExpr extends Expr
+    public static abstract class CastExpr extends ExprStmt
     {
-        protected Expr expr;
+        protected ExprStmt expr;
         protected CastKind castKind;
 
         public CastExpr(int tag, QualType ty,
                 ExprValueKind valueKind,
-                Expr expr,
+                ExprStmt expr,
                 final CastKind castKind,
                 int loc)
         {
@@ -1320,7 +1344,7 @@ abstract public class Tree
             this.castKind = castKind;
         }
         public CastKind getCastKind() { return castKind; }
-        public Expr getSubExpr() { return expr;}
+        public ExprStmt getSubExpr() { return expr;}
     }
 
     /**
@@ -1339,7 +1363,7 @@ abstract public class Tree
     {
         public ImplicitCastExpr(QualType ty,
                 ExprValueKind valueKind,
-                Expr expr,
+                ExprStmt expr,
                 CastKind castKind,
                 int loc)
         {
@@ -1350,12 +1374,23 @@ abstract public class Tree
          * ReturnStmt the expression after ignoring all of implicitly type cast operation.
          * @return
          */
-        public Expr ignoreImplicitCast()
+        public ExprStmt ignoreImplicitCast()
         {
-            Expr e = this;
+            ExprStmt e = this;
             while (e instanceof ImplicitCastExpr)
                 e = getSubExpr();
             return e;
+        }
+
+        /**
+         * Visit this tree with a given visitor.
+         *
+         * @param v
+         */
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitImplicitCastExpr(this);
         }
     }
 
@@ -1368,31 +1403,42 @@ abstract public class Tree
         private int rParenLoc;
 
         public ExplicitCastExpr(QualType ty, ExprValueKind valueKind,
-                Expr expr, CastKind castKind,
+                ExprStmt expr, CastKind castKind,
                 int lParenLoc, int rParenLoc)
         {
             super(ExplicitCast, ty, valueKind, expr, castKind, lParenLoc);
             this.lParenLoc = lParenLoc;
             this.rParenLoc = rParenLoc;
         }
+
+        /**
+         * Visit this tree with a given visitor.
+         *
+         * @param v
+         */
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitExplicitCastExpr(this);
+        }
     }
 
     /**
      * An array selection [C99 6.5.2.1]
      */
-    public static class ArraySubscriptExpr extends Expr
+    public static class ArraySubscriptExpr extends ExprStmt
     {
-        private Expr[] subExprs;
+        private ExprStmt[] subExprs;
         private int rBracketLoc;
 
-        public ArraySubscriptExpr(Expr indexed, Expr
+        public ArraySubscriptExpr(ExprStmt indexed, ExprStmt
                 index,
                 QualType t,
                 ExprValueKind valueKind,
                 int rBracketLoc)
         {
             super(ArraySubscriptExprClass, t, valueKind, rBracketLoc);
-            subExprs = new Expr[2];
+            subExprs = new ExprStmt[2];
             subExprs[0] = indexed;
             subExprs[1] = index;
             this.rBracketLoc = rBracketLoc;
@@ -1403,32 +1449,32 @@ abstract public class Tree
             super(ArraySubscriptExprClass, Position.NOPOS);
         }
 
-        public Expr getLHS()
+        public ExprStmt getLHS()
         {
             return subExprs[0];
         }
 
-        public void setLHS(Expr e)
+        public void setLHS(ExprStmt e)
         {
             subExprs[0] = e;
         }
 
-        public Expr getRHS()
+        public ExprStmt getRHS()
         {
             return subExprs[1];
         }
 
-        public void setRHS(Expr e)
+        public void setRHS(ExprStmt e)
         {
             subExprs[1] = e;
         }
 
-        public Expr getBase()
+        public ExprStmt getBase()
         {
             return getRHS().getType().isIntegerType() ? getLHS() : getRHS();
         }
 
-        public Expr getIdx()
+        public ExprStmt getIdx()
         {
             return getRHS().getType().isIntegerType() ? getRHS() : getLHS();
         }
@@ -1448,9 +1494,10 @@ abstract public class Tree
             return getBase().getLocation();
         }
 
-        public void accept(AstVisitor v)
+        @Override
+        public void accept(ASTVisitor v)
         {
-            v.visitIndexed(this);
+            v.visitArraySubscriptExpr(this);
         }
     }
 
@@ -1459,19 +1506,19 @@ abstract public class Tree
      * {@linkplain CallExpr} itself represents a normal function call,
      * e.g."f(x,2)",
 	 */
-	public static final class CallExpr extends Expr
+	public static final class CallExpr extends ExprStmt
 	{
 		/**
 		 * The name of callee method.
 		 */
-		public Expr fn;
+		public ExprStmt fn;
 		/**
 		 * The formal parameters list.
 		 */
-		public ArrayList<Expr> args;
+		public ArrayList<ExprStmt> args;
 
-		public CallExpr(Expr fn,
-                ArrayList<Expr> args,
+		public CallExpr(ExprStmt fn,
+                ArrayList<ExprStmt> args,
                 QualType resultType,
                 ExprValueKind vk,
                 int rparenLoc)
@@ -1486,19 +1533,19 @@ abstract public class Tree
             super(CallExprClass, Position.NOPOS);
         }
 
-        public Expr getCallee()
+        public ExprStmt getCallee()
         {
             return fn;
         }
 
-        public void setCallee(Expr fn)
+        public void setCallee(ExprStmt fn)
         {
             this.fn = fn;
         }
 
         public Decl getCalleeDecl()
         {
-            Expr cee = getCallee().ignoreParensImpCasts();
+            ExprStmt cee = getCallee().ignoreParensImpCasts();
 
             // If we are calling a dereference, look at the pointer instead.
             /**
@@ -1529,18 +1576,18 @@ abstract public class Tree
             return null;
         }
 
-        public ArrayList<Expr> getArgs()
+        public ArrayList<ExprStmt> getArgs()
         {
             return args;
         }
 
-        public Expr getArgAt(int idx)
+        public ExprStmt getArgAt(int idx)
         {
             assert idx>= 0 && idx<args.size():"Arg access out of range!";
             return args.get(idx);
         }
 
-        public void setArgAt(int idx, Expr e)
+        public void setArgAt(int idx, ExprStmt e)
         {
             assert idx>= 0 && idx<args.size():"Arg access out of range!";
             args.set(idx, e);
@@ -1564,22 +1611,22 @@ abstract public class Tree
             final FunctionType fnType = calleeType.getFunctionType();
             return fnType.getReturnType();
         }
-
-		public void accept(AstVisitor v)
+        @Override
+		public void accept(ASTVisitor v)
 		{
-			v.visitApply(this);
+			v.visitCallExpr(this);
 		}
 	}
 
     /**
      * Struct and Union Members. X->a and X.a [C99 6.5.2.3];
      */
-	public static class MemberExpr extends Expr
+	public static class MemberExpr extends ExprStmt
     {
         /**
          * The expression for the base pointer. In X.F, this is {@code X}.
          */
-        private Expr base;
+        private ExprStmt base;
 
         /**
          * This is the decl being referenced by the field/member name.
@@ -1598,7 +1645,7 @@ abstract public class Tree
         private boolean isArrow;
 
         public MemberExpr(
-                Expr base,
+                ExprStmt base,
                 boolean isArrow,
                 ValueDecl memberDecl,
                 QualType type,
@@ -1612,8 +1659,8 @@ abstract public class Tree
             memberLoc = loc;
         }
 
-        public Expr getBase() { return base;}
-        public void setBase(Expr e) { base = e; }
+        public ExprStmt getBase() { return base;}
+        public void setBase(ExprStmt e) { base = e; }
 
         /**
          * Retrieve the member declaration to which this expression refers.
@@ -1645,9 +1692,15 @@ abstract public class Tree
         }
 
         public int getExprLoc() { return memberLoc;}
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitMemberExpr(this);
+        }
     }
 
-    public static class CompoundLiteralExpr extends Expr
+    public static class CompoundLiteralExpr extends ExprStmt
     {
         /**
          * LParenLoc - If non-null, this is the location of the left paren in a
@@ -1661,14 +1714,14 @@ abstract public class Tree
          * which case the actual expression type will be different.
          */
         private QualType ty;
-        private Expr init;
+        private ExprStmt init;
         private boolean isFileScope;
 
 
         public CompoundLiteralExpr(int lParenLoc,
                 QualType type,
                 ExprValueKind valuekind,
-                Expr init,
+                ExprStmt init,
                 boolean fileScope)
         {
             super(CompoundLiteralExprClass, type, valuekind, lParenLoc);
@@ -1682,12 +1735,12 @@ abstract public class Tree
             super(CompoundLiteralExprClass, Position.NOPOS);
         }
 
-        public Expr getInitializer()
+        public ExprStmt getInitializer()
         {
             return init;
         }
 
-        public void setInitializer(Expr init)
+        public void setInitializer(ExprStmt init)
         {
             this.init = init;
         }
@@ -1721,18 +1774,24 @@ abstract public class Tree
         {
             this.ty = ty;
         }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitCompoundLiteralExpr(this);
+        }
     }
 
 	/**
 	 * This represents the unary-expression (except sizeof and alignof).
 	 */
-	public static final class UnaryExpr extends Expr
+	public static final class UnaryExpr extends ExprStmt
 	{
-		private Expr subExpr;
+		private ExprStmt subExpr;
 		private UnaryOperatorKind opcode;
         private ExprValueKind evk;
 
-		public UnaryExpr(Expr subExpr,
+		public UnaryExpr(ExprStmt subExpr,
                 UnaryOperatorKind opcode,
                 QualType type,
                 ExprValueKind evk,
@@ -1749,7 +1808,7 @@ abstract public class Tree
             return opcode;
         }
 
-        public Expr getSubExpr()
+        public ExprStmt getSubExpr()
         {
             return subExpr;
         }
@@ -1810,13 +1869,13 @@ abstract public class Tree
             }
         }
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
-			v.visitUnary(this);
+			v.visitUnaryExpr(this);
 		}
 	}
 
-	public static final class UnaryExprOrTypeTraitExpr extends Expr
+	public static final class UnaryExprOrTypeTraitExpr extends ExprStmt
     {
         /**
          * true if operand is a type, false if it is an expression.
@@ -1824,7 +1883,7 @@ abstract public class Tree
         private boolean isType;
         private UnaryExprOrTypeTrait kind;
         private QualType ty;
-        private Expr ex;
+        private ExprStmt ex;
         private int opLoc, rParenLoc;
 
         public UnaryExprOrTypeTraitExpr(UnaryExprOrTypeTrait kind,
@@ -1840,7 +1899,7 @@ abstract public class Tree
         }
 
         public UnaryExprOrTypeTraitExpr(UnaryExprOrTypeTrait kind,
-                Expr e,
+                ExprStmt e,
                 QualType resultType,
                 int opLoc, int rp)
         {
@@ -1850,6 +1909,12 @@ abstract public class Tree
             this.opLoc = opLoc;
             this.rParenLoc = rp;
             ex = e;
+        }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitUnaryExprOrTypeTraitExpr(this);
         }
     }
 
@@ -1861,15 +1926,15 @@ abstract public class Tree
      * will already have been converted to appropriate types (e.g.
      * by performing of promotion and conversion).
 	 */
-	public static class BinaryExpr extends Expr
+	public static class BinaryExpr extends ExprStmt
 	{
-		public Expr lhs;
-		public Expr rhs;
+		public ExprStmt lhs;
+		public ExprStmt rhs;
 		public BinaryOperatorKind opcode;
         private int oploc;
 
-		public BinaryExpr(Expr lhs,
-                Expr rhs,
+		public BinaryExpr(ExprStmt lhs,
+                ExprStmt rhs,
                 BinaryOperatorKind op,
                 ExprValueKind vk,
                 QualType resultTy,
@@ -1890,19 +1955,20 @@ abstract public class Tree
             super(kind, Position.NOPOS);
         }
 
-		public void accept(AstVisitor v)
+        @Override
+		public void accept(ASTVisitor v)
 		{
-			v.visitBinary(this);
+			v.visitBinaryExpr(this);
 		}
 
 		public int getOperatorLoc() { return oploc; }
 
 		public void setOperatorLoc(int loc) { oploc = loc;}
 
-		public Expr getLHS() { return rhs; }
-        public void setLHS(Expr e) { lhs = e;}
-        public Expr getRHS() { return rhs; }
-        public void setRHS(Expr e) { rhs = e;}
+		public ExprStmt getLHS() { return rhs; }
+        public void setLHS(ExprStmt e) { lhs = e;}
+        public ExprStmt getRHS() { return rhs; }
+        public void setRHS(ExprStmt e) { rhs = e;}
 
         public static final String getOpcodeStr(BinaryOperatorKind op)
         {
@@ -1997,7 +2063,7 @@ abstract public class Tree
         private QualType computationLHSType;
         private QualType computationResultType;
 
-        public CompoundAssignExpr(Expr lhs, Expr rhs,
+        public CompoundAssignExpr(ExprStmt lhs, ExprStmt rhs,
                 BinaryOperatorKind op,
                 ExprValueKind vk,
                 QualType resultTy,
@@ -2029,21 +2095,27 @@ abstract public class Tree
 
         public QualType getComputationResultType() { return computationResultType; }
         public void setComputationResultType(QualType T) { computationResultType = T; }
+
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitCompoundAssignExpr(this);
+        }
     }
 
     /**
      * A ( ) ? ( ) : ( ) conditional expression
      */
-    public static class ConditionalExpr extends Expr
+    public static class ConditionalExpr extends ExprStmt
     {
-        public Expr cond;
-        public Expr truepart;
-        public Expr falsepart;
+        public ExprStmt cond;
+        public ExprStmt truepart;
+        public ExprStmt falsepart;
         private int qLoc, cLoc;
-        public ConditionalExpr(Expr cond, int qLoc,
-                Expr lhs,
+        public ConditionalExpr(ExprStmt cond, int qLoc,
+                ExprStmt lhs,
                 int cLoc,
-                Expr rhs,
+                ExprStmt rhs,
                 QualType t,
                 ExprValueKind vk)
         {
@@ -2055,9 +2127,9 @@ abstract public class Tree
             this.cLoc = cLoc;
         }
 
-        public void accept(AstVisitor v)
+        public void accept(ASTVisitor v)
         {
-            v.visitConditional(this);
+            v.visitConditionalExpr(this);
         }
     }
 
@@ -2099,29 +2171,34 @@ abstract public class Tree
      * return NULL, indicating that the current initializer list also
      * serves as its syntactic form.
      */
-    public static class InitListExpr extends Expr
+    public static class InitListExpr extends ExprStmt
     {
         // TODO improve it in the future. 2016.10.15 xlous.zeng.
         private int lBraceLoc, rBraceLoc;
-        private ArrayList<Expr> initExprs;
+        private ArrayList<ExprStmt> initExprs;
 
-        public InitListExpr(int lBraceLoc, int rBraceLoc, ArrayList<Expr> initList)
+        public InitListExpr(int lBraceLoc, int rBraceLoc, ArrayList<ExprStmt> initList)
         {
             super(InitListExpr, lBraceLoc);
             this.lBraceLoc = lBraceLoc;
             this.rBraceLoc = rBraceLoc;
         }
+        @Override
+        public void accept(ASTVisitor v)
+        {
+            v.visitInitListExpr(this);
+        }
     }
 
-	public static class Erroneous extends Tree
+	public static class ErroneousTree extends Tree
 	{
 
-		public Erroneous()
+		public ErroneousTree()
 		{
-			super(ERRONEOUS);
+			super(ErroneousStmtClass);
 		}
 
-		public void accept(AstVisitor v)
+		public void accept(ASTVisitor v)
 		{
 			v.visitErroneous(this);
 		}

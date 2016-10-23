@@ -74,7 +74,7 @@ public final class IA32LIRGenerator extends LIRGenerator
 
 	/**
 	 * This hashmap just for mapping from AllocaInst instruction to its allocated
-	 * Stack Block.
+	 * Stack CompoundStmt.
 	 */
 	private HashMap<Instruction.AllocaInst, StackFrame.StackBlock> allocaStackBlock
 			= new HashMap<>();

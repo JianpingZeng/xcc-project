@@ -477,7 +477,7 @@ public class EnterSSA
 			visitInstruction(inst);
 		}
 		@Override
-		public void visitGoto(Instruction.Goto inst)
+		public void visitGoto(Instruction.GotoStmt inst)
 		{
 			visitInstruction(inst);
 		}

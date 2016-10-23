@@ -82,7 +82,7 @@ public class UCE
 				if (branch.trueTarget == branch.falseTarget)
 				{
 					Instruction.Goto go = new Instruction.Goto(
-							branch.trueTarget, "Goto");
+							branch.trueTarget, "GotoStmt");
 					branch.insertBefore(go);
 					branch.eraseFromBasicBlock();
 				}

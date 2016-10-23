@@ -16,7 +16,6 @@ import utils.Name;
 import utils.Position;
 import ast.Pretty;
 import ast.Tree;
-import ast.TreeMaker;
 import comp.Attr;
 import comp.Enter;
 import comp.Env;

@@ -6,13 +6,12 @@ import utils.Name;
 import ast.Tree.CallExpr;
 import ast.Tree.Assign;
 import ast.Tree.OpAssign;
-import ast.Tree.Block;
 import ast.Tree.CaseStmt;
-import ast.Tree.DoLoop;
-import ast.Tree.Erroneous;
+import ast.Tree.DoStmt;
+import ast.Tree.ErroneousTree;
 import ast.Tree.Exec;
-import ast.Tree.ForLoop;
-import ast.Tree.Goto;
+import ast.Tree.ForStmt;
+import ast.Tree.GotoStmt;
 import ast.Tree.Import;
 import ast.Tree.ArraySubscriptExpr;
 import ast.Tree.LabelledStmt;
@@ -20,14 +19,13 @@ import ast.Tree.Literal;
 import ast.Tree.MethodDef;
 import ast.Tree.NewArray;
 import ast.Tree.ReturnStmt;
-import ast.Tree.Skip;
+import ast.Tree.NullStmt;
 import ast.Tree.SwitchStmt;
 import ast.Tree.TopLevel;
 import ast.Tree.TypeArray;
 import ast.Tree.CastExpr;
 import ast.Tree.TypeIdent;
 import ast.Tree.VarDef;
-import ast.Tree.WhileLoop;
 
 /**
  * An interface for tree factories
@@ -43,15 +41,15 @@ public interface Factory {
 
    VarDef VarDef(long flags, Name name, Tree vartype, Tree init);
 
-   Skip Skip();
+   NullStmt Skip();
 
-   Block Block( List<Tree> stats);
+   Tree.CompoundStmt Block( List<Tree> stats);
 
-   DoLoop DoLoop(Tree body, Tree cond);
+   DoStmt DoLoop(Tree body, Tree cond);
 
-   WhileLoop WhileLoop(Tree cond, Tree body);
+   Tree.WhileStmt WhileLoop(Tree cond, Tree body);
 
-   ForLoop ForLoop(List<Tree> init, Tree cond, List<Tree> step, Tree body);
+   ForStmt ForLoop(List<Tree> init, Tree cond, List<Tree> step, Tree body);
 
    LabelledStmt Labelled(Name label, Tree body);
 
@@ -69,7 +67,7 @@ public interface Factory {
 
    Tree.ContinueStmt Continue();
 
-   Goto Goto(Name label);
+   GotoStmt Goto(Name label);
    
    ReturnStmt Return(Tree expr);
 
@@ -99,5 +97,5 @@ public interface Factory {
    
    NewArray NewArray(Tree elemtype, List<Tree> dims, List<Tree> elems);
 
-   Erroneous Erroneous();
+   ErroneousTree Erroneous();
 }

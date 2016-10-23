@@ -273,7 +273,7 @@ public class MoveResolver
 	{
 		assert verifyBeforeResolve();
 
-		// Block all registers that are used as input operands of a move.
+		// CompoundStmt all registers that are used as input operands of a move.
 		// When a register is blocked, no move to this register is emitted.
 		// This is necessary for detecting cycles in moves.
 		int i;
@@ -384,7 +384,7 @@ public class MoveResolver
 
 	void moveInsertPosition(LIRList insertList, int insertIdx)
 	{
-		// TTY.println("MoveResolver: moving insert position to Block B%d, index
+		// TTY.println("MoveResolver: moving insert position to CompoundStmt B%d, index
 		// %d", (insertList != null && insertList.block() != null) ? insertList.
 		// block().blockID : -1, insertIdx);
 
