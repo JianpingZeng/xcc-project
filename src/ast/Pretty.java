@@ -8,15 +8,12 @@ import type.TypeClass;
 import utils.Convert;
 import ast.Tree.Assign;
 import ast.Tree.BinaryExpr;
-import ast.Tree.Block;
 import ast.Tree.CaseStmt;
 import ast.Tree.ConditionalExpr;
 import ast.Tree.ContinueStmt;
-import ast.Tree.DoLoop;
-import ast.Tree.Erroneous;
+import ast.Tree.DoStmt;
+import ast.Tree.ErroneousTree;
 import ast.Tree.Exec;
-import ast.Tree.ForLoop;
-import ast.Tree.Goto;
 import ast.Tree.DeclRefExpr;
 import ast.Tree.Import;
 import ast.Tree.Literal;
@@ -24,12 +21,11 @@ import ast.Tree.MethodDef;
 import ast.Tree.NewArray;
 import ast.Tree.ParenExpr;
 import ast.Tree.ReturnStmt;
-import ast.Tree.Skip;
+import ast.Tree.NullStmt;
 import ast.Tree.TopLevel;
 import ast.Tree.TypeArray;
 import ast.Tree.TypeIdent;
 import ast.Tree.VarDef;
-import ast.Tree.WhileLoop;
 
 /**
  * This class provides a general scheme for descendant recursively traveling the
@@ -39,7 +35,7 @@ import ast.Tree.WhileLoop;
  * 
  * @author zeng
  */
-public class Pretty extends AstVisitor
+public class Pretty extends ASTVisitor
 {
 
 	public Pretty(PrintWriter out, boolean sourceOutput)
@@ -256,7 +252,7 @@ public class Pretty extends AstVisitor
 		}
 	}
 
-	private void printBlock(Block block)
+	private void printBlock(Tree.CompoundStmt block)
 	{
 		println();
 		print("{");
@@ -335,10 +331,10 @@ public class Pretty extends AstVisitor
 	}
 
 	/**
-	 * Skip.
+	 * NullStmt.
 	 */
 	@Override
-	public void visitSkip(Skip tree)
+	public void visitSkip(NullStmt tree)
 	{
 		print(";");
 	}
@@ -347,7 +343,7 @@ public class Pretty extends AstVisitor
 	 * Derived visits block statement.
 	 */
 	@Override
-	public void visitBlock(Block tree)
+	public void visitBlock(Tree.CompoundStmt tree)
 	{
 		printBlock(tree);
 	}
@@ -419,14 +415,14 @@ public class Pretty extends AstVisitor
 	}
 
 	@Override
-	public void visitForLoop(ForLoop tree)
+	public void visitForLoop(Tree.ForStmt tree)
 	{
 		print("for (");
 		if (!tree.init.isEmpty())
 		{
 			// variable definition
 			Tree first = tree.init.get(0);
-			if (first.tag == Tree.VARDEF)
+			if (first.tag == Tree.VarDefStmtClass)
 			{
 				printExpr(first);
 				for (int idx = 1; idx < tree.init.size(); idx++)
@@ -466,7 +462,7 @@ public class Pretty extends AstVisitor
 	}
 
 	@Override
-	public void visitGoto(Goto tree)
+	public void visitGoto(Tree.GotoStmt tree)
 	{
 		print("goto");
 		if (tree.label != null)
@@ -475,7 +471,7 @@ public class Pretty extends AstVisitor
 	}
 
 	@Override
-	public void visitDoLoop(DoLoop tree)
+	public void visitDoLoop(DoStmt tree)
 	{
 		print("do");
         printStat(tree.body);
@@ -493,7 +489,7 @@ public class Pretty extends AstVisitor
 	}
 
 	@Override
-	public void visitWhileLoop(WhileLoop tree)
+	public void visitWhileLoop(Tree.WhileStmt tree)
 	{
         print("while ");
         if (tree.cond.tag == Tree.ParenExprClass) {
@@ -531,7 +527,7 @@ public class Pretty extends AstVisitor
 
 	/**
 	@Override
-	public void visitSelect(Select tree)
+	public void visitSelect(SelectStmt tree)
 	{
         printExpr(tree.selected, TreeInfo.postfixPrec);
         print("." + tree.name);
@@ -863,7 +859,7 @@ public class Pretty extends AstVisitor
 	}
 
 	@Override
-	public void visitErroneous(Erroneous erroneous)
+	public void visitErroneous(ErroneousTree erroneous)
 	{
         print("(Error)");
 

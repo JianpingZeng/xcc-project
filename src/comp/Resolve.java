@@ -13,7 +13,6 @@ import utils.Context;
 import utils.Log;
 import utils.Name;
 import ast.Flags;
-import ast.TreeInfo;
 
 /**
  * A helpful utility class for resovling method name and type.

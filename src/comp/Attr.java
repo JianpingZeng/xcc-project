@@ -21,19 +21,18 @@ import utils.Context;
 import utils.Log;
 import utils.Name;
 import utils.Position;
-import ast.AstVisitor;
+import ast.ASTVisitor;
 import ast.Flags;
 import ast.Tree;
 import ast.Tree.CallExpr;
 import ast.Tree.Assign;
 import ast.Tree.OpAssign;
-import ast.Tree.Block;
+import ast.Tree.CompoundStmt;
 import ast.Tree.CaseStmt;
-import ast.Tree.DoLoop;
-import ast.Tree.Erroneous;
+import ast.Tree.DoStmt;
+import ast.Tree.ErroneousTree;
 import ast.Tree.Exec;
-import ast.Tree.ForLoop;
-import ast.Tree.Goto;
+import ast.Tree.GotoStmt;
 import ast.Tree.IfStmt;
 import ast.Tree.Import;
 import ast.Tree.ArraySubscriptExpr;
@@ -42,8 +41,7 @@ import ast.Tree.Literal;
 import ast.Tree.MethodDef;
 import ast.Tree.NewArray;
 import ast.Tree.ReturnStmt;
-import ast.Tree.Select;
-import ast.Tree.Skip;
+import ast.Tree.NullStmt;
 import ast.Tree.SwitchStmt;
 import ast.Tree.TopLevel;
 import ast.Tree.TypeArray;
@@ -51,8 +49,6 @@ import ast.Tree.CastExpr;
 import ast.Tree.TypeIdent;
 import ast.Tree.UnaryExpr;
 import ast.Tree.VarDef;
-import ast.Tree.WhileLoop;
-import ast.TreeInfo;
 import exception.CompletionFailure;
 
 /**
@@ -67,7 +63,7 @@ import exception.CompletionFailure;
  * @see ConstFold
  * @see Enter
  */
-public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
+public class Attr extends ASTVisitor implements SymbolKinds, TypeClass, Flags
 {
 	private static final Context.Key attrKey = new Context.Key();
 
@@ -409,7 +405,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 	{
 		if (v.pos > tree.pos && canOwnInitializer(v)
 				&& ((v.flags & STATIC) != 0) == Resolve.isStatic(env) && (
-				env.tree.tag != Tree.ASSIGN
+				env.tree.tag != Tree.AssignExprOperator
 						|| TreeInfo.skipParens(((Assign) env.tree).lhs)
 						!= tree))
 			log.error(tree.pos, "illegal.forward.ref");
@@ -469,12 +465,12 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 		result = tree.type = v.type;
 	}
 
-	@Override public void visitSkip(Skip tree)
+	@Override public void visitSkip(NullStmt tree)
 	{
 		result = null;
 	}
 
-	@Override public void visitBlock(Block tree)
+	@Override public void visitBlock(CompoundStmt tree)
 	{
 		Env localEnv = env.dup(tree, ((AttrContext) env.info)
 				.dup(((AttrContext) env.info).scope.dup()));
@@ -535,7 +531,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 			}
 			attribStat(cc.subStmt, caseEnv);
 			((AttrContext) caseEnv.info).scope.leave();
-			addVars((Block) cc.subStmt, ((AttrContext) switchEnv.info).scope);
+			addVars((CompoundStmt) cc.subStmt, ((AttrContext) switchEnv.info).scope);
 		}
 		((AttrContext) switchEnv.info).scope.leave();
 		result = null;
@@ -547,18 +543,18 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 	 * @param caseBody
 	 * @param switchScope
 	 */
-	private void addVars(Block caseBody, Scope switchScope)
+	private void addVars(CompoundStmt caseBody, Scope switchScope)
 	{
 		for (Tree tree : caseBody.stats)
 		{
-			if (tree.tag == Tree.VARDEF)
+			if (tree.tag == Tree.VarDefStmtClass)
 				switchScope.enter(((VarDef) tree).sym);
 		}
 	}
 
 	private final Type boolType = new Type(BOOL, null);
 
-	@Override public void visitForLoop(ForLoop tree)
+	@Override public void visitForLoop(Tree.ForStmt tree)
 	{
 		Env loopEnv = env.dup(env.tree, ((AttrContext) env.info)
 				.dup(((AttrContext) env.info).scope.dup()));
@@ -603,24 +599,24 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 		{
 			switch (env1.tree.tag)
 			{
-				case Tree.LABELLED:
+				case Tree.LabelledStmtClass:
 					Tree.LabelledStmt labelled = (LabelledStmt) env1.tree;
 					if (label == labelled.label)
 					{
 						return labelled;
 					}
 					break;
-				case Tree.DOLOOP:
-				case Tree.WHILELOOP:
-				case Tree.FORLOOP:
+				case Tree.DoStmtClass:
+				case Tree.WhileStmtClass:
+				case Tree.ForStmtClass:
 					if (label == null)
 						return (Tree.LabelledStmt) env1.tree;
 					break;
-				case Tree.SWITCH:
-					if (label == null && tag == Tree.BREAK)
+				case Tree.SwitchStmtClass:
+					if (label == null && tag == Tree.BreakStmtClass)
 						return (LabelledStmt) env1.tree;
 					break;
-				case Tree.METHODDEF:
+				case Tree.MethodDefStmtClass:
 					break LOOP;
 				default:
 					break;
@@ -629,20 +625,20 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 		}
 		if (label != null)
 			log.error(pos, "undef.label", label.toString());
-		else if (tag == Tree.CONTINUE)
+		else if (tag == Tree.ContinueStmtClass)
 			log.error(pos, "continue.outside.loop");
 		else
 			log.error(pos, "break.outside.loop");
 		return null;
 	}
 
-	@Override public void visitGoto(Goto tree)
+	@Override public void visitGoto(GotoStmt tree)
 	{
 		tree.target = findJumpTarget(tree.pos, tree.tag, tree.label, env);
 		result = null;
 	}
 
-	@Override public void visitDoLoop(DoLoop tree)
+	@Override public void visitDoLoop(DoStmt tree)
 	{
 		attribStat(tree.body, env.dup(tree));
 		attribExpr(tree.cond, env, boolType);
@@ -650,7 +646,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 
 	}
 
-	@Override public void visitWhileLoop(WhileLoop tree)
+	@Override public void visitWhileLoop(Tree.WhileStmt tree)
 	{
 		attribExpr(tree.cond, env, boolType);
 		attribStat(tree.body, env.dup(tree));
@@ -665,9 +661,9 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 	@Override public void visitLabelled(LabelledStmt tree)
 	{
 		Env env1 = env;
-		while (env1 != null && env1.tree.tag != Tree.METHODDEF)
+		while (env1 != null && env1.tree.tag != Tree.MethodDefStmtClass)
 		{
-			if (env1.tree.tag == Tree.LABELLED
+			if (env1.tree.tag == Tree.LabelledStmtClass
 					&& ((LabelledStmt) env1.tree).label == tree.label)
 			{
 				log.error(tree.pos, "label.already.in.use",
@@ -705,7 +701,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 		result = null;
 	}
 
-	@Override public void visitSelect(Select tree)
+	@Override public void visitSelect(Tree.SelectStmt tree)
 	{
 		visitTree(tree);
 	}
@@ -999,7 +995,7 @@ public class Attr extends AstVisitor implements SymbolKinds, TypeClass, Flags
 		result = check(tree, owntype, VAL, pkind, pt);
 	}
 
-	@Override public void visitErroneous(Erroneous erroneous)
+	@Override public void visitErroneous(ErroneousTree erroneous)
 	{
 		result = erroneous.type = syms.errType;
 	}

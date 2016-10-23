@@ -774,7 +774,7 @@ public class Canonicalizer extends InstructionVisitor
 					r.asLIRConstant());
             if (result != null)
 			{
-				setCanonical(new Goto(inst.successor(result), "Goto"));
+				setCanonical(new Goto(inst.successor(result), "GotoStmt"));
 				return;
 			}
 		}
@@ -804,7 +804,7 @@ public class Canonicalizer extends InstructionVisitor
 			default:
 				throw new InternalError("should not reach here.");
 		}
-		setCanonical(new Goto(sux, "Goto"));
+		setCanonical(new Goto(sux, "GotoStmt"));
 	}
 
 	/**

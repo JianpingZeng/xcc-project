@@ -116,7 +116,7 @@ public class DCE
 						if (nearestDom == BasicBlock.USELESS_BLOCK)
 							continue;
 						Instruction.Goto go = new Instruction.Goto(nearestDom,
-								"Goto");
+								"GotoStmt");
 						inst.insertBefore(go);
 						inst.eraseFromBasicBlock();
 					}
@@ -168,7 +168,7 @@ public class DCE
 
 	/**
 	 * Finds the first useful and nearest basic block in the post dominator of
-	 * specified Basic Block.
+	 * specified Basic CompoundStmt.
 	 *
 	 * @param BB The specified basic block.
 	 * @return The nearest and useful post dominator that dominates specified

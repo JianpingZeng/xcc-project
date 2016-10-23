@@ -62,7 +62,7 @@ public class GVN
 			BasicBlock block = blocks.get(idx);
 
 			int numPreds = block.getNumOfPreds();
-			assert numPreds > 0 : "Block must have at least one predecessor";
+			assert numPreds > 0 : "CompoundStmt must have at least one predecessor";
 
 			BasicBlock dominator = DT.getIDom(block);
 			assert dominator != null : "Dominator must exists";

@@ -402,16 +402,6 @@ public final class QualType extends Type implements Cloneable
     }
 
     /**
-     * Checks if this type is union type.
-     *
-     * @return
-     */
-    public boolean isUnionType()
-    {
-        return type.isUnionType();
-    }
-
-    /**
      * Checks if this type is enumeration type.
      *
      * @return
@@ -668,7 +658,7 @@ public final class QualType extends Type implements Cloneable
         return getVariableArrayType(newElemTy, vat.getSizeExpr());
     }
 
-    public VariableArrayType getVariableArrayType(QualType elemTy, Tree.Expr sizeExpr)
+    public VariableArrayType getVariableArrayType(QualType elemTy, Tree.ExprStmt sizeExpr)
     {
         return new VariableArrayType(elemTy, sizeExpr);
     }

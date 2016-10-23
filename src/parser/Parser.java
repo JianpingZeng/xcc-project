@@ -7,7 +7,6 @@ import ast.Tree;
 import ast.Tree.CaseStmt;
 import ast.Tree.Literal;
 import ast.Tree.VarDef;
-import ast.TreeMaker;
 import type.Type;
 import utils.Context;
 import utils.Log;
@@ -301,8 +300,8 @@ public class Parser implements ParserConstants
 	 * Handles single import statement and returns a string representing the import
 	 * statement which consists of path name relative to directory of current project.
 	 * <pre>
-	 * import_statement::= IMPORT name SEMICOLON
-	 * 						| IMPORT name DOT MULT SEMICOLON
+	 * import_statement::= ImportStmtClass name SEMICOLON
+	 * 						| ImportStmtClass name DOT MULT SEMICOLON
 	 *
 	 * name	::=	simple_name
 	 * 	|	qualified_name
