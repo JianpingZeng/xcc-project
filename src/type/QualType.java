@@ -1,7 +1,6 @@
 package type;
 
 import ast.Tree;
-import com.sun.org.apache.bcel.internal.generic.NEW;
 import sema.APInt;
 import sema.Decl;
 import sema.Decl.RecordDecl;
@@ -22,7 +21,6 @@ public final class QualType extends Type implements Cloneable
     public static final int RESTRICT_QUALIFIER = 0x4;
     private static final int MASK =
             CONST_QUALIFIER | VOLATILE_QUALIFIER | RESTRICT_QUALIFIER;
-
 
     public static class Qualifier
     {
@@ -439,9 +437,9 @@ public final class QualType extends Type implements Cloneable
         return type.isAllocatedArray();
     }
 
-    public boolean isIncompleteArray()
+    public boolean isIncompleteArrayArray()
     {
-        return type.isIncompleteArray();
+        return type instanceof IncompleteArrayType;
     }
 
     public boolean isCallable()
@@ -542,8 +540,8 @@ public final class QualType extends Type implements Cloneable
             }
             case ConstantArray:
             {
-                final ConstantArrayType lcat = getAsConstantArrayType(lhs);
-                final ConstantArrayType rcat = getAsConstantArrayType(rhs);
+                final ConstantArrayType lcat = lhs.getAsConstantArrayType();
+                final ConstantArrayType rcat = rhs.getAsConstantArrayType();
                 if (lcat != null && rcat != null && rcat.getSize().ne(lcat.getSize()))
                     return new QualType();
 
@@ -571,8 +569,8 @@ public final class QualType extends Type implements Cloneable
                 if (rcat != null)
                     return new QualType(getConstantArrayType(resultType, rcat.getSize()));
 
-                VariableArrayType lvat = getAsVariableArrayType(lhs);
-                VariableArrayType rvat = getAsVariableArrayType(rhs);
+                VariableArrayType lvat = lhs.getAsVariableArrayType();
+                VariableArrayType rvat = rhs.getAsVariableArrayType();
                 if (lvat != null && lhsElem.equals(resultType))
                     return lhs;
 
@@ -617,23 +615,23 @@ public final class QualType extends Type implements Cloneable
         return new QualType();
     }
 
-    public ConstantArrayType getAsConstantArrayType(QualType t)
+    public ConstantArrayType getAsConstantArrayType()
     {
-        ArrayType res = getAsArrayType(t);
+        ArrayType res = getAsArrayType(this);
         return (res instanceof ConstantArrayType)
                 ? (ConstantArrayType)res : null;
     }
 
-    public IncompleteArrayType getAsInompleteArrayType(QualType t)
+    public IncompleteArrayType getAsInompleteArrayType()
     {
-        ArrayType res = getAsArrayType(t);
+        ArrayType res = getAsArrayType(this);
         return (res instanceof IncompleteArrayType)
                 ? (IncompleteArrayType)res : null;
     }
 
-    public VariableArrayType getAsVariableArrayType(QualType t)
+    public VariableArrayType getAsVariableArrayType()
     {
-        ArrayType res = getAsArrayType(t);
+        ArrayType res = getAsArrayType(this);
         return (res instanceof VariableArrayType)
                 ? (VariableArrayType)res : null;
     }
@@ -890,5 +888,45 @@ public final class QualType extends Type implements Cloneable
     public boolean isIncompleteOrObjectType()
     {
         return !isFunctionType();
+    }
+
+    public static QualType getBaseElementType(QualType type)
+    {
+        Qualifier qs = new Qualifier();
+        while (true)
+        {
+            if (!type.isArrayType())
+                break;
+
+            type = type.getAsArrayType(type).getElemType();
+            qs.addCVQualifier(type.qualsFlag.mask);
+        }
+        return getQualifiedType(type, qs);
+    }
+
+    /**
+     * A generic method for casting a type instance to target type.
+     * If casting failed, return null, otherwise, return the instance
+     * type required type.
+     * @param <T>
+     * @return
+     */
+    public <T extends Type> T getAs()
+    {
+        return QualType.convertInstanceOfObject(this, getClass());
+    }
+
+    public static  <T extends Type> T convertInstanceOfObject(
+            Object o,
+            Class<? extends Type> clazz)
+    {
+        try
+        {
+            return (T) clazz.cast(o);
+        }
+        catch (ClassCastException e)
+        {
+            return null;
+        }
     }
 }

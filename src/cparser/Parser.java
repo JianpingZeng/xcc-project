@@ -1661,23 +1661,23 @@ public class Parser implements Tag
         {
             // eat the '='.
             consumeToken();
+            // Parses the initializer expression after than '='.
             ActionResult<Expr> init = parseInitializer();
             if (init.isInvalid())
             {
                 skipUntil(COMMA, true);
-                // TODO Actions.ActOnInitializerError(ThisDecl);
+                action.actOnInitializerError(thisDecl);
             }
             else
             {
-                // TODO Actions.AddInitializerToDecl(ThisDecl, Init.take(),
-                // /*DirectInit=*/false);
+                action.addInitializerToDecl(thisDecl, init.get(),
+                /*DirectInit=*/false);
             }
         }
         else
         {
-            // TODO Actions.AddUninitializerToDecl(ThisDecl, Init.take(),
+            action.actOnUninitializedDecl(thisDecl);
         }
-        action.actOnUninitializedDecl(thisDecl);
         return thisDecl;
     }
 
@@ -1765,7 +1765,8 @@ public class Parser implements Tag
 
     private ActionResult<Expr> parseBraceInitializer()
     {
-        ActionResult<Expr> lhs = parseCastExpression(/*isUnaryExpression=*/false, false, false, 0);
+        ActionResult<Expr> lhs = parseCastExpression(
+                /*isUnaryExpression=*/false, false, false, 0);
         return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Assignment);
     }
 
