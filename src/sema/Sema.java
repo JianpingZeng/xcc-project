@@ -124,7 +124,7 @@ public final class Sema
 
     private Scope curScope;
     private DeclContext curContext;
-    Parser parser;
+    public final Parser parser;
     private Stack<FunctionScopeInfo> functionScopes;
     private static Context SEMA_CONTEXT = new Context();
 

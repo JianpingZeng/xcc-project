@@ -1,10 +1,7 @@
 package cparser;
 
 import ast.Tree;
-import ast.Tree.CompoundStmt;
-import ast.Tree.ExprStmt;
-import ast.Tree.InitListExpr;
-import ast.Tree.Stmt;
+import ast.Tree.*;
 import cparser.DeclSpec.DeclaratorChunk;
 import cparser.DeclSpec.FieldDeclarator;
 import cparser.DeclSpec.ParsedSpecifiers;
@@ -19,6 +16,8 @@ import sema.Sema;
 import type.QualType;
 import utils.*;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -188,10 +187,22 @@ public class Parser implements Tag
 
     private Sema action;
 
-    /**
-     * Constructs a parser from a given scanner.
-     */
-    private Parser(InputStream in, Context context, Sema action)
+    private String file;
+
+    private Parser(String file, Context context, Sema sema)
+    {
+        this.file = file;
+        try
+        {
+            init(new FileInputStream(file), context, sema);
+        }
+        catch (FileNotFoundException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void init(InputStream in, Context context, Sema action)
     {
         this.S = new Scanner(in);
         this.log = Log.instance(context);
@@ -206,6 +217,14 @@ public class Parser implements Tag
             lookAheadToken.tokens[0] = S.token;
             lookAheadToken.tokenAvail = 1;
         }
+    }
+
+    /**
+     * Constructs a parser from a given scanner.
+     */
+    private Parser(InputStream in, Context context, Sema action)
+    {
+        init(in, context, action);
     }
 
     public static Parser instance(InputStream in, Context context, Sema action)
