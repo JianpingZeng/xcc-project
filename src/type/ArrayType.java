@@ -83,7 +83,7 @@ public abstract class ArrayType extends Type
                     || getElemType().isAllocatedArray());
         }
 
-        public boolean isIncompleteArray()
+        public boolean isIncompleteArrayArray()
         {
             if (!getElemType().isArrayType())
                 return false;

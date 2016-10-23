@@ -270,11 +270,6 @@ public abstract class Type implements TypeClass
         return false;
     }
 
-    public boolean isIncompleteArray()
-    {
-        return false;
-    }
-
     public boolean isScalarType()
     {
         if (isPrimitiveType())

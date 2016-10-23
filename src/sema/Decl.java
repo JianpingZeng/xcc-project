@@ -383,6 +383,25 @@ public abstract class Decl extends DeclContext
         {
             return init;
         }
+
+        /**
+         * Determines whether if a variable has extern qualified.
+         * @return
+         */
+        public boolean hasExternalStorage()
+        {
+            return sc == StorageClass.SC_extern;
+        }
+
+        public void setInit(Expr init)
+        {
+            this.init = init;
+        }
+
+        public StorageClass getStorageClass()
+        {
+            return sc;
+        }
     }
 
     public static class ParamVarDecl extends VarDecl

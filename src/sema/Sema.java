@@ -1988,14 +1988,85 @@ public final class Sema
             VarDecl var = (VarDecl) realDecl;
             QualType type = var.getDeclType();
 
+            switch (var.isThisDeclarationADefinition())
+            {
+                case Definition:
+                {
+                    if (!var.hasInit())
+                        break;
+                    // fall through
+                }
+                case DeclarationOnly:
+                {
+
+                    // Block scope. C99 6.7p7: If an identifier for an object is
+                    // declared with no linkage (C99 6.2.2p6), the type for the
+                    // object shall be complete.
+                    if (var.isLocalVarDecl() && !var.getLinkage() && !var.isInvalidDecl()
+                            && requireCompleteType(var.getLocation(), type))
+                        var.setInvalidDecl(true);
+                    return;
+                }
+                case TentativeDefinition:
+                {
+                    // File scope. C99 6.9.2p2: A declaration of an identifier for an
+                    // object that has file scope without an initializer, and without a
+                    // storage-class specifier or with the storage-class specifier "static",
+                    // constitutes a tentative definition. Note: A tentative definition with
+                    // external linkage is valid (C99 6.2.2p5).
+                    if (!var.isInvalidDecl())
+                    {
+                        final ArrayType.IncompleteArrayType arrayT = type.getAsInompleteArrayType();
+                        if (arrayT != null)
+                        {
+                            if (requireCompleteType(var.getLocation(), arrayT.getElemType()))
+                                var.setInvalidDecl(true);
+                        }
+                        else if (var.getStorageClass() == StorageClass.SC_static)
+                        {
+                            // C99 6.9.2p3: If the declaration of an identifier for an object is
+                            // a tentative definition and has internal linkage (C99 6.2.2p3), the
+                            // declared type shall not be an incomplete type.
+                            // NOTE: code such as the following
+                            //     static struct s;
+                            //     struct s { int a; };
+                            // is accepted by gcc. Hence here we issue a warning instead of
+                            // an error and we do not invalidate the static declaration.
+                            // NOTE: to avoid multiple warnings, only check the first declaration.
+                            if (var.getPreviousDeclaration() == null)
+                                requireCompleteType(var.getLocation(), type);
+                        }
+                    }
+                    return;
+                }
+            }
+
+            // Provide a specific diagnostic for uninitialized variable
+            // definitions with incomplete array type.
+            if (type.isIncompleteArrayArray())
+            {
+                parser.syntaxError(var.getLocation(),
+                        "definition of variable with array type needs an explicit size or an initializer");
+                var.setInvalidDecl(true);
+                return;
+            }
+
+            if (var.isInvalidDecl())
+                return;
+
+            if (requireCompleteType(var.getLocation(), QualType.getBaseElementType(type)))
+            {
+                var.setInvalidDecl(true);
+                return;
+            }
         }
     }
 
     public Decl actOnDeclarator(Scope curScope, Declarator d)
     {
         d.setFunctionDefinition(false);
-        // TODO parse the declarator for initializer.
-        return null;
+
+        return handleDeclarator(curScope, d);
     }
 
     public ActionResult<Stmt> actOnExprStmt(ActionResult<Expr> expr)
@@ -2787,6 +2858,18 @@ public final class Sema
         return false;
     }
 
+    /**
+     * Ensure that the specified type is complete.
+     * <br>
+     * This routine checks whether the type {@code t} is complete in the any context
+     * where complete type is required. If {@code t} is a complete type, returns
+     * false. if failed, issues the diagnostic {@code diag} info and return true.
+     * @param loc The location in the source code where the diagnostic message
+     *            should refer.
+     * @param t The type that this routine is examining for complete.
+     * @param diag The diagnostic message.
+     * @return Return true if {@code t} is not a complete type, false otherwise.
+     */
     private boolean requireCompleteType(
             int loc,
             QualType t
@@ -2795,8 +2878,28 @@ public final class Sema
         if (!t.isIncompleteType())
             return false;
 
+        // If we have a array type with constant size, attempt to instantiate it.
+        QualType elemType = t;
+        ArrayType.ConstantArrayType array = t.getAsConstantArrayType();
+        if (array != null)
+            elemType = array.getElemType();
 
+        final TagType tag = elemType.<TagType>getAs();
+        // Avoids diagnostic invalid decls as incomplete.
+        if (tag != null && tag.getDecl().isInvalidDecl())
+            return true;
+
+        // We have an incomplete type, producing dianostic message.
+        // If the type was a forward declaration of a struct/union type
+        // produce a error.
+        if (tag != null && !tag.getDecl().isInvalidDecl())
+            parser.syntaxError(tag.getDecl().getLocation(),
+                    tag.isDefined()?"definition of %s is not complete until the closing '}'":
+                            "forward declaration of %s",
+                    new QualType(tag).toString());
+        return true;
     }
+
     private void checkArrayAccess(Expr pExpr, Expr iExpr)
     {
 
@@ -3960,5 +4063,143 @@ public final class Sema
     public void actOnEndOfTranslationUnit()
     {
 
+    }
+
+    /**
+     * Given that there was an error parsing an initializer for the given
+     * declaration. Try to return to some form of sanity.
+     * @param decl
+     */
+    public void actOnInitializerError(Decl decl)
+    {
+        if (decl == null || decl.isInvalidDecl())
+            return;
+
+        if (!(decl instanceof VarDecl))
+            return;
+        VarDecl vd = (VarDecl)decl;
+        if (vd == null)
+            return;
+
+        QualType ty = vd.getDeclType();
+        if (requireCompleteType(vd.getLocation(), QualType.getBaseElementType(ty)))
+        {
+            vd.setInvalidDecl(true);
+            return;
+        }
+    }
+
+    /**
+     * Adds the initializer {@code init} to declaration decl.
+     * If {@code directDecl} is {@code true}, this is a C++ direct initializer
+     * rather than copy initialization.
+     *
+     * @param decl
+     * @param init
+     * @param directDecl
+     */
+    public void addInitializerToDecl(Decl decl, Expr init, boolean directDecl)
+    {
+        // If there is no declaration, there was an error parsing it.
+        if (decl == null || decl.isInvalidDecl())
+            return;
+
+        // Check self-reference within variable initializer.
+        if (decl instanceof VarDecl)
+        {
+            VarDecl vd = (VarDecl) decl;
+
+            // Variables declared within a function/method body are handled
+            // by a dataflow analysis.
+            if (!vd.hasLocalStorage() && !vd.isStaticLocal())
+                checkSelfReference(decl, init);
+        }
+        else
+        {
+            checkSelfReference(decl, init);
+        }
+
+        if (!(decl instanceof VarDecl))
+        {
+            assert !(decl instanceof FieldDecl) : "field init shoudln't gt here!";
+            parser.syntaxError(decl.getLocation(),
+                    "illegal initializer (only variables can be initialized)");
+            decl.setInvalidDecl(true);
+            return;
+        }
+
+        VarDecl vd = (VarDecl) decl;
+
+        // A definition must end up with a complete type, which means it must be
+        // complete with the restriction that an array type might be completed by the
+        // initializer; note that later code assumes this restriction.
+        QualType baseDeclType = vd.getDeclType();
+        ArrayType array = baseDeclType.getAsInompleteArrayType();
+
+        if (array != null)
+        {
+            baseDeclType = array.getElemType();
+        }
+        if (requireCompleteType(vd.getLocation(), baseDeclType))
+        {
+            decl.setInvalidDecl(true);
+            return;
+        }
+        // TODO Check redefinition.
+
+        // Get the decls type and save a reference for later, since
+        // CheckInitializerTypes may change it.
+        QualType declTy = vd.getDeclType(), savedTy = declTy;
+        if (vd.isLocalVarDecl())
+        {
+            if (vd.hasExternalStorage())
+            {
+                // C99 6.7.8p5
+                parser.syntaxError(vd.getLocation(),
+                        "'extern' variable cannot have an initializer");
+                vd.setInvalidDecl(true);
+            }
+            else if(!vd.isInvalidDecl())
+            {
+                // TODO initialization sequence 2016.10.23
+            }
+        }
+        else if (vd.isFileVarDecl())
+        {
+            if (vd.hasExternalStorage() &&
+                    !QualType.getBaseElementType(vd.getDeclType()).isConstQualifed())
+            {
+                parser.syntaxWarning(vd.getLocation(), "'extern' variable has an initializer");
+            }
+            if (!vd.isInvalidDecl())
+            {
+                // TODO initialization sequence 2016.10.23
+            }
+        }
+
+        // If the type changed, it means we had an incomplete type that was
+        // completed by the initializer. For example:
+        //   int ary[] = { 1, 3, 5 };
+        // "ary" transitions from a VariableArrayType to a ConstantArrayType.
+        if (!vd.isInvalidDecl() && !declTy.equals(savedTy))
+        {
+            vd.setDeclType(declTy);
+            init.setType(declTy);
+        }
+
+        // Check any implicit conversions within the expression.
+        checkImplicitConversion(init, vd.getLocation());
+
+        vd.setInit(init);
+    }
+
+    /**
+     * Issues warning message if original variable used in initialization expression
+     * @param decl
+     * @param init
+     */
+    private void checkSelfReference(Decl decl, Expr init)
+    {
+        new SelfReferenceChecker(this, decl).visitExpr(init);
     }
 }
