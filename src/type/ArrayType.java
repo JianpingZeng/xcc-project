@@ -1,7 +1,6 @@
 package type;
 
 import ast.Tree;
-import ast.Tree.ExprStmt;
 import sema.APInt;
 
 /**
@@ -178,20 +177,20 @@ public abstract class ArrayType extends Type
         /**
          * An assignment expression, which are only permitted within function block.
          */
-        private Tree.ExprStmt sizeExpr;
+        private Tree.Expr sizeExpr;
         /**
          * Constructor with one parameter which represents the kind of type
          * for reason of comparison convenient.
          *
          * @param elemTy
          */
-        public VariableArrayType(QualType elemTy, ExprStmt sizeExpr)
+        public VariableArrayType(QualType elemTy, Tree.Expr sizeExpr)
         {
             super(VariableArray, elemTy);
             this.sizeExpr = sizeExpr;
         }
 
-        public Tree.ExprStmt getSizeExpr()
+        public Tree.Expr getSizeExpr()
         {
             return sizeExpr;
         }

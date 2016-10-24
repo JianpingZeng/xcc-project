@@ -16,40 +16,30 @@ package sema;
  * permissions and limitations under the License.
  */
 
-import ast.Tree.*;
-import utils.OutParamWrapper;
+import ast.Tree;
 
 /**
- * This class represents a implementation of evaluating whether the value of constant
- * expression is an integer. Otherwise, issue error messages if failed.
- *
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
+public class LValue
 {
-    private OutParamWrapper<APValue> result;
+    private Tree.Expr base;
+    private long offset;
 
-    public IntExprEvaluator(OutParamWrapper<APValue> result)
+    public final Tree.Expr getLValueBase() { return base;}
+
+    public long getLValueOffset() { return  offset; }
+
+    public APValue moveInto()
     {
-
+        return new APValue(base, offset);
     }
 
-    @Override
-    protected Boolean success(APValue v, Expr e)
+    public void setFrom(final APValue v)
     {
-        return false;
-    }
-
-    @Override
-    protected Boolean error(Expr expr)
-    {
-        return false;
-    }
-
-    @Override
-    protected Boolean visit(Expr expr)
-    {
-        return false;
+        assert v.isLValue();
+        base = v.getLValueBase();
+        offset= v.getLValueOffset();
     }
 }

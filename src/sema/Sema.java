@@ -475,7 +475,7 @@ public final class Sema
     }
 
     public Decl actOnField(Scope scope, Decl tagDecl, int startLoc,
-            Declarator declarator, ExprStmt bitFieldSize)
+            Declarator declarator, Expr bitFieldSize)
     {
         return null;
     }
@@ -486,7 +486,7 @@ public final class Sema
         return null;
     }
 
-    public ActionResult<ExprStmt> actOnNumericConstant(Token token)
+    public ActionResult<Expr> actOnNumericConstant(Token token)
     {
         assert token != null
                 && (token.tag == Tag.INTLITERAL
@@ -750,7 +750,7 @@ public final class Sema
     public Decl actOnEnumConstant(Scope scope, Decl enumConstDecl,
             Decl lastConstEnumDecl, int identLoc, String name,
             int equalLoc,
-            ExprStmt val)
+            Expr val)
     {
         EnumDecl theEnumDecl = (EnumDecl) enumConstDecl;
         EnumConstantDecl lastEnumConst = (EnumConstantDecl) lastConstEnumDecl;
@@ -1325,7 +1325,7 @@ public final class Sema
         return new ActionResult<Stmt>(s);
     }
 
-    public ActionResult<Stmt> actOnCaseStmt(int caseLoc, ExprStmt expr,
+    public ActionResult<Stmt> actOnCaseStmt(int caseLoc, Expr expr,
             int colonLoc)
     {
         assert expr != null : "missing expression within case statement";
@@ -1335,7 +1335,7 @@ public final class Sema
         return new ActionResult<>(new CaseStmt(expr, null, caseLoc, colonLoc));
     }
 
-    private boolean verifyIntegerConstantExpression(ExprStmt expr)
+    private boolean verifyIntegerConstantExpression(Expr expr)
     {
         return false;
     }
@@ -1370,7 +1370,7 @@ public final class Sema
     }
 
     public ActionResult<Stmt> actOnIfStmt(int ifLoc,
-            ActionResult<ExprStmt> condExpr, Stmt thenStmt, Stmt elseStmt)
+            ActionResult<Expr> condExpr, Stmt thenStmt, Stmt elseStmt)
     {
         if (condExpr.get() == null)
             return stmtError();
@@ -1385,8 +1385,8 @@ public final class Sema
      * @param expr
      * @return
      */
-    private ActionResult<ExprStmt> convertToIntegerOrEnumerationType(int switchLoc,
-            ExprStmt expr)
+    private ActionResult<Expr> convertToIntegerOrEnumerationType(int switchLoc,
+            Expr expr)
     {
         QualType t = expr.getType();
         // if the subExpr already is a integral or enumeration type, we got it.
@@ -1404,7 +1404,7 @@ public final class Sema
      * Return the result of converting EXP.  For any other expression, just
      * return EXP after removing NOPs.
      */
-    private ActionResult<ExprStmt> defaultFunctionArrayConversion(ExprStmt expr)
+    private ActionResult<Expr> defaultFunctionArrayConversion(Expr expr)
     {
         QualType ty = expr.getType();
         assert !ty.isNull() : "DefaultFunctionArrayConversion - missing type.";
@@ -1433,9 +1433,9 @@ public final class Sema
      * @param expr
      * @return
      */
-    private ActionResult<ExprStmt> usualUnaryConversion(ExprStmt expr)
+    private ActionResult<Expr> usualUnaryConversion(Expr expr)
     {
-        ActionResult<ExprStmt> res = defaultFunctionArrayConversion(expr);
+        ActionResult<Expr> res = defaultFunctionArrayConversion(expr);
         if (res.isInvalid())
             return new ActionResult<>(expr);
         expr = res.get();
@@ -1475,8 +1475,8 @@ public final class Sema
      * @param kind The kind of type cast.
      * @return The result expression have be implicitly casted.
      */
-    private ActionResult<ExprStmt> implicitCastExprToType(
-            ExprStmt expr, QualType ty,
+    private ActionResult<Expr> implicitCastExprToType(
+            Expr expr, QualType ty,
             ExprValueKind valueKind, CastKind kind)
     {
         QualType exprTy = expr.getType();
@@ -1498,11 +1498,11 @@ public final class Sema
     }
 
     public ActionResult<Stmt> actOnStartOfSwitchStmt(int switchLoc,
-            ExprStmt condExpr)
+            Expr condExpr)
     {
         if (condExpr == null)
             return stmtError();
-        ActionResult<ExprStmt> condResult = convertToIntegerOrEnumerationType(
+        ActionResult<Expr> condResult = convertToIntegerOrEnumerationType(
                 switchLoc, condExpr);
         if (condResult.isInvalid())
         {
@@ -1547,12 +1547,12 @@ public final class Sema
         ss.setBody(body);
         getCurFunction().switchStack.pop();
 
-        ExprStmt condExpr = ss.getCond();
+        Expr condExpr = ss.getCond();
         if (condExpr == null)
             return stmtError();
 
         QualType condType = condExpr.getType();
-        ExprStmt condExprBeforePromotion = condExpr;
+        Expr condExprBeforePromotion = condExpr;
         QualType condTypeBeforePromotion = getTypeBeforeIntegralPromotion(
                 condExprBeforePromotion);
 
@@ -1590,7 +1590,7 @@ public final class Sema
                 // We already verified that expression has a i-c-e value
                 // (C99 6.8.4.2p3) - get that value now.
                 CaseStmt cs = (CaseStmt) sc;
-                ExprStmt lo = cs.getCondExpr();
+                Expr lo = cs.getCondExpr();
                 APSInt loVal = lo.evaluateKownConstInt();
                 convertIntegerToTypeWarnOnOverflow(loVal, condWidth,
                         condIsSigned, lo.getLocation(),
@@ -1615,7 +1615,7 @@ public final class Sema
             boolean shouldCheckConstantCond = false;
             if (prevDefaultStmt == null)
             {
-                ExprStmt.EvalResult result = condExprBeforePromotion.evaluate();
+                Expr.EvalResult result = condExprBeforePromotion.evaluate();
                 hasConstantCond = result != null;
                 if (hasConstantCond)
                 {
@@ -1807,7 +1807,7 @@ public final class Sema
      * @param expr
      * @return
      */
-    private QualType getTypeBeforeIntegralPromotion(ExprStmt expr)
+    private QualType getTypeBeforeIntegralPromotion(Expr expr)
     {
         while (expr instanceof ImplicitCastExpr)
         {
@@ -1819,7 +1819,7 @@ public final class Sema
         return expr.getType();
     }
 
-    public ActionResult<Stmt> actOnWhileStmt(int whileLoc, ExprStmt cond, Stmt body)
+    public ActionResult<Stmt> actOnWhileStmt(int whileLoc, Expr cond, Stmt body)
     {
         if (cond == null)
             return stmtError();
@@ -1827,9 +1827,9 @@ public final class Sema
         return new ActionResult<>(new WhileStmt(cond, body, whileLoc));
     }
 
-    private ActionResult<ExprStmt> checkBooleanCondition(ExprStmt cond, int loc)
+    private ActionResult<Expr> checkBooleanCondition(Expr cond, int loc)
     {
-        ActionResult<ExprStmt> result;
+        ActionResult<Expr> result;
         result = defaultFunctionArrayConversion(cond);
         if (result.isInvalid())
             return exprError();
@@ -1855,17 +1855,17 @@ public final class Sema
      * @param expr The expression to be evaluated.
      * @param loc  The location associated with the condition.
      */
-    private void checkImplicitConversion(ExprStmt expr, int loc)
+    private void checkImplicitConversion(Expr expr, int loc)
     {
 
     }
 
     public ActionResult<Stmt> actOnDoStmt(int doLoc, Stmt body, int whileLoc,
-            int lParenLoc, ExprStmt cond, int rParenLoc)
+            int lParenLoc, Expr cond, int rParenLoc)
     {
         assert cond != null : "ActOnDoStmt(): missing expression";
 
-        ActionResult<ExprStmt> condResult = checkBooleanCondition(cond, doLoc);
+        ActionResult<Expr> condResult = checkBooleanCondition(cond, doLoc);
         if (condResult.isInvalid())
             return stmtError();
         cond = condResult.get();
@@ -2069,9 +2069,9 @@ public final class Sema
         return handleDeclarator(curScope, d);
     }
 
-    public ActionResult<Stmt> actOnExprStmt(ActionResult<ExprStmt> expr)
+    public ActionResult<Stmt> actOnExprStmt(ActionResult<Expr> expr)
     {
-        ExprStmt e = expr.get();
+        Expr e = expr.get();
         if (e == null)
             return stmtError();
 
@@ -2081,8 +2081,8 @@ public final class Sema
         return new ActionResult<>(e);
     }
 
-    public ActionResult<ExprStmt> actOnBooleanCondition(Scope scope, int loc,
-            ExprStmt expr)
+    public ActionResult<Expr> actOnBooleanCondition(Scope scope, int loc,
+            Expr expr)
     {
         if (expr == null)
             return exprError();
@@ -2091,7 +2091,7 @@ public final class Sema
     }
 
     public ActionResult<Stmt> actOnForStmt(int forLoc, int lParenLoc,
-            Stmt firstPart, ExprStmt secondPart, ExprStmt thirdPart, int rParenLoc,
+            Stmt firstPart, Expr secondPart, Expr thirdPart, int rParenLoc,
             Stmt body)
     {
         if (firstPart instanceof DeclStmt || firstPart == null)
@@ -2174,7 +2174,7 @@ public final class Sema
         return (FunctionDecl) dc;
     }
 
-    public ActionResult<Stmt> actOnReturnStmt(int returnLoc, ExprStmt e)
+    public ActionResult<Stmt> actOnReturnStmt(int returnLoc, Expr e)
     {
         final FunctionDecl fd = getCurFunctionDecl();
         QualType retType;
@@ -2201,7 +2201,7 @@ public final class Sema
                     diag = "void function should not return void expression";
                 else
                 {
-                    ActionResult<ExprStmt> result = new ActionResult<>(e);
+                    ActionResult<Expr> result = new ActionResult<>(e);
                     result = ignoreValueConversion(e);
                     if (result.isInvalid())
                         return stmtError();
@@ -2236,7 +2236,7 @@ public final class Sema
         {
             if (declaredRetType != retType)
             {
-                ActionResult<ExprStmt> result = performImplicitConversion(e,
+                ActionResult<Expr> result = performImplicitConversion(e,
                         declaredRetType);
                 if (result.isInvalid())
                     return stmtError();
@@ -2250,8 +2250,8 @@ public final class Sema
         return new ActionResult<>(res);
     }
 
-    private ActionResult<ExprStmt> performImplicitConversion(
-            ExprStmt from,
+    private ActionResult<Expr> performImplicitConversion(
+            Expr from,
             QualType toType)
     {
         QualType srcFrom = from.getType();
@@ -2293,12 +2293,12 @@ public final class Sema
      * @param retType
      * @param returnLoc
      */
-    private void checkReturnStackAddress(ExprStmt retValExpr, QualType retType,
+    private void checkReturnStackAddress(Expr retValExpr, QualType retType,
             int returnLoc)
     {
     }
 
-    private ActionResult<ExprStmt> ignoreValueConversion(ExprStmt e)
+    private ActionResult<Expr> ignoreValueConversion(Expr e)
     {
         if (e.isRValue())
         {
@@ -2320,7 +2320,7 @@ public final class Sema
      * @param expr
      * @return
      */
-    public boolean checkCaseExpression(ExprStmt expr)
+    public boolean checkCaseExpression(Expr expr)
     {
         return expr.getType().isIntegralOrEnumerationType();
     }
@@ -2329,8 +2329,8 @@ public final class Sema
      * Binary Operators.  'Tok' is the token for the operator.
      * @return
      */
-    public ActionResult<ExprStmt> actOnBinOp(int tokLoc,
-            int tokenKind, ExprStmt lhs, ExprStmt rhs)
+    public ActionResult<Expr> actOnBinOp(int tokLoc,
+            int tokenKind, Expr lhs, Expr rhs)
     {
         BinaryOperatorKind operatorKind = convertTokenKindToBinaryOpcode(tokenKind);
         assert lhs!= null:"actOnBinOp(): missing lhs!";
@@ -2351,14 +2351,14 @@ public final class Sema
      * @param rhs
      * @return
      */
-    public ActionResult<ExprStmt> buildBinOp(
+    public ActionResult<Expr> buildBinOp(
             int opLoc,
             BinaryOperatorKind opc,
-            ExprStmt lhs,
-            ExprStmt rhs)
+            Expr lhs,
+            Expr rhs)
     {
-        ActionResult<ExprStmt> lhsExpr = new ActionResult<>(lhs);
-        ActionResult<ExprStmt> rhsExpr = new ActionResult<>(rhs);
+        ActionResult<Expr> lhsExpr = new ActionResult<>(lhs);
+        ActionResult<Expr> rhsExpr = new ActionResult<>(rhs);
 
         // Result type of binary operator.
         QualType resultTy = new QualType();
@@ -2499,14 +2499,14 @@ public final class Sema
      * conditional expression.
      * @return
      */
-    public ActionResult<ExprStmt> actOnConditionalOp(
+    public ActionResult<Expr> actOnConditionalOp(
             int quesLoc,
             int colonLoc,
-            ExprStmt condExpr,
-            ExprStmt lhsExpr,
-            ExprStmt rhsExpr)
+            Expr condExpr,
+            Expr lhsExpr,
+            Expr rhsExpr)
     {
-        ExprStmt commonExpr;
+        Expr commonExpr;
         if (lhsExpr == null)
         {
             commonExpr = condExpr;
@@ -2514,7 +2514,7 @@ public final class Sema
             if (commonExpr.getValuekind() == rhsExpr.getValuekind()
                     && commonExpr.getType().isSameType(rhsExpr.getType()))
             {
-                ActionResult<ExprStmt> commonRes = usualUnaryConversion(commonExpr);
+                ActionResult<Expr> commonRes = usualUnaryConversion(commonExpr);
                 if (commonRes.isInvalid())
                     return exprError();
                 commonExpr = commonRes.get();
@@ -2523,9 +2523,9 @@ public final class Sema
             lhsExpr = condExpr = commonExpr;
         }
 
-        ActionResult<ExprStmt> cond = new ActionResult<>(condExpr);
-        ActionResult<ExprStmt> lhs = new ActionResult<>(lhsExpr);
-        ActionResult<ExprStmt> rhs = new ActionResult<>(rhsExpr);
+        ActionResult<Expr> cond = new ActionResult<>(condExpr);
+        ActionResult<Expr> lhs = new ActionResult<>(lhsExpr);
+        ActionResult<Expr> rhs = new ActionResult<>(rhsExpr);
 
         QualType result = checkConditionalOperands(cond, lhs, rhs, EVK_RValue, quesLoc);
         if (result.isNull() || cond.isInvalid() && lhs.isInvalid() || rhs.isInvalid())
@@ -2550,9 +2550,9 @@ public final class Sema
      * @return
      */
     private QualType checkConditionalOperands(
-            ActionResult<ExprStmt> cond,
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> cond,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             ExprValueKind kind,
             int quesLoc)
     {
@@ -2568,8 +2568,8 @@ public final class Sema
      * @return
      */
     private QualType checkAssignmentOperands(
-            ExprStmt lhs,
-            ActionResult<ExprStmt> rhs,
+            Expr lhs,
+            ActionResult<Expr> rhs,
             int loc,
             QualType compoundType
             )
@@ -2578,8 +2578,8 @@ public final class Sema
     }
 
     private QualType checkMultiplyDivideOperands(
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             boolean isCompAssign,
             boolean isDiv)
@@ -2607,8 +2607,8 @@ public final class Sema
 
     private QualType invalidOperands(
             int loc,
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs)
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs)
     {
         parser.syntaxError(loc,
                 "invalid operands to binary expression (%s and %s)",
@@ -2625,8 +2625,8 @@ public final class Sema
      * @return
      */
     private QualType usualArithmeticConversions(
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             boolean isCompAssign)
     {
         if (!isCompAssign)
@@ -2684,8 +2684,8 @@ public final class Sema
     }
 
     private QualType checkRemainderOperands(
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             boolean isCompAssign)
     {
@@ -2704,8 +2704,8 @@ public final class Sema
         return compType;
     }
 
-    private QualType checkAdditionOperands(ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+    private QualType checkAdditionOperands(ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             OutParamWrapper<QualType> compLHSTy)
     {
@@ -2722,7 +2722,7 @@ public final class Sema
         }
 
         // Put any potential pointer into pExpr.
-        ExprStmt pExp = lhs.get(), iExp = rhs.get();
+        Expr pExp = lhs.get(), iExp = rhs.get();
         if (iExp.getType().isPointerType())
             Util.swap(pExp, iExp);
 
@@ -2751,15 +2751,15 @@ public final class Sema
         return pExp.getType();
     }
 
-    private QualType checkAdditionOperands(ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+    private QualType checkAdditionOperands(ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc)
     {
         return checkAdditionOperands(lhs, rhs, opLoc, null);
     }
 
     private boolean checkArithmeticOpPointerOperand(
-            int loc, ExprStmt lhs, ExprStmt rhs)
+            int loc, Expr lhs, Expr rhs)
     {
         boolean isLHSPointer = lhs.getType().isPointerType();
         boolean isRHSPointer = rhs.getType().isPointerType();
@@ -2797,7 +2797,7 @@ public final class Sema
     }
 
     private boolean checkArithmeticOpPointerOperand(
-            int loc, ExprStmt operand)
+            int loc, Expr operand)
     {
         if (!operand.getType().isPointerType())
             return true;
@@ -2819,24 +2819,24 @@ public final class Sema
         return !checkArithmeticIncompletePointerType(loc, operand);
     }
 
-    private void diagnoseArithmeticOnVoidPointer(int loc, ExprStmt expr)
+    private void diagnoseArithmeticOnVoidPointer(int loc, Expr expr)
     {
         parser.syntaxError(loc, "arithmetic on a pointer to void a GNU extension");
     }
 
-    private void diagnoseArithmeticOnTwoVoidPointers(int loc, ExprStmt lhs, ExprStmt rhs)
+    private void diagnoseArithmeticOnTwoVoidPointers(int loc, Expr lhs, Expr rhs)
     {
         parser.syntaxError(loc, "arithmetic on a pointer to void a GNU extension");
     }
 
-    private void diagnoseArithmeticOnFunctionPointer(int loc, ExprStmt operand)
+    private void diagnoseArithmeticOnFunctionPointer(int loc, Expr operand)
     {
         parser.syntaxError(loc,
                 "arithmetic on a pointer to the function type '%s' is a GNU extension",
                 operand.getType().getPointee().toString());
     }
 
-    private void diagnoseArithmeticOnTwoFunctionPointers(int loc, ExprStmt lhs, ExprStmt rhs)
+    private void diagnoseArithmeticOnTwoFunctionPointers(int loc, Expr lhs, Expr rhs)
     {
         parser.syntaxError(loc,
                 "arithmetic on a pointer to the function type '%s' is a GNU extension",
@@ -2847,7 +2847,7 @@ public final class Sema
      *  Emit error if Operand is incomplete pointer type.
      * @return
      */
-    private boolean checkArithmeticIncompletePointerType(int loc, ExprStmt op)
+    private boolean checkArithmeticIncompletePointerType(int loc, Expr op)
     {
         if (op.getType().isPointerType())
         {
@@ -2900,25 +2900,25 @@ public final class Sema
         return true;
     }
 
-    private void checkArrayAccess(ExprStmt pExpr, ExprStmt iExpr)
+    private void checkArrayAccess(Expr pExpr, Expr iExpr)
     {
 
     }
 
-    private void checkArrayAccess(final ExprStmt e)
+    private void checkArrayAccess(final Expr e)
     {
 
     }
 
-    private QualType checkSubtractionOperands(ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+    private QualType checkSubtractionOperands(ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc)
     {
         return checkSubtractionOperands(lhs, rhs, opLoc, null);
     }
 
-    private QualType checkSubtractionOperands(ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+    private QualType checkSubtractionOperands(ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             OutParamWrapper<QualType> compLHSTy)
     {
@@ -2945,7 +2945,7 @@ public final class Sema
                 if (!checkArithmeticOpPointerOperand(opLoc, lhs.get()))
                     return new QualType();
 
-                ExprStmt iExpr = rhs.get().ignoreParenCasts();
+                Expr iExpr = rhs.get().ignoreParenCasts();
                 UnaryExpr negRex = new UnaryExpr(iExpr, UO_Minus,
                         iExpr.getType(),
                         EVK_RValue,
@@ -2982,7 +2982,7 @@ public final class Sema
         }
 
         // Put any potential pointer into pExpr.
-        ExprStmt pExp = lhs.get(), iExp = rhs.get();
+        Expr pExp = lhs.get(), iExp = rhs.get();
         if (iExp.getType().isPointerType())
             Util.swap(pExp, iExp);
 
@@ -3001,8 +3001,8 @@ public final class Sema
         return pExp.getType();
     }
 
-    private QualType checkShiftOperands(ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+    private QualType checkShiftOperands(ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             BinaryOperatorKind opc)
 
@@ -3010,8 +3010,8 @@ public final class Sema
         return checkShiftOperands(lhs, rhs, opLoc, opc, false);
     }
 
-    private QualType checkShiftOperands(ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+    private QualType checkShiftOperands(ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             BinaryOperatorKind opc,
             boolean isCompAssign)
@@ -3027,7 +3027,7 @@ public final class Sema
 
         // For the LHS, do usual unary conversions, but then reset them away
         // if this is a compound assignment.
-        ActionResult<ExprStmt> oldLHS = lhs;
+        ActionResult<Expr> oldLHS = lhs;
 
         lhs = usualUnaryConversion(lhs.get());
         if (lhs.isInvalid())
@@ -3045,8 +3045,8 @@ public final class Sema
         return lhsType;
     }
 
-    private QualType checkComparisonOperands(ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+    private QualType checkComparisonOperands(ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             BinaryOperatorKind opc,
             boolean isRelational)
@@ -3055,16 +3055,16 @@ public final class Sema
     }
 
     private QualType checkBitwiseOperands(
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc)
     {
         return checkBitwiseOperands(lhs, rhs, opLoc, false);
     }
 
     private QualType checkBitwiseOperands(
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             boolean isCompAssign
     )
@@ -3074,8 +3074,8 @@ public final class Sema
 
     @Contract(value = "_, _, _, _ -> null", pure = true)
     private QualType checkLogicalOperands(
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int opLoc,
             BinaryOperatorKind opc)
     {
@@ -3084,8 +3084,8 @@ public final class Sema
 
     @Contract(value = "_, _, _ -> null", pure = true)
     private QualType checkCommaOperands(
-            ActionResult<ExprStmt> lhs,
-            ActionResult<ExprStmt> rhs,
+            ActionResult<Expr> lhs,
+            ActionResult<Expr> rhs,
             int loc)
     {
         return null;
@@ -3132,7 +3132,7 @@ public final class Sema
         return opc;
     }
 
-    public ActionResult<ExprStmt> actOnCharacterConstant(Token tok)
+    public ActionResult<Expr> actOnCharacterConstant(Token tok)
     {
         assert tok.tag == CHARLITERAL :"Invalid character literal!";
         CharLiteral ch = (CharLiteral)tok;
@@ -3144,7 +3144,7 @@ public final class Sema
                 ch.loc));
     }
 
-    public ActionResult<ExprStmt> actOnStringLiteral(Token.StringLiteral str)
+    public ActionResult<Expr> actOnStringLiteral(Token.StringLiteral str)
     {
         String s = str.getValue();
         assert s!= null && s.length() > 0:"Must have at least one string!";
@@ -3188,10 +3188,10 @@ public final class Sema
      * @param inputExpr The input expression.
      * @return
      */
-    public ActionResult<ExprStmt> actOnUnaryOp(
+    public ActionResult<Expr> actOnUnaryOp(
             int opLoc,
             int tokenKind,
-            ExprStmt inputExpr)
+            Expr inputExpr)
     {
         UnaryOperatorKind opc = convertTokenKindToUnaryOperator(tokenKind);
         return createUnaryOp(opLoc, opc, inputExpr);
@@ -3204,9 +3204,9 @@ public final class Sema
      * @param opLoc
      * @return
      */
-    private QualType checkIndirectOperand(ExprStmt op, OutParamWrapper<ExprValueKind> vk, int opLoc)
+    private QualType checkIndirectOperand(Expr op, OutParamWrapper<ExprValueKind> vk, int opLoc)
     {
-        ActionResult<ExprStmt> convRes = usualUnaryConversion(op);
+        ActionResult<Expr> convRes = usualUnaryConversion(op);
         if (convRes.isInvalid())
             return new QualType();
         op = convRes.get();
@@ -3239,7 +3239,7 @@ public final class Sema
     }
 
     private QualType checkInrementDecrementOperand(
-            ExprStmt op,
+            Expr op,
             OutParamWrapper<ExprValueKind> vk,
             int opLoc,
             boolean isIncre,
@@ -3300,7 +3300,7 @@ public final class Sema
      * @param oploc
      * @return
      */
-    private boolean checkForModifiableLvalue(ExprStmt e, int oploc)
+    private boolean checkForModifiableLvalue(Expr e, int oploc)
     {
         // C99 6.3.2.1: an lvalue that does not have array type,
         // does not have an incomplete type, does not have a const-qualified type,
@@ -3334,10 +3334,10 @@ public final class Sema
      * @param opLoc
      * @return
      */
-    private QualType checkAddressOfOperand(ExprStmt origOp, int opLoc)
+    private QualType checkAddressOfOperand(Expr origOp, int opLoc)
     {
         // Make sure to ignore parentheses in subsequnet checks
-        ExprStmt op = origOp.ignoreParens();
+        Expr op = origOp.ignoreParens();
 
         // Implement C99-only parts of addressof rules.
         if (op instanceof UnaryExpr)
@@ -3364,26 +3364,26 @@ public final class Sema
         return null;
     }
 
-    public ActionResult<ExprStmt> actOnCastExpr(
+    public ActionResult<Expr> actOnCastExpr(
             Scope s,
             int lParenLoc,
             Declarator d,
             OutParamWrapper<QualType> castTy,
             OutParamWrapper<Integer> rPrenLoc,
-            ExprStmt expr
+            Expr expr
             )
     {
         // TODO
         return null;
     }
 
-    public ActionResult<ExprStmt> actOnParenOrParenList
-            (int lParenLoc, int rParenLoc, ArrayList<ExprStmt> exprs)
+    public ActionResult<Expr> actOnParenOrParenList
+            (int lParenLoc, int rParenLoc, ArrayList<Expr> exprs)
     {
         assert exprs!=null&& !exprs.isEmpty()
                 : "actOnParenOrParenList missing expression list!";
 
-        ExprStmt res = null;
+        Expr res = null;
         int size = exprs.size();
         if (size == 1)
             res = new ParenExpr(exprs.get(0), lParenLoc, rParenLoc);
@@ -3394,26 +3394,26 @@ public final class Sema
 
     }
 
-    public ActionResult<ExprStmt> actOnParenExpr
-            (int lParenLoc, int rParenLoc, ExprStmt expr)
+    public ActionResult<Expr> actOnParenExpr
+            (int lParenLoc, int rParenLoc, Expr expr)
     {
         assert expr != null:"actOnParenExpr() missing expression.";
 
         return new ActionResult<>(new ParenExpr(expr, lParenLoc,rParenLoc));
     }
 
-    public ActionResult<ExprStmt> actOnArraySubscriptExpr(
-            ExprStmt base, int lParenLoc,
-            ExprStmt idx, int rParenLoc)
+    public ActionResult<Expr> actOnArraySubscriptExpr(
+            Expr base, int lParenLoc,
+            Expr idx, int rParenLoc)
     {
         // Since this might be a postfix expression, get rid of ParenListExprs.
-        ActionResult<ExprStmt> res = maybeConvertParenListExprToParenExpr(base);
+        ActionResult<Expr> res = maybeConvertParenListExprToParenExpr(base);
 
         if (res.isInvalid()) return exprError();
         base = res.get();
 
-        ExprStmt lhsExpr = base;
-        ExprStmt rhsExpr = idx;
+        Expr lhsExpr = base;
+        Expr rhsExpr = idx;
 
         // perform default conversion
         res = defaultFunctionArrayConversion(lhsExpr);
@@ -3431,7 +3431,7 @@ public final class Sema
         // to the expression *((e1)+(e2)). This means the array "Base" may actually be
         // in the subscript position. As a result, we need to derive the array base
         // and index from the expression types.
-        ExprStmt baseExpr, idxExpr;
+        Expr baseExpr, idxExpr;
         QualType resultTy;
         if (lhsTy.isPointerType())
         {
@@ -3517,14 +3517,14 @@ public final class Sema
         return new ActionResult<>(new ArraySubscriptExpr(lhsExpr, rhsExpr, resultTy, vk, rParenLoc));
     }
 
-    private ActionResult<ExprStmt> maybeConvertParenListExprToParenExpr(
-            ExprStmt e)
+    private ActionResult<Expr> maybeConvertParenListExprToParenExpr(
+            Expr e)
     {
         ParenListExpr ex = (ParenListExpr)e;
         if (ex == null)
             return new ActionResult<>(e);
 
-        ActionResult<ExprStmt> res = new ActionResult<>(ex.getExpr(0));
+        ActionResult<Expr> res = new ActionResult<>(ex.getExpr(0));
         for (int i = 0, size = ex.getNumExprs();!res.isInvalid()&&i < size; ++i)
             res = actOnBinOp(ex.getExprLoc(), Token.COMMA, res.get(), ex.getExpr(i));
 
@@ -3541,20 +3541,20 @@ public final class Sema
      * @param rParenLoc
      * @return
      */
-    public ActionResult<ExprStmt> actOnCallExpr(
-            ExprStmt fn,
+    public ActionResult<Expr> actOnCallExpr(
+            Expr fn,
             int lParenLoc,
-            ArrayList<ExprStmt> args,
+            ArrayList<Expr> args,
             int rParenLoc
             )
     {
-        ActionResult<ExprStmt> result = maybeConvertParenListExprToParenExpr(fn);
+        ActionResult<Expr> result = maybeConvertParenListExprToParenExpr(fn);
         if (result.isInvalid()) return exprError();
         fn = result.get();
 
         // Only the direct calling a function will be handled.
         // get the appropriate declaration of function.
-        ExprStmt nakedFn = fn.ignoreParens();
+        Expr nakedFn = fn.ignoreParens();
         NamedDecl namedDecl = null;
         if (nakedFn instanceof UnaryExpr)
         {
@@ -3583,11 +3583,11 @@ public final class Sema
      * @param rParenLoc
      * @return
      */
-    private ActionResult<ExprStmt> buildResolvedCallExpr(ExprStmt fn, NamedDecl ndecl,
-            int lParenLoc, ArrayList<ExprStmt> args, int rParenLoc)
+    private ActionResult<Expr> buildResolvedCallExpr(Expr fn, NamedDecl ndecl,
+            int lParenLoc, ArrayList<Expr> args, int rParenLoc)
     {
         FunctionDecl fnDecl = (FunctionDecl)ndecl;
-        ActionResult<ExprStmt> res = usualUnaryConversion(fn);
+        ActionResult<Expr> res = usualUnaryConversion(fn);
         if (res.isInvalid())
             return exprError();
 
@@ -3646,14 +3646,14 @@ public final class Sema
                 // Promote the argument (C99 6.5.2.2p6).
                 for (int i = 0, e = args.size(); i < e; i++)
                 {
-                    ExprStmt arg = args.get(i);
+                    Expr arg = args.get(i);
                     if (proto != null && i < proto.getNumbArgs())
                     {
 
                     }
                     else
                     {
-                        ActionResult<ExprStmt> argE = defaultArgumentPromotion(arg);
+                        ActionResult<Expr> argE = defaultArgumentPromotion(arg);
 
                         if (argE.isInvalid())
                             return new ActionResult<>(true);
@@ -3686,21 +3686,21 @@ public final class Sema
      *   expression->identifier
      * @return
      */
-    public ActionResult<ExprStmt> actOnMemberAccessExpr(
+    public ActionResult<Expr> actOnMemberAccessExpr(
             Scope s,
-            ExprStmt base,
+            Expr base,
             int opLoc,
             int opKind,
             String name)
     {
         boolean isArrow = opKind == SUBGT;
         // This is a postfix expression, so get rid of ParenListExprs.
-        ActionResult<ExprStmt> result = maybeConvertParenListExprToParenExpr(base);
+        ActionResult<Expr> result = maybeConvertParenListExprToParenExpr(base);
         if (result.isInvalid()) return exprError();
         base = result.get();
 
         LookupResult res = new LookupResult(this, name, opLoc, LookupMemberName);
-        ActionResult<ExprStmt> baseResult = new ActionResult<>(base);
+        ActionResult<Expr> baseResult = new ActionResult<>(base);
         OutParamWrapper<ActionResult> x = new OutParamWrapper<>(baseResult);
         result = lookupMemberExpr(res, x, isArrow, opLoc);
         baseResult = x.get();
@@ -3713,22 +3713,22 @@ public final class Sema
         return result;
     }
 
-    private ActionResult<ExprStmt> buildMemberReference(ExprStmt base,
+    private ActionResult<Expr> buildMemberReference(Expr base,
             QualType type, int opLoc, boolean isArrow,
             LookupResult res)
     {
 
     }
 
-    private ActionResult<ExprStmt> lookupMemberExpr(
+    private ActionResult<Expr> lookupMemberExpr(
             LookupResult res,
-            OutParamWrapper<ActionResult<ExprStmt>> baseExpr,
+            OutParamWrapper<ActionResult<Expr>> baseExpr,
             boolean isArrow, int opLoc)
     {
         assert baseExpr.get().get() != null:"no base expressin!";
 
         // Perform default conversions.
-         ExprStmt e = baseExpr.get().get();
+         Expr e = baseExpr.get().get();
         baseExpr.set(defaultFunctionArrayConversion(e));
 
         if (baseExpr.get().isInvalid())
@@ -3791,7 +3791,7 @@ public final class Sema
      * @param e
      * @return
      */
-    private ActionResult<ExprStmt> defaultLvalueConversion(ExprStmt e)
+    private ActionResult<Expr> defaultLvalueConversion(Expr e)
     {
         QualType t = e.getType();
         assert !t.isNull():"r-value conversion on typeless expression!";
@@ -3829,7 +3829,7 @@ public final class Sema
     }
 
 
-    public ActionResult<ExprStmt> actOnPostfixUnaryOp(int loc, int kind, ExprStmt lhs)
+    public ActionResult<Expr> actOnPostfixUnaryOp(int loc, int kind, Expr lhs)
     {
         UnaryOperatorKind opc;
         switch (kind)
@@ -3844,12 +3844,12 @@ public final class Sema
         return createUnaryOp(loc, opc, lhs);
     }
 
-    private ActionResult<ExprStmt> createUnaryOp(
+    private ActionResult<Expr> createUnaryOp(
             int opLoc,
             UnaryOperatorKind opc,
-            ExprStmt inputExpr)
+            Expr inputExpr)
     {
-        ActionResult<ExprStmt> input = new ActionResult<>(inputExpr);
+        ActionResult<Expr> input = new ActionResult<>(inputExpr);
         ExprValueKind vk = EVK_RValue;
         QualType resultTy = new QualType();
 
@@ -3940,7 +3940,7 @@ public final class Sema
         return new ActionResult<>(new UnaryExpr(input.get(), opc, resultTy, vk, opLoc));
     }
 
-    public ActionResult<ExprStmt> actOnIdExpr(
+    public ActionResult<Expr> actOnIdExpr(
             Scope s, Ident id,
             boolean b,
             boolean isAddressOfOperand,
@@ -3977,7 +3977,7 @@ public final class Sema
      * Complete semantic analysis for a reference to the given declaration.
      * @return
      */
-    private ActionResult<ExprStmt> buildDeclarationNameExpr(
+    private ActionResult<Expr> buildDeclarationNameExpr(
             LookupResult res)
     {
         NamedDecl decl = res.getFoundDecl();
@@ -4039,7 +4039,7 @@ public final class Sema
             }
         }
 
-        ExprStmt e = new DeclRefExpr(name, vd, type, vk, loc);
+        Expr e = new DeclRefExpr(name, vd, type, vk, loc);
         return new ActionResult<>(e);
     }
 
@@ -4098,7 +4098,7 @@ public final class Sema
      * @param init
      * @param directDecl
      */
-    public void addInitializerToDecl(Decl decl, ExprStmt init, boolean directDecl)
+    public void addInitializerToDecl(Decl decl, Expr init, boolean directDecl)
     {
         // If there is no declaration, there was an error parsing it.
         if (decl == null || decl.isInvalidDecl())
@@ -4198,7 +4198,7 @@ public final class Sema
      * @param decl
      * @param init
      */
-    private void checkSelfReference(Decl decl, ExprStmt init)
+    private void checkSelfReference(Decl decl, Expr init)
     {
         new SelfReferenceChecker(this, decl).visitExpr(init);
     }
