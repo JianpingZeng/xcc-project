@@ -18,7 +18,7 @@ package sema;
 
 /**
  * This class is a simple visitor for Stmt.
- * At the same, it can be used for visiting ExprStmt since expr is derived from Stmt.
+ * At the same, it can be used for visiting Expr since expr is derived from Stmt.
  * @author Xlous.zeng
  * @version 0.1
  *

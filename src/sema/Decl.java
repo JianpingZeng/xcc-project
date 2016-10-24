@@ -6,7 +6,7 @@ package sema;
  */
 
 import ast.Tree;
-import ast.Tree.ExprStmt;
+import ast.Tree.Expr;
 import ast.Tree.LabelledStmt;
 import cparser.DeclContext;
 import cparser.DeclKind;
@@ -209,7 +209,7 @@ public abstract class Decl extends DeclContext
 
     /**
      * This class is created by {@linkplain Sema#actOnField(Scope, Decl,
-     * int, Declarator, ExprStmt)}
+     * int, Declarator, Expr)}
      * to represents a member of a struct or union.
      */
     public static class FieldDecl extends DeclaratorDecl
@@ -218,13 +218,13 @@ public abstract class Decl extends DeclContext
          * It indicates the initializer of member of a struct/union or bitfield
          * expression.
          */
-        private Tree.ExprStmt init;
+        private Tree.Expr init;
         /**
          * Indicates the {@linkplain #init} is an initializer or a bitfield.
          */
         private boolean hasInit;
         FieldDecl(DeclContext context, String name, int location,
-                QualType type, ExprStmt init, boolean hasInit)
+                QualType type, Expr init, boolean hasInit)
         {
             super(FieldDecl, context, name, location, type);
             this.init = init;
@@ -238,12 +238,12 @@ public abstract class Decl extends DeclContext
          */
         public boolean isBitField() { return init != null && !hasInit; }
 
-        public ExprStmt getBitWidth() { return isBitField()? init: null; }
+        public Tree.Expr getBitWidth() { return isBitField()? init: null; }
 
         public int getBitWidthValue()
         {
             assert isBitField() :"not a bitfield";
-            ExprStmt bitWidth = getBitWidth();
+            Tree.Expr bitWidth = getBitWidth();
             return bitWidth.evaluateKnownConstInt();
         }
     }
@@ -273,7 +273,7 @@ public abstract class Decl extends DeclContext
         /**
          * The initializer for this variable.
          */
-        Tree.ExprStmt init;
+        Tree.Expr init;
 
         public VarDecl(DeclKind kind,
                 DeclContext context,
@@ -379,7 +379,7 @@ public abstract class Decl extends DeclContext
             return init!=null;
         }
 
-        public ExprStmt getInit()
+        public Tree.Expr getInit()
         {
             return init;
         }
@@ -393,7 +393,7 @@ public abstract class Decl extends DeclContext
             return sc == StorageClass.SC_extern;
         }
 
-        public void setInit(Tree.ExprStmt init)
+        public void setInit(Tree.Expr init)
         {
             this.init = init;
         }
@@ -790,10 +790,10 @@ public abstract class Decl extends DeclContext
             this.init = init;
         }
 
-        public Tree.ExprStmt getInitExpr() { return (Tree.ExprStmt)init; }
+        public Expr getInitExpr() { return (Tree.Expr)init; }
         public APSInt getInitValue() { return val; }
 
-        public void setInitExpr(ExprStmt e)
+        public void setInitExpr(Tree.Expr e)
         {
             init = e;
         }

@@ -481,10 +481,10 @@ abstract public class Tree
 	public static class DoStmt extends Stmt
 	{
 		public Stmt body;
-		public ExprStmt cond;
+		public Expr cond;
         public int doLoc, whileLoc, rParenLoc;
 
-		public DoStmt(Stmt body, ExprStmt cond, int doLoc,
+		public DoStmt(Stmt body, Expr cond, int doLoc,
                 int whileLoc, int rParenLoc)
 		{
 			super(DoStmtClass);
@@ -512,14 +512,14 @@ abstract public class Tree
 	public static class ForStmt extends Stmt
 	{
 		public Stmt init;
-		public ExprStmt cond;
-		public ExprStmt step;
+		public Expr cond;
+		public Expr step;
 		public Stmt body;
         public final int lParenLoc, rParenLoc, forLoc;
 
 		public ForStmt(int forLoc,
                 int lParenLoc,
-                Stmt init, ExprStmt cond, ExprStmt step, Stmt body,
+                Stmt init, Expr cond, Expr step, Stmt body,
                 int rParenLoc)
 		{
 			super(ForStmtClass);
@@ -543,10 +543,10 @@ abstract public class Tree
 	 */
 	public static class WhileStmt extends Stmt
 	{
-		public ExprStmt cond;
+		public Expr cond;
 		public Stmt body;
         public int whileLoc;
-		public WhileStmt(ExprStmt cond, Stmt body, int whileLoc)
+		public WhileStmt(Expr cond, Stmt body, int whileLoc)
 		{
 			super(WhileStmtClass);
 			this.cond = cond;
@@ -590,11 +590,11 @@ abstract public class Tree
 	 */
 	public static class IfStmt extends Stmt
 	{
-		public ExprStmt cond;
+		public Expr cond;
 		public Stmt thenpart;
 		public Stmt elsepart;
         public final int ifLoc;
-		public IfStmt(ExprStmt cond, Stmt thenpart, Stmt elsepart, int ifLoc)
+		public IfStmt(Expr cond, Stmt thenpart, Stmt elsepart, int ifLoc)
 		{
 			super(IfStmtClass);
 			this.cond = cond;
@@ -614,7 +614,7 @@ abstract public class Tree
 	 */
 	public static class SwitchStmt extends Stmt
 	{
-		private ExprStmt cond;
+		private Expr cond;
 		private CaseStmt firstCase;
         private Stmt body;
         private int switchLoc;
@@ -624,7 +624,7 @@ abstract public class Tree
          */
         private boolean allEnumCasesCovered;
 
-		public SwitchStmt(ExprStmt cond, int switchLoc)
+		public SwitchStmt(Expr cond, int switchLoc)
 		{
 			super(SwitchStmtClass);
             this.cond = cond;
@@ -636,7 +636,7 @@ abstract public class Tree
             this.body = body;
         }
 
-        public ExprStmt getCond()
+        public Expr getCond()
         {
             return cond;
         }
@@ -683,12 +683,12 @@ abstract public class Tree
 	 */
 	public static class CaseStmt extends SwitchCase
     {
-        public ExprStmt value;
+        public Expr value;
         public Stmt subStmt;
         public final int caseLoc;
         public final int colonLoc;
 
-        public CaseStmt(ExprStmt value, Stmt caseBody, int caseLoc, int colonLoc)
+        public CaseStmt(Expr value, Stmt caseBody, int caseLoc, int colonLoc)
         {
             super(CaseStmtClass);
             this.value = value;
@@ -721,12 +721,12 @@ abstract public class Tree
                 return null;
         }
 
-        public ExprStmt getCondExpr()
+        public Expr getCondExpr()
         {
             return value;
         }
 
-        public void setCondExpr(ExprStmt val)
+        public void setCondExpr(Expr val)
         {
             value = val;
         }
@@ -832,9 +832,9 @@ abstract public class Tree
 	 */
 	public static class ReturnStmt extends Stmt
 	{
-		public ExprStmt expr;
+		public Expr expr;
         public final int returnloc;
-		public ReturnStmt(int returnloc, ExprStmt expr)
+		public ReturnStmt(int returnloc, Expr expr)
 		{
 			super(ReturnStmtClass);
             this.returnloc = returnloc;
@@ -866,17 +866,17 @@ abstract public class Tree
         EVK_LValue
     }
     /**
-     * This class represents an expression. Note that{@linkplain, ExprStmt} is the
+     * This class represents an expression. Note that{@linkplain, Expr} is the
      * subclass of {@linkplain Stmt}. This allows an expression to be transparently
      * used on any scenerio where a {@linkplain Stmt} rquired.
      */
-	public abstract static class ExprStmt extends Stmt
+	public abstract static class Expr extends Stmt
     {
         private QualType type;
         private ExprValueKind valuekind;
         private int loc;
 
-        public ExprStmt(int tag, QualType type, ExprValueKind valuekind, int loc)
+        public Expr(int tag, QualType type, ExprValueKind valuekind, int loc)
         {
             super(tag);
             this.valuekind = valuekind;
@@ -884,7 +884,7 @@ abstract public class Tree
             this.loc = loc;
         }
 
-        public ExprStmt(int tag, int loc)
+        public Expr(int tag, int loc)
         {
             this(tag, null, null, loc);
         }
@@ -928,13 +928,13 @@ abstract public class Tree
 
         public FieldDecl getBitField()
         {
-            ExprStmt e = ignoreParens();
+            Expr e = ignoreParens();
             return null;
         }
 
-        public ExprStmt ignoreParens()
+        public Expr ignoreParens()
         {
-            ExprStmt e = this;
+            Expr e = this;
             while (true)
             {
                 if (e.tag == ParenExprClass)
@@ -1012,9 +1012,9 @@ abstract public class Tree
             return valuekind;
         }
 
-        public ExprStmt ignoreParensImpCasts()
+        public Expr ignoreParensImpCasts()
         {
-            ExprStmt e = this;
+            Expr e = this;
             while (true)
             {
                 if (e.tag == ParenExprClass)
@@ -1031,9 +1031,9 @@ abstract public class Tree
             }
         }
 
-        public ExprStmt ignoreParenCasts()
+        public Expr ignoreParenCasts()
         {
-            ExprStmt e = this;
+            Expr e = this;
             while (true)
             {
                 if (e.tag == ParenExprClass)
@@ -1066,7 +1066,7 @@ abstract public class Tree
             private boolean hasSideEffects;
 
             private String diag;
-            private final ExprStmt diagExpr;
+            private final Expr diagExpr;
             private int diagLoc;
 
             EvalResult()
@@ -1095,7 +1095,7 @@ abstract public class Tree
      * function name (in which case it is a function designator).
      *
      */
-    public static class DeclRefExpr extends ExprStmt
+    public static class DeclRefExpr extends Expr
     {
         private String name;
 
@@ -1152,7 +1152,7 @@ abstract public class Tree
         }
     }
 
-    public static class IntegerLiteral extends ExprStmt
+    public static class IntegerLiteral extends Expr
     {
         public final APInt val;
         public IntegerLiteral(
@@ -1174,7 +1174,7 @@ abstract public class Tree
         }
     }
 
-    public static class FloatLiteral extends ExprStmt
+    public static class FloatLiteral extends Expr
     {
         private BigDecimal val;
         public FloatLiteral(QualType type,
@@ -1201,7 +1201,7 @@ abstract public class Tree
         }
     }
 
-    public static class CharacterLiteral extends ExprStmt
+    public static class CharacterLiteral extends Expr
     {
         private char val;
         public CharacterLiteral(
@@ -1231,7 +1231,7 @@ abstract public class Tree
         }
     }
 
-    public static class StringLiteral extends ExprStmt
+    public static class StringLiteral extends Expr
     {
         public StringLiteral(
                 QualType type,
@@ -1257,12 +1257,12 @@ abstract public class Tree
      * A parenthesized subexpression, e.g. (1).
      * This AST node is only formed if full location information was requested.
      */
-    public static class ParenExpr extends ExprStmt
+    public static class ParenExpr extends Expr
     {
-        public ExprStmt subExpr;
+        public Expr subExpr;
         public int lParenLoc, rParenLoc;
 
-        public ParenExpr(ExprStmt expr, int l, int r)
+        public ParenExpr(Expr expr, int l, int r)
         {
             super(ParenExprClass, l);
             this.subExpr = expr;
@@ -1280,14 +1280,14 @@ abstract public class Tree
         }
     }
 
-    public static class ParenListExpr extends ExprStmt
+    public static class ParenListExpr extends Expr
     {
-        private ArrayList<ExprStmt> exprs;
+        private ArrayList<Expr> exprs;
         private int lParenLoc, rParenLoc;
 
         public ParenListExpr(
                 int lParenLoc,
-                ArrayList<ExprStmt> exprs,
+                ArrayList<Expr> exprs,
                 int rParenLoc,
                 QualType type)
         {
@@ -1297,7 +1297,7 @@ abstract public class Tree
             this.rParenLoc = rParenLoc;
         }
 
-        public ExprStmt getExpr(int idx)
+        public Expr getExpr(int idx)
         {
             assert idx>= 0&& idx< exprs.size();
             return exprs.get(idx);
@@ -1327,14 +1327,14 @@ abstract public class Tree
     /**
      * A type cast.
      */
-    public static abstract class CastExpr extends ExprStmt
+    public static abstract class CastExpr extends Expr
     {
-        protected ExprStmt expr;
+        protected Expr expr;
         protected CastKind castKind;
 
         public CastExpr(int tag, QualType ty,
                 ExprValueKind valueKind,
-                ExprStmt expr,
+                Expr expr,
                 final CastKind castKind,
                 int loc)
         {
@@ -1344,7 +1344,7 @@ abstract public class Tree
             this.castKind = castKind;
         }
         public CastKind getCastKind() { return castKind; }
-        public ExprStmt getSubExpr() { return expr;}
+        public Expr getSubExpr() { return expr;}
     }
 
     /**
@@ -1363,7 +1363,7 @@ abstract public class Tree
     {
         public ImplicitCastExpr(QualType ty,
                 ExprValueKind valueKind,
-                ExprStmt expr,
+                Expr expr,
                 CastKind castKind,
                 int loc)
         {
@@ -1374,9 +1374,9 @@ abstract public class Tree
          * ReturnStmt the expression after ignoring all of implicitly type cast operation.
          * @return
          */
-        public ExprStmt ignoreImplicitCast()
+        public Expr ignoreImplicitCast()
         {
-            ExprStmt e = this;
+            Expr e = this;
             while (e instanceof ImplicitCastExpr)
                 e = getSubExpr();
             return e;
@@ -1403,7 +1403,7 @@ abstract public class Tree
         private int rParenLoc;
 
         public ExplicitCastExpr(QualType ty, ExprValueKind valueKind,
-                ExprStmt expr, CastKind castKind,
+                Expr expr, CastKind castKind,
                 int lParenLoc, int rParenLoc)
         {
             super(ExplicitCast, ty, valueKind, expr, castKind, lParenLoc);
@@ -1426,19 +1426,19 @@ abstract public class Tree
     /**
      * An array selection [C99 6.5.2.1]
      */
-    public static class ArraySubscriptExpr extends ExprStmt
+    public static class ArraySubscriptExpr extends Expr
     {
-        private ExprStmt[] subExprs;
+        private Expr[] subExprs;
         private int rBracketLoc;
 
-        public ArraySubscriptExpr(ExprStmt indexed, ExprStmt
+        public ArraySubscriptExpr(Expr indexed, Expr
                 index,
                 QualType t,
                 ExprValueKind valueKind,
                 int rBracketLoc)
         {
             super(ArraySubscriptExprClass, t, valueKind, rBracketLoc);
-            subExprs = new ExprStmt[2];
+            subExprs = new Expr[2];
             subExprs[0] = indexed;
             subExprs[1] = index;
             this.rBracketLoc = rBracketLoc;
@@ -1449,32 +1449,32 @@ abstract public class Tree
             super(ArraySubscriptExprClass, Position.NOPOS);
         }
 
-        public ExprStmt getLHS()
+        public Expr getLHS()
         {
             return subExprs[0];
         }
 
-        public void setLHS(ExprStmt e)
+        public void setLHS(Expr e)
         {
             subExprs[0] = e;
         }
 
-        public ExprStmt getRHS()
+        public Expr getRHS()
         {
             return subExprs[1];
         }
 
-        public void setRHS(ExprStmt e)
+        public void setRHS(Expr e)
         {
             subExprs[1] = e;
         }
 
-        public ExprStmt getBase()
+        public Expr getBase()
         {
             return getRHS().getType().isIntegerType() ? getLHS() : getRHS();
         }
 
-        public ExprStmt getIdx()
+        public Expr getIdx()
         {
             return getRHS().getType().isIntegerType() ? getRHS() : getLHS();
         }
@@ -1506,19 +1506,19 @@ abstract public class Tree
      * {@linkplain CallExpr} itself represents a normal function call,
      * e.g."f(x,2)",
 	 */
-	public static final class CallExpr extends ExprStmt
+	public static final class CallExpr extends Expr
 	{
 		/**
 		 * The name of callee method.
 		 */
-		public ExprStmt fn;
+		public Expr fn;
 		/**
 		 * The formal parameters list.
 		 */
-		public ArrayList<ExprStmt> args;
+		public ArrayList<Expr> args;
 
-		public CallExpr(ExprStmt fn,
-                ArrayList<ExprStmt> args,
+		public CallExpr(Expr fn,
+                ArrayList<Expr> args,
                 QualType resultType,
                 ExprValueKind vk,
                 int rparenLoc)
@@ -1533,19 +1533,19 @@ abstract public class Tree
             super(CallExprClass, Position.NOPOS);
         }
 
-        public ExprStmt getCallee()
+        public Expr getCallee()
         {
             return fn;
         }
 
-        public void setCallee(ExprStmt fn)
+        public void setCallee(Expr fn)
         {
             this.fn = fn;
         }
 
         public Decl getCalleeDecl()
         {
-            ExprStmt cee = getCallee().ignoreParensImpCasts();
+            Expr cee = getCallee().ignoreParensImpCasts();
 
             // If we are calling a dereference, look at the pointer instead.
             /**
@@ -1576,18 +1576,18 @@ abstract public class Tree
             return null;
         }
 
-        public ArrayList<ExprStmt> getArgs()
+        public ArrayList<Expr> getArgs()
         {
             return args;
         }
 
-        public ExprStmt getArgAt(int idx)
+        public Expr getArgAt(int idx)
         {
             assert idx>= 0 && idx<args.size():"Arg access out of range!";
             return args.get(idx);
         }
 
-        public void setArgAt(int idx, ExprStmt e)
+        public void setArgAt(int idx, Expr e)
         {
             assert idx>= 0 && idx<args.size():"Arg access out of range!";
             args.set(idx, e);
@@ -1621,12 +1621,12 @@ abstract public class Tree
     /**
      * Struct and Union Members. X->a and X.a [C99 6.5.2.3];
      */
-	public static class MemberExpr extends ExprStmt
+	public static class MemberExpr extends Expr
     {
         /**
          * The expression for the base pointer. In X.F, this is {@code X}.
          */
-        private ExprStmt base;
+        private Expr base;
 
         /**
          * This is the decl being referenced by the field/member name.
@@ -1645,7 +1645,7 @@ abstract public class Tree
         private boolean isArrow;
 
         public MemberExpr(
-                ExprStmt base,
+                Expr base,
                 boolean isArrow,
                 ValueDecl memberDecl,
                 QualType type,
@@ -1659,8 +1659,8 @@ abstract public class Tree
             memberLoc = loc;
         }
 
-        public ExprStmt getBase() { return base;}
-        public void setBase(ExprStmt e) { base = e; }
+        public Expr getBase() { return base;}
+        public void setBase(Expr e) { base = e; }
 
         /**
          * Retrieve the member declaration to which this expression refers.
@@ -1700,7 +1700,7 @@ abstract public class Tree
         }
     }
 
-    public static class CompoundLiteralExpr extends ExprStmt
+    public static class CompoundLiteralExpr extends Expr
     {
         /**
          * LParenLoc - If non-null, this is the location of the left paren in a
@@ -1714,14 +1714,14 @@ abstract public class Tree
          * which case the actual expression type will be different.
          */
         private QualType ty;
-        private ExprStmt init;
+        private Expr init;
         private boolean isFileScope;
 
 
         public CompoundLiteralExpr(int lParenLoc,
                 QualType type,
                 ExprValueKind valuekind,
-                ExprStmt init,
+                Expr init,
                 boolean fileScope)
         {
             super(CompoundLiteralExprClass, type, valuekind, lParenLoc);
@@ -1735,12 +1735,12 @@ abstract public class Tree
             super(CompoundLiteralExprClass, Position.NOPOS);
         }
 
-        public ExprStmt getInitializer()
+        public Expr getInitializer()
         {
             return init;
         }
 
-        public void setInitializer(ExprStmt init)
+        public void setInitializer(Expr init)
         {
             this.init = init;
         }
@@ -1785,13 +1785,13 @@ abstract public class Tree
 	/**
 	 * This represents the unary-expression (except sizeof and alignof).
 	 */
-	public static final class UnaryExpr extends ExprStmt
+	public static final class UnaryExpr extends Expr
 	{
-		private ExprStmt subExpr;
+		private Expr subExpr;
 		private UnaryOperatorKind opcode;
         private ExprValueKind evk;
 
-		public UnaryExpr(ExprStmt subExpr,
+		public UnaryExpr(Expr subExpr,
                 UnaryOperatorKind opcode,
                 QualType type,
                 ExprValueKind evk,
@@ -1808,7 +1808,7 @@ abstract public class Tree
             return opcode;
         }
 
-        public ExprStmt getSubExpr()
+        public Expr getSubExpr()
         {
             return subExpr;
         }
@@ -1875,7 +1875,7 @@ abstract public class Tree
 		}
 	}
 
-	public static final class UnaryExprOrTypeTraitExpr extends ExprStmt
+	public static final class UnaryExprOrTypeTraitExpr extends Expr
     {
         /**
          * true if operand is a type, false if it is an expression.
@@ -1883,7 +1883,7 @@ abstract public class Tree
         private boolean isType;
         private UnaryExprOrTypeTrait kind;
         private QualType ty;
-        private ExprStmt ex;
+        private Expr ex;
         private int opLoc, rParenLoc;
 
         public UnaryExprOrTypeTraitExpr(UnaryExprOrTypeTrait kind,
@@ -1899,7 +1899,7 @@ abstract public class Tree
         }
 
         public UnaryExprOrTypeTraitExpr(UnaryExprOrTypeTrait kind,
-                ExprStmt e,
+                Expr e,
                 QualType resultType,
                 int opLoc, int rp)
         {
@@ -1926,15 +1926,15 @@ abstract public class Tree
      * will already have been converted to appropriate types (e.g.
      * by performing of promotion and conversion).
 	 */
-	public static class BinaryExpr extends ExprStmt
+	public static class BinaryExpr extends Expr
 	{
-		public ExprStmt lhs;
-		public ExprStmt rhs;
+		public Expr lhs;
+		public Expr rhs;
 		public BinaryOperatorKind opcode;
         private int oploc;
 
-		public BinaryExpr(ExprStmt lhs,
-                ExprStmt rhs,
+		public BinaryExpr(Expr lhs,
+                Expr rhs,
                 BinaryOperatorKind op,
                 ExprValueKind vk,
                 QualType resultTy,
@@ -1965,10 +1965,12 @@ abstract public class Tree
 
 		public void setOperatorLoc(int loc) { oploc = loc;}
 
-		public ExprStmt getLHS() { return rhs; }
-        public void setLHS(ExprStmt e) { lhs = e;}
-        public ExprStmt getRHS() { return rhs; }
-        public void setRHS(ExprStmt e) { rhs = e;}
+		public BinaryOperatorKind getOpcode() { return opcode;}
+
+		public Expr getLHS() { return rhs; }
+        public void setLHS(Expr e) { lhs = e;}
+        public Expr getRHS() { return rhs; }
+        public void setRHS(Expr e) { rhs = e;}
 
         public static final String getOpcodeStr(BinaryOperatorKind op)
         {
@@ -2063,7 +2065,7 @@ abstract public class Tree
         private QualType computationLHSType;
         private QualType computationResultType;
 
-        public CompoundAssignExpr(ExprStmt lhs, ExprStmt rhs,
+        public CompoundAssignExpr(Expr lhs, Expr rhs,
                 BinaryOperatorKind op,
                 ExprValueKind vk,
                 QualType resultTy,
@@ -2106,16 +2108,16 @@ abstract public class Tree
     /**
      * A ( ) ? ( ) : ( ) conditional expression
      */
-    public static class ConditionalExpr extends ExprStmt
+    public static class ConditionalExpr extends Expr
     {
-        public ExprStmt cond;
-        public ExprStmt truepart;
-        public ExprStmt falsepart;
+        public Expr cond;
+        public Expr truepart;
+        public Expr falsepart;
         private int qLoc, cLoc;
-        public ConditionalExpr(ExprStmt cond, int qLoc,
-                ExprStmt lhs,
+        public ConditionalExpr(Expr cond, int qLoc,
+                Expr lhs,
                 int cLoc,
-                ExprStmt rhs,
+                Expr rhs,
                 QualType t,
                 ExprValueKind vk)
         {
@@ -2130,6 +2132,21 @@ abstract public class Tree
         public void accept(ASTVisitor v)
         {
             v.visitConditionalExpr(this);
+        }
+
+        public Expr getCond()
+        {
+            return cond;
+        }
+
+        public Expr getTrueExpr()
+        {
+            return truepart;
+        }
+
+        public Expr getFalseExpr()
+        {
+            return falsepart;
         }
     }
 
@@ -2171,13 +2188,13 @@ abstract public class Tree
      * return NULL, indicating that the current initializer list also
      * serves as its syntactic form.
      */
-    public static class InitListExpr extends ExprStmt
+    public static class InitListExpr extends Expr
     {
         // TODO improve it in the future. 2016.10.15 xlous.zeng.
         private int lBraceLoc, rBraceLoc;
-        private ArrayList<ExprStmt> initExprs;
+        private ArrayList<Expr> initExprs;
 
-        public InitListExpr(int lBraceLoc, int rBraceLoc, ArrayList<ExprStmt> initList)
+        public InitListExpr(int lBraceLoc, int rBraceLoc, ArrayList<Expr> initList)
         {
             super(InitListExpr, lBraceLoc);
             this.lBraceLoc = lBraceLoc;

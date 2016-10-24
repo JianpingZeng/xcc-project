@@ -658,7 +658,7 @@ public final class QualType extends Type implements Cloneable
         return getVariableArrayType(newElemTy, vat.getSizeExpr());
     }
 
-    public VariableArrayType getVariableArrayType(QualType elemTy, Tree.ExprStmt sizeExpr)
+    public VariableArrayType getVariableArrayType(QualType elemTy, Tree.Expr sizeExpr)
     {
         return new VariableArrayType(elemTy, sizeExpr);
     }

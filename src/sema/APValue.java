@@ -26,7 +26,7 @@ import static sema.APValue.ValueKind.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class APValue
+public class APValue
 {
     enum ValueKind
     {
@@ -71,7 +71,7 @@ public abstract class APValue
 
     static class LV
     {
-        Tree.ExprStmt base;
+        Tree.Expr base;
         long offset;
     }
 
@@ -101,7 +101,7 @@ public abstract class APValue
     {
         init(ComplexFloat, new ComplexAPFloat(r, i));
     }
-    public APValue(final Tree.ExprStmt base, final long offset)
+    public APValue(final Tree.Expr base, final long offset)
     {
         LV lv = new LV();
         lv.base = base;
@@ -163,7 +163,7 @@ public abstract class APValue
         return ((ComplexAPFloat)data).imag;
     }
 
-    public Tree.ExprStmt getLValueBase()
+    public Tree.Expr getLValueBase()
     {
         assert isLValue():"Invalid accessor";
         return ((LV)data).base;
@@ -201,7 +201,7 @@ public abstract class APValue
         ((ComplexAPFloat)data).real = r;
     }
 
-    public void setLValue(Tree.ExprStmt base, long offset)
+    public void setLValue(Tree.Expr base, long offset)
     {
         assert isLValue():"Invalid accessor";
         ((LV)data).base = base;
