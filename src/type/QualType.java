@@ -143,6 +143,11 @@ public final class QualType extends Type implements Cloneable
         qualsFlag.removeCVQualified(RESTRICT_QUALIFIER);
     }
 
+    public int getCVRQualifiers()
+    {
+        return qualsFlag.mask;
+    }
+
     /**
      * Checks if this type is qualified with type-qualifiers.
      *
@@ -919,4 +924,48 @@ public final class QualType extends Type implements Cloneable
             return null;
         }
     }
+
+    public boolean isSignedIntegerOrEnumerationType()
+    {
+        if (type.isPrimitiveType())
+        {
+            return type.getTypeKind() >= TypeClass.Char
+                    && type.getTypeKind() <= TypeClass.LongInteger;
+        }
+        if (type.isEnumType())
+        {
+            EnumType et = (EnumType)type;
+            if (et.getDecl().isCompleteDefinition())
+                return et.getDecl().getIntegerType().isSignedType();
+        }
+        return false;
+    }
+
+    public boolean isUnsignedIntegerOrEnumerationType()
+    {
+        if (type.isPrimitiveType())
+        {
+            return type.getTypeKind() >= TypeClass.Bool
+                    && type.getTypeKind() <= TypeClass.UnsignedLong;
+        }
+        if (type.isEnumType())
+        {
+            EnumType et = (EnumType)type;
+            if (et.getDecl().isCompleteDefinition())
+                return !et.getDecl().getIntegerType().isSignedType();
+        }
+        return false;
+    }
+
+    public static int getIntWidth(QualType t)
+    {
+        if (t.isEnumType())
+        {
+            t = new QualType(t.getEnumType().getIntegerType());
+        }
+        if (t.isBooleanType())
+            return 1;
+        return (int)t.getTypeSize();
+    }
+
 }
