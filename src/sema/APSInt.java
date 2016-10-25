@@ -16,6 +16,8 @@ package sema;
  * permissions and limitations under the License.
  */
 
+import type.QualType;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -23,11 +25,19 @@ package sema;
 public class APSInt extends APInt
 {
     private boolean isUnsigned;
+
     public APSInt() {super();}
+
     public APSInt(int bitWidth)
     {
         this(bitWidth, true);
     }
+
+    public APSInt(final APInt i)
+    {
+        this(i, true);
+    }
+
     public APSInt(int bitWidth, boolean isUnsigned)
     {
         super(bitWidth, 0);
@@ -104,8 +114,117 @@ public class APSInt extends APInt
     public boolean ne(final  APSInt rhs)
     {}
 
+    public APSInt multiply(final  APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(((APInt)this).multiply(rhs), isUnsigned);
+    }
+
+    public APSInt addictive(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(((APInt)this).addictive(rhs), isUnsigned);
+    }
+
+    public APSInt subtraction(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(((APInt)this).subtraction(rhs), isUnsigned);
+    }
+
+    public APSInt negative()
+    {
+        return new APSInt(((APInt)this).negative(), isUnsigned);
+    }
+
+    public APSInt bitAnd(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(((APInt)this).bitAnd(rhs), isUnsigned);
+    }
+
+    public APSInt bitOr(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(((APInt)this).bitOr(rhs), isUnsigned);
+    }
+
+    public APSInt bitXor(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(((APInt)this).bitXor(rhs), isUnsigned);
+    }
+
+    public APSInt percentAssign(final APSInt rhs)
+    {
+
+    }
+
+    public APSInt divideAssign(final APSInt rhs)
+    {
+
+    }
+
+    public APSInt remainder(final APSInt rhs)
+    {
+
+    }
+
+    public APSInt divide(final APSInt rhs)
+    {
+
+    }
+
+    public APSInt shr(int amt)
+    {
+
+    }
+
+    public APSInt shrAssign(int amt)
+    {
+
+    }
+
+    public APSInt shl(int bits)
+    {
+
+    }
+
+    public APSInt shlAssign(int amt)
+    {
+
+    }
+
+    public APSInt increment()
+    {
+
+    }
+
+    public APSInt decremnt()
+    {
+
+    }
+
     public String toString(int radix)
     {
         return super.toString(radix, isSigned());
+    }
+
+    public APSInt extOrTrunc(int width)
+    {
+        if (isUnsigned)
+            return new APSInt(zextOrTrunc(width), isUnsigned);
+        else
+            return new APSInt(sextOrTrunc(width), isUnsigned);
+    }
+
+    public
+
+    public static APSInt makeIntValue(long value, QualType type)
+    {
+        APSInt res = new APSInt(QualType.getIntWidth(type),
+                !type.isSignedIntegerOrEnumerationType());
+        res.assign(value);
+        return res;
     }
 }

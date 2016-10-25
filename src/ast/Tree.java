@@ -16,6 +16,7 @@ import symbol.Symbol.MethodSymbol;
 import symbol.VarSymbol;
 import type.*;
 import utils.Name;
+import utils.OutParamWrapper;
 import utils.Position;
 import utils.Util;
 
@@ -986,7 +987,7 @@ abstract public class Tree
          * result will be returned.
          * @return
          */
-        public EvalResult evaluate()
+        public boolean evaluate(OutParamWrapper<EvalResult> result)
         {
             if (type.getType().isIntegralOrEnumerationType())
             {
@@ -994,7 +995,7 @@ abstract public class Tree
                 // return false;
                 // TODO LLVM ExprConstant.cpp:2623
             }
-            return null;
+            return false;
         }
 
         public boolean isLValue()
@@ -1069,7 +1070,7 @@ abstract public class Tree
             private final Expr diagExpr;
             private int diagLoc;
 
-            EvalResult()
+            public EvalResult()
             {
                 diagExpr = null;
                 diagLoc = Position.NOPOS;
@@ -1166,6 +1167,8 @@ abstract public class Tree
                     :"Integer type is not the correct size for constant.";
             val = value;
         }
+
+        public APInt getValue() { return val;}
 
         @Override
         public void accept(ASTVisitor v)

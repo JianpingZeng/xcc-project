@@ -275,6 +275,10 @@ public abstract class Decl extends DeclContext
          */
         Tree.Expr init;
 
+        private boolean wasEvaluated;
+        private APValue evaluatedValue;
+        private boolean isEvaluating;
+
         public VarDecl(DeclKind kind,
                 DeclContext context,
                 String name,
@@ -283,6 +287,9 @@ public abstract class Decl extends DeclContext
         {
             super(kind, context, name, location, type);
             this.sc = sc;
+            wasEvaluated = false;
+            evaluatedValue = null;
+            isEvaluating = false;
         }
 
         /**
@@ -396,6 +403,30 @@ public abstract class Decl extends DeclContext
         public void setInit(Tree.Expr init)
         {
             this.init = init;
+        }
+
+        public boolean isEvaluatingValue()
+        {
+            return isEvaluating;
+        }
+
+        public void setEvaluatingValue()
+        {
+            isEvaluating = true;
+        }
+
+        public void setEvaluatedValue(final  APValue val)
+        {
+            isEvaluating = false;
+            wasEvaluated = true;
+            evaluatedValue = val;
+        }
+
+        public APValue getEvaluatedValue()
+        {
+            if (wasEvaluated)
+                return evaluatedValue;
+            return null;
         }
 
         public StorageClass getStorageClass()

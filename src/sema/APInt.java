@@ -513,6 +513,15 @@ public class APInt
         return this;
     }
 
+    public APInt sextOrTrunc(int width)
+    {
+        if (bitWidth<width)
+            return sext(width);
+        if (bitWidth> width)
+            return trunc(width);
+        return this;
+    }
+
     private long[] getRawData()
     {
         if(isSingleWord())
