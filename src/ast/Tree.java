@@ -158,19 +158,19 @@ abstract public class Tree
     public static final int ParenListExprClass = ParenExprClass + 1;
 
 
-    public static final int InitListExpr = ParenListExprClass + 1;
+    public static final int InitListExprClass = ParenListExprClass + 1;
 
 	/**
 	 * Implicit type cast expressions.
 	 */
-	public static final int ImplicitCast = InitListExpr + 1;
+	public static final int ImplicitCastClass = InitListExprClass + 1;
 
-    public static final int ExplicitCast = ImplicitCast + 1;
+    public static final int ExplicitCastClass = ImplicitCastClass + 1;
 
 	/**
 	 * ArraySubscriptExpr array expression, of type ArraySubscriptExpr.
 	 */
-	public static final int ArraySubscriptExprClass = ExplicitCast + 1;
+	public static final int ArraySubscriptExprClass = ExplicitCastClass + 1;
 
 	/**
 	 * Simple identifiers, of type DeclRefExpr.
@@ -180,17 +180,18 @@ abstract public class Tree
     /**
      * Assignment expressions, of type Assign.
      */
-    public static final int AssignExprOperator = DeclRefExprClass + 1;
+    public static final int AssignExprOperatorClass = DeclRefExprClass + 1;
 
     /**
      * Assignment operators, of type OpAssign.
      */
-    public static final int CompoundAssignOperatorClass = AssignExprOperator + 1;
+    public static final int CompoundAssignOperatorClass = AssignExprOperatorClass
+            + 1;
 
 	/**
 	 * UnaryExpr operators, of type UnaryExpr.
 	 */
-	public static final int UnaryOperatorClass = AssignExprOperator + 1;
+	public static final int UnaryOperatorClass = CompoundAssignOperatorClass + 1;
 
 	public static final int UnaryExprOrTypeTraitClass = UnaryOperatorClass + 1;
 
@@ -260,6 +261,11 @@ abstract public class Tree
 		this.pos = pos;
 		return this;
 	}
+
+	public int getStmtClass()
+    {
+        return tag;
+    }
 
 	/**
 	 * Visit this tree with a given visitor.
@@ -987,15 +993,9 @@ abstract public class Tree
          * result will be returned.
          * @return
          */
-        public boolean evaluate(OutParamWrapper<EvalResult> result)
+        public boolean evaluate(EvalResult result)
         {
-            if (type.getType().isIntegralOrEnumerationType())
-            {
-                // TODO if (!IntExprEvaluator(Info, Info.EvalResult.Val).Visit(E))
-                // return false;
-                // TODO LLVM ExprConstant.cpp:2623
-            }
-            return false;
+            return ExprEvaluatorBase.evaluate(result, this);
         }
 
         public boolean isLValue()
@@ -1023,7 +1023,7 @@ abstract public class Tree
                     e = ((ParenExpr)e).subExpr;
                     continue;
                 }
-                if (e.tag == ImplicitCast)
+                if (e.tag == ImplicitCastClass)
                 {
                     e = ((ImplicitCastExpr)e).getSubExpr();
                     continue;
@@ -1052,6 +1052,79 @@ abstract public class Tree
         }
 
         /**
+         * This method is attempting whether an expression is an initializer
+         * which can be evaluated at compile-time as a constant.
+         * @return
+         */
+        public boolean isConstantInitializer()
+        {
+            switch (tag)
+            {
+                default:break;
+                case StringLiteralClass:
+                    return true;
+                case CompoundLiteralExprClass:
+                {
+                    // This handles gcc's extension that allows global initializers like
+                    // "struct x {int x;} x = (struct x) {};".
+                    // FIXME: This accepts other cases it shouldn't!
+                    Expr init = ((CompoundLiteralExpr)this).getInitializer();
+                    return init.isConstantInitializer();
+                }
+                case InitListExprClass:
+                {
+                    // FIXME: This doesn't deal with fields with reference types correctly.
+                    // FIXME: This incorrectly allows pointers cast to integers to be assigned
+                    // to bitfields.
+                    ast.Tree.InitListExpr expr = (Tree.InitListExpr)this;
+                    int numInits = expr.getNumInits();
+                    for (int i = 0; i < numInits; i++)
+                    {
+                        if (!expr.getInitAt(i).isConstantInitializer())
+                            return false;
+                    }
+                    return true;
+                }
+                case ParenExprClass:
+                    return ((ParenExpr)this).getSubExpr().isConstantInitializer();
+                case UnaryOperatorClass:
+                    break;
+                case BinaryOperatorClass:
+                    break;
+                case ImplicitCastClass:
+                case ExplicitCastClass:
+                {
+                    // Handle casts with a destination that's a struct or union; this
+                    // deals with both the gcc no-op struct cast extension and the
+                    // cast-to-union extension.
+                    if (getType().isRecordType())
+                    {
+                        return ((CastExpr)this).getSubExpr().isConstantInitializer();
+                    }
+
+                    if (getType().isIntegerType()
+                            && ((CastExpr)this).getSubExpr().getType().isIntegerType() )
+                    {
+                        return ((CastExpr)this).getSubExpr().isConstantInitializer();
+                    }
+                    break;
+                }
+            }
+            return isEvaluatable();
+        }
+
+        /**
+         * Call {@linkplain #evaluate(EvalResult)} to see if this expression can
+         * be constant folded, but get rid of evaluation result.
+         * @return
+         */
+        public boolean isEvaluatable()
+        {
+            OutParamWrapper<EvalResult> result = new OutParamWrapper<>();
+            return evaluate(result.get()) && !result.get().hasSideEffects();
+        }
+
+        /**
          * This class contains detailed information about an evaluation expression.
          */
         public static class EvalResult
@@ -1059,7 +1132,7 @@ abstract public class Tree
             /**
              * This is a value the expression can be folded to.
              */
-            private APValue val;
+            public APValue val;
             /**
              * Whether the evaludated expression has side effect.
              * for example, (f() && 0) can be folded, but it still has side effect.
@@ -1281,6 +1354,11 @@ abstract public class Tree
         {
             v.visitParenExpr(this);
         }
+
+        public Expr getSubExpr()
+        {
+            return subExpr;
+        }
     }
 
     public static class ParenListExpr extends Expr
@@ -1370,7 +1448,7 @@ abstract public class Tree
                 CastKind castKind,
                 int loc)
         {
-            super(ImplicitCast, ty, valueKind, expr, castKind, loc);
+            super(ImplicitCastClass, ty, valueKind, expr, castKind, loc);
         }
 
         /**
@@ -1409,7 +1487,7 @@ abstract public class Tree
                 Expr expr, CastKind castKind,
                 int lParenLoc, int rParenLoc)
         {
-            super(ExplicitCast, ty, valueKind, expr, castKind, lParenLoc);
+            super(ExplicitCastClass, ty, valueKind, expr, castKind, lParenLoc);
             this.lParenLoc = lParenLoc;
             this.rParenLoc = rParenLoc;
         }
@@ -2156,7 +2234,7 @@ abstract public class Tree
     /**
      * Describes an C or C++ initializer list.
      * <br>
-     * InitListExpr describes an initializer list, which can be used to
+     * InitListExprClass describes an initializer list, which can be used to
      * initialize objects of different types, including
      * struct/class/union types, arrays, and vectors. For example:
      * <pre>
@@ -2174,7 +2252,7 @@ abstract public class Tree
      * <br>
      * After semantic analysis, the initializer list will represent the
      * semantic form of the initializer, where the initializations of all
-     * subobjects are made explicit with nested InitListExpr nodes and
+     * subobjects are made explicit with nested InitListExprClass nodes and
      * C99 designators have been eliminated by placing the designated
      * initializations into the subobject they initialize. Additionally,
      * any "holes" in the initialization, where no initializer has been
@@ -2199,7 +2277,7 @@ abstract public class Tree
 
         public InitListExpr(int lBraceLoc, int rBraceLoc, ArrayList<Expr> initList)
         {
-            super(InitListExpr, lBraceLoc);
+            super(InitListExprClass, lBraceLoc);
             this.lBraceLoc = lBraceLoc;
             this.rBraceLoc = rBraceLoc;
         }
@@ -2207,6 +2285,17 @@ abstract public class Tree
         public void accept(ASTVisitor v)
         {
             v.visitInitListExpr(this);
+        }
+
+        public int getNumInits()
+        {
+            return initExprs.size();
+        }
+
+        public Expr getInitAt(int i)
+        {
+            assert i >= 0 && i < getNumInits();
+            return initExprs.get(i);
         }
     }
 

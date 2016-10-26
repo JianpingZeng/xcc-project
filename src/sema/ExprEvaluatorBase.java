@@ -101,36 +101,59 @@ public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
         return false;
     }
 
-    static boolean evaluateInteger(Expr e, OutParamWrapper<APSInt> result)
+    /**
+     * Evaluates the specified expression whether it only is an integral constant.
+     * If the result of the {@code expr} is evaluated as integral constant, then
+     * return true. Otherwise, return false.
+     * @param expr
+     * @param result
+     * @return
+     */
+    public static boolean evaluateInteger(Expr expr, OutParamWrapper<APSInt> result)
     {
-        assert e.getType().isIntegralOrEnumerationType();
+        assert expr.getType().isIntegralOrEnumerationType();
 
         OutParamWrapper<APValue> val = new OutParamWrapper<>();
-        if (!evaluateIntegerOrLValue(e, val) || !val.get().isInt())
+        if (!evaluateIntegerOrLValue(expr, val) || !val.get().isInt())
             return false;
         result.set(val.get().getInt());
         return true;
     }
 
-    static boolean evaluateIntegerOrLValue(Expr e, OutParamWrapper<APValue> result)
+    /**
+     * Evaluates the specified expression whether it is an integral constant or
+     * {@linkplain LValue}.
+     * If the result of the {@code expr} is evaluated as integral constant, then
+     * return true. Otherwise, return false.
+     * @param expr
+     * @param result
+     * @return
+     */
+    public static boolean evaluateIntegerOrLValue(
+            Expr expr,
+            OutParamWrapper<APValue> result)
     {
-        assert e.getType().isIntegralOrEnumerationType();
-        return new IntExprEvaluator(result).visit(e);
+        assert expr.getType().isIntegralOrEnumerationType();
+        return new IntExprEvaluator(result).visit(expr);
     }
 
-    static boolean evaluateFloat(Expr e, OutParamWrapper<BigDecimal> result)
+    public static boolean evaluateFloat(Expr e, OutParamWrapper<BigDecimal> result)
     {
         assert e.getType().isRealType();
         return new FloatExprEvaluator(result).visit(e);
     }
 
-    static boolean evaluatePointer(Expr e, OutParamWrapper<LValue> reslut)
+    public static boolean evaluatePointer(
+            Expr e,
+            OutParamWrapper<LValue> reslut)
     {
         assert e.getType().isPointerType();
         return new PointerExprEvaluator(reslut).visit(e);
     }
 
-    static boolean evaluatePointerValueAsBool(LValue val, OutParamWrapper<Boolean> res)
+    public static boolean evaluatePointerValueAsBool(
+            LValue val,
+            OutParamWrapper<Boolean> res)
     {
         final Expr base = val.getLValueBase();
 
@@ -158,7 +181,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
         return true;
     }
 
-    static boolean isGlobalLValue(Expr e)
+    public static boolean isGlobalLValue(Expr e)
     {
         if (e == null) return true;
 
@@ -177,5 +200,59 @@ public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
 
         return true;
     }
+
+    /**
+     * The top level evaluate method.
+     * @param result
+     * @param e
+     * @return
+     */
+    public static boolean evaluate(Expr.EvalResult result, Expr e)
+    {
+        if (e.getType().isIntegralOrEnumerationType())
+        {
+            OutParamWrapper<APValue> x = new OutParamWrapper<>(result.getValue());
+            if (!new IntExprEvaluator(x).visit(e))
+                return false;
+            result.val = x.get();
+            if (result.getValue().isLValue() &&
+                    !isGlobalLValue(result.val.getLValueBase()))
+            {
+                return false;
+            }
+
+        }
+        else if (e.getType().isPointerType())
+        {
+            LValue lv = new LValue();
+            OutParamWrapper<LValue>  x = new OutParamWrapper<>(lv);
+            if (!evaluatePointer(e, x))
+                return false;
+            lv = x.get();
+            if (!isGlobalLValue(lv.getLValueBase()))
+                return false;
+            result.val = lv.moveInto();
+        }
+        else if (e.getType().isRealType())
+        {
+            BigDecimal f = BigDecimal.ZERO;
+            OutParamWrapper<BigDecimal> x = new OutParamWrapper<>(f);
+            if (!evaluateFloat(e, x))
+                return false;
+
+            f = x.get();
+            result.val = new APValue(f);
+        }
+        else if (e.getType().isComplexType())
+        {
+            // TODO
+            return false;
+        }
+        else
+            return false;
+
+        return true;
+    }
+
 
 }

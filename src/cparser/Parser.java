@@ -7,12 +7,9 @@ import cparser.DeclSpec.FieldDeclarator;
 import cparser.DeclSpec.ParsedSpecifiers;
 import cparser.Declarator.TheContext;
 import cparser.Token.Ident;
-import sema.Decl;
+import sema.*;
 import sema.Decl.LabelDecl;
-import sema.PrecedenceLevel;
-import sema.Scope;
 import sema.Scope.ScopeFlags;
-import sema.Sema;
 import type.QualType;
 import utils.*;
 
@@ -3963,11 +3960,11 @@ public class Parser implements Tag
     private ActionResult<Expr> parseConstantExpression()
     {
         ActionResult<Expr> lhs = parseCastExpression(false, false, false, 0);
-        ActionResult<Expr> res = parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Conditional);
 
-        // evaluate if res is a constant epxression.
-        // TODO  IntegerEvaluator 2016.10.18.
-        return null;
+        //   An expression is potentially evaluated unless it appears where an
+        //   integral constant expression is required (see 5.19) [...].
+        ActionResult<Expr> res = parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Conditional);
+        return res;
     }
 
     private ActionResult<Expr> parseAssignExpression()

@@ -405,7 +405,7 @@ public class Attr extends ASTVisitor implements SymbolKinds, TypeClass, Flags
 	{
 		if (v.pos > tree.pos && canOwnInitializer(v)
 				&& ((v.flags & STATIC) != 0) == Resolve.isStatic(env) && (
-				env.tree.tag != Tree.AssignExprOperator
+				env.tree.tag != Tree.AssignExprOperatorClass
 						|| TreeInfo.skipParens(((Assign) env.tree).lhs)
 						!= tree))
 			log.error(tree.pos, "illegal.forward.ref");

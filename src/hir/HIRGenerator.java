@@ -1989,7 +1989,7 @@ public class HIRGenerator extends ASTVisitor
 		Value operand1 = emitExpr(tree.arg);
 		switch (tree.tag)
 		{
-			case Tree.ImplicitCast:
+			case Tree.ImplicitCastClass:
 				this.exprResult = emitCast(operand1, tree.type, tree.arg.type);
 				break;
 			case Tree.NEG:
