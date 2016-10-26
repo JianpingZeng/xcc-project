@@ -137,6 +137,11 @@ public class APSInt extends APInt
         return new APSInt(((APInt)this).negative(), isUnsigned);
     }
 
+    public APSInt not()
+    {
+        return new APSInt(((APInt)this).not(), isUnsigned);
+    }
+
     public APSInt bitAnd(final APSInt rhs)
     {
         assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
@@ -217,8 +222,6 @@ public class APSInt extends APInt
         else
             return new APSInt(sextOrTrunc(width), isUnsigned);
     }
-
-    public
 
     public static APSInt makeIntValue(long value, QualType type)
     {

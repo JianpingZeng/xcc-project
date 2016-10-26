@@ -21,11 +21,7 @@ import ast.Tree;
 import ast.Tree.*;
 import utils.OutParamWrapper;
 import utils.Util;
-
 import java.math.BigDecimal;
-
-import static ast.Tree.BinaryOperatorClass;
-import static ast.Tree.DeclRefExprClass;
 
 /**
  * @author Xlous.zeng
