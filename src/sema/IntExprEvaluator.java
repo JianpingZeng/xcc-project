@@ -16,7 +16,9 @@ package sema;
  * permissions and limitations under the License.
  */
 
+import ast.Tree;
 import ast.Tree.*;
+import com.sun.org.apache.xml.internal.security.keys.content.DEREncodedKeyValue;
 import com.sun.org.apache.xpath.internal.operations.Bool;
 import sema.Decl.EnumConstantDecl;
 import sema.Decl.ParamVarDecl;
@@ -485,11 +487,171 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     @Override
     public Boolean visitUnaryExpr(UnaryExpr expr)
     {
-        return null;
+        if (expr.getOpCode() == UnaryOperatorKind.UO_LNot)
+        {
+            // LNot's operand isn't necessarily an integer, so
+            // we handle it specially.
+            OutParamWrapper<Boolean> bres = new OutParamWrapper<>();
+            if (!handleConversionToBool(expr.getSubExpr(), bres))
+                return false;
+
+            return success(bres.get()?0:1, expr);
+        }
+
+        // Only handles integral operation.
+        if (!expr.getSubExpr().getType().isIntegralOrEnumerationType())
+            return false;
+
+        // Let the operand value into 'Result'.
+        if (!visit(expr.getSubExpr()))
+            return false;
+
+        switch (expr.getOpCode())
+        {
+            default:
+                // Address, indirect, pre/post inc/dec, etc are not valid constant exprs.
+                // See C99 6.6p3.
+                return error(expr.getLocation(),"invalid sub-expression in IntExprEvaluator", expr);
+            case UO_Plus:
+                return true;
+            case UO_Minus:
+                if (!result.get().isInt()) return false;
+                return success(result.get().getInt().negative(), expr);
+            case UO_Not:
+                if (!result.get().isInt()) return false;
+                return success(result.get().getInt().not(), expr);
+        }
     }
 
-    public Boolean visitCastExpr(CastExpr expr)
+    @Override
+    public Boolean visitImplicitCastExpr(ImplicitCastExpr expr)
     {
-        return null;
+        return visitCastExpr(expr);
+    }
+
+    @Override
+    public Boolean visitExplicitCastExpr(ExplicitCastExpr expr)
+    {
+        return visitCastExpr(expr);
+    }
+
+    /**
+     *
+     * @param expr
+     * @return
+     */
+    private boolean visitCastExpr(CastExpr expr)
+    {
+        Expr subExpr = expr.getSubExpr();
+        QualType destType = expr.getType();
+        QualType srcType = subExpr.getType();
+
+        switch (expr.getCastKind())
+        {
+            case CK_ArrayToPointerDecay:
+            case CK_FunctionToPointerDecay:
+            case CK_IntegralToPointer:
+            case CK_ToVoid:
+            case CK_IntegralToFloating:
+            case CK_FloatingCast:
+            case CK_FloatingRealToComplex:
+            case CK_FloatingComplexCast:
+            case CK_FloatingComplexToIntegralComplex:
+            case CK_IntegralRealToComplex:
+            case CK_IntegralComplexCast:
+            case CK_IntegralComplexToFloatingComplex:
+                Util.shouldNotReachHere("Invalid cast kind for integral value");
+
+            case CK_BitCast:
+                return false;
+            case CK_LValueToRValue:
+            case CK_NoOp:
+                return visit(expr.getSubExpr());
+            case CK_PointerToBoolean:
+            case CK_IntegralToBoolean:
+            case CK_FloatingToBoolean:
+            case CK_FloatingComplexToBoolean:
+            case CK_IntegralComplexToBoolean:
+            {
+                OutParamWrapper<Boolean> boolResult = new OutParamWrapper<>();
+                if (!handleConversionToBool(subExpr, boolResult))
+                    return false;
+                return success(boolResult.get()?1:0, expr);
+            }
+
+            case CK_IntegralCast:
+            {
+                if (!visit(subExpr))
+                    return false;
+
+                if (!result.get().isInt())
+                {
+                    // Only allow casts of lvalues if they are lossless.
+                    return destType.getTypeSize() == srcType.getTypeSize();
+                }
+
+                return success(handleIntToIntCast(destType, srcType, result.get().getInt()), expr);
+            }
+
+            case CK_PointerToIntegral:
+            {
+                OutParamWrapper<LValue> lv = new OutParamWrapper<>();
+                if (!evaluatePointer(subExpr, lv))
+                    return false;
+
+                if (lv.get().getLValueBase() != null)
+                {
+                    if (destType.getTypeSize() != srcType.getTypeSize())
+                        return false;
+
+                     result.set(lv.get().moveInto());
+                    return true;
+                }
+
+                APSInt asInt = APSInt.makeIntValue(lv.get().getLValueOffset(), srcType);
+                return success(handleIntToIntCast(destType, srcType, asInt), expr);
+            }
+
+            case CK_IntegralComplexToReal:
+            {
+                // TODO Clang3.0 ExprConstant.cpp:1907
+            }
+            case CK_FloatingToIntegral:
+            {
+                OutParamWrapper<BigDecimal> f = new OutParamWrapper<>();
+                if (!evaluateFloat(subExpr, f))
+                    return false;
+
+                return success(handleFloatToIntCast(destType, srcType, f.get()), expr);
+            }
+        }
+        Util.shouldNotReachHere("unknown cast result in integral value");
+        return false;
+    }
+
+    private static APSInt handleIntToIntCast(QualType destType, QualType srcType, APSInt i)
+    {
+        int destWidth = QualType.getIntWidth(destType);
+        APSInt result = i;
+        // Figure out if this is a truncate, extend or noop cast.
+        // If the input is signed, do a sign extend, noop, or truncate.
+        result = result.extOrTrunc(destWidth);
+        result.setIsUnsigned(destType.isUnsignedIntegerOrEnumerationType());
+        return result;
+    }
+
+    private static APSInt handleFloatToIntCast(QualType destType, QualType srcType, BigDecimal val)
+    {
+        int destWidth = QualType.getIntWidth(destType);
+
+        // Determine whether we are converting to unsigned or signed.
+        boolean destIsSigned = destType.isSignedIntegerOrEnumerationType();
+
+        APSInt result = new APSInt(val.intValue(), !destIsSigned);
+        if (destIsSigned)
+            result.sextOrTrunc(destWidth);
+        else
+            result.zextOrTrunc(destWidth);
+        return result;
     }
 }
