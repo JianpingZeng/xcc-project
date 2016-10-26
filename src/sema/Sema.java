@@ -4162,6 +4162,12 @@ public final class Sema
             else if(!vd.isInvalidDecl())
             {
                 // TODO initialization sequence 2016.10.23
+
+                // C99 6.7.8p4.
+                if (vd.getStorageClass() == StorageClass.SC_static)
+                {
+                    checkForConstantInitializer(init, declTy);
+                }
             }
         }
         else if (vd.isFileVarDecl())
@@ -4174,6 +4180,9 @@ public final class Sema
             if (!vd.isInvalidDecl())
             {
                 // TODO initialization sequence 2016.10.23
+
+                // C99 6.7.8p4. All file scoped initializers need to be constant.
+                checkForConstantInitializer(init, declTy);
             }
         }
 
@@ -4201,5 +4210,20 @@ public final class Sema
     private void checkSelfReference(Decl decl, Expr init)
     {
         new SelfReferenceChecker(this, decl).visitExpr(init);
+    }
+
+    private boolean checkForConstantInitializer(Expr init, QualType declType)
+    {
+        // Need strict checking.  In C89, we need to check for
+        // any assignment, increment, decrement, function-calls, or
+        // commas outside of a sizeof.  In C99, it's the same list,
+        // except that the aforementioned are allowed in unevaluated
+        // expressions.  Everything else falls under the
+        // "may accept other forms of constant expressions" exception.
+        if (init.isConstantInitializer())
+            return false;
+        parser.syntaxError(init.getLocation(),
+                "initializer element is not a compile-time constant");
+        return true;
     }
 }

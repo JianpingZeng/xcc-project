@@ -16,10 +16,7 @@ package sema;
  * permissions and limitations under the License.
  */
 
-import ast.Tree;
 import ast.Tree.*;
-import com.sun.org.apache.xml.internal.security.keys.content.DEREncodedKeyValue;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import sema.Decl.EnumConstantDecl;
 import sema.Decl.ParamVarDecl;
 import sema.Decl.VarDecl;
@@ -96,8 +93,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         return false;
     }
 
-    @Override
-    protected Boolean visit(Expr expr)
+    @Override public Boolean visit(Expr expr)
     {
         return false;
     }
@@ -175,12 +171,10 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     vd.setEvaluatingValue();
 
                     Expr.EvalResult evalResult = new Expr.EvalResult();
-                    OutParamWrapper<Expr.EvalResult> x = new OutParamWrapper<>(evalResult);
-                    if (init.evaluate(x) && !evalResult.hasSideEffects()
+                    if (init.evaluate(evalResult) && !evalResult.hasSideEffects()
                             && evalResult.getValue().isInt())
                     {
                         // Cache the evaluated value in the variable declaration.
-                        evalResult = x.get();
                         result.set(evalResult.getValue());
                         vd.setEvaluatedValue(evalResult.getValue());
                         return true;
