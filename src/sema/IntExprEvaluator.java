@@ -93,11 +93,6 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         return false;
     }
 
-    @Override public Boolean visit(Expr expr)
-    {
-        return false;
-    }
-
     @Override
     public Boolean visitIntegerLiteral(IntegerLiteral e)
     {

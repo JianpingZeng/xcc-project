@@ -17,29 +17,25 @@ package sema;
  */
 
 import ast.Tree;
+import utils.OutParamWrapper;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LValue
+public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
-    Tree.Expr base;
-    long offset;
-
-    public final Tree.Expr getLValueBase() { return base;}
-
-    public long getLValueOffset() { return  offset; }
-
-    public APValue moveInto()
+    public LValueExprEvaluator(OutParamWrapper<LValue> result)
     {
-        return new APValue(base, offset);
     }
 
-    public void setFrom(final APValue v)
+    @Override protected Boolean success(APValue v, Tree.Expr e)
     {
-        assert v.isLValue();
-        base = v.getLValueBase();
-        offset= v.getLValueOffset();
+        return null;
+    }
+
+    @Override protected Boolean error(Tree.Expr expr)
+    {
+        return null;
     }
 }
