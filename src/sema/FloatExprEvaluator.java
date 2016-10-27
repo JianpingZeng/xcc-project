@@ -32,18 +32,16 @@ public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
         this.result = result;
     }
 
-    @Override protected Boolean success(APValue v, Tree.Expr e)
+    @Override
+    protected Boolean success(APValue v, Tree.Expr e)
     {
         return false;
     }
 
-    @Override protected Boolean error(Tree.Expr expr)
+    @Override
+    protected Boolean error(Tree.Expr expr)
     {
         return false;
     }
 
-    @Override protected Boolean visit(Tree.Expr expr)
-    {
-        return false;
-    }
 }

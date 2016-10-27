@@ -5,6 +5,8 @@ import sema.APInt;
 import sema.Decl;
 import sema.Decl.RecordDecl;
 import sema.Decl.TypedefNameDecl;
+import sema.RecordLayoutInfo;
+import utils.Pair;
 import utils.Util;
 import type.ArrayType.*;
 
@@ -196,6 +198,11 @@ public final class QualType extends Type implements Cloneable
         return type.getTypeSize();
     }
 
+    public long getTypeSizeInBytes()
+    {
+        return type.getTypeSize() >>3;
+    }
+
     /**
      * Returns the type that promotable type promote to.
      * <br>
@@ -239,7 +246,7 @@ public final class QualType extends Type implements Cloneable
      */
     public static QualType getArrayDecayedType(QualType ty)
     {
-        final ArrayType arrayType = ty.getAsArrayType(ty);
+        final ArrayType arrayType = ty.getAsArrayType();
         assert arrayType != null : "Not an array type!";
 
         QualType ptrTy = getPointerType(arrayType.getElemType());
@@ -432,7 +439,7 @@ public final class QualType extends Type implements Cloneable
         return type.isAllocatedArray();
     }
 
-    public boolean isIncompleteArrayArray()
+    public boolean isIncompleteArrayType()
     {
         return type instanceof IncompleteArrayType;
     }
@@ -540,8 +547,8 @@ public final class QualType extends Type implements Cloneable
                 if (lcat != null && rcat != null && rcat.getSize().ne(lcat.getSize()))
                     return new QualType();
 
-                QualType lhsElem = getAsArrayType(lhs).getElemType();
-                QualType rhsElem = getAsArrayType(rhs).getElemType();
+                QualType lhsElem = lhs.getAsArrayType().getElemType();
+                QualType rhsElem = rhs.getAsArrayType().getElemType();
 
                 if (unqualified)
                 {
@@ -612,40 +619,40 @@ public final class QualType extends Type implements Cloneable
 
     public ConstantArrayType getAsConstantArrayType()
     {
-        ArrayType res = getAsArrayType(this);
+        ArrayType res = getAsArrayType();
         return (res instanceof ConstantArrayType)
                 ? (ConstantArrayType)res : null;
     }
 
     public IncompleteArrayType getAsInompleteArrayType()
     {
-        ArrayType res = getAsArrayType(this);
+        ArrayType res = getAsArrayType();
         return (res instanceof IncompleteArrayType)
                 ? (IncompleteArrayType)res : null;
     }
 
     public VariableArrayType getAsVariableArrayType()
     {
-        ArrayType res = getAsArrayType(this);
+        ArrayType res = getAsArrayType();
         return (res instanceof VariableArrayType)
                 ? (VariableArrayType)res : null;
     }
 
-    public ArrayType getAsArrayType(QualType t)
+    public ArrayType getAsArrayType()
     {
         // Handle the non-qualified case efficiently.
-        if (!t.hasQualifiers())
+        if (!this.hasQualifiers())
         {
-            if (t.getType() instanceof ArrayType)
-                return (ArrayType)t.getType();
+            if (this.getType() instanceof ArrayType)
+                return (ArrayType)getType();
         }
 
-        if (!(t.getType() instanceof ArrayType))
+        if (!(this.getType() instanceof ArrayType))
             return null;
-        ArrayType aty = (ArrayType) t.getType();
+        ArrayType aty = (ArrayType) getType();
         // Otherwise, we have an array and we have qualifiers on it.
         // Push qualifiers into the array element type and return a new array type.
-        QualType newElemTy = getQualifiedType(aty.getElemType(), t.qualsFlag);
+        QualType newElemTy = getQualifiedType(aty.getElemType(), qualsFlag);
 
         if (aty instanceof ConstantArrayType)
         {
@@ -893,7 +900,7 @@ public final class QualType extends Type implements Cloneable
             if (!type.isArrayType())
                 break;
 
-            type = type.getAsArrayType(type).getElemType();
+            type = type.getAsArrayType().getElemType();
             qs.addCVQualifier(type.qualsFlag.mask);
         }
         return getQualifiedType(type, qs);
@@ -966,6 +973,108 @@ public final class QualType extends Type implements Cloneable
         if (t.isBooleanType())
             return 1;
         return (int)t.getTypeSize();
+    }
+
+    /**
+     * Return the ABI-specified alignment of a type, in bytes.
+     * This method does not work on incomplete types.
+     * @param t
+     * @return
+     */
+    public static int getTypeAlignInBytes(QualType t)
+    {
+        return toByteUnitFromBits(t.alignment());
+    }
+
+    public static Pair<Integer, Integer> getTypeInfoInBytes(Type t)
+    {
+        Pair<Long, Integer> res = getTypeInfo(t);
+        return new Pair<>(toByteUnitFromBits(res.first),
+                toByteUnitFromBits(res.second));
+    }
+
+
+    public static Pair<Long, Integer> getTypeInfo(Type t)
+    {
+        long width = 0;
+        int align = 8;
+        switch (t.tag)
+        {
+            case Function:
+                // GCC extension: alignof(function) = 32 bits
+                width = 0;
+                align = 32;
+
+            case IncompleteArray:
+            case VariableArray:
+                width = 0;
+                align = (int)((ArrayType)t).getElemType().alignment();
+                break;
+            case ConstantArray:
+            {
+                ConstantArrayType cat = ((ConstantArrayType)t);
+                Pair<Long, Integer> res = getTypeInfo(cat.getEnumType());
+                width = res.first * cat.getSize().getZExtValue();
+                align = res.second;
+                width = Util.roundUp(width, align);
+                break;
+            }
+            case Pointer:
+            {
+                int as = ((PointerType)t).getPointerType().getTypeSizeInBytes();
+                width = as;
+                align = as;
+                break;
+            }
+
+            case Struct:
+            case Union:
+            case Enum:
+            {
+                TagType tt = (TagType)t;
+                if (tt.getDecl().isInvalidDecl())
+                {
+                    width = 8;
+                    align = 8;
+                    break;
+                }
+                if (tt instanceof EnumType)
+                    return getTypeInfo(((EnumType)tt).getDecl().getIntegerType() );
+
+                RecordType rt = (RecordType)tt;
+                RecordLayoutInfo layout = RecordLayoutInfo.getRecordLayout(rt.getDecl());
+                width = toBits(layout.getSize());
+                align = (int)toBits(layout.getAlignment());
+                break;
+            }
+            case TypeDef:
+            {
+                TypedefNameDecl typedef = ((TypeDefType)t).getDecl();
+                Pair<Long, Integer> info = getTypeInfo(typedef.getUnderlyingType().getType());
+
+                align = info.second;
+                width = info.first;
+                break;
+            }
+        }
+
+        assert Util.isPowerOf2(align):"Alignment must be power of 2!";
+        return new Pair<>(width, align);
+    }
+
+    public static Pair<Integer, Integer> getTypeInfoInBytes(QualType t)
+    {
+        return getTypeInfoInBytes(t.getType());
+    }
+
+    public static long toBits(long num)
+    {
+        return num<<3;
+    }
+
+    public static int toByteUnitFromBits(long bits)
+    {
+        return (int)bits>>3;
     }
 
 }

@@ -87,6 +87,11 @@ public class Util
 		return ((number + mod - 1) / mod) * mod;
 	}
 
+	public static long roundUp(long number, long mod)
+	{
+		return ((number + mod - 1) / mod) * mod;
+	}
+
 	public static LIRKind[] signatureToKinds(Function function)
 	{
 		return signatureToKinds(function.signature());

@@ -109,4 +109,6 @@ public class DeclContext
     {
         return declInScope;
     }
+
+    public int getDeclCounts() { return declInScope.size(); }
 }

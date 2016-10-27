@@ -42,6 +42,9 @@ public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
     {
         return null;
     }
+
+    protected abstract boolean visitCastExpr(CastExpr expr);
+
     @Override
     public RetTy visitTree(Tree stmt)
     {
