@@ -935,6 +935,15 @@ public class APInt
                 (isSingleWord()? val : pVal[whichWord(bitPosition)])) != 0;
     }
 
+    public long getSExtValue()
+    {
+        if (isSingleWord())
+            return (val << ((APINT_BITS_PER_WORD - bitWidth))) >>
+                    (APINT_BITS_PER_WORD - bitWidth);
+        assert getMinSignedBits()<=64 :"Too many bits for long";
+        return pVal[0];
+    }
+
     public long getZExtValue()
     {
         if (isSingleWord())

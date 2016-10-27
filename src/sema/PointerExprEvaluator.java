@@ -17,7 +17,11 @@ package sema;
  */
 
 import ast.Tree;
+import ast.Tree.Expr;
+import type.PointerType;
+import type.QualType;
 import utils.OutParamWrapper;
+import utils.Util;
 
 /**
  * @author Xlous.zeng
@@ -30,18 +34,148 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         this.result = result;
     }
-    @Override protected Boolean success(APValue v, Tree.Expr e)
+
+    private boolean success(final Expr e)
+    {
+        result.get().base = e;
+        result.get().offset = 0;
+        return true;
+    }
+
+    @Override
+    protected Boolean success(APValue v, Expr e)
+    {
+        result.get().setFrom(v);
+        return true;
+    }
+
+    @Override
+    protected Boolean error(Expr expr)
     {
         return false;
     }
-
-    @Override protected Boolean error(Tree.Expr expr)
+    @Override
+    public Boolean visitBinaryExpr(Tree.BinaryExpr expr)
     {
+        if (expr.getOpcode() != BinaryOperatorKind.BO_Add
+                && expr.getOpcode() != BinaryOperatorKind.BO_Sub)
+            return false;
+
+        final Expr pExpr = expr.getLHS();
+        final Expr iExpr = expr.getRHS();
+
+        // let the expr of type pointer type reside at left side
+        // (pointer) +- (rhs).
+        if (iExpr.getType().isPointerType())
+            Util.swap(pExpr, iExpr);
+
+        // If the pExpr is not pointer type, return false.
+        if (!evaluatePointer(pExpr, result))
+            return false;
+
+        // So that, the pExpr must be pointer type
+        APSInt offset = new APSInt();
+        OutParamWrapper<APSInt> x = new OutParamWrapper<>(offset);
+        if (!evaluateInteger(iExpr, x))
+            return false;
+        offset = x.get();
+
+        // Reaching here, the binary operation is certainly consists of
+        // Ptr +- int.
+        long additionalOffset = offset.isSigned()?offset.getSExtValue()
+                : offset.getZExtValue();
+
+        // Compute the new offset in the appropriate width.
+        QualType pointeeType = pExpr.getType().<PointerType>getAs().getPointeeType();
+        long sizeOfPointee;
+
+        // Explicitly handle GNU void* and function pointer arithmetic extensions.
+        if (pointeeType.isVoidType() || pointeeType.isFunctionType())
+            sizeOfPointee = 1;
+        else
+            sizeOfPointee = pointeeType.getTypeSize();
+
+        if (expr.getOpcode() == BinaryOperatorKind.BO_Add)
+            result.get().offset += additionalOffset*sizeOfPointee;
+        else
+            result.get().offset -= additionalOffset*sizeOfPointee;
+
+        return true;
+    }
+
+    public Boolean visitUnaryExpr(Tree.UnaryExpr expr)
+    {
+        // just handle '&' operator.
+        if (expr.getOpCode() == UnaryOperatorKind.UO_AddrOf)
+        {
+            return evaluateLValue(expr.getSubExpr(), result);
+        }
         return false;
     }
 
-    @Override protected Boolean visit(Tree.Expr expr)
+    private Boolean visitCastExpr(Tree.CastExpr expr)
     {
+        final Expr subExp = expr.getSubExpr();
+        switch (expr.getCastKind())
+        {
+            default:break;
+            case CK_NoOp:
+            case CK_BitCast:
+                return visit(subExp);
+
+            case CK_NullToPointer:
+            {
+                result.get().base = null;
+                result.get().offset = 0;
+                return true;
+            }
+
+            case CK_IntegralToPointer:
+            {
+                APValue value = new APValue();
+                OutParamWrapper<APValue> x = new OutParamWrapper<>(value);
+                if (!evaluateIntegerOrLValue(subExp, x))
+                    break;
+
+                value = x.get();
+                if (value.isInt())
+                {
+                    value.setInt(value.getInt().extOrTrunc((int)expr.getType().getTypeSize()));
+                    result.get().base = null;
+                    result.get().offset = value.getInt().getZExtValue();
+                    return true;
+                }
+                else
+                {
+                    // Cast is of an lvalue, no need to change value.
+                    result.get().base = value.getLValueBase();
+                    result.get().offset = value.getLValueOffset();
+                    return true;
+                }
+            }
+
+            case CK_ArrayToPointerDecay:
+            case CK_FunctionToPointerDecay:
+                return evaluateLValue(subExp, result);
+        }
         return false;
+    }
+
+    @Override
+    public Boolean visitImplicitCastExpr(Tree.ImplicitCastExpr expr)
+    {
+        return visitCastExpr(expr);
+    }
+
+    @Override
+    public Boolean visitExplicitCastExpr(Tree.ExplicitCastExpr expr)
+    {
+        return visitCastExpr(expr);
+    }
+
+    @Override
+    public Boolean visitCallExpr(Tree.CallExpr expr)
+    {
+        return super.visitCallExpr(expr);
     }
 }

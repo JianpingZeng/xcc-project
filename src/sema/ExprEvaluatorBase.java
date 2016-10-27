@@ -30,10 +30,18 @@ import java.math.BigDecimal;
 public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
 {
     protected abstract RetTy success(final APValue v, final Expr e);
+
     protected abstract RetTy error(final Expr expr);
 
-    protected abstract RetTy visit(Expr expr);
+    public RetTy visit(Expr expr)
+    {
+        return null;
+    }
 
+    @Override public RetTy visitCallExpr(CallExpr expr)
+    {
+        return null;
+    }
     @Override
     public RetTy visitTree(Tree stmt)
     {
@@ -254,5 +262,8 @@ public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
         return true;
     }
 
-
+    public static boolean evaluateLValue(Expr expr, OutParamWrapper<LValue> result)
+    {
+        return new LValueExprEvaluator(result).visit(expr);
+    }
 }
