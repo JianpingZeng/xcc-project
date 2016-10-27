@@ -61,4 +61,6 @@ public final class TypeDefType extends Type
     {
         return false;
     }
+
+    public TypedefNameDecl getDecl() { return decl;}
 }

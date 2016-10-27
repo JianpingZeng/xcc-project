@@ -15,6 +15,8 @@ import type.QualType;
 import type.Type;
 import utils.Position;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import static cparser.DeclKind.*;
 import static type.Type.TagTypeKind.TTK_enum;
@@ -223,6 +225,12 @@ public abstract class Decl extends DeclContext
          * Indicates the {@linkplain #init} is an initializer or a bitfield.
          */
         private boolean hasInit;
+
+        /**
+         * A cached index into this field in corresponding record decl.
+         */
+        private int cachedFieldIndex;
+
         FieldDecl(DeclContext context, String name, int location,
                 QualType type, Expr init, boolean hasInit)
         {
@@ -245,6 +253,32 @@ public abstract class Decl extends DeclContext
             assert isBitField() :"not a bitfield";
             Tree.Expr bitWidth = getBitWidth();
             return bitWidth.evaluateKnownConstInt();
+        }
+
+        public RecordDecl getParent()
+        {
+            return (RecordDecl)getDeclContext();
+        }
+
+        public int getFieldIndex()
+        {
+            if (cachedFieldIndex != 0) return cachedFieldIndex;
+
+            final RecordDecl rd = getParent();
+            int index = 0;
+            int i = 0, e = rd.getDeclCounts();
+            while (true)
+            {
+                assert i!=e:"failed to find field in parent!";
+                if (rd.getDeclAt(i).equals(this))
+                    break;
+
+                ++i;
+                ++index;
+            }
+
+            cachedFieldIndex = index + 1;
+            return index;
         }
     }
 
@@ -633,6 +667,11 @@ public abstract class Decl extends DeclContext
         {
             super(kind, context, name, loc);
         }
+
+        public QualType getUnderlyingType()
+        {
+            return type;
+        }
     }
 
     /**
@@ -744,6 +783,23 @@ public abstract class Decl extends DeclContext
         {
             assert (!isCompleteDefinition):"Cannot redefine struct or union!";
             super.completeDefinition();
+        }
+
+        public void addDecl(FieldDecl fd)
+        {
+            addDecl(fd);
+        }
+
+        public void remove(FieldDecl fd)
+        {
+            removeDecl(fd);
+        }
+
+        public FieldDecl getDeclAt(int index)
+        {
+            List<Decl> list = getDeclsInContext();
+            assert index>= 0&&index<list.size();
+            return (FieldDecl) list.get(index);
         }
     }
 

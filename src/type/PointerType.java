@@ -37,6 +37,11 @@ public final class PointerType extends Type
         return size;
     }
 
+    public int getTypeSizeInBytes()
+    {
+        return (int)size>>3;
+    }
+
     public Type baseType()
     {
         return pointeeType;

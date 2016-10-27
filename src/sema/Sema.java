@@ -2043,7 +2043,7 @@ public final class Sema
 
             // Provide a specific diagnostic for uninitialized variable
             // definitions with incomplete array type.
-            if (type.isIncompleteArrayArray())
+            if (type.isIncompleteArrayType())
             {
                 parser.syntaxError(var.getLocation(),
                         "definition of variable with array type needs an explicit size or an initializer");

@@ -17,6 +17,11 @@ package sema;
  */
 
 import ast.Tree;
+import sema.Decl.FieldDecl;
+import sema.Decl.RecordDecl;
+import type.PointerType;
+import type.QualType;
+import type.RecordType;
 import utils.OutParamWrapper;
 
 /**
@@ -25,17 +30,126 @@ import utils.OutParamWrapper;
  */
 public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
+    private OutParamWrapper<LValue> result;
     public LValueExprEvaluator(OutParamWrapper<LValue> result)
     {
+        this.result = result;
     }
 
-    @Override protected Boolean success(APValue v, Tree.Expr e)
+    private boolean success(Tree.Expr expr)
     {
-        return null;
+        result.get().base = null;
+        result.get().offset = 0;
+        return true;
     }
 
-    @Override protected Boolean error(Tree.Expr expr)
+    @Override
+    protected Boolean success(APValue v, Tree.Expr e)
     {
-        return null;
+        result.get().setFrom(v);
+        return true;
+    }
+
+    @Override
+    protected Boolean error(Tree.Expr expr)
+    {
+        return false;
+    }
+
+    @Override
+    protected boolean visitCastExpr(Tree.CastExpr expr)
+    {
+        switch (expr.getCastKind())
+        {
+            default:return false;
+
+            case CK_NoOp:
+                return visit(expr.getSubExpr());
+        }
+    }
+
+    public Boolean visitDeclRefExpr(Tree.DeclRefExpr expr)
+    {
+        if (expr.getDecl() instanceof Decl.VarDecl)
+        {
+            return success(expr);
+        }
+        return false;
+    }
+
+    public Boolean visitCompoundLiteralExpr(Tree.CompoundLiteralExpr expr)
+    {
+        return success(expr);
+    }
+
+    public Boolean visitMemberExpr(Tree.MemberExpr expr)
+    {
+        QualType ty;
+        if (expr.isArrow())
+        {
+            if (!evaluatePointer(expr.getBase(), result))
+                return false;
+            ty = expr.getBase().getType().<PointerType>getAs().getPointeeType();
+        }
+        else
+        {
+            if (!visit(expr.getBase()))
+                return false;
+            ty = expr.getBase().getType();
+        }
+
+        RecordDecl recordDecl = ty.<RecordType>getAs().getDecl();
+        RecordLayoutInfo recordLayoutInfo = RecordLayoutInfo.getRecordLayout(recordDecl);
+
+        if (!(expr.getMemberDecl() instanceof FieldDecl))
+            return false;
+
+        FieldDecl field = (FieldDecl) expr.getMemberDecl();
+
+        int i = field.getFieldIndex();
+        result.get().offset += QualType.toByteUnitFromBits(recordLayoutInfo.getFiedOffsetAt(i));
+        return true;
+    }
+
+    public Boolean visitStringLiteral(Tree.StringLiteral expr)
+    {
+        return success(expr);
+    }
+
+    public Boolean visitArraySubscriptExpr(Tree.ArraySubscriptExpr expr)
+    {
+        if (!evaluatePointer(expr.getBase(), result))
+            return false;
+
+        APSInt index = new APSInt();
+        OutParamWrapper<APSInt> x = new OutParamWrapper<>(index);
+        if (!evaluateInteger(expr.getIdx(), x))
+            return false;
+
+        index = x.get();
+        long elementSize = expr.getType().getTypeSizeInBytes();
+        result.get().offset += index.getSExtValue() * elementSize;
+        return true;
+    }
+
+    public Boolean visitUnaryExpr(Tree.UnaryExpr expr)
+    {
+        if (expr.getOpCode() == UnaryOperatorKind.UO_Deref)
+        {
+            return evaluatePointer(expr, result);
+        }
+        return false;
+    }
+
+    @Override
+    public Boolean visitImplicitCastExpr(Tree.ImplicitCastExpr expr)
+    {
+        return visitCastExpr(expr);
+    }
+
+    @Override
+    public Boolean visitExplicitCastExpr(Tree.ExplicitCastExpr expr)
+    {
+        return visitCastExpr(expr);
     }
 }
