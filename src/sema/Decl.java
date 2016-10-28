@@ -15,7 +15,6 @@ import type.QualType;
 import type.Type;
 import utils.Position;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import static cparser.DeclKind.*;
@@ -29,7 +28,6 @@ import static type.Type.TagTypeKind.TTK_union;
  */
 public abstract class Decl extends DeclContext
 {
-
     public enum StorageClass
     {
         SC_none,
@@ -248,11 +246,11 @@ public abstract class Decl extends DeclContext
 
         public Tree.Expr getBitWidth() { return isBitField()? init: null; }
 
-        public int getBitWidthValue()
+        public long getBitWidthValue()
         {
             assert isBitField() :"not a bitfield";
             Tree.Expr bitWidth = getBitWidth();
-            return bitWidth.evaluateKnownConstInt();
+            return bitWidth.evaluateKnownConstInt().getZExtValue();
         }
 
         public RecordDecl getParent()
@@ -343,14 +341,19 @@ public abstract class Decl extends DeclContext
             return false;
         }
 
+        /**
+         * Returns true if this variable declared in a function scope
+         * but excludes the case that variable declared in blocks.
+         * @return
+         */
         public boolean isFunctionVarDecl()
         {
             if (getDeclKind() != DeclKind.VarDecl)
                 return false;
             if (getDeclContext() != null)
-                return getDeclContext().isFunction() && ;
+                return getDeclContext().isFunction()
+                        && getDeclKind() != DeclKind.BlockDecl;
             return false;
-
         }
 
         /**
@@ -523,7 +526,7 @@ public abstract class Decl extends DeclContext
 
         public QualType getReturnType()
         {
-            return getDeclType().getType().getFunctionType().getReturnType()
+            return getDeclType().getType().getFunctionType().getReturnType();
         }
 
         public void setParams(ArrayList<ParamVarDecl> params)
@@ -696,7 +699,7 @@ public abstract class Decl extends DeclContext
                 int loc,
                 TagDecl prevDecl)
         {
-            super(kind, context, name, loc, );
+            super(kind, context, name, loc);
             isBeingDefined = false;
             this.tagTypeKind = tagTypeKind;
             setPreviousDecl(prevDecl);
