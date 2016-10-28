@@ -917,7 +917,7 @@ abstract public class Tree
             if (field == null)
                 return new QualType();
             QualType t = field.getDeclType();
-            int bitWidth = field.getBitWidthValue();
+            long bitWidth = field.getBitWidthValue();
             long intSize = IntTy.getType().getTypeSize();
 
             // GCC extension compatibility: if the bit-field getTypeSize is less than or equal
@@ -1124,6 +1124,25 @@ abstract public class Tree
             return evaluate(result.get()) && !result.get().hasSideEffects();
         }
 
+	    /**
+	     * Evaluates this expression and return a folded integer.
+	     * @return
+	     */
+	    public APSInt evaluateKnownConstInt()
+	    {
+	        EvalResult res = new EvalResult();
+	        boolean result = evaluate(res);
+            assert result:"Cound not evaluate expression";
+            assert res.val.isInt():"Expression did not be evaluated into integer.";
+		    return res.val.getInt();
+	    }
+
+	    public boolean hasSideEffects()
+        {
+            // TODO 2016.10.28
+            return false;
+        }
+
         /**
          * This class contains detailed information about an evaluation expression.
          */
@@ -1157,6 +1176,12 @@ abstract public class Tree
             public APValue getValue()
             {
                 return val;
+            }
+
+            public boolean isGlobalLValue()
+            {
+                assert val.isLValue();
+                return ExprEvaluatorBase.isGlobalLValue(val.getLValueBase());
             }
         }
     }

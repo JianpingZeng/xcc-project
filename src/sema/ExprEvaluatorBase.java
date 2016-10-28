@@ -35,10 +35,12 @@ public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
 
     public RetTy visit(Expr expr)
     {
-        return null;
+        expr.accept(this);
+        return (RetTy) new Object();
     }
 
-    @Override public RetTy visitCallExpr(CallExpr expr)
+    @Override
+    public RetTy visitCallExpr(CallExpr expr)
     {
         return null;
     }
