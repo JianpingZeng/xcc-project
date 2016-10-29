@@ -41,7 +41,7 @@ import static type.Type.UnsignedIntTy;
  * 
  * The only method defined in subclasses is 'visit' which applies a given
  * visitor to the tree. The actual tree processing is done by visitor classes in
- * other package. The abstract class {@link ASTVisitor} is the abstract root
+ * other package. The abstract class {@link StmtVisitor} is the abstract root
  * class for visiting different tree.
  * 
  * @author Xlous.zeng  
@@ -65,7 +65,7 @@ abstract public class Tree
 	public static final int MethodDefStmtClass = SelectExprClass + 1;
 
 	/**
-	 * Variable definitions, of type VarDef.
+	 * GlobalVariable definitions, of type VarDef.
 	 */
 	public static final int VarDefStmtClass = MethodDefStmtClass + 1;
 
@@ -270,7 +270,7 @@ abstract public class Tree
 	/**
 	 * Visit this tree with a given visitor.
 	 */
-	public abstract void accept(ASTVisitor v);
+	public abstract void accept(StmtVisitor v);
 
 	/**
 	 * Everything in one source file is kept in a TopLevel structure.
@@ -306,7 +306,7 @@ abstract public class Tree
 		public void setDecls(ArrayList<DeclStmt> decls) {this.decls = decls;}
 
         @Override
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitTopLevel(this);
 		}
@@ -325,7 +325,7 @@ abstract public class Tree
             this.loc = loc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitNullStmt(this);
 		}
@@ -356,7 +356,7 @@ abstract public class Tree
 			this.sym = sym;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 
 		}
@@ -388,7 +388,7 @@ abstract public class Tree
 			this.sym = sym;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			//v.visitVarDef(this);
 		}
@@ -417,7 +417,7 @@ abstract public class Tree
             this.declEnd = declEnd;
 	    }
 
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitDeclStmt(this);
         }
@@ -444,7 +444,7 @@ abstract public class Tree
             this.endpos = loc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitCompoundStmt(this);
 		}
@@ -477,7 +477,7 @@ abstract public class Tree
 			this.sym = sym;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitSelectStmt(this);
 		}
@@ -507,7 +507,7 @@ abstract public class Tree
             return new SourceRange(doLoc, rParenLoc);
         }
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitDoStmt(this);
 		}
@@ -539,7 +539,7 @@ abstract public class Tree
             this.rParenLoc = rParenLoc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitForStmt(this);
 		}
@@ -561,7 +561,7 @@ abstract public class Tree
             this.whileLoc = whileLoc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitWhileStmt(this);
 		}
@@ -586,7 +586,7 @@ abstract public class Tree
             this.loc = loc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitLabelledStmt(this);
 		}
@@ -610,7 +610,7 @@ abstract public class Tree
             this.ifLoc = ifLoc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitIfStmt(this);
 		}
@@ -653,7 +653,7 @@ abstract public class Tree
             return switchLoc;
         }
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitSwitchStmt(this);
 		}
@@ -714,7 +714,7 @@ abstract public class Tree
             return colonLoc;
         }
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitCaseStmt(this);
 		}
@@ -772,7 +772,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitDefaultStmt(this);
         }
@@ -791,7 +791,7 @@ abstract public class Tree
 			this.breakLoc = breakLoc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitBreakStmt(this);
 		}
@@ -809,7 +809,7 @@ abstract public class Tree
 			this.gotoLoc = gotoLoc;
             this.labelLoc = labelLoc;
 		}
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitGotoStmt(this);
 		}
@@ -828,7 +828,7 @@ abstract public class Tree
 			this.continueLoc = continueLoc;
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitContinueStmt(this);
 		}
@@ -853,7 +853,7 @@ abstract public class Tree
             this(returnloc, null);
         }
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitReturnStmt(this);
 		}
@@ -1219,7 +1219,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitDeclRefExpr(this);
         }
@@ -1269,7 +1269,7 @@ abstract public class Tree
         public APInt getValue() { return val;}
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitIntegerLiteral(this);
         }
@@ -1296,7 +1296,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitFloatLiteral(this);
         }
@@ -1326,7 +1326,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitCharacterLiteral(this);
         }
@@ -1348,7 +1348,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitStringLiteral(this);
         }
@@ -1375,7 +1375,7 @@ abstract public class Tree
         {
             return new SourceRange(lParenLoc, rParenLoc);
         }
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitParenExpr(this);
         }
@@ -1420,7 +1420,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitParenListExpr(this);
         }
@@ -1494,7 +1494,7 @@ abstract public class Tree
          * @param v
          */
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitImplicitCastExpr(this);
         }
@@ -1523,7 +1523,7 @@ abstract public class Tree
          * @param v
          */
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitExplicitCastExpr(this);
         }
@@ -1601,7 +1601,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitArraySubscriptExpr(this);
         }
@@ -1718,7 +1718,7 @@ abstract public class Tree
             return fnType.getReturnType();
         }
         @Override
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitCallExpr(this);
 		}
@@ -1800,7 +1800,7 @@ abstract public class Tree
         public int getExprLoc() { return memberLoc;}
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitMemberExpr(this);
         }
@@ -1882,7 +1882,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitCompoundLiteralExpr(this);
         }
@@ -1975,7 +1975,7 @@ abstract public class Tree
             }
         }
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitUnaryExpr(this);
 		}
@@ -2018,7 +2018,7 @@ abstract public class Tree
         }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitUnaryExprOrTypeTraitExpr(this);
         }
@@ -2062,7 +2062,7 @@ abstract public class Tree
         }
 
         @Override
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitBinaryExpr(this);
 		}
@@ -2205,7 +2205,7 @@ abstract public class Tree
         public void setComputationResultType(QualType T) { computationResultType = T; }
 
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitCompoundAssignExpr(this);
         }
@@ -2235,7 +2235,7 @@ abstract public class Tree
             this.cLoc = cLoc;
         }
 
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitConditionalExpr(this);
         }
@@ -2307,7 +2307,7 @@ abstract public class Tree
             this.rBraceLoc = rBraceLoc;
         }
         @Override
-        public void accept(ASTVisitor v)
+        public void accept(StmtVisitor v)
         {
             v.visitInitListExpr(this);
         }
@@ -2332,7 +2332,7 @@ abstract public class Tree
 			super(ErroneousStmtClass);
 		}
 
-		public void accept(ASTVisitor v)
+		public void accept(StmtVisitor v)
 		{
 			v.visitErroneous(this);
 		}

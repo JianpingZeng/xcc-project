@@ -1,5 +1,6 @@
 package sema;
 
+import ast.ASTConsumer;
 import ast.CastKind;
 import ast.Tree;
 import ast.Tree.*;
@@ -10,10 +11,8 @@ import cparser.DeclSpec.TST;
 import cparser.Token.CharLiteral;
 import cparser.Token.Ident;
 import cparser.Token.IntLiteral;
-import org.jetbrains.annotations.Contract;
 import sema.Decl.*;
 import type.*;
-import type.ConstantArrayType.ConstantArrayType;
 import type.Type.TagTypeKind;
 import utils.*;
 
@@ -29,22 +28,21 @@ import static cparser.Parser.stmtError;
 import static cparser.Tag.*;
 import static sema.BinaryOperatorKind.BO_Div;
 import static sema.BinaryOperatorKind.BO_DivAssign;
+import static sema.LookupResult.LookupResultKind.Found;
 import static sema.Scope.ScopeFlags.CompilationUnitScope;
 import static sema.Scope.ScopeFlags.DeclScope;
 import static sema.Sema.LookupNameKind.*;
-import static sema.LookupResult.LookupResultKind.*;
 import static sema.UnaryOperatorKind.*;
 
 /**
- * This file defines the Sema class, which performs semantic analysis and
- * builds ASTs.
+ * This file defines the {@linkplain Sema} class, which performs semantic
+ * analysis and builds ASTs for C.
  *
  * @author Xlous.zeng
  * @version 0.1
  */
 public final class Sema
 {
-
     public enum TagUseKind
     {
         TUK_reference,      // Reference to a tag: 'struct foo *X;'
@@ -124,17 +122,40 @@ public final class Sema
 
     private Scope curScope;
     private DeclContext curContext;
-    public final Parser parser;
+    private final Parser parser;
     private Stack<FunctionScopeInfo> functionScopes;
     private static Context SEMA_CONTEXT = new Context();
+    private ASTConsumer consumer;
+    private ASTContext context;
 
-    public Sema(InputStream in)
+    public Sema(InputStream in, ASTConsumer consumer, ASTContext context)
+    {
+        parser = Parser.instance(in, SEMA_CONTEXT, this);
+        this.consumer = consumer;
+        this.context = context;
+        initialize();
+    }
+
+    private void initialize()
     {
         curScope = new Scope(null, CompilationUnitScope.value);
-        parser = Parser.instance(in, SEMA_CONTEXT, this);
         functionScopes = new Stack<>();
     }
 
+    public ASTConsumer getASTConsumer()
+    {
+        return consumer;
+    }
+
+    public ASTContext getASTContext()
+    {
+        return context;
+    }
+
+    public Parser getParser()
+    {
+        return parser;
+    }
     /**
      * IfStmt the identifier refers to a type name within current scope,
      * return the declaration of this type.

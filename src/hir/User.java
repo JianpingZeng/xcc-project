@@ -1,6 +1,9 @@
 package hir;
 
 import lir.ci.LIRKind;
+import type.Type;
+
+import java.util.ArrayList;
 
 /**
  * @author Xlous.zeng
@@ -13,7 +16,7 @@ public abstract class User extends Value
      */
     public int id;
 
-    public final Operator opcode;
+    public Operator opcode;
 
     /**
      * The name of this instruction.
@@ -24,25 +27,29 @@ public abstract class User extends Value
      * The basic block containing this Value.
      */
     protected BasicBlock bb;
-    /**
-     * This array with element of type Value represents all operands.
-     */
-	protected Value[] reservedOperands;
+
     /**
      * the number of values used by this user.
      */
     protected int numOperands = -1;
 
-	public User(LIRKind kind, Operator opcode,
-            String instName, int numOperands)
+    /**
+     * This array with element of type Value represents all operands.
+     */
+    protected ArrayList<Use> operandList;
+
+	public User(Type ty, Operator op)
 	{
-		super(kind);
-        this.opcode = opcode;
-        this.instName = instName;
-        this.id = -1;
-        assert (numOperands >= 0);
-        this.reservedOperands = new Value[numOperands];
+		super(ty, ValueKind.InstructionVal + op.index);
+        opcode = op;
+        id = -1;
 	}
+
+	protected void reserve(int numOperands)
+    {
+        assert numOperands>0;
+        operandList = new ArrayList<>(numOperands);
+    }
 
     /**
      * Obtains a reference to the operand at index position.
@@ -52,7 +59,7 @@ public abstract class User extends Value
 	public Value operand(int index)
     {
         assert (index >= 0 && index < numOperands);
-        return reservedOperands[index];
+        return operandList.get(index).getValue();
     }
 
     /**
@@ -63,7 +70,7 @@ public abstract class User extends Value
     public void setOperand(int index, Value val)
     {
         assert (index >= 0 && index < numOperands);
-        reservedOperands[index] = val;
+        operandList.get(index).setValue(val);
     }
 
     /**
@@ -72,6 +79,6 @@ public abstract class User extends Value
      */
     public int getNumOfOperands()
     {
-        return numOperands;
+        return operandList.size();
     }
 }

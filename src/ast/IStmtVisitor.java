@@ -23,15 +23,15 @@ import ast.Tree.*;
  * This is an interface in which all visitor method should be implemented by
  * another concrete subclass for specified purpose.
  * <br>
- * There is a {@linkplain ASTVisitor} class implements all visitor method
+ * There is a {@linkplain StmtVisitor} class implements all visitor method
  * If you don't want implement all visitor method by self, it is desired that
- * extends your class from {@linkplain ASTVisitor}.
+ * extends your class from {@linkplain StmtVisitor}.
  *
- * @see ASTVisitor
+ * @see StmtVisitor
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface IASTVisitor<T>
+public interface IStmtVisitor<T>
 {
     /**
      * Visits the root class represents the top level tree node.

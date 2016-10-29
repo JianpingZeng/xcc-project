@@ -44,12 +44,9 @@ public enum Operator
 	FDiv("fdiv", LDiv.index + 1, ASSOCIATIVE),
 	DDiv("ddiv", FDiv.index + 1, ASSOCIATIVE),
 
-	// comparison operation
-	Cmp("cmp", DDiv.index + 1, 0),
-
-	// mod operation
-	IMod("imod", Cmp.index + 1, ASSOCIATIVE),
-	LMod("lmod", IMod.index + 1, ASSOCIATIVE),
+    // mod operation
+    IMod("imod", DDiv.index + 1, ASSOCIATIVE),
+    LMod("lmod", IMod.index + 1, ASSOCIATIVE),
 
 	// bit-operation
 	IAnd("iand", LMod.index + 1, ASSOCIATIVE | COMMUTATIVE),
@@ -61,8 +58,16 @@ public enum Operator
 	IXor("ixor", LOr.index + 1, ASSOCIATIVE | COMMUTATIVE),
 	LXor("lxor", IXor.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
+    // comparison operation
+    SetEQ("SetEQ", LXor.index + 1, 0),
+    SetNE("SetNE", SetEQ.index + 1, 0),
+    SetLE("SetLE", SetNE.index + 1, 0),
+    SetGE("SetGE", SetLE.index + 1, 0),
+    SetLT("SetLT", SetGE.index + 1, 0),
+    SetGT("SetGT", SetLT.index + 1, 0),
+
 	// negative operation
-	INeg("ineg", LXor.index + 1, 0),
+	INeg("ineg", SetLT.index + 1, 0),
 	LNeg("lneg", INeg.index + 1, 0),
 	FNeg("fneg", LNeg.index + 1, 0),
 	DNeg("dneg", FNeg.index + 1, 0),

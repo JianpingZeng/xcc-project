@@ -11,7 +11,7 @@ import utils.Util;
  * @author Xlous.zeng
  * @version 1.0
  */
-public abstract class ASTVisitor<T> implements IASTVisitor<T>
+public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 {
 	/**
 	 * Visits the root class represents the top level tree node.

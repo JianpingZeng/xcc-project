@@ -21,7 +21,7 @@ import utils.Context;
 import utils.Log;
 import utils.Name;
 import utils.Position;
-import ast.ASTVisitor;
+import ast.StmtVisitor;
 import ast.Flags;
 import ast.Tree;
 import ast.Tree.CallExpr;
@@ -63,7 +63,7 @@ import exception.CompletionFailure;
  * @see ConstFold
  * @see Enter
  */
-public class Attr extends ASTVisitor implements SymbolKinds, TypeClass, Flags
+public class Attr extends StmtVisitor implements SymbolKinds, TypeClass, Flags
 {
 	private static final Context.Key attrKey = new Context.Key();
 

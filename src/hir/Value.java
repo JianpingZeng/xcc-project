@@ -3,6 +3,7 @@ package hir;
 import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
 import lir.ci.LIRValue;
+import type.Type;
 import utils.Name;
 import java.util.*;
 import hir.Instruction.PhiNode;
@@ -35,19 +36,25 @@ public class Value implements Cloneable
 	 * LLVM language reference manual</a> for detail.</p>
 	 * </p>
 	 */
-	public Name name = null;
+	public String name;
+
+    private int subclassID;
 
 	/**
 	 * The list of user who usesList this value.
 	 */
 	public final LinkedList<Use> usesList;
+
+    private Type ty;
 	
-	public Value(LIRKind kind)
+	public Value(Type ty, int valueType)
 	{
-		this.kind = kind;
-		this.LIROperand = LIRValue.IllegalValue;
+		this.ty = ty;
+        subclassID = valueType;
 		this.usesList = new LinkedList<>();
 	}
+
+	public Type getType() { return ty;}
 	
 	/**
 	 * For value number to determine whether this instruction is equivalent to
@@ -236,7 +243,7 @@ public class Value implements Cloneable
 	 * The {@code Constant} instruction represents a constant such as an integer
 	 * inst, long, float, object reference, address, etc.
 	 */
-	public static class Constant extends Value
+	public static class Constant extends User
 	{
 		public static Constant CONSTANT_INT_0 = Constant.forInt(0);
 		public static Constant CONSTANT_INT_1 = Constant.forInt(1);
@@ -250,11 +257,10 @@ public class Value implements Cloneable
 		/**
 		 * Constructs a new instruction representing the specified constant.
 		 */
-		public Constant(LIRConstant value)
-		{
-			super(value !=null ? value.kind : LIRKind.Illegal);
-			this.value = value;
-		}
+		public Constant(Type ty, int valueType, ArrayList<Use> operands)
+        {
+            super(ty, valueType, operands);
+        }
 
 		public void setValue(LIRConstant value)
 		{

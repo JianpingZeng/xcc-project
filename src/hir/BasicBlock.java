@@ -2,6 +2,7 @@ package hir;
 
 
 import hir.Instruction.*;
+
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -9,7 +10,6 @@ import java.util.List;
 import java.util.ListIterator;
 import lir.LIRBlock;
 import lir.LIRList;
-import lir.ci.LIRKind;
 import opt.Loop;
 import asm.Label;
 
@@ -34,7 +34,7 @@ import asm.Label;
 public final class BasicBlock extends Value implements Iterable<Instruction>
 {
 	public static final BasicBlock USELESS_BLOCK =
-			new BasicBlock(-1, null, null, "useless", null);
+			new BasicBlock(-1, "useless", null);
 
 	/**
 	 * Unique id id for this basic block.
@@ -52,18 +52,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	private final LinkedList<Instruction> instructions;
 
 	/**
-	 * A set of predecessors.
-	 */
-	private final LinkedList<BasicBlock> predecessors;
-
-	/**
-	 * A  of successors.
-	 */
-	private final LinkedList<BasicBlock> successors;
-
-	private ControlFlowGraph cfg;
-
-	/**
 	 * The name of this block.
 	 */
 	public String bbName;
@@ -73,6 +61,8 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public int loopIndex = -1;
 
 	public int loopDepth;
+
+    private Function parent;
 
 	/**
 	 * A block containing Generated machine instruction corresponding to
@@ -133,7 +123,13 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public boolean isPredecessor(BasicBlock block)
 	{
-		return successors.contains(block);
+	    PredIterator itr = predIterator();
+		while (itr.hasNext())
+        {
+            if (itr.next() == block)
+                return true;
+        }
+        return false;
 	}
 
 	public enum BlockFlag
@@ -150,75 +146,46 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * A private constructor for entry node
 	 */
 	private BasicBlock(
-			int id, 
-			LinkedList<BasicBlock> pres,
-			String bbName, 
-			ControlFlowGraph cfg)
+			int id,
+			String bbName,
+			Function newParent,
+			BasicBlock insertBefore)
 	{
-		this(id, pres, null, bbName, cfg);
+		super(type.Type.getLabelTy(), ValueKind.BasicBlockVal);
+        parent = newParent;
+		this.idNumber = id;
+		this.instructions = new LinkedList<>();
+		this.bbName = bbName;
+
+        if (insertBefore != null)
+        {
+            assert newParent!=null:"Cann't insert block before another block";
+            LinkedList<BasicBlock> list = newParent.getBasicBlockList();
+
+            int idx = list.indexOf(insertBefore);
+            list.add(id, this);
+        }
+        else if (newParent != null)
+            newParent.getBasicBlockList().addLast(this);
+        name = bbName;
 	}
 
 	private BasicBlock(
-			int id, 
-			LinkedList<BasicBlock> pres,
-			LinkedList<BasicBlock> succs,
-			String bbName, 
-			ControlFlowGraph cfg)
+			int id,
+			String bbName,
+			Function parent)
 	{
-		super(LIRKind.Void);
-
-		this.idNumber = id;
-		this.instructions = new LinkedList<>();
-		this.predecessors = pres;
-		this.successors = succs;
-		this.bbName = bbName;
-		this.cfg = cfg;
-		// add the numbers of block in CFG
-		cfg.stats.blockCount++;
-	}
-
-	/**
-	 * Creates new entry node. Only to be called by ControlFlowGraph.
-	 */
-	public static BasicBlock createStartNode(int id, String name, ControlFlowGraph cfg)
-	{
-		return new BasicBlock(id, null, name, cfg);
-	}
-
-	/**
-	 * Creates a new basic node for exit block without numbers of predecessors.
-	 */
-	public static BasicBlock createEndNode(int id, String bbName, ControlFlowGraph cfg)
-	{
-		return new BasicBlock(id, new LinkedList<>(), null, bbName, cfg);
+		this(id, bbName, parent, null);
 	}
 
 	/**
 	 * Create new internal basic block. Only to be called by ControlFlowGraph.
 	 */
-	public static BasicBlock createBasicBlock(int id, String bbName, ControlFlowGraph cfg)
+	public static BasicBlock createBasicBlock(int id,
+            String bbName,
+            Function parent, BasicBlock before)
 	{
-		return new BasicBlock(id, new LinkedList<>(), new LinkedList<>(), bbName, cfg);
-	}
-
-	/**
-	 * Returns true if this is the entry basic block.
-	 *
-	 * @return true if this is the entry basic block.
-	 */
-	public boolean isEntry()
-	{
-		return predecessors == null;
-	}
-
-	/**
-	 * Returns true if this is the exit basic block.
-	 *
-	 * @return true if this is the exit basic block.
-	 */
-	public boolean isExit()
-	{
-		return successors == null;
+		return new BasicBlock(id, bbName, parent, before);
 	}
 
 	/**
@@ -368,101 +335,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		}
 	}
 
-	/**
-	 * Add a predecessor basic block to this basic block. Cannot add
-	 * predecessors to the entry basic block.
-	 *
-	 * @param b basic block to add as a predecessor
-	 */
-	public boolean addPred(BasicBlock b)
-	{
-		assert (b != null) : "Cannot add null block into predecessor list";
-		if (predecessors.contains(b))
-			return false;
-		return predecessors.add(b);
-	}
-
-	/**
-	 * Add a successor basic block to this basic block. Cannot add successors to
-	 * the exit basic block.
-	 *
-	 * @param b basic block to add as a successor
-	 */
-	public boolean addSucc(BasicBlock b)
-	{
-		assert (b != null) : "Cannot add null block into successor list";
-		if (successors.contains(b))
-			return false;
-		return successors.add(b);
-	}
-
-	public int getNumOfSuccs()
-	{
-		return successors == null ? 0 : successors.size();
-	}
-
-	public int getNumOfPreds()
-	{
-		return predecessors == null ? 0 : predecessors.size();
-	}
-
-	/**
-	 * Returns a list of the successors of this basic block.
-	 *
-	 * @return a list of the successors of this basic block.
-	 */
-	public List<BasicBlock> getSuccs()
-	{
-		return successors == null ?
-				Collections.emptyList() :
-				successors;
-	}
-
-	/**
-	 * Returns an list of the predecessors of this basic block.
-	 *
-	 * @return an iterator of the predecessors of this basic block.
-	 */
-	public List<BasicBlock> getPreds()
-	{
-		return predecessors == null ?
-				Collections.emptyList() :
-				predecessors;
-	}
-
-	/**
-	 * Gets the succesor at the specified position.
-	 * @param index
-	 * @return
-	 */
-	public BasicBlock succAt(int index)
-	{
-		assert index >= 0 && index < successors.size() :
-				"The index into successor is beyond range";
-
-		return successors.get(index);
-	}
-	/**
-	 * Gets the predecessor at the specified position.
-	 * @param index
-	 * @return
-	 */
-	public BasicBlock predAt(int index)
-	{
-		assert index >= 0 && index < predecessors.size() :
-				"The index into predecessors is beyond range";
-
-		return predecessors.get(index);
-	}
-
 	public int getID()
 	{
 		return this.idNumber;
 	}
-
-	public ControlFlowGraph getCFG() {return cfg;}
-
-	public void setCFG(ControlFlowGraph cfg) {this.cfg = cfg;}
 
 	public Instruction firstInst()
 	{
@@ -532,10 +408,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public boolean removeSuccssor(BasicBlock removed)
 	{
-		if (successors.contains(removed))
-		{
-			return successors.remove(removed);
-		}
+
 		return false;
 	}
 
@@ -546,8 +419,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public boolean removePredeccessor(BasicBlock removed)
 	{
-		if (predecessors != null && predecessors.contains(removed))
-			return predecessors.remove(removed);
+
 		return false;
 	}
 
@@ -556,13 +428,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public void eraseFromParent()
 	{
-		if (predecessors != null)
-			for (BasicBlock pred : predecessors)
-				pred.removeSuccssor(this);
-
-		if (successors != null)
-			for (BasicBlock succ : successors)
-				succ.removePredeccessor(this);
+		parent.getBasicBlockList().remove(this);
 	}
 	/**
 	 * Returns the terminator instruction if the block is well formed or
@@ -572,12 +438,8 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public BranchInst getTerminator()
 	{
 		Instruction inst = instructions.getLast();
-		if (inst instanceof BranchInst)
-		{
-			return (BranchInst)inst;
-		}
-		else 
-			return null;
+        assert (inst instanceof BranchInst);
+        return (BranchInst)inst;
 	}
 	
 	public void setBlockFlags(BlockFlag flag)
@@ -613,4 +475,14 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	{
 		getLIRBlock().setLIR(lir);
 	}
+
+	public PredIterator<BasicBlock> predIterator()
+    {
+        return new PredIterator<BasicBlock>(this);
+    }
+
+    public SuccIterator<BasicBlock> succIterator()
+    {
+        return new SuccIterator<BasicBlock>(this);
+    }
 }

@@ -424,4 +424,11 @@ public abstract class Type implements TypeClass
 
         return !(this instanceof VariableArrayType);
     }
+
+    public static Type getLabelTy() { return LabelType.New();}
+
+    public static Type getVoidTy()
+    {
+        return VoidType.getVoidTy();
+    }
 }

@@ -1,8 +1,11 @@
 package hir;
 
 import lir.ci.LIRKind;
+import type.Type;
 import utils.Log;
 import utils.Util;
+
+import java.util.ArrayList;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -19,11 +22,12 @@ import utils.Util;
  */
 public abstract class Instruction extends User
 {
-    public Instruction(LIRKind kind, Operator opcode, String instName,
-            int numOperands, Instruction insertBefore)
+    public Instruction(Type ty,
+            Operator op,
+            Instruction insertBefore)
     {
-        super(kind, opcode, instName, numOperands);
-
+        super(ty, op);
+        setParent(null);
         if (insertBefore != null)
         {
             assert (insertBefore.getParent()
@@ -32,10 +36,11 @@ public abstract class Instruction extends User
         }
     }
 
-    public Instruction(LIRKind kind, Operator opcode, String instName,
-            int numOperands, BasicBlock insertAtEnd)
+    public Instruction(Type ty,
+            Operator op,
+            BasicBlock insertAtEnd)
     {
-        super(kind, opcode, instName, numOperands);
+        super(ty, op);
 
         // append this instruction into the basic block
         assert (insertAtEnd
@@ -43,15 +48,10 @@ public abstract class Instruction extends User
         insertAtEnd.appendInst(this);
     }
 
-    public Instruction(LIRKind kind, Operator opcode, String instName,
-            int numOperands)
+    public Instruction(Type ty,
+            Operator op)
     {
-        this(kind, opcode, instName, numOperands, (Instruction) null);
-    }
-
-    public Instruction(LIRKind kind, Operator opcode, int numOperands)
-    {
-        this(kind, opcode, "", numOperands);
+        this(ty, op, (Instruction) null);
     }
 
     /**
@@ -124,18 +124,6 @@ public abstract class Instruction extends User
     }
 
     /**
-     * Links the user value and its user.
-     *
-     * @param v The used {@code Value}.
-     * @param u The {@code Instruction} or other instance of {@code User}.
-     */
-    void use(Value v, User u)
-    {
-        assert v != null && u != null;
-        v.addUse(new Use(v, u));
-    }
-
-    /**
      * Obtains the name of this instruction.
      *
      * @return return the name of this instruction.
@@ -160,45 +148,44 @@ public abstract class Instruction extends User
         /**
          * Constructs unary operation.
          *
-         * @param kind   The inst kind of ret.
+         * @param ty   The inst ty of ret.
          * @param opcode The operator code for this instruction.
          * @param x      The sole LIROperand.
          */
-        public Op1(LIRKind kind, Operator opcode, Value x,
+        public Op1(Type ty, Operator opcode, Value x,
                 String name, Instruction insertBefore)
         {
-            super(kind, opcode, name, 1, insertBefore);
+            super(ty, opcode, insertBefore);
+            reserve(1);
             setOperand(0, x);
-            use(x, this);
         }
 
         /**
          * Constructs unary operation.
          *
-         * @param kind   The inst kind of ret.
+         * @param ty   The inst ty of ret.
          * @param opcode The operator code for this instruction.
          * @param x      The sole LIROperand.
          */
-        public Op1(LIRKind kind, Operator opcode, Value x,
+        public Op1(Type ty, Operator opcode, Value x,
                 String name)
         {
-            this(kind, opcode, x, name, (Instruction)null);
+            this(ty, opcode, x, name, (Instruction)null);
         }
 
         /**
          *
-         * @param kind
+         * @param ty
          * @param opcode
          * @param x
          * @param name
          * @param insertAtEnd
          */
-        public  Op1(LIRKind kind, Operator opcode, Value x,
+        public  Op1(Type ty, Operator opcode, Value x,
                 String name, BasicBlock insertAtEnd)
         {
-            super(kind, opcode, name, 1, insertAtEnd);
+            super(ty, opcode, insertAtEnd);
             setOperand(0, x);
-            use(x, this);
         }
 
         @Override
@@ -218,7 +205,7 @@ public abstract class Instruction extends User
                 return false;
 
             Op1 op = (Op1) other;
-            return kind == op.kind && opcode.equals(op.opcode)
+            return getType() == op.getType() && opcode.equals(op.opcode)
                     && operand(0).equals(op.operand(0));
         }
 
@@ -241,28 +228,29 @@ public abstract class Instruction extends User
      */
     public static class Op2 extends Instruction
     {
-        public Op2(LIRKind kind, Operator opcode,
+        public Op2(Type ty, Operator opcode,
                 Value x, Value y, String name)
         {
-            this(kind, opcode, x, y, name, (Instruction)null);
+            this(ty, opcode, x, y, name, (Instruction)null);
         }
 
-        public Op2(LIRKind kind, Operator opcode,
+        public Op2(Type ty, Operator opcode,
                 Value x, Value y, String name,
                 Instruction insertBefore)
         {
-            super(kind, opcode, name, 2, insertBefore);
-            assert x.kind == y.kind
+            super(ty, opcode,insertBefore);
+            reserve(2);
+            assert x.getType() == y.getType()
                     : "Can not create binary operation with two operands of differing type.";
             init(x, y);
         }
 
-        public Op2(LIRKind kind, Operator opcode,
+        public Op2(Type ty, Operator opcode,
                 Value x, Value y, String name,
                 BasicBlock insertAtEnd)
         {
-            super(kind, opcode, name, 2, insertAtEnd);
-            assert x.kind == y.kind
+            super(ty, opcode, insertAtEnd);
+            assert x.getType() == y.getType()
                     : "Can not create binary operation with two operands of differing type.";
             init(x, y);
         }
@@ -271,8 +259,6 @@ public abstract class Instruction extends User
         {
             setOperand(0, x);
             setOperand(1, y);
-            use(x, this);
-            use(y, this);
         }
 
         /**
@@ -305,7 +291,7 @@ public abstract class Instruction extends User
             Op2 op = (Op2) other;
             Value x = operand(0);
             Value y = operand(1);
-            return kind == op.kind && opcode.equals(op.opcode)
+            return getType() == op.getType() && opcode.equals(op.opcode)
                     && x.equals(op.operand(0))
                     && y.equals(op.operand(1));
         }
@@ -322,137 +308,38 @@ public abstract class Instruction extends User
         }
     }
 
-    public static class Cmp extends Instruction
-    {
-        private Condition cond;
-
-        /**
-         * Creates a instance of different subclass served as different
-         * date type according to the date type.
-         *
-         * @param kind  The ret date type.
-         * @param left  The left LIROperand.
-         * @param right the right LIROperand.
-         * @param cond  The condition object.
-         * @return According comparison instruction.
-         */
-        public Cmp(LIRKind kind, Value left, Value right, Condition cond,
-                String name)
-        {
-            this(kind, left, right, cond, name, (Instruction)null);
-        }
-
-        /**
-         * Creates a instance of different subclass served as different
-         * date type according to the date type.
-         *
-         * @param kind  The ret date type.
-         * @param left  The left LIROperand.
-         * @param right the right LIROperand.
-         * @param cond  The condition object.
-         * @return According comparison instruction.
-         */
-        public Cmp(LIRKind kind, Value left,
-                Value right, Condition cond,
-                String name,
-                Instruction insertBefore)
-        {
-            super(kind, Operator.Cmp, name, 2, insertBefore);
-            this.cond = cond;
-            use(left, this);
-            use(right, this);
-        }
-
-        /**
-         * Creates a instance of different subclass served as different
-         * date type according to the date type.
-         *
-         * @param kind  The ret date type.
-         * @param left  The left LIROperand.
-         * @param right the right LIROperand.
-         * @param cond  The condition object.
-         * @return According comparison instruction.
-         */
-        public Cmp(LIRKind kind, Value left, Value right,
-                Condition cond,
-                String name,
-                BasicBlock insertAtEnd)
-        {
-            super(kind, Operator.Cmp, name, 2, insertAtEnd);
-            this.cond = cond;
-            use(left, this);
-            use(right, this);
-        }
-
-        /**
-         * An interface for InstructionVisitor invoking.
-         *
-         * @param visitor The instance of InstructionVisitor.
-         */
-        @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitCompare(this);
-        }
-
-        /**
-         * obtains the predicate condition.
-         * @return
-         */
-        public Condition condition()
-        {
-            return this.cond;
-        }
-
-        /**
-         * return the inverse predicate for current instruction's predicate.
-         * @return
-         */
-        public Condition getInverseCondition()
-        {
-            return cond.negate();
-        }
-
-        /**
-         * This just a convenience that swaps the operands and adjust predicate
-         * according to retain the same comparison.
-         */
-        public void swapOperand()
-        {
-            Util.swap(operand(0), operand(1));
-            if (!cond.isCommutative())
-            {
-                cond = cond.negate();
-            }
-        }
-
-        public boolean isCommutative()
-        {
-            return cond.isCommutative();
-        }
-    }
-
     public static class CastInst extends Op1
     {
-        public CastInst(LIRKind kind, Operator opcode,
+        public CastInst(Type ty,
+                Operator opcode,
                 Value x, String name)
         {
-            super(kind, opcode, x, name);
+            super(ty, opcode, x, name);
+            initialize(x);
         }
 
-        public CastInst(LIRKind kind, Operator opcode,
+        public CastInst(Type ty, Operator opcode,
                 Value x, String name,
                 Instruction insertBefore)
         {
-            super(kind, opcode, x, name, insertBefore);
+            super(ty, opcode, x, name, insertBefore);
+            initialize(x);
         }
 
-        public CastInst(LIRKind kind, Operator opcode,
+        public CastInst(Type ty, Operator opcode,
                 Value x, String name,
                 BasicBlock insertAtEnd)
         {
-            super(kind, opcode, x, name, insertAtEnd);
+            super(ty, opcode, x, name, insertAtEnd);
+            initialize(x);
         }
+
+        private void initialize(Value x)
+        {
+            reserve(1);
+            setOperand(0, x);
+        }
+
 
         /**
          * An interface for InstructionVisitor invoking.
@@ -475,16 +362,23 @@ public abstract class Instruction extends User
      */
     public static abstract class TerminatorInst extends Instruction
     {
-        TerminatorInst(LIRKind kind, Operator opcode, String instName,
-                int numOperands, Instruction insertBefore)
+        TerminatorInst(Operator opcode, String instName,
+                Instruction insertBefore)
         {
-            super(kind, opcode, instName, numOperands, insertBefore);
+            super(Type.getVoidTy(), opcode, insertBefore);
         }
 
-        TerminatorInst(LIRKind kind, Operator opcode, String instName,
-                int numOperands, BasicBlock insertAtEnd)
+        TerminatorInst(Type ty, Operator opcode, String instName,
+                Instruction insertBefore)
         {
-            super(kind, opcode, instName, numOperands, insertAtEnd);
+            super(ty, opcode, insertBefore);
+        }
+
+
+        TerminatorInst(Operator opcode, String instName,
+                BasicBlock insertAtEnd)
+        {
+            super(Type.getVoidTy(), opcode, insertAtEnd);
         }
 
         /**
@@ -519,7 +413,7 @@ public abstract class Instruction extends User
     public final static class BranchInst extends TerminatorInst
     {
         /**
-         * Constructs a Branch instruction.
+         * Constructs a unconditional Branch instruction.
          * BranchInst(BasicBlock bb) - 'br B'
          *
          * @param ifTrue       the branch target.
@@ -527,9 +421,9 @@ public abstract class Instruction extends User
          */
         public BranchInst(BasicBlock ifTrue, Instruction insertBefore)
         {
-            super(LIRKind.Void, Operator.Br, "", 1, insertBefore);
+            super(Operator.Br, "", insertBefore);
+            reserve(1);
             setOperand(0, ifTrue);
-            use(ifTrue, this);
         }
 
         /**
@@ -555,29 +449,21 @@ public abstract class Instruction extends User
         public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond,
                 Instruction insertBefore)
         {
-            super(LIRKind.Void, Operator.Br, "", 3, insertBefore);
+            super(Operator.Br, "", insertBefore);
+            reserve(3);
             setOperand(0, ifTrue);
             setOperand(1, ifFalse);
             setOperand(2, cond);
-
-            // add use of this
-            use(ifTrue, this);
-            use(ifFalse, this);
-            use(cond, this);
         }
 
         public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond,
                 BasicBlock insertAtEnd)
         {
-            super(LIRKind.Void, Operator.Br, "", 3, insertAtEnd);
+            super(Operator.Br, "", insertAtEnd);
 
             setOperand(0, ifTrue);
             setOperand(1, ifFalse);
             setOperand(2, cond);
-            // add use of this
-            use(ifTrue, this);
-            use(ifFalse, this);
-            use(cond, this);
         }
 
         /**
@@ -588,10 +474,8 @@ public abstract class Instruction extends User
          */
         public BranchInst(BasicBlock ifTrue, BasicBlock insertAtEnd)
         {
-            super(LIRKind.Void, Operator.Br, "", 1, insertAtEnd);
+            super(Operator.Br, "", insertAtEnd);
             setOperand(0, ifTrue);
-            // add use of this
-            use(ifTrue, this);
         }
 
         public boolean isUnconditional()
@@ -678,16 +562,9 @@ public abstract class Instruction extends User
      */
     public static class ReturnInst extends TerminatorInst
     {
-        private Log log;
-
-        public ReturnInst(Log log)
+        public ReturnInst()
         {
-            this(null, "", (Instruction) null, log);
-        }
-
-        public ReturnInst(String name, Log log)
-        {
-            this(null, name, (Instruction) null, log);
+            this(null, "", (Instruction) null);
         }
 
         /**
@@ -696,24 +573,24 @@ public abstract class Instruction extends User
          * @param retValue The return inst produce for this instruction, return
          *                 void if ret is {@code null}.
          */
-        public ReturnInst(Value retValue, String name, Instruction insertBefore,
-                Log log)
+        public ReturnInst(Value retValue, String name, Instruction insertBefore)
         {
-            super(retValue == null ? LIRKind.Void : retValue.kind, Operator.Ret,
-                    name, retValue != null ? 1 : 0, insertBefore);
-            this.log = log;
+            super(Operator.Ret, name, insertBefore);
             if (retValue != null)
-                use(retValue, this);
+            {
+                reserve(1);
+                setOperand(0, retValue);
+            }
         }
 
-        public ReturnInst(Value retValue, String name, BasicBlock insertAtEnd,
-                Log log)
+        public ReturnInst(Value retValue, String name, BasicBlock insertAtEnd)
         {
-            super(retValue != null ? retValue.kind : LIRKind.Void, Operator.Ret,
-                    name, retValue != null ? 1 : 0, insertAtEnd);
-            this.log = log;
+            super(Operator.Ret, name, insertAtEnd);
             if (retValue != null)
-                use(retValue, this);
+            {
+                reserve(1);
+                setOperand(0, retValue);
+            }
         }
 
         /**
@@ -735,7 +612,7 @@ public abstract class Instruction extends User
         @Override
         public BasicBlock suxAt(int index)
         {
-            log.unreachable("ReturnInst has no successors!");
+            assert true:"ReturnInst has no successors!";
             return null;
         }
 
@@ -748,7 +625,7 @@ public abstract class Instruction extends User
         @Override
         public void setSuxAt(int index, BasicBlock bb)
         {
-            log.unreachable("ReturnInst has no successors!");
+            assert true:("ReturnInst has no successors!");
         }
     }
 
@@ -759,75 +636,61 @@ public abstract class Instruction extends User
      */
     public static class InvokeInst extends TerminatorInst
     {
-        public Value ret;
-
         /**
          * Constructs a new method calling instruction.
          *
-         * @param result The kind of return ret.
          * @param args   The input arguments.
          * @param target The called method.
          */
-        public InvokeInst(LIRKind result, Value[] args, Function target,
+        public InvokeInst(Value[] args, Function target,
                 BasicBlock ifNormal, String name)
         {
-            this(result, args, target, ifNormal, name, (Instruction) null);
+            this(args, target, ifNormal, name, (Instruction) null);
         }
 
         /**
          * Constructs a new method calling instruction.
          *
-         * @param result The kind of return ret.
          * @param args   The input arguments.
          * @param target The called method.
          */
-        public InvokeInst(LIRKind result, Value[] args, Function target,
+        public InvokeInst(Value[] args, Function target,
                 BasicBlock ifNormal, String name, Instruction insertBefore)
         {
-            super(result, Operator.Invoke, name, args.length + 2, insertBefore);
+            super(target.getReturnType(), Operator.Invoke, name, insertBefore);
             init(target, ifNormal, args);
         }
 
-        /**
-         * Constructs a new method calling instruction.
-         *
-         * @param result The kind of return ret.
-         * @param args   The input arguments.
-         * @param target The called method.
-         */
-        public InvokeInst(LIRKind result, Value[] args, Function target,
-                BasicBlock ifNormal, String name, BasicBlock insertAtEnd)
-        {
-            super(result, Operator.Invoke, name, args.length + 1, insertAtEnd);
-            init(target, ifNormal, args);
-        }
 
         private void init(Function function, BasicBlock ifNormal, Value[] args)
         {
+            reserve(2 + args.length);
             assert (getNumOfOperands()
                     == 2 + args.length) : "NumOperands not set up?";
             setOperand(0, function);
             setOperand(1, ifNormal);
-            System.arraycopy(args, 0, reservedOperands, 2, args.length);
+            int idx = 2;
             for (Value arg : args)
             {
-                use(arg, this);
+                setOperand(idx++, arg);
             }
         }
 
-        @Override public void accept(InstructionVisitor visitor)
+        @Override
+        public void accept(InstructionVisitor visitor)
         {
             visitor.visitInvoke(this);
         }
 
-        @Override public String toString()
+        @Override
+        public String toString()
         {
             return name();
         }
 
         public int getNumsOfArgs()
         {
-            return reservedOperands.length - 2;
+            return getNumOfOperands() - 2;
         }
 
         public void setArgument(int index, Value val)
@@ -852,19 +715,22 @@ public abstract class Instruction extends User
             return operand(0);
         }
 
-        @Override public BasicBlock suxAt(int index)
+        @Override
+        public BasicBlock suxAt(int index)
         {
             assert (index >= 0 && index < getNumOfSuccessors()) :
                     "Successor " + index + "out of range";
             return (BasicBlock) operand(1 + index);
         }
 
-        @Override public int getNumOfSuccessors()
+        @Override
+        public int getNumOfSuccessors()
         {
             return 1;
         }
 
-        @Override public void setSuxAt(int index, BasicBlock bb)
+        @Override
+        public void setSuxAt(int index, BasicBlock bb)
         {
             assert (index >= 0 && index
                     < getNumOfSuccessors()) : "out of range index to reservedOperands array.";
@@ -891,7 +757,7 @@ public abstract class Instruction extends User
         public SwitchInst(Value condV, BasicBlock defaultBB, int numCases,
                 String name)
         {
-            this(condV, defaultBB, numCases, name, (Instruction) null);
+            this(condV, defaultBB, name, null);
         }
 
         /**
@@ -899,42 +765,23 @@ public abstract class Instruction extends User
          *
          * @param condV        the value of selector.
          * @param defaultBB    The default jump block when no other case match.
-         * @param numCases     The numbers of case value.
          * @param insertBefore
          */
-        public SwitchInst(Value condV, BasicBlock defaultBB, int numCases,
+        public SwitchInst(Value condV, BasicBlock defaultBB,
                 String name, Instruction insertBefore)
         {
-            super(LIRKind.Void, Operator.Switch, name, 2 * numCases + 2,
-                    insertBefore);
-            init(condV, defaultBB, 2 * numCases + 2);
-            //operands = new Pair[1 + numCases];
-            //operands[currIdx++] = new Pair<>(condV, defaultBB);
+            super(Operator.Switch, name,insertBefore);
+            init(condV, defaultBB);
         }
 
-        /**
-         * Constructs a new SwitchInst instruction with specified inst type.
-         *
-         * @param condV     the value of selector.
-         * @param defaultBB The default jump block when no other case match.
-         * @param numCases  The numbers of case value.
-         */
-        public SwitchInst(Value condV, BasicBlock defaultBB, int numCases,
-                String name, BasicBlock insertAtEnd)
-        {
-            super(LIRKind.Void, Operator.Switch, name, numCases + 2,
-                    insertAtEnd);
-            init(condV, defaultBB, 2 * numCases + 2);
-        }
 
         /**
          * Initialize some arguments, like add switch value and default into
          * Operand list.
          */
-        private void init(Value cond, BasicBlock defaultBB, int reservedSpaces)
+        private void init(Value cond, BasicBlock defaultBB)
         {
-            this.reservedSpaces = reservedSpaces;
-            numOperands = 2;
+            reserve(2);
             setOperand(0, cond);
             setOperand(1, defaultBB);
         }
@@ -950,43 +797,21 @@ public abstract class Instruction extends User
             visitor.visitSwitch(this);
         }
 
-        private void growOperands()
-        {
-            int newLen = 2 + reservedSpaces << 1;
-            Value[] newArray = new Value[newLen];
-            System.arraycopy(reservedOperands, 0, newArray, 0, 2+reservedSpaces);
-            reservedOperands = newArray;
-        }
-
         public void addCase(Constant caseVal, BasicBlock targetBB)
         {
-            int OpNo = numOperands;
-            if (OpNo+2 > reservedSpaces)
-                growOperands();  // Get more space!
-            // Initialize some new operands.
-            assert(OpNo+1 < reservedSpaces) : "Growing didn't work!";
-            numOperands = OpNo+2;
-            setOperand(OpNo+offset, caseVal);
-            setOperand(OpNo+1+offset, targetBB);
+            int opNo = getNumOfCases();
+            setOperand(opNo, caseVal);
+            setOperand(opNo+1, targetBB);
         }
+
         public void removeCase(int idx)
         {
             assert(idx != 0) : "Cannot remove the default case!";
             assert(idx*2 < getNumOfOperands()): "Successor index out of range!!!";
 
-            int NumOps = getNumOfOperands();
-
-            // Overwrite this case with the end of the list.
-            if ((idx + 1) * 2 != NumOps)
-            {
-                setOperand(idx * 2, operand(NumOps - 2));
-                setOperand(idx * 2 + 1, operand(NumOps - 1));
-            }
-
             // Nuke the last value.
-            setOperand(NumOps-2, null);
-            setOperand(NumOps-1, null);
-            numOperands = NumOps-2;
+            operandList.remove(idx);
+            operandList.remove(idx + 1);
         }
         /**
          * Gets the default basic block where default case clause resides.
@@ -1161,17 +986,17 @@ public abstract class Instruction extends User
      */
     public static class PhiNode extends Instruction
     {
-        public PhiNode(LIRKind kind, int numReservedValues,
+        public PhiNode(Type ty, int numReservedValues,
                 String name)
         {
-            this(kind, numReservedValues, name, null);
+            this(ty, numReservedValues, name, null);
         }
 
-        public PhiNode(LIRKind kind, int numReservedValues,
+        public PhiNode(Type ty, int numReservedValues,
                 String name, Instruction insertBefore)
         {
-            super(kind, Operator.Phi, name, numReservedValues << 1, insertBefore);
-            numOperands = 0;
+            super(ty, Operator.Phi, insertBefore);
+            reserve(numReservedValues << 1);
         }
 
         @Override
@@ -1190,20 +1015,10 @@ public abstract class Instruction extends User
         {
             assert value != null : "Phi node got a null value";
             assert block != null : "Phi node got a null basic block";
-            assert value.kind == kind : "All of operands of Phi must be same type.";
-            if (numOperands*2 == reservedOperands.length)
-                growOperands();
-            numOperands += 1;
-            setIncomingValue(numOperands - 1, value);
-            setIncomingBlock(numOperands - 1, block);
-        }
+            assert value.getType() == getType() : "All of operands of Phi must be same type.";
 
-        private void growOperands()
-        {
-            int len = reservedOperands.length << 1;
-            Value[] newArray = new Value[len];
-            System.arraycopy(reservedOperands, 0, newArray, 0, numOperands);
-            reservedOperands = newArray;
+            setIncomingValue(getNumberIncomingValues() - 1, value);
+            setIncomingBlock(getNumberIncomingValues() - 1, block);
         }
 
         /**
@@ -1321,49 +1136,49 @@ public abstract class Instruction extends User
     {
         /**
          * Creates a new {@linkplain AllocaInst} Module that allocates memory
-         * for specified {@LIRKind kind} and the numbers of to be allocated
+         * for specified {@Type ty} and the numbers of to be allocated
          * element.
          *
-         * @param kind The data kind of allocated data which is instance of
+         * @param ty The data ty of allocated data which is instance of
          * {@linkplain LIRKind}.
          * @param arraySize  The number of elements if allocating is used for
          *                   array.
          * @param name The name of this instruction for debugging.
          */
-        public AllocaInst(LIRKind kind,
+        public AllocaInst(Type ty,
                 Value arraySize,
                 String name,
                 Instruction insertBefore)
         {
-            super(kind, Operator.Alloca,
+            super(ty, Operator.Alloca,
                     getAISize(arraySize),
                     name, insertBefore);
         }
 
-        public AllocaInst(LIRKind kind,
+        public AllocaInst(Type ty,
                 String name,
                 Instruction insertBefore)
         {
-            super(kind, Operator.Alloca,
+            super(ty, Operator.Alloca,
                     getAISize(null), name,
                     insertBefore);
         }
 
-        public AllocaInst(LIRKind kind,
+        public AllocaInst(Type ty,
                 Value arraySize,
                 String name,
                 BasicBlock insertAtEnd)
         {
-            super(kind, Operator.Alloca,
+            super(ty, Operator.Alloca,
                     getAISize(arraySize),
                     name, insertAtEnd);
         }
 
-        public AllocaInst(LIRKind kind,
+        public AllocaInst(Type ty,
                 String name,
                 BasicBlock insertAtEnd)
         {
-            super(kind, Operator.Alloca,
+            super(ty, Operator.Alloca,
                     getAISize(null),
                     name, insertAtEnd);
         }
@@ -1443,7 +1258,7 @@ public abstract class Instruction extends User
                 String name,
                 Instruction insertBefore)
         {
-            super(LIRKind.Illegal, Operator.Store, name, 2, insertBefore);
+            super(Type.VoidTy, Operator.Store, insertBefore);
             init(value, ptr);
         }
 
@@ -1456,7 +1271,7 @@ public abstract class Instruction extends User
         public StoreInst(Value value, Value ptr,
                 String name)
         {
-            super(LIRKind.Illegal, Operator.Store, name, 2, (Instruction)null);
+            super(Type.VoidTy, Operator.Store, (Instruction)null);
             init(value, ptr);
         }
 
@@ -1464,7 +1279,7 @@ public abstract class Instruction extends User
                 String name,
                 BasicBlock insertAtEnd)
         {
-            super(LIRKind.Illegal, Operator.Store, name, 2, insertAtEnd);
+            super(Type.VoidTy, Operator.Store, insertAtEnd);
             init(value, ptr);
         }
 
@@ -1474,10 +1289,9 @@ public abstract class Instruction extends User
             assert ptr != null : "The memory address of StoreInst must be not null.";
             assert ptr instanceof AllocaInst
                     : "the destination of StoreInst must be AllocaInst!";
+            reserve(2);
             setOperand(0, value);
             setOperand(1, ptr);
-            use(value, this);
-            use(ptr, this);
         }
 
         public Value getValueOperand()
@@ -1507,25 +1321,28 @@ public abstract class Instruction extends User
      */
     public static class LoadInst extends Op1
     {
-        public LoadInst(LIRKind kind, Value from,
+        public LoadInst(Type ty, Value from,
                 String name, Instruction insertBefore)
         {
-            super(kind, Operator.Load, from, name, insertBefore);
-            use(from, this);
+            super(ty, Operator.Load, from, name, insertBefore);
+            reserve(1);
+            setOperand(0, from);
         }
 
-        public LoadInst(LIRKind kind, Value from,
+        public LoadInst(Type ty, Value from,
                 String name)
         {
-            super(kind, Operator.Load, from, name, (Instruction)null);
-            use(from, this);
+            super(ty, Operator.Load, from, name, (Instruction)null);
+            reserve(1);
+            setOperand(0, from);
         }
 
-        public LoadInst(LIRKind kind, Value from,
+        public LoadInst(Type ty, Value from,
                 String name, BasicBlock insertAtEnd)
         {
-            super(kind, Operator.Load, from, name, insertAtEnd);
-            use(from, this);
+            super(ty, Operator.Load, from, name, insertAtEnd);
+            reserve(1);
+            setOperand(0, from);
         }
 
         public Value getPointerOperand()
