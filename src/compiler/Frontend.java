@@ -1,5 +1,5 @@
 package compiler;
-
+/*
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -21,9 +21,11 @@ import comp.Enter;
 import comp.Env;
 import comp.Todo;
 
+
 /**
  * @author Xlous.zeng
  */
+/*
 public final class Frontend
 {
 	private final boolean debugParser;
@@ -31,7 +33,6 @@ public final class Frontend
 	private Context context;
 	private final Name.Table names;
 	private final Log log;
-	private final TreeMaker make;
 	private Enter enter;
 	private Todo<Env> todo;
 	private Options opt;
@@ -42,17 +43,17 @@ public final class Frontend
 		this.context = context;
 		this.names = Name.Table.instance(context);
 		this.log = Log.instance(context);
-		this.make = TreeMaker.instance(context);
 		this.enter = Enter.instance(context);
 		this.todo = Todo.instance(context);
 	}
+
 	/**
-	 * Parses the single c-flat source file by given filename. So that returns a
+	 * Parses the single c source file by given filename. So that returns a
 	 * TopLevel {@link Tree.TopLevel}
 	 *
 	 * @param file the file name of source file.
 	 * @return The TopLevel.
-	 */
+	 *
 	public Tree doParseAttribute(String file)
 	{
 		// step 1: parse given inputed source file
@@ -79,7 +80,7 @@ public final class Frontend
 				/*if (verbose)
 					printVerbose("checking.attribution",
 							env.enclMethod.sym.toString());
-				*/
+				*
 				Name prev = log.useSource(env.toplevel.sourceFile);
 				attr.attriMethod(unattributed.pos, env.enclMethod.sym);				
 				log.useSource(prev);
@@ -119,7 +120,7 @@ public final class Frontend
 				/*if (verbose)
 					printVerbose("checking.attribution",
 							env.enclMethod.sym.toString());
-				*/
+				*
 				Name prev = log.useSource(env.toplevel.sourceFile);
 				attr.attriMethod(unattributed.pos, env.enclMethod.sym);
 				log.useSource(prev);
@@ -157,7 +158,7 @@ public final class Frontend
 
 	/**
 	 * The numbers of errors reported so far.
-	 */
+	 *
 	public int errorCount()
 	{
 		return log.nerrors;
@@ -180,10 +181,11 @@ public final class Frontend
 	 * Prints debugging information in human readability style.
 	 * @param key
 	 * @param msg
-	 */
+	 *
 	void printVerbose(String key, String msg)
 	{
 		Log.printLines(log.noticeWriter,
 				Log.getLocalizedString("verbose." + key, msg));
 	}
 }
+*/

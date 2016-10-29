@@ -56,7 +56,7 @@ public class Signature
 	public LIRKind argumentKindAt(int index)
 	{
 		assert ( index >= 0 && index < params.length);
-		return HIRGenerator.type2Kind(params[index]);
+		return HIRGenModule.type2Kind(params[index]);
 	}
 
 	/**
@@ -74,6 +74,6 @@ public class Signature
 	 */
 	public LIRKind returnKind()
 	{
-		return HIRGenerator.type2Kind(ret);
+		return HIRGenModule.type2Kind(ret);
 	}
 }

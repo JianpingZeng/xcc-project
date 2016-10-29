@@ -1,19 +1,26 @@
 package hir;
 
-import ast.ASTVisitor;
+import ast.StmtVisitor;
 import ast.Tree;
 import ast.Tree.*;
 import ast.Tree.GotoStmt;
 import ast.Tree.ReturnStmt;
+import com.sun.org.apache.xpath.internal.operations.Mod;
+import compiler.Options;
 import hir.Value.Constant;
 import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
 import comp.OpCodes;
 import exception.JumpError;
 import hir.Instruction.*;
+import sema.ASTContext;
+import sema.Decl;
+import sema.Decl.FunctionDecl;
+import sema.Decl.VarDecl;
 import symbol.Symbol.OperatorSymbol;
 import symbol.SymbolKinds;
 import symbol.VarSymbol;
+import type.FunctionType;
 import type.Type;
 import type.TypeClass;
 import utils.Context;
@@ -56,16 +63,16 @@ import java.util.List;
  * @author Xlous.zeng 
  * @version 1.0
  */
-public class HIRGenerator extends ASTVisitor
+public class HIRGenModule extends StmtVisitor
 {
 	private final static Context.Key AstToCfgKey = new Context.Key();
 	private Log log;
 	private Context context;
-	private List<Variable> vars;
+	private List<GlobalVariable> vars;
 	private List<Function> functions;
 	private Name.Table names;
 
-	public HIRGenerator(Context context)
+	public HIRGenModule(Context context)
 	{
 		this.context = context;
 		context.put(AstToCfgKey, this);
@@ -74,6 +81,104 @@ public class HIRGenerator extends ASTVisitor
 		this.vars = new ArrayList<>();
 		this.functions = new ArrayList<>();
 	}
+
+	private ASTContext ctx;
+    private Options options;
+    private Module m;
+	public HIRGenModule(ASTContext context, Options options, Module m)
+    {
+        ctx = context;
+        this.options = options;
+        this.m = m;
+    }
+
+    /**
+     * Emits HIR code for a single top level declaration.
+     * @param decl
+     */
+    public void emitTopLevelDecl(Decl decl)
+    {
+        // TODO if there are error occurred, stop code generation. 2016.10.29
+        switch(decl.getDeclKind())
+        {
+            case FunctionDecl:
+                // handle function declaration.
+                emitGlobal(decl);
+                break;
+            case VarDecl:
+                emitGlobal(decl);
+                break;
+            case CompilationUnitDecl:
+            case BlockDecl:
+            case FieldDecl:
+            case ParamVar:
+            case EnumConstant:
+            case LabelDecl:
+                // skip it.
+                break;
+            default:
+                assert decl instanceof Decl.TypeDecl:"Unsupported decl kind!";
+        }
+    }
+
+    /**
+     * This method is called by {@linkplain ModuleBuilder#handleTopLevelDecls(ArrayList)
+     * handleTopLevelDecls}
+     * to emit HIR code in procedures as follow:
+     * <ol>
+     *     <li>ensures that given {@code decl} either is {@linkplain VarDecl} or
+     *     {@linkplain FunctionDecl}.</li>
+     *     <li>calls {@linkplain #emitGlobal(Decl)} method to emite HIR code.</li>
+     * </ol>
+     * @param decl
+     */
+    private void emitGlobal(Decl decl)
+    {
+        if (decl instanceof FunctionDecl)
+        {
+            FunctionDecl fd = (FunctionDecl)decl;
+            // skip function declaration.
+            if (!fd.hasBody())
+                return;
+
+            emitGlobalFunctionDefinition(fd);
+        }
+        else
+        {
+            assert decl instanceof VarDecl;
+            final VarDecl vd = (VarDecl)decl;
+            assert vd.isFileVarDecl():"Cann't emit code for local variable!";
+            if (vd.isThisDeclarationADefinition() != Decl.DefinitionKind.Definition)
+                return;
+
+            emitGlobalVarDefinition(vd);
+        }
+    }
+
+    private void emitGlobalVarDefinition(VarDecl vd)
+    {
+
+    }
+
+    private Constant getAddrOfFunction(FunctionType ty, FunctionDecl fd)
+    {
+        return null;
+    }
+
+    /**
+     * Emits code for global function definition.
+     * @param fd
+     */
+    private void emitGlobalFunctionDefinition(FunctionDecl fd)
+    {
+        FunctionType ty = fd.getDeclType().getFunctionType();
+
+        // create a function instance
+        Function fn = new Function(ty, fd.getDeclName(), m);
+        new CodeGenFunction(this).generateCode(fd, fn);;
+    }
+
+    public Module getModule() { return m;}
 
 	/**
 	 * A translation method for converting from abstract syntax tree into IR.
@@ -682,7 +787,7 @@ public class HIRGenerator extends ASTVisitor
 	/**
 	 * Allocates memory at the stack and initializing for variable declaration.
 	 *
-	 * @param tree Variable definition or declaration.
+	 * @param tree GlobalVariable definition or declaration.
 	 */
 	@Override public void visitVarDef(VarDef tree)
 	{

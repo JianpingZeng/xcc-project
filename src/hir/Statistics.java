@@ -24,12 +24,12 @@ public class Statistics
 	public int loopCount;
 
 	/**
-	 * The number of functions inlined.
+	 * The number of functionList inlined.
 	 */
 	public int inlineCount;
 
 	/**
-	 * The number of functions folded (i.e. evaluated).
+	 * The number of functionList folded (i.e. evaluated).
 	 */
 	public int foldCount;
 

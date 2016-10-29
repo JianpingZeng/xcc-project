@@ -132,4 +132,12 @@ public class FunctionType extends Type
         buf.append(")");
         return buf.toString();
     }
+
+    public int getNumParams() { return paramTypes.size(); }
+
+    public Type getParamType(int i)
+    {
+        assert i>=0 && i<paramTypes.size();
+        return paramTypes.get(i);
+    }
 }

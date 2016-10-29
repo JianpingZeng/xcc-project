@@ -16,7 +16,7 @@ import ast.Tree.TopLevel;
  * @author xlous.zeng
  * @version 0.1
  */
-public final class Pretty extends ASTVisitor
+public final class Pretty extends StmtVisitor
 {
     public Pretty(PrintWriter out, boolean sourceOutput)
     {

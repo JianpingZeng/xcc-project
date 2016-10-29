@@ -3,15 +3,16 @@ package compiler;
 import java.util.*;
 import java.io.*;
 
+import hir.HIRGenModule;
+import hir.ModuleBuilder;
 import lir.backend.ia32.IA32;
 import lir.backend.ia32.IA32RegisterConfig;
 import hir.Module;
-import hir.HIRGenerator;
-import parser.ParseException;
-import parser.Parser;
+import sema.ASTContext;
+import sema.Decl;
+import sema.Sema;
 import utils.*;
 import ast.*;
-import ast.Tree.*;
 
 public class Compiler
 {
@@ -22,16 +23,7 @@ public class Compiler
      */
     private Log log;
 
-    /**
-     * The tree factory module.
-     */
-    private TreeMaker make;
-
-    /**
-     * The name table.
-     */
-    private Name.Table names;
-    private Context context;
+    private Context ctx;
     /**
      * A flag that marks whether debug parer.
      */
@@ -45,18 +37,31 @@ public class Compiler
     @SuppressWarnings("unused")
     private boolean outputResult = false;
 
-    public Compiler(Context context)
+    private Backend backend;
+    private Optimizer optimizer;
+
+    private Sema sema;
+    private ASTContext context;
+    private ASTConsumer consumer;
+
+    public Compiler(Context ctx)
     {
         super();
-        context.put(compilerKey, this);
-        this.context = context;
-        this.names = Name.Table.instance(context);
-        this.log = Log.instance(context);
-        this.make = TreeMaker.instance(context);
-        Options options = Options.instance(context);
+        ctx.put(compilerKey, this);
+        this.ctx = ctx;
+        this.log = Log.instance(ctx);
+        Options options = Options.instance(ctx);
+
+        // TODO: to specify machine specification with command line option.
+        Backend backend = new IA32Backend(ctx, IA32.target(),
+                IA32RegisterConfig.newInstance());
+        Optimizer optimizer = new Optimizer(ctx);
 
         this.debugParser = options.get("--debug-Parser") != null;
         this.outputResult = options.get("-o") != null;
+        context = new ASTContext();
+        consumer = new ModuleBuilder();
+        consumer.initialize(context);
     }
 
     public static Compiler make(Context context)
@@ -76,18 +81,17 @@ public class Compiler
     {
         long msec = System.currentTimeMillis();
 
-        // TODO: to specify machine specification with command line option.
-        Backend backend = new IA32Backend(context, IA32.target(),
-                IA32RegisterConfig.newInstance());
-        Frontend frontend = new Frontend(context);
-        Optimizer optimizer = new Optimizer(context);
+        for (SourceFile name : filenames)
+        {
+            parseAST(name);
+        }
 
-        Tree[] trees = frontend.doParseAttribute(filenames);
+        Tree[] trees=null;// = frontend.doParseAttribute(filenames);
 
         // performs high level IR generation and Module opt
         Module[] hirLists = new Module[trees.length];
         for (int i = 0; i < trees.length; i++)
-            hirLists[i++] = (new HIRGenerator(context).translate(trees[i]));
+            hirLists[i++] = (new HIRGenModule(ctx).translate(trees[i]));
 
         // performs high level IR generation and Module opt
         optimizer.runOnModules(hirLists);
@@ -106,6 +110,52 @@ public class Compiler
         else
             printCount("error.plural", errCount);
 
+    }
+
+    /**
+     * This method is called when processing each input file.
+     * It responsible for creating an instance of {@linkplain Module}, containing
+     * global Constant for global variable, {@linkplain hir.Function}.
+     *
+     * @param filename
+     */
+    private void parseAST(SourceFile filename)
+    {
+        try (FileInputStream reader = new FileInputStream(filename.path()))
+        {
+            createSema(reader);
+            cparser.Parser parser = sema.getParser();
+            ArrayList<Decl> declsGroup = new ArrayList<>(16);
+            ASTConsumer consumer = sema.getASTConsumer();
+
+            while (!parser.parseTopLevel(declsGroup)) // Not end of file.
+            {
+                consumer.handleTopLevelDecls(declsGroup);
+            }
+
+            consumer.handleTranslationUnit(sema.getASTContext());
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void createSema(FileInputStream in)
+    {
+        sema = new Sema(in, getASTConsumer(), getASTConext());
+    }
+
+    private ASTConsumer getASTConsumer()
+    {
+        assert consumer !=null:"Compiler instance must have an ASTConsumer!";
+        return consumer;
+    }
+
+    private ASTContext getASTConext()
+    {
+        assert context !=null:"Compiler instance must have ASTContext!";
+        return context;
     }
 
     /**
@@ -145,52 +195,11 @@ public class Compiler
             return null;
         }
     }
-
-    /**
-     * Parses the single c-flat source file by given filename. So that returns a
-     * TopLevel {@link TopLevel}
-     * 
-     * @param filename the file name of source file.
-     * @return The TopLevel.
-     */
-    public TopLevel parse(String filename)
-    {
-        return parse(filename, openSourcefile(filename));
-    }
-
-    public TopLevel parse(String filename, InputStream input)
-    {
-        Name prev = log.useSource(names.fromString(filename));
-        TopLevel tree = make.TopLevel(Tree.emptyList);
-        long msec = System.currentTimeMillis();
-        if (input != null)
-        {
-            if (debugParser) printVerbose("parsing started", filename);
-            try
-            {
-                Parser parser = new Parser(input, true, context);
-                tree = parser.compilationUnit();
-                if (debugParser)
-                    printVerbose("parsing.done",
-                            Long.toString(System.currentTimeMillis() - msec));
-
-            }
-            catch (ParseException e)
-            {
-                log.error(Position.NOPOS, "error.parsing.file", filename);
-            }
-        }
-        log.useSource(prev);
-        tree.sourceFile = names.fromString(filename);
-        return tree;
-    }
-
     /**
      * Close the compiler, flushing the logs
      */
     public void close()
     {
         log.flush();
-        names.dispose();
     }
 }

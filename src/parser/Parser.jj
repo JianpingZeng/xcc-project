@@ -721,15 +721,15 @@ Tree block():
  */
 List<Tree> blockStatement():
 {
-	List<Tree> vars;
+	List<Tree> globalVariables;
 	List<Tree> res = new ArrayList<Tree>();
 	Tree stmt;
 }
 {
 	// local variable declaration.
 	LOOKAHEAD( type() <IDENTIFIER> )
-	vars = variableDefinitions() ";"
-		{ res.addAll(vars); }
+	globalVariables = variableDefinitions() ";"
+		{ res.addAll(globalVariables); }
 	| 
 	stmt = statement()
 		{ res.add(stmt); }

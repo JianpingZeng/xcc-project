@@ -254,7 +254,7 @@ public class Parser implements Tag
         assert getCurScope() == null :"Scope imbalance!";
     }
 
-    private boolean parseTopLevel(ArrayList<Decl> result)
+    public boolean parseTopLevel(ArrayList<Decl> result)
     {
         assert result!=null;
 

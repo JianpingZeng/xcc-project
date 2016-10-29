@@ -40,6 +40,8 @@ public interface TypeClass
      * The tag of the missing type.
      */
     int None = TypeDef + 1;
+
+    int Label = None + 1;
     
     /**
      * The tag of the error type.

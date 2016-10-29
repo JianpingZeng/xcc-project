@@ -16,8 +16,7 @@ package sema;
  * permissions and limitations under the License.
  */
 
-import ast.ASTVisitor;
-import ast.Tree;
+import ast.*;
 import ast.Tree.*;
 import utils.OutParamWrapper;
 import utils.Util;
@@ -27,7 +26,7 @@ import java.math.BigDecimal;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class ExprEvaluatorBase<RetTy> extends ASTVisitor<RetTy>
+public abstract class ExprEvaluatorBase<RetTy> extends ast.StmtVisitor<RetTy>
 {
     protected abstract RetTy success(final APValue v, final Expr e);
 
