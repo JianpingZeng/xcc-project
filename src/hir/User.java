@@ -38,10 +38,9 @@ public abstract class User extends Value
      */
     protected ArrayList<Use> operandList;
 
-	public User(Type ty, Operator op)
+	public User(Type ty, int valueKind)
 	{
-		super(ty, ValueKind.InstructionVal + op.index);
-        opcode = op;
+		super(ty, valueKind);
         id = -1;
 	}
 
@@ -58,7 +57,7 @@ public abstract class User extends Value
      */
 	public Value operand(int index)
     {
-        assert (index >= 0 && index < numOperands);
+        assert (index >= 0 && index < getNumOfOperands());
         return operandList.get(index).getValue();
     }
 
@@ -69,7 +68,7 @@ public abstract class User extends Value
      */
     public void setOperand(int index, Value val)
     {
-        assert (index >= 0 && index < numOperands);
+        assert (index >= 0 && index < getNumOfOperands() && val != null);
         operandList.get(index).setValue(val);
     }
 

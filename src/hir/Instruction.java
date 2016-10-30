@@ -1,6 +1,8 @@
 package hir;
 
+import ast.Tree;
 import lir.ci.LIRKind;
+import type.PointerType;
 import type.Type;
 import utils.Log;
 import utils.Util;
@@ -22,11 +24,14 @@ import java.util.ArrayList;
  */
 public abstract class Instruction extends User
 {
+    protected Operator opcode;
+
     public Instruction(Type ty,
             Operator op,
             Instruction insertBefore)
     {
-        super(ty, op);
+        super(ty, ValueKind.InstructionVal + op.index);
+        opcode = op;
         setParent(null);
         if (insertBefore != null)
         {
@@ -40,7 +45,9 @@ public abstract class Instruction extends User
             Operator op,
             BasicBlock insertAtEnd)
     {
-        super(ty, op);
+        super(ty, ValueKind.InstructionVal + op.index);
+        opcode = op;
+        setParent(null);
 
         // append this instruction into the basic block
         assert (insertAtEnd
@@ -742,13 +749,17 @@ public abstract class Instruction extends User
 
     public static class SwitchInst extends TerminatorInst
     {
-        private int reservedSpaces;
-        private int currIdx = 0;
         private int lowKey, highKey;
-        private int offset = 2;
+        private final int offset = 2;
 
         /**
          * Constructs a new SwitchInst instruction with specified inst type.
+         * <p>
+         * Operand[0]    = Value to switch on
+         * Operand[1]    = Default basic block destination
+         * Operand[2n  ] = Value to match
+         * Operand[2n+1] = BasicBlock to go to on match
+         * </p>
          *
          * @param condV     the value of selector.
          * @param defaultBB The default jump block when no other case match.
@@ -781,7 +792,8 @@ public abstract class Instruction extends User
          */
         private void init(Value cond, BasicBlock defaultBB)
         {
-            reserve(2);
+            // the 2 indicates what number of default basic block and default value.
+            reserve(offset+8);
             setOperand(0, cond);
             setOperand(1, defaultBB);
         }
@@ -809,7 +821,7 @@ public abstract class Instruction extends User
             assert(idx != 0) : "Cannot remove the default case!";
             assert(idx*2 < getNumOfOperands()): "Successor index out of range!!!";
 
-            // Nuke the last value.
+            // unlink the last value.
             operandList.remove(idx);
             operandList.remove(idx + 1);
         }
@@ -824,12 +836,12 @@ public abstract class Instruction extends User
         }
 
         // Accessor Methods for SwitchStmt stmt
-        Value getCondition()
+        public Value getCondition()
         {
             return operand(0);
         }
 
-        void setCondition(Value val)
+        public void setCondition(Value val)
         {
             setOperand(0, val);
         }
@@ -849,8 +861,8 @@ public abstract class Instruction extends User
          */
         public Constant getCaseValues(int index)
         {
-            assert index >= 0
-                    && index < getNumOfCases() : "Illegal case value to get";
+            assert index >= 0 && index < getNumOfCases()
+                    : "Illegal case value to get";
             return getSuccessorValue(index);
         }
 
@@ -905,7 +917,8 @@ public abstract class Instruction extends User
         // successor.
         public void setSuccessorValue(int idx, Constant SuccessorValue)
         {
-            assert(idx < getNumOfSuccessors()) : "Successor # out of range!";
+            assert(idx>=0 && idx < getNumOfSuccessors())
+                    : "Successor # out of range!";
             setOperand(idx*2 + offset, SuccessorValue);
         }
 
@@ -929,18 +942,12 @@ public abstract class Instruction extends User
             this.highKey = highKey;
         }
 
-        /**
         public SwitchInst clone()
         {
-            Pair<Value, BasicBlock>[] copy = Arrays
-                    .copyOf(operands, operands.getArraySize);
-            SwitchInst inst = new SwitchInst(null, null, 0, name.toString());
-            inst.currIdx = this.currIdx;
-            inst.highKey = this.highKey;
-            inst.lowKey = this.lowKey;
-            inst.operands = copy;
+            SwitchInst inst = new SwitchInst(getCondition(), getDefaultBlock(), getNumOfCases(),name);
+            inst.operandList = new ArrayList<>(inst.operandList);
             return inst;
-        }*/
+        }
 
         /**
          * obtains the successor at specified index position.
@@ -1029,15 +1036,15 @@ public abstract class Instruction extends User
          */
         public Value getIncomingValue(int index)
         {
-            assert index >= 0 && index
-                    < numOperands : "The index is beyond out the num of list";
+            assert index >= 0 && index < getNumberIncomingValues()
+                    : "The index is beyond out the num of list";
             return operand(index << 1);
         }
 
         public void setIncomingValue(int index, Value val)
         {
-            assert index >= 0 && index
-                    < numOperands : "The index is beyond out the num of list";
+            assert index >= 0 && index < getNumberIncomingValues()
+                    : "The index is beyond out the num of list";
             setOperand(index << 1, val);
         }
 
@@ -1068,17 +1075,21 @@ public abstract class Instruction extends User
             setOperand((index << 1) + 1, bb);
         }
 
-        public Value removeIncomingValue(int index)
+        public Value removeIncomingValue(int index, boolean deletePhiIfEmpty)
         {
             assert index >= 0 && index
                     < numOperands : "The index is beyond out the num of list";
 
             Value old = operand(index << 1);
-            for (int i = index; i < numOperands - 1; i++)
+            operandList.remove(index);
+            operandList.remove(index+1);
+
+            // delete this phi node if it has zero entities.
+            if (getNumOfOperands()==0 && deletePhiIfEmpty)
             {
-                setOperand(i, operand(i + 2));
+                replaceAllUsesWith(Constant.getNullValue(getType()));
+                eraseFromBasicBlock();
             }
-            numOperands--;
             return old;
         }
 
@@ -1086,7 +1097,7 @@ public abstract class Instruction extends User
         {
             int index = getBasicBlockIndex(bb);
             assert index >= 0 : "invalid basic block argument to remove";
-            return removeIncomingValue(index);
+            return removeIncomingValue(index, true);
         }
 
         @Override
@@ -1099,9 +1110,9 @@ public abstract class Instruction extends User
         {
             assert (basicBlock != null)
                     : "PhiNode.getBasicBlockIndex(<null>) is invalid";
-            for (int i = 0; i < numOperands; i++)
+            for (int i = 0; i < getNumberIncomingValues(); i++)
             {
-                if (operand(i + 1) == basicBlock)
+                if (getIncomingBlock(i) == basicBlock)
                     return i;
             }
             return -1;
@@ -1114,7 +1125,7 @@ public abstract class Instruction extends User
          */
         public int getNumberIncomingValues()
         {
-            return getNumOfOperands();
+            return getNumOfOperands()>>1;
         }
         /**
          * Gets the name of this phi node.
@@ -1132,7 +1143,7 @@ public abstract class Instruction extends User
      * <b>Note that </b>all of heap allocation is accomplished by invoking the
      * C language library function as yet.
      */
-    public static class AllocaInst extends Op1
+    public static class AllocaInst extends Instruction
     {
         /**
          * Creates a new {@linkplain AllocaInst} Module that allocates memory
@@ -1150,51 +1161,30 @@ public abstract class Instruction extends User
                 String name,
                 Instruction insertBefore)
         {
-            super(ty, Operator.Alloca,
-                    getAISize(arraySize),
-                    name, insertBefore);
+            super(ty, Operator.Alloca, insertBefore);
+
+            // default to 1.
+            if (arraySize == null)
+                arraySize = ConstantInt.ConstantUInt.get(Type.UnsignedIntTy, 1);
+
+            reserve(1);
+            assert arraySize.getType() == Type.UnsignedIntTy
+                    :"Alloca array size != UnsignedIntTy";
+            setOperand(0, arraySize);
+        }
+
+        public AllocaInst(Type ty,
+                Value arraySize,
+                String name)
+        {
+            this(ty, arraySize, name,null);
         }
 
         public AllocaInst(Type ty,
                 String name,
                 Instruction insertBefore)
         {
-            super(ty, Operator.Alloca,
-                    getAISize(null), name,
-                    insertBefore);
-        }
-
-        public AllocaInst(Type ty,
-                Value arraySize,
-                String name,
-                BasicBlock insertAtEnd)
-        {
-            super(ty, Operator.Alloca,
-                    getAISize(arraySize),
-                    name, insertAtEnd);
-        }
-
-        public AllocaInst(Type ty,
-                String name,
-                BasicBlock insertAtEnd)
-        {
-            super(ty, Operator.Alloca,
-                    getAISize(null),
-                    name, insertAtEnd);
-        }
-
-        private static Value getAISize(Value arraySize)
-        {
-            Value res = arraySize == null ? Constant.forInt(1) : null;
-            if (arraySize != null)
-            {
-                assert !(arraySize instanceof BasicBlock)
-                        : "Basic block be passed into allocation getTypeSize parameter!";
-                assert arraySize.isConstant() :
-                        "Allocation array getTypeSize is not an integral.";
-                res = arraySize;
-            }
-            return res;
+            this(ty, null, name, insertBefore);
         }
 
         /**
@@ -1204,7 +1194,7 @@ public abstract class Instruction extends User
          */
         public boolean isArrayAllocation()
         {
-            return operand(0).asConstant().value.asInt() != 1;
+            return operand(0) != ConstantInt.ConstantUInt.get(Type.UnsignedIntTy, 1);
         }
 
         /**
@@ -1213,6 +1203,17 @@ public abstract class Instruction extends User
         public Value getArraySize()
         {
             return operand(0);
+        }
+
+        public Type getAllocatedType()
+        {
+            // TODO.
+            return null;
+        }
+
+        public PointerType getType()
+        {
+            return (PointerType)super.getType();
         }
 
         @Override
