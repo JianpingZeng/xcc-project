@@ -172,4 +172,79 @@ public class Util
         obj1 = obj2;
         obj2 = temp;
 	}
+
+	/**
+	 * Computes the number of one bit about given val of type long when isUnsigned
+     * determines if it is a unsigned.
+	 * @param val
+	 * @param isUnsigned
+	 * @return
+	 */
+	public static int bitsOfOne(long val, boolean isUnsigned)
+	{
+	    int res = 0;
+        while(val != 0)
+        {
+            res++;
+            val = val & (val - 1);
+        }
+		return res;
+	}
+
+    /**
+     * Checks if the first long number is less than second in unsigned comparison.
+     *  <table border="1">
+     *      <caption>"Truth table" for an unsigned comparison x < y using signed arithmetic</caption>
+     *      <tr>
+     *          <td></td>
+     *          <th colspan="2">Top bit of x</th>
+     *      </tr>
+     *      <tr>
+     *          <th>Top bit of y</th>
+     *          <th>0</th>
+     *          <th>1</th>
+     *      </tr>
+     *      </tr>
+     *          <th>0</th>
+     *          <td><tt>x &lt; y</tt><br><em>(Signed comparison)</em></td>
+     *          <th>false</th>
+     *      </tr>
+     *      <tr>
+     *          <th>1</th>
+     *          <th>true</th>
+     *          <td><em><tt>x &lt; y</tt><br><em>(Signed comparison)</em></td>
+     *      </tr>
+     *  </table>
+     *
+     * @param n1
+     * @param n2
+     * @return
+     */
+	public static boolean isLessThanUnsigned(long n1, long n2)
+    {
+        /**
+        boolean cmp = (n1 < n2);
+        if ((n1<0) != (n2<0))
+            cmp = !cmp;
+        return cmp;
+         */
+        // efficient method.
+        return (n1<n2) ^ ((n1< 0) != (n2<0));
+    }
+
+    public static boolean lessThanUnsigned(int n1, int n2)
+    {
+        return (n1 & 0xffffffffL) < (n2 & 0xffffffffL);
+    }
+
+    public static int unsignedDiv(int i1, int i2)
+    {
+        long l1 = i1 & 0xffffffffL, l2 = i2 & 0xffffffffL;
+        return (int) (l1 / l2);
+    }
+
+    public static long unsignedDiv(long l1, long l2)
+    {
+        return Long.divideUnsigned(l2, l1);
+    }
 }

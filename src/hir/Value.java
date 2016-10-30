@@ -4,6 +4,7 @@ import lir.ci.LIRConstant;
 import lir.ci.LIRKind;
 import lir.ci.LIRValue;
 import type.Type;
+import type.TypeClass;
 import utils.Name;
 import java.util.*;
 import hir.Instruction.PhiNode;
@@ -89,8 +90,10 @@ public class Value implements Cloneable
 		if (this instanceof Instruction)
 		{
 			BasicBlock BB = ((Instruction)this).getParent();
-			for (BasicBlock succ : BB.getSuccs())
+            SuccIterator<BasicBlock> itr = new SuccIterator<>(BB);
+			while (itr.hasNext())
 			{
+			    BasicBlock succ = itr.next();
 				for (Value inst : succ)
 				{
 					if (!(inst instanceof Instruction.PhiNode))
@@ -236,7 +239,7 @@ public class Value implements Cloneable
 	@Override
 	public Value clone()
 	{
-	    return new Value(this.kind);
+	    return new Value(ty, subclassID);
 	}
 
 	/**
@@ -257,9 +260,9 @@ public class Value implements Cloneable
 		/**
 		 * Constructs a new instruction representing the specified constant.
 		 */
-		public Constant(Type ty, int valueType, ArrayList<Use> operands)
+		public Constant(Type ty, int valueKind)
         {
-            super(ty, valueType, operands);
+            super(ty, valueKind);
         }
 
 		public void setValue(LIRConstant value)
@@ -410,7 +413,36 @@ public class Value implements Cloneable
 		
 			return Constant.forLong(c1 - l2);
 		}
-	}
+
+        public static Value getNullValue(Type type)
+        {
+            switch (type.getTypeClass())
+            {
+                case TypeClass.Bool:
+                    return ConstantBool.False;
+                case TypeClass.Char:
+                    return ConstantInt.ConstantSInt.get(Type.CharTy, 0);
+                case TypeClass.UnsignedChar:
+                    return ConstantInt.ConstantUInt.get(Type.UnsignedCharTy, 0);
+                case TypeClass.Short:
+                    return ConstantInt.ConstantSInt.get(Type.ShortTy, 0);
+                case TypeClass.UnsignedShort:
+                    return ConstantInt.ConstantUInt.get(Type.UnsignedShortTy, 0);
+                case TypeClass.Int:
+                    return ConstantInt.ConstantSInt.get(Type.IntTy, 0);
+                case TypeClass.UnsignedInt:
+                    return ConstantInt.ConstantUInt.get(Type.UnsignedIntTy, 0);
+                case TypeClass.LongInteger:
+                    return ConstantInt.ConstantSInt.get(Type.LongTy, 0);
+                case TypeClass.UnsignedLong:
+                    return ConstantInt.ConstantUInt.get(Type.UnsignedLongTy, 0);
+                case TypeClass.Real:
+                    // TODO
+                    return null;
+            }
+            return null;
+        }
+    }
 
 	public static class UndefValue extends Constant
 	{
@@ -435,78 +467,6 @@ public class Value implements Cloneable
 			visitor.visitUndef(this);
 		}
 	}
-	/*
-	public static abstract class Var extends Value
-	{
-		/**
-		 * The inst type of this local variable.
-
-		Type valueType;
-		/**
-		 * The memory address allocated by instruction {@code AllocaInst} is related
-		 * with this variable.
-		 *
-		public Instruction.AllocaInst memAddr;
-
-		public Var(LIRKind kind, Name name)
-		{
-			super(kind);
-			this.name = name;
-		}
-
-		/**
-		 * Sets the inst type of this declared variable.
-		 *
-		 * @param valueType
-		 *
-		public void setValueType(Type valueType)
-		{
-			this.valueType = valueType;
-		}
-
-		/**
-		 * Gets the inst type of this declared variable.
-		 *
-		 * @return
-		 *
-		public Type getValueType()
-		{
-			return valueType;
-		}
-	}
-
-	/**
-	 * This class is served as a placeholder for Local {@code VarDef} definition.
-	 *
-	 * @author Xlous.zeng  
-	 */
-	/*
-	public static final class Local extends Var
-	{
-		private String prefix = "%";
-		/**
-		 * Constructs a new local instance.
-		 *
-		 * @param kind       The kind of inst type.
-		 * @param name The name postfix of to being yielded.
-
-		public Local(LIRKind kind, Name name)
-		{
-			super(kind, name);
-		}
-
-		@Override
-		public String toString()
-		{
-			return prefix + name;
-		}
-
-		public Local clone()
-		{
-			return new Local(this.kind, this.name);
-		}
-	}
-	*/
 
 	public int valueNumber()
     {
