@@ -1,0 +1,58 @@
+package backend.type;
+/*
+ * Xlous C language Compiler
+ * Copyright (c) 2015-2016, Xlous
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing
+ * permissions and limitations under the License.
+ */
+
+/**
+ * Definitions of all of the base types for the Type system.  Based on this
+ * value, you can cast to a "DerivedType" subclass (see DerivedTypes.h)
+ * Note: If you add an element to this, you need to add an element to the
+ * Type::getPrimitiveType function, or else things will break!
+ *
+ * @author Xlous.zeng
+ * @version 0.1
+ */
+public interface PrimitiveID
+{
+    int VoidTyID = 0;           //  0, 1: Basics...
+    int BoolTyID = VoidTyID + 1;
+    int UByteTyID = BoolTyID + 1;          //  2, 3: 8 bit types...
+    int SByteTyID = UByteTyID + 1;
+    int UShortTyID = SByteTyID + 1;         //  4, 5: 16 bit types...
+    int ShortTyID = UShortTyID + 1;
+    int UIntTyID = ShortTyID + 1;           //  6, 7: 32 bit types...
+    int IntTyID = UIntTyID + 1;
+    int ULongTyID = IntTyID + 1;          //  8, 9: 64 bit types...
+    int LongTyID = ULongTyID + 1;
+
+    int FloatTyID = LongTyID + 1;         // 10,11: Floating point types...
+    int DoubleTyID = FloatTyID + 1;
+
+    int TypeTyID = DoubleTyID + 1;
+    int LabelTyID = TypeTyID + 1;         // 12   : Labels...
+
+    // Derived types... see DerivedTypes class...
+    // Make sure FirstDerivedTyID stays up to date!!!
+    int FunctionTyID = LabelTyID + 1;       // Functions... Structs...
+    int StructTyID = FunctionTyID + 1;
+    int ArrayTyID = StructTyID + 1;          // Array... pointer...
+    int PointerTyID = ArrayTyID + 1;
+    //...
+
+    int NumPrimitiveIDs = PointerTyID + 1;   // Must remain as last defined ID
+
+    int FirstDerivedTyID = FunctionTyID;
+}
