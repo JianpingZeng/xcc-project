@@ -2,14 +2,11 @@ package backend.opt;
 
 import backend.hir.*;
 import backend.hir.BasicBlock;
-import backend.value.Function;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.Op1;
 import backend.value.Instruction.Op2;
 import backend.value.Instruction.PhiNode;
-import backend.value.Use;
-import backend.value.Value;
-import backend.value.Value.Constant;
+import backend.value.Constant;
 import backend.value.Value.UndefValue;
 
 import java.util.ArrayList;

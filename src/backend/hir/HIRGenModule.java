@@ -1,15 +1,12 @@
 package backend.hir;
 
-import backend.value.Function;
-import backend.value.Instruction;
-import backend.value.Value;
+import backend.value.*;
 import frontend.ast.StmtVisitor;
 import frontend.ast.Tree;
 import frontend.ast.Tree.*;
 import frontend.ast.Tree.GotoStmt;
 import frontend.ast.Tree.ReturnStmt;
 import driver.Options;
-import backend.value.Value.Constant;
 import backend.lir.ci.LIRConstant;
 import backend.lir.ci.LIRKind;
 import frontend.comp.OpCodes;

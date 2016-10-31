@@ -4,11 +4,12 @@ import backend.hir.BasicBlock;
 import backend.hir.InstructionVisitor;
 import backend.hir.Operator;
 import backend.lir.ci.LIRKind;
-import frontend.type.PointerType;
-import frontend.type.Type;
+import backend.type.PointerType;
+import backend.type.Type;
+import backend.value.ConstantInt.ConstantUInt;
 import tools.Util;
-
 import java.util.ArrayList;
+import static backend.type.Type.UIntTy;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -373,7 +374,7 @@ public abstract class Instruction extends User
         TerminatorInst(Operator opcode, String instName,
                 Instruction insertBefore)
         {
-            super(Type.getVoidTy(), opcode, insertBefore);
+            super(Type.VoidTy, opcode, insertBefore);
         }
 
         TerminatorInst(Type ty, Operator opcode, String instName,
@@ -386,7 +387,7 @@ public abstract class Instruction extends User
         TerminatorInst(Operator opcode, String instName,
                 BasicBlock insertAtEnd)
         {
-            super(Type.getVoidTy(), opcode, insertAtEnd);
+            super(Type.VoidTy, opcode, insertAtEnd);
         }
 
         /**
@@ -665,7 +666,7 @@ public abstract class Instruction extends User
         public InvokeInst(Value[] args, Function target,
                 BasicBlock ifNormal, String name, Instruction insertBefore)
         {
-            super(target.getReturnType(), Operator.Invoke, name, insertBefore);
+            super(target.getResultType(), Operator.Invoke, name, insertBefore);
             init(target, ifNormal, args);
         }
 
@@ -1166,10 +1167,10 @@ public abstract class Instruction extends User
 
             // default to 1.
             if (arraySize == null)
-                arraySize = ConstantInt.ConstantUInt.get(Type.UnsignedIntTy, 1);
+                arraySize = ConstantUInt.get(UIntTy, 1);
 
             reserve(1);
-            assert arraySize.getType() == Type.UnsignedIntTy
+            assert arraySize.getType() == Type.UIntTy
                     :"Alloca array size != UnsignedIntTy";
             setOperand(0, arraySize);
         }
@@ -1195,7 +1196,12 @@ public abstract class Instruction extends User
          */
         public boolean isArrayAllocation()
         {
-            return operand(0) != ConstantInt.ConstantUInt.get(Type.UnsignedIntTy, 1);
+            return operand(0) != ConstantUInt.get(UIntTy, 1);
+        }
+
+        public Type getAllocatedType()
+        {
+            return getType().getElemType();
         }
 
         /**
@@ -1206,13 +1212,7 @@ public abstract class Instruction extends User
             return operand(0);
         }
 
-        public Type getAllocatedType()
-        {
-            // TODO.
-            return null;
-        }
-
-        public PointerType getType()
+        public backend.type.PointerType getType()
         {
             return (PointerType)super.getType();
         }
@@ -1289,7 +1289,7 @@ public abstract class Instruction extends User
         {
             assert value != null: "The value written into memory must be not null.";
             assert ptr != null : "The memory address of StoreInst must be not null.";
-            assert ptr instanceof AllocaInst
+            assert ptr.getType().isPointerType()
                     : "the destination of StoreInst must be AllocaInst!";
             reserve(2);
             setOperand(0, value);
@@ -1327,24 +1327,27 @@ public abstract class Instruction extends User
                 String name, Instruction insertBefore)
         {
             super(ty, Operator.Load, from, name, insertBefore);
-            reserve(1);
-            setOperand(0, from);
+            assertOK();
         }
 
         public LoadInst(Type ty, Value from,
                 String name)
         {
             super(ty, Operator.Load, from, name, (Instruction)null);
-            reserve(1);
-            setOperand(0, from);
+            assertOK();
         }
 
         public LoadInst(Type ty, Value from,
                 String name, BasicBlock insertAtEnd)
         {
             super(ty, Operator.Load, from, name, insertAtEnd);
-            reserve(1);
-            setOperand(0, from);
+            assertOK();
+        }
+
+        private void assertOK()
+        {
+            assert (operand(0).getType().isPointerType())
+                    :"Ptr must have pointer type.";
         }
 
         public Value getPointerOperand()

@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.value.Constant;
 import backend.value.ConstantInt;
 import backend.value.Value;
 import tools.TypeMap;

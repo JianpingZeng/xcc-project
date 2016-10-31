@@ -1,10 +1,10 @@
 package backend.opt;
 
 import backend.hir.*;
+import backend.value.Constant;
 import backend.value.Instruction;
 import backend.value.Instruction.*;
 import backend.value.Value;
-import backend.value.Value.Constant;
 import backend.lir.ci.LIRConstant;
 import backend.lir.ci.LIRKind;
 import tools.Util;

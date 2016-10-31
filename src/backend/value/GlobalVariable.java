@@ -1,4 +1,4 @@
-package backend.hir;
+package backend.value;
 
 import backend.lir.ci.LIRConstant;
 

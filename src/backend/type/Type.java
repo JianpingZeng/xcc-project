@@ -43,6 +43,7 @@ public abstract class Type extends Value implements PrimitiveID
     public static final OtherType DoubleTy = new OtherType("double", Type.DoubleTyID);
     public static final OtherType LabelTy = new OtherType("label", Type.LabelTyID);
 
+
     public static class TypeType extends Type
     {
         TypeType()
@@ -150,6 +151,16 @@ public abstract class Type extends Value implements PrimitiveID
         return id >= FirstDerivedTyID;
     }
 
+    public boolean isFunctionType()
+    {
+        return id == FunctionTyID;
+    }
+
+    public boolean isArrayType() { return id == ArrayTyID;}
+
+    public boolean isPointerType() { return id == PointerTyID;}
+
+    public boolean isVoidType() { return id == VoidTyID;}
     /**
      * Checks if this type could holded in register.
      * @return

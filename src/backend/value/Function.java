@@ -1,14 +1,14 @@
 package backend.value;
 
 import backend.hir.*;
-import frontend.type.FunctionType;
-import frontend.type.Type;
+import backend.opt.Loop;
+import backend.type.FunctionType;
+import backend.type.Type;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-
-import backend.opt.Loop;
 
 /**
  * This class is representation at the Module(high-level IR) of a function or method.
@@ -38,7 +38,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	
 	public Function(FunctionType ty, String name, Module parentModule)
     {
-	    super(ty, ValueKind.FunctionVal, null, name);
+	    super(ty, ValueKind.FunctionVal, name);
 		if (parentModule != null)
 			parentModule.getFunctionList().add(this);
 
@@ -51,19 +51,18 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         basicBlockList = new LinkedList<>();
     }
 
-    public FunctionType getFunctionType()
-    {
-        return (FunctionType)getType();
-    }
+    public FunctionType getType() { return (FunctionType)super.getType();}
+
+    public FunctionType getFunctionType() { return getType(); }
 
     public boolean isVarArg()
     {
         return getFunctionType().isVarArgs();
     }
 
-    public Type getReturnType()
+    public Type getResultType()
     {
-        return getFunctionType().getReturnType();
+        return getFunctionType().getResultType();
     }
 
     public Module getParent() { return parent; }
