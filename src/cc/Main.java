@@ -26,18 +26,18 @@ public class Main
       * @param args   The command line parameters.
       */
     public static int compile(String[] args) {
-		compiler.Main compiler = new compiler.Main("cc");
+		driver.Main compiler = new driver.Main("cc");
         return compiler.compile(args);
     }
 
     /**
       * Programmatic interface.
       * @param args   The command line parameters.
-      * @param out    Where the compiler's output is directed.
+      * @param out    Where the driver's output is directed.
       */
     public static int compile(String[] args, PrintWriter out) {
-    	compiler.Main compiler =
-                new compiler.Main("cc", out);
+    	driver.Main compiler =
+                new driver.Main("cc", out);
         return compiler.compile(args);
     }
 }
