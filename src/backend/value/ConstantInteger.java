@@ -24,7 +24,7 @@ import backend.type.Type;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class ConstantInteger extends Value.Constant
+public abstract class ConstantInteger extends Constant
 {
     /**
      * Constructs a new instruction representing the specified constant.

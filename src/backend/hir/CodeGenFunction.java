@@ -38,7 +38,6 @@ public final class CodeGenFunction
     public CodeGenFunction(HIRGenModule generator)
     {
         this.generator = generator;
-
     }
 
     public void generateCode(FunctionDecl fd, Function fn)
@@ -71,7 +70,7 @@ public final class CodeGenFunction
 
         assert fn.isDeclaration():"Function already has body.";
 
-        BasicBlock entryBB = BasicBlock.createBasicBlock()
+        BasicBlock entryBB = BasicBlock.createBasicBlock();
     }
 
     private void emitFunctionBody(ArrayList<VarDecl> args)

@@ -1,21 +1,21 @@
 package backend.hir;
 
 
+import backend.asm.Label;
+import backend.lir.LIRBlock;
+import backend.lir.LIRList;
+import backend.opt.Loop;
+import backend.type.Type;
 import backend.value.Function;
 import backend.value.Instruction;
-import backend.value.Instruction.*;
+import backend.value.Instruction.BranchInst;
+import backend.value.Value;
+import backend.value.ValueKind;
 
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
-
-import backend.value.Value;
-import backend.value.ValueKind;
-import backend.lir.LIRBlock;
-import backend.lir.LIRList;
-import backend.opt.Loop;
-import backend.asm.Label;
 
 /**
  * Represents a basic block in the quad intermediate representation. Basic
@@ -155,7 +155,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			Function newParent,
 			BasicBlock insertBefore)
 	{
-		super(frontend.type.Type.getLabelTy(), ValueKind.BasicBlockVal);
+		super(Type.LabelTy, ValueKind.BasicBlockVal);
         parent = newParent;
 		this.idNumber = id;
 		this.instructions = new LinkedList<>();
@@ -485,8 +485,8 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
         return new PredIterator<BasicBlock>(this);
     }
 
-    public SuccIterator<BasicBlock> succIterator()
+    public SuccIterator succIterator()
     {
-        return new SuccIterator<BasicBlock>(this);
+        return new SuccIterator(this);
     }
 }

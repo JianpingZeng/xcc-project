@@ -1,6 +1,7 @@
 package backend.opt;
 
 import backend.hir.*;
+import backend.value.Constant;
 import backend.value.Function;
 import backend.value.Use;
 import backend.value.Value;
@@ -51,7 +52,7 @@ public class ConstantProp
 
 				if (val != null)
 				{
-					if (val instanceof Value.Constant)
+					if (val instanceof Constant)
 					{
 						// performs constant propagation
 						for (Use u : inst.usesList)

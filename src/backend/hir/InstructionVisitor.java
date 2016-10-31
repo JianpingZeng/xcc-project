@@ -1,5 +1,6 @@
 package backend.hir;
 
+import backend.value.Constant;
 import backend.value.Instruction;
 import backend.value.Instruction.*;
 import backend.value.Value;
@@ -67,7 +68,7 @@ public abstract class InstructionVisitor
 	 * {@code Value}.
 	 * @param Const A constant to be visited.
 	 */
-	public void visitConstant(Value.Constant Const)
+	public void visitConstant(Constant Const)
 	{
 
 	}

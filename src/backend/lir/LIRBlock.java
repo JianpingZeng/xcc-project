@@ -1,6 +1,6 @@
 package backend.lir;
 
-import hir.BasicBlock;
+import backend.hir.BasicBlock;
 import tools.BitMap;
 import backend.asm.Label;
 

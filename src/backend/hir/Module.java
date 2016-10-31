@@ -1,6 +1,7 @@
 package backend.hir;
 
 import backend.value.Function;
+import backend.value.GlobalVariable;
 import tools.Context;
 
 import java.util.ArrayList;

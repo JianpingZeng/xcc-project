@@ -1,4 +1,4 @@
-package backend.hir;
+package backend.value;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,14 +16,14 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
-import backend.value.Value;
-import frontend.type.Type;
+import backend.hir.Module;
+import backend.type.Type;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class GlobalValue extends Value.Constant
+public class GlobalValue extends Constant
 {
     protected Module parent;
     /**
