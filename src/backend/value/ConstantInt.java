@@ -174,7 +174,7 @@ public abstract class ConstantInt extends ConstantInteger
             {
                 default:return false;
 
-                case Type.UByteTyID:
+                case Type.Int8TyID:
                     return (Util.ule(v, Util.UINT8_MAX) && Util.ule(v, 0));
                 case Type.ShortTyID:
                     return (Util.ule(v, Util.UINT16_MAX) && Util.ule(v, 0));

@@ -42,6 +42,8 @@ public abstract class ArrayType extends Type
         return 4;
     }
 
+    public abstract int getIndexTypeCVRQualifiers();
+
     /**
      * This class represents the canonical version of C arrays with a specified
      * constant getTypeSize or not.  For example, the canonical frontend.type for 'int A[4 + 4*100]'
@@ -152,6 +154,12 @@ public abstract class ArrayType extends Type
             ConstantArrayType New = new ConstantArrayType(elemTy, size);
             return new QualType(New, 0);
         }
+
+        @Override
+        public int getIndexTypeCVRQualifiers()
+        {
+            return 0;
+        }
     }
 
     /**
@@ -213,6 +221,11 @@ public abstract class ArrayType extends Type
         {
             return false;
         }
+
+        public int getIndexTypeCVRQualifiers()
+        {
+            return sizeExpr.getType().getCVRQualifiers();
+        }
     }
 
     /**
@@ -245,9 +258,16 @@ public abstract class ArrayType extends Type
          * @param target
          * @return
          */
-        @Override public boolean isCastableTo(Type target)
+        @Override
+        public boolean isCastableTo(Type target)
         {
             return false;
+        }
+
+        @Override
+        public int getIndexTypeCVRQualifiers()
+        {
+            return 0;
         }
     }
 }

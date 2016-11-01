@@ -170,10 +170,12 @@ public class HIRGenModule extends StmtVisitor
      */
     private void emitGlobalFunctionDefinition(FunctionDecl fd)
     {
-        FunctionType ty = fd.getDeclType().getFunctionType();
+        frontend.type.FunctionType fnType = fd.getDeclType().getFunctionType();
+        CodeGenTypes cgTypes = new CodeGenTypes(this);
+        backend.type.FunctionType ty = cgTypes.getFunctionType(fnType);
 
         // create a function instance
-        Function fn = new Function(ty, fd.getDeclName(), m);
+        Function fn = new Function();
         new CodeGenFunction(this).generateCode(fd, fn);;
     }
 

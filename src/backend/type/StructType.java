@@ -45,6 +45,11 @@ public class StructType extends CompositeType
      */
     private ArrayList<Type> elementTypes;
     private static TypeMap<StructValType, StructType> structTypes;
+
+    /**
+     * A place holder type.
+     */
+    private static StructType PlaceHolderType = new StructType(null);
     static
     {
         structTypes = new TypeMap<>();
@@ -68,13 +73,18 @@ public class StructType extends CompositeType
         return st;
     }
 
+    public static StructType get()
+    {
+        return PlaceHolderType;
+    }
+
     public ArrayList<Type> getElementTypes() { return elementTypes;}
 
     @Override
     public Type getTypeAtIndex(Value v)
     {
         assert v instanceof Constant;
-        assert v.getType() == Type.UIntTy;
+        assert v.getType() == Type.Int32Ty;
         int idx = (int)((ConstantInt.ConstantUInt)v).getValue();
         assert idx < elementTypes.size();
         assert indexValid(v);
@@ -85,15 +95,12 @@ public class StructType extends CompositeType
     public boolean indexValid(Value v)
     {
         if (!(v instanceof Constant)) return false;
-        if (v.getType() != Type.UIntTy) return false;
+        if (v.getType() != Type.Int32Ty) return false;
         int idx = (int)((ConstantInt.ConstantUInt)v).getValue();
 
         return idx < elementTypes.size();
     }
 
     @Override
-    public Type getIndexType()
-    {
-        return Type.UIntTy;
-    }
+    public Type getIndexType() {return Type.Int32Ty;}
 }

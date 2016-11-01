@@ -28,21 +28,17 @@ import java.util.HashMap;
  */
 public abstract class Type extends Value implements PrimitiveID
 {
-    public static final OtherType VoidTy = new OtherType("void", Type.VoidTyID);
-    public static final OtherType BoolTy = new OtherType("bool", Type.BoolTyID);
-    public static final SignedIntType SByteTy = new SignedIntType("sbyte", Type.SByteTyID);
-    public static final UnsignedIntType UByteTy = new UnsignedIntType("ubyte", Type.UByteTyID);
-    public static final SignedIntType ShortTy = new SignedIntType("short", Type.ShortTyID);
-    public static final UnsignedIntType UShortTy = new UnsignedIntType("ushort", Type.UShortTyID);
-    public static final SignedIntType IntTy = new SignedIntType("int", Type.IntTyID);
-    public static final UnsignedIntType UIntTy = new UnsignedIntType("uint", Type.UIntTyID);
-    public static final SignedIntType LongTy = new SignedIntType("long", Type.LongTyID);
-    public static final UnsignedIntType ULongTy = new UnsignedIntType("ulong", Type.ULongTyID);
+    public static final OtherType VoidTy = OtherType.getVoidType();
+    public static final IntegerType Int1Ty = IntegerType.get(1);
 
-    public static final OtherType FloatTy = new OtherType("float", Type.FloatTyID);
-    public static final OtherType DoubleTy = new OtherType("double", Type.DoubleTyID);
-    public static final OtherType LabelTy = new OtherType("label", Type.LabelTyID);
+    public static final IntegerType Int8Ty = IntegerType.get(8);
+    public static final IntegerType Int16Ty = IntegerType.get(16);
+    public static final IntegerType Int32Ty = IntegerType.get(32);
+    public static final IntegerType Int64Ty = IntegerType.get(64);
 
+    public static final OtherType FloatTy = OtherType.getFloatType(32);
+    public static final OtherType DoubleTy = OtherType.getFloatType(64);
+    public static final OtherType LabelTy = OtherType.getLabelType();
 
     public static class TypeType extends Type
     {
@@ -77,15 +73,11 @@ public abstract class Type extends Value implements PrimitiveID
         switch (primitiveID)
         {
             case VoidTyID: return VoidTy;
-            case BoolTyID: return BoolTy;
-            case UByteTyID: return UByteTy;
-            case SByteTyID: return SByteTy;
-            case UShortTyID: return UShortTy;
-            case ShortTyID: return ShortTy;
-            case UIntTyID: return UIntTy;
-            case IntTyID: return IntTy;
-            case ULongTyID: return ULongTy;
-            case LongTyID: return LongTy;
+            case Int1TyID: return Int1Ty;
+            case Int8TyID: return Int8Ty;
+            case Int16TyID: return Int16Ty;
+            case Int32TyID: return Int32Ty;
+            case Int64TyID: return Int64Ty;
             case FloatTyID: return FloatTy;
             case DoubleTyID: return DoubleTy;
             case LabelTyID: return LabelTy;
@@ -108,18 +100,14 @@ public abstract class Type extends Value implements PrimitiveID
             case LabelTyID:
                 return 0;
 
-            case BoolTyID:
-            case SByteTyID:
-            case UByteTyID:
+            case Int1TyID:
+            case Int8TyID:
                 return 1;
-            case ShortTyID:
-            case UShortTyID:
+            case Int16TyID:
                 return 2;
-            case IntTyID:
-            case UIntTyID:
+            case Int32TyID:
                 return 4;
-            case LongTyID:
-            case ULongTyID:
+            case Int64TyID:
                 return 8;
             case FloatTyID:
                 return 4;
@@ -134,11 +122,11 @@ public abstract class Type extends Value implements PrimitiveID
 
     public boolean isUnsigned() {return false;}
 
-    public boolean isInteger() {return false;}
+    public boolean isIntegerType() {return false;}
 
     public boolean isIntegral()
     {
-        return isInteger() || this == BoolTy;
+        return isIntegerType() || this == Int1Ty;
     }
 
     public boolean isPrimitiveType()
@@ -160,7 +148,11 @@ public abstract class Type extends Value implements PrimitiveID
 
     public boolean isPointerType() { return id == PointerTyID;}
 
+    public boolean isStructType() { return id == StructTyID;}
+
     public boolean isVoidType() { return id == VoidTyID;}
+
+    public boolean isFloatingPointType() { return id == FloatTyID || id == DoubleTyID;}
     /**
      * Checks if this type could holded in register.
      * @return
@@ -168,5 +160,47 @@ public abstract class Type extends Value implements PrimitiveID
     public boolean isHoldableInRegister()
     {
         return isPrimitiveType() || id == PointerTyID;
+    }
+
+    /**
+     * Return true if it makes sense to take the size of this type.
+     * To get the actual size for a particular target, it is reasonable
+     * to use the TargetData subsystem to do that.
+     * @return
+     */
+    public boolean isSized()
+    {
+        if ((id >= Int1TyID && id <= Int64TyID)
+                || isFloatingPointType() || id == PointerTyID)
+            return true;
+
+        if (id != StructTyID && id != ArrayTyID)
+            return false;
+        // Otherwise we have to try harder to decide.
+        return isSizedDerivedType();
+    }
+
+    /**
+     * Returns true if the derived type is sized.
+     * DerivedType is sized if and only if all members of it are sized.
+     * @return
+     */
+    private boolean isSizedDerivedType()
+    {
+        if (isIntegerType())
+            return true;
+
+        if (isArrayType())
+        {
+            return ((ArrayType)this).getElemType().isSized();
+        }
+        if (!isStructType())
+            return false;
+        StructType st = (StructType)this;
+        for (Type type : st.getElementTypes())
+            if (!type.isSized())
+                return false;
+
+        return true;
     }
 }

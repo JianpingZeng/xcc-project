@@ -22,8 +22,22 @@ package backend.type;
  */
 public class OtherType extends Type
 {
-    protected OtherType(String name, int primitiveID)
+    private static final OtherType FloatTy = new OtherType("float", Type.FloatTyID);
+    private static final OtherType DoubleTy = new OtherType("double", Type.DoubleTyID);
+    private static final OtherType LabelTy = new OtherType("label", Type.LabelTyID);
+
+    private OtherType(String name, int primitiveID)
     {
         super(name, primitiveID);
     }
+
+    public static OtherType getFloatType(int numBits)
+    {
+        assert numBits == 32 || numBits == 64;
+        return numBits == 32 ? FloatTy: DoubleTy;
+    }
+
+    public static OtherType getVoidType() { return VoidTy; }
+
+    public static OtherType getLabelType() { return LabelTy; }
 }

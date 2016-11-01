@@ -57,7 +57,7 @@ public abstract class ConstantInteger extends Constant
     {
         switch (ty.getPrimitiveID())
         {
-            case Type.BoolTyID:
+            case Type.Int1TyID:
                 return ConstantBool.True;
             case Type.SByteTyID:
             case Type.ShortTyID:
@@ -70,10 +70,10 @@ public abstract class ConstantInteger extends Constant
                 val <<= typeBits - 1;
                 return ConstantInt.ConstantSInt.get(ty, val);
             }
-            case Type.UByteTyID:
-            case Type.UShortTyID:
-            case Type.UIntTyID:
-            case Type.ULongTyID:
+            case Type.Int8TyID:
+            case Type.Int16TyID:
+            case Type.Int32TyID:
+            case Type.Int64TyID:
             {
                 return getAllOnesValue(ty);
             }
@@ -91,7 +91,7 @@ public abstract class ConstantInteger extends Constant
     {
         switch (ty.getPrimitiveID())
         {
-            case Type.BoolTyID:
+            case Type.Int1TyID:
                 return ConstantBool.False;
             case Type.SByteTyID:
             case Type.ShortTyID:
@@ -104,10 +104,10 @@ public abstract class ConstantInteger extends Constant
                 val >>>= 64 - typeBits;
                 return ConstantInt.ConstantSInt.get(ty, val);
             }
-            case Type.UByteTyID:
-            case Type.UShortTyID:
-            case Type.UIntTyID:
-            case Type.ULongTyID:
+            case Type.Int8TyID:
+            case Type.Int16TyID:
+            case Type.Int32TyID:
+            case Type.Int64TyID:
             {
                 return ConstantInt.ConstantUInt.get(ty, 0);
             }
@@ -120,7 +120,7 @@ public abstract class ConstantInteger extends Constant
     {
         switch (ty.getPrimitiveID())
         {
-            case Type.BoolTyID:
+            case Type.Int1TyID:
                 return ConstantBool.True;
             case Type.SByteTyID:
             case Type.ShortTyID:
@@ -129,10 +129,10 @@ public abstract class ConstantInteger extends Constant
             {
                 return ConstantInt.ConstantSInt.get(ty, -1);
             }
-            case Type.UByteTyID:
-            case Type.UShortTyID:
-            case Type.UIntTyID:
-            case Type.ULongTyID:
+            case Type.Int8TyID:
+            case Type.Int16TyID:
+            case Type.Int32TyID:
+            case Type.Int64TyID:
             {
                 long typeBits = ty.getPrimitiveSize()<<3;
                 long val = ~0L;

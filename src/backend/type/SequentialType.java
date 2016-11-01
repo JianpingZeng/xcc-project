@@ -55,12 +55,12 @@ public class SequentialType extends CompositeType
     public boolean indexValid(Value v)
     {
         // must be a 'long' index.
-        return v.getType() == Type.LongTy;
+        return v.getType() == Type.Int64Ty;
     }
 
     @Override
     public Type getIndexType()
     {
-        return Type.LongTy;
+        return Type.Int64Ty;
     }
 }
