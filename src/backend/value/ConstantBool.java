@@ -35,7 +35,7 @@ public class ConstantBool extends ConstantInteger
      */
     protected ConstantBool(boolean v)
     {
-        super(Type.BoolTy);
+        super(Type.Int1Ty);
         val = v;
     }
 

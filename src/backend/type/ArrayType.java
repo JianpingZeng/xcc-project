@@ -28,27 +28,27 @@ public final class ArrayType extends SequentialType
     static class ArrayValType
     {
         final Type valType;
-        final int size;
+        final long size;
 
-        ArrayValType(final Type val, int sz)
+        ArrayValType(final Type val, long sz)
         {
             valType = val;
             size = sz;
         }
     }
 
-    private int numElements;
+    private long numElements;
     private static TypeMap<ArrayValType, ArrayType> arrayTypes;
     static {
         arrayTypes = new TypeMap<>();
     }
-    protected ArrayType(Type elemType, int numElts)
+    protected ArrayType(Type elemType, long numElts)
     {
         super(ArrayTyID, elemType);
         numElements = numElts;
     }
 
-    public static ArrayType get(Type elemType, int numElts)
+    public static ArrayType get(Type elemType, long numElts)
     {
         assert elemType!=null:"Can't get array of null types!";
         ArrayValType avt = new ArrayValType(elemType, numElts);
@@ -61,5 +61,5 @@ public final class ArrayType extends SequentialType
         return at;
     }
 
-    public int getNumElements() { return numElements;}
+    public long getNumElements() { return numElements;}
 }

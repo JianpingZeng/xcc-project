@@ -208,15 +208,15 @@ return ConstantInt.ConstantSInt.get(Type.CharTy, 0);
 case TypeClass.UnsignedChar:
 return ConstantInt.ConstantUInt.get(Type.UnsignedCharTy, 0);
 case TypeClass.Short:
-return ConstantInt.ConstantSInt.get(Type.ShortTy, 0);
+return ConstantInt.ConstantSInt.get(Type.Int16Ty, 0);
 case TypeClass.UnsignedShort:
 return ConstantInt.ConstantUInt.get(Type.UnsignedShortTy, 0);
 case TypeClass.Int:
-return ConstantInt.ConstantSInt.get(Type.IntTy, 0);
+return ConstantInt.ConstantSInt.get(Type.Int32Ty, 0);
 case TypeClass.UnsignedInt:
 return ConstantInt.ConstantUInt.get(Type.UnsignedIntTy, 0);
 case TypeClass.LongInteger:
-return ConstantInt.ConstantSInt.get(Type.LongTy, 0);
+return ConstantInt.ConstantSInt.get(Type.Int64Ty, 0);
 case TypeClass.UnsignedLong:
 return ConstantInt.ConstantUInt.get(Type.UnsignedLongTy, 0);
 case TypeClass.Real:

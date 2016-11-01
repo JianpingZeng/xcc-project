@@ -1,4 +1,4 @@
-package backend.type;
+package backend.hir;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -20,13 +20,6 @@ package backend.type;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class SignedIntType extends Type
+public class CGRecordLayout
 {
-    public SignedIntType(String name, int primitiveID)
-    {
-        super(name, primitiveID);
-    }
-
-    public boolean isSigned() { return true;}
-    public boolean isInteger() { return true;}
 }
