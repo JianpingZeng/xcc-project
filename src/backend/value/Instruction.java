@@ -8,8 +8,10 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.ConstantInt.ConstantUInt;
 import tools.Util;
+
 import java.util.ArrayList;
-import static backend.type.Type.UInt32Ty;
+
+import static backend.type.Type.Int32Ty;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -1167,10 +1169,10 @@ public abstract class Instruction extends User
 
             // default to 1.
             if (arraySize == null)
-                arraySize = ConstantUInt.get(UInt32Ty, 1);
+                arraySize = ConstantUInt.get(Int32Ty, 1);
 
             reserve(1);
-            assert arraySize.getType() == Type.UInt32Ty
+            assert arraySize.getType() == Type.Int32Ty
                     :"Alloca array size != UnsignedIntTy";
             setOperand(0, arraySize);
         }
@@ -1196,7 +1198,7 @@ public abstract class Instruction extends User
          */
         public boolean isArrayAllocation()
         {
-            return operand(0) != ConstantUInt.get(UInt32Ty, 1);
+            return operand(0) != ConstantUInt.get(Int32Ty, 1);
         }
 
         public Type getAllocatedType()

@@ -183,7 +183,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	}
 
 	/**
-	 * Create new internal basic block. Only to be called by ControlFlowGraph.
+	 * Create new internal basic block.
 	 */
 	public static BasicBlock createBasicBlock(int id,
             String bbName,
@@ -328,14 +328,12 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		if (instructions.isEmpty() || !(instructions.getLast() instanceof BranchInst))
 		{
 			instructions.add(inst);
-			return;
 		}
 		else 
 		{
 			assert !(inst instanceof BranchInst) :
 				"Can not insert more than one branch in basic block";
-			insertAt(inst, instructions.size() - 1);
-			return;
+			instructions.add(inst);
 		}
 	}
 
@@ -356,30 +354,20 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return instructions.get(instructions.size() - 1);
 	}
 	
-	public void insertAfter(Instruction inst, Instruction after)
+	public void insertAfter(Instruction inst, int after)
 	{
 		assert instructions.contains(inst);
-		assert !(after instanceof BranchInst);
+		assert after>0 && after< getNumOfInsts();
 		
-		int idx = instructions.indexOf(after);
-		if (idx < 0) return;
-		if (idx == instructions.size())
-		{	
-			instructions.add(inst);
-			return;
-		}
-		
-		instructions.add(idx + 1, inst);
+		instructions.add(after + 1, inst);
 	}
 	
-	public void insertBefore(Instruction inst, Instruction before)
+	public void insertBefore(Instruction inst, int insertBefore)
 	{
 		assert instructions.contains(inst);
-		assert !(before instanceof BranchInst);
-			
-		int idx = instructions.indexOf(before);
-		if (idx < 0) return;		
-		instructions.add(idx, inst);
+		assert insertBefore>= 1 && insertBefore<=getNumOfInsts();
+
+		instructions.add(insertBefore, inst);
 	}
 
 	/**
@@ -395,8 +383,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			instructions.addFirst(inst);
 		else
 		{
-			Instruction first = instructions.getFirst();
-			instructions.add(instructions.indexOf(first)+1, inst);
+			instructions.add(1, inst);
 		}
 	}
 
@@ -489,4 +476,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
     {
         return new SuccIterator(this);
     }
+
+	public int getNumOfInsts()
+	{
+		return instructions.size();
+	}
+
 }

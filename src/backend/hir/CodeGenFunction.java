@@ -16,7 +16,11 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
+import backend.type.Type;
+import backend.value.Constant;
 import backend.value.Function;
+import backend.value.Instruction;
+import backend.value.Value;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
 import frontend.type.QualType;
@@ -35,9 +39,30 @@ public final class CodeGenFunction
     private QualType fnRetTy;
     private int id;
 
+    /**
+     * Unified return block.
+     */
+    private JumpDest returnBlock;
+
+    /**
+     * The temporary alloca to hold the return value.
+     * This is null iff the function has no return value.
+     */
+    private Value returnValue;
+
+    /**
+     * This is an instruction before which we prefer to insert allocas.
+     */
+    private Instruction allocaInstPtr;
+
+    private int nextCleanupDestIndex;
+
+    private HIRBuilder builder;
+
     public CodeGenFunction(HIRGenModule generator)
     {
         this.generator = generator;
+        builder = new HIRBuilder();
     }
 
     public void generateCode(FunctionDecl fd, Function fn)
@@ -70,7 +95,79 @@ public final class CodeGenFunction
 
         assert fn.isDeclaration():"Function already has body.";
 
-        BasicBlock entryBB = BasicBlock.createBasicBlock();
+        BasicBlock entryBB = createBasicBlock("entry", curFn);
+
+        // Create a marker to make it easy to insert allocas into the entryblock
+        // later.  Don't create this with the builder, because we don't want it
+        // folded.
+        Value undef = Value.UndefValue.get(Type.Int32Ty);
+
+        returnBlock = getJumpDestInCurrentScope("return");
+        builder.setInsertPoint(entryBB);
+
+        if (resTy.isVoidType())
+            returnValue = null;
+        else
+        {
+            returnValue = createIRTemp(resTy, "retval");
+        }
+
+        emitFunctionPrologue(curFn, args);
+        // If any of the arguments have a variably modified type,
+        // make sure to emit type size.
+        for (VarDecl vd : args)
+        {
+            QualType ty = vd.getDeclType();
+            // TODO handle variable size type introduced in C99.
+        }
+    }
+
+    /**
+     * Emits standard prologue code for function definition.
+     * @param fn
+     * @param args
+     */
+    private void emitFunctionPrologue(Function fn, ArrayList<VarDecl> args)
+    {
+        if (curFnDecl.hasImplicitReturnZero())
+        {
+            QualType retType = curFnDecl.getReturnType().getUnQualifiedType();
+            Type backendTy = generator.getCodeGenTypes().convertType(retType);
+            Constant zero = Constant.getNullValue(backendTy);
+            builder.createStore(zero, returnValue);
+        }
+    }
+
+    private Value createIRTemp(QualType ty, String name)
+    {
+        Instruction.AllocaInst alloc = createTempAlloc(convertType(ty), name);
+        return alloc;
+    }
+
+    /**
+     * This creates a alloca and inserts it into the entry block.
+     * @param ty
+     * @param name
+     * @return
+     */
+    private Instruction.AllocaInst createTempAlloc(Type ty, String name)
+    {
+        return new Instruction.AllocaInst(ty, null, name, allocaInstPtr);
+    }
+
+    private Type convertType(QualType t)
+    {
+        return generator.getCodeGenTypes().convertType(t);
+    }
+
+    private JumpDest getJumpDestInCurrentScope(String name)
+    {
+        return getJumpDestInCurrentScope(createBasicBlock(name));
+    }
+
+    private JumpDest getJumpDestInCurrentScope(BasicBlock target)
+    {
+        return new JumpDest(target, nextCleanupDestIndex++);
     }
 
     private void emitFunctionBody(ArrayList<VarDecl> args)
@@ -86,6 +183,11 @@ public final class CodeGenFunction
     private BasicBlock createBasicBlock(String name, Function parent)
     {
         return createBasicBlock(name, parent, null);
+    }
+
+    private BasicBlock createBasicBlock(String name)
+    {
+        return createBasicBlock(name, curFn, null);
     }
 
     private BasicBlock createBasicBlock(String name, Function parent, BasicBlock before)

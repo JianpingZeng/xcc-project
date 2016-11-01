@@ -17,7 +17,6 @@ package backend.type;
  */
 
 import backend.value.Constant;
-import backend.value.ConstantInt;
 import backend.value.Value;
 import tools.TypeMap;
 

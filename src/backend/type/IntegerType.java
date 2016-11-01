@@ -22,18 +22,20 @@ package backend.type;
  */
 public class IntegerType extends Type
 {
+    private int numBits;
     public static final int MIN_INT_BITS = 1;
     public static final int MAX_INT_BITS = (1<<23) - 1;
 
-    private static final IntegerType Int1Ty = new IntegerType("i1", Type.Int1TyID);
-    private static final IntegerType Int8Ty = new IntegerType("i8", Type.Int8TyID);
-    private static final IntegerType Int16Ty = new IntegerType("i16", Type.Int16TyID);
-    private static final IntegerType Int32Ty = new IntegerType("int", Type.Int32TyID);
-    private static final IntegerType Int64Ty = new IntegerType("long", Type.Int64TyID);
+    private static final IntegerType Int1Ty = new IntegerType("i1", Type.Int1TyID, 1);
+    private static final IntegerType Int8Ty = new IntegerType("i8", Type.Int8TyID, 8);
+    private static final IntegerType Int16Ty = new IntegerType("i16", Type.Int16TyID, 16);
+    private static final IntegerType Int32Ty = new IntegerType("int", Type.Int32TyID, 32);
+    private static final IntegerType Int64Ty = new IntegerType("long", Type.Int64TyID, 64);
 
-    private IntegerType(String name, int primitiveID)
+    private IntegerType(String name, int primitiveID, int numBits)
     {
         super(name, primitiveID);
+        this.numBits = numBits;
     }
 
     public boolean isSigned() { return true;}
@@ -53,5 +55,10 @@ public class IntegerType extends Type
             case 64: return Int64Ty;
             default: return null;
         }
+    }
+
+    public int getBitWidth()
+    {
+        return numBits;
     }
 }

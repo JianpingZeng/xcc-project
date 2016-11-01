@@ -860,6 +860,21 @@ public class APInt
         return bitWidth == 1 ? val == 1 : isNegative();
     }
 
+    public boolean isMinValue()
+    {
+
+    }
+
+    public boolean isMaxSignedValue()
+    {
+
+    }
+
+    public boolean isMaxValue()
+    {
+
+    }
+
     /**
      * Checks if this number is the power of 2.
      * @return

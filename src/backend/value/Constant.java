@@ -18,7 +18,12 @@ package backend.value;
 
 import backend.hir.InstructionVisitor;
 import backend.lir.ci.LIRConstant;
+import backend.type.IntegerType;
+import backend.type.PointerType;
 import backend.type.Type;
+import com.sun.org.apache.regexp.internal.RE;
+
+import java.math.BigDecimal;
 
 /**
  * The {@code Constant} instruction represents a constant such as an integer
@@ -42,9 +47,9 @@ public class Constant extends User
      * Constructs a new instruction representing the specified constant.
      */
     public Constant(Type ty, int valueKind)
-{
-super(ty, valueKind);
-}
+    {
+        super(ty, valueKind);
+    }
 
     public void setValue(LIRConstant value)
     {
@@ -137,51 +142,57 @@ super(ty, valueKind);
         visitor.visitConstant(this);
     }
 
-    @Override
-    public boolean equals(Object other)
+    @Override public boolean equals(Object other)
     {
-        if (other == null) return false;
-        if (other == this) return true;
+        if (other == null)
+            return false;
+        if (other == this)
+            return true;
         if (!(other instanceof backend.value.Constant))
             return false;
-        backend.value.Constant c = (backend.value.Constant)other;
+        backend.value.Constant c = (backend.value.Constant) other;
         return c.value.equals(c.value);
     }
+
     /**
      * ReturnInst the production getReturnValue of both Constant, c1 and c2.
+     *
      * @param c1
      * @param c2
      */
-    public static backend.value.Constant multiple(backend.value.Constant c1, backend.value.Constant c2)
+    public static backend.value.Constant multiple(backend.value.Constant c1,
+            backend.value.Constant c2)
     {
-        assert c1.kind.isPrimitive() && c2.kind.isPrimitive()
-            :"No non-primitive frontend.type allowed for induction variable";
+        assert c1.kind.isPrimitive() && c2.kind
+                .isPrimitive() : "No non-primitive frontend.type allowed for induction variable";
         long l1 = c1.value.asPrimitive();
         long l2 = c2.value.asPrimitive();
 
         return backend.value.Constant.forLong(l1 * l2);
     }
+
     /**
      * ReturnInst the sum of both Constant, c1 and c2.
+     *
      * @param c1
      * @param c2
      */
-    public static backend.value.Constant add(
-            backend.value.Constant c1, backend.value.Constant c2)
+    public static backend.value.Constant add(backend.value.Constant c1,
+            backend.value.Constant c2)
     {
-        assert c1.kind.isPrimitive() && c2.kind.isPrimitive()
-        :"No non-primitive frontend.type allowed for induction variable";
+        assert c1.kind.isPrimitive() && c2.kind
+                .isPrimitive() : "No non-primitive frontend.type allowed for induction variable";
         long l1 = c1.value.asPrimitive();
         long l2 = c2.value.asPrimitive();
 
         return backend.value.Constant.forLong(l1 + l2);
     }
 
-    public static backend.value.Constant sub(
-            backend.value.Constant c1, backend.value.Constant c2)
+    public static backend.value.Constant sub(backend.value.Constant c1,
+            backend.value.Constant c2)
     {
-        assert c1.kind.isPrimitive() && c2.kind.isPrimitive()
-        :"No non-primitive frontend.type allowed for induction variable";
+        assert c1.kind.isPrimitive() && c2.kind
+                .isPrimitive() : "No non-primitive frontend.type allowed for induction variable";
         long l1 = c1.value.asPrimitive();
         long l2 = c2.value.asPrimitive();
 
@@ -190,39 +201,35 @@ super(ty, valueKind);
 
     public static backend.value.Constant sub(int c1, backend.value.Constant c2)
     {
-        assert c2.kind.isPrimitive()
-        :"No non-primitive frontend.type allowed for induction variable";
+        assert c2.kind
+                .isPrimitive() : "No non-primitive frontend.type allowed for induction variable";
         long l2 = c2.value.asPrimitive();
 
         return backend.value.Constant.forLong(c1 - l2);
     }
 
-public static Value getNullValue(Type type)
-{
-switch (type.getTypeClass())
-{
-case TypeClass.Bool:
-return ConstantBool.False;
-case TypeClass.Char:
-return ConstantInt.ConstantSInt.get(Type.CharTy, 0);
-case TypeClass.UnsignedChar:
-return ConstantInt.ConstantUInt.get(Type.UnsignedCharTy, 0);
-case TypeClass.Short:
-return ConstantInt.ConstantSInt.get(Type.Int16Ty, 0);
-case TypeClass.UnsignedShort:
-return ConstantInt.ConstantUInt.get(Type.UnsignedShortTy, 0);
-case TypeClass.Int:
-return ConstantInt.ConstantSInt.get(Type.Int32Ty, 0);
-case TypeClass.UnsignedInt:
-return ConstantInt.ConstantUInt.get(Type.UnsignedIntTy, 0);
-case TypeClass.LongInteger:
-return ConstantInt.ConstantSInt.get(Type.Int64Ty, 0);
-case TypeClass.UnsignedLong:
-return ConstantInt.ConstantUInt.get(Type.UnsignedLongTy, 0);
-case TypeClass.Real:
-// TODO
-return null;
-}
-return null;
-}
+    public static Constant getNullValue(Type type)
+    {
+        switch (type.getPrimitiveID())
+        {
+            case Type.Int1TyID:
+            case Type.Int8TyID:
+            case Type.Int16TyID:
+            case Type.Int32TyID:
+            case Type.Int64TyID:
+                return ConstantInt.get((IntegerType) type, 0);
+
+            case Type.FloatTyID:
+                return ConstantFP.get(Type.FloatTy, BigDecimal.ZERO);
+            case Type.DoubleTyID:
+                return ConstantFP.get(Type.DoubleTy,BigDecimal.ZERO);
+            case Type.PointerTyID:
+                return ConstantPointerNull.get((PointerType)type);
+            case Type.StructTyID:
+            case Type.ArrayTyID:
+                return ConstantAggregateZero.get(type);
+            default:
+                return null;
+        }
+    }
 }

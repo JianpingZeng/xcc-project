@@ -148,4 +148,9 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	}
 
     public LinkedList<BasicBlock> getBasicBlockList() { return basicBlockList;}
+
+    public boolean empty()
+    {
+        return basicBlockList.isEmpty();
+    }
 }

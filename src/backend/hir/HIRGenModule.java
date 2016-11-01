@@ -84,12 +84,17 @@ public class HIRGenModule extends StmtVisitor
 	private ASTContext ctx;
     private Options options;
     private Module m;
+
+    private CodeGenTypes cgTypes;
 	public HIRGenModule(ASTContext context, Options options, Module m)
     {
         ctx = context;
         this.options = options;
         this.m = m;
+        cgTypes = new CodeGenTypes(this);
     }
+
+    public CodeGenTypes getCodeGenTypes() { return cgTypes;}
 
     /**
      * Emits HIR code for a single top level declaration.
@@ -171,12 +176,11 @@ public class HIRGenModule extends StmtVisitor
     private void emitGlobalFunctionDefinition(FunctionDecl fd)
     {
         frontend.type.FunctionType fnType = fd.getDeclType().getFunctionType();
-        CodeGenTypes cgTypes = new CodeGenTypes(this);
         backend.type.FunctionType ty = cgTypes.getFunctionType(fnType);
 
         // create a function instance
-        Function fn = new Function();
-        new CodeGenFunction(this).generateCode(fd, fn);;
+        Function fn = new Function(ty, fd.getDeclName(), m);
+        new CodeGenFunction(this).generateCode(fd, fn);
     }
 
     public Module getModule() { return m;}
