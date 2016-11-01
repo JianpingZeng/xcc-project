@@ -16,35 +16,36 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
 import backend.type.Type;
+
+import java.math.BigDecimal;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class GlobalValue extends Constant
+public class ConstantFP extends Constant
 {
-    protected Module parent;
+    private BigDecimal val;
     /**
      * Constructs a new instruction representing the specified constant.
      *
-     * @param
+     * @param ty
+     * @param v
      */
-    public GlobalValue(Type ty, int valueType, String name)
+    private ConstantFP(Type ty, BigDecimal v)
     {
-        super(ty, valueType);
-        this.name = name;
+        super(ty, ValueKind.ConstantFPVal);
+        val = v;
     }
 
-    public boolean isDeclaration()
+    public static ConstantFP get(Type ty, double v)
     {
-        if (this instanceof GlobalVariable)
-            return ((GlobalVariable)this).getNumOfOperands() == 0;
+        return get(ty, BigDecimal.valueOf(v));
+    }
 
-        if (this instanceof Function)
-            return ((Function)this).empty();
-
-        return false;
+    public static ConstantFP get(Type ty, BigDecimal v)
+    {
+        return new ConstantFP(ty, v);
     }
 }

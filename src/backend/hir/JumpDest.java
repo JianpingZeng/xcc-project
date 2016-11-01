@@ -1,4 +1,4 @@
-package backend.value;
+package backend.hir;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,35 +16,25 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
-import backend.type.Type;
-
 /**
+ * A jump destination is an abstract label, branching
+ * which may require a jump out through normal cleanups.
+ *
  * @author Xlous.zeng
  * @version 0.1
  */
-public class GlobalValue extends Constant
+public class JumpDest
 {
-    protected Module parent;
-    /**
-     * Constructs a new instruction representing the specified constant.
-     *
-     * @param
-     */
-    public GlobalValue(Type ty, int valueType, String name)
+    private BasicBlock block;
+    private int index;
+
+    public JumpDest(BasicBlock bb, int index)
     {
-        super(ty, valueType);
-        this.name = name;
+        block = bb;
+        this.index = index;
     }
 
-    public boolean isDeclaration()
-    {
-        if (this instanceof GlobalVariable)
-            return ((GlobalVariable)this).getNumOfOperands() == 0;
-
-        if (this instanceof Function)
-            return ((Function)this).empty();
-
-        return false;
-    }
+    public boolean isValid() { return block != null;}
+    public BasicBlock getBasicBlock() { return block;}
+    public int getDestIndex() { return index;}
 }

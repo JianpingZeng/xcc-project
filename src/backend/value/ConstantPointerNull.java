@@ -16,35 +16,42 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
 import backend.type.Type;
 
+import java.util.HashMap;
+
 /**
+ * A constant pointer value that points to null.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class GlobalValue extends Constant
+public class ConstantPointerNull extends Constant
 {
-    protected Module parent;
+    private static HashMap<Type, ConstantPointerNull> nullPtrConstants;
+
+    static
+    {
+        nullPtrConstants = new HashMap<>();
+    }
+
     /**
      * Constructs a new instruction representing the specified constant.
      *
-     * @param
+     * @param ty
      */
-    public GlobalValue(Type ty, int valueType, String name)
+    private ConstantPointerNull(Type ty)
     {
-        super(ty, valueType);
-        this.name = name;
+        super(ty, ValueKind.ConstantPointerNullVal);
     }
 
-    public boolean isDeclaration()
+    public static ConstantPointerNull get(Type ty)
     {
-        if (this instanceof GlobalVariable)
-            return ((GlobalVariable)this).getNumOfOperands() == 0;
+        ConstantPointerNull res = nullPtrConstants.get(ty);
+        return res != null ? res : nullPtrConstants.put(ty, new ConstantPointerNull(ty));
+    }
 
-        if (this instanceof Function)
-            return ((Function)this).empty();
-
-        return false;
+    public static void removeConstant(Type ty)
+    {
+        nullPtrConstants.remove(ty);
     }
 }

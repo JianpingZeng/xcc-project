@@ -16,35 +16,37 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
 import backend.type.Type;
+
+import java.util.HashMap;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class GlobalValue extends Constant
+public class ConstantAggregateZero extends Constant
 {
-    protected Module parent;
+    private static HashMap<Type, ConstantAggregateZero> aggZeroConstants;
+
+    static
+    {
+        aggZeroConstants = new HashMap<>();
+    }
     /**
      * Constructs a new instruction representing the specified constant.
      *
-     * @param
+     * @param ty
      */
-    public GlobalValue(Type ty, int valueType, String name)
+    public ConstantAggregateZero(Type ty)
     {
-        super(ty, valueType);
-        this.name = name;
+        super(ty, ValueKind.ConstantAggregateZeroVal);
     }
 
-    public boolean isDeclaration()
+    public static ConstantAggregateZero get(Type ty)
     {
-        if (this instanceof GlobalVariable)
-            return ((GlobalVariable)this).getNumOfOperands() == 0;
+        assert ty.isArrayType() || ty.isStructType():"Invalid aggregate type!";
 
-        if (this instanceof Function)
-            return ((Function)this).empty();
-
-        return false;
+        ConstantAggregateZero res = aggZeroConstants.get(ty);
+        return res!=null? res : aggZeroConstants.put(ty, new ConstantAggregateZero(ty));
     }
 }

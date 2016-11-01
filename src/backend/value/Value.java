@@ -243,23 +243,38 @@ public class Value implements Cloneable
 	    return new Value(ty, subclassID);
 	}
 
+    /**
+     * 'undef' values are things that do not have specified contents.
+     * These are used for a variety of purposes, including global variable
+     * initializers and operands to instructions.
+     */
 	public static class UndefValue extends Constant
 	{
-
-		private UndefValue(LIRKind kind)
+	    private static HashMap<Type, UndefValue> undefValueConstants;
+        static
+        {
+            undefValueConstants = new HashMap<>();
+        }
+		private UndefValue(Type t)
 		{
-			super(new LIRConstant(kind, 0));
+			super(t, ValueKind.UndefValueVal);
 		}
 
-		public static UndefValue get(LIRKind kind)
+		/**
+		 * A static factory method for obtaining a instance of typed specified
+		 * @param kind
+		 * @return
+		 */
+		public static UndefValue get(Type kind)
 		{
-			return new UndefValue(kind);
+		    UndefValue val = undefValueConstants.get(kind);
+            if (val != null)
+                return val;
+
+            return undefValueConstants.put(kind, new UndefValue(kind));
 		}
 
-		public UndefValue clone()
-		{
-			return new UndefValue(this.kind);
-		}
+		public UndefValue clone() {return new UndefValue(getType());}
 
 		public void accept(InstructionVisitor visitor)
 		{
@@ -267,8 +282,5 @@ public class Value implements Cloneable
 		}
 	}
 
-	public int valueNumber()
-    {
-	    return 0;
-    }
+	public int valueNumber() {return 0;}
 }

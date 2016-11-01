@@ -449,4 +449,10 @@ public class CodeGenTypes
         Decl.RecordDecl rd = ((RecordType)tt).getDecl();
         return isSafeToConvert(rd);
     }
+
+    private CGRecordLayout computeRecordLayout(Decl.RecordDecl rd, StructType entry)
+    {
+        // TODO creates the layout of record type, 2016.11.1
+        return null;
+    }
 }
