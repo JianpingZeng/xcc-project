@@ -18,6 +18,7 @@ package backend.hir;
 
 import backend.type.*;
 import backend.type.IntegerType;
+import backend.type.Type;
 import frontend.sema.Decl;
 import frontend.type.*;
 import frontend.type.ArrayType;
@@ -39,6 +40,18 @@ import static frontend.type.TypeClass.Short;
  */
 public class CodeGenTypes
 {
+    public static class ArgTypeInfo
+    {
+        public QualType frontendType;
+        public Type backendType;
+
+        public ArgTypeInfo(QualType frontendType, Type backendType)
+        {
+            this.frontendType = frontendType;
+            this.backendType = backendType;
+        }
+    }
+
     private HIRGenModule builder;
 
     /**
@@ -83,13 +96,14 @@ public class CodeGenTypes
 
     public backend.type.FunctionType getFunctionType(frontend.type.FunctionType fnType)
     {
-        ArrayList<backend.type.Type> argTypes = new ArrayList<>(8);
+        ArrayList<ArgTypeInfo> argTypes = new ArrayList<>(8);
         backend.type.Type restType = convertType(fnType.getReturnType());
+        ArgTypeInfo retInfo = new ArgTypeInfo(fnType.getReturnType(), restType);
 
         for (frontend.type.QualType ty : fnType.getParamTypes())
-            argTypes.add(convertType(ty));
+            argTypes.add(new ArgTypeInfo(ty, convertType(ty)));
 
-        return backend.type.FunctionType.get(restType, argTypes, fnType.isVarArgs());
+        return backend.type.FunctionType.get(retInfo, argTypes, fnType.isVarArgs());
     }
 
     /**
@@ -398,7 +412,7 @@ public class CodeGenTypes
      * @param qualType
      * @return
      */
-    private backend.type.Type convertTypeForMem(QualType qualType)
+    public backend.type.Type convertTypeForMem(QualType qualType)
     {
         backend.type.Type r = convertType(qualType);
 
