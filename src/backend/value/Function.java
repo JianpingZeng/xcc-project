@@ -44,7 +44,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
         for (int i = 0, e = ty.getNumParams(); i< e; i++)
         {
-            Type t = ty.getParamType(i);
+            Type t = ty.getParamType(i).backendType;
             assert !t.isVoidType():"Cann't have void typed argument!";
             argumentList.add(new Argument(t));
         }
@@ -62,7 +62,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     public Type getResultType()
     {
-        return getFunctionType().getResultType();
+        return getFunctionType().getResultType().backendType;
     }
 
     public Module getParent() { return parent; }
@@ -152,5 +152,10 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
     public boolean empty()
     {
         return basicBlockList.isEmpty();
+    }
+
+    public int getNumOfArgs()
+    {
+        return argumentList.size();
     }
 }

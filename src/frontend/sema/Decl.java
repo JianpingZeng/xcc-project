@@ -508,6 +508,7 @@ public abstract class Decl extends DeclContext
         private Tree.Stmt body;
 
         private boolean isInlineSpecified;
+        private boolean hasImplicitReturnZero;
 
         FunctionDecl(String name,
                 DeclContext context,
@@ -616,6 +617,11 @@ public abstract class Decl extends DeclContext
         public void setInlineSpecified(boolean val)
         {
             isInlineSpecified = val;
+        }
+
+        public boolean hasImplicitReturnZero()
+        {
+            return hasImplicitReturnZero;
         }
     }
     /**
