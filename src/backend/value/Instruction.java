@@ -71,20 +71,14 @@ public abstract class Instruction extends User
      *
      * @return
      */
-    public BasicBlock getParent()
-    {
-        return bb;
-    }
+    public BasicBlock getParent(){return bb;}
 
     /**
      * Updates the basic block holds multiple instructions.
      *
      * @param bb
      */
-    public void setParent(BasicBlock bb)
-    {
-        this.bb = bb;
-    }
+    public void setParent(BasicBlock bb){this.bb = bb;}
 
     /**
      * Erases this instruction from it's parent basic block.
@@ -140,10 +134,7 @@ public abstract class Instruction extends User
      *
      * @return return the name of this instruction.
      */
-    public String name()
-    {
-        return instName;
-    }
+    public String name(){return instName;}
 
     /**
      * An interface for InstructionVisitor invoking.
@@ -152,15 +143,9 @@ public abstract class Instruction extends User
      */
     public abstract void accept(InstructionVisitor visitor);
 
-    public Operator getOpcode()
-    {
-        return opcode;
-    }
+    public Operator getOpcode(){return opcode;}
 
-    public void setOpcode(Operator op)
-    {
-        opcode = op;
-    }
+    public void setOpcode(Operator op){opcode = op;}
 
     /**
      * The abstract base class definition for unary operator.

@@ -17,6 +17,7 @@ package backend.value;
  */
 
 import backend.type.Type;
+import frontend.sema.APSInt;
 
 import java.math.BigDecimal;
 
@@ -47,5 +48,22 @@ public class ConstantFP extends Constant
     public static ConstantFP get(Type ty, BigDecimal v)
     {
         return new ConstantFP(ty, v);
+    }
+
+    public static Constant get(BigDecimal aFloat)
+    {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public boolean isNullValue()
+    {
+        return false;
+    }
+
+    public static Constant get(APSInt complexIntReal)
+    {
+        return null;
     }
 }

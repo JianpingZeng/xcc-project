@@ -192,4 +192,9 @@ public enum Operator
                 return None;
         }
 	}
+
+	public boolean isComparison()
+    {
+        return index>=Trunc.index && index<=BitCast.index;
+    }
 }

@@ -1098,4 +1098,16 @@ public final class QualType extends Type implements Cloneable
             return ft.getReturnType().isVariablyModifiedType();
         return false;
     }
+
+    public boolean isConstant()
+    {
+        if (isConstQualifed())
+            return true;
+
+        if (getType().isArrayType())
+        {
+            return getAsArrayType().getElemType().isConstant();
+        }
+        return false;
+    }
 }

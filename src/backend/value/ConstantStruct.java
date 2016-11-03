@@ -16,47 +16,45 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.type.Type;
+import backend.type.StructType;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 
 /**
- * A constant pointer value that points to null.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class ConstantPointerNull extends Constant
+public class ConstantStruct extends Constant
 {
-    private static HashMap<Type, ConstantPointerNull> nullPtrConstants;
-
-    static
-    {
-        nullPtrConstants = new HashMap<>();
-    }
-
     /**
      * Constructs a new instruction representing the specified constant.
      *
      * @param ty
+     * @param vals
      */
-    private ConstantPointerNull(Type ty)
+    protected ConstantStruct(StructType ty, ArrayList<Constant> vals)
     {
-        super(ty, ValueKind.ConstantPointerNullVal);
+        super(ty, ValueKind.ConstantStructVal);
+        assert vals.size()  == ty.getNumOfElements()
+                :"Invalid initializer vector for constant structure";
+        reserve(vals.size());
+        int idx = 0;
+        for (Constant c : vals)
+        {
+            assert c.getType() == ty.getElementType(idx)
+                    :"Initializer for struct element doesn't match struct element type!";
+            setOperand(idx++, c);
+        }
     }
 
-    public static ConstantPointerNull get(Type ty)
-    {
-        ConstantPointerNull res = nullPtrConstants.get(ty);
-        return res != null ? res : nullPtrConstants.put(ty, new ConstantPointerNull(ty));
-    }
-
-    public static void removeConstant(Type ty)
-    {
-        nullPtrConstants.remove(ty);
-    }
-
-    @Override public boolean isNullValue()
+    @Override
+    public boolean isNullValue()
     {
         return false;
+    }
+
+    public static Constant get(Constant[] complex)
+    {
+        return null;
     }
 }

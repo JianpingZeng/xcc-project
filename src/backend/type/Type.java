@@ -153,6 +153,16 @@ public abstract class Type extends Value implements PrimitiveID
     public boolean isVoidType() { return id == VoidTyID;}
 
     public boolean isFloatingPointType() { return id == FloatTyID || id == DoubleTyID;}
+
+    /**
+     * Return true if the type is "first class", meaning it
+     * is a valid type for a Value.
+     * @return
+     */
+    public boolean isFirstClassType()
+    {
+        return id != FunctionTyID && id != VoidTyID;
+    }
     /**
      * Checks if this type could holded in register.
      * @return

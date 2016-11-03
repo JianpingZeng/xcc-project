@@ -28,7 +28,7 @@ import static frontend.sema.APValue.ValueKind.*;
  */
 public class APValue
 {
-    enum ValueKind
+    public enum ValueKind
     {
         Uninitialized,
         Int,

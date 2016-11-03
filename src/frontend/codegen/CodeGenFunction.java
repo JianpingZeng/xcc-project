@@ -155,7 +155,9 @@ public final class CodeGenFunction
      * @param fn
      * @param args
      */
-    private void emitFunctionPrologue(Function fn, FunctionType fnType, ArrayList<VarDecl> args)
+    private void emitFunctionPrologue(Function fn,
+            FunctionType fnType,
+            ArrayList<VarDecl> args)
     {
         if (curFnDecl.hasImplicitReturnZero())
         {
@@ -643,11 +645,78 @@ public final class CodeGenFunction
         builder.clearInsertPoint();
     }
 
+    /**
+     * Emits code for static variable declared in block scope.
+     * @param vd
+     */
     private void emitStaticBlockVarDecl(VarDecl vd)
     {
+        Value entry = localVarMaps.get(vd);
+        assert entry == null:"Decl already exists in localdeclmap!";
 
+        GlobalVariable gv = createStaticBlockVarDecl(vd, ".");
+
+        // Store into localVarMaps before generating initializer to handle
+        // circular reference.
+        entry = gv;
+
+        if (vd.getDeclType().isVariablyModifiedType())
+            emitVLASize(vd.getDeclType());
+
+        if (vd.hasInit())
+        {
+            Constant init = generator
+                    .emitConstantExpr(vd.getInit(), vd.getDeclType(), this);
+
+            // If constant emission failed, then this should be a C++ static
+            // initializer.
+            if (init == null)
+            {
+                // TODO generator.errorUnsupported(vd.getInit(), "constant l-value expression");
+            }
+            else
+            {
+                if (gv.getType() != init.getType())
+                {
+                    GlobalVariable oldGV = gv;
+
+                    gv = new GlobalVariable(init.getType(),
+                            oldGV.isConstant(),
+                            init, "");
+
+                    // Replace all uses of the old global with the new global
+                    Constant newPtrForOldDecl =
+                            ConstantExpr.getBitCast(gv, oldGV.getType());
+                    oldGV.replaceAllUsesWith(newPtrForOldDecl);
+
+                    // Erase the old global, since it is no longer used.
+                    oldGV.eraseFromParent();
+                }
+
+                gv.setInitializer(init);
+            }
+        }
     }
 
+    private GlobalVariable createStaticBlockVarDecl(VarDecl vd,
+            String separator)
+    {
+        QualType ty = vd.getDeclType();
+        assert ty.isConstantSizeType():"VLAs cann't be static";
+
+        String contextName = "";
+        if (curFnDecl != null)
+            contextName = curFnDecl.getDeclName();
+        else
+            assert false:"Unknown context for block var decl";
+
+        String name = contextName + "." + vd.getDeclName();
+        Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
+        return new GlobalVariable(lty,
+                ty.isConstant(),
+                generator.emitNullConstant(vd.getDeclType()),
+                name);
+    }
     private void emitGotoStmt(Tree.GotoStmt s)
     {
 

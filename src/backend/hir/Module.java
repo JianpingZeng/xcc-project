@@ -86,4 +86,9 @@ public final class Module implements Iterable<Function>
 	{
 		return functionList.iterator();
 	}
+
+	public ArrayList<GlobalVariable> getGlobalVariableList()
+	{
+		return globalVariableList;
+	}
 }

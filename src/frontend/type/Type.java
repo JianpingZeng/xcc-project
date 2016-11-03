@@ -37,7 +37,6 @@ public abstract class Type implements TypeClass
     public static QualType FloatTy = new QualType(new RealType(4, "float"));
     public static QualType DoubleTy = new QualType(new RealType(8, "double"));
 
-
     /**
      * The kind of a tag frontend.type.
      */
@@ -223,6 +222,11 @@ public abstract class Type implements TypeClass
     public boolean isMethodType()
     {
         return tag == Method;
+    }
+
+    public boolean isArrayType()
+    {
+        return this instanceof ArrayType;
     }
 
     /**

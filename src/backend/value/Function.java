@@ -65,12 +65,19 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         return getFunctionType().getResultType().backendType;
     }
 
-    public Module getParent() { return parent; }
+	/**
+	 * This method unlinks 'this' from the containing module
+	 * and deletes it.
+	 */
+	@Override
+	public void eraseFromParent()
+	{
+		getParent().getFunctionList().remove(this);
+	}
 
-    public void removeFromParent()
-    {
-        parent.getFunctionList().remove(this);
-    }
+	public Module getParent() { return parent; }
+
+    public void removeFromParent(){parent.getFunctionList().remove(this);}
 
     public ArrayList<Argument> getArgumentList()
     {
@@ -158,4 +165,9 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
     {
         return argumentList.size();
     }
+
+	@Override public boolean isNullValue()
+	{
+		return false;
+	}
 }
