@@ -203,4 +203,9 @@ public abstract class Type extends Value implements PrimitiveID
 
         return true;
     }
+
+    public int getScalarSizeBits()
+    {
+        return getPrimitiveSize() << 3;
+    }
 }

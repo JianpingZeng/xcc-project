@@ -6,11 +6,11 @@ import backend.hir.Operator;
 import backend.lir.ci.LIRKind;
 import backend.type.PointerType;
 import backend.type.Type;
-import backend.value.ConstantInt.ConstantUInt;
 import tools.Util;
 
 import java.util.ArrayList;
 
+import static backend.hir.Operator.*;
 import static backend.type.Type.Int32Ty;
 
 /**
@@ -28,20 +28,21 @@ import static backend.type.Type.Int32Ty;
  */
 public abstract class Instruction extends User
 {
-    protected Operator opcode;
+    private Operator opcode;
 
     public Instruction(Type ty,
             Operator op,
             Instruction insertBefore)
     {
         super(ty, ValueKind.InstructionVal + op.index);
-        opcode = op;
+        setOpcode(op);
         setParent(null);
         if (insertBefore != null)
         {
             assert (insertBefore.getParent()
                     != null) : "Instruction to insert before is not in a basic block";
-            insertBefore.getParent().insertBefore(this, insertBefore);
+            int idx = insertBefore.getParent().indexOf(insertBefore);
+            insertBefore.getParent().insertBefore(this, idx);
         }
     }
 
@@ -50,7 +51,7 @@ public abstract class Instruction extends User
             BasicBlock insertAtEnd)
     {
         super(ty, ValueKind.InstructionVal + op.index);
-        opcode = op;
+        setOpcode(op);
         setParent(null);
 
         // append this instruction into the basic block
@@ -131,7 +132,7 @@ public abstract class Instruction extends User
      */
     public String toString()
     {
-        return opcode != null ? opcode.opName : "";
+        return getOpcode() != null ? getOpcode().opName : "";
     }
 
     /**
@@ -150,6 +151,16 @@ public abstract class Instruction extends User
      * @param visitor The instance of InstructionVisitor.
      */
     public abstract void accept(InstructionVisitor visitor);
+
+    public Operator getOpcode()
+    {
+        return opcode;
+    }
+
+    public void setOpcode(Operator op)
+    {
+        opcode = op;
+    }
 
     /**
      * The abstract base class definition for unary operator.
@@ -202,7 +213,7 @@ public abstract class Instruction extends User
         @Override
         public int valueNumber()
         {
-            return Util.hash1(opcode.index, operand(0));
+            return Util.hash1(getOpcode().index, operand(0));
         }
 
         @Override
@@ -216,7 +227,8 @@ public abstract class Instruction extends User
                 return false;
 
             Op1 op = (Op1) other;
-            return getType() == op.getType() && opcode.equals(op.opcode)
+            return getType() == op.getType() && getOpcode()
+                    .equals(op.getOpcode())
                     && operand(0).equals(op.operand(0));
         }
 
@@ -286,7 +298,7 @@ public abstract class Instruction extends User
         @Override
         public int valueNumber()
         {
-            return Util.hash2(opcode.index, operand(0), operand(1));
+            return Util.hash2(getOpcode().index, operand(0), operand(1));
         }
 
         @Override
@@ -302,7 +314,8 @@ public abstract class Instruction extends User
             Op2 op = (Op2) other;
             Value x = operand(0);
             Value y = operand(1);
-            return getType() == op.getType() && opcode.equals(op.opcode)
+            return getType() == op.getType() && getOpcode()
+                    .equals(op.getOpcode())
                     && x.equals(op.operand(0))
                     && y.equals(op.operand(1));
         }
@@ -321,7 +334,7 @@ public abstract class Instruction extends User
 
     public static class CastInst extends Op1
     {
-        public CastInst(Type ty,
+        protected CastInst(Type ty,
                 Operator opcode,
                 Value x, String name)
         {
@@ -329,7 +342,7 @@ public abstract class Instruction extends User
             initialize(x);
         }
 
-        public CastInst(Type ty, Operator opcode,
+        protected CastInst(Type ty, Operator opcode,
                 Value x, String name,
                 Instruction insertBefore)
         {
@@ -337,7 +350,7 @@ public abstract class Instruction extends User
             initialize(x);
         }
 
-        public CastInst(Type ty, Operator opcode,
+        protected CastInst(Type ty, Operator opcode,
                 Value x, String name,
                 BasicBlock insertAtEnd)
         {
@@ -351,16 +364,282 @@ public abstract class Instruction extends User
             setOperand(0, x);
         }
 
-
-        /**
-         * An interface for InstructionVisitor invoking.
-         *
-         * @param visitor The instance of InstructionVisitor.
-         */
-        @Override
-        public void accept(InstructionVisitor visitor)
+        public static CastInst createIntegerCast(
+                Value value, Type destTy,
+                boolean isSigned)
         {
-            visitor.visitConvert(this);
+            assert value.getType().isIntegerType() && destTy.isIntegerType()
+                    :"Invalid type!";
+            int srcBits = value.getType().getScalarSizeBits();
+            int destBits = destTy.getScalarSizeBits();
+            Operator opcode = srcBits == destBits? BitCast
+                    :srcBits>destBits? Trunc
+                    :(isSigned ? SExt : ZExt);
+
+            return create(opcode, value, destTy, "", null);
+        }
+
+        public static CastInst create(Operator opcode, Value value,
+                Type ty, String name, Instruction insertBefore)
+        {
+            switch (opcode)
+            {
+                case Trunc: return new TruncInst(value, ty, name, insertBefore);
+                case ZExt: return new ZExtInst(value, ty, name, insertBefore);
+                case SExt: return new SExtInst(value, ty, name, insertBefore);
+                case FPTrunc: return new FPTruncInst(value, ty, name, insertBefore);
+                case FPExt: return new FPExtInst(value, ty, name, insertBefore);
+                case UIToFP: return new UIToFPInst(value, ty, name, insertBefore);
+                case SIToFP: return new SIToFPInst(value, ty, name, insertBefore);
+                case FPToUI: return new FPToUIInst(value, ty, name, insertBefore);
+                case FPToSI: return new FPToSIInst(value, ty, name, insertBefore);
+                case PtrToInt: return new PtrToIntInst(value, ty, name, insertBefore);
+                case IntToPtr: return new IntToPtrInst(value, ty, name, insertBefore);
+                case BitCast: return new BitCastInst(value, ty, name, insertBefore);
+                default:
+                    assert false:"Invalid opcode provided!";
+            }
+            return null;
+        }
+    }
+
+    public static class UIToFPInst extends CastInst
+    {
+        public UIToFPInst(Value x, Type ty, String name)
+        {
+            super(ty, UIToFP, x, name);
+        }
+
+        public UIToFPInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, UIToFP, x, name, insertBefore);
+        }
+
+        public UIToFPInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, UIToFP, x, name, insertAtEnd);
+        }
+    }
+
+    public static class SIToFPInst extends CastInst
+    {
+        public SIToFPInst(Value x, Type ty, String name)
+        {
+            super(ty, SIToFP, x, name);
+        }
+
+        public SIToFPInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, SIToFP, x, name, insertBefore);
+        }
+
+        public SIToFPInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, SIToFP, x, name, insertAtEnd);
+        }
+    }
+
+    public static class TruncInst extends CastInst
+    {
+        public TruncInst(Value x, Type ty, String name)
+        {
+            super(ty, Trunc, x, name);
+        }
+
+        public TruncInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, Trunc, x, name, insertBefore);
+        }
+
+        public TruncInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, Trunc, x, name, insertAtEnd);
+        }
+    }
+
+    public static class ZExtInst extends CastInst
+    {
+        public ZExtInst(Value x, Type ty, String name)
+        {
+            super(ty, ZExt, x, name);
+        }
+
+        public ZExtInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, ZExt, x, name, insertBefore);
+        }
+
+        public ZExtInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, ZExt, x, name, insertAtEnd);
+        }
+    }
+
+    public static class SExtInst extends CastInst
+    {
+        public SExtInst(Value x, Type ty, String name)
+        {
+            super(ty, SExt, x, name);
+        }
+
+        public SExtInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, SExt, x, name, insertBefore);
+        }
+
+        public SExtInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, SExt, x, name, insertAtEnd);
+        }
+    }
+
+    public static class FPTruncInst extends CastInst
+    {
+        public FPTruncInst(Value x, Type ty, String name)
+        {
+            super(ty, FPTrunc, x, name);
+        }
+
+        public FPTruncInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, FPTrunc, x, name, insertBefore);
+        }
+
+        public FPTruncInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, FPTrunc, x, name, insertAtEnd);
+        }
+    }
+
+    public static class FPExtInst extends CastInst
+    {
+        public FPExtInst(Value x, Type ty, String name)
+        {
+            super(ty, FPExt, x, name);
+        }
+
+        public FPExtInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, FPExt, x, name, insertBefore);
+        }
+
+        public FPExtInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, FPExt, x, name, insertAtEnd);
+        }
+    }
+
+    public static class FPToUIInst extends CastInst
+    {
+        public FPToUIInst(Value x, Type ty, String name)
+        {
+            super(ty, FPToUI, x, name);
+        }
+
+        public FPToUIInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, FPToUI, x, name, insertBefore);
+        }
+
+        public FPToUIInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, FPToUI, x, name, insertAtEnd);
+        }
+    }
+
+    public static class FPToSIInst extends CastInst
+    {
+        public FPToSIInst(Value x, Type ty, String name)
+        {
+            super(ty, FPToSI, x, name);
+        }
+
+        public FPToSIInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, FPToSI, x, name, insertBefore);
+        }
+
+        public FPToSIInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, FPToSI, x, name, insertAtEnd);
+        }
+    }
+
+    public static class PtrToIntInst extends CastInst
+    {
+        public PtrToIntInst(Value x, Type ty, String name)
+        {
+            super(ty, PtrToInt, x, name);
+        }
+
+        public PtrToIntInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, PtrToInt, x, name, insertBefore);
+        }
+
+        public PtrToIntInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, PtrToInt, x, name, insertAtEnd);
+        }
+    }
+
+    public static class IntToPtrInst extends CastInst
+    {
+        public IntToPtrInst(Value x, Type ty, String name)
+        {
+            super(ty, IntToPtr, x, name);
+        }
+
+        public IntToPtrInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, IntToPtr, x, name, insertBefore);
+        }
+
+        public IntToPtrInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, IntToPtr, x, name, insertAtEnd);
+        }
+    }
+
+    public static class BitCastInst extends CastInst
+    {
+        public BitCastInst(Value x, Type ty, String name)
+        {
+            super(ty, BitCast, x, name);
+        }
+
+        public BitCastInst(Value x, Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, BitCast, x, name, insertBefore);
+        }
+
+        public BitCastInst(Value x, Type ty, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(ty, BitCast, x, name, insertAtEnd);
         }
     }
 
@@ -1169,7 +1448,7 @@ public abstract class Instruction extends User
 
             // default to 1.
             if (arraySize == null)
-                arraySize = ConstantUInt.get(Int32Ty, 1);
+                arraySize = ConstantInt.get(Int32Ty, 1);
 
             reserve(1);
             assert arraySize.getType() == Type.Int32Ty
@@ -1198,7 +1477,7 @@ public abstract class Instruction extends User
          */
         public boolean isArrayAllocation()
         {
-            return operand(0) != ConstantUInt.get(Int32Ty, 1);
+            return operand(0) != ConstantInt.get(Int32Ty, 1);
         }
 
         public Type getAllocatedType()

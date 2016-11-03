@@ -1526,7 +1526,7 @@ public class HIRGenModule extends StmtVisitor
 		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
-			opcode = Operator.IAdd;
+			opcode = Operator.Add;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
@@ -1562,7 +1562,7 @@ public class HIRGenModule extends StmtVisitor
 		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
-			opcode = Operator.ISub;
+			opcode = Operator.Sub;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
@@ -1598,7 +1598,7 @@ public class HIRGenModule extends StmtVisitor
 		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
-			opcode = Operator.IMul;
+			opcode = Operator.Mul;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
@@ -1634,7 +1634,7 @@ public class HIRGenModule extends StmtVisitor
 		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
-			opcode = Operator.IDiv;
+			opcode = Operator.Div;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
@@ -1670,11 +1670,11 @@ public class HIRGenModule extends StmtVisitor
 		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
-			opcode = Operator.IMod;
+			opcode = Operator.UMod;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			opcode = Operator.LMod;
+			opcode = Operator.SMod;
 		}
 		else
 		{

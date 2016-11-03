@@ -1432,7 +1432,7 @@ public final class Sema
         if (ty.getType().isFunctionType())
             expr = implicitCastExprToType(expr, ty, EVK_RValue,
                     CK_FunctionToPointerDecay).get();
-        else if (ty.getType().isArrayType())
+        else if (ty.getType().isConstantArrayType())
         {
             if (expr.isLValue())
             {
@@ -2279,7 +2279,7 @@ public final class Sema
         Type decayedTy;
         QualType resTy = srcFrom;
         CastKind cast = null;
-        if (srcFrom.isArrayType())
+        if (srcFrom.isConstantArrayType())
         {
             decayedTy = new PointerType(
                     srcFrom.getConstantArrayType().getElementType());
@@ -3335,7 +3335,7 @@ public final class Sema
             return false;
 
         QualType resTy = e.getType();
-        if (resTy.isArrayType())
+        if (resTy.isConstantArrayType())
             return false;
         if (resTy.isIncompleteType())
             return false;
@@ -3467,7 +3467,7 @@ public final class Sema
             idxExpr = lhsExpr;
             resultTy = rhsTy.getPointerType().getPointeeType();
         }
-        else if (lhsTy.isArrayType())
+        else if (lhsTy.isConstantArrayType())
         {
             // If we see an array that wasn't promoted by
             // DefaultFunctionArrayLvalueConversion, it must be an array that
@@ -3486,7 +3486,7 @@ public final class Sema
 
             resultTy = lhsTy.getPointerType().getPointeeType();
         }
-        else if(rhsTy.isArrayType())
+        else if(rhsTy.isConstantArrayType())
         {
             // Same as previous, except for 123[f().a] case
             parser.syntaxError(rhsExpr.getLocation(),

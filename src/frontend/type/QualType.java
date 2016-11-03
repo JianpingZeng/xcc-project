@@ -398,10 +398,11 @@ public final class QualType extends Type implements Cloneable
      *
      * @return
      */
-    public boolean isArrayType()
-    {
-        return type.isArrayType();
-    }
+    public boolean isConstantArrayType(){return type.isConstantArrayType();}
+
+    public boolean isVariableArrayType() {return type.isVariableArrayType();}
+
+    public boolean isIncompleteArrayType(){return type.isIncompleteArrayType();}
 
     /**
      * Determine whether this frontend.type is record frontend.type or not.
@@ -437,11 +438,6 @@ public final class QualType extends Type implements Cloneable
     public boolean isAllocatedArray()
     {
         return type.isAllocatedArray();
-    }
-
-    public boolean isIncompleteArrayType()
-    {
-        return type instanceof IncompleteArrayType;
     }
 
     public boolean isCallable()
@@ -897,7 +893,7 @@ public final class QualType extends Type implements Cloneable
         Qualifier qs = new Qualifier();
         while (true)
         {
-            if (!type.isArrayType())
+            if (!type.isConstantArrayType())
                 break;
 
             type = type.getAsArrayType().getElemType();
@@ -1077,4 +1073,29 @@ public final class QualType extends Type implements Cloneable
         return (int)bits>>3;
     }
 
+    /**
+     * C99 6.7.5p3.
+     * Return true for variable length array types and types that contain
+     * variable array types in their declarator.
+     * @return
+     */
+    public boolean isVariablyModifiedType()
+    {
+        // A VLA is a variably modified type.
+        if (isVariableArrayType())
+            return true;
+
+        frontend.type.Type ty = getArrayElementTypeNoQuals();
+        if (ty !=null)
+            return ty.isVariablyModifiedType();
+
+        PointerType pt = getAs();
+        if (pt != null)
+            return pt.getPointeeType().isVariablyModifiedType();
+
+        FunctionType ft = getFunctionType();
+        if (ft != null)
+            return ft.getReturnType().isVariablyModifiedType();
+        return false;
+    }
 }

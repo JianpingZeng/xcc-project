@@ -60,6 +60,11 @@ public class ConstantInt extends Constant
         return new ConstantInt(ity, val);
     }
 
+    public static ConstantInt get(Type ty, long val)
+    {
+        ConstantInt c =
+    }
+
     public static ConstantInt getTrue()
     {
         if (TRUE != null)

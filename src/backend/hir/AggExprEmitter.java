@@ -19,37 +19,19 @@ package backend.hir;
 import backend.value.Value;
 import frontend.ast.StmtVisitor;
 import frontend.ast.Tree;
-import frontend.type.QualType;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class ScalarExprEmitter extends StmtVisitor<Value>
+public class AggExprEmitter extends StmtVisitor
 {
-    private CodeGenFunction cgf;
-    private HIRBuilder builder;
-    public ScalarExprEmitter(CodeGenFunction cgf)
+    public AggExprEmitter(CodeGenFunction codeGenFunction, Value destPtr)
     {
-        this.cgf = cgf;
-        builder = cgf.builder;
-    }
-
-    /**
-     * Emit a conversion from the specified type to the specified destination
-     * type, both of which are backend scalar types.
-     * @param v
-     * @param srcTy
-     * @param destTy
-     * @return
-     */
-    public Value emitScalarConversion(Value v, QualType srcTy, QualType destTy)
-    {
-        return null;
     }
 
     @Override
-    public Value visit(Tree.Expr expr)
+    public Boolean visit(Tree.Expr expr)
     {
         return null;
     }

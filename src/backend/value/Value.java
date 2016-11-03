@@ -243,6 +243,11 @@ public class Value implements Cloneable
 	    return new Value(ty, subclassID);
 	}
 
+	public void setName(String newName)
+	{
+		name = newName;
+	}
+
     /**
      * 'undef' values are things that do not have specified contents.
      * These are used for a variety of purposes, including global variable

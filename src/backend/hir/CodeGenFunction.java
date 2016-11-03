@@ -18,16 +18,18 @@ package backend.hir;
 
 import backend.hir.CodeGenTypes.ArgTypeInfo;
 import backend.type.FunctionType;
+import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
-import com.sun.org.apache.regexp.internal.RE;
 import frontend.ast.Tree;
 import frontend.sema.Decl;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
+import frontend.type.ArrayType;
 import frontend.type.QualType;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 
 /**
@@ -63,10 +65,30 @@ public final class CodeGenFunction
 
     HIRBuilder builder;
 
+    /**
+     * Indicates if code generation of this function has finished.
+     */
+    private boolean isFinished;
+
+    /**
+     * A hashmap for keeping track of local variable declaration in C.
+     */
+    private HashMap<Decl, Value> localVarMaps;
+
+    /**
+     * Keeps track of the Basic block for each C label.
+     */
+    private HashMap<Tree.LabelledStmt, BasicBlock> labelMap;
+
+    private HashMap<Tree.Expr, Type> vlaSizeMap;
+
     public CodeGenFunction(HIRGenModule generator)
     {
         this.generator = generator;
         builder = new HIRBuilder();
+        localVarMaps = new HashMap<>();
+        labelMap = new HashMap<>();
+        vlaSizeMap = new HashMap<>();
     }
 
     public void generateCode(FunctionDecl fd, Function fn)
@@ -284,7 +306,7 @@ public final class CodeGenFunction
             default: return false;
             case Tree.Stmt.NullStmtClass:
             case Tree.Stmt.CompoundStmtClass:
-                emitCompoundStmt(((Tree.CompoundStmt)s);
+                emitCompoundStmt((Tree.CompoundStmt)s);
                 return true;
             case Tree.DeclStmtClass:
                 emitDeclStmt((Tree.DeclStmt)s);
@@ -347,15 +369,281 @@ public final class CodeGenFunction
                 VarDecl vd = (VarDecl)decl;
                 assert vd.isBlockVarDecl()
                         :"Should not see file-scope variable declaration.";
-                return emitBlockVarDecl(vd);
+                emitBlockVarDecl(vd);
+                return;
             }
             case TypedefDecl: // typedef int x;
             {
                 Decl.TypeDefDecl tf = (Decl.TypeDefDecl)decl;
                 QualType ty = tf.getUnderlyingType();
-            }
 
+                // TODO handle variable modified type, 2016.11.3.
+                emitVLASize(ty);
+                return;
+            }
         }
+    }
+
+    /**
+     * This method handles any variable function inside a function.
+     * @param vd
+     * @return
+     */
+    private void emitBlockVarDecl(VarDecl vd)
+    {
+        switch (vd.getStorageClass())
+        {
+            case SC_none:
+            case SC_auto:
+            case SC_register:
+                emitLocalBlockVarDecl(vd);
+                return;
+            case SC_static:
+                emitStaticBlockVarDecl(vd);
+                return;
+            case SC_extern:
+                return;
+        }
+        assert false:"Unknown storage class.";
+    }
+
+    /**
+     * <p>Emits code and set up an entry in LocalDeclMap for a variable declaration
+     * with auto, register, or on storage class specifier.
+     * </p>
+     * <p>These turn into simple stack objects, or {@linkplain GlobalValue}
+     * depending on target.
+     * </p>
+     * @param vd
+     */
+    private void emitLocalBlockVarDecl(VarDecl vd)
+    {
+        QualType ty = vd.getDeclType();
+        backend.value.Value declPtr;
+        if (ty.isConstantSizeType())
+        {
+            // A normal fixed sized variable becomes an alloca in the entry block.
+            backend.type.Type lty = convertTypeForMem(ty);
+            Instruction.AllocaInst alloca = createTempAlloc(lty);
+            alloca.setName(vd.getDeclName());
+
+            declPtr = alloca;
+        }
+        else
+        {
+            ensureInsertPoint();
+
+            Type elemTy = convertTypeForMem(ty);
+            Type elemPtrTy = PointerType.get(elemTy);
+
+            Value vlaSize = emitVLASize(ty);
+
+            // downcast the VLA size expression.
+            vlaSize = builder.createIntCast(vlaSize, Type.Int32Ty,false, "");
+            // allocate an array with variable size.
+            Value vla = builder.createAlloca(Type.Int8Ty, vlaSize, "vla");
+
+            // convert the pointer to array into regular pointer.
+            declPtr = builder.creatBitCast(vla, elemPtrTy, "temp");
+        }
+
+        Value entry = localVarMaps.get(vd);
+        assert entry == null:"Decl already exits in LocalVarMaps";
+
+        entry = declPtr;
+
+        // if this local var has initializer, emit it.
+        Tree.Expr init = vd.getInit();
+
+        // If we are at an unreachable point, we don't need to emit the initializer
+        // unless it contains a label.
+        if (!hasInsertPoint())
+        {
+            if (!containsLabel(init, false))
+                init = null;
+            else
+                ensureInsertPoint();
+        }
+
+        if (init != null)
+        {
+            Value loc = declPtr;
+            if (!hasAggregateBackendType(init.getType()))
+            {
+                Value v = emitScalarExpr(init);
+                emitStoreOfScalar(v, loc, vd.getDeclType());
+            }
+            else if (init.getType().isComplexType())
+            {
+                // todo handle var declaration of typed complex type.
+            }
+            else
+            {
+                emitAggExpr(init, loc);
+            }
+        }
+    }
+
+    private Value emitVLASize(QualType type)
+    {
+        // todo handle variable sized type in the future. 2016.11.5.
+        assert type.isVariablyModifiedType():
+                "Must pass variably modified type to EmitVLASizes!";
+        ensureInsertPoint();
+
+        ArrayType.VariableArrayType vat = type.getAsVariableArrayType();
+        if (vat != null)
+        {
+            Value sizeEntry = vlaSizeMap.get(vat.getSizeExpr());
+            if (sizeEntry == null)
+            {
+                Type sizeTy = convertType(vat.getSizeExpr().getType());
+
+                // get the element size.
+                QualType elemTy = vat.getElemType();
+                Value elemSize;
+                if (elemTy.isVariableArrayType())
+                    elemSize = emitVLASize(elemTy);
+                else
+                    elemSize = ConstantInt.get(sizeTy, elemTy.getTypeSize() / 8);
+
+                Value numElements = emitScalarExpr(vat.getSizeExpr());
+                numElements = builder.createIntCast(numElements, sizeTy, false, "tmp");
+                sizeEntry = builder.createMul(elemSize, numElements, "");
+            }
+            return sizeEntry;
+        }
+        ArrayType at = type.getAsArrayType();
+        if (at != null)
+        {
+            emitVLASize(at.getElemType());
+            return null;
+        }
+
+        frontend.type.PointerType ptr = type.<frontend.type.PointerType>getAs();
+        assert ptr != null: "unknown VM type!";
+        emitVLASize(ptr.getPointeeType());
+        return null;
+    }
+
+    private Value emitScalarExpr(Tree.Expr expr)
+    {
+        assert expr !=null && !hasAggregateBackendType(expr.getType())
+                :"Invalid scalar expression to emit";
+        return new ScalarExprEmitter(this).visit(expr);
+    }
+
+    /**
+     * Emit the computation of the specified expression of aggregate
+     * type.  The result is computed into {@code destPtr}.
+     *
+     * Note that if {@code destPtr} is null, the value of the aggregate
+     * expression is not needed.
+     * @param expr
+     * @param destPtr
+     */
+    private void emitAggExpr(Tree.Expr expr, Value destPtr)
+    {
+        assert expr!=null && hasAggregateBackendType(expr.getType())
+                :"Invalid aggregate expression to emit";
+        if (destPtr == null)return;
+
+        new AggExprEmitter(this, destPtr).visit(expr);
+    }
+
+    private void emitStoreOfScalar(Value val, Value addr/** boolean isVolatile*/, QualType ty)
+    {
+        if (ty.isBooleanType())
+        {
+            // Bool can have different representation in memory than in registers.
+            Type srcTy = val.getType();
+            PointerType destPtr = (PointerType)addr.getType();
+            if (destPtr.getElemType() != srcTy)
+            {
+                Type memTy = PointerType.get(srcTy);
+                addr = builder.createBitCast(addr, memTy, "storetmp");
+            }
+        }
+        builder.createStore(val, addr);
+    }
+
+    private boolean containsLabel(Tree.Stmt s, boolean ignoreCaseStmts)
+    {
+        // Null statement, not a label.
+        if (s == null) return false;
+
+        // If this is a labelled statement, we want to emit code for it.
+        // like this: if (0) {... foo: bar(); } goto foo;
+        if (s instanceof Tree.LabelledStmt)
+            return true;
+
+        // If this is a case/default statement, and we haven't seen a switch, we have
+        // to emit the code.
+        if (s instanceof Tree.SwitchCase && !ignoreCaseStmts)
+            return true;
+
+        // If this is a switch statement, we want to ignore cases below it.
+        if (s instanceof Tree.SwitchStmt)
+            ignoreCaseStmts = true;
+
+        if (s instanceof Tree.CompoundStmt)
+        {
+            Tree.CompoundStmt cs = (Tree.CompoundStmt)s;
+            for (Tree.Stmt sub : cs.stats)
+                if (containsLabel(sub, ignoreCaseStmts))
+                    return true;
+        }
+        return false;
+    }
+
+    /**
+     * Ensure the insert point has been defined as yet before emit IR.
+     */
+    private void ensureInsertPoint()
+    {
+        if (!hasInsertPoint())
+            emitBlock(createBasicBlock());
+    }
+
+    private boolean hasInsertPoint()
+    {
+        return builder.getInsertBlock() != null;
+    }
+
+    private void emitBlock(BasicBlock bb)
+    {
+        // fall out of the current block if necessary.
+        emitBranch(bb);
+
+        if (isFinished && bb.isUseEmpty())
+            return;
+        curFn.getBasicBlockList().add(bb);
+        builder.setInsertPoint(bb);
+    }
+
+    private void emitBranch(BasicBlock targetBB)
+    {
+        // Emit a branch instruction from the current block to the
+        // target block if this is a real one. If this is just a fall-through
+        // block after a terminator, don't emit it.
+        BasicBlock curBB = builder.getInsertBlock();
+
+        if (curBB == null || curBB.getTerminator() != null)
+        {
+            // If there is no insert point or the previous block is already
+            // terminated, don't touch it.
+        }
+        else
+        {
+            // Otherwise, create a fall-through branch.
+            builder.createBr(targetBB);
+        }
+        builder.clearInsertPoint();
+    }
+
+    private void emitStaticBlockVarDecl(VarDecl vd)
+    {
+
     }
 
     private void emitGotoStmt(Tree.GotoStmt s)
@@ -391,6 +679,11 @@ public final class CodeGenFunction
     private BasicBlock createBasicBlock(String name, Function parent)
     {
         return createBasicBlock(name, parent, null);
+    }
+
+    private BasicBlock createBasicBlock()
+    {
+        return createBasicBlock("", curFn, null);
     }
 
     private BasicBlock createBasicBlock(String name)
