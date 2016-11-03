@@ -20,6 +20,9 @@ import backend.hir.CodeGenTypes.ArgTypeInfo;
 import backend.type.FunctionType;
 import backend.type.Type;
 import backend.value.*;
+import com.sun.org.apache.regexp.internal.RE;
+import frontend.ast.Tree;
+import frontend.sema.Decl;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
 import frontend.type.QualType;
@@ -80,7 +83,7 @@ public final class CodeGenFunction
         // Emit the standard function prologue.
         startFunction(fd, resTy, fn, functionArgList);
         // Generates code for function body.
-        emitFunctionBody(functionArgList);
+        emitFunctionBody();
 
         // emit standard function eliplogue.
         finishFunction();
@@ -252,12 +255,135 @@ public final class CodeGenFunction
         return new JumpDest(target, nextCleanupDestIndex++);
     }
 
-    private void emitFunctionBody(ArrayList<VarDecl> args)
+    /**
+     * Emits code for the function body through visiting CompoundStmt of function.
+     */
+    private void emitFunctionBody()
+    {
+        assert curFnDecl.hasBody()
+                :"Can not emit stmt code for function with no body.";
+        emitStmt(curFnDecl.getBody());
+    }
+
+    private void emitStmt(Tree.Stmt stmt)
+    {
+        assert stmt!=null:"Null Statement!";
+
+        // Check if we can handle this without bother to generate an
+        // insert point.
+        if (emitSimpleStmt(stmt))
+            return;
+
+
+    }
+
+    private boolean emitSimpleStmt(Tree.Stmt s)
+    {
+        switch (s.getStmtClass())
+        {
+            default: return false;
+            case Tree.Stmt.NullStmtClass:
+            case Tree.Stmt.CompoundStmtClass:
+                emitCompoundStmt(((Tree.CompoundStmt)s);
+                return true;
+            case Tree.DeclStmtClass:
+                emitDeclStmt((Tree.DeclStmt)s);
+                return true;
+            case Tree.GotoStmtClass:
+                emitGotoStmt((Tree.GotoStmt)s);
+                return true;
+            case Tree.BreakStmtClass:
+                emitBreakStmt((Tree.BreakStmt)s);
+                return true;
+            case Tree.ContinueStmtClass:
+                emitContinueStmt((Tree.ContinueStmt)s);
+                return true;
+            case Tree.DefaultStmtClass:
+                emitDefaultStmt((Tree.DefaultStmt)s);
+                return true;
+            case Tree.CaseStmtClass:
+                emitCaseStmt((Tree.CaseStmt)s);
+                return true;
+        }
+    }
+
+    /**
+     * Emits code for the compound statement, like {...}.
+     * @param s
+     */
+    private void emitCompoundStmt(Tree.CompoundStmt s)
+    {
+        for (Iterator<Tree.Stmt> itr = s.iterator(); itr.hasNext();)
+        {
+            emitStmt(itr.next());
+        }
+    }
+
+    private void emitDeclStmt(Tree.DeclStmt s)
+    {
+        for (Iterator<Decl> itr = s.iterator(); itr.hasNext();)
+        {
+            emitDecl(itr.next());
+        }
+    }
+
+    private void emitDecl(Decl decl)
+    {
+        switch (decl.getDeclKind())
+        {
+            default:assert false:"Unknown decl type.";
+                break;
+            case ParamVar:
+                assert false:"ParamDecls should not be handled in emitDecl().";
+                break;
+            case FunctionDecl: // void foo();
+            case StructDecl:   // struct/union X;
+            case EnumDecl:     // enum X;
+            case EnumConstant: // enum ? {X =?,};
+                // none of those decls required codegen support.
+                return;
+            case VarDecl:
+            {
+                VarDecl vd = (VarDecl)decl;
+                assert vd.isBlockVarDecl()
+                        :"Should not see file-scope variable declaration.";
+                return emitBlockVarDecl(vd);
+            }
+            case TypedefDecl: // typedef int x;
+            {
+                Decl.TypeDefDecl tf = (Decl.TypeDefDecl)decl;
+                QualType ty = tf.getUnderlyingType();
+            }
+
+        }
+    }
+
+    private void emitGotoStmt(Tree.GotoStmt s)
+    {
+
+    }
+
+    private void emitBreakStmt(Tree.BreakStmt s)
     {
 
     }
 
     private void finishFunction()
+    {
+
+    }
+
+    private void emitContinueStmt(Tree.ContinueStmt s)
+    {
+
+    }
+
+    private void emitDefaultStmt(Tree.DefaultStmt s)
+    {
+
+    }
+
+    private void emitCaseStmt(Tree.CaseStmt s)
     {
 
     }
