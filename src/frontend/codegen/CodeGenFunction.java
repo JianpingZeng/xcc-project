@@ -24,6 +24,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import frontend.ast.Tree;
+import frontend.sema.APSInt;
 import frontend.sema.Decl;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
@@ -33,6 +34,9 @@ import frontend.type.QualType;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Stack;
+
+import static frontend.ast.Tree.*;
 
 /**
  * This class responsible for generating HIR code.
@@ -84,6 +88,25 @@ public final class CodeGenFunction
 
     private HashMap<Tree.Expr, Type> vlaSizeMap;
 
+    static class BreakContinue
+    {
+        BasicBlock breakBlock;
+        BasicBlock continueBlock;
+        BreakContinue(BasicBlock bb, BasicBlock cBB)
+        {
+            breakBlock = bb;
+            continueBlock = cBB;
+        }
+    }
+
+    private Stack<BreakContinue> breakContinueStack;
+
+    /**
+     * This is nearest current switch instruction. It is null if if
+     * current context is not in a switch.
+     */
+    private Instruction.SwitchInst switchInst;
+
     public CodeGenFunction(HIRGenModule generator)
     {
         this.generator = generator;
@@ -91,6 +114,7 @@ public final class CodeGenFunction
         localVarMaps = new HashMap<>();
         labelMap = new HashMap<>();
         vlaSizeMap = new HashMap<>();
+        breakContinueStack = new Stack<>();
     }
 
     public void generateCode(FunctionDecl fd, Function fn)
@@ -308,29 +332,53 @@ public final class CodeGenFunction
         switch (s.getStmtClass())
         {
             default: return false;
-            case Tree.Stmt.NullStmtClass:
-            case Tree.Stmt.CompoundStmtClass:
+            case NullStmtClass:
+            case CompoundStmtClass:
                 emitCompoundStmt((Tree.CompoundStmt)s);
                 return true;
-            case Tree.DeclStmtClass:
+            case DeclStmtClass:
                 emitDeclStmt((Tree.DeclStmt)s);
                 return true;
-            case Tree.GotoStmtClass:
+            case LabelledStmtClass:
+                emitLabelStmt((Tree.LabelledStmt)s);
+                return true;
+            case GotoStmtClass:
                 emitGotoStmt((Tree.GotoStmt)s);
                 return true;
-            case Tree.BreakStmtClass:
+            case BreakStmtClass:
                 emitBreakStmt((Tree.BreakStmt)s);
                 return true;
-            case Tree.ContinueStmtClass:
+            case ContinueStmtClass:
                 emitContinueStmt((Tree.ContinueStmt)s);
                 return true;
-            case Tree.DefaultStmtClass:
+            case DefaultStmtClass:
                 emitDefaultStmt((Tree.DefaultStmt)s);
                 return true;
-            case Tree.CaseStmtClass:
+            case CaseStmtClass:
                 emitCaseStmt((Tree.CaseStmt)s);
                 return true;
         }
+    }
+
+    private void emitLabelStmt(Tree.LabelledStmt stmt)
+    {
+        emitLabel(stmt);
+        emitStmt(stmt.body);
+    }
+
+    private void emitLabel(Tree.LabelledStmt s)
+    {
+        emitBlock(getBasicBlockForLabel(s));
+    }
+
+    private BasicBlock getBasicBlockForLabel(Tree.LabelledStmt s)
+    {
+        BasicBlock BB = labelMap.get(s);
+        if (BB != null) return BB;
+
+        BB = createBasicBlock(s.getName());
+        labelMap.put(s, BB);
+        return BB;
     }
 
     /**
@@ -719,12 +767,21 @@ public final class CodeGenFunction
     }
     private void emitGotoStmt(Tree.GotoStmt s)
     {
+        // If this code is reachable then emit a stop point (if generating
+        // debug info). We have to do this ourselves because we are on the
+        // "simple" statement path.
+        if (hasInsertPoint())
+            emitStopPoint(s);
+    }
+
+    private void emitStopPoint(Tree.Stmt s)
+    {
 
     }
 
     private void emitBreakStmt(Tree.BreakStmt s)
     {
-
+        assert !breakContinueStack.isEmpty():"break stmt not in a loop or switch!";
     }
 
     private void finishFunction()
@@ -734,17 +791,47 @@ public final class CodeGenFunction
 
     private void emitContinueStmt(Tree.ContinueStmt s)
     {
-
+        assert !breakContinueStack.isEmpty():"break stmt not in a loop or switch!";
     }
 
     private void emitDefaultStmt(Tree.DefaultStmt s)
     {
+        BasicBlock defaultBlock = switchInst.getDefaultBlock();
+        assert defaultBlock.isEmpty():"EmitDefaultStmt: Default block already defined?";
 
+        emitBlock(defaultBlock);
+        emitStmt(s.getSubStmt());
     }
 
     private void emitCaseStmt(Tree.CaseStmt s)
     {
+        emitBlock(createBasicBlock("sw.bb"));
+        BasicBlock caseDest = builder.getInsertBlock();
 
+        APSInt caseVal = s.getCondExpr().evaluateKnownConstInt();
+        switchInst.addCase(ConstantInt.get(caseVal), caseDest);
+
+        // Recursively emitting the statement is acceptable, but is not wonderful for
+        // code where we have many case statements nested together, i.e.:
+        //  case 1:
+        //    case 2:
+        //      case 3: etc.
+        // Handling this recursively will create a new block for each case statement
+        // that falls through to the next case which is IR intensive.  It also causes
+        // deep recursion which can run into stack depth limitations.  Handle
+        // sequential non-range case statements specially.
+        CaseStmt curCase = s;
+        CaseStmt nextCase = s.getNextCaseStmt();
+        while (nextCase != null)
+        {
+            curCase = nextCase;
+            caseVal = curCase.getCondExpr().evaluateKnownConstInt();
+            switchInst.addCase(ConstantInt.get(caseVal), caseDest);
+            nextCase = curCase.getNextCaseStmt();
+        }
+
+        // Normal default recursion for non-cases.
+        emitStmt(curCase.getSubStmt());
     }
 
     private BasicBlock createBasicBlock(String name, Function parent)
