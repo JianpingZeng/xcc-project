@@ -29,7 +29,7 @@ import java.math.BigDecimal;
  * The {@code Constant} instruction represents a constant such as an integer
  * inst, long, float, object reference, address, etc.
  */
-public class Constant extends User
+public abstract class Constant extends User
 {
     public static backend.value.Constant CONSTANT_INT_0 = backend.value.Constant
             .forInt(0);
@@ -232,4 +232,6 @@ public class Constant extends User
                 return null;
         }
     }
+
+    public abstract boolean isNullValue();
 }

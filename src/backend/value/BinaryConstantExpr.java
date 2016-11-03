@@ -16,47 +16,24 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.type.Type;
-
-import java.util.HashMap;
+import backend.hir.Operator;
 
 /**
- * A constant pointer value that points to null.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class ConstantPointerNull extends Constant
+public class BinaryConstantExpr extends ConstantExpr
 {
-    private static HashMap<Type, ConstantPointerNull> nullPtrConstants;
-
-    static
-    {
-        nullPtrConstants = new HashMap<>();
-    }
-
     /**
      * Constructs a new instruction representing the specified constant.
      *
-     * @param ty
+     * @param opcode
      */
-    private ConstantPointerNull(Type ty)
+    public BinaryConstantExpr(Operator opcode, Constant c1, Constant c2)
     {
-        super(ty, ValueKind.ConstantPointerNullVal);
-    }
-
-    public static ConstantPointerNull get(Type ty)
-    {
-        ConstantPointerNull res = nullPtrConstants.get(ty);
-        return res != null ? res : nullPtrConstants.put(ty, new ConstantPointerNull(ty));
-    }
-
-    public static void removeConstant(Type ty)
-    {
-        nullPtrConstants.remove(ty);
-    }
-
-    @Override public boolean isNullValue()
-    {
-        return false;
+        super(c1.getType(), opcode);
+        reserve(2);
+        setOperand(0, c1);
+        setOperand(1, c2);
     }
 }

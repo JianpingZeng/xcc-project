@@ -65,6 +65,12 @@ public class ConstantInt extends Constant
         ConstantInt c =
     }
 
+    public static ConstantInt get(APInt val)
+    {
+        ConstantInt c;
+    }
+
+
     public static ConstantInt getTrue()
     {
         if (TRUE != null)
@@ -108,4 +114,9 @@ public class ConstantInt extends Constant
 
     public boolean isZero() {return val.eq(0);}
     public boolean isOne() {return val.eq(1);}
+
+    @Override public boolean isNullValue()
+    {
+        return false;
+    }
 }

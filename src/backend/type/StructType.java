@@ -17,6 +17,7 @@ package backend.type;
  */
 
 import backend.value.Constant;
+import backend.value.ConstantInt;
 import backend.value.Value;
 import tools.TypeMap;
 
@@ -28,6 +29,7 @@ import java.util.ArrayList;
  */
 public class StructType extends CompositeType
 {
+
     static class StructValType
     {
         ArrayList<Type> elemTypes;
@@ -84,7 +86,7 @@ public class StructType extends CompositeType
     {
         assert v instanceof Constant;
         assert v.getType() == Type.Int32Ty;
-        int idx = (int)((ConstantInt.ConstantUInt)v).getValue();
+        int idx = (int)((ConstantInt)v).getZExtValue();
         assert idx < elementTypes.size();
         assert indexValid(v);
         return elementTypes.get(idx);
@@ -95,11 +97,15 @@ public class StructType extends CompositeType
     {
         if (!(v instanceof Constant)) return false;
         if (v.getType() != Type.Int32Ty) return false;
-        int idx = (int)((ConstantInt.ConstantUInt)v).getValue();
+        int idx = (int)((ConstantInt)v).getZExtValue();
 
         return idx < elementTypes.size();
     }
 
     @Override
     public Type getIndexType() {return Type.Int32Ty;}
+
+    public int getNumOfElements() { return elementTypes.size();}
+
+    public Type getElementType(int idx){return elementTypes.get(idx);}
 }

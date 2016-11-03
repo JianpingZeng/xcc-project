@@ -23,7 +23,7 @@ import backend.type.Type;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class GlobalValue extends Constant
+public abstract class GlobalValue extends Constant
 {
     protected Module parent;
     /**
@@ -47,4 +47,13 @@ public class GlobalValue extends Constant
 
         return false;
     }
+
+    /**
+     * This method unlinks 'this' from the containing module
+     * and deletes it.
+     */
+    public abstract void eraseFromParent();
+
+    public Module getParent() {return parent;}
+    public void setParent(Module newParent) {parent = newParent;}
 }
