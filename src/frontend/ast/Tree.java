@@ -596,6 +596,8 @@ abstract public class Tree
 		{
 			v.visitLabelledStmt(this);
 		}
+
+		public String getName() {return label.getDeclName();}
 	}
 
 	/**
@@ -682,6 +684,8 @@ abstract public class Tree
 
     public static abstract class SwitchCase extends Stmt
     {
+        private Stmt subStmt;
+
         public SwitchCase(int tag)
         {
             super(tag);
@@ -690,6 +694,7 @@ abstract public class Tree
 
         public abstract int getCaseLoc();
         public abstract int getColonLoc();
+        public abstract Stmt getSubStmt();
     }
 	/**
 	 * A "case  :" of a switch.
@@ -726,12 +731,17 @@ abstract public class Tree
 		}
 
         @Override
-        public SwitchCase getNextCaseStmt()
+        public CaseStmt getNextCaseStmt()
         {
             if (subStmt.tag == CaseStmtClass)
                 return (CaseStmt)subStmt;
             else
                 return null;
+        }
+
+        public Stmt getSubStmt()
+        {
+            return subStmt;
         }
 
         public Expr getCondExpr()
@@ -758,7 +768,7 @@ abstract public class Tree
         }
 
         @Override
-        public SwitchCase getNextCaseStmt()
+        public DefaultStmt getNextCaseStmt()
         {
             if (subStmt.tag == CaseStmtClass)
                 return (DefaultStmt)subStmt;
@@ -781,6 +791,11 @@ abstract public class Tree
         public void accept(StmtVisitor v)
         {
             v.visitDefaultStmt(this);
+        }
+
+        public Stmt getSubStmt()
+        {
+            return subStmt;
         }
     }
 
