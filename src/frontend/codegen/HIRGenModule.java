@@ -1,5 +1,6 @@
-package backend.hir;
+package frontend.codegen;
 
+import backend.hir.*;
 import backend.value.*;
 import frontend.ast.StmtVisitor;
 import frontend.ast.Tree;

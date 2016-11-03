@@ -1,6 +1,7 @@
 package backend.hir;
 
 import backend.lir.ci.LIRKind;
+import frontend.codegen.HIRGenModule;
 import frontend.type.Type;
 
 /**
