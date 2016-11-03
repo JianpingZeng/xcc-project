@@ -10,7 +10,7 @@ import frontend.symbol.Symbol;
 import frontend.symbol.Symbol.MethodSymbol;
 import frontend.symbol.VarSymbol;
 import frontend.type.*;
-import hir.BasicBlock;
+import backend.hir.BasicBlock;
 import tools.Name;
 import tools.OutParamWrapper;
 import tools.Position;
@@ -120,7 +120,7 @@ abstract public class Tree
 	/**
 	 * ConditionalExpr expression, of frontend.type ConditionalExpr.
 	 */
-	public static final int CondtionalOperatorClass = CaseStmtClass + 1;
+	public static final int CondtionalOperatorClass = DefaultStmtClass + 1;
 
 	/**
 	 * IfStmt statements, of frontend.type IfStmt.
@@ -142,7 +142,7 @@ abstract public class Tree
 	/**
 	 * ContinueStmt statements, of frontend.type ContinueStmt.
 	 */
-	public static final int ContinueStmtClass = BreakStmtClass + 1;
+	public static final int ContinueStmtClass = GotoStmtClass + 1;
 
 	/**
 	 * ReturnInst statements, of frontend.type ReturnInst.
@@ -208,7 +208,7 @@ abstract public class Tree
 
 	public static final int CompoundLiteralExprClass = MemberExprClass + 1;
 
-    public static final int IntegerLiteralClass = DeclRefExprClass + 1;
+    public static final int IntegerLiteralClass = CompoundLiteralExprClass + 1;
 
     public static final int FloatLiteralClass = IntegerLiteralClass + 1;
 
@@ -452,6 +452,8 @@ abstract public class Tree
 		{
 			v.visitCompoundStmt(this);
 		}
+
+		public Iterator<Stmt> iterator() { return stats.iterator();}
 	}
 
 	

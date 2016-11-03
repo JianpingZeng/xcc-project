@@ -24,7 +24,7 @@ import static frontend.type.Type.TagTypeKind.TTK_union;
 
 /**
  * This class encapsulate information of declaration or definition, like
- * a variable, typedef, function, struct.
+ * a variable, label, typedef, function, struct, enum, field, enum constant.
  */
 public abstract class Decl extends DeclContext
 {
@@ -147,6 +147,10 @@ public abstract class Decl extends DeclContext
         }
     }
 
+    /**
+     * This class represents a declaration with a name, for example,
+     * {@linkplain VarDecl}, {@linkplain LabelDecl} and {@linkplain TypeDecl}.
+     */
     public static class NamedDecl extends Decl
     {
         String name;
@@ -162,6 +166,10 @@ public abstract class Decl extends DeclContext
             return name;
         }
     }
+
+    /**
+     * Represents a labelled statement in source code.
+     */
     public static class LabelDecl extends NamedDecl
     {
         LabelledStmt stmt;
@@ -177,6 +185,10 @@ public abstract class Decl extends DeclContext
         }
     }
 
+    /**
+     * Represents the declaration of a variable (in which case it is an lvalue)
+     * or a function (in which case it is a function designator) or an enum constant.
+     */
     public static class ValueDecl extends NamedDecl
     {
         private QualType declType;
@@ -195,7 +207,10 @@ public abstract class Decl extends DeclContext
         public void setDeclType(QualType type) {declType = type; }
     }
 
-    public static class DeclaratorDecl extends ValueDecl
+    /**
+     * Represents a ValueDecl that came out of a declarator.
+     */
+    public static abstract class DeclaratorDecl extends ValueDecl
     {
         DeclaratorDecl(DeclKind kind,
                 DeclContext context,
@@ -298,6 +313,10 @@ public abstract class Decl extends DeclContext
         Definition;
     }
 
+    /**
+     * An instance of this class is created to represent a variable
+     * declaration or definition.
+     */
     public static class VarDecl extends DeclaratorDecl
     {
         StorageClass sc;
@@ -470,8 +489,25 @@ public abstract class Decl extends DeclContext
         {
             return sc;
         }
+
+        /**
+         * Return true for local variable declaration rather than file scope var.
+         * @return
+         */
+        public boolean isBlockVarDecl()
+        {
+            if (getDeclKind() != VarDecl)
+                return false;
+            DeclContext dc = getDeclContext();
+            if (dc != null)
+                return dc.isFileContext();
+            return false;
+        }
     }
 
+    /**
+     * Represent a parameter to a function.
+     */
     public static class ParamVarDecl extends VarDecl
     {
         ParamVarDecl(DeclKind kind,
@@ -489,16 +525,29 @@ public abstract class Decl extends DeclContext
 
         }
 
-        /// Sets the function declaration that owns this
-        /// ParmVarDecl. Since ParmVarDecls are often created before the
-        /// FunctionDecls that own them, this routine is required to update
-        /// the DeclContext appropriately.
-        public void setOwningFunction(DeclContext fd)
-        {
-            setDeclContext(fd);
-        }
+        /**
+         * Sets the function declaration that owns this
+         * ParmVarDecl. Since ParmVarDecls are often created before the
+         * FunctionDecls that own them, this routine is required to update
+         * the DeclContext appropriately.
+         */
+        public void setOwningFunction(DeclContext fd) {setDeclContext(fd);}
     }
 
+    /**
+     * An instance of this class is created to represent a
+     * function declaration or definition.
+     * <p>
+     * Since a given function can be declared several times in a program,
+     * there may be several FunctionDecls that correspond to that
+     * function. Only one of those FunctionDecls will be found when
+     * traversing the list of declarations in the context of the
+     * FunctionDecl (e.g., the translation unit); this FunctionDecl
+     * contains all of the information known about the function. Other,
+     * previous declarations of the function are available via the
+     * getPreviousDeclaration() chain.
+     * </p>
+     */
     public static class FunctionDecl extends DeclaratorDecl
     {
         private StorageClass sc;
@@ -658,16 +707,24 @@ public abstract class Decl extends DeclContext
      */
     public static class TypeDefDecl extends TypeDecl
     {
-        public TypeDefDecl(DeclKind kind,
-                DeclContext context,
-                String name,
-                int loc)
+        private QualType underlyingType;
+
+        public TypeDefDecl(DeclContext context,
+                String id,
+                int loc,
+                QualType type)
         {
-            super(kind, context, name, loc);
+            super(TypedefDecl, context, id, loc);
+            underlyingType = type;
         }
+
+        public QualType getUnderlyingType() { return underlyingType;}
     }
 
-    public static class TypedefNameDecl extends TypeDefDecl
+    /**
+     * Base class for declarations which introduce a typedef-name.
+     */
+    public static class TypedefNameDecl extends TypeDecl
     {
         private QualType type;
 
@@ -686,7 +743,7 @@ public abstract class Decl extends DeclContext
     /**
      * Represents the declaration of a struct/union/enum.
      */
-    public static class TagDecl extends TypeDefDecl
+    public static class TagDecl extends TypeDecl
     {
         protected boolean isBeingDefined;
         protected boolean isCompleteDefinition;
