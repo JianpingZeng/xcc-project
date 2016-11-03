@@ -81,13 +81,13 @@ public abstract class ArrayType extends Type
 
         public boolean isAllocatedArray()
         {
-            return size.ugt(0) && (!getElemType().isArrayType()
+            return size.ugt(0) && (!getElemType().isConstantArrayType()
                     || getElemType().isAllocatedArray());
         }
 
         public boolean isIncompleteArrayArray()
         {
-            if (!getElemType().isArrayType())
+            if (!getElemType().isConstantArrayType())
                 return false;
             return !getElemType().isAllocatedArray();
         }
@@ -111,7 +111,7 @@ public abstract class ArrayType extends Type
         public boolean isSameType(Type other)
         {
             // getSize is not important
-            if (!other.isPointerType() && !other.isArrayType())
+            if (!other.isPointerType() && !other.isConstantArrayType())
                 return false;
             return getElemType().isSameType(other.baseType());
         }
@@ -132,7 +132,7 @@ public abstract class ArrayType extends Type
         @Override
         public boolean isCastableTo(Type target)
         {
-            return target.isPointerType() || target.isArrayType();
+            return target.isPointerType() || target.isConstantArrayType();
         }
 
         public String toString()

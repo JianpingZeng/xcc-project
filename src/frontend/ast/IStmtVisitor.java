@@ -33,6 +33,9 @@ import frontend.ast.Tree.*;
  */
 public interface IStmtVisitor<T>
 {
+
+    T visit(Expr expr);
+
     /**
      * Visits the root class represents the top level tree node.
      * @param that

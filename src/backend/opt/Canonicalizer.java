@@ -105,52 +105,43 @@ public class Canonicalizer extends InstructionVisitor
 	 */
 	public void visitConvert(CastInst inst)
 	{
-		Value val = inst.x;
+		Value val = inst.operand(0);
 		if (val.isConstant())
 		{
 			// folds conversions between two constant
-			switch (inst.opcode)
+			switch (inst.getOpcode())
 			{
-				case I2B:
-					setIntConstant((byte) val.asLIRConstant().asInt());
-					return;
-				case I2S:
-					setIntConstant((short) val.asLIRConstant().asInt());
-					return;
-				case I2C:
-					setIntConstant((char) val.asLIRConstant().asInt());
-					return;
-				case I2L:
+				case Trunc:
 					setLongConstant(val.asLIRConstant().asInt());
 					return;
-				case I2F:
+				case ZExt:
 					setFloatConstant((float) val.asLIRConstant().asInt());
 					return;
-				case L2I:
+				case FPToUI:
 					setIntConstant((int) val.asLIRConstant().asLong());
 					return;
-				case L2F:
+				case FPToSI:
 					setFloatConstant((float) val.asLIRConstant().asLong());
 					return;
-				case L2D:
+				case UIToFP:
                     setDoubleConstant(val.asLIRConstant().asDouble());
 					return;
-				case F2D:
+				case FPExt:
 					setDoubleConstant((double) val.asLIRConstant().asFloat());
 					return;
-				case F2I:
+				case SIToFP:
 					setIntConstant((int) val.asLIRConstant().asFloat());
 					return;
-				case F2L:
+				case FPTrunc:
 					setLongConstant((long) val.asLIRConstant().asFloat());
 					return;
-				case D2F:
+				case BitCast:
 					setFloatConstant((float) val.asLIRConstant().asDouble());
 					return;
-				case D2I:
+				case PtrToInt:
 					setIntConstant((int) val.asLIRConstant().asDouble());
 					return;
-				case D2L:
+				case IntToPtr:
 					setLongConstant((long) val.asLIRConstant().asDouble());
 					return;
 			}
@@ -163,7 +154,7 @@ public class Canonicalizer extends InstructionVisitor
 		{
 			CastInst c = (CastInst) val;
 			// where T is kind.
-			switch (c.opcode)
+			switch (c.getOpcode())
 			{
 				case I2B:
 					kind = LIRKind.Byte;
@@ -178,7 +169,7 @@ public class Canonicalizer extends InstructionVisitor
 
 			if (kind != LIRKind.Illegal)
 			{
-				switch (inst.opcode)
+				switch (inst.getOpcode())
 				{
 					case I2B:
 						if (kind == LIRKind.Byte)
@@ -206,12 +197,12 @@ public class Canonicalizer extends InstructionVisitor
 				// check if the operation was IAND with a constant; it may have narrowed the value already
 				Op2 op = (Op2) val;
 				// constant should be on right hand side if there is one
-				if (op.opcode == Operator.IAnd && op.y.isConstant())
+				if (op.getOpcode() == Operator.IAnd && op.y.isConstant())
 				{
 					int safebits = 0;
 					int mask = op.y.asLIRConstant().asInt();
 					// Checkstyle: off
-					switch (inst.opcode)
+					switch (inst.getOpcode())
 					{
 						case I2B:
 							safebits = 0x7f;
@@ -272,15 +263,15 @@ public class Canonicalizer extends InstructionVisitor
 	{
 		switch (opcode)
 		{
-			case IAdd:
+			case Add:
 				return x + y;
-			case ISub:
+			case Sub:
 				return x - y;
-			case IDiv:
+			case Div:
 				return x / y;
-			case IMul:
+			case Mul:
 				return y == 0 ? null : x * y;
-			case IMod:
+			case UMod:
 				return y == 0 ? null : x & y;
 			case IAnd:
 				return x & y;
@@ -319,7 +310,7 @@ public class Canonicalizer extends InstructionVisitor
 				return x / y;
 			case LMul:
 				return y == 0 ? null : x * y;
-			case LMod:
+			case SMod:
 				return y == 0 ? null : x & y;
 			case LAnd:
 				return x & y;
@@ -350,13 +341,13 @@ public class Canonicalizer extends InstructionVisitor
 	{
 		switch (opcode)
 		{
-			case IAdd:
+			case Add:
 				return x + y;
-			case ISub:
+			case Sub:
 				return x - y;
-			case IDiv:
+			case Div:
 				return x / y;
-			case IMul:
+			case Mul:
 				return y == 0 ? null : x * y;
 		}
 		return null;
@@ -375,13 +366,13 @@ public class Canonicalizer extends InstructionVisitor
 	{
 		switch (opcode)
 		{
-			case IAdd:
+			case Add:
 				return x + y;
-			case ISub:
+			case Sub:
 				return x - y;
-			case IDiv:
+			case Div:
 				return x / y;
-			case IMul:
+			case Mul:
 				return y == 0 ? null : x * y;
 		}
 		return null;
@@ -391,10 +382,10 @@ public class Canonicalizer extends InstructionVisitor
 	{
 		switch (opcode)
 		{
-			case ISub:
-			case IAdd:
+			case Sub:
+			case Add:
 				return y == 0 ? setCanonical(x) : null;
-			case IMul:
+			case Mul:
 			{
 				if (y == 1)
 					return setCanonical(x);
@@ -408,9 +399,9 @@ public class Canonicalizer extends InstructionVisitor
 				}
 				return y == 0 ? setIntConstant(0) : null;
 			}
-			case IDiv:
+			case Div:
 				return y == 1 ? setCanonical(x) : null;
-			case IMod:
+			case UMod:
 				return y == 1 ? setIntConstant(0) : null;
 			case IAnd:
 			{
@@ -461,7 +452,7 @@ public class Canonicalizer extends InstructionVisitor
 			}
 			case LDiv:
 				return y == 1 ? setCanonical(x) : null;
-			case LMod:
+			case SMod:
 				return y == 1 ? setLongConstant(0) : null;
 			case LAnd:
 			{
@@ -572,12 +563,12 @@ public class Canonicalizer extends InstructionVisitor
 	{
 		Value x = inst.x;
 		Value y = inst.y;
-		Operator opcode = inst.opcode;
+		Operator opcode = inst.getOpcode();
 		if (x == y)
 		{
 			switch (opcode)
 			{
-				case ISub:
+				case Sub:
 					setIntConstant(0);
 					return;
 				case LSub:
@@ -687,7 +678,7 @@ public class Canonicalizer extends InstructionVisitor
 	 */
 	private void moveConstantToRight(Op2 inst)
 	{
-		if (inst.x.isConstant() && inst.opcode.isCommutative())
+		if (inst.x.isConstant() && inst.getOpcode().isCommutative())
 			inst.swapOperands();
 	}
 

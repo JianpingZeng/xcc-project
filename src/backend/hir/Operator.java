@@ -23,45 +23,36 @@ public enum Operator
 	// binary operator
 
 	// addictive
-	IAdd("iadd", Switch.index + 1, COMMUTATIVE | ASSOCIATIVE),
-	LAdd("ladd", IAdd.index + 1, COMMUTATIVE | ASSOCIATIVE),
-	FAdd("fadd", LAdd.index + 1, COMMUTATIVE | ASSOCIATIVE),
-	DAdd("dadd", FAdd.index + 1, COMMUTATIVE | ASSOCIATIVE),
+	Add("add", Switch.index + 1, COMMUTATIVE | ASSOCIATIVE),
+    FAdd("fadd", Add.index + 1, COMMUTATIVE | ASSOCIATIVE),
 
 	// subtractive
-	ISub("isub", DAdd.index + 1, ASSOCIATIVE),
-	LSub("lsub", ISub.index + 1, ASSOCIATIVE),
-	FSub("fsub", LSub.index + 1, ASSOCIATIVE),
-	DSub("dsub", FSub.index + 1, ASSOCIATIVE),
+	Sub("isub", FAdd.index + 1, ASSOCIATIVE),
+	FSub("fsub", Sub.index + 1, ASSOCIATIVE),
 
 	// multiple
-	IMul("imul", DSub.index + 1, COMMUTATIVE | ASSOCIATIVE),
-	LMul("lmul", IMul.index + 1, COMMUTATIVE | ASSOCIATIVE),
-	FMul("fmul", LMul.index + 1, COMMUTATIVE | ASSOCIATIVE),
-	DMul("dmul", FMul.index + 1, COMMUTATIVE | ASSOCIATIVE),
+	Mul("imul", FSub.index + 1, COMMUTATIVE | ASSOCIATIVE),
+	FMul("fmul", Mul.index + 1, COMMUTATIVE | ASSOCIATIVE),
 
 	// division
-	IDiv("idiv", DMul.index + 1, ASSOCIATIVE),
-	LDiv("ldiv", IDiv.index + 1, ASSOCIATIVE),
-	FDiv("fdiv", LDiv.index + 1, ASSOCIATIVE),
-	DDiv("ddiv", FDiv.index + 1, ASSOCIATIVE),
+	UDiv("idiv", FMul.index + 1, ASSOCIATIVE),
+    SDiv("sdiv", UDiv.index + 1, ASSOCIATIVE),
+	FDiv("fdiv", UDiv.index + 1, ASSOCIATIVE),
 
     // mod operation
-    IMod("imod", DDiv.index + 1, ASSOCIATIVE),
-    LMod("lmod", IMod.index + 1, ASSOCIATIVE),
+    UMod("UMod", FDiv.index + 1, ASSOCIATIVE),
+    SMod("SMod", UMod.index + 1, ASSOCIATIVE),
+    FMod("FMod", SMod.index + 1, ASSOCIATIVE),
 
 	// bit-operation
-	IAnd("iand", LMod.index + 1, ASSOCIATIVE | COMMUTATIVE),
-	LAnd("land", IAnd.index + 1, ASSOCIATIVE | COMMUTATIVE),
+	And("and", SMod.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
-	IOr("ior", LAnd.index + 1, ASSOCIATIVE | COMMUTATIVE),
-	LOr("lor", IOr.index + 1, ASSOCIATIVE | COMMUTATIVE),
+	Or("or", And.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
-	IXor("ixor", LOr.index + 1, ASSOCIATIVE | COMMUTATIVE),
-	LXor("lxor", IXor.index + 1, ASSOCIATIVE | COMMUTATIVE),
+	Xor("xor", Or.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
     // comparison operation
-    SetEQ("SetEQ", LXor.index + 1, 0),
+    SetEQ("SetEQ", Xor.index + 1, 0),
     SetNE("SetNE", SetEQ.index + 1, 0),
     SetLE("SetLE", SetNE.index + 1, 0),
     SetGE("SetGE", SetLE.index + 1, 0),
@@ -89,19 +80,32 @@ public enum Operator
 	Load("load", Store.index + 1, 0),
 
 	// converts operation
-	I2L("i2l", Load.index + 1, 0),
-	I2F("i2f", I2L.index + 1, 0),
-	I2D("i2d", I2F.index + 1, 0),
-	L2I("l2i", I2D.index + 1, 0),
-	L2F("l2f", L2I.index + 1, 0),
-	L2D("l2d", L2F.index + 1, 0),
-	F2I("f2i", L2D.index + 1, 0),
-	F2L("f2l", F2I.index + 1, 0),
-	F2D("f2d", F2L.index + 1, 0),
-	D2I("d2i", F2D.index + 1, 0),
-	D2L("d2l", D2I.index + 1, 0),
-	D2F("d2f", D2L.index + 1, 0),
-	I2B("i2b", D2F.index + 1, 0),
+	//truncate integers.
+	Trunc("trunc", Load.index + 1, 0),
+	// zero extend integers.
+	ZExt("ZExt", Trunc.index + 1, 0),
+	// Sign extend integers.
+	SExt("SExt", ZExt.index + 1, 0),
+	// floatint-pint to unsigned integer.
+	FPToUI("FPToUI", SExt.index + 1, 0),
+	// floating point to signed integer.
+	FPToSI("FPToSI", FPToUI.index + 1, 0),
+	// unsigned integer to floating-point.
+	UIToFP("UIToFP", FPToSI.index + 1, 0),
+	// signed integer to floating-point.
+	SIToFP("SIToFP", UIToFP.index + 1, 0),
+	// floating point truncate.
+	FPTrunc("f2l", SIToFP.index + 1, 0),
+	// float point extend.
+	FPExt("FPExt", FPTrunc.index + 1, 0),
+	// pointer to integer.
+	PtrToInt("PtrToInt", FPExt.index + 1, 0),
+	// Integer to pointer.
+	IntToPtr("IntToPtr", PtrToInt.index + 1, 0),
+	// type cast.
+	BitCast("BitCast", IntToPtr.index + 1, 0),
+
+	I2B("i2b", BitCast.index + 1, 0),
 	I2C("i2c", I2B.index + 1, 0),
 	I2S("i2s", I2C.index + 1, 0),
 
@@ -140,7 +144,7 @@ public enum Operator
 	 */
 	public boolean isAdd()
 	{
-		return this.index >= IAdd.index && this.index <= DAdd.index;
+		return this.index >= Add.index && this.index <= FAdd.index;
 	}
     /**
      * Determines whether this operator is subtraction operator.
@@ -148,7 +152,7 @@ public enum Operator
      */
 	public boolean isSub()
 	{
-		return index >= ISub.index && index <= DSub.index;
+		return index >= Sub.index && index <= FSub.index;
 	}
 	/**
 	 * Determines whether this operator is Multiple operator.
@@ -156,7 +160,7 @@ public enum Operator
 	 */
 	public boolean isMul()
     {
-	    return index >= IMul.index && index<= DMul.index;
+	    return index >= Mul.index && index<= FMul.index;
     }	
 	
 	public static Operator getMulByKind(LIRKind kind)
@@ -164,13 +168,11 @@ public enum Operator
 		switch (kind)
         {
             case Int:
-                return IMul;
-            case Float:
-                return FMul;
             case Long:
-                return LMul;
+                return Mul;
+            case Float:
             case Double:
-                return DMul;
+                return FMul;
             default:
                 return None;
         }
@@ -181,13 +183,11 @@ public enum Operator
 	    switch (kind)
         {
             case Double:
-                return DAdd;
             case Float:
                 return FAdd;
             case Long:
-                return LAdd;
             case Int:
-                return IAdd;
+                return Add;
             default:
                 return None;
         }

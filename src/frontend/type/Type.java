@@ -37,6 +37,7 @@ public abstract class Type implements TypeClass
     public static QualType FloatTy = new QualType(new RealType(4, "float"));
     public static QualType DoubleTy = new QualType(new RealType(8, "double"));
 
+
     /**
      * The kind of a tag frontend.type.
      */
@@ -229,10 +230,11 @@ public abstract class Type implements TypeClass
      *
      * @return
      */
-    public boolean isArrayType()
-    {
-        return tag == ConstantArray;
-    }
+    public boolean isConstantArrayType() { return tag == ConstantArray;}
+
+    public boolean isVariableArrayType() {return tag == VariableArray;}
+
+    public boolean isIncompleteArrayType() { return tag == IncompleteArray;}
 
     /**
      * Determine whether this frontend.type is record frontend.type or not.
@@ -430,5 +432,41 @@ public abstract class Type implements TypeClass
     public static Type getVoidTy()
     {
         return VoidType.getVoidTy();
+    }
+
+    public Type getArrayElementTypeNoQuals()
+    {
+        if (this instanceof ArrayType)
+            return ((ArrayType)this).getElemType().getType();
+
+        // TODO If this is a typedef for an array type, strip the typedef off without
+        // losing all typedef information.
+        return null;
+    }
+
+    /**
+     * C99 6.7.5p3.
+     * Return true for variable length array types and types that contain
+     * variable array types in their declarator.
+     * @return
+     */
+    public boolean isVariablyModifiedType()
+    {
+        // A VLA is a variably modified type.
+        if (isVariableArrayType())
+            return true;
+
+        frontend.type.Type ty = getArrayElementTypeNoQuals();
+        if (ty !=null)
+            return ty.isVariablyModifiedType();
+
+        PointerType pt = getPointerType();
+        if (pt != null)
+            return pt.getPointeeType().isVariablyModifiedType();
+
+        FunctionType ft = getFunctionType();
+        if (ft != null)
+            return ft.getReturnType().isVariablyModifiedType();
+        return false;
     }
 }

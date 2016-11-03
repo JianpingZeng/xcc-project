@@ -240,7 +240,7 @@ public final class InductionVarSimplify
 	 */
 	private boolean ivPattern(Op2 inst, Value op1, Value op2)
 	{
-		return inst == op1 && inst.opcode.isAdd()
+		return inst == op1 && inst.getOpcode().isAdd()
 				&& op2.isConstant()
 				&& isLoopConstant(inst)
 				&& isContainedInductionVars(inst);
@@ -300,7 +300,7 @@ public final class InductionVarSimplify
 		 * 
 		 * 1#:we try to check if op2(called i) is a basic induction variable.	
 		 */	
-		if (isLoopConstant(op1) && inst.opcode.isMul())
+		if (isLoopConstant(op1) && inst.getOpcode().isMul())
 		{
 			IVRecord iv = findBaseIVByValue(op2);
 			if (iv != null)
@@ -340,7 +340,7 @@ public final class InductionVarSimplify
 	 */
 	private boolean isAddIV(Op2 inst, Value op1, Value op2, Loop loop)
 	{
-		assert inst.opcode.isAdd() || inst.opcode.isSub();
+		assert inst.getOpcode().isAdd() || inst.getOpcode().isSub();
 		
 		/* 
 		 * Only when inst is a addictive operation and whose first operand
@@ -355,14 +355,14 @@ public final class InductionVarSimplify
 			IVRecord iv = findBaseIVByValue(op2);	
 			if (iv != null)
 			{
-				if (inst.opcode.isAdd())
+				if (inst.getOpcode().isAdd())
 				{
 					inductionVars.add(new IVRecord(inst, iv.biv, 
 							Constant.CONSTANT_INT_1, op1.asConstant()));
 				}
 				else 
 				{
-					assert inst.opcode.isSub();
+					assert inst.getOpcode().isSub();
 					inductionVars.add(new IVRecord(inst, iv.biv, 
 							Constant.CONSTANT_INT_MINUS_1, op1.asConstant()));
 				}
@@ -376,13 +376,13 @@ public final class InductionVarSimplify
 					&& !reachDefsOut(loop.blocks, op2))
 			{		
 				Constant diff = Constant.add(op1.asConstant(), iv.diff);
-				if (inst.opcode.isAdd())
+				if (inst.getOpcode().isAdd())
 				{
 					inductionVars.add(new IVRecord(inst, op2, iv.factor, diff));
 				}
 				else 
 				{
-					assert inst.opcode.isSub();
+					assert inst.getOpcode().isSub();
 					
 					Constant factor = Constant.sub(0, iv.factor);
 					diff = Constant.sub(op1.asConstant(), diff);
