@@ -1,4 +1,4 @@
-package backend.hir;
+package frontend.codegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,6 +16,8 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
+import backend.hir.BasicBlock;
+import backend.hir.Module;
 import frontend.ast.ASTConsumer;
 import driver.Options;
 import frontend.sema.ASTContext;

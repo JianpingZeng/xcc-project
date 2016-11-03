@@ -1,4 +1,4 @@
-package backend.hir;
+package frontend.codegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,7 +16,9 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
-import backend.hir.CodeGenTypes.ArgTypeInfo;
+import backend.hir.BasicBlock;
+import backend.hir.HIRBuilder;
+import backend.hir.JumpDest;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -172,12 +174,12 @@ public final class CodeGenFunction
         Iterator<Argument> argItr = fn.getArgumentList().iterator();
 
         // obtains the type list of formal type enclosing in FunctionType.
-        Iterator<ArgTypeInfo> infoItr = fnType.getParamTypes().iterator();
+        Iterator<CodeGenTypes.ArgTypeInfo> infoItr = fnType.getParamTypes().iterator();
         for (VarDecl vd : args)
         {
             QualType ty = vd.getDeclType();
             Value v = argItr.next();
-            final ArgTypeInfo ArgInfo = infoItr.next();
+            final CodeGenTypes.ArgTypeInfo ArgInfo = infoItr.next();
 
             assert !argItr.hasNext():"Argument mismatch!";
 

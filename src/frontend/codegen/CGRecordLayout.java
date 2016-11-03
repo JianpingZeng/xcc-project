@@ -1,4 +1,4 @@
-package backend.hir;
+package frontend.codegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,23 +16,10 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
-import backend.value.Value;
-import frontend.ast.StmtVisitor;
-import frontend.ast.Tree;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class AggExprEmitter extends StmtVisitor
+public class CGRecordLayout
 {
-    public AggExprEmitter(CodeGenFunction codeGenFunction, Value destPtr)
-    {
-    }
-
-    @Override
-    public Boolean visit(Tree.Expr expr)
-    {
-        return null;
-    }
 }

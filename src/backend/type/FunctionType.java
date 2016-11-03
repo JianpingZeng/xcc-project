@@ -16,7 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import backend.hir.CodeGenTypes.ArgTypeInfo;
+import frontend.codegen.CodeGenTypes.ArgTypeInfo;
 import tools.TypeMap;
 
 import java.util.ArrayList;
