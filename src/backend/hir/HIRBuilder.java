@@ -223,4 +223,18 @@ public class HIRBuilder
         assert lhs.getType() == rhs.getType();
         return insert(new Instruction.Op2(lhs.getType(), Operator.Mul, lhs, rhs, name));
     }
+
+    /**
+     * Creates a branch instruction, like 'br cond trueBB, falseBB' on the
+     * specified condition.
+     * @param condVal
+     * @param trueBB
+     * @param falseBB
+     * @return
+     */
+    public Value createCondBr(Value condVal, BasicBlock trueBB,
+            BasicBlock falseBB)
+    {
+        return insert(new BranchInst(trueBB, falseBB, condVal));
+    }
 }

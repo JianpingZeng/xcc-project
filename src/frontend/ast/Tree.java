@@ -609,6 +609,7 @@ abstract public class Tree
 		public Stmt thenpart;
 		public Stmt elsepart;
         public final int ifLoc;
+
 		public IfStmt(Expr cond, Stmt thenpart, Stmt elsepart, int ifLoc)
 		{
 			super(IfStmtClass);
@@ -618,10 +619,15 @@ abstract public class Tree
             this.ifLoc = ifLoc;
 		}
 
-		public void accept(StmtVisitor v)
+		public void accept(StmtVisitor v){ v.visitIfStmt(this);}
+
+		public Expr getCond()
 		{
-			v.visitIfStmt(this);
+			return cond;
 		}
+		public Stmt getThenPart() {return thenpart;}
+		public Stmt getElsePart() {return elsepart;}
+		public int getIfLoc() {return  ifLoc;}
 	}
 
 	/**

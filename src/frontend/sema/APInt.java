@@ -1018,4 +1018,9 @@ public class APInt
     {
         return lhs.ashr(shiftAmt);
     }
+
+    public boolean getBoolValue()
+    {
+        return this != null;
+    }
 }

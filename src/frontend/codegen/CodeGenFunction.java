@@ -25,11 +25,14 @@ import backend.type.Type;
 import backend.value.*;
 import frontend.ast.Tree;
 import frontend.sema.APSInt;
+import frontend.sema.BinaryOperatorKind;
 import frontend.sema.Decl;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
+import frontend.sema.UnaryOperatorKind;
 import frontend.type.ArrayType;
 import frontend.type.QualType;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -324,7 +327,229 @@ public final class CodeGenFunction
         if (emitSimpleStmt(stmt))
             return;
 
+        // Checks if there is a insertion point where emitted code will be reside.
+        if (!hasInsertPoint())
+        {
+            // If so, and the statement doesn't contain a label, then we do not need to
+            // generate actual code. This is safe because (1) the current point is
+            // unreachable, so we don't need to execute the code, and (2) we've already
+            // handled the statements which update internal data structures (like the
+            // local variable map) which could be used by subsequent statements.
+            if (!containsLabel(stmt, false))
+            {
+                // Verify that any decl statements were handled as simple, they may be in
+                // scope of subsequent reachable statements.
+                assert !(stmt instanceof DeclStmt): "Unexpected DeclStmt!";
+                return;
+            }
 
+            // Otherwise, make a new block to hold the code.
+            ensureInsertPoint();
+        }
+        switch (stmt.getStmtClass())
+        {
+            default:
+                break;
+            case IfStmtClass:
+                emitIfStmt((IfStmt)stmt);
+                break;
+        }
+    }
+
+    /**
+     * C99 6.8.4.1: The first substatement is executed if the expression compares
+     * unequal to 0.  The condition must be a scalar type.
+     * @param s
+     */
+    private void emitIfStmt(IfStmt s)
+    {
+        // If the condition constant folds and can be elided, try to avoid emitting
+        // the condition and the dead arm of the if/else.
+        int cond = constantFoldsToSimpleInteger(s.getCond());
+        if (cond!=0)
+        {
+            // Figure out which block (then or else) is executed.
+            final Stmt executed = s.getThenPart(), skipped = s.getElsePart();
+            if (cond == -1) // condition is false.
+                Util.swap(executed, skipped);
+
+            // if skipped block has no labels within it, just emit code
+            // for executed stmt. This avoids emitting dead code.
+            if (!containsLabel(skipped, false))
+            {
+                if (executed!=null)
+                    emitStmt(executed);
+                return;
+            }
+        }
+
+        // Otherwise, the condition can not folded.
+        BasicBlock thenBB = createBasicBlock("if.then");
+        BasicBlock endBB = createBasicBlock("if.end");
+        BasicBlock elseBB = endBB;
+        if (s.getElsePart() != null)
+            elseBB = createBasicBlock("if.else");
+
+        emitBranchOnBoolExpr(s.getCond(), thenBB, elseBB);
+
+        // Emit the 'then' code.
+        emitBlock(thenBB);
+        emitStmt(s.getThenPart());
+        emitBranch(endBB);
+
+        // emit the 'else' cdoe if present.
+        if (s.getElsePart() != null)
+        {
+            emitBlock(elseBB);
+            emitStmt(s.getElsePart());
+            emitBranch(endBB);
+        }
+
+        // Emit the continuation block for code after the if stmt.
+        emitBlock(endBB, true);
+    }
+
+    /**
+     * Emit a branch instruction on the specified condition is evaluated as boolean.
+     * When condition is false, branch to {@code trueBB}, othewise to {@code falseBB}.
+     * <p>Based on condition, it might be taken to simply the codegen of the branch.
+     * </p>
+     * @param cond
+     * @param trueBB
+     * @param falseBB
+     */
+    private void emitBranchOnBoolExpr(Expr cond, BasicBlock trueBB, BasicBlock falseBB)
+    {
+        if (cond instanceof ParenExpr)
+            cond = ((ParenExpr) cond).getSubExpr();
+
+        if (cond instanceof BinaryExpr)
+        {
+            BinaryExpr condBOp = (BinaryExpr)cond;
+            // Handle x&&y in a condition.
+            if (condBOp.getOpcode() == BinaryOperatorKind.BO_LAnd)
+            {
+                // If we have "1 && X", simplify the code.  "0 && X" would have constant
+                // folded if the case was simple enough.
+                if (constantFoldsToSimpleInteger(condBOp.getLHS()) == 1)
+                {
+                    // br (1&&x) -> br x.
+                    emitBranchOnBoolExpr(condBOp.getRHS(), trueBB, falseBB);;
+                    return;
+                }
+
+                // If we have "X && 1", simplify the code to use an uncond branch.
+                // "X && 0" would have been constant folded to 0.
+                if (constantFoldsToSimpleInteger(condBOp.getRHS()) == 1)
+                {
+                    // br (x&&1) -> br x.
+                    emitBranchOnBoolExpr(condBOp.getLHS(), trueBB, falseBB);;
+                    return;
+                }
+
+                // Emit the LHS as a conditional.  If the LHS conditional is false, we
+                // want to jump to the FalseBlock.
+                BasicBlock lhsTrue = createBasicBlock("land.lhs.true");
+                emitBranchOnBoolExpr(condBOp.getLHS(), lhsTrue, falseBB);
+                emitBlock(lhsTrue);
+
+                emitBranchOnBoolExpr(condBOp.getRHS(), trueBB, falseBB);
+                return;
+            }
+            else if (condBOp.getOpcode() == BinaryOperatorKind.BO_LOr)
+            {
+                // 0 || X or X || 0.
+                if (constantFoldsToSimpleInteger(condBOp.getLHS()) == -1)
+                {
+                    // br (0||X) -> br (x).
+                    emitBranchOnBoolExpr(condBOp.getRHS(), trueBB, falseBB);;
+                    return;
+                }
+
+                if (constantFoldsToSimpleInteger(condBOp.getRHS()) == -1)
+                {
+                    // br (X||0) -> br (x).
+                    emitBranchOnBoolExpr(condBOp.getLHS(), trueBB, falseBB);;
+                    return;
+                }
+
+                // emit the branch as regural conditional.
+                BasicBlock lhsFalse = createBasicBlock("lor.lhs.false");
+                emitBranchOnBoolExpr(condBOp.getLHS(), trueBB, lhsFalse);
+                emitBlock(lhsFalse);
+
+                emitBranchOnBoolExpr(condBOp.getRHS(), trueBB, falseBB);
+                return;
+            }
+        }
+
+        if (cond instanceof UnaryExpr)
+        {
+            UnaryExpr condUOp = (UnaryExpr)cond;
+            // br(!x, t, f) -> br(x, f, t).
+            if (condUOp.getOpCode() == UnaryOperatorKind.UO_LNot)
+            {
+                emitBranchOnBoolExpr(condUOp.getSubExpr(), trueBB, falseBB);
+                return;
+            }
+        }
+
+        if (cond instanceof ConditionalExpr)
+        {
+            ConditionalExpr condOp = (ConditionalExpr)cond;
+            // handles ?: operator.
+
+            // br (c ? x: y, t, f) -> br (c, br (x, t, f), br(y, t, f)).
+            BasicBlock lhsBlock = createBasicBlock("cond.true");
+            BasicBlock rhsBlock = createBasicBlock("cond.false");
+            emitBranchOnBoolExpr(condOp.getCond(), lhsBlock, rhsBlock);
+
+            emitBlock(lhsBlock);
+            emitBranchOnBoolExpr(condOp.getTrueExpr(), trueBB, falseBB);
+
+            emitBlock(rhsBlock);
+            emitBranchOnBoolExpr(condOp.getFalseExpr(), trueBB, falseBB);
+            return;
+        }
+
+        // emit code for the general cases.
+        Value condVal = evaluateExprAsBool(cond);
+        builder.createCondBr(condVal, trueBB, falseBB);
+    }
+
+    /**
+     * Evaluates the specified conditional expression as a boolean value.
+     * @param cond
+     * @return
+     */
+    private Value evaluateExprAsBool(Expr cond)
+    {
+        QualType boolTy = frontend.type.Type.BoolTy;
+        assert !cond.getType().isComplexType()
+                :"Current complex type not be supported.";
+
+        return emitScalarConversion(emitScalarExpr(cond), cond.getType(), boolTy);
+    }
+
+    /**
+     * If the specified expression does not fold to a constant, or if it does
+     * but contains a label, return 0.  If it constant folds to 'true' and does
+     * not contain a label, return 1, if it constant folds to 'false' and does
+     * not contain a label, return -1.
+     * @param expr
+     * @return
+     */
+    private int constantFoldsToSimpleInteger(Expr expr)
+    {
+        Expr.EvalResult result = new Expr.EvalResult();
+        if (!expr.evaluate(result) || !result.getValue().isInt()
+                || result.hasSideEffects())
+            return 0;   // can not foldable not integral or not fully evaluatable.
+
+        if (containsLabel(expr, false))
+            return 0;
+
+        return result.getValue().getInt().getBoolValue() ? 1 : -1;
     }
 
     private boolean emitSimpleStmt(Tree.Stmt s)
@@ -662,7 +887,7 @@ public final class CodeGenFunction
         return builder.getInsertBlock() != null;
     }
 
-    private void emitBlock(BasicBlock bb)
+    private void emitBlock(BasicBlock bb, boolean isFinished)
     {
         // fall out of the current block if necessary.
         emitBranch(bb);
@@ -671,6 +896,11 @@ public final class CodeGenFunction
             return;
         curFn.getBasicBlockList().add(bb);
         builder.setInsertPoint(bb);
+    }
+
+    private void emitBlock(BasicBlock bb)
+    {
+       emitBlock(bb, false);
     }
 
     private void emitBranch(BasicBlock targetBB)
