@@ -429,8 +429,9 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public BranchInst getTerminator()
 	{
 		Instruction inst = instructions.getLast();
-        assert (inst instanceof BranchInst);
-        return (BranchInst)inst;
+		if (inst instanceof BranchInst)
+            return (BranchInst)inst;
+		return null;
 	}
 	
 	public void setBlockFlags(BlockFlag flag)

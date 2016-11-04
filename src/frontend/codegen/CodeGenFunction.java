@@ -353,6 +353,9 @@ public final class CodeGenFunction
             case IfStmtClass:
                 emitIfStmt((IfStmt)stmt);
                 break;
+            case WhileStmtClass:
+                emitWhileStmt((WhileStmt) stmt);
+                break;
         }
     }
 
@@ -529,6 +532,71 @@ public final class CodeGenFunction
                 :"Current complex type not be supported.";
 
         return emitScalarConversion(emitScalarExpr(cond), cond.getType(), boolTy);
+    }
+
+    /**
+     * Emits code for while stmt.
+     * @param s
+     */
+    private void emitWhileStmt(WhileStmt s)
+    {
+        // create a basic block for condition when continue encountered in while.
+        // Emit the header for the loop, insert it, which will create an uncond br to
+        // it.
+        BasicBlock condBB = createBasicBlock("while.cond");
+        emitBlock(condBB);
+
+        BasicBlock exitBB = createBasicBlock("while.end");
+        BasicBlock loopBody = createBasicBlock("while.body");
+
+        // stores the blocks to use for break/continue stmt.
+        breakContinueStack.push(new BreakContinue(exitBB, loopBody));
+
+        Value condVal = evaluateExprAsBool(s.getCond());
+
+        // while(1) is common, avoid extra exit blocks.  Be sure
+        // to correctly handle break/continue though.
+        boolean emitBoolCondBranch = true;
+        if (condVal instanceof ConstantInt)
+        {
+            ConstantInt c= (ConstantInt)condVal;
+            if (c.isOne())
+                emitBoolCondBranch = false;
+        }
+
+        // As long as the condition is true, go to the loop body.
+        if (emitBoolCondBranch)
+            builder.createCondBr(condVal, loopBody, exitBB);
+
+        // Emit the loop body.
+        emitBlock(loopBody);
+        emitStmt(s.getBody());
+
+        breakContinueStack.pop();
+
+        // goto the condition.
+        emitBlock(condBB);
+
+        // Emit the exit block.
+        emitBlock(exitBB, true);
+
+        // the loop header typically is just a branch if we skipping emitting
+        // a branch, try to erase it.
+        if (!emitBoolCondBranch)
+            simplifyForwardingBlocks(condBB);
+    }
+
+    private void simplifyForwardingBlocks(BasicBlock bb)
+    {
+        Instruction.BranchInst inst = bb.getTerminator();
+
+        // Can only simplify direct branch.
+        if (inst ==null || !inst.isUnconditional())
+            return;
+
+        bb.replaceAllUsesWith(inst.suxAt(0));
+        inst.eraseFromBasicBlock();
+        bb.eraseFromParent();
     }
 
     /**
