@@ -1042,7 +1042,7 @@ public abstract class Instruction extends User
         public SwitchInst(Value condV, BasicBlock defaultBB, int numCases,
                 String name)
         {
-            this(condV, defaultBB, name, null);
+            this(condV, defaultBB, numCases, name, null);
         }
 
         /**
@@ -1052,11 +1052,14 @@ public abstract class Instruction extends User
          * @param defaultBB    The default jump block when no other case match.
          * @param insertBefore
          */
-        public SwitchInst(Value condV, BasicBlock defaultBB,
-                String name, Instruction insertBefore)
+        public SwitchInst(Value condV,
+                BasicBlock defaultBB,
+                int numCases,
+                String name,
+                Instruction insertBefore)
         {
             super(Operator.Switch, name,insertBefore);
-            init(condV, defaultBB);
+            init(condV, defaultBB, numCases);
         }
 
 
@@ -1064,10 +1067,10 @@ public abstract class Instruction extends User
          * Initialize some arguments, like add switch value and default into
          * Operand list.
          */
-        private void init(Value cond, BasicBlock defaultBB)
+        private void init(Value cond, BasicBlock defaultBB, int numCases)
         {
             // the 2 indicates what number of default basic block and default value.
-            reserve(offset+8);
+            reserve(offset+numCases);
             setOperand(0, cond);
             setOperand(1, defaultBB);
         }
@@ -1171,21 +1174,21 @@ public abstract class Instruction extends User
         {
             assert index >= 0 && index < getNumOfSuccessors()
                     : "Successor value index out of range for switch";
-            return (Constant)operand(2*index + offset);
+            return (Constant)operand(2*index);
         }
 
         public BasicBlock getSuccessor(int index)
         {
             assert index >= 0 && index < getNumOfSuccessors()
                     : "Successor index out of range for switch";
-            return (BasicBlock) operand(2*index + 1 + offset);
+            return (BasicBlock) operand(2*index + 1);
 
         }
         public void setSuccessor(int index, BasicBlock newBB)
         {
             assert index >= 0 && index < getNumOfSuccessors()
                     : "Successor index out of range for switch";
-            setOperand(index * 2 + 1 + offset, newBB);
+            setOperand(index * 2 + 1, newBB);
         }
         // setSuccessorValue - Updates the value associated with the specified
         // successor.
@@ -1193,27 +1196,7 @@ public abstract class Instruction extends User
         {
             assert(idx>=0 && idx < getNumOfSuccessors())
                     : "Successor # out of range!";
-            setOperand(idx*2 + offset, SuccessorValue);
-        }
-
-        public int getLowKey()
-        {
-            return lowKey;
-        }
-
-        public int getHighKey()
-        {
-            return highKey;
-        }
-
-        public void setLowKey(int lowKey)
-        {
-            this.lowKey = lowKey;
-        }
-
-        public void setHighKey(int highKey)
-        {
-            this.highKey = highKey;
+            setOperand(idx*2, SuccessorValue);
         }
 
         public SwitchInst clone()

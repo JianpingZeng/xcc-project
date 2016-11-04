@@ -23,6 +23,7 @@ import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
+import backend.value.Instruction.BranchInst;
 import frontend.ast.Tree;
 import frontend.sema.APSInt;
 import frontend.sema.BinaryOperatorKind;
@@ -109,6 +110,12 @@ public final class CodeGenFunction
      * current context is not in a switch.
      */
     private Instruction.SwitchInst switchInst;
+
+    /**
+     * This block holds if condition check for last case
+     * statement range in current switch instruction.
+     */
+    private BasicBlock caseRangeBlock;
 
     public CodeGenFunction(HIRGenModule generator)
     {
@@ -362,6 +369,12 @@ public final class CodeGenFunction
             case ForStmtClass:
                 emitForStmt((ForStmt)stmt);
                 break;
+            case ReturnStmtClass:
+                emitReturnStmt((ReturnStmt)stmt);
+                break;
+            case SwitchStmtClass:
+                emitSwitchStmt((SwitchStmt)stmt);
+                break;
         }
     }
 
@@ -594,7 +607,7 @@ public final class CodeGenFunction
 
     private void simplifyForwardingBlocks(BasicBlock bb)
     {
-        Instruction.BranchInst inst = bb.getTerminator();
+        BranchInst inst = bb.getTerminator();
 
         // Can only simplify direct branch.
         if (inst ==null || !inst.isUnconditional())
@@ -707,6 +720,114 @@ public final class CodeGenFunction
         emitBlock(forEnd, true);
     }
 
+    private void emitReturnStmt(ReturnStmt s)
+    {
+        // Emit the result value, even if unused, to evalute the side effects.
+        final Expr resultVal = s.getRetValue();
+
+        // if this function have no return value.
+        if (returnValue == null)
+        {
+            // Make sure not to return any value, but it is needed to evaluate
+            // return expression due to side effect.
+            if (resultVal != null)
+                emitAnyExpr(resultVal);
+        }
+        else if (resultVal == null)
+        {
+            // Do nothing.
+        }
+        else if (!hasAggregateBackendType(resultVal.getType()))
+        {
+            // The type of return stmt is not aggregate type.
+            builder.createStore(emitScalarExpr(resultVal), returnValue);
+        }
+        else if (resultVal.getType().isComplexType())
+        {
+            // TODO.
+        }
+        else
+        {
+            emitAggExpr(resultVal, returnValue);
+        }
+    }
+
+    private RValue emitAnyExpr(Expr e)
+    {
+        return emitAnyExpr(e, null, false, false, false);
+    }
+
+    /**
+     * Emit code to compute the specified expression with any type.
+     * @param e
+     */
+    private RValue emitAnyExpr(Expr e,
+            Value aggLoc,
+            boolean isAggLocVolatile,
+            boolean ignoreResult,
+            boolean isInitializer)
+    {
+        if (!hasAggregateBackendType(e.getType()))
+            return RValue.get(emitScalarExpr(e));
+        else if (e.getType().isComplexType())
+        {
+            // TODO.
+        }
+        emitAggExpr(e, aggLoc, ignoreResult, isInitializer);
+        return RValue.getAggregate(aggLoc, isAggLocVolatile);
+    }
+
+    private void emitSwitchStmt(SwitchStmt s)
+    {
+        Value condV = emitScalarExpr(s.getCond());
+
+        // Handle nested switch statement.
+        Instruction.SwitchInst savedSwitchInst = switchInst;
+        BasicBlock savedCRBlock = caseRangeBlock;
+
+        // Create basic block to hold stuff that comes after switch
+        // statement. We also need to create a default block now so that
+        // explicit case ranges tests can have a place to jump to on
+        // failure.
+        BasicBlock nextBB = createBasicBlock("sw.epilog");
+        BasicBlock defaultBB = createBasicBlock("sw.default");
+        switchInst = builder.createSwitch(condV, defaultBB);
+        caseRangeBlock = defaultBB;
+
+        // clears the insertion point to indicate we are in unreachable point.
+        builder.clearInsertPoint();
+
+        // All break statements jump to NextBlock. If BreakContinueStack is non empty
+        // then reuse last ContinueBlock.
+        BasicBlock continueBB = null;
+        if (!breakContinueStack.isEmpty())
+            continueBB = breakContinueStack.peek().continueBlock;
+
+        // Ensure any vlas created between there and here, are undone
+        breakContinueStack.add(new BreakContinue(nextBB, continueBB));
+
+        // Emits the switch body.
+        emitStmt(s.getBody());
+
+        breakContinueStack.pop();
+
+        // Update the default block in case explicit case range tests have
+        // been chained on top.
+        switchInst.setSuxAt(0, caseRangeBlock);
+
+
+        if (defaultBB.getParent() == null)
+        {
+            defaultBB.replaceAllUsesWith(nextBB);
+            defaultBB = null;
+        }
+
+        // emit continuation.
+        emitBlock(nextBB, true);
+
+        switchInst = savedSwitchInst;
+        caseRangeBlock = savedCRBlock;
+    }
     /**
      * If the specified expression does not fold to a constant, or if it does
      * but contains a label, return 0.  If it constant folds to 'true' and does
@@ -986,6 +1107,11 @@ public final class CodeGenFunction
         return new ScalarExprEmitter(this).visit(expr);
     }
 
+    private void emitAggExpr(Tree.Expr expr, Value destPtr)
+    {
+        emitAggExpr(expr, destPtr, false, false);
+    }
+
     /**
      * Emit the computation of the specified expression of aggregate
      * type.  The result is computed into {@code destPtr}.
@@ -995,13 +1121,15 @@ public final class CodeGenFunction
      * @param expr
      * @param destPtr
      */
-    private void emitAggExpr(Tree.Expr expr, Value destPtr)
+    private void emitAggExpr(Tree.Expr expr, Value destPtr,
+            boolean ignoreResult,
+            boolean isInitializer)
     {
         assert expr!=null && hasAggregateBackendType(expr.getType())
                 :"Invalid aggregate expression to emit";
         if (destPtr == null)return;
 
-        new AggExprEmitter(this, destPtr).visit(expr);
+        new AggExprEmitter(this, destPtr, ignoreResult, isInitializer).visit(expr);
     }
 
     private void emitStoreOfScalar(Value val, Value addr/** boolean isVolatile*/, QualType ty)
@@ -1164,7 +1292,7 @@ public final class CodeGenFunction
         else
             assert false:"Unknown context for block var decl";
 
-        String name = contextName + "." + vd.getDeclName();
+        String name = contextName + separator + vd.getDeclName();
         Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
         return new GlobalVariable(lty,
                 ty.isConstant(),
@@ -1188,6 +1316,9 @@ public final class CodeGenFunction
     private void emitBreakStmt(Tree.BreakStmt s)
     {
         assert !breakContinueStack.isEmpty():"break stmt not in a loop or switch!";
+
+        BasicBlock breakBB = breakContinueStack.peek().breakBlock;
+        emitBlock(breakBB);
     }
 
     private void finishFunction()
@@ -1198,6 +1329,9 @@ public final class CodeGenFunction
     private void emitContinueStmt(Tree.ContinueStmt s)
     {
         assert !breakContinueStack.isEmpty():"break stmt not in a loop or switch!";
+
+        BasicBlock continueBB = breakContinueStack.peek().continueBlock;
+        emitBlock(continueBB);
     }
 
     private void emitDefaultStmt(Tree.DefaultStmt s)

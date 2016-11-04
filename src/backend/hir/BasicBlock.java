@@ -136,7 +136,12 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
         return false;
 	}
 
-	public enum BlockFlag
+    public Function getParent()
+    {
+        return parent;
+    }
+
+    public enum BlockFlag
 	{
 		LinearScanLoopHeader,
 		LinearScanLoopEnd,

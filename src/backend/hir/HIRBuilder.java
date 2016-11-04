@@ -22,6 +22,7 @@ import backend.value.Instruction;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.CastInst;
+import backend.value.Instruction.SwitchInst;
 import backend.value.Value;
 
 /**
@@ -236,5 +237,23 @@ public class HIRBuilder
             BasicBlock falseBB)
     {
         return insert(new BranchInst(trueBB, falseBB, condVal));
+    }
+
+    /**
+     * Creates a switch instruction with the specified value.
+     * default dest, and with a hint for the number of cases that will
+     * be added (for efficient allocation).
+     * @param condV
+     * @param defaultBB
+     * @return
+     */
+    public SwitchInst createSwitch(Value condV, BasicBlock defaultBB)
+    {
+        return createSwitch(condV, defaultBB, 10);
+    }
+
+    public SwitchInst createSwitch(Value condV, BasicBlock defaultBB, int numCases)
+    {
+        return insert(new SwitchInst(condV, defaultBB, numCases, ""));
     }
 }
