@@ -517,7 +517,11 @@ abstract public class Tree
 		{
 			v.visitDoStmt(this);
 		}
-	}
+
+        public Stmt getBody(){return body;}
+
+        public Expr getCond(){return cond;}
+    }
 
 	/**
 	 * A for loop.
@@ -549,7 +553,12 @@ abstract public class Tree
 		{
 			v.visitForStmt(this);
 		}
-	}
+
+        public Stmt getInit() {return init;}
+        public Expr getCond() {return cond;}
+        public Expr getStep() {return step;}
+        public Stmt getBody() {return body;}
+    }
 
 	/**
 	 * A while loop

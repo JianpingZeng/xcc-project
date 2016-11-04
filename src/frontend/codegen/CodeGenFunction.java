@@ -356,6 +356,12 @@ public final class CodeGenFunction
             case WhileStmtClass:
                 emitWhileStmt((WhileStmt) stmt);
                 break;
+            case DoStmtClass:
+                emitDoStmt((DoStmt) stmt);
+                break;
+            case ForStmtClass:
+                emitForStmt((ForStmt)stmt);
+                break;
         }
     }
 
@@ -597,6 +603,108 @@ public final class CodeGenFunction
         bb.replaceAllUsesWith(inst.suxAt(0));
         inst.eraseFromBasicBlock();
         bb.eraseFromParent();
+    }
+
+    private void emitDoStmt(DoStmt s)
+    {
+        // Emit the body of the loop, insert it into blocks list.
+        BasicBlock loopBody = createBasicBlock("do.body");
+        BasicBlock loopEnd = createBasicBlock("do.end");
+
+        // creates this block for continue stmt.
+        BasicBlock doCond = createBasicBlock("do.cond");
+
+        emitBlock(loopBody);
+
+        // Store the blocks to use for break and continue.
+        breakContinueStack.push(new BreakContinue(loopEnd, doCond));
+
+        emitStmt(s.getBody());
+
+        breakContinueStack.pop();
+
+        emitBlock(doCond);
+
+        // C99 6.8.5.2: "The evaluation of the controlling expression takes place
+        // after each execution of the loop body."
+        Value boolCondVal = evaluateExprAsBool(s.getCond());
+
+        boolean shouldEmitBranch = true;
+
+        // "do {...}while(0)" is common case in macros, avoid extra blocks.
+        if (boolCondVal instanceof ConstantInt)
+        {
+            ConstantInt c = (ConstantInt)boolCondVal;
+            if (c.isZero())
+                shouldEmitBranch = false;
+        }
+
+        // As long as the condition is true, iterate the loop.
+        if (shouldEmitBranch)
+            builder.createCondBr(boolCondVal, loopBody, loopEnd);
+
+        // emit the loop exit block.
+        emitBlock(loopEnd);
+
+        if (!shouldEmitBranch)
+            simplifyForwardingBlocks(doCond);
+    }
+
+    private void emitForStmt(ForStmt s)
+    {
+        // emit the code for the first part.
+        if (s.getInit() != null)
+            emitStmt(s.getInit());
+
+        // The condition and end block are absolutely needed.
+        BasicBlock condBlock = createBasicBlock("for.cond");
+        BasicBlock forEnd = createBasicBlock("for.end");
+
+        // emit the condition block.
+        emitBlock(condBlock);
+
+        // emits the code for condition if present. If not,
+        // treat it as a non-zero constant according to C99 6.8.5.3p2.
+        if (s.getCond() != null)
+        {
+            BasicBlock forBody = createBasicBlock("for.body");
+
+            // C99 6.8.5p2/p4: The first sub-statement is executed if the expression
+            // compares unequal to 0.  The condition must be a scalar type.
+            emitBranchOnBoolExpr(s.getCond(), forBody, forEnd);
+            emitBlock(forBody);
+        }
+        else
+        {
+            // Treat it as a non-zero constant.  Don't even create a new block for the
+            // body, just fall into it.
+        }
+
+        BasicBlock continueBlock;
+        if (s.getStep() != null)
+            continueBlock = createBasicBlock("for.inc");
+        else
+            continueBlock = condBlock;
+
+        // Stores the blocks for break/continue stmt.
+        breakContinueStack.push(new BreakContinue(forEnd, continueBlock));
+
+        emitStmt(s.getBody());
+
+        breakContinueStack.pop();
+
+        // If there is an increment, emit it next.
+        if (s.getStep() != null)
+        {
+            emitBlock(continueBlock);
+            emitStmt(s.getStep());
+        }
+
+        // Finally, branch back up to the condition for the next iteration.
+        emitBranch(condBlock);
+
+        // Emit the loop exit block.
+        emitBlock(forEnd, true);
     }
 
     /**
