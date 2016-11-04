@@ -26,8 +26,12 @@ import frontend.ast.Tree;
  */
 public class AggExprEmitter extends StmtVisitor
 {
-    public AggExprEmitter(CodeGenFunction codeGenFunction, Value destPtr)
+    public AggExprEmitter(CodeGenFunction codeGenFunction,
+            Value destPtr,
+            boolean ignoreResult,
+            boolean isInitializer)
     {
+
     }
 
     @Override

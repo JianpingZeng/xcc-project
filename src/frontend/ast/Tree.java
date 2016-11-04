@@ -699,6 +699,8 @@ abstract public class Tree
         {
             return allEnumCasesCovered;
         }
+
+        public Stmt getBody(){return body;}
     }
 
     public static abstract class SwitchCase extends Stmt
@@ -879,25 +881,22 @@ abstract public class Tree
 	 */
 	public static class ReturnStmt extends Stmt
 	{
-		public Expr expr;
         public final int returnloc;
-		public ReturnStmt(int returnloc, Expr expr)
+        private Expr retValue;
+
+        public ReturnStmt(int returnloc, Expr expr)
 		{
 			super(ReturnStmtClass);
             this.returnloc = returnloc;
-			this.expr = expr;
+			retValue = expr;
 		}
 
-        public ReturnStmt(int returnloc)
-        {
-            this(returnloc, null);
-        }
+        public ReturnStmt(int returnloc){this(returnloc, null);}
 
-		public void accept(StmtVisitor v)
-		{
-			v.visitReturnStmt(this);
-		}
-	}
+		public void accept(StmtVisitor v){	v.visitReturnStmt(this);}
+
+        public Expr getRetValue(){return retValue;}
+    }
 
     /**
      * Represents the kind of object an expression reference to.
