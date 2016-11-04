@@ -719,6 +719,18 @@ public abstract class Instruction extends User
          * @param ifTrue
          * @param ifFalse
          * @param cond
+         */
+        public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond)
+        {
+            this(ifTrue, ifFalse, cond, (Instruction)null);
+        }
+
+        /**
+         * BranchInst(BB* T, BB *F, Value *C, Inst *I) - 'br C, T, F', insert before I
+         *
+         * @param ifTrue
+         * @param ifFalse
+         * @param cond
          * @param insertBefore
          */
         public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond,
@@ -753,15 +765,9 @@ public abstract class Instruction extends User
             setOperand(0, ifTrue);
         }
 
-        public boolean isUnconditional()
-        {
-            return getNumOfOperands() == 1;
-        }
+        public boolean isUnconditional(){return getNumOfOperands() == 1;}
 
-        public boolean isConditional()
-        {
-            return getNumOfOperands() == 3;
-        }
+        public boolean isConditional(){return getNumOfOperands() == 3;}
 
         public Value getCondition()
         {
