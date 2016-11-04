@@ -89,15 +89,6 @@ public class HIRBuilder
     }
 
     /**
-     * Create an unconditional branch instruction-'br label X'.
-     * @param targetBB
-     */
-    public BranchInst createBr(BasicBlock targetBB)
-    {
-        return insert(new BranchInst(targetBB));
-    }
-
-    /**
      * Clear the current insertion point to let the newest created instruction
      * would be inserted into a block.
      *
@@ -222,6 +213,15 @@ public class HIRBuilder
     {
         assert lhs.getType() == rhs.getType();
         return insert(new Instruction.Op2(lhs.getType(), Operator.Mul, lhs, rhs, name));
+    }
+
+    /**
+     * Create an unconditional branch instruction-'br label X'.
+     * @param targetBB
+     */
+    public BranchInst createBr(BasicBlock targetBB)
+    {
+        return insert(new BranchInst(targetBB));
     }
 
     /**

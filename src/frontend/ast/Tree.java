@@ -571,7 +571,11 @@ abstract public class Tree
 		{
 			v.visitWhileStmt(this);
 		}
-	}
+
+        public Expr getCond(){return cond;}
+
+        public Stmt getBody(){return body;}
+    }
 
 	/**
 	 * A labelled expression or statement.
