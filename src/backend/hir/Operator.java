@@ -22,7 +22,7 @@ public enum Operator
 
 	// binary operator
 
-	// addictive
+	// add
 	Add("add", Switch.index + 1, COMMUTATIVE | ASSOCIATIVE),
     FAdd("fadd", Add.index + 1, COMMUTATIVE | ASSOCIATIVE),
 
@@ -147,7 +147,7 @@ public enum Operator
 		return this.index >= Add.index && this.index <= FAdd.index;
 	}
     /**
-     * Determines whether this operator is subtraction operator.
+     * Determines whether this operator is sub operator.
      * @return
      */
 	public boolean isSub()

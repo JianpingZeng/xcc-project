@@ -240,7 +240,7 @@ public final class IA32LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
-				resultReg = EDX_L; // remainder getReturnValue is produced in rdx
+				resultReg = EDX_L; // rem getReturnValue is produced in rdx
 				lir.lrem(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else if (opcode == Operator.LMod)
@@ -325,7 +325,7 @@ public final class IA32LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
-				resultReg = tmp; // remainder getReturnValue is produced in rdx
+				resultReg = tmp; // rem getReturnValue is produced in rdx
 				lir.irem(dividend, divisor, resultReg, tmp);
 			}
 			else if (opcode == Operator.IDiv)

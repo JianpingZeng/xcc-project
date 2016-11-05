@@ -26,7 +26,10 @@ public class APSInt extends APInt
 {
     private boolean isUnsigned;
 
-    public APSInt() {super();}
+    public APSInt()
+    {
+        super();
+    }
 
     public APSInt(int bitWidth)
     {
@@ -69,10 +72,45 @@ public class APSInt extends APInt
         return this;
     }
 
-    public boolean isSigned() { return !isUnsigned; }
-    public boolean isUnsigned() { return  isUnsigned;}
-    public void setIsUnsigned(boolean x) { isUnsigned = x;}
-    public void setIssigned(boolean x) { isUnsigned = !x;}
+    public boolean isSigned()
+    {
+        return !isUnsigned;
+    }
+
+    public boolean isUnsigned()
+    {
+        return isUnsigned;
+    }
+
+    public void setIsUnsigned(boolean x)
+    {
+        isUnsigned = x;
+    }
+
+    public void setIssigned(boolean x)
+    {
+        isUnsigned = !x;
+    }
+
+    /**
+     * Converts an APInt to a String.
+     * @param radix
+     * @return
+     */
+    public String toString(int radix)
+    {
+        return super.toString(radix, isSigned());
+    }
+
+    /**
+     * Append this APSInt to the specified StringBiulder object.
+     * @param builder
+     * @param radix
+     */
+    public void toString(StringBuilder builder, int radix)
+    {
+        super.toString(builder, radix, isSigned(), false);
+    }
 
     public APSInt extend(long width)
     {
@@ -87,134 +125,6 @@ public class APSInt extends APInt
         return new APSInt(trunc((int)width), isUnsigned);
     }
 
-    public boolean lt(final APSInt rhs)
-    {
-        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
-        return isUnsigned ? ult(rhs) : slt(rhs);
-    }
-
-    public boolean le(final  APSInt rhs)
-    {
-
-    }
-
-    public boolean gt(final  APSInt rhs)
-    {
-
-    }
-
-    public boolean ge(final  APSInt rhs)
-    {
-
-    }
-
-    public boolean eq(final APSInt rhs)
-    {}
-
-    public boolean ne(final  APSInt rhs)
-    {}
-
-    public APSInt multiply(final  APSInt rhs)
-    {
-        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
-        return new APSInt(((APInt)this).multiply(rhs), isUnsigned);
-    }
-
-    public APSInt addictive(final APSInt rhs)
-    {
-        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
-        return new APSInt(((APInt)this).addictive(rhs), isUnsigned);
-    }
-
-    public APSInt subtraction(final APSInt rhs)
-    {
-        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
-        return new APSInt(((APInt)this).subtraction(rhs), isUnsigned);
-    }
-
-    public APSInt negative()
-    {
-        return new APSInt(((APInt)this).negative(), isUnsigned);
-    }
-
-    public APSInt not()
-    {
-        return new APSInt(((APInt)this).not(), isUnsigned);
-    }
-
-    public APSInt bitAnd(final APSInt rhs)
-    {
-        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
-        return new APSInt(((APInt)this).bitAnd(rhs), isUnsigned);
-    }
-
-    public APSInt bitOr(final APSInt rhs)
-    {
-        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
-        return new APSInt(((APInt)this).bitOr(rhs), isUnsigned);
-    }
-
-    public APSInt bitXor(final APSInt rhs)
-    {
-        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
-        return new APSInt(((APInt)this).bitXor(rhs), isUnsigned);
-    }
-
-    public APSInt percentAssign(final APSInt rhs)
-    {
-
-    }
-
-    public APSInt divideAssign(final APSInt rhs)
-    {
-
-    }
-
-    public APSInt remainder(final APSInt rhs)
-    {
-
-    }
-
-    public APSInt divide(final APSInt rhs)
-    {
-
-    }
-
-    public APSInt shr(int amt)
-    {
-
-    }
-
-    public APSInt shrAssign(int amt)
-    {
-
-    }
-
-    public APSInt shl(int bits)
-    {
-
-    }
-
-    public APSInt shlAssign(int amt)
-    {
-
-    }
-
-    public APSInt increment()
-    {
-
-    }
-
-    public APSInt decremnt()
-    {
-
-    }
-
-    public String toString(int radix)
-    {
-        return super.toString(radix, isSigned());
-    }
-
     public APSInt extOrTrunc(int width)
     {
         if (isUnsigned)
@@ -223,11 +133,211 @@ public class APSInt extends APInt
             return new APSInt(sextOrTrunc(width), isUnsigned);
     }
 
+    public APInt remAssign(final APSInt rhs)
+    {
+        assert isUnsigned() == rhs.isUnsigned():"Signedness mismatch!";
+        if (isUnsigned)
+            assign(urem(rhs));
+        else
+            assign(srem(rhs));
+        return this;
+    }
+
+    public APSInt divAssign(final APSInt rhs)
+    {
+        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
+        if (isUnsigned)
+            assign(udiv(rhs));
+        else
+            assign(sdiv(rhs));
+        return this;
+    }
+
+    public APSInt rem(final APSInt rhs)
+    {
+        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
+        return isUnsigned?new APSInt(urem(rhs), true)
+                : new APSInt(srem(rhs), false);
+    }
+
+    public APSInt div(final APSInt rhs)
+    {
+        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
+        return isUnsigned?new APSInt(udiv(rhs), true):
+                new APSInt(sdiv(rhs), false);
+    }
+
+    public APSInt shr(int amt)
+    {
+        return isUnsigned?new APSInt(lshr(amt), true)
+                : new APSInt(ashr(amt), false);
+    }
+
+    public APSInt shrAssign(int amt)
+    {
+        assign(shr(amt));
+        return this;
+    }
+
+    public boolean lt(final APSInt rhs)
+    {
+        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
+        return isUnsigned ? ult(rhs) : slt(rhs);
+    }
+
+    public boolean le(final  APSInt rhs)
+    {
+        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
+        return isUnsigned ? ule(rhs) : sle(rhs);
+    }
+
+    public boolean gt(final  APSInt rhs)
+    {
+        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
+        return isUnsigned ? ugt(rhs) : sgt(rhs);
+    }
+
+    public boolean ge(final  APSInt rhs)
+    {
+        assert isUnsigned == rhs.isUnsigned:"Signedness mismatch!";
+        return isUnsigned ? uge(rhs) : sge(rhs);
+    }
+
+    public APSInt shl(int bits)
+    {
+        return new APSInt(super.shl(bits), isUnsigned);
+    }
+
+    public APSInt shlAssign(int amt)
+    {
+        assign(shl(amt));
+        return this;
+    }
+
+    public APSInt increment()
+    {
+        super.increase();
+        return this;
+    }
+
+    public APSInt decremnt()
+    {
+        super.decrease();
+        return this;
+    }
+
+    public APSInt addAssign(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        super.addAssign(rhs);
+        return this;
+    }
+
+    public APSInt subAssign(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        super.subAssign(rhs);
+        return this;
+    }
+
+    public APSInt mulAssign(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        super.mulAssign(rhs);
+        return this;
+    }
+
+    public APSInt andAssign(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        super.andAssign(rhs);
+        return this;
+    }
+
+    public APSInt orAssign(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        super.orAssign(rhs);
+        return this;
+    }
+
+    public APSInt xorAssign(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        super.xorAssign(rhs);
+        return this;
+    }
+
+    public APSInt and(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.and(rhs), isUnsigned);
+    }
+
+    public APSInt or(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.or(rhs), isUnsigned);
+    }
+
+    public APSInt xor(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.xor(rhs), isUnsigned);
+    }
+
+    public APSInt mul(final  APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.mul(rhs), isUnsigned);
+    }
+
+    public APSInt add(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.add(rhs), isUnsigned);
+    }
+
+    public APSInt sub(final APSInt rhs)
+    {
+        assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.sub(rhs), isUnsigned);
+    }
+
+    public APSInt not()
+    {
+        return new APSInt(((APInt)this).not(), isUnsigned);
+    }
+
+    public APSInt negative()
+    {
+        return new APSInt(((APInt)this).negative(), isUnsigned);
+    }
+
     public static APSInt makeIntValue(long value, QualType type)
     {
         APSInt res = new APSInt(QualType.getIntWidth(type),
                 !type.isSignedIntegerOrEnumerationType());
         res.assign(value);
         return res;
+    }
+
+    /**
+     * Return the APSInt represent the integer number value with given bit width
+     * and signedness.
+     * @param numBits
+     * @param isUnsigned
+     * @return
+     */
+    public static APSInt getMaxValue(int numBits, boolean isUnsigned)
+    {
+        return new APSInt(isUnsigned?APInt.getMaxValue(numBits)
+                            :APInt.getSignedMaxValue(numBits), isUnsigned);
+    }
+
+    public static APSInt getMinValue(int numBits, boolean isUnsigned)
+    {
+        return new APSInt(isUnsigned? APInt.getMinValue(numBits)
+                        : APInt.getSignedMinValue(numBits), isUnsigned);
     }
 }

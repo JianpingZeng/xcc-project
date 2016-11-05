@@ -343,7 +343,7 @@ public final class InductionVarSimplify
 		assert inst.getOpcode().isAdd() || inst.getOpcode().isSub();
 		
 		/* 
-		 * Only when inst is a addictive operation and whose first operand
+		 * Only when inst is a add operation and whose first operand
 		 * is a loop constant, then continue.
 		 * 
 		 * Take j = e+i expression for instance, op1 stands for e, op2 likes i,

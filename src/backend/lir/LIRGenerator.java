@@ -769,7 +769,7 @@ public abstract class LIRGenerator extends InstructionVisitor
 								result, tmp);
 					}
 				}
-				// we couldn't strength reduce so just emit the multiply
+				// we couldn't strength reduce so just emit the mul
 				if (!didStrengthReduce)
 				{
 					lir.mul(leftOp, right, result);

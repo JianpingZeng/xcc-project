@@ -1659,7 +1659,7 @@ public class Parser implements Tag
 
     /**
      * Parse 'declaration' after parsing 'declaration-specifiers
-     * declarator'. This method parses the remainder of the declaration
+     * declarator'. This method parses the rem of the declaration
      * (including any attributes or initializer, among other things) and
      * finalizes the declaration.
      *
