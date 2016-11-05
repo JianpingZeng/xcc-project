@@ -224,7 +224,7 @@ public class APInt
         if (!isSingleWord())
             pVal = new long[getNumWords()];
 
-        // Figure out if we can shift instead of multiply
+        // Figure out if we can shift instead of mul
         int shift = (radix == 16 ? 4 : radix == 8 ? 3 : radix == 2 ? 1 : 0);
 
         // Set up an APInt for the digit to add outside the loop so we don't
@@ -238,7 +238,7 @@ public class APInt
             int digit = getDigit(arr[i], radix);
             assert digit < radix && digit >= 0: "Invalid character in digit string";
 
-            // Shift or multiply the value by the radix
+            // Shift or mul the value by the radix
             if (slen > 1)
             {
                 if (shift != 0)
@@ -948,7 +948,9 @@ public class APInt
         return toString(radix, true);
     }
 
-    private void toString(StringBuilder buffer, int radix, boolean isSigned,
+    public void toString(StringBuilder buffer,
+            int radix,
+            boolean isSigned,
             boolean formatAsCLiteral)
     {
         assert radix == 10 || radix == 8 || radix == 16 || radix == 2
@@ -1054,7 +1056,7 @@ public class APInt
                 apDigit = x.get();
                 temp2 = y.get();
                 long digit = apDigit.getZExtValue();
-                assert digit < radix : "divide failure";
+                assert digit < radix : "div failure";
                 buffer.append(digits.charAt((int) digit));
                 temp = temp2;
             }
@@ -2022,7 +2024,7 @@ public class APInt
     }
 
     /**
-     * Perform an unsigned divide operation on this APInt by RHS. Both this and
+     * Perform an unsigned div operation on this APInt by RHS. Both this and
      * RHS are treated as unsigned quantities for purposes of this division.
      *
      * @param rhs
@@ -2042,7 +2044,7 @@ public class APInt
         // Get some facts about the LHS and RHS number of bits and words
         int rhsBits = rhs.getActiveBits();
         int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
-        assert rhsWords != 0 : "divide by zeror?";
+        assert rhsWords != 0 : "div by zeror?";
 
         int lhsBits = getActiveBits();
         int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
@@ -2062,11 +2064,11 @@ public class APInt
         }
         else if (lhsWords == 1 && rhsWords == 1)
         {
-            // All high words are zero, just use native divide
+            // All high words are zero, just use native div
             return new APInt(bitWidth, pVal[0] / rhs.pVal[0]);
         }
 
-        // We have to compute it the hard way. Invoke the Knuth divide algorithm.
+        // We have to compute it the hard way. Invoke the Knuth div algorithm.
         APInt quotient = new APInt(1, 0);
         OutParamWrapper<APInt> x = new OutParamWrapper<>(quotient);
         divide(this, lhsWords, rhs, rhsWords, x, null);
@@ -2074,7 +2076,7 @@ public class APInt
     }
 
     /**
-     * Signed divide this APInt by APInt RHS.
+     * Signed div this APInt by APInt RHS.
      *
      * @param rhs
      * @return
@@ -2092,10 +2094,10 @@ public class APInt
     }
 
     /**
-     * This is used by the toString method to divide by the radix. It simply
-     * provides a more convenient form of divide for internal use since KnuthDiv
+     * This is used by the toString method to div by the radix. It simply
+     * provides a more convenient form of div for internal use since KnuthDiv
      * has specific constraints on its inputs. If those constraints are not met
-     * then it provides a simpler form of divide.
+     * then it provides a simpler form of div.
      *
      * @param lhs
      * @param lhsWords
@@ -2169,7 +2171,7 @@ public class APInt
             u[i * 2 + 1] = (int) (temp >> 32);
         }
 
-        // initialize the quotient and remainder
+        // initialize the quotient and rem
         Arrays.fill(q, 0, q.length, 0);
         if (remainder.get() != null)
             Arrays.fill(r, 0, r.length, 0);
@@ -2189,7 +2191,7 @@ public class APInt
 
         // If we're left with only a single word for the divisor, Knuth doesn't work
         // so we implement the short division algorithm here. This is much simpler
-        // and faster because we are certain that we can divide a 64-bit quantity
+        // and faster because we are certain that we can div a 64-bit quantity
         // by a 32-bit quantity at hardware speed and short division is simply a
         // series of such operations. This is just like doing short division but we
         // are using base 2^32 instead of base 10.
@@ -2229,7 +2231,7 @@ public class APInt
         }
         else
         {
-            // Now we're ready to invoke the Knuth classical divide algorithm. In this
+            // Now we're ready to invoke the Knuth classical div algorithm. In this
             // case n > 1.
             knuthDiv(u, v, q, r, m, n);
         }
@@ -2273,7 +2275,7 @@ public class APInt
             }
         }
 
-        // If the caller wants the remainder
+        // If the caller wants the rem
         if (remainder != null)
         {
             // Set up the Remainder value's memory.
@@ -2291,7 +2293,7 @@ public class APInt
             {
                 remainder.get().clear();
 
-                // The remainder is in R. Reconstitute the remainder into Remainder's low
+                // The rem is in R. Reconstitute the rem into Remainder's low
                 // order words.
                 if (rhsWords == 1)
                 {
@@ -2346,10 +2348,10 @@ public class APInt
         // is 2^31 so we just set it to -1u.
         long b = (long) 1 << 32;
 
-        // D1. [Normalize.] Set d = b / (v[n-1] + 1) and multiply all the digits of
+        // D1. [Normalize.] Set d = b / (v[n-1] + 1) and mul all the digits of
         // u and v by d. Note that we have taken Knuth's advice here to use a power
         // of 2 value for d such that d * v[n-1] >= b/2 (b is the base). A power of
-        // 2 allows us to shift instead of multiply and it is easy to determine the
+        // 2 allows us to shift instead of mul and it is easy to determine the
         // shift amount from the leading zeros.  We are basically normalizing the u
         // and v so that its high bits are shifted to the top of v's range without
         // overflow. Note that this can require an extra word in u so that u must
@@ -2401,7 +2403,7 @@ public class APInt
             // D4. [Multiply and subtract.] Replace (u[j+n]u[j+n-1]...u[j]) with
             // (u[j+n]u[j+n-1]..u[j]) - qp * (v[n-1]...v[1]v[0]). This computation
             // consists of a simple multiplication by a one-place number, combined with
-            // a subtraction.
+            // a sub.
             boolean isNeg = false;
             for (int i = 0; i < n; i++)
             {
@@ -2435,7 +2437,7 @@ public class APInt
                 }
             }
 
-            // D5. [Test remainder.] Set q[j] = qp. If the result of step D4 was
+            // D5. [Test rem.] Set q[j] = qp. If the result of step D4 was
             // negative, go to step D6; otherwise go on to step D7.
             Q[j] = (int) qp;
             if (isNeg)
@@ -2462,8 +2464,8 @@ public class APInt
         } while (--j >= 0);
 
         // D8. [Unnormalize]. Now q[...] is the desired quotient, and the desired
-        // remainder may be obtained by dividing u[...] by d. If r is non-null we
-        // compute the remainder (urem uses this).
+        // rem may be obtained by dividing u[...] by d. If r is non-null we
+        // compute the rem (urem uses this).
         if (R != null)
         {
             // The value d is expressed by the "shift" value above since we avoided
@@ -2499,9 +2501,9 @@ public class APInt
     }
 
     /**
-     * Perform an unsigned remainder operation on this APInt with RHS being the
+     * Perform an unsigned rem operation on this APInt with RHS being the
      * divisor. Both this and RHS are treated as unsigned quantities for purposes
-     * of this operation. Note that this is a true remainder operation and not
+     * of this operation. Note that this is a true rem operation and not
      * a modulo operation because the sign follows the sign of the dividend
      * which is *this.
      * @param rhs
@@ -2521,7 +2523,7 @@ public class APInt
 
         int rhsBits = rhs.getActiveBits();
         int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
-        assert rhsWords != 0 : "Performing remainder operation by zero ???";
+        assert rhsWords != 0 : "Performing rem operation by zero ???";
 
         if (lhsWords == 0)
         {
@@ -2540,7 +2542,7 @@ public class APInt
         }
         else if (lhsWords == 1)
         {
-            // All high words are zero, just use native remainder
+            // All high words are zero, just use native rem
             return new APInt(bitWidth, pVal[0] % rhs.pVal[0]);
         }
 
@@ -2551,7 +2553,7 @@ public class APInt
     }
 
     /**
-     * Signed remainder operation on APInt.
+     * Signed rem operation on APInt.
      * @param rhs
      * @return
      */
@@ -2569,8 +2571,8 @@ public class APInt
     }
 
     /**
-     * Sometimes it is convenient to divide two APInt values and obtain both the
-     * quotient and remainder. This function does both operations in the same
+     * Sometimes it is convenient to div two APInt values and obtain both the
+     * quotient and rem. This function does both operations in the same
      * computation making it a little more efficient. The pair of input arguments
      * may overlap with the pair of output arguments. It is safe to call
      * udivrem(X, Y, X, Y), for example.
@@ -2654,5 +2656,29 @@ public class APInt
         {
             udivrem(lhs, rhs, quotient, remainder);
         }
+    }
+
+    public APInt and(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
+        if (isSingleWord())
+            return new APInt(getBitWidth(), val & rhs.val);
+        return andSlowCase(rhs);
+    }
+
+    public APInt or(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
+        if (isSingleWord())
+            return new APInt(getBitWidth(), val | rhs.val);
+        return orSlowCase(rhs);
+    }
+
+    public APInt xor(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
+        if (isSingleWord())
+            return new APInt(getBitWidth(), val ^ rhs.val);
+        return xorSlowCase(rhs);
     }
 }

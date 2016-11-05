@@ -892,7 +892,7 @@ public class PromoteMem2Reg
 		}// end of go through usesList
 
 		// Finally, after the scan, check to see whether there are stores is left
-		// if not, we will have to fall back to the remainder
+		// if not, we will have to fall back to the rem
 		if (!info.usingBlocks.isEmpty())
 			return false;
 

@@ -1155,7 +1155,7 @@ public final class Interval
 	}
 
 	/**
-	 * Splits this interval at a specified position and returns the remainder as
+	 * Splits this interval at a specified position and returns the rem as
 	 * a new <i>child</i> interval of this interval's {@linkplain #splitParent()
 	 * parent} interval.
 	 * <p>

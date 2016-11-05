@@ -229,7 +229,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.LDiv)
 			{
-				resultReg = RDX_L; // remainder getReturnValue is produced in rdx
+				resultReg = RDX_L; // rem getReturnValue is produced in rdx
 				lir.lrem(dividend, divisor, resultReg, LDIV_TMP);
 			}
 			else if (opcode == Operator.LMod)
@@ -311,7 +311,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 			LIRValue resultReg;
 			if (opcode == Operator.IMod)
 			{
-				resultReg = tmp; // remainder getReturnValue is produced in rdx
+				resultReg = tmp; // rem getReturnValue is produced in rdx
 				lir.irem(dividend, divisor, resultReg, tmp);
 			}
 			else if (opcode == Operator.IDiv)

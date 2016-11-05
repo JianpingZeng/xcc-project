@@ -2719,7 +2719,7 @@ public final class Sema
             return invalidOperands(opLoc, lhs, rhs);
 
         /**
-         * TODO check for remainder by zero.
+         * TODO check for rem by zero.
          *
          */
         return compType;

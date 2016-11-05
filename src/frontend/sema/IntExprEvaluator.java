@@ -427,23 +427,23 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 return error(expr.getOperatorLoc(),
                         "invalid sub-expression in IntExprEvaluator",
                         expr);
-            case BO_Mul: return success(result.get().getInt().multiply(rhs), expr);
-            case BO_Add: return success(result.get().getInt().addictive(rhs), expr);
-            case BO_Sub: return success(result.get().getInt().subtraction(rhs), expr);
-            case BO_And: return success(result.get().getInt().bitAnd(rhs), expr);
-            case BO_Xor: return success(result.get().getInt().bitXor(rhs), expr);
-            case BO_Or: return success(result.get().getInt().bitOr(rhs), expr);
+            case BO_Mul: return success(result.get().getInt().mul(rhs), expr);
+            case BO_Add: return success(result.get().getInt().add(rhs), expr);
+            case BO_Sub: return success(result.get().getInt().sub(rhs), expr);
+            case BO_And: return success(result.get().getInt().and(rhs), expr);
+            case BO_Xor: return success(result.get().getInt().xor(rhs), expr);
+            case BO_Or: return success(result.get().getInt().or(rhs), expr);
             case BO_Div:
             {
                 if (rhs.eq(0))
                     return error(expr.getOperatorLoc(), "division by zero", expr);
-                return success(result.get().getInt().divide(rhs), expr);
+                return success(result.get().getInt().div(rhs), expr);
             }
             case BO_Rem:
             {
                 if (rhs.eq(0))
                     return error(expr.getOperatorLoc(), "division by zero", expr);
-                return success(result.get().getInt().remainder(rhs), expr);
+                return success(result.get().getInt().rem(rhs), expr);
             }
             case BO_Shl:
             {
