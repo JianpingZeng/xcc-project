@@ -264,7 +264,7 @@ public class Util
         return ult(n2, n1);
     }
 
-    public static boolean lessThanUnsigned(int n1, int n2)
+    public static boolean ult(int n1, int n2)
     {
         return (n1 & 0xffffffffL) < (n2 & 0xffffffffL);
     }
@@ -278,5 +278,58 @@ public class Util
     public static long unsignedDiv(long l1, long l2)
     {
         return Long.divideUnsigned(l2, l1);
+    }
+
+	public static int countLeadingZeros64(long x)
+    {
+        if (x == 0)
+            return 64;
+        int count = 0;
+        for (int shift = 64 >> 1; shift != 0; shift >>>= 1)
+        {
+            long temp = x >> shift;
+            if (temp != 0)
+                x = temp;
+            else
+                count |= shift;
+        }
+        return count;
+    }
+
+	/**
+	 * this function performs the platform optimal form of
+     * counting the number of zeros from the most significant bit to the first one
+     * bit.
+     * @param v
+     * @return
+	 */
+    public static int countLeadingZeros32(int v)
+    {
+        if (v == 0) return 32;
+
+        int count = 0;
+        for (int shift = 32 >>> 1; shift!= 0; shift>>>= 1)
+        {
+            int temp = v>>>shift;
+            if (temp!=0)
+            {
+                v = temp;
+            }
+            else
+            {
+                count |= shift;
+            }
+        }
+        return count;
+    }
+
+	public static int countLeadingOnes32(int val)
+    {
+        return countLeadingZeros32(~val);
+    }
+
+	public static int countLeadingOnes64(long val)
+    {
+        return countLeadingZeros64(~val);
     }
 }
