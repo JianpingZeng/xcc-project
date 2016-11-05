@@ -16,11 +16,13 @@ package frontend.sema;
  * permissions and limitations under the License.
  */
 
-import com.sun.deploy.net.proxy.pac.PACFunctionsImpl;
-import sun.util.resources.cldr.hr.CalendarData_hr_HR;
+import tools.OutParamWrapper;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import static tools.Util.countLeadingZeros32;
 
 /**
  * Class for arbitrary precision integers.
@@ -81,25 +83,28 @@ public class APInt
     private long[] pVal;
 
     private static int CHAR_BIT = 8;
+
     /**
-     * Bits in a word.
+     * Bytes of a word (b bytes).
      */
-    private static int APINT_BITS_PER_WORD = 4 * CHAR_BIT;
+    private static int APINT_WORD_SIZE = 8;
+
     /**
-     * Bytes of a word.
+     * Bits in a word (64 bits).
      */
-    private static int APINT_WORD_SIZE = 4;
+    private static int APINT_BITS_PER_WORD = APINT_WORD_SIZE * CHAR_BIT;
 
     private APInt(long[] val, int bits)
     {
         assert val.length == bits;
-        assert bits>0 :"bitwidth too small";
+        assert bits > 0 : "bitwidth too small";
         bitWidth = bits;
         pVal = val;
     }
 
     /**
      * Checks if this integer value is stored in a single word(64).
+     *
      * @return
      */
     private boolean isSingleWord()
@@ -109,6 +114,7 @@ public class APInt
 
     /**
      * Determines which word a bit is in.
+     *
      * @param bitPosition
      * @return Return the word position for the specified bits position.
      */
@@ -119,6 +125,7 @@ public class APInt
 
     /**
      * Determines which bits in a word a bit is in.
+     *
      * @param bitPosition
      * @return
      */
@@ -130,6 +137,7 @@ public class APInt
     /**
      * This function generates and returns a long(word) mask for a single bit.
      * at a specified bit position.
+     *
      * @param bitPosition
      * @return
      */
@@ -143,6 +151,7 @@ public class APInt
      * word that are not used by the APInt. This is needed after the most
      * significant word is assigned a value to ensure that those bits are
      * zero'd out.
+     *
      * @return
      */
     private APInt clearUnusedBits()
@@ -157,11 +166,11 @@ public class APInt
             return this;
         }
 
-        long mask = ~(0L >> (APINT_BITS_PER_WORD - wordBits));
+        long mask = ~0L;
         if (isSingleWord())
             val &= mask;
         else
-            pVal[getNumWords()-1] &= mask;
+            pVal[getNumWords() - 1] &= mask;
         return this;
     }
 
@@ -180,15 +189,115 @@ public class APInt
         return getNumWords(bitWidth);
     }
 
+    /**
+     * This is used by the constructors that take string arguments.
+     * @param numBits
+     * @param str
+     * @param radix
+     */
     private void fromString(int numBits, String str, int radix)
     {
+        assert !str.isEmpty() : "Invalid string length";
+        assert (radix == 10 || radix == 8 || radix == 2
+                || radix == 16) : "Radix should be 2, 8, 10, or 16!";
 
+        int slen = str.length();
+        char[] arr = str.toCharArray();
+        boolean isNeg = arr[0] == '-';
+        int i = 0;
+        if (arr[i] == '-' || arr[i] == '+')
+        {
+            i++;
+            slen--;
+            assert slen != 0 : "String is only a sign, needs a value.";
+        }
+
+        assert slen < numBits || radix != 2 : "Insufficient bit width";
+        assert (slen - 1) * 3 <= numBits
+                || radix != 8 : "Insufficient bit width";
+        assert (slen - 1) * 4 <= numBits
+                || radix != 16 : "Insufficient bit width";
+        assert ((slen - 1) * 64) / 22 <= numBits
+                || radix != 10 : "Insufficient bit width";
+
+        // Allocate memory.
+        if (!isSingleWord())
+            pVal = new long[getNumWords()];
+
+        // Figure out if we can shift instead of multiply
+        int shift = (radix == 16 ? 4 : radix == 8 ? 3 : radix == 2 ? 1 : 0);
+
+        // Set up an APInt for the digit to add outside the loop so we don't
+        // constantly construct/destruct it.
+        APInt apdigit = new APInt(getBitWidth(), 0);
+        APInt apradix = new APInt(getBitWidth(), radix);
+
+        // Enter digit traversal loop
+        for (; i != str.length(); i++)
+        {
+            int digit = getDigit(arr[i], radix);
+            assert digit < radix && digit >= 0: "Invalid character in digit string";
+
+            // Shift or multiply the value by the radix
+            if (slen > 1)
+            {
+                if (shift != 0)
+                    shlAssign(shift);
+                else
+                    mulAssign(apradix);
+            }
+
+            // Add in the digit we just interpreted
+            if (apdigit.isSingleWord())
+                apdigit.val = digit;
+            else
+                apdigit.pVal[0] = digit;
+            this.addAssign(apdigit);
+        }
+
+        // If its negative, put it in two's complement form
+        if (isNeg)
+        {
+            this.decrease();
+            this.flip();
+        }
     }
 
-    private void divide(final APInt lhs, int lhsWords,
-            final APInt rhs, int rhsWords,
-            APInt[] result)
-    {}
+    /**
+     *  A utility function that converts a character to a digit.
+     * @param ch
+     * @param radix
+     * @return
+     */
+    private static int getDigit(char ch, int radix)
+    {
+        int r;
+        if (radix == 16)
+        {
+            r = ch - '0';
+            if (r <= 9)
+                return r;
+            r = ch - 'A';
+            if (r <= 5)
+                return r + 10;
+            r = ch - 'a';
+            if (r <= 5)
+                return r + 10;
+        }
+        if (radix == 8)
+        {
+            r = ch - '0';
+            if (r <= 7)
+                return r;
+        }
+        if (radix == 2)
+        {
+            r = ch - '0';
+            if (r<= 1)
+                return r;
+        }
+        return -1;
+    }
 
     private void initSlowCase(int numBits, long val, boolean isSigned)
     {
@@ -196,14 +305,15 @@ public class APInt
         pVal[0] = val;
         if (isSigned && val < 0)
         {
-            for (int i = 1;i < getNumWords(); ++i)
+            for (int i = 1; i < getNumWords(); ++i)
                 pVal[i] = -1L;
         }
     }
+
     private void initFromArray(long[] bigVal)
     {
-        assert bitWidth> 0 :"bitwidth too small " + bitWidth;
-        assert bigVal != null:"empty list";
+        assert bitWidth > 0 : "bitwidth too small " + bitWidth;
+        assert bigVal != null : "empty list";
         if (isSingleWord())
             val = bigVal[0];
         else
@@ -217,8 +327,8 @@ public class APInt
 
     private void initFromArray(ArrayList<Long> bigVal)
     {
-        assert bitWidth> 0 :"bitwidth too small " + bitWidth;
-        assert !bigVal.isEmpty():"empty list";
+        assert bitWidth > 0 : "bitwidth too small " + bitWidth;
+        assert !bigVal.isEmpty() : "empty list";
         if (isSingleWord())
             val = bigVal.get(0);
         else
@@ -237,16 +347,85 @@ public class APInt
     }
 
     private APInt shlSlowCase(int shiftAmt)
-    {}
+    {
+        // If all the bits were shifted out, the result is 0. This avoids issues
+        // with shifting by the size of the integer type, which produces undefined
+        // results. We define these "undefined results" to always be 0.
+        if (shiftAmt == bitWidth)
+            return new APInt(bitWidth, 0);
+
+        if (shiftAmt == 0)
+            return this;
+
+        long[] val = new long[getNumWords()];
+
+        if (shiftAmt < APINT_BITS_PER_WORD)
+        {
+            long carray = 0;
+            for (int i = 0; i < getNumWords(); ++i)
+            {
+                val[i] = (pVal[i] << shiftAmt) | carray;
+                carray = pVal[i] >> (APINT_BITS_PER_WORD - shiftAmt);
+            }
+            return new APInt(val, bitWidth).clearUnusedBits();
+        }
+
+        int wordShift = shiftAmt % APINT_BITS_PER_WORD;
+        int offset = shiftAmt / APINT_BITS_PER_WORD;
+
+        // If we are shifting whole words, just move whole words
+        if (wordShift == 0)
+        {
+            for (int i = 0; i < offset; i++)
+                val[i] = 0;
+
+            for (int i = offset; i < getNumWords(); i++)
+                val[i] = pVal[i - offset];
+            return new APInt(val, bitWidth).clearUnusedBits();
+        }
+
+        int i = getNumWords() - 1;
+        for (; i > offset; i--)
+        {
+            val[i] = pVal[i - offset] << wordShift | pVal[i - offset - 1] >> (
+                    APINT_BITS_PER_WORD - wordShift);
+        }
+        val[offset] = pVal[0] << wordShift;
+        for (i = 0; i < offset; i++)
+            val[i] = 0;
+
+        return new APInt(val, bitWidth).clearUnusedBits();
+    }
 
     private APInt andSlowCase(final APInt rhs)
-    {}
+    {
+        int numWords = getNumWords();
+        long[] val = new long[numWords];
+
+        for (int i = 0; i < numWords; i++)
+            val[i] = pVal[i] & rhs.pVal[i];
+        return new APInt(val, bitWidth);
+    }
 
     private APInt orSlowCase(final APInt rhs)
-    {}
+    {
+        int numWords = getNumWords();
+        long[] val = new long[numWords];
+
+        for (int i = 0; i < numWords; i++)
+            val[i] = pVal[i] | rhs.pVal[i];
+        return new APInt(val, bitWidth);
+    }
 
     private APInt xorSlowCase(final APInt rhs)
-    {}
+    {
+        int numWords = getNumWords();
+        long[] val = new long[numWords];
+
+        for (int i = 0; i < numWords; i++)
+            val[i] = pVal[i] ^ rhs.pVal[i];
+        return new APInt(val, bitWidth);
+    }
 
     private APInt assignSlowCase(final APInt rhs)
     {
@@ -285,10 +464,35 @@ public class APInt
     }
 
     private boolean equalSlowCase(final APInt rhs)
-    {}
+    {
+        // optimize the common cases.
+        // get some facts about the numbers of bits used in the two operands.
+        int n1 = getActiveBits();
+        int n2 = rhs.getActiveBits();
+
+        if (n1 != n2)
+            return false;
+
+        // If the number of bits fits in a word, we only need to compare the low word.
+        if (n1 <= APINT_BITS_PER_WORD)
+            return pVal[0] == rhs.pVal[0];
+
+        // Otherwise, compare each word.
+        for (int i = whichWord(n1 - 1); i >= 0; i--)
+            if (pVal[i] != rhs.pVal[i])
+                return false;
+
+        return true;
+    }
 
     private boolean equalSlowCase(long val)
-    {}
+    {
+        int n = getActiveBits();
+        if (n <= APINT_BITS_PER_WORD)
+            return pVal[0] == val;
+
+        return false;
+    }
 
     public APInt(int numBits, long val)
     {
@@ -299,7 +503,7 @@ public class APInt
     {
         bitWidth = numBits;
         val = 0;
-        assert bitWidth> 0:"bitwidth too small";
+        assert bitWidth > 0 : "bitwidth too small";
         if (isSingleWord())
             this.val = val;
         else
@@ -324,7 +528,7 @@ public class APInt
     public APInt(int numBits, String str, int radix)
     {
         bitWidth = numBits;
-        assert numBits>0 :"bitwidth too small";
+        assert numBits > 0 : "bitwidth too small";
         fromString(numBits, str, radix);
     }
 
@@ -337,7 +541,7 @@ public class APInt
     {
         bitWidth = that.bitWidth;
         val = 0;
-        assert bitWidth>0 :"bitwidth too small";
+        assert bitWidth > 0 : "bitwidth too small";
         if (isSingleWord())
             val = that.val;
         else
@@ -346,7 +550,12 @@ public class APInt
 
     public boolean isNegative()
     {
-        return
+        return get(bitWidth - 1);
+    }
+
+    public boolean isNonNegative()
+    {
+        return !isNegative();
     }
 
     public APInt assign(long rhs)
@@ -370,10 +579,12 @@ public class APInt
         }
         return assignSlowCase(rhs);
     }
+
     public int getBitWidth()
     {
         return bitWidth;
     }
+
     private boolean add_1(long dest[], long x[], int len, long y)
     {
         for (int i = 0; i < len; i++)
@@ -392,7 +603,7 @@ public class APInt
 
     private boolean sub_1(long[] dest, int len, long y)
     {
-        for (int i = 0; i<len; i++)
+        for (int i = 0; i < len; i++)
         {
             long X = dest[i];
             dest[i] -= y;
@@ -406,6 +617,7 @@ public class APInt
         }
         return y != 0;
     }
+
     public APInt increase()
     {
         if (isSingleWord())
@@ -426,13 +638,14 @@ public class APInt
 
     /**
      * Zero extend to a new width.
+     *
      * @param width
      * @return
      */
     public APInt zext(int width)
     {
-        assert width> 0:"Invalid APInt ZeroExtend request";
-        if (width <=APINT_WORD_SIZE)
+        assert width > 0 : "Invalid APInt ZeroExtend request";
+        if (width <= APINT_WORD_SIZE)
             return new APInt(width, val);
 
         APInt result = new APInt(new long[getNumWords(width)], width);
@@ -450,15 +663,24 @@ public class APInt
     public APInt sext(int width)
     {
         assert width > bitWidth : "Invalid APInt SignExtend request";
+
+        // if the sign bits of this is not set, this is the zext.
+        if (!isNegative())
+        {
+            zext(width);
+            return this;
+        }
+        // the sign bit is set.
         if (width <= APINT_BITS_PER_WORD)
         {
             long val_ = val << (APINT_BITS_PER_WORD - bitWidth);
-            val = val >> (width - bitWidth);
-            return new APInt(width, val >> (APINT_BITS_PER_WORD - width))
-        } long word = 0;
+            return new APInt(width, val_ >> (APINT_BITS_PER_WORD - width));
+        }
+
         APInt result = new APInt(new long[getNumWords(width)], width);
 
         int i;
+        long word = 0;
         for (i = 0; i != bitWidth / APINT_BITS_PER_WORD; ++i)
         {
             word = getRawData()[i];
@@ -485,21 +707,21 @@ public class APInt
 
     public APInt trunc(int width)
     {
-        assert width < bitWidth :"Invalid APInt Truncate request";
-        assert width> 0 : " Can't truncate to 0 bits";
+        assert width < bitWidth : "Invalid APInt Truncate request";
+        assert width > 0 : " Can't truncate to 0 bits";
 
-        if (width <=APINT_WORD_SIZE)
+        if (width <= APINT_WORD_SIZE)
             return new APInt(width, getRawData()[0]);
 
         APInt result = new APInt(new long[getNumWords(width)], width);
         int i;
-        for (i = 0; i!= width /APINT_BITS_PER_WORD; i++)
+        for (i = 0; i != width / APINT_BITS_PER_WORD; i++)
             result.pVal[i] = pVal[i];
 
-        int bits = ( 0 - width) % APINT_BITS_PER_WORD;
+        int bits = (0 - width) % APINT_BITS_PER_WORD;
         if (bits != 0)
-            result.pVal[i] = pVal[i] << bits >> bits;
-        return result;
+            result.pVal[i] = pVal[i];
+        return result.clearUnusedBits();
     }
 
     public APInt zextOrTrunc(int width)
@@ -513,39 +735,121 @@ public class APInt
 
     public APInt sextOrTrunc(int width)
     {
-        if (bitWidth<width)
+        if (bitWidth < width)
             return sext(width);
-        if (bitWidth> width)
+        if (bitWidth > width)
             return trunc(width);
         return this;
     }
 
     private long[] getRawData()
     {
-        if(isSingleWord())
-            return new long[]{val};
+        if (isSingleWord())
+            return new long[] { val };
         else
             return pVal;
     }
 
     public boolean ult(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth:"Bit widths must be same for comparision";
+        assert bitWidth == rhs.bitWidth : "Bit widths must be same for comparision";
         if (isSingleWord())
-            return val < rhs.val;
+            return Util.ult(val, rhs.val);
+        // Get active bit length of both operands
+        int n1 = getActiveBits();
+        int n2 = rhs.getActiveBits();
 
+        // If magnitude of LHS is less than RHS, return true.
+        if (n1 < n2)
+            return true;
+
+        // If magnitude of RHS is greather than LHS, return false.
+        if (n1 > n2)
+            return false;
+        // reach here, the n1 must equal to n2.
+        assert n1 == n2;
+
+        // If they bot fit in a word, just compare the low order word
+        if (n1 < APINT_BITS_PER_WORD)
+            return Util.ult(pVal[0], rhs.pVal[0]);
+
+        // Otherwise, compare all words
+        int topWord = whichWord(n1 - 1);
+        for (int i = topWord; i >= 0; i--)
+        {
+            if (Util.ult(pVal[i], rhs.pVal[i]))
+                return true;
+            if (Util.ugt(pVal[i], rhs.pVal[i]))
+                return false;
+        }
+        return false;
     }
 
     public boolean ult(long rhs)
     {
-
+        return ult(new APInt(getBitWidth(), rhs));
     }
 
-    public boolean slt(final  APInt rhs)
-    {}
+    public boolean slt(final APInt rhs)
+    {
+        assert bitWidth
+                == rhs.bitWidth : "Bit width must be same for comparison";
+        if (isSingleWord())
+        {
+            return val < rhs.val;
+        }
+
+        boolean lhsNeg = isNegative();
+        boolean rhsNeg = rhs.isNegative();
+
+        if (lhsNeg)
+        {
+            // Sign bit is set so perform two's completion to make it positive.
+            flip();
+            increase();
+        }
+
+        if (rhsNeg)
+        {
+            // Sign bit is set so perform two's complement to make it positive
+            rhs.flip();
+            rhs.increase();
+        }
+
+        // Now we have unsigned values to compare so do the comparison if necessary
+        // based on the negativeness of the values.
+        if (lhsNeg)
+            if (rhsNeg)
+                return ugt(rhs);
+            else
+                return true;
+        else if (rhsNeg)
+            return false;
+        else
+            return ult(rhs);
+    }
+
+    /**
+     * Toggle every bit to its opposite.
+     *
+     * @return
+     */
+    private APInt flip()
+    {
+        if (isSingleWord())
+        {
+            val ^= -1L;
+            return clearUnusedBits();
+        }
+        for (int i = 0; i < getNumWords(); i++)
+            pVal[i] ^= -1L;
+        return clearUnusedBits();
+    }
 
     public boolean slt(long rhs)
-    {}
+    {
+        return slt(new APInt(getBitWidth(), rhs));
+    }
 
     public boolean ule(final APInt rhs)
     {
@@ -623,7 +927,7 @@ public class APInt
      */
     public boolean eq(final APInt rhs)
     {
-        assert bitWidth == rhs.bitWidth:"Comparison requires equal bit widths";
+        assert bitWidth == rhs.bitWidth : "Comparison requires equal bit widths";
         if (isSingleWord())
             return val == rhs.val;
         return equalSlowCase(rhs);
@@ -644,16 +948,14 @@ public class APInt
         return toString(radix, true);
     }
 
-    private void toString(StringBuilder buffer,
-            int radix,
-            boolean isSigned,
-            boolean formartAsCLiteral)
+    private void toString(StringBuilder buffer, int radix, boolean isSigned,
+            boolean formatAsCLiteral)
     {
-        assert  radix == 10 || radix == 8 || radix == 16
-                || radix == 2 || radix == 36 :"radix sholud be 2, 4, 8, 16!";
+        assert radix == 10 || radix == 8 || radix == 16 || radix == 2
+                || radix == 36 : "radix sholud be 2, 4, 8, 16!";
 
         String prefix = null;
-        if (formartAsCLiteral)
+        if (formatAsCLiteral)
         {
             switch (radix)
             {
@@ -670,7 +972,7 @@ public class APInt
         }
 
         int idx = 0, size = prefix.length();
-        if(eq(0))
+        if (eq(0))
         {
             for (; idx < size; idx++)
                 buffer.append(prefix.charAt(idx));
@@ -689,7 +991,7 @@ public class APInt
             else
             {
                 long i = getSExtValue();
-                if (i>= 0)
+                if (i >= 0)
                     n = i;
                 else
                 {
@@ -698,14 +1000,14 @@ public class APInt
                 }
             }
 
-            while(idx < size)
+            while (idx < size)
             {
                 buffer.append(prefix.charAt(idx));
                 idx++;
             }
             while (n != 0)
             {
-                buf[--bufLen] = digits.charAt((int)n % radix);
+                buf[--bufLen] = digits.charAt((int) n % radix);
                 n /= radix;
             }
             buffer.append(buf, bufLen, 65 - bufLen);
@@ -715,7 +1017,7 @@ public class APInt
         APInt temp = new APInt(this);
         if (isSigned && isNegative())
         {
-            temp.flipAllBits();
+            temp.flip();
             temp.increase();
             buffer.append('-');
         }
@@ -728,40 +1030,46 @@ public class APInt
         int startDig = buffer.length();
         if (radix == 2 || radix == 8 || radix == 16)
         {
-            long shiftAmt = (radix == 16 ? 4: (radix == 8 ? 3 :1));
+            long shiftAmt = (radix == 16 ? 4 : (radix == 8 ? 3 : 1));
             long maskAmt = radix - 1;
-            while(!temp.eq(0))
+            while (!temp.eq(0))
             {
                 long digit = temp.getRawData()[0] & maskAmt;
-                buffer.append(digits.charAt((int)digit));
+                buffer.append(digits.charAt((int) digit));
                 temp = temp.lshr(shiftAmt);
             }
         }
         else
         {
-            APInt divisor = new APInt(radix == 10 ? 4: 8, radix);
-            while(!temp.eq(0))
+            APInt divisor = new APInt(radix == 10 ? 4 : 8, radix);
+            while (!temp.eq(0))
             {
                 APInt apDigit = new APInt(1, 0);
                 APInt temp2 = new APInt(temp.getBitWidth(), 0);
+                OutParamWrapper<APInt> x = new OutParamWrapper<>(apDigit);
+                OutParamWrapper<APInt> y = new OutParamWrapper<>(temp2);
+
                 divide(temp, temp.getNumWords(), divisor, divisor.getNumWords(),
-                        new APInt[]{temp2, apDigit});
-                int digit = apDigit.getZExtValue();
-                assert  digit< radix :"divide failded";
-                buffer.append(digits.charAt(digit));
+                        x, y);
+                apDigit = x.get();
+                temp2 = y.get();
+                long digit = apDigit.getZExtValue();
+                assert digit < radix : "divide failure";
+                buffer.append(digits.charAt((int) digit));
                 temp = temp2;
             }
         }
 
-         for (int i = startDig, j = buffer.length()-1; i < j;)
-         {
-             char t = buffer.charAt(i);
-             buffer.setCharAt(i, buffer.charAt(j));
-             buffer.setCharAt(j, t);
-             i++;
-             j--;
-         }
+        for (int i = startDig, j = buffer.length() - 1; i < j; )
+        {
+            char t = buffer.charAt(i);
+            buffer.setCharAt(i, buffer.charAt(j));
+            buffer.setCharAt(j, t);
+            i++;
+            j--;
+        }
     }
+
     public String toString(int radix, boolean isSigned)
     {
         StringBuilder sb = new StringBuilder();
@@ -771,6 +1079,7 @@ public class APInt
 
     /**
      * Check if this APInt has an N-bits unsigned integer value.
+     *
      * @param N
      * @return
      */
@@ -785,38 +1094,100 @@ public class APInt
         return new APInt(N, getNumWords(), pVal).zext(getBitWidth()).eq(this);
     }
 
-    public int countLeadingZeros64(long x)
-    {
-        if (x == 0)
-            return 64;
-        int count = 0;
-        for (int shift = 64 >> 1; shift != 0; shift >>>= 1)
-        {
-            long temp = x >> shift;
-            if (temp != 0)
-                x = temp;
-            else
-                count |= shift;
-        }
-        return count;
-    }
-
+    /**
+     * This method count the number of bits from the most significant bit
+     * to the first one bit.
+     *
+     * @return
+     */
     public int countLeadingZeros()
     {
         if (isSingleWord())
         {
             int unusedBits = APINT_BITS_PER_WORD - bitWidth;
-            return countLeadingZeros64(val) - unusedBits;
+            return Util.countLeadingZeros64(val) - unusedBits;
         }
         return countLeadingZeroSlowCase();
     }
 
+    private int countLeadingZeroSlowCase()
+    {
+        int count = 0;
+        for (int i = getNumWords() - 1; i >= 0; i--)
+        {
+            if (pVal[i] == 0)
+                count += APINT_BITS_PER_WORD;
+            else
+            {
+                count += Util.countLeadingZeros64(pVal[i]);
+                break;
+            }
+        }
+        int remainder = bitWidth % APINT_BITS_PER_WORD;
+        if (remainder != 0)
+            count -= APINT_BITS_PER_WORD - remainder;
+        return Math.min(count, bitWidth);
+    }
+
+    /**
+     * This method counts the number of ones from the significant bit
+     * to the first zero bit.
+     *
+     * @return
+     */
     public int countLeadingOnes()
     {
+        if (isSingleWord())
+        {
+            return countLeadingOnes64(val, APINT_BITS_PER_WORD - bitWidth);
+        }
 
+        int highWordBits = bitWidth % APINT_BITS_PER_WORD;
+        int shift;
+        if (highWordBits == 0)
+        {
+            highWordBits = APINT_BITS_PER_WORD;
+            shift = 0;
+        }
+        else
+        {
+            shift = APINT_BITS_PER_WORD - highWordBits;
+        }
+
+        int i = getNumWords() - 1;
+        int count = countLeadingOnes64(pVal[i], shift);
+        if (count == highWordBits)
+        {
+            for (i--; i >= 0; i--)
+            {
+                if (pVal[i] == -1)
+                    count += APINT_BITS_PER_WORD;
+                else
+                {
+                    count += countLeadingOnes64(pVal[i], 0);
+                    break;
+                }
+            }
+        }
+        return count;
     }
+
+    private int countLeadingOnes64(long val, int skipped)
+    {
+        int count = 0;
+        if (skipped != 0)
+            val <<= skipped;
+        while ((val != 0) && ((val & 1L << 63) != 0))
+        {
+            count++;
+            val <<= 1;
+        }
+        return count;
+    }
+
     /**
      * Check if this APInt has an N-bits signed integer value.
+     *
      * @param N
      * @return
      */
@@ -825,6 +1196,7 @@ public class APInt
         assert N > 0;
         return getMinSignedBits() <= N;
     }
+
     public int getActiveBits()
     {
         return bitWidth - countLeadingZeros();
@@ -832,21 +1204,23 @@ public class APInt
 
     public int getActiveWords()
     {
-        return whichWord(getActiveBits() - 1)+1
+        return whichWord(getActiveBits() - 1) + 1;
     }
+
     /**
      * Computes the minimum bit width for this APInt while considering it to be
-     /// a signed (and probably negative) value. If the value is not negative,
-     /// this function returns the same value as getActiveBits()+1. Otherwise, it
-     /// returns the smallest bit width that will retain the negative value. For
-     /// example, -1 can be written as 0b1 or 0xFFFFFFFFFF. 0b1 is shorter and so
-     /// for -1, this function will always return 1.
+     * /// a signed (and probably negative) value. If the value is not negative,
+     * /// this function returns the same value as getActiveBits()+1. Otherwise, it
+     * /// returns the smallest bit width that will retain the negative value. For
+     * /// example, -1 can be written as 0b1 or 0xFFFFFFFFFF. 0b1 is shorter and so
+     * /// for -1, this function will always return 1.
+     *
      * @return
      */
     public int getMinSignedBits()
     {
         if (isNegative())
-            return bitWidth - countLeadingOnes() -1;
+            return bitWidth - countLeadingOnes() - 1;
         return getActiveBits() + 1;
 
     }
@@ -860,28 +1234,60 @@ public class APInt
         return bitWidth == 1 ? val == 1 : isNegative();
     }
 
+    /**
+     * This method check to see if the value of this APInt is the minimum unsigned
+     * value for the APInt's bit width.
+     *
+     * @return
+     */
     public boolean isMinValue()
     {
-
+        return countPopulation() == 0;
     }
 
-    public boolean isMaxSignedValue()
+    /**
+     * This method is an APInt version of the countPopulation32 or 64.
+     * <p>
+     * It counts the number of one bit in APInt value.
+     *
+     * @return
+     */
+    private int countPopulation()
     {
-
+        if (isSingleWord())
+            return countPopulation_64(val);
+        return countPopulationSlowCase();
     }
 
+    /**
+     * This method checks to see if this APInt is the maximum unsigned value.
+     *
+     * @return
+     */
     public boolean isMaxValue()
     {
+        return countPopulation() == bitWidth;
+    }
 
+    /**
+     * This method checks to see if this APInt is the maximum signed value.
+     *
+     * @return
+     */
+    public boolean isMaxSignedValue()
+    {
+        return bitWidth == 1 ? val == 1 :
+                (!isNegative() && countPopulation() == bitWidth - 1);
     }
 
     /**
      * Checks if this number is the power of 2.
+     *
      * @return
      */
     public boolean isPowerOf2()
     {
-        if(isSingleWord())
+        if (isSingleWord())
             return isPowerOf2_64(val);
         return countPopulationSlowCase() == 1;
     }
@@ -892,8 +1298,9 @@ public class APInt
     }
 
     /**
-     * this function counts the number of set bits in a value,
+     * this function counts the number of one bits in a value,
      * (64 bit edition.)
+     *
      * @param val
      * @return
      */
@@ -903,13 +1310,13 @@ public class APInt
         v = (v & 0x3333333333333333L) + ((v >> 2) & 0x3333333333333333L);
         v = (v + (v >> 4)) & 0x0F0F0F0F0F0F0F0FL;
 
-        return (int)((v * 0x0101010101010101L) >> 56);
+        return (int) ((v * 0x0101010101010101L) >> 56);
     }
 
     public int countPopulationSlowCase()
     {
         int count = 0;
-        for (int i = 0; i< getNumWords(); ++i)
+        for (int i = 0; i < getNumWords(); ++i)
         {
             count += countPopulation_64(pVal[i]);
         }
@@ -919,6 +1326,7 @@ public class APInt
     /**
      * Checks if an unsigned integer fits into the given (dynamic)
      * bit width.
+     *
      * @param N
      * @param val
      * @return
@@ -931,6 +1339,7 @@ public class APInt
     /**
      * Checks if an signed integer fits into the given (dynamic)
      * bit width.
+     *
      * @param N
      * @param val
      * @return
@@ -942,18 +1351,16 @@ public class APInt
 
     public boolean get(int bitPosition)
     {
-        assert bitPosition< getBitWidth()
-                :"Bit position out of bounds!";
-        return (maskBit(bitPosition) &
-                (isSingleWord()? val : pVal[whichWord(bitPosition)])) != 0;
+        assert bitPosition < getBitWidth() : "Bit position out of bounds!";
+        return (maskBit(bitPosition) & (isSingleWord() ? val : pVal[whichWord(bitPosition)])) != 0;
     }
 
     public long getSExtValue()
     {
         if (isSingleWord())
-            return (val << ((APINT_BITS_PER_WORD - bitWidth))) >>
-                    (APINT_BITS_PER_WORD - bitWidth);
-        assert getMinSignedBits()<=64 :"Too many bits for long";
+            return (val << ((APINT_BITS_PER_WORD - bitWidth))) >> (
+                    APINT_BITS_PER_WORD - bitWidth);
+        assert getMinSignedBits() <= 64 : "Too many bits for long";
         return pVal[0];
     }
 
@@ -961,19 +1368,107 @@ public class APInt
     {
         if (isSingleWord())
             return val;
-        assert getActiveBits()<=64:"Too many bits for long";
+        assert getActiveBits() <= 64 : "Too many bits for long";
         return pVal[0];
     }
 
-
     public long getLimitedValue(int limit)
     {
-        return getActiveBits()>64 || getZExtValue()>limit ? limit:gtZExtValue();
+        return getActiveBits() > 64 || getZExtValue() > limit ?
+                limit :
+                getZExtValue();
     }
 
-    public APInt ashr(int shiftAmt)
+    /**
+     * Performs arithmetic shift-right operation by {@code shiftAmt}.
+     *
+     * @param shiftAmt
+     * @return
+     */
+    public APInt ashr(long shiftAmt)
     {
+        assert shiftAmt <= bitWidth : "Invalid shift amount";
+        if (shiftAmt == 0)
+            return this;
 
+        // Handle single word shifts with built-in ashr.
+        if (isSingleWord())
+        {
+            if (shiftAmt == bitWidth)
+                return new APInt(bitWidth, 0); // undefined behavior.
+            else
+            {
+                int signBit = APINT_BITS_PER_WORD - bitWidth;
+                return new APInt(bitWidth,
+                        (val << signBit >> signBit) >> shiftAmt);
+            }
+        }
+
+        // If all the bits were shifted out, the result is, technically, undefined.
+        // We return -1 if it was negative, 0 otherwise. We check this early to avoid
+        // issues in the algorithm below.
+        if (shiftAmt == bitWidth)
+        {
+            if (isNegative())
+                return new APInt(bitWidth, -1L, true);
+            else
+                return new APInt(bitWidth, 0);
+        }
+
+        // create some space for the result.
+        long[] valPtr = new long[getNumWords()];
+
+        int wordShift = (int) shiftAmt % APINT_BITS_PER_WORD;
+        int offset = (int) shiftAmt / APINT_BITS_PER_WORD;
+        int breakWord = getNumWords() - 1 - offset;
+        int bitsInWord = (int) whichBit(bitWidth); // how many bits in last word?
+
+        if (bitsInWord == 0)
+            bitsInWord = APINT_BITS_PER_WORD;
+
+        if (wordShift == 0)
+        {
+            for (int i = 0; i <= breakWord; i++)
+            {
+                valPtr[i] = pVal[i + offset];
+            }
+
+            if (isNegative())
+                if (bitsInWord < APINT_BITS_PER_WORD)
+                    valPtr[breakWord] |= ~0l << bitsInWord;
+        }
+        else
+        {
+            for (int i = 0; i < breakWord; i++)
+            {
+                valPtr[i] =
+                        pVal[i + offset] >> wordShift | (pVal[i + offset + 1] << (APINT_BITS_PER_WORD - wordShift));
+                ;
+            }
+
+            valPtr[breakWord] = pVal[breakWord + offset] >> wordShift;
+
+            if (isNegative())
+            {
+                if (wordShift > bitsInWord)
+                {
+                    if (breakWord > 0)
+                        valPtr[breakWord - 1] |=
+                                ~0L << (APINT_BITS_PER_WORD - wordShift + bitsInWord);
+                }
+                else
+                {
+                    valPtr[breakWord] |= (~0L << (bitsInWord - wordShift));
+                }
+            }
+        }
+
+        // Remaining words are 0 or -1, just assign them.
+        long fillValue = (isNegative()) ? -1L : 0;
+        for (int i = breakWord + 1; i < getNumWords(); i++)
+            valPtr[i] = fillValue;
+
+        return new APInt(valPtr, bitWidth).clearUnusedBits();
     }
 
     public APInt ashr(final APInt shiftAmt)
@@ -981,9 +1476,79 @@ public class APInt
         return ashr((int) shiftAmt.getLimitedValue(bitWidth));
     }
 
-    public APInt lshr(int shiftAmt)
+    /**
+     * Logical right-shift this APInt by shiftAmt.
+     *
+     * @param shiftAmt
+     * @return
+     */
+    public APInt lshr(long shiftAmt)
     {
+        if (isSingleWord())
+        {
+            if (shiftAmt == bitWidth)
+                return new APInt(bitWidth, 0);
+            else
+                return new APInt(bitWidth, val >> shiftAmt);
+        }
 
+        // If all the bits were shifted out, the result is 0. This avoids issues
+        // with shifting by the size of the integer type, which produces undefined
+        // results. We define these "undefined results" to always be 0.
+        if (shiftAmt == bitWidth)
+            return new APInt(bitWidth, 0);
+
+        // If none of the bits are shifted out, the result is *this. This avoids
+        // issues with shifting by the size of the integer type, which produces
+        // undefined results in the code below. This is also an optimization.
+        if (shiftAmt == 0)
+            return this;
+
+        long[] valPtr = new long[getNumWords()];
+
+        // If we are shifting less than a word, compute the shift with a simple carry
+        if (shiftAmt < APINT_BITS_PER_WORD)
+        {
+            long carray = 0;
+            for (int i = getNumWords() - 1; i >= 0; i--)
+            {
+                valPtr[i] = (pVal[i] >> shiftAmt) | carray;
+                carray = pVal[i] << (APINT_BITS_PER_WORD - shiftAmt);
+            }
+
+            return new APInt(valPtr, bitWidth).clearUnusedBits();
+        }
+
+        // Compute some values needed by the remaining shift algorithms
+        int wordShift = (int) shiftAmt % APINT_BITS_PER_WORD;
+        int offset = (int) shiftAmt / APINT_BITS_PER_WORD;
+
+        if (wordShift == 0)
+        {
+            for (int i = 0; i < getNumWords() - offset; i++)
+                valPtr[i] = pVal[i + offset];
+            for (int i = getNumWords() - offset; i < getNumWords(); i++)
+                valPtr[i] = 0;
+            return new APInt(valPtr, bitWidth).clearUnusedBits();
+        }
+
+        // Shift the low order words
+        int breakWord = getNumWords() - offset - 1;
+        for (int i = 0; i < breakWord; i++)
+        {
+            valPtr[i] =
+                    (pVal[i + offset] >> wordShift) | (pVal[i + offset + 1] << (
+                            APINT_BITS_PER_WORD - wordShift));
+        }
+
+        // Shift the break word.
+        valPtr[breakWord] = pVal[breakWord + offset] >> wordShift;
+
+        // Remaining words are 0.
+        for (int i = breakWord + 1; i < getNumWords(); i++)
+            valPtr[i] = 0;
+
+        return new APInt(valPtr, bitWidth).clearUnusedBits();
     }
 
     public APInt lshr(final APInt shiftAmt)
@@ -996,9 +1561,15 @@ public class APInt
         return shl((int) shiftAmt.getLimitedValue(bitWidth));
     }
 
+    /**
+     * Left-shit this APInt by {@code shiftAmt}.
+     *
+     * @param shiftAmt
+     * @return
+     */
     public APInt shl(int shiftAmt)
     {
-        assert  shiftAmt<=bitWidth:"Invalid shift amounts";
+        assert shiftAmt <= bitWidth : "Invalid shift amounts";
         if (isSingleWord())
         {
             if (shiftAmt == bitWidth)
@@ -1010,6 +1581,7 @@ public class APInt
 
     /**
      * Arithmetic right-shift the APInt by shiftAmt.
+     *
      * @param lhs
      * @param shiftAmt
      * @return
@@ -1022,5 +1594,1065 @@ public class APInt
     public boolean getBoolValue()
     {
         return this != null;
+    }
+
+    public APInt set()
+    {
+        if (isSingleWord())
+        {
+            val = -1L;
+            return clearUnusedBits();
+        }
+        for (int i = 0; i < getNumWords(); i++)
+            pVal[i] = -1l;
+        return clearUnusedBits();
+    }
+
+    public APInt set(int bitPosition)
+    {
+        if (isSingleWord())
+        {
+            val |= maskBit(bitPosition);
+        }
+        else
+            pVal[whichWord(bitPosition)] |= maskBit(bitPosition);
+        return this;
+    }
+
+    public APInt clear()
+    {
+        if (isSingleWord())
+        {
+            val = 0L;
+            return clearUnusedBits();
+        }
+        for (int i = 0; i < getNumWords(); i++)
+            pVal[i] = 0L;
+        return clearUnusedBits();
+    }
+
+    public APInt clear(int bitPosition)
+    {
+        if (isSingleWord())
+        {
+            val &= ~maskBit(bitPosition);
+        }
+        else
+            pVal[whichWord(bitPosition)] &= ~maskBit(bitPosition);
+        return this;
+    }
+
+    public static APInt getMaxValue(int numBits)
+    {
+        return new APInt(numBits, 0).set();
+    }
+
+    public static APInt getSignedMaxValue(int numBits)
+    {
+        return new APInt(numBits, 0).clear(numBits - 1);
+    }
+
+    public static APInt getMinValue(int numBits)
+    {
+        return new APInt(numBits, 0);
+    }
+
+    public static APInt getSignedMinValue(int numBits)
+    {
+        return new APInt(numBits, 0).set(numBits - 1);
+    }
+
+    public static APInt getSignBit(int bitwidth)
+    {
+        return getSignedMinValue(bitwidth);
+    }
+
+    public static APInt getAllOnesValue(int numBits)
+    {
+        return new APInt(numBits, 0).set();
+    }
+
+    public static APInt getNullValue(int numBits)
+    {
+        return new APInt(numBits, 0);
+    }
+
+    /**
+     * Performs a bitwise complement operation on this APInt value.
+     *
+     * @return
+     */
+    public APInt not()
+    {
+        APInt result = new APInt(this);
+        result.flip();
+        return result;
+    }
+
+    public boolean lNot()
+    {
+        if (isSingleWord())
+            return val == 0;
+
+        for (int i = 0; i < getNumWords(); i++)
+            if (pVal[i] != 0)
+                return false;
+
+        return true;
+    }
+
+    public APInt add(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "bit width must be same!";
+
+        if (isSingleWord())
+            return new APInt(bitWidth, val + rhs.val);
+
+        APInt result = new APInt(bitWidth, 0);
+        add(result.pVal, pVal, rhs.pVal, getNumWords());
+        return result.clearUnusedBits();
+    }
+
+    public static boolean add(long[] dest, long[] x, long[] y, int len)
+    {
+        boolean carray = false;
+        for (int i = 0; i < len; i++)
+        {
+            long temp = Math.min(x[i], y[i]);
+            dest[i] = x[i] + y[i] + (carray ? 1 : 0);
+            carray = dest[i] < temp || (carray && dest[i] == temp);
+        }
+        return carray;
+    }
+
+    /**
+     * Subtracts the integer array y from the integer array x
+     *
+     * @param dest
+     * @param x
+     * @param y
+     * @param len
+     * @return return the borrow out.
+     */
+    public static boolean sub(long[] dest, long[] x, long[] y, int len)
+    {
+        boolean borrow = false;
+        for (int i = 0; i < len; i++)
+        {
+            long temp = borrow ? x[i] - 1 : x[i];
+            borrow = y[i] > temp || (borrow && x[i] == 0);
+            dest[i] = temp - y[i];
+        }
+        return borrow;
+    }
+
+    public APInt sub(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+
+        if (isSingleWord())
+            return new APInt(bitWidth, val - rhs.val);
+        APInt result = new APInt(bitWidth, 0);
+        sub(result.pVal, pVal, rhs.pVal, getNumWords());
+        return result.clearUnusedBits();
+    }
+
+    /**
+     * Multiplies an integer array, x by a a uint64_t integer and places the result
+     * into dest.
+     *
+     * @param dest
+     * @param x
+     * @param len
+     * @param y
+     * @return
+     */
+    public static long mul1(long[] dest, long[] x, int len, long y)
+    {
+        // Split y into high 32-bit part (hy)  and low 32-bit part (ly)
+        long ly = y & 0xffffffffL, hy = y >>> 32;
+        long carry = 0;
+
+        // For each digit of x.
+        for (int i = 0; i < len; i++)
+        {
+            // Split x into high and low words
+            long lx = x[i] & 0xffffffffL;
+            long hx = x[i] >>> 32;
+
+            // hasCarry - A flag to indicate if there is a carry to the next digit.
+            // hasCarry == 0, no carry
+            // hasCarry == 1, has carry
+            // hasCarry == 2, no carry and the calculation result == 0.
+            int hasCarry = 0;
+            dest[i] = carry + lx * ly;
+
+            // Determine if the add above introduces carry.
+            hasCarry = (dest[i] < carry) ? 1 : 0;
+            carry = hx * hy + (dest[i] >>> 32) + (hasCarry != 0 ? (1 << 32) : 0);
+
+            // The upper limit of carry can be (2^32 - 1)(2^32 - 1) +
+            // (2^32 - 1) + 2^32 = 2^64.
+            hasCarry = (carry == 0 && hasCarry != 0) ? 1 : (carry == 0 ? 2 : 0);
+
+            carry += (lx * ly) * 0xffffffffL;
+            dest[i] = (carry << 32) | (dest[i] & 0xffffffffL);
+            carry = (((carry == 0 && hasCarry != 2) || hasCarry == 1) ?
+                    (1L << 32) :
+                    0) + (carry >> 32) + ((lx * hy) >> 32) + hx * hy;
+        }
+        return carry;
+    }
+
+    /**
+     * Multiplies integer array x by integer array y and stores the result into
+     * the integer array dest. Note that dest's size must be >= xlen + ylen.
+     *
+     * @param dest
+     * @param x
+     * @param lenX
+     * @param y
+     * @param lenY
+     */
+    public static void mul(long[] dest, long[] x, int lenX, long[] y, int lenY)
+    {
+        assert dest.length >= lenX + lenY;
+        dest[lenX] = mul1(dest, x, lenX, y[0]);
+
+        for (int i = 1; i < lenY; i++)
+        {
+            long ly = y[i] & 0xffffffffL, hy = y[i] >>> 32;
+            long carry = 0, lx = 0, hx = 0;
+
+            for (int j = 0; j < lenY; j++)
+            {
+                lx = x[j] & 0xffffffffL;
+                hx = x[j] >>> 32;
+
+                // hasCarry - A flag to indicate if has carry.
+                // hasCarry == 0, no carry
+                // hasCarry == 1, has carry
+                // hasCarry == 2, no carry and the calculation result == 0.
+                int hasCarry = 0;
+                long result = carry + lx * ly;
+                hasCarry = (result < carry) ? 1 : 0;
+                carry = (hasCarry != 0 ? (1L << 32) : 0);
+                hasCarry = (carry == 0 && hasCarry != 0) ?
+                        1 :
+                        (carry == 0 ? 2 : 0);
+
+                carry += (lx * hy) & 0xffffffffL;
+                result = (carry << 32) | (result & 0xffffffffL);
+                dest[i + j] = result;
+                carry = (((carry == 0 && hasCarry != 2) || hasCarry == 1) ?
+                        (1L << 32) :
+                        0) + (carry >> 32) + (dest[i + j] < result ? 1 : 0) + (
+                        (lx * hy) >> 32) + hx * hy;
+            }
+            dest[i + lenX] = carry;
+        }
+    }
+
+    public APInt mul(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bitwidth must be same!";
+        if (isSingleWord())
+            return new APInt(bitWidth, val * rhs.val);
+        APInt result = new APInt(bitWidth, 0);
+        result.mulAssign(rhs);
+        return result.clearUnusedBits();
+    }
+
+    /**
+     * Performs &= operation on this APInt value and rhs.
+     *
+     * @param rhs
+     * @return
+     */
+    public APInt andAssign(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        if (isSingleWord())
+        {
+            val &= rhs.val;
+            return this;
+        }
+
+        int numWords = getNumWords();
+        for (int i = 0; i < numWords; i++)
+            pVal[i] &= rhs.pVal[i];
+        return this;
+    }
+
+    /**
+     * Performs |= operation on this APInt value and rhs.
+     *
+     * @param rhs
+     * @return
+     */
+    public APInt orAssign(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        if (isSingleWord())
+        {
+            val |= rhs.val;
+            return this;
+        }
+
+        int numWords = getNumWords();
+        for (int i = 0; i < numWords; i++)
+            pVal[i] |= rhs.pVal[i];
+        return this;
+    }
+
+    /**
+     * Performs ^= operation on this APInt value and rhs.
+     *
+     * @param rhs
+     * @return
+     */
+    public APInt xorAssign(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        if (isSingleWord())
+        {
+            val ^= rhs.val;
+            return this;
+        }
+
+        int numWords = getNumWords();
+        for (int i = 0; i < numWords; i++)
+            pVal[i] ^= rhs.pVal[i];
+        return this;
+    }
+
+    public APInt addAssign(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+
+        if (isSingleWord())
+        {
+            val += rhs.val;
+            return this;
+        }
+
+        int lhsBits = getActiveBits();
+        int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
+        if (lhsWords == 0)
+            //　0 + X = X;
+            return this;
+
+        int rhsBits = rhs.getActiveBits();
+        int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
+        if (rhsWords == 0)
+            //X + 0 = X;
+            return this;
+
+        add(pVal, pVal, rhs.pVal, getNumWords());
+        return clearUnusedBits();
+    }
+
+    public APInt subAssign(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+
+        if (isSingleWord())
+            val -= rhs.val;
+        else
+            sub(pVal, pVal, rhs.pVal, getNumWords());
+        return clearUnusedBits();
+    }
+
+    public APInt shlAssign(int shiftAmt)
+    {
+        shl(shiftAmt);
+        return this;
+    }
+
+    public APInt ashrAssign(int shiftAmt)
+    {
+        ashr(shiftAmt);
+        return this;
+    }
+
+    public APInt lshrAssign(int shiftAmt)
+    {
+        lshr(shiftAmt);
+        return this;
+    }
+
+    /**
+     * Performs *= operation on this APInt value and rhs.
+     *
+     * @param rhs
+     * @return
+     */
+    public APInt mulAssign(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        if (isSingleWord())
+        {
+            val *= rhs.val;
+            clearUnusedBits();
+            return this;
+        }
+
+        int lhsBits = getActiveBits();
+        int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
+        if (lhsWords == 0)
+            // 0 * x = 0.
+            return this;
+
+        int rhsBits = getActiveBits();
+        int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
+        if (rhsWords == 0)
+            // X * 0 = 0.
+            return this;
+
+        int destWords = rhsWords + lhsWords;
+        long[] dest = new long[destWords];
+
+        mul(dest, pVal, lhsWords, rhs.pVal, rhsWords);
+
+        clear();
+        int wordsToCopy = destWords >= getNumWords() ? getNumWords() : destWords;
+        System.arraycopy(dest, 0, pVal, 0, wordsToCopy);
+        dest = null;
+        return this;
+    }
+
+    /**
+     * Perform an unsigned divide operation on this APInt by RHS. Both this and
+     * RHS are treated as unsigned quantities for purposes of this division.
+     *
+     * @param rhs
+     * @return a new APInt value containing the division result
+     */
+    public APInt udiv(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+
+        // first, deal with the easy case.
+        if (isSingleWord())
+        {
+            assert rhs.val != 0 : "Divide by zero?";
+            return new APInt(bitWidth, val / rhs.val);
+        }
+
+        // Get some facts about the LHS and RHS number of bits and words
+        int rhsBits = rhs.getActiveBits();
+        int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
+        assert rhsWords != 0 : "divide by zeror?";
+
+        int lhsBits = getActiveBits();
+        int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
+
+        if (lhsWords == 0)
+            // 0 / X = 0
+            return new APInt(bitWidth, 0);
+        else if (lhsWords < rhsWords || ult(rhs))
+        {
+            // X/Y ===> 0, if and only X < Y.
+            return new APInt(bitWidth, 0);
+        }
+        else if (this.eq(rhs))
+        {
+            // X == Y ===> 1.
+            return new APInt(bitWidth, 1);
+        }
+        else if (lhsWords == 1 && rhsWords == 1)
+        {
+            // All high words are zero, just use native divide
+            return new APInt(bitWidth, pVal[0] / rhs.pVal[0]);
+        }
+
+        // We have to compute it the hard way. Invoke the Knuth divide algorithm.
+        APInt quotient = new APInt(1, 0);
+        OutParamWrapper<APInt> x = new OutParamWrapper<>(quotient);
+        divide(this, lhsWords, rhs, rhsWords, x, null);
+        return x.get();
+    }
+
+    /**
+     * Signed divide this APInt by APInt RHS.
+     *
+     * @param rhs
+     * @return
+     */
+    public APInt sdiv(final APInt rhs)
+    {
+        if (isNegative())
+            if (rhs.isNegative())
+                return negative().udiv(rhs.negative());
+            else
+                return negative().udiv(rhs).negative();
+        else if (rhs.isNegative())
+            return udiv(rhs.negative()).negative();
+        return udiv(rhs);
+    }
+
+    /**
+     * This is used by the toString method to divide by the radix. It simply
+     * provides a more convenient form of divide for internal use since KnuthDiv
+     * has specific constraints on its inputs. If those constraints are not met
+     * then it provides a simpler form of divide.
+     *
+     * @param lhs
+     * @param lhsWords
+     * @param rhs
+     * @param rhsWords
+     * @param quotient
+     * @param remainder
+     */
+    public static void divide(final APInt lhs, int lhsWords, final APInt rhs,
+            int rhsWords, OutParamWrapper<APInt> quotient,
+            OutParamWrapper<APInt> remainder)
+    {
+        assert lhsWords >= rhsWords : "Fractional result";
+
+        // First, compose the values into an array of 32-bit words instead of
+        // 64-bit words. This is a necessity of both the "short division" algorithm
+        // and the the Knuth "classical algorithm" which requires there to be native
+        // operations for +, -, and * on an m bit value with an m*2 bit result. We
+        // can't use 64-bit operands here because we don't have native results of
+        // 128-bits. Furthermore, casting the 64-bit values to 32-bit values won't
+        // work on large-endian machines.
+        long mask = ~0L >> 32;
+        int n = rhsWords * 2;
+        int m = (lhsWords * 2) - n;
+
+        // Allocate space for the temporary values we need either on the stack, if
+        // it will fit, or on the heap if it won't.
+        int space[] = new int[128];
+        int u[] = null, v[] = null, q[] = null, r[] = null;
+
+        if ((remainder.get().ne(0) ? 4 : 3) * n + 2 * m + 1 <= 128)
+        {
+            u = space;
+            v = new int[128 - (m + n + 1)];
+            System.arraycopy(space, (m + n + 1), v, 0, v.length);
+            q = new int[128 - (m + n + 1 + n)];
+            System.arraycopy(space, m + n + 1 + n, q, 0, q.length);
+            if (remainder.get().ne(0))
+            {
+                r = new int[128 - ((m + n + 1) + n + (m + n))];
+                System.arraycopy(space, (m + n + 1) + n + (m + n), r, 0, r.length);
+            }
+        }
+        else
+        {
+            u = new int[m + n + 1];
+            v = new int[n];
+            q = new int[m + n];
+            if (remainder.get().ne(0))
+                r = new int[n];
+        }
+
+        // Initialize the dividend
+        Arrays.fill(u, 0, u.length, 0);
+        for (int i = 0; i < lhsWords; i++)
+        {
+            long temp = lhs.getNumWords() == 1 ? lhs.val : lhs.pVal[i];
+            u[i * 2] = (int) (temp & mask);
+            u[i * 2 + 1] = (int) (temp >> 32);
+        }
+
+        // this extra word is for "spill" in the Knuth algorithm.
+        u[m + n] = 0;
+
+        // Initialize the divisor
+        Arrays.fill(v, 0, v.length, 0);
+        for (int i = 0; i < rhsWords; i++)
+        {
+            long temp = rhs.getNumWords() == 1 ? rhs.val : rhs.pVal[i];
+            u[i * 2] = (int) (temp & mask);
+            u[i * 2 + 1] = (int) (temp >> 32);
+        }
+
+        // initialize the quotient and remainder
+        Arrays.fill(q, 0, q.length, 0);
+        if (remainder.get() != null)
+            Arrays.fill(r, 0, r.length, 0);
+
+        // Now, adjust m and n for the Knuth division. n is the number of words in
+        // the divisor. m is the number of words by which the dividend exceeds the
+        // divisor (i.e. m+n is the length of the dividend). These sizes must not
+        // contain any zero words or the Knuth algorithm fails.
+        for (int i = n; i > 0 && v[i - 1] == 0; i--)
+        {
+            n--;
+            m++;
+        }
+
+        for (int i = m + n; i > 0 && u[i - 1] == 0; i--)
+            m--;
+
+        // If we're left with only a single word for the divisor, Knuth doesn't work
+        // so we implement the short division algorithm here. This is much simpler
+        // and faster because we are certain that we can divide a 64-bit quantity
+        // by a 32-bit quantity at hardware speed and short division is simply a
+        // series of such operations. This is just like doing short division but we
+        // are using base 2^32 instead of base 10.
+        assert n != 0 : "Divide by zero?";
+
+        if (n == 1)
+        {
+            int divisor = v[0];
+            int rem = 0;
+            for (int i = m + n - 1; i >= 0; i--)
+            {
+                long partial_div = (long) rem << 32 | u[i];
+                if (partial_div == 0)
+                {
+                    q[i] = 0;
+                    rem = 0;
+                }
+                else if (partial_div < divisor)
+                {
+                    q[i] = 0;
+                    rem = (int) partial_div;
+                }
+                else if (partial_div == divisor)
+                {
+                    q[i] = 1;
+                    rem = 0;
+                }
+                else
+                {
+                    q[i] = (int) (partial_div / divisor);
+                    rem = (int) (partial_div - q[i] * divisor);
+                }
+            }
+
+            if (r != null)
+                r[0] = rem;
+        }
+        else
+        {
+            // Now we're ready to invoke the Knuth classical divide algorithm. In this
+            // case n > 1.
+            knuthDiv(u, v, q, r, m, n);
+        }
+
+        if (quotient != null)
+        {
+            // Set up the Quotient values's memory.
+            if (quotient.get().bitWidth != lhs.bitWidth)
+            {
+                if (quotient.get().isSingleWord())
+                    quotient.get().val = 0;
+                else
+                    quotient.get().pVal = null;
+                quotient.get().bitWidth = lhs.bitWidth;
+
+                if (!quotient.get().isSingleWord())
+                    quotient.get().pVal = new long[quotient.get().getNumWords()];
+            }
+            else
+                quotient.get().clear();
+
+            // The quotient is in Q. Reconstitute the quotient into Quotient's low
+            // order words.
+            if (lhsWords == 1)
+            {
+                long temp = (long) q[0] | (((long) q[1]) << (APINT_BITS_PER_WORD
+                        / 2));
+                if (quotient.get().isSingleWord())
+                    quotient.get().val = temp;
+                else
+                    quotient.get().pVal[0] = temp;
+            }
+            else
+            {
+                assert !quotient.get()
+                        .isSingleWord() : "Quotient APInt not large enough";
+                for (int i = 0; i < lhsWords; i++)
+                    quotient.get().pVal[i] =
+                            (long) (q[i * 2]) | ((long) (q[i * 2 + 1]) << (
+                                    APINT_BITS_PER_WORD / 2));
+            }
+        }
+
+        // If the caller wants the remainder
+        if (remainder != null)
+        {
+            // Set up the Remainder value's memory.
+            if (remainder.get().bitWidth != rhs.bitWidth)
+            {
+                if (remainder.get().isSingleWord())
+                    remainder.get().val = 0;
+                else
+                    remainder.get().pVal = null;
+                remainder.get().bitWidth = rhs.bitWidth;
+                if (!remainder.get().isSingleWord())
+                    remainder.get().pVal = new long[remainder.get().getNumWords()];
+            }
+            else
+            {
+                remainder.get().clear();
+
+                // The remainder is in R. Reconstitute the remainder into Remainder's low
+                // order words.
+                if (rhsWords == 1)
+                {
+                    long temp =
+                            (long) r[0] | (long) r[1] << (APINT_BITS_PER_WORD / 2);
+                    if (remainder.get().isSingleWord())
+                        remainder.get().val = temp;
+                    else
+                        remainder.get().pVal[0] = temp;
+                }
+                else
+                {
+                    assert !remainder.get()
+                            .isSingleWord() : "Remainder APInt not large enough";
+                    for (int i = 0; i < rhsWords; i++)
+                        remainder.get().pVal[i] =
+                                (long) r[i * 2] | (long) r[2 * i + 1] << (
+                                        APINT_BITS_PER_WORD / 2);
+                }
+            }
+        }
+
+        // clean up the memory.
+        u = null;
+        v = null;
+        q = null;
+        r = null;
+    }
+
+    /**
+     * Implementation of Knuth's Algorithm D (Division of nonnegative integers)
+     * from "Art of Computer Programming, Volume 2", section 4.3.1, p. 272. The
+     * variables here have the same names as in the algorithm. Comments explain
+     * the algorithm and any deviation from it.
+     *
+     * @param U
+     * @param V
+     * @param Q
+     * @param R
+     * @param m
+     * @param n
+     */
+    private static void knuthDiv(int[] U, int[] V, int[] Q, int[] R, int m, int n)
+    {
+        assert U != null : "Must provide dividend!";
+        assert V != null : "Must provide divisor!";
+        assert Q != null : "Must provide quotient!";
+        assert U != V && U != Q && V != Q : "Must use different memory";
+        assert n > 1 : "n must be >1";
+
+        // Knuth uses the value b as the base of the number system. In our case b
+        // is 2^31 so we just set it to -1u.
+        long b = (long) 1 << 32;
+
+        // D1. [Normalize.] Set d = b / (v[n-1] + 1) and multiply all the digits of
+        // u and v by d. Note that we have taken Knuth's advice here to use a power
+        // of 2 value for d such that d * v[n-1] >= b/2 (b is the base). A power of
+        // 2 allows us to shift instead of multiply and it is easy to determine the
+        // shift amount from the leading zeros.  We are basically normalizing the u
+        // and v so that its high bits are shifted to the top of v's range without
+        // overflow. Note that this can require an extra word in u so that u must
+        // be of length m+n+1.
+        int shift = countLeadingZeros32(V[n - 1]);
+        int vCarry = 0;
+        int uCarry = 0;
+        if (shift != 0)
+        {
+            for (int i = 0; i < m + n; i++)
+            {
+                int temp = U[i] >>> (32 - shift);
+                U[i] = (U[i] << shift) | uCarry;
+                uCarry = temp;
+            }
+
+            for (int i = 0; i < n; i++)
+            {
+                int temp = V[i] >>> (32 - shift);
+                V[i] = (V[i] << shift) | vCarry;
+                vCarry = temp;
+            }
+        }
+        U[m + n] = uCarry;
+
+        // D2. [Initialize j.]  Set j to m. This is the loop counter over the places.
+        int j = m;
+        do
+        {
+            // D3. [Calculate q'.].
+            //     Set qp = (u[j+n]*b + u[j+n-1]) / v[n-1]. (qp=qprime=q')
+            //     Set rp = (u[j+n]*b + u[j+n-1]) % v[n-1]. (rp=rprime=r')
+            // Now test if qp == b or qp*v[n-2] > b*rp + u[j+n-2]; if so, decrease
+            // qp by 1, inrease rp by v[n-1], and repeat this test if rp < b. The test
+            // on v[n-2] determines at high speed most of the cases in which the trial
+            // value qp is one too large, and it eliminates all cases where qp is two
+            // too large.
+            long dividend = ((long) U[j + n] << 32) + U[j + n - 1];
+            long qp = dividend / V[n - 1];
+            long rp = dividend % V[n - 1];
+            if (qp == b || qp * V[n - 2] > b * rp + U[j + n - 2])
+            {
+                qp--;
+                rp += V[n - 1];
+                if (rp < b && (qp == b || qp * V[n - 2] > b * rp + U[j + n - 2]))
+                    qp--;
+            }
+
+            // D4. [Multiply and subtract.] Replace (u[j+n]u[j+n-1]...u[j]) with
+            // (u[j+n]u[j+n-1]..u[j]) - qp * (v[n-1]...v[1]v[0]). This computation
+            // consists of a simple multiplication by a one-place number, combined with
+            // a subtraction.
+            boolean isNeg = false;
+            for (int i = 0; i < n; i++)
+            {
+                long temp = (long) U[j + i] | (long) U[j + i + 1] << 32;
+                long subtrahend = (long) qp * (long) V[i];
+                boolean borrow = subtrahend > temp;
+
+                long result = temp - subtrahend;
+                int k = j + i;
+                U[k++] = (int) (result & (b - 1));
+                U[k++] = (int) (result >>> 32);
+                while (borrow && k <= m + n)
+                {
+                    borrow = U[k] == 0;
+                    U[k]--;
+                    k++;
+                }
+                isNeg |= borrow;
+            }
+            // The digits (u[j+n]...u[j]) should be kept positive; if the result of
+            // this step is actually negative, (u[j+n]...u[j]) should be left as the
+            // true value plus b**(n+1), namely as the b's complement of
+            // the true value, and a "borrow" to the left should be remembered.
+            if (isNeg)
+            {
+                boolean carry = true;
+                for (int i = 0; i < m + n; i++)
+                {
+                    U[i] = ~U[i] + (carry ? 1 : 0);
+                    carry = carry && U[i] == 0;
+                }
+            }
+
+            // D5. [Test remainder.] Set q[j] = qp. If the result of step D4 was
+            // negative, go to step D6; otherwise go on to step D7.
+            Q[j] = (int) qp;
+            if (isNeg)
+            {
+                // D6. [Add back]. The probability that this step is necessary is very
+                // small, on the order of only 2/b. Make sure that test data accounts for
+                // this possibility. Decrease q[j] by 1
+                Q[j]--;
+                // and add (0v[n-1]...v[1]v[0]) to (u[j+n]u[j+n-1]...u[j+1]u[j]).
+                // A carry will occur to the left of u[j+n], and it should be ignored
+                // since it cancels with the borrow that occurred in D4.
+                boolean carry = false;
+                for (int i = 0; i < n; i++)
+                {
+                    int limit = Math.min(U[j + i], V[i]);
+                    U[j + i] += V[i] + (carry ? 1 : 0);
+                    carry = U[j + i] < limit || (carry && U[j + i] == limit);
+                }
+
+                U[j + n] = carry ? 1 : 0;
+            }
+
+            // D7. [Loop on j.]  Decrease j by one. Now if j >= 0, go back to D3.
+        } while (--j >= 0);
+
+        // D8. [Unnormalize]. Now q[...] is the desired quotient, and the desired
+        // remainder may be obtained by dividing u[...] by d. If r is non-null we
+        // compute the remainder (urem uses this).
+        if (R != null)
+        {
+            // The value d is expressed by the "shift" value above since we avoided
+            // multiplication by d by using a shift left. So, all we have to do is
+            // shift right here. In order to mak
+            if (shift != 0)
+            {
+                int carry = 0;
+                for (int i = n - 1; i >= 0; i--)
+                {
+                    R[i] = (U[i] >> shift) | carry;
+                    carry = U[i] << (32 - shift);
+                }
+            }
+            else
+            {
+                for (int i = n - 1; i >= 0; i--)
+                {
+                    R[i] = U[i];
+                }
+            }
+        }
+    }
+
+    /**
+     * Negates this using two's complement logic.
+     *
+     * @return
+     */
+    public APInt negative()
+    {
+        return new APInt(bitWidth, 0).sub(this);
+    }
+
+    /**
+     * Perform an unsigned remainder operation on this APInt with RHS being the
+     * divisor. Both this and RHS are treated as unsigned quantities for purposes
+     * of this operation. Note that this is a true remainder operation and not
+     * a modulo operation because the sign follows the sign of the dividend
+     * which is *this.
+     * @param rhs
+     * @return
+     */
+    public APInt urem(final APInt rhs)
+    {
+        assert bitWidth == rhs.bitWidth : "Bit width must be same!";
+        if (isSingleWord())
+        {
+            assert rhs.val != 0 : "Remainder by zero?";
+            return new APInt(bitWidth, val % rhs.val);
+        }
+
+        int lhsBits = getActiveBits();
+        int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
+
+        int rhsBits = rhs.getActiveBits();
+        int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
+        assert rhsWords != 0 : "Performing remainder operation by zero ???";
+
+        if (lhsWords == 0)
+        {
+            // 0 % Y ==> 0.
+            return new APInt(bitWidth, 0);
+        }
+        else if (lhsWords < rhsWords || ult(rhs))
+        {
+            // X % Y => X, iff X<Y.
+            return this;
+        }
+        else if (this.eq(rhs))
+        {
+            // X % X = 0.
+            return new APInt(bitWidth, 0);
+        }
+        else if (lhsWords == 1)
+        {
+            // All high words are zero, just use native remainder
+            return new APInt(bitWidth, pVal[0] % rhs.pVal[0]);
+        }
+
+        APInt rem = new APInt(1, 0);
+        OutParamWrapper<APInt> x = new OutParamWrapper<>(rem);
+        divide(this, lhsWords, rhs, rhsWords, null, x);
+        return x.get();
+    }
+
+    /**
+     * Signed remainder operation on APInt.
+     * @param rhs
+     * @return
+     */
+    public APInt srem(final APInt rhs)
+    {
+        if (isNegative())
+            if (rhs.isNegative())
+                return negative().urem(rhs.negative()).negative();
+            else
+                return negative().urem(rhs).negative();
+        else if (rhs.isNegative())
+            return urem(rhs.negative());
+        else
+            return urem(rhs);
+    }
+
+    /**
+     * Sometimes it is convenient to divide two APInt values and obtain both the
+     * quotient and remainder. This function does both operations in the same
+     * computation making it a little more efficient. The pair of input arguments
+     * may overlap with the pair of output arguments. It is safe to call
+     * udivrem(X, Y, X, Y), for example.
+     * @param lhs
+     * @param rhs
+     * @param quotient
+     * @param remainder
+     */
+    public static void udivrem(final APInt lhs,
+            final APInt rhs,
+            OutParamWrapper<APInt> quotient,
+            OutParamWrapper<APInt> remainder)
+    {
+        int lhsBits = lhs.getActiveBits();
+        int rhsBits = rhs.getActiveBits();
+
+        int lhsWords = lhsBits == 0 ? 0 : whichWord(lhsBits - 1) + 1;
+        int rhsWords = rhsBits == 0 ? 0 : whichWord(rhsBits - 1) + 1;
+
+        if (lhsWords == 0)
+        {
+            // 0 / Y == 0.
+            quotient.get().assign(0);
+            // 0 % Y == 0.
+            remainder.get().assign(0);
+            return;
+        }
+        if (lhsWords < rhsWords || lhs.ult(rhs))
+        {
+            // X / Y == 0, iff X < Y.
+            quotient.get().assign(0);
+            // X % Y == X, iff X < Y.
+            remainder.get().assign(lhs);
+            return;
+        }
+
+        if (lhs.eq(rhs))
+        {
+            // Y / Y == 1.
+            quotient.get().assign(1);
+            // Y % Y == 0.
+            remainder.get().assign(0);
+            return;
+        }
+
+        if (lhsWords == 1 && rhsWords == 1)
+        {
+            // There is only one word to consider so use the native versions.
+            long lhsValue = lhs.isSingleWord()?lhs.val:lhs.pVal[0];
+            long rhsValue = rhs.isSingleWord()?rhs.val:rhs.pVal[0];
+
+            quotient.get().assign(new APInt(lhs.getBitWidth(), lhsValue / rhsValue));
+            remainder.get().assign(new APInt(lhs.getBitWidth(), lhsValue % rhsValue));
+            return;
+        }
+
+        // Okay, lets do it the long way.
+        divide(lhs, lhsWords, rhs, rhsWords, quotient, remainder);
+    }
+
+    public static void sdivrem(final APInt lhs,
+            final APInt rhs,
+            OutParamWrapper<APInt> quotient,
+            OutParamWrapper<APInt> remainder)
+    {
+        if (lhs.isNegative())
+        {
+            if (rhs.isNegative())
+                udivrem(lhs.negative(), rhs.negative(), quotient, remainder);
+            else
+                udivrem(lhs.negative(), rhs, quotient, remainder);
+            quotient.set(quotient.get().negative());
+            remainder.set(remainder.get().negative());
+        }
+        else if (rhs.isNegative())
+        {
+            udivrem(lhs, rhs.negative(), quotient, remainder);
+            quotient.set(quotient.get().negative());
+        }
+        else
+        {
+            udivrem(lhs, rhs, quotient, remainder);
+        }
     }
 }
