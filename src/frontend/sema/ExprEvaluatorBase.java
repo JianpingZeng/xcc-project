@@ -32,12 +32,6 @@ public abstract class ExprEvaluatorBase<RetTy> extends frontend.ast.StmtVisitor<
 
     protected abstract RetTy error(final Expr expr);
 
-    public RetTy visit(Expr expr)
-    {
-        expr.accept(this);
-        return (RetTy) new Object();
-    }
-
     @Override
     public RetTy visitCallExpr(CallExpr expr)
     {

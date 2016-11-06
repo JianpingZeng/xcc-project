@@ -240,27 +240,4 @@ public final class Pretty extends StmtVisitor
         print("}");
 
     }
-
-    /**
-     * Visits toplevel.
-     *
-     * @param tree The TopLevel tree.
-     */
-    @Override public void visitTopLevel(TopLevel tree)
-    {
-        printUnit(tree);
-    }
-
-    @Override public void visitErroneous(ErroneousTree erroneous)
-    {
-        print("(Error)");
-
-    }
-
-    public void visitTree(Tree tree)
-    {
-        print("(UNKNOWN: " + tree + ")");
-        println();
-    }
-
 }

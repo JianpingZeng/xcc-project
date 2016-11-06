@@ -315,7 +315,14 @@ abstract public class Tree
 			v.visitTopLevel(this);
 		}
 	}
-
+	
+	public abstract static class Stmt extends Tree
+	{
+		Stmt(int tag)
+		{
+			super(tag);
+		}
+	}
 	/**
 	 * @author Xlous.zeng  
 	 * @version 0.1
@@ -397,14 +404,6 @@ abstract public class Tree
 			//v.visitVarDef(this);
 		}
 	}
-
-	public abstract static class Stmt extends Tree
-    {
-        Stmt(int tag)
-        {
-            super(tag);
-        }
-    }
 
     /**
      * This
