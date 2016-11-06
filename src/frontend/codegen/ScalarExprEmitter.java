@@ -23,6 +23,7 @@ import frontend.ast.Tree;
 import frontend.type.QualType;
 
 /**
+ * This class emit code for frontend expression of typed scalar to HIR code.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -30,10 +31,18 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
 {
     private CodeGenFunction cgf;
     private HIRBuilder builder;
+    private boolean ignoreResultAssign;
+
     public ScalarExprEmitter(CodeGenFunction cgf)
+    {
+        this(cgf, false);
+    }
+
+    public ScalarExprEmitter(CodeGenFunction cgf, boolean ignoreResultAssign)
     {
         this.cgf = cgf;
         builder = cgf.builder;
+        this.ignoreResultAssign = ignoreResultAssign;
     }
 
     /**
@@ -49,9 +58,142 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         return null;
     }
 
-    @Override
-    public Value visit(Tree.Expr expr)
+    public Value visitBinMul(Tree.BinaryExpr expr)
     {
         return null;
+    }
+
+    public Value visitBinDiv(Tree.BinaryExpr expr)
+    {
+        return null;
+    }
+
+    public Value visitBinRem(Tree.BinaryExpr expr)
+    {
+        return null;
+    }
+
+    public Value visitBinAdd(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinSub(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinShl(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinShr(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinLT(Tree.BinaryExpr expr)
+    {
+        return null;
+    }
+
+    public Value visitBinGT(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinLE(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinGE(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinEQ(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinNE(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinAnd(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinXor(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinOr(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinLAnd(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinLOr(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinMulAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinDivAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinRemAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinAddAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinSubAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinShlAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinShrAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinAndAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinOrAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinXorAssign(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitBinComma(Tree.BinaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryPostInc(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryPostDec(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryPreInc(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryPreDec(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryAddrOf(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryDeref(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryPlus(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryMinus(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryNot(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryLNot(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryReal(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitUnaryImag(Tree.UnaryExpr expr)
+    {return null;}
+
+    public Value visitStmt(Tree.Stmt s)
+    {
+        return (Value)new Object();
     }
 }
