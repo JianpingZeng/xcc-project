@@ -300,7 +300,7 @@ public final class CodeGenFunction
         return new Instruction.AllocaInst(ty, null, "temp", allocaInstPtr);
     }
 
-    private Type convertType(QualType t)
+    public Type convertType(QualType t)
     {
         return generator.getCodeGenTypes().convertType(t);
     }

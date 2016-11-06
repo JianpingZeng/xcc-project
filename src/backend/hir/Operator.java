@@ -110,7 +110,9 @@ public enum Operator
 	I2S("i2s", I2C.index + 1, 0),
 
 	// other operation
-	Phi("phi", I2S.index + 1, 0);
+	Phi("phi", I2S.index + 1, 0),
+	ICmp("ICmp", Phi.index + 1, 0),
+	FCmp("FCmp",ICmp.index + 1, 0);
 
 	public final String opName;
 	public final int index;

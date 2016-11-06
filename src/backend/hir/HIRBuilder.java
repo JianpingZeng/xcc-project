@@ -22,8 +22,11 @@ import backend.value.Instruction;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.CastInst;
+import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Instruction.SwitchInst;
 import backend.value.Value;
+
+import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
  * @author Xlous.zeng
@@ -31,229 +34,385 @@ import backend.value.Value;
  */
 public class HIRBuilder
 {
-    /**
-     * The basic block where all instruction will be inserted.
-     */
-    private BasicBlock curBB;
-    private int insertPtr;
+	/**
+	 * The basic block where all instruction will be inserted.
+	 */
+	private BasicBlock curBB;
+	private int insertPtr;
 
-    public HIRBuilder() {}
+	public HIRBuilder()
+	{
+	}
 
-    public HIRBuilder(BasicBlock bb)
-    {
-        setInsertPoint(bb);
-    }
+	public HIRBuilder(BasicBlock bb)
+	{
+		setInsertPoint(bb);
+	}
 
-    public void setInsertPoint(BasicBlock insertPoint)
-    {
-        curBB = insertPoint;
-        insertPtr = curBB.getNumOfInsts();
-    }
+	public void setInsertPoint(BasicBlock insertPoint)
+	{
+		curBB = insertPoint;
+		insertPtr = curBB.getNumOfInsts();
+	}
 
-    public Instruction.StoreInst createStore(Value val, Value ptr)
-    {
-        return insert(new Instruction.StoreInst(val, ptr, ""));
-    }
+	public Instruction.StoreInst createStore(Value val, Value ptr)
+	{
+		return insert(new Instruction.StoreInst(val, ptr, ""));
+	}
 
-    private <InstTy extends Instruction> InstTy insert(InstTy inst)
-    {
-        insertHelper(inst, curBB, insertPtr);
-        return inst;
-    }
+	private <InstTy extends Instruction> InstTy insert(InstTy inst)
+	{
+		insertHelper(inst, curBB, insertPtr);
+		return inst;
+	}
 
-    private <InstTy extends Instruction> InstTy insert(InstTy inst, String name)
-    {
-        insertHelper(inst, curBB, insertPtr);
-        return inst;
-    }
+	private <InstTy extends Instruction> InstTy insert(InstTy inst, String name)
+	{
+		insertHelper(inst, curBB, insertPtr);
+		return inst;
+	}
 
-    private Constant insert(Constant c, String name)
-    {
-        return c;
-    }
+	private Constant insert(Constant c, String name)
+	{
+		return c;
+	}
 
-    private <InstTy extends Instruction> void insertHelper(InstTy inst,
-            BasicBlock bb,
-            int insertPtr)
-    {
-        if (insertPtr == bb.getNumOfInsts())
-        {
-            bb.appendInst(inst);
-            return;
-        }
-        bb.insertAfter(inst, insertPtr);
-    }
+	private <InstTy extends Instruction> void insertHelper(InstTy inst,
+			BasicBlock bb, int insertPtr)
+	{
+		if (insertPtr == bb.getNumOfInsts())
+		{
+			bb.appendInst(inst);
+			return;
+		}
+		bb.insertAfter(inst, insertPtr);
+	}
 
-    public BasicBlock getInsertBlock()
-    {
-        return curBB;
-    }
+	public BasicBlock getInsertBlock()
+	{
+		return curBB;
+	}
 
-    /**
-     * Clear the current insertion point to let the newest created instruction
-     * would be inserted into a block.
-     *
-     */
-    public void clearInsertPoint()
-    {
-        curBB = null;
-    }
+	/**
+	 * Clear the current insertion point to let the newest created instruction
+	 * would be inserted into a block.
+	 */
+	public void clearInsertPoint()
+	{
+		curBB = null;
+	}
 
-    public Value createAlloca(Type type, Value arraySize, String name)
-    {
-        return insert(new AllocaInst(type, arraySize, name));
-    }
+	public Value createAlloca(Type type, Value arraySize, String name)
+	{
+		return insert(new AllocaInst(type, arraySize, name));
+	}
 
-    //============================================================//
-    // Cast instruction.                                          //
-    //============================================================//
+	//============================================================//
+	// Cast instruction.                                          //
+	//============================================================//
 
-    public Value createTrunc(Value val, Type destType, String name)
-    {
-        return createCast(Operator.Trunc, val, destType, name);
-    }
+	public Value createTrunc(Value val, Type destType, String name)
+	{
+		return createCast(Operator.Trunc, val, destType, name);
+	}
 
-    public Value createZExt(Value val, Type destType, String name)
-    {
-        return createCast(Operator.ZExt, val, destType, name);
-    }
+	public Value createZExt(Value val, Type destType, String name)
+	{
+		return createCast(Operator.ZExt, val, destType, name);
+	}
 
-    public Value createSExt(Value val, Type destType, String name)
-    {
-        return createCast(Operator.SExt, val, destType, name);
-    }
+	public Value createSExt(Value val, Type destType, String name)
+	{
+		return createCast(Operator.SExt, val, destType, name);
+	}
 
-    public Value createFPToUI(Value val, Type destType, String name)
-    {
-        return createCast(Operator.FPToUI, val, destType, name);
-    }
+	public Value createFPToUI(Value val, Type destType, String name)
+	{
+		return createCast(Operator.FPToUI, val, destType, name);
+	}
 
-    public Value createFPToSI(Value val, Type destType, String name)
-    {
-        return createCast(Operator.FPToSI, val, destType, name);
-    }
+	public Value createFPToSI(Value val, Type destType, String name)
+	{
+		return createCast(Operator.FPToSI, val, destType, name);
+	}
 
-    public Value createUIToFP(Value val, Type destType, String name)
-    {
-        return createCast(Operator.UIToFP, val, destType, name);
-    }
+	public Value createUIToFP(Value val, Type destType, String name)
+	{
+		return createCast(Operator.UIToFP, val, destType, name);
+	}
 
-    public Value createSIToFP(Value val, Type destType, String name)
-    {
-        return createCast(Operator.SIToFP, val, destType, name);
-    }
+	public Value createSIToFP(Value val, Type destType, String name)
+	{
+		return createCast(Operator.SIToFP, val, destType, name);
+	}
 
-    public Value createFPTrunc(Value val, Type destType, String name)
-    {
-        return createCast(Operator.FPTrunc, val, destType, name);
-    }
+	public Value createFPTrunc(Value val, Type destType, String name)
+	{
+		return createCast(Operator.FPTrunc, val, destType, name);
+	}
 
-    public Value createFPExt(Value val, Type destType, String name)
-    {
-        return createCast(Operator.FPExt, val, destType, name);
-    }
+	public Value createFPExt(Value val, Type destType, String name)
+	{
+		return createCast(Operator.FPExt, val, destType, name);
+	}
 
-    public Value createPtrToInt(Value val, Type destType, String name)
-    {
-        return createCast(Operator.PtrToInt, val, destType, name);
-    }
+	public Value createPtrToInt(Value val, Type destType, String name)
+	{
+		return createCast(Operator.PtrToInt, val, destType, name);
+	}
 
-    public Value createIntToPtr(Value val, Type destType, String name)
-    {
-        return createCast(Operator.IntToPtr, val, destType, name);
-    }
+	public Value createIntToPtr(Value val, Type destType, String name)
+	{
+		return createCast(Operator.IntToPtr, val, destType, name);
+	}
 
-    public Value creatBitCast(Value val, Type destType, String name)
-    {
-        return createCast(Operator.BitCast, val, destType, name);
-    }
+	public Value creatBitCast(Value val, Type destType, String name)
+	{
+		return createCast(Operator.BitCast, val, destType, name);
+	}
 
+	public Value createIntCast(Value value, backend.type.Type destTy,
+			boolean isSigned)
+	{
+		return createIntCast(value, destTy, isSigned, "");
+	}
 
-    public Value createIntCast(Value value,
-            backend.type.Type destTy,
-            boolean isSigned)
-    {
-        return createIntCast(value, destTy, isSigned, "");
-    }
+	public Value createIntCast(Value value, backend.type.Type destTy,
+			boolean isSigned, String name)
+	{
+		// if the type of source is equal to destination type
+		// just return original value.
+		if (value.getType() == destTy)
+			return value;
 
-    public Value createIntCast(Value value,
-            backend.type.Type destTy,
-            boolean isSigned,
-            String name)
-    {
-        // if the type of source is equal to destination type
-        // just return original value.
-        if (value.getType() == destTy)
-            return value;
+		if (value instanceof Constant)
+		{
+			// TODO make constant folding.
+		}
+		return insert(CastInst.createIntegerCast(value, destTy, isSigned),
+				name);
+	}
 
-        if (value instanceof Constant)
-        {
-            // TODO make constant folding.
-        }
-        return insert(CastInst.createIntegerCast(value, destTy, isSigned), name);
-    }
+	public Value createCast(Operator op, Value val, Type destType, String name)
+	{
+		if (val.getType() == destType)
+			return val;
 
-    public Value createCast(Operator op, Value val, Type destType, String name)
-    {
-        if (val.getType() == destType)
-            return val;
+		if (val instanceof Constant)
+		{
+			// TODO make constant folding.
+		}
+		return insert(CastInst.create(op, val, destType, name, null));
+	}
 
-        if (val instanceof Constant)
-        {
-            // TODO make constant folding.
-        }
-        return insert(CastInst.create(op, val, destType, name, null));
-    }
+	public Value createBitCast(Value value, Type destTy, String name)
+	{
+		return createCast(Operator.BitCast, value, destTy, name);
+	}
 
-    public Value createBitCast(Value value, Type destTy, String name)
-    {
-        return createCast(Operator.BitCast, value, destTy, name);
-    }
+	public Value createMul(Value lhs, Value rhs, String name)
+	{
+		assert lhs.getType() == rhs.getType();
+		return insert(new Instruction.Op2(lhs.getType(), Operator.Mul, lhs, rhs,
+				name));
+	}
 
-    public Value createMul(Value lhs, Value rhs, String name)
-    {
-        assert lhs.getType() == rhs.getType();
-        return insert(new Instruction.Op2(lhs.getType(), Operator.Mul, lhs, rhs, name));
-    }
+	/**
+	 * Create an unconditional branch instruction-'br label X'.
+	 *
+	 * @param targetBB
+	 */
+	public BranchInst createBr(BasicBlock targetBB)
+	{
+		return insert(new BranchInst(targetBB));
+	}
 
-    /**
-     * Create an unconditional branch instruction-'br label X'.
-     * @param targetBB
-     */
-    public BranchInst createBr(BasicBlock targetBB)
-    {
-        return insert(new BranchInst(targetBB));
-    }
+	/**
+	 * Creates a branch instruction, like 'br cond trueBB, falseBB' on the
+	 * specified condition.
+	 *
+	 * @param condVal
+	 * @param trueBB
+	 * @param falseBB
+	 * @return
+	 */
+	public Value createCondBr(Value condVal, BasicBlock trueBB,
+			BasicBlock falseBB)
+	{
+		return insert(new BranchInst(trueBB, falseBB, condVal));
+	}
 
-    /**
-     * Creates a branch instruction, like 'br cond trueBB, falseBB' on the
-     * specified condition.
-     * @param condVal
-     * @param trueBB
-     * @param falseBB
-     * @return
-     */
-    public Value createCondBr(Value condVal, BasicBlock trueBB,
-            BasicBlock falseBB)
-    {
-        return insert(new BranchInst(trueBB, falseBB, condVal));
-    }
+	/**
+	 * Creates a switch instruction with the specified value.
+	 * default dest, and with a hint for the number of cases that will
+	 * be added (for efficient allocation).
+	 *
+	 * @param condV
+	 * @param defaultBB
+	 * @return
+	 */
+	public SwitchInst createSwitch(Value condV, BasicBlock defaultBB)
+	{
+		return createSwitch(condV, defaultBB, 10);
+	}
 
-    /**
-     * Creates a switch instruction with the specified value.
-     * default dest, and with a hint for the number of cases that will
-     * be added (for efficient allocation).
-     * @param condV
-     * @param defaultBB
-     * @return
-     */
-    public SwitchInst createSwitch(Value condV, BasicBlock defaultBB)
-    {
-        return createSwitch(condV, defaultBB, 10);
-    }
+	public SwitchInst createSwitch(Value condV, BasicBlock defaultBB,
+			int numCases)
+	{
+		return insert(new SwitchInst(condV, defaultBB, numCases, ""));
+	}
 
-    public SwitchInst createSwitch(Value condV, BasicBlock defaultBB, int numCases)
-    {
-        return insert(new SwitchInst(condV, defaultBB, numCases, ""));
-    }
+	//===--------------------------------------------------------------------===//
+	// Instruction creation methods: Compare Instructions
+	//===--------------------------------------------------------------------===//
+
+	public Value createICmpEQ(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_EQ, LHS, RHS, name);
+	}
+
+	public Value createICmpNE(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_NE, LHS, RHS, name);
+	}
+
+	public Value createICmpUGT(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_UGT, LHS, RHS, name);
+	}
+
+	public Value createICmpUGE(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_UGE, LHS, RHS, name);
+	}
+
+	public Value createICmpULT(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_ULT, LHS, RHS, name);
+	}
+
+	public Value createICmpULE(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_ULE, LHS, RHS, name);
+	}
+
+	public Value createICmpSGT(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_SGT, LHS, RHS, name);
+	}
+
+	public Value createICmpSGE(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_SGE, LHS, RHS, name);
+	}
+
+	public Value createICmpSLT(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_SLT, LHS, RHS, name);
+	}
+
+	public Value createICmpSLE(Value LHS, Value RHS, final String name)
+	{
+		return createICmp(ICMP_SLE, LHS, RHS, name);
+	}
+
+	public Value createFCmpOEQ(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_OEQ, LHS, RHS, name);
+	}
+
+	public Value createFCmpOGT(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_OGT, LHS, RHS, name);
+	}
+
+	public Value createFCmpOGE(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_OGE, LHS, RHS, name);
+	}
+
+	public Value createFCmpOLT(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_OLT, LHS, RHS, name);
+	}
+
+	public Value createFCmpOLE(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_OLE, LHS, RHS, name);
+	}
+
+	public Value createFCmpONE(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_ONE, LHS, RHS, name);
+	}
+
+	public Value createFCmpORD(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_ORD, LHS, RHS, name);
+	}
+
+	public Value createFCmpUNO(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_UNO, LHS, RHS, name);
+	}
+
+	public Value createFCmpUEQ(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_UEQ, LHS, RHS, name);
+	}
+
+	public Value createFCmpUGT(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_UGT, LHS, RHS, name);
+	}
+
+	public Value createFCmpUGE(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_UGE, LHS, RHS, name);
+	}
+
+	public Value createFCmpULT(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_ULT, LHS, RHS, name);
+	}
+
+	public Value createFCmpULE(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_ULE, LHS, RHS, name);
+	}
+
+	public Value createFCmpUNE(Value LHS, Value RHS, final String name)
+	{
+		return createFCmp(FCMP_UNE, LHS, RHS, name);
+	}
+
+	Value createICmp(Predicate P, Value LHS, Value RHS,
+			final String name)
+	{
+		if (LHS instanceof Constant)
+		{
+			Constant LC = (Constant)LHS;
+			if (RHS instanceof Constant)
+			{
+				Constant RC = (Constant)RHS;
+				return folder.createICmp(P, LC, RC);
+			}
+		}
+		return insert(new Instruction.ICmpInst(P, LHS, RHS, name), name);
+	}
+
+	Value createFCmp(Predicate P, Value LHS, Value RHS,
+			final String name)
+	{
+		if (LHS instanceof Constant)
+		{
+			Constant LC = (Constant)LHS;
+			if (RHS instanceof Constant)
+			{
+				Constant RC = (Constant)RHS;
+				return folder.createFCmp(P, LC, RC);
+			}
+		}
+		return insert(new Instruction.FCmpInst(P, LHS, RHS, name), name);
+	}
 }

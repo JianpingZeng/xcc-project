@@ -12,6 +12,7 @@ import java.util.ArrayList;
 
 import static backend.hir.Operator.*;
 import static backend.type.Type.Int32Ty;
+import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -625,6 +626,267 @@ public abstract class Instruction extends User
                 BasicBlock insertAtEnd)
         {
             super(ty, BitCast, x, name, insertAtEnd);
+        }
+    }
+
+	/**
+     * This is a base class for the comparison instructions.
+     */
+    public static abstract class CmpInst extends Instruction
+    {
+        protected Predicate pred;
+        protected CmpInst(final backend.type.Type ty, Operator op, Predicate pred,
+                Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            super(ty, op, insertBefore);
+            init(lhs, rhs);
+        }
+
+        protected CmpInst(final backend.type.Type ty, Operator op, Predicate pred,
+                Value lhs, Value rhs, String name,  BasicBlock insertAtEnd)
+        {
+            super(ty, op, insertAtEnd);
+            init(lhs, rhs);
+        }
+
+        private void init(Value lhs, Value rhs)
+        {
+            reserve(2);
+            setOperand(0, lhs);
+            setOperand(1, rhs);
+            this.name = name;
+            this.pred = pred;
+        }
+
+        public Predicate getPredicate() {return pred;}
+
+        public void setPredicate(Predicate newPred) {pred = newPred;}
+
+        public Predicate getInversePredicate()
+        {
+            return getInversePredicate(pred);
+        }
+
+        public Predicate getSwappedPredicate()
+        {
+            return getSwappedPredicate(pred);
+        }
+
+        public static Predicate getInversePredicate(Predicate pred)
+        {
+
+        }
+
+        public static Predicate getSwappedPredicate(Predicate pred)
+        {
+
+        }
+
+	    /**
+         * This enumeration lists the possible predicates for CmpInst subclasses.
+         * Values in the range 0-31 are reserved for FCmpInst, while values in the
+         * range 32-64 are reserved for ICmpInst. This is necessary to ensure the
+         * predicate values are not overlapping between the classes.
+         */
+        public enum Predicate
+        {
+            // Opcode             U L G E    Intuitive operation
+            FCMP_FALSE,  /// 0 0 0 0    Always false (always folded)
+            FCMP_OEQ,  /// 0 0 0 1    True if ordered and equal
+            FCMP_OGT,  /// 0 0 1 0    True if ordered and greater than
+            FCMP_OGE,  /// 0 0 1 1    True if ordered and greater than or equal
+            FCMP_OLT,  /// 0 1 0 0    True if ordered and less than
+            FCMP_OLE,  /// 0 1 0 1    True if ordered and less than or equal
+            FCMP_ONE,  /// 0 1 1 0    True if ordered and operands are unequal
+            FCMP_ORD,  /// 0 1 1 1    True if ordered (no nans)
+            FCMP_UNO,  /// 1 0 0 0    True if unordered: isnan(X) | isnan(Y)
+            FCMP_UEQ,  /// 1 0 0 1    True if unordered or equal
+            FCMP_UGT,  /// 1 0 1 0    True if unordered or greater than
+            FCMP_UGE,  /// 1 0 1 1    True if unordered, greater than, or equal
+            FCMP_ULT,  /// 1 1 0 0    True if unordered or less than
+            FCMP_ULE,  /// 1 1 0 1    True if unordered, less than, or equal
+            FCMP_UNE,  /// 1 1 1 0    True if unordered or not equal
+            FCMP_TRUE,  /// 1 1 1 1    Always true (always folded)
+            ICMP_EQ ,  /// equal
+            ICMP_NE ,  /// not equal
+            ICMP_UGT,  /// unsigned greater than
+            ICMP_UGE,  /// unsigned greater or equal
+            ICMP_ULT,  /// unsigned less than
+            ICMP_ULE,  /// unsigned less or equal
+            ICMP_SGT,  /// signed greater than
+            ICMP_SGE,  /// signed greater or equal
+            ICMP_SLT,  /// signed less than
+            ICMP_SLE,  /// signed less or equal
+            BAD_ICMP_PREDICATE;
+
+            public static final Predicate FIRST_FCMP_PREDICATE = FCMP_FALSE;
+            public static final Predicate LAST_FCMP_PREDICATE = FCMP_TRUE;
+            public static final Predicate BAD_FCMP_PREDICATE = ICMP_EQ;
+
+            public static final Predicate FIRST_ICMP_PREDICATE = ICMP_EQ;
+            public static final Predicate LAST_ICMP_PREDICATE = ICMP_SLE;
+
+        }
+    }
+
+	/**
+	 * This instruction compares its operands according to the predicate given
+     * to the constructor. It only operates on floating point values or packed
+     * vectors of floating point values. The operands must be identical types.
+     */
+    public static class FCmpInst extends CmpInst
+    {
+
+        public FCmpInst(Predicate pred, Value lhs,
+                Value rhs, String name, Instruction insertBefore)
+        {
+            super(lhs.getType(), FCmp, pred, lhs, rhs, name, insertBefore);
+            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
+                    :"Invalid FCmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to FCmp instruction are not of the same type!";
+            assert lhs.getType().isFloatingPointType():
+                    "Invalid operand types for FCmp instruction";
+        }
+
+        public FCmpInst(Predicate pred, Value lhs,
+                Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            super(lhs.getType(), FCmp, pred, lhs, rhs, name, insertAtEnd);
+            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
+                    :"Invalid FCmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to FCmp instruction are not of the same type!";
+            assert lhs.getType().isFloatingPointType():
+                    "Invalid operand types for FCmp instruction";
+        }
+
+        public FCmpInst(Predicate pred, Value lhs, Value rhs)
+        {
+            super(lhs.getType(), FCmp, pred, lhs, rhs, "", (Instruction)null);
+            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
+                    :"Invalid FCmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to FCmp instruction are not of the same type!";
+            assert lhs.getType().isFloatingPointType():
+                    "Invalid operand types for FCmp instruction";
+        }
+
+        public FCmpInst(Predicate pred, Value lhs, Value rhs, String name)
+        {
+            super(lhs.getType(), FCmp, pred, lhs, rhs, name, (Instruction)null);
+            assert pred.compareTo(Predicate.LAST_FCMP_PREDICATE)<=0
+                    :"Invalid FCmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to FCmp instruction are not of the same type!";
+            assert lhs.getType().isFloatingPointType():
+                    "Invalid operand types for FCmp instruction";
+        }
+
+        /**
+         * An interface for InstructionVisitor invoking.
+         *
+         * @param visitor The instance of InstructionVisitor.
+         */
+        @Override
+        public void accept(InstructionVisitor visitor)
+        {
+
+        }
+
+        public boolean isEquality()
+        {
+            return pred == FCMP_OEQ || pred == FCMP_ONE ||
+                    pred == FCMP_UEQ || pred == FCMP_UNE;
+        }
+
+        public boolean isCommutative()
+        {
+            return isEquality() ||
+                    pred == FCMP_FALSE ||
+                    pred == FCMP_TRUE ||
+                    pred == FCMP_ORD ||
+                    pred == FCMP_UNO;
+        }
+
+        public boolean isRelational()
+        {
+            return !isEquality();
+        }
+
+        public void swapOperands()
+        {
+            pred = getSwappedPredicate();
+            operand(0).swap(operand(1));
+        }
+    }
+
+	/**
+	 * This instruction compares its operands according to the predicate given
+     * to the constructor. It only operates on integers or pointers. The operands
+     * must be identical types.
+     *
+     */
+    public static class ICmpInst extends CmpInst
+    {
+
+        public ICmpInst(Predicate pred, Value lhs,
+                Value rhs, String name, Instruction insertBefore)
+        {
+            super(lhs.getType(), ICmp, pred, lhs, rhs, name, insertBefore);
+            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
+                    :"Invalid ICmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to ICmp instruction are not of the same type!";
+            assert lhs.getType().isIntegerType():
+                    "Invalid operand types for ICmp instruction";
+        }
+
+        public ICmpInst( Predicate pred, Value lhs,
+                Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            super(lhs.getType(), ICmp, pred, lhs, rhs, name, insertAtEnd);
+            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
+                    :"Invalid ICmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to ICmp instruction are not of the same type!";
+            assert lhs.getType().isIntegerType():
+                    "Invalid operand types for ICmp instruction";
+        }
+
+        public ICmpInst( Predicate pred, Value lhs,
+                Value rhs)
+        {
+            super(lhs.getType(), ICmp, pred, lhs, rhs, "", (Instruction) null);
+            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
+                    :"Invalid ICmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to ICmp instruction are not of the same type!";
+            assert lhs.getType().isIntegerType():
+                    "Invalid operand types for ICmp instruction";
+        }
+
+        public ICmpInst( Predicate pred, Value lhs,
+                Value rhs, String name)
+        {
+            super(lhs.getType(), ICmp, pred, lhs, rhs, name, (Instruction) null);
+            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
+                    :"Invalid ICmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to ICmp instruction are not of the same type!";
+            assert lhs.getType().isIntegerType():
+                    "Invalid operand types for ICmp instruction";
+        }
+
+        /**
+         * An interface for InstructionVisitor invoking.
+         *
+         * @param visitor The instance of InstructionVisitor.
+         */
+        @Override
+        public void accept(InstructionVisitor visitor)
+        {
+
         }
     }
 
