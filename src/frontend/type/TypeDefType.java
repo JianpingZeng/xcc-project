@@ -1,6 +1,6 @@
 package frontend.type;
 
-import frontend.sema.Decl.TypedefNameDecl;
+import frontend.sema.Decl.TypeDefDecl;
 
 /**
  * This class was served as represents typedef declaration in C language.
@@ -12,7 +12,7 @@ public final class TypeDefType extends Type
     /**
      * The actual frontend.type of this typedef declaration.
      */
-    private TypedefNameDecl decl;
+    private TypeDefDecl decl;
     /**
      * Constructor with one parameter which represents the kind of frontend.type
      * for reason of comparison convenient.
@@ -20,7 +20,7 @@ public final class TypeDefType extends Type
      * @param tag
      * @param d
      */
-    public TypeDefType(int tag, TypedefNameDecl d)
+    public TypeDefType(int tag, TypeDefDecl d)
     {
         super(tag);
         decl = d;
@@ -59,5 +59,5 @@ public final class TypeDefType extends Type
         return false;
     }
 
-    public TypedefNameDecl getDecl() { return decl;}
+    public TypeDefDecl getDecl() { return decl;}
 }

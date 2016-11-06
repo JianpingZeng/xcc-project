@@ -17,10 +17,16 @@ package frontend.codegen;
  */
 
 import backend.hir.HIRBuilder;
+import backend.type.Type;
+import backend.value.Constant;
+import backend.value.ConstantInt;
+import backend.value.Instruction;
 import backend.value.Value;
 import frontend.ast.StmtVisitor;
 import frontend.ast.Tree;
+import frontend.sema.Decl;
 import frontend.type.QualType;
+import sun.awt.SunHints;
 
 /**
  * This class emit code for frontend expression of typed scalar to HIR code.
@@ -55,7 +61,89 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
      */
     public Value emitScalarConversion(Value v, QualType srcTy, QualType destTy)
     {
-        return null;
+
+    }
+
+	/**
+     *  EmitConversionToBool - Convert the specified expression value to a
+     * boolean (i1) truth value.  This is equivalent to "Val != 0".
+     * @param v
+     * @param srcTy
+     * @return
+     */
+    public Value emitScalarConversion(Value v, QualType srcTy)
+    {
+        // TODO assert srcTy.isCanonical() : "EmitScalarConversion strips typedefs";
+
+        if (srcTy.isRealType())
+        {
+            // Compare against 0.0 for fp scalar.
+            Value zero = Constant.getNullValue(v.getType());
+            return builder.createFCmpUNE(v, zero, "tobool");
+        }
+
+        assert srcTy.isIntegerType() || srcTy.isPointerType()
+                :"Unknown scalar type to convert";
+
+        // Because of the type rules of C, we often end up computing a logical value,
+        // then zero extending it to int, then wanting it as a logical value again.
+        // Optimize this common case.
+        if (v instanceof Instruction.ZExtInst)
+        {
+            Instruction.ZExtInst zi = (Instruction.ZExtInst)v;
+            if (zi.operand(0).getType() == Type.Int1Ty)
+            {
+                Value result = zi.operand(0);
+
+                // If there aren't any more uses, zap the instruction to save space.
+                // Note that there can be more uses, for example if this
+                // is the result of an assignment.
+                if (zi.isUseEmpty())
+                    zi.eraseFromBasicBlock();;
+
+                return result;
+            }
+        }
+
+        // Compare against an integer or pointer null.
+        Value zero = Constant.getNullValue(v.getType());
+        return builder.createICmpNE(v, zero, "tobool");
+    }
+
+    private Value visitPrePostIncDec(Tree.Expr expr, boolean isInc, boolean isPrec)
+    {
+
+    }
+
+    private LValue emitLValue(Tree.Expr expr)
+    {
+        return cgf.emitLValue(expr);
+    }
+
+	/**
+	 * Emit the code for loading the value of given expression.
+     * @param expr
+     * @return
+     */
+    private Value emitLoadOfLValue(Tree.Expr expr)
+    {
+        return emitLoadOfLValue(emitLValue(expr), expr.getType());
+    }
+
+    private Value emitLoadOfLValue(LValue val, QualType type)
+    {
+        return cgf.emitLoadOfLValue(val, type).getScalarVal();
+    }
+
+    private backend.type.Type convertType(QualType type)
+    {return cgf.convertType(type);}
+
+	/**
+	 * Converts the specified expression value to a boolean (i1) truth value.
+     * @return
+     */
+    private Value emitConversionToBool(Value src, QualType destTy)
+    {
     }
 
     public Value visitBinMul(Tree.BinaryExpr expr)
@@ -194,6 +282,78 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
 
     public Value visitStmt(Tree.Stmt s)
     {
-        return (Value)new Object();
+        assert false:"Stmt cann't have a complex type!";
+        return null;
+    }
+    @Override
+    public Value visitParenExpr(Tree.ParenExpr expr)
+    {return visit(expr.getSubExpr());}
+
+    @Override
+    public Value visitIntegerLiteral(Tree.IntegerLiteral expr)
+    {return backend.value.ConstantInt.get(expr.getValue());}
+
+    @Override
+    public Value visitFloatLiteral(Tree.FloatLiteral expr)
+    {return backend.value.ConstantFP.get(expr.getValue());}
+
+    @Override
+    public Value visitCharacterLiteral(Tree.CharacterLiteral expr)
+    {
+        return backend.value.ConstantInt.get(
+                convertType(expr.getType()), expr.getValue());
+    }
+
+    @Override
+    public Value visitDeclRefExpr(Tree.DeclRefExpr expr)
+    {
+        if (expr.getDecl() instanceof Decl.EnumConstantDecl)
+        {
+            Decl.EnumConstantDecl ec = (Decl.EnumConstantDecl)expr.getDecl();
+            return ConstantInt.get(ec.getInitValue());
+        }
+        return emitLoadOfLValue(expr);
+    }
+
+    @Override
+    public Value visitArraySubscriptExpr(Tree.ArraySubscriptExpr expr)
+    {
+
+    }
+
+    @Override
+    public Value visitMemberExpr(Tree.MemberExpr expr)
+    {
+
+    }
+
+    @Override
+    public Value visitCompoundLiteralExpr(Tree.CompoundLiteralExpr expr)
+    {
+
+    }
+
+    @Override
+    public Value visitStringLiteral(Tree.StringLiteral expr)
+    {
+        return emitLValue(expr).getAddress();
+    }
+
+    @Override
+    public Value visitInitListExpr(Tree.InitListExpr expr)
+    {
+
+    }
+
+    @Override
+    public Value visitImplicitCastExpr(Tree.ImplicitCastExpr expr)
+    {
+
+    }
+
+    @Override
+    public Value visitCallExpr(Tree.CallExpr expr)
+    {
+        return cgf.emitCallExpr(expr).getScalarVal();
     }
 }
