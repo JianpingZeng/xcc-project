@@ -271,7 +271,7 @@ public class Canonicalizer extends InstructionVisitor
 				return x / y;
 			case Mul:
 				return y == 0 ? null : x * y;
-			case UMod:
+			case URem:
 				return y == 0 ? null : x & y;
 			case IAnd:
 				return x & y;
@@ -279,7 +279,7 @@ public class Canonicalizer extends InstructionVisitor
 				return x | y;
 			case IXor:
 				return x ^ y;
-			case IShl:
+			case Shl:
 				return x << y;
 			case IShr:
 				return x >> y;
@@ -310,7 +310,7 @@ public class Canonicalizer extends InstructionVisitor
 				return x / y;
 			case LMul:
 				return y == 0 ? null : x * y;
-			case SMod:
+			case SRem:
 				return y == 0 ? null : x & y;
 			case LAnd:
 				return x & y;
@@ -322,7 +322,7 @@ public class Canonicalizer extends InstructionVisitor
 				return x << y;
 			case LShr:
 				return x >> y;
-			case LUShr:
+			case AShr:
 				return x >>> y;
 		}
 		return null;
@@ -394,14 +394,14 @@ public class Canonicalizer extends InstructionVisitor
 				if (y > 0 && (y & y - 1) == 0)
 				{
 					setCanonical(
-							new Instruction.ShiftOp(x.kind, Operator.IShl, x,
-									Constant.forInt(Util.log2(y)), "IShl"));
+							new Instruction.ShiftOp(x.kind, Operator.Shl, x,
+									Constant.forInt(Util.log2(y)), "Shl"));
 				}
 				return y == 0 ? setIntConstant(0) : null;
 			}
 			case Div:
 				return y == 1 ? setCanonical(x) : null;
-			case UMod:
+			case URem:
 				return y == 1 ? setIntConstant(0) : null;
 			case IAnd:
 			{
@@ -419,12 +419,12 @@ public class Canonicalizer extends InstructionVisitor
 			}
 			case IXor:
 				return y == 0 ? setCanonical(x) : null;
-			case IShl:
+			case Shl:
 				return reduceShift(false, opcode, Operator.IUShr, x, y);
 			case IShr:
 				return reduceShift(false, opcode, Operator.None, x, y);
 			case IUShr:
-				return reduceShift(false, opcode, Operator.IShl, x, y);
+				return reduceShift(false, opcode, Operator.Shl, x, y);
 		}
 		return null;
 	}
@@ -452,7 +452,7 @@ public class Canonicalizer extends InstructionVisitor
 			}
 			case LDiv:
 				return y == 1 ? setCanonical(x) : null;
-			case SMod:
+			case SRem:
 				return y == 1 ? setLongConstant(0) : null;
 			case LAnd:
 			{
@@ -474,8 +474,8 @@ public class Canonicalizer extends InstructionVisitor
 				return reduceShift(true, opcode, Operator.IUShr, x, y);
 			case LShr:
 				return reduceShift(true, opcode, Operator.None, x, y);
-			case LUShr:
-				return reduceShift(true, opcode, Operator.IShl, x, y);
+			case AShr:
+				return reduceShift(true, opcode, Operator.Shl, x, y);
 		}
 		return null;
 	}
@@ -518,7 +518,7 @@ public class Canonicalizer extends InstructionVisitor
 					if (isLong)
 					{
 						long mask = -1;
-						if (opcode == Operator.LUShr)
+						if (opcode == Operator.AShr)
 						{
 							mask = mask >>> y;
 						}

@@ -78,7 +78,7 @@ public final class LValue
      */
     public Value getAddress() { assert isSimple(); return v;}
 
-    public Value getBitField() { assert isBitField(); return v;}
+    public Value getBitFieldAddr() { assert isBitField(); return v;}
     public int getBitfieldStartBits(){assert isBitField(); return bitFieldData.startBit;}
     public int getBitfieldSize() {assert isBitField(); return bitFieldData.size;}
 

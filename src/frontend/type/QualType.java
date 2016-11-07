@@ -1,11 +1,12 @@
 package frontend.type;
 
 import frontend.ast.Tree;
-import sema.APInt;
-import sema.Decl;
-import sema.Decl.RecordDecl;
-import sema.Decl.TypedefNameDecl;
-import sema.RecordLayoutInfo;
+import frontend.sema.APInt;
+import frontend.sema.Decl;
+import frontend.sema.Decl.RecordDecl;
+import frontend.sema.Decl.TypeDefDecl;
+import frontend.sema.Decl.TypedefNameDecl;
+import frontend.sema.RecordLayoutInfo;
 import tools.Pair;
 import tools.Util;
 import frontend.type.ArrayType.*;
@@ -66,6 +67,7 @@ public final class QualType extends Type implements Cloneable
     }
 
     private Type type;
+
     private Qualifier qualsFlag;
 
     public QualType()
@@ -666,12 +668,12 @@ public final class QualType extends Type implements Cloneable
         return getVariableArrayType(newElemTy, vat.getSizeExpr());
     }
 
-    public VariableArrayType getVariableArrayType(QualType elemTy, Tree.Expr sizeExpr)
+    public static VariableArrayType getVariableArrayType(QualType elemTy, Tree.Expr sizeExpr)
     {
         return new VariableArrayType(elemTy, sizeExpr);
     }
 
-    public ConstantArrayType getConstantArrayType(QualType elemTy, final APInt arraySize)
+    public static ConstantArrayType getConstantArrayType(QualType elemTy, final APInt arraySize)
     {
         assert elemTy.isIncompleteType()||elemTy.isConstantSizeType()
                 :"Constant array of VLAs is illegal";
@@ -682,7 +684,7 @@ public final class QualType extends Type implements Cloneable
         return New;
     }
 
-    public IncompleteArrayType getIncompleteArrayType(QualType elemTy)
+    public static IncompleteArrayType getIncompleteArrayType(QualType elemTy)
     {
         return new IncompleteArrayType(elemTy);
     }
@@ -702,6 +704,16 @@ public final class QualType extends Type implements Cloneable
         if (hasQualifiers())
             return new QualType(type, 0);
         return this;
+    }
+
+    public QualType getQualifiedType(int quals)
+    {
+        return new QualType(type, quals);
+    }
+
+    public QualType getWithAdditionalQualifiers(int quals)
+    {
+        return new QualType(type, quals | getCVRQualifiers());
     }
 
     /**
@@ -832,9 +844,9 @@ public final class QualType extends Type implements Cloneable
         assert decl!= null:"Passed null for decl param";
         assert decl.getTypeForDecl() ==null:"TypeForDecl present in slow case";
 
-        if (decl instanceof TypedefNameDecl)
+        if (decl instanceof TypeDefDecl)
         {
-            return getTypeDefType((TypedefNameDecl) decl);
+            return getTypeDefType((TypeDefDecl) decl);
         }
         if (decl instanceof RecordDecl)
         {
@@ -853,7 +865,7 @@ public final class QualType extends Type implements Cloneable
         return new QualType(decl.getTypeForDecl());
     }
 
-    public static QualType getTypeDefType(TypedefNameDecl decl)
+    public static QualType getTypeDefType(TypeDefDecl decl)
     {
         if (decl.getTypeForDecl() != null)
             return new QualType(decl.getTypeForDecl());
@@ -1045,7 +1057,7 @@ public final class QualType extends Type implements Cloneable
             }
             case TypeDef:
             {
-                TypedefNameDecl typedef = ((TypeDefType)t).getDecl();
+                TypeDefDecl typedef = ((TypeDefType)t).getDecl();
                 Pair<Long, Integer> info = getTypeInfo(typedef.getUnderlyingType().getType());
 
                 align = info.second;
@@ -1109,5 +1121,55 @@ public final class QualType extends Type implements Cloneable
             return getAsArrayType().getElemType().isConstant();
         }
         return false;
+    }
+
+	/**
+	 * Return the canonical (structural) type corresponding to the specified
+     * potentially non-canonical type. The non-canonical version of a type may
+     * have many "decorated" versions of types. Decorators can include typedefs.
+     * The returned type is guaranteed to be free of any of these, allowing two
+     * canonical types to compared for exact equality with a simple pointer
+     * comparison.
+     * @param type
+     * @return
+     */
+    public static QualType getCanonicalType(QualType type)
+    {
+        QualType canType = type.getType().getCanonicalTypeInternal();
+
+        // If the result has type qualifiers, make sure to clear it.
+        int typeQuals = type.getCVRQualifiers() | canType.getCVRQualifiers();
+        if (typeQuals == 0)
+            return canType;
+
+        // If the type qualifiers are on an array type, get the canonical type of the
+        // array with the qualifiers applied to the element type.
+        if (!(canType.getType() instanceof ArrayType))
+        {
+            return canType.getQualifiedType(typeQuals);
+        }
+
+        // Get the canonical version of the element with the extra qualifiers on it.
+        // This can recursively sink qualifiers through multiple levels of arrays.'
+        ArrayType at = (ArrayType)canType.getType();
+        QualType newEltTy = at.getElemType().getWithAdditionalQualifiers(typeQuals);
+        newEltTy = getCanonicalType(newEltTy);
+
+        if (at instanceof ConstantArrayType)
+        {
+            ConstantArrayType cat = (ConstantArrayType )at;
+            return new QualType(getConstantArrayType(newEltTy, cat.getSize()));
+        }
+
+        if (at instanceof IncompleteArrayType)
+        {
+            IncompleteArrayType iat = (IncompleteArrayType)at;
+            return new QualType(getIncompleteArrayType(newEltTy));
+        }
+
+        assert at instanceof VariableArrayType;
+
+        VariableArrayType vat = (VariableArrayType)at;
+        return new QualType(getVariableArrayType(newEltTy, vat.getSizeExpr()));
     }
 }

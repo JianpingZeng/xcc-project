@@ -2681,4 +2681,21 @@ public class APInt
             return new APInt(getBitWidth(), val ^ rhs.val);
         return xorSlowCase(rhs);
     }
+
+	/**
+     *  Constructs an APInt value that has the bottom loBitsSet bits set.
+     * @return
+     */
+    public static APInt getLowBitSet(int numBits, int loBitsSet)
+    {
+        assert loBitsSet <=numBits;
+        if (loBitsSet == 0)
+            return new APInt(numBits, 0);
+        if (loBitsSet == APINT_BITS_PER_WORD)
+            return new APInt(numBits, -1L);
+
+        if (numBits < APINT_BITS_PER_WORD)
+            return new APInt(numBits, 1L << loBitsSet);
+        return new APInt(numBits, 0).lshr(numBits - loBitsSet);
+    }
 }

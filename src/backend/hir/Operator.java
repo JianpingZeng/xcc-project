@@ -40,12 +40,12 @@ public enum Operator
 	FDiv("fdiv", UDiv.index + 1, ASSOCIATIVE),
 
     // mod operation
-    UMod("UMod", FDiv.index + 1, ASSOCIATIVE),
-    SMod("SMod", UMod.index + 1, ASSOCIATIVE),
-    FMod("FMod", SMod.index + 1, ASSOCIATIVE),
+    URem("URem", FDiv.index + 1, ASSOCIATIVE),
+    SRem("SRem", URem.index + 1, ASSOCIATIVE),
+    FRem("FRem", SRem.index + 1, ASSOCIATIVE),
 
 	// bit-operation
-	And("and", SMod.index + 1, ASSOCIATIVE | COMMUTATIVE),
+	And("and", SRem.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
 	Or("or", And.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
@@ -66,16 +66,12 @@ public enum Operator
 	DNeg("dneg", FNeg.index + 1, 0),
 
 	// shift operation
-	IShr("ishr", DNeg.index + 1, 0),
-	IUShr("iushr", IShr.index + 1, 0),
-	LShr("lshr", IUShr.index + 1, 0),
-	LUShr("lushr", LShr.index + 1, 0),
-
-	IShl("ishl", LUShr.index + 1, 0),
-	LShl("lshl", IShl.index  + 1, 0),
+	Shl("ishl", DNeg.index + 1, 0),
+	LShr("lshr", Shl.index + 1, 0),
+	AShr("lushr", LShr.index + 1, 0),
 
 	// memory operation
-	Alloca("alloca", LShl.index + 1, 0),
+	Alloca("alloca", AShr.index + 1, 0),
 	Store("store", Alloca.index + 1, 0),
 	Load("load", Store.index + 1, 0),
 
@@ -112,7 +108,8 @@ public enum Operator
 	// other operation
 	Phi("phi", I2S.index + 1, 0),
 	ICmp("ICmp", Phi.index + 1, 0),
-	FCmp("FCmp",ICmp.index + 1, 0);
+	FCmp("FCmp",ICmp.index + 1, 0),
+	GetElementPtr("GetElementPtr", FCmp.index + 1, 0);
 
 	public final String opName;
 	public final int index;

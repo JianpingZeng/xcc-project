@@ -6,7 +6,6 @@ import backend.lir.ci.LIRKind;
 import backend.type.PointerType;
 import backend.value.*;
 import backend.value.Instruction.*;
-import com.sun.org.apache.bcel.internal.classfile.ConstantFloat;
 import driver.Options;
 import frontend.ast.StmtVisitor;
 import frontend.ast.Tree;
@@ -1775,11 +1774,11 @@ public class HIRGenModule extends StmtVisitor
 		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
-			opcode = Operator.UMod;
+			opcode = Operator.URem;
 		}
 		else if (ty.equals(Type.LONGType))
 		{
-			opcode = Operator.SMod;
+			opcode = Operator.SRem;
 		}
 		else
 		{
@@ -1887,7 +1886,7 @@ public class HIRGenModule extends StmtVisitor
 		Operator opcode = Operator.None;
 		if (ty.isIntLike())
 		{
-			opcode = Operator.IShl;
+			opcode = Operator.Shl;
 		}
 		else if (ty.equals(Type.LONGType))
 		{

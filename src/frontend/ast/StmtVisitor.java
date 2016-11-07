@@ -50,16 +50,16 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 				case BO_LAnd: return visitBinLAnd(binOp);
 				case BO_LOr: return visitBinLOr(binOp);
 				case BO_Assign: return visitBinAssign(binOp);
-				case BO_MulAssign: return visitBinMulAssign(binOp);
-				case BO_DivAssign: return visitBinDivAssign(binOp);
-				case BO_RemAssign: return visitBinRemAssign(binOp);
-				case BO_AddAssign: return visitBinAddAssign(binOp);
-				case BO_SubAssign: return visitBinSubAssign(binOp);
-				case BO_ShlAssign: return visitBinShlAssign(binOp);
-				case BO_ShrAssign: return visitBinShrAssign(binOp);
-				case BO_AndAssign: return visitBinAndAssign(binOp);
-				case BO_OrAssign: return visitBinOrAssign(binOp);
-				case BO_XorAssign: return visitBinXorAssign(binOp);
+				case BO_MulAssign: return visitBinMulAssign((CompoundAssignExpr) binOp);
+				case BO_DivAssign: return visitBinDivAssign((CompoundAssignExpr) binOp);
+				case BO_RemAssign: return visitBinRemAssign((CompoundAssignExpr) binOp);
+				case BO_AddAssign: return visitBinAddAssign((CompoundAssignExpr) binOp);
+				case BO_SubAssign: return visitBinSubAssign((CompoundAssignExpr) binOp);
+				case BO_ShlAssign: return visitBinShlAssign((CompoundAssignExpr) binOp);
+				case BO_ShrAssign: return visitBinShrAssign((CompoundAssignExpr) binOp);
+				case BO_AndAssign: return visitBinAndAssign((CompoundAssignExpr) binOp);
+				case BO_OrAssign: return visitBinOrAssign((CompoundAssignExpr) binOp);
+				case BO_XorAssign: return visitBinXorAssign((CompoundAssignExpr) binOp);
 				case BO_Comma: return visitBinComma(binOp);
 			}
 		}
@@ -193,25 +193,25 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 
 	public abstract T visitBinAssign(BinaryExpr expr);
 
-	public abstract T visitBinMulAssign(BinaryExpr expr);
+	public abstract T visitBinMulAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinDivAssign(BinaryExpr expr);
+	public abstract T visitBinDivAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinRemAssign(BinaryExpr expr);
+	public abstract T visitBinRemAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinAddAssign(BinaryExpr expr);
+	public abstract T visitBinAddAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinSubAssign(BinaryExpr expr);
+	public abstract T visitBinSubAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinShlAssign(BinaryExpr expr);
+	public abstract T visitBinShlAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinShrAssign(BinaryExpr expr);
+	public abstract T visitBinShrAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinAndAssign(BinaryExpr expr);
+	public abstract T visitBinAndAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinOrAssign(BinaryExpr expr);
+	public abstract T visitBinOrAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinXorAssign(BinaryExpr expr);
+	public abstract T visitBinXorAssign(CompoundAssignExpr expr);
 
 	public abstract T visitBinComma(BinaryExpr expr);
 

@@ -19,11 +19,8 @@ package backend.hir;
 import backend.type.Type;
 import backend.value.Constant;
 import backend.value.Instruction;
-import backend.value.Instruction.AllocaInst;
-import backend.value.Instruction.BranchInst;
-import backend.value.Instruction.CastInst;
+import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import backend.value.Instruction.SwitchInst;
 import backend.value.Value;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
@@ -53,11 +50,6 @@ public class HIRBuilder
 	{
 		curBB = insertPoint;
 		insertPtr = curBB.getNumOfInsts();
-	}
-
-	public Instruction.StoreInst createStore(Value val, Value ptr)
-	{
-		return insert(new Instruction.StoreInst(val, ptr, ""));
 	}
 
 	private <InstTy extends Instruction> InstTy insert(InstTy inst)
@@ -100,11 +92,6 @@ public class HIRBuilder
 	public void clearInsertPoint()
 	{
 		curBB = null;
-	}
-
-	public Value createAlloca(Type type, Value arraySize, String name)
-	{
-		return insert(new AllocaInst(type, arraySize, name));
 	}
 
 	//============================================================//
@@ -210,15 +197,8 @@ public class HIRBuilder
 		return createCast(Operator.BitCast, value, destTy, name);
 	}
 
-	public Value createMul(Value lhs, Value rhs, String name)
-	{
-		assert lhs.getType() == rhs.getType();
-		return insert(new Instruction.Op2(lhs.getType(), Operator.Mul, lhs, rhs,
-				name));
-	}
-
 	/**
-	 * Create an unconditional branch instruction-'br label X'.
+	 * create an unconditional branch instruction-'br label X'.
 	 *
 	 * @param targetBB
 	 */
@@ -228,7 +208,7 @@ public class HIRBuilder
 	}
 
 	/**
-	 * Creates a branch instruction, like 'br cond trueBB, falseBB' on the
+	 * creates a branch instruction, like 'br cond trueBB, falseBB' on the
 	 * specified condition.
 	 *
 	 * @param condVal
@@ -243,7 +223,7 @@ public class HIRBuilder
 	}
 
 	/**
-	 * Creates a switch instruction with the specified value.
+	 * creates a switch instruction with the specified value.
 	 * default dest, and with a hint for the number of cases that will
 	 * be added (for efficient allocation).
 	 *
@@ -266,153 +246,482 @@ public class HIRBuilder
 	// Instruction creation methods: Compare Instructions
 	//===--------------------------------------------------------------------===//
 
-	public Value createICmpEQ(Value LHS, Value RHS, final String name)
+	public Value createICmpEQ(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_EQ, LHS, RHS, name);
+		return createICmp(ICMP_EQ, lhs, rhs, name);
 	}
 
-	public Value createICmpNE(Value LHS, Value RHS, final String name)
+	public Value createICmpNE(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_NE, LHS, RHS, name);
+		return createICmp(ICMP_NE, lhs, rhs, name);
 	}
 
-	public Value createICmpUGT(Value LHS, Value RHS, final String name)
+	public Value createICmpUGT(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_UGT, LHS, RHS, name);
+		return createICmp(ICMP_UGT, lhs, rhs, name);
 	}
 
-	public Value createICmpUGE(Value LHS, Value RHS, final String name)
+	public Value createICmpUGE(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_UGE, LHS, RHS, name);
+		return createICmp(ICMP_UGE, lhs, rhs, name);
 	}
 
-	public Value createICmpULT(Value LHS, Value RHS, final String name)
+	public Value createICmpULT(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_ULT, LHS, RHS, name);
+		return createICmp(ICMP_ULT, lhs, rhs, name);
 	}
 
-	public Value createICmpULE(Value LHS, Value RHS, final String name)
+	public Value createICmpULE(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_ULE, LHS, RHS, name);
+		return createICmp(ICMP_ULE, lhs, rhs, name);
 	}
 
-	public Value createICmpSGT(Value LHS, Value RHS, final String name)
+	public Value createICmpSGT(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_SGT, LHS, RHS, name);
+		return createICmp(ICMP_SGT, lhs, rhs, name);
 	}
 
-	public Value createICmpSGE(Value LHS, Value RHS, final String name)
+	public Value createICmpSGE(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_SGE, LHS, RHS, name);
+		return createICmp(ICMP_SGE, lhs, rhs, name);
 	}
 
-	public Value createICmpSLT(Value LHS, Value RHS, final String name)
+	public Value createICmpSLT(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_SLT, LHS, RHS, name);
+		return createICmp(ICMP_SLT, lhs, rhs, name);
 	}
 
-	public Value createICmpSLE(Value LHS, Value RHS, final String name)
+	public Value createICmpSLE(Value lhs, Value rhs, final String name)
 	{
-		return createICmp(ICMP_SLE, LHS, RHS, name);
+		return createICmp(ICMP_SLE, lhs, rhs, name);
 	}
 
-	public Value createFCmpOEQ(Value LHS, Value RHS, final String name)
+	public Value createFCmpOEQ(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_OEQ, LHS, RHS, name);
+		return createFCmp(FCMP_OEQ, lhs, rhs, name);
 	}
 
-	public Value createFCmpOGT(Value LHS, Value RHS, final String name)
+	public Value createFCmpOGT(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_OGT, LHS, RHS, name);
+		return createFCmp(FCMP_OGT, lhs, rhs, name);
 	}
 
-	public Value createFCmpOGE(Value LHS, Value RHS, final String name)
+	public Value createFCmpOGE(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_OGE, LHS, RHS, name);
+		return createFCmp(FCMP_OGE, lhs, rhs, name);
 	}
 
-	public Value createFCmpOLT(Value LHS, Value RHS, final String name)
+	public Value createFCmpOLT(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_OLT, LHS, RHS, name);
+		return createFCmp(FCMP_OLT, lhs, rhs, name);
 	}
 
-	public Value createFCmpOLE(Value LHS, Value RHS, final String name)
+	public Value createFCmpOLE(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_OLE, LHS, RHS, name);
+		return createFCmp(FCMP_OLE, lhs, rhs, name);
 	}
 
-	public Value createFCmpONE(Value LHS, Value RHS, final String name)
+	public Value createFCmpONE(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_ONE, LHS, RHS, name);
+		return createFCmp(FCMP_ONE, lhs, rhs, name);
 	}
 
-	public Value createFCmpORD(Value LHS, Value RHS, final String name)
+	public Value createFCmpORD(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_ORD, LHS, RHS, name);
+		return createFCmp(FCMP_ORD, lhs, rhs, name);
 	}
 
-	public Value createFCmpUNO(Value LHS, Value RHS, final String name)
+	public Value createFCmpUNO(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_UNO, LHS, RHS, name);
+		return createFCmp(FCMP_UNO, lhs, rhs, name);
 	}
 
-	public Value createFCmpUEQ(Value LHS, Value RHS, final String name)
+	public Value createFCmpUEQ(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_UEQ, LHS, RHS, name);
+		return createFCmp(FCMP_UEQ, lhs, rhs, name);
 	}
 
-	public Value createFCmpUGT(Value LHS, Value RHS, final String name)
+	public Value createFCmpUGT(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_UGT, LHS, RHS, name);
+		return createFCmp(FCMP_UGT, lhs, rhs, name);
 	}
 
-	public Value createFCmpUGE(Value LHS, Value RHS, final String name)
+	public Value createFCmpUGE(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_UGE, LHS, RHS, name);
+		return createFCmp(FCMP_UGE, lhs, rhs, name);
 	}
 
-	public Value createFCmpULT(Value LHS, Value RHS, final String name)
+	public Value createFCmpULT(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_ULT, LHS, RHS, name);
+		return createFCmp(FCMP_ULT, lhs, rhs, name);
 	}
 
-	public Value createFCmpULE(Value LHS, Value RHS, final String name)
+	public Value createFCmpULE(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_ULE, LHS, RHS, name);
+		return createFCmp(FCMP_ULE, lhs, rhs, name);
 	}
 
-	public Value createFCmpUNE(Value LHS, Value RHS, final String name)
+	public Value createFCmpUNE(Value lhs, Value rhs, final String name)
 	{
-		return createFCmp(FCMP_UNE, LHS, RHS, name);
+		return createFCmp(FCMP_UNE, lhs, rhs, name);
 	}
 
-	Value createICmp(Predicate P, Value LHS, Value RHS,
-			final String name)
+	public Value createICmp(Predicate P, Value lhs, Value rhs, final String name)
 	{
-		if (LHS instanceof Constant)
+		if (lhs instanceof Constant)
 		{
-			Constant LC = (Constant)LHS;
-			if (RHS instanceof Constant)
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
 			{
-				Constant RC = (Constant)RHS;
+				Constant RC = (Constant) rhs;
 				return folder.createICmp(P, LC, RC);
 			}
 		}
-		return insert(new Instruction.ICmpInst(P, LHS, RHS, name), name);
+		return insert(new Instruction.ICmpInst(P, lhs, rhs, name), name);
 	}
 
-	Value createFCmp(Predicate P, Value LHS, Value RHS,
-			final String name)
+	public Value createFCmp(Predicate P, Value lhs, Value rhs, final String name)
 	{
-		if (LHS instanceof Constant)
+		if (lhs instanceof Constant)
 		{
-			Constant LC = (Constant)LHS;
-			if (RHS instanceof Constant)
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
 			{
-				Constant RC = (Constant)RHS;
+				Constant RC = (Constant) rhs;
 				return folder.createFCmp(P, LC, RC);
 			}
 		}
-		return insert(new Instruction.FCmpInst(P, LHS, RHS, name), name);
+		return insert(new Instruction.FCmpInst(P, lhs, rhs, name), name);
+	}
+
+	//===--------------------------------------------------------------------===//
+	// Instruction creation methods: Binary Operators
+	//===--------------------------------------------------------------------===//
+
+	public Value createAdd(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createAdd(LC, RC);
+			}
+		}
+		return insert(Op2.createAdd(lhs, rhs, name),name);
+	}
+
+	public Value createFAdd(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createFAdd(LC, RC);
+			}
+		}
+
+		return insert(Op2.createFAdd(lhs, rhs, name),name);
+	}
+
+	public Value createSub(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createSub(LC, RC);
+			}
+		}
+
+		return insert(Op2.createSub(lhs, rhs, name),name);
+	}
+
+	public Value createFSub(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createFSub(LC, RC);
+			}
+		}
+
+		return insert(Op2.createFSub(lhs, rhs, name),name);
+	}
+
+	public Value createMul(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createMul(LC, RC);
+			}
+		}
+		return insert(Op2.createMul(lhs, rhs, name),name);
+	}
+
+	public Value createFMul(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createFMul(LC, RC);
+			}
+		}
+
+		return insert(Op2.createFMul(lhs, rhs, name),name);
+	}
+
+	public Value createUDiv(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createUDiv(LC, RC);
+			}
+		}
+		return insert(Op2.createUDiv(lhs, rhs, name),name);
+	}
+
+	public Value createSDiv(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createSDiv(LC, RC);
+			}
+		}
+		return insert(Op2.createSDiv(lhs, rhs, name),name);
+	}
+
+	public Value createFDiv(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createFDiv(LC, RC);
+			}
+		}
+		return insert(Op2.createFDiv(lhs, rhs, name),name);
+	}
+
+	public Value createURem(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createURem(LC, RC);
+			}
+		}
+		return insert(Op2.createURem(lhs, rhs, name),name);
+	}
+
+	public Value createSRem(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createSRem(LC, RC);
+			}
+		}
+		return insert(Op2.createSRem(lhs, rhs, name),name);
+	}
+
+	public Value createFRem(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createFRem(LC, RC);
+			}
+		}
+		return insert(Op2.createFRem(lhs, rhs, name),name);
+	}
+
+	public Value createShl(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createShl(LC, RC);
+			}
+		}
+		return insert(Op2.createShl(lhs, rhs, name),name);
+	}
+
+	public Value createLShr(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createLShr(LC, RC);
+			}
+		}
+		return insert(Op2.createLShr(lhs, rhs, name),name);
+	}
+
+	public Value createAShr(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createAShr(LC, RC);
+			}
+		}
+		return insert(Op2.createAShr(lhs, rhs, name),name);
+	}
+
+	public Value createAnd(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createAnd(LC, RC);
+			}
+		}
+		return insert(Op2.createAnd(lhs, rhs, name),name);
+	}
+
+	public Value createOr(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createOr(LC, RC);
+			}
+		}
+		return insert(Op2.createOr(lhs, rhs, name),name);
+	}
+
+	public Value createXor(Value lhs, Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createXor(LC, RC);
+			}
+		}
+		return insert(Op2.createXor(lhs, rhs, name),name);
+	}
+
+	public Value createBinOp(Operator opc, Value lhs,
+			Value rhs, final String name)
+	{
+		if (lhs instanceof Constant)
+		{
+			Constant LC = (Constant) lhs;
+			if (rhs instanceof Constant)
+			{
+				Constant RC = (Constant) rhs;
+				return folder.createBinOp(opc, LC, RC);
+			}
+		}
+		return insert(Op2.create(opc, lhs, rhs, name),name);
+	}
+
+	public Value createNeg(Value v, final String name)
+	{
+		if (v instanceof Constant)
+		{
+			Constant vc = (Constant)v;
+			return folder.createNeg(vc);
+		}
+		return insert(Op2.createNeg(v), name);
+	}
+
+	public Value createFNeg(Value v, final String name)
+	{
+		if (v instanceof Constant)
+		{
+			Constant vc = (Constant)v;
+			return folder.createFNeg(vc);
+		}
+		return insert(Op2.createFNeg(v), name);
+	}
+
+	public Value createNot(Value v, final String name)
+	{
+		if (v instanceof Constant)
+		{
+			Constant vc = (Constant)v;
+			return folder.createNot(vc);
+		}
+		return insert(Op2.createNot(v), name);
+	}
+
+	public Value createLoad(Value addr, boolean isVolatile, String name)
+	{
+		return insert(new LoadInst(addr, name), name);
+	}
+
+	public Instruction.StoreInst createStore(Value val, Value ptr)
+	{
+		return insert(new Instruction.StoreInst(val, ptr, ""));
+	}
+
+	public AllocaInst createAlloca(final Type ty, Value arraySize,
+			final String name)
+	{
+		return insert(new AllocaInst(ty, arraySize, name), name);
+	}
+
+	public Value createGEP(Value ptr, Value idx, String name)
+	{
+		return insert(new GetElementPtrInst(ptr, idx, name));
+	}
+
+	public Value createInBoundsGEP(Value ptr, Value idx, String name)
+	{
+		return insert(new GetElementPtrInst(ptr, idx, name));
 	}
 }
