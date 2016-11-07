@@ -51,5 +51,6 @@ public interface PrimitiveID
 
     int NumPrimitiveIDs = PointerTyID + 1;   // Must remain as last defined ID
 
+    int LastPrimitiveTyID = LabelTyID;
     int FirstDerivedTyID = FunctionTyID;
 }

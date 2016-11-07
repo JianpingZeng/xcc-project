@@ -37,7 +37,8 @@ public abstract class Type implements TypeClass
     public static QualType FloatTy = new QualType(new RealType(4, "float"));
     public static QualType DoubleTy = new QualType(new RealType(8, "double"));
 
-    /**
+
+	/**
      * The kind of a tag frontend.type.
      */
     public enum TagTypeKind
@@ -61,9 +62,9 @@ public abstract class Type implements TypeClass
         }
     }
 
-    static final public long sizeUnknown = -1;
-
     protected int tag;
+
+    private QualType canonicalType;
 
     /**
      * Constructor with one parameter which represents the kind of frontend.type
@@ -76,10 +77,15 @@ public abstract class Type implements TypeClass
         this.tag = tag;
     }
 
-    public int getTypeClass()
-    {
-        return tag;
-    }
+	public Type(int typeClass, QualType canonical)
+	{
+		tag = typeClass;
+		canonicalType = canonical.isNull()?new QualType(this, 0):canonical;
+	}
+
+    public int getTypeClass(){return tag;}
+
+	public boolean isCanonical() {return canonicalType.getType() == this;}
 
     /**
      * Returns the size of the specified frontend.type in bits.
@@ -431,13 +437,6 @@ public abstract class Type implements TypeClass
         return !(this instanceof VariableArrayType);
     }
 
-    public static Type getLabelTy() { return LabelType.New();}
-
-    public static Type getVoidTy()
-    {
-        return VoidType.getVoidTy();
-    }
-
     public Type getArrayElementTypeNoQuals()
     {
         if (this instanceof ArrayType)
@@ -473,4 +472,13 @@ public abstract class Type implements TypeClass
             return ft.getReturnType().isVariablyModifiedType();
         return false;
     }
+
+	/**
+	 * Obtains the canonical type underlying this type.
+	 * @return
+	 */
+	public QualType getCanonicalTypeInternal()
+	{
+		return canonicalType;
+	}
 }

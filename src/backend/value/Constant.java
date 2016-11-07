@@ -22,6 +22,7 @@ import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
 import com.sun.org.apache.regexp.internal.RE;
+import frontend.sema.APInt;
 
 import java.math.BigDecimal;
 
@@ -234,4 +235,13 @@ public abstract class Constant extends User
     }
 
     public abstract boolean isNullValue();
+
+    public static Constant getAllOnesValue(Type ty)
+    {
+        if (ty instanceof IntegerType)
+        {
+            return ConstantInt.get(APInt.getAllOnesValue(((IntegerType) ty).getBitWidth()));
+        }
+        return null;
+    }
 }

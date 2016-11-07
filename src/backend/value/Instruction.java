@@ -8,6 +8,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import tools.Util;
 
+import javax.lang.model.element.TypeElement;
 import java.util.ArrayList;
 
 import static backend.hir.Operator.*;
@@ -269,6 +270,366 @@ public abstract class Instruction extends User
             setOperand(0, x);
             setOperand(1, y);
         }
+
+        public static Op2 create(Operator op, Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            assert lhs.getType() == rhs.getType()
+                    : "Cannot create binary operator with two operands of differing type!";
+            return new Op2(lhs.getType(), op, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 create(Operator op, Value lhs, Value rhs, String name)
+        {
+            assert lhs.getType() == rhs.getType()
+                    : "Cannot create binary operator with two operands of differing type!";
+            return new Op2(lhs.getType(), op, lhs, rhs, name, (Instruction)null);
+        }
+
+        public static Op2 create(Operator op,
+                Value lhs,
+                Value rhs,
+                String name,
+                BasicBlock insertAtEnd)
+        {
+            assert lhs.getType() == rhs.getType()
+                    : "Cannot create binary operator with two operands of differing type!";
+            return new Op2(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
+        }
+
+        //=====================================================================//
+        //               The  first version with default insertBefore.         //
+        public static Op2 createAdd(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.Add, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createFAdd(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.FAdd, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createSub(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.Sub, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createFSub(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.FSub, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createMul(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.FMul, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createFMul(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.FMul, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createUDiv(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.UDiv, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createSDiv(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.SDiv, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createFDiv(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.FDiv, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createURem(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.URem, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createSRem(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.SRem, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createFRem(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.FRem, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createShl(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.Shl, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createLShr(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.LShr, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createAShr(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.AShr, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createAnd(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.And, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createOr(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.Or, lhs, rhs, name, (Instruction) null);
+        }
+
+        public static Op2 createXor(Value lhs, Value rhs, String name)
+        {
+            return create(Operator.Xor, lhs, rhs, name, (Instruction) null);
+        }
+
+        //=====================================================================//
+        //                 The second version with insertAtEnd argument.       //
+        public static Op2 createAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.Add, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createFAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.FAdd, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.Sub, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createFSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.FSub, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.FMul, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createFMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.FMul, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createUDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.UDiv, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createSDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.SDiv, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createFDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.FDiv, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createURem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.URem, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createSRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.SRem, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createFRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.FRem, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createShl(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.Shl, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createLShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.LShr, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createAShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.AShr, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createAnd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.And, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createOr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.Or, lhs, rhs, name, insertAtEnd);
+        }
+
+        public static Op2 createXor(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        {
+            return create(Operator.Xor, lhs, rhs, name, insertAtEnd);
+        }
+
+
+        //=====================================================================//
+        //                   The third version with insertBefore argument.     //
+        public static Op2 createAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.Add, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createFAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.FAdd, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createSub(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.Sub, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createFSub(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.FSub, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createMul(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.FMul, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createFMul(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.FMul, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createUDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.UDiv, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createSDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.SDiv, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createFDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.FDiv, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createURem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.URem, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createSRem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.SRem, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createFRem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.FRem, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createShl(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.Shl, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createLShr(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.LShr, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createAShr(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.AShr, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createAnd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.And, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createOr(Value lhs, Value rhs, String name,Instruction insertBefore)
+        {
+            return create(Operator.Or, lhs, rhs, name, insertBefore);
+        }
+
+        public static Op2 createXor(Value lhs, Value rhs, String name, Instruction insertBefore)
+        {
+            return create(Operator.Xor, lhs, rhs, name, insertBefore);
+        }
+
+
+        // ====================================================================//
+        //   Some helper method for create unary operator with Bianry inst.    //
+        public static Op2 createNeg(Value op, String name, Instruction insertBefore)
+        {
+            Value zero = ConstantInt.getNullValue(op.getType());
+            return new Op2(op.getType(), Sub, zero, op, name, insertBefore);
+        }
+
+        public static Op2 createNeg(Value op, String name, BasicBlock insertAtEnd)
+        {
+            Value zero = ConstantInt.getNullValue(op.getType());
+            return new Op2(op.getType(), Sub, zero, op, name, insertAtEnd);
+        }
+
+        public static Op2 createNeg(Value op)
+        {
+            Value zero = ConstantInt.getNullValue(op.getType());
+            return new Op2(op.getType(), Sub, zero, op, "");
+        }
+
+        public static Op2 createFNeg(Value op, String name, Instruction insertBefore)
+        {
+            Value zero = ConstantFP.getNullValue(op.getType());
+            return new Op2(op.getType(), Sub, zero, op, name, insertBefore);
+        }
+
+        public static Op2 createFNeg(Value op)
+        {
+            Value zero = ConstantInt.getNullValue(op.getType());
+            return new Op2(op.getType(), Sub, zero, op, "");
+        }
+
+        public static Op2 createFNeg(Value op, String name, BasicBlock insertAtEnd)
+        {
+            Value zero = ConstantFP.getNullValue(op.getType());
+            return new Op2(op.getType(), Sub, zero, op, name, insertAtEnd);
+        }
+
+        public static Op2 createNot(Value op, String name, Instruction insertBefore)
+        {
+            Constant one = Constant.getAllOnesValue(op.getType());
+            return new Op2(op.getType(), Xor, one, op, name, insertBefore);
+        }
+
+        public static Op2 createNot(Value op)
+        {
+            Constant one = Constant.getAllOnesValue(op.getType());
+            return new Op2(op.getType(), Xor, one, op, "");
+        }
+
+        public static Op2 createNot(Value op, String name, BasicBlock insertAtEnd)
+        {
+            Constant one = Constant.getAllOnesValue(op.getType());
+            return new Op2(op.getType(), Xor, one, op, name, insertAtEnd);
+        }
+
 
         /**
          * This method is used for attempting to swap the two operands of this
@@ -1515,14 +1876,23 @@ public abstract class Instruction extends User
         public PhiNode(Type ty, int numReservedValues,
                 String name)
         {
-            this(ty, numReservedValues, name, null);
+            this(ty, numReservedValues, name, (Instruction) null);
         }
 
         public PhiNode(Type ty, int numReservedValues,
                 String name, Instruction insertBefore)
         {
             super(ty, Operator.Phi, insertBefore);
-            reserve(numReservedValues << 1);
+            reserve(numReservedValues);
+            this.name = name;
+        }
+
+        public PhiNode(Type type, int numReservedValue, String name,
+                BasicBlock insertAtEnd)
+        {
+            super(type, Operator.Phi, insertAtEnd);
+            reserve(numReservedValue);
+            this.name = name;
         }
 
         @Override
@@ -1840,24 +2210,32 @@ public abstract class Instruction extends User
      */
     public static class LoadInst extends Op1
     {
-        public LoadInst(Type ty, Value from,
+        private boolean isVolatile;
+
+        public LoadInst(Value from,
                 String name, Instruction insertBefore)
         {
-            super(ty, Operator.Load, from, name, insertBefore);
+            super(((PointerType)from.getType()).getElemType(),
+                    Operator.Load,
+                    from,
+                    name,
+                    insertBefore);
             assertOK();
         }
 
-        public LoadInst(Type ty, Value from,
+        public LoadInst(Value from,
                 String name)
         {
-            super(ty, Operator.Load, from, name, (Instruction)null);
+            super(((PointerType)from.getType()).getElemType(),
+                    Operator.Load, from, name, (Instruction)null);
             assertOK();
         }
 
-        public LoadInst(Type ty, Value from,
+        public LoadInst(Value from,
                 String name, BasicBlock insertAtEnd)
         {
-            super(ty, Operator.Load, from, name, insertAtEnd);
+            super(((PointerType)from.getType()).getElemType(),
+                    Operator.Load, from, name, insertAtEnd);
             assertOK();
         }
 
@@ -1881,6 +2259,107 @@ public abstract class Instruction extends User
         public void accept(InstructionVisitor visitor)
         {
             visitor.visitLoadInst(this);
+        }
+    }
+
+	/**
+	 * A instruction for type-safe pointer arithmetic to access elements of arrays and structs.
+     */
+    public static class GetElementPtrInst extends Instruction
+    {
+        public GetElementPtrInst(Value ptr,
+                Value idx,
+                String name,
+                Instruction insertBefore)
+        {
+            super(PointerType.get(checkType(getIndexedType(ptr.getType(), idx))),
+                    GetElementPtr, insertBefore);
+            reserve(2);
+            init(ptr, idx, name);
+        }
+
+        public GetElementPtrInst(Value ptr, Value idx, String name, BasicBlock insertAtEnd)
+        {
+            super(PointerType.get(checkType(getIndexedType(ptr.getType(), idx))),
+                    GetElementPtr, insertAtEnd);
+            reserve(2);
+            init(ptr, idx, name);
+        }
+
+        public GetElementPtrInst(Value ptr, Value idx, String name)
+        {
+            this(ptr, idx, name, (Instruction)null);
+        }
+
+        public GetElementPtrInst(Value ptr, Value idx)
+        {
+            this(ptr, idx, "", (Instruction)null);
+        }
+
+        private void init(Value ptr, Value idx, String name)
+        {
+            assert getNumOfOperands() == 2:"NumOperands not initialized.";
+            setOperand(0, ptr);
+            setOperand(1, idx);
+            this.name = name;
+        }
+
+        /**
+         * A simple wrapper function to given a better assert failure message
+         * on bad indexes for a {@linkplain GetElementPtrInst} instruction.
+         * @param ty
+         * @return
+         */
+        public static Type checkType(Type ty)
+        {
+            assert ty!=null:"Invalid GetElementPtrInst indice for type!";
+            return ty;
+        }
+
+        public static Type getIndexedType(Type ptrType, Value idx)
+        {
+            // It is not pointer type.
+            if (!(ptrType instanceof PointerType))
+                return null;
+            PointerType pt = (PointerType)ptrType;
+
+            // Check the pointer index.
+            if (!pt.indexValid(idx)) return null;
+
+            return pt.getElemType();
+        }
+
+	    /**
+         * Overload to return most specific pointer type.
+         * @return
+         */
+        @Override
+        public PointerType getType()
+        {
+            return (PointerType) super.getType();
+        }
+
+        public Value getPointerOperand()
+        {
+            return operand(0);
+        }
+
+        public PointerType getPointerOperandType()
+        {
+            return (PointerType)getPointerOperand().getType();
+        }
+
+        public boolean hasIndices(){return getNumOfOperands() > 1;}
+
+        /**
+         * An interface for InstructionVisitor invoking.
+         *
+         * @param visitor The instance of InstructionVisitor.
+         */
+        @Override
+        public void accept(InstructionVisitor visitor)
+        {
+
         }
     }
 }

@@ -163,6 +163,26 @@ public abstract class Type extends Value implements PrimitiveID
     {
         return id != FunctionTyID && id != VoidTyID;
     }
+
+	/**
+     * Return true if the type is a valid type for a virtual register in codegen.
+     * This include all first-class type except struct and array type.
+     * @return
+     */
+    public boolean isSingleValueType()
+    {
+        return id != VoidTyID && id <= LastPrimitiveTyID
+                || (id>=Int1TyID && id<=Int64TyID) ||
+                id == PointerTyID;
+    }
+
+	/**
+     * Return true if the type is an aggregate type. it means it is valid as
+     * the first operand of an insertValue or extractValue instruction.
+     * This includes struct and array types.
+     * @return
+     */
+    public boolean isAggregateType() {return id == StructTyID || id == ArrayTyID;}
     /**
      * Checks if this type could holded in register.
      * @return

@@ -25,12 +25,9 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
 import frontend.ast.Tree;
-import frontend.sema.APSInt;
-import frontend.sema.BinaryOperatorKind;
-import frontend.sema.Decl;
+import frontend.sema.*;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
-import frontend.sema.UnaryOperatorKind;
 import frontend.type.ArrayType;
 import frontend.type.QualType;
 import tools.Util;
@@ -91,6 +88,8 @@ public final class CodeGenFunction
     private HashMap<Tree.LabelledStmt, BasicBlock> labelMap;
 
     private HashMap<Tree.Expr, Type> vlaSizeMap;
+    public int pointerWidth;
+    public Type BackendIntTy;
 
     static class BreakContinue
     {
@@ -125,6 +124,7 @@ public final class CodeGenFunction
         labelMap = new HashMap<>();
         vlaSizeMap = new HashMap<>();
         breakContinueStack = new Stack<>();
+        pointerWidth = 64;
     }
 
     public void generateCode(FunctionDecl fd, Function fn)
@@ -272,7 +272,7 @@ public final class CodeGenFunction
         return generator.getCodeGenTypes().convertTypeForMem(ty);
     }
 
-    private boolean hasAggregateBackendType(QualType ty)
+    public boolean hasAggregateBackendType(QualType ty)
     {
         return !ty.isPointerType() && !ty.isRealType()
                 && !ty.isVoidType() && !ty.isFunctionType();
@@ -325,7 +325,7 @@ public final class CodeGenFunction
         emitStmt(curFnDecl.getBody());
     }
 
-    private void emitStmt(Tree.Stmt stmt)
+    public void emitStmt(Tree.Stmt stmt)
     {
         assert stmt!=null:"Null Statement!";
 
@@ -440,7 +440,8 @@ public final class CodeGenFunction
      * @param trueBB
      * @param falseBB
      */
-    private void emitBranchOnBoolExpr(Expr cond, BasicBlock trueBB, BasicBlock falseBB)
+    public void emitBranchOnBoolExpr(Expr cond, BasicBlock trueBB,
+            BasicBlock falseBB)
     {
         if (cond instanceof ParenExpr)
             cond = ((ParenExpr) cond).getSubExpr();
@@ -544,7 +545,7 @@ public final class CodeGenFunction
      * @param cond
      * @return
      */
-    private Value evaluateExprAsBool(Expr cond)
+    public Value evaluateExprAsBool(Expr cond)
     {
         QualType boolTy = frontend.type.Type.BoolTy;
         assert !cond.getType().isComplexType()
@@ -836,7 +837,7 @@ public final class CodeGenFunction
      * @param expr
      * @return
      */
-    private int constantFoldsToSimpleInteger(Expr expr)
+    public int constantFoldsToSimpleInteger(Expr expr)
     {
         Expr.EvalResult result = new Expr.EvalResult();
         if (!expr.evaluate(result) || !result.getValue().isInt()
@@ -1121,8 +1122,7 @@ public final class CodeGenFunction
      * @param expr
      * @param destPtr
      */
-    private void emitAggExpr(Tree.Expr expr, Value destPtr,
-            boolean ignoreResult,
+    public void emitAggExpr(Tree.Expr expr, Value destPtr, boolean ignoreResult,
             boolean isInitializer)
     {
         assert expr!=null && hasAggregateBackendType(expr.getType())
@@ -1148,7 +1148,7 @@ public final class CodeGenFunction
         builder.createStore(val, addr);
     }
 
-    private boolean containsLabel(Tree.Stmt s, boolean ignoreCaseStmts)
+    public boolean containsLabel(Tree.Stmt s, boolean ignoreCaseStmts)
     {
         // Null statement, not a label.
         if (s == null) return false;
@@ -1180,7 +1180,7 @@ public final class CodeGenFunction
     /**
      * Ensure the insert point has been defined as yet before emit IR.
      */
-    private void ensureInsertPoint()
+    public void ensureInsertPoint()
     {
         if (!hasInsertPoint())
             emitBlock(createBasicBlock());
@@ -1202,7 +1202,7 @@ public final class CodeGenFunction
         builder.setInsertPoint(bb);
     }
 
-    private void emitBlock(BasicBlock bb)
+    public void emitBlock(BasicBlock bb)
     {
        emitBlock(bb, false);
     }
@@ -1379,12 +1379,12 @@ public final class CodeGenFunction
         return createBasicBlock(name, parent, null);
     }
 
-    private BasicBlock createBasicBlock()
+    public BasicBlock createBasicBlock()
     {
         return createBasicBlock("", curFn, null);
     }
 
-    private BasicBlock createBasicBlock(String name)
+    public BasicBlock createBasicBlock(String name)
     {
         return createBasicBlock(name, curFn, null);
     }
@@ -1392,5 +1392,181 @@ public final class CodeGenFunction
     private BasicBlock createBasicBlock(String name, Function parent, BasicBlock before)
     {
         return BasicBlock.createBasicBlock(id++, name, parent, before);
+    }
+
+	/**
+	 * Emit code to compute a designator that specifies the location of the
+     * expression.
+     * <p>This can return one of things: a simple address or a bitfield.
+     * </p>
+     *
+     * <p>If this return a bitfield reference, nothing about the pointee type
+     * of the HIR value is known: for example, it may not be a pointer to an
+     * integer.
+     * </p>
+     *
+     * <p>If this returns a normal address, and if the lvalue's C type
+     * is fixed size, this method guarantees that the returned pointer type
+     * will point to an HIR type of the same size of lvalue's type.
+     * </p>
+     * @param expr
+     * @return
+     */
+    public LValue emitLValue(Expr expr)
+    {
+        switch (expr.getStmtClass())
+        {
+            default: return null;
+
+            case BinaryOperatorClass:
+                return emitBinaryOperatorLValue((BinaryExpr)expr);
+            case CallExprClass:
+                return emitCallExpr((CallExpr)expr);
+            case DeclRefExprClass:
+                return emitDeclRefExpr((DeclRefExpr)expr);
+            case ParenExprClass:
+                return emitParenExpr((ParenExpr)expr);
+            case StringLiteralClass:
+                return emitStringLiteral((StringLiteral)expr);
+            case UnaryOperatorClass:
+                return emitUnaryExpr((UnaryExpr)expr);
+            case ArraySubscriptExprClass:
+                return emitArraySubscriptExpr((ArraySubscriptExpr)expr);
+            case MemberExprClass:
+                return emitMemberExpr((MemberExpr)expr);
+            case CompoundLiteralExprClass:
+                return emitCompoundLiteral((CompoundLiteralExpr)expr);
+            case CondtionalOperatorClass:
+                return emitConditionalExpr((ConditionalExpr)expr);
+            case ImplicitCastClass:
+            case ExplicitCastClass:
+                return emitCastExpr((ExplicitCastExpr)expr);
+        }
+    }
+
+	/**
+     * Creates a load instruction for loading a value from specified address.
+     * <p>A worthwhile noted point is that performing truncating to i1 when
+     * {@code ty} is boolean type while the type of given {@code addr} is not
+     * boolean.</p>
+     *
+     * @param addr
+     * @param isVolatile
+     * @param ty
+     * @return
+     */
+    public Value emitLoadOfScalar(Value addr, boolean isVolatile, QualType ty)
+    {
+        Value v = builder.createLoad(addr, isVolatile, "tmp");
+        // Bool can have different representation in memory than in registers.
+        if (ty.isBooleanType())
+            if (v.getType() != Type.Int1Ty)
+                v = builder.createTrunc(v, Type.Int1Ty, "tobool");
+        return v;
+    }
+
+	/**
+     * Emits an instruction to write data of type {@code ty} into specified address.
+     * @param value
+     * @param addr
+     * @param isVolatile
+     * @param ty
+     */
+    public void emitStoreOfScalar(Value value, Value addr, boolean isVolatile, QualType ty)
+    {
+        if (ty.isBooleanType())
+        {
+            // Bool can have different representation in memory than in registers.
+            final Type srcTy = value.getType();
+            final PointerType desPtr = (PointerType) addr.getType();
+            if (desPtr.getElemType() != srcTy)
+            {
+                Type memTy = PointerType.get(srcTy);
+                addr = builder.createBitCast(addr, memTy, "storetmp");
+            }
+        }
+        builder.createStore(value, addr);
+    }
+
+	/**
+     * Given an expression that represents a lvalue, this method emits the address
+     * of the lvalue, then loads like result as an rvalue, returning the rvalue.
+     * @param lv
+     * @param exprType
+     * @return
+     */
+    public RValue emitLoadOfLValue(LValue lv, QualType exprType)
+    {
+        if (lv.isSimple())
+        {
+            Value ptr = lv.getAddress();
+            Type eltType = ((PointerType)ptr.getType()).getElemType();
+
+            // Simple scalar lvalue.
+            if (eltType.isFirstClassType())
+                return RValue.get(emitLoadOfScalar(ptr, lv.isVolatileQualified(), exprType));
+
+            assert exprType.isFunctionType():"Unknown scalar type.";
+            return RValue.get(ptr);
+        }
+
+        assert lv.isBitField():"Unknown LValue exprType.";
+        return emitLoadOfBitfieldLValue(lv, exprType);
+    }
+
+    public RValue emitLoadOfBitfieldLValue(LValue lv, QualType exprType)
+    {
+        // TODO complete emitLoadOfBitfield();
+        int startBit = lv.getBitfieldStartBits();
+        int bitfieldSize = lv.getBitfieldSize();
+        Value ptr = lv.getBitFieldAddr();
+
+        Type eltType = ((PointerType)ptr.getType()).getElemType();
+        int eltTySize = generator.getTargetData().getTypeSizeInBits(eltType0);
+
+        int lowBits = Math.min(bitfieldSize, eltTySize - startBit);
+        Value val = builder.createLoad(ptr, lv.isVolatileQualified(), "tmp");
+
+        // Shift to proper location.
+        if (startBit != 0)
+            val = builder.createLShr(val, ConstantInt.get(eltType, startBit), "bf.to");
+
+        // Mask off unused bits.
+        Constant lowMask = ConstantInt.get(APInt.getLowBitSet(eltTySize, lowBits));
+
+        val = builder.createAnd(val, lowMask, "bf.to.cleared");
+
+        // Fetch the high bits if necessary.
+        if (lowBits < bitfieldSize)
+        {
+            int highBits = bitfieldSize - lowBits;
+            // TODO
+        }
+        return null;
+    }
+
+    public RValue emitCallExpr(CallExpr expr)
+    {
+        return null;
+    }
+
+    public void errorUnsupported(BinaryExpr expr, String msg)
+    {
+
+    }
+
+	/**
+	 * Store the specified RValue into the specified LValue.
+     * Also, it is guaranteed that both have same type is {@code type}.
+     */
+    public void emitStoreThroughLValue(RValue src, LValue dest, QualType type)
+    {
+        if (dest.isBitField())
+        {
+            // todo emit store for bitfield.
+        }
+
+        assert src.isScalar():"Can't emit an agg store with this method!";
+        emitStoreOfScalar(src.getScalarVal(), dest.getAddress(), type);
     }
 }
