@@ -204,18 +204,6 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             return builder.createFPExt(v, dstTy, "conv");
     }
 
-	/**
-     *  EmitConversionToBool - Convert the specified expression value to a
-     * boolean (i1) truth value.  This is equivalent to "Val != 0".
-     * @param v
-     * @param srcTy
-     * @return
-     */
-    public Value emitScalarConversion(Value v, QualType srcTy)
-    {
-
-    }
-
     private LValue emitLValue(Expr expr)
     {
         return cgf.emitLValue(expr);
@@ -708,7 +696,33 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     private Value emitCompare(BinaryExpr expr, CmpInst.Predicate uICmpOpc,
             CmpInst.Predicate sICmpOpc, CmpInst.Predicate fCmpOpc)
     {
+        testAndClearIgnoreResultAssign();
+        Value result = null;
+        QualType lhsTy = expr.getLHS().getType();
+        if (!lhsTy.isComplexType())
+        {
+            Value rhs = visit(expr.getRHS());
+            Value lhs = visit(expr.getLHS());
 
+            // floating point comparison.
+            if (lhs.getType().isFloatingPointType())
+            {
+                result = builder.createFCmp(fCmpOpc, lhs, rhs, "fcmp");
+            }
+            else if (lhsTy.isSignedType())
+            {
+                result = builder.createICmp(sICmpOpc, lhs, rhs, "scmp");
+            }
+            else
+            {
+                // unsigned integer and pointer.
+                result = builder.createICmp(uICmpOpc, lhs, rhs, "ucmp");
+            }
+        }
+
+        return emitScalarConversion(result,
+                frontend.type.Type.BoolTy,
+                expr.getType());
     }
 
     public Value visitBinLT(BinaryExpr expr)
@@ -894,13 +908,13 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     @Override
     public Value visitMemberExpr(Tree.MemberExpr expr)
     {
-
+        return emitLoadOfLValue(expr);
     }
 
     @Override
     public Value visitCompoundLiteralExpr(Tree.CompoundLiteralExpr expr)
     {
-
+        return emitLoadOfLValue(expr);
     }
 
     @Override
@@ -912,7 +926,11 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     @Override
     public Value visitInitListExpr(Tree.InitListExpr expr)
     {
+        boolean ignore = testAndClearIgnoreResultAssign();
 
+        int numInitElements = expr.getNumInits();
+        // TODO init list expression.
+        return visit(expr.getInitAt(0));
     }
 
 	/**
