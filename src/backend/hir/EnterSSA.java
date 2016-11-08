@@ -492,7 +492,7 @@ public class EnterSSA
 		}
 
 		@Override
-		public void visitInvoke(Instruction.InvokeInst inst)
+		public void visitInvoke(Instruction.CallInst inst)
 		{
 			visitInstruction(inst);
 		}

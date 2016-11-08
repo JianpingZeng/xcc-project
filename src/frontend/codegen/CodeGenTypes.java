@@ -19,10 +19,12 @@ package frontend.codegen;
 import backend.type.*;
 import backend.type.IntegerType;
 import backend.type.Type;
+import backend.value.Value;
 import frontend.sema.Decl;
 import frontend.type.*;
 import frontend.type.ArrayType;
 import frontend.type.ArrayType.VariableArrayType;
+import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -40,6 +42,42 @@ import static frontend.type.TypeClass.Short;
  */
 public class CodeGenTypes
 {
+    public static class CGFunctionInfo
+    {
+        public static class ArgInfo
+        {
+            QualType type;
+            ABIArgInfo info;
+        }
+
+        private ArgInfo[] args;
+
+        public CGFunctionInfo(QualType resType, ArrayList<QualType> argTypes)
+        {
+            args = new ArgInfo[argTypes.size() + 1];
+            args[0] = new ArgInfo();
+            args[0].type = resType;
+
+            for (int i = 0; i< argTypes.size(); i++)
+            {
+                args[i + 1] = new ArgInfo();
+                args[i + 1].type = argTypes.get(i);
+            }
+        }
+
+        public QualType getReturnType(){return args[0].type;}
+
+        public ABIArgInfo getReturnInfo() {return args[0].info;}
+
+        public int getNumOfArgs(){return args.length;}
+
+        public ArgInfo getArgInfoAt(int idx)
+        {
+            assert idx>=0 && idx < args.length;
+            return args[idx];
+        }
+    }
+
     public static class ArgTypeInfo
     {
         public QualType frontendType;
@@ -468,5 +506,23 @@ public class CodeGenTypes
     {
         // TODO creates the layout of record type, 2016.11.1
         return null;
+    }
+
+    public CGFunctionInfo getFunctionInfo(QualType resultType,
+            ArrayList<Pair<RValue, QualType>> callArgs)
+    {
+        ArrayList<QualType> argTypes = new ArrayList<>();
+        for (Pair<RValue, QualType> itr : callArgs)
+            argTypes.add(itr.second);
+
+        return getFunctionInfo2(resultType, argTypes);
+    }
+
+    public CGFunctionInfo getFunctionInfo2(QualType resType, ArrayList<QualType> argTypes)
+    {
+        CGFunctionInfo fi = new CGFunctionInfo(resType, argTypes);
+
+        // Compute ABI information.
+        return fi;
     }
 }

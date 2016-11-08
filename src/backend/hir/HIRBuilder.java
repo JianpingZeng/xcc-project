@@ -23,6 +23,8 @@ import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Value;
 
+import java.util.LinkedList;
+
 import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
@@ -723,5 +725,12 @@ public class HIRBuilder
 	public Value createInBoundsGEP(Value ptr, Value idx, String name)
 	{
 		return insert(new GetElementPtrInst(ptr, idx, name));
+	}
+
+	public CallInst createCall(Value callee, LinkedList<Value> args)
+	{
+		Value[] temp = new Value[args.size()];
+		args.toArray(temp);
+		return insert(new CallInst(temp, callee));
 	}
 }

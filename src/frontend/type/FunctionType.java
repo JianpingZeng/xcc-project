@@ -136,7 +136,7 @@ public class FunctionType extends Type
 
     public int getNumParams() { return paramTypes.size(); }
 
-    public Type getParamType(int i)
+    public QualType getParamType(int i)
     {
         assert i>=0 && i<paramTypes.size();
         return paramTypes.get(i);

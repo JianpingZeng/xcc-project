@@ -29,7 +29,7 @@ public abstract class InstructionVisitor
 		
 	}
 
-	public void visitInvoke(InvokeInst inst)
+	public void visitInvoke(CallInst inst)
 	{
 		
 	}

@@ -4,11 +4,11 @@ import backend.hir.BasicBlock;
 import backend.hir.InstructionVisitor;
 import backend.hir.Operator;
 import backend.lir.ci.LIRKind;
+import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import tools.Util;
 
-import javax.lang.model.element.TypeElement;
 import java.util.ArrayList;
 
 import static backend.hir.Operator.*;
@@ -1035,12 +1035,156 @@ public abstract class Instruction extends User
 
         public static Predicate getInversePredicate(Predicate pred)
         {
+            switch (pred)
+            {
+                default: assert false: ("Unknown cmp predicate!");
+                case ICMP_EQ: return ICMP_NE;
+                case ICMP_NE: return ICMP_EQ;
+                case ICMP_UGT: return ICMP_ULE;
+                case ICMP_ULT: return ICMP_UGE;
+                case ICMP_ULE: return ICMP_UGT;
+                case ICMP_UGE: return ICMP_ULT;
+                case ICMP_SGT: return ICMP_SLE;
+                case ICMP_SLT: return ICMP_SGE;
+                case ICMP_SGE: return ICMP_SLT;
+                case ICMP_SLE: return ICMP_SGT;
 
+                case FCMP_OEQ: return FCMP_ONE;
+                case FCMP_ONE: return FCMP_OEQ;
+                case FCMP_OGT: return FCMP_OLE;
+                case FCMP_OLT: return FCMP_OGE;
+                case FCMP_OLE: return FCMP_OGT;
+                case FCMP_OGE: return FCMP_OLT;
+                case FCMP_UEQ: return FCMP_UNE;
+                case FCMP_UNE: return FCMP_UEQ;
+                case FCMP_UGT: return FCMP_ULE;
+                case FCMP_ULT: return FCMP_UGE;
+                case FCMP_UGE: return FCMP_ULT;
+                case FCMP_ULE: return FCMP_UGT;
+                case FCMP_ORD: return FCMP_UNO;
+                case FCMP_UNO: return FCMP_ORD;
+                case FCMP_TRUE: return FCMP_FALSE;
+                case FCMP_FALSE: return FCMP_TRUE;
+            }
         }
 
         public static Predicate getSwappedPredicate(Predicate pred)
         {
+            switch (pred)
+            {
+                default: assert false:"Unknown cmp predicate!";
+                case ICMP_EQ:
+                case ICMP_NE:
+                case FCMP_FALSE: case FCMP_TRUE:
+                case FCMP_OEQ: case FCMP_ONE:
+                case FCMP_UEQ: case FCMP_UNE:
+                case FCMP_ORD: case FCMP_UNO:
+                    return pred;
 
+                case ICMP_SGT:
+                    return ICMP_SLT;
+                case ICMP_SLT:
+                    return ICMP_SGT;
+                case ICMP_SGE:
+                    return ICMP_SLE;
+                case ICMP_SLE:
+                    return ICMP_SGE;
+                case ICMP_UGT:
+                    return ICMP_ULT;
+                case ICMP_ULT:
+                    return ICMP_UGT;
+                case ICMP_UGE:
+                    return ICMP_ULE;
+                case ICMP_ULE:
+                    return ICMP_UGE;
+                case FCMP_OGT:
+                    return FCMP_OLT;
+                case FCMP_OLT:
+                    return FCMP_OGT;
+                case FCMP_OGE:
+                    return FCMP_OLE;
+                case FCMP_OLE:
+                    return FCMP_OGE;
+                case FCMP_UGT:
+                    return FCMP_ULT;
+                case FCMP_ULT:
+                    return FCMP_UGT;
+                case FCMP_UGE:
+                    return FCMP_ULE;
+                case FCMP_ULE:
+                    return FCMP_UGE;
+            }
+        }
+
+        public boolean isCommutative()
+        {
+            if (this instanceof ICmpInst)
+                return ((ICmpInst)this).isCommutative();
+            return ((FCmpInst)this).isCommutative();
+        }
+
+        public boolean isEquality()
+        {
+            if (this instanceof ICmpInst)
+                return ((ICmpInst)this).isEquality();
+            return ((FCmpInst)this).isEquality();
+        }
+
+        public boolean isRelational()
+        {
+            if (this instanceof ICmpInst)
+                return ((ICmpInst)this).isRelational();
+            return ((FCmpInst)this).isRelational();
+        }
+
+        public void swapOperands()
+        {
+            if (this instanceof ICmpInst)
+                ((ICmpInst)this).swapOperands();
+            else
+                ((FCmpInst)this).swapOperands();
+        }
+
+        public static boolean isUnsigned(Predicate pred)
+        {
+            switch (pred)
+            {
+                default: return false;
+                case ICMP_ULT: case ICMP_ULE: case ICMP_UGT:
+                case ICMP_UGE: return true;
+            }
+        }
+
+        public static boolean isSigned(Predicate pred)
+        {
+            switch (pred)
+            {
+                default: return false;
+                case ICMP_SLT: case ICMP_SLE: case ICMP_SGT:
+                case ICMP_SGE: return true;
+            }
+        }
+
+        public static boolean isOrdered(Predicate pred)
+        {
+            switch (pred)
+            {
+                default: return false;
+                case FCMP_OEQ: case FCMP_ONE: case FCMP_OGT:
+                case FCMP_OLT: case FCMP_OGE: case FCMP_OLE:
+                case FCMP_ORD: return true;
+            }
+        }
+
+        public static boolean isUnOrdered(Predicate pred)
+        {
+            switch (pred)
+            {
+                default: return false;
+                case FCMP_UEQ: case FCMP_UNE: case FCMP_UGT:
+                case FCMP_ULT: case FCMP_UGE: case FCMP_ULE:
+                case FCMP_UNO: return true;
+            }
         }
 
 	    /**
@@ -1170,15 +1314,17 @@ public abstract class Instruction extends User
                     pred == FCMP_UNO;
         }
 
+        @Override
         public boolean isRelational()
         {
             return !isEquality();
         }
 
+        @Override
         public void swapOperands()
         {
             pred = getSwappedPredicate();
-            operand(0).swap(operand(1));
+            operandList.get(0).swap(operandList.get(1));
         }
     }
 
@@ -1248,6 +1394,88 @@ public abstract class Instruction extends User
         public void accept(InstructionVisitor visitor)
         {
 
+        }
+
+        public static Predicate getSignedPredicate(Predicate pred)
+        {
+            switch (pred)
+            {
+                default:assert false:"Unknown icmp predicate!";
+                case ICMP_EQ: case ICMP_NE:
+                case ICMP_SGT: case ICMP_SLT: case ICMP_SGE: case ICMP_SLE:
+                return pred;
+                case ICMP_UGT: return ICMP_SGT;
+                case ICMP_ULT: return ICMP_SLT;
+                case ICMP_UGE: return ICMP_SGE;
+                case ICMP_ULE: return ICMP_SLE;
+            }
+        }
+
+        public Predicate getSignedPredicate()
+        {
+            return getSignedPredicate(pred);
+        }
+
+        public static Predicate getUnsignedPredicate(Predicate pred)
+        {
+            switch (pred) {
+                default: assert false: "Unknown icmp predicate!";
+                case ICMP_EQ: case ICMP_NE:
+                case ICMP_UGT: case ICMP_ULT: case ICMP_UGE: case ICMP_ULE:
+                    return pred;
+                case ICMP_SGT: return ICMP_UGT;
+                case ICMP_SLT: return ICMP_ULT;
+                case ICMP_SGE: return ICMP_UGE;
+                case ICMP_SLE: return ICMP_ULE;
+            }
+        }
+        @Override
+        public boolean isEquality()
+        {
+            return pred == ICMP_EQ || pred == ICMP_NE;
+        }
+        @Override
+        public boolean isCommutative()
+        {
+            return isEquality();
+        }
+
+        @Override
+        public boolean isRelational() {return !isEquality();}
+
+        public boolean isSignedPredicate() { return isSignedPredicate(pred);}
+
+        public static boolean isSignedPredicate(Predicate pred)
+        {
+            switch (pred)
+            {
+                default:
+                    assert false : ("Unknown icmp predicate!");
+                case ICMP_SGT:
+                case ICMP_SLT:
+                case ICMP_SGE:
+                case ICMP_SLE:
+                    return true;
+                case ICMP_EQ:
+                case ICMP_NE:
+                case ICMP_UGT:
+                case ICMP_ULT:
+                case ICMP_UGE:
+                case ICMP_ULE:
+                    return false;
+            }
+        }
+
+	    /**
+         * Exchange the two operands to this instruction in such a way that it does
+         * not modify the semantics of the instruction. The predicate value may be
+         * changed to retain the same result if the predicate is order dependent
+         */
+        @Override
+        public void swapOperands()
+        {
+            pred = getSwappedPredicate();
+            operandList.get(0).swap(operandList.get(1));
         }
     }
 
@@ -1538,18 +1766,14 @@ public abstract class Instruction extends User
      *
      * @author Xlous.zeng
      */
-    public static class InvokeInst extends TerminatorInst
+    public static class CallInst extends Instruction
     {
-        /**
-         * Constructs a new method calling instruction.
-         *
-         * @param args   The input arguments.
-         * @param target The called method.
-         */
-        public InvokeInst(Value[] args, Function target,
-                BasicBlock ifNormal, String name)
+        // Returns the operand number of the first argument
+        private final int ArgumentOffset = 1;
+
+        public CallInst(Value[] args, Value target)
         {
-            this(args, target, ifNormal, name, (Instruction) null);
+            this(args, target, "");
         }
 
         /**
@@ -1558,22 +1782,45 @@ public abstract class Instruction extends User
          * @param args   The input arguments.
          * @param target The called method.
          */
-        public InvokeInst(Value[] args, Function target,
-                BasicBlock ifNormal, String name, Instruction insertBefore)
+        public CallInst(Value[] args, Value target, String name)
         {
-            super(target.getResultType(), Operator.Invoke, name, insertBefore);
-            init(target, ifNormal, args);
+            this(args, target, name, (Instruction) null);
+        }
+
+        /**
+         * Constructs a new method calling instruction.
+         *
+         * @param args   The input arguments.
+         * @param target The called method.
+         */
+        public CallInst(Value[] args, Value target,
+                String name, Instruction insertBefore)
+        {
+            super(((FunctionType)((PointerType)target.getType()).
+                    getElemType()).getResultType(),
+                    Operator.Call, insertBefore);
+            this.name = name.isEmpty()?Operator.Call.opName:name;
+            init(target, args);
+        }
+
+        public CallInst(Value[] args, Value target,
+                String name, BasicBlock insertAtEnd)
+        {
+            super(((FunctionType)((PointerType)target.getType()).
+                    getElemType()).getResultType(),
+                    Operator.Call, insertAtEnd);
+            this.name = name.isEmpty()?Operator.Call.opName:name;
+            init(target, args);
         }
 
 
-        private void init(Function function, BasicBlock ifNormal, Value[] args)
+        private void init(Value function, Value[] args)
         {
-            reserve(2 + args.length);
+            reserve(ArgumentOffset + args.length);
             assert (getNumOfOperands()
-                    == 2 + args.length) : "NumOperands not set up?";
+                    == ArgumentOffset + args.length) : "NumOperands not set up?";
             setOperand(0, function);
-            setOperand(1, ifNormal);
-            int idx = 2;
+            int idx = ArgumentOffset;
             for (Value arg : args)
             {
                 setOperand(idx++, arg);
@@ -1594,19 +1841,19 @@ public abstract class Instruction extends User
 
         public int getNumsOfArgs()
         {
-            return getNumOfOperands() - 2;
+            return getNumOfOperands() - ArgumentOffset;
         }
 
         public void setArgument(int index, Value val)
         {
-            assert index >= 0 && index < getNumsOfArgs();
-            setOperand(index + 1 + getNumOfSuccessors(), val);
+            assert index + ArgumentOffset >= 0 && index + ArgumentOffset < getNumsOfArgs();
+            setOperand(index + ArgumentOffset, val);
         }
 
-        public Value argumentAt(int i)
+        public Value argumentAt(int index)
         {
-            assert i >= 0 && i < getNumsOfArgs();
-            return operand(i + 1 + getNumOfSuccessors());
+            assert index + ArgumentOffset >= 0 && index + ArgumentOffset < getNumsOfArgs();
+            return operand(index + ArgumentOffset);
         }
 
         public Function getCalledFunction()
@@ -1617,30 +1864,6 @@ public abstract class Instruction extends User
         public Value getCalledValue()
         {
             return operand(0);
-        }
-
-        @Override
-        public BasicBlock suxAt(int index)
-        {
-            assert (index >= 0 && index < getNumOfSuccessors()) :
-                    "Successor " + index + "out of range";
-            return (BasicBlock) operand(1 + index);
-        }
-
-        @Override
-        public int getNumOfSuccessors()
-        {
-            return 1;
-        }
-
-        @Override
-        public void setSuxAt(int index, BasicBlock bb)
-        {
-            assert (index >= 0 && index
-                    < getNumOfSuccessors()) : "out of range index to reservedOperands array.";
-            assert bb != null : "can not use null to update successor";
-
-            setOperand(index + 1, bb);
         }
     }
 

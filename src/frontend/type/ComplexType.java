@@ -6,33 +6,24 @@ package frontend.type;
  */
 public final class ComplexType extends Type
 {
-    private double real;
-    private double img;
-    private String name;
+    private QualType elementType;
+
     /**
      * Constructor with one parameter which represents the kind of frontend.type
      * for reason of comparison convenient.
      *
      * @param
      */
-    public ComplexType(double real, double img, String name)
+    public ComplexType(QualType eltType, QualType canonicalPtr)
     {
-        super(Complex);
-        this.real = real;
-        this.img = img;
-        this.name = name;
+        super(Complex, canonicalPtr);
+        elementType = eltType;
     }
 
-    public boolean isSignedType()
-    {
-        return false;
-    }
+    public boolean isSignedType(){return false;}
 
     @Override
-    public long getTypeSize()
-    {
-        return 0;
-    }
+    public long getTypeSize(){return 0;}
 
     @Override
     public boolean isSameType(Type other)
@@ -43,19 +34,16 @@ public final class ComplexType extends Type
     }
 
     @Override
-    public boolean isCastableTo(Type target)
-    {
-        return false;
-    }
+    public boolean isCastableTo(Type target){return false;}
 
     public String toString()
     {
-        StringBuilder buffer = new StringBuilder(name);
-        buffer.append("@(");
-        buffer.append(real);
-        buffer.append(",");
-        buffer.append(img);
-        buffer.append("i)");
+        StringBuilder buffer = new StringBuilder("");
         return buffer.toString();
+    }
+
+    public QualType getElementType()
+    {
+        return elementType;
     }
 }

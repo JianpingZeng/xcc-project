@@ -83,9 +83,9 @@ public class FunctionType extends Type
         return isVarArgs;
     }
 
-    public ArgTypeInfo getResultType()
+    public Type getResultType()
     {
-        return resultType;
+        return resultType.backendType;
     }
 
     public ArgTypeInfo getParamType(int index)

@@ -17,8 +17,8 @@ public enum Operator
 	Ret("ret", 0, 0),
 	Br("br", Ret.index + 1, 0),
 	Goto("goto", Br.index + 1, 0),
-	Invoke("invoke", Goto.index + 1, 0),
-	Switch("switch", Invoke.index + 1, 0),
+	Call("call", Goto.index + 1, 0),
+	Switch("switch", Call.index + 1, 0),
 
 	// binary operator
 
