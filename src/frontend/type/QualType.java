@@ -25,14 +25,6 @@ public final class QualType extends Type implements Cloneable
     private static final int MASK =
             CONST_QUALIFIER | VOLATILE_QUALIFIER | RESTRICT_QUALIFIER;
 
-    public boolean isFunctionPointerType()
-    {
-        PointerType t = this.<PointerType>getAs();
-        if ( t != null)
-            return t.getPointee().isFunctionType();
-        return false;
-    }
-
     public static class Qualifier
     {
         int mask;
@@ -921,6 +913,15 @@ public final class QualType extends Type implements Cloneable
         }
         return getQualifiedType(type, qs);
     }
+    public static QualType getBaseElementType(VariableArrayType vat)
+    {
+        QualType eltType = vat.getElemType();
+        VariableArrayType eltVat = eltType.getAsVariableArrayType();
+        if (eltVat != null)
+            return getBaseElementType(eltVat);
+
+        return eltType;
+    }
 
     /**
      * A generic method for casting a frontend.type instance to target frontend.type.
@@ -1179,5 +1180,18 @@ public final class QualType extends Type implements Cloneable
 
         VariableArrayType vat = (VariableArrayType)at;
         return new QualType(getVariableArrayType(newEltTy, vat.getSizeExpr()));
+    }
+
+    public boolean isFunctionPointerType()
+    {
+        PointerType t = this.<PointerType>getAs();
+        if ( t != null)
+            return t.getPointee().isFunctionType();
+        return false;
+    }
+
+    public boolean isUnionType()
+    {
+        return type.isUnionType();
     }
 }

@@ -2,10 +2,7 @@ package frontend.ast;
 
 import frontend.cparser.DeclSpec.SourceRange;
 import frontend.sema.*;
-import frontend.sema.Decl.FieldDecl;
-import frontend.sema.Decl.FunctionDecl;
-import frontend.sema.Decl.LabelDecl;
-import frontend.sema.Decl.ValueDecl;
+import frontend.sema.Decl.*;
 import frontend.symbol.Symbol;
 import frontend.symbol.Symbol.MethodSymbol;
 import frontend.symbol.VarSymbol;
@@ -1239,13 +1236,13 @@ abstract public class Tree
         /**
          * The declaration that we are referencing.
          */
-        private ValueDecl d;
+        private NamedDecl d;
         /**
          * The location of the declaration name itself.
          */
         private int location;
 
-        public DeclRefExpr(String name, ValueDecl d,
+        public DeclRefExpr(String name, NamedDecl d,
                 QualType ty,
                 ExprValueKind valueKind,
                 int loc)
@@ -1262,7 +1259,7 @@ abstract public class Tree
             v.visitDeclRefExpr(this);
         }
 
-        public ValueDecl getDecl()
+        public NamedDecl getDecl()
         {
             return d;
         }

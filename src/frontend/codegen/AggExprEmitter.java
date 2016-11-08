@@ -24,7 +24,7 @@ import frontend.ast.Tree;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class AggExprEmitter extends StmtVisitor
+public class AggExprEmitter extends StmtVisitor<Void>
 {
     public AggExprEmitter(CodeGenFunction codeGenFunction,
             Value destPtr,
@@ -34,212 +34,212 @@ public class AggExprEmitter extends StmtVisitor
 
     }
 
-    @Override public Object visitBinMul(Tree.BinaryExpr expr)
+    @Override public Void visitBinMul(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinDiv(Tree.BinaryExpr expr)
+    @Override public Void visitBinDiv(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinRem(Tree.BinaryExpr expr)
+    @Override public Void visitBinRem(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinAdd(Tree.BinaryExpr expr)
+    @Override public Void visitBinAdd(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinSub(Tree.BinaryExpr expr)
+    @Override public Void visitBinSub(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinShl(Tree.BinaryExpr expr)
+    @Override public Void visitBinShl(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinShr(Tree.BinaryExpr expr)
+    @Override public Void visitBinShr(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinLT(Tree.BinaryExpr expr)
+    @Override public Void visitBinLT(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinGT(Tree.BinaryExpr expr)
+    @Override public Void visitBinGT(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinLE(Tree.BinaryExpr expr)
+    @Override public Void visitBinLE(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinGE(Tree.BinaryExpr expr)
+    @Override public Void visitBinGE(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinEQ(Tree.BinaryExpr expr)
+    @Override public Void visitBinEQ(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinNE(Tree.BinaryExpr expr)
+    @Override public Void visitBinNE(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinAnd(Tree.BinaryExpr expr)
+    @Override public Void visitBinAnd(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinXor(Tree.BinaryExpr expr)
+    @Override public Void visitBinXor(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinOr(Tree.BinaryExpr expr)
+    @Override public Void visitBinOr(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinLAnd(Tree.BinaryExpr expr)
+    @Override public Void visitBinLAnd(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinLOr(Tree.BinaryExpr expr)
+    @Override public Void visitBinLOr(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinAssign(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinMulAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinMulAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinDivAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinDivAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinRemAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinRemAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinAddAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinAddAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinSubAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinSubAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinShlAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinShlAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinShrAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinShrAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinAndAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinAndAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinOrAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinOrAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinXorAssign(Tree.BinaryExpr expr)
+    @Override public Void visitBinXorAssign(Tree.CompoundAssignExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitBinComma(Tree.BinaryExpr expr)
+    @Override public Void visitBinComma(Tree.BinaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryPostInc(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryPostInc(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryPostDec(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryPostDec(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryPreInc(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryPreInc(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryPreDec(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryPreDec(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryAddrOf(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryAddrOf(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryDeref(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryDeref(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryPlus(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryPlus(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryMinus(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryMinus(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryNot(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryNot(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryLNot(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryLNot(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryReal(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryReal(Tree.UnaryExpr expr)
     {
         return null;
     }
 
-    @Override public Object visitUnaryImag(Tree.UnaryExpr expr)
+    @Override public Void visitUnaryImag(Tree.UnaryExpr expr)
     {
         return null;
     }

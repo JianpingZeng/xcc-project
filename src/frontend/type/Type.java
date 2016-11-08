@@ -37,8 +37,7 @@ public abstract class Type implements TypeClass
     public static QualType FloatTy = new QualType(new RealType(4, "float"));
     public static QualType DoubleTy = new QualType(new RealType(8, "double"));
 
-
-	/**
+    /**
      * The kind of a tag frontend.type.
      */
     public enum TagTypeKind
@@ -481,4 +480,12 @@ public abstract class Type implements TypeClass
 	{
 		return canonicalType;
 	}
+
+    public boolean isUnionType()
+    {
+        RecordType rt = getRecordType();
+        if (rt != null)
+            return rt.getDecl().isUnion();
+        return false;
+    }
 }

@@ -21,6 +21,7 @@ import backend.type.IntegerType;
 import backend.type.Type;
 import backend.value.Value;
 import frontend.sema.Decl;
+import frontend.sema.Decl.FieldDecl;
 import frontend.type.*;
 import frontend.type.ArrayType;
 import frontend.type.ArrayType.VariableArrayType;
@@ -90,6 +91,19 @@ public class CodeGenTypes
         }
     }
 
+    static class BitFieldInfo
+    {
+        BitFieldInfo(int fieldNo, int start, int size)
+        {
+            this.fieldNo = fieldNo;
+            this.start = start;
+            this.size = size;
+        }
+
+        int fieldNo;
+        int start;
+        int size;
+    }
     private HIRGenModule builder;
 
     /**
@@ -120,6 +134,10 @@ public class CodeGenTypes
      */
     private boolean skipLayout = false;
 
+    private HashMap<FieldDecl, Integer> fieldInfo;
+
+    private HashMap<FieldDecl, BitFieldInfo> bitfields;
+
     private HashMap<frontend.type.Type, CGRecordLayout> cgRecordLayout;
     public CodeGenTypes(HIRGenModule module)
     {
@@ -130,6 +148,8 @@ public class CodeGenTypes
         deferredRecords = new LinkedList<>();
         recordDeclTypes = new HashMap<>();
         cgRecordLayout = new HashMap<>();
+        fieldInfo = new HashMap<>();
+        bitfields = new HashMap<>();
     }
 
     public backend.type.FunctionType getFunctionType(frontend.type.FunctionType fnType)
@@ -402,7 +422,7 @@ public class CodeGenTypes
         // out, don't do it.
         for (int i = 0, e = rd.getDeclCounts(); i < e; i++)
         {
-            Decl.FieldDecl d = rd.getDeclAt(i);
+            FieldDecl d = rd.getDeclAt(i);
             if (!isSafeToConvert(d.getDeclType(), alreadyChecked))
                 return false;
         }
@@ -524,5 +544,28 @@ public class CodeGenTypes
 
         // Compute ABI information.
         return fi;
+    }
+
+    public int getFieldNo(FieldDecl field)
+    {
+        assert field.isBitField():"Don't use getFieldNo on non-bitfield.";
+        assert fieldInfo.containsKey(field):"Unable to find field no!";
+
+        return fieldInfo.get(field);
+    }
+
+    public void addFieldInfo(FieldDecl fd, int no)
+    { fieldInfo.put(fd, no);}
+
+    public BitFieldInfo getBitFieldInfo(FieldDecl field)
+    {
+        assert bitfields.containsKey(field):"Unable to find field no!";
+
+        return bitfields.get(field);
+    }
+
+    public void addBitFieldInfo(FieldDecl field, int fieldNo, int start, int size)
+    {
+        bitfields.put(field, new BitFieldInfo(fieldNo, start, size));
     }
 }
