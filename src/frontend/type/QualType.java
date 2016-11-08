@@ -25,6 +25,14 @@ public final class QualType extends Type implements Cloneable
     private static final int MASK =
             CONST_QUALIFIER | VOLATILE_QUALIFIER | RESTRICT_QUALIFIER;
 
+    public boolean isFunctionPointerType()
+    {
+        PointerType t = this.<PointerType>getAs();
+        if ( t != null)
+            return t.getPointee().isFunctionType();
+        return false;
+    }
+
     public static class Qualifier
     {
         int mask;

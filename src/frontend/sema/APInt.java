@@ -2068,7 +2068,7 @@ public class APInt
             return new APInt(bitWidth, pVal[0] / rhs.pVal[0]);
         }
 
-        // We have to compute it the hard way. Invoke the Knuth div algorithm.
+        // We have to compute it the hard way. Call the Knuth div algorithm.
         APInt quotient = new APInt(1, 0);
         OutParamWrapper<APInt> x = new OutParamWrapper<>(quotient);
         divide(this, lhsWords, rhs, rhsWords, x, null);

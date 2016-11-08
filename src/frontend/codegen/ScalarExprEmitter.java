@@ -959,7 +959,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 assert v.getType() instanceof PointerType;
                 assert ((PointerType)v.getType()).getElemType() instanceof backend.type.ArrayType;
 
-                v = builder.createStructGEP(v, 0, "arraydecay");
+                v = null; //TODO builder.createStructGEP(v, 0, "arraydecay");
             }
 
             Type destTy = convertType(expr.getType());
@@ -1009,7 +1009,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     @Override
     public Value visitCallExpr(Tree.CallExpr expr)
     {
-        return cgf.emitCallExpr(expr).getScalarVal();
+        return cgf.emitCallArg(expr).getScalarVal();
     }
 
     private Value visitPrePostIncDec(UnaryExpr expr, boolean isInc, boolean isPrec)
@@ -1066,7 +1066,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         else
         {
             // Add the inc/dec to the real part.
-            assert (inVal.getType() == Type.FloatTy || inVal.getType() == Type.DoubleTy)
+            assert (inVal.getType() == Type.FloatTy || inVal.getType() == Type.DoubleTy);
 
             nextVal = ConstantFP.get(BigDecimal.valueOf(amountVal));
             nextVal = builder.createFAdd(inVal, nextVal, isInc?"inc":"dec");

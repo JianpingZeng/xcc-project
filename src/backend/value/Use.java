@@ -1,5 +1,7 @@
 package backend.value;
 
+import tools.Util;
+
 /**
  * <p>This file defines a class that keeps track of the use-list for given
  * {@code Value} up to date.
@@ -26,10 +28,7 @@ public class Use
 			val.addUse(this);
 	}
 
-	public Value getValue()
-	{
-		return val;
-	}
+	public Value getValue(){return val;}
 
 	public void setValue(Value v)
 	{
@@ -45,5 +44,12 @@ public class Use
 		return user;
 	}
 
-
+	/**
+	 * Swap this use with {@code rhs}.
+	 * @param rhs
+	 */
+	public void swap(Use rhs)
+	{
+		Util.swap(this, rhs);
+	}
 }

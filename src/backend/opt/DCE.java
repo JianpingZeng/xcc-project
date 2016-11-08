@@ -125,7 +125,7 @@ public class DCE
 					}
 					// the function invocation instruction is handled specially
 					// for conservative and safe.
-					else if (!(inst instanceof Instruction.InvokeInst))
+					else if (!(inst instanceof Instruction.CallInst))
 						inst.eraseFromBasicBlock();
 				}
 			}
@@ -349,7 +349,7 @@ public class DCE
 			visitInstruction(inst);
 		}
 
-		public void visitInvoke(Instruction.InvokeInst inst)
+		public void visitInvoke(Instruction.CallInst inst)
 		{
 			visitInstruction(inst);
 		}
