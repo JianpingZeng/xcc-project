@@ -21,17 +21,19 @@ import backend.hir.CallSite;
 import backend.hir.HIRBuilder;
 import backend.hir.JumpDest;
 import backend.type.FunctionType;
+import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
+import driver.Backend;
 import frontend.ast.Tree;
 import frontend.sema.*;
-import frontend.sema.Decl.FunctionDecl;
-import frontend.sema.Decl.VarDecl;
+import frontend.sema.Decl.*;
 import frontend.type.ArrayType;
 import frontend.type.ComplexType;
 import frontend.type.QualType;
+import javafx.scene.shape.VLineTo;
 import tools.Pair;
 import tools.Util;
 
@@ -1147,8 +1149,8 @@ public final class CodeGenFunction
 	public void emitAggExpr(Tree.Expr expr, Value destPtr, boolean ignoreResult,
 			boolean isInitializer)
 	{
-		assert expr != null && hasAggregateBackendType(
-				expr.getType()) : "Invalid aggregate expression to emit";
+		assert expr != null && hasAggregateBackendType(expr.getType())
+				: "Invalid aggregate expression to emit";
 		if (destPtr == null)
 			return;
 
@@ -1460,24 +1462,19 @@ public final class CodeGenFunction
 			case BinaryOperatorClass:
 				return emitBinaryOperatorLValue((BinaryExpr) expr);
 			case DeclRefExprClass:
-				return emitDeclRefExpr((DeclRefExpr) expr);
+				return emitDeclRefLValue((DeclRefExpr) expr);
 			case ParenExprClass:
-				return emitParenExpr((ParenExpr) expr);
+				return emitLValue(((ParenExpr)expr).getSubExpr());
 			case StringLiteralClass:
-				return emitStringLiteral((StringLiteral) expr);
+				return emitStringLiteralLValue((StringLiteral) expr);
 			case UnaryOperatorClass:
-				return emitUnaryExpr((UnaryExpr) expr);
+				return emitUnaryOpLValue((UnaryExpr) expr);
 			case ArraySubscriptExprClass:
 				return emitArraySubscriptExpr((ArraySubscriptExpr) expr);
 			case MemberExprClass:
 				return emitMemberExpr((MemberExpr) expr);
 			case CompoundLiteralExprClass:
-				return emitCompoundLiteral((CompoundLiteralExpr) expr);
-			case CondtionalOperatorClass:
-				return emitConditionalExpr((ConditionalExpr) expr);
-			case ImplicitCastClass:
-			case ExplicitCastClass:
-				return emitCastExpr((ExplicitCastExpr) expr);
+				return emitCompoundLiteralLValue((CompoundLiteralExpr) expr);
 		}
 	}
 
@@ -1693,9 +1690,9 @@ public final class CodeGenFunction
 					}
 					else
 					{
-						args.add(
-								builder.createLoad(rv.getAggregateAddr(), false,
-										"load"));
+						args.add(builder.createLoad(rv.getAggregateAddr(),
+								false,
+								"load"));
 					}
 					break;
 				}
@@ -1817,6 +1814,243 @@ public final class CodeGenFunction
 		return emitAnyExprToTemp(arg);
 	}
 
+	public LValue emitBinaryOperatorLValue(BinaryExpr expr)
+	{
+		// Comma expression just emit their lhs and then rhs as l-value.
+		if (expr.getOpcode() == BinaryOperatorKind.BO_Comma)
+		{
+			emitAnyExpr(expr.getLHS());
+			return emitLValue(expr.getRHS());
+		}
+
+		// Only assignment expression can be l-value.
+		if (expr.getOpcode() != BinaryOperatorKind.BO_Assign)
+			return emitUnSupportedLValue(expr, "binary l-value");
+
+		Value temp = createTempAlloc(convertType(expr.getType()));
+		emitAggExpr(expr, temp, false, false);
+		return LValue.makeAddr(temp, expr.getType().getCVRQualifiers());
+	}
+
+	public LValue emitDeclRefLValue(DeclRefExpr expr)
+	{
+		NamedDecl decl = expr.getDecl();
+		VarDecl vd = decl instanceof VarDecl ? (VarDecl)decl : null;
+		if (vd!=null && (vd.isBlockVarDecl() || vd instanceof ParamVarDecl))
+		{
+			LValue lv = new LValue();
+			if (vd.hasExternalStorage())
+			{
+				// extern qualified or implicit extern.
+				Value v = generator.getAddrOfGlobalVar(vd);
+				lv = LValue.makeAddr(v, expr.getType().getCVRQualifiers());
+			}
+			else
+			{
+				Value v = localVarMaps.get(vd);
+				assert v !=null:"local variable is not enterred localVarMpas?";
+				// local static.
+				lv = LValue.makeAddr(v, expr.getType().getCVRQualifiers());
+			}
+			return lv;
+		}
+		else if (vd != null && vd.isFileVarDecl())
+		{
+			Value v = generator.getAddrOfGlobalVar(vd);
+			LValue lv = LValue.makeAddr(v, expr.getType().getCVRQualifiers());
+			return lv;
+		}
+		else if (expr.getDecl() instanceof FunctionDecl)
+		{
+			FunctionDecl fn = (FunctionDecl)expr.getDecl();
+			Value v = generator.getAddrOfFunction(fn);
+			return LValue.makeAddr(v, expr.getType().getCVRQualifiers());
+		}
+		assert false:"Illegal DeclRefExpr.";
+		return new LValue();
+	}
+
+	public LValue emitStringLiteralLValue(StringLiteral expr)
+	{
+		return LValue.makeAddr(generator.getAddrOfConstantStringFromLiteral(expr), null);
+	}
+
+	public LValue emitUnaryOpLValue(UnaryExpr expr)
+	{
+		QualType exprType = expr.getType().getCanonicalTypeInternal();
+		switch (expr.getOpCode())
+		{
+			default:
+				assert false:"Unknown unary operator lvalue!";
+			case UO_Deref:
+			{
+				QualType t = expr.getSubExpr().getType().getPointee();
+				assert !t.isNull():"CodeGenFunction.emitUnaryOpLValue: illegal type";
+
+				return LValue.makeAddr(emitScalarExpr(expr.getSubExpr()),
+						expr.getType().getCVRQualifiers());
+			}
+		}
+	}
+
+	public LValue emitArraySubscriptExpr(ArraySubscriptExpr expr)
+	{
+		// The index must always be an integer
+		Value idx = emitScalarExpr(expr.getIdx());
+		QualType idxType = expr.getIdx().getType();
+		boolean idxSigned = idxType.isSignedType();
+
+		// The base must be a pointer, which is not an aggregate.  Emit it.
+		Value base = emitScalarExpr(expr.getBase());
+
+		// Extend or truncate the index type to 32 or 64 bits.
+		int idxBitwidth = ((IntegerType)idx.getType()).getBitWidth();
+		if (idxBitwidth < pointerWidth)
+		{
+			if (idxSigned)
+				idx = builder.createSExt(idx, IntegerType.get(pointerWidth), "sext");
+			else
+				idx = builder.createZExt(idx, IntegerType.get(pointerWidth), "zext");
+		}
+		else if (idxBitwidth != pointerWidth)
+		{
+			idx = builder.createIntCast(idx, IntegerType.get(pointerWidth), "intcast");
+		}
+
+		// We know that the pointer points to a type of the correct size,
+		// unless the size is a VLA
+		ArrayType.VariableArrayType vat = expr.getType().getAsVariableArrayType();
+		Value address;
+		if (vat != null)
+		{
+			// TODO.
+			Value vlaSize = getVLASize(vat);
+			idx = builder.createMul(idx, vlaSize, "idxmul");
+			QualType baseType = QualType.getBaseElementType(vat);
+
+			long baseTypeSize = baseType.getTypeSize() / 8;
+			idx = builder.createUDiv(idx, ConstantInt.get(idx.getType(), baseTypeSize), "udiv");
+
+			address = builder.createInBoundsGEP(base, idx, "arrayidx");
+		}
+		else
+		{
+			address = builder.createInBoundsGEP(base, idx, "arrayidx");
+		}
+
+		QualType t = expr.getBase().getType().getPointee();
+		assert !t.isNull():"CodeGenFunction.emitArraySubscriptExpr():Illegal base type";
+
+		LValue lv = LValue.makeAddr(address, t.getCVRQualifiers());
+		return lv;
+	}
+
+	private Value getVLASize(ArrayType.VariableArrayType vat)
+	{
+		Value size = vlaSizeMap.get(vat.getSizeExpr());
+		assert size!= null:"Did not emti size of type";
+		return size;
+	}
+
+	public LValue emitMemberExpr(MemberExpr expr)
+	{
+		boolean isUnion = false;
+		Expr baseExpr = expr.getBase();
+		Value baseValue = null;
+		int cvrQualifiers = 0;
+		// If this is s.x, emit s as an lvalue.  If it is s->x, emit s as a scalar.
+		if (expr.isArrow())
+		{
+			baseValue = emitScalarExpr(baseExpr);
+			frontend.type.PointerType pty = baseExpr.getType().getAs();
+			if (pty.getPointee().isUnionType())
+				isUnion = true;
+			cvrQualifiers = pty.getPointeeType().getCVRQualifiers();
+		}
+		else
+		{
+			LValue baseLV = emitLValue(baseExpr);
+			baseValue = baseLV.getAddress();
+			QualType baseType = baseExpr.getType();
+			if (baseType.isUnionType())
+				isUnion = true;
+			cvrQualifiers = baseType.getCVRQualifiers();
+		}
+
+		assert expr.getMemberDecl() instanceof FieldDecl
+				:"No code generation for non-field member expression";
+		FieldDecl field = (FieldDecl) expr.getMemberDecl();
+		LValue memExprLV = emitLValueForField(baseValue, field, isUnion, cvrQualifiers);
+		return memExprLV;
+	}
+
+	private LValue emitLValueForField(Value baseValue,
+			FieldDecl field,
+			boolean isUnion,
+			int cvrQualifiers
+			)
+	{
+		if (field.isBitField())
+			return emitLValueForBitField(baseValue, field, cvrQualifiers);
+
+		int idx = generator.getCodeGenTypes().getFieldNo(field);
+		Value v = builder.createStructGEP(baseValue, idx, "tmp");
+
+		// Match union field type.
+		if (isUnion)
+		{
+			Type fieldType = generator.getCodeGenTypes().
+					convertTypeForMem(field.getDeclType());
+
+			PointerType baseType = (PointerType)baseValue.getType();
+			v = builder.createBitCast(v, PointerType.get(fieldType),
+					"tmp");
+		}
+
+		LValue lv = LValue.makeAddr(v,
+				field.getDeclType().getCVRQualifiers()
+				| cvrQualifiers);
+		return lv;
+	}
+
+	public LValue emitLValueForBitField(Value baseValue,
+			FieldDecl field,
+			int cvrQualifiers)
+	{
+		CodeGenTypes.BitFieldInfo info = generator.getCodeGenTypes().getBitFieldInfo(field);
+
+		Type fieldType = generator.getCodeGenTypes().convertTypeForMem(field.getDeclType());
+		PointerType baseType = (PointerType) baseValue.getType();
+		baseValue = builder.createBitCast(baseValue, PointerType.get(fieldType), "tmp");
+
+		Value idx = ConstantInt.get(Type.Int32Ty, info.fieldNo);
+		Value v = builder.createGEP(baseValue, idx, "tmp");
+
+		return LValue.makeBitfield(v, info.start, info.size,
+				field.getDeclType().isSignedType(),
+				field.getDeclType().getCVRQualifiers() | cvrQualifiers);
+	}
+
+	public LValue emitCompoundLiteralLValue(CompoundLiteralExpr expr)
+	{
+		Type ty = convertType(expr.getType());
+		Value declPtr = createTempAlloc(ty, ".compoundliteral");
+
+		Expr initExpr = expr.getInitializer();
+
+		LValue result = LValue.makeAddr(declPtr, expr.getType().getCVRQualifiers());
+		if (expr.getType().isComplexType())
+		{
+			// TODO complex type.
+		}
+		else if (hasAggregateBackendType(expr.getType()))
+			emitAnyExpr(initExpr, declPtr, false, false,false);
+		else
+			emitStoreThroughLValue(emitAnyExpr(initExpr), result, expr.getType());;
+
+		return result;
+	}
+
 	/**
 	 * Similar to {@linkplain #emitAnyExpr(Expr)}
 	 *
@@ -1843,7 +2077,7 @@ public final class CodeGenFunction
 
 	public void errorUnsupported(Expr expr, String msg)
 	{
-
+		assert false:msg;
 	}
 
 	/**

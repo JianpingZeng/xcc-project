@@ -20,6 +20,8 @@ import backend.type.IntegerType;
 import backend.type.Type;
 import frontend.sema.APInt;
 
+import java.util.HashMap;
+
 /**
  * This is an abstract base class of all bool and integral constant.
  *
@@ -28,9 +30,28 @@ import frontend.sema.APInt;
  */
 public class ConstantInt extends Constant
 {
+    static class APIntKeyInfo
+    {
+        APInt val;
+        Type type;
+
+        APIntKeyInfo(APInt v, Type ty)
+        {
+            val = v;
+            type = ty;
+        }
+    }
+
     private APInt val;
 
     private static ConstantInt TRUE, FALSE;
+
+    private static HashMap<APIntKeyInfo, ConstantInt> intConstants;
+    static
+    {
+        intConstants = new HashMap<>();
+    }
+
     /**
      * Constructs a new instruction representing the specified constant.
      *
@@ -53,23 +74,38 @@ public class ConstantInt extends Constant
         return get(ty, new APInt(ty.getBitWidth(), val, false));
     }
 
-    public static  ConstantInt get(IntegerType ty, APInt val)
+    public static ConstantInt get(IntegerType ty, APInt val)
     {
         IntegerType ity = IntegerType.get(ty.getBitWidth());
-
-        return new ConstantInt(ity, val);
+        APIntKeyInfo key = new APIntKeyInfo(val, ity);
+        ConstantInt slot = intConstants.get(key);
+        if (slot != null)
+            return slot;
+        slot = new ConstantInt(ity, val);
+        intConstants.put(key, slot);
+        return slot;
     }
 
     public static ConstantInt get(Type ty, long val)
+    {return get(ty, val, false);}
+
+    public static ConstantInt get(Type ty, long val, boolean isSigned)
     {
-        ConstantInt c =
+        ConstantInt c = get((IntegerType)ty, val, isSigned);
+        return c;
     }
 
     public static ConstantInt get(APInt val)
     {
-        ConstantInt c;
+        IntegerType ity = IntegerType.get(val.getBitWidth());
+        APIntKeyInfo key = new APIntKeyInfo(val, ity);
+        ConstantInt slot = intConstants.get(key);
+        if (slot != null)
+            return slot;
+        slot = new ConstantInt(ity, val);
+        intConstants.put(key, slot);
+        return slot;
     }
-
 
     public static ConstantInt getTrue()
     {

@@ -28,6 +28,10 @@ import java.util.LinkedList;
 import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
+ * This file defines a class that responsible for creating so many utility method
+ * to create different kind of Instruction and then insert it into the BasicBlock
+ * enclosing it.
+ *
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -39,9 +43,7 @@ public class HIRBuilder
 	private BasicBlock curBB;
 	private int insertPtr;
 
-	public HIRBuilder()
-	{
-	}
+	public HIRBuilder(){super();}
 
 	public HIRBuilder(BasicBlock bb)
 	{
@@ -376,7 +378,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createICmp(P, LC, RC);
+				return null; // TODO folder.createICmp(P, LC, RC);
 			}
 		}
 		return insert(new Instruction.ICmpInst(P, lhs, rhs, name), name);
@@ -390,7 +392,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createFCmp(P, LC, RC);
+				return null; // TODO folder.createFCmp(P, LC, RC);
 			}
 		}
 		return insert(new Instruction.FCmpInst(P, lhs, rhs, name), name);
@@ -408,7 +410,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createAdd(LC, RC);
+				return null; // TODO folder.createAdd(LC, RC);
 			}
 		}
 		return insert(Op2.createAdd(lhs, rhs, name),name);
@@ -422,7 +424,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createFAdd(LC, RC);
+				return null; // TODO folder.createFAdd(LC, RC);
 			}
 		}
 
@@ -437,7 +439,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createSub(LC, RC);
+				return null; // TODO folder.createSub(LC, RC);
 			}
 		}
 
@@ -452,7 +454,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createFSub(LC, RC);
+				return null; // TODO folder.createFSub(LC, RC);
 			}
 		}
 
@@ -467,7 +469,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createMul(LC, RC);
+				return null; // TODO folder.createMul(LC, RC);
 			}
 		}
 		return insert(Op2.createMul(lhs, rhs, name),name);
@@ -481,7 +483,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createFMul(LC, RC);
+				return null; // TODO folder.createFMul(LC, RC);
 			}
 		}
 
@@ -496,7 +498,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createUDiv(LC, RC);
+				return null; // TODO folder.createUDiv(LC, RC);
 			}
 		}
 		return insert(Op2.createUDiv(lhs, rhs, name),name);
@@ -510,7 +512,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createSDiv(LC, RC);
+				return null; // TODO folder.createSDiv(LC, RC);
 			}
 		}
 		return insert(Op2.createSDiv(lhs, rhs, name),name);
@@ -524,7 +526,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createFDiv(LC, RC);
+				return null; // TODO folder.createFDiv(LC, RC);
 			}
 		}
 		return insert(Op2.createFDiv(lhs, rhs, name),name);
@@ -538,7 +540,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createURem(LC, RC);
+				return null; // TODO folder.createURem(LC, RC);
 			}
 		}
 		return insert(Op2.createURem(lhs, rhs, name),name);
@@ -552,7 +554,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createSRem(LC, RC);
+				return null; // TODO folder.createSRem(LC, RC);
 			}
 		}
 		return insert(Op2.createSRem(lhs, rhs, name),name);
@@ -566,7 +568,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createFRem(LC, RC);
+				return null; // TODO folder.createFRem(LC, RC);
 			}
 		}
 		return insert(Op2.createFRem(lhs, rhs, name),name);
@@ -580,7 +582,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createShl(LC, RC);
+				return null; // TODO folder.createShl(LC, RC);
 			}
 		}
 		return insert(Op2.createShl(lhs, rhs, name),name);
@@ -594,7 +596,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createLShr(LC, RC);
+				return null; // TODO folder.createLShr(LC, RC);
 			}
 		}
 		return insert(Op2.createLShr(lhs, rhs, name),name);
@@ -608,7 +610,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createAShr(LC, RC);
+				return null; // TODO folder.createAShr(LC, RC);
 			}
 		}
 		return insert(Op2.createAShr(lhs, rhs, name),name);
@@ -622,7 +624,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createAnd(LC, RC);
+				return null; // TODO folder.createAnd(LC, RC);
 			}
 		}
 		return insert(Op2.createAnd(lhs, rhs, name),name);
@@ -636,7 +638,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createOr(LC, RC);
+				return null; // TODO folder.createOr(LC, RC);
 			}
 		}
 		return insert(Op2.createOr(lhs, rhs, name),name);
@@ -650,7 +652,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createXor(LC, RC);
+				return null; // TODO folder.createXor(LC, RC);
 			}
 		}
 		return insert(Op2.createXor(lhs, rhs, name),name);
@@ -665,7 +667,7 @@ public class HIRBuilder
 			if (rhs instanceof Constant)
 			{
 				Constant RC = (Constant) rhs;
-				return folder.createBinOp(opc, LC, RC);
+				return null; // TODO folder.createBinOp(opc, LC, RC);
 			}
 		}
 		return insert(Op2.create(opc, lhs, rhs, name),name);
@@ -676,7 +678,7 @@ public class HIRBuilder
 		if (v instanceof Constant)
 		{
 			Constant vc = (Constant)v;
-			return folder.createNeg(vc);
+			return null; // TODO folder.createNeg(vc);
 		}
 		return insert(Op2.createNeg(v), name);
 	}
@@ -686,7 +688,7 @@ public class HIRBuilder
 		if (v instanceof Constant)
 		{
 			Constant vc = (Constant)v;
-			return folder.createFNeg(vc);
+			return null; // TODO folder.createFNeg(vc);
 		}
 		return insert(Op2.createFNeg(v), name);
 	}
@@ -696,7 +698,7 @@ public class HIRBuilder
 		if (v instanceof Constant)
 		{
 			Constant vc = (Constant)v;
-			return folder.createNot(vc);
+			return null; // TODO folder.createNot(vc);
 		}
 		return insert(Op2.createNot(v), name);
 	}
@@ -732,5 +734,10 @@ public class HIRBuilder
 		Value[] temp = new Value[args.size()];
 		args.toArray(temp);
 		return insert(new CallInst(temp, callee));
+	}
+
+	public Value createStructGEP(Value baseValue, int idx, String name)
+	{
+		return null;
 	}
 }
