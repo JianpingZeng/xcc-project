@@ -35,6 +35,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
+import static backend.value.GlobalValue.LinkageType.PrivateLinkage;
 
 /**
  * <p>
@@ -81,28 +82,22 @@ public class HIRGenModule
     private Function memCpyFn;
     private Function memMoveFn;
     private Function memSetFn;
-
-	public HIRGenModule(Context context)
-	{
-		this.context = context;
-		context.put(AstToCfgKey, this);
-		this.names = Name.Table.instance(context);
-		this.log = Log.instance(context);
-		this.vars = new ArrayList<>();
-		this.functions = new ArrayList<>();
-	}
-
-	private ASTContext ctx;
+    private ASTContext ctx;
     private Options options;
     private Module m;
-
     private CodeGenTypes cgTypes;
+
+    private HashMap<String, Constant> constantStringMap;
+
 	public HIRGenModule(ASTContext context, Options options, Module m)
     {
         ctx = context;
+        this.vars = new ArrayList<>();
+        this.functions = new ArrayList<>();
         this.options = options;
         this.m = m;
         cgTypes = new CodeGenTypes(this);
+        constantStringMap = new HashMap<>();
     }
 
     public CodeGenTypes getCodeGenTypes() { return cgTypes;}
@@ -172,14 +167,30 @@ public class HIRGenModule
 
     private void emitGlobalVarDefinition(VarDecl vd)
     {
-
+        // TODO
     }
 
-    private Constant getAddrOfFunction(FunctionType ty, FunctionDecl fd)
+    public Constant getAddrOfFunction(FunctionDecl fd)
     {
+        return getAddrOfFunction(fd, null);
+    }
+
+    public Constant getAddrOfFunction(FunctionDecl fd, FunctionType ty)
+    {
+        // TODO
         return null;
     }
 
+    public Constant getAddrOfGlobalVar(VarDecl vd)
+    {
+        return getAddrOfGlobalVar(vd, null);
+    }
+
+    public Constant getAddrOfGlobalVar(VarDecl vd, backend.type.Type ty)
+    {
+        // TODO
+        return null;
+    }
     /**
      * Emits code for global function definition.
      * @param fd
@@ -334,5 +345,76 @@ public class HIRGenModule
         ArrayList<backend.type.Type> types = new ArrayList<>();
         types.add(intPtr);
         return (memSetFn = getIntrinsic(Intrinsic.ID.memset, types));
+    }
+
+    public TargetData getTargetData()
+    {
+        return theTargetData;
+    }
+
+	/**
+     * Return the appropriate bytes for a string literal, properly padded
+     * to match the literal type.
+     * @param s
+     * @return
+     */
+    public String getStringForStringLiteral(StringLiteral s)
+    {
+        String strData = s.getStrData();
+        strData += '\0';
+        s.setStrData(strData);
+        return strData;
+    }
+
+	/**
+	 * Returns a pointer to a character array contianing the the literal.
+     * @param str
+     * @return
+     */
+    public Constant getAddrOfConstantString(String str, String globalName)
+    {
+        // Set the default prefix of a name wasn't present.
+        if (globalName == null)
+            globalName = ".str";
+
+        Constant c = constantStringMap.get(str);
+        if (c!=null)
+            return c;
+        // Create a global variable for this.
+        c = generateStringLiteral(str, true, this, globalName);
+        constantStringMap.put(str, c);
+        return c;
+    }
+
+	/**
+     * Create a storage for string literal.
+     * @param str
+     * @param constant
+     * @param genModule
+     * @param globalName
+     * @return
+     */
+    public static Constant generateStringLiteral(String str,
+            boolean constant,
+            HIRGenModule genModule,
+            String globalName)
+    {
+        // Create a constant for this string literal.
+        Constant c = ConstantArray.get(str, false);
+        // Create a global variable for this string.
+        return new GlobalVariable(genModule.getModule(),
+                c.getType(), constant,
+                PrivateLinkage,
+                c, globalName);
+    }
+
+	/**
+	 * Return a pointer to a constant array for the given string literal.
+     * @param expr
+     * @return
+     */
+    public Constant getAddrOfConstantStringFromLiteral(StringLiteral expr)
+    {
+        return getAddrOfConstantString(getStringForStringLiteral(expr), null);
     }
 }

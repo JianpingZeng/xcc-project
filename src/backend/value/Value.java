@@ -285,6 +285,12 @@ public class Value implements Cloneable
 		{
 			visitor.visitUndef(this);
 		}
+
+		@Override
+		public boolean isNullValue()
+		{
+			return false;
+		}
 	}
 
 	public int valueNumber() {return 0;}

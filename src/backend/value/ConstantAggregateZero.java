@@ -49,4 +49,10 @@ public class ConstantAggregateZero extends Constant
         ConstantAggregateZero res = aggZeroConstants.get(ty);
         return res!=null? res : aggZeroConstants.put(ty, new ConstantAggregateZero(ty));
     }
+
+    @Override
+    public boolean isNullValue()
+    {
+        return true;
+    }
 }

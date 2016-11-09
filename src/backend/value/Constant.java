@@ -240,7 +240,8 @@ public abstract class Constant extends User
     {
         if (ty instanceof IntegerType)
         {
-            return ConstantInt.get(APInt.getAllOnesValue(((IntegerType) ty).getBitWidth()));
+            APInt val = APInt.getAllOnesValue(((IntegerType) ty).getBitWidth());
+            return ConstantInt.get(val);
         }
         return null;
     }
