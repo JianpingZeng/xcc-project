@@ -53,7 +53,7 @@ public abstract class User extends Value
 
     /**
      * Obtains a reference to the operand at index position.
-     * @param index the position indexed to target element.
+     * @param index the position indexed to TargetData element.
      * @return the index-th operand.
      */
 	public Value operand(int index)

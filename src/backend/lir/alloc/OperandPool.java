@@ -35,7 +35,7 @@ public final class OperandPool
 	/**
 	 * The physical LIRRegisters occupying the front part of the LIROperand pool.
 	 * This is the complete {@linkplain Architecture#LIRRegisters register set}
-	 * of the target architecture, not just the allocatable LIRRegisters.
+	 * of the TargetData architecture, not just the allocatable LIRRegisters.
 	 */
 	private final LIRRegister[] LIRRegisters;
 
@@ -119,7 +119,7 @@ public final class OperandPool
 	}
 
 	/**
-	 * Creates a new LIROperand pool from certainly target machine.
+	 * Creates a new LIROperand pool from certainly TargetData machine.
 	 *
 	 * @param target description of the targetAbstractLayer architecture for a compilation
 	 */

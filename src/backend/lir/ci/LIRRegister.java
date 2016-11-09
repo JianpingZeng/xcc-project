@@ -29,7 +29,7 @@ import java.util.EnumMap;
 import backend.lir.backend.Architecture;
 
 /**
- * Represents a register relative to target machine.
+ * Represents a register relative to TargetData machine.
  */
 public final class LIRRegister implements Comparable<LIRRegister>, Serializable
 {

@@ -11,7 +11,7 @@ import backend.lir.backend.MachineInfo;
 public abstract class AbstractAssembler
 {
 	/**
-	 * The target machine this assembler used for.
+	 * The TargetData machine this assembler used for.
 	 */
 	public final MachineInfo target;
 	/**

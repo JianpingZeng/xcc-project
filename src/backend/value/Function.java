@@ -36,9 +36,9 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     private LinkedList<BasicBlock> basicBlockList;
 	
-	public Function(FunctionType ty, String name, Module parentModule)
+	public Function(FunctionType ty, LinkageType linkage, String name, Module parentModule)
     {
-	    super(ty, ValueKind.FunctionVal, name);
+	    super(ty, ValueKind.FunctionVal, linkage, name);
 		if (parentModule != null)
 			parentModule.getFunctionList().add(this);
 
@@ -62,7 +62,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     public Type getResultType()
     {
-        return getFunctionType().getResultType().backendType;
+        return getFunctionType().getResultType();
     }
 
 	/**
@@ -166,7 +166,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         return argumentList.size();
     }
 
-	@Override public boolean isNullValue()
+	@Override
+	public boolean isNullValue()
 	{
 		return false;
 	}

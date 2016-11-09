@@ -1542,7 +1542,7 @@ public abstract class Instruction extends User
          * Constructs a unconditional Branch instruction.
          * BranchInst(BasicBlock bb) - 'br B'
          *
-         * @param ifTrue       the branch target.
+         * @param ifTrue       the branch TargetData.
          * @param insertBefore
          */
         public BranchInst(BasicBlock ifTrue, Instruction insertBefore)
@@ -1557,7 +1557,7 @@ public abstract class Instruction extends User
          * <p>
          * BranchInst(BasicBlock bb) - 'br B'
          *
-         * @param ifTrue the target of this branch.
+         * @param ifTrue the TargetData of this branch.
          */
         public BranchInst(BasicBlock ifTrue)
         {

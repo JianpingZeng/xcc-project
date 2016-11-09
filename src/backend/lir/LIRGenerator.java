@@ -138,7 +138,7 @@ public abstract class LIRGenerator extends InstructionVisitor
 	}
 
 	/**
-	 * This method is designed to lower binary operation into target-dependent
+	 * This method is designed to lower binary operation into TargetData-dependent
 	 * instruction.
 	 *
 	 * @param instr
@@ -374,7 +374,7 @@ public abstract class LIRGenerator extends InstructionVisitor
 	{
 		clearResult(inst);
 		BasicBlock nextBB = getBlockAfter(inst.getParent());
-		// if the target of this instruction is equal to next basic block
+		// if the TargetData of this instruction is equal to next basic block
 		// just fall through rather than redundant jump.
 		if (inst.target != nextBB)
 		{

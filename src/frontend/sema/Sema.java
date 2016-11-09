@@ -1492,7 +1492,7 @@ public final class Sema
      * If there is already an implicit cast, merge into the existing one.
      *
      * @param expr The expression to be casted.
-     * @param ty   The target frontend.type which expr would be casted to.
+     * @param ty   The TargetData frontend.type which expr would be casted to.
      * @param kind The kind of frontend.type cast.
      * @return The result expression have be implicitly casted.
      */

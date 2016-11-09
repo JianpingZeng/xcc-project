@@ -1062,8 +1062,8 @@ public final class LinearScan
 	/**
 	 * The mostly frequently occurring instruction are moves from one virtual
 	 * register to other. When two intervals are connected only by a move instruction
-	 * , the interval for the move target stores the source of the move as its
-	 * register hint. IfStmt possible, the target then gets the same register assigned
+	 * , the interval for the move TargetData stores the source of the move as its
+	 * register hint. IfStmt possible, the TargetData then gets the same register assigned
 	 * as the source.
 	 * @param instr
 	 */
@@ -1791,7 +1791,7 @@ public final class LinearScan
 					if (!curInterval.location().isRegister() && curInterval
 							.alwaysInMemory())
 					{
-						// move target is a stack slot that is always correct,
+						// move TargetData is a stack slot that is always correct,
 						// so eliminate instruction
 						instructions.set(j,
 								null); // null-instructions are deleted by assignRegNum

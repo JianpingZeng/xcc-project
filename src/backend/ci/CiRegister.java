@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 
 /**
- * Represents a target machine register.
+ * Represents a TargetData machine register.
  */
 public final class CiRegister implements Comparable<CiRegister>, Serializable {
 
@@ -61,7 +61,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
     public final String name;
 
     /**
-     * The actual encoding in a target machine instruction for this register, which may or
+     * The actual encoding in a TargetData machine instruction for this register, which may or
      * may not be the same as {@link #number}.
      */
     public final int encoding;
@@ -109,7 +109,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      * Creates a {@code CiRegister} instance.
      *
      * @param number unique identifier for the register
-     * @param encoding the target machine encoding for the register
+     * @param encoding the TargetData machine encoding for the register
      * @param spillSlotSize the getTypeSize of the stack slot used to spill the value of the register
      * @param name the mnemonic name for the register
      * @param flags the set of {@link RegisterFlag} VALUES for the register

@@ -1,8 +1,10 @@
 package frontend.codegen;
 
 import backend.hir.*;
+import backend.intrinsic.Intrinsic;
 import backend.lir.ci.LIRConstant;
 import backend.lir.ci.LIRKind;
+import backend.target.TargetData;
 import backend.type.PointerType;
 import backend.value.*;
 import backend.value.Instruction.*;
@@ -31,6 +33,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+
+import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
 
 /**
  * <p>
@@ -71,6 +75,12 @@ public class HIRGenModule
 	private List<GlobalVariable> vars;
 	private List<Function> functions;
 	private Name.Table names;
+
+    private TargetData theTargetData;
+
+    private Function memCpyFn;
+    private Function memMoveFn;
+    private Function memSetFn;
 
 	public HIRGenModule(Context context)
 	{
@@ -180,7 +190,7 @@ public class HIRGenModule
         backend.type.FunctionType ty = cgTypes.getFunctionType(fnType);
 
         // create a function instance
-        Function fn = new Function(ty, fd.getDeclName(), m);
+        Function fn = new Function(ty, ExternalLinkage, fd.getDeclName(), m);
         new CodeGenFunction(this).generateCode(fd, fn);
     }
 
@@ -293,4 +303,36 @@ public class HIRGenModule
 	{
 		return false;
 	}
+
+    public Function getIntrinsic(Intrinsic.ID id, ArrayList<backend.type.Type> types)
+    {
+        return Intrinsic.getDeclaration(getModule(), id, types);
+    }
+
+    public Function getMemCpyFn()
+    {
+        if (memCpyFn != null) return memCpyFn;
+        backend.type.Type intPtr = theTargetData.getIntPtrType();
+        ArrayList<backend.type.Type> types = new ArrayList<>();
+        types.add(intPtr);
+        return (memCpyFn = getIntrinsic(Intrinsic.ID.memcpy, types));
+    }
+
+    public Function getMemMoveFn()
+    {
+        if (memMoveFn != null) return memMoveFn;
+        backend.type.Type intPtr = theTargetData.getIntPtrType();
+        ArrayList<backend.type.Type> types = new ArrayList<>();
+        types.add(intPtr);
+        return (memMoveFn = getIntrinsic(Intrinsic.ID.memmove, types));
+    }
+
+    public Function getMemSetFn()
+    {
+        if (memSetFn != null) return memSetFn;
+        backend.type.Type intPtr = theTargetData.getIntPtrType();
+        ArrayList<backend.type.Type> types = new ArrayList<>();
+        types.add(intPtr);
+        return (memSetFn = getIntrinsic(Intrinsic.ID.memset, types));
+    }
 }

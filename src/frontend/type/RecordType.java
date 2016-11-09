@@ -68,9 +68,9 @@ public final class RecordType extends TagType
     public boolean isCastableTo(Type target)
     {
         /*
-        if (!target.isRecordType())
+        if (!TargetData.isRecordType())
             return false;
-        RecordType rt = target.getRecordType();
+        RecordType rt = TargetData.getRecordType();
         return compareMembersType(rt.members, IS_CASTABLE);
         */
         return true;

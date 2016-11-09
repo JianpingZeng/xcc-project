@@ -78,7 +78,7 @@ public class IA32Assembler extends AbstractAssembler
 
 	/**
 	 * Constructs a instance of assembler for x86 platform.
-	 * @param target	The target machine for which this assembler was constructed.
+	 * @param target	The TargetData machine for which this assembler was constructed.
 	 * @param config	The register configuration.
 	 */
 	public IA32Assembler(MachineInfo target, RegisterConfig config)

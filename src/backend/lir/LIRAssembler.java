@@ -19,7 +19,7 @@ public abstract class LIRAssembler
      */
     final Backend backend;
     /**
-     * A assembler for target compiled function.
+     * A assembler for TargetData compiled function.
      */
     final TargetFunctionAssembler tasm;
     final StackFrame frame;

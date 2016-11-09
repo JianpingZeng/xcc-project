@@ -155,188 +155,183 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 		return null;
 	}
 
-	public abstract T visitBinMul(BinaryExpr expr);
+	//=========================================================================//
+	// If the subclass doesn't implement binary operator methods, fall back to
+	// visitBinaryExpr().
+	//=========================================================================//
+	public T visitBinMul(BinaryExpr expr){return visitBinaryExpr(expr);}
 
-	public abstract T visitBinDiv(BinaryExpr expr);
+	public T visitBinDiv(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinRem(BinaryExpr expr);
+	public T visitBinRem(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinAdd(BinaryExpr expr);
+	public T visitBinAdd(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinSub(BinaryExpr expr);
+	public T visitBinSub(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinShl(BinaryExpr expr);
+	public T visitBinShl(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinShr(BinaryExpr expr);
+	public T visitBinShr(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinLT(BinaryExpr expr);
+	public T visitBinLT(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinGT(BinaryExpr expr);
+	public T visitBinGT(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinLE(BinaryExpr expr);
+	public T visitBinLE(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinGE(BinaryExpr expr);
+	public T visitBinGE(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinEQ(BinaryExpr expr);
+	public T visitBinEQ(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinNE(BinaryExpr expr);
+	public T visitBinNE(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinAnd(BinaryExpr expr);
+	public T visitBinAnd(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinXor(BinaryExpr expr);
+	public T visitBinXor(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinOr(BinaryExpr expr);
+	public T visitBinOr(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinLAnd(BinaryExpr expr);
+	public T visitBinLAnd(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinLOr(BinaryExpr expr);
+	public T visitBinLOr(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinAssign(BinaryExpr expr);
+	public T visitBinAssign(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinMulAssign(CompoundAssignExpr expr);
+	public T visitBinComma(BinaryExpr expr){ return visitBinaryExpr(expr);}
 
-	public abstract T visitBinDivAssign(CompoundAssignExpr expr);
 
-	public abstract T visitBinRemAssign(CompoundAssignExpr expr);
+	//=========================================================================//
+	// If the subclass does not implements compound assignment operator, just
+	// fall back to method visitCompoundAssignExpr().
+	//=========================================================================//
+	public T visitBinMulAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinAddAssign(CompoundAssignExpr expr);
+	public T visitBinDivAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinSubAssign(CompoundAssignExpr expr);
+	public T visitBinRemAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinShlAssign(CompoundAssignExpr expr);
+	public T visitBinAddAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinShrAssign(CompoundAssignExpr expr);
+	public T visitBinSubAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinAndAssign(CompoundAssignExpr expr);
+	public T visitBinShlAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinOrAssign(CompoundAssignExpr expr);
+	public T visitBinShrAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinXorAssign(CompoundAssignExpr expr);
+	public T visitBinAndAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitBinComma(BinaryExpr expr);
+	public T visitBinOrAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitUnaryPostInc(UnaryExpr expr);
+	public T visitBinXorAssign(CompoundAssignExpr expr){ return visitCompoundAssignExpr(expr);}
 
-	public abstract T visitUnaryPostDec(UnaryExpr expr);
+	//=========================================================================//
+	// If the subclass does not implements unary operator visitor method, just
+	// fall back to method visitUnaryExpr().
+	//=========================================================================//
+	public T visitUnaryPostInc(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryPreInc(UnaryExpr expr);
+	public T visitUnaryPostDec(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryPreDec(UnaryExpr expr);
+	public T visitUnaryPreInc(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryAddrOf(UnaryExpr expr);
+	public T visitUnaryPreDec(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryDeref(UnaryExpr expr);
+	public T visitUnaryAddrOf(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryPlus(UnaryExpr expr);
+	public T visitUnaryDeref(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryMinus(UnaryExpr expr);
+	public T visitUnaryPlus(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryNot(UnaryExpr expr);
+	public T visitUnaryMinus(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryLNot(UnaryExpr expr);
+	public T visitUnaryNot(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryReal(UnaryExpr expr);
+	public T visitUnaryLNot(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
-	public abstract T visitUnaryImag(UnaryExpr expr);
+	public T visitUnaryReal(UnaryExpr expr){ return visitUnaryExpr(expr);}
+
+	public T visitUnaryImag(UnaryExpr expr){ return visitUnaryExpr(expr);}
 
 	public T visitStmt(Stmt s)
 	{
 		return (T)new Object();
 	}
 
-	/**
-	 * Visits the root class represents the top level tree node.
-	 * @param that
-	 */
-    public T visitTree(Tree that)
-    {
-        Util.shouldNotReachHere("Should not reach here!");
-        return (T)new Object();
-    }
-
-	/**
-	 *  A visitor method for traverse the {@linkplain TopLevel}.
-	 * @param tree
-	 */
-	public T visitTopLevel(TopLevel tree) { return visitTree(tree); }
-
-	public T visitErroneous(ErroneousTree erroneous) { return visitTree(erroneous);}
-
 	//=================Statement visitor method===============================//
-	public T visitBreakStmt(BreakStmt stmt) {return visitTree(stmt);}
+	public T visitBreakStmt(BreakStmt stmt) {return visitStmt(stmt);}
 
-	public T visitCaseStmt(CaseStmt stmt) {return visitTree(stmt);}
+	public T visitCaseStmt(CaseStmt stmt) {return visitStmt(stmt);}
 
-	public T visitCompoundStmt(CompoundStmt stmt) {return visitTree(stmt);}
+	public T visitCompoundStmt(CompoundStmt stmt) {return visitStmt(stmt);}
 
-	public T visitContinueStmt(ContinueStmt stmt) {return visitTree(stmt);}
+	public T visitContinueStmt(ContinueStmt stmt) {return visitStmt(stmt);}
 
-	public T visitDeclStmt(DeclStmt stmt) { return visitTree(stmt);}
+	public T visitDeclStmt(DeclStmt stmt) { return visitStmt(stmt);}
 
-	public T visitDefaultStmt(DefaultStmt stmt) {return visitTree(stmt);}
+	public T visitDefaultStmt(DefaultStmt stmt) {return visitStmt(stmt);}
 
-	public T visitDoStmt(DoStmt stmt) {return visitTree(stmt);}
+	public T visitDoStmt(DoStmt stmt) {return visitStmt(stmt);}
 
-	public T visitForStmt(ForStmt stmt) {return visitTree(stmt);}
+	public T visitForStmt(ForStmt stmt) {return visitStmt(stmt);}
 
-	public T visitGotoStmt(GotoStmt stmt) {return visitTree(stmt);}
+	public T visitGotoStmt(GotoStmt stmt) {return visitStmt(stmt);}
 
-	public T visitIfStmt(IfStmt stmt) {return visitTree(stmt);}
+	public T visitIfStmt(IfStmt stmt) {return visitStmt(stmt);}
 
-	public T visitLabelledStmt(LabelledStmt stmt) {return visitTree(stmt);}
+	public T visitLabelledStmt(LabelledStmt stmt) {return visitStmt(stmt);}
 
-	public T visitNullStmt(NullStmt stmt) {return visitTree(stmt);}
+	public T visitNullStmt(NullStmt stmt) {return visitStmt(stmt);}
 
-	public T visitReturnStmt(ReturnStmt stmt) {return visitTree(stmt);}
+	public T visitReturnStmt(ReturnStmt stmt) {return visitStmt(stmt);}
 
-    public T visitSelectStmt(SelectStmt stmt) {return visitTree(stmt);}
+    public T visitSelectStmt(SelectStmt stmt) {return visitStmt(stmt);}
 
-	public T visitSwitchStmt(SwitchStmt stmt) {return visitTree(stmt);}
+	public T visitSwitchStmt(SwitchStmt stmt) {return visitStmt(stmt);}
 
-	public T visitWhileStmt(WhileStmt stmt) {return visitTree(stmt);}
+	public T visitWhileStmt(WhileStmt stmt) {return visitStmt(stmt);}
 
 	//================Expression visitor method===============================//
 
     //================Bianry operaotr=========================================//
-    public T visitBinaryExpr(BinaryExpr expr) {return visitTree(expr);}
+    public T visitBinaryExpr(BinaryExpr expr) {return visitStmt(expr);}
 
-    public T visitCompoundAssignExpr(CompoundAssignExpr expr){return visitTree(expr);}
+    public T visitCompoundAssignExpr(CompoundAssignExpr expr){return visitStmt(expr);}
 
-    public T visitConditionalExpr(ConditionalExpr expr) {return visitTree(expr);}
+    public T visitConditionalExpr(ConditionalExpr expr) {return visitStmt(expr);}
 
     // Unary operator.
-    public T visitUnaryExpr(UnaryExpr expr) {return visitTree(expr);}
+    public T visitUnaryExpr(UnaryExpr expr) {return visitStmt(expr);}
 
-    public T visitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr expr) {return visitTree(expr);}
+    public T visitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr expr) {return visitStmt(expr);}
 
     // postfix operator
-    public T visitImplicitCastExpr(ImplicitCastExpr expr) {return visitTree(expr);}
+    public T visitImplicitCastExpr(ImplicitCastExpr expr) {return visitStmt(expr);}
 
-    public T visitExplicitCastExpr(ExplicitCastExpr expr) {return visitTree(expr);}
+    public T visitExplicitCastExpr(ExplicitCastExpr expr) {return visitStmt(expr);}
 
-    public T visitParenListExpr(ParenListExpr expr) {return visitTree(expr);}
+    public T visitParenListExpr(ParenListExpr expr) {return visitStmt(expr);}
 
-    public T visitArraySubscriptExpr(ArraySubscriptExpr expr) {return visitTree(expr);}
+    public T visitArraySubscriptExpr(ArraySubscriptExpr expr) {return visitStmt(expr);}
 
-    public T visitMemberExpr(MemberExpr expr) {return visitTree(expr);}
+    public T visitMemberExpr(MemberExpr expr) {return visitStmt(expr);}
 
-    public T visitParenExpr(ParenExpr expr){return visitTree(expr);}
+    public T visitParenExpr(ParenExpr expr){return visitStmt(expr);}
 
-    public T visitCallExpr(CallExpr expr) {return visitTree(expr);}
+    public T visitCallExpr(CallExpr expr) {return visitStmt(expr);}
 
-    public T visitInitListExpr(InitListExpr expr){return visitTree(expr);}
+    public T visitInitListExpr(InitListExpr expr){return visitStmt(expr);}
 
     // Primary expression.
-    public T visitDeclRefExpr(DeclRefExpr expr) {return visitTree(expr);}
+    public T visitDeclRefExpr(DeclRefExpr expr) {return visitStmt(expr);}
 
-    public T visitCharacterLiteral(CharacterLiteral literal){return visitTree(literal);}
+    public T visitCharacterLiteral(CharacterLiteral literal){return visitStmt(literal);}
 
-    public T visitCompoundLiteralExpr(CompoundLiteralExpr literal) {return visitTree(literal);}
+    public T visitCompoundLiteralExpr(CompoundLiteralExpr literal) {return visitStmt(literal);}
 
-    public T visitFloatLiteral(FloatLiteral literal){return visitTree(literal);}
+    public T visitFloatLiteral(FloatLiteral literal){return visitStmt(literal);}
 
-    public T visitStringLiteral(StringLiteral literal) {return visitTree(literal);}
+    public T visitStringLiteral(StringLiteral literal) {return visitStmt(literal);}
 
-    public T visitIntegerLiteral(IntegerLiteral literal) {return visitTree(literal);}
+    public T visitIntegerLiteral(IntegerLiteral literal) {return visitStmt(literal);}
 
 }

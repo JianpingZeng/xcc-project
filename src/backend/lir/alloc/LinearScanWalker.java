@@ -356,7 +356,7 @@ public final class LinearScanWalker extends IntervalWalker
 		Interval registerHint = interval.locationHint(false, allocator);
 		if (registerHint == null)
 		{
-			// cur is not the target of a move : otherwise registerHint would be set
+			// cur is not the TargetData of a move : otherwise registerHint would be set
 			return;
 		}
 		assert registerHint
@@ -714,7 +714,7 @@ public final class LinearScanWalker extends IntervalWalker
      */
 	void insertMove(int opId, Interval srcIt, Interval dstIt)
 	{
-		// output all moves here. When source and target are equal, the move is
+		// output all moves here. When source and TargetData are equal, the move is
 		// optimized away later in assignRegNums
 
 		// the second instruction

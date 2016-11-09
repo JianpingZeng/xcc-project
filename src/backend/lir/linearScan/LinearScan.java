@@ -1270,7 +1270,7 @@ public final class LinearScan
 					if (!curInterval.location().isRegister() && curInterval
 							.alwaysInMemory())
 					{
-						// move target is a stack slot that is always correct,
+						// move TargetData is a stack slot that is always correct,
 						// so eliminate instruction
 						
 						instructions.set(j,	null); // null-instructions are deleted by assignRegNum

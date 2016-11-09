@@ -22,7 +22,7 @@ import backend.lir.linearScan.LinearScan;
 /**
  * <p>
  * This class encapsulates some global information about the compilation of a 
- * specified file(compilation unit), including target machine information, 
+ * specified file(compilation unit), including TargetData machine information,
  * OS-specific information etc.
  *
  * @author Xlous.zeng

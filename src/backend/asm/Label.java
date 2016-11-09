@@ -62,7 +62,7 @@ public final class Label
 		patchPositions.add(branchLocation);
 	}
 	/**
-	 * Set the branch target of these instructions which reference to this label. 
+	 * Set the branch TargetData of these instructions which reference to this label.
 	 * @param masm
 	 */
 	protected void patchInstructions(AbstractAssembler masm)

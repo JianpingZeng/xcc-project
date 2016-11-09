@@ -23,9 +23,9 @@
 package backend.ci;
 
 /**
- * Represents an address in target machine memory, specified via some combination of a base register, an index register,
+ * Represents an address in TargetData machine memory, specified via some combination of a base register, an index register,
  * a displacement and a scale. Note that the base and index registers may be {@link CiVariable variable}, that is as yet
- * unassigned to target machine registers.
+ * unassigned to TargetData machine registers.
  */
 public final class CiAddress extends CiValue {
 
@@ -49,7 +49,7 @@ public final class CiAddress extends CiValue {
      */
     public final CiValue index;
     /**
-     * Scaling factor for indexing, dependent on target operand getTypeSize.
+     * Scaling factor for indexing, dependent on TargetData operand getTypeSize.
      */
     public final Scale scale;
     /**

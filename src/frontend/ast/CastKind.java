@@ -25,7 +25,7 @@ public enum CastKind
 {
     CK_Invalid,
     /// CK_Dependent - A conversion which cannot yet be analyzed because
-    /// either the expression or target frontend.type is dependent.  These are
+    /// either the expression or TargetData frontend.type is dependent.  These are
     /// created only for explicit casts; dependent ASTs aren't required
     /// to even approximately frontend.type-check.
     ///   (T*) malloc(sizeof(T))

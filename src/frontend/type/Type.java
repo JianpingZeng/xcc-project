@@ -298,7 +298,7 @@ public abstract class Type implements TypeClass
     }
 
     /**
-     * Indicates if this frontend.type can be casted into target frontend.type.
+     * Indicates if this frontend.type can be casted into TargetData frontend.type.
      *
      * @param target
      * @return

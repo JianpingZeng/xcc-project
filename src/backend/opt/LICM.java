@@ -371,7 +371,7 @@ public final class LICM
 			pred.addSucc(newBB);
 			newBB.addPred(pred);
 			
-			// replace the old branching target of newBB
+			// replace the old branching TargetData of newBB
 			pred.getTerminator().replaceTargetWith(header, newBB);
 		}
 		// the new block unconditionally branches to the header block

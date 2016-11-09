@@ -511,7 +511,7 @@ public final class InductionVarSimplify
 			preheader.appendInst(inst);
 	}
 	/**
-	 * Appends a sorts of instruction into position after {@code target} instruction.
+	 * Appends a sorts of instruction into position after {@code TargetData} instruction.
 	 * @param target
 	 * @param after
 	 */
