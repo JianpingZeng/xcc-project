@@ -3165,14 +3165,23 @@ public final class Sema
                 ch.loc));
     }
 
+	/**
+     * Allocates a array of type char for holding the string literal.
+     * @param str
+     * @return
+     */
     public ActionResult<Expr> actOnStringLiteral(Token.StringLiteral str)
     {
+        assert !str.getValue().isEmpty():"string literal must have at least one char";
+
         String s = str.getValue();
         assert s!= null && s.length() > 0:"Must have at least one string!";
         QualType strTy = Type.CharTy;
-        strTy = ConstantArrayType.getConstantType(strTy, new APInt(32, s.length() + 1));
+        strTy = ArrayType.ConstantArrayType.getConstantType
+                (strTy, new APInt(32, s.length() + 1));
 
-        return new ActionResult<>(new StringLiteral(strTy, EVK_RValue, str.loc));
+        return new ActionResult<>(new StringLiteral(strTy, str.getValue(),
+                EVK_RValue, str.loc));
     }
 
     private UnaryOperatorKind convertTokenKindToUnaryOperator(int kind)

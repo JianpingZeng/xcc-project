@@ -43,7 +43,7 @@ public class ConstantStruct extends Constant
         {
             assert c.getType() == ty.getElementType(idx)
                     :"Initializer for struct element doesn't match struct element type!";
-            setOperand(idx++, c);
+            setOperand(idx++, c, this);
         }
     }
 

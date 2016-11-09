@@ -1,5 +1,6 @@
 package backend.value;
 
+import backend.hir.Module;
 import backend.type.PointerType;
 import backend.type.Type;
 
@@ -16,7 +17,8 @@ public class GlobalVariable extends GlobalValue
      * Constructs a new instruction representing the specified constant.
      *
      */
-    public GlobalVariable(Type ty,
+    public GlobalVariable(Module m,
+            Type ty,
             boolean isConstant,
             LinkageType linkage,
             Constant init,
@@ -31,8 +33,10 @@ public class GlobalVariable extends GlobalValue
         {
             reserve(1);
             assert init.getType() == ty:"Initializer should be the same type as the GlobalVariable!";
-            setOperand(0, init);
+            setOperand(0, new Use(init, this));
         }
+        if (m != null)
+            m.getGlobalVariableList().add(this);
     }
 
     /**
@@ -46,13 +50,10 @@ public class GlobalVariable extends GlobalValue
     }
 
     @Override
-    public boolean isNullValue()
-    {
-        return false;
-    }
+    public boolean isNullValue(){return false;}
 
     public void setInitializer(Constant init)
     {
-        setOperand(0, init);
+        setOperand(0, new Use(init, this));
     }
 }

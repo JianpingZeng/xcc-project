@@ -25,6 +25,7 @@ import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
+import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
 import frontend.ast.Tree;
 import frontend.sema.*;
@@ -129,6 +130,16 @@ public final class CodeGenFunction
 		pointerWidth = 64;
 	}
 
+	/**
+	 * This method is the entry for emitting HIR code for a function definition.
+	 * <p>
+	 * It responsible for several tasks, emitting code for standard function
+	 * prologue, function body statement, and function epilogue.
+	 *
+	 * </p>
+	 * @param fd
+	 * @param fn
+	 */
 	public void generateCode(FunctionDecl fd, Function fn)
 	{
 		QualType resTy = fd.getReturnType();
@@ -145,7 +156,7 @@ public final class CodeGenFunction
 		// Generates code for function body.
 		emitFunctionBody();
 
-		// emit standard function eliplogue.
+		// emit standard function epilogue.
 		finishFunction();
 	}
 
@@ -1317,7 +1328,7 @@ public final class CodeGenFunction
 			// initializer.
 			if (init == null)
 			{
-				// TODO generator.errorUnsupported(vd.getInit(), "constant l-value expression");
+				errorUnsupported(vd.getInit(), "constant l-value expression");
 			}
 			else
 			{
@@ -1325,7 +1336,9 @@ public final class CodeGenFunction
 				{
 					GlobalVariable oldGV = gv;
 
-					gv = new GlobalVariable(init.getType(), oldGV.isConstant(),
+					gv = new GlobalVariable(generator.getModule(),
+							init.getType(), oldGV.isConstant(),
+							LinkageType.InteralLinkage,
 							init, "");
 
 					// Replace all uses of the old global with the new global
@@ -1356,7 +1369,9 @@ public final class CodeGenFunction
 
 		String name = contextName + separator + vd.getDeclName();
 		Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
-		return new GlobalVariable(lty, ty.isConstant(),
+		return new GlobalVariable(generator.getModule(),
+				lty, ty.isConstant(),
+				LinkageType.InteralLinkage,
 				generator.emitNullConstant(vd.getDeclType()), name);
 	}
 
@@ -1595,7 +1610,7 @@ public final class CodeGenFunction
 		Value ptr = lv.getBitFieldAddr();
 
 		Type eltType = ((PointerType) ptr.getType()).getElemType();
-		int eltTySize = generator.getTargetData().getTypeSizeInBits(eltType0);
+		int eltTySize = generator.getTargetData().getTypeSizeInBits(eltType);
 
 		int lowBits = Math.min(bitfieldSize, eltTySize - startBit);
 		Value val = builder.createLoad(ptr, lv.isVolatileQualified(), "tmp");
@@ -1906,7 +1921,7 @@ public final class CodeGenFunction
 
 	public LValue emitStringLiteralLValue(StringLiteral expr)
 	{
-		return LValue.makeAddr(generator.getAddrOfConstantStringFromLiteral(expr), null);
+		return LValue.makeAddr(generator.getAddrOfConstantStringFromLiteral(expr), 0);
 	}
 
 	public LValue emitUnaryOpLValue(UnaryExpr expr)
@@ -1946,9 +1961,9 @@ public final class CodeGenFunction
 			else
 				idx = builder.createZExt(idx, IntegerType.get(pointerWidth), "zext");
 		}
-		else if (idxBitwidth != pointerWidth)
+		else if (idxBitwidth > pointerWidth)
 		{
-			idx = builder.createIntCast(idx, IntegerType.get(pointerWidth), "intcast");
+			idx = builder.createTrunc(idx, IntegerType.get(pointerWidth), "trunc");
 		}
 
 		// We know that the pointer points to a type of the correct size,

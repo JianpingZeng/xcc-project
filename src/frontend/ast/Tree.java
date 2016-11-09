@@ -1368,12 +1368,16 @@ abstract public class Tree
 
     public static class StringLiteral extends Expr
     {
+	    private String strData;
+
         public StringLiteral(
                 QualType type,
+		        String str,
                 ExprValueKind valuekind,
                 int loc)
         {
             super(CharacterLiteralClass, type, valuekind, loc);
+	        strData = str;
         }
 
         public StringLiteral(int loc)
@@ -1386,6 +1390,11 @@ abstract public class Tree
         {
             v.visitStringLiteral(this);
         }
+
+	    public String getStrData() {return strData;}
+	    public int getByteLength() {return strData.length();}
+
+	    public void setStrData(String newStrData){this.strData = newStrData;}
     }
 
     /**

@@ -1,6 +1,7 @@
 package backend.target;
 
 import backend.type.IntegerType;
+import backend.type.Type;
 
 /**
  *
@@ -24,4 +25,10 @@ public class TargetData
 	}
 
 	public int getPointerSizeInBits() {return pointerMemSize*8;}
+
+	public int getTypeSizeInBits(Type type)
+	{
+		// TODO
+		return 0;
+	}
 }

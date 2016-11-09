@@ -166,7 +166,7 @@ public abstract class Instruction extends User
         {
             super(ty, opcode, insertBefore);
             reserve(1);
-            setOperand(0, x);
+            setOperand(0, x, this);
         }
 
         /**
@@ -194,7 +194,7 @@ public abstract class Instruction extends User
                 String name, BasicBlock insertAtEnd)
         {
             super(ty, opcode, insertAtEnd);
-            setOperand(0, x);
+            setOperand(0, x, this);
         }
 
         @Override
@@ -267,8 +267,8 @@ public abstract class Instruction extends User
 
         private void init(Value x, Value y)
         {
-            setOperand(0, x);
-            setOperand(1, y);
+            setOperand(0, x, this);
+            setOperand(1, y, this);
         }
 
         public static Op2 create(Operator op, Value lhs, Value rhs, String name, Instruction insertBefore)
@@ -638,8 +638,8 @@ public abstract class Instruction extends User
         public void swapOperands()
         {
             Value temp = operand(0);
-            setOperand(0, operand(1));
-            setOperand(1, temp);
+            setOperand(0, operand(1), this);
+            setOperand(1, temp, this);
         }
 
         @Override
@@ -708,7 +708,7 @@ public abstract class Instruction extends User
         private void initialize(Value x)
         {
             reserve(1);
-            setOperand(0, x);
+            setOperand(0, x, this);
         }
 
         public static CastInst createIntegerCast(
@@ -1013,8 +1013,8 @@ public abstract class Instruction extends User
         private void init(Value lhs, Value rhs)
         {
             reserve(2);
-            setOperand(0, lhs);
-            setOperand(1, rhs);
+            setOperand(0, lhs, this);
+            setOperand(1, rhs, this);
             this.name = name;
             this.pred = pred;
         }
@@ -1549,7 +1549,7 @@ public abstract class Instruction extends User
         {
             super(Operator.Br, "", insertBefore);
             reserve(1);
-            setOperand(0, ifTrue);
+            setOperand(0, ifTrue, this);
         }
 
         /**
@@ -1589,9 +1589,9 @@ public abstract class Instruction extends User
         {
             super(Operator.Br, "", insertBefore);
             reserve(3);
-            setOperand(0, ifTrue);
-            setOperand(1, ifFalse);
-            setOperand(2, cond);
+            setOperand(0, ifTrue, this);
+            setOperand(1, ifFalse, this);
+            setOperand(2, cond, this);
         }
 
         public BranchInst(BasicBlock ifTrue, BasicBlock ifFalse, Value cond,
@@ -1599,9 +1599,9 @@ public abstract class Instruction extends User
         {
             super(Operator.Br, "", insertAtEnd);
 
-            setOperand(0, ifTrue);
-            setOperand(1, ifFalse);
-            setOperand(2, cond);
+            setOperand(0, ifTrue, this);
+            setOperand(1, ifFalse, this);
+            setOperand(2, cond, this);
         }
 
         /**
@@ -1613,7 +1613,7 @@ public abstract class Instruction extends User
         public BranchInst(BasicBlock ifTrue, BasicBlock insertAtEnd)
         {
             super(Operator.Br, "", insertAtEnd);
-            setOperand(0, ifTrue);
+            setOperand(0, ifTrue, this);
         }
 
         public boolean isUnconditional(){return getNumOfOperands() == 1;}
@@ -1630,7 +1630,7 @@ public abstract class Instruction extends User
         {
             assert (cond != null) : "can not update condition with null";
             assert (isConditional()) : "can not set condition of uncondition branch";
-            setOperand(2, cond);
+            setOperand(2, cond, this);
         }
 
         public BranchInst clone()
@@ -1672,7 +1672,7 @@ public abstract class Instruction extends User
         public void setSuxAt(int index, BasicBlock bb)
         {
             assert (index >= 0 && index < getNumOfSuccessors() && bb != null);
-            setOperand(index, bb);
+            setOperand(index, bb, this);
         }
 
         /**
@@ -1711,7 +1711,7 @@ public abstract class Instruction extends User
             if (retValue != null)
             {
                 reserve(1);
-                setOperand(0, retValue);
+                setOperand(0, retValue, this);
             }
         }
 
@@ -1721,7 +1721,7 @@ public abstract class Instruction extends User
             if (retValue != null)
             {
                 reserve(1);
-                setOperand(0, retValue);
+                setOperand(0, retValue, this);
             }
         }
 
@@ -1819,11 +1819,11 @@ public abstract class Instruction extends User
             reserve(ArgumentOffset + args.length);
             assert (getNumOfOperands()
                     == ArgumentOffset + args.length) : "NumOperands not set up?";
-            setOperand(0, function);
+            setOperand(0, function, this);
             int idx = ArgumentOffset;
             for (Value arg : args)
             {
-                setOperand(idx++, arg);
+                setOperand(idx++, arg, this);
             }
         }
 
@@ -1847,7 +1847,7 @@ public abstract class Instruction extends User
         public void setArgument(int index, Value val)
         {
             assert index + ArgumentOffset >= 0 && index + ArgumentOffset < getNumsOfArgs();
-            setOperand(index + ArgumentOffset, val);
+            setOperand(index + ArgumentOffset, val, this);
         }
 
         public Value argumentAt(int index)
@@ -1917,8 +1917,8 @@ public abstract class Instruction extends User
         {
             // the 2 indicates what number of default basic block and default value.
             reserve(offset+numCases);
-            setOperand(0, cond);
-            setOperand(1, defaultBB);
+            setOperand(0, cond, this);
+            setOperand(1, defaultBB, this);
         }
 
         /**
@@ -1935,8 +1935,8 @@ public abstract class Instruction extends User
         public void addCase(Constant caseVal, BasicBlock targetBB)
         {
             int opNo = getNumOfCases();
-            setOperand(opNo, caseVal);
-            setOperand(opNo+1, targetBB);
+            setOperand(opNo, caseVal, this);
+            setOperand(opNo+1, targetBB, this);
         }
 
         public void removeCase(int idx)
@@ -1966,7 +1966,7 @@ public abstract class Instruction extends User
 
         public void setCondition(Value val)
         {
-            setOperand(0, val);
+            setOperand(0, val, this);
         }
 
         public int getNumOfCases()
@@ -2034,7 +2034,7 @@ public abstract class Instruction extends User
         {
             assert index >= 0 && index < getNumOfSuccessors()
                     : "Successor index out of range for switch";
-            setOperand(index * 2 + 1, newBB);
+            setOperand(index * 2 + 1, newBB, this);
         }
         // setSuccessorValue - Updates the value associated with the specified
         // successor.
@@ -2042,7 +2042,7 @@ public abstract class Instruction extends User
         {
             assert(idx>=0 && idx < getNumOfSuccessors())
                     : "Successor # out of range!";
-            setOperand(idx*2, SuccessorValue);
+            setOperand(idx*2, SuccessorValue, this);
         }
 
         public SwitchInst clone()
@@ -2157,7 +2157,7 @@ public abstract class Instruction extends User
         {
             assert index >= 0 && index < getNumberIncomingValues()
                     : "The index is beyond out the num of list";
-            setOperand(index << 1, val);
+            setOperand(index << 1, val, this);
         }
 
         public Value getIncomingValueForBlock(BasicBlock bb)
@@ -2184,7 +2184,7 @@ public abstract class Instruction extends User
         {
             assert index >= 0 && index
                     < numOperands : "The index is beyond out the num of list";
-            setOperand((index << 1) + 1, bb);
+            setOperand((index << 1) + 1, bb, this);
         }
 
         public Value removeIncomingValue(int index, boolean deletePhiIfEmpty)
@@ -2282,7 +2282,7 @@ public abstract class Instruction extends User
             reserve(1);
             assert arraySize.getType() == Type.Int32Ty
                     :"Alloca array size != UnsignedIntTy";
-            setOperand(0, arraySize);
+            setOperand(0, arraySize, this);
         }
 
         public AllocaInst(Type ty,
@@ -2402,8 +2402,8 @@ public abstract class Instruction extends User
             assert ptr.getType().isPointerType()
                     : "the destination of StoreInst must be AllocaInst!";
             reserve(2);
-            setOperand(0, value);
-            setOperand(1, ptr);
+            setOperand(0, value, this);
+            setOperand(1, ptr, this);
         }
 
         public Value getValueOperand()
@@ -2522,8 +2522,8 @@ public abstract class Instruction extends User
         private void init(Value ptr, Value idx, String name)
         {
             assert getNumOfOperands() == 2:"NumOperands not initialized.";
-            setOperand(0, ptr);
-            setOperand(1, idx);
+            setOperand(0, ptr, this);
+            setOperand(1, idx, this);
             this.name = name;
         }
 

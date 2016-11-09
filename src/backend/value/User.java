@@ -62,15 +62,26 @@ public abstract class User extends Value
         return operandList.get(index).getValue();
     }
 
-    /**
-     * set element at specified position with {@code val}
-     * @param index
-     * @param val
-     */
-    public void setOperand(int index, Value val)
+    public void setOperand(int index, Value val, User user)
     {
-        assert (index >= 0 && index < getNumOfOperands() && val != null);
-        operandList.get(index).setValue(val);
+        setOperand(index, new Use(val, user));
+    }
+
+    /**
+     * set element at specified position with {@code use}
+     * @param index
+     * @param use
+     */
+    public void setOperand(int index, Use use)
+    {
+        assert (index >= 0 && index < getNumOfOperands() && use != null);
+        operandList.set(index, use);
+    }
+
+    public Use getOperand(int index)
+    {
+        assert (index >= 0 && index < getNumOfOperands());
+        return operandList.get(index);
     }
 
     /**
