@@ -1699,6 +1699,11 @@ public abstract class Instruction extends User
             this(null, "", (Instruction) null);
         }
 
+        public ReturnInst(Value val)
+        {
+            this(val, "", (Instruction) null);
+        }
+
         /**
          * Constructs a new return instruction with return inst.
          *

@@ -680,6 +680,18 @@ public abstract class Decl extends DeclContext
         {
             return hasImplicitReturnZero;
         }
+
+	    /**
+         * Returns the compound statement attached to this function declaration.
+         * @return
+         */
+        public Tree.CompoundStmt getCompoundBody()
+        {
+            Tree.Stmt s = getBody();
+            if (s instanceof Tree.CompoundStmt)
+                return (Tree.CompoundStmt)s;
+            return null;
+        }
     }
     /**
      * Represents a declaration of a frontend.type.

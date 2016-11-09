@@ -28,6 +28,7 @@ import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
 import frontend.ast.Tree;
+import frontend.codegen.CodeGenTypes.CGFunctionInfo;
 import frontend.sema.*;
 import frontend.sema.Decl.*;
 import frontend.type.ArrayType;
@@ -57,7 +58,7 @@ public final class CodeGenFunction
 	/**
 	 * Unified return block.
 	 */
-	private JumpDest returnBlock;
+	private BasicBlock returnBlock;
 
 	/**
 	 * The temporary alloca to hold the return value.
@@ -90,6 +91,8 @@ public final class CodeGenFunction
 	private HashMap<Tree.LabelledStmt, BasicBlock> labelMap;
 
 	private HashMap<Tree.Expr, Type> vlaSizeMap;
+	private CGFunctionInfo curFnInfo;
+
 	public int pointerWidth;
 	public Type BackendIntTy;
 
@@ -144,24 +147,28 @@ public final class CodeGenFunction
 	{
 		QualType resTy = fd.getReturnType();
 
-		ArrayList<VarDecl> functionArgList = new ArrayList<>(16);
+		ArrayList<Pair<VarDecl, QualType>> functionArgList = new ArrayList<>(16);
 		if (fd.getNumParams() > 0)
 		{
+			frontend.type.FunctionType ft = fd.getDeclType().getFunctionType();
 			for (int i = 0, e = fd.getNumParams(); i < e; i++)
-				functionArgList.add(fd.getParamDecl(i));
+				functionArgList.add(new Pair<>(fd.getParamDecl(i), ft.getParamType(i)));
 		}
+		CompoundStmt body = fd.getCompoundBody();
+		if (body != null)
+		{
+			// Emit the standard function prologue.
+			startFunction(fd, resTy, fn, functionArgList);
+			// Generates code for function body.
+			emitStmt(body);
 
-		// Emit the standard function prologue.
-		startFunction(fd, resTy, fn, functionArgList);
-		// Generates code for function body.
-		emitFunctionBody();
-
-		// emit standard function epilogue.
-		finishFunction();
+			// emit standard function epilogue.
+			finishFunction(body.getRBraceLoc());
+		}
 	}
 
 	private void startFunction(FunctionDecl fd, QualType resTy, Function fn,
-			ArrayList<VarDecl> args)
+			ArrayList<Pair<VarDecl, QualType>> args)
 	{
 		curFn = fn;
 		curFnDecl = fd;
@@ -175,25 +182,26 @@ public final class CodeGenFunction
 		// later.  Don't create this with the builder, because we don't want it
 		// folded.
 		Value undef = Value.UndefValue.get(Type.Int32Ty);
+		allocaInstPtr = new Instruction.BitCastInst(undef, Type.Int32Ty, "allocapt");
 
-		returnBlock = getJumpDestInCurrentScope("return");
+		returnBlock = createBasicBlock("return");
 		builder.setInsertPoint(entryBB);
 
-		if (resTy.isVoidType())
-			returnValue = null;
-		else
-		{
+		if (!resTy.isVoidType())
 			returnValue = createIRTemp(resTy, "retval");
-		}
 
+		curFnInfo = generator.getCodeGenTypes().getFunctionInfo(fnRetTy, args);
 		emitFunctionPrologue(curFn, curFn.getType(), args);
+
 		// If any of the arguments have a variably modified type,
 		// make sure to emit type size.
-		for (VarDecl vd : args)
+		args.forEach((pair)->
 		{
+			VarDecl vd = pair.first;
 			QualType ty = vd.getDeclType();
-			// TODO handle variable size type introduced in C99.
-		}
+			if (ty.isVariablyModifiedType())
+				emitVLASize(ty);
+		});
 	}
 
 	/**
@@ -203,7 +211,7 @@ public final class CodeGenFunction
 	 * @param args
 	 */
 	private void emitFunctionPrologue(Function fn, FunctionType fnType,
-			ArrayList<VarDecl> args)
+			ArrayList<Pair<VarDecl, QualType>> args)
 	{
 		if (curFnDecl.hasImplicitReturnZero())
 		{
@@ -224,8 +232,9 @@ public final class CodeGenFunction
 		// obtains the type list of formal type enclosing in FunctionType.
 		Iterator<CodeGenTypes.ArgTypeInfo> infoItr = fnType.getParamTypes()
 				.iterator();
-		for (VarDecl vd : args)
+		for (Pair<VarDecl, QualType> pair : args)
 		{
+			VarDecl vd = pair.first;
 			QualType ty = vd.getDeclType();
 			Value v = argItr.next();
 			final CodeGenTypes.ArgTypeInfo ArgInfo = infoItr.next();
@@ -336,8 +345,8 @@ public final class CodeGenFunction
 	 */
 	private void emitFunctionBody()
 	{
-		assert curFnDecl
-				.hasBody() : "Can not emit stmt code for function with no body.";
+		assert curFnDecl.hasBody()
+				: "Can not emit stmt code for function with no body.";
 		emitStmt(curFnDecl.getBody());
 	}
 
@@ -1398,9 +1407,106 @@ public final class CodeGenFunction
 		emitBlock(breakBB);
 	}
 
-	private void finishFunction()
+	/**
+	 * Complete HIR generation for current function, then it is legal to call
+	 * this function.
+	 */
+	public void finishFunction(int endLoc)
 	{
+		assert breakContinueStack.isEmpty()
+				:"mismatched push/pop in break/continue stack!";
 
+		// emit function epilogue (to return).
+		emitReturnBlock();
+
+		emitFunctionEpilogue(curFnInfo, returnValue);
+
+		// Remove the AllocaInstrPtr instruction, which is just a conversience for use.
+		Instruction ptr = allocaInstPtr;
+		allocaInstPtr = null;
+		ptr.eraseFromBasicBlock();
+	}
+
+	private void emitReturnBlock()
+	{
+		BasicBlock curBB = builder.getInsertBlock();
+
+		if (curBB != null)
+		{
+			assert curBB.getTerminator()==null:"Unexpected terminated block.";
+
+			if (curBB.isEmpty() || returnBlock.isUseEmpty())
+			{
+				returnBlock.replaceAllUsesWith(curBB);
+				// for GC.
+				returnBlock = null;
+			}
+			else
+			{
+				emitBlock(returnBlock);
+			}
+			return;
+		}
+		// Otherwise, if the return block is the target of a single direct
+		// branch then we can just put the code in that block instead.
+		if (returnBlock.hasOneUses())
+		{
+			Use use = returnBlock.useAt(0);
+			BranchInst bi = null;
+			if (use.getValue() instanceof BranchInst &&
+					(bi = (BranchInst)use.getValue()).isUnconditional()
+					&& bi.suxAt(0) == returnBlock)
+			{
+				// Reset the insertion point and delete the branch.
+				builder.setInsertPoint(bi.getParent());
+				bi.eraseFromBasicBlock();
+				returnBlock = null;
+				return;
+			}
+		}
+	}
+
+	private void emitFunctionEpilogue(CGFunctionInfo fnInfo, Value returnValue)
+	{
+		Value rv = null;
+
+		// Functin with non result always return void.
+		if (returnValue != null)
+		{
+			QualType retTy = fnInfo.getReturnType();
+			ABIArgInfo retAI = fnInfo.getReturnInfo();
+
+			switch(retAI.getKind())
+			{
+				case Ignore:
+					break;
+				case Direct:
+					// The internal return value temp always will have pointer
+					// to return-type types.
+					rv = builder.createLoad(returnValue, false, "ret");
+				case Indirect:
+					if (retTy.isComplexType())
+					{
+						// TODO complex type.
+					}
+					else if (hasAggregateBackendType(retTy))
+					{
+						emitAggregateCopy(curFn.getArgumentList().get(0),
+								returnValue, retTy, false);
+					}
+					else
+					{
+						emitStoreOfScalar(builder.createLoad(returnValue, false, "ret"),
+								curFn.getArgumentList().get(0),
+								false, retTy);
+					}
+			}
+		}
+
+		if (rv!=null)
+			builder.createRet(rv);
+		else
+			builder.createRetVoid();
 	}
 
 	private void emitContinueStmt(Tree.ContinueStmt s)
@@ -1667,14 +1773,14 @@ public final class CodeGenFunction
 		ArrayList<Pair<RValue, QualType>> callArgs = new ArrayList<>();
 		emitCallArgs(callArgs, fn, args);
 		return emitCall(generator.getCodeGenTypes().
-						getFunctionInfo(resultType, callArgs), callee, callArgs,
+						getFunctionInfo3(resultType, callArgs), callee, callArgs,
 				fnDecl);
 	}
 
 	/**
 	 * Generate a call of the given function, expecting the given
-	 * result type, and using the given arguemnt list which
-	 * specifies both the backend argument and tyeps there wre derived from.
+	 * result type, and using the given argument list which
+	 * specifies both the backend argument and types there wre derived from.
 	 * @param callInfo
 	 * @param callee
 	 * @param callArgs
@@ -1682,7 +1788,7 @@ public final class CodeGenFunction
 	 *                   used to set attributes on the call (noreturn, etc.).
 	 * @return
 	 */
-	public RValue emitCall(CodeGenTypes.CGFunctionInfo callInfo, Value callee,
+	public RValue emitCall(CGFunctionInfo callInfo, Value callee,
 			ArrayList<Pair<RValue, QualType>> callArgs, Decl targetDecl)
 	{
 		// A list for holding argument type.
@@ -1701,7 +1807,7 @@ public final class CodeGenFunction
 		int i = 0;
 		for (Pair<RValue, QualType> ptr : callArgs)
 		{
-			CodeGenTypes.CGFunctionInfo.ArgInfo infoItr = callInfo
+			CGFunctionInfo.ArgInfo infoItr = callInfo
 					.getArgInfoAt(i);
 			ABIArgInfo argInfo = infoItr.info;
 			RValue rv = ptr.first;

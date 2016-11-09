@@ -434,13 +434,13 @@ abstract public class Tree
 	public static class CompoundStmt extends Stmt
 	{
 		public List<Stmt> stats;
-		public int endpos = Position.NOPOS;
+		public int rBraceLoc = Position.NOPOS;
 
 		public CompoundStmt(List<Stmt> stats, int loc)
 		{
 			super(CompoundStmtClass);
 			this.stats = stats;
-            this.endpos = loc;
+            this.rBraceLoc = loc;
 		}
 
 		public void accept(StmtVisitor v)
@@ -449,6 +449,8 @@ abstract public class Tree
 		}
 
 		public Iterator<Stmt> iterator() { return stats.iterator();}
+
+		public int getRBraceLoc() {return rBraceLoc;}
 	}
 
 	
