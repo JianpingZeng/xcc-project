@@ -293,6 +293,14 @@ public abstract class Decl extends DeclContext
             cachedFieldIndex = index + 1;
             return index;
         }
+        /**
+         * Determines whether this bitfield is a unnamed bitfield.
+         * @return
+         */
+        public boolean isUnamaedBitField()
+        {
+            return !hasInit && init != null && getDeclName() == null;
+        }
     }
 
     public enum DefinitionKind

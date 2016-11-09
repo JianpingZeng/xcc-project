@@ -1,18 +1,25 @@
 package driver;
 
-import java.util.*;
-import java.io.*;
-
-import hir.HIRGenModule;
-import hir.ModuleBuilder;
+import frontend.codegen.ModuleBuilder;
+import frontend.codegen.HIRGenModule;
+import backend.hir.Module;
 import backend.lir.backend.ia32.IA32;
 import backend.lir.backend.ia32.IA32RegisterConfig;
-import hir.Module;
-import sema.ASTContext;
-import sema.Decl;
-import sema.Sema;
-import tools.*;
-import frontend.ast.*;
+import frontend.ast.ASTConsumer;
+import frontend.ast.Tree;
+import frontend.sema.ASTContext;
+import frontend.sema.Decl;
+import frontend.sema.Sema;
+import tools.Context;
+import tools.Log;
+import tools.Position;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Compiler
 {
@@ -32,7 +39,7 @@ public class Compiler
     private boolean verbose = false;
 
     /**
-     * A flag that marks whether output target file.
+     * A flag that marks whether output TargetData file.
      */
     @SuppressWarnings("unused")
     private boolean outputResult = false;
@@ -43,6 +50,7 @@ public class Compiler
     private Sema sema;
     private ASTContext context;
     private ASTConsumer consumer;
+    private Options options;
 
     public Compiler(Context ctx)
     {
@@ -50,7 +58,7 @@ public class Compiler
         ctx.put(compilerKey, this);
         this.ctx = ctx;
         this.log = Log.instance(ctx);
-        Options options = Options.instance(ctx);
+        options = Options.instance(ctx);
 
         // TODO: to specify machine specification with command line option.
         Backend backend = new IA32Backend(ctx, IA32.target(),
@@ -60,8 +68,6 @@ public class Compiler
         this.debugParser = options.get("--debug-Parser") != null;
         this.outputResult = options.get("-o") != null;
         context = new ASTContext();
-        consumer = new ModuleBuilder();
-        consumer.initialize(context);
     }
 
     public static Compiler make(Context context)
@@ -79,6 +85,7 @@ public class Compiler
 
     public void compile(List<SourceFile> filenames)
     {
+        /*
         long msec = System.currentTimeMillis();
 
         for (SourceFile name : filenames)
@@ -109,13 +116,13 @@ public class Compiler
             printCount("error", errCount);
         else
             printCount("error.plural", errCount);
-
+        */
     }
 
     /**
      * This method is called when processing each input file.
      * It responsible for creating an instance of {@linkplain Module}, containing
-     * global Constant for global variable, {@linkplain hir.Function}.
+     * global Constant for global variable, {@linkplain backend.value.Function}.
      *
      * @param filename
      */
@@ -123,6 +130,9 @@ public class Compiler
     {
         try (FileInputStream reader = new FileInputStream(filename.path()))
         {
+            consumer = new ModuleBuilder(filename.getCurrentName(), options);
+            consumer.initialize(context);
+
             createSema(reader);
             frontend.cparser.Parser parser = sema.getParser();
             ArrayList<Decl> declsGroup = new ArrayList<>(16);

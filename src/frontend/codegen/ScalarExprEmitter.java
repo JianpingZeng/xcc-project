@@ -1009,7 +1009,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     @Override
     public Value visitCallExpr(Tree.CallExpr expr)
     {
-        return cgf.emitCallArg(expr).getScalarVal();
+        return cgf.emitCallExpr(expr).getScalarVal();
     }
 
     private Value visitPrePostIncDec(UnaryExpr expr, boolean isInc, boolean isPrec)

@@ -225,7 +225,7 @@ public class CodeGenTypes
                 backend.type.Type pointeeType = convertTypeForMem(qualType);
                 if (pointeeType.isVoidType())
                     pointeeType = backend.type.Type.Int8Ty;
-                // TODO introduce address space for specified target.
+                // TODO introduce address space for specified TargetData.
                 resultType = backend.type.PointerType.get(pointeeType);
                 break;
             }
@@ -466,7 +466,7 @@ public class CodeGenTypes
      * Convert type T into a backend.type.Type.  This differs from
      * ConvertType in that it is used to convert to the memory representation for
      * a type.  For example, the scalar representation for _Bool is i1, but the
-     * memory representation is usually i8 or i32, depending on the target.
+     * memory representation is usually i8 or i32, depending on the TargetData.
      * @param qualType
      * @return
      */
@@ -478,7 +478,7 @@ public class CodeGenTypes
         if (!r.isIntegerType())
             return r;
 
-        // Otherwise, return an integer of the target-specified size.
+        // Otherwise, return an integer of the TargetData-specified size.
         return IntegerType.get((int)qualType.getTypeSize());
     }
 

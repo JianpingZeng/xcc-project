@@ -717,7 +717,7 @@ public final class QualType extends Type implements Cloneable
     }
 
     /**
-     * Indicates if this frontend.type can be casted into target frontend.type.
+     * Indicates if this frontend.type can be casted into TargetData frontend.type.
      *
      * @param target
      * @return
@@ -924,7 +924,7 @@ public final class QualType extends Type implements Cloneable
     }
 
     /**
-     * A generic method for casting a frontend.type instance to target frontend.type.
+     * A generic method for casting a frontend.type instance to TargetData frontend.type.
      * If casting failed, return null, otherwise, return the instance
      * frontend.type required frontend.type.
      * @param <T>
@@ -1010,6 +1010,10 @@ public final class QualType extends Type implements Cloneable
                 toByteUnitFromBits(res.second));
     }
 
+    public static Pair<Long, Integer> getTypeInfo(QualType t)
+    {
+        return getTypeInfo(t.type);
+    }
 
     public static Pair<Long, Integer> getTypeInfo(Type t)
     {
@@ -1193,5 +1197,18 @@ public final class QualType extends Type implements Cloneable
     public boolean isUnionType()
     {
         return type.isUnionType();
+    }
+
+	/**
+     * Checks whether the unqualified type of t1 is as same as t2.
+     * @param t1
+     * @param t2
+     * @return
+     */
+    public static boolean hasSameUnqualifiedType(QualType t1, QualType t2)
+    {
+        t1 = t1.getCanonicalTypeInternal();
+        t2 = t2.getCanonicalTypeInternal();
+        return t1.getUnQualifiedType() == t2.getUnQualifiedType();
     }
 }

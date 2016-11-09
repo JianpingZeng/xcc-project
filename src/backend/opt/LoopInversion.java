@@ -107,7 +107,7 @@ public final class LoopInversion
 		// append a new branch in new exit block
 		Instruction.BranchInst newBR = br.clone();
 		
-		// replace the true target of branch with new header
+		// replace the true TargetData of branch with new header
 		newBR.replaceTargetWith(header, newHeader);		
 		exitBlock.appendInst(newBR);
 		
@@ -129,9 +129,9 @@ public final class LoopInversion
 		
 		loop.addExitBlock(exitBlock);
 		
-		// true target
+		// true TargetData
 		exitBlock.addSucc(newHeader);
-		// false target
+		// false TargetData
 		exitBlock.addSucc(loop.getFollowBlock());
 		loop.addBlock(exitBlock);
 		

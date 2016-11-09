@@ -83,7 +83,7 @@ public class Options extends HashMap<String, String>
 		return get("--dump-hir") != null;
 	}
 	/** 
-	 * Checks if turns on debugging information in preferred format for target. 
+	 * Checks if turns on debugging information in preferred format for TargetData.
 	 * @return return true when debugging is enabled, otherwise, return false.
 	 */
 	public boolean enableDebug()

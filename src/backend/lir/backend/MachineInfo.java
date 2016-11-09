@@ -161,7 +161,7 @@ public class MachineInfo
 	}
 
 	/**
-	 * Gets the number of spill slots for a specified kind in this target machine.
+	 * Gets the number of spill slots for a specified kind in this TargetData machine.
 	 *
 	 * @param kind the kind for which to get the spill slot count
 	 * @return the number of spill slots for {@code kind}

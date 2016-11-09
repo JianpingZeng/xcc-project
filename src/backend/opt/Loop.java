@@ -80,7 +80,7 @@ public class Loop
 	/**
 	 * Retrieves the index of a basic block at the specified position where indexed by a index 
 	 * variable. 
-	 * @param index	A index that indexed into specified position where target block located.
+	 * @param index	A index that indexed into specified position where TargetData block located.
 	 * @return	A basic block.
 	 */
 	public BasicBlock getBlock(int index)

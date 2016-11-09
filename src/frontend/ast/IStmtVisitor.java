@@ -38,20 +38,6 @@ public interface IStmtVisitor<T>
 
     T visitStmt(Stmt s);
 
-    /**
-     * Visits the root class represents the top level tree node.
-     * @param that
-     */
-    T visitTree(Tree that);
-
-    /**
-     *  A visitor method for traverse the {@linkplain TopLevel}.
-     * @param tree
-     */
-    T visitTopLevel(TopLevel tree);
-
-    T visitErroneous(ErroneousTree erroneous);
-
     //=================Statement visitor method===============================//
     T visitBreakStmt(BreakStmt stmt);
 

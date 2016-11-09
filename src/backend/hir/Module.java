@@ -1,12 +1,13 @@
 package backend.hir;
 
-import backend.value.Function;
-import backend.value.GlobalVariable;
+import backend.type.FunctionType;
+import backend.type.PointerType;
+import backend.value.*;
 import tools.Context;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
+
+import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
 
 /**
  * <p>
@@ -35,6 +36,11 @@ public final class Module implements Iterable<Function>
 	 * A sorts of function declaration.
 	 */
 	private ArrayList<Function> functionList;
+
+	/**
+	 * Symbol table for values.
+	 */
+	private HashMap<String, Value> valSymTable;
 
     /**
      * Human readable unique identifier for this module.
@@ -69,6 +75,7 @@ public final class Module implements Iterable<Function>
 	{
 		this.globalVariableList = globalVariableList;
 		this.functionList = functions;
+		valSymTable = new HashMap<>();
 	}
 
 	public Module(String moduleID)
@@ -90,5 +97,60 @@ public final class Module implements Iterable<Function>
 	public ArrayList<GlobalVariable> getGlobalVariableList()
 	{
 		return globalVariableList;
+	}
+
+	/**
+	 * Return the first global value in the module with the specified name, of
+	 * arbitrary type.  This method returns null if a global with the specified
+	 * name is not found.
+	 * @param name
+	 * @return
+	 */
+	private GlobalValue getNameOfValue(String name)
+	{
+		Value val = valSymTable.get(name);
+		if (val instanceof GlobalValue)
+			return (GlobalValue)val;
+		return null;
+	}
+
+	/**
+	 * Look up the specified function in the module symbol table.
+	 * If it does not exist, add a prototype for the function and return it.
+	 * @param name
+	 * @param type
+	 * @return
+	 */
+	public Constant getOrInsertFunction(String name, FunctionType type)
+	{
+		GlobalValue f = getNameOfValue(name);
+		if (f == null)
+		{
+			// not found ,add it into valSymTable.
+			Function newFunc = new Function(type, ExternalLinkage, name, this);
+			// add it into functions list.
+			functionList.add(newFunc);
+			return newFunc;
+		}
+
+		// Okay, the found function is exist. Does it has external linkage?
+		if (f.hasLocalLinkage())
+		{
+			// Clear the function's name.
+			f.setName("");
+
+			// Retry, now there won't be a conflict.
+			Function newF = (Function) getOrInsertFunction(name, type);
+			f.setName(name);
+			return newF;
+		}
+
+		// If the function exists but has the wrong type, return a bitcast to the
+		// right type.
+		if (f.getType() != PointerType.get(type))
+			return null;
+
+		// Otherwise, we just found the existing function.
+		return f;
 	}
 }

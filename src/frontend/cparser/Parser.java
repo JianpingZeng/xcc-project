@@ -4120,7 +4120,7 @@ public class Parser implements Tag
     /**
      * Checks if the next token is expected.
      *
-     * @param expectedToken A target token to be compared with next Token.
+     * @param expectedToken A TargetData token to be compared with next Token.
      * @return
      */
     private boolean nextTokenIs(int expectedToken)

@@ -309,7 +309,6 @@ abstract public class Tree
         @Override
 		public void accept(StmtVisitor v)
 		{
-			v.visitTopLevel(this);
 		}
 	}
 	
@@ -2367,9 +2366,6 @@ abstract public class Tree
 			super(ErroneousStmtClass);
 		}
 
-		public void accept(StmtVisitor v)
-		{
-			v.visitErroneous(this);
-		}
+		public void accept(StmtVisitor v){}
 	}
 }

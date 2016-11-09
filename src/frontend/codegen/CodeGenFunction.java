@@ -26,14 +26,12 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
-import driver.Backend;
 import frontend.ast.Tree;
 import frontend.sema.*;
 import frontend.sema.Decl.*;
 import frontend.type.ArrayType;
 import frontend.type.ComplexType;
 import frontend.type.QualType;
-import javafx.scene.shape.VLineTo;
 import tools.Pair;
 import tools.Util;
 
@@ -297,7 +295,7 @@ public final class CodeGenFunction
 	 * @param name
 	 * @return
 	 */
-	private Instruction.AllocaInst createTempAlloc(Type ty, String name)
+	public Instruction.AllocaInst createTempAlloc(Type ty, String name)
 	{
 		return new Instruction.AllocaInst(ty, null, name, allocaInstPtr);
 	}
@@ -769,7 +767,7 @@ public final class CodeGenFunction
 		}
 	}
 
-	private RValue emitAnyExpr(Expr e)
+	public RValue emitAnyExpr(Expr e)
 	{
 		return emitAnyExpr(e, null, false, false, false);
 	}
@@ -779,7 +777,7 @@ public final class CodeGenFunction
 	 *
 	 * @param e
 	 */
-	private RValue emitAnyExpr(Expr e, Value aggLoc, boolean isAggLocVolatile,
+	public RValue emitAnyExpr(Expr e, Value aggLoc, boolean isAggLocVolatile,
 			boolean ignoreResult, boolean isInitializer)
 	{
 		if (!hasAggregateBackendType(e.getType()))
@@ -926,7 +924,7 @@ public final class CodeGenFunction
 	 *
 	 * @param s
 	 */
-	private void emitCompoundStmt(Tree.CompoundStmt s)
+	public void emitCompoundStmt(Tree.CompoundStmt s)
 	{
 		for (Iterator<Tree.Stmt> itr = s.iterator(); itr.hasNext(); )
 		{
@@ -934,7 +932,7 @@ public final class CodeGenFunction
 		}
 	}
 
-	private void emitDeclStmt(Tree.DeclStmt s)
+	public void emitDeclStmt(Tree.DeclStmt s)
 	{
 		for (Iterator<Decl> itr = s.iterator(); itr.hasNext(); )
 		{
@@ -942,7 +940,7 @@ public final class CodeGenFunction
 		}
 	}
 
-	private void emitDecl(Decl decl)
+	public void emitDecl(Decl decl)
 	{
 		switch (decl.getDeclKind())
 		{
@@ -1007,12 +1005,12 @@ public final class CodeGenFunction
 	 * with auto, register, or on storage class specifier.
 	 * </p>
 	 * <p>These turn into simple stack objects, or {@linkplain GlobalValue}
-	 * depending on target.
+	 * depending on TargetData.
 	 * </p>
 	 *
 	 * @param vd
 	 */
-	private void emitLocalBlockVarDecl(VarDecl vd)
+	public void emitLocalBlockVarDecl(VarDecl vd)
 	{
 		QualType ty = vd.getDeclType();
 		backend.value.Value declPtr;
@@ -1080,7 +1078,7 @@ public final class CodeGenFunction
 		}
 	}
 
-	private Value emitVLASize(QualType type)
+	public Value emitVLASize(QualType type)
 	{
 		// todo handle variable sized type in the future. 2016.11.5.
 		assert type
@@ -1124,14 +1122,14 @@ public final class CodeGenFunction
 		return null;
 	}
 
-	private Value emitScalarExpr(Tree.Expr expr)
+	public Value emitScalarExpr(Tree.Expr expr)
 	{
 		assert expr != null && !hasAggregateBackendType(
 				expr.getType()) : "Invalid scalar expression to emit";
 		return new ScalarExprEmitter(this).visit(expr);
 	}
 
-	private void emitAggExpr(Tree.Expr expr, Value destPtr)
+	public void emitAggExpr(Tree.Expr expr, Value destPtr)
 	{
 		emitAggExpr(expr, destPtr, false, false);
 	}
@@ -1158,7 +1156,43 @@ public final class CodeGenFunction
 				.visit(expr);
 	}
 
-	private void emitStoreOfScalar(Value val, Value addr
+	public void emitAggregateCopy(
+			Value destPtr,
+			Value srcPtr,
+			QualType ty,
+			boolean isVolatile)
+	{
+		// Aggregate assignment turns into backend.memcpy function calling.
+		// struct {int i;}a, b;
+		//
+		// int main()
+		// {
+		//     a = b;     // convert to memcpy calling in HIR.
+		// }
+		//
+		Type bp = PointerType.get(Type.Int8Ty);
+		if (destPtr.getType() != bp)
+			destPtr = builder.createBitCast(destPtr, bp, "tmp");
+		if (srcPtr.getType() != bp)
+			srcPtr = builder.createBitCast(srcPtr, bp, "tmp");
+
+		// Get the size and alignment info for this aggregate.
+		Pair<Long, Integer> typeInfo = QualType.getTypeInfo(ty);
+
+		// Handle variable sized types.
+		Type intPtr = IntegerType.get(pointerWidth);
+
+		// TODO we need to use a differnt call here.  We use isVolatile to
+		// indicate when either the source or the destination is volatile.
+		builder.createCall4(generator.getMemCpyFn(), destPtr, srcPtr,
+				ConstantInt.get(intPtr, typeInfo.first/8),
+				ConstantInt.get(Type.Int32Ty, typeInfo.second/8),
+				"");
+	}
+
+
+
+	public void emitStoreOfScalar(Value val, Value addr
 			/** boolean isVolatile*/, QualType ty)
 	{
 		if (ty.isBooleanType())
@@ -1235,10 +1269,10 @@ public final class CodeGenFunction
 		emitBlock(bb, false);
 	}
 
-	private void emitBranch(BasicBlock targetBB)
+	public void emitBranch(BasicBlock targetBB)
 	{
 		// Emit a branch instruction from the current block to the
-		// target block if this is a real one. If this is just a fall-through
+		// TargetData block if this is a real one. If this is just a fall-through
 		// block after a terminator, don't emit it.
 		BasicBlock curBB = builder.getInsertBlock();
 
@@ -1586,7 +1620,7 @@ public final class CodeGenFunction
 		return null;
 	}
 
-	public RValue emitCallArg(CallExpr expr)
+	public RValue emitCallExpr(CallExpr expr)
 	{
 		Decl targetDecl = null;
 		if (expr.getCallee() instanceof ImplicitCastExpr)
@@ -1792,7 +1826,7 @@ public final class CodeGenFunction
 						.getType().getCanonicalTypeInternal()
 						.getType() : "Type mismatch in call argument!";
 
-				callArgs.add(new Pair<>(emitCallArg(arg), argType));
+				callArgs.add(new Pair<>(emitCallExpr(arg), argType));
 				idx++;
 			}
 
@@ -1805,11 +1839,11 @@ public final class CodeGenFunction
 		{
 			Expr arg = args.get(idx);
 			QualType argType = arg.getType();
-			callArgs.add(new Pair<>(emitCallArg(arg), argType));
+			callArgs.add(new Pair<>(emitCallExpr(arg), argType));
 		}
 	}
 
-	public RValue emitCallArg(Expr arg)
+	public RValue emitCallExpr(Expr arg)
 	{
 		return emitAnyExprToTemp(arg);
 	}
@@ -1984,7 +2018,7 @@ public final class CodeGenFunction
 		return memExprLV;
 	}
 
-	private LValue emitLValueForField(Value baseValue,
+	public LValue emitLValueForField(Value baseValue,
 			FieldDecl field,
 			boolean isUnion,
 			int cvrQualifiers
@@ -2075,7 +2109,7 @@ public final class CodeGenFunction
 	            /*ignore result*/false, isInitializer);
 	}
 
-	public void errorUnsupported(Expr expr, String msg)
+	public void errorUnsupported(Stmt s, String msg)
 	{
 		assert false:msg;
 	}
@@ -2093,5 +2127,29 @@ public final class CodeGenFunction
 
 		assert src.isScalar() : "Can't emit an agg store with this method!";
 		emitStoreOfScalar(src.getScalarVal(), dest.getAddress(), type);
+	}
+
+	public void emitMemSetToZero(Value address, QualType ty)
+	{
+		Type bp = PointerType.get(Type.Int8Ty);
+		if (address.getType() != bp)
+			address = builder.createBitCast(address, bp, "bitcast.tmp");
+
+		// Get the size and alignment info for this aggregate.
+		Pair<Long, Integer> typeInfo = QualType.getTypeInfo(ty);
+
+		// don't emit code for zero size type.
+		if (typeInfo.first == 0)
+			return;
+
+		// handle variable sized type.
+		Type intPtr = IntegerType.get(pointerWidth);
+
+		builder.createCall4(generator.getMemSetFn(),
+				address,
+				Constant.getNullValue(Type.Int8Ty),
+				ConstantInt.get(intPtr, typeInfo.first/8),
+				ConstantInt.get(Type.Int32Ty, typeInfo.second/8),
+				"intrinsic.memset");
 	}
 }

@@ -194,7 +194,7 @@ public abstract class Type extends Value implements PrimitiveID
 
     /**
      * Return true if it makes sense to take the size of this type.
-     * To get the actual size for a particular target, it is reasonable
+     * To get the actual size for a particular TargetData, it is reasonable
      * to use the TargetData subsystem to do that.
      * @return
      */
@@ -237,5 +237,32 @@ public abstract class Type extends Value implements PrimitiveID
     public int getScalarSizeBits()
     {
         return getPrimitiveSize() << 3;
+    }
+
+    public static String getString(Type type)
+    {
+        switch (type.getPrimitiveID())
+        {
+            case VoidTyID:
+                return "void";
+            case Int1TyID:
+                return "i1";
+            case Int8TyID:
+                return "i8";
+            case Int16TyID:
+                return "i16";
+            case Int32TyID:
+                return "i32";
+            case Int64TyID:
+                return "i64";
+            case FloatTyID:
+                return "f32";
+            case DoubleTyID:
+                return "f64";
+            case LabelTyID:
+                return "label";
+            default:
+                return "other";
+        }
     }
 }

@@ -729,6 +729,14 @@ public class HIRBuilder
 		return insert(new GetElementPtrInst(ptr, idx, name));
 	}
 
+	public CallInst createCall4(Value callee, Value arg1, Value arg2,
+			Value arg3, Value arg4,
+			String name)
+	{
+		Value[] args = {arg1, arg2, arg3, arg4};
+		return insert(new CallInst(args, callee), name);
+	}
+
 	public CallInst createCall(Value callee, LinkedList<Value> args)
 	{
 		Value[] temp = new Value[args.size()];

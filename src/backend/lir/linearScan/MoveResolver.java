@@ -298,7 +298,7 @@ public class MoveResolver
 
 				if (safeToProcessMove(fromInterval, toInterval))
 				{
-					// this interval can be processed because target is free
+					// this interval can be processed because TargetData is free
 					if (fromInterval != null)
 					{
 						insertMove(fromInterval, toInterval);
@@ -317,7 +317,7 @@ public class MoveResolver
 				else if (fromInterval != null && fromInterval.location()
 						.isRegister())
 				{
-					// this interval cannot be processed now because target is not free
+					// this interval cannot be processed now because TargetData is not free
 					// it starts in a register, so it is a possible candidate for spilling
 					spillCandidate = i;
 				}

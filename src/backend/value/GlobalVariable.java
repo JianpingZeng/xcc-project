@@ -18,11 +18,14 @@ public class GlobalVariable extends GlobalValue
      */
     public GlobalVariable(Type ty,
             boolean isConstant,
+            LinkageType linkage,
             Constant init,
             String name)
     {
-        super(PointerType.get(ty), ValueKind.GlobalVariableVal,
-           name);
+        super(PointerType.get(ty),
+                ValueKind.GlobalVariableVal,
+                linkage,
+                name);
         isConstantGlobal = isConstant;
         if (init != null)
         {

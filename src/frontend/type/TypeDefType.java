@@ -49,7 +49,7 @@ public final class TypeDefType extends Type
     }
 
     /**
-     * Indicates if this frontend.type can be casted into target frontend.type.
+     * Indicates if this frontend.type can be casted into TargetData frontend.type.
      *
      * @param target
      * @return
