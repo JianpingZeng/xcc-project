@@ -748,4 +748,24 @@ public class HIRBuilder
 	{
 		return null;
 	}
+
+	/**
+	 * Creates a return instruction {@code 'ret <value>'} which returns
+	 * specified value.
+	 * @param value
+	 * @return
+	 */
+	public ReturnInst createRet(Value value)
+	{
+		return insert(new ReturnInst(value));
+	}
+
+	/**
+	 * Creates a ReturnInst {@code 'ret <void>'} which no return value.
+	 * @return
+	 */
+	public ReturnInst createRetVoid()
+	{
+		return insert(new ReturnInst());
+	}
 }

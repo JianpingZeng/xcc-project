@@ -22,6 +22,7 @@ import backend.type.Type;
 import backend.value.Value;
 import frontend.sema.Decl;
 import frontend.sema.Decl.FieldDecl;
+import frontend.sema.Decl.VarDecl;
 import frontend.type.*;
 import frontend.type.ArrayType;
 import frontend.type.ArrayType.VariableArrayType;
@@ -529,10 +530,10 @@ public class CodeGenTypes
     }
 
     public CGFunctionInfo getFunctionInfo(QualType resultType,
-            ArrayList<Pair<RValue, QualType>> callArgs)
+            ArrayList<Pair<VarDecl, QualType>> callArgs)
     {
         ArrayList<QualType> argTypes = new ArrayList<>();
-        for (Pair<RValue, QualType> itr : callArgs)
+        for (Pair<VarDecl, QualType> itr : callArgs)
             argTypes.add(itr.second);
 
         return getFunctionInfo2(resultType, argTypes);
@@ -544,6 +545,16 @@ public class CodeGenTypes
 
         // Compute ABI information.
         return fi;
+    }
+
+    public CGFunctionInfo getFunctionInfo3(QualType resultType,
+            ArrayList<Pair<RValue, QualType>> callArgs)
+    {
+        ArrayList<QualType> argTypes = new ArrayList<>();
+        for (Pair<RValue, QualType> itr : callArgs)
+            argTypes.add(itr.second);
+
+        return getFunctionInfo2(resultType, argTypes);
     }
 
     public int getFieldNo(FieldDecl field)
