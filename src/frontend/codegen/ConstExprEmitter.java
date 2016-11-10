@@ -26,9 +26,9 @@ import frontend.ast.Tree;
  */
 public class ConstExprEmitter extends StmtVisitor<Constant>
 {
-    private HIRGenModule generator;
+    private HIRModuleGenerator generator;
     private CodeGenFunction cgf;
-    public ConstExprEmitter(HIRGenModule genModule, CodeGenFunction cgf)
+    public ConstExprEmitter(HIRModuleGenerator genModule, CodeGenFunction cgf)
     {
         generator = genModule;
         this.cgf = cgf;

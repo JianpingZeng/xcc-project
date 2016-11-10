@@ -1,12 +1,10 @@
 package driver;
 
 import frontend.codegen.ModuleBuilder;
-import frontend.codegen.HIRGenModule;
 import backend.hir.Module;
 import backend.lir.backend.ia32.IA32;
 import backend.lir.backend.ia32.IA32RegisterConfig;
 import frontend.ast.ASTConsumer;
-import frontend.ast.Tree;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
 import frontend.sema.Sema;
@@ -98,7 +96,7 @@ public class Compiler
         // performs high level IR generation and Module backend.opt
         Module[] hirLists = new Module[trees.length];
         for (int i = 0; i < trees.length; i++)
-            hirLists[i++] = (new HIRGenModule(ctx).translate(trees[i]));
+            hirLists[i++] = (new HIRModuleGenerator(ctx).translate(trees[i]));
 
         // performs high level IR generation and Module backend.opt
         optimizer.runOnModules(hirLists);

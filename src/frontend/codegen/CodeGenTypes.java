@@ -103,7 +103,7 @@ public class CodeGenTypes
         int start;
         int size;
     }
-    private HIRGenModule builder;
+    private HIRModuleGenerator builder;
 
     /**
      * This is a cache mapping frontend type to backend type.
@@ -138,7 +138,7 @@ public class CodeGenTypes
     private HashMap<FieldDecl, BitFieldInfo> bitfields;
 
     private HashMap<frontend.type.Type, CGRecordLayout> cgRecordLayout;
-    public CodeGenTypes(HIRGenModule module)
+    public CodeGenTypes(HIRModuleGenerator module)
     {
         builder = module;
         typeCaches = new HashMap<>();

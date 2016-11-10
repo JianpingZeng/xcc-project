@@ -51,7 +51,7 @@ public class ModuleBuilder extends ASTConsumer
     private ASTContext ctx;
     private Options options;
     private Module M;
-    private HIRGenModule builder;
+    private HIRModuleGenerator builder;
 
     public ModuleBuilder(String moduleName, Options options)
     {
@@ -69,7 +69,7 @@ public class ModuleBuilder extends ASTConsumer
     public void initialize(ASTContext context)
     {
         ctx = context;
-        builder = new HIRGenModule(context, options, M);
+        builder = new HIRModuleGenerator(context, options, M);
     }
 
     /**
