@@ -16,7 +16,6 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import frontend.codegen.CodeGenTypes.ArgTypeInfo;
 import tools.TypeMap;
 
 import java.util.ArrayList;
@@ -29,24 +28,23 @@ public class FunctionType extends Type
 {
     static class FunctionValType
     {
-        ArgTypeInfo retTy;
-        ArrayList<ArgTypeInfo> argTypes;
+        Type retTy;
+        ArrayList<Type> argTypes;
         boolean isVarArg;
 
-        public FunctionValType(final ArgTypeInfo ret,
-                ArrayList<ArgTypeInfo> args,
+        public FunctionValType(Type resultType,
+                ArrayList<Type> params,
                 boolean isVarArg)
         {
-            retTy =ret;
-            argTypes = args;
-            argTypes = new ArrayList<>(args.size());
-            args.forEach(x -> argTypes.add(x));
+            retTy = resultType;
+            argTypes = new ArrayList<>(params.size());
+            params.forEach(x -> argTypes.add(x));
             this.isVarArg = isVarArg;
         }
     }
 
-    private ArgTypeInfo resultType;
-    private ArrayList<ArgTypeInfo> paramTypes;
+    private Type resultType;
+    private ArrayList<Type> paramTypes;
     private boolean isVarArgs;
 
     private static TypeMap<FunctionValType, FunctionType> functionTypes;
@@ -55,19 +53,20 @@ public class FunctionType extends Type
         functionTypes = new TypeMap<>();
     }
 
-    private FunctionType(final ArgTypeInfo retType,
-            final ArrayList<ArgTypeInfo> argsType,
+    private FunctionType(final Type retType,
+            final ArrayList<Type> argsType,
             boolean isVarArgs)
     {
         super("",  FunctionTyID);
         resultType = retType;
         this.isVarArgs = isVarArgs;
-        paramTypes = new ArrayList<>();
-        for (ArgTypeInfo t : argsType)
-            paramTypes.add(t);
+
+        paramTypes = new ArrayList<>(argsType.size());
+        argsType.forEach((x)->paramTypes.add(x));
     }
 
-    public static FunctionType get(ArgTypeInfo result, ArrayList<ArgTypeInfo> params,
+    public static FunctionType get(Type result,
+            ArrayList<Type> params,
             boolean isVarArgs)
     {
         FunctionValType fvt = new FunctionValType(result, params, isVarArgs);
@@ -83,12 +82,12 @@ public class FunctionType extends Type
         return isVarArgs;
     }
 
-    public Type getResultType()
+    public Type getReturnType()
     {
-        return resultType.backendType;
+        return resultType;
     }
 
-    public ArgTypeInfo getParamType(int index)
+    public Type getParamType(int index)
     {
         assert index>=0 && index< paramTypes.size();
         return paramTypes.get(index);
@@ -96,5 +95,5 @@ public class FunctionType extends Type
 
     public int getNumParams() {return paramTypes.size();}
 
-    public ArrayList<ArgTypeInfo> getParamTypes() { return paramTypes;}
+    public ArrayList<Type> getParamTypes() { return paramTypes;}
 }

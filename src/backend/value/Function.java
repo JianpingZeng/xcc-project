@@ -18,8 +18,7 @@ import java.util.List;
 public class Function extends GlobalValue implements Iterable<BasicBlock>
 {
 	private Loop[] loops;
-	
-	private Signature sign;
+
 	/**
 	 * An control flow graph corresponding to method compound 
 	 * of this method declaration. 
@@ -44,25 +43,23 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
         for (int i = 0, e = ty.getNumParams(); i< e; i++)
         {
-            Type t = ty.getParamType(i).backendType;
+            Type t = ty.getParamType(i);
             assert !t.isVoidType():"Cann't have void typed argument!";
             argumentList.add(new Argument(t));
         }
         basicBlockList = new LinkedList<>();
     }
 
-    public FunctionType getType() { return (FunctionType)super.getType();}
+	public Type getReturnType()
+	{
+		return getFunctionType().getReturnType();
+	}
 
-    public FunctionType getFunctionType() { return getType(); }
+    public FunctionType getFunctionType() { return (FunctionType) super.getType().getElemType(); }
 
     public boolean isVarArg()
     {
         return getFunctionType().isVarArgs();
-    }
-
-    public Type getResultType()
-    {
-        return getFunctionType().getResultType();
     }
 
 	/**
@@ -76,8 +73,6 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	}
 
 	public Module getParent() { return parent; }
-
-    public void removeFromParent(){parent.getFunctionList().remove(this);}
 
     public ArrayList<Argument> getArgumentList()
     {
@@ -103,11 +98,6 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	{
 		return name;
 	}
-	/**
-	 * Obtains the signature {@code Signature} of this method object.
-	 * @return  The signature.
-	 */
-	public Signature signature() {return sign;}
 
 	/**
 	 * Gets the entry block of the CFG of this function.

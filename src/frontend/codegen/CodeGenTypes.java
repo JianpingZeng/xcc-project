@@ -17,9 +17,10 @@ package frontend.codegen;
  */
 
 import backend.type.*;
+import backend.type.FunctionType;
 import backend.type.IntegerType;
+import backend.type.PointerType;
 import backend.type.Type;
-import backend.value.Value;
 import frontend.sema.Decl;
 import frontend.sema.Decl.FieldDecl;
 import frontend.sema.Decl.VarDecl;
@@ -29,10 +30,7 @@ import frontend.type.ArrayType.VariableArrayType;
 import tools.Pair;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 import static frontend.type.TypeClass.*;
 import static frontend.type.TypeClass.Enum;
@@ -120,7 +118,7 @@ public class CodeGenTypes
      */
     private HashSet<frontend.type.Type> recordBeingLaidOut;
 
-    private HashSet<frontend.type.FunctionType> functionBeingProcessed;
+    private HashSet<CGFunctionInfo> functionBeingProcessed;
 
     private LinkedList<Decl.RecordDecl> deferredRecords;
 
@@ -153,16 +151,73 @@ public class CodeGenTypes
         bitfields = new HashMap<>();
     }
 
-    public backend.type.FunctionType getFunctionType(frontend.type.FunctionType fnType)
+    public backend.type.FunctionType getFunctionType(CGFunctionInfo fi, boolean isVaridic)
     {
-        ArrayList<ArgTypeInfo> argTypes = new ArrayList<>(8);
-        backend.type.Type restType = convertType(fnType.getReturnType());
-        ArgTypeInfo retInfo = new ArgTypeInfo(fnType.getReturnType(), restType);
+        boolean inserted = functionBeingProcessed.contains(fi);
+        assert inserted:"recursively process function.";
 
-        for (frontend.type.QualType ty : fnType.getParamTypes())
-            argTypes.add(new ArgTypeInfo(ty, convertType(ty)));
+        ArrayList<Type> argTypes = new ArrayList<>();
+        backend.type.Type restType = null;
+        ABIArgInfo retAI = fi.getReturnInfo();
+        switch (retAI.getKind())
+        {
+            case Direct:
+            {
+                restType = retAI.getType();
+                break;
+            }
+            case Indirect:
+            {
+                restType = Type.VoidTy;
+                QualType ret = fi.getReturnType();
+                Type ty = convertType(ret);
+                argTypes.add(PointerType.get(ty));
+                break;
+            }
+            case Ignore:
+            {
+                restType = Type.VoidTy;
+                break;
+            }
+        }
 
-        return backend.type.FunctionType.get(retInfo, argTypes, fnType.isVarArgs());
+        for (int i = 0, e = fi.getNumOfArgs(); i<e; i++)
+        {
+            CGFunctionInfo.ArgInfo argInfo = fi.getArgInfoAt(i);
+            ABIArgInfo argAI = argInfo.info;
+            switch (argAI.getKind())
+            {
+                case Ignore:
+                    break;
+                case Indirect:
+                {
+                    // Indirect argument always on stack.
+                    Type ty = convertTypeForMem(argInfo.type);
+                    argTypes.add(PointerType.get(ty));
+                    break;
+                }
+                case Direct:
+                {
+                    Type argType = argAI.getType();
+
+                    // If the type is aggregate type, flatten it.
+                    if (argType instanceof StructType)
+                    {
+                        StructType st = (StructType)argType;
+                        for (int j = 0, size = st.getNumOfElements(); j<e;i++)
+                            argTypes.add(st.getElementType(j));
+                    }
+                    else
+                    {
+                        argTypes.add(argType);
+                    }
+                    break;
+                }
+            }
+        }
+        boolean erased = functionBeingProcessed.remove(fi);
+        assert erased:"Not in set?";
+        return FunctionType.get(restType, argTypes, isVaridic);
     }
 
     /**
@@ -296,10 +351,12 @@ public class CodeGenTypes
                     skipLayout = true;
                     break;
                 }
+                CGFunctionInfo fi = getFunctionInfo2(new QualType(fnType), null);
+                boolean isVaridic = fnType.isVarArgs();
 
                 // The function type can be built; call the appropriate routines to
                 // build it.
-                if (functionBeingProcessed.contains(fnType))
+                if (functionBeingProcessed.contains(fi))
                 {
                     resultType = StructType.get();
                     skipLayout = true;
@@ -307,7 +364,7 @@ public class CodeGenTypes
                 else
                 {
                     // Otherwise, happy to go.
-                    resultType = getFunctionType(fnType);
+                    resultType = getFunctionType(fi, isVaridic);
                 }
 
                 recordBeingLaidOut.remove(ty);

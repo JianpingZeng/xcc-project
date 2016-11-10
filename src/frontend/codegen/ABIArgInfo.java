@@ -70,4 +70,5 @@ public class ABIArgInfo
 	public boolean isDirect() {return kind == Direct;}
 	public boolean isIndirect() {return kind == Indirect;}
 	public boolean isIgnore() {return kind == Ignore;}
+	public Type getType() {return typeData;}
 }

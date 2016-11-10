@@ -223,6 +223,16 @@ public class ConstantExpr extends Constant
         return null;
     }
 
+    public Operator getOpCode()
+    {
+        return opcode;
+    }
+
+    public Constant operand(int index)
+    {
+        return (Constant) super.operand(index);
+    }
+
     static class ExprMapKeyType
     {
         Operator op;

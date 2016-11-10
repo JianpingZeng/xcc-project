@@ -20,15 +20,13 @@ import backend.hir.BasicBlock;
 import backend.hir.CallSite;
 import backend.hir.HIRBuilder;
 import backend.hir.JumpDest;
-import backend.type.FunctionType;
-import backend.type.IntegerType;
-import backend.type.PointerType;
-import backend.type.Type;
+import backend.type.*;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
 import frontend.ast.Tree;
 import frontend.codegen.CodeGenTypes.CGFunctionInfo;
+import frontend.codegen.CodeGenTypes.CGFunctionInfo.ArgInfo;
 import frontend.sema.*;
 import frontend.sema.Decl.*;
 import frontend.type.ArrayType;
@@ -37,6 +35,7 @@ import frontend.type.QualType;
 import tools.Pair;
 import tools.Util;
 
+import java.sql.Struct;
 import java.util.*;
 
 import static frontend.ast.Tree.*;
@@ -191,7 +190,7 @@ public final class CodeGenFunction
 			returnValue = createIRTemp(resTy, "retval");
 
 		curFnInfo = generator.getCodeGenTypes().getFunctionInfo(fnRetTy, args);
-		emitFunctionPrologue(curFn, curFn.getType(), args);
+		emitFunctionPrologue(curFn, curFnInfo, args);
 
 		// If any of the arguments have a variably modified type,
 		// make sure to emit type size.
@@ -210,7 +209,7 @@ public final class CodeGenFunction
 	 * @param fn
 	 * @param args
 	 */
-	private void emitFunctionPrologue(Function fn, FunctionType fnType,
+	private void emitFunctionPrologue(Function fn, CGFunctionInfo fi,
 			ArrayList<Pair<VarDecl, QualType>> args)
 	{
 		if (curFnDecl.hasImplicitReturnZero())
@@ -224,48 +223,88 @@ public final class CodeGenFunction
 		assert fn.getNumOfArgs() == args
 				.size() : "Mismatch between function signature and argumens";
 
-		// walking through variable declaration.
-		int argNo = 1;
-		// Emit allocs for param decls.  Give the HIR argument nodes names.
+		Iterator<Argument> ai = fn.getArgumentList().iterator();
+
+		// Emit alloca inst for param decls.  Give the HIR argument nodes names.
 		Iterator<Argument> argItr = fn.getArgumentList().iterator();
 
-		// obtains the type list of formal type enclosing in FunctionType.
-		Iterator<CodeGenTypes.ArgTypeInfo> infoItr = fnType.getParamTypes()
-				.iterator();
+		// obtains the ABIArgInfo list (contains the type and arg AI) of formal
+		// type enclosing in FunctionType.
+		int infoItr = fi.getNumOfArgs();
 		for (Pair<VarDecl, QualType> pair : args)
 		{
-			VarDecl vd = pair.first;
-			QualType ty = vd.getDeclType();
-			Value v = argItr.next();
-			final CodeGenTypes.ArgTypeInfo ArgInfo = infoItr.next();
+			VarDecl arg = pair.first;
+			QualType ty = fi.getArgInfoAt(infoItr).type;
+			ABIArgInfo argAI = fi.getArgInfoAt(infoItr).info;
 
+			boolean isPromoted = arg instanceof ParamVarDecl;
 			assert !argItr.hasNext() : "Argument mismatch!";
 
-			// struct/union, array type.
-			if (hasAggregateBackendType(ty))
+			switch (argAI.getKind())
 			{
-				// Create a temporary alloca to hold the argument; the rest of
-				// codegen expects to access aggregates & complex values by
-				// reference.
-				Value ptr = createTempAlloc(convertTypeForMem(ty));
-				builder.createStore(v, ptr);
-				v = ptr;
-			}
-			else
-			{
-				// if argument type is compatible with parameter type.
-				// issue conversion instruction.
-				// v = emitScalarConversion(v, argument type, formal type);
-				if (!ty.isCompatible(ArgInfo.frontendType))
+				case Indirect:
 				{
-					// This must be a promotion, for something like
-					// "void a(x) short x; {..."
-					v = emitScalarConversion(v, ty, ArgInfo.frontendType);
+					Value v = ai.next();
+					if (hasAggregateBackendType(ty))
+					{
+						// Do nothing, aggregates and complex variables are accessed by
+						// reference.
+					}
+					else
+					{
+						// Load a scalar value from indirect argument.
+						//int align = QualType.getTypeAlignInBytes(ty);
+						v = emitLoadOfScalar(v, false, ty);
+						if (!ty.isCompatible(arg.getDeclType()))
+						{
+							// This must be a promotion, for something like
+							// "void a(x) short x; {..."
+							v = emitScalarConversion(v, ty, arg.getDeclType());
+						}
+						//if (isPromoted)
+						//	v = emitArgumentDemotion(arg, v);
+					}
+					emitParamDecl(arg, v);
+					break;
+				}
+				case Direct:
+				{
+					assert ai.hasNext() : "Argument mismatch!";
+					Value v = ai.next();
+					if (hasAggregateBackendType(ty))
+					{
+						// Create a temporary alloca to hold the argument; the rest of
+						// codegen expects to access aggregates & complex values by
+						// reference.
+						v = createTempAlloc(convertTypeForMem(ty));
+						builder.createStore(v, v);
+					}
+					else
+					{
+						if (!ty.isCompatible(arg.getDeclType()))
+						{
+							// This must be a promotion, for something like
+							// "void a(x) short x; {..."
+							v = emitScalarConversion(v, ty, arg.getDeclType());
+						}
+					}
+					emitParamDecl(arg, v);
+					break;
+				}
+				case Ignore:
+				{
+					// Initialize the local variable appropriately.
+					if (hasAggregateBackendType(ty))
+						emitParamDecl(arg, createTempAlloc(convertTypeForMem(ty)));
+					else
+						emitParamDecl(arg, Value.UndefValue.get(convertType(arg.getDeclType())));
+
+					// Skip increment, no matching parameter.
+					continue;
 				}
 			}
-			emitParamDecl(vd, v);
 		}
-		assert !argItr.hasNext() : "Argument mismatch!";
+		assert !ai.hasNext():"Argument mismatch!";
 	}
 
 	/**
@@ -286,9 +325,15 @@ public final class CodeGenFunction
 				.emitScalarConversion(v, srcTy, destTy);
 	}
 
+	/**
+	 * Emit a alloca for realistic argument and fills locaVarMaps.
+	 * @param param
+	 * @param v
+	 */
 	private void emitParamDecl(VarDecl param, Value v)
 	{
 
+		// TODO
 	}
 
 	private backend.type.Type convertTypeForMem(QualType ty)
@@ -328,16 +373,6 @@ public final class CodeGenFunction
 	public Type convertType(QualType t)
 	{
 		return generator.getCodeGenTypes().convertType(t);
-	}
-
-	private JumpDest getJumpDestInCurrentScope(String name)
-	{
-		return getJumpDestInCurrentScope(createBasicBlock(name));
-	}
-
-	private JumpDest getJumpDestInCurrentScope(BasicBlock target)
-	{
-		return new JumpDest(target, nextCleanupDestIndex++);
 	}
 
 	/**
@@ -1807,7 +1842,7 @@ public final class CodeGenFunction
 		int i = 0;
 		for (Pair<RValue, QualType> ptr : callArgs)
 		{
-			CGFunctionInfo.ArgInfo infoItr = callInfo
+			ArgInfo infoItr = callInfo
 					.getArgInfoAt(i);
 			ABIArgInfo argInfo = infoItr.info;
 			RValue rv = ptr.first;

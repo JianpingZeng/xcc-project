@@ -1802,7 +1802,7 @@ public abstract class Instruction extends User
                 String name, Instruction insertBefore)
         {
             super(((FunctionType)((PointerType)target.getType()).
-                    getElemType()).getResultType(),
+                    getElemType()).getReturnType(),
                     Operator.Call, insertBefore);
             this.name = name.isEmpty()?Operator.Call.opName:name;
             init(target, args);
@@ -1812,7 +1812,7 @@ public abstract class Instruction extends User
                 String name, BasicBlock insertAtEnd)
         {
             super(((FunctionType)((PointerType)target.getType()).
-                    getElemType()).getResultType(),
+                    getElemType()).getReturnType(),
                     Operator.Call, insertAtEnd);
             this.name = name.isEmpty()?Operator.Call.opName:name;
             init(target, args);
