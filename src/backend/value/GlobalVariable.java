@@ -56,4 +56,6 @@ public class GlobalVariable extends GlobalValue
     {
         setOperand(0, new Use(init, this));
     }
+    public boolean isConstant() {return isConstantGlobal;}
+    public void setConstant(boolean c) {isConstantGlobal = c;}
 }

@@ -22,8 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import static backend.value.ConstantExpr.*;
-import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
-import static backend.value.GlobalValue.LinkageType.PrivateLinkage;
+import static backend.value.GlobalValue.LinkageType.*;
 
 /**
  * <p>
@@ -53,7 +52,7 @@ import static backend.value.GlobalValue.LinkageType.PrivateLinkage;
  * register.
  * </p>
  *
- * @author Xlous.zeng 
+ * @author Xlous.zeng
  * @version 1.0
  */
 public class HIRModuleGenerator
@@ -155,6 +154,8 @@ public class HIRModuleGenerator
             assert decl instanceof VarDecl;
             final VarDecl vd = (VarDecl)decl;
             assert vd.isFileVarDecl():"Cann't emit code for local variable!";
+
+            // defer code generation if this variable is just declaration.
             if (vd.isThisDeclarationADefinition() != Decl.DefinitionKind.Definition)
                 return;
 
@@ -164,7 +165,58 @@ public class HIRModuleGenerator
 
     private void emitGlobalVarDefinition(VarDecl vd)
     {
-        // TODO
+        Constant init = null;
+        QualType type = vd.getDeclType();
+
+        if (vd.getInit() == null)
+        {
+            // This a tentative definition. tentative definitions are
+            // implicitly initialized with 0.
+            // They should never have incomplete type.
+            assert type.getType().isIncompleteType():"Unexpected incomplete type!";
+	        init = emitNullConstant(type);
+        }
+	    else
+        {
+	        init = emitConstantExpr(vd.getInit(), type, null);
+	        if (init == null)
+	        {
+		        QualType t = vd.getInit().getType();
+		        assert false:"static initializer";
+		        init = UndefValue.get(getCodeGenTypes().convertType(t));
+	        }
+        }
+
+	    Type initType = init.getType();
+	    Constant entry = getAddrOfGlobalVar(vd, initType);
+	    // Strip off a bitcast if we got one back.
+	    if (entry instanceof ConstantExpr)
+	    {
+		    ConstantExpr ce = (ConstantExpr)entry;
+		    assert ce.getOpCode() == Operator.BitCast
+				    || ce.getOpCode() == Operator.GetElementPtr;
+		    entry = ce.operand(0);
+	    }
+
+	    // Entry is now a global variable.
+	    GlobalVariable gv = (GlobalVariable)entry;
+	    gv.setInitializer(init);
+
+	    // if it is safe to mark the global constant, do that.
+	    gv.setConstant(false);
+	    if (vd.getDeclType().isConstant())
+		    gv.setConstant(true);
+
+	    // set the appropriate linkage type.
+	    if (vd.getStorageClass() == Decl.StorageClass.SC_static)
+		    gv.setLinkage(InteralLinkage);
+	    else if (!vd.hasExternalStorage() && !vd.hasInit())
+	    {
+		    gv.setLinkage(CommonLinkage);
+		    gv.setConstant(false);
+	    }
+	    else
+		    gv.setLinkage(ExternalLinkage);
     }
 
     public Constant getAddrOfFunction(FunctionDecl fd)

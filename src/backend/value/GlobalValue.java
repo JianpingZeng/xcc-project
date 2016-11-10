@@ -49,6 +49,8 @@ public abstract class GlobalValue extends Constant
          * Like Private, but linker removes.
          */
         LinkerPrivateLinkage,
+
+        CommonLinkage,
     }
 
     protected Module parent;
