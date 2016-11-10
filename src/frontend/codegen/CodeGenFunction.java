@@ -19,7 +19,6 @@ package frontend.codegen;
 import backend.hir.BasicBlock;
 import backend.hir.CallSite;
 import backend.hir.HIRBuilder;
-import backend.hir.JumpDest;
 import backend.type.*;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
@@ -35,7 +34,6 @@ import frontend.type.QualType;
 import tools.Pair;
 import tools.Util;
 
-import java.sql.Struct;
 import java.util.*;
 
 import static frontend.ast.Tree.*;
@@ -48,7 +46,7 @@ import static frontend.ast.Tree.*;
  */
 public final class CodeGenFunction
 {
-	private HIRGenModule generator;
+	private HIRModuleGenerator generator;
 	private FunctionDecl curFnDecl;
 	private Function curFn;
 	private QualType fnRetTy;
@@ -121,7 +119,7 @@ public final class CodeGenFunction
 	 */
 	private BasicBlock caseRangeBlock;
 
-	public CodeGenFunction(HIRGenModule generator)
+	public CodeGenFunction(HIRModuleGenerator generator)
 	{
 		this.generator = generator;
 		builder = new HIRBuilder();

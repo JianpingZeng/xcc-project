@@ -16,12 +16,12 @@ import frontend.sema.Decl.VarDecl;
 import frontend.type.QualType;
 import tools.Context;
 import tools.Log;
-import tools.Name;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import static backend.value.ConstantExpr.*;
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
 import static backend.value.GlobalValue.LinkageType.PrivateLinkage;
 
@@ -56,7 +56,7 @@ import static backend.value.GlobalValue.LinkageType.PrivateLinkage;
  * @author Xlous.zeng 
  * @version 1.0
  */
-public class HIRGenModule
+public class HIRModuleGenerator
 {
 	private final static Context.Key AstToCfgKey = new Context.Key();
 	private Log log;
@@ -85,7 +85,7 @@ public class HIRGenModule
      */
     private HashMap<String, GlobalValue> globalDeclMaps;
 
-	public HIRGenModule(ASTContext context, Options options, Module m)
+	public HIRModuleGenerator(ASTContext context, Options options, Module m)
     {
         ctx = context;
         this.vars = new ArrayList<>();
@@ -209,7 +209,7 @@ public class HIRGenModule
 
             // Make sure the result is of the correct type.
             Type ptrType = PointerType.get(type);
-            return ConsantExpr.getBitCast(entry, ptrType);
+            return getBitCast(entry, ptrType);
         }
 
         // This function doesn't have a complete type(for example, return
@@ -300,16 +300,16 @@ public class HIRGenModule
                         {
                             backend.type.Type type = PointerType.get(
                                     backend.type.Type.Int8Ty);
-                            Constant casted = ConstantExpr.getBitCast(c, type);
-                            casted = ConstantExpr.getElementPtr(casted, offset, 1);
-                            c = ConstantExpr.getBitCast(casted, c.getType());
+                            Constant casted = getBitCast(c, type);
+                            casted = getElementPtr(casted, offset, 1);
+                            c = getBitCast(casted, c.getType());
                         }
 
                         if (destTy instanceof PointerType)
                         {
-                            return ConstantExpr.getBitCast(c, destTy);
+                            return getBitCast(c, destTy);
                         }
-                        return ConstantExpr.getPtrToInt(c, destTy);
+                        return getPtrToInt(c, destTy);
                     }
                     else
                     {
@@ -317,10 +317,10 @@ public class HIRGenModule
                         // Convert to the appropriate type; this could be an lvalue for
                         // an integer.
                         if (destTy instanceof PointerType)
-                            return ConstantExpr.getIntToPtr(c, destTy);
+                            return getIntToPtr(c, destTy);
 
                         if (c.getType() != destTy)
-                            return ConstantExpr.getTrunc(c, destTy);
+                            return getTrunc(c, destTy);
 
                         return c;
                     }
@@ -333,7 +333,7 @@ public class HIRGenModule
                     {
                         backend.type.Type boolTy =
                                 getCodeGenTypes().convertTypeForMem(expr.getType());
-                        c = ConstantExpr.getZExt(c, boolTy);
+                        c = getZExt(c, boolTy);
                     }
                     return c;
                 }
@@ -362,7 +362,7 @@ public class HIRGenModule
         if (c!=null && c.getType() == backend.type.Type.Int1Ty)
         {
             backend.type.Type boolTy = getCodeGenTypes().convertTypeForMem(expr.getType());
-            ConstantExpr.getZExt(c, boolTy);
+            getZExt(c, boolTy);
         }
         return c;
 
@@ -454,7 +454,7 @@ public class HIRGenModule
      */
     public static Constant generateStringLiteral(String str,
             boolean constant,
-            HIRGenModule genModule,
+            HIRModuleGenerator genModule,
             String globalName)
     {
         // Create a constant for this string literal.
