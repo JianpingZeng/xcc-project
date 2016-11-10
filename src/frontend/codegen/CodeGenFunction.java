@@ -328,12 +328,45 @@ public final class CodeGenFunction
 	/**
 	 * Emit a alloca for realistic argument and fills locaVarMaps.
 	 * @param param
-	 * @param v
+	 * @param arg
 	 */
-	private void emitParamDecl(VarDecl param, Value v)
+	private void emitParamDecl(VarDecl param, Value arg)
 	{
+		assert param instanceof ParamVarDecl:"Invalid argument to emitParamDecl()";
 
-		// TODO
+		QualType ty = param.getDeclType();
+		Value destPtr = null;
+		if (!ty.isConstantSizeType())
+		{
+			// Variable sized values always passed by reference.
+			destPtr = arg;
+		}
+		else
+		{
+			// A fixed size single-value varibale becomes an alloca in the entry block.
+			Type lty = convertTypeForMem(ty);
+			if (lty.isSingleValueType())
+			{
+				String name = param.getDeclName() + ".addr";
+				destPtr = createTempAlloc(lty);
+				destPtr.setName(name);
+
+				// Store the initial value into the alloca just created.
+				emitStoreOfScalar(arg, destPtr, ty);
+			}
+			else
+			{
+				// Otherwise, if this is an aggregate type, just use the input pointer.
+				destPtr = arg;
+			}
+			arg.setName(param.getDeclName());
+		}
+
+		Value entry = localVarMaps.get(param);
+		assert entry == null :"Decl already existing in localVarMaps";
+
+		entry = destPtr;
+		localVarMaps.put(param, entry);
 	}
 
 	private backend.type.Type convertTypeForMem(QualType ty)
