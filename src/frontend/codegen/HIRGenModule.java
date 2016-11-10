@@ -2,36 +2,24 @@ package frontend.codegen;
 
 import backend.hir.*;
 import backend.intrinsic.Intrinsic;
-import backend.lir.ci.LIRConstant;
-import backend.lir.ci.LIRKind;
 import backend.target.TargetData;
+import backend.type.FunctionType;
 import backend.type.PointerType;
+import backend.type.Type;
 import backend.value.*;
-import backend.value.Instruction.*;
 import driver.Options;
-import frontend.ast.StmtVisitor;
-import frontend.ast.Tree;
 import frontend.ast.Tree.*;
-import frontend.comp.OpCodes;
-import frontend.exception.JumpError;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
-import frontend.symbol.Symbol.OperatorSymbol;
-import frontend.symbol.SymbolKinds;
-import frontend.symbol.VarSymbol;
-import frontend.type.FunctionType;
 import frontend.type.QualType;
-import frontend.type.Type;
-import frontend.type.TypeClass;
 import tools.Context;
 import tools.Log;
 import tools.Name;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
@@ -72,10 +60,8 @@ public class HIRGenModule
 {
 	private final static Context.Key AstToCfgKey = new Context.Key();
 	private Log log;
-	private Context context;
 	private List<GlobalVariable> vars;
 	private List<Function> functions;
-	private Name.Table names;
 
     private TargetData theTargetData;
 
@@ -89,6 +75,16 @@ public class HIRGenModule
 
     private HashMap<String, Constant> constantStringMap;
 
+	/**
+	 * Mapping of decl names (represented as unique
+     * character pointers from either the identifier table or the set
+     * of mangled names) to global variables we have already
+     * emitted. Note that the entries in this map are the actual
+     * globals and therefore may not be of the same type as the decl,
+     * they should be bitcasted on retrieval.
+     */
+    private HashMap<String, GlobalValue> globalDeclMaps;
+
 	public HIRGenModule(ASTContext context, Options options, Module m)
     {
         ctx = context;
@@ -98,6 +94,7 @@ public class HIRGenModule
         this.m = m;
         cgTypes = new CodeGenTypes(this);
         constantStringMap = new HashMap<>();
+        globalDeclMaps = new HashMap<>();
     }
 
     public CodeGenTypes getCodeGenTypes() { return cgTypes;}
@@ -175,10 +172,60 @@ public class HIRGenModule
         return getAddrOfFunction(fd, null);
     }
 
-    public Constant getAddrOfFunction(FunctionDecl fd, FunctionType ty)
+	/**
+     * Return the address of the given function.  If Ty is
+     * non-null, then this function will use the specified type if it has to
+     * create it (this occurs when we see a definition of the function).
+     * @param fd
+     * @param ty
+     * @return
+     */
+    public Constant getAddrOfFunction(FunctionDecl fd, Type ty)
     {
-        // TODO
-        return null;
+        if (ty == null)
+            ty = getCodeGenTypes().convertType(fd.getDeclType());
+        return getOrCreateFunction(fd.getDeclName(), ty, fd);
+    }
+
+	/**
+     * Create and return an backend Function with the specified type. If there
+     * is something in the module with the specified name, return it potentially
+     * bitcasted to the right type.
+     *
+     * If D is non-null, it specifies a decl that correspond to this.  This is used
+     * to set the attributes on the function when it is first created.
+     * @param name
+     * @param type
+     * @param fd
+     * @return
+     */
+    private Constant getOrCreateFunction(String name, Type type, FunctionDecl fd)
+    {
+        GlobalValue entry = globalDeclMaps.get(name);
+        if (entry != null)
+        {
+            if (entry.getType().getElemType() == type)
+                return entry;
+
+            // Make sure the result is of the correct type.
+            Type ptrType = PointerType.get(type);
+            return ConsantExpr.getBitCast(entry, ptrType);
+        }
+
+        // This function doesn't have a complete type(for example, return
+        // type is an incomplete struct). Use a fake type instead.
+        boolean isIncompleteFunction = false;
+        if (!(type instanceof FunctionType))
+        {
+            type = FunctionType.get(Type.VoidTy, new ArrayList<>(), false);
+            isIncompleteFunction = true;
+        }
+
+        Function f = new Function((FunctionType)type, ExternalLinkage, "", getModule());
+
+        f.setName(name);
+        entry = f;
+        return entry;
     }
 
     public Constant getAddrOfGlobalVar(VarDecl vd)
@@ -197,11 +244,22 @@ public class HIRGenModule
      */
     private void emitGlobalFunctionDefinition(FunctionDecl fd)
     {
-        frontend.type.FunctionType fnType = fd.getDeclType().getFunctionType();
-        backend.type.FunctionType ty = cgTypes.getFunctionType(fnType);
+        FunctionType ty = (FunctionType) getCodeGenTypes().
+                convertType(fd.getDeclType());
+
+        // Gets or creats the prototype for the function.
+        Constant entry = getAddrOfFunction(fd, ty);
+
+        // strip off a bitcast if we got back.
+        if (entry instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr)entry;
+            assert ce.getOpCode() == Operator.BitCast;
+            entry = ce.operand(0);
+        }
 
         // create a function instance
-        Function fn = new Function(ty, ExternalLinkage, fd.getDeclName(), m);
+        Function fn = (Function)entry;
         new CodeGenFunction(this).generateCode(fd, fn);
     }
 

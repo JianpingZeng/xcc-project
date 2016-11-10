@@ -17,7 +17,9 @@ package backend.value;
  */
 
 import backend.hir.Module;
+import backend.type.PointerType;
 import backend.type.Type;
+
 import static backend.value.GlobalValue.LinkageType.*;
 
 /**
@@ -101,4 +103,7 @@ public abstract class GlobalValue extends Constant
 
     @Override
     public boolean isNullValue() {return false;}
+
+    @Override
+    public PointerType getType() { return (PointerType) super.getType();}
 }

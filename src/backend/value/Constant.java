@@ -143,7 +143,8 @@ public abstract class Constant extends User
         visitor.visitConstant(this);
     }
 
-    @Override public boolean equals(Object other)
+    @Override
+    public boolean equals(Object other)
     {
         if (other == null)
             return false;
