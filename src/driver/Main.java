@@ -237,7 +237,7 @@ public class Main
 		Context context = new Context();
 		options = Options.instance(context);
 		this.filenames = new LinkedList<>();
-		Compiler comp = null;
+		CompilerInstance comp = null;
 		try
 		{
 			if (args.length == 0)
@@ -262,7 +262,7 @@ public class Main
 			}
 
 			context.put(tools.Log.outKey, out);
-			comp = Compiler.make(context);
+			comp = CompilerInstance.make(context);
 			if (comp == null) return EXIT_SYSERR;
 			comp.compile(filenames);
 			if (comp.errorCount() != 0) return EXIT_ERROR;

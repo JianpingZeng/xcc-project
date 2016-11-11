@@ -99,29 +99,31 @@ public class Util
 		throw new InternalError("unimplemented");
 	}
 
-	public static int roundUp(int number, int mod)
+	/**
+	 * Rounds the input size up to the most least size of pow of align,  which
+	 * not less than {@@code size}.
+	 * @param size
+	 * @param align
+	 * @return
+	 */
+	public static int roundUp(int size, int align)
 	{
-		return ((number + mod - 1) / mod) * mod;
+		// insufficient algorithm
+		// return (size/align + 1) * align;
+		return (size+(align-1))&~(align-1);
 	}
-
-	public static long roundUp(long number, long mod)
+	/**
+	 * Rounds the input size up to the most least size of pow of align,  which
+	 * not less than {@@code size}.
+	 * @param size
+	 * @param align
+	 * @return
+	 */
+	public static long roundUp(long size, long align)
 	{
-		return ((number + mod - 1) / mod) * mod;
-	}
-
-	public static LIRKind[] signatureToKinds(Function function)
-	{
-		return signatureToKinds(function.signature());
-	}
-	public static LIRKind[] signatureToKinds(Signature signature)
-	{
-		int args = signature.argumentCount();
-		LIRKind[] result = new LIRKind[args];
-		for (int i = 0; i < args; i++)
-		{
-			result[i]  = signature.argumentKindAt(i);
-		}
-		return result;
+		// insufficient algorithm
+		// return (size/align + 1) * align;
+		return (size+(align-1))&~(align-1);
 	}
 
 	/**

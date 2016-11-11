@@ -1,6 +1,6 @@
 package frontend.ast;
 /*
- * Xlous C language Compiler
+ * Xlous C language CompilerInstance
  * Copyright (c) 2015-2016, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,10 +30,9 @@ import java.util.ArrayList;
 public abstract class ASTConsumer
 {
     /**
-     * This method is invoked for initializing this ASTConsumer provided with
-     * instance ctx of {@linkplain ASTContext}.
+     * This method is invoked for initializing this ASTConsumer.
      */
-    public abstract void initialize(ASTContext ctx);
+    public abstract void initialize();
 
     /**
      * Handle the specified top level declaration.
@@ -48,7 +47,6 @@ public abstract class ASTConsumer
     /**
      * This method is called when the parsing file for entire translation unit
      * was parsed.
-     * @param ctx
      */
-    public abstract void handleTranslationUnit(ASTContext ctx);
+    public abstract void handleTranslationUnit();
 }

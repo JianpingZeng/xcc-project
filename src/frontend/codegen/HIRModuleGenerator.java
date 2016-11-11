@@ -2,14 +2,13 @@ package frontend.codegen;
 
 import backend.hir.*;
 import backend.intrinsic.Intrinsic;
-import backend.target.TargetData;
+import target.TargetData;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import driver.Options;
 import frontend.ast.Tree.*;
-import frontend.sema.ASTContext;
 import frontend.sema.Decl;
 import frontend.sema.Decl.FunctionDecl;
 import frontend.sema.Decl.VarDecl;
@@ -58,7 +57,6 @@ import static backend.value.GlobalValue.LinkageType.*;
 public class HIRModuleGenerator
 {
 	private final static Context.Key AstToCfgKey = new Context.Key();
-	private Log log;
 	private List<GlobalVariable> vars;
 	private List<Function> functions;
 
@@ -67,8 +65,9 @@ public class HIRModuleGenerator
     private Function memCpyFn;
     private Function memMoveFn;
     private Function memSetFn;
-    private ASTContext ctx;
+    private Context ctx;
     private Options options;
+	private Log logger;
     private Module m;
     private CodeGenTypes cgTypes;
 
@@ -84,12 +83,12 @@ public class HIRModuleGenerator
      */
     private HashMap<String, GlobalValue> globalDeclMaps;
 
-	public HIRModuleGenerator(ASTContext context, Options options, Module m)
+	public HIRModuleGenerator(Context context, Module m)
     {
-        ctx = context;
-        this.vars = new ArrayList<>();
-        this.functions = new ArrayList<>();
-        this.options = options;
+		logger = Log.instance(context);
+        vars = new ArrayList<>();
+        functions = new ArrayList<>();
+        options = Options.instance(context);
         this.m = m;
         cgTypes = new CodeGenTypes(this);
         constantStringMap = new HashMap<>();
@@ -182,7 +181,7 @@ public class HIRModuleGenerator
 	        if (init == null)
 	        {
 		        QualType t = vd.getInit().getType();
-		        assert false:"static initializer";
+		        errorUnsupported(vd.getInit(), "static initializer");
 		        init = UndefValue.get(getCodeGenTypes().convertType(t));
 	        }
         }
@@ -527,4 +526,11 @@ public class HIRModuleGenerator
     {
         return getAddrOfConstantString(getStringForStringLiteral(expr), null);
     }
+
+	public void errorUnsupported(Stmt s, String msg)
+	{
+		logger.error(s.getLoc(), msg);
+	}
+
+	public void release() {}
 }

@@ -1,6 +1,6 @@
 package frontend.codegen;
 /*
- * Xlous C language Compiler
+ * Xlous C language CompilerInstance
  * Copyright (c) 2015-2016, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1782,7 +1782,7 @@ public final class CodeGenFunction
 		Value ptr = lv.getBitFieldAddr();
 
 		Type eltType = ((PointerType) ptr.getType()).getElemType();
-		int eltTySize = generator.getTargetData().getTypeSizeInBits(eltType);
+		int eltTySize = (int)generator.getTargetData().getTypeSizeInBits(eltType);
 
 		int lowBits = Math.min(bitfieldSize, eltTySize - startBit);
 		Value val = builder.createLoad(ptr, lv.isVolatileQualified(), "tmp");
@@ -2298,7 +2298,7 @@ public final class CodeGenFunction
 
 	public void errorUnsupported(Stmt s, String msg)
 	{
-		assert false:msg;
+		generator.errorUnsupported(s, msg);
 	}
 
 	/**
