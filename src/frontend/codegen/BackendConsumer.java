@@ -18,6 +18,7 @@ package frontend.codegen;
 
 import backend.hir.BasicBlock;
 import backend.hir.Module;
+import backend.pass.*;
 import driver.BackendAction;
 import driver.CompileOptions;
 import frontend.ast.ASTConsumer;
@@ -26,6 +27,7 @@ import frontend.sema.ASTContext;
 import frontend.sema.Decl;
 import target.TargetData;
 import target.TargetMachine;
+import target.TargetMachine.CodeGenOpt;
 import tools.Context;
 import tools.Log;
 
@@ -33,6 +35,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.function.Function;
+
+import static driver.BackendAction.*;
+import static target.TargetMachine.CodeGenFileType.AssemblyFile;
+import static target.TargetMachine.CodeGenOpt.*;
 
 /**
  * <p>
@@ -66,6 +72,10 @@ public class BackendConsumer extends ASTConsumer
     private FileOutputStream asmOutStream;
     private TargetData theTargetData;
     private TargetMachine theTargetMachine;
+
+    private FunctionPassManager perFunctionPasses;
+    private PassManager perModulePasses;
+    private FunctionPassManager perCodeGenPasses;
 
     public BackendConsumer(BackendAction act,
             CompileOptions opts,
@@ -151,8 +161,151 @@ public class BackendConsumer extends ASTConsumer
      */
     private void emitAssembly()
     {
-        if (gen != null)
-            gen.release();
+        // Silently ignore generating code, if target data or module is null.
+        if (theTargetData == null || theModule == null)
+            return;
+
+        assert theModule == gen.getModule()
+                :"Unexpected module change when IR generation";
+
+        // creates some necessary pass for code generation and optimization.
+        createPass();
+        StringBuilder error = new StringBuilder();
+        if (!addEmitPasses(error))
+        {
+            System.err.println("ERROR: " + error.toString());
+            System.exit(-1);
+        }
+
+        // Run passes. For now we do all passes at once.
+        if (perFunctionPasses != null)
+        {
+            for (backend.value.Function f : theModule.getFunctionList())
+                if (!f.isDeclaration())
+                    perFunctionPasses.run(f);
+        }
+
+        if (perModulePasses != null)
+        {
+            perModulePasses.run(theModule);
+        }
+
+        // performing a serial of code gen procedures, like instruction selection,
+        // register allocation, and instruction scheduling etc.
+        if (perCodeGenPasses != null)
+        {
+            for (backend.value.Function f : theModule.getFunctionList())
+                if (!f.isDeclaration())
+                    perCodeGenPasses.run(f);
+        }
+    }
+
+    private FunctionPassManager getPerFunctionPasses()
+    {
+        if (perFunctionPasses == null)
+        {
+            perFunctionPasses = new FunctionPassManager();
+            perFunctionPasses.add(new TargetData(theTargetData));
+        }
+        return perFunctionPasses;
+    }
+
+    private PassManager getPerModulePasses()
+    {
+        if (perModulePasses == null)
+        {
+            perModulePasses = new PassManager();
+            perModulePasses.add(new TargetData(theTargetData));;
+        }
+        return perModulePasses;
+    }
+
+    private FunctionPassManager getCodeGenPasses()
+    {
+        if (perCodeGenPasses == null)
+        {
+            perCodeGenPasses = new FunctionPassManager();
+            perCodeGenPasses.add(new TargetData(theTargetData));;
+        }
+        return perCodeGenPasses;
+    }
+
+    private void createPass()
+    {
+        // The optimization is not needed if optimization level is -O0.
+        if (compileOptions.optimizationLevel > 0)
+            PassCreator.createStandardFunctionPasses(getPerFunctionPasses(),
+                    compileOptions.optimizationLevel);
+
+        // todo:add inline pass to function pass manager.
+
+        Pass inliningPass = null;
+        switch (compileOptions.inlining)
+        {
+            case NoInlining: break;
+            case NormalInlining:
+            {
+                // inline small function.
+                int threshold = (compileOptions.optimizeSize ||
+                                compileOptions.optimizationLevel<3)?50:200;
+
+                inliningPass = PassCreator.createFunctionInliningPass(threshold);
+                break;
+            }
+            case OnlyAlwaysInlining:
+            {
+                inliningPass = PassCreator.createAlwaysInliningPass();
+                break;
+            }
+        }
+
+        // creates a module pass manager.
+        PassManager pm = getPerModulePasses();
+        PassCreator.createStandardModulePasses(pm,
+                compileOptions.optimizationLevel,
+                compileOptions.optimizeSize,
+                compileOptions.unrollLoops,
+                inliningPass);
+    }
+
+    private boolean addEmitPasses(StringBuilder buffer)
+    {
+        if (action == Backend_EmitNothing)
+            return true;
+
+        if (action == Backend_EmitAssembly)
+        {
+            boolean fast = compileOptions.optimizationLevel == 1;
+            FunctionPassManager pm = getCodeGenPasses();
+
+            CodeGenOpt optLevel = Default;
+            switch (compileOptions.optimizationLevel)
+            {
+                default:break;
+                case 1: optLevel = None;break;
+                case 3: optLevel = Aggressiv;break;
+            }
+
+            if (theTargetMachine.addPassesToEmitFile(pm, fast,
+                    asmOutStream, AssemblyFile, optLevel))
+            {
+                buffer.append("Unable to interface with target machine!\n");
+                return false;
+            }
+            return true;
+        }
+        else if (action == Backend_EmitHir)
+        {
+            getPerModulePasses().add(new PrintModulePass(asmOutStream));
+            buffer.append("Unsupport to emit hir code currently!");
+            return false;
+        }
+        else
+        {
+            assert action == Backend_EmitObj;
+            buffer.append("Unsupport to emit object file currently!");
+            return false;
+        }
     }
 
     public Module getModule() {return theModule;}

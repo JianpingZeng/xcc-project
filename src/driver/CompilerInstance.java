@@ -143,9 +143,9 @@ public class CompilerInstance
     private void processInputFile(SourceFile filename)
     {
         // TODO: 1.identify language options according to file kind.
-        // 2.initialize language standard according command line
-        // and input file kind.
-        // 3. creating a preprocessor from langOptions and LangStandard.
+        // TODO: 2.initialize language standard according command line
+        // TODO: and input file kind.
+        // TODO: 3. creating a preprocessor from langOptions and LangStandard.
 
         ASTConsumer consumer;
         FileOutputStream os;

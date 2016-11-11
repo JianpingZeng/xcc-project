@@ -3,6 +3,7 @@ package backend.hir;
 import java.util.ArrayList;
 import java.util.ListIterator;
 
+import backend.opt.PromoteMem2Reg;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Value;

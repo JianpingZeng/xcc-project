@@ -1,5 +1,7 @@
 package target;
 
+import backend.pass.ImmutablePass;
+import backend.pass.Pass;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
@@ -14,7 +16,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class TargetData
+public class TargetData extends ImmutablePass
 {
 	/**
 	 * default to false.
@@ -71,11 +73,8 @@ public class TargetData
 		byteAlignment = 1;
 	}
 
-	public TargetData(String targetName,
-			boolean isLittleEndian,
-			int ptrSize, int ptrAlign,
-			int doubleAlign, int floatAlign,
-			int longAlign, int intAlign,
+	public TargetData(String targetName, boolean isLittleEndian, int ptrSize,
+			int ptrAlign, int doubleAlign, int floatAlign, int longAlign, int intAlign,
 			int shortAlign, int byteAlign)
 	{
 		this.targetName = targetName;
@@ -89,6 +88,20 @@ public class TargetData
 		intAlignment = intAlign;
 		shortAlignment = shortAlign;
 		byteAlignment = byteAlign;
+	}
+
+	public TargetData(TargetData td)
+	{
+		targetName = td.getTargetName();
+		littleEndian = td.isLittleEndian();
+		pointerSize = td.pointerSize;
+		pointerAlignment = td.pointerAlignment;
+		doubleAlignment = td.doubleAlignment;
+		floatAlignment = td.floatAlignment;
+		longAlignment = td.longAlignment;
+		intAlignment = td.intAlignment;
+		shortAlignment = td.shortAlignment;
+		byteAlignment = td.byteAlignment;
 	}
 
 	public IntegerType getIntPtrType()

@@ -1,7 +1,10 @@
 package target;
 
 import backend.hir.Module;
+import backend.pass.FunctionPassManager;
 import target.ia32.IA32TargetMachine;
+
+import java.io.FileOutputStream;
 
 /**
  * Primary interface to complete machine description for the target machine.
@@ -11,8 +14,27 @@ import target.ia32.IA32TargetMachine;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class TargetMachine
+public abstract class TargetMachine
 {
+    /**
+     * Code generation optimization level.
+     */
+    public enum CodeGenOpt
+    {
+        None,
+        Default,
+        Aggressiv
+    }
+
+	/**
+     * hese enums are meant to be passed into
+     * addPassesToEmitFile to indicate what type of file to emit.
+     */
+    public enum CodeGenFileType
+    {
+        AssemblyFile, ObjectFile, DynamicLibrary
+    }
+
 	/**
 	 * The target name.
 	 */
@@ -54,4 +76,24 @@ public class TargetMachine
 	public String getName(){return name;}
 
 	public TargetData getTargetData(){return dataLayout;}
+
+	/**
+     * Add passes to the specified pass manager to get assembly language code
+     * emitted.  Typically this will involve several steps of code generation.
+     * This method should return true if assembly emission is not supported.
+     *
+     * Note that: this method would be overriden by concrete subclass for
+     * different target, like IA32, Sparc.
+     * @param pm
+     * @param fast
+     * @param asmOutStream
+     * @param genFileType
+     * @param optLevel
+     * @return
+     */
+    public abstract boolean addPassesToEmitFile(FunctionPassManager pm,
+            boolean fast,
+            FileOutputStream asmOutStream,
+            CodeGenFileType genFileType,
+            CodeGenOpt optLevel);
 }
