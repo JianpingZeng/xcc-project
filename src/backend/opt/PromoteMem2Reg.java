@@ -1,6 +1,9 @@
-package backend.hir;
+package backend.opt;
 
+import backend.hir.BasicBlock;
+import backend.hir.DominatorTree;
 import backend.hir.DominatorTree.DomTreeNode;
+import backend.pass.FunctionPass;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.LoadInst;
@@ -41,7 +44,7 @@ import tools.Pair;
  * <p>
  * Created by Jianping Zeng  on 2016/3/3.
  */
-public class PromoteMem2Reg
+public class PromoteMem2Reg extends FunctionPass
 {
 	/**
 	 * The list of {@code AllocaInst} to be promoted.
@@ -99,6 +102,8 @@ public class PromoteMem2Reg
 	 */
 	private HashMap<DominatorTree.DomTreeNode, Integer> DomLevels;
 
+	public PromoteMem2Reg(){}
+
 	public PromoteMem2Reg(ArrayList<Instruction.AllocaInst> allocas, DominatorTree DT)
 	{
 		this.allocas = allocas;
@@ -142,7 +147,8 @@ public class PromoteMem2Reg
 	 * value of the targeted alloca of stores with the value used in store.
 	 * </p>
 	 */
-	public void run()
+	@Override
+	public boolean runOnFunction(Function f)
 	{
 		Function m = this.DT.getRootNode().getBlock().getCFG().getMethod();
 		assert (m != null) : "The method of this Dominator Tree is null";

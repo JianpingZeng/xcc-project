@@ -8,7 +8,7 @@ package driver;
  */
 public class CompileOptions
 {
-	enum InliningMethod
+	public enum InliningMethod
 	{
 		/**
 		 * Performs no inlining.
@@ -29,25 +29,25 @@ public class CompileOptions
 	/**
 	 * The -O[0-4] option specified.
 	 */
-	byte optimizationLevel = 0;
+	public byte optimizationLevel = 0;
 	/**
 	 * If -Os specified.
 	 */
-	boolean optimizeSize = false;
+	public boolean optimizeSize = false;
 	/**
 	 * If -g specified.
 	 */
-	boolean debugInfo = false;
+	public boolean debugInfo = false;
 	/**
 	 * Control whether the loop unrolling pass is taken.
 	 */
-	boolean unrollLoops = false;
+	public boolean unrollLoops = false;
 	/**
 	 * What kind of inlining would be taken.
 	 */
-	InliningMethod inlining = InliningMethod.NoInlining;
+	public InliningMethod inlining = InliningMethod.NoInlining;
 	/**
 	 * An optional CPU to target.
 	 */
-	String CPU;
+	public String CPU;
 }
