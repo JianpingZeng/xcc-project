@@ -127,7 +127,7 @@ public class HIRModuleGenerator
     }
 
     /**
-     * This method is called by {@linkplain ModuleBuilder#handleTopLevelDecls(ArrayList)
+     * This method is called by {@linkplain BackendConsumer#handleTopLevelDecls(ArrayList)
      * handleTopLevelDecls}
      * to emit HIR code in procedures as follow:
      * <ol>

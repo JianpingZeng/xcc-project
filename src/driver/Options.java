@@ -56,7 +56,7 @@ public class Options extends HashMap<String, String>
 	 */
 	public boolean isDebugParser()
 	{
-		return get("--debug-Parser") != null;
+		return get("-debug-Parser") != null;
 	}
 	/** 
 	 * Checks if dump frontend.ast.
@@ -64,15 +64,7 @@ public class Options extends HashMap<String, String>
 	 */
 	public boolean isDumpAst()
 	{
-		return get("--dump-frontend.ast") != null;
-	}
-	/** 
-	 * Checks if dump lir(Lower Immediate Representation). 
-	 * @return return true when enable to dump lir, otherwise false returned.
-	 */
-	public boolean isDumpLIR()
-	{
-		return get("--dump-lir") != null;
+		return get("-ast-dump") != null;
 	}
 	/** 
 	 * Checks if dump hir(Higher Immediate Representation). 
@@ -80,7 +72,7 @@ public class Options extends HashMap<String, String>
 	 */
 	public boolean isDumpHIR()
 	{
-		return get("--dump-hir") != null;
+		return get("--hir-dump") != null;
 	}
 	/** 
 	 * Checks if turns on debugging information in preferred format for TargetData.
@@ -142,4 +134,8 @@ public class Options extends HashMap<String, String>
 	{
 		return get("-v") != null;
 	}
+
+	public boolean isParseASTOnly() {return get("fsyntax-only") != null;}
+
+	public boolean isEmitAssembly() {return get("S")!=null;}
 }

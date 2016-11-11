@@ -126,13 +126,11 @@ public final class Sema
     private Stack<FunctionScopeInfo> functionScopes;
     private static Context SEMA_CONTEXT = new Context();
     private ASTConsumer consumer;
-    private ASTContext context;
 
-    public Sema(InputStream in, ASTConsumer consumer, ASTContext context)
+    public Sema(InputStream in, ASTConsumer consumer)
     {
         parser = Parser.instance(in, SEMA_CONTEXT, this);
         this.consumer = consumer;
-        this.context = context;
         initialize();
     }
 

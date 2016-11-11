@@ -1,5 +1,8 @@
 package target;
 
+import backend.hir.Module;
+import target.ia32.IA32TargetMachine;
+
 /**
  * Primary interface to complete machine description for the target machine.
  * Our goal is that all target-specific information should accessible through
@@ -36,4 +39,19 @@ public class TargetMachine
 	{
 		this(name, false, 8, 8, 8, 4, 8, 4, 2, 1);
 	}
+
+	/**
+	 * Allocates and returns a subclass of {@linkplain TargetMachine} that
+	 * implements the IA32 machine.
+	 * @param module
+	 * @return
+	 */
+	public static TargetMachine allocateIA32TargetMachine(Module module)
+	{
+		return new IA32TargetMachine(module);
+	}
+
+	public String getName(){return name;}
+
+	public TargetData getTargetData(){return dataLayout;}
 }
