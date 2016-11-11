@@ -6,6 +6,10 @@ import java.util.List;
 import tools.Context;
 import tools.Log;
 
+import static driver.ProgramAction.ASTDump;
+import static driver.ProgramAction.EmitHIR;
+import static driver.ProgramAction.ParseSyntaxOnly;
+
 /**
  * This class is used as programmatic interface for handling command line
  * options.
@@ -76,7 +80,7 @@ public class Main
 		        {
 			        String type = option.substring(2);
 			        // obtains level of backend.opt.
-			        if (!type.matches("^[0123s]|)$"))
+			        if (!type.matches("^[0123s]"))
 			        {
 				        error("unknown backend.opt switch: " + option);
 				        return true;
@@ -85,10 +89,10 @@ public class Main
 			        return false;
 		        }
             },
-	        new Option("--debug-Parser", "Display the process of frontend.parser"),
-	        new Option("--dump-frontend.ast", "Display abstract syntax tree"),
-	        new Option("--dump-hir", "display higher level ir"),
-	        new Option("--dump-lir", "display lower level ir"),
+	        new Option("-debug-Parser", "Display the process of frontend.parser"),
+	        new Option(ASTDump.getOption(), ASTDump.getDescript()),
+	        new Option(EmitHIR.getOption(), EmitHIR.getDescript()),
+			new Option(ParseSyntaxOnly.getOption(), ParseSyntaxOnly.getDescript()),
 	        new Option("-g", "Generate debug infortion for output file"),
 	        new Option("-h", "Display help information")
 	        {
@@ -184,9 +188,9 @@ public class Main
 	 */
 	private List<SourceFile> processArgs(String[] args)
 	{
-		List<SourceFile> files = new LinkedList<SourceFile>();
-		int ac = 0;
-		while (ac < args.length)
+		List<SourceFile> files = new LinkedList<>();
+
+		for (int ac = 0; ac < args.length; )
 		{
 			String arg = args[ac++];
 			// compilation options
@@ -194,7 +198,8 @@ public class Main
 			{
 				int idx = 0;
 				for (; idx < recognizedOptions.length; idx++)
-					if (recognizedOptions[idx].matches(arg)) break;
+					if (recognizedOptions[idx].matches(arg))
+						break;
 				if (idx == recognizedOptions.length)
 				{
 					error("err.invalid.commandline.arg", arg);

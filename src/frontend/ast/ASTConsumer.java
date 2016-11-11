@@ -16,8 +16,14 @@ package frontend.ast;
  * permissions and limitations under the License.
  */
 
+import driver.BackendAction;
+import frontend.codegen.BackendConsumer;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
+import tools.Context;
+import tools.Log;
+
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 
 /**
@@ -49,4 +55,10 @@ public abstract class ASTConsumer
      * was parsed.
      */
     public abstract void handleTranslationUnit();
+
+    public static ASTConsumer createBackendConsumer(BackendAction act,
+            String moduleID, FileOutputStream os, Context ctx)
+    {
+        return new BackendConsumer(act, moduleID, os, ctx);
+    }
 }

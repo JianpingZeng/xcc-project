@@ -18,14 +18,21 @@ package frontend.codegen;
 
 import backend.hir.BasicBlock;
 import backend.hir.Module;
+import driver.BackendAction;
+import driver.CompileOptions;
 import frontend.ast.ASTConsumer;
 import driver.Options;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
+import target.TargetData;
+import target.TargetMachine;
 import tools.Context;
 import tools.Log;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.function.Function;
 
 /**
  * <p>
@@ -48,20 +55,34 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class ModuleBuilder extends ASTConsumer
+public class BackendConsumer extends ASTConsumer
 {
-    private Context ctx;
+    private CompileOptions compileOptions;
+    private BackendAction action;
     private Options options;
     private Log logger;
-    private Module M;
-    private HIRModuleGenerator builder;
+    private Module theModule;
+    private HIRModuleGenerator gen;
+    private FileOutputStream asmOutStream;
+    private TargetData theTargetData;
+    private TargetMachine theTargetMachine;
 
-    public ModuleBuilder(String moduleName, Context ctx)
+    public BackendConsumer(BackendAction act,
+            CompileOptions opts,
+            String moduleName,
+            FileOutputStream os,
+            Context ctx,
+            Function<Module, TargetMachine> targetMachineAllocator)
     {
-        logger = Log.instance(ctx);
+        action = act;
+        compileOptions = opts;
         options = Options.instance(ctx);
-        M = new Module(moduleName);
-        this.ctx = ctx;
+        logger = Log.instance(ctx);
+        theModule = new Module(moduleName);
+        gen = new HIRModuleGenerator(ctx, theModule);
+        asmOutStream = os;
+        theTargetMachine = targetMachineAllocator.apply(theModule);
+        theTargetData = theTargetMachine.getTargetData();
     }
 
     /**
@@ -71,7 +92,7 @@ public class ModuleBuilder extends ASTConsumer
     @Override
     public void initialize()
     {
-        builder = new HIRModuleGenerator(ctx, M);
+
     }
 
     /**
@@ -89,7 +110,7 @@ public class ModuleBuilder extends ASTConsumer
         for (Decl d : decls)
         {
             // Make sure that emits all elements for each decl.
-            builder.emitTopLevelDecl(d);
+            gen.emitTopLevelDecl(d);
         }
     }
 
@@ -103,13 +124,36 @@ public class ModuleBuilder extends ASTConsumer
     {
         if (logger.nerrors> 0)
         {
-            M = null;
+            theModule = null;
             return;
         }
 
-        if (builder != null)
-            builder.release();
+        // Emits assembly code or hir code for target.
+        emitAssembly();
+
+        // force to close and flush output stream.
+        if (asmOutStream != null)
+        {
+            try
+            {
+                asmOutStream.close();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+        }
     }
 
-    public Module getModule() {return M;}
+	/**
+     * Handle to interactive with backend to generate actual machine code
+     * or assembly code.
+     */
+    private void emitAssembly()
+    {
+        if (gen != null)
+            gen.release();
+    }
+
+    public Module getModule() {return theModule;}
 }

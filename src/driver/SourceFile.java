@@ -12,10 +12,11 @@ public class SourceFile
 {
 	public enum FileType
 	{
-		EXT_C_SOURCE(".c"),
-		EXT_ASSEMBLY_SOURCE(".s"),
-		EXT_OBJECT(".o"), 
-		EXT_EXECUTABLE_FILE("");
+		HirSource(".hir"),
+		CSource(".c"),
+		AsmSource(".s"),
+		Obj(".o"),
+		Executable("");
 		
 		public final String extension;
 		FileType(String extension)
@@ -75,37 +76,37 @@ public class SourceFile
 	
 	public boolean isCSource()
 	{
-		return FileType.EXT_C_SOURCE.match(currentName);
+		return FileType.CSource.match(currentName);
 	}
 	
 	public boolean isAssembly()
 	{
-		return FileType.EXT_ASSEMBLY_SOURCE.match(currentName);
+		return FileType.AsmSource.match(currentName);
 	}
 	
 	public boolean isObject()
 	{
-		return FileType.EXT_OBJECT.match(currentName);
+		return FileType.Obj.match(currentName);
 	}
 	
 	public boolean isExecutable()
 	{
-		return FileType.EXT_EXECUTABLE_FILE.match(currentName);
+		return FileType.Executable.match(currentName);
 	}
 	
 	public String asmFileName()
 	{
-		return replaceExtension(FileType.EXT_ASSEMBLY_SOURCE);
+		return replaceExtension(FileType.AsmSource);
 	}
 	
 	public String objectFileName()
 	{
-		return replaceExtension(FileType.EXT_OBJECT);
+		return replaceExtension(FileType.Obj);
 	}
 	
 	public String executableFileName()
 	{
-		return replaceExtension(FileType.EXT_EXECUTABLE_FILE);
+		return replaceExtension(FileType.Executable);
 	}
 	
 	private String baseName(String path)
@@ -124,7 +125,7 @@ public class SourceFile
 		}
 	}
 	
-	private String replaceExtension(FileType type)
+	public String replaceExtension(FileType type)
     {
 	    return baseName(originName, true) + type.extension;
     }

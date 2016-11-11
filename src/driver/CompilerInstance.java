@@ -1,6 +1,7 @@
 package driver;
 
-import frontend.codegen.ModuleBuilder;
+import driver.SourceFile.FileType;
+import frontend.codegen.BackendConsumer;
 import backend.hir.Module;
 import backend.lir.backend.ia32.IA32;
 import backend.lir.backend.ia32.IA32RegisterConfig;
@@ -8,16 +9,23 @@ import frontend.ast.ASTConsumer;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
 import frontend.sema.Sema;
+import target.TargetMachine;
 import tools.Context;
 import tools.Log;
-import tools.Position;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+
+import static driver.BackendAction.Backend_EmitAssembly;
+import static driver.BackendAction.Backend_EmitHir;
+import static driver.BackendAction.Backend_EmitNothing;
+import static driver.CompileOptions.InliningMethod.NormalInlining;
+import static driver.CompileOptions.InliningMethod.OnlyAlwaysInlining;
+import static driver.ProgramAction.EmitHIR;
+import static driver.SourceFile.FileType.AsmSource;
+import static driver.SourceFile.FileType.HirSource;
 
 public class CompilerInstance
 {
@@ -45,10 +53,20 @@ public class CompilerInstance
     private Backend backend;
     private Optimizer optimizer;
 
-    private Sema sema;
     private ASTContext context;
-    private ASTConsumer consumer;
     private Options options;
+
+	/**
+	 * The program action which this compiler instance will takes.
+     * Default to ParseASTOnly.
+     */
+    private ProgramAction progAction;
+
+	/**
+     * A functional interface used to create a target machine specified by command
+     * line argument, default to X86.
+     */
+    private Function<Module, TargetMachine> targetMachineAllocator;
 
     public CompilerInstance(Context ctx)
     {
@@ -66,6 +84,7 @@ public class CompilerInstance
         this.debugParser = options.get("--debug-Parser") != null;
         this.outputResult = options.get("-o") != null;
         context = new ASTContext();
+        progAction = ProgramAction.ParseSyntaxOnly;
     }
 
     public static CompilerInstance make(Context context)
@@ -85,7 +104,16 @@ public class CompilerInstance
     {
         long msec = System.currentTimeMillis();
 
-        // Allocate target machine, default use X86.
+        // Allocate target machine, default to using X86.
+        targetMachineAllocator = TargetMachine::allocateIA32TargetMachine;
+
+        // Sets the program action from command line option.
+        if (options.isDumpAst())
+            progAction = ProgramAction.ASTDump;
+        if (options.isParseASTOnly())
+            progAction = ProgramAction.ParseSyntaxOnly;
+        if (options.isEmitAssembly())
+            progAction = ProgramAction.EmitAssembly;
 
         for (SourceFile name : filenames)
         {
@@ -100,6 +128,9 @@ public class CompilerInstance
             printCount("error", errCount);
         else
             printCount("error.plural", errCount);
+
+        // close logger stream.
+        close();
     }
 
     /**
@@ -111,13 +142,47 @@ public class CompilerInstance
      */
     private void processInputFile(SourceFile filename)
     {
+        // TODO: 1.identify language options according to file kind.
+        // 2.initialize language standard according command line
+        // and input file kind.
+        // 3. creating a preprocessor from langOptions and LangStandard.
+
+        ASTConsumer consumer;
+        FileOutputStream os;
         try (FileInputStream reader = new FileInputStream(filename.path()))
         {
-            consumer = new ModuleBuilder(filename.getCurrentName(), ctx);
-            consumer.initialize();
+            switch (progAction)
+            {
+                default:
+                case ParseSyntaxOnly:
+                case ASTDump:
+                    assert false:"Unsupported currently.";
+                    return;
+                case EmitHIR:
+                case EmitAssembly:
+                {
+                    BackendAction act;
+                    if(progAction == EmitHIR)
+                    {
+                        act = Backend_EmitHir;
+                        os = computeOutFile(filename, HirSource);
+                    }
+                    else
+                    {
+                        act = Backend_EmitAssembly;
+                        os = computeOutFile(filename, AsmSource);
+                    }
 
-            createSema(reader);
-            parseAST();
+                    CompileOptions compOpts = initializeCompileOptions();
+                    consumer = new BackendConsumer(act,
+                            compOpts,
+                            filename.getCurrentName(),
+                            os, ctx, targetMachineAllocator);
+                    consumer.initialize();
+                }
+            }
+
+            parseAST(reader, consumer);
         }
         catch (IOException e)
         {
@@ -125,11 +190,12 @@ public class CompilerInstance
         }
     }
 
-    private void parseAST()
+    private void parseAST(FileInputStream in, ASTConsumer consumer)
     {
+        Sema sema = new Sema(in, consumer);
+
         frontend.cparser.Parser parser = sema.getParser();
         ArrayList<Decl> declsGroup = new ArrayList<>(16);
-        ASTConsumer consumer = sema.getASTConsumer();
 
         while (!parser.parseTopLevel(declsGroup)) // Not end of file.
         {
@@ -139,15 +205,37 @@ public class CompilerInstance
         consumer.handleTranslationUnit();
     }
 
-    private void createSema(FileInputStream in)
+    private FileOutputStream computeOutFile(SourceFile infile,
+            FileType kind)
     {
-        sema = new Sema(in, getASTConsumer(), getASTConext());
+        String outfile = infile.replaceExtension(kind);
+        try
+        {
+            return new FileOutputStream(outfile);
+        }
+        catch (FileNotFoundException e)
+        {
+            e.printStackTrace();
+        }
+        return null;
     }
 
-    private ASTConsumer getASTConsumer()
+    private CompileOptions initializeCompileOptions()
     {
-        assert consumer !=null:"CompilerInstance instance must have an ASTConsumer!";
-        return consumer;
+        CompileOptions compOpt = new CompileOptions();
+        if(options.optLevel() != null)
+        {
+            compOpt.optimizationLevel = Byte.parseByte(options.optLevel());
+        }
+
+        if (compOpt.optimizationLevel > 1)
+            compOpt.inlining = NormalInlining;
+        else
+            compOpt.inlining = OnlyAlwaysInlining;
+
+        compOpt.unrollLoops = compOpt.optimizationLevel>1;
+        compOpt.debugInfo = options.enableDebug();
+        return compOpt;
     }
 
     private ASTContext getASTConext()
@@ -176,28 +264,11 @@ public class CompilerInstance
 
     private void printVerbose(String key, String msg)
     {
-        Log.printLines(log.noticeWriter,
-                Log.getLocalizedString("verbose." + key, msg));
+        Log.printLines(log.noticeWriter, Log.getLocalizedString("verbose." + key, msg));
     }
 
-    private InputStream openSourcefile(String filename)
-    {
-        try
-        {
-            File f = new File(filename);
-            return new FileInputStream(f);
-        }
-        catch (IOException e)
-        {
-            log.error(Position.NOPOS, "cannot.read.file", filename);
-            return null;
-        }
-    }
     /**
      * Close the driver, flushing the logs
      */
-    public void close()
-    {
-        log.flush();
-    }
+    public void close(){log.flush();}
 }
