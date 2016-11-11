@@ -263,6 +263,8 @@ abstract public class Tree
 		return this;
 	}
 
+	public int getLoc() {return pos;}
+
 	public int getStmtClass()
     {
         return tag;

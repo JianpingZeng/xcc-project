@@ -30,7 +30,7 @@ import sun.misc.Unsafe;
 /**
  * Denotes the basic kinds of types in cc IR, including the all the primitive types,
  * for example, {@link CiKind#Int} for {@code int}.
- * A kind has a single character short name, a Compiler name, and a set of flags
+ * A kind has a single character short name, a CompilerInstance name, and a set of flags
  * further describing its behavior.
  */
 public enum CiKind {

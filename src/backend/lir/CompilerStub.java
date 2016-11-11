@@ -10,7 +10,7 @@ import backend.lir.ci.StackSlot;
 /**
  * A driver stub is a shared routine that performs an operation on behalf of
  * compiled code. Typically the routine is too large to inline, is infrequent,
- * or requires runtime support. Compiler stubs are called with a callee-save
+ * or requires runtime support. CompilerInstance stubs are called with a callee-save
  * convention; the driver stub must save any LIRRegisters it may destroy and
  * then restore them upon return. This allows the register allocator to ignore
  * calls to driver stubs. Parameters to driver stubs are passed on the stack

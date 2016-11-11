@@ -19,7 +19,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Compiler
+public class CompilerInstance
 {
     private static final Context.Key compilerKey = new Context.Key();
 
@@ -50,7 +50,7 @@ public class Compiler
     private ASTConsumer consumer;
     private Options options;
 
-    public Compiler(Context ctx)
+    public CompilerInstance(Context ctx)
     {
         super();
         ctx.put(compilerKey, this);
@@ -68,9 +68,9 @@ public class Compiler
         context = new ASTContext();
     }
 
-    public static Compiler make(Context context)
+    public static CompilerInstance make(Context context)
     {
-        return new Compiler(context);
+        return new CompilerInstance(context);
     }
 
     /**
@@ -83,38 +83,23 @@ public class Compiler
 
     public void compile(List<SourceFile> filenames)
     {
-        /*
         long msec = System.currentTimeMillis();
+
+        // Allocate target machine, default use X86.
 
         for (SourceFile name : filenames)
         {
-            parseAST(name);
+            processInputFile(name);
         }
-
-        Tree[] trees=null;// = frontend.doParseAttribute(filenames);
-
-        // performs high level IR generation and Module backend.opt
-        Module[] hirLists = new Module[trees.length];
-        for (int i = 0; i < trees.length; i++)
-            hirLists[i++] = (new HIRModuleGenerator(ctx).translate(trees[i]));
-
-        // performs high level IR generation and Module backend.opt
-        optimizer.runOnModules(hirLists);
-
-        // emits machine instruction for Module of any TopLevel instance
-        backend.emitMachineInst(hirLists);
-
         if (verbose)
         {
-            printVerbose("total",
-                    Long.toString(System.currentTimeMillis() - msec));
+            printVerbose("total",Long.toString(System.currentTimeMillis() - msec));
         }
         int errCount = errorCount();
         if (errCount == 1)
             printCount("error", errCount);
         else
             printCount("error.plural", errCount);
-        */
     }
 
     /**
@@ -124,29 +109,34 @@ public class Compiler
      *
      * @param filename
      */
-    private void parseAST(SourceFile filename)
+    private void processInputFile(SourceFile filename)
     {
         try (FileInputStream reader = new FileInputStream(filename.path()))
         {
-            consumer = new ModuleBuilder(filename.getCurrentName(), options);
-            consumer.initialize(context);
+            consumer = new ModuleBuilder(filename.getCurrentName(), ctx);
+            consumer.initialize();
 
             createSema(reader);
-            frontend.cparser.Parser parser = sema.getParser();
-            ArrayList<Decl> declsGroup = new ArrayList<>(16);
-            ASTConsumer consumer = sema.getASTConsumer();
-
-            while (!parser.parseTopLevel(declsGroup)) // Not end of file.
-            {
-                consumer.handleTopLevelDecls(declsGroup);
-            }
-
-            consumer.handleTranslationUnit(sema.getASTContext());
+            parseAST();
         }
         catch (IOException e)
         {
             e.printStackTrace();
         }
+    }
+
+    private void parseAST()
+    {
+        frontend.cparser.Parser parser = sema.getParser();
+        ArrayList<Decl> declsGroup = new ArrayList<>(16);
+        ASTConsumer consumer = sema.getASTConsumer();
+
+        while (!parser.parseTopLevel(declsGroup)) // Not end of file.
+        {
+            consumer.handleTopLevelDecls(declsGroup);
+        }
+
+        consumer.handleTranslationUnit();
     }
 
     private void createSema(FileInputStream in)
@@ -156,13 +146,13 @@ public class Compiler
 
     private ASTConsumer getASTConsumer()
     {
-        assert consumer !=null:"Compiler instance must have an ASTConsumer!";
+        assert consumer !=null:"CompilerInstance instance must have an ASTConsumer!";
         return consumer;
     }
 
     private ASTContext getASTConext()
     {
-        assert context !=null:"Compiler instance must have ASTContext!";
+        assert context !=null:"CompilerInstance instance must have ASTContext!";
         return context;
     }
 

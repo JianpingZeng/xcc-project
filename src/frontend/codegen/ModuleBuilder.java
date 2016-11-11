@@ -1,6 +1,6 @@
 package frontend.codegen;
 /*
- * Xlous C language Compiler
+ * Xlous C language CompilerInstance
  * Copyright (c) 2015-2016, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,8 @@ import frontend.ast.ASTConsumer;
 import driver.Options;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
+import tools.Context;
+import tools.Log;
 
 import java.util.ArrayList;
 
@@ -48,28 +50,28 @@ import java.util.ArrayList;
  */
 public class ModuleBuilder extends ASTConsumer
 {
-    private ASTContext ctx;
+    private Context ctx;
     private Options options;
+    private Log logger;
     private Module M;
     private HIRModuleGenerator builder;
 
-    public ModuleBuilder(String moduleName, Options options)
+    public ModuleBuilder(String moduleName, Context ctx)
     {
-        this.options = options;
+        logger = Log.instance(ctx);
+        options = Options.instance(ctx);
         M = new Module(moduleName);
+        this.ctx = ctx;
     }
 
     /**
-     * This method is invoked for initializing this ASTConsumer provided with
-     * instance ctx of {@linkplain ASTContext}.
+     * This method is invoked for initializing this ASTConsumer.
      *
-     * @param context
      */
     @Override
-    public void initialize(ASTContext context)
+    public void initialize()
     {
-        ctx = context;
-        builder = new HIRModuleGenerator(context, options, M);
+        builder = new HIRModuleGenerator(ctx, M);
     }
 
     /**
@@ -95,11 +97,19 @@ public class ModuleBuilder extends ASTConsumer
      * This method is called when the parsing file for entire translation unit
      * was parsed.
      *
-     * @param ctx
      */
     @Override
-    public void handleTranslationUnit(ASTContext ctx)
+    public void handleTranslationUnit()
     {
+        if (logger.nerrors> 0)
+        {
+            M = null;
+            return;
+        }
 
+        if (builder != null)
+            builder.release();
     }
+
+    public Module getModule() {return M;}
 }
