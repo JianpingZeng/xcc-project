@@ -1,7 +1,5 @@
 package backend.hir;
 
-import backend.lir.ci.LIRKind;
-
 import static backend.hir.Operator.Flags.ASSOCIATIVE;
 import static backend.hir.Operator.Flags.COMMUTATIVE;
 /**
@@ -161,36 +159,6 @@ public enum Operator
     {
 	    return index >= Mul.index && index<= FMul.index;
     }	
-	
-	public static Operator getMulByKind(LIRKind kind)
-	{
-		switch (kind)
-        {
-            case Int:
-            case Long:
-                return Mul;
-            case Float:
-            case Double:
-                return FMul;
-            default:
-                return None;
-        }
-	}
-	
-	public static Operator getAddByKind(LIRKind kind)
-	{
-	    switch (kind)
-        {
-            case Double:
-            case Float:
-                return FAdd;
-            case Long:
-            case Int:
-                return Add;
-            default:
-                return None;
-        }
-	}
 
 	public boolean isComparison()
     {

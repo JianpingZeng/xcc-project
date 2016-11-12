@@ -1513,7 +1513,7 @@ public final class CodeGenFunction
 			}
 			return;
 		}
-		// Otherwise, if the return block is the target of a single direct
+		// Otherwise, if the return block is the backend.target of a single direct
 		// branch then we can just put the code in that block instead.
 		if (returnBlock.hasOneUses())
 		{

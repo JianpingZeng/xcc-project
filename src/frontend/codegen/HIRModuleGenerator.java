@@ -2,7 +2,7 @@ package frontend.codegen;
 
 import backend.hir.*;
 import backend.intrinsic.Intrinsic;
-import target.TargetData;
+import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;

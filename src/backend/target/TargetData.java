@@ -1,7 +1,6 @@
-package target;
+package backend.target;
 
 import backend.pass.ImmutablePass;
-import backend.pass.Pass;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
@@ -214,7 +213,7 @@ public class TargetData extends ImmutablePass
 
 	/**
 	 * This class is used to lazily compute structure layout information for
-	 * a target machine, based on this TargetData structure.
+	 * a backend.target machine, based on this TargetData structure.
 	 */
 	public class StructLayout
 	{

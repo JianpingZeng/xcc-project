@@ -3,7 +3,6 @@ package backend.value;
 import backend.hir.BasicBlock;
 import backend.hir.InstructionVisitor;
 import backend.hir.Operator;
-import backend.lir.ci.LIRKind;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;

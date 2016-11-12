@@ -1,14 +1,12 @@
 package tools;
-import java.io.*;
-
-import frontend.parser.Parser;
+import java.io.UnsupportedEncodingException;
 
 abstract public class TextUtils {
     static final private byte vtab = 013;
 
     static public String dumpString(String str) {
         try {
-            return dumpString(str, Parser.SOURCE_ENCODING);
+            return dumpString(str, "utf-8");
         }
         catch (UnsupportedEncodingException ex) {
             throw new Error("UTF-8 is not supported??: " + ex.getMessage());

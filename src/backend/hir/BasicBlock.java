@@ -1,9 +1,6 @@
 package backend.hir;
 
 
-import backend.asm.Label;
-import backend.lir.LIRBlock;
-import backend.lir.LIRList;
 import backend.opt.Loop;
 import backend.type.Type;
 import backend.value.Function;
@@ -67,12 +64,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public int loopDepth;
 
     private Function parent;
-
-	/**
-	 * A block containing Generated machine instruction corresponding to
-	 * Module instruction for specified targetAbstractLayer.
-	 */
-	private LIRBlock LIRBlock;
 	
 	/**
 	 * A field of loop containing this basic block.
@@ -99,30 +90,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public boolean isCriticalEdgeSplit()
 	{
 		return (blockFlags | BlockFlag.CriticalEdgeSplit.mask) != 0;
-	}
-
-	public Label label()
-	{
-		return LIRBlock.label;
-	}
-
-	public void setFirstLIRInstructionId(int firstLIRInstructionID)
-	{
-		LIRBlock.firstLIRInstructionID = firstLIRInstructionID;
-	}
-
-	public void setLastLIRInstructionId(int lastLIRInstructionID)
-	{
-		LIRBlock.lastLIRInstructionID = lastLIRInstructionID;
-	}
-
-	public int firstLIRInstructionId()
-	{
-		return LIRBlock.firstLIRInstructionID;
-	}
-	public int lastLIRInstructionId()
-	{
-		return LIRBlock.lastLIRInstructionID;
 	}
 
 	public boolean isPredecessor(BasicBlock block)
@@ -452,25 +419,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public boolean checkBlockFlags(BlockFlag flag)
 	{
 		return (blockFlags & flag.mask) != 0;
-	}
-
-	public void setLIRBlock(LIRBlock block)
-	{
-		assert block != null;
-		this.LIRBlock = block;
-	}
-
-	public LIRBlock getLIRBlock()
-	{
-		if (LIRBlock == null)
-			LIRBlock = new LIRBlock(this);
-
-		return LIRBlock;
-	}
-
-	public void setLIR(LIRList lir)
-	{
-		getLIRBlock().setLIR(lir);
 	}
 
 	public PredIterator<BasicBlock> predIterator()
