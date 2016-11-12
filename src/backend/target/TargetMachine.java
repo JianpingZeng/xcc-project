@@ -1,14 +1,14 @@
-package target;
+package backend.target;
 
 import backend.hir.Module;
 import backend.pass.FunctionPassManager;
-import target.ia32.IA32TargetMachine;
+import backend.target.ia32.IA32TargetMachine;
 
 import java.io.FileOutputStream;
 
 /**
- * Primary interface to complete machine description for the target machine.
- * Our goal is that all target-specific information should accessible through
+ * Primary interface to complete machine description for the backend.target machine.
+ * Our goal is that all backend.target-specific information should accessible through
  * this interface.
  * @see TargetData
  * @author Xlous.zeng
@@ -36,7 +36,7 @@ public abstract class TargetMachine
     }
 
 	/**
-	 * The target name.
+	 * The backend.target name.
 	 */
 	private String name;
 	/**
@@ -83,7 +83,7 @@ public abstract class TargetMachine
      * This method should return true if assembly emission is not supported.
      *
      * Note that: this method would be overriden by concrete subclass for
-     * different target, like IA32, Sparc.
+     * different backend.target, like IA32, Sparc.
      * @param pm
      * @param fast
      * @param asmOutStream

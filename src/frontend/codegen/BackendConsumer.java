@@ -25,9 +25,9 @@ import frontend.ast.ASTConsumer;
 import driver.Options;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
-import target.TargetData;
-import target.TargetMachine;
-import target.TargetMachine.CodeGenOpt;
+import backend.target.TargetData;
+import backend.target.TargetMachine;
+import backend.target.TargetMachine.CodeGenOpt;
 import tools.Context;
 import tools.Log;
 
@@ -37,8 +37,8 @@ import java.util.ArrayList;
 import java.util.function.Function;
 
 import static driver.BackendAction.*;
-import static target.TargetMachine.CodeGenFileType.AssemblyFile;
-import static target.TargetMachine.CodeGenOpt.*;
+import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
+import static backend.target.TargetMachine.CodeGenOpt.*;
 
 /**
  * <p>
@@ -138,7 +138,7 @@ public class BackendConsumer extends ASTConsumer
             return;
         }
 
-        // Emits assembly code or hir code for target.
+        // Emits assembly code or hir code for backend.target.
         emitAssembly();
 
         // force to close and flush output stream.
@@ -161,7 +161,7 @@ public class BackendConsumer extends ASTConsumer
      */
     private void emitAssembly()
     {
-        // Silently ignore generating code, if target data or module is null.
+        // Silently ignore generating code, if backend.target data or module is null.
         if (theTargetData == null || theModule == null)
             return;
 
@@ -289,7 +289,7 @@ public class BackendConsumer extends ASTConsumer
             if (theTargetMachine.addPassesToEmitFile(pm, fast,
                     asmOutStream, AssemblyFile, optLevel))
             {
-                buffer.append("Unable to interface with target machine!\n");
+                buffer.append("Unable to interface with backend.target machine!\n");
                 return false;
             }
             return true;

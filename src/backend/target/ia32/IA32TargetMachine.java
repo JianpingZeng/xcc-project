@@ -1,8 +1,8 @@
-package target.ia32;
+package backend.target.ia32;
 
 import backend.hir.Module;
 import backend.pass.FunctionPassManager;
-import target.TargetMachine;
+import backend.target.TargetMachine;
 
 import java.io.FileOutputStream;
 
@@ -23,7 +23,7 @@ public class IA32TargetMachine extends TargetMachine
 	 * This method should return true if assembly emission is not supported.
 	 * <p>
 	 * Note that: this method would be overriden by concrete subclass for
-	 * different target, like IA32, Sparc.
+	 * different backend.target, like IA32, Sparc.
 	 *
 	 * @param pm
 	 * @param fast

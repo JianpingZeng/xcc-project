@@ -1,8 +1,5 @@
 package tools;
 
-import backend.value.Function;
-import backend.hir.Signature;
-import backend.lir.ci.LIRKind;
 import java.util.List;
 
 
@@ -87,11 +84,6 @@ public class Util
 	public static RuntimeException shouldNotReachHere(String msg)
 	{
 		throw new InternalError("should not reach here, " + msg);
-	}
-
-	public static boolean archKindEqual(LIRKind k1, LIRKind k2)
-	{
-		return k1 == k2;
 	}
 
 	public static RuntimeException unimplemented()

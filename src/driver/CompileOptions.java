@@ -47,7 +47,7 @@ public class CompileOptions
 	 */
 	public InliningMethod inlining = InliningMethod.NoInlining;
 	/**
-	 * An optional CPU to target.
+	 * An optional CPU to backend.target.
 	 */
 	public String CPU;
 }

@@ -9,7 +9,7 @@ import frontend.ast.ASTConsumer;
 import frontend.sema.ASTContext;
 import frontend.sema.Decl;
 import frontend.sema.Sema;
-import target.TargetMachine;
+import backend.target.TargetMachine;
 import tools.Context;
 import tools.Log;
 
@@ -20,7 +20,6 @@ import java.util.function.Function;
 
 import static driver.BackendAction.Backend_EmitAssembly;
 import static driver.BackendAction.Backend_EmitHir;
-import static driver.BackendAction.Backend_EmitNothing;
 import static driver.CompileOptions.InliningMethod.NormalInlining;
 import static driver.CompileOptions.InliningMethod.OnlyAlwaysInlining;
 import static driver.ProgramAction.EmitHIR;
@@ -63,7 +62,7 @@ public class CompilerInstance
     private ProgramAction progAction;
 
 	/**
-     * A functional interface used to create a target machine specified by command
+     * A functional interface used to create a backend.target machine specified by command
      * line argument, default to X86.
      */
     private Function<Module, TargetMachine> targetMachineAllocator;
@@ -104,7 +103,7 @@ public class CompilerInstance
     {
         long msec = System.currentTimeMillis();
 
-        // Allocate target machine, default to using X86.
+        // Allocate backend.target machine, default to using X86.
         targetMachineAllocator = TargetMachine::allocateIA32TargetMachine;
 
         // Sets the program action from command line option.
