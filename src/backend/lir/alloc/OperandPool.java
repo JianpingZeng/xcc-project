@@ -75,7 +75,7 @@ public final class OperandPool
 	private BitSet mustStayInMemory;
 
 	/**
-	 * Flags that can be set for {@linkplain LIRValue#isVariable() variable} reservedOperands.
+	 * flags that can be set for {@linkplain LIRValue#isVariable() variable} reservedOperands.
 	 */
 	public enum VariableFlag
 	{

@@ -118,7 +118,7 @@ public final class StackFrame
 	 */
 	public CallingConvention getCallingConvention(LIRKind[] signature)
 	{
-		// conform ia32 calling convention, all parameters were lived in stack.
+		// conform x86 calling convention, all parameters were lived in stack.
 		CallingConvention cc = backend.registerConfig.getCallingConvention(
 		        signature, backend.machineInfo, true);
 		return cc;
@@ -198,7 +198,7 @@ public final class StackFrame
 		else
 		{
 			int offset = offsetForOutgoingOrSpillSlot(slot.index(), size);
-			// note that, since the stack of ia32 is growed descended from
+			// note that, since the stack of x86 is growed descended from
 			// higher address to lower address.
 			return new LIRAddress(slot.kind, bp.asValue(), -offset);
 		}
