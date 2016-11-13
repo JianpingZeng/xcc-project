@@ -2,7 +2,7 @@ package backend.target;
 
 import backend.hir.Module;
 import backend.pass.FunctionPassManager;
-import backend.target.ia32.IA32TargetMachine;
+import backend.target.x86.X86TargetMachine;
 
 import java.io.FileOutputStream;
 
@@ -70,10 +70,23 @@ public abstract class TargetMachine
 	 */
 	public static TargetMachine allocateIA32TargetMachine(Module module)
 	{
-		return new IA32TargetMachine(module);
+		return new X86TargetMachine(module);
 	}
 
 	public String getName(){return name;}
+
+	// Interface to the major aspects of target machine information:
+	// 1.Instruction opcode and operand information.
+	// 2.Pipeline and scheduling information.
+	// 3.Register information.
+	// 4.Stack frame information.
+	// 5.Cache hierarchy information.
+	// 6.Machine-level optimization information (peepole only).
+	public abstract TargetInstrInfo getInstrInfo();
+
+	public abstract TargetRegisterInfo getRegInfo();
+
+	public abstract TargetFrameInfo getFrameInfo();
 
 	public TargetData getTargetData(){return dataLayout;}
 

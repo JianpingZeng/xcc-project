@@ -84,7 +84,7 @@ public abstract class LIRGenerator extends InstructionVisitor
 	    else 
 	    {
 	        // TODO: current, other architectures are not supported rather than
-	        // ia32 and amd64.
+	        // x86 and amd64.
 	        Util.shouldNotReachHere();
 	        return null;
 	    }

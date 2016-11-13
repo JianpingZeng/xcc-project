@@ -1,8 +1,11 @@
-package backend.target.ia32;
+package backend.target.x86;
 
 import backend.hir.Module;
 import backend.pass.FunctionPassManager;
+import backend.target.TargetFrameInfo;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 
 import java.io.FileOutputStream;
 
@@ -10,11 +13,29 @@ import java.io.FileOutputStream;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class IA32TargetMachine extends TargetMachine
+public class X86TargetMachine extends TargetMachine
 {
-	public IA32TargetMachine(Module module)
+	public X86TargetMachine(Module module)
 	{
 		super("X86", true, 4, 4, 4, 4, 4, 4, 2, 1);
+	}
+
+	@Override
+	public TargetInstrInfo getInstrInfo()
+	{
+		return null;
+	}
+
+	@Override
+	public TargetRegisterInfo getRegInfo()
+	{
+		return null;
+	}
+
+	@Override
+	public TargetFrameInfo getFrameInfo()
+	{
+		return null;
 	}
 
 	/**
