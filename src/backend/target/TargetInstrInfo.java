@@ -86,11 +86,11 @@ public abstract class TargetInstrInfo
 		/**
 		 * Registers implicitly read by this instr
 		 */
-		public ArrayList<Integer> implicitUses;
+		public int[] implicitUses;
 		/**
 		 * Registers implicitly defined by this instr
 		 */
-		public ArrayList<Integer> implicitDefs;
+		public int[] implicitDefs;
 	}
 
 	/**
@@ -143,12 +143,12 @@ public abstract class TargetInstrInfo
 		return get(opCode).numDelaySlots;
 	}
 
-	public ArrayList<Integer> getImplicitUses(int opCode)
+	public int[] getImplicitUses(int opCode)
 	{
 		return get(opCode).implicitUses;
 	}
 
-	public ArrayList<Integer> getImplicitDefs(int opCode)
+	public int[] getImplicitDefs(int opCode)
 	{
 		return get(opCode).implicitDefs;
 	}
