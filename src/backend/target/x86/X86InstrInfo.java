@@ -5,6 +5,7 @@ import backend.codegen.MachineInstrBuilder;
 import backend.codegen.MachineOperand;
 import backend.codegen.MachineOperand.UseType;
 import backend.target.TargetInstrInfo;
+import backend.target.TargetRegisterInfo;
 
 /**
  * @author Xlous.zeng
@@ -258,10 +259,19 @@ public class X86InstrInfo extends TargetInstrInfo implements X86InstrSets, X86Re
 		// sse and mmx instructions are unvailable.
 	};
 
+	private X86RegisterInfo registerInfo;
 	public X86InstrInfo()
 	{
 		super(x86Insts);
+		registerInfo = new X86RegisterInfo();
 	}
+
+	/**
+	 * TargetInstrInfo is a superset of MRegister info.  As such, whenever
+	 * a client has an instance of instruction info, it should always be able
+	 * to get register info as well (through this method).
+	 */
+	public TargetRegisterInfo getRegisterInfo() { return registerInfo; }
 
 	/**
 	 * Returns the target's implementation of NOP, which is

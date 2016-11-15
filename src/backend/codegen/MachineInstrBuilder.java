@@ -187,4 +187,64 @@ public final class MachineInstrBuilder
 	}
 
 	public MachineInstr getMInstr(){return mi;}
+
+	/**
+	 * This function add a direct memory reference to this instruction.
+	 * that is, a dereference of an address in a register, with no scale, index
+	 * or displacement. An example is: [%eax].
+	 * @param mib
+	 * @param regNo
+	 * @return
+	 */
+	public static MachineInstrBuilder addDirectMem(MachineInstrBuilder mib, int regNo)
+	{
+		// regNo(1+ NoReg*0).
+		return mib.addReg(regNo, UseType.Use).addZImm(0).addReg(0, UseType.Use).addSImm(0);
+	}
+
+	/**
+	 * This function is used to add a memory reference of the form
+	 * [Reg + Offset], i.e., one with no scale or index, but with a
+	 * displacement. An example is: DWORD PTR [EAX + 4].
+	 * @param mib
+	 * @param regNo
+	 * @param offset
+	 * @return
+	 */
+	public static MachineInstrBuilder addRegOffset(MachineInstrBuilder mib,
+			int regNo, int offset)
+	{
+		// regNo(offset+ NoReg*0).
+		return mib.addReg(regNo, UseType.Use).addZImm(0).addReg(0, UseType.Use).addSImm(offset);
+	}
+
+	/**
+	 * This function is used to add a reference to the base of
+	 * an abstract object on the stack frame of the current function.  This
+	 * reference has base register as the FrameIndex offset until it is resolved.
+	 * This allows a constant offset to be specified as well...
+	 * @param mib
+	 * @param fi
+	 * @param offset
+	 * @return
+	 */
+	public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib, int fi, int offset)
+	{
+		return mib.addFrameIndex(fi).addZImm(1).addReg(0, UseType.Use).addSImm(0);
+	}
+
+	/**
+	 * This function is used to add a reference to the
+	 * base of a constant value spilled to the per-function constant pool.  The
+	 * reference has base register ConstantPoolIndex offset which is retained until
+	 * either machine code emission or assembly output
+	 * @param mib
+	 * @param cpi
+	 * @param offset
+	 * @return
+	 */
+	public static MachineInstrBuilder addConstantPoolReference(MachineInstrBuilder mib, int cpi, int offset)
+	{
+		return mib.addConstantPool(cpi).addZImm(1).addReg(0, UseType.Use).addSImm(0);
+	}
 }

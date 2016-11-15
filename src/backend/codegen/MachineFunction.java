@@ -33,5 +33,7 @@ public class MachineFunction
 
 	public TargetMachine getTargetMachine() {return td;}
 
+	public MachineBasicBlock getFirst() {return basicBlocks.getFirst();}
 
+	public MachineFrameInfo getFrameInfo() {return mfInfo;}
 }

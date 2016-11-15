@@ -1,9 +1,196 @@
 package backend.codegen;
 
+import backend.target.TargetData;
+import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.type.Type;
+
+import java.util.ArrayList;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
 public class MachineFrameInfo
 {
+    /**
+     * Represents a single object allocated on the stack when a function is running.
+     */
+    public static class StackObject
+    {
+        /**
+         * The size of this object on the stack.
+         * 0 means variable object.
+         */
+        int size;
+        /**
+         * The required alignment of this stack object.
+         */
+        int alignment;
+        /**
+         * The offset of this object from the stack pointer on
+         * entry to the function, this field has no meaning for variable
+         * object.
+         */
+        int spOffset;
+
+        public StackObject(int sz, int align, int offset)
+        {
+            size = sz;
+            alignment = align;
+            spOffset = offset;
+        }
+    }
+
+    /**
+     * The list of stack objects allocated on this stack frame.
+     */
+    private ArrayList<StackObject> objects;
+
+    /**
+     * This indicates the number of fixed objects contained on
+     * the stack.
+     */
+    private int numFixedObjects;
+
+    /**
+     * Keep tracks of if any variable sized objects have been alocated.
+     */
+    private boolean hasVarSizedObjects;
+    /**
+     * THe prologue/epilogue code inserter calculates the final stack offsts
+     * for all fixed sized objects, updating the object list above.
+     * It then upates stackSize to contain the number of bytes that
+     * need to be allocated on entry to the fucntion.
+     */
+    private int stackSize;
+
+    /**
+     * Set to true if there are any function call.
+     */
+    private boolean hasCalls;
+
+    /**
+     * This contains the size of largest call frame if the target
+     * uses frame setup/destroy instruction.  This information is important for frame pointer
+     * elimination.  If is only valid during and after prolog/epilog code
+     * insertion.
+     */
+    private int maxCallFrameSize;
+
+    public MachineFrameInfo()
+    {
+        numFixedObjects = 0;
+        stackSize = 0;
+        hasVarSizedObjects = false;
+        hasCalls = false;
+        maxCallFrameSize = 0;
+    }
+
+    public boolean hasStackObjects() {return objects.isEmpty();}
+
+    public boolean hasVarSizedObjects() { return hasVarSizedObjects; }
+
+    /// getObjectIndexBegin - Return the minimum frame object index...
+    ///
+    public int getObjectIndexBegin() { return -numFixedObjects; }
+
+    /// getObjectIndexEnd - Return one past the maximum frame object index...
+    ///
+    int getObjectIndexEnd() { return objects.size()-numFixedObjects; }
+
+    /// getObjectSize - Return the size of the specified object
+    ///
+    int getObjectSize(int objectIdx) {
+    assert objectIdx+numFixedObjects < objects.size() : "Invalid Object Idx!";
+    return objects.get(objectIdx+numFixedObjects).size;
+}
+
+    /// getObjectAlignment - Return the alignment of the specified stack object...
+    int getObjectAlignment(int objectIdx) {
+    assert objectIdx+numFixedObjects < objects.size() : "Invalid Object Idx!";
+    return objects.get(objectIdx+numFixedObjects).alignment;
+}
+
+    /// getObjectOffset - Return the assigned stack offset of the specified object
+    /// from the incoming stack pointer.
+    ///
+    int getObjectOffset(int objectIdx) {
+    assert objectIdx+numFixedObjects < objects.size() : "Invalid Object Idx!";
+    return objects.get(objectIdx+numFixedObjects).spOffset;
+}
+
+    /// setObjectOffset - Set the stack frame offset of the specified object.  The
+    /// offset is relative to the stack pointer on entry to the function.
+    ///
+    void setObjectOffset(int objectIdx, int SPOffset) {
+        assert objectIdx+numFixedObjects < objects.size() : "Invalid Object Idx!";
+        objects.get(objectIdx+numFixedObjects).spOffset = SPOffset;
+    }
+
+    /// getStackSize - Return the number of bytes that must be allocated to hold
+    /// all of the fixed size frame objects.  This is only valid after
+    /// Prolog/Epilog code insertion has finalized the stack frame layout.
+    ///
+    int getStackSize() { return stackSize; }
+
+    /// setStackSize - Set the size of the stack...
+    ///
+    void setStackSize(int size) { stackSize = size; }
+
+    /// hasCalls - Return true if the current function has no function calls.
+    /// This is only valid during or after prolog/epilog code emission.
+    ///
+    boolean hasCalls() { return hasCalls; }
+    void setHasCalls(boolean V) { hasCalls = V; }
+
+    /// getMaxCallFrameSize - Return the maximum size of a call frame that must be
+    /// allocated for an outgoing function call.  This is only available if
+    /// CallFrameSetup/Destroy pseudo instructions are used by the target, and
+    /// then only during or after prolog/epilog code insertion.
+    ///
+    int getMaxCallFrameSize() { return maxCallFrameSize; }
+    void setMaxCallFrameSize(int S) { maxCallFrameSize = S; }
+
+    /// CreateFixedObject - Create a new object at a fixed location on the stack.
+    /// All fixed objects should be created before other objects are created for
+    /// efficiency.  This returns an index with a negative value.
+    ///
+    int CreateFixedObject(int size, int SPOffset) {
+        assert size != 0 : "Cannot allocate zero size fixed stack objects!";
+        objects.add(0, new StackObject(size, 1, SPOffset));
+        return -++numFixedObjects;
+    }
+
+    /// createStackObject - Create a new statically sized stack object, returning
+    /// a postive identifier to represent it.
+    ///
+    int createStackObject(int size, int Alignment) {
+        assert size != 0 : "Cannot allocate zero size stack objects!";
+        objects.add(new StackObject(size, Alignment, -1));
+        return objects.size()-numFixedObjects-1;
+    }
+
+    /// createStackObject - Create a stack object for a value of the specified
+    /// LLVM type or register class.
+    ///
+    int createStackObject(Type type, TargetData td)
+    {
+        return createStackObject((int)td.getTypeSize(type), td.getTypeAlign(type));
+    }
+    int createStackObject( TargetRegisterClass RC)
+    {
+        return createStackObject(RC.getRegSize(), RC.getRegAlign());
+    }
+
+    /// CreateVariableSizedObject - Notify the MachineFrameInfo object that a
+    /// variable sized object has been created.  This must be created whenever a
+    /// variable sized object is created, whether or not the index returned is
+    /// actually used.
+    ///
+    int CreateVariableSizedObject()
+    {
+        hasVarSizedObjects = true;
+        objects.add(new StackObject(0, 1, -1));
+        return objects.size()-numFixedObjects-1;
+    }
 }

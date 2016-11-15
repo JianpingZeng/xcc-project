@@ -1,8 +1,11 @@
 package backend.target.x86;
 
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
+import backend.codegen.*;
+import backend.codegen.MachineOperand.UseType;
 import backend.target.TargetRegisterInfo;
+
+import static backend.codegen.MachineInstrBuilder.addFrameReference;
+import static backend.codegen.MachineInstrBuilder.buildMI;
 
 /**
  * @author Xlous.zeng
@@ -81,30 +84,54 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 		super(x86RegInfoDescs, x86RegisterClasses, ADJCALLSTACKDOWN, ADJCALLSTACKUP);
 	}
 
+	public static int getIdx(TargetRegisterClass rc)
+	{
+		switch (rc.getRegSize())
+		{
+			default: assert false:"Invalid data size!";
+			case 1: return 0;
+			case 2: return 1;
+			case 4: return 2;
+			case 10: return 3;
+		}
+	}
+
 	@Override
-	public int[] getCalledRegisters()
+	public int[] getCalleeRegisters()
 	{
 		return new int[0];
 	}
 
 	@Override
-	public void storeRegToStackSlot(MachineBasicBlock mbb, int mbbi, int srcReg,
+	public int storeRegToStackSlot(MachineBasicBlock mbb, int mbbi, int srcReg,
 			int FrameIndex, TargetRegisterClass rc)
 	{
-
+		int opcode[] = {MOVrm8, MOVrm16, MOVrm32, FSTPr80};
+		MachineInstr instr = addFrameReference(buildMI(opcode[getIdx(rc)], 5),
+				FrameIndex, 0).addReg(srcReg, UseType.Use).getMInstr();
+		mbb.insert(mbbi, instr);
+		return mbbi + 1;
 	}
 
-	@Override public void loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
+	@Override public int loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
 			int destReg, int FrameIndex, TargetRegisterClass rc)
 	{
-
+		int opcode[] = {MOVmr8, MOVmr16, MOVmr32, FLDr80};
+		MachineInstr instr = addFrameReference(buildMI(opcode[getIdx(rc)], 4, destReg),
+				FrameIndex, 0).getMInstr();
+		mbb.insert(mbbi, instr);
+		return mbbi + 1;
 	}
 
 	@Override
-	public void copyRegToReg(MachineBasicBlock mbb, int mbbi, int destReg,
+	public int copyRegToReg(MachineBasicBlock mbb, int mbbi, int destReg,
 			int srcReg, TargetRegisterClass rc)
 	{
-
+		int opcode[] = {MOVrr8, MOVrr16, MOVrr32, FpMOV};
+		MachineInstr instr = buildMI(opcode[getIdx(rc)], 1, destReg).addReg(srcReg,
+				UseType.Use).getMInstr();
+		mbb.insert(mbbi, instr);
+		return mbbi + 1;
 	}
 
 	/**
@@ -129,11 +156,17 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	/**
 	 * This method insert prologue code into the function.
 	 *
-	 * @param MF
+	 * @param mf
 	 */
-	@Override public void emitPrologue(MachineFunction MF)
+	@Override public void emitPrologue(MachineFunction mf)
 	{
+		MachineBasicBlock mbb = mf.getFirst();
+		MachineFrameInfo mfi = mf.getFrameInfo();
+		MachineInstr mi;
 
+		// Get the number of bytes to allocate from the FrameInfo.
+		int numBytes = mfi.getStackSize();
+		if ()
 	}
 
 	/**
