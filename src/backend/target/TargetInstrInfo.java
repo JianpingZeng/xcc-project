@@ -2,8 +2,6 @@ package backend.target;
 
 import backend.codegen.MachineInstr;
 
-import java.util.ArrayList;
-
 /**
  * This class is an Interface to description of machine instructions, which
  * used for representing the information about machine instruction which
@@ -47,6 +45,10 @@ public abstract class TargetInstrInfo
 	public static class MCInstrDescriptor
 	{
 		/**
+		 * The opcode of this instruction specfified with target machine.
+		 */
+		public int opCode;
+		/**
 		 * Assembly language mnemonic for the opcode.
 		 */
 		public String name;
@@ -58,15 +60,6 @@ public abstract class TargetInstrInfo
 		 * Position of the result; -1 if no result
 		 */
 		public int resultPos;
-		/**
-		 * Largest +ve constant in IMMMED field or 0.
-		 */
-		public int maxImmedConst;
-		/**
-		 * Is IMMED field sign-extended? If so,
-		 * smallest -ve value is -(maxImmedConst+1).
-		 */
-		public boolean immedIsSignExtended;
 		/**
 		 * Number of delay slots after instruction
 		 */
@@ -91,6 +84,32 @@ public abstract class TargetInstrInfo
 		 * Registers implicitly defined by this instr
 		 */
 		public int[] implicitDefs;
+
+		/**
+		 * The constructor that creats an instance of class {@linkplain MCInstrDescriptor}
+		 * with the specified several parameters.
+		 * @param opcode    The opcode.
+		 * @param name      The instruction memonic.
+		 * @param numOprs   The number of operands are desired.
+		 * @param flags     The flags indicating machine instruction class.
+		 * @param TSFlags   The target-specified flags.
+		 * @param implUses  The implicitly used register.
+		 * @param implDefs  The implicit registers defined by this instruction.
+		 */
+		public MCInstrDescriptor(int opcode, String name, int numOprs,
+				int flags, int TSFlags, int[] implUses, int[] implDefs)
+		{
+			opCode = opcode;
+			this.name = name;
+			numOperands = numOprs;
+			resultPos = -1;
+			this.numDelaySlots =0;
+			this.latency = 0;
+			this.flags = flags;
+			tSFlags = TSFlags;
+			implicitUses = implUses;
+			implicitDefs = implDefs;
+		}
 	}
 
 	/**

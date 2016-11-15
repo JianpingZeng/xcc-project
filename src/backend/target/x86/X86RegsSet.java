@@ -16,8 +16,10 @@ public interface X86RegsSet
 	int ESI = EBP + 1;
 	int EDI = ESI + 1;
 
+	int EFLAGS = EDI + 1;
+
 	// 16-bit registers
-	int AX = EDI + 1;
+	int AX = EFLAGS + 1;
 	int CX = AX + 1;
 	int DX = CX + 1;
 	int BX = DX + 1;
