@@ -206,7 +206,7 @@ public abstract class TargetRegisterInfo
 		return get(regNo).name;
 	}
 
-	public abstract int[] getCalledRegisters();
+	public abstract int[] getCalleeRegisters();
 
 	public int getNumRegClasses()
 	{
@@ -218,13 +218,23 @@ public abstract class TargetRegisterInfo
 	// passes to move data around between registers, immediates and memory.
 	//
 
-	public abstract void storeRegToStackSlot(MachineBasicBlock mbb, int mbbi,
+	/**
+	 * Inserts a machine isntr into machine basic block and return the next
+	 * insertion position.
+	 * @param mbb
+	 * @param mbbi
+	 * @param srcReg
+	 * @param FrameIndex
+	 * @param rc
+	 * @return
+	 */
+	public abstract int storeRegToStackSlot(MachineBasicBlock mbb, int mbbi,
 			int srcReg, int FrameIndex, TargetRegisterClass rc);
 
-	public abstract void loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
+	public abstract int loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
 			int destReg, int FrameIndex, TargetRegisterClass rc);
 
-	public abstract void copyRegToReg(MachineBasicBlock mbb, int mbbi,
+	public abstract int copyRegToReg(MachineBasicBlock mbb, int mbbi,
 			int destReg, int srcReg, TargetRegisterClass rc);
 
 	/**
@@ -272,8 +282,7 @@ public abstract class TargetRegisterInfo
 	 * finalized.  Once the frame is finalized, MO_FrameIndex operands are
 	 * replaced with direct ants.  This method is optional.
 	 */
-	public abstract void processFunctionBeforeFrameFinalized(
-			MachineFunction mf);
+	public abstract void processFunctionBeforeFrameFinalized(MachineFunction mf);
 
 	/*
 	 * eliminateFrameIndex - This method must be overridden to eliminate abstract

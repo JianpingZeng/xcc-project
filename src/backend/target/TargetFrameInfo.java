@@ -7,7 +7,7 @@ package backend.target;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class TargetFrameInfo
+public class TargetFrameInfo
 {
 	public enum StackDirection
 	{
@@ -44,5 +44,5 @@ public abstract class TargetFrameInfo
 	 * @param growUp
 	 * @param align
 	 */
-	public abstract void adjustAlignment(int unalignOffset, boolean growUp, int align);
+	public void adjustAlignment(int unalignOffset, boolean growUp, int align){}
 }
