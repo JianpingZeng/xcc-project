@@ -10,11 +10,9 @@ public interface X86InstrSets
 	int NOOP = PHI + 1;
 	int ADJCALLSTACKDOWN = NOOP + 1;
 	int ADJCALLSTACKUP = ADJCALLSTACKDOWN + 1;
-	int IMPLICIT_USE = ADJCALLSTACKUP + 1;
-	int IMPLICIT_DEF = IMPLICIT_USE + 1;
 
 	// Control flow instructions.
-	int RET = IMPLICIT_DEF + 1;
+	int RET = ADJCALLSTACKUP + 1;
 	int JMP = RET + 1;
 	int JB = JMP + 1;
 	int JAE = JB + 1;
@@ -110,7 +108,8 @@ public interface X86InstrSets
 	int ADDri32b = ADDri16b + 1;
 	int ADCrr32 = -ADDri32b + 1;                // R32 += imm32+Carry
 	int SUBrr8 = ADCrr32 + 1;
-	int SUBrr32 = SUBrr8 + 1;
+	int SUBrr16 = SUBrr8 + 1;
+	int SUBrr32 = SUBrr16 + 1;
 	int SUBri8 = SUBrr32 + 1;
 	int SUBri16 = SUBri8 + 1;
 	int SUBri32 = SUBri16 + 1;
@@ -159,28 +158,28 @@ public interface X86InstrSets
 	int TESTri32 = TESTri16 + 1;          // flags = R32 & imm32
 
 	// Shift instructions
-	int SHLrr8 = TESTri32 + 1; // R8  <<= cl
-	int SHLrr16 = SHLrr8 + 1; // R16 <<= cl
-	int SHLrr32 = SHLrr16 + 1; // R32 <<= cl
-	int SHLir8 = SHLrr32 + 1;                 // R8  <<= imm8
+	int SHLrCL8 = TESTri32 + 1; // R8  <<= cl
+	int SHLrCL16 = SHLrCL8 + 1; // R16 <<= cl
+	int SHLrCL32 = SHLrCL16 + 1; // R32 <<= cl
+	int SHLir8 = SHLrCL32 + 1;                 // R8  <<= imm8
 	int SHLir16 = SHLir8 + 1;         // R16 <<= imm16
 	int SHLir32 = SHLir16 + 1;                 // R32 <<= imm32
-	int SHRrr8 = SHLir32 + 1; // R8  >>= cl
-	int SHRrr16 = SHRrr8 + 1; // R16 >>= cl
-	int SHRrr32 = SHRrr16 + 1; // R32 >>= cl
-	int SHRir8 = SHRrr32 + 1;                 // R8  >>= imm8
+	int SHRrCL8 = SHLir32 + 1; // R8  >>= cl
+	int SHRrCL16 = SHRrCL8 + 1; // R16 >>= cl
+	int SHRrCL32 = SHRrCL16 + 1; // R32 >>= cl
+	int SHRir8 = SHRrCL32 + 1;                 // R8  >>= imm8
 	int SHRir16 = SHRir8 + 1;         // R16 >>= imm16
 	int SHRir32 = SHRir16 + 1;                 // R32 >>= imm32
-	int SARrr8 = SHRir32 + 1; // R8  >>>= cl
-	int SARrr16 = SARrr8 + 1; // R16 >>>= cl
-	int SARrr32 = SARrr16 + 1; // R32 >>>= cl
-	int SARir8 = SARrr32 + 1;                 // R8  >>>= imm8
+	int SARrCL8 = SHRir32 + 1; // R8  >>>= cl
+	int SARrCL16 = SARrCL8 + 1; // R16 >>>= cl
+	int SARrCL32 = SARrCL16 + 1; // R32 >>>= cl
+	int SARir8 = SARrCL32 + 1;                 // R8  >>>= imm8
 	int SARir16 = SARir8 + 1;         // R16 >>>= imm16
 	int SARir32 = SARir16 + 1;                 // R32 >>>= imm32
-	int SHLDrr32 = SARir32 + 1;   // R32 <<= R32,R32 cl
-	int SHLDir32 = SHLDrr32 + 1;           // R32 <<= R32,R32 imm8
-	int SHRDrr32 = SHLDir32 + 1;   // R32 >>= R32,R32 cl
-	int SHRDir32 = SHRDrr32 + 1;           // R32 >>= R32,R32 imm8
+	int SHLDrrCL32 = SARir32 + 1;   // R32 <<= R32,R32 cl
+	int SHLDir32 = SHLDrrCL32 + 1;           // R32 <<= R32,R32 imm8
+	int SHRDrrCL32 = SHLDir32 + 1;   // R32 >>= R32,R32 cl
+	int SHRDir32 = SHRDrrCL32 + 1;           // R32 >>= R32,R32 imm8
 
 	// Condition code ops, incl. set if equal/not equal/...
 	int SAHF = SHRDir32 + 1;  // flags = AH
@@ -192,7 +191,7 @@ public interface X86InstrSets
 	int SETAr = SETBEr + 1;            // R8 = >  signed
 	int SETSr = SETAr + 1;            // R8 = <sign bit>
 	int SETNSr = SETSr + 1;            // R8 = !<sign bit>
-	int SETLr = SETSr + 1;            // R8 = <  signed
+	int SETLr = SETNSr + 1;            // R8 = <  signed
 	int SETGEr = SETLr + 1;            // R8 = >= signed
 	int SETLEr = SETGEr + 1;            // R8 = <= signed
 	int SETGr = SETLEr + 1;            // R8 = <  signed
@@ -265,7 +264,7 @@ public interface X86InstrSets
 	int FSUBPrST0 = FSUBrST0+ 1;
 	int FSUBST0r = FSUBPrST0 + 1;
 	int FSUBRrST0 = FSUBST0r + 1;
-	int FSUBRPrST0 = FSUBrST0 + 1;
+	int FSUBRPrST0 = FSUBRrST0 + 1;
 	int FMULST0r = FSUBRPrST0 + 1;
 	int FMULrST0 = FMULST0r + 1;
 	int FMULPrST0 = FMULrST0 + 1;
@@ -274,7 +273,7 @@ public interface X86InstrSets
 	int FDIVPrST0 = FDIVrST0 + 1;
 	int FDIVST0r = FDIVPrST0 + 1;   // ST(0) = ST(0) / ST(i)
 	int FDIVRrST0 = FDIVST0r + 1;   // ST(i) = ST(0) / ST(i)
-	int FDIVRPrST0 = FDIVrST0 + 1;   // ST(i) = ST(0) / ST(i), pop
+	int FDIVRPrST0 = FDIVRrST0 + 1;   // ST(i) = ST(0) / ST(i), pop
 
 	// Floating point compares
 	int FUCOMr = FDIVRPrST0 + 1;  // FPSW = compare ST(0) with ST(i)
