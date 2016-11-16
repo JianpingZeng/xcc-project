@@ -1,7 +1,7 @@
 package backend.target;
 
 import backend.hir.Module;
-import backend.pass.PassManager;
+import backend.pass.FunctionPassManager;
 import backend.target.x86.X86TargetMachine;
 
 import java.io.FileOutputStream;
@@ -104,7 +104,8 @@ public abstract class TargetMachine
      * @param optLevel
      * @return
      */
-    public abstract boolean addPassesToEmitFile(PassManager pm,
+    public abstract boolean addPassesToEmitFile(
+    		FunctionPassManager pm,
             boolean fast,
             FileOutputStream asmOutStream,
             CodeGenFileType genFileType,

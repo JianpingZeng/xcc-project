@@ -29,7 +29,7 @@ public class ConstantFP extends Constant
 {
     private BigDecimal val;
     /**
-     * Constructs a new instruction representing the specified constant.
+     * Constructs a new instruction representing the specified constants.
      *
      * @param ty
      * @param v

@@ -20,21 +20,22 @@ import backend.hir.Operator;
 import backend.type.Type;
 import tools.Util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class ConstantExpr extends Constant
+public abstract class ConstantExpr extends Constant
 {
     protected Operator opcode;
     /**
-     * Constructs a new instruction representing the specified constant.
+     * Constructs a new instruction representing the specified constants.
      *
      * @param ty
      */
-    public ConstantExpr(Type ty, Operator opcode)
+    protected ConstantExpr(Type ty, Operator opcode)
     {
         super(ty, ValueKind.ConstantExprVal);
         this.opcode = opcode;
@@ -211,11 +212,8 @@ public class ConstantExpr extends Constant
         return exprConstanMaps.put(key, val);
     }
 
-    static HashMap<ExprMapKeyType, Constant> exprConstanMaps;
-    static
-    {
-        exprConstanMaps = new HashMap<>();
-    }
+    private static HashMap<ExprMapKeyType, Constant> exprConstanMaps
+            = new HashMap<>();
 
     public static Constant getElementPtr(Constant casted, Constant offset, int i)
     {
@@ -233,14 +231,60 @@ public class ConstantExpr extends Constant
         return (Constant) super.operand(index);
     }
 
+    public static Constant getNeg(Constant c)
+    {
+        if (c.getType().isFloatingPointType())
+            return getFNeg(c);
+        assert c.getType().isIntegerType():"Cann't NEG a non integral value!";
+        return get(Operator.Sub, ConstantInt.getNullValue(c.getType()), c);
+    }
+
+    public static Constant getFNeg(Constant c)
+    {
+        assert c.getType().isFloatingPointType()
+                : "Can not NEG a non floating point value!";
+        return get(Operator.FSub, ConstantFP.getNullValue(c.getType()), c);
+    }
+
+    public static Constant get(Operator op, Constant c1, Constant c2)
+    {
+        if (c1.getType().isFloatingPointType())
+        {
+            if (op == Operator.Add) op = Operator.FAdd;
+            else if (op == Operator.Sub) op = Operator.FSub;
+            else if (op == Operator.Mul) op = Operator.FMul;
+        }
+        ArrayList<Constant> list = new ArrayList<>(2);
+        list.add(c1);
+        list.add(c2);
+        ExprMapKeyType key = new ExprMapKeyType(op, list);
+        Constant val = exprConstanMaps.get(key);
+        if (val != null) return val;
+        val = new BinaryConstantExpr(op, c1, c2);
+        exprConstanMaps.put(key, val);
+        return val;
+    }
+
+    public static Constant getAdd(Constant lhs, Constant rhs)
+    {
+        return get(Operator.Add, lhs, rhs);
+    }
+
     static class ExprMapKeyType
     {
         Operator op;
-        Constant constant;
+        ArrayList<Constant> constants;
+        ExprMapKeyType(Operator opcode, ArrayList<Constant> c)
+        {
+            op = opcode;
+            constants = c;
+        }
+
         ExprMapKeyType(Operator opcode, Constant c)
         {
             op = opcode;
-            constant = c;
+            constants = new ArrayList<>(1);
+            constants.add(c);
         }
     }
 }

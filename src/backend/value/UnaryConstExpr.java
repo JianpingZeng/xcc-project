@@ -26,7 +26,7 @@ import backend.type.Type;
 public class UnaryConstExpr extends ConstantExpr
 {
     /**
-     * Constructs a new instruction representing the specified constant.
+     * Constructs a new instruction representing the specified constants.
      *
      * @param ty
      */
@@ -34,6 +34,6 @@ public class UnaryConstExpr extends ConstantExpr
     {
         super(ty, opcode);
         reserve(1);
-        setOperand(0, c);
+        setOperand(0, new Use(c, this));
     }
 }

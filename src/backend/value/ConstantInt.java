@@ -23,7 +23,7 @@ import frontend.sema.APInt;
 import java.util.HashMap;
 
 /**
- * This is an abstract base class of all bool and integral constant.
+ * This is an abstract base class of all bool and integral constants.
  *
  * @author Xlous.zeng
  * @version 0.1
@@ -53,7 +53,7 @@ public class ConstantInt extends Constant
     }
 
     /**
-     * Constructs a new instruction representing the specified constant.
+     * Constructs a new instruction representing the specified constants.
      *
      * @param ty
      */
@@ -61,7 +61,7 @@ public class ConstantInt extends Constant
     {
         super(ty, ValueKind.ConstantIntVal);
         val = v;
-        assert v.getBitWidth() == ty.getBitWidth():"Invalid constant for type";
+        assert v.getBitWidth() == ty.getBitWidth():"Invalid constants for type";
     }
 
     public static ConstantInt get(IntegerType ty, long val, boolean isSigned)
@@ -151,8 +151,11 @@ public class ConstantInt extends Constant
     public boolean isZero() {return val.eq(0);}
     public boolean isOne() {return val.eq(1);}
 
-    @Override public boolean isNullValue()
+    @Override
+    public boolean isNullValue()
     {
         return false;
     }
+
+    public APInt getValue() {return val;}
 }
