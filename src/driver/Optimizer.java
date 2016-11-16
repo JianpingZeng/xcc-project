@@ -1,7 +1,7 @@
 package driver;
 
 import hir.Function;
-import backend.opt.ConstantProp;
+import backend.opt.ConstantPropagation;
 import backend.opt.DCE;
 import backend.opt.GVN;
 import backend.opt.InductionVarSimplify;
@@ -45,7 +45,7 @@ public final class Optimizer
 	private void optimize(Module hir)
 	{
 		// performs constant folding and propagation
-		ConstantProp prop = new ConstantProp();
+		ConstantPropagation prop = new ConstantPropagation();
 		UCE uce = new UCE();
 		LoopSimplify simplificator = new LoopSimplify();
 		InductionVarSimplify ivSimplicator = new InductionVarSimplify();
@@ -56,7 +56,7 @@ public final class Optimizer
     		// performs dead code elimination.    		
 			new DCE(m).runOnFunction();
 
-			prop.runOnMethod(m);
+			prop.runOnFunction(m);
     
     		// after DCE, There are useless control flow be introduced by other
     		// backend.opt. So that the useless control flow elimination is desired

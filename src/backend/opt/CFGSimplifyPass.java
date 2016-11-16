@@ -29,7 +29,7 @@ import backend.value.Value;
 
 import java.util.*;
 
-import static backend.opt.ConstantProp.constantFoldTerminator;
+import static backend.opt.ConstantFolder.constantFoldTerminator;
 
 /**
  * @author Xlous.zeng
@@ -317,6 +317,19 @@ public class CFGSimplifyPass extends FunctionPass
         return changed;
     }
 
+    /**
+     * Assumption: Succ is the single successor for BB when this method is called.
+     * and bb is the one to be removed.
+     *
+     * This is a little tricky because "Succ" has PHI nodes, which need to
+     * have extra slots added to them to hold the merge edges from BB's
+     * predecessors, and BB itself might have had PHI nodes in it.  This function
+     * returns true (failure) if the Succ BB already has a predecessor that is a
+     * predecessor of BB and incoming PHI arguments would not be discernible.
+     * @param bb
+     * @param succ
+     * @return
+     */
     private boolean propagatePredecessorForPHIs(BasicBlock bb, BasicBlock succ)
     {
         assert  (bb.succIterator().next() == succ):"Succ is not successor of bb!";
@@ -352,7 +365,7 @@ public class CFGSimplifyPass extends FunctionPass
                     int idx1 = pn.getBasicBlockIndex(bb);
                     int idx2 = pn.getBasicBlockIndex(pred);
                     assert idx1 != -1 && idx2 != -1
-                            :"Didn't haave entries for predecesssor!";
+                            :"Didn't have entries for predecesssor!";
 
                     if (pn.getIncomingValue(idx1) != pn.getIncomingValue(idx2))
                         return true;
