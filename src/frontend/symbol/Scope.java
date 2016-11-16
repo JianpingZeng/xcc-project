@@ -8,7 +8,7 @@ import tools.Name;
  * efficient access to symbols given their names.
  * <p>
  * Note that the index of Name {@see Name} be used as hash value rather than
- * the string represents name.
+ * the string represents getName.
  * <p>
  * Scopes are implemented
  * as hash tables. Scopes can be nested; the next field of a scope points
@@ -193,7 +193,7 @@ public class Scope
 	public void enterIfAbsent(Symbol sym)
 	{
 		Entry e = lookup(sym.name);
-		// firstly, search the frontend.symbol its name as same as given sym
+		// firstly, search the frontend.symbol its getName as same as given sym
 		// finally, the e should be sentinel if given sym is not present.
 		while (e.scope == this && e.sym.kind != sym.kind)
 			e = e.next();
@@ -203,7 +203,7 @@ public class Scope
 	}
 
 	/**
-	 * ReturnInst the entry associated with given name, starting in
+	 * ReturnInst the entry associated with given getName, starting in
 	 * this scope and proceeding outwards. IfStmt no entry was found,
 	 * return the sentinel, which is characterized by having a null in
 	 * both its scope and sym fields, whereas both fields are non-null
@@ -255,7 +255,7 @@ public class Scope
 		}
 
 		/**
-		 * ReturnInst next entry with the same name as this entry, proceeding
+		 * ReturnInst next entry with the same getName as this entry, proceeding
 		 * outwards if not found in this scope.
 		 */
 		public Entry next()

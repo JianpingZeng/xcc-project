@@ -364,7 +364,7 @@ public final class LICM
 		for (BasicBlock pred : outsideBlocks)
 		{
 			// unlink the predecessors with header block
-			header.removePredeccessor(pred);
+			header.removePredecessor(pred);
 			pred.removeSuccssor(header);
 			
 			// link predecessors with the header block.

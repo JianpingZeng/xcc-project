@@ -24,7 +24,7 @@ public class Symbol implements SymbolKinds, TypeClass
 	public int kind;
 
 	/**
-	 * The name of this frontend.symbol in uft8 representation.
+	 * The getName of this frontend.symbol in uft8 representation.
 	 */
 	public Name name;
 
@@ -34,11 +34,11 @@ public class Symbol implements SymbolKinds, TypeClass
 	public Type type;
 
 	/**
-	 * The constructor that constructs a new frontend.symbol with given kind, name, frontend.type
+	 * The constructor that constructs a new frontend.symbol with given kind, getName, frontend.type
 	 * and owner.
 	 *
 	 * @param kind The kind of this frontend.symbol
-	 * @param name The instance of {@link Name} represents name of this.
+	 * @param name The instance of {@link Name} represents getName of this.
 	 * @param type The frontend.type of this frontend.symbol that is instance of {@link Type}
 	 */
 	public Symbol(int kind, Name name, Type type)
@@ -89,7 +89,7 @@ public class Symbol implements SymbolKinds, TypeClass
 		public long flags;
 
 		/**
-		 * Construct a method frontend.symbol, given its flags, name, frontend.type and owner.
+		 * Construct a method frontend.symbol, given its flags, getName, frontend.type and owner.
 		 */
 		public MethodSymbol(long flags, Name name, Type type)
 		{
@@ -145,7 +145,7 @@ public class Symbol implements SymbolKinds, TypeClass
 		public Scope topScope;
 
 		/**
-		 * The name of compiled source file.
+		 * The getName of compiled source file.
 		 */
 		public Name sourcefile;
 

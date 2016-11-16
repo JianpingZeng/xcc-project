@@ -30,7 +30,7 @@ import sun.misc.Unsafe;
 /**
  * Denotes the basic kinds of types in cc IR, including the all the primitive types,
  * for example, {@link CiKind#Int} for {@code int}.
- * A kind has a single character short name, a CompilerInstance name, and a set of flags
+ * A kind has a single character short getName, a CompilerInstance getName, and a set of flags
  * further describing its behavior.
  */
 public enum CiKind {
@@ -76,12 +76,12 @@ public enum CiKind {
     private final int flags;
 
     /**
-     * The name of the kind as a single character.
+     * The getName of the kind as a single character.
      */
     public final char typeChar;
 
     /**
-     * The name of this kind which will also be it C-flat programming language name if
+     * The getName of this kind which will also be it C-flat programming language getName if
      * it is {@linkplain #isPrimitive() primitive} or {@code void}.
      */
     public final String cflatName;

@@ -3,12 +3,10 @@ package backend.hir;
 
 import backend.opt.Loop;
 import backend.type.Type;
-import backend.value.Function;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
-import backend.value.Value;
-import backend.value.ValueKind;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -54,7 +52,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	private final LinkedList<Instruction> instructions;
 
 	/**
-	 * The name of this block.
+	 * The getName of this block.
 	 */
 	public String bbName;
 
@@ -108,6 +106,18 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
     {
         return parent;
     }
+
+	/**
+	 * This predicate returns true if there is a constant user refers it existing.
+	 * @return
+	 */
+	public boolean hasConstantReference()
+	{
+		for (Use u : usesList)
+			if (u.getUser() instanceof Constant)
+				return true;
+		return false;
+	}
 
 	public enum BlockFlag
 	{
@@ -372,19 +382,91 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public boolean removeSuccssor(BasicBlock removed)
 	{
-
 		return false;
 	}
 
+	public void removePredecessor(BasicBlock pred)
+	{
+		removePredecessor(pred, false);
+	}
 	/**
-	 * Removes this removed block and unlink it with attached predecessors list.
-	 * @param removed   The basic block to be remvoed.
+	 * This method is used for notifying this block that it's specified predecessor
+	 * is no longer able to reach it.This is actually not used to update the
+	 * Predecessor list, but is actually used to update the PHI nodes that
+	 * reside in the block.  Note that this should be called while the predecessor
+	 * still refers to this block.
+	 * @param pred   The basic block to be pred.
 	 * @return
 	 */
-	public boolean removePredeccessor(BasicBlock removed)
+	public void removePredecessor(BasicBlock pred, boolean dontDeletedUselessPHI)
 	{
+		if (instructions.isEmpty()) return;
+		if (!(firstInst() instanceof PhiNode))
+			return;
+		PhiNode pn = (PhiNode)firstInst();
 
-		return false;
+		int idx = pn.getNumberIncomingValues();
+		assert idx != 0:"PHI node in block with 0 predecessors!";
+
+		if (idx == 2)
+		{
+			BasicBlock other = pn.getIncomingBlock(pn.getIncomingBlock(0) == pred ? 1:0);
+			if (this == other) idx = 3;
+		}
+
+		if (idx <= 2 && !dontDeletedUselessPHI)
+		{
+			while (firstInst() instanceof PhiNode)
+			{
+				pn = (PhiNode)firstInst();
+				// Remove the predecessor first.
+				pn.removeIncomingValue(pred, !dontDeletedUselessPHI);
+
+				// If the PHI _HAD_ two uses, replace PHI node with its now *single* value
+				if (idx == 2)
+				{
+					if (pn.getIncomingValue(0) == pn)
+						pn.replaceAllUsesWith(pn.getIncomingValue(0));
+					else
+						// we are left with an infinite loop with no entries: kill the PHI.
+						pn.replaceAllUsesWith(UndefValue.get(pn.getType()));
+					instructions.removeFirst();
+				}
+
+				// If the PHI node already only had one entry, it got deleted by
+				// removeIncomingValue.
+			}
+		}
+		else
+		{
+			// Okay, now we know that we need to remove predecessor #pred_idx from all
+			// PHI nodes.  Iterate over each PHI node fixing them up
+			for (Instruction inst : instructions)
+			{
+				if (!(inst instanceof PhiNode)) break;
+
+				pn = (PhiNode)inst;
+				pn.removeIncomingValue(pred, false);
+				// If all incoming values to the PHI are the same, we can
+				// replace the PHI with that value.
+				Value val;
+				if (!dontDeletedUselessPHI && (val = pn.hasConstantValue()) != null)
+				{
+					if (val != pn)
+					{
+						pn.replaceAllUsesWith(val);
+						pn.eraseFromBasicBlock();
+					}
+				}
+			}
+		}
+	}
+
+	public void dropAllReferences()
+	{
+		for (Instruction inst : instructions)
+			inst.dropAllReferences();
+		instructions.clear();
 	}
 
 	/**
@@ -424,7 +506,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public PredIterator<BasicBlock> predIterator()
     {
-        return new PredIterator<BasicBlock>(this);
+        return new PredIterator<>(this);
     }
 
     public SuccIterator succIterator()
@@ -438,4 +520,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	}
 
 	public LinkedList<Instruction> getInstList(){return instructions;}
+
+	public int getNumSuccessors()
+	{
+		TerminatorInst inst = getTerminator();
+		if (inst == null) return 0;
+		return inst.getNumOfSuccessors();
+	}
 }

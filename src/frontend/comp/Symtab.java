@@ -119,7 +119,7 @@ public class Symtab implements Flags, OpCodes
 
 	/**
 	 * Enter a unary operation into frontend.symbol table.
-	 * @param name The name of the operator.
+	 * @param name The getName of the operator.
 	 * @param arg The frontend.type of the LIROperand.
 	 * @param res The operation's result frontend.type.
 	 * @param opcode The operation's bytecode instruction.

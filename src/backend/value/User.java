@@ -20,7 +20,7 @@ public abstract class User extends Value
     public Operator opcode;
 
     /**
-     * The name of this instruction.
+     * The getName of this instruction.
      */
     protected String instName;
 
@@ -91,5 +91,13 @@ public abstract class User extends Value
     public int getNumOfOperands()
     {
         return operandList.size();
+    }
+
+    /**
+     * This method is in charge of dropping all objects that this user refers to.
+     */
+    public void dropAllReferences()
+    {
+        usesList.clear();
     }
 }

@@ -120,7 +120,7 @@ public abstract class LIRValue implements Serializable
 	}
 
 	/**
-	 * Gets a string name for this value without indicating its {@linkplain #kind kind}.
+	 * Gets a string getName for this value without indicating its {@linkplain #kind kind}.
 	 */
 	public abstract String name();
 

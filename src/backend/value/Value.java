@@ -28,10 +28,10 @@ public class Value implements Cloneable
 	public LIRValue LIROperand;
 
 	/**
-	 * Obtains the name of variable. it is null for other instruction.
+	 * Obtains the getName of variable. it is null for other instruction.
 	 *
 	 * <p>
-	 * The name of variable, which is similar to IR in LLVM.
+	 * The getName of variable, which is similar to IR in LLVM.
 	 * For global variable and local variable, those are starts with frontend.symbol'@'
 	 * and '%' respectively.
 	 * <p>To visit <a href = "http://llvm.org/docs/LangRef.html#global-variables">
@@ -250,6 +250,7 @@ public class Value implements Cloneable
 
 	public String getName(){return name;}
 
+	public boolean hasName() {return name != null && !name.isEmpty();}
     /**
      * 'undef' values are things that do not have specified contents.
      * These are used for a variety of purposes, including global variable

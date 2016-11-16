@@ -9,6 +9,7 @@ import backend.target.TargetRegisterInfo;
 
 import java.io.FileOutputStream;
 
+import static backend.opt.CFGSimplifyPass.createCFGSimplifyPass;
 import static backend.opt.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 
@@ -67,15 +68,16 @@ public class X86TargetMachine extends TargetMachine
 		// lowers switch instr into chained branch instr.
 		pm.add(createLowerSwitchPass());
 
-		/**
-		 * FIXME: The code generator does not properly handle functions with
+		// FIXME: The code generator does not properly handle functions with
 		// unreachable basic blocks.
-		pm.add(createCFGSimplificationPass());
+		pm.add(createCFGSimplifyPass());
 
-		if (NoPatternISel)
+		if (fast)
 			pm.add(createX86SimpleInstructionSelector(this));
-		**/
+		else
+			pm.add(createX86PatternInstructionSelector(this));
 
+		/**
 		// Perform register allocation to convert to a concrete x86 representation
 		//pm.add(createRegisterAllocator());
 
@@ -87,6 +89,7 @@ public class X86TargetMachine extends TargetMachine
 		//pm.add(createX86PeepholeOptimizerPass());
 		
 		//pm.add(createX86CodePrinterPass(asmOutStream, this));
+		 */
 		return false;
 	}
 }

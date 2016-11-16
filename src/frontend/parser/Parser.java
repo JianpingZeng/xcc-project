@@ -41,7 +41,7 @@ public class Parser implements ParserConstants
 	static final public String SOURCE_ENCODING = "UTF-8";
 
 	/**
-	 * A name table.
+	 * A getName table.
 	 */
 	private Name.Table names;
 
@@ -298,18 +298,18 @@ public class Parser implements ParserConstants
 
 	/**
 	 * Handles single import statement and returns a string representing the import
-	 * statement which consists of path name relative to directory of current project.
+	 * statement which consists of path getName relative to directory of current project.
 	 * <pre>
-	 * import_statement::= ImportStmtClass name SEMICOLON
-	 * 						| ImportStmtClass name DOT MULT SEMICOLON
+	 * import_statement::= ImportStmtClass getName SEMICOLON
+	 * 						| ImportStmtClass getName DOT MULT SEMICOLON
 	 *
-	 * name	::=	simple_name
+	 * getName	::=	simple_name
 	 * 	|	qualified_name
 	 * 	;
 	 * simple_name ::=	IDENTIFIER
 	 * 	;
 	 * qualified_name ::=
-	 * 		name DOT IDENTIFIER
+	 * 		getName DOT IDENTIFIER
 	 * 	;
 	 * </pre>
 	 *
@@ -363,7 +363,7 @@ public class Parser implements ParserConstants
 	 */
 	final public Name name() throws ParseException
 	{
-		trace_call("name");
+		trace_call("getName");
 		try
 		{
 			t = jj_consume_token(IDENTIFIER);
@@ -375,7 +375,7 @@ public class Parser implements ParserConstants
 		}
 		finally
 		{
-			trace_return("name");
+			trace_return("getName");
 		}
 	}
 

@@ -36,7 +36,7 @@ public abstract class TargetMachine
     }
 
 	/**
-	 * The backend.target name.
+	 * The backend.target getName.
 	 */
 	private String name;
 	/**

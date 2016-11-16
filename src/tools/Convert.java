@@ -282,7 +282,7 @@ public class Convert {
     }
 
     /**
-      * ReturnInst the package name of a class name, excluding the trailing '.',
+      * ReturnInst the package getName of a class getName, excluding the trailing '.',
       *  "" if not existent.
       */
     public static Name packagePart(Name classname) {

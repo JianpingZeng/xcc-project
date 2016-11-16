@@ -920,9 +920,9 @@ public class Parser implements Tag
      *   '(' expression ')'
      *
      * postfix-expression: [C99 6.5.2]
-     * //TODO  '(' frontend.type-name ')' '{' initializer-list '}'
-     * //TODO  '(' frontend.type-name ')' '{' initializer-list ',' '}'
-     *   '(' frontend.type-name ')' cast-expression
+     * //TODO  '(' frontend.type-getName ')' '{' initializer-list '}'
+     * //TODO  '(' frontend.type-getName ')' '{' initializer-list ',' '}'
+     *   '(' frontend.type-getName ')' cast-expression
      * </pre>
      * @param exprType
      * @param stopIfCastExpr
@@ -963,7 +963,7 @@ public class Parser implements Tag
             }
             else if (exprType.get() == CastExpr)
             {
-                // We parsed '(' frontend.type-name ')' and the thing after it wasn't a '('.
+                // We parsed '(' frontend.type-getName ')' and the thing after it wasn't a '('.
                 if (declaratorInfo.isInvalidType())
                     return exprError();
 
@@ -1998,7 +1998,7 @@ public class Parser implements Tag
      *   [_Imaginary removed in C99 TC2]
      *   struct-or-union-specifier
      *   enum-specifier
-     *   typedef-name
+     *   typedef-getName
      *
      * (_Bool and _Complex are new in C99.)
      *
@@ -2036,12 +2036,12 @@ public class Parser implements Tag
             {
                 case IDENTIFIER:
                 {
-                    // This identifier can only be a typedef name if we haven't
+                    // This identifier can only be a typedef getName if we haven't
                     // already seen a frontend.type-specifier.
                     if (declSpecs.hasTypeSpecifier())
                         break out;
 
-                    // So, the current token is a typedef name or error.
+                    // So, the current token is a typedef getName or error.
                     QualType type = action.getTypeByName((Ident) tok, tok.loc,
                                     getCurScope());
                     if (type == null)
@@ -2215,10 +2215,10 @@ public class Parser implements Tag
         assert nextTokenIs(IDENTIFIER) : "should have identifier.";
         int loc = consumeToken();
 
-        // IfStmt we see an identifier that is not a frontend.type name, we normally would
+        // IfStmt we see an identifier that is not a frontend.type getName, we normally would
         // parse it as the identifer being declared.  However, when a typename
         // is typo'd or the definition is not included, this will incorrectly
-        // parse the typename as the identifier name and fall over misparsing
+        // parse the typename as the identifier getName and fall over misparsing
         // later parts of the diagnostic.
         //
         // As such, we try to do some look-ahead in cases where this would
@@ -2292,7 +2292,7 @@ public class Parser implements Tag
         Token tok = peekToken();
         int kwLoc = tok.loc;
 
-        // Must have either 'enum name' or 'enum {...}'.
+        // Must have either 'enum getName' or 'enum {...}'.
         if (!tokenIs(tok, IDENTIFIER) && !tokenIs(tok, LBRACE))
         {
             // TODO report error
@@ -2506,7 +2506,7 @@ public class Parser implements Tag
             String name = ((Ident) tok).name;
             int nameLoc = tok.loc;
 
-            // eat the name = 'identifier'.
+            // eat the getName = 'identifier'.
             consumeToken();
 
             Sema.TagUseKind tuk;
@@ -2712,7 +2712,7 @@ public class Parser implements Tag
         // expect a '{'.
         int lBraceLoc = expect(LBRACE);
 
-        // obtains the struct or union specifier name.
+        // obtains the struct or union specifier getName.
         String structOrUnion = DeclSpec.getSpecifierName(tagType);
 
         ParseScope structScope = new ParseScope(this,
@@ -2972,7 +2972,7 @@ public class Parser implements Tag
             // TODO error report
             if (declarator.getContext() == TheContext.StructFieldContext)
                 syntaxError(declarator.getDeclSpec().getRangeStart(),
-                        "Expected member name or ';'");
+                        "Expected member getName or ';'");
             else
                 accept(LPAREN);
 
@@ -3031,7 +3031,7 @@ public class Parser implements Tag
             case Tag.INLINE:
                 return true;
 
-            // typedefs-name
+            // typedefs-getName
             case ANN_TYPENAME:
                 return !disambiguatingWithExpression;
         }
@@ -3430,7 +3430,7 @@ public class Parser implements Tag
         // valid it
         parseDeclarationSpecifiers(ds);
 
-        // validate declspec for frontend.type-name
+        // validate declspec for frontend.type-getName
         int specs = ds.getParsedSpecifiers();
         if (specs == ParsedSpecifiers.PQ_none)
         {
@@ -3584,8 +3584,8 @@ public class Parser implements Tag
     enum ParenParseOption
     {
         SimpleExpr,      // Only parse '(' expression ')'
-        CompoundLiteral, // Also allow '(' frontend.type-name ')' '{' ... '}'
-        CastExpr         // Also allow '(' frontend.type-name ')' <anything>
+        CompoundLiteral, // Also allow '(' frontend.type-getName ')' '{' ... '}'
+        CastExpr         // Also allow '(' frontend.type-getName ')' <anything>
     }
 
     /**
@@ -3634,7 +3634,7 @@ public class Parser implements Tag
                     case SimpleExpr: break;
                     // nothing to do.
                     case CompoundLiteral:
-                        // We parsed '(' frontend.type-name ')' '{' ... '}'.  If any suffixes of
+                        // We parsed '(' frontend.type-getName ')' '{' ... '}'.  If any suffixes of
                         // postfix-expression exist, parse them now.
                         break;
                     case CastExpr:
@@ -3742,7 +3742,7 @@ public class Parser implements Tag
      * <pre>
      * unary-expression:  [C99 6.5.3]
      *   'sizeof' unary-expression
-     *   'sizeof' '(' frontend.type-name ')'
+     *   'sizeof' '(' frontend.type-getName ')'
      * </pre>
      * @return
      */
@@ -3768,8 +3768,8 @@ public class Parser implements Tag
      *   postfix-expression '->' identifier
      *   postfix-expression '++'
      *   postfix-expression '--'
-     *   '(' frontend.type-name ')' '{' initializer-list '}'
-     *   '(' frontend.type-name ')' '{' initializer-list ',' '}'
+     *   '(' frontend.type-getName ')' '{' initializer-list '}'
+     *   '(' frontend.type-getName ')' '{' initializer-list ',' '}'
      *
      * argument-expression-list: [C99 6.5.2]
      *   argument-expression

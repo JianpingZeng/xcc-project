@@ -111,7 +111,7 @@ public final class CiRegister implements Comparable<CiRegister>, Serializable {
      * @param number unique identifier for the register
      * @param encoding the TargetData machine encoding for the register
      * @param spillSlotSize the getTypeSize of the stack slot used to spill the value of the register
-     * @param name the mnemonic name for the register
+     * @param name the mnemonic getName for the register
      * @param flags the set of {@link RegisterFlag} VALUES for the register
      */
     public CiRegister(int number, int encoding, int spillSlotSize, String name, RegisterFlag... flags) {

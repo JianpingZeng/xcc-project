@@ -7,8 +7,8 @@ import tools.Context;
  * followed when we take check on c-flat source file.
  * 
  * In the first stage, attributes global variable definition and method
- * definition itself but no method body. just attributes the return frontend.type, name,
- * parameters list of a method and check unique method'name. Then, all of
+ * definition itself but no method body. just attributes the return frontend.type, getName,
+ * parameters list of a method and check unique method'getName. Then, all of
  * uncompleted method will be added into {@link Todo} list attributed by second
  * phase
  * 

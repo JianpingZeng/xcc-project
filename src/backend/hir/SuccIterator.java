@@ -34,6 +34,7 @@ public class SuccIterator implements Iterator<BasicBlock>
     SuccIterator(BasicBlock BB)
     {
         curBB = BB;
+        idx = 0;
         endInst = curBB.getTerminator();
     }
 

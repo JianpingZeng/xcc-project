@@ -240,7 +240,7 @@ public class HIRModuleGenerator
 
 	/**
      * Create and return an backend Function with the specified type. If there
-     * is something in the module with the specified name, return it potentially
+     * is something in the module with the specified getName, return it potentially
      * bitcasted to the right type.
      *
      * If D is non-null, it specifies a decl that correspond to this.  This is used
@@ -482,7 +482,7 @@ public class HIRModuleGenerator
      */
     public Constant getAddrOfConstantString(String str, String globalName)
     {
-        // Set the default prefix of a name wasn't present.
+        // Set the default prefix of a getName wasn't present.
         if (globalName == null)
             globalName = ".str";
 

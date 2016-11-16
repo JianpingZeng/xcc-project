@@ -228,7 +228,7 @@ public class Enter extends StmtVisitor implements TypeClass, SymbolKinds, Flags
 	private boolean checkUnique(int pos, Symbol sym, Scope encScope)
 	{
 		Scope.Entry e = encScope.lookup(sym.name);		
-		// look up the frontend.symbol whose name as same as given frontend.symbol at current scope
+		// look up the frontend.symbol whose getName as same as given frontend.symbol at current scope
 		for (; e.scope == encScope; e = e.next())
 		{
 			if (sym != e.sym && sym.kind == e.sym.kind 

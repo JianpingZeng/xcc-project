@@ -131,9 +131,9 @@ public abstract class Instruction extends User
     }
 
     /**
-     * Obtains the name of this instruction.
+     * Obtains the getName of this instruction.
      *
-     * @return return the name of this instruction.
+     * @return return the getName of this instruction.
      */
     public String name(){return instName;}
 
@@ -2209,11 +2209,11 @@ public abstract class Instruction extends User
             return old;
         }
 
-        public Value removeIncomingValue(BasicBlock bb)
+        public Value removeIncomingValue(BasicBlock bb, boolean deletePhiIfEmpty)
         {
             int index = getBasicBlockIndex(bb);
             assert index >= 0 : "invalid basic block argument to remove";
-            return removeIncomingValue(index, true);
+            return removeIncomingValue(index, deletePhiIfEmpty);
         }
 
         @Override
@@ -2244,13 +2244,29 @@ public abstract class Instruction extends User
             return getNumOfOperands()>>1;
         }
         /**
-         * Gets the name of this phi node.
+         * Gets the getName of this phi node.
          *
          * @return
          */
         public String name()
         {
             return instName;
+        }
+
+        /**
+         *  hasConstantValue - If the specified PHI node always merges
+         *  together the same value, return the value, otherwise return null.
+         * @return
+         */
+        public Value hasConstantValue()
+        {
+            Value val = getIncomingValue(0);
+            for (int i = 1, e = getNumberIncomingValues(); i< e; i++)
+            {
+                if (getIncomingValue(i) != val)
+                    return null;
+            }
+            return val;
         }
     }
 
@@ -2267,10 +2283,9 @@ public abstract class Instruction extends User
          * element.
          *
          * @param ty The data ty of allocated data which is instance of
-         * {@linkplain LIRKind}.
          * @param arraySize  The number of elements if allocating is used for
          *                   array.
-         * @param name The name of this instruction for debugging.
+         * @param name The getName of this instruction for debugging.
          */
         public AllocaInst(Type ty,
                 Value arraySize,
@@ -2338,7 +2353,7 @@ public abstract class Instruction extends User
         }
 
         /**
-         * Gets the name of this alloated variable.
+         * Gets the getName of this alloated variable.
          *
          * @return
          */

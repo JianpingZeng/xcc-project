@@ -393,9 +393,9 @@ public abstract class LIRInstruction
 	}
 
 	/**
-	 * Gets the instruction name.
+	 * Gets the instruction getName.
 	 *
-	 * @return the name of the enum constant that represents the instruction opcode, exactly as declared in the enum
+	 * @return the getName of the enum constant that represents the instruction opcode, exactly as declared in the enum
 	 * LIROpcode declaration.
 	 */
 	public String name()

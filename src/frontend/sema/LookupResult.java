@@ -17,7 +17,7 @@ package frontend.sema;
  */
 
 /**
- * Represents the result of name look up.
+ * Represents the result of getName look up.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -53,9 +53,9 @@ public class LookupResult
     private ArrayList<Decl.NamedDecl> decls;
 
     /**
-     * Indicates the name space which this name in.
+     * Indicates the getName space which this getName in.
      * There are four cases:
-     * 1. Ordinary name; 2.Tag name; 3.Member name; 4.Label name.
+     * 1. Ordinary getName; 2.Tag getName; 3.Member getName; 4.Label getName.
      */
     private IdentifierNamespace IDNS;
 
@@ -163,7 +163,7 @@ public class LookupResult
         }
         else
         {
-            semaRef.parser.syntaxError(nameLoc, "Resolve name %s failed", foundName);
+            semaRef.parser.syntaxError(nameLoc, "Resolve getName %s failed", foundName);
             return;
         }
     }

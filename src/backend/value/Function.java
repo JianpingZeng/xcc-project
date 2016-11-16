@@ -91,20 +91,11 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	}
 
 	/**
-	 * Get the name of the function as a string.
-	 * @return  The name of the function.
-	 */
-	public String name()
-	{
-		return name;
-	}
-
-	/**
 	 * Gets the entry block of the CFG of this function.
 	 */
 	public BasicBlock getEntryBlock()
 	{
-		return this.cfg.entry();
+		return basicBlockList.getFirst();
 	}
 
 	/**

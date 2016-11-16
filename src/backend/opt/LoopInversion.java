@@ -85,7 +85,7 @@ public final class LoopInversion
 		{
 			if (loop.contains(pred))
 			{
-				header.removePredeccessor(pred);
+				header.removePredecessor(pred);
 				pred.removeSuccssor(header);
 				
 				if (pred.lastInst() instanceof Instruction.BranchInst)
@@ -118,7 +118,7 @@ public final class LoopInversion
 				Instruction.BranchInst br2 = (Instruction.BranchInst)bb.lastInst();
 				br2.replaceTargetWith(loop.getFollowBlock(), exitBlock);
 				bb.removeSuccssor(loop.getFollowBlock());
-				loop.getFollowBlock().removePredeccessor(bb);
+				loop.getFollowBlock().removePredecessor(bb);
 				
 				bb.addSucc(exitBlock);
 				exitBlock.addPred(bb);
@@ -145,7 +145,7 @@ public final class LoopInversion
 				Instruction.BranchInst br2 = (Instruction.BranchInst)pred.lastInst();
 				br2.replaceTargetWith(newHeader, exitBlock);
 				pred.removeSuccssor(newHeader);
-				newHeader.removePredeccessor(pred);
+				newHeader.removePredecessor(pred);
 				
 				pred.addSucc(exitBlock);
 				exitBlock.addPred(pred);

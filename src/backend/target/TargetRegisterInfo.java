@@ -25,7 +25,7 @@ public abstract class TargetRegisterInfo
 	public static class MCRegisterDesc
 	{
 		/**
-		 * Assembly language name for the register.
+		 * Assembly language getName for the register.
 		 */
 		String name;
 		/**
@@ -196,7 +196,7 @@ public abstract class TargetRegisterInfo
 	public int[] getSuperRegSet(int regNo) {return get(regNo).superRegs;}
 
 	/**
-	 * Return the symbolic target specified name for the specified physical register.
+	 * Return the symbolic target specified getName for the specified physical register.
 	 *
 	 * @param regNo
 	 * @return

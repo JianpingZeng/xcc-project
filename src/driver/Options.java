@@ -6,7 +6,7 @@ import tools.Context;
 
 /**
  * A table of all command-line options. IfStmt an option has an argument, the option
- * name is mapped to the argument. IfStmt a set option has no argument, it is mapped
+ * getName is mapped to the argument. IfStmt a set option has no argument, it is mapped
  * to itself.
  */
 public class Options extends HashMap<String, String>
@@ -103,7 +103,7 @@ public class Options extends HashMap<String, String>
 		return get("-S") != null;
 	}
 	/**
-	 * Specify the name of generated output file.
+	 * Specify the getName of generated output file.
 	 * @return
 	 */
 	public String outputFile()

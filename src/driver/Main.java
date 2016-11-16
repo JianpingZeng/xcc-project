@@ -20,7 +20,7 @@ import static driver.ProgramAction.ParseSyntaxOnly;
 public class Main
 {
 	/**
-	 * The name of driver instance, just for diagnostic.
+	 * The getName of driver instance, just for diagnostic.
 	 */
 	String ownerName;
 
