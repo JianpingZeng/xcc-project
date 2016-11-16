@@ -19,7 +19,7 @@ import tools.Util;
  *
  * @author Xlous.zeng
  * @see DCE
- * @see ConstantProp
+ * @see ConstantPropagation
  * @see GVN
  * @see UCE
  */
