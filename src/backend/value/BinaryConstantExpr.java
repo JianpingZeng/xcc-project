@@ -25,7 +25,7 @@ import backend.hir.Operator;
 public class BinaryConstantExpr extends ConstantExpr
 {
     /**
-     * Constructs a new instruction representing the specified constant.
+     * Constructs a new instruction representing the specified constants.
      *
      * @param opcode
      */

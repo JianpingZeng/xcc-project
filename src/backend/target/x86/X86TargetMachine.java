@@ -1,7 +1,7 @@
 package backend.target.x86;
 
 import backend.hir.Module;
-import backend.pass.PassManager;
+import backend.pass.FunctionPassManager;
 import backend.target.TargetFrameInfo;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
@@ -9,6 +9,7 @@ import backend.target.TargetRegisterInfo;
 
 import java.io.FileOutputStream;
 
+import static backend.opt.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 
 /**
@@ -59,17 +60,15 @@ public class X86TargetMachine extends TargetMachine
 	 * @return
 	 */
 	@Override
-	public boolean addPassesToEmitFile(PassManager pm,
+	public boolean addPassesToEmitFile(FunctionPassManager pm,
 			boolean fast, FileOutputStream asmOutStream,
 			CodeGenFileType genFileType, CodeGenOpt optLevel)
 	{
-		/** TODO
+		// lowers switch instr into chained branch instr.
 		pm.add(createLowerSwitchPass());
 
-		// FIXME: Implement the invoke/unwind instructions!
-		pm.add(createLowerInvokePass());
-
-		// FIXME: The code generator does not properly handle functions with
+		/**
+		 * FIXME: The code generator does not properly handle functions with
 		// unreachable basic blocks.
 		pm.add(createCFGSimplificationPass());
 

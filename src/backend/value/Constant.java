@@ -27,7 +27,7 @@ import frontend.sema.APInt;
 import java.math.BigDecimal;
 
 /**
- * The {@code Constant} instruction represents a constant such as an integer
+ * The {@code Constant} instruction represents a constants such as an integer
  * inst, long, float, object reference, address, etc.
  */
 public abstract class Constant extends User
@@ -40,12 +40,12 @@ public abstract class Constant extends User
             .forInt(-1);
 
     /**
-     * The constant inst keeped with {@code Constant} instance.
+     * The constants inst keeped with {@code Constant} instance.
      */
     public LIRConstant value;
 
     /**
-     * Constructs a new instruction representing the specified constant.
+     * Constructs a new instruction representing the specified constants.
      */
     public Constant(Type ty, int valueKind)
     {
@@ -58,7 +58,7 @@ public abstract class Constant extends User
     }
 
     /**
-     * Creates an instruction for a double constant.
+     * Creates an instruction for a double constants.
      *
      * @param d the double inst for which to create the instruction
      * @return an instruction representing the double
@@ -69,7 +69,7 @@ public abstract class Constant extends User
     }
 
     /**
-     * Creates an instruction for a float constant.
+     * Creates an instruction for a float constants.
      *
      * @param f the float inst for which to create the instruction
      * @return an instruction representing the float
@@ -80,7 +80,7 @@ public abstract class Constant extends User
     }
 
     /**
-     * Creates an instruction for an long constant.
+     * Creates an instruction for an long constants.
      *
      * @param i the long inst for which to create the instruction
      * @return an instruction representing the long
@@ -91,7 +91,7 @@ public abstract class Constant extends User
     }
 
     /**
-     * Creates an instruction for an integer constant.
+     * Creates an instruction for an integer constants.
      *
      * @param i the integer inst for which to create the instruction
      * @return an instruction representing the integer
@@ -102,7 +102,7 @@ public abstract class Constant extends User
     }
 
     /**
-     * Creates an instruction for a boolean constant.
+     * Creates an instruction for a boolean constants.
      *
      * @param i the boolean inst for which to create the instruction
      * @return an instruction representing the boolean
@@ -113,7 +113,7 @@ public abstract class Constant extends User
     }
 
     /**
-     * Creates an instruction for an object constant.
+     * Creates an instruction for an object constants.
      *
      * @param o the object inst for which to create the instruction
      * @return an instruction representing the object

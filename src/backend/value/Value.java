@@ -188,7 +188,7 @@ public class Value implements Cloneable
 	}
 
 	/**
-	 * Converts the instance of this class to a constant if this class
+	 * Converts the instance of this class to a constants if this class
 	 * is the subclass of {@code Constant}, otherwise, the null is returned.
 	 * @return
 	 */
@@ -247,6 +247,8 @@ public class Value implements Cloneable
 	{
 		name = newName;
 	}
+
+	public String getName(){return name;}
 
     /**
      * 'undef' values are things that do not have specified contents.

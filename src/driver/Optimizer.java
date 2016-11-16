@@ -54,7 +54,7 @@ public final class Optimizer
 		{
 			/****** C1 backend.opt stage ***/
     		// performs dead code elimination.    		
-			new DCE(m).runOnMethod();
+			new DCE(m).runOnFunction();
 
 			prop.runOnMethod(m);
     
@@ -84,13 +84,13 @@ public final class Optimizer
     		new LICM(m).runOnLoop();    	
     		
     		// performs dead code elimination.    		
-			new DCE(m).runOnMethod();
+			new DCE(m).runOnFunction();
 			
 			/** C3 backend.opt stage */
 			ivSimplicator.runOnLoop(m);			
 			
 			// for removal of useless induction variables.
-			new DCE(m).runOnMethod();
+			new DCE(m).runOnFunction();
 			
 			/** C4 backend.opt stage */
 		}	

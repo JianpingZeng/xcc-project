@@ -1979,7 +1979,7 @@ public abstract class Instruction extends User
         }
 
         /**
-         * Search all of the case values for the specified constant.
+         * Search all of the case values for the specified constants.
          * IfStmt it is explicitly handled, return the case number of it, otherwise
          * return 0 to indicate that it is handled by the default handler.
          *

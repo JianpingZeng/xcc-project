@@ -2,6 +2,7 @@ package backend.opt;
 
 import backend.hir.*;
 import backend.hir.BasicBlock;
+import backend.pass.FunctionPass;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.StoreInst;
@@ -30,7 +31,7 @@ import java.util.LinkedList;
  * </p>
  * Created by Jianping Zeng  on 2016/3/8.
  */
-public class DCE
+public class DCE extends FunctionPass
 {
 	/**
 	 * The list where all critical instruction in Module term resides.
@@ -50,17 +51,12 @@ public class DCE
 
 	private DominatorTree DT;
 
-	/**
-	 * Default constructor.
-	 *
-	 * @param m The method where {@code DCE} will be performed.
-	 */
-	public DCE(Function m)
+	private void initialize(Function f)
 	{
 		this.criticalInst = new LinkedList<>();
 		this.usefulBlocks = new LinkedList<>();
 		this.liveInsts = new HashSet<>();
-		this.m = m;
+		this.m = f;
 		this.DT = new DominatorTree(true, m);
 		this.DT.recalculate();
 	}
@@ -75,8 +71,11 @@ public class DCE
 	 * <br>
 	 * <b>iii.Sweep stage</b>
 	 */
-	public void runOnMethod()
+	@Override
+	public boolean runOnFunction(Function f)
 	{
+		initialize(f);
+
 		// 1.Initialization stage
 		initCriticalInst();
 		LinkedList<Value> worklist = new LinkedList<>(criticalInst);
@@ -95,6 +94,7 @@ public class DCE
 
 		// peephole backend.opt
 		eliminateDeadBlock();
+		return false;
 	}
 
 	/**

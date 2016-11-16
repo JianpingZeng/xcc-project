@@ -6,6 +6,7 @@ import backend.type.Type;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.TerminatorInst;
 import backend.value.Value;
 import backend.value.ValueKind;
 
@@ -108,7 +109,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
         return parent;
     }
 
-    public enum BlockFlag
+	public enum BlockFlag
 	{
 		LinearScanLoopHeader,
 		LinearScanLoopEnd,
@@ -398,11 +399,11 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * return null if block is not well formed.
 	 * @return
 	 */
-	public BranchInst getTerminator()
+	public TerminatorInst getTerminator()
 	{
 		Instruction inst = instructions.getLast();
-		if (inst instanceof BranchInst)
-            return (BranchInst)inst;
+		if (inst instanceof TerminatorInst)
+            return (TerminatorInst)inst;
 		return null;
 	}
 	
@@ -436,4 +437,5 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return instructions.size();
 	}
 
+	public LinkedList<Instruction> getInstList(){return instructions;}
 }
