@@ -266,7 +266,7 @@ public abstract class Type implements TypeClass
     }
 
     /**
-     * Checks if this frontend.type is frontend.type-name frontend.type.
+     * Checks if this frontend.type is frontend.type-getName frontend.type.
      *
      * @return
      */

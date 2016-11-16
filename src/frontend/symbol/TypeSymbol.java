@@ -34,7 +34,7 @@ public class TypeSymbol extends Symbol
 		public Scope members_field;
 
 		/**
-		 * Full name.
+		 * Full getName.
 		 */
 		public Name fullname;
 

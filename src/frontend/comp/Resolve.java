@@ -15,7 +15,7 @@ import tools.Name;
 import frontend.ast.Flags;
 
 /**
- * A helpful utility class for resovling method name and frontend.type.
+ * A helpful utility class for resovling method getName and frontend.type.
  *
  * @author JianpingZeng
  * @version 1.0
@@ -120,7 +120,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 	 */
 	Symbol resolveOperator(int pos, int optag, Env env, List<Type> argtypes)
 	{
-		// obtains the name of this operator
+		// obtains the getName of this operator
 		Name name = treeinfo.operatorName(optag);
 		
 		return access(findMethod(env, name, argtypes), pos, name, argtypes);
@@ -135,7 +135,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 	 * @param sym The frontend.symbol that was found, or a ResolveError.
 	 * @param pos The position to use for error reporting.
 	 * @param site The original frontend.type from where the selection took place.
-	 * @param name The frontend.symbol's name.
+	 * @param name The frontend.symbol's getName.
 	 * @param argtypes The invocation's value parameters, if we looked for a
 	 *            method.
 	 */
@@ -157,12 +157,12 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 	}
 
 	/**
-	 * Find best qualified method matching given name, frontend.type and value
+	 * Find best qualified method matching given getName, frontend.type and value
 	 * parameters.
 	 * 
 	 * @param env The current environment.
 	 * @param site The original frontend.type from where the selection takes place.
-	 * @param name The method's name.
+	 * @param name The method's getName.
 	 * @param argtypes The method's value parameters.
 	 */
 	Symbol findMethod(Env env, Name name, List<Type> argtypes)
@@ -189,7 +189,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 	 */
 	public Symbol resolveUnaryOperator(int pos, int optag, Env env, Type argtype)
 	{
-		// obtains the name of this operator
+		// obtains the getName of this operator
 		Name name = treeinfo.operatorName(optag);
 		List<Type> argtypes =  Arrays.asList(argtype);
 		return access(findOperator(env, name, argtypes), pos, name, argtypes);		
@@ -206,7 +206,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 	 */
 	public Symbol resolveBinaryOperator(int pos, int optag, Env env, Type left, Type right)
 	{
-		// obtains the name of this operator
+		// obtains the getName of this operator
 		Name name = treeinfo.operatorName(optag);
 		List<Type> argtypes =  Arrays.asList(left, right);
 		return access(findOperator(env, name, argtypes), pos, name, argtypes);
@@ -351,7 +351,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 		}
 
 		/**
-		 * The name of the kind of error, for debugging only.
+		 * The getName of the kind of error, for debugging only.
 		 */
 		final String debugName;
 
@@ -363,13 +363,13 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 
 		/**
 		 * The frontend.symbol that was a close mismatch, or null if none was found.
-		 * wrongSym is currently set if a simgle method with the correct name,
+		 * wrongSym is currently set if a simgle method with the correct getName,
 		 * but the wrong parameters was found.
 		 */
 		Symbol wrongSym;
 
 		/**
-		 * Print the (debug only) name of the kind of error.
+		 * Print the (debug only) getName of the kind of error.
 		 */
 		public String toString()
 		{
@@ -389,7 +389,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 		 * Report error.
 		 * @param log The error log to be used for error reporting.
 		 * @param pos The position to be used for error reporting.
-		 * @param name The name of the frontend.symbol to be resolved.
+		 * @param name The getName of the frontend.symbol to be resolved.
 		 * @param argtypes The invocation's value parameters, if we looked for a
 		 *            method.
 		 */
@@ -416,7 +416,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
 		}
 
 		/**
-		 * A name designates an operator if it consists of a non-empty sequence
+		 * A getName designates an operator if it consists of a non-empty sequence
 		 * of operator symbols +-~!/*%&|^<>=
 		 */
 		boolean isOperator(Name name)
@@ -445,7 +445,7 @@ public class Resolve implements TypeClass, SymbolKinds, Flags
          * Report error.
          *  @param log       The error log to be used for error reporting.
          *  @param pos       The position to be used for error reporting.
-         *  @param name      The name of the frontend.symbol to be resolved.
+         *  @param name      The getName of the frontend.symbol to be resolved.
          *  @param argtypes  The invocation's value parameters,
          *                   if we looked for a method.
          */

@@ -71,4 +71,9 @@ public class ConstantProp
 		}
 		return changed;
 	}
+
+	public static boolean constantFoldTerminator(BasicBlock bb)
+	{
+		return false;
+	}
 }

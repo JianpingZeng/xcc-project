@@ -245,7 +245,7 @@ public class Declarator
      */
     public boolean isPastIdentifier()
     {
-        // name is valid.
+        // getName is valid.
         return name != null;
     }
 

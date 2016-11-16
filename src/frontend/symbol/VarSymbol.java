@@ -45,7 +45,7 @@ public class VarSymbol extends Symbol
 	public Instruction.AllocaInst varInst;
 
 	/**
-	 * Construct a variable frontend.symbol, given its flags, name, frontend.type and owner.
+	 * Construct a variable frontend.symbol, given its flags, getName, frontend.type and owner.
 	 */
 	public VarSymbol(long flags, Name name, Type type)
 	{

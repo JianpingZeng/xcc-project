@@ -51,24 +51,24 @@ public final class Sema
     }
 
     /**
-     * Describes the kind of name look up to perform.
+     * Describes the kind of getName look up to perform.
      * <br>
      * When an identifier is encountered in a C program, a lookup is performed
      * to locate the declaration that introduced that identifier and that is
      * currently in scope. C allows more than one declaration for the same identifier
      * to be in scope simultaneously if these identifiers belong to different
-     * categories, called name spaces:
+     * categories, called getName spaces:
      * <ol>
      *   <li>
-     *     Label name space: all identifiers declared as labels.
+     *     Label getName space: all identifiers declared as labels.
      *   </li>
      *   <li>
      *     Tag names: all identifiers declared as names of structs, unions and
-     *     enumerated types. Note that all three kinds of tags share one name space.
+     *     enumerated types. Note that all three kinds of tags share one getName space.
      *   </li>
      *   <li>
      *     Member names: all identifiers declared as members of any one struct or
-     *     union. Every struct and union introduces its own name space of this kind.
+     *     union. Every struct and union introduces its own getName space of this kind.
      *   </li>
      *   <li>
      *     All other identifiers, called ordinary identifiers to distinguish from
@@ -76,43 +76,43 @@ public final class Sema
      *   </li>
      * </ol>
      * <br>
-     * At the point of lookup, the name space of an identifier is determined by
+     * At the point of lookup, the getName space of an identifier is determined by
      * the manner in which it is used:
      * <ol>
      *  <li>
      *   identifier appearing as the operand of a goto statement is looked up in
-     *   the label name space.
+     *   the label getName space.
      *  </li>
      *  <li>
      *    identifier that follows the keyword struct, union, or enum is looked up
-     *    in the tag name space.
+     *    in the tag getName space.
      *  </li>
      *  <li>
      *   identifier that follows the member access or member access through pointer
-     *   operator is looked up in the name space of members of the frontend.type determined
+     *   operator is looked up in the getName space of members of the frontend.type determined
      *   by the left-hand operand of the member access operator.
      *  </li>
      *  <li>
-     *   all other identifiers are looked up in the name space of ordinary identifiers.
+     *   all other identifiers are looked up in the getName space of ordinary identifiers.
      *  </li>
      * </ol>
      *
      * The task of resolving the various kinds of names into zero or more declarations
      * within a particular scope. The major entry point are
      * {@linkplain #lookupName(LookupResult, Scope)}, which peforms unqualified
-     * name lookup.
+     * getName lookup.
      * <br>
-     * All name lookup is performed based on specific criteria, which specify
-     * what names will visible to name lookup and how far name lookup should work.
+     * All getName lookup is performed based on specific criteria, which specify
+     * what names will visible to getName lookup and how far getName lookup should work.
      * These criteria are important both for capturing languages and for peformance,
-     * since name lookup is often a bottleneck in the compilation of C. Name
+     * since getName lookup is often a bottleneck in the compilation of C. Name
      * lookup cirteria is specified via the {@linkplain LookupNameKind} enumeration.
      * <br>
-     * The result of name lookup can vary based on the kind of name lookup performed
-     * , the current languange, and the translation unit. In C, for example, name
+     * The result of getName lookup can vary based on the kind of getName lookup performed
+     * , the current languange, and the translation unit. In C, for example, getName
      * lookup will either return nothing(no entity found) or a single declaration.
      *
-     * All of the possible results of name lookup are captured by the {@linkplain
+     * All of the possible results of getName lookup are captured by the {@linkplain
      * LookupResult} class, which provides the ability to distinguish among them.
      */
     public enum LookupNameKind
@@ -155,10 +155,10 @@ public final class Sema
         return parser;
     }
     /**
-     * IfStmt the identifier refers to a frontend.type name within current scope,
+     * IfStmt the identifier refers to a frontend.type getName within current scope,
      * return the declaration of this frontend.type.
      * <p>
-     * This routine performs ordinary name lookup of the identifier within the given
+     * This routine performs ordinary getName lookup of the identifier within the given
      * scope.
      *
      * @param ID
@@ -183,7 +183,7 @@ public final class Sema
 
     /**
      * This method was invoked when it sees 'struct X {...}' or 'struct X;'.
-     * In the former class, the name must be non null. In the later case, name
+     * In the former class, the getName must be non null. In the later case, getName
      * will be null.
      *
      * @param curScope
@@ -199,7 +199,7 @@ public final class Sema
             TagUseKind tuk, int startLoc, String name, int nameLoc,
             int kwLoc)
     {
-        // if this is not a definition, it must have a name
+        // if this is not a definition, it must have a getName
         assert (name != null || tuk
                 != TagUseKind.TUK_definition) : "Nameless record must be a definition.";
 
@@ -428,9 +428,9 @@ public final class Sema
     }
 
     /**
-     * Performs unqualified name look up starting from current scope.
+     * Performs unqualified getName look up starting from current scope.
      * <br>
-     * Unqualified name look up (C99 6.2.1) is used to find names within the
+     * Unqualified getName look up (C99 6.2.1) is used to find names within the
      * current scope, for example, 'x' in
      * <pre>
      *   int x;
@@ -441,7 +441,7 @@ public final class Sema
      *
      *   Different lookup criteria can find different names. For example, a
      *   particular scope can have both a struct and a function of the same
-     *   name, and each can be found by certain lookup criteria. For more
+     *   getName, and each can be found by certain lookup criteria. For more
      *   information about lookup criteria, see class {@linkplain LookupNameKind}.
      * </pre>
      *
@@ -461,7 +461,7 @@ public final class Sema
         // matches this identifier that is in the appropriate namespace.
         for (Decl decl : s.getDeclInScope())
         {
-            // skip anonymous or non name declaration.
+            // skip anonymous or non getName declaration.
             if (!(decl instanceof NamedDecl))
                 continue;
             NamedDecl namedDecl = (NamedDecl)decl;
@@ -651,11 +651,11 @@ public final class Sema
             //TODO report error inline non function.
         }
 
-        // ensure we have a invalid name
+        // ensure we have a invalid getName
         String name = paramDecls.getName();
         if (name == null)
         {
-            // TODO report error: invalid identifier name
+            // TODO report error: invalid identifier getName
             paramDecls.setInvalidType(true);
         }
 
@@ -1943,7 +1943,7 @@ public final class Sema
                     && tag instanceof EnumDecl)
             {
                 parser.syntaxError(ds.getSourceRange().getStart(),
-                        "typedef requires a name");
+                        "typedef requires a getName");
                 return tag;
             }
 
@@ -3995,7 +3995,7 @@ public final class Sema
             return exprError();
         }
 
-        // Make sure we find a declaration with specified name.
+        // Make sure we find a declaration with specified getName.
         assert !res.isEmpty() && res.isSingleResult();
 
         return buildDeclarationNameExpr(res);
@@ -4076,7 +4076,7 @@ public final class Sema
         if (decl instanceof TypedefNameDecl)
         {
             parser.syntaxError(loc,
-                    "unexpected frontend.type name %s: expected expression",
+                    "unexpected frontend.type getName %s: expected expression",
                     decl.getDeclName());
             return true;
         }

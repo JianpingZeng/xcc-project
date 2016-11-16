@@ -148,7 +148,7 @@ public abstract class Decl extends DeclContext
     }
 
     /**
-     * This class represents a declaration with a name, for example,
+     * This class represents a declaration with a getName, for example,
      * {@linkplain VarDecl}, {@linkplain LabelDecl} and {@linkplain TypeDecl}.
      */
     public static class NamedDecl extends Decl
@@ -723,7 +723,7 @@ public abstract class Decl extends DeclContext
     }
 
     /**
-     * Represents a declaration of a typedef name.
+     * Represents a declaration of a typedef getName.
      */
     public static class TypeDefDecl extends TypeDecl
     {
@@ -742,7 +742,7 @@ public abstract class Decl extends DeclContext
     }
 
     /**
-     * Base class for declarations which introduce a typedef-name.
+     * Base class for declarations which introduce a typedef-getName.
      */
     public static class TypedefNameDecl extends TypeDecl
     {

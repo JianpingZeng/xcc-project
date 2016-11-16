@@ -352,7 +352,7 @@ public class DeclSpec
         TST_enum("enum"),
         TST_union("union"),
         TST_struct("struct"),
-        TST_typename("frontend.type-name"),
+        TST_typename("frontend.type-getName"),
         TST_error("error");
 
         String name;

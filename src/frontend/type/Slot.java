@@ -9,7 +9,7 @@ import tools.Name;
 public final class Slot
 {
     /**
-     * The name of this slot.
+     * The getName of this slot.
      */
     private Name name;
     /**

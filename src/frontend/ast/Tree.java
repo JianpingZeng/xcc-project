@@ -293,7 +293,7 @@ abstract public class Tree
 		 * Constructs TopLevel tree node that represents a source file.
 		 * 
 		 * @param decls all of definitions in a source file.
-		 * @param sourceFile the name of source file.
+		 * @param sourceFile the getName of source file.
 		 */
 		public TopLevel(ArrayList<DeclStmt> decls, String sourceFile)
 		{
@@ -466,7 +466,7 @@ abstract public class Tree
 		 */
 		public Tree selected;
 		/**
-		 * name of field to select
+		 * getName of field to select
 		 */
 		public Name name;
 		/**
@@ -1228,8 +1228,8 @@ abstract public class Tree
 
     /**
      * [C99 6.5.1p2]
-     * An reference to a declared variable name(in which case it is a lvalue) or
-     * function name (in which case it is a function designator).
+     * An reference to a declared variable getName(in which case it is a lvalue) or
+     * function getName (in which case it is a function designator).
      *
      */
     public static class DeclRefExpr extends Expr
@@ -1241,7 +1241,7 @@ abstract public class Tree
          */
         private NamedDecl d;
         /**
-         * The location of the declaration name itself.
+         * The location of the declaration getName itself.
          */
         private int location;
 
@@ -1662,7 +1662,7 @@ abstract public class Tree
 	public static final class CallExpr extends Expr
 	{
 		/**
-		 * The name of callee method.
+		 * The getName of callee method.
 		 */
 		public Expr fn;
 		/**
@@ -1782,13 +1782,13 @@ abstract public class Tree
         private Expr base;
 
         /**
-         * This is the decl being referenced by the field/member name.
+         * This is the decl being referenced by the field/member getName.
          * In X.F, this is the decl referenced by F.
          */
         private ValueDecl memberDecl;
 
         /**
-         * This is the location of the member name.
+         * This is the location of the member getName.
          */
         private int memberLoc;
 

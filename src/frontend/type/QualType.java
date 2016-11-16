@@ -427,7 +427,7 @@ public final class QualType extends Type implements Cloneable
     }
 
     /**
-     * Checks if this frontend.type is frontend.type-name frontend.type.
+     * Checks if this frontend.type is frontend.type-getName frontend.type.
      *
      * @return
      */
