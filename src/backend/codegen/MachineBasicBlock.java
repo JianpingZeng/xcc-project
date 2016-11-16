@@ -29,6 +29,8 @@ public class MachineBasicBlock
 
 	public void addLast(MachineInstr instr) {insts.addLast(instr);}
 
+	public MachineInstr getInstAt(int index) {return insts.get(index);}
+
 	public void insert(int itr, MachineInstr instr)
 	{
 		insts.add(itr, instr);
