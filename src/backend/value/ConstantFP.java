@@ -66,4 +66,6 @@ public class ConstantFP extends Constant
     {
         return null;
     }
+
+    public double getValue() {return val.doubleValue();}
 }

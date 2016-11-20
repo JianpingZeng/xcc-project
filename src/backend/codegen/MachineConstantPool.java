@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.value.Constant;
+import backend.value.ConstantFP;
 
 import java.util.ArrayList;
 
@@ -19,7 +20,7 @@ public final class MachineConstantPool
      * @param c
      * @return
      */
-    public int createConstantPoolIndex(Constant c)
+    public int getConstantPoolIndex(Constant c)
     {
         for (int i = 0, e = constantPool.size(); i<e; i++)
             if (constantPool.get(i) == c)

@@ -1,7 +1,7 @@
 package backend.value;
 
 import backend.hir.BasicBlock;
-import backend.hir.InstructionVisitor;
+import backend.hir.InstVisitor;
 import backend.hir.SuccIterator;
 import backend.lir.ci.LIRConstant;
 import backend.lir.ci.LIRKind;
@@ -57,6 +57,8 @@ public class Value implements Cloneable
 	}
 
 	public Type getType() { return ty;}
+
+	public List<Use> getUseList() {return usesList;}
 	
 	/**
 	 * For value number to determine whether this instruction is equivalent to
@@ -177,15 +179,9 @@ public class Value implements Cloneable
 		usesList.remove(use);
 	}
 
-	public void accept(InstructionVisitor visitor)
-	{
-		visitor.visitValue(this);
-	}
+	public void accept(InstVisitor visitor){}
 
-	public boolean isConstant()
-	{
-		return this instanceof Constant;
-	}
+	public boolean isConstant(){return this instanceof Constant;}
 
 	/**
 	 * Converts the instance of this class to a constants if this class
@@ -284,10 +280,7 @@ public class Value implements Cloneable
 
 		public UndefValue clone() {return new UndefValue(getType());}
 
-		public void accept(InstructionVisitor visitor)
-		{
-			visitor.visitUndef(this);
-		}
+		public void accept(InstVisitor visitor){}
 
 		@Override
 		public boolean isNullValue()

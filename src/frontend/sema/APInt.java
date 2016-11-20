@@ -2698,4 +2698,13 @@ public class APInt
             return new APInt(numBits, 1L << loBitsSet);
         return new APInt(numBits, 0).lshr(numBits - loBitsSet);
     }
+
+	/**
+     * This checks whether all bits of this APInt are set or not.
+     * @return
+     */
+    public boolean isAllOnesValue()
+    {
+        return countPopulation() == bitWidth;
+    }
 }

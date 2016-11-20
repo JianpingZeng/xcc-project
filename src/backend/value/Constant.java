@@ -16,12 +16,11 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.InstructionVisitor;
+import backend.hir.InstVisitor;
 import backend.lir.ci.LIRConstant;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
-import com.sun.org.apache.regexp.internal.RE;
 import frontend.sema.APInt;
 
 import java.math.BigDecimal;
@@ -138,7 +137,7 @@ public abstract class Constant extends User
         return new backend.value.Constant(this.value);
     }
 
-    public void accept(InstructionVisitor visitor)
+    public void accept(InstVisitor visitor)
     {
         visitor.visitConstant(this);
     }

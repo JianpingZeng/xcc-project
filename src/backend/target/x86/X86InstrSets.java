@@ -10,9 +10,10 @@ public interface X86InstrSets
 	int NOOP = PHI + 1;
 	int ADJCALLSTACKDOWN = NOOP + 1;
 	int ADJCALLSTACKUP = ADJCALLSTACKDOWN + 1;
+	int IMPLICIT_USE = ADJCALLSTACKUP + 1;
 
 	// Control flow instructions.
-	int RET = ADJCALLSTACKUP + 1;
+	int RET = IMPLICIT_USE + 1;
 	int JMP = RET + 1;
 	int JB = JMP + 1;
 	int JAE = JB + 1;
@@ -176,10 +177,10 @@ public interface X86InstrSets
 	int SARir8 = SARrCL32 + 1;                 // R8  >>>= imm8
 	int SARir16 = SARir8 + 1;         // R16 >>>= imm16
 	int SARir32 = SARir16 + 1;                 // R32 >>>= imm32
-	int SHLDrrCL32 = SARir32 + 1;   // R32 <<= R32,R32 cl
-	int SHLDir32 = SHLDrrCL32 + 1;           // R32 <<= R32,R32 imm8
-	int SHRDrrCL32 = SHLDir32 + 1;   // R32 >>= R32,R32 cl
-	int SHRDir32 = SHRDrrCL32 + 1;           // R32 >>= R32,R32 imm8
+	int SHLDrCL32 = SARir32 + 1;   // R32 <<= R32,R32 cl
+	int SHLDir32 = SHLDrCL32 + 1;           // R32 <<= R32,R32 imm8
+	int SHRDrCL32 = SHLDir32 + 1;   // R32 >>= R32,R32 cl
+	int SHRDir32 = SHRDrCL32 + 1;           // R32 >>= R32,R32 imm8
 
 	// Condition code ops, incl. set if equal/not equal/...
 	int SAHF = SHRDir32 + 1;  // flags = AH
@@ -231,7 +232,8 @@ public interface X86InstrSets
 
 	// Floating point loads & stores...
 	int FLDrr = FpSETRESULT + 1;   // push(ST(i))
-	int FLDr32 = FLDrr + 1;        // load float
+	int FLDr16 = FLDrr + 1;
+	int FLDr32 = FLDr16 + 1;        // load float
 	int FLDr64 = FLDr32 + 1;        // load double
 	int FLDr80 = FLDr64 + 1;        // load extended
 	int FILDr16 = FLDr80 + 1;        // load signed short

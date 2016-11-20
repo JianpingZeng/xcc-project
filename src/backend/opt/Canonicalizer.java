@@ -23,7 +23,7 @@ import tools.Util;
  * @see GVN
  * @see UCE
  */
-public class Canonicalizer extends InstructionVisitor
+public class Canonicalizer extends InstVisitor
 {
 	private Value result;
 

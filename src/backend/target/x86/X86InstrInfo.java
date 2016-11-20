@@ -189,9 +189,9 @@ public class X86InstrInfo extends TargetInstrInfo implements X86InstrSets, X86Re
 		new MCInstrDescriptor(SARir16, "SARir16", 3, 0, 0, null, ImplicitList1),
 		new MCInstrDescriptor(SARir32, "SARir32", 3, 0, 0, null, ImplicitList1),
 
-		new MCInstrDescriptor(SHLDrrCL32, "SHLDrrCL32", 3, 0, 0, ImplicitList19, ImplicitList1),
+		new MCInstrDescriptor(SHLDrCL32, "SHLDrCL32", 3, 0, 0, ImplicitList19, ImplicitList1),
 		new MCInstrDescriptor(SHLDir32, "SHLDir32", 4, 0, 0, null, ImplicitList1),
-		new MCInstrDescriptor(SHRDrrCL32, "SHRDrrCL32", 3, 0, 0, ImplicitList19, ImplicitList1),
+		new MCInstrDescriptor(SHRDrCL32, "SHRDrCL32", 3, 0, 0, ImplicitList19, ImplicitList1),
 		new MCInstrDescriptor(SHRDir32, "SHRDir32", 4, 0, 0, null, ImplicitList1),
 		new MCInstrDescriptor(SAHF, "SAHF", 0, 0, 0, ImplicitList20, ImplicitList1),
 

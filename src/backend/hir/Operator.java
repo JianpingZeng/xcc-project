@@ -14,9 +14,7 @@ public enum Operator
 	// terminators operation.
 	Ret("ret", 0, 0),
 	Br("br", Ret.index + 1, 0),
-	Goto("goto", Br.index + 1, 0),
-	Call("call", Goto.index + 1, 0),
-	Switch("switch", Call.index + 1, 0),
+	Switch("switch", Br.index + 1, 0),
 
 	// binary operator
 
@@ -50,32 +48,17 @@ public enum Operator
 	Xor("xor", Or.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
     // comparison operation
-    SetEQ("SetEQ", Xor.index + 1, 0),
-    SetNE("SetNE", SetEQ.index + 1, 0),
-    SetLE("SetLE", SetNE.index + 1, 0),
-    SetGE("SetGE", SetLE.index + 1, 0),
-    SetLT("SetLT", SetGE.index + 1, 0),
-    SetGT("SetGT", SetLT.index + 1, 0),
-
-	// negative operation
-	INeg("ineg", SetLT.index + 1, 0),
-	LNeg("lneg", INeg.index + 1, 0),
-	FNeg("fneg", LNeg.index + 1, 0),
-	DNeg("dneg", FNeg.index + 1, 0),
+    ICmp("ICmp", Xor.index + 1, 0),
+	FCmp("FCmp",ICmp.index + 1, 0),
 
 	// shift operation
-	Shl("ishl", DNeg.index + 1, 0),
+	Shl("ishl", FCmp.index + 1, 0),
 	LShr("lshr", Shl.index + 1, 0),
 	AShr("lushr", LShr.index + 1, 0),
 
-	// memory operation
-	Alloca("alloca", AShr.index + 1, 0),
-	Store("store", Alloca.index + 1, 0),
-	Load("load", Store.index + 1, 0),
-
 	// converts operation
 	//truncate integers.
-	Trunc("trunc", Load.index + 1, 0),
+	Trunc("trunc", AShr.index + 1, 0),
 	// zero extend integers.
 	ZExt("ZExt", Trunc.index + 1, 0),
 	// Sign extend integers.
@@ -99,15 +82,15 @@ public enum Operator
 	// type cast.
 	BitCast("BitCast", IntToPtr.index + 1, 0),
 
-	I2B("i2b", BitCast.index + 1, 0),
-	I2C("i2c", I2B.index + 1, 0),
-	I2S("i2s", I2C.index + 1, 0),
+	// memory operation
+	Alloca("alloca", BitCast.index + 1, 0),
+	Store("store", Alloca.index + 1, 0),
+	Load("load", Store.index + 1, 0),
 
 	// other operation
-	Phi("phi", I2S.index + 1, 0),
-	ICmp("ICmp", Phi.index + 1, 0),
-	FCmp("FCmp",ICmp.index + 1, 0),
-	GetElementPtr("GetElementPtr", FCmp.index + 1, 0);
+	Phi("phi", Load.index + 1, 0),
+	Call("call", Phi.index + 1, 0),
+	GetElementPtr("GetElementPtr", Call.index + 1, 0);
 
 	public final String opName;
 	public final int index;
