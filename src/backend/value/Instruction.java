@@ -1,7 +1,7 @@
 package backend.value;
 
 import backend.hir.BasicBlock;
-import backend.hir.InstructionVisitor;
+import backend.hir.InstVisitor;
 import backend.hir.Operator;
 import backend.type.FunctionType;
 import backend.type.PointerType;
@@ -138,11 +138,11 @@ public abstract class Instruction extends User
     public String name(){return instName;}
 
     /**
-     * An interface for InstructionVisitor invoking.
+     * An interface for InstVisitor invoking.
      *
-     * @param visitor The instance of InstructionVisitor.
+     * @param visitor The instance of InstVisitor.
      */
-    public abstract void accept(InstructionVisitor visitor);
+    public abstract void accept(InstVisitor visitor);
 
     public Operator getOpcode(){return opcode;}
 
@@ -219,15 +219,12 @@ public abstract class Instruction extends User
         }
 
         /**
-         * An interface for InstructionVisitor invoking.
+         * An interface for InstVisitor invoking.
          *
-         * @param visitor The instance of InstructionVisitor.
+         * @param visitor The instance of InstVisitor.
          */
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-
-        }
+        public void accept(InstVisitor visitor){}
     }
 
     /**
@@ -667,12 +664,12 @@ public abstract class Instruction extends User
         }
 
         /**
-         * An interface for InstructionVisitor invoking.
+         * An interface for InstVisitor invoking.
          *
-         * @param visitor The instance of InstructionVisitor.
+         * @param visitor The instance of InstVisitor.
          */
         @Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(InstVisitor visitor)
         {
 
         }
@@ -1288,12 +1285,12 @@ public abstract class Instruction extends User
         }
 
         /**
-         * An interface for InstructionVisitor invoking.
+         * An interface for InstVisitor invoking.
          *
-         * @param visitor The instance of InstructionVisitor.
+         * @param visitor The instance of InstVisitor.
          */
         @Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(InstVisitor visitor)
         {
 
         }
@@ -1385,12 +1382,12 @@ public abstract class Instruction extends User
         }
 
         /**
-         * An interface for InstructionVisitor invoking.
+         * An interface for InstVisitor invoking.
          *
-         * @param visitor The instance of InstructionVisitor.
+         * @param visitor The instance of InstVisitor.
          */
         @Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(InstVisitor visitor)
         {
 
         }
@@ -1638,7 +1635,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstructionVisitor visitor)
+        public void accept(InstVisitor visitor)
         {
 
         }
@@ -1740,10 +1737,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitReturn(this);
-        }
+        public void accept(InstVisitor visitor){}
 
         @Override
         public BasicBlock suxAt(int index)
@@ -1832,10 +1826,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitInvoke(this);
-        }
+        public void accept(InstVisitor visitor){}
 
         @Override
         public String toString()
@@ -1926,15 +1917,12 @@ public abstract class Instruction extends User
         }
 
         /**
-         * An interface for InstructionVisitor invoking.
+         * An interface for InstVisitor invoking.
          *
-         * @param visitor The instance of InstructionVisitor.
+         * @param visitor The instance of InstVisitor.
          */
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitSwitch(this);
-        }
+        public void accept(InstVisitor visitor){}
 
         public void addCase(Constant caseVal, BasicBlock targetBB)
         {
@@ -2123,10 +2111,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitPhi(this);
-        }
+        public void accept(InstVisitor visitor){}
 
         /**
          * Appends a pair that consists of both value and block into argument list.
@@ -2347,10 +2332,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitAlloca(this);
-        }
+        public void accept(InstVisitor visitor){}
 
         /**
          * Gets the getName of this alloated variable.
@@ -2441,10 +2423,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitStoreInst(this);
-        }
+        public void accept(InstVisitor visitor){}
     }
 
     /**
@@ -2498,10 +2477,7 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-            visitor.visitLoadInst(this);
-        }
+        public void accept(InstVisitor visitor){}
     }
 
 	/**
@@ -2594,14 +2570,11 @@ public abstract class Instruction extends User
         public boolean hasIndices(){return getNumOfOperands() > 1;}
 
         /**
-         * An interface for InstructionVisitor invoking.
+         * An interface for InstVisitor invoking.
          *
-         * @param visitor The instance of InstructionVisitor.
+         * @param visitor The instance of InstVisitor.
          */
         @Override
-        public void accept(InstructionVisitor visitor)
-        {
-
-        }
+        public void accept(InstVisitor visitor){}
     }
 }

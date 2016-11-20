@@ -154,8 +154,10 @@ public class ConstantInt extends Constant
     @Override
     public boolean isNullValue()
     {
-        return false;
+        return val.eq(0);
     }
+
+    public boolean isAllOnesValue(){return val.isAllOnesValue();}
 
     public APInt getValue() {return val;}
 }

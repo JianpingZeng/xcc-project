@@ -23,6 +23,7 @@ import backend.type.*;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.TerminatorInst;
 import frontend.ast.Tree;
 import frontend.codegen.CodeGenTypes.CGFunctionInfo;
 import frontend.codegen.CodeGenTypes.CGFunctionInfo.ArgInfo;
@@ -708,8 +709,10 @@ public final class CodeGenFunction
 
 	private void simplifyForwardingBlocks(BasicBlock bb)
 	{
-		BranchInst inst = bb.getTerminator();
-
+		TerminatorInst ti = bb.getTerminator();
+		if (!(ti instanceof BranchInst))
+			return;
+		BranchInst inst = (BranchInst)ti;
 		// Can only simplify direct branch.
 		if (inst == null || !inst.isUnconditional())
 			return;

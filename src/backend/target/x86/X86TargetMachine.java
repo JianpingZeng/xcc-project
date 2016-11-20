@@ -12,6 +12,7 @@ import java.io.FileOutputStream;
 import static backend.opt.CFGSimplifyPass.createCFGSimplifyPass;
 import static backend.opt.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
+import static backend.target.x86.X86SimpleInstSel.createX86SimpleInstructionSelector;
 
 /**
  * @author Xlous.zeng
@@ -72,10 +73,7 @@ public class X86TargetMachine extends TargetMachine
 		// unreachable basic blocks.
 		pm.add(createCFGSimplifyPass());
 
-		if (fast)
-			pm.add(createX86SimpleInstructionSelector(this));
-		else
-			pm.add(createX86PatternInstructionSelector(this));
+		pm.add(createX86SimpleInstructionSelector(this));
 
 		/**
 		// Perform register allocation to convert to a concrete x86 representation

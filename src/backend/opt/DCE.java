@@ -257,10 +257,10 @@ public class DCE extends FunctionPass
 	}
 
 	/**
-	 * A concrete instance of super class {@code InstructionVisitor}
+	 * A concrete instance of super class {@code InstVisitor}
 	 * marks live instruction.
 	 */
-	private class MarkVisitor extends InstructionVisitor
+	private class MarkVisitor extends InstVisitor
 	{
 		public void mark(Value inst)
 		{

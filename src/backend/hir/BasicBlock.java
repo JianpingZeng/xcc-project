@@ -207,10 +207,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * Visit all of the quads in this basic block in forward order with the
 	 * given quad visitor.
 	 *
-	 * @param qv InstructionVisitor to visit the quads with.
-	 * @see InstructionVisitor
+	 * @param qv InstVisitor to visit the quads with.
+	 * @see InstVisitor
 	 */
-	public void visitInstructions(InstructionVisitor qv)
+	public void visitInstructions(InstVisitor qv)
 	{
 		for (Instruction q : instructions)
 		{
@@ -222,10 +222,10 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * Visit all of the quads in this basic block in backward order with the
 	 * given quad visitor.
 	 *
-	 * @param qv InstructionVisitor to visit the quads with.
-	 * @see InstructionVisitor
+	 * @param qv InstVisitor to visit the quads with.
+	 * @see InstVisitor
 	 */
-	public void backwardVisitQuads(InstructionVisitor qv)
+	public void backwardVisitQuads(InstVisitor qv)
 	{
 		for (Iterator<Instruction> i = backwardIterator(); i.hasNext(); )
 		{

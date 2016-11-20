@@ -17,6 +17,8 @@ public final class MachineInstrBuilder
 
 	public MachineInstrBuilder(MachineInstr instr) {mi = instr;}
 
+	public MachineInstrBuilder addReg(int regNo){return addReg(regNo, UseType.Use);}
+
 	/**
 	 * Adds a new virtual register operand into specified instruction.
 	 * @param regNo
@@ -216,6 +218,11 @@ public final class MachineInstrBuilder
 	{
 		// regNo(offset+ NoReg*0).
 		return mib.addReg(regNo, UseType.Use).addZImm(0).addReg(0, UseType.Use).addSImm(offset);
+	}
+
+	public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib, int fi)
+	{
+		return addFrameReference(mib, fi, 0);
 	}
 
 	/**

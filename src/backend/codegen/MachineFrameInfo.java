@@ -206,6 +206,9 @@ public class MachineFrameInfo
      * createFixedObject - Create a new object at a fixed location on the stack.
      * All fixed objects should be created before other objects are created for
      * efficiency.  This returns an index with a negative value.
+     *
+     * Note that, the fixed objects usually are return address, incoming function
+     * arguments etc.
      */
     public int createFixedObject(int size, int SPOffset)
     {
