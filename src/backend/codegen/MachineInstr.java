@@ -265,4 +265,13 @@ public class MachineInstr
 				+ "machine instr is already done";
 		operands.add(new MachineOperand(symbolName, isPCRelative));
 	}
+
+	public void setMachineOperand(int i, int regNum)
+	{
+		assert i < getNumOperands();
+		MachineOperand op = operands.get(i);
+		op.setOpType(MO_MachineRegister);
+		op.setValue(null);
+		op.setRegNum(regNum);
+	}
 }

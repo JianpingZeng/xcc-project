@@ -10,7 +10,7 @@ public abstract class Pass
 {
 	private PassInfo passInfo;
 
-	public String getPassName(){return null;}
+	public abstract String getPassName();
 
 	public PassInfo getPassInfo() {return passInfo;}
 }

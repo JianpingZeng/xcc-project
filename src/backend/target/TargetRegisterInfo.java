@@ -27,21 +27,21 @@ public abstract class TargetRegisterInfo
 		/**
 		 * Assembly language getName for the register.
 		 */
-		String name;
+		public String name;
 		/**
 		 * Register Alias Set, described above
 		 */
-		int[] subRegs;
+		public int[] subRegs;
 
-		int[] superRegs;
+		public int[] superRegs;
 		/**
 		 * flags identifying register properties (below).
 		 */
-		int flags;
+		public int flags;
 		/**
 		 * Target Specific flags.
 		 */
-		int tSFlags;
+		public int tSFlags;
 
 		public MCRegisterDesc(String Name, int[] SubRegs,
 				int[] SuperRegs, int Flags, int TSFlags)

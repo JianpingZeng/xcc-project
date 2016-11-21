@@ -38,6 +38,9 @@ public class MachineFunction
 		frameInfo = new MachineFrameInfo();
 		ssaRegMap = new SSARegMap();
 		constantPool = new MachineConstantPool();
+
+		// associate this machine function with HIR function.
+		fn.setMachineFunc(this);
 	}
 
 	public Function getFunction() {return fn;}
@@ -53,4 +56,6 @@ public class MachineFunction
 	public void clearSSARegMap() {ssaRegMap.clear();}
 
 	public MachineConstantPool getConstantPool(){return constantPool;}
+
+	public LinkedList<MachineBasicBlock> getBasicBlocks() {return basicBlocks;}
 }
