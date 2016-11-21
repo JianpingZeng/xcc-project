@@ -89,7 +89,7 @@ public class X86TargetMachine extends TargetMachine
 		/**
 		// pm.add(createX86FloatingPointStackifierPass());
 
-		// Insert prolog/epilog code.  Eliminate abstract frame index references...
+		// Insert prolog/epilog code.  Eliminate abstract frame index references.
 		//pm.add(createPrologEpilogCodeInserter());
 
 		//pm.add(createX86PeepholeOptimizerPass());

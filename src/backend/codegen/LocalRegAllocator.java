@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
+import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
+
 /**
  * This pass performs a pass of performing local register allocation on Machine
  * Basic Block.
@@ -60,7 +62,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 			return stackSlotForVirReg.get(virReg);
 		}
 
-		// allocate a new stack object on stack frame of curent mf.
+		// allocate a new stack object on stack frame of current mf.
 		int frameIdx = mf.getFrameInfo().createStackObject(rc);
 		stackSlotForVirReg.put(virReg, frameIdx);
 		return frameIdx;
@@ -92,6 +94,8 @@ public class LocalRegAllocator extends MachineFunctionPass
 		{
 			assert !phyRegsUseOrder.isEmpty():"No allocatable registers";
 
+
+			// Spill a the least used physical register into memory.
 			for (int i = 0; phyReg == 0; i++)
 			{
 				assert i != phyRegsUseOrder.size()
@@ -131,7 +135,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 				}
 			}
 
-			assert phyReg != 0:"Physical register not be assisgned";
+			assert phyReg != 0:"Physical register not be assigned";
 
 			spillPhyReg(mbb, insertPos, phyReg, false);
 		}
@@ -181,8 +185,8 @@ public class LocalRegAllocator extends MachineFunctionPass
 
 	private void markVirRegModified(int virReg, boolean isModified)
 	{
-		assert virReg >= TargetRegisterInfo.FirstVirtualRegister;
-		virReg -= TargetRegisterInfo.FirstVirtualRegister;
+		assert virReg >= FirstVirtualRegister;
+		virReg -= FirstVirtualRegister;
 		virRegModified.set(virReg, isModified);
 	}
 
@@ -246,17 +250,45 @@ public class LocalRegAllocator extends MachineFunctionPass
 		}
 	}
 
+	private boolean isVirRegModified(int virReg)
+	{
+		assert virReg >= FirstVirtualRegister : "Illegal virReg!";
+		assert  virReg - FirstVirtualRegister < virRegModified.size()
+				: "Illegal virReg!";
+		return virRegModified.get(virReg - FirstVirtualRegister);
+	}
+
+	/**
+	 * Spill the specified virtual reg into stack slot associated.
+	 * @param mbb
+	 * @param insertPos
+	 * @param virReg
+	 * @param phyReg
+	 */
 	private void spillVirReg(MachineBasicBlock mbb, int insertPos,
 			int virReg, int phyReg)
 	{
-		TargetRegisterInfo.TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
-		int frameIdx = getStackSlotForVirReg(virReg, rc);
-		regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
+		if (virReg == 0) return;
 
-		// add count for spilled.
-		++numSpilled;
+		// We just spill those modified virtual register into memory cell.
+		if (isVirRegModified(virReg))
+		{
+			TargetRegisterInfo.TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
+			int frameIdx = getStackSlotForVirReg(virReg, rc);
+			regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
+
+			// add count for spilled.
+			++numSpilled;
+		}
+		virToPhyRegMap.remove(virReg, phyReg);
+		removePhyReg(phyReg);
 	}
 
+	/**
+	 * A list contains all being used physical register, from first one to last
+	 * one, corresponding from least used to most used. It is greatly useful to
+	 * sacrifice a physical register for holding another high priority virtual reg.
+	 */
 	private LinkedList<Integer> phyRegsUseOrder = new LinkedList<>();
 
 	/**
@@ -277,6 +309,11 @@ public class LocalRegAllocator extends MachineFunctionPass
 		return false;
 	}
 
+	/**
+	 * Mark the specified physical register is used and put it on the last position
+	 * of phyRegsUseOrder list.
+	 * @param reg
+	 */
 	private void markPhyRegRecentlyUsed(int reg)
 	{
 		assert !phyRegsUseOrder.isEmpty():"No register used!";
@@ -300,6 +337,10 @@ public class LocalRegAllocator extends MachineFunctionPass
 		}
 	}
 
+	/**
+	 * This method marks the specified physical register as no longer be used.
+	 * @param phyReg
+	 */
 	private void removePhyReg(int phyReg)
 	{
 		phyRegUsed.remove(phyReg);
@@ -348,7 +389,8 @@ public class LocalRegAllocator extends MachineFunctionPass
 			}
 
 			// loop over all operands which is defined physical register, and
-			// spill it into stack frame.
+			// spill it into stack frame for holding another high priority virtual
+			// register.
 			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
 			{
 				MachineOperand op = mi.getOperand(j);
@@ -373,7 +415,8 @@ public class LocalRegAllocator extends MachineFunctionPass
 				}
 			}
 
-			// loop over all operands, assign physical register for it.
+			// loop over all defined virtual register operands,
+			// assign physical register for it.
 			for (int j = mi.getNumOperands() - 1; j >= 0; j--)
 			{
 				MachineOperand op = mi.getOperand(j);
@@ -383,6 +426,8 @@ public class LocalRegAllocator extends MachineFunctionPass
 					int destVirReg = mi.getOperand(j).getAllocatedRegNum();
 					int destPhyReg = 0;
 
+					// if this destVirReg already is held in physical reg,
+					// remove it since it is defined reg.
 					if (virToPhyRegMap.containsKey(destVirReg))
 					{
 						int phyReg = virToPhyRegMap.get(destVirReg);
@@ -392,14 +437,15 @@ public class LocalRegAllocator extends MachineFunctionPass
 
 					if (tm.getInstrInfo().isTwoAddrInstr(opcode) && j == 0)
 					{
+						// a = b + c --> b(a) += c;
 						assert  mi.getOperand(1).isRegister()
 								&& mi.getOperand(1).getAllocatedRegNum() != 0
 								&& mi.getOperand(1).opIsUse()
 								:"Two address instruction invalid!";
 
-						destPhyReg = mi.getOperand(j).getAllocatedRegNum();
+						destPhyReg = mi.getOperand(1).getAllocatedRegNum();
 
-						liberatePhyReg(mbb, i, destPhyReg);
+						spillPhyReg(mbb, i, destPhyReg, false);
 						assignVirToPhyReg(destVirReg, destPhyReg);
 					}
 					else
@@ -432,6 +478,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 			}
 		}
 
+		phyRegUsed.clear();
 		assert virToPhyRegMap.isEmpty():"Virtual register still in phys reg?";
 
 		// Clear any physical register which appear live at the end of the basic
