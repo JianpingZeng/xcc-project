@@ -2085,9 +2085,15 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 	@Override
 	public Void visitPhiNode(PhiNode inst)
 	{
+		Util.shouldNotReachHere("Should not reach here!");
 		return null;
 	}
 
+	@Override
+	public String getPassName()
+	{
+		return "X86 simple instruction selector.";
+	}
 
 	/**
 	 * Creates a simple instruction selector for x86 target.

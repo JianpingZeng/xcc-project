@@ -187,6 +187,8 @@ public class MachineOperand
 		return opType;
 	}
 
+	public void setOpType(MachineOperandType newTy) {opType = newTy;}
+
 	/// isPCRelative - This returns the value of the PCRELATIVE flag, which
 	/// indicates whether this operand should be emitted as a PC relative value
 	/// instead of a global address.  This is used for operands of the forms:
@@ -395,4 +397,8 @@ public class MachineOperand
 				opType == MO_MachineRegister);
 		regNum = reg;
 	}
+
+	public void setValue(Value val) {value = val;}
+
+	public void setRegNum(int regNum) {this.regNum = regNum;}
 };

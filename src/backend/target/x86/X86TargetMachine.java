@@ -1,5 +1,7 @@
 package backend.target.x86;
 
+import backend.codegen.LocalRegAllocator;
+import backend.codegen.RegAllocSimple;
 import backend.hir.Module;
 import backend.pass.FunctionPassManager;
 import backend.target.TargetFrameInfo;
@@ -9,6 +11,8 @@ import backend.target.TargetRegisterInfo;
 
 import java.io.FileOutputStream;
 
+import static backend.codegen.LocalRegAllocator.createLocalRegAllocator;
+import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
 import static backend.opt.CFGSimplifyPass.createCFGSimplifyPass;
 import static backend.opt.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
@@ -75,10 +79,14 @@ public class X86TargetMachine extends TargetMachine
 
 		pm.add(createX86SimpleInstructionSelector(this));
 
-		/**
-		// Perform register allocation to convert to a concrete x86 representation
-		//pm.add(createRegisterAllocator());
 
+		// Perform register allocation to convert to a concrete x86 representation
+		if (fast)
+			pm.add(createSimpleRegAllocator());
+		else
+			pm.add(createLocalRegAllocator());
+
+		/**
 		// pm.add(createX86FloatingPointStackifierPass());
 
 		// Insert prolog/epilog code.  Eliminate abstract frame index references...

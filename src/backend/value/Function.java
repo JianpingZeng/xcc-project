@@ -1,5 +1,6 @@
 package backend.value;
 
+import backend.codegen.MachineFunction;
 import backend.hir.*;
 import backend.opt.Loop;
 import backend.type.FunctionType;
@@ -34,6 +35,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
     private ArrayList<Argument> argumentList;
 
     private LinkedList<BasicBlock> basicBlockList;
+
+	private MachineFunction mf;
 	
 	public Function(FunctionType ty, LinkageType linkage, String name, Module parentModule)
     {
@@ -152,4 +155,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	{
 		return false;
 	}
+
+	public MachineFunction getMachineFunc() {return mf;}
+
+	public void setMachineFunc(MachineFunction newFunc) {mf = newFunc;}
 }
