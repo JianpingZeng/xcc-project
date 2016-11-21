@@ -11,9 +11,10 @@ public interface X86InstrSets
 	int ADJCALLSTACKDOWN = NOOP + 1;
 	int ADJCALLSTACKUP = ADJCALLSTACKDOWN + 1;
 	int IMPLICIT_USE = ADJCALLSTACKUP + 1;
+	int IMPLICIT_DEF = IMPLICIT_USE + 1;
 
 	// Control flow instructions.
-	int RET = IMPLICIT_USE + 1;
+	int RET = IMPLICIT_DEF + 1;
 	int JMP = RET + 1;
 	int JB = JMP + 1;
 	int JAE = JB + 1;

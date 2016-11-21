@@ -41,6 +41,9 @@ public class X86InstrInfo extends TargetInstrInfo implements X86InstrSets, X86Re
 		new MCInstrDescriptor(NOOP, "NOOP", 0, M_NOP_FLAG|M_PSEUDO_FLAG, 0, null, null),
 		new MCInstrDescriptor(ADJCALLSTACKDOWN, "ADJCALLSTACKDOWN", 1, 0, 0, ImplicitList2, ImplicitList3),
 		new MCInstrDescriptor(ADJCALLSTACKUP, "ADJCALLSTACKUP", 2, 0, 0, ImplicitList2, ImplicitList3),
+		new MCInstrDescriptor(IMPLICIT_USE, "IMPLICIT_USE", 0, M_PSEUDO_FLAG, 0, null, null),
+		new MCInstrDescriptor(IMPLICIT_DEF, "IMPLICIT_DEF", 0, M_PSEUDO_FLAG, 0, null, null),
+
 		new MCInstrDescriptor(RET, "RET", 0, M_RET_FLAG|M_TERMINATOR_FLAG, 0, null, null),
 
 		new MCInstrDescriptor(JMP, "JMP", 1, M_BRANCH_FLAG|M_TERMINATOR_FLAG, 0, null, null),
