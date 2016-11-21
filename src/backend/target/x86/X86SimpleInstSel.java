@@ -7,6 +7,7 @@ import backend.hir.InstVisitor;
 import backend.hir.Operator;
 import backend.pass.FunctionPass;
 import backend.target.TargetData;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo.TargetRegisterClass;
 import backend.type.SequentialType;
@@ -982,7 +983,89 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 	 */
 	private void selectPhiNodes()
 	{
-		// TODO
+		TargetInstrInfo targetInstrInfo = tm.getInstrInfo();
+		Function f = mf.getFunction(); // obtains the HIR function.
+		for (BasicBlock bb : f.getBasicBlockList())
+		{
+			MachineBasicBlock mbb = mbbMap.get(bb);
+
+			// a index into a position offset head of mbb where all phi node
+			// will be inserts.
+			// We must ensure that all Phi nodes will be inserted prior to
+			// other non-Phi instr.
+			int numPhis = 0;
+			for (int i = 0, e = bb.size();
+			     i < e && (bb.getInst(i) instanceof PhiNode);
+			     i++)
+			{
+				PhiNode phiNode = (PhiNode)bb.getInst(i);
+				// creates a machine phi node and insert it into mbb.
+				int phiReg = getReg(phiNode);
+				MachineInstr phiMI = buildMI(X86InstrSets.PHI, phiNode.getNumOfOperands(),
+						phiReg).getMInstr();
+				mbb.insert(numPhis++, phiMI);
+
+				// special handling for typed of i64.
+				MachineInstr longPhiMI = null;
+				if (phiNode.getType() == Type.Int64Ty)
+				{
+					longPhiMI = buildMI(X86InstrSets.PHI, phiNode.getNumOfOperands(),
+							phiReg+1).getMInstr();
+					mbb.insert(numPhis++, longPhiMI);
+				}
+
+				// with a hashmap for mapping BasicBlock into virtual register
+				// number, so that we are only initialize one incoming value
+				// for a particular block even if the block has multiply entries
+				// int Phi node.
+				HashMap<MachineBasicBlock, Integer> phiValues = new HashMap<>();
+				for (int j =0, size = phiNode.getNumberIncomingValues();
+				     j < size; j++)
+				{
+					BasicBlock incomingBB = phiNode.getIncomingBlock(i);
+					MachineBasicBlock predMBB = mbbMap.get(incomingBB);
+
+					int valReg = 0;
+					if (phiValues.containsKey(predMBB))
+					{
+						// we already inserted an initialization of the register
+						// for this predecessor.
+						valReg = phiValues.get(predMBB);
+					}
+					else
+					{
+						// compute a virtual register for incoming value,
+						// and insert it into phiValues.
+						Value incomingVal = phiNode.getIncomingValue(i);
+						if (incomingVal instanceof Constant)
+						{
+							// If the incomingVal is a constant, we should insert
+							// code in the predecessor to compute a virtual register.
+
+							// skip all machine phi nodes.
+							int k = 0;
+							for (int sz = predMBB.size();
+							     k < sz && predMBB.getInstAt(k).getOpCode() == X86InstrSets.PHI;
+							     k++);
+
+							valReg = getReg(incomingVal, predMBB, k);
+						}
+						else
+							valReg = getReg(incomingVal);
+
+						phiValues.put(predMBB, valReg);
+					}
+
+					phiMI.addRegOperand(valReg, UseType.Use);
+					phiMI.addMachineBasicBlockOperand(predMBB);
+					if (longPhiMI != null)
+					{
+						phiMI.addRegOperand(valReg+1, UseType.Use);
+						phiMI.addMachineBasicBlockOperand(predMBB);
+					}
+				}
+			}
+		}
 	}
 
 	private void visitSimpleBinary(Op2 inst, int operatorClass)
@@ -1126,6 +1209,13 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 	public Void visitFAdd(Op2 inst)
 	{
 		// TODO
+		int op0Reg = getReg(inst.operand(0));
+		int op1Reg = getReg(inst.operand(1));
+		int destReg = getReg(inst);
+
+		int typeClass = getClass(inst.getType());
+		assert typeClass>=f32 && typeClass<=f80:"The type class is not a fp?";
+		buildMI(mbb, X86InstrSets.FpADD, 2, destReg).addReg(op0Reg).addReg(op1Reg);
 		return null;
 	}
 
@@ -1140,6 +1230,13 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 	public Void visitFSub(Op2 inst)
 	{
 		// TODO
+		int op0Reg = getReg(inst.operand(0));
+		int op1Reg = getReg(inst.operand(1));
+		int destReg = getReg(inst);
+
+		int typeClass = getClass(inst.getType());
+		assert typeClass>=f32 && typeClass<=f80:"The type class is not a fp?";
+		buildMI(mbb, X86InstrSets.FpSUB, 2, destReg).addReg(op0Reg).addReg(op1Reg);
 		return null;
 	}
 
@@ -1979,6 +2076,12 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		return null;
 	}
 
+	/**
+	 * This method is noop operation. All PHI Node will be processed in a
+	 * single special pass.
+	 * @param inst
+	 * @return
+	 */
 	@Override
 	public Void visitPhiNode(PhiNode inst)
 	{
