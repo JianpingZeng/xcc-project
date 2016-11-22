@@ -45,6 +45,7 @@ public interface X86InstrSets
 
 	//===----------------------------------------------------------------------===//
 	//  Move Instructions...
+	// operand direction: ->
 	//
 	int MOVrr8 = LEAr32 + 1;
 	int MOVrr16 = MOVrr8 + 1;
@@ -52,15 +53,15 @@ public interface X86InstrSets
 	int MOVir8 = MOVrr32 + 1;
 	int MOVir16 = MOVir8 + 1;
 	int MOVir32 = MOVir16 + 1;
-	int MOVim8 = MOVir32 + 1;             // [mem] = imm8
-	int MOVim16 = MOVim8 + 1;            // [mem] = imm16
-	int MOVim32 = MOVim16 + 1;            // [mem] = imm32
-	int MOVmr8 = MOVim32 + 1;            // R8  = [mem]
-	int MOVmr16 = MOVmr8 + 1;    // R16 = [mem]
-	int MOVmr32 = MOVmr16 + 1;            // R32 = [mem]
-	int MOVrm8 = MOVmr32 + 1;             // [mem] = R8
-	int MOVrm16 = MOVrm8 + 1;             // [mem] = R16
-	int MOVrm32 = MOVrm16 + 1;            // [mem] = R32
+	int MOVim8 = MOVir32 + 1;             // imm8 = [mem]
+	int MOVim16 = MOVim8 + 1;             // imm16 = [mem]
+	int MOVim32 = MOVim16 + 1;            // imm32 = [mem]
+	int MOVmr8 = MOVim32 + 1;             // [mem] = R8
+	int MOVmr16 = MOVmr8 + 1;             // [mem] = R16
+	int MOVmr32 = MOVmr16 + 1;            // [mem] = R32
+	int MOVrm8 = MOVmr32 + 1;             // R8 = [mem]
+	int MOVrm16 = MOVrm8 + 1;             // R16 = [mem]
+	int MOVrm32 = MOVrm16 + 1;            // R32 = [mem]
 
 	// Extra precision multiplication
 	int MULr8 = MOVrm32 + 1;               // AL,AH = AL*R8

@@ -39,7 +39,7 @@ public class MachineInstr
 	 */
 	private boolean operandsComplete()
 	{
-		int numOperands = TargetInstrInfo.MCInstrDescriptors[opCode].numOperands;
+		int numOperands = TargetInstrInfo.TargetInstrDescriptors[opCode].numOperands;
 		if (numOperands>=0 && numOperands <= getNumOperands())
 			return true;
 		return false;

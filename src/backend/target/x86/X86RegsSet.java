@@ -15,7 +15,6 @@ public interface X86RegsSet
 	int EBP = ESP + 1;
 	int ESI = EBP + 1;
 	int EDI = ESI + 1;
-
 	int EFLAGS = EDI + 1;
 
 	// 16-bit registers
@@ -46,10 +45,9 @@ public interface X86RegsSet
 	int FP4 = FP3 + 1;
 	int FP5 = FP4 + 1;
 	int FP6 = FP5 + 1;
-	int FP7 = FP6 + 1;
 
 	// Floating point stack registers
-	int ST0 = FP7 + 1;
+	int ST0 = FP6 + 1;
 	int ST1 = ST0 + 1;
 	int ST2 = ST1 + 1;
 	int ST3 = ST2 + 1;

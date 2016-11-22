@@ -1,14 +1,12 @@
 package backend.codegen;
 
 import backend.target.TargetInstrInfo;
-import backend.target.TargetInstrInfo.MCInstrDescriptor;
+import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterInfo.TargetRegisterClass;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 
 /**
  * This pass performs a pass of very simple register allocation, reloading operand
@@ -112,7 +110,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 			HashMap<Integer, Integer> virToPhyRegMap = new HashMap<>();
 
 			int opcode = mi.getOpCode();
-			MCInstrDescriptor desc = tm.getInstrInfo().get(opcode);
+			TargetInstrDescriptor desc = tm.getInstrInfo().get(opcode);
 			for (int useReg : desc.implicitUses)
 				regUsed.set(useReg);
 
