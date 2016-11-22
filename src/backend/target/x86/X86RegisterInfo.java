@@ -19,24 +19,32 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	// Now that we have all of the pieces, define the top-level register classes.
 	// The order specified in the register list is implicitly defined to be the
 	// register allocation order.
-	private static TargetRegisterClass x86R8GegClass =
-			new TargetRegisterClass(1, 1, new int[]{AL, CL, DL, BL, AH, CH, DH, BH});
+	private static int[] X86R8 = {AL, CL, DL, BL, AH, CH, DH, BH};
+	private static int[] X86R16 = {AX, CX, DX, BX, SI, DI, BP, SP};
+	private static int[] X86R32 = {EAX, ECX, EDX, EBX, ESI, EDI, ESP};
+	private static int[] X86RFP = {FP0, FP1, FP2, FP3, FP4, FP5, FP6};
+	private static int[] X86RST = {ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7};
+
+	private static TargetRegisterClass x86R8RegClass =
+			new TargetRegisterClass(1, 1, X86R8);
 
 	private static TargetRegisterClass x86R16RegClass =
-			new TargetRegisterClass(2, 2, new int[]{AX, CX, DX, BX, SI, DI, BP, SP});
+			new TargetRegisterClass(2, 2, X86R16);
 
 	private static TargetRegisterClass x86R32RegClass =
-			new TargetRegisterClass(4, 4, new int[]{EAX, ECX, EDX, EBX, ESI, EDI, ESP});
+			new TargetRegisterClass(4, 4, X86R32);
 
 	private static TargetRegisterClass x86RFPClass =
-			new TargetRegisterClass(4, 4, new int[]{FP0, FP1, FP2, FP3, FP4, FP5, FP6});
+			new TargetRegisterClass(4, 4, X86RFP);
+
+	private static TargetRegisterClass x86RSTClass =
+			new TargetRegisterClass(8, 4, X86RST);
 
 	/**
 	 * A static array holds all register classes for x86 target machine.
 	 */
 	private static TargetRegisterClass[] x86RegisterClasses =
-			{
-				x86R8GegClass, x86R16RegClass, x86R32RegClass
+			{ x86R8RegClass, x86R16RegClass, x86R32RegClass, x86RSTClass
 			};
 	/**
 	 * A static array holds all register descriptor information
@@ -69,7 +77,6 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 				new MCRegisterDesc("FP4", null, null, 0, 0),
 				new MCRegisterDesc("FP5", null, null, 0, 0),
 				new MCRegisterDesc("FP6", null, null, 0, 0),
-				new MCRegisterDesc("FP7", null, null, 0, 0),
 
 				// stack floating point register.
 				new MCRegisterDesc("ST0", null, null, 0, 0),
@@ -82,6 +89,11 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 				new MCRegisterDesc("ST7", null, null, 0, 0),
 			};
 
+	private static int[] calleeSavedRegs = {ESI, EDI, EBX, EBP};
+
+	private static TargetRegisterClass[] calleeSavedRegClasses =
+			{x86R32RegClass, x86R32RegClass, x86R32RegClass, x86R32RegClass};
+
 	public X86RegisterInfo()
 	{
 		super(x86RegInfoDescs, x86RegisterClasses, ADJCALLSTACKDOWN, ADJCALLSTACKUP);
@@ -89,27 +101,34 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 
 	public static int getIdx(TargetRegisterClass rc)
 	{
-		switch (rc.getRegSize())
+		if (rc == x86R8RegClass)
+			return 0;
+		else if (rc == x86R16RegClass)
+			return 1;
+		else if (rc == x86R32RegClass)
+			return 2;
+		else if (rc == x86RFPClass || rc == x86RSTClass)
+			return 3;
+		else
 		{
-			default: assert false:"Invalid data size!";
-			case 1: return 0;
-			case 2: return 1;
-			case 4: return 2;
-			case 10: return 3;
+			assert false:"Illegal target register class!";
+			return -1;
 		}
 	}
 
 	@Override
-	public int[] getCalleeRegisters()
+	public int[] getCalleeRegisters(){return calleeSavedRegs;}
+
+	public TargetRegisterClass[] getCalleeSavedRegClasses()
 	{
-		return new int[0];
+		return calleeSavedRegClasses;
 	}
 
 	@Override
 	public int storeRegToStackSlot(MachineBasicBlock mbb, int mbbi, int srcReg,
 			int FrameIndex, TargetRegisterClass rc)
 	{
-		int opcode[] = {MOVrm8, MOVrm16, MOVrm32, FSTPr80};
+		int opcode[] = {MOVrm8, MOVrm16, MOVrm32, FSTPr64};
 		MachineInstr instr = addFrameReference(buildMI(opcode[getIdx(rc)], 5),
 				FrameIndex, 0).addReg(srcReg, Use).getMInstr();
 		mbb.insert(mbbi, instr);
@@ -119,7 +138,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	@Override public int loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
 			int destReg, int FrameIndex, TargetRegisterClass rc)
 	{
-		int opcode[] = {MOVmr8, MOVmr16, MOVmr32, FLDr80};
+		int opcode[] = {MOVmr8, MOVmr16, MOVmr32, FLDr64};
 		MachineInstr instr = addFrameReference(buildMI(opcode[getIdx(rc)], 4, destReg),
 				FrameIndex, 0).getMInstr();
 		mbb.insert(mbbi, instr);
@@ -285,7 +304,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 		{
 			case Type.Int1TyID:
 			case Type.Int8TyID:
-				return x86R8GegClass;
+				return x86R8RegClass;
 			case Type.Int16TyID:
 				return x86R16RegClass;
 			case Type.Int32TyID:

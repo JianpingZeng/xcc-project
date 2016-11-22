@@ -211,6 +211,9 @@ public class TargetData extends ImmutablePass
 		return new StructLayout(ty, this);
 	}
 
+	@Override
+	public String getPassName(){return "Target Data pass!";}
+
 	/**
 	 * This class is used to lazily compute structure layout information for
 	 * a backend.target machine, based on this TargetData structure.

@@ -40,9 +40,9 @@ public abstract class TargetInstrInfo
 	 * Describing the machine instructions initialized only when the
 	 * TargetMachine class is created
 	 */
-	public static MCInstrDescriptor[] MCInstrDescriptors;
+	public static TargetInstrDescriptor[] TargetInstrDescriptors;
 
-	public static class MCInstrDescriptor
+	public static class TargetInstrDescriptor
 	{
 		/**
 		 * The opcode of this instruction specfified with target machine.
@@ -85,8 +85,24 @@ public abstract class TargetInstrInfo
 		 */
 		public int[] implicitDefs;
 
+		public TargetInstrDescriptor(int opcode, String name, int numOprs,
+				int resPos, int flags, int TSFlags,
+				int[] implUses, int[] implDefs)
+		{
+			opCode = opcode;
+			this.name = name;
+			numOperands = numOprs;
+			resultPos =  resPos;
+			this.numDelaySlots =0;
+			this.latency = 0;
+			this.flags = flags;
+			tSFlags = TSFlags;
+			implicitUses = implUses;
+			implicitDefs = implDefs;
+		}
+
 		/**
-		 * The constructor that creats an instance of class {@linkplain MCInstrDescriptor}
+		 * The constructor that creats an instance of class {@linkplain TargetInstrDescriptor}
 		 * with the specified several parameters.
 		 * @param opcode    The opcode.
 		 * @param name      The instruction memonic.
@@ -96,32 +112,23 @@ public abstract class TargetInstrInfo
 		 * @param implUses  The implicitly used register.
 		 * @param implDefs  The implicit registers defined by this instruction.
 		 */
-		public MCInstrDescriptor(int opcode, String name, int numOprs,
+		public TargetInstrDescriptor(int opcode, String name, int numOprs,
 				int flags, int TSFlags, int[] implUses, int[] implDefs)
 		{
-			opCode = opcode;
-			this.name = name;
-			numOperands = numOprs;
-			resultPos = -1;
-			this.numDelaySlots =0;
-			this.latency = 0;
-			this.flags = flags;
-			tSFlags = TSFlags;
-			implicitUses = implUses;
-			implicitDefs = implDefs;
+			this(opcode, name, numOprs, -1, flags, TSFlags, implUses, implDefs);
 		}
 	}
 
 	/**
 	 * an array of target instruction.
 	 */
-	private MCInstrDescriptor[] descs;
+	private TargetInstrDescriptor[] descs;
 
-	public TargetInstrInfo(MCInstrDescriptor[] desc)
+	public TargetInstrInfo(TargetInstrDescriptor[] desc)
 	{
 		descs = desc;
-		assert MCInstrDescriptors == null && desc != null;
-		MCInstrDescriptors = desc;
+		assert TargetInstrDescriptors == null && desc != null;
+		TargetInstrDescriptors = desc;
 	}
 
 	public int getNumTotalOpCodes()
@@ -136,7 +143,7 @@ public abstract class TargetInstrInfo
 	 * @param opCode
 	 * @return
 	 */
-	public MCInstrDescriptor get(int opCode)
+	public TargetInstrDescriptor get(int opCode)
 	{
 		assert opCode >= 0 && opCode < getNumTotalOpCodes();
 		return descs[opCode];

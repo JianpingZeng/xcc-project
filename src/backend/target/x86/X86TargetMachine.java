@@ -1,7 +1,5 @@
 package backend.target.x86;
 
-import backend.codegen.LocalRegAllocator;
-import backend.codegen.RegAllocSimple;
 import backend.hir.Module;
 import backend.pass.FunctionPassManager;
 import backend.target.TargetFrameInfo;

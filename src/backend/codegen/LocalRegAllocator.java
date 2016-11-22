@@ -1,7 +1,7 @@
 package backend.codegen;
 
 import backend.target.TargetInstrInfo;
-import backend.target.TargetInstrInfo.MCInstrDescriptor;
+import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterInfo.TargetRegisterClass;
@@ -370,7 +370,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 			MachineInstr mi = mbb.getInstAt(i);
 
 			int opcode = mi.getOpCode();
-			MCInstrDescriptor desc = tm.getInstrInfo().get(opcode);
+			TargetInstrDescriptor desc = tm.getInstrInfo().get(opcode);
 
 			// loop over all implicit used register, to mark it as recently used,
 			// so they don't get reallocated.
