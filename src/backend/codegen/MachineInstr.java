@@ -30,6 +30,10 @@ public class MachineInstr
 {
 	private int              opCode;              // the opcode
 	private int         opCodeFlags;         // flags modifying instrn behavior
+
+	/**
+	 * |<-----Explicit operands--------->|-----Implicit operands------->|
+	 */
 	private ArrayList<MachineOperand> operands; // the operands
 	private int numImplicitRefs;             // number of implicit operands
 
@@ -67,15 +71,21 @@ public class MachineInstr
 
 	public MachineOperand getOperand(int index)
 	{
-		assert index>=0&&index < operands.size();
+		assert index>=0 && index < getNumOperands();
 		return operands.get(index);
+	}
+
+	public void removeOperand(int index)
+	{
+		assert index>=0 && index < getNumOperands();
+		operands.remove(index);
 	}
 
 	public MachineOperand getImplicitOp(int index)
 	{
 		assert index>=0&&index< numImplicitRefs:
 			"implicit ref out of range!";
-		return operands.get(index+operands.size()-numImplicitRefs);
+		return operands.get(index + getNumOperands());
 	}
 
 	/**
