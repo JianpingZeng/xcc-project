@@ -79,6 +79,7 @@ public class X86TargetMachine extends TargetMachine
 
 		pm.add(createX86SimpleInstructionSelector(this));
 
+		// TODO: A SSA destrcution pass is needed to transform SSA-based MC out of SSA.
 
 		// Perform register allocation to convert to a concrete x86 representation
 		if (fast)
