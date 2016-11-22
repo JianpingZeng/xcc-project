@@ -14,6 +14,7 @@ import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
 import static backend.opt.CFGSimplifyPass.createCFGSimplifyPass;
 import static backend.opt.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
+import static backend.target.x86.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
 import static backend.target.x86.X86SimpleInstSel.createX86SimpleInstructionSelector;
 
 /**
@@ -84,10 +85,10 @@ public class X86TargetMachine extends TargetMachine
 			pm.add(createSimpleRegAllocator());
 		else
 			pm.add(createLocalRegAllocator());
+		// converts virtual register in X86 FP inst into floating point stack slot.
+		pm.add(createX86FloatingPointStackitifierPass());
 
 		/**
-		// pm.add(createX86FloatingPointStackifierPass());
-
 		// Insert prolog/epilog code.  Eliminate abstract frame index references.
 		//pm.add(createPrologEpilogCodeInserter());
 
