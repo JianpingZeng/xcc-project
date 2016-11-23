@@ -17,7 +17,12 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
  * </p>
  * <p>There are 2 kinds of operands:
  * <ol>
- * <li>Explicit operands of the machine instruction in vector operands[].</li>
+ * <li>Explicit operands of the machine instruction in vector operands[].
+ *  And the more important is that the format of MI is compatible with AT&T
+ *  assembly, where dest operand is in the leftmost as follows:
+ *  op dest, op0, op1;
+ *  op dest op0.
+ * </li>
  * <li>"Implicit operands" are values implicitly used or defined by the
  * machine instruction, such as arguments to a CALL, return value of
  * a CALL (if any), and return value of a RETURN.</li>
