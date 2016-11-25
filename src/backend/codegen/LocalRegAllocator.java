@@ -384,7 +384,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 				{
 					int virtReg = mi.getOperand(j).getAllocatedRegNum();
 					int phyReg = reloadVirReg(mbb, i, virtReg);
-					mi.setMachineOperand(j, phyReg);
+					mi.setMachineOperandReg(j, phyReg);
 				}
 			}
 
@@ -453,7 +453,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 						destPhyReg = getReg(mbb, i, destVirReg);
 					}
 					markVirRegModified(destVirReg, true);
-					mi.setMachineOperand(j, destPhyReg);
+					mi.setMachineOperandReg(j, destPhyReg);
 				}
 			}
 		}

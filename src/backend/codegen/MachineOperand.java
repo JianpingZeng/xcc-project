@@ -286,6 +286,12 @@ public class MachineOperand
 		return immedVal;
 	}
 
+	public void setImmedVal(long val)
+	{
+		assert isImmediate();
+		immedVal = val;
+	}
+
 	public MachineBasicBlock getMachineBasicBlock()
 	{
 		assert isMachineBasicBlock() : "Can't get MBB in non-MBB operand!";
@@ -401,4 +407,12 @@ public class MachineOperand
 	public void setValue(Value val) {value = val;}
 
 	public void setRegNum(int regNum) {this.regNum = regNum;}
+
+	public int getRegNum() {return regNum;}
+
+	public void setFlags(int flags)
+	{
+		this.flags = flags;
+	}
+	public int getFlags() {return flags;}
 };
