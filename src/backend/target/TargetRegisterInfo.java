@@ -244,7 +244,7 @@ public abstract class TargetRegisterInfo
 	 * and operating without, through the use of these two instructions.
 	 * @return
 	 */
-	int getCallFrameSetupOpcode()
+	public int getCallFrameSetupOpcode()
 	{
 		return callFrameSetupOpCode;
 	}
@@ -255,21 +255,21 @@ public abstract class TargetRegisterInfo
 	 * and operating without, through the use of these two instructions.
 	 * @return
 	 */
-	int getCallFrameDestroyOpcode()
+	public int getCallFrameDestroyOpcode()
 	{
 		return callFrameDestroyOpCode;
 	}
 
 	/**
-	 * This method is called during prolog/epilog
-	 * code insertion to eliminate call frame setup and destroy pseudo
-	 * instructions (but only if the Target is using them).  It is responsible
-	 * for eliminating these instructions, replacing them with concrete
-	 * instructions.  This method need only be implemented if using call frame
-	 * setup/destroy pseudo instructions.
+	 * This method is called during prolog/epilog code insertion to eliminate
+	 * call frame setup and destroy pseudo instructions (but only if the
+	 * Target is using them).  It is responsible for eliminating these
+	 * instructions, replacing them with concrete instructions.  This method
+	 * need only be implemented if using call frame setup/destroy pseudo
+	 * instructions.
 	 */
 	public void eliminateCallFramePseudoInstr(MachineFunction mf,
-			MachineBasicBlock mbb, int I)
+			MachineBasicBlock mbb, int idx)
 	{
 		assert (getCallFrameSetupOpcode() == -1 && getCallFrameDestroyOpcode() == -1)
 				: "eliminateCallFramePseudoInstr must be implemented if using"
@@ -277,10 +277,10 @@ public abstract class TargetRegisterInfo
 		assert false : "Call Frame Pseudo Instructions do not exist on this target!";
 	}
 	/**
-	 * processFunctionBeforeFrameFinalized - This method is called immediately
-	 * before the specified functions frame layout (MF.getFrameInfo()) is
-	 * finalized.  Once the frame is finalized, MO_FrameIndex operands are
-	 * replaced with direct ants.  This method is optional.
+	 * This method is called immediately before the specified functions frame
+	 * layout (MF.getFrameInfo()) is finalized.  Once the frame is finalized,
+	 * MO_FrameIndex operands are replaced with direct ants.  This method is
+	 * optional.
 	 */
 	public abstract void processFunctionBeforeFrameFinalized(MachineFunction mf);
 
@@ -292,7 +292,7 @@ public abstract class TargetRegisterInfo
 	 * specified instruction, as long as it keeps the iterator pointing the the
 	 * finished product.
 	 */
-	public abstract void eliminateFrameIndex(MachineFunction mf, int ii);
+	public abstract void eliminateFrameIndex(MachineFunction mf, MachineBasicBlock mbb, int ii);
 
 	/**
 	 * This method insert prologue code into the function.

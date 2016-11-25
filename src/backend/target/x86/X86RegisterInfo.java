@@ -1,13 +1,12 @@
 package backend.target.x86;
 
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFrameInfo;
-import backend.codegen.MachineFunction;
-import backend.codegen.MachineInstr;
+import backend.codegen.*;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
+import tools.Util;
 
 import static backend.codegen.MachineInstrBuilder.*;
+import static backend.codegen.MachineOperand.MachineOperandType.MO_SignExtendedImmed;
 import static backend.codegen.MachineOperand.UseType.Use;
 
 /**
@@ -135,7 +134,8 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 		return mbbi + 1;
 	}
 
-	@Override public int loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
+	@Override
+	public int loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
 			int destReg, int FrameIndex, TargetRegisterClass rc)
 	{
 		int opcode[] = {MOVmr8, MOVmr16, MOVmr32, FLDr64};
@@ -157,34 +157,107 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	}
 
 	/**
-	 * processFunctionBeforeFrameFinalized - This method is called immediately
-	 * before the specified functions frame layout (MF.getFrameInfo()) is
-	 * finalized.  Once the frame is finalized, MO_FrameIndex operands are
-	 * replaced with direct ants.  This method is optional.
-	 *
-	 * @param mf
+	 * This method is called during prolog/epilog code insertion to eliminate
+	 * call frame setup and destroy pseudo instructions (but only if the
+	 * Target is using them).  It is responsible for eliminating these
+	 * instructions, replacing them with concrete instructions.  This method
+	 * need only be implemented if using call frame setup/destroy pseudo
+	 * instructions.
 	 */
-	@Override public void processFunctionBeforeFrameFinalized(
+	@Override
+	public void eliminateCallFramePseudoInstr(MachineFunction mf,
+			MachineBasicBlock mbb, int idx)
+	{
+		MachineInstr newOne = null, old = mbb.getInstAt(idx);
+
+		if (hasFP(mf))
+		{
+			// If we have a frame pointer, turn the adjcallstackup instruction into a
+			// 'sub ESP, <amt>' and the adjcallstackdown instruction into 'add ESP,
+			// <amt>'
+			long amount = old.getOperand(0).getImmedValue();
+			if (amount != 0)
+			{
+				int align = mf.getTargetMachine().getFrameInfo().getStackAlignment();
+				amount = Util.roundUp(amount, align);
+
+				// stack setup pseudo instrcution.
+				if (old.getOpCode() == X86InstrSets.ADJCALLSTACKDOWN)
+				{
+					newOne = buildMI(X86InstrSets.SUBri32, 2, X86RegsSet.ESP).
+							addReg(X86RegsSet.ESP).
+							addZImm(amount).getMInstr();
+				}
+				else
+				{
+					assert (old.getOpCode() == X86InstrSets.ADJCALLSTACKUP);
+					// stack destroy pseudo instruction.
+					newOne = buildMI(X86InstrSets.ADDri32, 2, X86RegsSet.ESP).
+							addReg(X86RegsSet.ESP).
+							addZImm(amount).getMInstr();
+				}
+			}
+		}
+		if (newOne != null)
+			mbb.replace(idx, newOne);
+		else
+			mbb.erase(idx);
+	}
+	/**
+	 * This method is called immediately before the specified functions frame
+	 * layout (MF.getFrameInfo()) is finalized.  Once the frame is finalized,
+	 * MO_FrameIndex operands are replaced with direct ants.  This method is
+	 * optional.
+	 */
+	@Override
+	public void processFunctionBeforeFrameFinalized(
 			MachineFunction mf)
 	{
-
+		if (hasFP(mf))
+		{
+			// creates a stack object for saving EBP.
+			int frameIndex = mf.getFrameInfo().createStackObject(4, 4);
+			assert frameIndex == mf.getFrameInfo().getObjectIndexEnd() - 1
+					:"The slot for EBP must be last";
+		}
 	}
 
-	@Override public void eliminateFrameIndex(MachineFunction mf, int ii)
+	@Override
+	public void eliminateFrameIndex(MachineFunction mf,
+			MachineBasicBlock mbb, int ii)
 	{
+		MachineInstr mi = mbb.getInstAt(ii);
+		int i = 0;
+		while(!mi.getOperand(i).isFrameIndex())
+		{
+			i++;
+			assert i < mi.getNumOperands():"Instr have not frame index operand!";
+		}
 
+		int frameIndex = mi.getOperand(i).getFrameIndex();
+		mi.setMachineOperandReg(i, hasFP(mf)?X86RegsSet.EBP : X86RegsSet.ESP);
+
+		int offset = mf.getFrameInfo().getObjectOffset(frameIndex) +
+				(int)mi.getOperand(i+3).getImmedValue() + 4;
+
+		if (!hasFP(mf))
+			offset += mf.getFrameInfo().getStackSize();
+
+		mi.setMachineOperandConst(i+3, MO_SignExtendedImmed, offset);
 	}
 
 	/**
 	 * Return true if the specified function should have a dedicatedd stack pointer
 	 * register. This is true if function has variable sized objects or if frame
 	 * pointer elimination is disabled.
+	 *
+	 * the frame pointer is usually EBP in X86 target machine.
 	 * @param mf
 	 * @return
 	 */
 	private boolean hasFP(MachineFunction mf)
 	{
-		return true;//mf.getFrameInfo().hasVarSizedObjects();
+		return mf.getFrameInfo().hasVarSizedObjects();
 	}
 
 	/**
@@ -204,6 +277,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 		if (hasFP(mf))
 		{
 			// get the offset of the stack slot for the %ebp register.
+			// Note that: this offset is away from ESP.
 			int ebpOffset = mfi.getObjectOffset(mfi.getObjectIndexEnd()-1) + 4;
 			if (numBytes!=0)
 			{

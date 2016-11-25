@@ -44,6 +44,13 @@ public class MachineBasicBlock
 			insts.remove(i);
 	}
 
+	public void replace(int idx, MachineInstr newInstr)
+	{
+		assert  idx>= 0 && idx < size():"idx out of range!";
+		insts.remove(idx);
+		insts.add(idx, newInstr);
+	}
+
 	public MachineInstr front() {return insts.getFirst();}
 
 	public MachineInstr back() {return insts.getLast();}

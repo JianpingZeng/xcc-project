@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.codegen.MachineOperand.MachineOperandType;
 import backend.codegen.MachineOperand.UseType;
 import backend.target.TargetInstrInfo;
 import backend.value.GlobalValue;
@@ -281,12 +282,31 @@ public class MachineInstr
 		operands.add(new MachineOperand(symbolName, isPCRelative));
 	}
 
-	public void setMachineOperand(int i, int regNum)
+	public void setMachineOperandReg(int i, int regNum)
 	{
 		assert i < getNumOperands();
 		MachineOperand op = operands.get(i);
 		op.setOpType(MO_MachineRegister);
 		op.setValue(null);
 		op.setRegNum(regNum);
+	}
+
+	public void setMachineOperandConst(int i, MachineOperandType type, long val)
+	{
+		assert  i < getNumOperands();
+		MachineOperand op = operands.get(i);
+		op.setOpType(type);
+		op.setImmedVal(val);
+		op.setValue(null);
+		op.setRegNum(-1);
+	}
+
+	public void setMachineOperandVal(int i, MachineOperandType opTy, Value v)
+	{
+		assert i < getNumOperands();
+		MachineOperand op = getOperand(i);
+		op.setValue(v);
+		op.setRegNum(-1);
+		op.setOpType(opTy);
 	}
 }

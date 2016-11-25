@@ -157,7 +157,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 							virToPhyRegMap.put(virtualReg, phyReg);
 						}
 					}
-					mi.setMachineOperand(i, phyReg);
+					mi.setMachineOperandReg(i, phyReg);
 				}
 			}
 		}
