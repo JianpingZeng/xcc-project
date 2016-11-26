@@ -109,7 +109,7 @@ public interface X86InstrSets
 	int ADDri32 = ADDri16 + 1;
 	int ADDri16b = ADDri32 + 1;  // ADDri with sign extended 8 bit imm
 	int ADDri32b = ADDri16b + 1;
-	int ADCrr32 = -ADDri32b + 1;                // R32 += imm32+Carry
+	int ADCrr32 = ADDri32b + 1;                // R32 += imm32+Carry
 	int SUBrr8 = ADCrr32 + 1;
 	int SUBrr16 = SUBrr8 + 1;
 	int SUBrr32 = SUBrr16 + 1;
