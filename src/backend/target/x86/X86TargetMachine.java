@@ -16,6 +16,7 @@ import static backend.opt.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.x86.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
 import static backend.target.x86.PEI.createX86PrologEpilogEmitter;
+import static backend.target.x86.X86PeepholeOptimizer.createX86PeepholeOptimizer;
 import static backend.target.x86.X86SimpleInstSel.createX86SimpleInstructionSelector;
 
 /**
@@ -93,9 +94,8 @@ public class X86TargetMachine extends TargetMachine
 		// Insert prolog/epilog code.  Eliminate abstract frame index references.
 		pm.add(createX86PrologEpilogEmitter());
 
+		pm.add(createX86PeepholeOptimizer());
 		/**
-		//pm.add(createX86PeepholeOptimizerPass());
-		
 		//pm.add(createX86CodePrinterPass(asmOutStream, this));
 		 */
 		return false;
