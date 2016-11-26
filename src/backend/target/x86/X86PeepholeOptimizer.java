@@ -46,21 +46,23 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
     {
         boolean changed = false;
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        {
             for (int i = 0; i < mbb.size(); )
             {
-                changed |= optimizeInst(mbb, i);
-                i = nextPos;
+                i = optimizeInst(mbb, i);
+                changed |= res;
             }
+        }
         return changed;
     }
-    private int nextPos;
-    private boolean optimizeInst(MachineBasicBlock mbb, int idx)
+    private boolean res = false;
+    private int optimizeInst(MachineBasicBlock mbb, int idx)
     {
         MachineInstr curMI = mbb.getInstAt(idx);
         MachineInstr next = idx == mbb.size() - 1? null: mbb.getInstAt(idx+1);
         switch (curMI.getOpCode())
         {
-            case X86InstrInfo.MOVrr8:
+            case X86InstrSets.MOVrr8:
             case X86InstrSets.MOVrr16:
             case X86InstrSets.MOVrr32:
                 // destroy X=X copy.
@@ -68,11 +70,11 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                         == curMI.getOperand(1).getAllocatedRegNum())
                 {
                     mbb.erase(idx);
-                    nextPos = idx;
-                    return true;
+                    res = true;
+                    return idx;
                 }
-                nextPos = idx+1;
-                return false;
+                res = false;
+                return idx+1;
             case X86InstrSets.ADDri16:
             case X86InstrSets.ADDri32:
             case X86InstrSets.SUBri16:
@@ -114,12 +116,12 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                         int r1 = curMI.getOperand(1).getAllocatedRegNum();
                         mbb.replace(idx, buildMI(opcode, 2, r0).addReg(r1).
                                 addZImm((byte)val).getMInstr());
-                        nextPos = idx + 1;
-                        return true;
+                        res = true;
+                        return idx + 1;
                     }
                 }
-                nextPos = idx+1;
-                return false;
+                res = false;
+                return idx+1;
             case X86InstrSets.BSWAPr32:
             {
                 // Change bswap EAX, bswap EAX into nothing.
@@ -128,15 +130,20 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                         next.getOperand(0).getAllocatedRegNum())
                 {
                     mbb.erase(idx);
-                    nextPos = idx;
-                    return true;
+                    res = true;
+                    return idx;
                 }
-                nextPos = idx+1;
-                return false;
+                res = false;
+                return idx+1;
             }
             default:
-                nextPos = idx+1;
-                return false;
+                res = false;
+                return idx+1;
         }
+    }
+
+    public static X86PeepholeOptimizer createX86PeepholeOptimizer()
+    {
+        return new X86PeepholeOptimizer();
     }
 }
