@@ -52,10 +52,27 @@ public class GlobalVariable extends GlobalValue
     @Override
     public boolean isNullValue(){return false;}
 
+    /**
+     * Return true if the primary definition of this global value is
+     * outside of the current translation unit.
+     *
+     * @return
+     */
+    @Override
+    public boolean isExternal()
+    {
+        return operand(0) == null;
+    }
+
     public void setInitializer(Constant init)
     {
         setOperand(0, new Use(init, this));
     }
     public boolean isConstant() {return isConstantGlobal;}
     public void setConstant(boolean c) {isConstantGlobal = c;}
+
+    public boolean hasInitializer()
+    {
+        return !isExternal();
+    }
 }

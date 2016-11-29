@@ -271,6 +271,7 @@ public class X86InstrInfo extends TargetInstrInfo implements X86InstrSets, X86Re
 
 		new TargetInstrDescriptor(FISTr16, "fist", 1, 0, X86II.MRMS2m|X86II.OneArgFP|X86II.Arg16, null, null),
 		new TargetInstrDescriptor(FISTr32, "fist", 1, 0, X86II.MRMS2m|X86II.OneArgFP|X86II.Arg32, null, null),
+		new TargetInstrDescriptor(FISTr64, "fist", 1, 0, X86II.MRMS2m|X86II.OneArgFP|X86II.Arg64, null, null),
 		new TargetInstrDescriptor(FISTPr16, "fistp", 1, 0, X86II.MRMS3m|X86II.Arg16, null, null),
 		new TargetInstrDescriptor(FISTPr32, "fistp", 1, 0, X86II.MRMS3m|X86II.Arg32, null, null),
 		new TargetInstrDescriptor(FISTPr64, "fistpll", 1, 0, X86II.MRMS7m|X86II.OneArgFP|X86II.Arg64, null, null),

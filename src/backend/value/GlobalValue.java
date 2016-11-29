@@ -28,7 +28,8 @@ import static backend.value.GlobalValue.LinkageType.*;
  */
 public abstract class GlobalValue extends Constant
 {
-	/**
+
+    /**
      * An enumeration for the kinds of linkage for global variable and function.
      */
     public enum LinkageType
@@ -55,6 +56,13 @@ public abstract class GlobalValue extends Constant
 
     protected Module parent;
     private LinkageType linkageType;
+    /**
+     * The section on which this value will be printed.
+     */
+    private String section;
+
+    private int alignment;
+
     /**
      * Constructs a new instruction representing the specified constant.
      *
@@ -108,4 +116,25 @@ public abstract class GlobalValue extends Constant
 
     @Override
     public PointerType getType() { return (PointerType) super.getType();}
+
+    public boolean hasSection() {return section != null;}
+
+    public String getSection() {return section;}
+
+    public void setSection(String newSection) {section = newSection;}
+
+    /**
+     * Return true if the primary definition of this global value is
+     * outside of the current translation unit.
+     * @return
+     */
+    public abstract boolean isExternal();
+
+    public int getAlignment() {return alignment; }
+
+    public void setAlignment(int align)
+    {
+        assert (align & (align - 1)) == 0:"Alignment must be power of 2!";
+        alignment = align;
+    }
 }

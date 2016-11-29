@@ -12,7 +12,7 @@ import java.util.HashMap;
  */
 public class ConstantArray extends Constant
 {
-	private static class ConstantArrayKey
+    private static class ConstantArrayKey
 	{
 		ArrayType type;
 		ArrayList<Constant> eltVals;
@@ -116,5 +116,35 @@ public class ConstantArray extends Constant
 	public boolean isNullValue()
 	{
 		return false;
+	}
+
+	@Override
+	public ArrayType getType() {return (ArrayType)super.getType();}
+
+	/**
+	 * This method returns true if the array is an array of Int8Ty and
+	 * if the elements of the array are all ConstantInt's.
+	 * @return
+	 */
+	public boolean isString()
+	{
+		if (getType().getElemType() != Type.Int8Ty)
+			return false;
+
+		for (int i = 0, e = getNumOfOperands(); i < e; i++)
+			if (!(operand(i) instanceof ConstantInt))
+				return false;
+
+		return true;
+	}
+	@Override
+	public Constant operand(int idx)
+	{
+		return (Constant) super.operand(idx);
+	}
+
+	public void setOperand(int idx, Constant c)
+	{
+		super.setOperand(idx, c, this);
 	}
 }

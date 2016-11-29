@@ -1,7 +1,7 @@
 package backend.codegen;
 
+import backend.target.TargetData;
 import backend.value.Constant;
-import backend.value.ConstantFP;
 
 import java.util.ArrayList;
 
@@ -13,7 +13,14 @@ import java.util.ArrayList;
 public final class MachineConstantPool
 {
     private ArrayList<Constant> constantPool;
+    private TargetData td;
+    private int poolAlignment;
 
+    public MachineConstantPool(TargetData td)
+    {
+        this.td = td;
+        poolAlignment = 1;
+    }
     /**
      * Creates a new entry in constant pool and returns it's index
      * or a existing one if there is existing.
@@ -31,4 +38,11 @@ public final class MachineConstantPool
     }
 
     public ArrayList<Constant> getConstantPool() {return constantPool;}
+
+    public int getContantPoolAlignment()
+    {
+        return poolAlignment;
+    }
+
+    public boolean isEmpty() {return constantPool.isEmpty();}
 }

@@ -57,4 +57,9 @@ public class ConstantStruct extends Constant
     {
         return null;
     }
+
+    @Override
+    public StructType getType() { return (StructType)super.getType();}
+    @Override
+    public Constant operand(int idx) { return (Constant)super.operand(idx); }
 }
