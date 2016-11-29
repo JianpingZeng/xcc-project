@@ -89,15 +89,13 @@ public class X86TargetMachine extends TargetMachine
 			pm.add(createLocalRegAllocator());
 		// converts virtual register in X86 FP inst into floating point stack slot.
 		pm.add(createX86FloatingPointStackitifierPass());
-
-
+		
 		// Insert prolog/epilog code.  Eliminate abstract frame index references.
 		pm.add(createX86PrologEpilogEmitter());
 
 		pm.add(createX86PeepholeOptimizer());
-		/**
-		//pm.add(createX86CodePrinterPass(asmOutStream, this));
-		 */
+
+		pm.add(X86ATTAsmPrinter.createX86AsmCodeEmitter(asmOutStream, this));
 		return false;
 	}
 }

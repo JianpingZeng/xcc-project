@@ -265,4 +265,9 @@ public abstract class Type extends Value implements PrimitiveID
                 return "other";
         }
     }
+
+    public String getDescription()
+    {
+        return getName();
+    }
 }

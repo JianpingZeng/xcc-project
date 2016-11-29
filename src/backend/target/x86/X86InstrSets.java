@@ -250,7 +250,8 @@ public interface X86InstrSets
 	int FSTPrr = FSTrr + 1;      // ST(i) = ST(0), pop
 	int FISTr16 = FSTPrr + 1;          // store signed short
 	int FISTr32 = FISTr16 + 1;          // store signed int
-	int FISTPr16 = FISTr32 + 1;          // store signed short, pop
+	int FISTr64 = FISTr32 + 1;          // store signed long int
+	int FISTPr16 = FISTr64 + 1;          // store signed short, pop
 	int FISTPr32 = FISTPr16 + 1;          // store signed int, pop
 	int FISTPr64 = FISTPr32 + 1;          // store signed long, pop
 	int FXCH = FISTPr64 + 1;       // fxch ST(i), ST(0)
@@ -263,18 +264,23 @@ public interface X86InstrSets
 	int FADDST0r = FLD1 + 1;
 	int FADDrST0 = FADDST0r + 1;
 	int FADDPrST0 = FADDrST0 + 1;
+
 	int FSUBRST0r = FADDPrST0 + 1;
 	int FSUBrST0 = FSUBRST0r + 1;
 	int FSUBPrST0 = FSUBrST0+ 1;
+
 	int FSUBST0r = FSUBPrST0 + 1;
 	int FSUBRrST0 = FSUBST0r + 1;
 	int FSUBRPrST0 = FSUBRrST0 + 1;
+
 	int FMULST0r = FSUBRPrST0 + 1;
 	int FMULrST0 = FMULST0r + 1;
 	int FMULPrST0 = FMULrST0 + 1;
+
 	int FDIVRST0r = FMULPrST0 + 1;
 	int FDIVrST0 = FDIVRST0r + 1;
 	int FDIVPrST0 = FDIVrST0 + 1;
+
 	int FDIVST0r = FDIVPrST0 + 1;   // ST(0) = ST(0) / ST(i)
 	int FDIVRrST0 = FDIVST0r + 1;   // ST(i) = ST(0) / ST(i)
 	int FDIVRPrST0 = FDIVRrST0 + 1;   // ST(i) = ST(0) / ST(i), pop

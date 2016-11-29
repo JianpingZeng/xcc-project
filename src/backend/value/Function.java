@@ -156,7 +156,25 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 		return false;
 	}
 
+	/**
+	 * Return true if the primary definition of this global value is
+	 * outside of the current translation unit.
+	 *
+	 * @return
+	 */
+	@Override
+	public boolean isExternal()
+	{
+		return basicBlockList.isEmpty();
+	}
+
 	public MachineFunction getMachineFunc() {return mf;}
 
 	public void setMachineFunc(MachineFunction newFunc) {mf = newFunc;}
+
+	public int getIntrinsicID()
+	{
+		// TODO
+		return 0;
+	}
 }
