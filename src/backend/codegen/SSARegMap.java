@@ -16,10 +16,12 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import tools.Pair;
 
 import java.util.ArrayList;
+
+import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
 
 /**
  * Maps register number to register classes which used to assist register allocation.
@@ -28,11 +30,20 @@ import java.util.ArrayList;
  */
 public final class SSARegMap
 {
-    private ArrayList<TargetRegisterClass> regClassMp;
+    /**
+     * Mapping from virtual register number to its attached register class and
+     * define machine operand.
+     */
+    private ArrayList<Pair<TargetRegisterClass, MachineOperand>> vregInfo;
+
+    public SSARegMap()
+    {
+        vregInfo = new ArrayList<>();
+    }
 
     private int rescale(int reg)
     {
-        return reg - TargetRegisterInfo.FirstVirtualRegister;
+        return reg - FirstVirtualRegister;
     }
 
     /**
@@ -43,8 +54,8 @@ public final class SSARegMap
     public TargetRegisterClass getRegClass(int reg)
     {
         int actualReg = rescale(reg);
-        assert actualReg<regClassMp.size():"Register out of bound!";
-        return regClassMp.get(actualReg);
+        assert actualReg< vregInfo.size():"Register out of bound!";
+        return vregInfo.get(actualReg).first;
     }
 
     /**
@@ -55,9 +66,26 @@ public final class SSARegMap
      */
     public int createVirtualRegister(TargetRegisterClass  regClass)
     {
-        regClassMp.add(regClass);
-        return regClassMp.size()-1 + TargetRegisterInfo.FirstVirtualRegister;
+        vregInfo.add(new Pair<>(regClass, null));
+        return vregInfo.size() - 1 + FirstVirtualRegister;
     }
 
-    public void clear(){regClassMp.clear();}
+    public void clear()
+    {
+        vregInfo.clear();
+    }
+
+    /**
+     * Gets the definition machine operand of the specified virtual register.
+     * @param regNo
+     * @return
+     */
+    public MachineOperand getDefinedMO(int regNo)
+    {
+        assert regNo >= FirstVirtualRegister
+                : "the regNo is not a virtual register";
+        int actualReg = rescale(regNo);
+        assert actualReg< vregInfo.size():"Register out of bound!";
+        return vregInfo.get(actualReg).second;
+    }
 }

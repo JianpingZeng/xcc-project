@@ -4,6 +4,8 @@ import backend.target.TargetRegisterInfo;
 import backend.value.GlobalValue;
 import backend.value.Value;
 
+import java.util.ArrayList;
+
 import static backend.codegen.MachineOperand.Kind.*;
 import static backend.codegen.MachineOperand.MachineOperandType.*;
 
@@ -44,6 +46,16 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
 
 public class MachineOperand
 {
+	public MachineInstr getParentMI()
+	{
+		return parentMI;
+	}
+
+	public void setParentMI(MachineInstr parentMI)
+	{
+		this.parentMI = parentMI;
+	}
+
 	public enum UseType
 	{
 		Use,             /// This machine operand is only read by the instruction
@@ -95,6 +107,18 @@ public class MachineOperand
 	private int flags;                   // see bit field definitions above
 	private MachineOperandType opType;  // Pack into 8 bits efficiently after flags.
 	private int regNum;                    // register number for an explicit register
+	/**
+	 * This list records all user of this machine operand for holding SSA form
+	 * before register allocation.
+	 *
+	 * Note that: this property just avaliable for register operand (includes
+	 * virtual register and physical register).
+	 */
+	private ArrayList<MachineOperand> defUseList;
+	/**
+	 * The machine instruction in which this machine operand is embedded.
+	 */
+	private MachineInstr parentMI;
 
 	// will be set for a value after reg allocation
 	private MachineOperand()
@@ -103,6 +127,7 @@ public class MachineOperand
 		flags = 0;
 		opType = MO_VirtualRegister;
 		regNum = -1;
+		defUseList = new ArrayList<>();
 	}
 
 	public MachineOperand(long ImmVal, MachineOperandType OpTy)
@@ -118,6 +143,7 @@ public class MachineOperand
 		immedVal = (0);
 		opType = (OpTy);
 		regNum = (Reg);
+		defUseList = new ArrayList<>();
 		switch (UseTy)
 		{
 			case Use:
@@ -414,5 +440,23 @@ public class MachineOperand
 	{
 		this.flags = flags;
 	}
+
 	public int getFlags() {return flags;}
+
+	/**
+	 * Adds a usage to this machine operand into defUseList.
+	 * @param mo
+	 */
+	public void addUserMO(MachineOperand mo)
+	{
+		assert mo != null;
+		defUseList.add(mo);
+	}
+
+	public ArrayList<MachineOperand> getDefUseList()
+	{
+		assert defUseList != null && isRegister()
+				: "Can not call this method for non-register operand";
+		return defUseList;
+	}
 };

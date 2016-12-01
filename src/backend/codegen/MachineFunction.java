@@ -5,6 +5,8 @@ import backend.value.Function;
 
 import java.util.ArrayList;
 
+import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -30,6 +32,12 @@ public class MachineFunction
 	 */
 	private MachineConstantPool constantPool;
 
+	/**
+	 * This array keeps track of the defined machine operand with the spceified
+	 * machine register.
+	 */
+	private MachineOperand[] phyRegDefUseList;
+
 	public MachineFunction(Function fn, TargetMachine tm)
 	{
 		this.fn = fn;
@@ -38,6 +46,7 @@ public class MachineFunction
 		frameInfo = new MachineFrameInfo();
 		ssaRegMap = new SSARegMap();
 		constantPool = new MachineConstantPool(tm.getTargetData());
+		phyRegDefUseList = new MachineOperand[tm.getRegInfo().getNumRegs()];
 
 		// associate this machine function with HIR function.
 		fn.setMachineFunc(this);
@@ -134,6 +143,15 @@ public class MachineFunction
 	 */
 	public void replaceRegWith(int oldReg, int newReg)
 	{
-
+		assert oldReg != newReg :"It is not needed to replace the same reg";
+		MachineOperand defined = null;
+		if (oldReg < FirstVirtualRegister)
+			defined = phyRegDefUseList[oldReg];
+		else
+			defined = ssaRegMap.getDefinedMO(oldReg);
+		for (MachineOperand user : defined.getDefUseList())
+		{
+			user.setRegNum(newReg);
+		}
 	}
 }
