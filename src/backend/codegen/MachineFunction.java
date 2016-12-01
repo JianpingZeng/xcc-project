@@ -3,7 +3,7 @@ package backend.codegen;
 import backend.target.TargetMachine;
 import backend.value.Function;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 
 /**
  * @author Xlous.zeng
@@ -16,7 +16,7 @@ public class MachineFunction
 	/**
 	 * A list containing all machine basic block.
 	 */
-	private LinkedList<MachineBasicBlock> basicBlocks;
+	private ArrayList<MachineBasicBlock> mbbNumber;
 	/**
 	 * Used to keep track of stack frame information about target.
 	 */
@@ -34,7 +34,7 @@ public class MachineFunction
 	{
 		this.fn = fn;
 		target = tm;
-		basicBlocks = new LinkedList<>();
+		mbbNumber = new ArrayList<>();
 		frameInfo = new MachineFrameInfo();
 		ssaRegMap = new SSARegMap();
 		constantPool = new MachineConstantPool(tm.getTargetData());
@@ -47,7 +47,7 @@ public class MachineFunction
 
 	public TargetMachine getTargetMachine() {return target;}
 
-	public MachineBasicBlock getEntryBlock() {return basicBlocks.getFirst();}
+	public MachineBasicBlock getEntryBlock() {return mbbNumber.get(0);}
 
 	public MachineFrameInfo getFrameInfo() {return frameInfo;}
 
@@ -57,15 +57,83 @@ public class MachineFunction
 
 	public MachineConstantPool getConstantPool(){return constantPool;}
 
-	public LinkedList<MachineBasicBlock> getBasicBlocks() {return basicBlocks;}
+	public ArrayList<MachineBasicBlock> getBasicBlocks() {return mbbNumber;}
 
 	public void erase(MachineBasicBlock mbb)
 	{
-		basicBlocks.remove(mbb);
+		mbbNumber.remove(mbb);
 	}
 
 	public int getNumMBB()
 	{
-		return basicBlocks.size();
+		return mbbNumber.size();
+	}
+
+	public MachineBasicBlock getMBBAt(int blockNo)
+	{
+		assert blockNo >= 0 && blockNo < mbbNumber.size();
+		return mbbNumber.get(blockNo);
+	}
+
+	public boolean isEmpty() {return mbbNumber.isEmpty();}
+
+	public void addMBBNumbering(MachineBasicBlock mbb)
+	{
+		mbbNumber.add(mbb);
+		mbb.setNumber(mbbNumber.size()-1);
+	}
+
+	/**
+	 * Performs a phase for re-numbering all of blocks in this function.
+	 */
+	public void renumberBlocks()
+	{
+		if (isEmpty())
+		{
+			mbbNumber.clear();
+			return;
+		}
+
+		renumberBlocks(getEntryBlock());
+	}
+
+	private void renumberBlocks(MachineBasicBlock start)
+	{
+		int blockNo = 0;
+		int i = mbbNumber.indexOf(start);
+		if (i != 0)
+			blockNo = mbbNumber.get(i-1).getNumber() + 1;
+
+		for (int e = mbbNumber.size(); i < e; i++, blockNo++)
+		{
+			MachineBasicBlock mbb = mbbNumber.get(i);
+
+			if (mbb.getNumber() != blockNo)
+			{
+				// remove the old number and let a new number to it.
+				if (mbb.getNumber() != -1)
+				{
+					mbbNumber.set(mbb.getNumber(), null);
+				}
+				if (mbbNumber.get(blockNo) != null)
+					mbbNumber.get(blockNo).setNumber(-1);
+
+				mbbNumber.set(blockNo, mbb);
+				mbb.setNumber(blockNo);
+			}
+		}
+
+		assert blockNo <= mbbNumber.size():"Mismatch!";
+		mbbNumber.ensureCapacity(blockNo);
+	}
+
+	/**
+	 * Replaces all of usage of oldReg with newReg in this machine function.
+	 * @param oldReg
+	 * @param newReg
+	 */
+	public void replaceRegWith(int oldReg, int newReg)
+	{
+
 	}
 }

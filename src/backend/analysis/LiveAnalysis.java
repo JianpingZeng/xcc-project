@@ -19,7 +19,7 @@ package backend.analysis;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
 import backend.pass.AnalysisUsage;
-import backend.pass.UnreachableBlockElim;
+import backend.pass.UnreachableMachineBlockElim;
 
 /**
  * @author Xlous.zeng
@@ -50,7 +50,7 @@ public final class LiveAnalysis extends MachineFunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         assert au != null;
-        au.addRequired(UnreachableBlockElim.class);
+        au.addRequired(UnreachableMachineBlockElim.class);
         super.getAnalysisUsage(au);
     }
 }

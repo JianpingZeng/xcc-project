@@ -142,7 +142,11 @@ public abstract class TargetRegisterInfo
 	 */
 	private TargetRegisterClass[] phyRegClasses;
 
+	/**
+	 * Register classes of target machine.
+	 */
 	private TargetRegisterClass[] regClasses;
+
 	/**
 	 * The opcode of setting up stack frame for function being compiled.
 	 * If the target machine does not support it, this field will be -1.

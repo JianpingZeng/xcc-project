@@ -16,20 +16,21 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
+import backend.pass.AnalysisUsage;
 
 /**
- * This class used for computing dominator tree on Machine CFG.
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class MachineLoopInfo extends MachineFunctionPass
+public class MachineLoopInfo extends MachineFunctionPass
 {
     @Override
     public String getPassName()
     {
-        return null;
+        return "Machine Natural Loop Construction";
     }
 
     /**
@@ -39,8 +40,20 @@ public final class MachineLoopInfo extends MachineFunctionPass
      * @param mf
      * @return
      */
-    @Override public boolean runOnMachineFunction(MachineFunction mf)
+    @Override
+    public boolean runOnMachineFunction(MachineFunction mf)
     {
         return false;
+    }
+
+    public void getAnalysisUsage(AnalysisUsage au)
+    {
+        au.addRequired(MachineDominatorTree.class);
+        super.getAnalysisUsage(au);
+    }
+
+    public void removeBlock(MachineBasicBlock mbb)
+    {
+
     }
 }

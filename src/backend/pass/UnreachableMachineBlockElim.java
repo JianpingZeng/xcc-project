@@ -17,6 +17,7 @@ package backend.pass;
  */
 
 import backend.analysis.MachineDominatorTree;
+import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
@@ -24,6 +25,7 @@ import backend.codegen.MachineInstr;
 import backend.support.DepthFirstOrder;
 import backend.target.x86.X86InstrSets;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -107,7 +109,50 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
             // TODO add MachineModuleInfo pass 2016.12.01.
             dead.eraseFromParent();
         }
-        return false;
+
+        // cleanup phi node.
+        for (int i = 0, e = mf.getNumMBB(); i < e; i++)
+        {
+            // Prune the unneeded PHI nodes.
+            MachineBasicBlock mbb = mf.getMBBAt(i);
+            ArrayList<MachineBasicBlock> pred = mbb.getPredecessors();
+            for (int j = 0; j <  mbb.size(); )
+            {
+                MachineInstr phi = mbb.getInstAt(j);
+                if (phi.getOpCode() != X86InstrSets.PHI)
+                    continue;
+                for (int k = phi.getNumOperands() - 1; k >= 2; k-=2)
+                {
+                    if (!pred.contains(phi.getOperand(k).getMachineBasicBlock()))
+                    {
+                        phi.removeOperand(k);
+                        phi.removeOperand(k-1);
+                    }
+                }
+
+                // If this phi have only one input argument, remove it from MBB.
+                if (phi.getNumOperands() == 3)
+                {
+                    int input = phi.getOperand(1).getAllocatedRegNum();
+                    int output = phi.getOperand(0).getAllocatedRegNum();
+                    int phiPos = j;
+                    // advance to next inst.
+                    j++;
+
+                    // remove this phi inst.
+                    mbb.erase(phiPos);
+                    if (input != output)
+                        mf.replaceRegWith(output, input);
+                    continue;
+                }
+                j++;
+            }
+        }
+
+        // re-number all blocks in machine function.
+        mf.renumberBlocks();
+
+        return !deaded.isEmpty();
     }
 
     /**
