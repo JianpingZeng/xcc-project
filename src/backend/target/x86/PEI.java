@@ -175,7 +175,7 @@ public class PEI extends MachineFunctionPass
         // Now that we know which register should be saved into stack slot,
         // allocate a new slot for them.
         TIntArrayList stackSlots = new TIntArrayList();
-        MachineBasicBlock entry = mf.getFirst();
+        MachineBasicBlock entry = mf.getEntryBlock();
         int insertPos = 0;
         for (int i = 0, e = regsToSaved.size(); i < e; i++)
         {

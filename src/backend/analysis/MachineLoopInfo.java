@@ -1,4 +1,4 @@
-package backend.pass;
+package backend.analysis;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,29 +16,31 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineFunctionPass;
 
 /**
+ * This class used for computing dominator tree on Machine CFG.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PassManager
+public final class MachineLoopInfo extends MachineFunctionPass
 {
-    private ModulePassManager mpm;
-
-    public PassManager()
+    @Override
+    public String getPassName()
     {
-        mpm = new ModulePassManager();
+        return null;
     }
 
-    public void add(Pass p)
+    /**
+     * This method must be overridded by concrete subclass for performing
+     * desired machine code transformation or analysis.
+     *
+     * @param mf
+     * @return
+     */
+    @Override public boolean runOnMachineFunction(MachineFunction mf)
     {
-        assert p instanceof ModulePass :"Not a module pass?";
-        mpm.add((ModulePass)p);
-    }
-
-    public void run(Module m)
-    {
-        mpm.run(m);
+        return false;
     }
 }

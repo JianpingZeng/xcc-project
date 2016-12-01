@@ -1,7 +1,8 @@
-package backend.opt;
+package backend.analysis;
 
 import backend.hir.BasicBlock;
 import backend.hir.BasicBlock.BlockFlag;
+import backend.pass.FunctionPass;
 import backend.value.Function;
 
 import java.util.ArrayList;
@@ -19,7 +20,7 @@ import tools.BitMap2D;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LoopAnalysis
+public final class LoopInfo extends FunctionPass
 {	
 	/**
 	 * The maximum block id at given cfg.
@@ -63,7 +64,7 @@ public class LoopAnalysis
 	private BasicBlock[] idToBasicBlock;
 
 	private Function m;
-	public LoopAnalysis(Function function)
+	public LoopInfo(Function function)
     {
 		this.m = function;
 		maxBlockID = function.cfg.getNumberOfBasicBlocks();
@@ -499,5 +500,24 @@ public class LoopAnalysis
 					: "Can not set the loop index twice";
 			start.loopIndex = numLoops++;
 		}
+	}
+
+	@Override
+	public String getPassName()
+	{
+		return "The statistic of loop info on HIR";
+	}
+
+	/**
+	 * To run this pass on a module, we simply call runOnFunction once for
+	 * each module.
+	 *
+	 * @param f
+	 * @return
+	 */
+	@Override
+	public boolean runOnFunction(Function f)
+	{
+		return false;
 	}
 }

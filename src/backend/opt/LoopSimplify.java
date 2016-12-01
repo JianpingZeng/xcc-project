@@ -1,5 +1,6 @@
 package backend.opt;
 
+import backend.analysis.Loop;
 import backend.hir.*;
 import backend.value.Function;
 import backend.value.Instruction;

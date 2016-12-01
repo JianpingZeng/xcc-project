@@ -16,29 +16,16 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
-
 /**
+ * This class declares all passes registeration method.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PassManager
+public final class InitializePasses
 {
-    private ModulePassManager mpm;
-
-    public PassManager()
-    {
-        mpm = new ModulePassManager();
-    }
-
-    public void add(Pass p)
-    {
-        assert p instanceof ModulePass :"Not a module pass?";
-        mpm.add((ModulePass)p);
-    }
-
-    public void run(Module m)
-    {
-        mpm.run(m);
-    }
+    // TODO LiveAnalysisPass.
+    // TODO UnreachableBlockElim
+    // TODO UnreachableMachineBlockElim
+    // TODO MachineLoopInfo
+    // TODO MachineDominatorTree
 }

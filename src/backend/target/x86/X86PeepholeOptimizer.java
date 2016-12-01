@@ -20,6 +20,7 @@ import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
 import backend.codegen.MachineInstr;
+import backend.pass.RegisterPass;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 
@@ -29,7 +30,8 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
  */
 public class X86PeepholeOptimizer extends MachineFunctionPass
 {
-    @Override public String getPassName()
+    @Override
+    public String getPassName()
     {
         return "X86 Peephole optimization pass";
     }
@@ -146,4 +148,10 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
     {
         return new X86PeepholeOptimizer();
     }
+
+    /**
+     * Register X86 peephole optimization pass.
+     */
+    public static RegisterPass x86PPOPassRegister =
+            new RegisterPass("X86 peephole optimizer", X86PeepholeOptimizer.class);
 }

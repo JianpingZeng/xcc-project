@@ -1,6 +1,6 @@
 package backend.opt;
 
-import backend.hir.*;
+import backend.analysis.DominatorTree;
 import backend.hir.BasicBlock;
 import backend.value.Function;
 import backend.value.Value;

@@ -103,7 +103,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		for (BasicBlock bb : f.getBasicBlockList())
 			mbbMap.put(bb, new MachineBasicBlock(bb));
 
-		mbb = mf.getFirst();
+		mbb = mf.getEntryBlock();
 
 		// assigns incoming arguments with virtual register.
 		assignArgumentsWithVirtualReg(f);

@@ -6,7 +6,7 @@ import backend.opt.DCE;
 import backend.opt.GVN;
 import backend.opt.InductionVarSimplify;
 import backend.opt.LICM;
-import backend.opt.LoopAnalysis;
+import backend.analysis.LoopInfo;
 import backend.opt.LoopSimplify;
 import backend.opt.UCE;
 import hir.Module;
@@ -75,7 +75,7 @@ public final class Optimizer
     
     		// perform loop analysis and backend.opt
 			// 1. perform loop analysis
-    		new LoopAnalysis(m).runOnFunction();       	
+    		new LoopInfo(m).runOnFunction();
     		
     		// 2. perform loop simplification
     		simplificator.runOnFunction(m);

@@ -1,7 +1,7 @@
 package backend.opt;
 
 import backend.hir.BasicBlock;
-import backend.hir.DominatorTree;
+import backend.analysis.DominatorTree;
 
 import java.util.Comparator;
 import java.util.HashMap;

@@ -22,23 +22,22 @@ import backend.hir.Module;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PassManager
+public class ModulePassManager extends PassManagerBase<Module, ModulePass>
 {
-    private ModulePassManager mpm;
-
-    public PassManager()
+    @Override
+    public String getPMName()
     {
-        mpm = new ModulePassManager();
+        return "Module pass manager!";
     }
 
-    public void add(Pass p)
+    @Override
+    public boolean runPass(ModulePass mp, Module m)
     {
-        assert p instanceof ModulePass :"Not a module pass?";
-        mpm.add((ModulePass)p);
+        return mp.runOnModule(m);
     }
 
-    public void run(Module m)
+    public void addPass(FunctionPass pass, AnalysisUsage au)
     {
-        mpm.run(m);
+
     }
 }

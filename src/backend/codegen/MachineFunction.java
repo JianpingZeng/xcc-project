@@ -37,7 +37,7 @@ public class MachineFunction
 		basicBlocks = new LinkedList<>();
 		frameInfo = new MachineFrameInfo();
 		ssaRegMap = new SSARegMap();
-		constantPool = new MachineConstantPool();
+		constantPool = new MachineConstantPool(tm.getTargetData());
 
 		// associate this machine function with HIR function.
 		fn.setMachineFunc(this);
@@ -47,7 +47,7 @@ public class MachineFunction
 
 	public TargetMachine getTargetMachine() {return target;}
 
-	public MachineBasicBlock getFirst() {return basicBlocks.getFirst();}
+	public MachineBasicBlock getEntryBlock() {return basicBlocks.getFirst();}
 
 	public MachineFrameInfo getFrameInfo() {return frameInfo;}
 
@@ -58,4 +58,14 @@ public class MachineFunction
 	public MachineConstantPool getConstantPool(){return constantPool;}
 
 	public LinkedList<MachineBasicBlock> getBasicBlocks() {return basicBlocks;}
+
+	public void erase(MachineBasicBlock mbb)
+	{
+		basicBlocks.remove(mbb);
+	}
+
+	public int getNumMBB()
+	{
+		return basicBlocks.size();
+	}
 }

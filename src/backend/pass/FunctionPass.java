@@ -1,7 +1,9 @@
 package backend.pass;
 
-import backend.hir.Module;
 import backend.value.Function;
+import tools.Pair;
+
+import java.util.ArrayList;
 
 /**
  * This class is used to implement most global
@@ -14,8 +16,11 @@ import backend.value.Function;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class FunctionPass extends Pass
+public abstract class FunctionPass implements Pass
 {
+	protected AnalysisResolver resolver = new FunctionPassManager();
+	protected ArrayList<Pair<PassInfo, Pass>> analysisImpls
+			= new ArrayList<>();
 	/**
 	 * To run this pass on a module, we simply call runOnFunction once for
 	 * each module.
@@ -23,4 +28,32 @@ public abstract class FunctionPass extends Pass
 	 * @return
 	 */
 	public abstract boolean runOnFunction(Function f);
+
+	@Override
+	public void addToPassManager(FunctionPassManager pm, AnalysisUsage au)
+	{
+		pm.addPass(this, au);
+	}
+
+	@Override
+	public void addToPassManager(ModulePassManager pm, AnalysisUsage au)
+	{
+		pm.addPass(this, au);
+	}
+
+	@Override
+	public ArrayList<Pair<PassInfo, Pass>> getAnalysisImpls()
+	{
+		return analysisImpls;
+	}
+	/**
+	 * This class must be overridden by concrete subclass.
+	 * @param pi
+	 * @return
+	 */
+	@Override
+    public Pass getAnalysisToUpDate(PassInfo pi)
+	{
+		return resolver.getAnalysisToUpdate(pi);
+	}
 }

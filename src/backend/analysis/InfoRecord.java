@@ -1,4 +1,4 @@
-package backend.pass;
+package backend.analysis;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,29 +16,13 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
-
 /**
- * @author Xlous.zeng
- * @version 0.1
+ * Information record used during immediators computation.
  */
-public class PassManager
+public class InfoRecord<T>
 {
-    private ModulePassManager mpm;
-
-    public PassManager()
-    {
-        mpm = new ModulePassManager();
-    }
-
-    public void add(Pass p)
-    {
-        assert p instanceof ModulePass :"Not a module pass?";
-        mpm.add((ModulePass)p);
-    }
-
-    public void run(Module m)
-    {
-        mpm.run(m);
-    }
+    int DFSNum = 0;
+    int parent = 0;
+    int semi = 0;
+    T label = null;
 }

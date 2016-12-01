@@ -1,5 +1,6 @@
 package backend.opt;
 
+import backend.analysis.DominatorTree;
 import backend.hir.*;
 import backend.hir.BasicBlock;
 import backend.pass.FunctionPass;
@@ -205,7 +206,7 @@ public class DCE extends FunctionPass
 		LinkedList<BasicBlock> rdf = RDF.run(DT, BB);
 		for (BasicBlock block : rdf)
 		{
-			Value last = block.lastInst();
+			Value last = block.getLastInst();
 			// Only branch instruction will be handled.
 			if (last instanceof Instruction.BranchInst)
 			{
@@ -359,7 +360,7 @@ public class DCE extends FunctionPass
 			BasicBlock[] blocks = inst.getAllBasicBlocks();
 			for (int idx = 0; idx < blocks.length; idx++)
 			{
-				Value lastInst = blocks[idx].lastInst();
+				Value lastInst = blocks[idx].getLastInst();
 				if (lastInst instanceof Instruction.BranchInst)
 				{
 					liveInsts.add(lastInst);

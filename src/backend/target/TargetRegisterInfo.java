@@ -2,6 +2,7 @@ package backend.target;
 
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
+import gnu.trove.list.array.TIntArrayList;
 
 /**
  * This file describes an abstract interface used to get information about a
@@ -54,7 +55,7 @@ public abstract class TargetRegisterInfo
 		}
 	}
 
-	public static class TargetRegisterClass
+	public abstract static class TargetRegisterClass
 	{
 		/**
 		 * The register size and alignment in Bytes.
@@ -62,7 +63,7 @@ public abstract class TargetRegisterInfo
 		private int regSize, regAlign;
 		private int[] regs;
 
-		public TargetRegisterClass(int rs, int ra, int[] regs)
+		protected TargetRegisterClass(int rs, int ra, int[] regs)
 		{
 			regSize = rs;
 			regAlign = ra;
@@ -101,6 +102,20 @@ public abstract class TargetRegisterInfo
 		{
 			return regAlign;
 		}
+
+		/**
+		 * Obtains the begin index of the allocatable registers group.
+		 * @return
+		 */
+		public int allocatableBegin(MachineFunction mf) {return 0;}
+
+		/**
+		 * Obtains the index of machine register behind of the last allocatable
+		 * register. So the allocatable register is qualified with range
+		 * from [begin, end).
+		 * @return
+		 */
+		public int allocatableEnd(MachineFunction mf) {return getNumRegs();}
 	}
 
 	//=================================================================//
@@ -122,6 +137,9 @@ public abstract class TargetRegisterInfo
 
 	
 	private MCRegisterDesc[] desc;
+	/**
+	 * Mapping the machine register number to its register class.
+	 */
 	private TargetRegisterClass[] phyRegClasses;
 
 	private TargetRegisterClass[] regClasses;
@@ -211,6 +229,52 @@ public abstract class TargetRegisterInfo
 	public int getNumRegClasses()
 	{
 		return regClasses.length;
+	}
+
+	/**
+	 * Obtains the allocatable machine register set for the specified target.
+	 * @param mf
+	 * @return
+	 */
+	public TIntArrayList getAllocatableSet(MachineFunction mf)
+	{
+		TIntArrayList list = new TIntArrayList();
+		for (TargetRegisterClass regClass : regClasses)
+			for (int i = regClass.allocatableBegin(mf),
+			     e = regClass.allocatableEnd(mf); i < e; i++)
+			{
+				list.add(regClass.regs[i]);
+			}
+		return list;
+	}
+
+	/**
+	 * Gets the number of machine registers in the specified target.
+	 * @return
+	 */
+	public int getNumRegs() {return desc.length;}
+
+	/**
+	 * Checks to see if the specified register number represents a machine
+	 * register.
+	 * @param regNo
+	 * @return true if the {@code regNo} is a machine register.
+	 */
+	public boolean isPhysicalRegister(int regNo)
+	{
+		assert regNo > 0:"This is a invalid register number!";
+		return regNo < FirstVirtualRegister;
+	}
+	/**
+	 * Checks to see if the specified register number represents a virtual
+	 * register.
+	 * @param regNo
+	 * @return true if the {@code regNo} is a virtual register.
+	 */
+	public boolean isVirtualRegister(int regNo)
+	{
+		assert regNo > 0:"This is a invalid register number!";
+		return regNo >= FirstVirtualRegister;
 	}
 
 	//===--------------------------------------------------------------------===//

@@ -1,6 +1,6 @@
 package backend.opt;
 
-import backend.hir.*;
+import backend.analysis.DominatorTree;
 import backend.hir.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -64,14 +64,14 @@ public class UCE
 	private void onePass()
 	{
 		// We must usesList the index loop instead of interative loop, because
-		// the getArraySize of postOrder list is changing when iterating.
+		// the getArraySize of reversePostOrder list is changing when iterating.
 		for (int idx = 0; idx < postOrder.size(); idx++)
 		{
 			BasicBlock curr = postOrder.get(idx);
 			if (curr.isEmpty())
 				continue;
 
-			Value lastInst = curr.lastInst();
+			Value lastInst = curr.getLastInst();
 			// handles conditional branch instruction ends in the basic block as
 			// follow.
 			//    |          |
@@ -110,7 +110,7 @@ public class UCE
 					List<BasicBlock> rdf = RDF.run(RDT, curr);
 					for (BasicBlock pred : rdf)
 					{
-						Value last = pred.lastInst();
+						Value last = pred.getLastInst();
 						if (last != null)
 						{
 							if (last instanceof Instruction.Goto
@@ -139,7 +139,7 @@ public class UCE
 					merge(curr, target);
 
 				if (target.size() == 1 && (lastInst = target
-						.lastInst()) instanceof Instruction.ConditionalBranchInst)
+						.getLastInst()) instanceof Instruction.ConditionalBranchInst)
 				{
 					go.insertBefore(lastInst);
 					go.eraseFromBasicBlock();

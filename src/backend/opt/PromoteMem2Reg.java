@@ -1,8 +1,8 @@
 package backend.opt;
 
 import backend.hir.BasicBlock;
-import backend.hir.DominatorTree;
-import backend.hir.DominatorTree.DomTreeNode;
+import backend.analysis.DominatorTree;
+import backend.analysis.DominatorTree.DomTreeNode;
 import backend.pass.FunctionPass;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
@@ -334,7 +334,7 @@ public class PromoteMem2Reg extends FunctionPass
 
 			// We want to do this once per basic block.  As such, only process a block
 			// when we find the PHI that is the first entry in the block.
-			if (BB.firstInst() != phiNode)
+			if (BB.getFirstInst() != phiNode)
 				continue;
 
 			// Only do work here if the phiNode node are missing incoming VALUES.
@@ -411,7 +411,7 @@ public class PromoteMem2Reg extends FunctionPass
 		while (true)
 		{
 			// determine whether any phi node already be in the block.
-			if ((inst = BB.firstInst()) instanceof Instruction.PhiNode)
+			if ((inst = BB.getFirstInst()) instanceof Instruction.PhiNode)
 			{
 				Instruction.PhiNode phiNode = (Instruction.PhiNode) inst;
 				// to distinguish between phiNode node being inserted by this invocation

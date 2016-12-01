@@ -241,7 +241,6 @@ public class Parser implements Tag
      */
     public void compilationUnit()
     {
-
         assert getCurScope() == null;
         enterScope(ScopeFlags.DeclScope.value);
         action.actOnTranslationUnitScope(getCurScope());

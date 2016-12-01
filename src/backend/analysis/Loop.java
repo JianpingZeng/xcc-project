@@ -1,4 +1,4 @@
-package backend.opt;
+package backend.analysis;
 
 import backend.hir.BasicBlock;
 import backend.value.Instruction;
@@ -11,7 +11,7 @@ import java.util.List;
 /** 
  * <p>
  * This class describe the concept of loop in a control flow graph of a method, 
- * which usually used for {@linkplain LoopAnalysis} when performing loop 
+ * which usually used for {@linkplain LoopInfo} when performing loop
  * backend.opt.
  * </p>
  * <p>Note that only reducible loop, so called natural loop, can be identified 

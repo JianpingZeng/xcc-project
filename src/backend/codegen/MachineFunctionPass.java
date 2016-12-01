@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;
 
@@ -29,4 +30,13 @@ public abstract class MachineFunctionPass extends FunctionPass
 		assert mf != null:"Instruction selector did not be runned?";
 		return runOnMachineFunction(mf);
 	}
+
+	/**
+	 * Subclasses that override getAnalysisUsage
+	 * must call this.
+	 * @param au
+	 */
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
+	{}
 }
