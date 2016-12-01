@@ -18,6 +18,7 @@ package backend.opt;
 
 import backend.hir.BasicBlock;
 import backend.pass.FunctionPass;
+import backend.pass.RegisterPass;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
@@ -35,7 +36,19 @@ import java.util.List;
  */
 public final class LowerSwitch extends FunctionPass
 {
+    /**
+     * Register the LowerSwitch pass.
+     */
+    public static RegisterPass lowerSwitchRegister =
+            new RegisterPass("X86 lower switch", LowerSwitch.class);
+
     public static LowerSwitch createLowerSwitchPass() {return new LowerSwitch();}
+
+    @Override
+    public String getPassName()
+    {
+        return "X86 Lower switch pass";
+    }
 
     private static class CaseRange
     {

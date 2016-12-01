@@ -1,5 +1,9 @@
-package backend.hir;
+package backend.analysis;
 
+import backend.DomTreeNodeBase;
+import backend.hir.BasicBlock;
+import backend.hir.PredIterator;
+import backend.hir.SuccIterator;
 import backend.value.Function;
 import tools.Pair;
 
@@ -14,115 +18,6 @@ import java.util.*;
 public class DominatorTree
 {
 	/**
-	 * This class for defining actual dominator tree node.
-	 */
-	public static class DomTreeNode implements Iterable<DomTreeNode>
-	{
-		/**
-		 * The corresponding basic block of this dominator tree node.
-		 */
-		private BasicBlock block;
-
-		/**
-		 * Immediate dominator.
-		 */
-		private DomTreeNode IDom;
-		/**
-		 * All of child node.
-		 */
-		private ArrayList<DomTreeNode> children;
-
-		private int DFSNumIn = -1;
-		private int DFSNumOut = -1;
-
-		public BasicBlock getBlock()
-		{
-			return block;
-		}
-
-		public DomTreeNode getIDom()
-		{
-			return IDom;
-		}
-
-		public void setIDom(DomTreeNode newIDom)
-		{
-			assert IDom != null : "No immediate dominator";
-			if (this.IDom != newIDom)
-			{
-				assert IDom.children.contains(this)
-						: "Not in immediate dominator chidren set";
-				// erase this, no longer idom's child
-				IDom.children.remove(this);
-				this.IDom = newIDom;
-				IDom.children.add(this);
-			}
-		}
-
-		public ArrayList<DomTreeNode> getChildren()
-		{
-			return children;
-		}
-
-		@Override
-		public Iterator<DomTreeNode> iterator()
-		{
-			if (children == null)
-				return Collections.emptyIterator();
-			else
-				return children.iterator();
-		}
-
-		public DomTreeNode(BasicBlock bb, DomTreeNode IDom)
-		{
-			this.block = bb;
-			this.IDom = IDom;
-		}
-
-		public DomTreeNode addChidren(DomTreeNode C)
-		{
-			children.add(C);
-			return C;
-		}
-
-		public final int getNumbChidren() {return children.size();}
-
-		public final void clearChidren() {children.clear();}
-
-		/**
-		 * ReturnInst true if this node is dominated by other.
-		 * Use this only if DFS info is valid.
-		 * @param other
-		 * @return
-		 */
-		public boolean dominatedBy(DomTreeNode other)
-		{
-			return this.DFSNumIn >= other.DFSNumIn &&
-					this.DFSNumOut <= other.DFSNumOut;
-		}
-
-		public int getDFSNumIn()
-		{
-			return DFSNumIn;
-		}
-
-		public int getDFSNumOut()
-		{
-			return DFSNumOut;
-		}
-	}
-
-	/**
-	 * Information record used during immediators computation.
-	 */
-	public class InfoRecord
-	{
-		int DFSNum = 0;
-		int parent = 0;
-		int semi = 0;
-		BasicBlock label = null;
-	}
-	/**
 	 * The root nodes set of this tree.
 	 */
 	private ArrayList<BasicBlock> roots;
@@ -132,11 +27,11 @@ public class DominatorTree
 	 */
 	private boolean IsPostDominators;
 
-	private HashMap<BasicBlock, DomTreeNode> DomTreeNodes;
+	private HashMap<BasicBlock, DomTreeNodeBase<BasicBlock>> DomTreeNodes;
 
 	private HashMap<BasicBlock, BasicBlock> IDoms;
 
-	private DomTreeNode rootNode;
+	private DomTreeNodeBase<BasicBlock> rootNode;
 	/**
 	 * Vertex - Map the DFS number to the BasicBlock(usually block).
 	 */
@@ -145,7 +40,7 @@ public class DominatorTree
 	/**
 	 * Info - Collection of information used during the computation of idoms.
 	 */
-	private HashMap<BasicBlock, InfoRecord> info;
+	private HashMap<BasicBlock, InfoRecord<BasicBlock>> info;
 
 	private boolean DFSInfoValid = false;
 
@@ -191,7 +86,7 @@ public class DominatorTree
 	 * is teh case when there are multiple exit nodes from a particular function.
 	 * @return
 	 */
-	public DomTreeNode getRootNode()
+	public DomTreeNodeBase<BasicBlock> getRootNode()
 	{
 		return rootNode;
 	}
@@ -201,7 +96,7 @@ public class DominatorTree
 	 * @param bb
 	 * @return
 	 */
-	public DomTreeNode getTreeNodeForBlock(BasicBlock bb)
+	public DomTreeNodeBase<BasicBlock> getTreeNodeForBlock(BasicBlock bb)
 	{
 		return DomTreeNodes.get(bb);
 	}
@@ -218,7 +113,7 @@ public class DominatorTree
 	 * @param B
 	 * @return  ReturnInst true iff A dominates B.
 	 */
-	public boolean dominates(DomTreeNode A, DomTreeNode B)
+	public boolean dominates(DomTreeNodeBase<BasicBlock> A, DomTreeNodeBase<BasicBlock> B)
 	{
 		if (A == B)
 			return true;
@@ -246,18 +141,18 @@ public class DominatorTree
 
 	public boolean dominates(BasicBlock A, BasicBlock B)
 	{
-		DomTreeNode first = DomTreeNodes.get(A);
-		DomTreeNode second = DomTreeNodes.get(B);
+		DomTreeNodeBase<BasicBlock> first = DomTreeNodes.get(A);
+		DomTreeNodeBase<BasicBlock> second = DomTreeNodes.get(B);
 		return dominates(first, second);
 	}
 
-	private boolean dominateBySlowTreeWalk(DomTreeNode A, DomTreeNode B)
+	private boolean dominateBySlowTreeWalk(DomTreeNodeBase<BasicBlock> A, DomTreeNodeBase<BasicBlock> B)
 	{
 		assert (A != B);
 		assert (isReachableFromEntry(B));
 		assert (isReachableFromEntry(A));
 
-		DomTreeNode IDom = null;
+		DomTreeNodeBase<BasicBlock> IDom = null;
 		while ((IDom = B.getIDom()) != null && IDom != A && IDom != B)
 		{
 			// wolk up the tree.
@@ -272,7 +167,7 @@ public class DominatorTree
 	 * @param B
 	 * @return
 	 */
-	public boolean strictDominate(DomTreeNode A, DomTreeNode B)
+	public boolean strictDominate(DomTreeNodeBase<BasicBlock> A, DomTreeNodeBase<BasicBlock> B)
 	{
 		if (A == null || B == null)
 			return false;
@@ -294,12 +189,12 @@ public class DominatorTree
 		return dominates(entry, BB);
 	}
 
-	public boolean isReachableFromEntry(DomTreeNode node)
+	public boolean isReachableFromEntry(DomTreeNodeBase<BasicBlock> node)
 	{
 		assert isPostDominators() :
 				"This is not implemented for post dominatror";
 
-		DomTreeNode entry = DomTreeNodes.get(m.getEntryBlock());
+		DomTreeNodeBase<BasicBlock> entry = DomTreeNodes.get(m.getEntryBlock());
 		return dominates(entry, node);
 	}
 
@@ -310,10 +205,10 @@ public class DominatorTree
 	 */
 	public BasicBlock getIDom(BasicBlock block)
 	{
-		DomTreeNode node = DomTreeNodes.get(block);
+		DomTreeNodeBase<BasicBlock> node = DomTreeNodes.get(block);
 		if (node == null)
 			return null;
-		return node.IDom.block;
+		return node.getIDom().getBlock();
 	}
 
 	/**
@@ -327,7 +222,7 @@ public class DominatorTree
 			// initialize the root
 			BasicBlock entry = m.getEntryBlock();
 			this.roots.add(entry);
-			this.info.put(entry, new InfoRecord());
+			this.info.put(entry, new InfoRecord<BasicBlock>());
 			this.IDoms.put(entry, null);
 			this.DomTreeNodes.put(entry, null);
 			caculate();
@@ -335,7 +230,7 @@ public class DominatorTree
 		else
 		{
 			BasicBlock exit = m.getEntryBlock();
-			info.put(exit, new InfoRecord());
+			info.put(exit, new InfoRecord<BasicBlock>());
 			roots.add(exit);
 			IDoms.put(exit, null);
 			DomTreeNodes.put(exit, null);
@@ -354,7 +249,7 @@ public class DominatorTree
 		int N = 0;
 		if (multipleRoots)
 		{
-			InfoRecord BBInfo = info.get(null);
+			InfoRecord<BasicBlock> BBInfo = info.get(null);
 			BBInfo.DFSNum = ++N;
 			BBInfo.label = null;
 		}
@@ -385,7 +280,7 @@ public class DominatorTree
 			BasicBlock WBlock = Vertex[i];
 
 			// the InfoRec of current block
-			InfoRecord WInfo = info.get(WBlock);
+			InfoRecord<BasicBlock> WInfo = info.get(WBlock);
 
 			// Step #2: Implicitly define the immediate dominator of vertices
 			for(int j = i; buckets[j] != i; j = buckets[i])
@@ -446,14 +341,14 @@ public class DominatorTree
 			// which postdominates all real exits if there are multiple exit blocks, or
 			// an infinite loop.
 			BasicBlock root = !multipleRoots ? roots.get(0) : null;
-			this.rootNode = new DomTreeNode(root, null);
+			this.rootNode = new DomTreeNodeBase<BasicBlock>(root, null);
 			DomTreeNodes.put(root, this.rootNode);
 
 			// loop over all of the reachable blocks in the method.
 			for (int idx = 2; idx <=N; idx++)
 			{
 				BasicBlock W = this.Vertex[idx];
-				DomTreeNode BBNode = this.DomTreeNodes.get(W);
+				DomTreeNodeBase<BasicBlock> BBNode = this.DomTreeNodes.get(W);
 
 				// Haven't caculated this node yet?
 				if (BBNode != null) continue;
@@ -462,11 +357,11 @@ public class DominatorTree
 				assert (ImmDom != null || this.DomTreeNodes.get(null) != null);
 
 				// Get or calculates the node for the imediate dominator
-				DomTreeNode IDomNode = this.getTreeNodeForBlock(ImmDom);
+				DomTreeNodeBase<BasicBlock> IDomNode = this.getTreeNodeForBlock(ImmDom);
 
 				// add a new tree node for this Basic block, and link it as a child of
 				// IDomNode
-				DomTreeNode children = new DomTreeNode(W, IDomNode);
+				DomTreeNodeBase<BasicBlock> children = new DomTreeNodeBase<BasicBlock>(W, IDomNode);
 				this.DomTreeNodes.put(W, IDomNode.addChidren(children));
 			}
 
@@ -486,17 +381,18 @@ public class DominatorTree
 	private void updateDFSNumber()
 	{
 		int DFSNumber = 0;
-		LinkedList<Pair> worklist = new LinkedList<>();
+		LinkedList<Pair<DomTreeNodeBase<BasicBlock>,
+				ListIterator<DomTreeNodeBase<BasicBlock>>>> worklist = new LinkedList<>();
 
-		DomTreeNode thisRoot = getRootNode();
+		DomTreeNodeBase<BasicBlock> thisRoot = getRootNode();
 		if (thisRoot == null)
 			return;
 		
-		ListIterator<DomTreeNode> rit = thisRoot.children.listIterator();
+		ListIterator<DomTreeNodeBase<BasicBlock>> rit = thisRoot.getChildren().listIterator();
 
 		// add a pair of root and predecessor into worklist in the order that
 		// last firstly added.
-		worklist.addLast(new Pair(thisRoot, rit));		
+		worklist.addLast(new Pair<>(thisRoot, rit));
 
 		// Even in the case of multiple exits that form the post dominator root
 		// nodes, do not iterate over all exits, but start from the virtual root
@@ -505,9 +401,10 @@ public class DominatorTree
 		thisRoot.DFSNumIn = DFSNumber++;
 		while (!worklist.isEmpty())
 		{
-			Pair top = worklist.getLast();
-			DomTreeNode node = (DomTreeNode)top.first;
-			ListIterator<DomTreeNode> childItr = (ListIterator<DomTreeNode>)top.second;
+			Pair<DomTreeNodeBase<BasicBlock>,
+					ListIterator<DomTreeNodeBase<BasicBlock>>> top = worklist.getLast();
+			DomTreeNodeBase<BasicBlock> node = top.first;
+			ListIterator<DomTreeNodeBase<BasicBlock>> childItr = top.second;
 
 			// IfStmt we visited all of the children of this node, "recurse" back up the
 			// stack setting the DFOutNum.
@@ -519,8 +416,8 @@ public class DominatorTree
 			else
 			{
 				// otherwise, recursively visit it's children
-				DomTreeNode child = childItr.next();
-				worklist.addLast(new Pair(child, child.children.listIterator()));
+				DomTreeNodeBase<BasicBlock> child = childItr.next();
+				worklist.addLast(new Pair<>(child, child.getChildren().listIterator()));
 				child.DFSNumIn = DFSNumber++;
 			}
 		}
@@ -554,9 +451,9 @@ public class DominatorTree
 			if (succItr.nextIndex() == 0)
 			{
 				if (!info.containsKey(curr))
-					info.put(curr, new InfoRecord());
+					info.put(curr, new InfoRecord<BasicBlock>());
 
-				InfoRecord BBInfo = info.get(curr);
+				InfoRecord<BasicBlock> BBInfo = info.get(curr);
 				BBInfo.DFSNum = BBInfo.semi = ++N;
 				BBInfo.label = curr;
 
@@ -573,8 +470,8 @@ public class DominatorTree
 			BasicBlock nextSucc = succItr.next();
 
 			if (!info.containsKey(nextSucc))
-				info.put(nextSucc, new InfoRecord());
-			InfoRecord infoRecord = info.get(nextSucc);
+				info.put(nextSucc, new InfoRecord<BasicBlock>());
+			InfoRecord<BasicBlock> infoRecord = info.get(nextSucc);
 			if (infoRecord.semi == 0)
 			{
 				infoRecord.parent = N;
@@ -617,7 +514,7 @@ public class DominatorTree
 
 	private BasicBlock eval(BasicBlock VIn, int lastLinked)
 	{
-		InfoRecord VInInfo = this.info.get(VIn);
+		InfoRecord<BasicBlock> VInInfo = this.info.get(VIn);
 		if (VInInfo.DFSNum < lastLinked)
 			return VIn;
 
@@ -630,7 +527,7 @@ public class DominatorTree
 		while (! work.isEmpty())
 		{
 			BasicBlock V = work.removeLast();
-			InfoRecord VInfo = this.info.get(V);
+			InfoRecord<BasicBlock> VInfo = this.info.get(V);
 			BasicBlock VAncestor = this.Vertex[VInfo.parent];
 
 			// process Ancestor first
@@ -645,7 +542,7 @@ public class DominatorTree
 			if (VInfo.parent < lastLinked)
 				continue;
 
-			InfoRecord VAInfo = this.info.get(VAncestor);
+			InfoRecord<BasicBlock> VAInfo = this.info.get(VAncestor);
 			BasicBlock VAncestorLabel = VAInfo.label;
 			BasicBlock VLabel = VInfo.label;
 

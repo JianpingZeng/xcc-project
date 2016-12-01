@@ -16,29 +16,37 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PassManager
+public interface AnalysisResolver
 {
-    private ModulePassManager mpm;
+    Pass getAnalysisOrNull(PassInfo passInfo);
 
-    public PassManager()
+    void addPass(ImmutablePass ip, AnalysisUsage au);
+
+    /**
+     * Return the analysis result which must be existed.
+     * @param pi
+     * @return
+     */
+    default Pass getAnalysis(PassInfo pi)
     {
-        mpm = new ModulePassManager();
+        Pass res = getAnalysisOrNull(pi);
+        assert res != null:"Pass has an incorrent pass used yet!";
+        return res;
     }
 
-    public void add(Pass p)
+    /**
+     * Return an analysis pass or null if it is not existed.
+     * @param passInfo
+     * @return
+     */
+    default Pass getAnalysisToUpdate(PassInfo passInfo)
     {
-        assert p instanceof ModulePass :"Not a module pass?";
-        mpm.add((ModulePass)p);
+        return getAnalysisOrNull(passInfo);
     }
 
-    public void run(Module m)
-    {
-        mpm.run(m);
-    }
+    void markPassUsed(PassInfo passInfo, Pass user);
 }

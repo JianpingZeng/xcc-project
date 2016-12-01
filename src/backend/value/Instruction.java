@@ -2193,6 +2193,10 @@ public abstract class Instruction extends User
             }
             return old;
         }
+        public Value removeIncomingValue(BasicBlock bb)
+        {
+            removeIncomingValue(bb, true);
+        }
 
         public Value removeIncomingValue(BasicBlock bb, boolean deletePhiIfEmpty)
         {

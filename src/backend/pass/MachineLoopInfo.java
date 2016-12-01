@@ -16,29 +16,37 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineFunctionPass;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PassManager
+public class MachineLoopInfo extends MachineFunctionPass
 {
-    private ModulePassManager mpm;
-
-    public PassManager()
+    @Override
+    public String getPassName()
     {
-        mpm = new ModulePassManager();
+        return "Machine Natural Loop Construction";
     }
 
-    public void add(Pass p)
+    /**
+     * This method must be overridded by concrete subclass for performing
+     * desired machine code transformation or analysis.
+     *
+     * @param mf
+     * @return
+     */
+    @Override
+    public boolean runOnMachineFunction(MachineFunction mf)
     {
-        assert p instanceof ModulePass :"Not a module pass?";
-        mpm.add((ModulePass)p);
+        return false;
     }
 
-    public void run(Module m)
+    public void getAnalysisUsage(AnalysisUsage au)
     {
-        mpm.run(m);
+        au.addRequired(MachineDominatorTree.class);
+        super.getAnalysisUsage(au);
     }
 }

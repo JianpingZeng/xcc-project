@@ -1,6 +1,7 @@
 package backend.target;
 
 import backend.pass.ImmutablePass;
+import backend.pass.RegisterPass;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
@@ -17,6 +18,11 @@ import java.util.ArrayList;
  */
 public class TargetData extends ImmutablePass
 {
+	/**
+	 * Register the default TargetData pass.
+	 */
+	public static RegisterPass targetDataRegPass =
+			new RegisterPass("Target Data Layout", TargetData.class);
 	/**
 	 * default to false.
 	 */

@@ -1,7 +1,7 @@
 package backend.hir;
 
 
-import backend.opt.Loop;
+import backend.analysis.Loop;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
@@ -325,12 +325,12 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return this.idNumber;
 	}
 
-	public Instruction firstInst()
+	public Instruction getFirstInst()
 	{
 		return instructions.get(0);
 	}
 
-	public Instruction lastInst()
+	public Instruction getLastInst()
 	{
 		if (instructions.isEmpty())
 			return null;
@@ -401,9 +401,9 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	public void removePredecessor(BasicBlock pred, boolean dontDeletedUselessPHI)
 	{
 		if (instructions.isEmpty()) return;
-		if (!(firstInst() instanceof PhiNode))
+		if (!(getFirstInst() instanceof PhiNode))
 			return;
-		PhiNode pn = (PhiNode)firstInst();
+		PhiNode pn = (PhiNode) getFirstInst();
 
 		int idx = pn.getNumberIncomingValues();
 		assert idx != 0:"PHI node in block with 0 predecessors!";
@@ -416,9 +416,9 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 		if (idx <= 2 && !dontDeletedUselessPHI)
 		{
-			while (firstInst() instanceof PhiNode)
+			while (getFirstInst() instanceof PhiNode)
 			{
-				pn = (PhiNode)firstInst();
+				pn = (PhiNode) getFirstInst();
 				// Remove the predecessor first.
 				pn.removeIncomingValue(pred, !dontDeletedUselessPHI);
 

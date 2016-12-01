@@ -20,31 +20,93 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	// register allocation order.
 	private static int[] X86R8 = {AL, CL, DL, BL, AH, CH, DH, BH};
 	private static int[] X86R16 = {AX, CX, DX, BX, SI, DI, BP, SP};
-	private static int[] X86R32 = {EAX, ECX, EDX, EBX, ESI, EDI, ESP};
+	private static int[] X86R32 = {EAX, ECX, EDX, EBX, ESI, EDI, EBP, ESP};
 	private static int[] X86RFP = {FP0, FP1, FP2, FP3, FP4, FP5, FP6};
 	private static int[] X86RST = {ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7};
 
-	private static TargetRegisterClass x86R8RegClass =
-			new TargetRegisterClass(1, 1, X86R8);
+	public static class X86R8RegisterClass extends TargetRegisterClass
+	{
+		public X86R8RegisterClass(int rs, int ra, int[] regs)
+		{
+			super(rs, ra, regs);
+		}
+	}
 
-	private static TargetRegisterClass x86R16RegClass =
-			new TargetRegisterClass(2, 2, X86R16);
+	public static class X86R16RegisterClass extends TargetRegisterClass
+	{
+		public X86R16RegisterClass(int rs, int ra, int[] regs)
+		{
+			super(rs, ra, regs);
+		}
 
-	private static TargetRegisterClass x86R32RegClass =
-			new TargetRegisterClass(4, 4, X86R32);
+		@Override
+		public int allocatableEnd(MachineFunction mf)
+		{
+			// If so, don't allocate SP or BP.
+			if (hasFP(mf))
+				return getNumRegs() - 2;
+			else
+				// If not, just don't allocate SP.
+				return getNumRegs() - 1;
+		}
+	}
 
-	private static TargetRegisterClass x86RFPClass =
-			new TargetRegisterClass(4, 4, X86RFP);
+	public static class X86R32RegisterClass extends TargetRegisterClass
+	{
+		public X86R32RegisterClass(int rs, int ra, int[] regs)
+		{
+			super(rs, ra, regs);
+		}
+		@Override
+		public int allocatableEnd(MachineFunction mf)
+		{
+			// If so, don't allocate SP or BP.
+			if (hasFP(mf))
+				return getNumRegs() - 2;
+			else
+				// If not, just don't allocate SP.
+				return getNumRegs() - 1;
+		}
+	}
 
-	private static TargetRegisterClass x86RSTClass =
-			new TargetRegisterClass(8, 4, X86RST);
+	public static class X86RSTRegisterClass extends TargetRegisterClass
+	{
+		public X86RSTRegisterClass(int rs, int ra, int[] regs)
+		{
+			super(rs, ra, regs);
+		}
+		@Override
+		public int allocatableEnd(MachineFunction mf){return 0;}
+	}
+
+	public static class X86RFPRegisterClass extends TargetRegisterClass
+	{
+		public X86RFPRegisterClass(int rs, int ra, int[] regs)
+		{
+			super(rs, ra, regs);
+		}
+	}
+
+	private static X86R8RegisterClass x86R8RegClass =
+			new X86R8RegisterClass(1, 1, X86R8);
+
+	private static X86R16RegisterClass x86R16RegClass =
+			new X86R16RegisterClass(2, 2, X86R16);
+
+	private static X86R32RegisterClass x86R32RegClass =
+			new X86R32RegisterClass(4, 4, X86R32);
+
+	private static X86RFPRegisterClass x86RFPClass =
+			new X86RFPRegisterClass(4, 4, X86RFP);
+
+	private static X86RSTRegisterClass x86RSTClass =
+			new X86RSTRegisterClass(8, 4, X86RST);
 
 	/**
 	 * A static array holds all register classes for x86 target machine.
 	 */
 	private static TargetRegisterClass[] x86RegisterClasses =
-			{ x86R8RegClass, x86R16RegClass, x86R32RegClass, x86RSTClass
-			};
+			{ x86R8RegClass, x86R16RegClass, x86R32RegClass, x86RSTClass };
 	/**
 	 * A static array holds all register descriptor information
 	 * for each register in x86.
@@ -255,7 +317,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	 * @param mf
 	 * @return
 	 */
-	private boolean hasFP(MachineFunction mf)
+	public static boolean hasFP(MachineFunction mf)
 	{
 		return mf.getFrameInfo().hasVarSizedObjects();
 	}
@@ -267,7 +329,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	@Override
 	public void emitPrologue(MachineFunction mf)
 	{
-		MachineBasicBlock mbb = mf.getFirst();
+		MachineBasicBlock mbb = mf.getEntryBlock();
 		int mbbi = 0;  // a index position where a new instr will inserts.
 		MachineFrameInfo mfi = mf.getFrameInfo();
 		MachineInstr mi;

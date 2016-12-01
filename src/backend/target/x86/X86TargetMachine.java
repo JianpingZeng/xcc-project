@@ -1,7 +1,7 @@
 package backend.target.x86;
 
 import backend.hir.Module;
-import backend.pass.FunctionPassManager;
+import backend.pass.PassManager;
 import backend.target.TargetFrameInfo;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
@@ -67,7 +67,7 @@ public class X86TargetMachine extends TargetMachine
 	 * @return
 	 */
 	@Override
-	public boolean addPassesToEmitFile(FunctionPassManager pm,
+	public boolean addPassesToEmitFile(PassManager pm,
 			boolean fast, FileOutputStream asmOutStream,
 			CodeGenFileType genFileType, CodeGenOpt optLevel)
 	{
@@ -80,7 +80,7 @@ public class X86TargetMachine extends TargetMachine
 
 		pm.add(createX86SimpleInstructionSelector(this));
 
-		// TODO: A SSA destrcution pass is needed to transform SSA-based MC out of SSA.
+		// TODO: A SSA destruction pass is needed to transform SSA-based MC out of SSA.
 
 		// Perform register allocation to convert to a concrete x86 representation
 		if (fast)
@@ -89,7 +89,7 @@ public class X86TargetMachine extends TargetMachine
 			pm.add(createLocalRegAllocator());
 		// converts virtual register in X86 FP inst into floating point stack slot.
 		pm.add(createX86FloatingPointStackitifierPass());
-		
+
 		// Insert prolog/epilog code.  Eliminate abstract frame index references.
 		pm.add(createX86PrologEpilogEmitter());
 

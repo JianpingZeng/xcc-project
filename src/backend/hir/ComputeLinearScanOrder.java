@@ -1,5 +1,6 @@
 package backend.hir;
 
+import backend.analysis.DominatorTree;
 import backend.value.Instruction;
 import tools.BitMap2D;
 import tools.TTY;
@@ -335,9 +336,9 @@ public class ComputeLinearScanOrder
 		}
 		curBit--;
 
-		if (!(cur.lastInst() instanceof Instruction.ReturnInst) && (
+		if (!(cur.getLastInst() instanceof Instruction.ReturnInst) && (
 				singleSux == null || !(singleSux
-						.lastInst() instanceof Instruction.ReturnInst)))
+						.getLastInst() instanceof Instruction.ReturnInst)))
 		{
 			weight |= 1 << curBit;
 		}

@@ -43,6 +43,8 @@ public class MachineInstr
 	private ArrayList<MachineOperand> operands; // the operands
 	private int numImplicitRefs;             // number of implicit operands
 
+	private MachineBasicBlock parent;
+
 	/**
 	 * Return true if it's illegal to add a new operand.
 	 * @return
@@ -309,4 +311,11 @@ public class MachineInstr
 		op.setRegNum(-1);
 		op.setOpType(opTy);
 	}
+
+	public MachineBasicBlock getParent()
+	{
+		return parent;
+	}
+
+	public void setParent(MachineBasicBlock mbb) {parent = mbb;}
 }

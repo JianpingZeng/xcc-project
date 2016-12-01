@@ -1,8 +1,9 @@
 package backend.value;
 
+import backend.analysis.DominatorTree;
 import backend.codegen.MachineFunction;
 import backend.hir.*;
-import backend.opt.Loop;
+import backend.analysis.Loop;
 import backend.type.FunctionType;
 import backend.type.Type;
 

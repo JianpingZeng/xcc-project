@@ -1,5 +1,6 @@
 package backend.hir;
 
+import backend.analysis.DominatorTree;
 import backend.value.Function;
 import backend.value.Instruction;
 

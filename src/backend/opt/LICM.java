@@ -1,5 +1,8 @@
 package backend.opt;
 
+import backend.analysis.DominatorTree;
+import backend.analysis.Loop;
+import backend.analysis.LoopInfo;
 import backend.hir.*;
 import backend.hir.BasicBlock;
 import backend.value.*;
@@ -25,7 +28,7 @@ import tools.TTY;
  * </p>
  * 
  * <p>This pass expected to run after {@linkplain LoopInversion Loop Inversion}
- * and {@linkplain LoopAnalysis pass}. 
+ * and {@linkplain LoopInfo pass}.
  * performed.
  * </p>
  * 

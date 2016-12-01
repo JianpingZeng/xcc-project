@@ -1,16 +1,43 @@
 package backend.pass;
 
-import backend.hir.Module;
+import tools.Pair;
+
+import java.util.ArrayList;
+
+import static backend.pass.PassInfoSupport.getPassInfo;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class Pass
+public interface Pass
 {
-	private PassInfo passInfo;
+	String getPassName();
 
-	public abstract String getPassName();
+	default <T extends Pass> T getAnalysisToUpDate(Class<T> klass)
+	{
+		PassInfo pi = getPassInfo(klass);
+		if (pi == null) return null;
+		return (T)getAnalysisToUpDate(pi);
+	}
 
-	public PassInfo getPassInfo() {return passInfo;}
+	/**
+	 * Add some pre-requisizement pass of this pass into PassManager.
+	 * @param au
+	 */
+	default void getAnalysisUsage(AnalysisUsage au) {}
+
+	/**
+	 * This class must be overridden by concrete subclass.
+	 * @param pi
+	 * @return
+	 */
+	Pass getAnalysisToUpDate(PassInfo pi);
+
+	void addToPassManager(ModulePassManager pm, AnalysisUsage au);
+
+	void addToPassManager(FunctionPassManager pm, AnalysisUsage au);
+
+	ArrayList<Pair<PassInfo, Pass>> getAnalysisImpls();
 }
+

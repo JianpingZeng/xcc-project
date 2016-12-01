@@ -1,5 +1,7 @@
 package backend.opt;
 
+import backend.analysis.DominatorTree;
+import backend.analysis.Loop;
 import backend.hir.*;
 import backend.hir.BasicBlock;
 import backend.value.Constant;
