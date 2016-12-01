@@ -25,6 +25,7 @@ public class MachineBasicBlock
 	public MachineBasicBlock(final BasicBlock bb)
 	{
 		this.bb = bb;
+		number = -1;
 		predecessors = new ArrayList<>();
 		successors = new ArrayList<>();
 	}
