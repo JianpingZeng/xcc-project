@@ -9,13 +9,14 @@ import java.util.ArrayList;
 
 /**
  * This class encapsulates some information about a declarator, including the
- * parsed frontend.type information and identifier. When the declarator is fully formed,
- * this is turned into the appropriate {@linkplain Decl} object.
+ * parsed frontend.type information and identifier. When the declarator is fully
+ * formed, this is turned into the appropriate {@linkplain Decl} object.
  *
  * <p>
  *  Declarators come in two types: normal declarators and abstract declarators.
- *  Abstract declarators are used when parsing frontend.type, and don't have and identifier.
- *  Normal declarators do have ID.
+ *  Abstract declarators are used when parsing frontend.type, and don't have
+ *  and identifier. Normal declarators do have ID.
+ *  </p>
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -23,31 +24,58 @@ public class Declarator
 {
     enum TheContext
     {
-        FileContext,
-        FunctionProtoTypeContext,
-        TypeNameContext,        // abstract declarator for types.
-        StructFieldContext,     // struct/union field.
-        BlockContext,           // declaration within a block in a function.
-        ForContext,             //  declaration within the first part of for.
+        FileContext,                // file scope declaraton.
+        FunctionProtoTypeContext, // Within a function prototype.
+        TypeNameContext,           // abstract declarator for types.
+        StructFieldContext,        // struct/union field.
+        BlockContext,               // declaration within a block in a function.
+        ForContext,                 //  declaration within the first part of for.
+    }
+
+    enum DeclarationKind
+    {
+        /**
+         * An abstract declarator.
+         */
+        DK_Abstract,
+
+        /**
+         * A normal declarator.
+         */
+        DK_Normal,
     }
 
     private DeclSpec ds;
     private String name;
+    private int identifierLoc;
     private SourceRange range;
 
     /**
      * Where we are parsing this declarator.
      */
     private TheContext context;
+    /**
+     * What kind of declarator this is .
+     */
+    private DeclarationKind kind;
 
     private boolean invalidType;
+    /**
+     * Is this a grouping declarator, set by
+     * {@linkplain Parser#parseParenDeclarator(Declarator)} function.
+     */
+    private boolean groupingParens;
     /**
      * Is this Declarator for a function definition.
      */
     private boolean functionDefinition;
-    private Token.Ident id;
-    private int IdLoc;
 
+    /**
+     * This list holds each type that the declarator includes as it is parsed.
+     * This is pushed from the identifier out, which means that first element
+     * will be the most closely bound to the identifier, and the last one will
+     * be the least closely bound.
+     */
     private ArrayList<DeclSpec.DeclaratorChunk> declTypeInfos;
 
     Declarator(DeclSpec ds, TheContext context)
@@ -65,6 +93,8 @@ public class Declarator
     public String getName() { return name; }
 
     public TheContext getContext() { return context; }
+
+    public DeclarationKind getKind() {return kind;}
 
     public boolean isProtoTypeContext()
     {
@@ -156,8 +186,7 @@ public class Declarator
 
     public void setIdentifier(Token.Ident id, int IdLoc)
     {
-        this.id = id;
-        this.IdLoc =IdLoc;
+        this.identifierLoc =IdLoc;
     }
 
     public void setInvalidType(boolean val)
@@ -180,7 +209,18 @@ public class Declarator
 
     public int getIdentifierLoc()
     {
-        return range.getStart();
+        return identifierLoc;
+    }
+
+    public void setIdentifierLoc(String id, int loc)
+    {
+        name = id;
+        identifierLoc = loc;
+        if (id != null)
+            kind = DeclarationKind.DK_Normal;
+        else
+            kind = DeclarationKind.DK_Abstract;
+        setRangeEnd(loc);
     }
 
     public boolean isInvalidType()
@@ -188,9 +228,13 @@ public class Declarator
         return invalidType || ds.getTypeSpecType() == DeclSpec.TST.TST_error;
     }
 
+    /**
+     * Whether this declarator has a name (for normal declarator) or not.
+     * @return
+     */
     public boolean hasName()
     {
-        return name != null;
+        return kind !=DeclarationKind.DK_Abstract;
     }
 
     public boolean isFunctionDeclarator()
@@ -260,5 +304,4 @@ public class Declarator
         isFunctionDeclarator(index);
         return (FunctionTypeInfo) declTypeInfos.get(index.get()).typeInfo;
     }
-
 }
