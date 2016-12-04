@@ -26,7 +26,7 @@ public class MachineFunction
 	/**
 	 * Keeping track of mapping from SSA values to registers.
 	 */
-	private SSARegMap ssaRegMap;
+	private MachineRegisterInfo machineRegisterInfo;
 	/**
 	 * Keep track of constants to be spilled into stack slot.
 	 */
@@ -44,7 +44,7 @@ public class MachineFunction
 		target = tm;
 		mbbNumber = new ArrayList<>();
 		frameInfo = new MachineFrameInfo();
-		ssaRegMap = new SSARegMap();
+		machineRegisterInfo = new MachineRegisterInfo();
 		constantPool = new MachineConstantPool(tm.getTargetData());
 		phyRegDefUseList = new MachineOperand[tm.getRegInfo().getNumRegs()];
 
@@ -60,9 +60,10 @@ public class MachineFunction
 
 	public MachineFrameInfo getFrameInfo() {return frameInfo;}
 
-	public SSARegMap getSsaRegMap(){return ssaRegMap;}
+	public MachineRegisterInfo getMachineRegisterInfo(){return machineRegisterInfo;}
 
-	public void clearSSARegMap() {ssaRegMap.clear();}
+	public void clearSSARegMap() {
+		machineRegisterInfo.clear();}
 
 	public MachineConstantPool getConstantPool(){return constantPool;}
 
@@ -73,7 +74,11 @@ public class MachineFunction
 		mbbNumber.remove(mbb);
 	}
 
-	public int getNumMBB()
+	/**
+	 * returns the number of allocated blocks ID.
+	 * @return
+	 */
+	public int getNumBlockIDs()
 	{
 		return mbbNumber.size();
 	}
@@ -148,7 +153,7 @@ public class MachineFunction
 		if (oldReg < FirstVirtualRegister)
 			defined = phyRegDefUseList[oldReg];
 		else
-			defined = ssaRegMap.getDefinedMO(oldReg);
+			defined = machineRegisterInfo.getDefinedMO(oldReg);
 		for (MachineOperand user : defined.getDefUseList())
 		{
 			user.setRegNum(newReg);

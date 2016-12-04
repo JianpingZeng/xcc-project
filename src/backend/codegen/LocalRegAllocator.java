@@ -86,7 +86,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 
 	private int getReg(MachineBasicBlock mbb, int insertPos, int virReg)
 	{
-		TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
+		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 		// first check to see if we have a free register.
 		int phyReg = getFreeReg(rc);
 
@@ -202,7 +202,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 
 		int phyReg = getReg(mbb, insertPos, virReg);
 
-		TargetRegisterInfo.TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
+		TargetRegisterInfo.TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 		int frameIdx = getStackSlotForVirReg(virReg, rc);
 
 		// note that this reg is just reloaded.
@@ -273,7 +273,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 		// We just spill those modified virtual register into memory cell.
 		if (isVirRegModified(virReg))
 		{
-			TargetRegisterInfo.TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
+			TargetRegisterInfo.TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 			int frameIdx = getStackSlotForVirReg(virReg, rc);
 			regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
 
@@ -382,7 +382,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 			{
 				if (mi.getOperand(j).opIsUse() && mi.getOperand(j).isVirtualRegister())
 				{
-					int virtReg = mi.getOperand(j).getAllocatedRegNum();
+					int virtReg = mi.getOperand(j).getRegNum();
 					int phyReg = reloadVirReg(mbb, i, virtReg);
 					mi.setMachineOperandReg(j, phyReg);
 				}
@@ -394,10 +394,10 @@ public class LocalRegAllocator extends MachineFunctionPass
 			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
 			{
 				MachineOperand op = mi.getOperand(j);
-				if ((op.opIsDefOnly() || op.opIsDefAndUse())
+				if ((op.opIsDef() || op.opIsDefAndUse())
 						&& op.isPhysicalRegister())
 				{
-					int reg = op.getAllocatedRegNum();
+					int reg = op.getRegNum();
 					spillPhyReg(mbb, i, reg, true);
 					phyRegUsed.put(reg, 0);
 					phyRegsUseOrder.addLast(reg);
@@ -420,10 +420,10 @@ public class LocalRegAllocator extends MachineFunctionPass
 			for (int j = mi.getNumOperands() - 1; j >= 0; j--)
 			{
 				MachineOperand op = mi.getOperand(j);
-				if ((op.opIsDefOnly() || op.opIsDefAndUse())
+				if ((op.opIsDef() || op.opIsDefAndUse())
 						&& op.isVirtualRegister())
 				{
-					int destVirReg = mi.getOperand(j).getAllocatedRegNum();
+					int destVirReg = mi.getOperand(j).getRegNum();
 					int destPhyReg = 0;
 
 					// if this destVirReg already is held in physical reg,
@@ -439,11 +439,11 @@ public class LocalRegAllocator extends MachineFunctionPass
 					{
 						// a = b + c --> b(a) += c;
 						assert  mi.getOperand(1).isRegister()
-								&& mi.getOperand(1).getAllocatedRegNum() != 0
+								&& mi.getOperand(1).getRegNum() != 0
 								&& mi.getOperand(1).opIsUse()
 								:"Two address instruction invalid!";
 
-						destPhyReg = mi.getOperand(1).getAllocatedRegNum();
+						destPhyReg = mi.getOperand(1).getRegNum();
 
 						spillPhyReg(mbb, i, destPhyReg, false);
 						assignVirToPhyReg(destVirReg, destPhyReg);

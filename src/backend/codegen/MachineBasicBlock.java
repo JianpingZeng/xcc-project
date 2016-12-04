@@ -15,6 +15,10 @@ public class MachineBasicBlock
 	private LinkedList<MachineInstr> insts;
 	private MachineBasicBlock prev, next;
 	private final BasicBlock bb;
+
+	/**
+	 * Indicates the number of this machine block in the machine function.
+	 */
 	private int number;
 
 	private ArrayList<MachineBasicBlock> predecessors;
@@ -147,6 +151,10 @@ public class MachineBasicBlock
 		return successors.get(idx);
 	}
 
+	/**
+	 * Obtains the number of this machine block.
+	 * @return
+	 */
 	public int getNumber()
 	{
 		return number;

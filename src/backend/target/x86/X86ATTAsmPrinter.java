@@ -401,7 +401,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
             {
                 assert mo.isPhysicalRegister();
                 os.print("%");
-                os.print(regInfo.getName(mo.getAllocatedRegNum()).toLowerCase());
+                os.print(regInfo.getName(mo.getRegNum()).toLowerCase());
                 return;
             }
             case MO_SignExtendedImmed:
@@ -412,7 +412,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
             }
             case MO_MachineBasicBlock:
             {
-                MachineBasicBlock mbb = mo.getMachineBasicBlock();
+                MachineBasicBlock mbb = mo.getMBB();
                 os.print(privateGlobalPrefix);
                 os.print("BB");
                 os.print(mangler.getValueName(mbb.getBasicBlock().getParent()));
@@ -530,19 +530,19 @@ public final class X86ATTAsmPrinter extends AsmPrinter
         else
         {
             int dispVal = (int) disp.getImmedValue();
-            if (dispVal != 0 || (indexReg.getAllocatedRegNum() == 0
-                    && baseReg.getAllocatedRegNum() == 0))
+            if (dispVal != 0 || (indexReg.getRegNum() == 0
+                    && baseReg.getRegNum() == 0))
                 os.print(dispVal);
         }
 
-        if (indexReg.getAllocatedRegNum() != 0
-                || baseReg.getAllocatedRegNum() != 0)
+        if (indexReg.getRegNum() != 0
+                || baseReg.getRegNum() != 0)
         {
             os.print("(");
-            if (baseReg.getAllocatedRegNum() != 0)
+            if (baseReg.getRegNum() != 0)
                 printOp(baseReg);
 
-            if (indexReg.getAllocatedRegNum() != 0)
+            if (indexReg.getRegNum() != 0)
             {
                 os.print(",");
                 printOp(indexReg);
@@ -591,7 +591,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 {
                     int i = 0;
                     if (mi.getNumOperands() >=0 && (mi.getOperand(0).opIsDefAndUse()
-                        || mi.getOperand(0).opIsDefOnly()))
+                        || mi.getOperand(0).opIsDef()))
                     {
                         printOp(mi.getOperand(0));
                         os.print(" = ");
@@ -602,7 +602,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                     {
                         os.print(" ");
                         boolean isDef = false;
-                        if (mi.getOperand(i).opIsDefOnly()
+                        if (mi.getOperand(i).opIsDef()
                                 || mi.getOperand(i).opIsDefAndUse())
                         {
                             isDef = true;
@@ -646,7 +646,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 // into a register.  The initial register might be duplicated if this is a
                 // M_2_ADDR_REG instruction.
                 assert mi.getOperand(0).isRegister() && (mi.getNumOperands() == 1
-                || (mi.getNumOperands() == 2 && (mi.getOperand(1).getAllocatedRegNum() != 0
+                || (mi.getNumOperands() == 2 && (mi.getOperand(1).getRegNum() != 0
                 || mi.getOperand(1).isImmediate()
                 || mi.getOperand(1).isRegister() || mi.getOperand(1).isGlobalAddress()
                 || mi.getOperand(1).isExternalSymbol())))
@@ -654,7 +654,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
 
                 os.print(name);
                 if (mi.getNumOperands() == 2 && (!mi.getOperand(1).isRegister()
-                        || mi.getOperand(1).getAllocatedRegNum() != 0
+                        || mi.getOperand(1).getRegNum() != 0
                         || mi.getOperand(1).isGlobalAddress()
                         || mi.getOperand(1).isExternalSymbol()))
                 {
@@ -683,7 +683,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 boolean isTwoAddr = instrInfo.isTwoAddrInstr(opcode);
                 assert mi.getOperand(0).isRegister() &&
                         (mi.getNumOperands() == 2 || (isTwoAddr && mi.getOperand(1).isRegister()
-                        && mi.getOperand(0).getAllocatedRegNum() == mi.getOperand(1).getAllocatedRegNum()
+                        && mi.getOperand(0).getRegNum() == mi.getOperand(1).getRegNum()
                         && (mi.getNumOperands() == 3 || (mi.getNumOperands() == 4 && mi.getOperand(3).isImmediate()))))
                     :"Bad format for MRMDest instruction!";
                 os.print(name);
@@ -734,8 +734,8 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                                 || mi.getOperand(2).isImmediate())))
                         :"Bad format for MRMSrcReg!";
 
-                if (mi.getNumOperands() == 3 && mi.getOperand(0).getAllocatedRegNum()
-                        != mi.getOperand(1).getAllocatedRegNum())
+                if (mi.getNumOperands() == 3 && mi.getOperand(0).getRegNum()
+                        != mi.getOperand(1).getRegNum())
                     os.println("**");
 
                 os.print(name);
@@ -763,8 +763,8 @@ public final class X86ATTAsmPrinter extends AsmPrinter
 
                 os.print(name);
                 /**
-                if (mi.getNumOperands() == 6 && mi.getOperand(0).getAllocatedRegNum()
-                        != mi.getOperand(1).getAllocatedRegNum())
+                if (mi.getNumOperands() == 6 && mi.getOperand(0).getRegNum()
+                        != mi.getOperand(1).getRegNum())
                 {
                     os.print("**");
                 }*/
@@ -797,7 +797,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 && mi.getOperand(2).isImmediate()) :"Badi MRMSxr format!";
                 /**
                 if (mi.getNumOperands() > 1 && mi.getOperand(1).isRegister()
-                        && mi.getOperand(0).getAllocatedRegNum() != mi.getOperand(1).getAllocatedRegNum())
+                        && mi.getOperand(0).getRegNum() != mi.getOperand(1).getRegNum())
                     os.print("**");
                  */
                 os.print(name);

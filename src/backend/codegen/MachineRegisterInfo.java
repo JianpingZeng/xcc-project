@@ -22,13 +22,14 @@ import tools.Pair;
 import java.util.ArrayList;
 
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
+import static backend.target.TargetRegisterInfo.NoRegister;
 
 /**
  * Maps register number to register classes which used to assist register allocation.
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class SSARegMap
+public final class MachineRegisterInfo
 {
     /**
      * Mapping from virtual register number to its attached register class and
@@ -36,7 +37,7 @@ public final class SSARegMap
      */
     private ArrayList<Pair<TargetRegisterClass, MachineOperand>> vregInfo;
 
-    public SSARegMap()
+    public MachineRegisterInfo()
     {
         vregInfo = new ArrayList<>();
     }
@@ -87,5 +88,29 @@ public final class SSARegMap
         int actualReg = rescale(regNo);
         assert actualReg< vregInfo.size():"Register out of bound!";
         return vregInfo.get(actualReg).second;
+    }
+
+    public MachineInstr getDefMI(int regNo)
+    {
+        return getDefinedMO(regNo).getParentMI();
+    }
+
+    /**
+     * Checks to see if the specified register is a physical register or not.
+     * @param regNo
+     * @return
+     */
+    public boolean isPhysicalReg(int regNo)
+    {
+        return regNo>= NoRegister && regNo < FirstVirtualRegister;
+    }
+    /**
+     * Checks to see if the specified register is a virtual register or not.
+     * @param regNo
+     * @return
+     */
+    public boolean isVirtualReg(int regNo)
+    {
+        return regNo >= FirstVirtualRegister;
     }
 }

@@ -68,8 +68,8 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
             case X86InstrSets.MOVrr16:
             case X86InstrSets.MOVrr32:
                 // destroy X=X copy.
-                if (curMI.getOperand(0).getAllocatedRegNum()
-                        == curMI.getOperand(1).getAllocatedRegNum())
+                if (curMI.getOperand(0).getRegNum()
+                        == curMI.getOperand(1).getRegNum())
                 {
                     mbb.erase(idx);
                     res = true;
@@ -114,8 +114,8 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                             case X86InstrSets.XORri32:opcode = X86InstrSets.XORri32b; break;
                         }
 
-                        int r0 = curMI.getOperand(0).getAllocatedRegNum();
-                        int r1 = curMI.getOperand(1).getAllocatedRegNum();
+                        int r0 = curMI.getOperand(0).getRegNum();
+                        int r1 = curMI.getOperand(1).getRegNum();
                         mbb.replace(idx, buildMI(opcode, 2, r0).addReg(r1).
                                 addZImm((byte)val).getMInstr());
                         res = true;
@@ -128,8 +128,8 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
             {
                 // Change bswap EAX, bswap EAX into nothing.
                 if (next.getOpCode() == X86InstrSets.BSWAPr32
-                        && curMI.getOperand(0).getAllocatedRegNum() ==
-                        next.getOperand(0).getAllocatedRegNum())
+                        && curMI.getOperand(0).getRegNum() ==
+                        next.getOperand(0).getRegNum())
                 {
                     mbb.erase(idx);
                     res = true;

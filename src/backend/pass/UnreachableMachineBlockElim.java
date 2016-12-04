@@ -92,7 +92,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                         for (int j = mi.getNumOperands() - 1; j >= 2; j-=2)
                         {
                             if (mi.getOperand(j).isMachineBasicBlock()
-                                    && mi.getOperand(j).getMachineBasicBlock() == mbb)
+                                    && mi.getOperand(j).getMBB() == mbb)
                             {
                                 mi.removeOperand(j);
                                 mi.removeOperand(j-1);
@@ -111,7 +111,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
         }
 
         // cleanup phi node.
-        for (int i = 0, e = mf.getNumMBB(); i < e; i++)
+        for (int i = 0, e = mf.getNumBlockIDs(); i < e; i++)
         {
             // Prune the unneeded PHI nodes.
             MachineBasicBlock mbb = mf.getMBBAt(i);
@@ -123,7 +123,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                     continue;
                 for (int k = phi.getNumOperands() - 1; k >= 2; k-=2)
                 {
-                    if (!pred.contains(phi.getOperand(k).getMachineBasicBlock()))
+                    if (!pred.contains(phi.getOperand(k).getMBB()))
                     {
                         phi.removeOperand(k);
                         phi.removeOperand(k-1);
@@ -133,8 +133,8 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                 // If this phi have only one input argument, remove it from MBB.
                 if (phi.getNumOperands() == 3)
                 {
-                    int input = phi.getOperand(1).getAllocatedRegNum();
-                    int output = phi.getOperand(0).getAllocatedRegNum();
+                    int input = phi.getOperand(1).getRegNum();
+                    int output = phi.getOperand(0).getRegNum();
                     int phiPos = j;
                     // advance to next inst.
                     j++;
