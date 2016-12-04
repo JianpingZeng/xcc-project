@@ -46,16 +46,6 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
 
 public class MachineOperand
 {
-	public MachineInstr getParentMI()
-	{
-		return parentMI;
-	}
-
-	public void setParentMI(MachineInstr parentMI)
-	{
-		this.parentMI = parentMI;
-	}
-
 	public enum UseType
 	{
 		Use,             /// This machine operand is only read by the instruction
@@ -81,7 +71,7 @@ public class MachineOperand
 	// Bit fields of the flags variable used for different operand properties
 	interface Kind
 	{
-		int DEFONLYFLAG = 0x01,       // this is a def but not a use of the operand
+		int DEFFLAG = 0x01,       // this is a def but not a use of the operand
 				DEFUSEFLAG = 0x02,       // this is both a def and a use
 				HIFLAG32 = 0x04,       // operand is %hi32(value_or_immedVal)
 				LOFLAG32 = 0x08,       // operand is %lo32(value_or_immedVal)
@@ -150,7 +140,7 @@ public class MachineOperand
 				flags = 0;
 				break;
 			case Def:
-				flags = DEFONLYFLAG;
+				flags = DEFFLAG;
 				break;
 			case UseAndDef:
 				flags = DEFUSEFLAG;
@@ -177,7 +167,7 @@ public class MachineOperand
 				flags = 0;
 				break;
 			case Def:
-				flags = DEFONLYFLAG;
+				flags = DEFFLAG;
 				break;
 			case UseAndDef:
 				flags = DEFUSEFLAG;
@@ -318,7 +308,7 @@ public class MachineOperand
 		immedVal = val;
 	}
 
-	public MachineBasicBlock getMachineBasicBlock()
+	public MachineBasicBlock getMBB()
 	{
 		assert isMachineBasicBlock() : "Can't get MBB in non-MBB operand!";
 		return MBB;
@@ -353,14 +343,9 @@ public class MachineOperand
 		return (flags & USEDEFMASK) == 0;
 	}
 
-	public boolean opIsDefOnly()
+	public boolean opIsDef()
 	{
-		return (flags & DEFONLYFLAG) != 0;
-	}
-
-	public boolean opIsDefAndUse()
-	{
-		return (flags & DEFUSEFLAG) != 0;
+		return (flags & DEFFLAG) != 0;
 	}
 
 	public boolean opHiBits32()
@@ -390,14 +375,6 @@ public class MachineOperand
 				|| opType == MO_CCRegister ||
 				opType == MO_MachineRegister));
 	}
-
-	// used to get the reg number if when one is allocated
-	public int getAllocatedRegNum()
-	{
-		assert (hasAllocatedReg());
-		return regNum;
-	}
-
 
 	// Construction methods needed for fine-grain control.
 	// These must be accessed via corresponding methods in MachineInstr.
@@ -434,7 +411,12 @@ public class MachineOperand
 
 	public void setRegNum(int regNum) {this.regNum = regNum;}
 
-	public int getRegNum() {return regNum;}
+	// used to get the reg number if when one is allocated
+	public int getRegNum()
+	{
+		assert (hasAllocatedReg());
+		return regNum;
+	}
 
 	public void setFlags(int flags)
 	{
@@ -458,5 +440,14 @@ public class MachineOperand
 		assert defUseList != null && isRegister()
 				: "Can not call this method for non-register operand";
 		return defUseList;
+	}
+	public MachineInstr getParentMI()
+	{
+		return parentMI;
+	}
+
+	public void setParentMI(MachineInstr parentMI)
+	{
+		this.parentMI = parentMI;
 	}
 };

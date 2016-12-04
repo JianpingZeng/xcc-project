@@ -62,7 +62,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 
 	private int getFreeReg(int virReg)
 	{
-		TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
+		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 		int size = rc.getNumRegs();
 		while(true)
 		{
@@ -78,7 +78,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 
 	private int reloadVirReg(MachineBasicBlock mbb, int insertPos, int virReg)
 	{
-		TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
+		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 		int frameIdx = getStackSlotForVirReg(virReg, rc);
 		int phyReg = getFreeReg(virReg);
 
@@ -92,7 +92,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	private void spillVirReg(MachineBasicBlock mbb, int insertPos,
 			int virReg, int phyReg)
 	{
-		TargetRegisterClass rc = mf.getSsaRegMap().getRegClass(virReg);
+		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 		int frameIdx = getStackSlotForVirReg(virReg, rc);
 		regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
 
@@ -124,24 +124,24 @@ public final class RegAllocSimple extends MachineFunctionPass
 				// just handle virtual register.
 				if (op.isVirtualRegister())
 				{
-					int virtualReg = op.getAllocatedRegNum();
+					int virtualReg = op.getRegNum();
 
 					// make sure the same virtual register maps to the same physical
 					// register in any given instruction
 					int phyReg = virToPhyRegMap.get(virtualReg);
 					if (phyReg == 0)
 					{
-						if (op.opIsDefOnly() || op.opIsDefAndUse())
+						if (op.opIsDef() || op.opIsDefAndUse())
 						{
 							if (instrInfo.isTwoAddrInstr(opcode) && i == 0)
 							{
 								// This maps a = b + c into b+= c, and save b into a.
 								assert mi.getOperand(1).isRegister()
-										&& mi.getOperand(1).getAllocatedRegNum()!=0
+										&& mi.getOperand(1).getRegNum()!=0
 										&& mi.getOperand(1).opIsUse()
 										:"Two address instruction invalid!";
 
-								phyReg = mi.getOperand(1).getAllocatedRegNum();
+								phyReg = mi.getOperand(1).getRegNum();
 							}
 							else
 							{

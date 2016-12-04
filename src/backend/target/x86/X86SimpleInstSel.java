@@ -155,12 +155,12 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		if (ty.getPrimitiveID()== Type.Int64TyID)
 		{
 			TargetRegisterClass rc = mri.getRegClassForType(Type.Int32Ty);
-			mf.getSsaRegMap().createVirtualRegister(rc);
-			return mf.getSsaRegMap().createVirtualRegister(rc) - 1;
+			mf.getMachineRegisterInfo().createVirtualRegister(rc);
+			return mf.getMachineRegisterInfo().createVirtualRegister(rc) - 1;
 		}
 
 		TargetRegisterClass rc = mri.getRegClassForType(ty);
-		return mf.getSsaRegMap().createVirtualRegister(rc);
+		return mf.getMachineRegisterInfo().createVirtualRegister(rc);
 	}
 
 	private void emitGEPOperation(int insertPos, Value base,

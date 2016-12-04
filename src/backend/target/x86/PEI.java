@@ -130,10 +130,10 @@ public class PEI extends MachineFunctionPass
                     {
                         MachineOperand mo = mi.getOperand(j);
                         if (mo.isPhysicalRegister() && (mo.opIsDefAndUse()
-                                || mo.opIsDefOnly()))
+                                || mo.opIsDef()))
                         {
                             // this register is modified.
-                            modifiedRegs[mo.getAllocatedRegNum()] = true;
+                            modifiedRegs[mo.getRegNum()] = true;
                         }
                     }
                 }
