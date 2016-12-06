@@ -18,7 +18,7 @@ package backend.analysis;
 
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
-import backend.pass.UnreachableMachineBlockElim;
+import backend.opt.UnreachableMachineBlockElim;
 import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
@@ -79,7 +79,7 @@ public final class LiveAnalysis extends MachineFunctionPass
          * is live throughout.
          * This is a bit set which uses the block number as its index.
          */
-        TIntArrayList aliveBlocks;
+        public TIntArrayList aliveBlocks;
         /**
          * The numbers of uses of this virtual register across entire function.
          *
@@ -87,12 +87,12 @@ public final class LiveAnalysis extends MachineFunctionPass
          * found by {@linkplain MachineRegisterInfo#vregInfo}'s second
          * part.
          */
-        int numUses;
+        public int numUses;
         /**
          * The list of MachineInstr which are the last using of this virtual
          * register in their machine basic block.
          */
-        ArrayList<MachineInstr> lastUsedInst;
+        public ArrayList<MachineInstr> lastUsedInst;
 
         public VarInfo()
         {
@@ -246,9 +246,9 @@ public final class LiveAnalysis extends MachineFunctionPass
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    if (mo.opIsUse() && mo.getRegNum() != 0 && mo.isRegister())
+                    if (mo.opIsUse() && mo.getReg() != 0 && mo.isRegister())
                     {
-                        int reg = mo.getRegNum();
+                        int reg = mo.getReg();
                         if (machineRegInfo.isPhysicalReg(reg)
                                 && allocatablePhyRegs.contains(reg))
                         {
@@ -274,8 +274,8 @@ public final class LiveAnalysis extends MachineFunctionPass
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    int reg = mo.getRegNum();
-                    if (mo.opIsDef() && mo.isRegister() && mo.getRegNum() != 0)
+                    int reg = mo.getReg();
+                    if (mo.opIsDef() && mo.isRegister() && mo.getReg() != 0)
                     {
                         if (machineRegInfo.isPhysicalReg(reg)
                                 && allocatablePhyRegs.contains(reg))
@@ -431,7 +431,7 @@ public final class LiveAnalysis extends MachineFunctionPass
      * @param regIdx
      * @return
      */
-    private VarInfo getVarInfo(int regIdx)
+    public VarInfo getVarInfo(int regIdx)
     {
         assert machineRegInfo.isVirtualReg(regIdx)
                 :"not a virtual register!";
@@ -548,7 +548,7 @@ public final class LiveAnalysis extends MachineFunctionPass
             {
                 for (int j = 1, sz = mi.getNumOperands(); j < sz; j++)
                     phiVarInfo[mi.getOperand(j+1).getMBB().getNumber()].
-                            add(mi.getOperand(j).getRegNum());
+                            add(mi.getOperand(j).getReg());
             }
         }
     }
@@ -678,7 +678,7 @@ public final class LiveAnalysis extends MachineFunctionPass
      * @param reg
      * @param mi
      */
-    public void addRegisterDead(int reg, MachineInstr mi)
+    public void addVirtualRegisterDead(int reg, MachineInstr mi)
     {
         TIntArrayList list = registerDeaded.get(mi);
         // handles the special common cases.

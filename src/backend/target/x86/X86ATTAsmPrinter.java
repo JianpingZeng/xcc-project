@@ -401,7 +401,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
             {
                 assert mo.isPhysicalRegister();
                 os.print("%");
-                os.print(regInfo.getName(mo.getRegNum()).toLowerCase());
+                os.print(regInfo.getName(mo.getReg()).toLowerCase());
                 return;
             }
             case MO_SignExtendedImmed:
@@ -530,19 +530,19 @@ public final class X86ATTAsmPrinter extends AsmPrinter
         else
         {
             int dispVal = (int) disp.getImmedValue();
-            if (dispVal != 0 || (indexReg.getRegNum() == 0
-                    && baseReg.getRegNum() == 0))
+            if (dispVal != 0 || (indexReg.getReg() == 0
+                    && baseReg.getReg() == 0))
                 os.print(dispVal);
         }
 
-        if (indexReg.getRegNum() != 0
-                || baseReg.getRegNum() != 0)
+        if (indexReg.getReg() != 0
+                || baseReg.getReg() != 0)
         {
             os.print("(");
-            if (baseReg.getRegNum() != 0)
+            if (baseReg.getReg() != 0)
                 printOp(baseReg);
 
-            if (indexReg.getRegNum() != 0)
+            if (indexReg.getReg() != 0)
             {
                 os.print(",");
                 printOp(indexReg);
@@ -646,7 +646,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 // into a register.  The initial register might be duplicated if this is a
                 // M_2_ADDR_REG instruction.
                 assert mi.getOperand(0).isRegister() && (mi.getNumOperands() == 1
-                || (mi.getNumOperands() == 2 && (mi.getOperand(1).getRegNum() != 0
+                || (mi.getNumOperands() == 2 && (mi.getOperand(1).getReg() != 0
                 || mi.getOperand(1).isImmediate()
                 || mi.getOperand(1).isRegister() || mi.getOperand(1).isGlobalAddress()
                 || mi.getOperand(1).isExternalSymbol())))
@@ -654,7 +654,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
 
                 os.print(name);
                 if (mi.getNumOperands() == 2 && (!mi.getOperand(1).isRegister()
-                        || mi.getOperand(1).getRegNum() != 0
+                        || mi.getOperand(1).getReg() != 0
                         || mi.getOperand(1).isGlobalAddress()
                         || mi.getOperand(1).isExternalSymbol()))
                 {
@@ -683,7 +683,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 boolean isTwoAddr = instrInfo.isTwoAddrInstr(opcode);
                 assert mi.getOperand(0).isRegister() &&
                         (mi.getNumOperands() == 2 || (isTwoAddr && mi.getOperand(1).isRegister()
-                        && mi.getOperand(0).getRegNum() == mi.getOperand(1).getRegNum()
+                        && mi.getOperand(0).getReg() == mi.getOperand(1).getReg()
                         && (mi.getNumOperands() == 3 || (mi.getNumOperands() == 4 && mi.getOperand(3).isImmediate()))))
                     :"Bad format for MRMDest instruction!";
                 os.print(name);
@@ -734,8 +734,8 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                                 || mi.getOperand(2).isImmediate())))
                         :"Bad format for MRMSrcReg!";
 
-                if (mi.getNumOperands() == 3 && mi.getOperand(0).getRegNum()
-                        != mi.getOperand(1).getRegNum())
+                if (mi.getNumOperands() == 3 && mi.getOperand(0).getReg()
+                        != mi.getOperand(1).getReg())
                     os.println("**");
 
                 os.print(name);
@@ -763,8 +763,8 @@ public final class X86ATTAsmPrinter extends AsmPrinter
 
                 os.print(name);
                 /**
-                if (mi.getNumOperands() == 6 && mi.getOperand(0).getRegNum()
-                        != mi.getOperand(1).getRegNum())
+                if (mi.getNumOperands() == 6 && mi.getOperand(0).getReg()
+                        != mi.getOperand(1).getReg())
                 {
                     os.print("**");
                 }*/
@@ -797,7 +797,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 && mi.getOperand(2).isImmediate()) :"Badi MRMSxr format!";
                 /**
                 if (mi.getNumOperands() > 1 && mi.getOperand(1).isRegister()
-                        && mi.getOperand(0).getRegNum() != mi.getOperand(1).getRegNum())
+                        && mi.getOperand(0).getReg() != mi.getOperand(1).getReg())
                     os.print("**");
                  */
                 os.print(name);

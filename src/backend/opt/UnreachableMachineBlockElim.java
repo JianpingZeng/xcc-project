@@ -1,4 +1,4 @@
-package backend.pass;
+package backend.opt;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -22,6 +22,7 @@ import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
 import backend.codegen.MachineInstr;
+import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.target.x86.X86InstrSets;
 
@@ -133,8 +134,8 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                 // If this phi have only one input argument, remove it from MBB.
                 if (phi.getNumOperands() == 3)
                 {
-                    int input = phi.getOperand(1).getRegNum();
-                    int output = phi.getOperand(0).getRegNum();
+                    int input = phi.getOperand(1).getReg();
+                    int output = phi.getOperand(0).getReg();
                     int phiPos = j;
                     // advance to next inst.
                     j++;

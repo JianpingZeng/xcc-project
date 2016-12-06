@@ -101,7 +101,7 @@ public class MachineOperand
 	 * This list records all user of this machine operand for holding SSA form
 	 * before register allocation.
 	 *
-	 * Note that: this property just avaliable for register operand (includes
+	 * Note that: this property just available for register operand (includes
 	 * virtual register and physical register).
 	 */
 	private ArrayList<MachineOperand> defUseList;
@@ -409,10 +409,10 @@ public class MachineOperand
 
 	public void setValue(Value val) {value = val;}
 
-	public void setRegNum(int regNum) {this.regNum = regNum;}
+	public void setReg(int regNum) {this.regNum = regNum;}
 
 	// used to get the reg number if when one is allocated
-	public int getRegNum()
+	public int getReg()
 	{
 		assert (hasAllocatedReg());
 		return regNum;
