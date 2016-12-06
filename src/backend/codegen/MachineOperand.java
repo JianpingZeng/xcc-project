@@ -450,4 +450,9 @@ public class MachineOperand
 	{
 		this.parentMI = parentMI;
 	}
+
+	public void setUse()
+	{
+		flags |= USEDEFMASK;
+	}
 };
