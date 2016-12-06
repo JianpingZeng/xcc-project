@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.opt.PNE;
+import backend.opt.TwoAddrInstruction;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
@@ -204,6 +205,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		au.addRequired(PNE.class);
+		au.addRequired(TwoAddrInstruction.class);
 		super.getAnalysisUsage(au);
 	}
 
