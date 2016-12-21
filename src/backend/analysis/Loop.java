@@ -1,8 +1,12 @@
 package backend.analysis;
 
 import backend.hir.BasicBlock;
+import backend.hir.PredIterator;
+import backend.hir.SuccIterator;
 import backend.value.Instruction;
 
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -28,7 +32,7 @@ public class Loop
 	 * A sequence of block Id. 
 	 * <br>
 	 * The first item must be a loop header block. Also all of block 
-	 * id are sorted in descending the {@linkplain #loopDepth} by an 
+	 * id are sorted in descending the {@linkplain #getLoopDepth()} by an
 	 * instance of {@linkplain Comparator}.   
 	 * </p>
 	 */
@@ -38,44 +42,22 @@ public class Loop
 	 */
 	final int loopIndex;
 	/**
-	 * The nested depth of this loop.
-	 */
-	final int loopDepth;
-	/**
 	 * A pointer to its outer loop loop which isDeclScope this.
 	 */
-	Loop outerLoop;
+	private Loop outerLoop;
 	/**
 	 * An array of its subLoops loop contained in this.
 	 */
 	ArrayList<Loop> subLoops;
-	/**
-	 * A list of all exit blocks.
-	 */
-	private List<BasicBlock> exitBlocks;
 	
-	/**
-	 * The basic block followed by this loop.
-	 */
-	private BasicBlock followBlock;
-	
-	public Loop(LinkedList<BasicBlock> blocks,
-			List<BasicBlock> exitBlocks,
-			BasicBlock followBlock)
+	public Loop(Loop parent, LinkedList<BasicBlock> blocks)
 	{
-		assert blocks!= null && !blocks.isEmpty()
-				&& exitBlocks != null && !exitBlocks.isEmpty();
+		assert blocks!= null && !blocks.isEmpty();
 		
 		this.blocks = blocks;
+		this.outerLoop = parent;
 		this.loopIndex = getHeaderBlock().loopIndex;
-		this.loopDepth = getHeaderBlock().loopDepth;
-		this.exitBlocks = exitBlocks;
-		this.followBlock = followBlock;
 	}
-	
-	public void setFollowBlock(BasicBlock bb){this.followBlock = bb;}
-	
-	public BasicBlock getFollowBlock() {return this.followBlock;}
 	
 	/**
 	 * Retrieves the index of a basic block at the specified position where indexed by a index 
@@ -88,29 +70,14 @@ public class Loop
 		assert index >= 0 && index < blocks.size();
 		return blocks.get(index);
 	}
-	/**
-	 * Obtains all exit basic blocks as an array in this loop.
-	 * @return
-	 */
-	public List<BasicBlock> exitBlocks()
-	{
-		return exitBlocks;
-	}
-	
-	/**
-	 * Obtains the number of exit blocks.
-	 * @return
-	 */
-	public int getNumOfExitBlock()
-	{
-		return exitBlocks.size();
-	}
+
 	/**
 	 * Obtains the header block of this loop.
 	 * @return
 	 */
 	public BasicBlock getHeaderBlock()
 	{
+		assert blocks != null && !blocks.isEmpty() :"There is no block in loop";
 		return blocks.get(0);				
 	}
 	
@@ -118,6 +85,78 @@ public class Loop
 	{
 		return blocks.size();
 	}
+
+	/**
+	 * Obtains the depth of this loop in the loop forest it attached, begins from
+	 * 1.
+	 * @return
+	 */
+	public int getLoopDepth()
+	{
+		int d = 1;
+		for (Loop outer = this; outer.outerLoop != null; outer = outer.outerLoop)
+			d++;
+		return d;
+	}
+
+	public Loop getOuterLoop()
+	{
+		return outerLoop;
+	}
+
+	public void setOuterLoop(Loop loop)
+	{
+		outerLoop = loop;
+	}
+
+	public ArrayList<Loop> getSubLoops()
+	{
+		return subLoops;
+	}
+
+	public List<BasicBlock> getBlocks()
+	{
+		return blocks;
+	}
+
+	/**
+	 * Check to see if a basic block is the loop exit block or not on that
+	 * if the any successor block of the given bb is outside this loop, so that
+	 * this bb would be a loop exit block..
+	 * @param bb
+	 * @return True if the given block is the exit block of this loop, otherwise
+	 * returned false.
+	 */
+	public boolean isLoopExitBlock(BasicBlock bb)
+	{
+		// The special case: bb is not contained in current loop, just return false.
+		if (!contains(bb))
+			return false;
+
+		for (SuccIterator succItr = bb.succIterator(); succItr.hasNext();)
+		{
+			if (!contains(succItr.next()))
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Computes the backward edge leading to the header block in the loop.
+	 * @return
+	 */
+	public int getNumBackEdges()
+	{
+		int numBackEdges = 0;
+		PredIterator<BasicBlock> itr = getHeaderBlock().predIterator();
+		while (itr.hasNext())
+		{
+			if (contains(itr.next()))
+				++numBackEdges;
+		}
+		return numBackEdges;
+	}
+
 	/**
 	 * <p>
 	 * IfStmt there is a preheader for this loop, return it.  A loop has a preheader
@@ -135,7 +174,7 @@ public class Loop
 		if (out == null) return null;
 		
 		// make sure there is exactly one exit out of the preheader
-		if (out.getNumOfSuccs() > 1)
+		if (out.getNumSuccessors() > 1)
 			return null;
 		// the predecessor has exactly one successor, so it is 
 		// a preheader.
@@ -151,8 +190,9 @@ public class Loop
 	{
 		BasicBlock header = getHeaderBlock();
 		BasicBlock outer = null;
-		for (BasicBlock pred : header.getPreds())
+		for (PredIterator<BasicBlock> predItr = header.predIterator(); predItr.hasNext();)
 		{
+			BasicBlock pred = predItr.next();
 			if (!contains(pred))
 			{
 				if (outer != null && outer != pred)
@@ -210,29 +250,105 @@ public class Loop
 		
 		blocks.addFirst(bb);
 	}
-	
-	public void addBlock(BasicBlock bb)
+
+	/**
+	 * Returns a list of all loop exit block.
+	 * @return
+	 */
+	public ArrayList<BasicBlock> getExitBlocks()
 	{
-		assert bb != null : "bb not be null";
-		assert !contains(bb) : "duplicated block added";
+		ArrayList<BasicBlock> exitBlocks = new ArrayList<>(blocks.size());
+		blocks.forEach(bb ->
+		{
+			if (isLoopExitBlock(bb))
+				exitBlocks.add(bb);
+		});
+		return exitBlocks;
+	}
+
+	/**
+	 * If {@linkplain #getExitBlocks()} exactly return one block, then this
+	 * method will return it, otherwise retunn null;
+	 * @return
+	 */
+	public BasicBlock getExitBlock()
+	{
+		ArrayList<BasicBlock> res = getExitBlocks();
+		if (res.size() == 1)
+			return res.get(0);
+		return null;
+	}
+	//========================================================================//
+	// API for changing the CFG.
+
+	public void addBasicBlockIntoLoop(BasicBlock bb, LoopInfo li)
+	{
+
+	}
+
+	public void replaceChildLoopWith(Loop newOne, Loop oldOne)
+	{
+		assert newOne != null && oldOne != null;
+		assert oldOne.outerLoop == this;
+		assert newOne.outerLoop == null;
+
+		assert subLoops.contains(oldOne) :"oldOne loop not contained in current";
+		int idx = subLoops.indexOf(oldOne);
+		newOne.outerLoop = this;
+		subLoops.set(idx, newOne);
+	}
+
+	public void addChildLoop(Loop loop)
+	{
+		assert loop != null && loop.outerLoop == null;
+		loop.outerLoop = this;
+		subLoops.add(loop);
+	}
+
+	public void removeChildLoop(int index)
+	{
+		assert index>= 0 && index < subLoops.size();
+		subLoops.remove(index);
+	}
+
+	public void addBlockEntry(BasicBlock bb)
+	{
+		assert bb != null;
 		blocks.add(bb);
 	}
-	
-	public void removeExitBlock(BasicBlock bb)
-	{
-		exitBlocks.remove(bb);
-	}
-	public void addExitBlock(BasicBlock bb)
+
+	public void removeBlockFromLoop(BasicBlock bb)
 	{
 		assert bb != null;
-		assert !exitBlocks.contains(bb);
-		exitBlocks.add(bb);
+		blocks.remove(bb);
 	}
-	
-	public boolean isExitBlock(BasicBlock bb )
+
+	public void print(OutputStream os, int depth)
 	{
-		assert bb != null;
-		return exitBlocks.contains(bb);
+		try (PrintWriter writer = new PrintWriter(os))
+		{
+			writer.print(String.format("%" + depth * 2 + "s", " "));
+			writer.printf("Loop at depth: %d, containing: ", getLoopDepth());
+			for (int i = 0, e = blocks.size(); i < e; i++)
+			{
+				if (i != 0)
+					writer.print(",");
+				BasicBlock bb = blocks.get(i);
+				writer.printf("Block#%s", bb.getName());
+				if (bb == getHeaderBlock())
+					writer.print("<header>");
+				if (isLoopExitBlock(bb))
+					writer.print("<exit>");
+			}
+			writer.println();
+			for (Loop subLoop : subLoops)
+				subLoop.print(os, depth + 2);
+		}
+	}
+
+	public void dump()
+	{
+		print(System.err, 0);
 	}
 }
 
