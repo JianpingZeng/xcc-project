@@ -81,7 +81,7 @@ public final class MachineRegisterInfo
      * @param regNo
      * @return
      */
-    public MachineOperand getDefinedMO(int regNo)
+    public MachineOperand getDefMO(int regNo)
     {
         assert regNo >= FirstVirtualRegister
                 : "the regNo is not a virtual register";
@@ -92,7 +92,17 @@ public final class MachineRegisterInfo
 
     public MachineInstr getDefMI(int regNo)
     {
-        return getDefinedMO(regNo).getParentMI();
+        return getDefMO(regNo).getParentMI();
+    }
+
+    public void setDefMO(int regNo, MachineOperand mo)
+    {
+        assert regNo >= FirstVirtualRegister
+                : "the regNo is not a virtual register";
+        int actualReg = rescale(regNo);
+        assert actualReg< vregInfo.size():"Register out of bound!";
+        vregInfo.get(regNo).second = mo;
+
     }
 
     /**
@@ -112,5 +122,10 @@ public final class MachineRegisterInfo
     public boolean isVirtualReg(int regNo)
     {
         return regNo >= FirstVirtualRegister;
+    }
+
+    public int getLastVirReg()
+    {
+        return vregInfo.size() - 1;
     }
 }

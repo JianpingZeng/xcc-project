@@ -214,6 +214,10 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 		int opcode[] = {MOVrr8, MOVrr16, MOVrr32, FpMOV};
 		MachineInstr instr = buildMI(opcode[getIdx(rc)], 1, destReg).addReg(srcReg,
 				Use).getMInstr();
+		MachineRegisterInfo mri = mbb.getParent().getMachineRegisterInfo();
+		mri.setDefMO(destReg, instr.getOperand(0));
+		mri.getDefMO(srcReg).getDefUseList().add(instr.getOperand(1));
+
 		mbb.insert(mbbi, instr);
 		return mbbi + 1;
 	}

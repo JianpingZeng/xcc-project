@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.hir.BasicBlock;
+import backend.target.TargetInstrInfo;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -49,6 +50,7 @@ public class MachineBasicBlock
 	public void insert(int itr, MachineInstr instr)
 	{
 		insts.add(itr, instr);
+		instr.setParent(this);
 	}
 
 	public void erase(int idx) {insts.remove(idx);}
@@ -184,5 +186,15 @@ public class MachineBasicBlock
 	public Iterator<MachineBasicBlock> succIterator()
 	{
 		return successors.iterator();
+	}
+
+	public int getFirstTerminator()
+	{
+		TargetInstrInfo instInfo = parent.getTargetMachine().getInstrInfo();
+		int i = size() - 1;
+		for (; i >=0 &&
+				instInfo.isTerminatorInstr(getInstAt(i).getOpCode());
+		     i--);
+		return i;
 	}
 }

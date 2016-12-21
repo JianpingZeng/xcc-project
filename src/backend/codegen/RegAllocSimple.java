@@ -1,10 +1,16 @@
 package backend.codegen;
 
+import backend.opt.PNE;
+import backend.opt.TwoAddrInstruction;
+import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import gnu.trove.map.hash.TIntIntHashMap;
+import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.BitMap;
 
 import java.util.HashMap;
 
@@ -26,7 +32,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	 * Maps SSA virtual register to its frame index into the stack where
 	 * there values are spilled.
 	 */
-	private HashMap<Integer, Integer> stackSlotForVirReg;
+	private TIntIntHashMap stackSlotForVirReg;
 
 	/**
 	 * Keep track of what physical register is used.
@@ -38,7 +44,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	 * from. Since this is a simple register allocator, when we need a register
 	 * of a certain class, we just take the next available one.
 	 */
-	private HashMap<TargetRegisterClass, Integer> regClassIdx;
+	private TObjectIntHashMap<TargetRegisterClass> regClassIdx;
 
 	/**
 	 * Statics data for performance evaluation.
@@ -124,24 +130,24 @@ public final class RegAllocSimple extends MachineFunctionPass
 				// just handle virtual register.
 				if (op.isVirtualRegister())
 				{
-					int virtualReg = op.getRegNum();
+					int virtualReg = op.getReg();
 
 					// make sure the same virtual register maps to the same physical
 					// register in any given instruction
 					int phyReg = virToPhyRegMap.get(virtualReg);
 					if (phyReg == 0)
 					{
-						if (op.opIsDef() || op.opIsDefAndUse())
+						if (op.opIsDef())
 						{
 							if (instrInfo.isTwoAddrInstr(opcode) && i == 0)
 							{
 								// This maps a = b + c into b+= c, and save b into a.
 								assert mi.getOperand(1).isRegister()
-										&& mi.getOperand(1).getRegNum()!=0
+										&& mi.getOperand(1).getReg()!=0
 										&& mi.getOperand(1).opIsUse()
 										:"Two address instruction invalid!";
 
-								phyReg = mi.getOperand(1).getRegNum();
+								phyReg = mi.getOperand(1).getReg();
 							}
 							else
 							{
@@ -178,6 +184,10 @@ public final class RegAllocSimple extends MachineFunctionPass
 		regInfo = tm.getRegInfo();
 		instrInfo = tm.getInstrInfo();
 
+		stackSlotForVirReg = new TIntIntHashMap();
+		regUsed = new BitMap();
+		regClassIdx = new TObjectIntHashMap<>();
+
 		for (MachineBasicBlock mbb : mf.getBasicBlocks())
 			allocateBasicBlock(mbb);
 
@@ -189,6 +199,14 @@ public final class RegAllocSimple extends MachineFunctionPass
 	public String getPassName()
 	{
 		return "Simple Register Allocator";
+	}
+
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
+	{
+		au.addRequired(PNE.class);
+		au.addRequired(TwoAddrInstruction.class);
+		super.getAnalysisUsage(au);
 	}
 
 	public static RegAllocSimple createSimpleRegAllocator()
