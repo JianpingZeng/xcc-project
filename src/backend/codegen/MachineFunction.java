@@ -153,10 +153,10 @@ public class MachineFunction
 		if (oldReg < FirstVirtualRegister)
 			defined = phyRegDefUseList[oldReg];
 		else
-			defined = machineRegisterInfo.getDefinedMO(oldReg);
+			defined = machineRegisterInfo.getDefMO(oldReg);
 		for (MachineOperand user : defined.getDefUseList())
 		{
-			user.setRegNum(newReg);
+			user.setReg(newReg);
 		}
 	}
 }

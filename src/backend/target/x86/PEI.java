@@ -133,7 +133,7 @@ public class PEI extends MachineFunctionPass
                                 || mo.opIsDef()))
                         {
                             // this register is modified.
-                            modifiedRegs[mo.getRegNum()] = true;
+                            modifiedRegs[mo.getReg()] = true;
                         }
                     }
                 }

@@ -1,10 +1,14 @@
 package backend.codegen;
 
+import backend.opt.PNE;
+import backend.opt.TwoAddrInstruction;
+import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 
 import java.util.HashMap;
@@ -30,7 +34,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 	 * Maps SSA virtual register to its frame index into the stack where
 	 * there values are spilled.
 	 */
-	private HashMap<Integer, Integer> stackSlotForVirReg;
+	private TIntIntHashMap stackSlotForVirReg;
 
 	/**
 	 * Mapping virtual register to physical register.
@@ -50,6 +54,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 
 	public LocalRegAllocator()
 	{
+		stackSlotForVirReg = new TIntIntHashMap();
 		virToPhyRegMap = new HashMap<>();
 		phyRegUsed = new HashMap<>();
 	}
@@ -382,7 +387,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 			{
 				if (mi.getOperand(j).opIsUse() && mi.getOperand(j).isVirtualRegister())
 				{
-					int virtReg = mi.getOperand(j).getRegNum();
+					int virtReg = mi.getOperand(j).getReg();
 					int phyReg = reloadVirReg(mbb, i, virtReg);
 					mi.setMachineOperandReg(j, phyReg);
 				}
@@ -394,10 +399,10 @@ public class LocalRegAllocator extends MachineFunctionPass
 			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
 			{
 				MachineOperand op = mi.getOperand(j);
-				if ((op.opIsDef() || op.opIsDefAndUse())
+				if ((op.opIsDef())
 						&& op.isPhysicalRegister())
 				{
-					int reg = op.getRegNum();
+					int reg = op.getReg();
 					spillPhyReg(mbb, i, reg, true);
 					phyRegUsed.put(reg, 0);
 					phyRegsUseOrder.addLast(reg);
@@ -420,10 +425,10 @@ public class LocalRegAllocator extends MachineFunctionPass
 			for (int j = mi.getNumOperands() - 1; j >= 0; j--)
 			{
 				MachineOperand op = mi.getOperand(j);
-				if ((op.opIsDef() || op.opIsDefAndUse())
+				if ((op.opIsDef())
 						&& op.isVirtualRegister())
 				{
-					int destVirReg = mi.getOperand(j).getRegNum();
+					int destVirReg = mi.getOperand(j).getReg();
 					int destPhyReg = 0;
 
 					// if this destVirReg already is held in physical reg,
@@ -439,11 +444,11 @@ public class LocalRegAllocator extends MachineFunctionPass
 					{
 						// a = b + c --> b(a) += c;
 						assert  mi.getOperand(1).isRegister()
-								&& mi.getOperand(1).getRegNum() != 0
+								&& mi.getOperand(1).getReg() != 0
 								&& mi.getOperand(1).opIsUse()
 								:"Two address instruction invalid!";
 
-						destPhyReg = mi.getOperand(1).getRegNum();
+						destPhyReg = mi.getOperand(1).getReg();
 
 						spillPhyReg(mbb, i, destPhyReg, false);
 						assignVirToPhyReg(destVirReg, destPhyReg);
@@ -514,6 +519,14 @@ public class LocalRegAllocator extends MachineFunctionPass
 	public String getPassName()
 	{
 		return "Local register allocator";
+	}
+
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
+	{
+		au.addRequired(PNE.class);
+		au.addRequired(TwoAddrInstruction.class);
+		super.getAnalysisUsage(au);
 	}
 
 	public static LocalRegAllocator createLocalRegAllocator()

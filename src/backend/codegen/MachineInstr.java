@@ -132,25 +132,31 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(val, MO_VirtualRegister,
+		MachineOperand mo = new MachineOperand(val, MO_VirtualRegister,
 				!isDef ? UseType.Use : (isDefAndUse ?
-						UseType.UseAndDef : UseType.Def)));
+						UseType.UseAndDef : UseType.Def));
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	public void addRegOperand(Value val, UseType utype, boolean isPCRelative)
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(val, MO_VirtualRegister,
-				utype, isPCRelative));
+		MachineOperand mo = new MachineOperand(val, MO_VirtualRegister,
+				utype, isPCRelative);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	public void addCCRegOperand(Value val, UseType utype)
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(val, MO_CCRegister,
-				utype, false));
+		MachineOperand mo = new MachineOperand(val, MO_CCRegister,
+				utype, false);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -162,8 +168,10 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(reg, MO_VirtualRegister,
-				isDef?UseType.Def:UseType.Use));
+		MachineOperand mo = new MachineOperand(reg, MO_VirtualRegister,
+				isDef?UseType.Def:UseType.Use);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -175,14 +183,18 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(reg, MO_VirtualRegister, utype));
+		MachineOperand mo = new MachineOperand(reg, MO_VirtualRegister, utype);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	public void addPCDispOperand(Value val)
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(val, MO_PCRelativeDisp, UseType.Use));
+		MachineOperand mo = new MachineOperand(val, MO_PCRelativeDisp, UseType.Use);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -194,8 +206,10 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(reg, MO_MachineRegister,
-				isDef?UseType.Def:UseType.Use));
+		MachineOperand mo = new MachineOperand(reg, MO_MachineRegister,
+				isDef?UseType.Def:UseType.Use);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -207,7 +221,9 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(reg, MO_MachineRegister,utype));
+		MachineOperand mo = new MachineOperand(reg, MO_MachineRegister,utype);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -218,7 +234,9 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(intValue, MO_UnextendedImmed));
+		MachineOperand mo = new MachineOperand(intValue, MO_UnextendedImmed);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -229,7 +247,9 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(intValue, MO_SignExtendedImmed));
+		MachineOperand mo = new MachineOperand(intValue, MO_SignExtendedImmed);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -240,7 +260,9 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(mbb));
+		MachineOperand mo = new MachineOperand(mbb);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -251,7 +273,9 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(idx, MO_FrameIndex));
+		MachineOperand mo = new MachineOperand(idx, MO_FrameIndex);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -262,7 +286,9 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(i, MO_ConstantPoolIndex));
+		MachineOperand mo = new MachineOperand(i, MO_ConstantPoolIndex);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	/**
@@ -274,14 +300,18 @@ public class MachineInstr
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(v, MO_GlobalAddress, UseType.Use, isPCRelative));
+		MachineOperand mo = new MachineOperand(v, MO_GlobalAddress, UseType.Use, isPCRelative);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	public void addExternalSymbolOperand(String symbolName, boolean isPCRelative)
 	{
 		assert !operandsComplete():"Attempting to add an operand to a "
 				+ "machine instr is already done";
-		operands.add(new MachineOperand(symbolName, isPCRelative));
+		MachineOperand mo = new MachineOperand(symbolName, isPCRelative);
+		mo.setParentMI(this);
+		operands.add(mo);
 	}
 
 	public void setMachineOperandReg(int i, int regNum)
@@ -290,7 +320,7 @@ public class MachineInstr
 		MachineOperand op = operands.get(i);
 		op.setOpType(MO_MachineRegister);
 		op.setValue(null);
-		op.setRegNum(regNum);
+		op.setReg(regNum);
 	}
 
 	public void setMachineOperandConst(int i, MachineOperandType type, long val)
@@ -300,7 +330,7 @@ public class MachineInstr
 		op.setOpType(type);
 		op.setImmedVal(val);
 		op.setValue(null);
-		op.setRegNum(-1);
+		op.setReg(-1);
 	}
 
 	public void setMachineOperandVal(int i, MachineOperandType opTy, Value v)
@@ -308,7 +338,7 @@ public class MachineInstr
 		assert i < getNumOperands();
 		MachineOperand op = getOperand(i);
 		op.setValue(v);
-		op.setRegNum(-1);
+		op.setReg(-1);
 		op.setOpType(opTy);
 	}
 

@@ -1,4 +1,4 @@
-package backend.pass;
+package backend.opt;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -18,6 +18,7 @@ package backend.pass;
 
 import backend.hir.BasicBlock;
 import backend.hir.SuccIterator;
+import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
 import backend.value.Constant;
 import backend.value.Function;
