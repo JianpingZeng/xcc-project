@@ -8,10 +8,7 @@ import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.ListIterator;
+import java.util.*;
 
 /**
  * Represents a basic block in the quad intermediate representation. Basic
@@ -526,5 +523,13 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		TerminatorInst inst = getTerminator();
 		if (inst == null) return 0;
 		return inst.getNumOfSuccessors();
+	}
+
+	public BasicBlock suxAt(int index)
+	{
+		assert index >= 0 && index < getNumSuccessors();
+		TerminatorInst inst = getTerminator();
+		if (inst == null) return null;
+		return inst.suxAt(index);
 	}
 }

@@ -2,6 +2,7 @@ package backend.analysis;
 
 import backend.hir.BasicBlock;
 import backend.hir.BasicBlock.BlockFlag;
+import backend.hir.PredIterator;
 import backend.pass.FunctionPass;
 import backend.value.Function;
 
@@ -203,7 +204,7 @@ public final class LoopInfo extends FunctionPass
 	
 	/**
 	 * Sorts the specified array of {@linkplain Loop} in decreasing the 
-	 * {@linkplain Loop#loopDepth}.
+	 * {@linkplain Loop#getLoopDepth()}.
 	 * @param loops
 	 */
 	private void sortedByLoopDepth(Loop[] loops)
@@ -213,9 +214,9 @@ public final class LoopInfo extends FunctionPass
 			@Override
 			public int compare(Loop o1, Loop o2)
 			{
-				if (o1.loopDepth > o1.loopDepth)
+				if (o1.getLoopDepth() > o1.getLoopDepth())
 					return -1;
-				else if (o1.loopDepth == o2.loopDepth)
+				else if (o1.getLoopDepth() == o2.getLoopDepth())
 					return 0;
 				else 				
 					return 1;			
@@ -236,19 +237,19 @@ public final class LoopInfo extends FunctionPass
 			for (int j = i + 1; j < loops.size(); j++)
 			{
 				Loop second = loops.get(j);
-				if (first.loopDepth == second.loopDepth)
+				if (first.getLoopDepth() == second.getLoopDepth())
 					continue;
-				else if (first.loopDepth > second.loopDepth
+				else if (first.getLoopDepth() > second.getLoopDepth()
 						&& contains(second, first))
 				{
 					second.subLoops.add(first);
-					first.outerLoop = second;
+					first.setOuterLoop(second);
 				}
-				else if (first.loopDepth < second.loopDepth
+				else if (first.getLoopDepth() < second.getLoopDepth()
 						&& contains(first, second))
 				{
 					first.subLoops.add(second);
-					second.outerLoop = first;
+					second.setOuterLoop(first);
 				}
 			}
 		}
@@ -275,7 +276,6 @@ public final class LoopInfo extends FunctionPass
 	 * all other loop blocks = loops with multiple entries).
 	 * such loops are ignored
 	 *
-	 * @param entry
 	 */
 	private void clearNonNatureLoops()
 	{
@@ -343,8 +343,8 @@ public final class LoopInfo extends FunctionPass
 				curr.loopIndex = minLoopIndex;
 
 				// appends all unvisited successor block into work list
-				for (int idx = curr.getNumOfSuccs() - 1; idx >= 0; idx--)
-					workList.addLast(curr.succAt(idx));
+				for (int idx = curr.getNumSuccessors() - 1; idx >= 0; idx--)
+					workList.addLast(curr.suxAt(idx));
 			}
 		}
 	}
@@ -362,7 +362,7 @@ public final class LoopInfo extends FunctionPass
 		for (int idx = loopEndBlocks.size() - 1; idx >= 0; idx--)
 		{
 			BasicBlock loopEnd = loopEndBlocks.get(idx);
-			BasicBlock loopHeader = loopEnd.succAt(0);
+			BasicBlock loopHeader = loopEnd.suxAt(0);
 			int loopIndex = loopHeader.loopIndex;
 
 			assert loopEnd.checkBlockFlags(
@@ -388,8 +388,7 @@ public final class LoopInfo extends FunctionPass
 				// block is reached
 				if (top != loopHeader)
 				{
-					ListIterator<BasicBlock> itr = top.getPreds()
-							.listIterator();
+					PredIterator<BasicBlock> itr = top.predIterator();
 					while (itr.hasPrevious())
 					{
 						BasicBlock pred = itr.previous();
@@ -480,10 +479,9 @@ public final class LoopInfo extends FunctionPass
 		setActive(start);	
 
 		// Recursively call of all successors.
-		ListIterator<BasicBlock> itr = start.getSuccs().listIterator();
-		while (itr.hasPrevious())
+		for (int i = start.getNumSuccessors() - 1; i >= 0; i++)
 		{
-			countLoops(itr.previous(), start);
+			countLoops(start.suxAt(i), start);
 		}
 
 		// after handling all successors
