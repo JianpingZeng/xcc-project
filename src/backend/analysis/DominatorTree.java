@@ -4,6 +4,7 @@ import backend.DomTreeNodeBase;
 import backend.hir.BasicBlock;
 import backend.hir.PredIterator;
 import backend.hir.SuccIterator;
+import backend.pass.FunctionPass;
 import backend.value.Function;
 import tools.Pair;
 
@@ -15,7 +16,7 @@ import java.util.*;
  *
  * Created by Jianping Zeng  on 2016/2/29.
  */
-public class DominatorTree
+public final class DominatorTree extends FunctionPass
 {
 	/**
 	 * The root nodes set of this tree.
@@ -51,21 +52,18 @@ public class DominatorTree
 	/**
 	 * Constructs a instance of creating dominator tree of a CFG.
 	 * @param isPostData    whether it is post dominator tree.
-	 * @param m The targetAbstractLayer function.
 	 */
-	public DominatorTree(boolean isPostData, Function m)
+	public DominatorTree(boolean isPostData)
 	{
 		this.IsPostDominators = isPostData;
-		this.m = m;
 		this.info = new HashMap<>();
 	}
 	/**
 	 * Constructs a instance of creating dominator tree of a CFG.
-	 * @param m The targetAbstractLayer function.
 	 */
-	public DominatorTree(Function m)
+	public DominatorTree()
 	{
-		this(false, m);
+		this(false);
 	}
 
 	/**
@@ -214,8 +212,9 @@ public class DominatorTree
 	/**
 	 * Recalculate - compute a dominator tree for the given function.
 	 */
-	public void recalculate()
+	public void recalculate(Function f)
 	{
+	    m = f;
 		this.Vertex = new BasicBlock[m.cfg.getNumberOfBasicBlocks()];
 		if (!IsPostDominators)
 		{
@@ -553,5 +552,18 @@ public class DominatorTree
 			}
 		}
 		return VInInfo.label;
+	}
+
+	@Override
+	public String getPassName()
+	{
+		return "Computes Dominator tree for function";
+	}
+
+	@Override
+	public boolean runOnFunction(Function f)
+	{
+	    recalculate(f);
+		return false;
 	}
 }
