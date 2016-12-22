@@ -254,13 +254,13 @@ public final class Sema
             assert result.isEmpty();
             /**
             while (searchDC.isRecord() || searchDC.isTransparentContext())
-                searchDC =searchDC.getParent();
+                searchDC =searchDC.getParentLoop();
 
             while (curScope.isStructScope()
                     || (curScope.getFlags() & Scope.ScopeFlags.DeclScope.value) == 0
                     || (curScope.getEntity() != null
                     && curScope.getEntity().isTransparentContext()))
-                curScope = curScope.getParent();
+                curScope = curScope.getParentLoop();
              */
             parser.syntaxError(startLoc, "the reference %s to a tag is not defined", name);
             return ActionResult.empty();

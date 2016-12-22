@@ -149,7 +149,7 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
         while (l != null)
         {
             l.blocks.add(bb);
-            l = l.getParent();
+            l = l.getParentLoop();
         }
     }
 

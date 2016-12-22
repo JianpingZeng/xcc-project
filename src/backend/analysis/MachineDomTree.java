@@ -19,6 +19,7 @@ package backend.analysis;
 import backend.DomTreeNodeBase;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
+import backend.codegen.MachineFunctionPass;
 import tools.Pair;
 
 import java.util.*;
@@ -31,7 +32,7 @@ import java.util.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class MachineDomTree
+public final class MachineDomTree extends MachineFunctionPass
 {
     /**
      * The root nodes set of this tree.
@@ -653,6 +654,19 @@ public final class MachineDomTree
         }
         domTreeNodes.remove(bb, node);
         iDoms.remove(bb);
+    }
+
+    @Override
+    public String getPassName()
+    {
+        return "Machine dominator tree Construction";
+    }
+
+    @Override
+    public boolean runOnMachineFunction(MachineFunction mf)
+    {
+        recalculate(mf);
+        return false;
     }
 }
 

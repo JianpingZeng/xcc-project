@@ -6,7 +6,6 @@ import backend.hir.SuccIterator;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.LinkedList;
 
 /** 
  * <p>
@@ -23,9 +22,9 @@ import java.util.LinkedList;
  */
 public class Loop extends LoopBase<BasicBlock, Loop>
 {
-	public Loop(Loop parent, LinkedList<BasicBlock> blocks)
+	public Loop(BasicBlock block)
 	{
-		super(parent, blocks);
+		super(block);
 	}
 
 	/**
@@ -157,7 +156,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 		while (l != null)
 		{
 			l.blocks.add(bb);
-			l = l.getParent();
+			l = l.getParentLoop();
 		}
 	}
 

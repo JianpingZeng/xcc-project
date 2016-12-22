@@ -52,16 +52,12 @@ public abstract class LoopBase<BlockT, LoopT>
      */
     protected ArrayList<LoopT> subLoops;
 
-    protected LoopBase(LoopT parent, LinkedList<BlockT> blocks)
+    protected LoopBase(BlockT block)
     {
-        assert blocks!= null && !blocks.isEmpty();
-        outerLoop = parent;
-        this.blocks = blocks;
+        assert block!= null;
+        blocks = new LinkedList<BlockT>();
+        blocks.add(block);
         subLoops = new ArrayList<>();
-    }
-    protected LoopBase()
-    {
-        this(null, new LinkedList<>());
     }
 
     /**
@@ -97,16 +93,6 @@ public abstract class LoopBase<BlockT, LoopT>
      * @return
      */
     public abstract int getLoopDepth();
-
-    public LoopT getOuterLoop()
-    {
-        return outerLoop;
-    }
-
-    public void setOuterLoop(LoopT loop)
-    {
-        outerLoop = loop;
-    }
 
     public ArrayList<LoopT> getSubLoops()
     {
@@ -205,12 +191,12 @@ public abstract class LoopBase<BlockT, LoopT>
         return null;
     }
 
-    public void setParent(LoopT newParent)
+    public void setParentLoop(LoopT newParent)
     {
         outerLoop = newParent;
     }
 
-    public LoopT getParent()
+    public LoopT getParentLoop()
     {
         return outerLoop;
     }
