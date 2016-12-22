@@ -79,7 +79,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                 if (mdt != null && mdt.getNode(mbb) != null)
                     mdt.eraseNode(mbb);
 
-                for (int i = 0; i < mbb.getNumSucc(); i++)
+                for (int i = 0; i < mbb.getNumSuccessors(); i++)
                 {
                     MachineBasicBlock succ = mbb.getSucc(i);
 

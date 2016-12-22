@@ -26,6 +26,7 @@ import backend.pass.AnalysisUsage;
  * @version 0.1
  */
 public class MachineLoopInfo extends MachineFunctionPass
+    implements LoopInfoBase<MachineBasicBlock, MachineLoop>
 {
     @Override
     public String getPassName()

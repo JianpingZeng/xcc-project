@@ -97,7 +97,7 @@ public class MachineBasicBlock
 
 	public void removeSuccessor(int idx)
 	{
-		assert idx>= 0 && idx < getNumSucc();
+		assert idx>= 0 && idx < getNumSuccessors();
 		successors.remove(idx);
 	}
 
@@ -116,7 +116,7 @@ public class MachineBasicBlock
 
 	public void removePredecessor(int idx)
 	{
-		assert idx>= 0 && idx < getNumPred();
+		assert idx>= 0 && idx < getNumPredecessors();
 		predecessors.remove(idx);
 	}
 
@@ -137,19 +137,19 @@ public class MachineBasicBlock
 
 	public boolean succIsEmpty() {return successors.isEmpty();}
 
-	public int getNumPred() {return predecessors.size(); }
+	public int getNumPredecessors() {return predecessors.size(); }
 
-	public int getNumSucc() {return successors.size(); }
+	public int getNumSuccessors() {return successors.size(); }
 
 	public MachineBasicBlock getPred(int idx)
 	{
-		assert idx >= 0 && idx < getNumPred();
+		assert idx >= 0 && idx < getNumPredecessors();
 		return predecessors.get(idx);
 	}
 
 	public MachineBasicBlock getSucc(int idx)
 	{
-		assert idx>= 0 && idx < getNumSucc();
+		assert idx>= 0 && idx < getNumSuccessors();
 		return successors.get(idx);
 	}
 
