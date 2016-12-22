@@ -27,5 +27,5 @@ public final class InitializePasses
     // TODO UnreachableBlockElim
     // TODO UnreachableMachineBlockElim
     // TODO MachineLoopInfo
-    // TODO MachineDominatorTree
+    // TODO MachineDomTreeInfo
 }

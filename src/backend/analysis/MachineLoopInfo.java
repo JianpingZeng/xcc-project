@@ -39,7 +39,7 @@ public class MachineLoopInfo extends MachineFunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         assert au != null;
-        au.addRequired(MachineDominatorTree.class);
+        au.addRequired(MachineDomTreeInfo.class);
         super.getAnalysisUsage(au);
     }
 
@@ -59,11 +59,11 @@ public class MachineLoopInfo extends MachineFunctionPass
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        calculate(getAnalysisToUpDate(MachineDominatorTree.class));
+        calculate(getAnalysisToUpDate(MachineDomTreeInfo.class));
         return false;
     }
 
-    private void calculate(MachineDominatorTree dt)
+    private void calculate(MachineDomTreeInfo dt)
     {
         MachineBasicBlock rootNode = dt.getRootNode().getBlock();
 
@@ -76,7 +76,7 @@ public class MachineLoopInfo extends MachineFunctionPass
         }
     }
 
-    private MachineLoop considerForLoop(MachineBasicBlock bb, MachineDominatorTree dt)
+    private MachineLoop considerForLoop(MachineBasicBlock bb, MachineDomTreeInfo dt)
     {
         if (bbMap.containsKey(bb))
             return null;

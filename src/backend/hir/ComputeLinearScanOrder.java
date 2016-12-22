@@ -1,6 +1,6 @@
 package backend.hir;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.value.Instruction;
 import tools.BitMap2D;
 import tools.TTY;
@@ -23,7 +23,7 @@ public class ComputeLinearScanOrder
 	/**
 	 * The corresponding dominator tree.
 	 */
-	private final DominatorTree DT;
+	private final DomTree DT;
 	/**
 	 * A bit set whose element determines whether specified block is visited or not.
 	 */
@@ -69,7 +69,7 @@ public class ComputeLinearScanOrder
 	 * @param DT         The dominator tree corresponding to this control flow graph.
 	 */
 	public ComputeLinearScanOrder(int maxBlockID, BasicBlock entry,
-			DominatorTree DT)
+			DomTree DT)
 	{
 		this.maxBlockID = maxBlockID;
 		visitedBlocks = new BitSet(maxBlockID);

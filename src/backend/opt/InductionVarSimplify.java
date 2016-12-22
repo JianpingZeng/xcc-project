@@ -1,6 +1,6 @@
 package backend.opt;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.analysis.Loop;
 import backend.hir.*;
 import backend.hir.BasicBlock;
@@ -76,7 +76,7 @@ public final class InductionVarSimplify
 	private ArrayList<IVRecord> inductionVars;
 	private Loop[] loops;
 	private Loop[] loopIdToLoops;
-	private DominatorTree dt;
+	private DomTree dt;
 	private boolean[] marked;
 	
 	/**
@@ -116,7 +116,7 @@ public final class InductionVarSimplify
 	 */
 	private void initialize(Function function)
 	{
-		dt = new DominatorTree(function);
+		dt = new DomTree(function);
 		dt.recalculate();
 		loops = function.getLoops();
 		assert loops != null && loops.length > 0

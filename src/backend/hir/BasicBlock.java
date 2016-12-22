@@ -265,7 +265,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return instructions.isEmpty();
 	}
 
-	public Instruction getInst(int i)
+	public Instruction getInstAt(int i)
 	{
 		return instructions.get(i);
 	}

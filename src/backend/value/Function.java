@@ -1,6 +1,6 @@
 package backend.value;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.codegen.MachineFunction;
 import backend.hir.*;
 import backend.analysis.Loop;
@@ -129,7 +129,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	 */
 	public List<BasicBlock> linearScanOrder()
 	{
-		DominatorTree DT = new DominatorTree(false, this);
+		DomTree DT = new DomTree(false, this);
 		DT.recalculate();
 		return cfg.linearScanOrder(DT);
 	}

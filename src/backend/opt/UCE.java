@@ -1,6 +1,6 @@
 package backend.opt;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.hir.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -104,7 +104,7 @@ public class UCE
 				// There is only one jump instruction in the B.i
 				if (curr.size() == 1)
 				{
-					DominatorTree RDT = new DominatorTree(true, m);
+					DomTree RDT = new DomTree(true, m);
 					RDT.recalculate();
 
 					List<BasicBlock> rdf = RDF.run(RDT, curr);

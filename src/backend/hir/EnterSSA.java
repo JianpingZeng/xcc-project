@@ -3,7 +3,7 @@ package backend.hir;
 import java.util.ArrayList;
 import java.util.ListIterator;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.opt.PromoteMem2Reg;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -46,7 +46,7 @@ public class EnterSSA
 		BasicBlock entry = m.getEntryBlock();
 		boolean changed = false;
 
-		DominatorTree DT = new DominatorTree(false, m);
+		DomTree DT = new DomTree(false, m);
 		DT.recalculate();
 
 		ArrayList<Instruction.AllocaInst> allocas = new ArrayList<>();
@@ -92,7 +92,7 @@ public class EnterSSA
 	 * @param allocas
 	 * @param DT
 	 */
-	private void promoteToReg(ArrayList<Instruction.AllocaInst> allocas, DominatorTree DT)
+	private void promoteToReg(ArrayList<Instruction.AllocaInst> allocas, DomTree DT)
 	{
 		if (allocas.isEmpty())
 			return;

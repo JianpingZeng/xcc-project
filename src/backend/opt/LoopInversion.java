@@ -64,7 +64,7 @@ public final class LoopInversion
 		// newHeader in original order
 		for (int i = 0; i < header.size() - 1; i++)
 		{
-			Value inst = header.getInst(i);
+			Value inst = header.getInstAt(i);
 			inst.eraseFromBasicBlock();
 			newHeader.appendInst(inst);
 		}

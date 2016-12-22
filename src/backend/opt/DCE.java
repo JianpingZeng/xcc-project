@@ -1,6 +1,6 @@
 package backend.opt;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.hir.*;
 import backend.hir.BasicBlock;
 import backend.pass.FunctionPass;
@@ -50,7 +50,7 @@ public class DCE extends FunctionPass
 
 	private Function m;
 
-	private DominatorTree DT;
+	private DomTree DT;
 
 	private void initialize(Function f)
 	{
@@ -58,7 +58,7 @@ public class DCE extends FunctionPass
 		this.usefulBlocks = new LinkedList<>();
 		this.liveInsts = new HashSet<>();
 		this.m = f;
-		this.DT = new DominatorTree(true, m);
+		this.DT = new DomTree(true, m);
 		this.DT.recalculate();
 	}
 
@@ -180,12 +180,12 @@ public class DCE extends FunctionPass
 	 */
 	private BasicBlock findNearestUsefulPostDom(BasicBlock BB)
 	{
-		DominatorTree.DomTreeNode node = DT.getTreeNodeForBlock(BB);
-		LinkedList<DominatorTree.DomTreeNode> worklist = new LinkedList<>();
+		DomTree.DomTreeNode node = DT.getTreeNodeForBlock(BB);
+		LinkedList<DomTree.DomTreeNode> worklist = new LinkedList<>();
 		worklist.add(node.getIDom());
 		while (!worklist.isEmpty())
 		{
-			DominatorTree.DomTreeNode currDOM = worklist.removeLast();
+			DomTree.DomTreeNode currDOM = worklist.removeLast();
 			BasicBlock currBB = currDOM.getBlock();
 			if (usefulBlocks.contains(currBB))
 				return currBB;

@@ -16,7 +16,7 @@ package backend.opt;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.MachineDominatorTree;
+import backend.analysis.MachineDomTreeInfo;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
@@ -34,7 +34,7 @@ import java.util.ListIterator;
 /**
  * This pass used for eliminating the unreachable machine basic block from
  * machine function.
- * It must be performed after LoopInfo and DominatorTree.
+ * It must be performed after LoopInfo and DomTree.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -58,7 +58,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
     {
         HashSet<MachineBasicBlock> reachable;
 
-        MachineDominatorTree mdt = getAnalysisToUpDate(MachineDominatorTree.class);
+        MachineDomTreeInfo mdt = getAnalysisToUpDate(MachineDomTreeInfo.class);
         MachineLoopInfo mli = getAnalysisToUpDate(MachineLoopInfo.class);
 
         // mark all reachable machine block.
@@ -158,14 +158,14 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
 
     /**
      * Add all required MachineFunctionPasses for UnreachableMachineBlockElim
-     * to the PassManager, like MachineLoopInfo and MachineDominatorTree.
+     * to the PassManager, like MachineLoopInfo and MachineDomTreeInfo.
      * @param au
      */
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.addPreserved(MachineLoopInfo.class);
-        au.addPreserved(MachineDominatorTree.class);
+        au.addPreserved(MachineDomTreeInfo.class);
         super.getAnalysisUsage(au);
     }
 }

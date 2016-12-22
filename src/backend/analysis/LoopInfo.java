@@ -28,18 +28,18 @@ public final class LoopInfo extends FunctionPass
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		assert au != null;
-		au.addRequired(DominatorTree.class);
+		au.addRequired(DomTree.class);
 		super.getAnalysisUsage(au);
 	}
 
 	@Override
 	public boolean runOnFunction(Function f)
 	{
-		calculate(getAnalysisToUpDate(DominatorTree.class));
+		calculate(getAnalysisToUpDate(DomTree.class));
 		return false;
 	}
 
-	private void calculate(DominatorTree dt)
+	private void calculate(DomTree dt)
 	{
 		BasicBlock rootNode = dt.getRootNode().getBlock();
 
@@ -52,7 +52,7 @@ public final class LoopInfo extends FunctionPass
 		}
 	}
 
-	private Loop considerForLoop(BasicBlock bb, DominatorTree dt)
+	private Loop considerForLoop(BasicBlock bb, DomTree dt)
 	{
 		if (bbMap.containsKey(bb))
 			return null;
