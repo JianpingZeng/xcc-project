@@ -21,7 +21,6 @@ import backend.codegen.MachineBasicBlock;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.Iterator;
-import java.util.LinkedList;
 
 /**
  * @author Xlous.zeng
@@ -29,9 +28,9 @@ import java.util.LinkedList;
  */
 public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
 {
-    public MachineLoop(MachineLoop parent, LinkedList<MachineBasicBlock> blocks)
+    public MachineLoop(MachineBasicBlock block)
     {
-        super(parent, blocks);
+        super(block);
     }
 
     @Override
