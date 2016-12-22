@@ -1,6 +1,6 @@
 package backend.opt;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.analysis.Loop;
 import backend.analysis.LoopInfo;
 import backend.hir.*;
@@ -45,14 +45,14 @@ public final class LICM
 	private Loop[] loopIdToLoops;
 	private boolean[][] instInvariant;
 	private ArrayList<Pair<Integer, Integer>> invarOrder;
-	private DominatorTree dt;
+	private DomTree dt;
 	/**
 	 * Constructor.
 	 * @param hir	The control flow graph of function being compiled.
 	 */
 	public LICM(Function function)
 	{
-		dt = new DominatorTree(function);
+		dt = new DomTree(function);
 		dt.recalculate();
 		loops = function.getLoops();
 		assert loops != null: "must performed after loop analysis pass";
@@ -139,7 +139,7 @@ public final class LICM
 			// loop invariant.
 			if (!instInvariant[i][j])
 			{
-				inst = bb.getInst(j);
+				inst = bb.getInstAt(j);
 				// check unary expression
 				if (inst instanceof Op1)
 				{
@@ -271,7 +271,7 @@ public final class LICM
 		for (Pair<Integer, Integer> coor : invarOrder)
 		{
 			bb = loop.getBlock(coor.first);
-			inst = bb.getInst(coor.second);			
+			inst = bb.getInstAt(coor.second);
 			if (domAllExits(bb, loop) && domAllUses(bb, inst.usesList))
 			{
 				// delete invariant and move loop-invariant to preheader

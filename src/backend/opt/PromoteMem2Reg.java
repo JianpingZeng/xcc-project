@@ -1,8 +1,8 @@
 package backend.opt;
 
 import backend.hir.BasicBlock;
-import backend.analysis.DominatorTree;
-import backend.analysis.DominatorTree.DomTreeNode;
+import backend.analysis.DomTree;
+import backend.analysis.DomTree.DomTreeNode;
 import backend.pass.FunctionPass;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
@@ -51,7 +51,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 */
 	private List<Instruction.AllocaInst> allocas;
 
-	private DominatorTree DT;
+	private DomTree DT;
 
 	/**
 	 * A reverse mapping of allocas
@@ -100,11 +100,11 @@ public class PromoteMem2Reg extends FunctionPass
 	/**
 	 * Maps the DomTreeNode to it's level at dominatro tree.
 	 */
-	private HashMap<DominatorTree.DomTreeNode, Integer> DomLevels;
+	private HashMap<DomTree.DomTreeNode, Integer> DomLevels;
 
 	public PromoteMem2Reg(){}
 
-	public PromoteMem2Reg(ArrayList<Instruction.AllocaInst> allocas, DominatorTree DT)
+	public PromoteMem2Reg(ArrayList<Instruction.AllocaInst> allocas, DomTree DT)
 	{
 		this.allocas = allocas;
 		this.DT = DT;
@@ -214,18 +214,18 @@ public class PromoteMem2Reg extends FunctionPass
 			// with width-first traverse.
 			if (DomLevels.isEmpty())
 			{
-				LinkedList<DominatorTree.DomTreeNode> worklist = new LinkedList<>();
+				LinkedList<DomTree.DomTreeNode> worklist = new LinkedList<>();
 
-				DominatorTree.DomTreeNode root = DT.getRootNode();
+				DomTree.DomTreeNode root = DT.getRootNode();
 				DomLevels.put(root, 0);
 				worklist.addLast(root);
 
 				while (!worklist.isEmpty())
 				{
-					DominatorTree.DomTreeNode node = worklist.removeLast();
+					DomTree.DomTreeNode node = worklist.removeLast();
 					// the next level
 					int childLevel = DomLevels.get(node) + 1;
-					for (DominatorTree.DomTreeNode dom : node)
+					for (DomTree.DomTreeNode dom : node)
 					{
 						DomLevels.put(dom, childLevel);
 						worklist.addLast(dom);
@@ -378,7 +378,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 * @param DT
 	 * @return
 	 */
-	private Instruction simplifyInstruction(Instruction.PhiNode phiNode, DominatorTree DT)
+	private Instruction simplifyInstruction(Instruction.PhiNode phiNode, DomTree DT)
 	{
 		return null;
 	}
@@ -441,7 +441,7 @@ public class PromoteMem2Reg extends FunctionPass
 						// no more instruction
 						if (idx >= BB.size())
 							break;
-						inst = BB.getInst(idx++);
+						inst = BB.getInstAt(idx++);
 						// the handling phiNode node has finished!
 						if (!(inst instanceof Instruction.PhiNode))
 							break;
@@ -623,7 +623,7 @@ public class PromoteMem2Reg extends FunctionPass
 					}
 				});
 
-		DominatorTree.DomTreeNode node;
+		DomTree.DomTreeNode node;
 		for (BasicBlock BB : defBlocks)
 			if ((node = DT.getTreeNodeForBlock(BB)) != null)
 				PQ.add(new Pair<>(node, DomLevels.get(node)));
@@ -837,7 +837,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 * @return return true if rewriting successfully.
 	 */
 	private boolean rewriteSingleStoreAlloca(Instruction.AllocaInst AI, AllocaInfo info,
-			LargeBlockInfo LBI, DominatorTree DT)
+			LargeBlockInfo LBI, DomTree DT)
 	{
 		// the last definition of alloca
 		StoreInst onlyStore = info.onlyStore;

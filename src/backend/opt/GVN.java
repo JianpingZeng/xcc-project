@@ -1,6 +1,6 @@
 package backend.opt;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.hir.BasicBlock;
 import backend.value.Function;
 import backend.value.Value;
@@ -23,7 +23,7 @@ public class GVN
 
 	private ValueMap currentMap;
 
-	private final DominatorTree DT;
+	private final DomTree DT;
 
 	/**
 	 * Creates a new Global value numbering with given method.
@@ -32,7 +32,7 @@ public class GVN
 	public GVN(Function m)
 	{
 		this.m = m;
-		DT = new DominatorTree(false, m);
+		DT = new DomTree(false, m);
 		DT.recalculate();
 
 		List<BasicBlock> blocks = m.linearScanOrder();

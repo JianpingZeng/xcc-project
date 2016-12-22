@@ -995,10 +995,10 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			// other non-Phi instr.
 			int numPhis = 0;
 			for (int i = 0, e = bb.size();
-			     i < e && (bb.getInst(i) instanceof PhiNode);
+			     i < e && (bb.getInstAt(i) instanceof PhiNode);
 			     i++)
 			{
-				PhiNode phiNode = (PhiNode)bb.getInst(i);
+				PhiNode phiNode = (PhiNode)bb.getInstAt(i);
 				// creates a machine phi node and insert it into mbb.
 				int phiReg = getReg(phiNode);
 				MachineInstr phiMI = buildMI(X86InstrSets.PHI, phiNode.getNumOfOperands(),

@@ -1,6 +1,6 @@
 package backend.hir;
 
-import backend.analysis.DominatorTree;
+import backend.analysis.DomTree;
 import backend.value.Function;
 import backend.value.Instruction;
 
@@ -318,7 +318,7 @@ public class ControlFlowGraph
 	 * Computes the linear scan order for current CFG and return it.
 	 * @return
 	 */
-	public List<BasicBlock> linearScanOrder(DominatorTree DT)
+	public List<BasicBlock> linearScanOrder(DomTree DT)
 	{
 		if (orderedBlocks == null)
 		{

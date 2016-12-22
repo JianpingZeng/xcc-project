@@ -16,7 +16,6 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.DomTreeNodeBase;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
@@ -26,14 +25,16 @@ import backend.pass.AnalysisUsage;
 import java.util.ArrayList;
 
 /**
+ * Represents a machine function pass for computing the dominator tree on
+ * MachineFunction using class {@linkplain MachineDomTree}.
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class MachineDominatorTree extends MachineFunctionPass
+public final class MachineDomTreeInfo extends MachineFunctionPass
 {
     private MachineDomTree dt;
 
-    public MachineDominatorTree()
+    public MachineDomTreeInfo()
     {
         dt = new MachineDomTree();
     }

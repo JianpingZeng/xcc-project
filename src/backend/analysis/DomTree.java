@@ -1,22 +1,20 @@
 package backend.analysis;
 
-import backend.DomTreeNodeBase;
 import backend.hir.BasicBlock;
 import backend.hir.PredIterator;
 import backend.hir.SuccIterator;
-import backend.pass.FunctionPass;
 import backend.value.Function;
 import tools.Pair;
 
 import java.util.*;
 
 /**
- * This file defines the DominatorTree class, which provides fast and efficient
+ * This file defines the DomTree class, which provides fast and efficient
  * dominance construction and queries according to Lengauer-Tarjan algorithm.
  *
  * Created by Jianping Zeng  on 2016/2/29.
  */
-public final class DominatorTree extends FunctionPass
+public final class DomTree
 {
 	/**
 	 * The root nodes set of this tree.
@@ -26,20 +24,20 @@ public final class DominatorTree extends FunctionPass
 	/**
 	 * Determiates whether its post dominance.
 	 */
-	private boolean IsPostDominators;
+	private boolean isPostDominators;
 
-	private HashMap<BasicBlock, DomTreeNodeBase<BasicBlock>> DomTreeNodes;
+	private HashMap<BasicBlock, DomTreeNodeBase<BasicBlock>> domTreeNodes;
 
-	private HashMap<BasicBlock, BasicBlock> IDoms;
+	private HashMap<BasicBlock, BasicBlock> iDoms;
 
 	private DomTreeNodeBase<BasicBlock> rootNode;
 	/**
-	 * Vertex - Map the DFS number to the BasicBlock(usually block).
+	 * vertex - Map the DFS number to the BasicBlock(usually block).
 	 */
-	private BasicBlock[] Vertex;
+	private BasicBlock[] vertex;
 
 	/**
-	 * Info - Collection of information used during the computation of idoms.
+	 * Info - Collection of information used during the computation of iDoms.
 	 */
 	private HashMap<BasicBlock, InfoRecord<BasicBlock>> info;
 
@@ -53,15 +51,15 @@ public final class DominatorTree extends FunctionPass
 	 * Constructs a instance of creating dominator tree of a CFG.
 	 * @param isPostData    whether it is post dominator tree.
 	 */
-	public DominatorTree(boolean isPostData)
+	public DomTree(boolean isPostData)
 	{
-		this.IsPostDominators = isPostData;
+		this.isPostDominators = isPostData;
 		this.info = new HashMap<>();
 	}
 	/**
 	 * Constructs a instance of creating dominator tree of a CFG.
 	 */
-	public DominatorTree()
+	public DomTree()
 	{
 		this(false);
 	}
@@ -96,14 +94,14 @@ public final class DominatorTree extends FunctionPass
 	 */
 	public DomTreeNodeBase<BasicBlock> getTreeNodeForBlock(BasicBlock bb)
 	{
-		return DomTreeNodes.get(bb);
+		return domTreeNodes.get(bb);
 	}
 
 	/**
 	 * Returns true if analysis based on postdoms.
 	 * @return
 	 */
-	public boolean isPostDominators(){return IsPostDominators;}
+	public boolean isPostDominators(){return isPostDominators;}
 
 	/**
 	 * Determine whether A dominates B.
@@ -139,8 +137,8 @@ public final class DominatorTree extends FunctionPass
 
 	public boolean dominates(BasicBlock A, BasicBlock B)
 	{
-		DomTreeNodeBase<BasicBlock> first = DomTreeNodes.get(A);
-		DomTreeNodeBase<BasicBlock> second = DomTreeNodes.get(B);
+		DomTreeNodeBase<BasicBlock> first = domTreeNodes.get(A);
+		DomTreeNodeBase<BasicBlock> second = domTreeNodes.get(B);
 		return dominates(first, second);
 	}
 
@@ -174,6 +172,11 @@ public final class DominatorTree extends FunctionPass
 		return dominates(A, B);
 	}
 
+	public boolean strictDominate(BasicBlock a, BasicBlock b)
+    {
+        return strictDominate(getTreeNodeForBlock(b), getTreeNodeForBlock(b));
+    }
+
 	/**
 	 * Determines whether BB is reachable from the entry block of a function.
 	 * @param BB
@@ -192,7 +195,7 @@ public final class DominatorTree extends FunctionPass
 		assert isPostDominators() :
 				"This is not implemented for post dominatror";
 
-		DomTreeNodeBase<BasicBlock> entry = DomTreeNodes.get(m.getEntryBlock());
+		DomTreeNodeBase<BasicBlock> entry = domTreeNodes.get(m.getEntryBlock());
 		return dominates(entry, node);
 	}
 
@@ -203,7 +206,7 @@ public final class DominatorTree extends FunctionPass
 	 */
 	public BasicBlock getIDom(BasicBlock block)
 	{
-		DomTreeNodeBase<BasicBlock> node = DomTreeNodes.get(block);
+		DomTreeNodeBase<BasicBlock> node = domTreeNodes.get(block);
 		if (node == null)
 			return null;
 		return node.getIDom().getBlock();
@@ -215,15 +218,15 @@ public final class DominatorTree extends FunctionPass
 	public void recalculate(Function f)
 	{
 	    m = f;
-		this.Vertex = new BasicBlock[m.cfg.getNumberOfBasicBlocks()];
-		if (!IsPostDominators)
+		this.vertex = new BasicBlock[m.cfg.getNumberOfBasicBlocks()];
+		if (!isPostDominators)
 		{
 			// initialize the root
 			BasicBlock entry = m.getEntryBlock();
 			this.roots.add(entry);
 			this.info.put(entry, new InfoRecord<BasicBlock>());
-			this.IDoms.put(entry, null);
-			this.DomTreeNodes.put(entry, null);
+			this.iDoms.put(entry, null);
+			this.domTreeNodes.put(entry, null);
 			caculate();
 		}
 		else
@@ -231,8 +234,8 @@ public final class DominatorTree extends FunctionPass
 			BasicBlock exit = m.getEntryBlock();
 			info.put(exit, new InfoRecord<BasicBlock>());
 			roots.add(exit);
-			IDoms.put(exit, null);
-			DomTreeNodes.put(exit, null);
+			iDoms.put(exit, null);
+			domTreeNodes.put(exit, null);
 
 			// The desired of refinition is need in the future.
 			caculate();
@@ -276,7 +279,7 @@ public final class DominatorTree extends FunctionPass
 		for (int i = N; i >= 2; --i)
 		{
 			// the block with number i
-			BasicBlock WBlock = Vertex[i];
+			BasicBlock WBlock = vertex[i];
 
 			// the InfoRec of current block
 			InfoRecord<BasicBlock> WInfo = info.get(WBlock);
@@ -284,9 +287,9 @@ public final class DominatorTree extends FunctionPass
 			// Step #2: Implicitly define the immediate dominator of vertices
 			for(int j = i; buckets[j] != i; j = buckets[i])
 			{
-				BasicBlock V = this.Vertex[buckets[j]];
+				BasicBlock V = this.vertex[buckets[j]];
 				BasicBlock U = eval(V, i + 1);
-				this.IDoms.put(V, this.info.get(U).semi < i ? U :WBlock);
+				this.iDoms.put(V, this.info.get(U).semi < i ? U :WBlock);
 			}
 
 			// Step #3: caculate the semidominators of all vertice
@@ -306,7 +309,7 @@ public final class DominatorTree extends FunctionPass
 			// necessarily parent(V). In this case, set idom(V) here and avoid placing
 			// V into a bucket.
 			if (WInfo.semi == WInfo.parent)
-				this.IDoms.put(WBlock, Vertex[WInfo.parent]);
+				this.iDoms.put(WBlock, vertex[WInfo.parent]);
 			else
 			{
 				buckets[i] = buckets[WInfo.semi];
@@ -315,21 +318,21 @@ public final class DominatorTree extends FunctionPass
 
 			if (N >= 1)
 			{
-				BasicBlock root = Vertex[1];
+				BasicBlock root = vertex[1];
 				for (int j = 1; buckets[j] != 1; j = buckets[j])
 				{
-					BasicBlock V = Vertex[buckets[j]];
-					IDoms.put(V, root);
+					BasicBlock V = vertex[buckets[j]];
+					iDoms.put(V, root);
 				}
 			}
 
 			// Step #4: Explicitly define the immediate dominator of each vertex
 			for (i = 2; i <=N; i++)
 			{
-				BasicBlock W = Vertex[i];
-				BasicBlock WIDom = IDoms.get(W);
-				if (WIDom != Vertex[info.get(W).semi])
-					WIDom = IDoms.get(WIDom);
+				BasicBlock W = vertex[i];
+				BasicBlock WIDom = iDoms.get(W);
+				if (WIDom != vertex[info.get(W).semi])
+					WIDom = iDoms.get(WIDom);
 			}
 
 			if (getRoots().isEmpty()) return;
@@ -341,19 +344,19 @@ public final class DominatorTree extends FunctionPass
 			// an infinite loop.
 			BasicBlock root = !multipleRoots ? roots.get(0) : null;
 			this.rootNode = new DomTreeNodeBase<BasicBlock>(root, null);
-			DomTreeNodes.put(root, this.rootNode);
+			domTreeNodes.put(root, this.rootNode);
 
 			// loop over all of the reachable blocks in the method.
 			for (int idx = 2; idx <=N; idx++)
 			{
-				BasicBlock W = this.Vertex[idx];
-				DomTreeNodeBase<BasicBlock> BBNode = this.DomTreeNodes.get(W);
+				BasicBlock W = this.vertex[idx];
+				DomTreeNodeBase<BasicBlock> BBNode = this.domTreeNodes.get(W);
 
 				// Haven't caculated this node yet?
 				if (BBNode != null) continue;
 
-				BasicBlock ImmDom = this.IDoms.get(W);
-				assert (ImmDom != null || this.DomTreeNodes.get(null) != null);
+				BasicBlock ImmDom = this.iDoms.get(W);
+				assert (ImmDom != null || this.domTreeNodes.get(null) != null);
 
 				// Get or calculates the node for the imediate dominator
 				DomTreeNodeBase<BasicBlock> IDomNode = this.getTreeNodeForBlock(ImmDom);
@@ -361,13 +364,13 @@ public final class DominatorTree extends FunctionPass
 				// add a new tree node for this Basic block, and link it as a child of
 				// IDomNode
 				DomTreeNodeBase<BasicBlock> children = new DomTreeNodeBase<BasicBlock>(W, IDomNode);
-				this.DomTreeNodes.put(W, IDomNode.addChidren(children));
+				this.domTreeNodes.put(W, IDomNode.addChidren(children));
 			}
 
 			// free temporary memory used to construct idom.
-			this.IDoms.clear();
+			this.iDoms.clear();
 			this.info.clear();
-			this.Vertex = null;
+			this.vertex = null;
 			updateDFSNumber();
 		}
 
@@ -456,8 +459,8 @@ public final class DominatorTree extends FunctionPass
 				BBInfo.DFSNum = BBInfo.semi = ++N;
 				BBInfo.label = curr;
 
-				// Vertex[N] = curr;
-				this.Vertex[N] = curr;
+				// vertex[N] = curr;
+				this.vertex[N] = curr;
 			}
 
 			// if all child have been processed, just break down this loop.
@@ -485,13 +488,13 @@ public final class DominatorTree extends FunctionPass
 
 	/**
 	 * Gets the successors or predecessors iterator depend upon if
-	 * {@code #IsPostDominators} is specified of the current basic block
+	 * {@code #isPostDominators} is specified of the current basic block
 	 * into the work list that will be processed in depth first search.
 	 * @param curBB The current basic block.
 	 */
 	private ListIterator<BasicBlock> getSuccsIterator(BasicBlock curBB)
 	{
-		if (IsPostDominators)
+		if (isPostDominators)
 		{
 			List<BasicBlock> preds = new LinkedList<>();
             PredIterator<BasicBlock> itr = curBB.predIterator();
@@ -527,7 +530,7 @@ public final class DominatorTree extends FunctionPass
 		{
 			BasicBlock V = work.removeLast();
 			InfoRecord<BasicBlock> VInfo = this.info.get(V);
-			BasicBlock VAncestor = this.Vertex[VInfo.parent];
+			BasicBlock VAncestor = this.vertex[VInfo.parent];
 
 			// process Ancestor first
 			if (visited.add(VAncestor) && VInfo.parent >= lastLinked)
@@ -554,16 +557,79 @@ public final class DominatorTree extends FunctionPass
 		return VInInfo.label;
 	}
 
-	@Override
-	public String getPassName()
-	{
-		return "Computes Dominator tree for function";
-	}
+    /**
+     * Finds the nearest common dominator block ,if there is no such block return
+     * null.
+     * @param bb1
+     * @param bb2
+     * @return
+     */
+    public BasicBlock findNearestCommonDominator(BasicBlock bb1,
+            BasicBlock bb2)
+    {
+        assert !isPostDominators() :"This is not implement for post dominator";
+        assert bb1.getParent() == bb1.getParent():"Two blocks are not in the same function";
 
-	@Override
-	public boolean runOnFunction(Function f)
-	{
-	    recalculate(f);
-		return false;
-	}
+        // If either bb1 or bb2 is entry, then entry is returned.
+        BasicBlock entry = bb1.getParent().getEntryBlock();
+        if (bb1 == entry || bb2 == entry)
+            return entry;
+
+        // if bb1 dominates bb2, return bb1.
+        if (dominates(bb1, bb2))
+            return bb1;
+
+        // if bb2 dominates bb1, return bb2.
+        if (dominates(bb2, bb1))
+            return bb2;
+
+        DomTreeNodeBase<BasicBlock> nodeA = getTreeNodeForBlock(bb1);
+        DomTreeNodeBase<BasicBlock> nodeB = getTreeNodeForBlock(bb2);
+
+        // Collects all dominator set of nodeA.
+        HashSet<DomTreeNodeBase<BasicBlock>> idomSetA = new HashSet<>();
+        idomSetA.add(nodeA);
+        DomTreeNodeBase<BasicBlock> idom = nodeA.getIDom();
+        while (idom != null)
+        {
+            idomSetA.add(idom);
+            idom = idom.getIDom();
+        }
+
+        // Walk nodeB immediate dominators chain and find the common dominator node.
+        DomTreeNodeBase<BasicBlock> idomB = nodeB.getIDom();
+        while (idomB != null)
+        {
+            if (idomSetA.contains(idomB))
+                return idomB.getBlock();
+
+            idomB = idomB.getIDom();
+        }
+
+        return null;
+    }
+
+    /**
+     * Removes a node from  the dominator tree. Block must not
+     * domiante any other blocks. Removes node from its immediate dominator's
+     * children list. Deletes dominator node associated with basic block BB.
+     * @param bb
+     */
+    public void eraseNode(BasicBlock bb)
+    {
+        DomTreeNodeBase<BasicBlock> node = getTreeNodeForBlock(bb);
+        assert node != null :"Removed node is not in Dominator tree!";
+        assert node.getChildren().isEmpty():"Node is not a leaf node!";
+
+        // Remove the node from it's immediate dominator children list.
+        DomTreeNodeBase<BasicBlock> idom = node.getIDom();
+        if (idom != null)
+        {
+            assert idom.getChildren().contains(node) :
+                    "Not in immediate dominator children list";
+            idom.getChildren().remove(node);
+        }
+        domTreeNodes.remove(bb, node);
+        iDoms.remove(bb);
+    }
 }

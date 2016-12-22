@@ -190,9 +190,9 @@ public class CFGSimplifyPass extends FunctionPass
             // There is just one successor.
             int i = 0;
             // skips all PhiNode ahead of other instructions.
-            while (bb.getInst(i) instanceof PhiNode) i++;
+            while (bb.getInstAt(i) instanceof PhiNode) i++;
 
-            if (bb.getInst(i) instanceof TerminatorInst)
+            if (bb.getInstAt(i) instanceof TerminatorInst)
             {
                 // Terminator instruction is the only one non-phi instruction.
                 BasicBlock succ = sucItr.next();
@@ -216,9 +216,9 @@ public class CFGSimplifyPass extends FunctionPass
                         // otherwise delete them.
                         for (int j = 0; j< bb.getInstList().size();)
                         {
-                            if (!(bb.getInst(j) instanceof PhiNode))
+                            if (!(bb.getInstAt(j) instanceof PhiNode))
                                 break;
-                            PhiNode pn = (PhiNode)bb.getInst(i);
+                            PhiNode pn = (PhiNode)bb.getInstAt(i);
                             if (pn.isUseEmpty()) // remove the useless phi node.
                                 bb.getInstList().remove(i);
                             else
@@ -290,9 +290,9 @@ public class CFGSimplifyPass extends FunctionPass
                     // guaranteed to have exactly one entry if they exist
                     for (int i = 0; i< bb.getInstList().size(); i++)
                     {
-                        if (!(bb.getInst(i) instanceof PhiNode))
+                        if (!(bb.getInstAt(i) instanceof PhiNode))
                             break;
-                        PhiNode pn = (PhiNode)bb.getInst(i);
+                        PhiNode pn = (PhiNode)bb.getInstAt(i);
                         pn.replaceAllUsesWith(pn.getIncomingValue(0));;
                         bb.getInstList().remove(i);
                     }
@@ -335,7 +335,7 @@ public class CFGSimplifyPass extends FunctionPass
         assert  (bb.succIterator().next() == succ):"Succ is not successor of bb!";
 
         // There is no phi node in bb.
-        if (!(succ.getInst(0) instanceof PhiNode))
+        if (!(succ.getInstAt(0) instanceof PhiNode))
             return false;
 
         // If there is more than one predecessor, and there are PHI nodes in
@@ -358,10 +358,10 @@ public class CFGSimplifyPass extends FunctionPass
                 // incompatible values coming in.
                 for (int i = 0, e = succ.getNumOfInsts(); i < e; i++)
                 {
-                    if (!(succ.getInst(i) instanceof PhiNode))
+                    if (!(succ.getInstAt(i) instanceof PhiNode))
                         break;
 
-                    PhiNode pn = (PhiNode)succ.getInst(i);;
+                    PhiNode pn = (PhiNode)succ.getInstAt(i);;
                     int idx1 = pn.getBasicBlockIndex(bb);
                     int idx2 = pn.getBasicBlockIndex(pred);
                     assert idx1 != -1 && idx2 != -1
@@ -376,10 +376,10 @@ public class CFGSimplifyPass extends FunctionPass
         // Loop over all of the PHI nodes in the successor BB
         for (int i = 0, e = succ.getNumOfInsts(); i < e; i++)
         {
-            if (!(succ.getInst(i) instanceof PhiNode))
+            if (!(succ.getInstAt(i) instanceof PhiNode))
                 break;
 
-            PhiNode pn = (PhiNode)succ.getInst(i);
+            PhiNode pn = (PhiNode)succ.getInstAt(i);
             Value oldVal = pn.removeIncomingValue(bb, false);
             assert oldVal != null:"No enry in PHI for Pred bb!";
 
