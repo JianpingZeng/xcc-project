@@ -3,18 +3,14 @@ package backend.analysis;
 import backend.hir.BasicBlock;
 import backend.hir.BasicBlock.BlockFlag;
 import backend.hir.PredIterator;
+import backend.hir.SuccIterator;
+import backend.opt.UnreachableMachineBlockElim;
+import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-
 import tools.BitMap2D;
+
+import java.util.*;
 
 /**
  * This class defined as a helper class for identifying all loop in a method. 
@@ -22,11 +18,12 @@ import tools.BitMap2D;
  * @version 0.1
  */
 public final class LoopInfo extends FunctionPass
-{	
+	implements LoopInfoBase<BasicBlock, Loop>
+{
 	/**
 	 * The maximum block id at given cfg.
 	 */
-	private final int maxBlockID;
+	private int maxBlockID;
 	/**
 	 * A bit set whose element determines whether specified block is visited or not.
 	 */
@@ -65,32 +62,10 @@ public final class LoopInfo extends FunctionPass
 	private BasicBlock[] idToBasicBlock;
 
 	private Function m;
-	public LoopInfo(Function function)
-    {
-		this.m = function;
-		maxBlockID = function.cfg.getNumberOfBasicBlocks();
-		idToBasicBlock = new BasicBlock[maxBlockID];
-		visitedBlocks = new BitSet(maxBlockID);
-		activeBlocks = new BitSet(maxBlockID);
-		forwardBranches = new int[maxBlockID];
-		loopEndBlocks = new ArrayList<>(8);		
 
-		workList = new LinkedList<>();
-		BasicBlock entry = function.getEntryBlock();
-		
-		createIdToBlockMap(function);
-		
-		// depth first traverse to count loop
-		countLoops(entry, null);
-		
-		// handles loop if the numbers of loop is greater than zero.
-		if (numLoops > 0)
-		{
-			markLoops();
-			clearNonNatureLoops();
-			assignLoopDepth(entry);
-		}		
-    }
+	private HashMap<BasicBlock, Loop> bbMap = new HashMap<>();
+
+	private ArrayList<Loop> topLevelLoops = new ArrayList<>();
 
 	/**
 	 * Associates the block id with basic block.
@@ -103,9 +78,47 @@ public final class LoopInfo extends FunctionPass
 			idToBasicBlock[bb.getID()] = bb;
 		}
 	}
-	
-	public void runOnFunction()
+
+	private void init(Function f)
 	{
+		m = f;
+		maxBlockID = f.cfg.getNumberOfBasicBlocks();
+		idToBasicBlock = new BasicBlock[maxBlockID];
+		visitedBlocks = new BitSet(maxBlockID);
+		activeBlocks = new BitSet(maxBlockID);
+		forwardBranches = new int[maxBlockID];
+		loopEndBlocks = new ArrayList<>(8);
+
+		workList = new LinkedList<>();
+		BasicBlock entry = f.getEntryBlock();
+
+		createIdToBlockMap(f);
+
+		// depth first traverse to count loop
+		countLoops(entry, null);
+
+		// handles loop if the numbers of loop is greater than zero.
+		if (numLoops > 0)
+		{
+			markLoops();
+			clearNonNatureLoops();
+			assignLoopDepth(entry);
+		}
+	}
+
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
+	{
+		assert au != null;
+		au.addRequired(UnreachableMachineBlockElim.class);
+		super.getAnalysisUsage(au);
+	}
+
+	@Override
+	public boolean runOnFunction(Function f)
+	{
+		init(f);
+
 		LinkedList<BasicBlock> list = new LinkedList<>();
 		ArrayList<Loop> loops = new ArrayList<>();
 		BasicBlock headerBlock = null;
@@ -156,8 +169,8 @@ public final class LoopInfo extends FunctionPass
 				list.addFirst(headerBlock);
 			}
 			
-			Loop loop = new Loop(list, exitBlocks, followBlock);
-			
+			Loop loop = new Loop(null,list);
+
 			// set containing loop
 			for (BasicBlock bb : list)
 				bb.setOutLoop(loop);
@@ -172,6 +185,7 @@ public final class LoopInfo extends FunctionPass
 		
 		// set loops for given function being compiled
 		m.setLoops(sortedLoops);
+		return false;
 	}
 	
 	/**
@@ -186,8 +200,10 @@ public final class LoopInfo extends FunctionPass
 	{
 		assert bb != null && rowIdx>= 0 && rowIdx < bitset.sizeInSlots();
 		// go through all successors of bb to check
-		for (BasicBlock sux : bb.getSuccs())
+		SuccIterator itr = bb.succIterator();
+		while (itr.hasNext())
 		{
+			BasicBlock sux = itr.next();
 			int id = sux.getID();			
 			// if there is at least one successor that not contained in loop
 			// , it is must be an exit block.
@@ -197,7 +213,6 @@ public final class LoopInfo extends FunctionPass
 				return true;
 			}
 		}
-		followBlock = null;
 		return false;
 	}
 	
@@ -389,9 +404,12 @@ public final class LoopInfo extends FunctionPass
 				if (top != loopHeader)
 				{
 					PredIterator<BasicBlock> itr = top.predIterator();
-					while (itr.hasPrevious())
+					ArrayList<BasicBlock> temp = new ArrayList<>();
+					while(itr.hasNext()) temp.add(itr.next());
+
+					for (int i = temp.size() - 1; i >= 0; i--)
 					{
-						BasicBlock pred = itr.previous();
+						BasicBlock pred = temp.get(i);
 						if (!isBlockInLoop(loopIndex, pred))
 						{
 							workList.addLast(pred);
@@ -506,16 +524,50 @@ public final class LoopInfo extends FunctionPass
 		return "The statistic of loop info on HIR";
 	}
 
-	/**
-	 * To run this pass on a module, we simply call runOnFunction once for
-	 * each module.
-	 *
-	 * @param f
-	 * @return
-	 */
 	@Override
-	public boolean runOnFunction(Function f)
+	public HashMap<BasicBlock, Loop> getBBMap()
 	{
-		return false;
+		return bbMap;
+	}
+
+	@Override
+	public ArrayList<Loop> getTopLevelLoop()
+	{
+		return topLevelLoops;
+	}
+
+	@Override
+	public int getLoopDepth(BasicBlock bb)
+	{
+		Loop loop = getLoopFor(bb);
+		return loop != null ? loop.getLoopDepth() : 0;
+	}
+
+	@Override
+	public boolean isLoopHeader(BasicBlock bb)
+	{
+		Loop loop = getLoopFor(bb);
+		return loop != null && bb == loop.getHeaderBlock();
+	}
+
+	@Override
+	public void ensureIsTopLevel(Loop loop, String msg)
+	{
+		assert loop.getParent() == null:msg;
+	}
+
+	@Override
+	public void removeBlock(BasicBlock block)
+	{
+		if (bbMap.containsKey(block))
+		{
+			Loop loop = bbMap.get(block);
+			while(loop != null)
+			{
+				loop.removeBlockFromLoop(block);
+				loop = loop.getParent();
+			}
+			bbMap.remove(block);
+		}
 	}
 }
