@@ -8,7 +8,10 @@ import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
 
 /**
  * Represents a basic block in the quad intermediate representation. Basic
@@ -116,6 +119,17 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return false;
 	}
 
+	/**
+	 * If this block has only one predecessor block, just return it, otherwise
+	 * return null.
+	 * @return
+	 */
+	public BasicBlock getSinglePredecessor()
+	{
+		int num = getNumPredecessors();
+		return num == 1 ? predAt(0) : null;
+	}
+
 	public enum BlockFlag
 	{
 		LinearScanLoopHeader,
@@ -170,6 +184,16 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
             Function parent, BasicBlock before)
 	{
 		return new BasicBlock(id, bbName, parent, before);
+	}
+
+	/**
+	 * Create new internal basic block.
+	 */
+	public static BasicBlock createBasicBlock(int id,
+			String bbName,
+			Function parent)
+	{
+		return new BasicBlock(id, bbName, parent);
 	}
 
 	/**
@@ -531,5 +555,16 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		TerminatorInst inst = getTerminator();
 		if (inst == null) return null;
 		return inst.suxAt(index);
+	}
+
+	public int getNumPredecessors()
+	{
+		return usesList.size();
+	}
+
+	public BasicBlock predAt(int index)
+	{
+		assert index >= 0 && index < getNumPredecessors();
+		return ((TerminatorInst)useAt(index).getUser()).getParent();
 	}
 }

@@ -21,7 +21,7 @@ import tools.Util;
  * @see DCE
  * @see ConstantPropagation
  * @see GVN
- * @see UCE
+ * @see CFGSimplifyPass
  */
 public class Canonicalizer extends InstVisitor
 {

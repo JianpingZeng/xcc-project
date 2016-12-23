@@ -1,21 +1,24 @@
 package backend.opt;
 
-import backend.analysis.DomTree;
-import backend.hir.*;
+import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTreeNodeBase;
 import backend.hir.BasicBlock;
+import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;
 import backend.value.Instruction;
+import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.StoreInst;
-import backend.value.Value;
+import backend.value.User;
 
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 
 /**
- * This file defines a class that  performs useless instruction elimination and
- * dead code elimination.
+ * This file defines a class that performs dead code elimination depending on
+ * "Implementation of the Mark­Sweep Dead Code Elimination Algorithm in LLVM",
+ * Yunming Zhang.el.
  * <p>
  * Dead code elimination perform a single pass over the function removing
  * instructions that are obviously useless.
@@ -30,14 +33,14 @@ import java.util.LinkedList;
  * just only have one successor.
  * <br>
  * </p>
- * Created by Jianping Zeng  on 2016/3/8.
+ * Created by Xlous zeng on 2016/3/8.
  */
 public class DCE extends FunctionPass
 {
 	/**
 	 * The list where all critical instruction in Module term resides.
 	 */
-	private LinkedList<Value> criticalInst;
+	private LinkedList<Instruction> criticalInst;
 	/**
 	 * The list that isDeclScope more than one critical instruction.
 	 */
@@ -46,20 +49,26 @@ public class DCE extends FunctionPass
 	/**
 	 * The list isDeclScope all of no dead instruction.
 	 */
-	private HashSet<Value> liveInsts;
+	private HashSet<Instruction> liveInsts;
 
 	private Function m;
 
-	private DomTree DT;
+	private DomTreeInfo dt;
 
 	private void initialize(Function f)
 	{
-		this.criticalInst = new LinkedList<>();
-		this.usefulBlocks = new LinkedList<>();
-		this.liveInsts = new HashSet<>();
-		this.m = f;
-		this.DT = new DomTree(true, m);
-		this.DT.recalculate();
+		criticalInst = new LinkedList<>();
+		usefulBlocks = new LinkedList<>();
+		liveInsts = new HashSet<>();
+		m = f;
+		dt = getAnalysisToUpDate(DomTreeInfo.class);
+	}
+
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
+	{
+		au.addRequired(DomTreeInfo.class);
+		super.getAnalysisUsage(au);
 	}
 
 	/**
@@ -79,14 +88,21 @@ public class DCE extends FunctionPass
 
 		// 1.Initialization stage
 		initCriticalInst();
-		LinkedList<Value> worklist = new LinkedList<>(criticalInst);
-		MarkVisitor marker = new MarkVisitor();
+		LinkedList<Instruction> worklist = new LinkedList<>(criticalInst);
 		// 2.Mark stage
 		while (!worklist.isEmpty())
 		{
-			Value curr = worklist.removeLast();
-			marker.mark(curr);
+			Instruction curr = worklist.removeLast();
 
+			for (int i = 0, e = curr.getNumUses(); i < e; i++)
+			{
+				User u = curr.getOperand(i).getUser();
+				if (u instanceof Instruction)
+				{
+					if (liveInsts.add((Instruction) u))
+						worklist.add((Instruction)u);
+				}
+			}
 			// marks branch instruction.
 			markBranch(curr, worklist);
 		}
@@ -107,20 +123,20 @@ public class DCE extends FunctionPass
 	{
 		for (BasicBlock BB : m)
 		{
-			for (Value inst : BB)
+			for (Instruction inst : BB)
 			{
 				if (!liveInsts.contains(inst))
 				{
 					// for branch instruction in the basic block, it is special
 					// that replaces it with an unconditional branch to it's useful
 					// and nearest dominate block.
-					if (inst instanceof Instruction.BranchInst)
+					if (inst instanceof BranchInst)
 					{
 						BasicBlock nearestDom = findNearestUsefulPostDom(BB);
 						if (nearestDom == BasicBlock.USELESS_BLOCK)
 							continue;
-						Instruction.Goto go = new Instruction.Goto(nearestDom,
-								"GotoStmt");
+
+						BranchInst go = new BranchInst(nearestDom, "gotoInst");
 						inst.insertBefore(go);
 						inst.eraseFromBasicBlock();
 					}
@@ -137,14 +153,14 @@ public class DCE extends FunctionPass
 	{
 		for (BasicBlock BB : m)
 		{
-			if (BB.getNumOfPreds() == 0)
+			if (BB.getNumPredecessors() == 0)
 			{
 				BB.eraseFromParent();
 			}
-			if (BB.getNumOfPreds() == 1)
+			if (BB.getNumPredecessors() == 1)
 			{
-				BasicBlock pred = BB.getPreds().get(0);
-				if (pred.getNumOfSuccs() == 0)
+				BasicBlock pred = BB.predAt(0);
+				if (pred.getNumSuccessors() == 0)
 					merge(pred, BB);
 			}
 		}
@@ -158,16 +174,13 @@ public class DCE extends FunctionPass
 	 */
 	private void merge(BasicBlock first, BasicBlock second)
 	{
-		for (Value inst : second)
+		for (Instruction inst : second)
 		{
 			first.appendInst(inst);
 		}
 		first.removeSuccssor(second);
-		for (BasicBlock succ : second.getSuccs())
-			first.addSucc(succ);
-
-		// enable the GC.
-		second = null;
+		second.dropAllReferences();
+		second.eraseFromParent();
 	}
 
 	/**
@@ -180,12 +193,12 @@ public class DCE extends FunctionPass
 	 */
 	private BasicBlock findNearestUsefulPostDom(BasicBlock BB)
 	{
-		DomTree.DomTreeNode node = DT.getTreeNodeForBlock(BB);
-		LinkedList<DomTree.DomTreeNode> worklist = new LinkedList<>();
+		DomTreeNodeBase<BasicBlock> node = dt.getDomTree().getTreeNodeForBlock(BB);
+		LinkedList<DomTreeNodeBase<BasicBlock>> worklist = new LinkedList<>();
 		worklist.add(node.getIDom());
 		while (!worklist.isEmpty())
 		{
-			DomTree.DomTreeNode currDOM = worklist.removeLast();
+			DomTreeNodeBase<BasicBlock> currDOM = worklist.removeLast();
 			BasicBlock currBB = currDOM.getBlock();
 			if (usefulBlocks.contains(currBB))
 				return currBB;
@@ -200,15 +213,15 @@ public class DCE extends FunctionPass
 	 * @param inst
 	 * @param worklist
 	 */
-	private void markBranch(Value inst, LinkedList<Value> worklist)
+	private void markBranch(Instruction inst, LinkedList<Instruction> worklist)
 	{
-		BasicBlock BB = inst.getParent();
-		LinkedList<BasicBlock> rdf = RDF.run(DT, BB);
+		BasicBlock bb = inst.getParent();
+		LinkedList<BasicBlock> rdf = RDF.run(dt.getDomTree(), bb);
 		for (BasicBlock block : rdf)
 		{
-			Value last = block.getLastInst();
+			Instruction last = block.getLastInst();
 			// Only branch instruction will be handled.
-			if (last instanceof Instruction.BranchInst)
+			if (last instanceof BranchInst)
 			{
 				liveInsts.add(last);
 				usefulBlocks.add(block);
@@ -227,7 +240,7 @@ public class DCE extends FunctionPass
 		while (itr.hasNext())
 		{
 			BasicBlock curr = itr.next();
-			for (Value inst : curr)
+			for (Instruction inst : curr)
 			{
 				if (isCritical(inst))
 				{
@@ -251,137 +264,15 @@ public class DCE extends FunctionPass
 	 * @param inst
 	 * @return
 	 */
-	private boolean isCritical(Value inst)
+	private boolean isCritical(Instruction inst)
 	{
         return inst instanceof Instruction.ReturnInst
-                || inst instanceof StoreInst;
+                || inst instanceof StoreInst || inst.mayHasSideEffects();
 	}
 
-	/**
-	 * A concrete instance of super class {@code InstVisitor}
-	 * marks live instruction.
-	 */
-	private class MarkVisitor extends InstVisitor
+	@Override
+	public String getPassName()
 	{
-		public void mark(Value inst)
-		{
-			inst.accept(this);
-		}
-
-		private void markBinary(Instruction.Op2 inst)
-		{
-			if (inst.x instanceof Instruction)
-			{
-				liveInsts.add((Instruction) inst.x);
-				usefulBlocks.add(((Instruction) inst.x).getParent());
-			}
-			if (inst.y instanceof Instruction)
-			{
-				liveInsts.add((Instruction) inst.y);
-				usefulBlocks.add(((Instruction) inst.y).getParent());
-			}
-		}
-
-		private void markUnary(Instruction.Op1 inst)
-		{
-			if (inst.x instanceof Instruction)
-			{
-				liveInsts.add((Instruction) inst.x);
-				usefulBlocks.add(((Instruction) inst.x).getParent());
-			}
-		}
-
-		@Override
-		public void visitArithmeticOp(Instruction.ArithmeticOp inst)
-		{
-			markBinary(inst);
-		}
-
-		@Override
-		public void visitLogicOp(Instruction.LogicOp inst)
-		{
-			markBinary(inst);
-		}
-
-		@Override
-		public void visitShiftOp(Instruction.ShiftOp inst)
-		{
-			markBinary(inst);
-		}
-
-		@Override
-		public void visitCompare(Instruction.Cmp inst)
-		{
-			markBinary(inst);
-		}
-
-		public void visitIfOp(Instruction.IfOp inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitSwitch(Instruction.SwitchInst inst)
-		{
-			visitInstruction(inst);
-		}
-
-		/**
-		 * Visits {@code Negate} with vistor pattern.
-		 *
-		 * @param inst The inst to be visited.
-		 */
-		public void visitNegate(Instruction.Negate inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitConvert(Instruction.CastInst inst)
-		{
-			markUnary(inst);
-		}
-
-		public void visitGoto(Instruction.Goto inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitReturn(Instruction.ReturnInst inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitInvoke(Instruction.CallInst inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitPhi(Instruction.PhiNode inst)
-		{
-			BasicBlock[] blocks = inst.getAllBasicBlocks();
-			for (int idx = 0; idx < blocks.length; idx++)
-			{
-				Value lastInst = blocks[idx].getLastInst();
-				if (lastInst instanceof Instruction.BranchInst)
-				{
-					liveInsts.add(lastInst);
-					usefulBlocks.add(blocks[idx]);
-				}
-			}
-		}
-
-		public void visitAlloca(Instruction.AllocaInst inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitStoreInst(StoreInst inst)
-		{
-			visitInstruction(inst);
-		}
-
-		public void visitLoadInst(Instruction.LoadInst inst)
-		{
-			visitInstruction(inst);
-		}
+		return "Dead code elimination pass";
 	}
 }

@@ -1,19 +1,24 @@
 package backend.opt;
 
-import backend.analysis.Loop;
-import backend.hir.*;
+import backend.analysis.*;
+import backend.hir.BasicBlock;
+import backend.hir.PredIterator;
+import backend.pass.AnalysisUsage;
+import backend.pass.FunctionPass;
 import backend.value.Function;
 import backend.value.Instruction;
+import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.CmpInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Value;
-import backend.value.Value.UndefValue;
+import tools.OutParamWrapper;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
-import tools.TTY;
+import static backend.support.BasicBlockUtil.splitBlockPredecessors;
 
-
-/** 
+/**
  * This is a pass which responsible for performing simplification of loop contained 
  * in specified {@linkplain Function function}.
  * 
@@ -24,178 +29,257 @@ import tools.TTY;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LoopSimplify
+public final class LoopSimplify extends FunctionPass
 {
-	public void runOnFunction(Function m)
+	private LoopInfo li;
+	private DomTreeInfo dt;
+	private AliasAnalysis aliasAnalysis;
+
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		assert m != null && m.numLoops() > 0 
-				: "it is no needed for there no loops in function";
-		
-		for (Loop loop : m.getLoops())
-		{
-			insertPreheader(loop);
-		}
+		au.addRequired(LoopInfo.class);
+		au.addRequired(DomTreeInfo.class);
+		au.addPreserved(AliasAnalysis.class);
+		au.addPreserved(BreakCriticalEdge.class);
 	}
+	@Override
+	public boolean runOnFunction(Function f)
+	{
+		li = getAnalysisToUpDate(LoopInfo.class);
+		dt = getAnalysisToUpDate(DomTreeInfo.class);
+		aliasAnalysis = getAnalysisToUpDate(AliasAnalysis.class);
+		boolean changed = false;
+		for (Loop loop : li.getTopLevelLoop())
+			 changed |= processLoop(loop);
+		return changed;
+	}
+
+	@Override
+	public String getPassName()
+	{
+		return "Loop simplification pass";
+	}
+
 	/**
-	 * inserts a pre-header block to the preceded position of loop-header block when no exactly one
-	 * predecessor of header. Otherwise, just return it.
+	 * Walk the loop structure in depth first order, ensuring that
+	 * all loops have preheaders.
 	 * @param loop
 	 * @return
 	 */
-	private void insertPreheader(Loop loop)
+	private boolean processLoop(Loop loop)
 	{
-		BasicBlock preheader = loop.getPreheader();
-		// if there is a preheader, then immediately return
-		if (preheader != null)
-			return;
-		
-		BasicBlock header = loop.getHeaderBlock();
-		// compute the set of predecessors of the loop that are
-		// not in the loop
-		ArrayList<BasicBlock> outsideBlocks = new ArrayList<>();
-		for (BasicBlock pred : header.getPreds())
-		{
-			if (!loop.contains(pred))
-			{
-				outsideBlocks.add(pred);
-			}
-		}
-		
-		preheader = splitBlockPredecessor(header, outsideBlocks, ".preheader",loop);
-		TTY.println("LICM: creating pre-header %s", preheader.bbName);
-		return;
-	}
-	
-	
-	private BasicBlock splitBlockPredecessor(
-			BasicBlock header,
-			ArrayList<BasicBlock> outsideBlocks,
-			String suffix,
-			Loop loop)
-	{
-		// create a new basic block, insert right before the original block
-		ControlFlowGraph cfg = header.getCFG();	
-		BasicBlock newBB = cfg.createBasicBlock(header.bbName + suffix);
-		for (BasicBlock pred : outsideBlocks)
-		{
-			// unlink the predecessors with header block
-			header.removePredecessor(pred);
-			pred.removeSuccssor(header);
-			
-			// link predecessors with the header block.
-			pred.addSucc(newBB);
-			newBB.addPred(pred);
-			
-			// replace the old branching TargetData of newBB
-			pred.getTerminator().replaceTargetWith(header, newBB);
-		}
-		// the new block unconditionally branches to the header block
-		Goto inst = new Goto(header, newBB.bbName + ".goto");
-		
-        // Insert a new PHI node into NewBB for every PHI node in BB and that new PHI
-        // node becomes an incoming value for BB's phi node.  However, if the Preds
-        // list is empty, we need to insert dummy entries into the PHI nodes in BB to
-        // account for the newly created predecessor.
-		if (outsideBlocks.isEmpty())
-		{
-			// insert dummy values as the incoming value
-			for (Value i : header)
-			{
-				if (i instanceof PhiNode)
-				{
-					((Instruction.PhiNode)i).addIncoming(UndefValue.get(i.kind), newBB);
-				}
-			}
-			return newBB;
-		}
-		
-		// updates the phi node in header whith values coming from newBB
-		updatePhiNodes(header, newBB, outsideBlocks, inst, false);
-		return newBB;
-	}
-	
-	/**
-	 * Update the PHI node in orginBB to include the values coming from newBB. 
-	 * @param originBB	
-	 * @param newBB
-	 * @param preds
-	 * @param inst
-	 * @param hasLoopExit
-	 */
-	private void updatePhiNodes(BasicBlock originBB, BasicBlock newBB,
-                                ArrayList<BasicBlock> preds, Instruction.BranchInst inst, boolean hasLoopExit)
-	{
-		for (Value i : originBB)
-		{
-			if (!(i instanceof Instruction.PhiNode))
-				continue;
-			
-			Instruction.PhiNode phiNode = (Instruction.PhiNode)i;
-			// check to see if all of the values coming in are same. IfStmt so,
-			// we don't need to create a new phiNode node, unless it's needed for LCSSA.
-			Value inVal = null;
-			if (!hasLoopExit)
-			{
-				inVal = phiNode.getIncomingValueForBlock(preds.get(0));
-				for (int j = 0, e = phiNode.getNumberIncomingValues(); j != e; j++)
-				{
-					if (!preds.contains(phiNode.getIncomingBlock(j)))
-						continue;
-					if (inVal == null)
-						inVal = phiNode.getIncomingValue(j);
-					else if (inVal != phiNode.getIncomingValue(j))
-					{
-						inVal = null;
-						break;
-					}				
-				}
-			}
-			
-			if (inVal != null)
-			{
-				// IfStmt all incoming values for the new PHI would be the same, just don't
-				// make a new PHI.  Instead, just remove the incoming values from the old
-				// PHI.
+		boolean changed = false;
+		ArrayList<BasicBlock> exitBlocks;
+		BasicBlock preHeader;
 
-				// NOTE! This loop walks backwards for a reason! First off, this minimizes
-				// the cost of removal if we end up removing a large number of values, and
-				// second off, this ensures that the indices for the incoming values
-				// aren't invalidated when we remove one.
-				for (int j = phiNode.getNumberIncomingValues() - 1; j >= 0; j--)
+		while (true)
+		{
+			for (Loop sub : loop.getSubLoops())
+				changed |= processLoop(sub);
+
+			assert loop.getBlocks().get(0) == loop
+					.getHeaderBlock() : "Header isn't in the first";
+			preHeader = loop.getPreheader();
+			if (preHeader == null)
+			{
+				preHeader = insertPreHeaderForLoop(loop);
+				changed = true;
+			}
+
+			// Next, check to make sure that all exit nodes of the loop only have
+			// predecessors that are inside of the loop.  This check guarantees that the
+			// loop preheader/header will dominate the exit blocks.  If the exit block has
+			// predecessors from outside of the loop, split the edge now.
+			exitBlocks = loop.getExitBlocks();
+
+			for (BasicBlock exitBB : exitBlocks)
+			{
+				for (PredIterator<BasicBlock> itr = exitBB.predIterator(); itr
+						.hasNext(); )
 				{
-					if (preds.contains(phiNode.getIncomingBlock(j)))
+					if (!loop.contains(itr.next()))
 					{
-						phiNode.removeIncomingValue(j);
+						rewriteLoopExitBlock(loop, exitBB);
+						changed = true;
+						break;
 					}
 				}
-				// add an incoming value to the phiNode node in the loop for the preheader edge.
-				phiNode.addIncoming(inVal, newBB);
-				continue;
 			}
-			
-			// IfStmt the values coming into the block are not the same, we need a new
-		    // PHI.
-		    // Create the new PHI node, insert it into NewBB at the end of the block		   
-		    Instruction.PhiNode newPHINode = new Instruction.PhiNode(phiNode.kind, preds.size(), phiNode
-                    .name() + ".ph");
-			newBB.appendInst(newPHINode);
-			newBB.appendInst(inst);
-			
-			
-		    // NOTE! This loop walks backwards for a reason! First off, this minimizes
-		    // the cost of removal if we end up removing a large number of values, and
-		    // second off, this ensures that the indices for the incoming values aren't
-		    // invalidated when we remove one.
-		    for (int j = phiNode.getNumberIncomingValues() - 1; j >= 0; --j)
-		    {
-		    	BasicBlock incomingBB = phiNode.getIncomingBlock(j);
-		      	if (preds.contains(incomingBB)) 
-		      	{
-		        	Value V = phiNode.removeIncomingValue(j);
-		        	newPHINode.addIncoming(V, incomingBB);
-		      	}
-	    	}
-		    phiNode.addIncoming(newPHINode, newBB);
+
+			// If the header has more than two predecessors at this point (from the
+			// preheader and from multiple backedges), we must adjust the loop.
+			int numBackEdges = loop.getNumBackEdges();
+			if (numBackEdges != 1)
+			{
+				if (numBackEdges < 8)
+				{
+					Loop nestedLoop = separateNestedLoop(loop);
+					if (nestedLoop != null)
+					{
+						processLoop(nestedLoop);
+						changed = true;
+						continue;
+					}
+				}
+
+				insertUniqueBackedgeBlock(loop, preHeader);
+				changed = true;
+			}
+			break;
 		}
+
+		// Scan over the PHI nodes in the loop header.  Since they now have only two
+		// incoming values (the loop is canonicalized), we may have simplified the PHI
+		// down to 'X = phi [X, Y]', which should be replaced with 'Y'.
+		PhiNode phiNode;
+		for (int i = 0, e = loop.getHeaderBlock().size(); i < e; i++)
+		{
+			Instruction inst = loop.getPreheader().getInstAt(i);
+			if (inst instanceof PhiNode)
+			{
+				phiNode = (PhiNode)inst;
+				Value v;
+				if ((v = phiNode.hasConstantValue()) != null)
+				{
+					phiNode.replaceAllUsesWith(v);
+					phiNode.eraseFromBasicBlock();
+				}
+			}
+			else
+				break;
+		}
+
+		// If this loop has muliple exits and the exits all go to the same
+		// block, attempt to merge the exits. This helps several passes, such
+		// as LoopRotation, which do not support loops with multiple exits.
+		// SimplifyCFG also does this (and this code uses the same utility
+		// function), however this code is loop-aware, where SimplifyCFG is
+		// not. That gives it the advantage of being able to hoist
+		// loop-invariant instructions out of the way to open up more
+		// opportunities, and the disadvantage of having the responsibility
+		// to preserve dominator information.
+		for (exitBlocks.size() > 1 && loop.getExitBlock() != null)
+		{
+			exitBlocks = loop.getExitBlocks();
+			for (Iterator<BasicBlock> itr = exitBlocks.iterator(); itr.hasNext();)
+			{
+				BasicBlock exitingBB = itr.next();
+				if (exitingBB.getSinglePredecessor() == null)
+					continue;
+
+				Instruction instr = exitingBB.getTerminator();
+				BranchInst bi;
+				if (!(instr instanceof BranchInst) || !(bi = (BranchInst)instr).isConditional())
+					continue;
+
+				Value val = bi.getCondition();
+				CmpInst ci;
+				if (!(val instanceof CmpInst) || (ci = (CmpInst)val).getParent() != exitingBB)
+					continue;
+
+				boolean allInvariant = false;
+				for (Instruction inst : exitingBB)
+				{
+					if (inst == ci)
+						continue;
+					OutParamWrapper<Boolean> x = new OutParamWrapper<>(changed);
+					if (!loop.makeLoopInvariant(inst, x, preHeader.getTerminator()))
+					{
+						allInvariant = false;
+						break;
+					}
+					changed = x.get();
+				}
+				if (!allInvariant) continue;
+
+				// The block has now been cleared of all instructions except for
+				// a comparison and a conditional branch. SimplifyCFG may be able
+				// to fold it now.
+				if (!foldBranchToCommonDest(bi))
+					continue;
+
+				// Success. The block is now dead, so remove it from the loop,
+				// update the dominator tree and dominance frontier, and delete it.
+				assert !itr.hasNext();
+				changed = true;
+				li.removeBlock(exitingBB);
+
+				DominatorFrontier df = getAnalysisToUpDate(DominatorFrontier.class);
+				DomTreeNodeBase<BasicBlock> node = dt.getNode(exitingBB);
+				ArrayList<DomTreeNodeBase<BasicBlock>> children = node.getChildren();
+
+				children.forEach(child ->
+				{
+					dt.changeIDom(child, node.getIDom());
+					if(df != null)
+						df.changeIDom(child.getBlock(), node.getIDom().getBlock(),
+								dt);
+				});
+
+				dt.eraseNode(exitingBB);
+				if (df != null)
+					df.removeBlock(exitBlocks);
+
+				bi.suxAt(0).removePredecessor(exitingBB);
+				bi.suxAt(1).removePredecessor(exitingBB);
+				exitingBB.eraseFromParent();
+			}
+		}
+		return changed;
+	}
+
+	private boolean foldBranchToCommonDest(BranchInst bi)
+	{
+		return false;
+	}
+
+	private void insertUniqueBackedgeBlock(Loop loop, BasicBlock preHeader)
+	{
+
+	}
+
+	private Loop separateNestedLoop(Loop loop)
+	{
+		return null;
+	}
+
+	/**
+	 * Once we discover that a loop doesn't have a
+	 * preheader, this method is called to insert one.  This method has two phases:
+	 * preheader insertion and analysis updating.
+	 * @param loop
+	 * @return
+	 */
+	private BasicBlock insertPreHeaderForLoop(Loop loop)
+	{
+		BasicBlock header = loop.getHeaderBlock();
+		ArrayList<BasicBlock> outSideBlocks = new ArrayList<>();
+		for (PredIterator<BasicBlock> itr = header.predIterator(); itr.hasNext(); )
+		{
+			BasicBlock pred = itr.next();
+			if (!loop.contains(pred))
+				outSideBlocks.add(pred);
+		}
+
+		BasicBlock newBB = splitBlockPredecessors(header, outSideBlocks, ".preheader", this);
+
+		Loop parent;
+		if((parent = loop.getParentLoop()) != null)
+			parent.addBasicBlockIntoLoop(newBB, li);
+
+		placeSplitBlockCarefully(newBB, outSideBlocks, loop);
+		return newBB;
+	}
+
+	private void placeSplitBlockCarefully(BasicBlock newBB,
+			ArrayList<BasicBlock> outSideBlocks, Loop loop)
+	{
+
+	}
+
+	private void rewriteLoopExitBlock(Loop loop, BasicBlock exitBB)
+	{
+
 	}
 }

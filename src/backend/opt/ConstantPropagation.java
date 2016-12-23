@@ -15,11 +15,12 @@ import java.util.LinkedList;
  * @see Canonicalizer
  * @see DCE
  * @see GVN
- * @see UCE
+ * @see CFGSimplifyPass
+ * @see UnreachableBlockElim
  */
 public class ConstantPropagation extends FunctionPass
 {
-	private long numsInstKilled = 0;
+	public long numsInstKilled = 0;
 
 	/**
 	 * Performs constant propagation backend.opt upon given method.
@@ -35,18 +36,17 @@ public class ConstantPropagation extends FunctionPass
 		// process
 		f.getBasicBlockList().forEach(bb->
 		{
-			bb.getInstList().forEach(inst -> worklist.add(inst));
+			bb.getInstList().forEach(worklist::add);
 		});
 
 		boolean changed = false;
-		Canonicalizer can = new Canonicalizer();
 		while (!worklist.isEmpty())
 		{
 			Instruction inst = worklist.removeFirst();
 			// ignores it if no other instruction use it
 			if (!inst.isUseEmpty())
 			{
-				Value val = can.constantFoldInstruction(inst);
+				Constant val = ConstantFolder.constantFoldInstruction(inst);
 
 				if (val != null)
 				{
@@ -66,5 +66,11 @@ public class ConstantPropagation extends FunctionPass
 			}
 		}
 		return changed;
+	}
+
+	@Override
+	public String getPassName()
+	{
+		return "Constant Propagation pass";
 	}
 }
