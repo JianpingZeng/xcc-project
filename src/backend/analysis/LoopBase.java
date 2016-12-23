@@ -28,7 +28,6 @@ import java.util.List;
  */
 public abstract class LoopBase<BlockT, LoopT>
 {
-
     /**
      * <p>
      * A sequence of block Id.

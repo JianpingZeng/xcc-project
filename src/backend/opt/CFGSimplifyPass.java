@@ -32,16 +32,14 @@ import java.util.*;
 import static backend.opt.ConstantFolder.constantFoldTerminator;
 
 /**
+ * This pass defined here for removing the unreachable basic block resides inside
+ * Function.
+ *
  * @author Xlous.zeng
  * @version 0.1
  */
 public class CFGSimplifyPass extends FunctionPass
 {
-    public static CFGSimplifyPass createCFGSimplifyPass()
-    {
-        return new CFGSimplifyPass();
-    }
-
     /**
      * calling this method to simplify cfg. It is possible that multiple passes
      * are needed loop over function.
@@ -401,5 +399,11 @@ public class CFGSimplifyPass extends FunctionPass
             }
         }
         return false;
+    }
+
+    @Override
+    public String getPassName()
+    {
+        return "Simplify CFG pass";
     }
 }

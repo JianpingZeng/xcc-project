@@ -3,6 +3,9 @@ package backend.analysis;
 import backend.hir.BasicBlock;
 import backend.hir.PredIterator;
 import backend.hir.SuccIterator;
+import backend.value.Instruction;
+import backend.value.Value;
+import tools.OutParamWrapper;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -27,6 +30,79 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 		super(block);
 	}
 
+	/**
+	 * Return true if the specified value is loop-invariant.
+	 * @param val
+	 * @return
+	 */
+	public boolean isLoopInVariant(Value val)
+	{
+		if (val instanceof Instruction)
+			return isLoopInVariant((Instruction)val);
+		// All non-instructions are loop invariant
+		return true;
+	}
+
+	/**
+	 * Return true if the specified instruction is
+	 * loop-invariant.
+	 * @param inst
+	 * @return
+	 */
+	public boolean isLoopInvariant(Instruction inst)
+	{
+		return !contains(inst.getParent());
+	}
+
+	public boolean makeLoopInvariant(Value val,
+			OutParamWrapper<Boolean> changed,
+			Instruction insertPtr)
+	{
+		return makeLoopInvariant(val, changed, null);
+	}
+
+	public boolean makeLoopInvariant(Value val,
+			OutParamWrapper<Boolean> changed)
+	{
+		if (val instanceof Instruction)
+		{
+			return makeLoopInvariant((Instruction)val, changed);
+		}
+		return true;
+	}
+
+	public boolean makeLoopInvariant(Instruction inst,
+			OutParamWrapper<Boolean> changed,
+			Instruction insertPtr)
+	{
+		if (isLoopInVariant(inst))
+			return true;
+		if (inst.mayReadMemory())
+			return false;
+		if (insertPtr == null)
+		{
+			BasicBlock preheader = getPreheader();
+			if (preheader == null)
+				return false;
+			insertPtr = preheader.getTerminator();
+		}
+		for (int i = 0, e = inst.getNumOfOperands(); i < e; i++)
+		{
+			if (!makeLoopInvariant(inst.operand(i), changed, insertPtr))
+				return false;
+		}
+
+		// Hoist.
+		//inst.moveBefore(insertPtr);
+		changed.set(false);
+		return true;
+	}
+
+	public boolean makeLoopInvariant(Instruction inst,
+			OutParamWrapper<Boolean> changed)
+	{
+		return makeLoopInvariant(inst, changed, null);
+	}
 	/**
 	 * Obtains the depth of this loop in the loop forest it attached, begins from
 	 * 1.

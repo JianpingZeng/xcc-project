@@ -35,11 +35,11 @@ public final class LoopInfo extends FunctionPass
 	@Override
 	public boolean runOnFunction(Function f)
 	{
-		calculate(getAnalysisToUpDate(DomTree.class));
+		calculate(getAnalysisToUpDate(DomTreeInfo.class));
 		return false;
 	}
 
-	private void calculate(DomTree dt)
+	private void calculate(DomTreeInfo dt)
 	{
 		BasicBlock rootNode = dt.getRootNode().getBlock();
 
@@ -52,7 +52,7 @@ public final class LoopInfo extends FunctionPass
 		}
 	}
 
-	private Loop considerForLoop(BasicBlock bb, DomTree dt)
+	private Loop considerForLoop(BasicBlock bb, DomTreeInfo dt)
 	{
 		if (bbMap.containsKey(bb))
 			return null;
@@ -91,7 +91,7 @@ public final class LoopInfo extends FunctionPass
 					if (subLoop.getHeaderBlock() == cur && isNotAlreadyContainedIn(subLoop, l))
 					{
 						assert subLoop.getParentLoop() != null && subLoop.getParentLoop() != l;
-						Loop subParentLoop = subLoop.outerLoop;
+						Loop subParentLoop = subLoop.getParentLoop();
 						assert subParentLoop.getSubLoops().contains(subLoop);
 						subParentLoop.subLoops.remove(subLoop);
 
@@ -108,25 +108,22 @@ public final class LoopInfo extends FunctionPass
 			}
 		}
 
-		// If there are any loops nested within this loop, create them.
 		for (BasicBlock block : l.blocks)
 		{
+			// If there are any loops nested within this loop, create them.
 			Loop newLoop = considerForLoop(block, dt);
 			if (newLoop != null)
 			{
 				l.subLoops.add(newLoop);
 				newLoop.setParentLoop(l);
 			}
-		}
 
-		// Add the basic blocks that comprise this loop to the BBMap so that this
-		// loop can be found for them.
-		for (BasicBlock block : l.blocks)
-		{
-			if (!bbMap.containsKey(block))
-			{
-				bbMap.put(block, l);
-			}
+            // Add the basic blocks that comprise this loop to the BBMap so that this
+            // loop can be found for them.
+            if (!bbMap.containsKey(block))
+            {
+                bbMap.put(block, l);
+            }
 		}
 
 		HashMap<BasicBlock, Loop> containingLoops = new HashMap<>();
@@ -146,9 +143,9 @@ public final class LoopInfo extends FunctionPass
 				for (int b = 0, e = childLoop.blocks.size(); b < e; b++)
 				{
 					Loop blockLoop = containingLoops.get(childLoop.blocks.get(i));
-					if (blockLoop == null)
-						blockLoop = childLoop;
-					else if (blockLoop != childLoop)
+					// If the block in the child loop are the same nested into another
+                    // loop.
+					if (blockLoop != childLoop)
 					{
 						Loop subLoop = blockLoop;
 						for (int j = 0, sz = subLoop.blocks.size(); j < sz; j++)

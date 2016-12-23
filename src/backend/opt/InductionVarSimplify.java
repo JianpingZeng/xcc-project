@@ -1,11 +1,15 @@
 package backend.opt;
 
-import backend.analysis.DomTree;
+import backend.analysis.DomTreeInfo;
 import backend.analysis.Loop;
-import backend.hir.*;
+import backend.analysis.LoopInfo;
 import backend.hir.BasicBlock;
+import backend.hir.Operator;
+import backend.pass.AnalysisUsage;
+import backend.pass.LoopPass;
+import backend.type.Type;
 import backend.value.Constant;
-import backend.value.Function;
+import backend.value.ConstantInt;
 import backend.value.Instruction;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.Op2;
@@ -15,8 +19,7 @@ import backend.value.Value;
 import java.util.ArrayList;
 import java.util.List;
 
-import backend.lir.ci.LIRConstant;
-import backend.lir.ci.LIRKind;
+import static backend.opt.ConstantFolder.constantFoldBinaryInstruction;
 
 /**
  * <p>
@@ -46,8 +49,9 @@ import backend.lir.ci.LIRKind;
  * @author xlos.zjp
  * @version 0.1
  */
-public final class InductionVarSimplify
+public final class InductionVarSimplify extends LoopPass
 {
+
 	private static class IVRecord
 	{
 		/**
@@ -58,10 +62,10 @@ public final class InductionVarSimplify
 		 * Base induction variable.
 		 */
 		Value biv;
-		
+
 		Constant factor;
 		Constant diff;
-		
+
 		IVRecord(Value tiv, Value biv, Constant factor, Constant diff)
 		{
 			this.biv = biv;
@@ -74,71 +78,64 @@ public final class InductionVarSimplify
 	 * A list isDeclScope all of induction variable records in this function being optimized.
 	 */
 	private ArrayList<IVRecord> inductionVars;
-	private Loop[] loops;
-	private Loop[] loopIdToLoops;
-	private DomTree dt;
 	private boolean[] marked;
-	
+
 	/**
 	 * indicates if a instruction has been performed on strength reduction.
 	 */
 	private boolean[][] SRdone;
-	
-	/**
-	 * A interface to run on function being compiled.
-	 * @param function
-	 */
-	public void runOnLoop(Function function)
+
+	private LoopInfo li;
+	private DomTreeInfo dt;
+	boolean changed = false;
+
+	@Override
+	public String getPassName()
 	{
-		this.inductionVars = new ArrayList<>();		
-		initialize(function);
-		
-		for (Loop loop : loops)
-		{
-			// ignores some loops were optimized.
-			if (!marked[loop.loopIndex])
-			{
-				do 
-				{
-					/* 1#	found all of induction variables */
-					findInductionVariable(loop);
-					
-					/* 2#	perform strength reduction */
-					strengthReduction(loop);
-					loop = loop.outerLoop;
-				}while (loop != null);
-			}
-		}
+		return "Induction variable simplification pass";
 	}
+
+	@Override
+	public boolean runOnLoop(Loop loop)
+	{
+		li = getAnalysisToUpDate(LoopInfo.class);
+		dt = getAnalysisToUpDate(DomTreeInfo.class);
+
+		this.inductionVars = new ArrayList<>();
+		initialize(loop);
+
+		do
+		{
+			/* 1#	found all of induction variables */
+			findInductionVariable(loop);
+
+			/* 2#	perform strength reduction */
+			strengthReduction(loop);
+			loop = loop.getParentLoop();
+		}while (loop != null);
+		return changed;
+	}
+
+	@Override
+	public void getAnalysisUsage(AnalysisUsage au)
+	{
+		au.addRequired(DomTreeInfo.class);
+		au.addRequired(LoopInfo.class);
+		au.addRequired(LoopSimplify.class);
+		au.addRequired(UnreachableBlockElim.class);
+		super.getAnalysisUsage(au);
+	}
+
 	/**
 	 * Initialize some helpful data structure as needed.
-	 * @param function
+	 * @param loop
 	 */
-	private void initialize(Function function)
+	private void initialize(Loop loop)
 	{
-		dt = new DomTree(function);
-		dt.recalculate();
-		loops = function.getLoops();
-		assert loops != null && loops.length > 0
-				: "must performed after loop analysis pass";
-		
-		int maxLoopIndex = -1;
-		for (Loop l : loops)
-		{
-			if (l.loopIndex > maxLoopIndex)
-				maxLoopIndex = l.loopIndex;
-		}
-		
-		loopIdToLoops = new Loop[maxLoopIndex + 1];
-		marked = new boolean[loops.length];
-		
-		// initialize the map IdToLoops
-		for (Loop l : loops)
-			loopIdToLoops[l.loopIndex] = l;	
-		
+		List<BasicBlock> list = loop.getBlocks();
 		// instantiate a array of frontend.type boolean which keeps track of
-		SRdone = new boolean[function.cfg.getNumberOfBasicBlocks()][];
-		for (BasicBlock bb : function)
+		SRdone = new boolean[list.size()][];
+		for (BasicBlock bb : list)
 			SRdone[bb.getID()] = new boolean[bb.size()];
 	}
 	/**
@@ -146,21 +143,21 @@ public final class InductionVarSimplify
 	 */
 	private void findInductionVariable(Loop loop)
 	{
-		for (BasicBlock bb : loop.blocks)
+		for (BasicBlock bb : loop.getBlocks())
 		{
 			// search for instructions that compute fundamental induction 
 			// variable and accumulate informations about them in inductionVars
-			for (Value inst : bb)
+			for (Instruction inst : bb)
 			{
 				if (inst instanceof Op2)
 				{
 					Op2 op = (Op2)inst;
-					if (ivPattern(op, op.x, op.y)
-							|| ivPattern(op, op.y, op.x))
+					if (ivPattern(op, op.operand(0), op.operand(1))
+							|| ivPattern(op, op.operand(1), op.operand(0)))
 					{
 						inductionVars.add(new IVRecord(op, op, 
-								Constant.CONSTANT_INT_1, 
-								Constant.CONSTANT_INT_0));
+								Constant.getAllOnesValue(op.getType()),
+								Constant.getNullValue(op.getType())));
 					}
 				}
 			}
@@ -170,19 +167,20 @@ public final class InductionVarSimplify
 		do
 		{
 			change = false;
-			for (BasicBlock bb : loop.blocks)
+			for (BasicBlock bb : loop.getBlocks())
 			{
 				// check for dependent induction variables 
 				// and accumulate information in list inductionVars.
-				for (Value inst : bb)
+				for (Instruction inst : bb)
 				{
 					if (inst instanceof Op2)
 					{
 						Op2 op = (Op2)inst;
-						change |= isMulIV(op, op.x, op.y, loop);
-						change |= isMulIV(op, op.y, op.x, loop);
-						change |= isAddIV(op, op.x, op.y, loop);
-						change |= isAddIV(op, op.y, op.x, loop);
+						Value x = op.operand(0), y = op.operand(1);
+						change |= isMulIV(op, x, y, loop);
+						change |= isMulIV(op, y, x, loop);
+						change |= isAddIV(op, x, y, loop);
+						change |= isAddIV(op, y, x, loop);
 					}
 				}
 			}			
@@ -198,40 +196,31 @@ public final class InductionVarSimplify
 		}
 		return false;
 	}
-	/**
-	 * Obtains the index by which the specified block will be indexed. 
-	 * @param blockId	The id of specified basic block.
-	 * @param nblocks	The array of block id.
-	 * @return IfStmt there no block with specified blockId existed in nblocks, return -1
-	 * , otherwise, return its index.
-	 */
-	private int blockIndex(int blockId, List<BasicBlock> blocks)
-	{
-		for (int i = 0; i < blocks.size(); i++)			
-		{
-			int Id = blocks.get(i).getID();
-			if (blockId == Id)
-				return i; 
-		}
-		return -1;
-	}
+
 	/**
 	 * <p>Checks if the basic block where the operand defined was out of this loop.</p>
 	 * <p>ReturnInst true if it is out of Loop, otherwise false returned.</p>
-	 * @param blocks
+	 * @param loop
 	 * @param operand
 	 * @return
 	 */
-	private boolean reachDefsOut(List<BasicBlock> blocks, Value operand)
+	private boolean reachDefsOut(Loop loop, Instruction operand)
 	{
-			BasicBlock bb = operand.getParent();
-        return blockIndex(bb.getID(), blocks) < 0;
+		BasicBlock bb = operand.getParent();
+        return !loop.contains(bb);
 	}
 	
 	private boolean isLoopConstant(Value v)
 	{
-		List<BasicBlock> list = v.getParent().getOuterLoop().blocks;
-		return v.isConstant() || reachDefsOut(list, v);
+		if (v.isConstant())
+			return true;
+		else if (v instanceof Instruction)
+		{
+			Instruction inst = (Instruction)v;
+			return reachDefsOut(li.getLoopFor(inst.getParent()), inst);
+		}
+		else
+			return false;
 	}
 	/**
 	 * Performs a pattern matching on specified binary operation.
@@ -251,7 +240,7 @@ public final class InductionVarSimplify
 	 * find out a IVRecord by one value.
 	 * IfStmt there no found getReturnValue, then {@code null} will be returned.
 	 * Otherwise return the found IVRecord object.
-	 * @param inst
+	 * @param val
 	 * @return
 	 */
 	private IVRecord findBaseIVByValue(Value val)
@@ -259,8 +248,8 @@ public final class InductionVarSimplify
 		for (IVRecord record : inductionVars)
 		{
 			if (record.div.equals(val) && record.div.equals(record.biv)
-					&& record.factor.equals(Constant.CONSTANT_INT_1) 
-					&& record.diff.equals(Constant.CONSTANT_INT_0))
+					&& record.factor.equals(ConstantInt.get(record.factor.getType(), 1))
+					&& record.diff.equals(Constant.getNullValue(record.diff.getType())))
 			{
 				return record;
 			}
@@ -308,7 +297,7 @@ public final class InductionVarSimplify
 			if (iv != null)
 			{
 				inductionVars.add(new IVRecord(inst, iv.biv, 
-						op1.asConstant(), Constant.CONSTANT_INT_0));
+						op1.asConstant(), Constant.getNullValue(iv.biv.getType())));
 			}
 			/* 
 			 * 2#: attempting to inspect op2(called i) is a derived induction variable.
@@ -316,10 +305,15 @@ public final class InductionVarSimplify
 			 * outside of loop which reaches the j.
 			 */
 			else if ((iv = findDependentIVByValue(op2)) != null
-					&& !reachDefsOut(loop.blocks, op2))
+					&& !reachDefsOut(loop, (Instruction) op2))
 			{
-				Constant factor = Constant.multiple(op1.asConstant(), iv.factor);
-				Constant diff = Constant.multiple(op1.asConstant(), iv.diff);
+				Operator opcode = op1.getType().isFloatingPointType() ? Operator.FAdd :Operator.Add;
+				Constant factor = constantFoldBinaryInstruction(opcode, op1.asConstant(), iv.factor);
+
+				opcode = op1.getType().isFloatingPointType() ? Operator.FMul : Operator.Mul;
+				Constant diff = constantFoldBinaryInstruction(opcode, op1.asConstant(), iv.diff);
+				assert factor != null && diff != null;
+
 				inductionVars.add(new IVRecord(inst, op2, factor, diff));
 			}			
 			return true;
@@ -360,13 +354,15 @@ public final class InductionVarSimplify
 				if (inst.getOpcode().isAdd())
 				{
 					inductionVars.add(new IVRecord(inst, iv.biv, 
-							Constant.CONSTANT_INT_1, op1.asConstant()));
+							ConstantInt.get(iv.factor.getType() ,1),
+							op1.asConstant()));
 				}
 				else 
 				{
 					assert inst.getOpcode().isSub();
 					inductionVars.add(new IVRecord(inst, iv.biv, 
-							Constant.CONSTANT_INT_MINUS_1, op1.asConstant()));
+							Constant.getAllOnesValue(iv.factor.getType()),
+							op1.asConstant()));
 				}
 			}
 			/* 
@@ -375,9 +371,11 @@ public final class InductionVarSimplify
 			 * outside of loop which reaches the j.
 			 */
 			else if ((iv = findDependentIVByValue(op2)) != null
-					&& !reachDefsOut(loop.blocks, op2))
-			{		
-				Constant diff = Constant.add(op1.asConstant(), iv.diff);
+					&& !reachDefsOut(loop, (Instruction) op2))
+			{
+				Operator opcode = op1.getType().isFloatingPointType() ? Operator.FAdd : Operator.Add;
+				Constant diff = constantFoldBinaryInstruction(opcode, op1.asConstant(), iv.diff);
+				assert diff != null;
 				if (inst.getOpcode().isAdd())
 				{
 					inductionVars.add(new IVRecord(inst, op2, iv.factor, diff));
@@ -385,9 +383,15 @@ public final class InductionVarSimplify
 				else 
 				{
 					assert inst.getOpcode().isSub();
-					
-					Constant factor = Constant.sub(0, iv.factor);
-					diff = Constant.sub(op1.asConstant(), diff);
+					opcode = iv.factor.getType().isFloatingPointType() ?
+							Operator.FSub: Operator.Sub;
+					Constant factor = constantFoldBinaryInstruction(opcode,
+							ConstantInt.getFalse(), iv.factor);
+					assert factor != null;
+
+					opcode = diff.getType().isFloatingPointType() ? Operator.FSub : Operator.Sub;
+					diff = constantFoldBinaryInstruction(opcode, op1.asConstant(), diff);
+					assert diff != null;
 					
 					inductionVars.add(new IVRecord(inst, op2, factor, diff));
 				}		
@@ -411,8 +415,10 @@ public final class InductionVarSimplify
 		for (IVRecord r1 : inductionVars)
 		{
 			/** basic induction variable*/
-			if (r1.factor.value.equals(LIRConstant.INT_1) 
-					&& r1.diff.value.equals(LIRConstant.INT_0))
+			if (r1.factor instanceof ConstantInt
+				&& r1.diff instanceof ConstantInt
+				&& ((ConstantInt)r1.factor).getValue().eq(1)
+				&& ((ConstantInt)r1.diff).getValue().eq(0))
 			{
 				/**search derived induction variable which use above basic var.*/
         		for (IVRecord r2 : inductionVars)
@@ -429,11 +435,11 @@ public final class InductionVarSimplify
         				 * 						j = tj;
         				 * 						tj = tj + db;
         				 */
-        				LIRKind kind = r2.div.kind;
-        				AllocaInst tj = new AllocaInst(kind, Constant.forInt(1), "%tj");
-        				Instruction.AllocaInst db = new Instruction.AllocaInst(r2.factor.kind, Constant.forInt(1), "%db");
+        				Type kind = r2.div.getType();
+        				AllocaInst tj = new AllocaInst(kind, ConstantInt.getTrue(), "%tj");
+        				AllocaInst db = new AllocaInst(r2.factor.getType(), ConstantInt.getTrue(), "%db");
         				
-        				int i = r2.div.getParent().getID();
+        				int i = ((Instruction)r2.div).getParent().getID();
         				int j = ((Instruction)r2.div).id;
         				
         				/*
@@ -442,44 +448,46 @@ public final class InductionVarSimplify
         				 */
         				SRdone[i][j] = true;
         				/** db = d*b; */
-        				ArithmeticOp t1 = new ArithmeticOp(db.kind, 
-        						Operator.getMulByKind(db.kind), 
-        						r1.diff, r2.factor);
-        				StoreInst s1 = new Instruction.StoreInst(t1, db, "");
-        				Value[] insts = {t1, s1};
+        				Operator opcode = db.getType().isFloatingPointType() ? Operator.FMul:Operator.Mul;
+        				Op2 t1 = new Op2(db.getType(), opcode, r1.diff, r2.factor, "mul");
+        				StoreInst s1 = new StoreInst(t1, db, "store");
+        				Instruction[] insts = {t1, s1};
         				appendPreheader(insts, preheaderBB);
         				
         				/** tj=b*i */
-        				t1 = new ArithmeticOp(r2.factor.kind, 
-        						Operator.getMulByKind(r2.factor.kind), 
-        						r2.factor, r1.biv);
-        				s1 = new StoreInst(t1, tj, "");
-        				Value[] insts2 = {t1, s1};
+        				opcode = r2.factor.getType().isFloatingPointType() ? Operator.FMul:Operator.Mul;
+        				t1 = new Op2(r2.factor.getType(),
+        						opcode,
+        						r2.factor, r1.biv, "mul");
+        				s1 = new StoreInst(t1, tj, "store");
+        				Instruction[] insts2 = {t1, s1};
         				appendPreheader(insts2, preheaderBB);    
       
         				/** tj=tj+c */
-        				t1 = new ArithmeticOp(tj.kind, Operator.getAddByKind(tj.kind), tj, r2.diff);        				
+				        opcode = tj.getType().isFloatingPointType()?Operator.FAdd:Operator.Add;
+        				t1 = new Op2(tj.getType(), opcode, tj, r2.diff, opcode.opName);
         				s1 = new StoreInst(t1, tj, "");
-        				Value[] insts3 = {t1, s1};
+        				Instruction[] insts3 = {t1, s1};
         				appendPreheader(insts3, preheaderBB);
         				
         				/** tj=tj+db*/
-        				t1 = new ArithmeticOp(tj.kind, Operator.getAddByKind(tj.kind), tj, db);        				
+        				t1 = new Op2(tj.getType(), opcode, tj, db, opcode.opName);
         				s1 = new StoreInst(t1, tj, "");
-        				Value[] after = {t1, s1};
-        				insertAfter(r2.div, after);
+        				Instruction[] after = {t1, s1};
+        				insertAfter((Instruction) r2.div, after);
         				
         				/** replaces all uses of jth instruction by tj.*/
         				r2.div.replaceAllUsesWith(tj);
         				
         				/** remove the jth instruction from the basic block containing it.*/
-        				r2.div.eraseFromBasicBlock();
+        				((Instruction) r2.div).eraseFromBasicBlock();
         				
         				/** 
         				 * append tj to the class of induction variables based on i
         				 * with linear equation tj = b*i + c.
         				 */
-        				Constant factor = Constant.multiple(r1.factor, r2.factor); 
+        				opcode = r1.factor.getType().isFloatingPointType() ?Operator.FMul:Operator.Mul;
+        				Constant factor = constantFoldBinaryInstruction(opcode, r1.factor, r2.factor);
         				inductionVars.add(new IVRecord(tj, r1.biv, factor, r2.diff));        				        				        			
         			}        			
         		}
@@ -494,7 +502,7 @@ public final class InductionVarSimplify
 	 * @param preheader
 	 */
 	@SuppressWarnings("unused")
-    private void appendPreheader(Value inst, BasicBlock preheader)
+    private void appendPreheader(Instruction inst, BasicBlock preheader)
 	{
 		assert inst != null && preheader != null;
 		preheader.appendInst(inst);
@@ -503,13 +511,13 @@ public final class InductionVarSimplify
 	/**
 	 * Append an instruction have been removed from original basic block
 	 * into the last of preheader block.
-	 * @param inst
+	 * @param insts
 	 * @param preheader
 	 */
-	private void appendPreheader(Value[] insts, BasicBlock preheader)
+	private void appendPreheader(Instruction[] insts, BasicBlock preheader)
 	{
 		assert insts != null && preheader != null;
-		for (Value inst : insts)
+		for (Instruction inst : insts)
 			preheader.appendInst(inst);
 	}
 	/**
@@ -517,7 +525,7 @@ public final class InductionVarSimplify
 	 * @param target
 	 * @param after
 	 */
-	private void insertAfter(Value target, Value[] after)
+	private void insertAfter(Instruction target, Instruction[] after)
 	{
 		assert target != null && after!=null;	
 		// if the getArraySize of after is not greater zero, just immediately return.

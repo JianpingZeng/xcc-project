@@ -148,6 +148,37 @@ public abstract class Instruction extends User
 
     public void setOpcode(Operator op){opcode = op;}
 
+    public boolean mayHasSideEffects()
+    {
+        return mayWriteMemory();
+    }
+
+    public boolean mayWriteMemory()
+    {
+        switch (getOpcode())
+        {
+            case Store:
+                return true;
+            case Load:
+                return ((LoadInst)this).isVolatile;
+            default:
+                return false;
+        }
+    }
+
+    public boolean mayReadMemory()
+    {
+        switch (opcode)
+        {
+            default:
+                return false;
+            case Load:
+                return true;
+            case Store:
+                return ((StoreInst) this).isVolatile();
+        }
+    }
+
     /**
      * The abstract base class definition for unary operator.
      */
@@ -1548,6 +1579,13 @@ public abstract class Instruction extends User
             setOperand(0, ifTrue, this);
         }
 
+        public BranchInst(BasicBlock ifTrue, String name, Instruction insertBefore)
+        {
+            super(Operator.Br, name, insertBefore);
+            reserve(1);
+            setOperand(0, ifTrue, this);
+        }
+
         /**
          * Constructs a branch instruction.
          * <p>
@@ -1560,6 +1598,10 @@ public abstract class Instruction extends User
             this(ifTrue, (Instruction) null);
         }
 
+        public BranchInst(BasicBlock ifTrue, String name)
+        {
+            this(ifTrue, name, (Instruction) null);
+        }
         /**
          * BranchInst(BB* T, BB *F, Value *C, Inst *I) - 'br C, T, F', insert before I
          *
@@ -2195,7 +2237,7 @@ public abstract class Instruction extends User
         }
         public Value removeIncomingValue(BasicBlock bb)
         {
-            removeIncomingValue(bb, true);
+            return removeIncomingValue(bb, true);
         }
 
         public Value removeIncomingValue(BasicBlock bb, boolean deletePhiIfEmpty)
@@ -2365,6 +2407,8 @@ public abstract class Instruction extends User
      */
     public static class StoreInst extends Instruction
     {
+        private boolean aVolatile;
+
         /**
          * Constructs a new store instruction.
          *
@@ -2428,6 +2472,11 @@ public abstract class Instruction extends User
 
         @Override
         public void accept(InstVisitor visitor){}
+
+        public boolean isVolatile()
+        {
+            return aVolatile;
+        }
     }
 
     /**

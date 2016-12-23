@@ -921,6 +921,12 @@ public class PromoteMem2Reg extends FunctionPass
 		this.allocas.remove(inst);
 	}
 
+	@Override
+	public String getPassName()
+	{
+		return "Promotes memory variable to register";
+	}
+
 	/**
 	 * Packaged data used for rename pass.
 	 */

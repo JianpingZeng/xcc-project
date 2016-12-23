@@ -148,4 +148,9 @@ public final class DomTreeInfo extends FunctionPass
     {
         dt.eraseNode(bb);
     }
+
+    public DomTree getDomTree()
+    {
+        return dt;
+    }
 }

@@ -1,15 +1,16 @@
 package backend.opt;
 
 import backend.analysis.DomTree;
+import backend.analysis.DomTreeNodeBase;
 import backend.hir.BasicBlock;
+import backend.hir.SuccIterator;
+import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Pair;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
-
-import tools.Pair;
 
 /**
  * This file defines a helpful method for obtains the reverse dominator frontier
@@ -17,32 +18,31 @@ import tools.Pair;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class RDF
+public final class RDF
 {
-
-	private static HashMap<DomTree.DomTreeNode, Integer> DomLevels
-			= new HashMap<>();
+	private static TObjectIntHashMap<DomTreeNodeBase<BasicBlock>> domLevels
+			= new TObjectIntHashMap<>();
 	/**
 	 * This method used to initialize a map that maps dominator tree node
 	 * into it's depth level in the Dominator tree.
 	 */
-	private static void init(DomTree DT)
+	private static void init(DomTree dt)
 	{
-		if (DomLevels.isEmpty())
+		if (domLevels.isEmpty())
 		{
-			LinkedList<DomTree.DomTreeNode> worklist
+			LinkedList<DomTreeNodeBase<BasicBlock>> worklist
 					= new LinkedList<>();
-			DomTree.DomTreeNode root = DT.getRootNode();
+			DomTreeNodeBase<BasicBlock> root = dt.getRootNode();
 			worklist.addLast(root);
-			DomLevels.put(root, 0);
+			domLevels.put(root, 0);
 			while (!worklist.isEmpty())
 			{
-				DomTree.DomTreeNode pop = worklist.removeLast();
-				int N = DomLevels.get(pop);
+				DomTreeNodeBase<BasicBlock> pop = worklist.removeLast();
+				int N = domLevels.get(pop);
 
-				for (DomTree.DomTreeNode child : pop.getChildren())
+				for (DomTreeNodeBase<BasicBlock> child : pop.getChildren())
 				{
-					DomLevels.put(child, N + 1);
+					domLevels.put(child, N + 1);
 					worklist.addLast(child);
 				}
 			}
@@ -54,37 +54,37 @@ public class RDF
 	 * @param entry    The basic block computed reverse dominator frontier.
 	 * @return  The reverse dominator frontier set.
 	 */
-	public static LinkedList<BasicBlock> run(DomTree DT, BasicBlock entry)
+	public static LinkedList<BasicBlock> run(DomTree dt, BasicBlock entry)
 	{
 		LinkedList<BasicBlock> rdf = new LinkedList<>();
 
-		init(DT);
+		init(dt);
 
 		// 使用一个优先级队列，按照在支配树中的层次，越深的结点放在前面
-		PriorityQueue<Pair<DomTree.DomTreeNode, Integer>> PQ
+		PriorityQueue<Pair<DomTreeNodeBase<BasicBlock>, Integer>> PQ
 				= new PriorityQueue<>(32,
-				new Comparator<Pair<DomTree.DomTreeNode, Integer>>()
+				new Comparator<Pair<DomTreeNodeBase<BasicBlock>, Integer>>()
 				{
 					@Override
-					public int compare(Pair<DomTree.DomTreeNode, Integer>
-							o1, Pair<DomTree.DomTreeNode, Integer> o2)
+					public int compare(Pair<DomTreeNodeBase<BasicBlock>, Integer>
+							o1, Pair<DomTreeNodeBase<BasicBlock>, Integer> o2)
 					{
 						return -1;
 					}
 				});
 
-		DomTree.DomTreeNode root = DT.getTreeNodeForBlock(entry);
-		PQ.add(new Pair<>(root, DomLevels.get(root)));
+		DomTreeNodeBase<BasicBlock> root = dt.getTreeNodeForBlock(entry);
+		PQ.add(new Pair<>(root, domLevels.get(root)));
 
-		LinkedList<DomTree.DomTreeNode> worklist = new LinkedList<>();
-		HashSet<DomTree.DomTreeNode> visited = new HashSet<>(32);
+		LinkedList<DomTreeNodeBase<BasicBlock>> worklist = new LinkedList<>();
+		HashSet<DomTreeNodeBase<BasicBlock>> visited = new HashSet<>(32);
 
 		// 从在支配树中最底层的定义块开始向上一个一个的遍历，
 		// 在每个基本块的支配边界中放入Phi结点。
 		while (!PQ.isEmpty())
 		{
-			Pair<DomTree.DomTreeNode, Integer> rootPair = PQ.poll();
-			DomTree.DomTreeNode rootNode = rootPair.first;
+			Pair<DomTreeNodeBase<BasicBlock>, Integer> rootPair = PQ.poll();
+			DomTreeNodeBase<BasicBlock> rootNode = rootPair.first;
 			int rootLevel = rootPair.second;
 
 			worklist.clear();
@@ -92,13 +92,14 @@ public class RDF
 
 			while (!worklist.isEmpty())
 			{
-				DomTree.DomTreeNode Node = worklist.removeLast();
+				DomTreeNodeBase<BasicBlock> Node = worklist.removeLast();
 				BasicBlock curr = Node.getBlock();
 
-				for (BasicBlock succ : curr.getSuccs())
+				for (SuccIterator itr = curr.succIterator(); itr.hasNext();)
 				{
-					DomTree.DomTreeNode succNode =
-							DT.getTreeNodeForBlock(succ);
+					BasicBlock succ = itr.next();
+					DomTreeNodeBase<BasicBlock> succNode =
+							dt.getTreeNodeForBlock(succ);
 
 					// 跳过所有succ块所支配的的块
 					if (succNode.getIDom() == Node)
@@ -106,7 +107,7 @@ public class RDF
 
 					// skips those dominator tree nodes whose depth level
 					// is greater than root's level.
-					int succLevel = DomLevels.get(succNode);
+					int succLevel = domLevels.get(succNode);
 					if (succLevel > rootLevel)
 						continue;
 
@@ -117,7 +118,7 @@ public class RDF
 					rdf.add(succ);
 				}// end for successor
 
-				for (DomTree.DomTreeNode domNode : Node)
+				for (DomTreeNodeBase<BasicBlock> domNode : Node)
 					if (!visited.contains(domNode))
 						worklist.addLast(domNode);
 			}
