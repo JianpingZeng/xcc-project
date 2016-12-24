@@ -8,10 +8,7 @@ import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.ListIterator;
+import java.util.*;
 
 /**
  * Represents a basic block in the quad intermediate representation. Basic
@@ -128,6 +125,58 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	{
 		int num = getNumPredecessors();
 		return num == 1 ? predAt(0) : null;
+	}
+
+	/**
+	 * Unlink this basic block from its current function and insert it into the
+	 * function that movePos resides, right after movePos.
+	 * @param movePos
+	 */
+	public void moveAfter(BasicBlock movePos)
+	{
+		List<BasicBlock> list = movePos.getParent().getBasicBlockList();
+		int idx = list.indexOf(movePos);
+		ArrayList<BasicBlock> removed = new ArrayList<>();
+		LinkedList<BasicBlock> self = getParent().getBasicBlockList();
+		for (int i = self.indexOf(this), e = self.size(); i < e;i++)
+		{
+			removed.add(self.remove(i));
+		}
+		list.addAll(idx, removed);
+	}
+
+	/**
+	 * Unlink this basic block from its current function and insert it into the
+	 * function that movePos resides, right before movePos.
+	 * @param movePos
+	 */
+	public void moveBefore(BasicBlock movePos)
+	{
+		List<BasicBlock> list = movePos.getParent().getBasicBlockList();
+		int idx = list.indexOf(movePos);
+		ArrayList<BasicBlock> removed = new ArrayList<>();
+		LinkedList<BasicBlock> self = getParent().getBasicBlockList();
+		for (int i = self.indexOf(this), e = self.size(); i < e;i++)
+		{
+			removed.add(self.remove(i));
+		}
+		list.addAll(--idx, removed);
+	}
+
+	public boolean hasSuccessor(BasicBlock succ)
+	{
+		for (SuccIterator itr = succIterator(); itr.hasNext();)
+			if (itr.next() == succ)
+				return true;
+		return false;
+	}
+
+	public boolean hasPredecessor(BasicBlock pred)
+	{
+		for (PredIterator<BasicBlock> itr = predIterator(); itr.hasNext();)
+			if (itr.next() == pred)
+				return true;
+		return false;
 	}
 
 	public enum BlockFlag

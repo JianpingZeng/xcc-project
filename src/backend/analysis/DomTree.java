@@ -632,4 +632,188 @@ public final class DomTree
         domTreeNodes.remove(bb, node);
         iDoms.remove(bb);
     }
+
+	/**
+	 * newBB is split and now it has one successor.
+	 * Update the dominator tree to reflect this effect.
+	 * @param newBB
+	 */
+    public void splitBlock(BasicBlock newBB)
+    {
+		if (isPostDominators)
+		{
+			ArrayList<BasicBlock> preds = new ArrayList<>();
+			for (PredIterator<BasicBlock> itr = newBB.predIterator();itr.hasNext();)
+				preds.add(itr.next());
+			splitPostDom(preds, newBB);
+		}
+		else
+		{
+			ArrayList<BasicBlock> succs = new ArrayList<>();
+			for (SuccIterator itr = newBB.succIterator();itr.hasNext();)
+				succs.add(itr.next());
+			splitDom(succs, newBB);
+		}
+    }
+
+    private void splitDom(ArrayList<BasicBlock> succs, BasicBlock newBB)
+    {
+		assert succs.size() == 1 :"newBB must have a single successor";
+
+		BasicBlock succ = succs.get(0);
+
+		ArrayList<BasicBlock> preds = new ArrayList<>();
+		for (PredIterator<BasicBlock> itr = newBB.predIterator(); itr.hasNext();)
+			preds.add(itr.next());
+
+		assert !preds.isEmpty() :"No predecessors block!";
+
+		boolean newBBDominatesSucc = true;
+		for (PredIterator<BasicBlock> succPredItr = succ.predIterator();
+		     succPredItr.hasNext();)
+		{
+			BasicBlock p = succPredItr.next();
+			if (p != newBB && !dominates(succ, p)
+					&& isReachableFromEntry(p))
+			{
+				newBBDominatesSucc = false;
+				break;
+			}
+		}
+
+		// Find newBB's immediate dominator and create new dominator tree node
+	    // for newBB.
+	    BasicBlock newBBIDom = null;
+		int i = 0;
+		for (; i < preds.size(); i++)
+		{
+			if (isReachableFromEntry(preds.get(i)))
+			{
+				newBBIDom = preds.get(i);
+				break;
+			}
+		}
+
+	    // It's possible that none of the predecessors of NewBB are reachable;
+	    // in that case, NewBB itself is unreachable, so nothing needs to be
+	    // changed.
+		if (newBBIDom == null)
+			return;
+
+		for (i += 1; i < preds.size(); i++)
+		{
+			if (isReachableFromEntry(preds.get(i)))
+				newBBIDom = findNearestCommonDominator(newBB, preds.get(i));
+		}
+
+		// Create a new dominator tree node, and set it as the idom of newBB.
+	    DomTreeNodeBase<BasicBlock> newBBNode = addNewBlock(newBB, newBBIDom);
+
+	    // If newBB strictly dominates other blocks, then it is now the immediate
+	    // dominator of cucc.  Update the dominator tree as appropriate.
+		if (newBBDominatesSucc)
+		{
+			DomTreeNodeBase<BasicBlock> newBBSuccNode = getTreeNodeForBlock(succ);
+			changeIDom(newBBSuccNode, newBBNode);
+		}
+    }
+
+    private void splitPostDom(ArrayList<BasicBlock> preds, BasicBlock newBB)
+    {
+	    assert preds.size() == 1 :"newBB must have a single predecessor";
+
+	    BasicBlock pred = preds.get(0);
+
+	    ArrayList<BasicBlock> succs = new ArrayList<>();
+	    for (SuccIterator itr = newBB.succIterator(); itr.hasNext();)
+		    succs.add(itr.next());
+
+	    assert !succs.isEmpty() :"No successors block!";
+
+	    boolean newBBDominatesSucc = true;
+	    for (SuccIterator itr = pred.succIterator(); itr.hasNext();)
+	    {
+		    BasicBlock succ = itr.next();
+		    if (succ != newBB && !dominates(pred, succ)
+				    && isReachableFromEntry(succ))
+		    {
+			    newBBDominatesSucc = false;
+			    break;
+		    }
+	    }
+
+	    // Find newBB's immediate dominator and create new dominator tree node
+	    // for newBB.
+	    BasicBlock newBBIDom = null;
+	    int i = 0;
+	    for (; i < succs.size(); i++)
+	    {
+		    if (isReachableFromEntry(succs.get(i)))
+		    {
+			    newBBIDom = succs.get(i);
+			    break;
+		    }
+	    }
+
+	    // It's possible that none of the predecessors of NewBB are reachable;
+	    // in that case, NewBB itself is unreachable, so nothing needs to be
+	    // changed.
+	    if (newBBIDom == null)
+		    return;
+
+	    for (i += 1; i < succs.size(); i++)
+	    {
+		    if (isReachableFromEntry(succs.get(i)))
+			    newBBIDom = findNearestCommonDominator(newBB, succs.get(i));
+	    }
+
+	    // Create a new dominator tree node, and set it as the idom of newBB.
+	    DomTreeNodeBase<BasicBlock> newBBNode = addNewBlock(newBB, newBBIDom);
+
+	    // If newBB strictly dominates other blocks, then it is now the immediate
+	    // dominator of cucc.  Update the dominator tree as appropriate.
+	    if (newBBDominatesSucc)
+	    {
+		    DomTreeNodeBase<BasicBlock> newBBSuccNode = getTreeNodeForBlock(pred);
+		    changeIDom(newBBSuccNode, newBBNode);
+	    }
+    }
+
+	/**
+	 * Add a new node to the dominator tree information.  This
+	 * creates a new node as a child of DomBB dominator node,linking it into
+	 * the children list of the immediate dominator.
+	 * @param bb
+	 * @param idom
+	 * @return
+	 */
+	public DomTreeNodeBase<BasicBlock> addNewBlock(BasicBlock bb, BasicBlock idom)
+    {
+		assert getTreeNodeForBlock(bb) == null :"Block already in dominator tree";
+		DomTreeNodeBase<BasicBlock> idomNode = getTreeNodeForBlock(idom);
+		assert idomNode != null :"Not immediate dominator specified for block!";
+		return domTreeNodes.put(bb, idomNode.addChidren(new DomTreeNodeBase<>(bb, idomNode)));
+    }
+
+	/**
+	 * Updates the dominator tree information when immediate dominator node changes.
+	 * @param oldIDom
+	 * @param newIDom
+	 */
+    public void changeIDom(DomTreeNodeBase<BasicBlock> oldIDom,
+		    DomTreeNodeBase<BasicBlock> newIDom)
+    {
+		assert oldIDom != null && newIDom != null :"Cannot change null node";
+		oldIDom.setIDom(newIDom);
+    }
+
+	/**
+	 * Updates the dominator tree information when immediate dominator node changes.
+	 * @param oldIDomBB
+	 * @param newIDomBB
+	 */
+	public void changeIDom(BasicBlock oldIDomBB, BasicBlock newIDomBB)
+    {
+		changeIDom(getTreeNodeForBlock(oldIDomBB), getTreeNodeForBlock(newIDomBB));
+    }
 }
