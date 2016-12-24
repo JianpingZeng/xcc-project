@@ -100,4 +100,25 @@ public abstract class User extends Value
     {
         usesList.clear();
     }
+
+    /**
+     * Replace all references to the {@code from} with reference to the {@code to}.
+     * @param from
+     * @param to
+     */
+    public void replaceUsesOfWith(Value from, Value to)
+    {
+        if (from == to)return;
+
+        assert !(this instanceof Constant) || (this instanceof GlobalValue)
+                :"Cannot call User.replaceUsesOfWith() on a constant";
+
+        for (int i = 0, e = getNumOfOperands(); i < e; i++)
+        {
+            if (operand(i) == from)
+            {
+                setOperand(i, to, this);
+            }
+        }
+    }
 }

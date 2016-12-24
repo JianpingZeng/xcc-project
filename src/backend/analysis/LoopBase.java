@@ -51,6 +51,11 @@ public abstract class LoopBase<BlockT, LoopT>
      */
     protected ArrayList<LoopT> subLoops;
 
+    protected LoopBase()
+    {
+        blocks = new LinkedList<BlockT>();
+        subLoops = new ArrayList<>();
+    }
     protected LoopBase(BlockT block)
     {
         assert block!= null;
@@ -200,10 +205,10 @@ public abstract class LoopBase<BlockT, LoopT>
         return outerLoop;
     }
 
-    public void removeChildLoop(int index)
+    public LoopT removeChildLoop(int index)
     {
         assert index>= 0 && index < subLoops.size();
-        subLoops.remove(index);
+        return subLoops.remove(index);
     }
 
     public void addBlockEntry(BlockT bb)

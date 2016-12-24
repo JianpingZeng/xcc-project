@@ -153,4 +153,43 @@ public final class DomTreeInfo extends FunctionPass
     {
         return dt;
     }
+
+    /**
+     * newBB is split and now it has one successor.
+     * Update the dominator tree to reflect this effect.
+     * @param newBB
+     */
+    public void splitBlock(BasicBlock newBB)
+    {
+        dt.splitBlock(newBB);
+    }
+
+    public boolean isReachableFromEntry(BasicBlock bb)
+    {
+        return dt.isReachableFromEntry(bb);
+    }
+
+    /**
+     * Add a new node to the dominator tree. This create a new dominator node
+     * as the child of domBB node, linking it into the children list of immediate
+     * dominator.
+     * @param bb
+     * @param domBB
+     * @return
+     */
+    public DomTreeNodeBase<BasicBlock> addNewBlock(BasicBlock bb, BasicBlock domBB)
+    {
+        return dt.addNewBlock(bb, domBB);
+    }
+
+    public void changeIDom(BasicBlock block, BasicBlock newIDom)
+    {
+        dt.changeIDom(block, newIDom);
+    }
+
+    public void changeIDom(DomTreeNodeBase<BasicBlock> node,
+            DomTreeNodeBase<BasicBlock> newIDom)
+    {
+        dt.changeIDom(node, newIDom);
+    }
 }

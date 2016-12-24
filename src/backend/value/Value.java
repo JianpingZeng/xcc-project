@@ -3,12 +3,11 @@ package backend.value;
 import backend.hir.BasicBlock;
 import backend.hir.InstVisitor;
 import backend.hir.SuccIterator;
-import backend.lir.ci.LIRConstant;
-import backend.lir.ci.LIRKind;
-import backend.lir.ci.LIRValue;
 import backend.type.Type;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * @author xlous.zeng
@@ -16,17 +15,6 @@ import java.util.*;
  */
 public class Value implements Cloneable
 {
-	/**
-	 * The frontend.type of inst produced with this instruction. The kind is
-	 * {@linkplain LIRKind#Void} if this instruction produce no inst.
-	 */
-	public LIRKind kind;
-
-	/**
-	 * Machine specific.
-	 */
-	public LIRValue LIROperand;
-
 	/**
 	 * Obtains the getName of variable. it is null for other instruction.
 	 *
@@ -69,7 +57,7 @@ public class Value implements Cloneable
 	 */
 	public boolean valueEqual(Value value)
 	{
-		return this.kind == value.kind && LIROperand.equals(value.LIROperand);
+		return false;
 	}
 	
 	/**
@@ -81,7 +69,7 @@ public class Value implements Cloneable
 	{
 		assert newValue != null
 				: "Instruction.replaceAllusesWith(<null>) is invalid.";
-		assert kind == newValue.kind
+		assert getType() == newValue.getType()
                 : "replaceAllUses of value with new value of different frontend.type";
 
 		// replaces all old uses with new one.
@@ -182,19 +170,6 @@ public class Value implements Cloneable
 	public void accept(InstVisitor visitor){}
 
 	public boolean isConstant(){return this instanceof Constant;}
-
-	/**
-	 * Converts the instance of this class to a constants if this class
-	 * is the subclass of {@code Constant}, otherwise, the null is returned.
-	 * @return
-	 */
-	public LIRConstant asLIRConstant()
-	{
-		if (this instanceof Constant)
-			return ((Constant)this).value;
-		else
-			return null;
-	}
 	
 	public Constant asConstant()
 	{
@@ -204,33 +179,9 @@ public class Value implements Cloneable
 			return null;
 	}
 
-	public void setLIROperand(LIRValue LIROperand)
-	{
-		assert this.LIROperand.isIllegal() :
-				"LIROperand can not be setted twice";
-		assert LIROperand != null && LIROperand.isLegal() :
-				"LIROperand must be legal";
-		assert LIROperand.kind != this.kind;
-		this.LIROperand = LIROperand;
-	}
-
-	/**
-	 * Obtains the corresponding machine-specific operation getReturnValue of this instruction.
-	 * @return
-	 */
-	public LIRValue LIROperand()
-	{
-		return LIROperand;
-	}
-
-	public void clearLIROperand()
-	{
-		this.LIROperand = LIRValue.IllegalValue;
-	}
-
 	public final boolean isNullConstant()
 	{
-		return this instanceof Constant && ((Constant) this).value.isNull();
+		return (this instanceof Constant) && ((Constant) this).isNullValue();
 	}
 	
 	@Override
@@ -266,16 +217,16 @@ public class Value implements Cloneable
 
 		/**
 		 * A static factory method for obtaining a instance of typed specified
-		 * @param kind
+		 * @param ty
 		 * @return
 		 */
-		public static UndefValue get(Type kind)
+		public static UndefValue get(Type ty)
 		{
-		    UndefValue val = undefValueConstants.get(kind);
+		    UndefValue val = undefValueConstants.get(ty);
             if (val != null)
                 return val;
 
-            return undefValueConstants.put(kind, new UndefValue(kind));
+            return undefValueConstants.put(ty, new UndefValue(ty));
 		}
 
 		public UndefValue clone() {return new UndefValue(getType());}

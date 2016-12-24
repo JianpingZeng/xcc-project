@@ -30,6 +30,8 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 		super(block);
 	}
 
+	public Loop() {super();}
+
 	/**
 	 * Return true if the specified value is loop-invariant.
 	 * @param val
@@ -285,4 +287,3 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 		print(System.err, 0);
 	}
 }
-
