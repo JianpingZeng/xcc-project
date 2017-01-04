@@ -1,4 +1,4 @@
-package backend.hir;
+/*package backend.hir;
 
 import backend.analysis.DomTree;
 import backend.value.Instruction;
@@ -13,43 +13,43 @@ import java.util.*;
  * </p>
  * @author Xlous.zeng
  * @version 0.1
- */
+ *
 public class ComputeLinearScanOrder
 {
 	/**
 	 * The maximun block id at given cfg.
-	 */
+	 *
 	private final int maxBlockID;
 	/**
 	 * The corresponding dominator tree.
-	 */
+	 *
 	private final DomTree DT;
 	/**
 	 * A bit set whose element determines whether specified block is visited or not.
-	 */
+	 *
 	private BitSet visitedBlocks;
 	/**
 	 * A bit set whose element determines whether specified block is active or not.
-	 */
+	 *
 	private BitSet activeBlocks;
 	/**
 	 * A stack simulated by LinkedList that used for explicitly recursively
 	 * traverse CFG.
-	 */
+	 *
 
 	private LinkedList<BasicBlock> workList;
 	/**
 	 * The list where all block stores in linear scanning order.
-	 */
+	 *
 	private ArrayList<BasicBlock> linearScanOrder;
 	/**
 	 * An array of which every element is represented as the numbers of incoming
 	 * forward edge of block.
-	 */
+	 *
 	private int[] forwardBranches;
 	/**
 	 * The numbers of loop in the current CFG starts at entry.
-	 */
+	 *
 	private int numLoops;
 
 	private int numBlocks;
@@ -58,7 +58,7 @@ public class ComputeLinearScanOrder
 
 	/**
 	 * A list of all loop end block collected during traverse recursively.
-	 */
+	 *
 	private List<BasicBlock> loopEndBlocks;
 
 	/**
@@ -67,7 +67,7 @@ public class ComputeLinearScanOrder
 	 * @param maxBlockID The max block id of block of this cfg.
 	 * @param entry      The entry of this control flow graph.
 	 * @param DT         The dominator tree corresponding to this control flow graph.
-	 */
+	 *
 	public ComputeLinearScanOrder(int maxBlockID, BasicBlock entry,
 			DomTree DT)
 	{
@@ -440,7 +440,7 @@ public class ComputeLinearScanOrder
 	 * such loops are ignored
 	 *
 	 * @param entry
-	 */
+	 *
 	private void clearNonNatureLoops(BasicBlock entry)
 	{
 		for (int idx = numLoops - 1; idx >= 0; idx--)
@@ -480,7 +480,7 @@ public class ComputeLinearScanOrder
 	 *
 	 * @param start
 	 * @param parent
-	 */
+	 *
 	private void countEdges(BasicBlock start, BasicBlock parent)
 	{
 		// Depth first traverse this cfg.
@@ -635,3 +635,4 @@ public class ComputeLinearScanOrder
 		return numLoops;
 	}
 }
+*/
