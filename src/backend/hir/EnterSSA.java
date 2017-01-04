@@ -1,4 +1,4 @@
-package backend.hir;
+/*package backend.hir;
 
 import java.util.ArrayList;
 import java.util.ListIterator;
@@ -24,14 +24,14 @@ import frontend.exception.MemoryPromoteError;
  * the same function.
  * </p>
  * @author Xlous.zeng.
- */
+ *
 public class EnterSSA
 {
 	private Function m;
 
 	/**
 	 * Statistics the number of alloca instruction has been promoted finished.
-	 */
+	 *
 	private int NumPromoted = 0;
 
 	public EnterSSA(Function m)
@@ -91,7 +91,7 @@ public class EnterSSA
 	 * made to the IR.
 	 * @param allocas
 	 * @param DT
-	 */
+	 *
 	private void promoteToReg(ArrayList<Instruction.AllocaInst> allocas, DomTree DT)
 	{
 		if (allocas.isEmpty())
@@ -526,5 +526,6 @@ public class EnterSSA
 
 		}
 	}
-	**/
+	**
 }
+*/

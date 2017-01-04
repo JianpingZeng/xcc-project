@@ -59,7 +59,7 @@ public class CallSite
 	public void setCalledFunction(Value v)
 	{
 		assert inst!= null:"Not a call inst";
-		inst.setOperand(0, v);
+		inst.setOperand(0, v, inst);
 	}
 
 	public Value getArgument(int idx)
@@ -74,7 +74,7 @@ public class CallSite
 		assert inst!= null:"Not a call inst";
 		assert idx + ArgumentOffset >=1 && idx + 1 < inst.getNumsOfArgs()
 				:"Argument # out of range!";
-		inst.setOperand(idx + ArgumentOffset, newVal);
+		inst.setOperand(idx + ArgumentOffset, newVal, inst);
 	}
 
 	// Returns the operand number of the first argument

@@ -33,7 +33,7 @@ public class BinaryConstantExpr extends ConstantExpr
     {
         super(c1.getType(), opcode);
         reserve(2);
-        setOperand(0, c1);
-        setOperand(1, c2);
+        setOperand(0, c1, this);
+        setOperand(1, c2, this);
     }
 }

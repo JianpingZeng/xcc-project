@@ -1,16 +1,14 @@
 package backend.value;
 
-import backend.analysis.DomTree;
 import backend.codegen.MachineFunction;
-import backend.hir.*;
-import backend.analysis.Loop;
+import backend.hir.BasicBlock;
+import backend.hir.Module;
 import backend.type.FunctionType;
 import backend.type.Type;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 
 /**
  * This class is representation at the Module(high-level IR) of a function or method.
@@ -19,14 +17,6 @@ import java.util.List;
  */
 public class Function extends GlobalValue implements Iterable<BasicBlock>
 {
-	private Loop[] loops;
-
-	/**
-	 * An control flow graph corresponding to method compound 
-	 * of this method declaration. 
-	 */
-	public ControlFlowGraph cfg;
-
 	/**
 	 * For the function return value, it is null iff there is no return value
 	 * of this function.
@@ -39,7 +29,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
 	private MachineFunction mf;
 	
-	public Function(FunctionType ty, LinkageType linkage, String name, Module parentModule)
+	public Function(FunctionType ty, LinkageType linkage,
+            String name, Module parentModule)
     {
 	    super(ty, ValueKind.FunctionVal, linkage, name);
 		if (parentModule != null)
@@ -59,7 +50,10 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 		return getFunctionType().getReturnType();
 	}
 
-    public FunctionType getFunctionType() { return (FunctionType) super.getType().getElemType(); }
+    public FunctionType getFunctionType()
+    {
+        return (FunctionType) super.getType().getElemType();
+    }
 
     public boolean isVarArg()
     {
@@ -83,31 +77,12 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
         return argumentList;
     }
 
-	public void setLoops(Loop[] loops)
-	{
-		assert loops != null && loops.length > 0;
-		this.loops = loops;
-	}
-	
-	public Loop[] getLoops()
-	{
-		return loops;
-	}
-
 	/**
 	 * Gets the entry block of the CFG of this function.
 	 */
 	public BasicBlock getEntryBlock()
 	{
 		return basicBlockList.getFirst();
-	}
-
-	/**
-	 * Gets the entry block of the CFG of this function.
-	 */
-	public BasicBlock getExitBlock()
-	{
-		return this.cfg.exit();
 	}
 
 	/**
@@ -118,28 +93,13 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	@Override
 	public Iterator<BasicBlock> iterator()
 	{
-		return this.cfg.reversePostOrder().iterator();
+		return basicBlockList.iterator();
 	}
 
-	/**
-	 * Returns the linear scanning order of basic block at the CFG of function.
-	 *
-	 * Have not finished up to the date.
-	 * @return
-	 */
-	public List<BasicBlock> linearScanOrder()
-	{
-		DomTree DT = new DomTree(false, this);
-		DT.recalculate();
-		return cfg.linearScanOrder(DT);
-	}
-
-	public int numLoops()
-	{
-		return cfg.stats.loopCount;
-	}
-
-    public LinkedList<BasicBlock> getBasicBlockList() { return basicBlockList;}
+    public LinkedList<BasicBlock> getBasicBlockList()
+    {
+        return basicBlockList;
+    }
 
     public boolean empty()
     {
