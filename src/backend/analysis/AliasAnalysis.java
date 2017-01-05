@@ -195,7 +195,7 @@ public interface AliasAnalysis
 
     /**
      * This struct is used to return results for pointers,
-     * /// globals, and the return value of a function.
+     * globals, and the return value of a function.
      */
     class PointerAccessInfo
     {
@@ -213,9 +213,9 @@ public interface AliasAnalysis
         /**
          * Specific fine-grained access information for the argument.
          * If none of these classifications is general enough, the
-         * getModRefBehavior method should not return AccessesArguments*.  If a
-         * record is not returned for a particular argument, the argument is never
-         * dead and never dereferenced.
+         * getModRefBehavior method should not return AccessesArguments.
+         * If a record is not returned for a particular argument, the argument
+         * is never dead and never dereferenced.
          */
         enum AccessType
         {
@@ -229,8 +229,6 @@ public interface AliasAnalysis
              */
             ArrayAccess,
 
-            /// ElementAccess ?? P->f only?
-
             /**
              * Indirect calls are made through the specified function pointer.
              */
@@ -238,7 +236,13 @@ public interface AliasAnalysis
         }
     }
 
-    /// getModRefBehavior - Return the behavior when calling the given call site.
+    /**
+     * Return the behavior when calling the given call site.
+     *
+     * @param cs
+     * @param info
+     * @return
+     */
     ModRefBehavior getModRefBehavior(CallSite cs,
             ArrayList<PointerAccessInfo> info);
 
@@ -247,8 +251,14 @@ public interface AliasAnalysis
         return getModRefBehavior(cs, null);
     }
 
-    /// getModRefBehavior - Return the behavior when calling the given function.
-    /// For use when the call site is not known.
+    /**
+     * Return the behavior when calling the given function.
+     * For use when the call site is not known.
+     *
+     * @param f
+     * @param info
+     * @return
+     */
     ModRefBehavior getModRefBehavior(Function f,
             ArrayList<PointerAccessInfo> info);
 
@@ -257,78 +267,86 @@ public interface AliasAnalysis
         return getModRefBehavior(f, null);
     }
 
-    /// doesNotAccessMemory - If the specified call is known to never read or
-    /// write memory, return true.  If the call only reads from known-constant
-    /// memory, it is also legal to return true.  Calls that unwind the stack
-    /// are legal for this predicate.
-    ///
-    /// Many optimizations (such as CSE and LICM) can be performed on such calls
-    /// without worrying about aliasing properties, and many calls have this
-    /// property (e.g. calls to 'sin' and 'cos').
-    ///
-    /// This property corresponds to the GCC 'const' attribute.
-    ///
+    /**
+     * If the specified call is known to never read or
+     * write memory, return true.  If the call only reads from known-constant
+     * memory, it is also legal to return true.  Calls that unwind the stack
+     * are legal for this predicate.
+     * <p>
+     * Many optimizations (such as CSE and LICM) can be performed on such calls
+     * without worrying about aliasing properties, and many calls have this
+     * property (e.g. calls to 'sin' and 'cos').
+     * <p>
+     * This property corresponds to the GCC 'const' attribute.
+     */
     default boolean doesNotAccessMemory(CallSite cs)
     {
         return getModRefBehavior(cs) == DoesNotAccessMemory;
     }
 
-    /// doesNotAccessMemory - If the specified function is known to never read or
-    /// write memory, return true.  For use when the call site is not known.
-    ///
+    /**
+     * If the specified function is known to never read or
+     * write memory, return true.  For use when the call site is not known.
+     */
     default boolean doesNotAccessMemory(Function f)
     {
         return getModRefBehavior(f) == DoesNotAccessMemory;
     }
 
-    /// onlyReadsMemory - If the specified call is known to only read from
-    /// non-volatile memory (or not access memory at all), return true.  Calls
-    /// that unwind the stack are legal for this predicate.
-    ///
-    /// This property allows many common optimizations to be performed in the
-    /// absence of interfering store instructions, such as CSE of strlen calls.
-    ///
-    /// This property corresponds to the GCC 'pure' attribute.
-    ///
+    /**
+     * If the specified call is known to only read from non-volatile memory
+     * (or not access memory at all), return true.  Calls that unwind the stack
+     * are legal for this predicate.
+     * <p>
+     * This property allows many common optimizations to be performed in the
+     * absence of interfering store instructions, such as CSE of strlen calls.
+     * <p>
+     * This property corresponds to the GCC 'pure' attribute.
+     */
     default boolean onlyReadsMemory(CallSite cs)
     {
         ModRefBehavior MRB = getModRefBehavior(cs);
         return MRB == DoesNotAccessMemory || MRB == OnlyReadsMemory;
     }
 
-    /// onlyReadsMemory - If the specified function is known to only read from
-    /// non-volatile memory (or not access memory at all), return true.  For use
-    /// when the call site is not known.
-    ///
+    /**
+     * If the specified function is known to only read from non-volatile memory
+     * (or not access memory at all), return true.  For use when the call site
+     * is not known.
+     */
     default boolean onlyReadsMemory(Function f)
     {
         ModRefBehavior MRB = getModRefBehavior(f);
         return MRB == DoesNotAccessMemory || MRB == OnlyReadsMemory;
     }
 
-    /// getModRefInfo - Return information about whether or not an instruction may
-    /// read or write memory specified by the pointer operand.  An instruction
-    /// that doesn't read or write memory may be trivially LICM'd for example.
-
-    /// getModRefInfo (for call sites) - Return whether information about whether
-    /// a particular call site modifies or reads the memory specified by the
-    /// pointer.
-    ///
+    /**
+     * Return information about whether or not an instruction may
+     * read or write memory specified by the pointer operand.  An instruction
+     * that doesn't read or write memory may be trivially LICM'd for example.
+     * <p>
+     * getModRefInfo (for call sites) - Return whether information about whether
+     * a particular call site modifies or reads the memory specified by the
+     * pointer.
+     */
     ModRefResult getModRefInfo(CallSite cs, Value P, int Size);
 
-    /// getModRefInfo - Return information about whether two call sites may refer
-    /// to the same set of memory locations.  This function returns NoModRef if
-    /// the two calls refer to disjoint memory locations, Ref if CS1 reads memory
-    /// written by CS2, Mod if CS1 writes to memory read or written by CS2, or
-    /// ModRef if CS1 might read or write memory accessed by CS2.
-    ///
-    ModRefResult getModRefInfo(CallSite CS1, CallSite CS2);
+    /**
+     * Return information about whether two call sites may refer to the same set
+     * of memory locations.  This function returns NoModRef if the two calls refer
+     * to disjoint memory locations, Ref if {@code cs1} reads memory written by
+     * {@code cs2}, Mod if {@code cs1} writes to memory read or written by
+     * {@code cs2}, or ModRef if {@code cs1} might read or write memory accessed
+     * by {@code cs2}.
+     */
+    ModRefResult getModRefInfo(CallSite cs1, CallSite cs2);
 
-    /// hasNoModRefInfoForCalls - Return true if the analysis has no mod/ref
-    /// information for pairs of function calls (other than "pure" and "const"
-    /// functions).  This can be used by clients to avoid many pointless queries.
-    /// Remember that if you override this and chain to another analysis, you must
-    /// make sure that it doesn't have mod/ref info either.
-    ///
+    /**
+     * Return true if the analysis has no mod/ref information for pairs of
+     * function calls (other than "pure" and "const" functions).  This can be
+     * used by clients to avoid many pointless queries. Remember that if you
+     * override this and chain to another analysis, you must make sure that it
+     * doesn't have mod/ref info either.
+     */
     boolean hasNoModRefInfoForCalls();
 }
