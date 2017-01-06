@@ -11,9 +11,13 @@ import backend.value.Value;
  */
 public class CallSite
 {
+	// Returns the operand number of the first argument
+	private static final int ArgumentOffset = 1;
+
 	private CallInst inst;
 
 	public CallSite() {inst = null;}
+
 	public CallSite(CallInst ii) {inst = ii;}
 
 	public static CallSite get(Value v)
@@ -64,7 +68,7 @@ public class CallSite
 
 	public Value getArgument(int idx)
 	{
-		assert idx + ArgumentOffset >=1 && idx + 1 < inst.getNumsOfArgs()
+		assert idx + ArgumentOffset >=1 && idx + ArgumentOffset < inst.getNumsOfArgs()
 				:"Argument # out of range!";
 		return inst.operand(ArgumentOffset+idx);
 	}
@@ -77,7 +81,21 @@ public class CallSite
 		inst.setOperand(idx + ArgumentOffset, newVal, inst);
 	}
 
-	// Returns the operand number of the first argument
-	private final int ArgumentOffset = 1;
+	public int getNumOfArguments()
+	{
+		return inst.getNumOfOperands() - ArgumentOffset;
+	}
+
+	public boolean doesNotAccessMemory()
+	{
+		// TODO
+		return false;
+	}
+
+	public boolean onlyReadMemory()
+	{
+		// TODO
+		return false;
+	}
 }
 

@@ -11,8 +11,8 @@ import java.io.FileOutputStream;
 
 import static backend.codegen.LocalRegAllocator.createLocalRegAllocator;
 import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
-import static backend.opt.CFGSimplifyPass.createCFGSimplifyPass;
-import static backend.opt.LowerSwitch.createLowerSwitchPass;
+import static backend.transform.CFGSimplifyPass.createCFGSimplifyPass;
+import static backend.transform.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.x86.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
 import static backend.target.x86.PEI.createX86PrologEpilogEmitter;

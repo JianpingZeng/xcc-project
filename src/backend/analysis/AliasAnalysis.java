@@ -16,18 +16,24 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.hir.BasicBlock;
 import backend.hir.CallSite;
 import backend.pass.AnalysisUsage;
 import backend.pass.Pass;
 import backend.target.TargetData;
 import backend.type.Type;
 import backend.value.Function;
+import backend.value.Instruction;
+import backend.value.Instruction.CallInst;
+import backend.value.Instruction.LoadInst;
+import backend.value.Instruction.StoreInst;
 import backend.value.Value;
 
 import java.util.ArrayList;
 
-import static backend.analysis.AliasAnalysis.ModRefBehavior.DoesNotAccessMemory;
-import static backend.analysis.AliasAnalysis.ModRefBehavior.OnlyReadsMemory;
+import static backend.analysis.AliasAnalysis.AliasResult.NoAlias;
+import static backend.analysis.AliasAnalysis.ModRefBehavior.*;
+import static backend.analysis.AliasAnalysis.ModRefResult.*;
 
 /**
  * This file defines a class named of {@code AliasAnalysis} as an interface for
@@ -65,6 +71,11 @@ public interface AliasAnalysis
         NoAlias, MayAlias, MustAlias,
     }
 
+    /**
+     * Subclasses must implements this method for initializing the AlalisAnalysis
+     * and TargetData.
+     * @param p
+     */
     void initializeAliasAnalysis(Pass p);
 
     /**
@@ -85,6 +96,8 @@ public interface AliasAnalysis
      * @return
      */
     TargetData getTargetData();
+
+    AliasAnalysis getAliasAnalysis();
 
     /**
      * Return the TargetData store size for the given type,
@@ -111,7 +124,12 @@ public interface AliasAnalysis
      * @param size2
      * @return
      */
-    AliasResult alias(Value ptr1, int size1, Value ptr2, int size2);
+    default AliasResult alias(Value ptr1, int size1, Value ptr2, int size2)
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
+        return aa.alias(ptr1, size1, ptr2, size2);
+    }
 
     /**
      * If there are any pointers known that must alias this
@@ -123,7 +141,12 @@ public interface AliasAnalysis
      * @param ptr
      * @param retVals
      */
-    void getMustAliases(Value ptr, ArrayList<Value> retVals);
+    default void getMustAliases(Value ptr, ArrayList<Value> retVals)
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
+        aa.getMustAliases(ptr, retVals);
+    }
 
     /**
      * If the specified pointer is known to point into constant global memory,
@@ -133,7 +156,12 @@ public interface AliasAnalysis
      * @param ptr
      * @return
      */
-    boolean pointsToConstantMemory(Value ptr);
+    default boolean pointsToConstantMemory(Value ptr)
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
+        return aa.pointsToConstantMemory(ptr);
+    }
 
     /**
      * Represent the result of a mod/ref query.
@@ -243,8 +271,16 @@ public interface AliasAnalysis
      * @param info
      * @return
      */
-    ModRefBehavior getModRefBehavior(CallSite cs,
-            ArrayList<PointerAccessInfo> info);
+    default ModRefBehavior getModRefBehavior(CallSite cs,
+            ArrayList<PointerAccessInfo> info)
+    {
+        if (cs.doesNotAccessMemory())
+            return DoesNotAccessMemory;
+        ModRefBehavior mrb = getModRefBehavior(cs.getCalledFunction(), info);
+        if (mrb != DoesNotAccessMemory && cs.onlyReadMemory())
+            return OnlyReadsMemory;
+        return mrb;
+    }
 
     default ModRefBehavior getModRefBehavior(CallSite cs)
     {
@@ -259,8 +295,23 @@ public interface AliasAnalysis
      * @param info
      * @return
      */
-    ModRefBehavior getModRefBehavior(Function f,
-            ArrayList<PointerAccessInfo> info);
+    default ModRefBehavior getModRefBehavior(Function f,
+            ArrayList<PointerAccessInfo> info)
+    {
+        if (f != null)
+        {
+            if (f.doesNotAccessMemory())
+                return DoesNotAccessMemory;
+            if (f.onlyReadsMemory())
+                return OnlyReadsMemory;
+            int id;
+            if ((id = f.getIntrinsicID()) != 0)
+            {
+
+            }
+        }
+        return UnknownModRefBehavior;
+    }
 
     default ModRefBehavior getModRefBehavior(Function f)
     {
@@ -329,7 +380,39 @@ public interface AliasAnalysis
      * a particular call site modifies or reads the memory specified by the
      * pointer.
      */
-    ModRefResult getModRefInfo(CallSite cs, Value P, int Size);
+    default ModRefResult getModRefInfo(CallSite cs, Value ptr, int size)
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        ModRefResult mask = ModRef;
+        ModRefBehavior mrb = getModRefBehavior(cs);
+        if (mrb == DoesNotAccessMemory)
+            return NoModRef;
+        else if (mrb == OnlyReadsMemory)
+            mask = Ref;
+        else if (mrb == AccessArguments)
+        {
+            boolean doesAlias = false;
+            for (int i = 0, e = cs.getNumOfArguments(); i < e; i++)
+            {
+                Value arg = cs.getArgument(i);
+                if (alias(arg, ~0, ptr, size) != NoAlias)
+                {
+                    doesAlias = true;
+                    break;
+                }
+            }
+
+            if (!doesAlias)
+                return NoModRef;
+        }
+        if (aa == null)
+            return mask;
+
+        if ((mask.ordinal() & Mod.ordinal()) != 0 && aa.pointsToConstantMemory(ptr))
+            mask = ModRefResult.values()[mask.ordinal() & ~Mod.ordinal()];
+
+        return ModRefResult.values()[mask.ordinal() & aa.getModRefInfo(cs, ptr, size).ordinal()];
+    }
 
     /**
      * Return information about whether two call sites may refer to the same set
@@ -339,7 +422,12 @@ public interface AliasAnalysis
      * {@code cs2}, or ModRef if {@code cs1} might read or write memory accessed
      * by {@code cs2}.
      */
-    ModRefResult getModRefInfo(CallSite cs1, CallSite cs2);
+    default ModRefResult getModRefInfo(CallSite cs1, CallSite cs2)
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
+        return aa.getModRefInfo(cs1, cs2);
+    }
 
     /**
      * Return true if the analysis has no mod/ref information for pairs of
@@ -348,5 +436,99 @@ public interface AliasAnalysis
      * override this and chain to another analysis, you must make sure that it
      * doesn't have mod/ref info either.
      */
-    boolean hasNoModRefInfoForCalls();
+    default boolean hasNoModRefInfoForCalls()
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        assert aa != null:"AA did not call initializeAliasAnalysis in its run method!";
+        return aa.hasNoModRefInfoForCalls();
+    }
+
+    default ModRefResult getModRefInfo(LoadInst inst, Value ptr, int size)
+    {
+        return alias(inst.operand(0), getTypeStoreSize(inst.getType()), ptr, size)
+                != NoAlias ? Ref : NoModRef;
+    }
+
+    default ModRefResult getModRefInfo(StoreInst inst, Value ptr, int size)
+    {
+        // If the stored address cannot alias the pointer in question, then the
+        // pointer cannot be modified by the store.
+        if (alias(inst.operand(0), getTypeStoreSize(inst.getType()), ptr, size) == NoAlias)
+            return NoModRef;
+
+        // If the pointer is a pointer to constant memory, then it could not have been
+        // modified by this store.
+        return pointsToConstantMemory(ptr) ? NoModRef : Mod;
+    }
+
+    default ModRefResult getModRefInfo(CallInst inst, Value ptr, int size)
+    {
+        return getModRefInfo(new CallSite(inst), ptr, size);
+    }
+
+    default ModRefResult getModRefInfo(Instruction inst, Value ptr, int size)
+    {
+        switch (inst.getOpcode())
+        {
+            case Load: return getModRefInfo((LoadInst)inst, ptr, size);
+            case Store: return getModRefInfo((StoreInst)inst, ptr, size);
+            case Call: return getModRefInfo((CallInst)inst, ptr, size);
+            default:return NoModRef;
+        }
+    }
+
+    /**
+     * Return true if it is possible for execution of the specified basic block
+     * to modify the value pointed by the {@code ptr}.
+     * @param bb
+     * @param ptr
+     * @param size
+     * @return
+     */
+    default boolean canBasicBlockModify(BasicBlock bb, Value ptr, int size)
+    {
+        return canInstructionRangeModify(bb, 0, bb.getNumOfInsts(), ptr, size);
+    }
+
+    /**
+     * Return true if it is possible for the execution of the specified instructions
+     * to modify the value pointed by {@code ptr}. Those instructions are
+     * considered in the range of [i, j].
+     * @param bb
+     * @param i
+     * @param j
+     * @param ptr
+     * @param size
+     * @return
+     */
+    default boolean canInstructionRangeModify(BasicBlock bb, int i, int j,
+            Value ptr, int size)
+    {
+        assert i >= 0 && i <= j && j < bb.getNumOfInsts()
+                : "Illegal indexed into instructions in Basic block";
+        for (int s = i; s <= j; s++)
+            if ((getModRefInfo(bb.getInstAt(s), ptr, size).ordinal() & Mod.ordinal()) != 90)
+                return true;
+        return false;
+    }
+
+    default void deleteValue(Value val)
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        assert aa != null: "AA did not initialized";
+        aa.deleteValue(val);
+    }
+
+    default void copyValue(Value from, Value to)
+    {
+        AliasAnalysis aa = getAliasAnalysis();
+        assert aa != null: "AA did not initialized";
+        aa.copyValue(from, to);
+    }
+
+    default void replaceWithNewValue(Value oldOne, Value newOne)
+    {
+        copyValue(oldOne, newOne);
+        deleteValue(oldOne);
+    }
 }

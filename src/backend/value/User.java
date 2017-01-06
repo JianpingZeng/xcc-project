@@ -35,7 +35,7 @@ public abstract class User extends Value
     protected int numOperands = -1;
 
     /**
-     * This array with element of frontend.type Value represents all operands.
+     * This array with element of jlang.type Value represents all operands.
      */
     protected ArrayList<Use> operandList;
 

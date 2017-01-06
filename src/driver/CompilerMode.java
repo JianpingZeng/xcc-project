@@ -15,7 +15,7 @@ enum CompilerMode {
 	 */
     CheckSyntax ("--check-syntax"),
     DumpTokens ("--dump-tokens"),
-    DumpAST ("--dump-frontend.ast"),
+    DumpAST ("--dump-jlang.ast"),
     DumpStmt ("--dump-stmt"),
     DumpExpr ("--dump-subExpr"),
     DumpSemantic ("--dump-semantic"),
@@ -36,7 +36,7 @@ enum CompilerMode {
         modes = new HashMap<String, CompilerMode>();
         modes.put("--check-syntax", CheckSyntax);
         modes.put("--dump-tokens", DumpTokens);
-        modes.put("--dump-frontend.ast", DumpAST);
+        modes.put("--dump-jlang.ast", DumpAST);
         modes.put("--dump-stmt", DumpStmt);
         modes.put("--dump-subExpr", DumpExpr);
         modes.put("--dump-semantic", DumpSemantic);
@@ -49,9 +49,9 @@ enum CompilerMode {
     }
 
     /**
-     * Determines the given backend.opt whether is legal or not.
+     * Determines the given backend.transform whether is legal or not.
      * @param opt	a specified option
-     * @return	true returned if backend.opt is legal ,otherwise false.
+     * @return	true returned if backend.transform is legal ,otherwise false.
      */
     static public boolean isModeOption(String opt) {
         return modes.containsKey(opt);

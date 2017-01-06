@@ -86,7 +86,7 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	}
 
 	/**
-	 * Returns an iterator over elements of frontend.type {@code T}.
+	 * Returns an iterator over elements of jlang.type {@code T}.
 	 *
 	 * @return an Iterator.
 	 */
@@ -137,5 +137,17 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	{
 		// TODO
 		return 0;
+	}
+
+	public boolean doesNotAccessMemory()
+	{
+		// TODO
+		return false;
+	}
+
+	public boolean onlyReadsMemory()
+	{
+		// TODO
+		return false;
 	}
 }

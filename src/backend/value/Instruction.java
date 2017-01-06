@@ -285,7 +285,7 @@ public abstract class Instruction extends User
             super(ty, opcode,insertBefore);
             reserve(2);
             assert x.getType() == y.getType()
-                    : "Can not create binary operation with two operands of differing frontend.type.";
+                    : "Can not create binary operation with two operands of differing jlang.type.";
             init(x, y);
         }
 
@@ -295,7 +295,7 @@ public abstract class Instruction extends User
         {
             super(ty, opcode, insertAtEnd);
             assert x.getType() == y.getType()
-                    : "Can not create binary operation with two operands of differing frontend.type.";
+                    : "Can not create binary operation with two operands of differing jlang.type.";
             init(x, y);
         }
 
@@ -1515,7 +1515,7 @@ public abstract class Instruction extends User
 
     /**
      * TerminatorInst - Subclasses of this class are all able to terminate
-     * a basic block.  Thus, these are all the flow control frontend.type of operations.
+     * a basic block.  Thus, these are all the flow control jlang.type of operations.
      *
      * @author Xlous.zeng
      * @version 0.1
@@ -1917,7 +1917,7 @@ public abstract class Instruction extends User
         private final int offset = 2;
 
         /**
-         * Constructs a new SwitchInst instruction with specified inst frontend.type.
+         * Constructs a new SwitchInst instruction with specified inst jlang.type.
          * <p>
          * Operand[0]    = Value to switch on
          * Operand[1]    = Default basic block destination
@@ -1936,7 +1936,7 @@ public abstract class Instruction extends User
         }
 
         /**
-         * Constructs a new SwitchInst instruction with specified inst frontend.type.
+         * Constructs a new SwitchInst instruction with specified inst jlang.type.
          *
          * @param condV        the value of selector.
          * @param defaultBB    The default jump block when no other case match.
@@ -2172,7 +2172,7 @@ public abstract class Instruction extends User
         {
             assert value != null : "Phi node got a null value";
             assert block != null : "Phi node got a null basic block";
-            assert value.getType() == getType() : "All of operands of Phi must be same frontend.type.";
+            assert value.getType() == getType() : "All of operands of Phi must be same jlang.type.";
 
             setIncomingValue(getNumberIncomingValues() - 1, value);
             setIncomingBlock(getNumberIncomingValues() - 1, block);

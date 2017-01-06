@@ -63,10 +63,10 @@ public abstract class Architecture
 	private final EnumMap<LIRRegister.RegisterFlag, LIRRegister[]> registersByTypeAndEncoding;
 
 	/**
-	 * Gets the register for a given {@linkplain LIRRegister#encoding encoding} and frontend.type.
+	 * Gets the register for a given {@linkplain LIRRegister#encoding encoding} and jlang.type.
 	 *
 	 * @param encoding a register value as used in a machine instruction
-	 * @param type     the frontend.type of the register
+	 * @param type     the jlang.type of the register
 	 */
 	public LIRRegister registerFor(int encoding, LIRRegister.RegisterFlag type)
 	{

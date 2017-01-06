@@ -20,7 +20,7 @@ public class Value implements Cloneable
 	 *
 	 * <p>
 	 * The getName of variable, which is similar to IR in LLVM.
-	 * For global variable and local variable, those are starts with frontend.symbol'@'
+	 * For global variable and local variable, those are starts with jlang.symbol'@'
 	 * and '%' respectively.
 	 * <p>To visit <a href = "http://llvm.org/docs/LangRef.html#global-variables">
 	 * LLVM language reference manual</a> for detail.</p>
@@ -70,7 +70,7 @@ public class Value implements Cloneable
 		assert newValue != null
 				: "Instruction.replaceAllusesWith(<null>) is invalid.";
 		assert getType() == newValue.getType()
-                : "replaceAllUses of value with new value of different frontend.type";
+                : "replaceAllUses of value with new value of different jlang.type";
 
 		// replaces all old uses with new one.
 		while (!usesList.isEmpty())

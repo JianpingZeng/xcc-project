@@ -1,7 +1,7 @@
 package backend.codegen;
 
-import backend.opt.PNE;
-import backend.opt.TwoAddrInstruction;
+import backend.transform.PNE;
+import backend.transform.TwoAddrInstruction;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;

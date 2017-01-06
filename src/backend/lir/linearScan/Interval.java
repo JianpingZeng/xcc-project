@@ -25,7 +25,7 @@ public final class Interval
 	public static Interval EndMarker = new Interval(LIRValue.IllegalValue, -1) ;
 
 	/**
-	 * Constant used in backend.opt of spilling of an interval.
+	 * Constant used in backend.transform of spilling of an interval.
 	 */
 	enum SpillState
 	{
@@ -67,7 +67,7 @@ public final class Interval
 	}
 	
 	/**
-	 * A set of interval lists ,one per {@linkplain RegisterBinding binding} frontend.type.
+	 * A set of interval lists ,one per {@linkplain RegisterBinding binding} jlang.type.
 	 */
 	static final class RegisterBindingLists
 	{
@@ -293,7 +293,7 @@ public final class Interval
 	private StackSlot spillSlot;
 
 	/**
-	 * For spill move backend.opt.
+	 * For spill move backend.transform.
 	 */
 	private SpillState spillState;
 	
@@ -413,16 +413,16 @@ public final class Interval
 
 	public LIRKind kind()
 	{
-		assert !location.isRegister() : "can not access frontend.type for fixed interval";
+		assert !location.isRegister() : "can not access jlang.type for fixed interval";
 		return kind;
 	}
 
 	void setKind(LIRKind kind)
 	{
 		assert operand.isRegister() || this.kind == LIRKind.Illegal
-				|| this.kind == kind : "overwriting existing frontend.type";
+				|| this.kind == kind : "overwriting existing jlang.type";
 		assert kind == kind.stackKind() || kind
-				== LIRKind.Short : "these kinds should have int frontend.type registers";
+				== LIRKind.Short : "these kinds should have int jlang.type registers";
 		this.kind = kind;
 	}
 
@@ -625,7 +625,7 @@ public final class Interval
 	}
 	
 	/**
-	 * for spill backend.opt.
+	 * for spill backend.transform.
 	 * @return
 	 */
 	public SpillState spillState()

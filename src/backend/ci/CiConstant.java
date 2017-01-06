@@ -70,7 +70,7 @@ public final class CiConstant extends CiValue {
     /**
      * Create a new constant represented by the specified object reference.
      *
-     * @param kind the frontend.type of this constant
+     * @param kind the jlang.type of this constant
      * @param object the value of this constant
      */
     private CiConstant(CiKind kind, Object object) {
@@ -82,7 +82,7 @@ public final class CiConstant extends CiValue {
     /**
      * Create a new constant represented by the specified primitive.
      *
-     * @param kind the frontend.type of this constant
+     * @param kind the jlang.type of this constant
      * @param primitive the value of this constant
      */
     public CiConstant(CiKind kind, long primitive) {
@@ -297,8 +297,8 @@ public final class CiConstant extends CiValue {
     }
 
     /**
-     * Checks whether this constant is the default value for its frontend.type.
-     * @return {@code true} if the value is the default value for its frontend.type; {@code false} otherwise
+     * Checks whether this constant is the default value for its jlang.type.
+     * @return {@code true} if the value is the default value for its jlang.type; {@code false} otherwise
      */
     public boolean isDefaultValue() {
         // Checkstyle: stop
@@ -314,9 +314,9 @@ public final class CiConstant extends CiValue {
     }
 
     /**
-     * Gets the one with different data frontend.type.
-     * @param kind  The kind of data frontend.type.
-     * @return  The one for different data frontend.type.
+     * Gets the one with different data jlang.type.
+     * @param kind  The kind of data jlang.type.
+     * @return  The one for different data jlang.type.
      */
     public static CiConstant getOne(CiKind kind)
     {
@@ -456,7 +456,7 @@ public final class CiConstant extends CiValue {
 
     /**
      * Creates a boxed constant for the given kind from an Object.
-     * The object needs to be of the Java boxed frontend.type corresponding to the kind.
+     * The object needs to be of the Java boxed jlang.type corresponding to the kind.
      * @param kind the kind of the constant to create
      * @param value the Java boxed value: a Byte instance for CiKind Byte, etc.
      * @return the boxed copy of {@code value}

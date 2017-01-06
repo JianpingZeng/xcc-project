@@ -215,7 +215,7 @@ public class AMD64RegisterConfig implements RegisterConfig
 		int currentGeneral = 0;
 		int currentXMM = 0;
 		int firstStackIndex =
-				(stackArg0Offsets[frontend.type.ordinal()]) / TargetData.spillSlotSize;
+				(stackArg0Offsets[jlang.type.ordinal()]) / TargetData.spillSlotSize;
 		int currentStackIndex = firstStackIndex;
 
 		for (int i = 0; i < parameters.getArraySize; i++)
@@ -255,7 +255,7 @@ public class AMD64RegisterConfig implements RegisterConfig
 			if (locations[i] == null)
 			{
 				locations[i] = StackSlot
-						.get(kind.stackKind(), currentStackIndex, !frontend.type.out);
+						.get(kind.stackKind(), currentStackIndex, !jlang.type.out);
 				currentStackIndex += TargetData.spillSlots(kind);
 			}
 		}

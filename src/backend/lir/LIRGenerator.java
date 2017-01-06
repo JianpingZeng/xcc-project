@@ -147,7 +147,7 @@ public abstract class LIRGenerator extends InstructionVisitor
 	{
 		assert Util.archKindEqual(instr.x.kind, instr.kind) && Util
 				.archKindEqual(instr.y.kind, instr.kind) :
-				"Wrong parameter frontend.type of: " + instr.name() + " in: "
+				"Wrong parameter jlang.type of: " + instr.name() + " in: "
 						+ instr.opcode.opName;
 		switch (instr.kind)
 		{
@@ -942,7 +942,7 @@ public abstract class LIRGenerator extends InstructionVisitor
 		{
 			if (val instanceof PhiNode)
 			{
-				// a phi may not have an operand yet if it is for an frontend.exception block
+				// a phi may not have an operand yet if it is for an jlang.exception block
 				operand = operandForPhi((PhiNode) val);
 			}
 			else if (val instanceof Value.Constant)

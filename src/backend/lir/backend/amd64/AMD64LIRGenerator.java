@@ -468,7 +468,7 @@ public final class AMD64LIRGenerator extends LIRGenerator
 	}
 
 	/**
-	 * Converts data from specified frontend.type to targetAbstractLayer frontend.type upon platform dependent
+	 * Converts data from specified jlang.type to targetAbstractLayer jlang.type upon platform dependent
 	 * instruction, like IA32 or SPARC.
 	 * @param inst
 	 */

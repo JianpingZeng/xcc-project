@@ -14,11 +14,11 @@ import java.io.PrintWriter;
  * <p>
  * This class describe the concept of loop in a control flow graph of a method, 
  * which usually used for {@linkplain LoopInfo} when performing loop
- * backend.opt.
+ * backend.transform.
  * </p>
  * <p>Note that only reducible loop, so called natural loop, can be identified 
  * and optimized. In other word, all of irreducible loops were ignored when 
- * performing loop backend.opt.
+ * performing loop backend.transform.
  * </p>
  * @author Xlous.zeng
  * @version 0.1

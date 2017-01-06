@@ -2,7 +2,7 @@ package backend.lir.alloc;
 
 import backend.lir.*;
 import driver.*;
-import frontend.exception.CiBailout;
+import jlang.exception.CiBailout;
 import hir.BasicBlock;
 import hir.Condition;
 import hir.Function;
@@ -498,7 +498,7 @@ public final class LinearScan
 		int iterationCount = 0;
 		BitMap liveOut = new BitMap(liveSetSize());
 
-		// perform a backward frontend.dataflow analysis to compute liveOut
+		// perform a backward jlang.dataflow analysis to compute liveOut
 		// and liveIn for each block. The loop is executed until a fixpoint
 		// is reached (no changes in an iteration).
 		do
@@ -772,7 +772,7 @@ public final class LinearScan
 
 	/**
 	 * Eliminates moves from register to stack if the stack slot is known to be
-	 * correct. This is a heuristic backend.opt strategy for taking positive effect
+	 * correct. This is a heuristic backend.transform strategy for taking positive effect
 	 * on the quality of generated code.
 	 */
 	private void changeSpillDefinitionPos(Interval interval, int defPos)
@@ -1247,7 +1247,7 @@ public final class LinearScan
 				addRegisterHints(opr);
 			}// end of instruction iteration
 
-			// make sure that no spil store backend.opt is applied for phi
+			// make sure that no spil store backend.transform is applied for phi
 			// instructions
 
 		} // end of block iteration
@@ -1531,7 +1531,7 @@ public final class LinearScan
 					BasicBlock pred = block.predAt(0);
 					BasicBlock sux = block.succAt(0);
 
-					// prevent backend.opt of two consecutive blocks
+					// prevent backend.transform of two consecutive blocks
 					if (!blockCompleted.get(pred.linearScanNumber)
 							&& !blockCompleted.get(sux.linearScanNumber))
 					{
@@ -2101,7 +2101,7 @@ public final class LinearScan
 
 		sortIntervalListAfterAllocation();
 
-		// make local backend.opt
+		// make local backend.transform
 		eliminateSpillMove();
 		assignLocations();
 

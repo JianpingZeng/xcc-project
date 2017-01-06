@@ -57,15 +57,15 @@ public enum CiKind {
 
     static class Flags {
         /**
-         * Can be frontend.type of a variable.
+         * Can be jlang.type of a variable.
          */
         public static final int VAR_TYPE  = 0x0001;
         /**
-         * Can be result frontend.type of a method.
+         * Can be result jlang.type of a method.
          */
         public static final int RETURN_TYPE = 0x0002;
         /**
-         * Represents a C-flat primitive frontend.type.
+         * Represents a C-flat primitive jlang.type.
          */
         public static final int PRIMITIVE   = 0x0004;
     }
@@ -87,16 +87,16 @@ public enum CiKind {
     public final String cflatName;
 
     /**
-     * Checks whether this kind is valid as the frontend.type of a variable.
-     * @return {@code true} if this kind is valid as the frontend.type of a C-flat variable.
+     * Checks whether this kind is valid as the jlang.type of a variable.
+     * @return {@code true} if this kind is valid as the jlang.type of a C-flat variable.
      */
     public boolean isValidVariableType() {
         return (flags & VAR_TYPE) != 0;
     }
 
     /**
-     * Checks whether this kind is valid as the return frontend.type of a method.
-     * @return {@code true} if this kind is valid as the return frontend.type of a C-flat function.
+     * Checks whether this kind is valid as the return jlang.type of a method.
+     * @return {@code true} if this kind is valid as the return jlang.type of a C-flat function.
      */
     public boolean isValidReturnType() {
         return (flags & RETURN_TYPE) != 0;
@@ -104,7 +104,7 @@ public enum CiKind {
 
 
     /**
-     * Checks whether this frontend.type is a C-flat primitive frontend.type.
+     * Checks whether this jlang.type is a C-flat primitive jlang.type.
      * @return {@code true} if this is {@link #Boolean}, {@link #Byte}, {@link #Char}, {@link #Short},
      *                                 {@link #Int}, {@link #Long}, {@link #Float} or {@link #Double}.
      */
@@ -137,12 +137,12 @@ public enum CiKind {
             case 'V': return Void;
         }
         // Checkstyle: resume
-        throw new IllegalArgumentException("unknown primitive or void frontend.type character: " + ch);
+        throw new IllegalArgumentException("unknown primitive or void jlang.type character: " + ch);
     }
 
     /**
-     * Checks whether this value frontend.type is integer.
-     * @return	true if this frontend.type is integer.
+     * Checks whether this value jlang.type is integer.
+     * @return	true if this jlang.type is integer.
      */
     public final boolean isInt()
     {
@@ -150,55 +150,55 @@ public enum CiKind {
     }
     
     /**
-     * Checks whether this value frontend.type is void.
-     * @return {@code true} if this frontend.type is void
+     * Checks whether this value jlang.type is void.
+     * @return {@code true} if this jlang.type is void
      */
     public final boolean isVoid() {
         return this == CiKind.Void;
     }
 
     /**
-     * Checks whether this value frontend.type is long.
-     * @return {@code true} if this frontend.type is long
+     * Checks whether this value jlang.type is long.
+     * @return {@code true} if this jlang.type is long
      */
     public final boolean isLong() {
         return this == CiKind.Long;
     }
 
     /**
-     * Checks whether this value frontend.type is float.
-     * @return {@code true} if this frontend.type is float
+     * Checks whether this value jlang.type is float.
+     * @return {@code true} if this jlang.type is float
      */
     public final boolean isFloat() {
         return this == CiKind.Float;
     }
 
     /**
-     * Checks whether this value frontend.type is double.
-     * @return {@code true} if this frontend.type is double
+     * Checks whether this value jlang.type is double.
+     * @return {@code true} if this jlang.type is double
      */
     public final boolean isDouble() {
         return this == CiKind.Double;
     }
 
     /**
-     * Checks whether this value frontend.type is float or double.
-     * @return {@code true} if this frontend.type is float or double
+     * Checks whether this value jlang.type is float or double.
+     * @return {@code true} if this jlang.type is float or double
      */
     public final boolean isFloatOrDouble() {
         return this == CiKind.Double || this == CiKind.Float;
     }
 
    /**
-     * Checks whether this value frontend.type is an object frontend.type.
-     * @return {@code true} if this frontend.type is an object
+     * Checks whether this value jlang.type is an object jlang.type.
+     * @return {@code true} if this jlang.type is an object
      */
     public final boolean isObject() {
         return this == CiKind.Object;
     }
 
     /**
-     * Converts this value frontend.type to a string.
+     * Converts this value jlang.type to a string.
      */
     @Override
     public String toString() {

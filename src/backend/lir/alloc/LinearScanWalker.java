@@ -1,6 +1,6 @@
 package backend.lir.alloc;
 
-import frontend.exception.CiBailout;
+import jlang.exception.CiBailout;
 import hir.BasicBlock;
 import backend.lir.LIRInstruction;
 import backend.lir.LIROp1;
@@ -134,7 +134,7 @@ public final class LinearScanWalker extends IntervalWalker
 		int optimalSplitPos = -1;
 		if (minSplitPos == maxSplitPos)
 		{
-			// trivial case, no backend.opt of split position possible
+			// trivial case, no backend.transform of split position possible
 			optimalSplitPos = minSplitPos;
 		}
 		else
@@ -181,7 +181,7 @@ public final class LinearScanWalker extends IntervalWalker
 
 					if (doLoopOptimization)
 					{
-						// Loop backend.opt: if a loop-end marker is found between
+						// Loop backend.transform: if a loop-end marker is found between
 						// min- and max-position : then split before this loop
 						int loopEndPos = interval.nextUsageExact(
 								Interval.RegisterPriority.LiveAtLoopEnd,
@@ -217,7 +217,7 @@ public final class LinearScanWalker extends IntervalWalker
 
 					if (optimalSplitPos == -1)
 					{
-						// not calculated by loop backend.opt
+						// not calculated by loop backend.transform
 						optimalSplitPos = findOptimalSplitPos(minBlock,
 								maxBlock, maxSplitPos);
 					}
@@ -341,7 +341,7 @@ public final class LinearScanWalker extends IntervalWalker
 	}
 
 	/**
-	 * backend.opt (especially for phi functions of nested loops):
+	 * backend.transform (especially for phi functions of nested loops):
 	 * assign same spill slot to non-intersecting intervals using Register Hints.
 	 * @param interval
 	 */
@@ -349,7 +349,7 @@ public final class LinearScanWalker extends IntervalWalker
 	{
 		if (interval.isSplitChild())
 		{
-			// backend.opt is only suitable for split parents
+			// backend.transform is only suitable for split parents
 			return;
 		}
 
@@ -366,7 +366,7 @@ public final class LinearScanWalker extends IntervalWalker
 				|| registerHint.spillState() != Interval.SpillState.NoOptimization)
 		{
 			// combining the stack slots for intervals where spill move
-			// backend.opt is applied is not benefitial and would cause problems
+			// backend.transform is applied is not benefitial and would cause problems
 			return;
 		}
 
@@ -660,7 +660,7 @@ public final class LinearScanWalker extends IntervalWalker
 			else
 			{
 				assert interval.currentIntersectsAt(current)
-						== -1 : "invalid backend.opt: intervals intersect";
+						== -1 : "invalid backend.transform: intervals intersect";
 			}
 
 			interval = interval.next;
@@ -1117,7 +1117,7 @@ public final class LinearScanWalker extends IntervalWalker
 		int firstUsage = interval.firstUsage(
 				Interval.RegisterPriority.MustHaveRegister);
 
-		// a little heuristic backend.opt
+		// a little heuristic backend.transform
 		int regNeededUntil = Math.min(firstUsage, interval.from() + 1);
 		int intervalTo = interval.to();
 		assert regNeededUntil > 0

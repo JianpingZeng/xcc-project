@@ -72,15 +72,15 @@ public enum LIRKind
 	static class Flags
 	{
 		/**
-		 * Can be frontend.type of a variable.
+		 * Can be jlang.type of a variable.
 		 */
 		public static final int VAR_TYPE = 0x0001;
 		/**
-		 * Can be getReturnValue frontend.type of a method.
+		 * Can be getReturnValue jlang.type of a method.
 		 */
 		public static final int RETURN_TYPE = 0x0002;
 		/**
-		 * Represents a C-flat primitive frontend.type.
+		 * Represents a C-flat primitive jlang.type.
 		 */
 		public static final int PRIMITIVE = 0x0004;
 	}
@@ -102,9 +102,9 @@ public enum LIRKind
 	public final String cflatName;
 
 	/**
-	 * Checks whether this kind is valid as the frontend.type of a variable.
+	 * Checks whether this kind is valid as the jlang.type of a variable.
 	 *
-	 * @return {@code true} if this kind is valid as the frontend.type of a C-flat variable.
+	 * @return {@code true} if this kind is valid as the jlang.type of a C-flat variable.
 	 */
 	public boolean isValidVariableType()
 	{
@@ -112,9 +112,9 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this kind is valid as the return frontend.type of a method.
+	 * Checks whether this kind is valid as the return jlang.type of a method.
 	 *
-	 * @return {@code true} if this kind is valid as the return frontend.type of a C-flat function.
+	 * @return {@code true} if this kind is valid as the return jlang.type of a C-flat function.
 	 */
 	public boolean isValidReturnType()
 	{
@@ -122,7 +122,7 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this frontend.type is a C-flat primitive frontend.type.
+	 * Checks whether this jlang.type is a C-flat primitive jlang.type.
 	 *
 	 * @return {@code true} if this is {@link #Boolean}, {@link #Byte}, {@link #Char}, {@link #Short},
 	 * {@link #Int}, {@link #Long}, {@link #Float} or {@link #Double}.
@@ -171,13 +171,13 @@ public enum LIRKind
 		}
 		// Checkstyle: resume
 		throw new IllegalArgumentException(
-				"unknown primitive or void frontend.type character: " + ch);
+				"unknown primitive or void jlang.type character: " + ch);
 	}
 
 	/**
-	 * Checks whether this value frontend.type is integer.
+	 * Checks whether this value jlang.type is integer.
 	 *
-	 * @return true if this frontend.type is integer.
+	 * @return true if this jlang.type is integer.
 	 */
 	public final boolean isInt()
 	{
@@ -185,9 +185,9 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this value frontend.type is void.
+	 * Checks whether this value jlang.type is void.
 	 *
-	 * @return {@code true} if this frontend.type is void
+	 * @return {@code true} if this jlang.type is void
 	 */
 	public final boolean isVoid()
 	{
@@ -195,9 +195,9 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this value frontend.type is long.
+	 * Checks whether this value jlang.type is long.
 	 *
-	 * @return {@code true} if this frontend.type is long
+	 * @return {@code true} if this jlang.type is long
 	 */
 	public final boolean isLong()
 	{
@@ -205,9 +205,9 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this value frontend.type is float.
+	 * Checks whether this value jlang.type is float.
 	 *
-	 * @return {@code true} if this frontend.type is float
+	 * @return {@code true} if this jlang.type is float
 	 */
 	public final boolean isFloat()
 	{
@@ -215,9 +215,9 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this value frontend.type is double.
+	 * Checks whether this value jlang.type is double.
 	 *
-	 * @return {@code true} if this frontend.type is double
+	 * @return {@code true} if this jlang.type is double
 	 */
 	public final boolean isDouble()
 	{
@@ -225,9 +225,9 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this value frontend.type is float or double.
+	 * Checks whether this value jlang.type is float or double.
 	 *
-	 * @return {@code true} if this frontend.type is float or double
+	 * @return {@code true} if this jlang.type is float or double
 	 */
 	public final boolean isFloatOrDouble()
 	{
@@ -235,9 +235,9 @@ public enum LIRKind
 	}
 
 	/**
-	 * Checks whether this value frontend.type is an object frontend.type.
+	 * Checks whether this value jlang.type is an object jlang.type.
 	 *
-	 * @return {@code true} if this frontend.type is an object
+	 * @return {@code true} if this jlang.type is an object
 	 */
 	public final boolean isObject()
 	{
@@ -245,7 +245,7 @@ public enum LIRKind
 	}
 
 	/**
-	 * Converts this value frontend.type to a string.
+	 * Converts this value jlang.type to a string.
 	 */
 	@Override public String toString()
 	{

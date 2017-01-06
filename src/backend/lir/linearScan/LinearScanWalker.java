@@ -103,7 +103,7 @@ public final class LinearScanWalker extends IntervalWalker
 				&& input == from.operand && result == to.operand;
 	}
 	/**
-	 * Obtains the allocatable register for this interval in terms of its data frontend.type,
+	 * Obtains the allocatable register for this interval in terms of its data jlang.type,
 	 * for example, byte, float-gpu register, normal-cpu register. 
 	 * @param interval
 	 */
@@ -344,7 +344,7 @@ public final class LinearScanWalker extends IntervalWalker
 			else
 			{
 				assert interval.currentIntersectsAt(current)
-						== -1 : "invalid backend.opt: intervals intersect";
+						== -1 : "invalid backend.transform: intervals intersect";
 			}
 
 			interval = interval.next;
