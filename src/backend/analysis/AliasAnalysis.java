@@ -36,6 +36,7 @@ import static backend.analysis.AliasAnalysis.ModRefBehavior.*;
 import static backend.analysis.AliasAnalysis.ModRefResult.*;
 
 /**
+ * <p>
  * This file defines a class named of {@code AliasAnalysis} as an interface for
  * examining if the two memory object is alias each other or not. For precision,
  * the address of a memory object is represented as a pair of the base address
@@ -43,6 +44,7 @@ import static backend.analysis.AliasAnalysis.ModRefResult.*;
  * the memory address of a region, the {@code Size} specifies how large of an area
  * being queried.
  * </p>
+ * <p>
  * If the size is 0, the two pointers only alais if they are exactly equal.
  * If size is greater than zero, but small, the two pointers alias if the areas
  * pointed to overlap.  If the size is very large (ie, ~0U), then the two pointers
@@ -50,6 +52,7 @@ import static backend.analysis.AliasAnalysis.ModRefResult.*;
  * Pointers that point to two completely different objects in memory never alias,
  * regardless of the value of the Size component.
  * </p>
+ * <p>
  * In addition to answer whether or not the two memory location is aliased each
  * other, another very important task is to obtain the Ref/Mod information on
  * call instruction.
