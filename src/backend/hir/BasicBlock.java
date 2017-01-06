@@ -14,7 +14,7 @@ import java.util.*;
  * Represents a basic block in the quad intermediate representation. Basic
  * blocks are single-entry regions, but not necessarily single-exit regions. Due
  * to the fact that control flow may exit a basic block early due to runtime
- * frontend.exception.
+ * jlang.exception.
  * <p>
  * Each basic block isDeclScope a serial of quads, a list of predecessors, a list
  * of successors. It also has an id id that is unique within its control

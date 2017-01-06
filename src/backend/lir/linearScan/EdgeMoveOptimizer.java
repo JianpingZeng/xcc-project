@@ -192,7 +192,7 @@ public final class EdgeMoveOptimizer
 		if ((branch.opcode != LIROpcode.Branch
 				&& branch.opcode != LIROpcode.CondFloatBranch))
 		{
-			// not a valid case for backend.opt
+			// not a valid case for backend.transform
 			// currently, only blocks that end with two branches (conditional
 			// branch followed by unconditional branch) are optimized
 			return;
@@ -258,7 +258,7 @@ public final class EdgeMoveOptimizer
 				if (otherSeq.isEmpty() || !same(op, first(otherSeq)))
 				{
 					// these instructions are different and cannot be optimized .
-					// no further backend.opt possible
+					// no further backend.transform possible
 					return;
 				}
 			}

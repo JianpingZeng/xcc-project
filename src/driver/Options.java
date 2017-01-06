@@ -51,16 +51,16 @@ public class Options extends HashMap<String, String>
 		return super.get(key);
 	}
 	/**
-	 * Checks if enable debug frontend.parser.
-	 * @return if enable to debug frontend.parser, return true, otherwise return false.
+	 * Checks if enable debug jlang.parser.
+	 * @return if enable to debug jlang.parser, return true, otherwise return false.
 	 */
 	public boolean isDebugParser()
 	{
 		return get("-debug-Parser") != null;
 	}
 	/** 
-	 * Checks if dump frontend.ast.
-	 * @return return true when enable to dump frontend.ast, otherwise false returned.
+	 * Checks if dump jlang.ast.
+	 * @return return true when enable to dump jlang.ast, otherwise false returned.
 	 */
 	public boolean isDumpAst()
 	{
@@ -111,7 +111,7 @@ public class Options extends HashMap<String, String>
 		return get("-o");
 	}
 	/**
-	 * Obtains the specified level of backend.opt.
+	 * Obtains the specified level of backend.transform.
 	 * @return
 	 */
 	public String optLevel()

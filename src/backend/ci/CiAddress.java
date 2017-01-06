@@ -160,7 +160,7 @@ public final class CiAddress extends CiValue {
 
     /**
      * IfStmt the base register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
-     * otherwise raises an frontend.exception..
+     * otherwise raises an jlang.exception..
      * @return the base {@link CiRegister}
      * @exception Error  if {@code base} is not a {@link CiRegisterValue}
      */
@@ -170,7 +170,7 @@ public final class CiAddress extends CiValue {
 
     /**
      * IfStmt the index register is a {@link CiRegisterValue} returns the associated {@link CiRegister}
-     * otherwise raises an frontend.exception..
+     * otherwise raises an jlang.exception..
      * @return the base {@link CiRegister}
      * @exception Error  if {@code index} is not a {@link CiRegisterValue}
      */

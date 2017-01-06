@@ -30,7 +30,7 @@ public class LIROp2 extends LIRInstruction
 		super(opcode, LIRValue.IllegalValue, false, 0, 0, opr1, opr2);
 		this.condition = condition;
 		assert opcode
-				== LIROpcode.Cmp : "Instruction opcode should be of frontend.type LIROpcode.Cmp";
+				== LIROpcode.Cmp : "Instruction opcode should be of jlang.type LIROpcode.Cmp";
 	}
 
 	/**
@@ -48,7 +48,7 @@ public class LIROp2 extends LIRInstruction
 		super(opcode, result, false, 0, 0, opr1, opr2);
 		this.condition = condition;
 		assert opcode
-				== LIROpcode.Cmove : "Instruction opcode should be of frontend.type LIROpcode.Cmove";
+				== LIROpcode.Cmove : "Instruction opcode should be of jlang.type LIROpcode.Cmove";
 	}
 
 	/**

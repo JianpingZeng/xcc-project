@@ -6,7 +6,7 @@ package backend.lir.linearScan;
  */
 import backend.lir.*;
 import driver.*;
-import frontend.exception.CiBailout;
+import jlang.exception.CiBailout;
 import hir.BasicBlock;
 import hir.Condition;
 import hir.Function;
@@ -502,7 +502,7 @@ public final class LinearScan
 		int iterationCount = 0;
 		BitMap liveOut = new BitMap(liveSetSize());
 
-		// perform a backward frontend.dataflow analysis to compute liveOut
+		// perform a backward jlang.dataflow analysis to compute liveOut
 		// and liveIn for each block. The loop is executed until a fixpoint
 		// is reached (no changes in an iteration).
 		do
@@ -1552,7 +1552,7 @@ public final class LinearScan
 
 		sortIntervalListAfterAllocation();
 
-		// make local backend.opt
+		// make local backend.transform
 		eliminateSpillMove();
 		assignLocations();
 

@@ -14,7 +14,7 @@ public class LIROp1 extends LIRInstruction
 		Normal, Volatile, Unaligned
 	}
 
-	public final LIRKind kind;          // the LIROperand frontend.type
+	public final LIRKind kind;          // the LIROperand jlang.type
 	public final LIRMoveKind moveKind; // flag that indicate the kind of move
 
 	/**
@@ -115,7 +115,7 @@ public class LIROp1 extends LIRInstruction
 	public LIRMoveKind moveKind()
 	{
 		assert opcode
-				== LIROpcode.Move : "The opcode must be of frontend.type LIROpcode.Move in LIROp1";
+				== LIROpcode.Move : "The opcode must be of jlang.type LIROpcode.Move in LIROp1";
 		return moveKind;
 	}
 

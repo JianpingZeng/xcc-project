@@ -1,14 +1,14 @@
 package driver;
 
 import hir.Function;
-import backend.opt.ConstantPropagation;
-import backend.opt.DCE;
-import backend.opt.GVN;
-import backend.opt.InductionVarSimplify;
-import backend.opt.LICM;
+import backend.transform.ConstantPropagation;
+import backend.transform.DCE;
+import backend.transform.GVN;
+import backend.transform.InductionVarSimplify;
+import backend.transform.LICM;
 import backend.analysis.LoopInfo;
-import backend.opt.LoopSimplify;
-import backend.opt.UCE;
+import backend.transform.LoopSimplify;
+import backend.transform.UCE;
 import hir.Module;
 import tools.Context;
 
@@ -52,14 +52,14 @@ public final class Optimizer
 		
 		for (Function m : hir)
 		{
-			/****** C1 backend.opt stage ***/
+			/****** C1 backend.transform stage ***/
     		// performs dead code elimination.    		
 			new DCE(m).runOnFunction();
 
 			prop.runOnFunction(m);
     
     		// after DCE, There are useless control flow be introduced by other
-    		// backend.opt. So that the useless control flow elimination is desired
+    		// backend.transform. So that the useless control flow elimination is desired
     		// as follows.
     		// 1.merges redundant branch instruction.
     		// 2.unlinks empty basic block
@@ -68,12 +68,12 @@ public final class Optimizer
 			uce.clean(m);
 			
 			
-			/** C2 backend.opt stage*/
+			/** C2 backend.transform stage*/
     		// performs global common subexpression elimination through global value
     		// numbering.
 			new GVN(m);
     
-    		// perform loop analysis and backend.opt
+    		// perform loop analysis and backend.transform
 			// 1. perform loop analysis
     		new LoopInfo(m).runOnFunction();
     		
@@ -86,13 +86,13 @@ public final class Optimizer
     		// performs dead code elimination.    		
 			new DCE(m).runOnFunction();
 			
-			/** C3 backend.opt stage */
+			/** C3 backend.transform stage */
 			ivSimplicator.runOnLoop(m);			
 			
 			// for removal of useless induction variables.
 			new DCE(m).runOnFunction();
 			
-			/** C4 backend.opt stage */
+			/** C4 backend.transform stage */
 		}	
 	}
 }

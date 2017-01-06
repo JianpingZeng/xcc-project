@@ -13,7 +13,7 @@ import backend.lir.ci.StackSlot;
 import tools.IntList;
 import tools.TTY;
 import tools.Util;
-import frontend.exception.CiBailout;
+import jlang.exception.CiBailout;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scanning register allocator}.
@@ -23,7 +23,7 @@ import frontend.exception.CiBailout;
 public final class Interval
 {
 	/**
-	 * A set of interval lists ,one per {@linkplain RegisterBinding binding} frontend.type.
+	 * A set of interval lists ,one per {@linkplain RegisterBinding binding} jlang.type.
 	 */
 	static final class RegisterBindingLists
 	{
@@ -247,7 +247,7 @@ public final class Interval
     }
 
 	/**
-	 * Constant used in backend.opt of spilling of an interval.
+	 * Constant used in backend.transform of spilling of an interval.
 	 */
 	enum SpillState
 	{
@@ -492,7 +492,7 @@ public final class Interval
 	private boolean insertMoveWhenActivated;
 
 	/**
-	 * For spill move backend.opt.
+	 * For spill move backend.transform.
 	 */
 	private SpillState spillState;
 
@@ -543,16 +543,16 @@ public final class Interval
 
 	public LIRKind kind()
 	{
-		assert !operand.isRegister() : "cannot access frontend.type for fixed interval";
+		assert !operand.isRegister() : "cannot access jlang.type for fixed interval";
 		return kind;
 	}
 
 	void setKind(LIRKind kind)
 	{
 		assert operand.isRegister() || this.kind == LIRKind.Illegal
-				|| this.kind == kind : "overwriting existing frontend.type";
+				|| this.kind == kind : "overwriting existing jlang.type";
 		assert kind == kind.stackKind() || kind
-				== LIRKind.Short : "these kinds should have int frontend.type registers";
+				== LIRKind.Short : "these kinds should have int jlang.type registers";
 		this.kind = kind;
 	}
 
@@ -642,7 +642,7 @@ public final class Interval
 		insertMoveWhenActivated = b;
 	}
 
-	// for spill backend.opt
+	// for spill backend.transform
 	public SpillState spillState()
 	{
 		return splitParent().spillState;

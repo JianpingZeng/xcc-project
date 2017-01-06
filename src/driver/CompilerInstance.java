@@ -1,14 +1,14 @@
 package driver;
 
 import driver.SourceFile.FileType;
-import frontend.codegen.BackendConsumer;
+import jlang.codegen.BackendConsumer;
 import backend.hir.Module;
 import backend.lir.backend.ia32.IA32;
 import backend.lir.backend.ia32.IA32RegisterConfig;
-import frontend.ast.ASTConsumer;
-import frontend.sema.ASTContext;
-import frontend.sema.Decl;
-import frontend.sema.Sema;
+import jlang.ast.ASTConsumer;
+import jlang.sema.ASTContext;
+import jlang.sema.Decl;
+import jlang.sema.Sema;
 import backend.target.TargetMachine;
 import tools.Context;
 import tools.Log;
@@ -193,7 +193,7 @@ public class CompilerInstance
     {
         Sema sema = new Sema(in, consumer);
 
-        frontend.cparser.Parser parser = sema.getParser();
+        jlang.cparser.Parser parser = sema.getParser();
         ArrayList<Decl> declsGroup = new ArrayList<>(16);
 
         while (!parser.parseTopLevel(declsGroup)) // Not end of file.

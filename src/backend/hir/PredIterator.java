@@ -38,7 +38,7 @@ public class PredIterator<B extends Value> implements Iterator<BasicBlock>
     /**
      * Returns {@code true} if the iteration has more elements.
      * (In other words, returns {@code true} if {@link #next} would
-     * return an element rather than throwing an frontend.exception.)
+     * return an element rather than throwing an jlang.exception.)
      *
      * @return {@code true} if the iteration has more elements
      */

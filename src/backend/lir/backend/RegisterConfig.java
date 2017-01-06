@@ -48,7 +48,7 @@ public interface RegisterConfig
 	 *              CPU integral} or {@linkplain} RegisterFlag#FPU floating
 	 *              point} parameters are being requested
 	 * @return the ordered set of LIRRegisters that may be used to pass parameters
-	 *              in a call conforming to {@code frontend.type}
+	 *              in a call conforming to {@code jlang.type}
 	 */
 	LIRRegister[] getCallingConventionRegisters(LIRRegister.RegisterFlag flag);
 

@@ -3,7 +3,7 @@ package tools;
 import java.util.List;
 import java.io.*;
 
-import frontend.exception.IPCException;
+import jlang.exception.IPCException;
 
 abstract public class CommandUtils
 {

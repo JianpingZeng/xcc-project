@@ -190,7 +190,7 @@ public final class LIRAddress extends LIRValue
 
 	/**
 	 * IfStmt the base register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
-	 * otherwise raises an frontend.exception..
+	 * otherwise raises an jlang.exception..
 	 *
 	 * @return the base {@link LIRRegister}
 	 * @throws Error if {@code base} is not a {@link LIRRegisterValue}
@@ -202,7 +202,7 @@ public final class LIRAddress extends LIRValue
 
 	/**
 	 * IfStmt the index register is a {@link LIRRegisterValue} returns the associated {@link LIRRegister}
-	 * otherwise raises an frontend.exception..
+	 * otherwise raises an jlang.exception..
 	 *
 	 * @return the base {@link LIRRegister}
 	 * @throws Error if {@code index} is not a {@link LIRRegisterValue}

@@ -4,7 +4,7 @@ import java.io.File;
 
 /** 
  * A class was served as representing a source file with different
- * frontend.type, such as .c, assembly, object and executable file.
+ * jlang.type, such as .c, assembly, object and executable file.
  * @author Xlous.zeng
  * @version 0.1
  */

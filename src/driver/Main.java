@@ -67,7 +67,7 @@ public class Main
 	                "Preprocess only, no compile, assembly or link"),
 	        new Option("-c", "", "Compile and assemble but no link"),
 	        new Option("-S", "", "Compile only, no assembly or link"),
-	        new Option("-O", "Specify the level of backend.opt")
+	        new Option("-O", "Specify the level of backend.transform")
 	        {
 		        @Override
 		        boolean matches(String arg)
@@ -79,17 +79,17 @@ public class Main
 		        boolean process(String option)
 		        {
 			        String type = option.substring(2);
-			        // obtains level of backend.opt.
+			        // obtains level of backend.transform.
 			        if (!type.matches("^[0123s]"))
 			        {
-				        error("unknown backend.opt switch: " + option);
+				        error("unknown backend.transform switch: " + option);
 				        return true;
 			        }
 			        options.put(name, option);
 			        return false;
 		        }
             },
-	        new Option("-debug-Parser", "Display the process of frontend.parser"),
+	        new Option("-debug-Parser", "Display the process of jlang.parser"),
 	        new Option(ASTDump.getOption(), ASTDump.getDescript()),
 	        new Option(EmitHIR.getOption(), EmitHIR.getDescript()),
 			new Option(ParseSyntaxOnly.getOption(), ParseSyntaxOnly.getDescript()),
