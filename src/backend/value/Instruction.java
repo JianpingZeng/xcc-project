@@ -1,6 +1,7 @@
 package backend.value;
 
 import backend.hir.BasicBlock;
+import backend.hir.CallSite;
 import backend.hir.InstVisitor;
 import backend.hir.Operator;
 import backend.type.FunctionType;
@@ -1909,6 +1910,15 @@ public abstract class Instruction extends User
         {
             return operand(0);
         }
+
+        public static CallSite get(Value val)
+        {
+            if (val instanceof CallInst)
+            {
+                return new CallSite((CallInst) val);
+            }
+            return new CallSite();
+        }
     }
 
     public static class SwitchInst extends TerminatorInst
@@ -2538,6 +2548,11 @@ public abstract class Instruction extends User
 
         @Override
         public void accept(InstVisitor visitor){}
+
+        public boolean isVolatile()
+        {
+            return isVolatile;
+        }
     }
 
 	/**

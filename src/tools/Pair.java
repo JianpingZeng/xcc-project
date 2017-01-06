@@ -34,6 +34,6 @@ public class Pair<K, V> {
         else if (second == null)
             return first.hashCode() + 2;
         else
-            return first.hashCode() * second.hashCode();
+            return first.hashCode() ^ second.hashCode();
     }
 }
