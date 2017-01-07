@@ -14,10 +14,11 @@ public interface Pass
 {
 	String getPassName();
 
-	default <T extends Pass> T getAnalysisToUpDate(Class<T> klass)
+	default <T> T getAnalysisToUpDate(Class<T> klass)
 	{
 		PassInfo pi = getPassInfo(klass);
 		if (pi == null) return null;
+
 		return (T)getAnalysisToUpDate(pi);
 	}
 

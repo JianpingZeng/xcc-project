@@ -1,8 +1,8 @@
 package driver;
 
-import java.util.HashMap;
-
 import tools.Context;
+
+import java.util.HashMap;
 
 /**
  * A table of all command-line options. IfStmt an option has an argument, the option
@@ -135,7 +135,13 @@ public class Options extends HashMap<String, String>
 		return get("-v") != null;
 	}
 
-	public boolean isParseASTOnly() {return get("fsyntax-only") != null;}
+	public boolean isParseASTOnly()
+	{
+		return get("fsyntax-only") != null;
+	}
 
-	public boolean isEmitAssembly() {return get("S")!=null;}
+	public boolean isEmitAssembly()
+    {
+	    return get("S")!=null;
+	}
 }

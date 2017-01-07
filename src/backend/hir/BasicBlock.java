@@ -179,7 +179,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		return false;
 	}
 
-	public enum BlockFlag
+    public enum BlockFlag
 	{
 		LinearScanLoopHeader,
 		LinearScanLoopEnd,
@@ -615,5 +615,17 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	{
 		assert index >= 0 && index < getNumPredecessors();
 		return ((TerminatorInst)useAt(index).getUser()).getParent();
+	}
+
+	/**
+	 * Return the index that point to the first non-phi instruction in the basic
+	 * block.
+	 * @return
+	 */
+	public int getFirstNonPhi()
+	{
+	    int i = 0;
+	    while (getInstAt(i) instanceof PhiNode) i++;
+		return i;
 	}
 }

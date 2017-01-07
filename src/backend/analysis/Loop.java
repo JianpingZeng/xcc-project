@@ -9,6 +9,7 @@ import tools.OutParamWrapper;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 
 /** 
  * <p>
@@ -285,5 +286,26 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	public void dump()
 	{
 		print(System.err, 0);
+	}
+
+	/**
+	 * Return true if there is no a exit block has a predecessor block which is
+	 * outside of the loop.
+	 * @return
+	 */
+	public boolean hasDedicatedExits()
+	{
+		ArrayList<BasicBlock> exits = getExitBlocks();
+		for (BasicBlock exitBB : exits)
+		{
+            PredIterator<BasicBlock> predItr = exitBB.predIterator();
+			while(predItr.hasNext())
+            {
+                BasicBlock pred = predItr.next();
+                if (!contains(pred))
+                    return false;
+            }
+		}
+		return true;
 	}
 }

@@ -1,9 +1,11 @@
 package backend.transform;
 
+import backend.analysis.AliasSetTracker;
+import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTreeNodeBase;
 import backend.hir.BasicBlock;
 import backend.analysis.DomTree;
 import backend.analysis.DomTree.DomTreeNode;
-import backend.pass.FunctionPass;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.LoadInst;
@@ -23,6 +25,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.TreeSet;
 
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
 
 /**
@@ -44,14 +47,14 @@ import tools.Pair;
  * <p>
  * Created by Jianping Zeng  on 2016/3/3.
  */
-public class PromoteMem2Reg extends FunctionPass
+public final class PromoteMem2Reg
 {
 	/**
 	 * The list of {@code AllocaInst} to be promoted.
 	 */
-	private List<Instruction.AllocaInst> allocas;
+	private List<AllocaInst> allocas;
 
-	private DomTree DT;
+	private DomTreeInfo dt;
 
 	/**
 	 * A reverse mapping of allocas
@@ -66,14 +69,14 @@ public class PromoteMem2Reg extends FunctionPass
 	 */
 	private HashMap<Pair, PhiNode> newPhiNodes;
 
-	private HashMap<Instruction.PhiNode, Integer> PhiToAllocaMap;
+	private TObjectIntHashMap<PhiNode> phiToAllocaMap;
 
 	/**
 	 * The set of basic block the renamaer has already visited.
 	 */
 	private HashSet<BasicBlock> visitedBlocks;
 
-	private HashMap<BasicBlock, Integer> BBNumbers;
+	private TObjectIntHashMap<BasicBlock> bbNumbers;
 
 	/**
 	 * The numbers of dead alloca instruction to be removed from parent block.
@@ -100,20 +103,31 @@ public class PromoteMem2Reg extends FunctionPass
 	/**
 	 * Maps the DomTreeNode to it's level at dominatro tree.
 	 */
-	private HashMap<DomTree.DomTreeNode, Integer> DomLevels;
+	private TObjectIntHashMap<DomTreeNodeBase<BasicBlock>> domLevels;
+
+	public static void promoteMemToReg(ArrayList<AllocaInst> allocas,
+            DomTreeInfo dt,
+            DominatorFrontier df, AliasSetTracker ast)
+    {
+        if (allocas.isEmpty()) return;
+        new PromoteMem2Reg(allocas, dt, df, ast);
+    }
 
 	public PromoteMem2Reg(){}
 
-	public PromoteMem2Reg(ArrayList<Instruction.AllocaInst> allocas, DomTree DT)
+	public PromoteMem2Reg(ArrayList<AllocaInst> allocas,
+            DomTreeInfo dt,
+            DominatorFrontier df,
+            AliasSetTracker ast)
 	{
 		this.allocas = allocas;
-		this.DT = DT;
+		this.dt = dt;
 		allocaLookup = new HashMap<>();
 		newPhiNodes = new HashMap<>();
 		visitedBlocks = new HashSet<>();
-		DomLevels = new HashMap<>();
-		BBNumbers = new HashMap<>();
-		PhiToAllocaMap = new HashMap<>();
+		domLevels = new TObjectIntHashMap<>();
+		bbNumbers = new TObjectIntHashMap<>();
+		phiToAllocaMap = new TObjectIntHashMap<>();
 	}
 
 	/**
@@ -150,7 +164,7 @@ public class PromoteMem2Reg extends FunctionPass
 	@Override
 	public boolean runOnFunction(Function f)
 	{
-		Function m = this.DT.getRootNode().getBlock().getCFG().getMethod();
+		Function m = this.dt.getRootNode().getBlock().getCFG().getMethod();
 		assert (m != null) : "The method of this Dominator Tree is null";
 		AllocaInfo info = new AllocaInfo();
 		LargeBlockInfo LBI = new LargeBlockInfo();
@@ -189,7 +203,7 @@ public class PromoteMem2Reg extends FunctionPass
 			// definition with the value stored.
 			if (info.definingBlocks.size() == 1)
 			{
-				if (rewriteSingleStoreAlloca(AI, info, LBI, DT))
+				if (rewriteSingleStoreAlloca(AI, info, LBI, dt))
 				{
 					// the alloca instruction has been processed, remove it
 					removeFromAllocasList(AI);
@@ -212,22 +226,22 @@ public class PromoteMem2Reg extends FunctionPass
 
 			// if we haven't computed dominator tree level, just do it
 			// with width-first traverse.
-			if (DomLevels.isEmpty())
+			if (domLevels.isEmpty())
 			{
 				LinkedList<DomTree.DomTreeNode> worklist = new LinkedList<>();
 
-				DomTree.DomTreeNode root = DT.getRootNode();
-				DomLevels.put(root, 0);
+				DomTree.DomTreeNode root = dt.getRootNode();
+				domLevels.put(root, 0);
 				worklist.addLast(root);
 
 				while (!worklist.isEmpty())
 				{
 					DomTree.DomTreeNode node = worklist.removeLast();
 					// the next level
-					int childLevel = DomLevels.get(node) + 1;
+					int childLevel = domLevels.get(node) + 1;
 					for (DomTree.DomTreeNode dom : node)
 					{
-						DomLevels.put(dom, childLevel);
+						domLevels.put(dom, childLevel);
 						worklist.addLast(dom);
 					}
 				}
@@ -235,11 +249,11 @@ public class PromoteMem2Reg extends FunctionPass
 
 			// IfStmt we haven't computed a numbering for the BB's in the function, do so
 			// now.
-			if (BBNumbers.isEmpty())
+			if (bbNumbers.isEmpty())
 			{
 				int id = 0;
 				for (BasicBlock BB : m)
-					BBNumbers.put(BB, Integer.valueOf(id));
+					bbNumbers.put(BB, Integer.valueOf(id));
 			}
 
 			// IfStmt we haven't computed a numbering for the BB's in the function,
@@ -285,7 +299,7 @@ public class PromoteMem2Reg extends FunctionPass
 		visitedBlocks.clear();
 
 		// Remove the allocas themselves from the function.
-		for (Instruction.AllocaInst AI : allocas)
+		for (AllocaInst AI : allocas)
 		{
 			// IfStmt there are any usesList of the alloca instructions left, they must be in
 			// unreachable basic blocks that were not processed by walking the dominator
@@ -304,13 +318,13 @@ public class PromoteMem2Reg extends FunctionPass
 		while (eliminatedAPHI)
 		{
 			eliminatedAPHI = false;
-			for (Map.Entry<Pair, Instruction.PhiNode> entity : newPhiNodes.entrySet())
+			for (Map.Entry<Pair, PhiNode> entity : newPhiNodes.entrySet())
 			{
 				PhiNode phiNode = entity.getValue();
 
 				Instruction V;
 				// if the phiNode merges one value and/or undefs, get the value
-				if ((V = simplifyInstruction(phiNode, DT)) != null)
+				if ((V = simplifyInstruction(phiNode, dt)) != null)
 				{
 					phiNode.replaceAllUsesWith(V);
 					phiNode.eraseFromBasicBlock();
@@ -327,7 +341,7 @@ public class PromoteMem2Reg extends FunctionPass
 		// have incoming VALUES for all predecessors.  Loop over all PHI nodes we have
 		// created, inserting undef VALUES if they are missing any incoming VALUES.
 		//
-		for (Map.Entry<Pair, Instruction.PhiNode> entity : newPhiNodes.entrySet())
+		for (Map.Entry<Pair, PhiNode> entity : newPhiNodes.entrySet())
 		{
 			PhiNode phiNode = entity.getValue();
 			BasicBlock BB = phiNode.getParent();
@@ -357,8 +371,8 @@ public class PromoteMem2Reg extends FunctionPass
 			Iterator<Value> it = BB.iterator();
 			Value inst;
 
-			while (it.hasNext() && ((inst = it.next()) instanceof Instruction.PhiNode
-					&& (phiNode = (Instruction.PhiNode) inst).getNumberIncomingValues()
+			while (it.hasNext() && ((inst = it.next()) instanceof PhiNode
+					&& (phiNode = (PhiNode) inst).getNumberIncomingValues()
 					== numBadPreds))
 			{
 				Value undef = UndefValue.get(phiNode.kind);
@@ -378,7 +392,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 * @param DT
 	 * @return
 	 */
-	private Instruction simplifyInstruction(Instruction.PhiNode phiNode, DomTree DT)
+	private Instruction simplifyInstruction(PhiNode phiNode, DomTree DT)
 	{
 		return null;
 	}
@@ -411,13 +425,13 @@ public class PromoteMem2Reg extends FunctionPass
 		while (true)
 		{
 			// determine whether any phi node already be in the block.
-			if ((inst = BB.getFirstInst()) instanceof Instruction.PhiNode)
+			if ((inst = BB.getFirstInst()) instanceof PhiNode)
 			{
-				Instruction.PhiNode phiNode = (Instruction.PhiNode) inst;
+				PhiNode phiNode = (PhiNode) inst;
 				// to distinguish between phiNode node being inserted by this invocation
 				// of mem2reg from those phiNode nodes that already existed in the Module
 				// before mem2reg was run.
-				if (PhiToAllocaMap.containsKey(phiNode))
+				if (phiToAllocaMap.containsKey(phiNode))
 				{
 					int newPhiNumOperands = phiNode.getNumberIncomingValues();
 					int numEdges = Collections.frequency(pred.getSuccs(), BB);
@@ -427,7 +441,7 @@ public class PromoteMem2Reg extends FunctionPass
 					int idx = 1;
 					do
 					{
-						int allocaNo = PhiToAllocaMap.get(phiNode);
+						int allocaNo = phiToAllocaMap.get(phiNode);
 
 						// sets the undef value for phiNode node, it is reason that
 						// handling loop.
@@ -443,9 +457,9 @@ public class PromoteMem2Reg extends FunctionPass
 							break;
 						inst = BB.getInstAt(idx++);
 						// the handling phiNode node has finished!
-						if (!(inst instanceof Instruction.PhiNode))
+						if (!(inst instanceof PhiNode))
 							break;
-						phiNode = (Instruction.PhiNode) inst;
+						phiNode = (PhiNode) inst;
 					} while (phiNode.getNumberIncomingValues()
 							== newPhiNumOperands);
 				}
@@ -467,7 +481,7 @@ public class PromoteMem2Reg extends FunctionPass
 				if (inst instanceof LoadInst)
 				{
 					LoadInst LI = (LoadInst) inst;
-					Instruction.AllocaInst src = LI.from;
+					AllocaInst src = LI.from;
 					if (src == null)
 						continue;
 
@@ -526,7 +540,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 * @param info
 	 * @param LBI
 	 */
-	private void promoteSingleBlockAlloca(Instruction.AllocaInst AI, AllocaInfo info,
+	private void promoteSingleBlockAlloca(AllocaInst AI, AllocaInfo info,
 			LargeBlockInfo LBI)
 	{
 		// sort the stores by their index, making it efficient to do lookup.
@@ -600,7 +614,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 * @param allocaNum The index of alloca into allocas list.
 	 * @param info      The information relative to alloca.
 	 */
-	private void determineInsertionPoint(Instruction.AllocaInst AI, int allocaNum,
+	private void determineInsertionPoint(AllocaInst AI, int allocaNum,
 			AllocaInfo info)
 	{
 		// 璇ュ嚱鏁扮殑鐩殑灏辨槸鑾峰彇AI鎸囦护鐨勬敮閰嶈竟鐣岄泦锛岀劧鍚庢斁缃甈hi鍑芥暟銆�
@@ -625,8 +639,8 @@ public class PromoteMem2Reg extends FunctionPass
 
 		DomTree.DomTreeNode node;
 		for (BasicBlock BB : defBlocks)
-			if ((node = DT.getTreeNodeForBlock(BB)) != null)
-				PQ.add(new Pair<>(node, DomLevels.get(node)));
+			if ((node = dt.getTreeNodeForBlock(BB)) != null)
+				PQ.add(new Pair<>(node, domLevels.get(node)));
 
 		// 瀛樺偍璇lloca鐨勬敮閰嶈竟鐣岄泦
 		ArrayList<Pair<Integer, BasicBlock>> DFBlocks = new ArrayList<>(32);
@@ -652,13 +666,13 @@ public class PromoteMem2Reg extends FunctionPass
 
 				for (BasicBlock succ : BB.getSuccs())
 				{
-					DomTreeNode succNode = DT.getTreeNodeForBlock(succ);
+					DomTreeNode succNode = dt.getTreeNodeForBlock(succ);
 
 					// 璺宠繃鎵�鏈塀B鍧楁墍鏀厤鐨勭殑鍧�
 					if (succNode.getIDom() == Node)
 						continue;
 
-					int succLevel = DomLevels.get(succNode);
+					int succLevel = domLevels.get(succNode);
 					if (succLevel > rootLevel)
 						continue;
 
@@ -672,7 +686,7 @@ public class PromoteMem2Reg extends FunctionPass
 						continue;
 
 					DFBlocks.add(
-							new Pair<>(BBNumbers.get(succBlock), succBlock));
+							new Pair<>(bbNumbers.get(succBlock), succBlock));
 					if (!defBlocks.contains(succBlock))
 						PQ.offer(new Pair<>(succNode, succLevel));
 				}// end for successor
@@ -720,7 +734,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 */
 	private boolean queuePhiNode(BasicBlock BB, int allocaNo, int Version)
 	{
-		Instruction.PhiNode phiNode = newPhiNodes.get(new Pair(BBNumbers.get(BB), allocaNo));
+		PhiNode phiNode = newPhiNodes.get(new Pair(bbNumbers.get(BB), allocaNo));
 
 		// if the specific BB already has a phiNode node added for the i-th alloca
 		// and the we have done.
@@ -729,12 +743,12 @@ public class PromoteMem2Reg extends FunctionPass
 
 		AllocaInst AI = allocas.get(allocaNo);
 		// create a phiNode node and add the phiNode-node into the basic block
-		phiNode = new Instruction.PhiNode(AI.kind, BB.getNumOfPreds(),
+		phiNode = new PhiNode(AI.kind, BB.getNumOfPreds(),
 				AI.name() + "." + (Version++));
 		BB.insertAfterFirst(phiNode);
 		++numberPhiInsert;
 
-		PhiToAllocaMap.put(phiNode, allocaNo);
+		phiToAllocaMap.put(phiNode, allocaNo);
 		return true;
 	}
 
@@ -836,7 +850,7 @@ public class PromoteMem2Reg extends FunctionPass
 	 * @param DT   The dominator tree for calculating dominator frontier.
 	 * @return return true if rewriting successfully.
 	 */
-	private boolean rewriteSingleStoreAlloca(Instruction.AllocaInst AI, AllocaInfo info,
+	private boolean rewriteSingleStoreAlloca(AllocaInst AI, AllocaInfo info,
 			LargeBlockInfo LBI, DomTree DT)
 	{
 		// the last definition of alloca
@@ -1101,7 +1115,7 @@ public class PromoteMem2Reg extends FunctionPass
 		 *
 		 * @param alloca An {@code AllocaInst} instruction to be analyzed.
 		 */
-		void analyzeAlloca(Instruction.AllocaInst alloca)
+		void analyzeAlloca(AllocaInst alloca)
 		{
 			clear();
 			/*
