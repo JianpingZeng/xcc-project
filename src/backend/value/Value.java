@@ -7,7 +7,6 @@ import backend.type.Type;
 
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 
 /**
  * @author xlous.zeng
@@ -46,7 +45,7 @@ public class Value implements Cloneable
 
 	public Type getType() { return ty;}
 
-	public List<Use> getUseList() {return usesList;}
+	public LinkedList<Use> getUseList() {return usesList;}
 	
 	/**
 	 * For value number to determine whether this instruction is equivalent to
