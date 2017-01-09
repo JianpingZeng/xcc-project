@@ -1,6 +1,6 @@
 package backend.pass;
 
-import backend.transform.PromoteMem2Reg;
+import backend.transform.PromoteMemToReg;
 
 /**
  * @author Xlous.zeng
@@ -15,7 +15,7 @@ public class PassCreator
 		{
 			//fpm.add(new CFGSimplificationPass());
 			if (optimizationLevel == 1)
-				fpm.add(new PromoteMem2Reg());
+				fpm.add(new PromoteMemToReg());
 		}
 	}
 

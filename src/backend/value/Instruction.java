@@ -2406,17 +2406,6 @@ public abstract class Instruction extends User
         {
             return instName;
         }
-
-        /**
-         * Determine whether this alloca instruction is promoted into
-         * register or not?
-         *
-         * @return ReturnInst true if it is promotable.
-         */
-        public boolean isAllocaPromotable()
-        {
-            return !isArrayAllocation();
-        }
     }
 
     /**

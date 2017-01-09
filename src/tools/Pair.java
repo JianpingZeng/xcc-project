@@ -13,10 +13,15 @@ public class Pair<K, V> {
     public K first;
     public V second;
 
-    public Pair(K first, V second) {
-        super();
+    public Pair(K first, V second)
+    {
         this.first = first;
         this.second = second;
+    }
+
+    public static <KT, VT> Pair<KT, VT> get(KT key, VT value)
+    {
+        return new Pair<KT, VT>(key, value);
     }
 
     private static boolean equals(Object x, Object y) {

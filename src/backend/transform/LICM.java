@@ -21,7 +21,7 @@ import java.util.HashSet;
 
 import static backend.analysis.AliasAnalysis.ModRefBehavior.DoesNotAccessMemory;
 import static backend.analysis.AliasAnalysis.ModRefBehavior.OnlyReadsMemory;
-import static backend.transform.PromoteMem2Reg.promoteMemToReg;
+import static backend.transform.PromoteMemToReg.promoteMemToReg;
 
 /** 
  * </p>
@@ -342,7 +342,7 @@ public final class LICM extends LoopPass
         }
         else
         {
-            // Otherwise, if we have multiple exits, use the PromoteMem2Reg function to
+            // Otherwise, if we have multiple exits, use the PromoteMemToReg function to
             // do all of the hard work of inserting PHI nodes as necessary.  We convert
             // the value into a stack object to get it to do this.
 
