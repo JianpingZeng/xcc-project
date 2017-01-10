@@ -18,8 +18,6 @@ package backend.pass;
 
 import java.util.HashMap;
 
-import static backend.pass.Pass.passInfoMap;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -28,10 +26,11 @@ public class RegisterPass
 {
     private PassInfo passInfo;
     private Class klass;
+    private static HashMap<Class<Pass>, PassInfo> passInfoMap;
 
     /**
      * Creates an instance of PassInfo with default constructor.
-     * And register it into {@linkplain Pass#passInfoMap}.
+     * And register it into {@linkplain #passInfoMap}.
      * @param name
      * @param klass
      */

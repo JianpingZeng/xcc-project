@@ -52,11 +52,7 @@ public final class PassInfo
         {
             return klass.newInstance();
         }
-        catch (InstantiationException e)
-        {
-            e.printStackTrace();
-        }
-        catch (IllegalAccessException e)
+        catch (IllegalAccessException | InstantiationException e)
         {
             e.printStackTrace();
         }

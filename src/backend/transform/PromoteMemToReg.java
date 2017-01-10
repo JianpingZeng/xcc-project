@@ -110,9 +110,17 @@ public final class PromoteMemToReg
 
 	public static int numberPhiInsert = 0;
 
+    public static void promoteMemToReg(ArrayList<AllocaInst> allocas,
+            DomTreeInfo dt,
+            DominatorFrontier df)
+    {
+        promoteMemToReg(allocas, dt, df, null);
+    }
+
 	public static void promoteMemToReg(ArrayList<AllocaInst> allocas,
             DomTreeInfo dt,
-            DominatorFrontier df, AliasSetTracker ast)
+            DominatorFrontier df,
+			AliasSetTracker ast)
     {
         if (allocas.isEmpty()) return;
         new PromoteMemToReg(allocas, dt, df, ast).run();
@@ -141,7 +149,7 @@ public final class PromoteMemToReg
      *
      * @return Return true if there are only loads and stores to the alloca instruction.
      */
-    private boolean isAllocaPromotable(AllocaInst ai)
+    public static boolean isAllocaPromotable(AllocaInst ai)
     {
         LoadInst li;
         StoreInst si;
