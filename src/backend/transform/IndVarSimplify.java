@@ -24,31 +24,50 @@ import backend.pass.AnalysisUsage;
 import backend.pass.LoopPass;
 
 /**
+ * <p>
  * This transformation analyzes and transforms the induction variables (and
  * computations derived from them) into simpler forms suitable for subsequent
  * analysis and transformation.
- *
+ * </p>
+ * <p>
  * This transformation make the following changes to each loop with an
  * identifiable induction variable:
- *   1. All loops are transformed to have a SINGLE canonical induction variable
+ *  <ol>
+ *      <li>
+ *      All loops are transformed to have a SINGLE canonical induction variable
  *      which starts at zero and steps by one.
- *   2. The canonical induction variable is guaranteed to be the first PHI node
+ *      </li>
+ *      <li>The canonical induction variable is guaranteed to be the first PHI node
  *      in the loop header block.
- *   3. Any pointer arithmetic recurrences are raised to use array subscripts.
- *
+ *      </li>
+ *      <li>
+ *       Any pointer arithmetic recurrences are raised to use array subscripts.
+ *      </li>
+ *   </ol>
+ * </p>
  * If the trip count of a loop is computable, this pass also makes the following
  * changes:
- *   1. The exit condition for the loop is canonicalized to compare the
+ * <ol>
+ *     <li>
+ *         The exit condition for the loop is canonicalized to compare the
  *      induction value against the exit value.  This turns loops like:
- *        'for (i = 7; i*i < 1000; ++i)' into 'for (i = 0; i != 25; ++i)'
- *   2. Any use outside of the loop of an expression derived from the indvar
+ *        <pre>for (i = 7; i*i < 1000; ++i)</pre>
+ *        into
+ *        <pre>for (i = 0; i != 25; ++i)</pre>
+ *     </li>
+ *     <li>
+ *      Any use outside of the loop of an expression derived from the indvar
  *      is changed to compute the derived value outside of the loop, eliminating
  *      the dependence on the exit value of the induction variable.  If the only
  *      purpose of the loop is to compute the exit value of some derived
  *      expression, this transformation will make the loop dead.
+ *     </li>
+ * </ol>
  *
+ * <p>
  * This transformation should be followed by strength reduction after all of the
  * desired loop transformations have been performed.
+ * </p>
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -64,6 +83,15 @@ public final class IndVarSimplify extends LoopPass
         li = getAnalysisToUpDate(LoopInfo.class);
         se = getAnalysisToUpDate(ScalarEvolution.class);
 
+        // Firstly, transforms all sub loops nested in current loop processed.
+        loop.getSubLoops().forEach(this::runOnLoop);
+
+        // Checks to see if this loop has a computable loop-invariant exit expression.
+        // If so, this means that we can compute the final value of any expression
+        // that recurrent in the loop, and substitute the exit values from the loop
+        // into any instruction outside of the loop that use the final value of the
+        // current value.
+
         return changed;
     }
 
@@ -77,8 +105,8 @@ public final class IndVarSimplify extends LoopPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.addRequired(LoopSimplify.class);
-        au.addRequired(DomTreeInfo.class);
-        au.addRequired(LoopInfo.class);
         au.addRequired(ScalarEvolution.class);
+        au.addRequired(LoopInfo.class);
+        au.addPreserved(LoopSimplify.class);
     }
 }
