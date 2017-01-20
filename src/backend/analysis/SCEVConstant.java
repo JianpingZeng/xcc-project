@@ -1,11 +1,10 @@
 package backend.analysis;
 
-import backend.hir.BasicBlock;
 import backend.type.Type;
-import backend.value.Constant;
 import backend.value.ConstantInt;
 
 import java.io.PrintStream;
+import java.util.HashMap;
 
 /**
  * @author Xlous.zeng
@@ -13,12 +12,26 @@ import java.io.PrintStream;
  */
 public final class SCEVConstant extends SCEV
 {
+    private static final HashMap<ConstantInt, SCEVConstant> scevConstantMap
+            = new HashMap<>();
+
 	private ConstantInt value;
 	private SCEVConstant(ConstantInt val)
 	{
 		super(SCEVType.scConstant);
 		value = val;
 	}
+
+	public static SCEV get(ConstantInt val)
+	{
+        if (!scevConstantMap.containsKey(val))
+        {
+            SCEVConstant res = new SCEVConstant(val);
+            scevConstantMap.put(val, res);
+            return res;
+        }
+        return scevConstantMap.get(val);
+    }
 
 	public ConstantInt getValue()
 	{

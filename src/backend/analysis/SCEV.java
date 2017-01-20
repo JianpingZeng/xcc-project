@@ -1,7 +1,8 @@
 package backend.analysis;
 
-import backend.hir.BasicBlock;
 import backend.type.Type;
+import backend.value.ConstantExpr;
+
 import java.io.PrintStream;
 
 /**
@@ -25,6 +26,25 @@ public abstract class SCEV
     protected SCEV(SCEVType scevType)
     {
         this.scevType = scevType;
+    }
+
+    /***
+     * Returns a SCEV corresponding to -val = -1 * val.
+     * @return
+     */
+    public static SCEV getNegativeSCEV(SCEV val)
+    {
+        if (val instanceof SCEVConstant)
+        {
+            SCEVConstant vc = (SCEVConstant)val;
+            return SCEVUnknown.get(ConstantExpr.getNeg(vc.getValue()));
+        }
+        return SCEVMulExpr.get(val, SCEVUnknown.getIntegerSCEV(-1, val.getType()));
+    }
+
+    public static SCEV getMinusSCEV(SCEV lhs, SCEV rhs)
+    {
+        return null;
     }
 
     public final SCEVType getSCEVType()
