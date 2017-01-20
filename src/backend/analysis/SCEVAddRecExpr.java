@@ -1,6 +1,11 @@
 package backend.analysis;
 
+import backend.hir.Operator;
 import backend.type.Type;
+import backend.value.Constant;
+import backend.value.ConstantExpr;
+import backend.value.ConstantInt;
+import jlang.sema.APInt;
 import tools.Pair;
 
 import java.io.PrintStream;
@@ -129,14 +134,67 @@ public class SCEVAddRecExpr extends SCEV
 		return getNumOperands() == 3;
 	}
 
+    /**
+     * Computes the val * (val - 1) * ... (val - numSteps+1)
+     * @param val
+     * @param numSteps
+     * @return
+     */
+	private SCEV partialFact(SCEV val, int numSteps)
+    {
+        Type ty = val.getType();
+        // We should make folding operation on the common cases.
+        if (val instanceof SCEVConstant)
+        {
+            SCEVConstant cons = (SCEVConstant)val;
+            APInt init = cons.getValue().getValue();
+            APInt result = init;
+            for (; numSteps != 0; numSteps--)
+                result.mulAssign(result.sub(new APInt(32, numSteps-1)));
+            Constant res = ConstantInt.get(result);
+            return SCEVUnknown.get(ConstantExpr.getCast(Operator.BitCast, res, ty));
+        }
+
+        if (numSteps == 0)
+            return SCEVUnknown.getIntegerSCEV(1, ty);
+
+        SCEV result = val;
+        for(int i = 1; i < numSteps; i++)
+            result = SCEVMulExpr.get(result, SCEV.getMinusSCEV(val, SCEVUnknown.getIntegerSCEV(i, ty)));
+
+        return result;
+    }
+
+    public SCEV getOperand(int index)
+    {
+        assert index >= 0 && index < getNumOperands();
+        return operands.get(index);
+    }
+
 	/**
 	 * Returns the value of this add recurrence at the specified iteration number.
+     * We evaluate this recurrence by multiplying each element in the chain by
+     * binomial coefficient corresponding to it. In other words, we compute the
+     * {A, +, B, +, C, D} with following equation:
+     * <pre>
+     *     A*choose(it, 0) + B*choose(it, 1) + C*choose(it, 2) + D*choose(it, 3).
+     * </pre>
 	 * @param it
 	 * @return
 	 */
 	public SCEV evaluateAtIteration(SCEV it)
 	{
-		return null;
+	    SCEV result = getStart();
+	    Type ty = it.getType();
+	    int divisor = 1;
+	    for(int i = 1, e = getNumOperands(); i < e; i++)
+        {
+            SCEV bc = partialFact(it, i);
+            SCEV val = SCEVSDivExpr.get(SCEVMulExpr.get(bc, operands.get(i)),
+                    SCEVUnknown.getIntegerSCEV(divisor, ty));
+            result = SCEVAddExpr.get(result, val);
+        }
+		return result;
 	}
 
 	public SCEV getIterationNumberInRange(ConstantRange range)

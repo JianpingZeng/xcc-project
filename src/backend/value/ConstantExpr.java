@@ -270,6 +270,26 @@ public abstract class ConstantExpr extends Constant
         return get(Operator.Add, lhs, rhs);
     }
 
+    public static Constant getSub(Constant lhs, Constant rhs)
+    {
+        return get(Operator.Sub, lhs, rhs);
+    }
+
+    public static Constant getMul(Constant lhs, Constant rhs)
+    {
+        return get(Operator.Mul, lhs, rhs);
+    }
+
+    public static Constant getSDiv(Constant lhs, Constant rhs)
+    {
+        return get(Operator.SDiv, lhs, rhs);
+    }
+
+    public static Constant getUDiv(Constant lhs, Constant rhs)
+    {
+        return get(Operator.UDiv, lhs, rhs);
+    }
+
     static class ExprMapKeyType
     {
         Operator op;
