@@ -19,11 +19,11 @@ package backend.transform;
 import backend.hir.BasicBlock;
 import backend.hir.Operator;
 import backend.type.Type;
-import backend.value.Constant;
-import backend.value.Instruction;
-import backend.value.Value;
+import backend.value.*;
 import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
+
+import java.util.ArrayList;
 
 /**
  * Performs some local constant folding optimizaiton.
@@ -112,5 +112,123 @@ public final class ConstantFolder
         // handles other instruction here.
         // inst.accept(this);
         return null;
+    }
+
+    public static Constant constantFoldFP(FunctionalInterface intf, double v, Type ty)
+    {
+        return null;
+    }
+
+    public static Constant constantFoldCall(Function f, ArrayList<Constant> operands)
+    {
+        // TODO constant folding on call instruction.
+        String name = f.getName();
+        Type ty = f.getReturnType();
+
+        if (operands.size() == 1)
+        {
+            if (operands.get(0) instanceof ConstantFP)
+            {
+                ConstantFP op = (ConstantFP)operands.get(0);
+                double v = op.getValue();
+                switch (name)
+                {
+                    case "acos":
+                        return ConstantFP.get(ty, Math.acos(v));
+                    case "asin":
+                        return ConstantFP.get(ty, Math.asin(v));
+                    case "atan":
+                        return ConstantFP.get(ty, Math.atan(v));
+                    case "ceil":
+                        return ConstantFP.get(ty, Math.ceil(v));
+                    case "cos":
+                        return ConstantFP.get(ty, Math.cos(v));
+                    case "cosh":
+                        return ConstantFP.get(ty, Math.cosh(v));
+                    case "exp":
+                        return ConstantFP.get(ty, Math.exp(v));
+                    case "fabs":
+                        return ConstantFP.get(ty, Math.abs(v));
+                    case "log":
+                        return ConstantFP.get(ty, Math.log(v));
+                    case "log10":
+                        return ConstantFP.get(ty, Math.log10(v));
+                    case "llvm.sqrt.f32":
+                    case "llvm.sqrt.f64":
+                        if (v >= -0.0)
+                            return ConstantFP.get(ty, Math.sqrt(v));
+                        else
+                            return ConstantFP.get(ty, 0.0);
+                    case "sin":
+                        return ConstantFP.get(ty, Math.sin(v));
+                    case "sinh":
+                        return ConstantFP.get(ty, Math.sinh(v));
+                    case "sqrt":
+                        if (v >= 0.0)
+                            return ConstantFP.get(ty, Math.sqrt(v));
+                        break;
+                    case "tan":
+                        return ConstantFP.get(ty, Math.tan(v));
+                    case "tanh":
+                        return ConstantFP.get(ty, Math.tanh(v));
+                    default:
+                        break;
+                }
+            }
+            else if (operands.size() == 2)
+            {
+                if (operands.get(0) instanceof ConstantFP)
+                {
+                    ConstantFP op1 = (ConstantFP)operands.get(0);
+                    if (operands.get(1) instanceof ConstantFP)
+                    {
+                        ConstantFP op2 = (ConstantFP)operands.get(1);
+                        double op1Val = op1.getValue(), op2Val = op2.getValue();
+
+                        if (name.equals("pow"))
+                        {
+                            double res = Math.pow(op1Val, op2Val);
+                            return ConstantFP.get(ty, res);
+                        }
+                        else if (name.equals("fmod"))
+                        {
+                            // TODO fmod intrisinc function.
+                            return null;
+                        }
+                        else if (name.equals("atan2"))
+                        {
+                            return ConstantFP.get(ty, Math.atan2(op1Val, op2Val));
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    public static boolean canConstantFoldCallTo(Function f)
+    {
+        String name = f.getName();
+        switch (name)
+        {
+            case "acos":
+            case "asin":
+            case "atan":
+            case "ceil":
+            case "cos":
+            case "cosh":
+            case "exp":
+            case "fabs":
+            case "log":
+            case "log10":
+            case "sin":
+            case "sinh":
+            case "sqrt":
+            case "tan":
+            case "tanh":
+                return true;
+            default:
+                return false;
+        }
     }
 }

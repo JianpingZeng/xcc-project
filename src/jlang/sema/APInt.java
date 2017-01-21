@@ -1715,6 +1715,11 @@ public class APInt
         return result.clearUnusedBits();
     }
 
+    public APInt add(long rhs)
+    {
+        return add(new APInt(bitWidth, rhs));
+    }
+
     public static boolean add(long[] dest, long[] x, long[] y, int len)
     {
         boolean carray = false;
