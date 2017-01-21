@@ -7,6 +7,16 @@ cc.imi
 document
 [O|o]ut
 classes
+src/backend/asm
+src/backend/ci
+src/backend/lir
+src/driver/IA32Backend.java
+src/driver/Backend.java
+src/driver/Optimizer.java
+src/jlang/comp
+src/jlang/parser
+src/jlang/symbol
+src/backend/heap
 
 
 
