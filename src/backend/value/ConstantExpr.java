@@ -215,7 +215,13 @@ public abstract class ConstantExpr extends Constant
     private static HashMap<ExprMapKeyType, Constant> exprConstanMaps
             = new HashMap<>();
 
-    public static Constant getElementPtr(Constant casted, Constant offset, int i)
+    public static Constant getElementPtr(Constant base, ArrayList<Constant> operands)
+    {
+        // TODO
+        return null;
+    }
+
+    public static Constant getElementPtr(Constant base, Constant offset, int i)
     {
         // TODO
         return null;
@@ -288,6 +294,21 @@ public abstract class ConstantExpr extends Constant
     public static Constant getUDiv(Constant lhs, Constant rhs)
     {
         return get(Operator.UDiv, lhs, rhs);
+    }
+
+    public static Constant getShl(Constant lhs, Constant rhs)
+    {
+        return get(Operator.Shl, lhs, rhs);
+    }
+
+    public static Constant getLShr(Constant lhs, Constant rhs)
+    {
+        return get(Operator.LShr, lhs, rhs);
+    }
+
+    public static Constant getAShr(Constant lhs, Constant rhs)
+    {
+        return get(Operator.AShr, lhs, rhs);
     }
 
     static class ExprMapKeyType

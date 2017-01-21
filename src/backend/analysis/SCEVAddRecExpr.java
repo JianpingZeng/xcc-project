@@ -108,7 +108,7 @@ public class SCEVAddRecExpr extends SCEV
 	 */
 	public SCEV getStepRecurrence()
 	{
-		if (isAffline()) return operands.get(1);
+		if (isAffine()) return operands.get(1);
 		return get(new ArrayList<>(operands.subList(1, operands.size()))
 				, loop);
 	}
@@ -118,7 +118,7 @@ public class SCEVAddRecExpr extends SCEV
 	 * an expressions A+B*x where A and B are loop invariant values.
 	 * @return
 	 */
-	public boolean isAffline()
+	public boolean isAffine()
 	{
 		return getNumOperands() == 2;
 	}
@@ -197,6 +197,15 @@ public class SCEVAddRecExpr extends SCEV
 		return result;
 	}
 
+    /**
+     * Return the number of iterations of this loop that produce values in the
+     * specified constant range.  Another way of looking at this is that it
+     * returns the first iteration number where the value is not in the
+     * condition, thus computing the exit count.  If the iteration count can't
+     * be computed, an instance of SCEVCouldNotCompute is returned.
+     * @param range
+     * @return
+     */
 	public SCEV getIterationNumberInRange(ConstantRange range)
 	{
 		return null;
@@ -204,7 +213,22 @@ public class SCEVAddRecExpr extends SCEV
 
 	public SCEV replaceSymbolicValuesWithConcrete(SCEV sym, SCEV concrete)
 	{
-		return null;
+	    for(int i = 0, e = getNumOperands(); i < e; i++)
+        {
+            SCEV h = operands.get(i).replaceSymbolicValuesWithConcrete(sym, concrete);
+            if (!h.equals(operands.get(i)))
+            {
+                ArrayList<SCEV> newOps = new ArrayList<>();
+                for (int j = 0; j < i; j++)
+                    newOps.add(operands.get(j));
+                newOps.add(h);
+                for (int j = i+1; j < e;j++)
+                    newOps.add(operands.get(j).replaceSymbolicValuesWithConcrete(sym, concrete));
+
+                return get(newOps, loop);
+            }
+        }
+		return this;
 	}
 
 	/**
