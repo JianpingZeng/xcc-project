@@ -1371,7 +1371,6 @@ public abstract class Instruction extends User
      */
     public static class ICmpInst extends CmpInst
     {
-
         public ICmpInst(Predicate pred, Value lhs,
                 Value rhs, String name, Instruction insertBefore)
         {
@@ -1412,6 +1411,18 @@ public abstract class Instruction extends User
                 Value rhs, String name)
         {
             super(lhs.getType(), ICmp, pred, lhs, rhs, name, (Instruction) null);
+            assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
+                    :"Invalid ICmp predicate value";
+            assert lhs.getType() == rhs.getType():
+                    "Both operands to ICmp instruction are not of the same type!";
+            assert lhs.getType().isIntegerType():
+                    "Invalid operand types for ICmp instruction";
+        }
+
+        public ICmpInst(Type ty, Predicate pred, Value lhs,
+                Value rhs, String name)
+        {
+            super(ty, ICmp, pred, lhs, rhs, name, (Instruction) null);
             assert pred.compareTo(Predicate.LAST_ICMP_PREDICATE)<=0
                     :"Invalid ICmp predicate value";
             assert lhs.getType() == rhs.getType():

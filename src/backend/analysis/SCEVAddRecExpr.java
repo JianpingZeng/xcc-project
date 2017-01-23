@@ -12,6 +12,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static backend.value.Instruction.CmpInst.Predicate.ICMP_ULT;
+
 /**
  * This node represents a polynomial recurrence on the trip count of the specified loop.
  * </p>
@@ -206,10 +208,205 @@ public class SCEVAddRecExpr extends SCEV
      * @param range
      * @return
      */
-	public SCEV getIterationNumberInRange(ConstantRange range)
+	public SCEV getIterationNumberInRange(ConstantRange range, ScalarEvolution se)
 	{
-		return null;
+	    // Infinite loop.
+	    if (range.isFullSet())
+	        return new SCEVCouldNotCompute();
+
+	    // If the start is a non-zero constant, shift the range to simplify things.
+        if (getStart() instanceof SCEVConstant)
+        {
+            SCEVConstant sc = (SCEVConstant)getStart();
+            if (!sc.getValue().isZero())
+            {
+                ArrayList<SCEV> newOps = new ArrayList<>();
+                newOps.addAll(operands);
+                newOps.set(0, SCEVUnknown.getIntegerSCEV(0, sc.getType()));
+
+                SCEV shiftedRec = get(newOps, getLoop());
+                if (shiftedRec instanceof SCEVAddRecExpr)
+                {
+                    return ((SCEVAddRecExpr)shiftedRec).getIterationNumberInRange(
+                            range.subtract(sc.getValue().getValue()), se);
+                }
+                return new SCEVCouldNotCompute();
+            }
+        }
+
+        // Checks if each binomial coefficient is a SCEVConstant, if not return
+        // SCEVCouldNotCompute.
+        for (SCEV sc : operands)
+            if (!(sc instanceof SCEVConstant))
+                return new SCEVCouldNotCompute();
+
+        // Okay, at this point we known that all of cofficient is a SCEVConstant.
+        // And the start element is zero.
+
+        int bitwidth = se.getTypeSizeBits(getType());
+        if (!range.contains(new APInt(bitwidth, 0)))
+            return SCEVUnknown.getIntegerSCEV(0, getType());
+
+        if (isAffine())
+        {
+            // If this expression is a affine then we can solve this problem by
+            // equation Ax in range.
+            APInt one = new APInt(bitwidth, 1);
+            APInt first = ((SCEVConstant)getOperand(1)).getValue().getValue();
+            APInt end = first.sge(one) ? (range.getUpper().sub(one)) : range.getLower();
+
+            // compute the (end/first) =>(end + first - 1)/first.
+            APInt exitItrNum = end.add(first).udiv(first);
+            ConstantInt exitValue = ConstantInt.get(exitItrNum);
+
+            // Evaluate at the exit value.  If we really did fall out of the valid
+            // range, then we computed our trip count, otherwise wrap around or other
+            // things must have happened.
+            ConstantInt val = evaluateConstantChrecAtConstant(this, exitValue);
+            if (range.contains(val.getValue()))
+                return new SCEVCouldNotCompute();
+
+            // Ensure that the previous value is in the range.
+            assert range.contains(evaluateConstantChrecAtConstant(this,
+                    ConstantInt.get(exitItrNum.sub(1))).getValue())
+                    : "Linear scev computation is off in a bad way!";
+            return SCEVConstant.get(exitValue);
+        }
+        else if (isQuadratic())
+        {
+            // If this is a quadratic AddRecExpr {L, +, M, N}, find out the roots
+            // of quadratic equation to solve it.
+            ArrayList<SCEV> newOps = new ArrayList<>();
+            newOps.addAll(operands);
+            newOps.set(0, SCEVUnknown.getNegativeSCEV(
+                    SCEVConstant.get(ConstantInt.get(range.getLower()))));
+            SCEV newAddRecExpr = SCEVAddRecExpr.get(newOps, loop);
+
+            /// Next, solve the quadratic equation.
+            Pair<SCEV, SCEV> roots = solveQuadraticEquation((SCEVAddRecExpr)newAddRecExpr);
+            SCEV val1 = roots.first;
+            if (val1 instanceof SCEVConstant)
+            {
+                SCEVConstant r1 = (SCEVConstant)val1;
+                SCEVConstant r2 = (SCEVConstant)roots.second;
+                // Pick up a smallest positive root value.
+                Constant cmpRes = ConstantExpr.getICmp(ICMP_ULT, r1.getValue(), r2.getValue());
+                if (cmpRes instanceof ConstantInt)
+                {
+                    ConstantInt root = (ConstantInt)cmpRes;
+                    if (root.getZExtValue() == 0)
+                    {
+                        // r1 is the minimal root value.
+                        SCEVConstant tmp = r1;
+                        r1 = r2;
+                        r2 = tmp;
+                    }
+
+                    ConstantInt r1Value = evaluateConstantChrecAtConstant(this, r1.getValue());
+                    // If the r1 value is in the range, then the r1Value + 1 must
+                    // out of the range.
+                    if (range.contains(r1Value.getValue()))
+                    {
+                        /// The next iteration must be out of the range.
+                        ConstantInt r1AddOne = ConstantInt.get(r1.getValue().getValue().increase());
+                        r1Value = evaluateConstantChrecAtConstant(this, r1AddOne);
+                        if (!range.contains(r1Value.getValue()))
+                            return SCEVConstant.get(r1AddOne);
+
+                        return new SCEVCouldNotCompute();
+                    }
+
+                    // If the r1Value is not in the range, so it is a good return
+                    // value.
+                    // But we must ensure that the r1Value-1 must in the range for
+                    // sanity check.
+                    ConstantInt r1SubOne = ConstantInt.get(r1Value.getValue().decrease());
+                    r1Value = evaluateConstantChrecAtConstant(this, r1SubOne);
+                    if(range.contains(r1Value.getValue()))
+                        return r1;
+
+                    return new SCEVCouldNotCompute();
+                }
+            }
+        }
+		return new SCEVCouldNotCompute();
 	}
+
+    /**
+     * Computes the roots of the quadratic equation for the chrecs {L, +, M, + N},
+     * it can represents as <pre>ax^2 + bx + c</pre>.
+     * The return value either is the two roots (it may be the same value) or two
+     * SCEVCouldNotCompute objects.
+     * @param addRec
+     * @return
+     */
+	public static Pair<SCEV, SCEV> solveQuadraticEquation(SCEVAddRecExpr addRec)
+    {
+        assert addRec.getNumOperands() ==3 :"The addrec is invalid!";
+        SCEV c1 = addRec.getOperand(0);
+        SCEV c2 = addRec.getOperand(1);
+        SCEV c3 = addRec.getOperand(2);
+        if (!(c1 instanceof SCEVConstant)
+                || !(c2 instanceof SCEVConstant)
+                || !(c3 instanceof SCEVConstant))
+        {
+            // We only compute the root when all coefficient are constant.
+            SCEV temp = new SCEVCouldNotCompute();
+            return new Pair<>(temp, temp);
+        }
+
+        SCEVConstant lc = (SCEVConstant)c1;
+        SCEVConstant lm = (SCEVConstant)c2;
+        SCEVConstant ln = (SCEVConstant)c3;
+
+        int bitwidth = lc.getValue().getValue().getBitWidth();
+        APInt l = lc.getValue().getValue();
+        APInt m = lm.getValue().getValue();
+        APInt n = ln.getValue().getValue();
+
+        APInt two = new APInt(bitwidth,2);
+        APInt four = new APInt(bitwidth, 4);
+
+        // convert the chrec coefficient to the polynomial coefficient.
+        // The b coefficient is m-n/2. So the equivalent equation is
+        // ax^2 + bx + c.
+        APInt c = l;
+        APInt b = new APInt(m);
+        b.subAssign(n.sdiv(two));
+
+        // The a coefficient is n/2.
+        APInt a = new APInt(n.sdiv(two));
+
+        // Compute the b^2 - 4ac.
+        APInt sqrtTerm = new APInt(b.mul(b));
+        sqrtTerm.subAssign(a.mul(c).mul(four));
+
+        APInt negativeB = b.negative();
+        APInt towA = a.shl(1);
+        if (towA.isMinValue())
+        {
+            // If the towA is the minimal value, we can not to compute it
+            // for avoiding the loss of precision.
+            SCEV temp = new SCEVCouldNotCompute();
+            return new Pair<>(temp, temp);
+        }
+
+        APInt sqrtVal = new APInt(sqrtTerm.sqrt());
+
+        ConstantInt r1 = ConstantInt.get(negativeB.sub(sqrtVal).sdiv(towA));
+        ConstantInt r2 = ConstantInt.get(negativeB.add(sqrtVal).sdiv(towA));
+        return Pair.get(SCEVConstant.get(r1), SCEVConstant.get(r2));
+    }
+
+	public static ConstantInt evaluateConstantChrecAtConstant(SCEVAddRecExpr addRec,
+            ConstantInt itNum)
+    {
+        SCEV itrNumber = SCEVConstant.get(itNum);
+        SCEV res = addRec.evaluateAtIteration(itrNumber);
+        assert (res instanceof SCEVConstant)
+                : "Evaluation of SCEV at constant didn't fold correctly!";
+        return ((SCEVConstant)res).getValue();
+    }
 
 	public SCEV replaceSymbolicValuesWithConcrete(SCEV sym, SCEV concrete)
 	{
