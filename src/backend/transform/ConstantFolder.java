@@ -20,6 +20,7 @@ import backend.hir.BasicBlock;
 import backend.hir.Operator;
 import backend.type.Type;
 import backend.value.*;
+import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Value.UndefValue;
 import gnu.trove.list.array.TIntArrayList;
 
@@ -54,7 +55,7 @@ public final class ConstantFolder
     }
 
     public static Constant constantFoldCompareInstruction(
-            Operator opcode,
+            Predicate predicate,
             Constant c1,
             Constant c2)
     {

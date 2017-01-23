@@ -1764,6 +1764,11 @@ public class APInt
         return result.clearUnusedBits();
     }
 
+    public APInt sub(long rhs)
+    {
+        return sub(new APInt(bitWidth, rhs));
+    }
+
     /**
      * Multiplies an integer array, x by a a uint64_t integer and places the result
      * into dest.
@@ -2711,5 +2716,100 @@ public class APInt
     public boolean isAllOnesValue()
     {
         return countPopulation() == bitWidth;
+    }
+
+    /**
+     * A table for computing the square root of the smaller number whose
+     * active bits is less than 5bits.
+     */
+    private static final byte[] results =
+    {
+            /*    0 */0,
+            /*  1-2 */1, 1,
+            /*  3-6 */2, 2, 2, 2,
+            /* 7-12 */3, 3, 3, 3, 3, 3,
+            /* 13-2 */4, 4, 4, 4, 4, 4, 4, 4,
+            /*21-30 */5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+            /*    31*/6
+    };
+    /**
+     * This method compute and return the square root of <b>this</b>.
+     * Threr mechanisms are used for computation. For example, for less than 5bit,
+     * a table lookup is done. This gets some performance for the common cases.
+     * For the values using less than 52 bits, the value is converted to the double
+     * and the libc sqrt function is called. The result is rounded and then converted
+     * back to the long with is then used for constructing result. Finally the
+     * Babylinian method for computing square root is usded.
+     * @return
+     */
+    public APInt sqrt()
+    {
+        // Determine the magnitude of the value.
+        int magnitude = getActiveBits();
+
+        // Use the table lookup method for some small value.
+        if (magnitude <= 5)
+        {
+            return new APInt(bitWidth, results[(int)(isSingleWord()?val:pVal[0])]);
+        }
+
+        // If the magnitude of the value fits in less than 52 bits (the precision of
+        // an IEEE double precision floating point value), then we can use the
+        // libc sqrt function which will probably use a hardware sqrt computation.
+        // This should be faster than the algorithm below.
+        if (magnitude < 52)
+        {
+            return new APInt(bitWidth, (long)Math.sqrt((double) (isSingleWord()?val:pVal[0])));
+        }
+
+        /// The following is a classical Newton iteration method for computing the
+        // square root. This code was adapted to APINt from a wikipedia article
+        // on such computations. See https://en.wikipedia.org/wiki/Integer_square_root
+        // for more details.
+        int bitwidth = getBitWidth(), i = 4;
+        APInt testy = new APInt(bitwidth, 16);
+        APInt x1 = new APInt(bitwidth, 1);  // the older value.
+        APInt x2 = new APInt(bitwidth, 0);  // the newer value.
+        APInt two = new APInt(bitwidth, 2);
+
+        // Choise a good starting value using binary algorightmn.
+        while(true)
+        {
+            if (i > bitwidth || ule(testy))
+            {
+                x1 = x1.shl(i/2);
+                break;
+            }
+            i+=2;
+            testy = testy.shl(2);
+        }
+
+        // Using the newton iteration method for computing square root.
+        while(true)
+        {
+            // x2 = (x1 + n/x1)/2.
+            x2 = x1.add(this.udiv(x1)).udiv(two);
+            if (x1.ule(x2))
+                break;
+            x1 = x2;
+        }
+
+        // Make sure we return the closest approximation
+        APInt square = new APInt(x1.mul(x1));
+        APInt nextSquare = new APInt(x1.increase().mul(x1.increase()));
+        if (this.ult(square))
+            return x1;
+        else if (this.ule(nextSquare))
+        {
+            APInt midPoint = new APInt(nextSquare.sub(square)).udiv(two);
+            APInt offset = new APInt(this.sub(square));
+            if (offset.ult(midPoint))
+                return x1;
+            else
+                return x1.increase();
+        }
+        else
+            Util.shouldNotReachHere("Error in APInt::sqrt method");
+        return x1.increase();
     }
 }

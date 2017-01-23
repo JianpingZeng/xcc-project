@@ -21,6 +21,8 @@ import backend.hir.Operator;
 import backend.hir.PredIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.target.TargetData;
+import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
@@ -782,6 +784,10 @@ public final class ScalarEvolution extends FunctionPass
      * The implementation class for scalar evolution.
      */
     private ScalarEvolutionImpl impl;
+    /**
+     * The target information for the targeting.
+     */
+    private TargetData td;
 
     @Override
     public String getPassName()
@@ -872,5 +878,24 @@ public final class ScalarEvolution extends FunctionPass
     public void deleteInstructionFromRecords(Instruction inst)
     {
         impl.removeInstructionFromRecords(inst);
+    }
+
+    public int getTypeSizeBits(Type ty)
+    {
+        assert isSCEVable(ty) :"Type is not SCEVable!";
+
+        if (td != null)
+            return (int)td.getTypeSizeInBits(ty);
+
+        if (ty.isIntegral())
+            return ty.getPrimitiveSizeInBits();
+
+        assert (ty instanceof PointerType) :"isSCEVable permitted a non SCEVable type!";
+        return 64;
+    }
+
+    public static boolean isSCEVable(Type type)
+    {
+        return type.isIntegral() || (type instanceof PointerType);
     }
 }

@@ -118,6 +118,11 @@ public abstract class Type extends Value implements PrimitiveID
         }
     }
 
+    public int getPrimitiveSizeInBits()
+    {
+        return getPrimitiveSize() * 3;
+    }
+
     public boolean isSigned() {return false;}
 
     public boolean isUnsigned() {return false;}

@@ -17,11 +17,16 @@ package backend.value;
  */
 
 import backend.hir.Operator;
+import backend.transform.ConstantFolder;
 import backend.type.Type;
+import backend.value.Instruction.CmpInst.Predicate;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import static backend.value.Instruction.CmpInst.Predicate.FIRST_ICMP_PREDICATE;
+import static backend.value.Instruction.CmpInst.Predicate.LAST_ICMP_PREDICATE;
 
 /**
  * @author Xlous.zeng
@@ -311,14 +316,43 @@ public abstract class ConstantExpr extends Constant
         return get(Operator.AShr, lhs, rhs);
     }
 
+    public static Constant getICmp(Predicate predicate,
+            ConstantInt lhs, ConstantInt rhs)
+    {
+        assert lhs.getType().equals(rhs.getType());
+        assert predicate.ordinal() >= FIRST_ICMP_PREDICATE.ordinal()
+                && predicate.ordinal() <= LAST_ICMP_PREDICATE.ordinal();
+        Constant res = ConstantFolder.constantFoldCompareInstruction(predicate, lhs, rhs);
+        if (res != null)
+            return res;
+
+        ArrayList<Constant> ops = new ArrayList<>();
+        ops.add(lhs);
+        ops.add(rhs);
+        ExprMapKeyType key = new ExprMapKeyType(Operator.ICmp, ops, predicate);
+        return getOrCreate(Type.Int1Ty, key);
+    }
+
+    private static Constant getOrCreate(Type reqTy, ExprMapKeyType key)
+    {
+        if (exprConstanMaps == null)
+            exprConstanMaps = new HashMap<>();
+        if (!exprConstanMaps.containsKey(key))
+        {
+            Constant res =
+        }
+    }
+
     static class ExprMapKeyType
     {
         Operator op;
         ArrayList<Constant> constants;
-        ExprMapKeyType(Operator opcode, ArrayList<Constant> c)
+        Predicate predicate;
+        ExprMapKeyType(Operator opcode, ArrayList<Constant> ops)
         {
             op = opcode;
-            constants = c;
+            constants = new ArrayList<>(ops.size());
+            constants.addAll(ops);
         }
 
         ExprMapKeyType(Operator opcode, Constant c)
@@ -326,6 +360,14 @@ public abstract class ConstantExpr extends Constant
             op = opcode;
             constants = new ArrayList<>(1);
             constants.add(c);
+        }
+
+        ExprMapKeyType(Operator opcode, ArrayList<Constant> ops, Predicate pred)
+        {
+            op = opcode;
+            constants = new ArrayList<>(ops.size());
+            constants.addAll(ops);
+            predicate = pred;
         }
     }
 }
