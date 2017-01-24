@@ -1797,7 +1797,7 @@ public final class CodeGenFunction
 
 		// Mask off unused bits.
 		Constant lowMask = ConstantInt
-				.get(APInt.getLowBitSet(eltTySize, lowBits));
+				.get(APInt.getLowBitsSet(eltTySize, lowBits));
 
 		val = builder.createAnd(val, lowMask, "bf.to.cleared");
 

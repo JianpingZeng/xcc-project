@@ -26,10 +26,18 @@ import java.io.PrintStream;
  */
 public final class SCEVCouldNotCompute extends SCEV
 {
-    public SCEVCouldNotCompute()
+    private final static SCEVCouldNotCompute instance = new SCEVCouldNotCompute();
+
+    private SCEVCouldNotCompute()
     {
         super(SCEVType.scCouldNotCompute);
     }
+
+    public static SCEVCouldNotCompute getInstance()
+    {
+        return instance;
+    }
+
 
     @Override
     public boolean isLoopInvariant(Loop loop)

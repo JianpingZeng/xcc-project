@@ -212,7 +212,7 @@ public class SCEVAddRecExpr extends SCEV
 	{
 	    // Infinite loop.
 	    if (range.isFullSet())
-	        return new SCEVCouldNotCompute();
+	        return SCEVCouldNotCompute.getInstance();
 
 	    // If the start is a non-zero constant, shift the range to simplify things.
         if (getStart() instanceof SCEVConstant)
@@ -230,7 +230,7 @@ public class SCEVAddRecExpr extends SCEV
                     return ((SCEVAddRecExpr)shiftedRec).getIterationNumberInRange(
                             range.subtract(sc.getValue().getValue()), se);
                 }
-                return new SCEVCouldNotCompute();
+                return SCEVCouldNotCompute.getInstance();
             }
         }
 
@@ -238,7 +238,7 @@ public class SCEVAddRecExpr extends SCEV
         // SCEVCouldNotCompute.
         for (SCEV sc : operands)
             if (!(sc instanceof SCEVConstant))
-                return new SCEVCouldNotCompute();
+                return SCEVCouldNotCompute.getInstance();
 
         // Okay, at this point we known that all of cofficient is a SCEVConstant.
         // And the start element is zero.
@@ -264,7 +264,7 @@ public class SCEVAddRecExpr extends SCEV
             // things must have happened.
             ConstantInt val = evaluateConstantChrecAtConstant(this, exitValue);
             if (range.contains(val.getValue()))
-                return new SCEVCouldNotCompute();
+                return SCEVCouldNotCompute.getInstance();
 
             // Ensure that the previous value is in the range.
             assert range.contains(evaluateConstantChrecAtConstant(this,
@@ -313,7 +313,7 @@ public class SCEVAddRecExpr extends SCEV
                         if (!range.contains(r1Value.getValue()))
                             return SCEVConstant.get(r1AddOne);
 
-                        return new SCEVCouldNotCompute();
+                        return SCEVCouldNotCompute.getInstance();
                     }
 
                     // If the r1Value is not in the range, so it is a good return
@@ -325,11 +325,11 @@ public class SCEVAddRecExpr extends SCEV
                     if(range.contains(r1Value.getValue()))
                         return r1;
 
-                    return new SCEVCouldNotCompute();
+                    return SCEVCouldNotCompute.getInstance();
                 }
             }
         }
-		return new SCEVCouldNotCompute();
+		return SCEVCouldNotCompute.getInstance();
 	}
 
     /**
@@ -351,7 +351,7 @@ public class SCEVAddRecExpr extends SCEV
                 || !(c3 instanceof SCEVConstant))
         {
             // We only compute the root when all coefficient are constant.
-            SCEV temp = new SCEVCouldNotCompute();
+            SCEV temp = SCEVCouldNotCompute.getInstance();
             return new Pair<>(temp, temp);
         }
 
@@ -387,7 +387,7 @@ public class SCEVAddRecExpr extends SCEV
         {
             // If the towA is the minimal value, we can not to compute it
             // for avoiding the loss of precision.
-            SCEV temp = new SCEVCouldNotCompute();
+            SCEV temp = SCEVCouldNotCompute.getInstance();
             return new Pair<>(temp, temp);
         }
 
