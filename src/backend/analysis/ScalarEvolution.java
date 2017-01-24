@@ -81,7 +81,7 @@ public final class ScalarEvolution extends FunctionPass
         {
             this.f = f;
             this.li = li;
-            unknownValue = new SCEVCouldNotCompute();
+            unknownValue = SCEVCouldNotCompute.getInstance();
             scalars = new HashMap<>();
             iterationCount = new HashMap<>();
             constantEvolutionLoopExitValue = new HashMap<>();
