@@ -339,8 +339,10 @@ public abstract class ConstantExpr extends Constant
             exprConstanMaps = new HashMap<>();
         if (!exprConstanMaps.containsKey(key))
         {
-            Constant res =
+
         }
+        // TODO finish getOrCreate method().
+        return null;
     }
 
     static class ExprMapKeyType

@@ -19,6 +19,7 @@ package jlang.sema;
 import tools.OutParamWrapper;
 import tools.Util;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -2696,7 +2697,7 @@ public class APInt
      *  Constructs an APInt value that has the bottom loBitsSet bits set.
      * @return
      */
-    public static APInt getLowBitSet(int numBits, int loBitsSet)
+    public static APInt getLowBitsSet(int numBits, int loBitsSet)
     {
         assert loBitsSet <=numBits;
         if (loBitsSet == 0)
@@ -2707,6 +2708,25 @@ public class APInt
         if (numBits < APINT_BITS_PER_WORD)
             return new APInt(numBits, 1L << loBitsSet);
         return new APInt(numBits, 0).lshr(numBits - loBitsSet);
+    }
+
+    /**
+     * Constructs and returns a new APInt that has the top {@code hiBitsSet}
+     * bits set.
+     * @param numBits
+     * @param hiBitsSet
+     * @return
+     */
+    public static APInt getHighBitsSet(int numBits, int hiBitsSet)
+    {
+        assert hiBitsSet <= numBits :"Too many bits to set";
+        if(hiBitsSet == 0)
+            return new APInt(numBits, 0);
+        int shiftAmt = numBits - hiBitsSet;
+        // For the small number, performing the quickly operation.
+        if (numBits <= APINT_BITS_PER_WORD)
+            return new APInt(numBits, ~0L << shiftAmt);
+        return new APInt(numBits, 0).negative().shl(shiftAmt);
     }
 
 	/**
@@ -2811,5 +2831,37 @@ public class APInt
         else
             Util.shouldNotReachHere("Error in APInt::sqrt method");
         return x1.increase();
+    }
+
+    public static APInt smax(APInt a, APInt b)
+    {
+        return a.sgt(b) ? a : b;
+    }
+
+    public static APInt smin(APInt a, APInt b)
+    {
+        return a.slt(b) ? a : b;
+    }
+
+    public static APInt umax(APInt a, APInt b)
+    {
+        return a.ugt(b) ? a : b;
+    }
+
+    public static APInt umin(APInt a, APInt b)
+    {
+        return a.ult(b) ? a : b;
+    }
+
+    public void print(PrintStream os)
+    {
+        print(os, true);
+    }
+
+    public void print(PrintStream os, boolean isSigned)
+    {
+        StringBuilder sb = new StringBuilder();
+        toString(sb, 10, isSigned, true);
+        os.print(sb.toString());
     }
 }
