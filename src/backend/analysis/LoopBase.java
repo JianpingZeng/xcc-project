@@ -131,25 +131,34 @@ public abstract class LoopBase<BlockT, LoopT>
 
     /**
      * <p>
-     * IfStmt there is a preheader for this loop, return it.  A loop has a preheader
+     * If there is a preheader for this loop, return it.  A loop has a preheader
      * if there is only one edge to the header of the loop from outside of the
-     * loop.  IfStmt this is the case, the block branching to the header of the loop
+     * loop.  If this is the case, the block branching to the header of the loop
      * is the preheader node.
      * </p>
      * <p>This method returns null if there is no preheader for the loop.</p>
      * @return
      */
-    public abstract BlockT getPreheader();
+    public abstract BlockT getLoopPreheader();
 
     /**
-     * IfStmt given loop's header has exactly one predecessor outside of loop,
+     * If given loop's header has exactly one predecessor outside of loop,
      * return it, otherwise, return null.
      * @return
      */
     protected abstract BlockT getLoopPredecessor();
 
+	/**
+     * If there is a single loop latch block, return it. Otherwise, return null.
+     * <b>A latch block is a block where the control flow branch back to the
+     * loop header block.
+     * </b>
+     * @return
+     */
+    public abstract BlockT getLoopLatch();
+
     /**
-     * IfStmt given basic block is contained in this loop, return true,
+     * If given basic block is contained in this loop, return true,
      * otherwise false returned.
      * @param block
      * @return
@@ -184,7 +193,7 @@ public abstract class LoopBase<BlockT, LoopT>
 
     /**
      * If {@linkplain #getExitBlocks()} exactly return one block, then this
-     * method will return it, otherwise retunn null;
+     * method will return it, otherwise return null;
      * @return
      */
     public BlockT getExitBlock()

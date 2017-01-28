@@ -79,7 +79,7 @@ public final class LoopSimplify extends FunctionPass
 
 			assert loop.getBlocks().get(0) == loop
 					.getHeaderBlock() : "Header isn't in the first";
-			preHeader = loop.getPreheader();
+			preHeader = loop.getLoopPreheader();
 			if (preHeader == null)
 			{
 				preHeader = insertPreHeaderForLoop(loop);
@@ -134,7 +134,7 @@ public final class LoopSimplify extends FunctionPass
 		PhiNode phiNode;
 		for (int i = 0, e = loop.getHeaderBlock().size(); i < e; i++)
 		{
-			Instruction inst = loop.getPreheader().getInstAt(i);
+			Instruction inst = loop.getLoopPreheader().getInstAt(i);
 			if (inst instanceof PhiNode)
 			{
 				phiNode = (PhiNode)inst;
