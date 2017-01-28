@@ -158,11 +158,13 @@ public class SCEVAddRecExpr extends SCEV
         }
 
         if (numSteps == 0)
-            return SCEVUnknown.getIntegerSCEV(1, ty);
+            return ScalarEvolution.getIntegerSCEV(1, ty);
 
         SCEV result = val;
         for(int i = 1; i < numSteps; i++)
-            result = SCEVMulExpr.get(result, SCEV.getMinusSCEV(val, SCEVUnknown.getIntegerSCEV(i, ty)));
+            result = SCEVMulExpr.get(result, ScalarEvolution
+		            .getMinusSCEV(val, ScalarEvolution
+		            .getIntegerSCEV(i, ty)));
 
         return result;
     }
@@ -193,7 +195,7 @@ public class SCEVAddRecExpr extends SCEV
         {
             SCEV bc = partialFact(it, i);
             SCEV val = SCEVSDivExpr.get(SCEVMulExpr.get(bc, operands.get(i)),
-                    SCEVUnknown.getIntegerSCEV(divisor, ty));
+                    ScalarEvolution.getIntegerSCEV(divisor, ty));
             result = SCEVAddExpr.get(result, val);
         }
 		return result;
@@ -222,7 +224,7 @@ public class SCEVAddRecExpr extends SCEV
             {
                 ArrayList<SCEV> newOps = new ArrayList<>();
                 newOps.addAll(operands);
-                newOps.set(0, SCEVUnknown.getIntegerSCEV(0, sc.getType()));
+                newOps.set(0, ScalarEvolution.getIntegerSCEV(0, sc.getType()));
 
                 SCEV shiftedRec = get(newOps, getLoop());
                 if (shiftedRec instanceof SCEVAddRecExpr)
@@ -245,7 +247,7 @@ public class SCEVAddRecExpr extends SCEV
 
         int bitwidth = se.getTypeSizeBits(getType());
         if (!range.contains(new APInt(bitwidth, 0)))
-            return SCEVUnknown.getIntegerSCEV(0, getType());
+            return ScalarEvolution.getIntegerSCEV(0, getType());
 
         if (isAffine())
         {
@@ -278,7 +280,7 @@ public class SCEVAddRecExpr extends SCEV
             // of quadratic equation to solve it.
             ArrayList<SCEV> newOps = new ArrayList<>();
             newOps.addAll(operands);
-            newOps.set(0, SCEVUnknown.getNegativeSCEV(
+            newOps.set(0, ScalarEvolution.getNegativeSCEV(
                     SCEVConstant.get(ConstantInt.get(range.getLower()))));
             SCEV newAddRecExpr = SCEVAddRecExpr.get(newOps, loop);
 

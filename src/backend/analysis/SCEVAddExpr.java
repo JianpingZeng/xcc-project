@@ -95,7 +95,7 @@ public final class SCEVAddExpr extends SCEVCommutativeExpr
             {      //  X + Y + Y  -->  X + Y*2
                 // Found a match, merge the two values into a multiply, and add any
                 // remaining values to the result.
-                SCEV Two = SCEVUnknown.getIntegerSCEV(2, Ty);
+                SCEV Two = ScalarEvolution.getIntegerSCEV(2, Ty);
                 SCEV mul = SCEVMulExpr.get(ops.get(i), Two);
                 if (ops.size() == 2)
                     return mul;
@@ -163,7 +163,7 @@ public final class SCEVAddExpr extends SCEVCommutativeExpr
                             mulOps.remove(mulOp);
                             innerMul = SCEVMulExpr.get(mulOps);
                         }
-                        SCEV one = SCEVUnknown.getIntegerSCEV(1, Ty);
+                        SCEV one = ScalarEvolution.getIntegerSCEV(1, Ty);
                         SCEV addOne = SCEVAddExpr.get(innerMul, one);
                         SCEV outerMul = SCEVMulExpr.get(addOne, ops.get(i));
                         if (ops.size() == 2)

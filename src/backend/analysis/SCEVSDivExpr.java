@@ -67,7 +67,7 @@ public final class SCEVSDivExpr extends SCEV
             if (cons.getValue().equalsInt(1))
                 return lhs;     // lhs/1 = lhs.
             if (cons.getValue().isAllOnesValue())
-                return SCEV.getNegativeSCEV(lhs);
+                return ScalarEvolution.getNegativeSCEV(lhs);
 
             if(lhs instanceof SCEVConstant)
             {
