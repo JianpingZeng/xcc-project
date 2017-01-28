@@ -69,7 +69,7 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
     }
 
     @Override
-    public MachineBasicBlock getPreheader()
+    public MachineBasicBlock getLoopPreheader()
     {
         // keep track of blocks outside the loop branching to the header
         MachineBasicBlock out = getLoopPredecessor();

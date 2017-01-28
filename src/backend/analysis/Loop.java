@@ -84,7 +84,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 			return false;
 		if (insertPtr == null)
 		{
-			BasicBlock preheader = getPreheader();
+			BasicBlock preheader = getLoopPreheader();
 			if (preheader == null)
 				return false;
 			insertPtr = preheader.getTerminator();
@@ -171,7 +171,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	 * @return
 	 */
 	@Override
-	public BasicBlock getPreheader()
+	public BasicBlock getLoopPreheader()
 	{
 		// keep track of blocks outside the loop branching to the header
 		BasicBlock out = getLoopPredecessor();
@@ -206,6 +206,26 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 			}
 		}
 		return outer;
+	}
+
+	@Override
+	public BasicBlock getLoopLatch()
+	{
+		BasicBlock header = getHeaderBlock();
+		if (header == null) return null;
+		BasicBlock latch = null;
+		for (PredIterator<BasicBlock> predItr = header.predIterator(); predItr.hasNext();)
+		{
+			BasicBlock pred = predItr.next();
+			if (contains(pred))
+			{
+				// If there are more than two latch blocks, return null.
+				if (latch != null)
+					return null;
+				latch = pred;
+			}
+		}
+		return latch;
 	}
 
 	/**
@@ -260,6 +280,41 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 		subLoops.add(loop);
 	}
 
+	/**
+	 * Return true if there is no a exit block has a predecessor block which is
+	 * outside of the loop.
+	 * @return
+	 */
+	public boolean hasDedicatedExits()
+	{
+		ArrayList<BasicBlock> exits = getExitBlocks();
+		for (BasicBlock exitBB : exits)
+		{
+			PredIterator<BasicBlock> predItr = exitBB.predIterator();
+			while(predItr.hasNext())
+			{
+				BasicBlock pred = predItr.next();
+				if (!contains(pred))
+					return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Returns true if the loop is in the form that {@linkplain backend.transform.LoopSimplify}
+	 * transforms loops to, sometimes it is also called normal form.
+	 *
+	 * Normal-form loops have a preheader, a single backedge, and all of their
+	 * exits have all their predecessors inside the loop.
+	 * @return
+	 */
+	public boolean isLoopSimplifyForm()
+	{
+		return getLoopPreheader() != null && getLoopLatch() != null
+				&& hasDedicatedExits();
+	}
+
 	public void print(OutputStream os, int depth)
 	{
 		try (PrintWriter writer = new PrintWriter(os))
@@ -286,26 +341,5 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	public void dump()
 	{
 		print(System.err, 0);
-	}
-
-	/**
-	 * Return true if there is no a exit block has a predecessor block which is
-	 * outside of the loop.
-	 * @return
-	 */
-	public boolean hasDedicatedExits()
-	{
-		ArrayList<BasicBlock> exits = getExitBlocks();
-		for (BasicBlock exitBB : exits)
-		{
-            PredIterator<BasicBlock> predItr = exitBB.predIterator();
-			while(predItr.hasNext())
-            {
-                BasicBlock pred = predItr.next();
-                if (!contains(pred))
-                    return false;
-            }
-		}
-		return true;
 	}
 }

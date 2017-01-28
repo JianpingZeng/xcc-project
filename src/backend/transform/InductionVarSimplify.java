@@ -409,7 +409,7 @@ public final class InductionVarSimplify extends LoopPass
 	private void strengthReduction(Loop loop)
 	{
 		/**obtains the pre-header block*/
-		BasicBlock preheaderBB = loop.getPreheader();
+		BasicBlock preheaderBB = loop.getLoopPreheader();
 		
 		/** search for uses of induction variable.*/
 		for (IVRecord r1 : inductionVars)

@@ -80,6 +80,13 @@ public final class IndVarSimplify extends LoopPass
     @Override
     public boolean runOnLoop(Loop loop)
     {
+        // If the LoopSimplify form is not available, just return early.
+        // A LoopSimplify form must having a preheader, a latch block and
+        // dedicated exit blocks, which is required for moving induction
+        // variable.
+        if (!loop.isLoopSimplifyForm())
+            return false;
+
         li = getAnalysisToUpDate(LoopInfo.class);
         se = getAnalysisToUpDate(ScalarEvolution.class);
 

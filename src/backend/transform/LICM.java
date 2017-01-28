@@ -140,7 +140,7 @@ public final class LICM extends LoopPass
         dt = getAnalysisToUpDate(DomTreeInfo.class);
 
         curAST = new AliasSetTracker(aa);
-        preheaderBB = loop.getPreheader();
+        preheaderBB = loop.getLoopPreheader();
 
         // Collects alias information from sub loops.
         for (Loop subLoop: loop.getSubLoops())
