@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import backend.hir.BasicBlock;
 import backend.type.Type;
 import backend.value.ConstantExpr;
 
@@ -26,25 +27,6 @@ public abstract class SCEV
     protected SCEV(SCEVType scevType)
     {
         this.scevType = scevType;
-    }
-
-    /***
-     * Returns a SCEV corresponding to -val = -1 * val.
-     * @return
-     */
-    public static SCEV getNegativeSCEV(SCEV val)
-    {
-        if (val instanceof SCEVConstant)
-        {
-            SCEVConstant vc = (SCEVConstant)val;
-            return SCEVUnknown.get(ConstantExpr.getNeg(vc.getValue()));
-        }
-        return SCEVMulExpr.get(val, SCEVUnknown.getIntegerSCEV(-1, val.getType()));
-    }
-
-    public static SCEV getMinusSCEV(SCEV lhs, SCEV rhs)
-    {
-        return null;
     }
 
     public final SCEVType getSCEVType()
@@ -107,6 +89,15 @@ public abstract class SCEV
      * @return
      */
     public abstract Type getType();
+
+	/**
+     * Return true if elements that makes up this SCEV dominates
+     * the specified basic block
+     * @param bb
+     * @param dt
+     * @return
+     */
+    public abstract boolean dominates(BasicBlock bb, DomTreeInfo dt);
 
     public abstract void print(PrintStream os);
 

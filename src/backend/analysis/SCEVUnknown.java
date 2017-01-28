@@ -58,21 +58,6 @@ public final class SCEVUnknown extends SCEV
         return scevUnknowns.get(val);
     }
 
-    public static SCEV getIntegerSCEV(int val, Type ty)
-    {
-        Constant c;
-        if (val == 0)
-            c = Constant.getNullValue(ty);
-        else if (ty.isFloatingPointType())
-            c = ConstantFP.get(ty, val);
-        else
-        {
-            assert ty.isIntegral():"Integral type is required.";
-            c = ConstantInt.get(ty, val);
-        }
-        return get(c);
-    }
-
     public Value getValue()
     {
         return val;
