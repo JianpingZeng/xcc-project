@@ -20,14 +20,14 @@ public final class IVStrideUses
 	 */
 	private SCEV offset;
 	/**
-	 * The user instruction that uses the {@linkplain #operand}.
+	 * The user instruction that uses the {@linkplain #operandValToReplace}.
 	 */
 	private Instruction user;
 	/**
-	 * The Value of the operand in the user instruction
+	 * The Value of the operandValToReplace in the user instruction
 	 * that this IVStrideUse is representing.
 	 */
-	private Value operand;
+	private Value operandValToReplace;
 	/**
 	 * True indicates that this should use post-incremented version of
 	 * this IV, not pre-incremented.
@@ -40,7 +40,7 @@ public final class IVStrideUses
 		this.parent = parent;
 		this.offset = offset;
 		this.user = user;
-		this.operand = operand;
+		this.operandValToReplace = operand;
 	}
 
 	public IVUsersOfOneStride getParent()
@@ -68,14 +68,14 @@ public final class IVStrideUses
 		this.user = user;
 	}
 
-	public Value getOperand()
+	public Value getOperandValToReplace()
 	{
-		return operand;
+		return operandValToReplace;
 	}
 
-	public void setOperand(Value operand)
+	public void setOperandValToReplace(Value operandValToReplace)
 	{
-		this.operand = operand;
+		this.operandValToReplace = operandValToReplace;
 	}
 
 	public boolean isUseOfPostIncrementedValue()
@@ -98,13 +98,14 @@ public final class IVStrideUses
 			return false;
 		IVStrideUses ins = (IVStrideUses)obj;
 		return parent.equals(ins.parent) && offset.equals(ins.offset)
-				&& user.equals(ins.user) && operand.equals(ins.operand);
+				&& user.equals(ins.user) && operandValToReplace
+				.equals(ins.operandValToReplace);
 	}
 
 	@Override
 	public int hashCode()
 	{
 		return (parent.hashCode() << 23) ^ (offset.hashCode() << 17)
-				^ (user.hashCode() << 11) ^ (operand.hashCode() << 5);
+				^ (user.hashCode() << 11) ^ (operandValToReplace.hashCode() << 5);
 	}
 }

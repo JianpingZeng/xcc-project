@@ -1,20 +1,23 @@
 package backend.analysis;
 
 import backend.hir.BasicBlock;
-import backend.intrinsic.Intrinsic;
 import backend.pass.LoopPass;
+import backend.pass.Pass;
+import backend.support.Printable;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
+import backend.value.Use;
 import tools.OutParamWrapper;
+import tools.Util;
 
-import java.io.ByteArrayInputStream;
+import java.io.PrintStream;
 import java.util.*;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class IVUsers extends LoopPass
+public final class IVUsers extends LoopPass implements Printable
 {
 	private Loop loop;
 	private LoopInfo li;
@@ -94,7 +97,116 @@ public final class IVUsers extends LoopPass
 		// Updates the returned result.
 		start = startOut.get();
 		stride = strideOut.get();
+
+		HashSet<Instruction> uniqueUsers = new HashSet<>();
+		for (Use u : inst.usesList)
+		{
+			Instruction user = (Instruction)u.getUser();
+			// Avoiding duplicate inserting.
+			if (!uniqueUsers.add(user))
+				continue;
+
+			//Don't infinitely recurse on PHI nodes.
+			if ((user instanceof PhiNode) && processed.contains(user))
+				continue;
+
+			// Descend recursively, but not into PHI nodes outside the current
+			// loop. It's important to see the entire expression outside the loop
+			// to get choices that depend on addressing mode use right, although
+			// we won't consider references ouside the loop in all cases.
+			// If User is already in Processed, we don't want to recurse into
+			// it again, but do want to record a second reference in the same
+			// instruction.
+			boolean addUserToIVUsers = false;
+			if (li.getLoopFor(user.getParent()) != loop)
+			{
+				if (user instanceof PhiNode || processed.contains(user)
+						|| !addUsersIfInteresting(user))
+				{
+					Util.DEBUG("Found User in other loops: ", user, "\n",
+							"  Of SCEV: ", ise, "\n");
+					addUserToIVUsers = true;
+				}
+			}else if (processed.contains(user) || !addUserToIVUsers)
+			{
+				Util.DEBUG("Found User : ", user, "\n",
+						"  Of SCEV: ", ise, "\n");
+				addUserToIVUsers = true;
+			}
+
+			if (addUserToIVUsers)
+			{
+				IVUsersOfOneStride strideUses = null;
+				if (!ivUsesByStride.containsKey(stride))
+				{
+					strideUses = new IVUsersOfOneStride(stride);
+					ivUsers.add(strideUses);
+					ivUsesByStride.put(stride, strideUses);
+				}
+				else
+				{
+					strideUses = ivUsesByStride.get(stride);
+				}
+
+				// Okay, we found a user that we cannot reduce.  Analyze the instruction
+				// and decide what to do with it.  If we are a use inside of the loop, use
+				// the value before incrementation, otherwise use it after incrementation.
+				if (ivUseShouldUsePostIncValue(user, inst, loop, li, dt, this))
+				{
+					SCEV newStart = se.getMinusSCEV(start, stride);
+					strideUses.addUser(newStart, user, inst);
+					strideUses.users.getLast().setUseOfPostIncrementedValue(true);
+					Util.DEBUG("  Using postinc SCEV, start=", newStart, "\n");
+				}
+				else
+				{
+					strideUses.addUser(start, user, inst);
+				}
+			}
+		}
 		return false;
+	}
+
+	private static boolean ivUseShouldUsePostIncValue(Instruction user,
+			Instruction iv, Loop loop, LoopInfo li, DomTreeInfo dt,
+			Pass p)
+	{
+		// If the user is in the loop, use the pre-inc value.
+		if (loop.contains(user.getParent()))
+			return false;
+
+		BasicBlock latchBasic = loop.getLoopLatch();
+
+		// Ok, the user is outside of the loop. If it is dominated by
+		// the latch block, use the post-inc value.
+		if (dt.dominates(latchBasic, user.getParent()))
+			return true;
+
+		// There is one case we have to be careful of: PHI nodes.  These little guys
+		// can live in blocks that are not dominated by the latch block, but (since
+		// their uses occur in the predecessor block, not the block the PHI lives in)
+		// should still use the post-inc value.  Check for this case now.
+		if (!(user instanceof PhiNode))
+			return false;  // not a phi, not dominated by latch block.
+		PhiNode pn = (PhiNode)user;
+
+		// Look at all of the uses of IV by the PHI node.  If any use corresponds to
+		// a block that is not dominated by the latch block, give up and use the
+		// pre-incremented value.
+		int numUses = 0;
+		for (int i = 0, e = pn.getNumberIncomingValues(); i< e;i++)
+		{
+			if (pn.getIncomingValue(i).equals(iv))
+			{
+				numUses++;
+				if (!dt.dominates(latchBasic, pn.getIncomingBlock(i)))
+					return false;
+			}
+		}
+
+		// Okay, all uses of IV by PN are in predecessor blocks that really are
+		// dominated by the latch block.  Use the post-incremented value.
+		return true;
 	}
 
 	/**
@@ -232,5 +344,26 @@ public final class IVUsers extends LoopPass
 	public String getPassName()
 	{
 		return "Induction variable users function pass";
+	}
+
+	/**
+	 * Return a SCEV expression which computes the value of the
+	 * {@linkplain IVStrideUses#operandValToReplace} of the given IVStrideUse.
+	 * @param u
+	 * @return
+	 */
+	public SCEV getReplacementExpr(IVStrideUses u)
+	{
+		return null;
+	}
+
+	@Override
+	public void print(PrintStream os)
+	{}
+
+	@Override
+	public void dump()
+	{
+		print(System.err);
 	}
 }

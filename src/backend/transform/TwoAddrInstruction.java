@@ -54,8 +54,8 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 					{
 						TargetInstrDescriptor desc = instInfo.get(mi.getOpCode());
 						if (desc.tSFlags & X86InstrInfo.M_COMMUTABLE)
-						assert mi.getOperand(2).isRegister()
-								&& mi.getOperand(2).getReg() != 0:
+						assert mi.getOperandValToReplace(2).isRegister()
+								&& mi.getOperandValToReplace(2).getReg() != 0:
 								"Two addr instruction must be a register.";
 						if (instInfo.)
 					}*/
