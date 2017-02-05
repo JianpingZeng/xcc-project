@@ -763,8 +763,8 @@ public final class X86ATTAsmPrinter extends AsmPrinter
 
                 os.print(name);
                 /**
-                if (mi.getNumOperands() == 6 && mi.getOperand(0).getReg()
-                        != mi.getOperand(1).getReg())
+                if (mi.getNumOperands() == 6 && mi.getOperandValToReplace(0).getReg()
+                        != mi.getOperandValToReplace(1).getReg())
                 {
                     os.print("**");
                 }*/
@@ -796,8 +796,8 @@ public final class X86ATTAsmPrinter extends AsmPrinter
                 assert mi.getNumOperands() < 3 || (mi.getOperand(1).isRegister()
                 && mi.getOperand(2).isImmediate()) :"Badi MRMSxr format!";
                 /**
-                if (mi.getNumOperands() > 1 && mi.getOperand(1).isRegister()
-                        && mi.getOperand(0).getReg() != mi.getOperand(1).getReg())
+                if (mi.getNumOperands() > 1 && mi.getOperandValToReplace(1).isRegister()
+                        && mi.getOperandValToReplace(0).getReg() != mi.getOperandValToReplace(1).getReg())
                     os.print("**");
                  */
                 os.print(name);

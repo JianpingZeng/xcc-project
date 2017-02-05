@@ -326,4 +326,10 @@ public class Util
     {
         return countLeadingZeros64(~val);
     }
+
+	public static void DEBUG(Object... args)
+	{
+		for (Object arg : args)
+			System.err.print(arg);
+	}
 }

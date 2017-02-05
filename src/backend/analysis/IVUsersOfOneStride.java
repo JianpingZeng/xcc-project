@@ -4,6 +4,7 @@ import backend.value.Instruction;
 import backend.value.Value;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 /**
  * @author Xlous.zeng
@@ -20,12 +21,12 @@ public final class IVUsersOfOneStride
 	 * Keep track of all of the users of this stride as well
 	 * as the initial value and the operand that uses the IV.
 	 */
-	public ArrayList<IVStrideUses> users;
+	public LinkedList<IVStrideUses> users;
 
 	public IVUsersOfOneStride(SCEV stride)
 	{
 		this.stride = stride;
-		users = new ArrayList<>();
+		users = new LinkedList<>();
 	}
 
 	public void addUser(SCEV offset, Instruction user, Value operand)
