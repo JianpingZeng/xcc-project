@@ -1,7 +1,7 @@
 package backend.transform;
 /*
  * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Copyright (c) 2015-2017, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,11 @@ package backend.transform;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.DomTreeInfo;
-import backend.analysis.Loop;
-import backend.analysis.LoopInfo;
-import backend.analysis.ScalarEvolution;
+import backend.analysis.*;
 import backend.pass.AnalysisUsage;
 import backend.pass.LoopPass;
+import backend.pass.Pass;
+import backend.pass.RegisterPass;
 
 /**
  * <p>
@@ -77,6 +76,22 @@ public final class IndVarSimplify extends LoopPass
     private ScalarEvolution se;
     private boolean changed = false;
 
+    public static final RegisterPass X =
+            new RegisterPass("Canonicalize Induction Variables", IndVarSimplify.class);
+
+    public static Pass createIndVarSimplifyPass()
+    {
+        return new IndVarSimplify();
+    }
+
+	/**
+     * Sealed with private accessibility.
+     */
+    private IndVarSimplify()
+    {
+        super();
+    }
+
     @Override
     public boolean runOnLoop(Loop loop)
     {
@@ -111,9 +126,15 @@ public final class IndVarSimplify extends LoopPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addRequired(LoopSimplify.class);
-        au.addRequired(ScalarEvolution.class);
+        au.addRequired(DomTreeInfo.class);
         au.addRequired(LoopInfo.class);
+        au.addRequired(ScalarEvolution.class);
+        au.addRequired(LoopSimplify.class);
+        au.addRequired(LCSSA.class);
+        au.addRequired(IVUsers.class);
+        au.addPreserved(ScalarEvolution.class);
         au.addPreserved(LoopSimplify.class);
+        au.addPreserved(LCSSA.class);
+        au.addPreserved(IVUsers.class);
     }
 }
