@@ -354,12 +354,55 @@ public final class IVUsers extends LoopPass implements Printable
 	 */
 	public SCEV getReplacementExpr(IVStrideUses u)
 	{
-		return null;
+		SCEV retVal = se.getIntegerSCEV(0, u.getParent().stride.getType());
+		retVal = SCEVAddRecExpr.get(retVal, u.getParent().stride, loop);
+		retVal = SCEVAddExpr.get(retVal, u.getOffset());
+		if (u.isUseOfPostIncrementedValue())
+			retVal = SCEVAddExpr.get(retVal, u.getParent().stride);
+
+		if (!loop.contains(u.getUser().getParent()))
+		{
+			SCEV exitVal = se.getSCEVAtScope(retVal, loop.getParentLoop());
+			if (exitVal.isLoopInvariant(loop))
+				retVal = exitVal;
+		}
+
+		return retVal;
 	}
 
 	@Override
 	public void print(PrintStream os)
-	{}
+	{
+		os.print("IV Users for loop: ");
+		os.print(loop.getHeaderBlock().getName() + " ");
+		if (se.hasLoopInvariantIterationCount(loop))
+		{
+			os.printf(" with backedge-taken count %d",
+					se.getIterationCount(loop));
+		}
+		os.println();
+
+		ivUsesByStride.keySet().forEach(stride->
+		{
+			assert ivUsesByStride.containsKey(stride):"Stride doesn't exits!";
+			os.print("  Stride: " + stride.getType().toString()+ "  "+
+					stride.toString() +"\n");
+
+			IVUsersOfOneStride uses = ivUsesByStride.get(stride);
+			for (IVStrideUses u : uses.users)
+			{
+				os.print("  ");
+				os.print(u.getOperandValToReplace());
+				os.print("=");
+				os.print(getReplacementExpr(u));
+				if (u.isUseOfPostIncrementedValue())
+					os.print("post-inc");
+				os.print(" in ");
+				u.getUser().print(os);
+				os.println();
+			}
+		});
+	}
 
 	@Override
 	public void dump()

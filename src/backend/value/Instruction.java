@@ -9,6 +9,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import tools.Util;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 
 import static backend.hir.Operator.*;
@@ -185,6 +186,11 @@ public abstract class Instruction extends User
     {
         // TODO should be overidden by concrete subclasses.
         return (Instruction) super.clone();
+    }
+
+    public void print(PrintStream os)
+    {
+
     }
 
     /**
