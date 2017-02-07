@@ -81,6 +81,10 @@ public final class ScalarEvolution extends FunctionPass
      */
     private HashMap<PhiNode, Constant> constantEvolutionLoopExitValue;
 
+    public LoopInfo getLI()
+    {
+        return li;
+    }
     @Override
     public String getPassName()
     {
@@ -103,6 +107,7 @@ public final class ScalarEvolution extends FunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
+        au.addRequired(TargetData.class);
         au.addRequired(LoopInfo.class);
     }
 
@@ -856,5 +861,27 @@ public final class ScalarEvolution extends FunctionPass
     public SCEV getMinusSCEV(SCEV lhs, SCEV rhs)
     {
         return SCEVAddExpr.get(lhs, getNegativeSCEV(rhs));
+    }
+
+    public Type getEffectiveSCEVType(Type srcTy)
+    {
+        assert isSCEVable(srcTy):"Type is not SCEVable!";
+        if (srcTy.isIntegral())
+            return srcTy;
+        assert srcTy.isPointerType():"Unexpected non-pointer type!";
+        if (td != null)
+            return td.getIntPtrType();
+
+        return Type.Int64Ty;
+    }
+
+    public SCEV getTruncateOrNoop(SCEV src, Type destTy)
+    {
+        return null;
+    }
+
+    public SCEV getNoopOrAnyExtend(SCEV src, Type destTy)
+    {
+        return null;
     }
 }

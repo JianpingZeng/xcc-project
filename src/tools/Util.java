@@ -1,5 +1,8 @@
 package tools;
 
+import backend.hir.BasicBlock;
+import backend.value.Instruction;
+
 import java.util.List;
 
 
@@ -331,5 +334,42 @@ public class Util
 	{
 		for (Object arg : args)
 			System.err.print(arg);
+	}
+
+	/**
+	 * <p>
+	 * A utility method used for obtaining the next instruction
+	 * after the cur in the same basic block.
+	 * </p>
+	 * <p>
+	 * Return {@code null} if the next position is out of the range.
+	 * </p>
+	 * @param cur
+	 * @return
+	 */
+	public static Instruction next(Instruction cur)
+	{
+		BasicBlock bb = cur.getParent();
+		int idx = bb.indexOf(cur);
+		return idx >= 0 && idx < bb.size()-1 ?
+				bb.getInstAt(idx + 1) : null;
+	}
+	/**
+	 * <p>
+	 * A utility method used for obtaining the previous instruction
+	 * before the cur in the same basic block.
+	 * </p>
+	 * <p>
+	 * Return {@code null} if the previous position is out of the range.
+	 * </p>
+	 * @param cur
+	 * @return
+	 */
+	public static Instruction previous(Instruction cur)
+	{
+		BasicBlock bb = cur.getParent();
+		int idx = bb.indexOf(cur);
+		return idx >= 1 && idx < bb.size() ?
+				bb.getInstAt(idx - 1) : null;
 	}
 }
