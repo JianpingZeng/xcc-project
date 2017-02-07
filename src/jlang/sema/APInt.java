@@ -2853,6 +2853,15 @@ public class APInt
         return a.ult(b) ? a : b;
     }
 
+	/**
+     * returns the floor log base 2 of this APInt.
+     * @return
+     */
+    public long logBase2()
+    {
+        return bitWidth - 1 - countLeadingZeros();
+    }
+
     public void print(PrintStream os)
     {
         print(os, true);

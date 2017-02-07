@@ -193,6 +193,11 @@ public abstract class Instruction extends User
 
     }
 
+    public int getIndexToBB()
+    {
+        return getParent().indexOf(this);
+    }
+
     /**
      * The abstract base class definition for unary operator.
      */
@@ -788,6 +793,81 @@ public abstract class Instruction extends User
                     assert false:"Invalid opcode provided!";
             }
             return null;
+        }
+
+        public static Operator getCastOpcode(Value val, boolean srcIsSigned,
+                Type destTy, boolean destIsSigned)
+        {
+            Type srcTy = val.getType();
+            int srcBits = srcTy.getScalarSizeBits();
+            int destBits = destTy.getScalarSizeBits();
+
+            assert srcTy.isFirstClassType() && destTy.isFirstClassType()
+                    :"Only first class types are casted";
+
+            if (destTy.isIntegral())
+            {
+                if (srcTy.isIntegral())
+                {
+                    if (destBits < srcBits)
+                        return Operator.Trunc;
+                    else if (destBits > srcBits)
+                    {
+                        if (srcIsSigned)
+                            return Operator.SExt;
+                        else
+                            return Operator.ZExt;
+                    }
+                    else
+                        return Operator.BitCast;
+                }
+                else if (srcTy.isFloatingPointType())
+                {
+                    if (destIsSigned)
+                        return Operator.FPToSI;
+                    else
+                        return Operator.FPToUI;
+                }
+                else
+                {
+                    assert srcTy instanceof PointerType
+                            :"Casting from a value that is not first-class type";
+                    return Operator.PtrToInt;
+                }
+            }
+            else if (destTy.isFloatingPointType())
+            {
+                if (srcTy.isIntegral())
+                {
+                    if (srcIsSigned)
+                        return Operator.SIToFP;
+                    else
+                        return Operator.UIToFP;
+                }
+                else if (srcTy.isFloatingPointType())
+                {
+                    if (destBits > srcBits)
+                        return Operator.FPExt;
+                    else if (destBits < srcBits)
+                        return Operator.FPTrunc;
+                    else
+                        return Operator.BitCast;
+                }
+            }
+            else if (destTy.isPointerType())
+            {
+                if (srcTy.isPointerType())
+                    return Operator.BitCast;
+                else if (srcTy.isIntegral())
+                    return Operator.IntToPtr;
+                else
+                    assert false : "Casting pointer to other than pointer type!";
+            }
+            else
+            {
+                assert false : "Casting to type that is not first-class type!";
+            }
+            return Operator.BitCast;
         }
     }
 

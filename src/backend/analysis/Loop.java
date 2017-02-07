@@ -1,9 +1,12 @@
 package backend.analysis;
 
 import backend.hir.BasicBlock;
+import backend.hir.Operator;
 import backend.hir.PredIterator;
 import backend.hir.SuccIterator;
+import backend.value.ConstantInt;
 import backend.value.Instruction;
+import backend.value.Instruction.PhiNode;
 import backend.value.Value;
 import tools.OutParamWrapper;
 
@@ -341,5 +344,70 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	public void dump()
 	{
 		print(System.err, 0);
+	}
+
+	/**
+	 * Check to see if the loop has a canonical
+	 * induction variable: an integer recurrence that starts at 0 and increments
+	 * by one each time through the loop.  If so, return the phi node that
+	 * corresponds to it.
+	 *
+	 * The IndVarSimplify pass transforms loops to have a canonical induction
+	 * variable.
+	 * @return
+	 */
+	public PhiNode getCanonicalInductionVariable()
+	{
+		BasicBlock header = getHeaderBlock();
+		BasicBlock incoming = null, backege = null;
+		int numPreds = header.getNumPredecessors();
+		assert numPreds > 0
+				: "Loop must have at least one backedge!";
+		backege = header.predAt(1);
+		if (numPreds == 1)
+			return null;    // dead loop.
+		if (numPreds > 2)
+			return null;    // multiple backedge.
+		incoming = header.predAt(0);
+
+		if (contains(incoming))
+		{
+			if (contains(backege))
+				return null;
+			BasicBlock tmp = incoming;
+			incoming = backege;
+			backege = tmp;
+		}
+		else if (!contains(backege))
+			return null;
+
+		// Loop over all of the PHI nodes, looking for a canonical indvar.
+		for (Instruction inst : header)
+		{
+			if (!(inst instanceof PhiNode))
+				break;
+			PhiNode pn = (PhiNode)inst;
+			Value incomingVal = pn.getIncomingValueForBlock(incoming);
+			if (incomingVal instanceof ConstantInt)
+			{
+				ConstantInt ci = (ConstantInt)incomingVal;
+				if (ci.isNullValue())
+				{
+					Value backedgeVal = pn.getIncomingValueForBlock(backege);
+					if (backedgeVal instanceof Instruction)
+					{
+						Instruction inc = (Instruction)backedgeVal;
+						if (inc.getOpcode() == Operator.Add
+								&& inc.operand(0) == pn)
+						{
+							if (inc.operand(1) instanceof ConstantInt)
+								if (((ConstantInt)inc.operand(1)).equalsInt(1))
+									return pn;
+						}
+					}
+				}
+			}
+		}
+		return null;
 	}
 }

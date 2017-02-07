@@ -17,10 +17,12 @@ package backend.transform;
  */
 
 import backend.analysis.*;
+import backend.hir.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.LoopPass;
 import backend.pass.Pass;
 import backend.pass.RegisterPass;
+import backend.support.SCEVExpander;
 
 /**
  * <p>
@@ -108,13 +110,31 @@ public final class IndVarSimplify extends LoopPass
         // Firstly, transforms all sub loops nested in current loop processed.
         loop.getSubLoops().forEach(this::runOnLoop);
 
+
+        rewriteNonIntegerIVs(loop);
         // Checks to see if this loop has a computable loop-invariant exit expression.
         // If so, this means that we can compute the final value of any expression
         // that recurrent in the loop, and substitute the exit values from the loop
         // into any instruction outside of the loop that use the final value of the
         // current value.
 
+        BasicBlock exitingBlock = loop.getExitBlock(); // may be null.
+        SCEV iterationCount = se.getIterationCount(loop);
+
+        // Create a rewriter object that we will use to transform the code with.
+        SCEVExpander rewriter = new SCEVExpander();
+
         return changed;
+    }
+
+	/**
+     * Rewrites any floating-point recurrence, attempt to transform
+     * them to use integer recurrence.
+     * @param loop
+     */
+    private void rewriteNonIntegerIVs(Loop loop)
+    {
+
     }
 
     @Override

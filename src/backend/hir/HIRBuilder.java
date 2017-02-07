@@ -56,6 +56,13 @@ public class HIRBuilder
 		insertPtr = curBB.getNumOfInsts();
 	}
 
+	public void setInsertPoint(BasicBlock theBB, Instruction pos)
+	{
+		curBB = theBB;
+		assert pos.getParent().equals(theBB);
+		insertPtr = theBB.indexOf(pos);
+	}
+
 	private <InstTy extends Instruction> InstTy insert(InstTy inst)
 	{
 		insertHelper(inst, curBB, insertPtr);
@@ -87,6 +94,11 @@ public class HIRBuilder
 	public BasicBlock getInsertBlock()
 	{
 		return curBB;
+	}
+
+	public Instruction getInsertPoint()
+	{
+		return curBB.getInstAt(insertPtr);
 	}
 
 	/**
