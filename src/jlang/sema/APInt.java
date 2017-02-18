@@ -2873,4 +2873,9 @@ public class APInt
         toString(sb, 10, isSigned, true);
         os.print(sb.toString());
     }
+
+    public boolean isStrictlyPositive()
+    {
+        return isNonNegative() && !eq(0);
+    }
 }

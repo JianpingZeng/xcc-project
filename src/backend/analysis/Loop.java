@@ -7,12 +7,14 @@ import backend.hir.SuccIterator;
 import backend.value.ConstantInt;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
+import backend.value.Use;
 import backend.value.Value;
 import tools.OutParamWrapper;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 /** 
  * <p>
@@ -132,7 +134,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	 * returned false.
 	 */
 	@Override
-	public boolean isLoopExitBlock(BasicBlock bb)
+	public boolean isLoopExitingBlock(BasicBlock bb)
 	{
 		// The special case: bb is not contained in current loop, just return false.
 		if (!contains(bb))
@@ -332,7 +334,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 				writer.printf("Block#%s", bb.getName());
 				if (bb == getHeaderBlock())
 					writer.print("<header>");
-				if (isLoopExitBlock(bb))
+				if (isLoopExitingBlock(bb))
 					writer.print("<exit>");
 			}
 			writer.println();
@@ -409,5 +411,102 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Checks to see if this loop conforms to the LCSSA form, return {@code true}
+	 * if this is conformed.
+	 * <p>
+	 * You can visit this <a href="https://gcc.gnu.org/onlinedocs/gccint/LCSSA.html">Gnu LCSSA form</a>
+	 * for obtains more information about LCSSA form in detail.
+	 * </p>
+	 * @return
+	 */
+	public boolean isLCSSAForm()
+	{
+		// Checks it by determining if all uses of each instruction in the Basic block
+		// contained in this loop are in this loop or not.
+		// If so, return true, otherwise, return false.
+		for (BasicBlock bb : blocks)
+		{
+			for (Instruction inst : bb.getInstList())
+			{
+				for (Use u : inst.getUseList())
+				{
+					// the basic block where the use of inst contained.
+					BasicBlock userBB = ((Instruction)u.getUser()).getParent();
+					if (u.getUser() instanceof PhiNode)
+					{
+						PhiNode pn = (PhiNode)u.getUser();
+						userBB = pn.getIncomingBlock(u);
+					}
+
+					if (userBB != bb && !blocks.contains(userBB))
+						return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Returns a list of all loop exit block.
+	 * @return
+	 */
+	@Override
+	public ArrayList<BasicBlock> getExitBlocks()
+	{
+		ArrayList<BasicBlock> exitBBs = new ArrayList<>();
+		for (BasicBlock block : blocks)
+		{
+			for (SuccIterator itr = block.succIterator(); itr.hasNext();)
+			{
+				BasicBlock succ = itr.next();
+				if (!blocks.contains(succ))
+					exitBBs.add(succ);
+			}
+		}
+		return exitBBs;
+	}
+
+	/**
+	 * Returns the unique exit blocks list of this loop.
+	 * <p>
+	 * The unique exit block means that if there are multiple edge from
+	 * a block in loop to this exit block, we just count one.
+	 * </p>
+	 * @return
+	 */
+	@Override
+	public ArrayList<BasicBlock> getUniqueExitBlocks()
+	{
+		HashSet<BasicBlock> switchExitBlocks = new HashSet<>();
+		ArrayList<BasicBlock> exitBBs = new ArrayList<>();
+
+		for (BasicBlock curBB : blocks)
+		{
+			switchExitBlocks.clear();
+			for (SuccIterator succItr = curBB.succIterator(); succItr.hasNext();)
+			{
+				BasicBlock succBB = succItr.next();
+				BasicBlock firstPred = succBB.predAt(0);
+
+				if (curBB != firstPred)
+						continue;
+
+				if (curBB.getNumSuccessors() <= 2)
+				{
+					exitBBs.add(succBB);
+					continue;
+				}
+
+				if (!switchExitBlocks.contains(succBB))
+				{
+					switchExitBlocks.add(succBB);
+					exitBBs.add(succBB);
+				}
+			}
+		}
+		return exitBBs;
 	}
 }

@@ -26,11 +26,15 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
+import backend.value.Instruction.CmpInst.Predicate;
 import jlang.sema.APInt;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 
+import static backend.analysis.ValueTracking.computeNumSignBits;
 import static backend.transform.ConstantFolder.canConstantFoldCallTo;
 import static backend.transform.ConstantFolder.constantFoldCall;
 
@@ -634,6 +638,17 @@ public final class ScalarEvolution extends FunctionPass
         return unknownValue;
     }
 
+	/**
+	 * This is a convenience function which does getSCEVAtScope(getSCEV(val), loop).
+     * @param val
+     * @param loop
+     * @return
+     */
+    public SCEV getSCEVAtScope(Value val, Loop loop)
+    {
+        return getSCEVAtScope(getSCEV(val), loop);
+    }
+
     /**
      * Return true if the specified loop has
      * an analyzable loop-invariant iteration count.
@@ -863,6 +878,26 @@ public final class ScalarEvolution extends FunctionPass
         return SCEVAddExpr.get(lhs, getNegativeSCEV(rhs));
     }
 
+	/**
+     * Return a SCEV corresponding to ~V = -1-V.
+     * @param val
+     * @return
+     */
+    public SCEV getNotSCEV(SCEV val)
+    {
+        if (val instanceof SCEVConstant)
+        {
+            SCEVConstant sc = (SCEVConstant)val;
+            return SCEVConstant.get((ConstantInt) ConstantExpr.getNot(sc.getValue()));
+        }
+
+        Type ty = val.getType();
+        ty = getEffectiveSCEVType(ty);
+        SCEV allOnes = SCEVConstant.get((ConstantInt) Constant.getAllOnesValue(ty));
+
+        return getMinusSCEV(allOnes, val);
+    }
+
     public Type getEffectiveSCEVType(Type srcTy)
     {
         assert isSCEVable(srcTy):"Type is not SCEVable!";
@@ -875,12 +910,764 @@ public final class ScalarEvolution extends FunctionPass
         return Type.Int64Ty;
     }
 
+	/**
+     * Returns a SCEV object that performs conversion of converting
+     * input value to the given destTy.
+     * @param src
+     * @param destTy
+     * @return
+     */
     public SCEV getTruncateOrNoop(SCEV src, Type destTy)
+    {
+        Type srcTy = src.getType();
+        assert (srcTy.isIntegral() || srcTy.isPointerType())
+                &&(destTy.isIntegral() || destTy.isPointerType())
+                :"Cannot truncate or noop with non-integer type!";
+        int destBits = getTypeSizeBits(destTy);
+        int srcBits = getTypeSizeBits(srcTy);
+        assert destBits <= srcBits;
+        if (destBits == srcBits)
+            return src;
+        return getTruncateExpr(src, destTy);
+    }
+
+    private SCEV getTruncateExpr(SCEV val, Type destTy)
     {
         return null;
     }
 
     public SCEV getNoopOrAnyExtend(SCEV src, Type destTy)
+    {
+        Type srcTy = src.getType();
+        assert (srcTy.isIntegral() || srcTy.isPointerType())
+                &&(destTy.isIntegral() || destTy.isPointerType())
+                :"Cannot extend or noop with non-integer type!";
+        int destBits = getTypeSizeBits(destTy);
+        int srcBits = getTypeSizeBits(srcTy);
+        assert destBits >= srcBits;
+        if (destBits == srcBits)
+            return src;
+        return getAnyExtendExpr(src, destTy);
+    }
+
+    public SCEV getNoopOrZeroExtend(SCEV s, Type ty)
+    {
+        Type srcTy = s.getType();
+        assert (srcTy.isIntegral() || srcTy.isPointerType())
+                && (ty.isIntegral() || ty.isPointerType())
+                :"Cannot noop or zero extend with non-integer arguments!";
+        assert getTypeSizeBits(srcTy) <= getTypeSizeBits(ty);
+        if (getTypeSizeBits(srcTy) == getTypeSizeBits(ty))
+            return s;
+        return getZeroExtendExpr(s, ty);
+
+    }
+
+    private SCEV getZeroExtendExpr(SCEV val, Type ty)
+    {
+        return null;
+    }
+
+    private SCEV getSignExtendExpr(SCEV val, Type ty)
+    {
+        return null;
+    }
+
+    private SCEV getAnyExtendExpr(SCEV val, Type destTy)
+    {
+        return null;
+    }
+
+	/**
+     * Test if the entry to the loop is protected by a conditional between
+     * {@code lhs} and {@code rhs}. this is used for help avoid max expression
+     * in loop trip counts, and to eliminate casts.
+     * @param loop
+     * @param pred
+     * @param lhs
+     * @param rhs
+     * @return
+     */
+    public boolean isLoopGuardedByCond(Loop loop,
+            Predicate pred,
+            SCEV lhs,
+            SCEV rhs)
+    {
+        if (loop == null) return false;
+
+        BasicBlock predecessor = getLoopPredecessor(loop);
+        BasicBlock predecessorDest = loop.getHeaderBlock();
+
+        // Starting at the loop predecessor, climb up the predecessor chain, as long
+        // as there are predecessors that can be found that have unique successors
+        // leading to the original header.
+        while (predecessor != null)
+        {
+            BranchInst loopEntryPredicate;
+            TerminatorInst ti = predecessor.getTerminator();
+            if (!(ti instanceof BranchInst) || ((loopEntryPredicate = (BranchInst)ti).isUnconditional()))
+                continue;
+
+            if (isImpliedCond(loopEntryPredicate.getCondition(), pred, lhs, rhs,
+                    loopEntryPredicate.suxAt(0) != predecessorDest))
+                return true;
+
+            predecessorDest = predecessor;
+            predecessor = getPredecessorWithUniqueSuccessorForBB(predecessor);
+        }
+        return false;
+    }
+
+    private BasicBlock getPredecessorWithUniqueSuccessorForBB(BasicBlock bb)
+    {
+        BasicBlock pred = bb.getSinglePredecessor();
+        if (pred != null)
+            return pred;
+
+        // A loop's header is defined to be a block that dominates the loop.
+        // If the header has a unique predecessor outside the loop, it must be
+        // a block that has exactly one successor that can reach the loop.
+        Loop l = li.getLoopFor(bb);
+        if (l != null)
+            return getLoopPredecessor(l);
+        return null;
+    }
+
+	/**
+	 * If the given loop's header has exactly one unique
+     * predecessor outside the loop, return it. Otherwise return null.
+     * @param loop
+     * @return
+     */
+    private BasicBlock getLoopPredecessor(Loop loop)
+    {
+        BasicBlock header = loop.getHeaderBlock();
+        BasicBlock pred = null;
+        for (PredIterator itr = header.predIterator(); itr.hasNext();)
+        {
+            BasicBlock bb = itr.next();
+            if (!(loop.contains(bb)))
+            {
+                if (pred != null && pred != bb) return null;
+                pred = bb;
+            }
+        }
+        return pred;
+    }
+
+	/**
+	 * Test if the condition described by pred, lhs and rhs is true when
+     * the given cond value is evaluated to true.
+     * @param condValue
+     * @param pred
+     * @param lhs
+     * @param rhs
+     * @param inverse
+     * @return
+     */
+    private boolean isImpliedCond(Value condValue, Predicate pred,
+            SCEV lhs, SCEV rhs, boolean inverse)
+    {
+        // Recursively handle And and Or conditions.
+        if (condValue instanceof Op2)
+        {
+            Op2 bo = (Op2)condValue;
+            if (bo.getOpcode() == Operator.And)
+            {
+                if (!inverse)
+                    return isImpliedCond(bo.operand(0), pred, lhs, rhs, inverse)
+                    || isImpliedCond(bo.operand(1), pred, lhs, rhs, inverse);
+            }
+            else if (bo.getOpcode() == Operator.Or)
+            {
+                if (inverse)
+                    return isImpliedCond(bo.operand(0), pred, lhs, rhs, inverse)
+                            || isImpliedCond(bo.operand(1), pred, lhs, rhs, inverse);
+            }
+        }
+
+        if (!(condValue instanceof ICmpInst)) return false;
+        ICmpInst ici = (ICmpInst)condValue;
+
+        if (getTypeSizeBits(lhs.getType()) < getTypeSizeBits(ici.operand(0).getType()))
+            return false;
+
+        Predicate foundPred;
+        if (inverse)
+            foundPred = ici.getInversePredicate();
+        else
+            foundPred = ici.getPredicate();
+
+        SCEV foundLHS = getSCEV(ici.operand(0));
+        SCEV foundRHS = getSCEV(ici.operand(1));
+
+        // Balance the types. The case where FoundLHS' type is wider than
+        // LHS' type is checked for above.
+        if (getTypeSizeBits(lhs.getType()) >
+                getTypeSizeBits(foundLHS.getType()))
+        {
+            if (CmpInst.isSigned(pred))
+            {
+                foundLHS = getSignExtendExpr(foundLHS, lhs.getType());
+                foundRHS = getSignExtendExpr(foundRHS, rhs.getType());
+            }
+            else
+            {
+                foundLHS = getZeroExtendExpr(foundLHS, lhs.getType());
+                foundRHS = getZeroExtendExpr(foundRHS, rhs.getType());
+            }
+        }
+
+        if (lhs instanceof SCEVConstant)
+        {
+            SCEV temp = lhs;
+            lhs = rhs;
+            rhs = temp;
+            pred = ICmpInst.getSwappedPredicate(pred);
+        }
+
+        if (rhs instanceof SCEVConstant)
+        {
+            SCEVConstant rc = (SCEVConstant)rhs;
+            APInt ra = rc.getValue().getValue();
+            switch (pred)
+            {
+                default:
+                    Util.shouldNotReachHere("Unexpected ICmpInst::Predecaite value!");
+                case ICMP_EQ:
+                case ICMP_NE:
+                    break;
+                case ICMP_UGE:
+                    if (ra.decrease().isMinValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        rhs = SCEVConstant.get(ra.decrease());
+                        break;
+                    }
+                    if (ra.isMaxValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        break;
+                    }
+                    if (ra.isMinValue()) return true;
+                    break;
+                case ICMP_ULE:
+                    if (ra.increase().isMaxValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        rhs = SCEVConstant.get(ra.increase());
+                        break;
+                    }
+                    if (ra.isMinValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        break;
+                    }
+                    if (ra.isMaxValue()) return true;
+                    break;
+                case ICMP_SGE:
+                    if (ra.decrease().isMinSignedValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        rhs = SCEVConstant.get(ra.decrease());
+                        break;
+                    }
+                    if (ra.isMaxSignedValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        break;
+                    }
+                    if (ra.isMinSignedValue()) return true;
+                    break;
+                case ICMP_SLE:
+                    if (ra.increase().isMaxSignedValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        rhs = SCEVConstant.get(ra.increase());
+                        break;
+                    }
+                    if (ra.isMinSignedValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        break;
+                    }
+                    if (ra.isMaxSignedValue()) return true;
+                    break;
+                case ICMP_UGT:
+                    if (ra.isMinValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        break;
+                    }
+                    if (ra.increase().isMaxValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        rhs = SCEVConstant.get(ra.increase());
+                        break;
+                    }
+                    if (ra.isMaxValue()) return false;
+                    break;
+                case ICMP_ULT:
+                    if (ra.isMaxValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        break;
+                    }
+                    if (ra.decrease().isMinValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        rhs = SCEVConstant.get(ra.decrease());
+                        break;
+                    }
+                    if (ra.isMinValue()) return false;
+                    break;
+                case ICMP_SGT:
+                    if (ra.isMinSignedValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        break;
+                    }
+                    if (ra.increase().isMaxSignedValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        rhs = SCEVConstant.get(ra.increase());
+                        break;
+                    }
+                    if (ra.isMaxSignedValue()) return false;
+                    break;
+                case ICMP_SLT:
+                    if (ra.isMaxSignedValue())
+                    {
+                        pred = Predicate.ICMP_NE;
+                        break;
+                    }
+                    if (ra.decrease().isMinSignedValue())
+                    {
+                        pred = Predicate.ICMP_EQ;
+                        rhs = SCEVConstant.get(ra.decrease());
+                        break;
+                    }
+                    if (ra.isMinSignedValue()) return false;
+                    break;
+            }
+        }
+
+        if (lhs == foundRHS || rhs == foundLHS)
+        {
+            if (rhs instanceof SCEVConstant)
+            {
+                SCEV temp = foundLHS;
+                foundLHS = foundRHS;
+                foundRHS = temp;
+                foundPred = ICmpInst.getSwappedPredicate(foundPred);
+            }
+            else
+            {
+                SCEV temp = lhs;
+                lhs = rhs;
+                rhs = temp;
+                pred = ICmpInst.getSwappedPredicate(pred);
+            }
+        }
+
+        if (foundPred == pred)
+            return isImpliedCondOperands(pred, lhs, rhs, foundLHS, foundRHS);
+
+        if (ICmpInst.getSwappedPredicate(foundPred) == pred)
+        {
+            if (rhs instanceof SCEVConstant)
+                return isImpliedCondOperands(pred, lhs, rhs, foundRHS, foundLHS);
+            else
+                return isImpliedCondOperands(ICmpInst.getSwappedPredicate(pred),
+                        rhs, lhs, foundLHS, foundRHS);
+        }
+
+        if (foundPred == Predicate.ICMP_EQ)
+        {
+            if (ICmpInst.isTrueWhenEqual(pred))
+                if (isImpliedCondOperands(pred, lhs, rhs, foundLHS, foundRHS))
+                    return true;
+        }
+
+        if (pred == Predicate.ICMP_NE)
+        {
+            if (!ICmpInst.isTrueWhenEqual(foundPred))
+                if (isImpliedCondOperands(foundPred, lhs, rhs, foundLHS, foundRHS))
+                    return true;
+        }
+        // Otherwise, assume the worst.
+        return false;
+    }
+
+	/**
+	 * Test whether the condition described by Pred,
+     * LHS, and RHS is true whenever the condition desribed by Pred, FoundLHS,
+     * and FoundRHS is true.
+     * @param pred
+     * @param lhs
+     * @param rhs
+     * @param foundLHS
+     * @param foundRHS
+     * @return
+     */
+    private boolean isImpliedCondOperands(Predicate pred,
+            SCEV lhs, SCEV rhs, SCEV foundLHS, SCEV foundRHS)
+    {
+        return isImpliedCondOperandsHelper(pred, lhs, rhs, foundLHS, foundRHS)  ||
+                // ~x < ~y --> x > y
+                isImpliedCondOperandsHelper(pred, lhs, rhs, getNotSCEV(foundRHS),
+                getNotSCEV(foundLHS));
+    }
+
+    /*
+	 * Test whether the condition described by Pred,
+     * LHS, and RHS is true whenever the condition desribed by Pred, FoundLHS,
+     * and FoundRHS is true.
+     */
+    private boolean isImpliedCondOperandsHelper(Predicate pred,
+            SCEV lhs, SCEV rhs, SCEV foundLHS, SCEV foundRHS)
+    {
+        switch (pred)
+        {
+            default:
+                Util.shouldNotReachHere("Unexpected Predicate value!");
+                break;
+            case ICMP_EQ:
+            case ICMP_NE:
+                if (hasSameValue(lhs, foundLHS) && hasSameValue(rhs, foundRHS))
+                    return true;
+                break;
+            case ICMP_SLT:
+            case ICMP_SLE:
+
+        }
+        return false;
+    }
+
+    public static boolean hasSameValue(SCEV s1, SCEV s2)
+    {
+        if (Objects.equals(s1, s2)) return true;
+
+        if (s1 instanceof SCEVUnknown && s2 instanceof SCEVUnknown)
+        {
+            SCEVUnknown su1 = (SCEVUnknown)s1;
+            SCEVUnknown su2 = (SCEVUnknown)s2;
+            if (su1.getValue() instanceof Instruction
+                    && su2.getValue() instanceof Instruction)
+            {
+                Instruction inst1 = (Instruction)su1.getValue();
+                Instruction inst2 = (Instruction)su2.getValue();
+                if (inst1.isIdenticalTo(inst2))
+                    return true;
+            }
+        }
+        // Otherwise assume they may have a different value.
+        return false;
+    }
+
+    private boolean isKnownNegative(SCEV val)
+    {
+        return getSignedRange(val).getSignedMax().isNegative();
+    }
+
+    private boolean isKnownPositive(SCEV val)
+    {
+        return getSignedRange(val).getSignedMin().isStrictlyPositive();
+    }
+
+    private boolean isKnownNonNegative(SCEV val)
+    {
+        return !getSignedRange(val).getSignedMin().isNegative();
+    }
+
+    private boolean isKnownNonPositive(SCEV val)
+    {
+        return !getSignedRange(val).getSignedMax().isStrictlyPositive();
+    }
+
+    private boolean isKnownNonZero(SCEV val)
+    {
+        return isKnownNegative(val) || isKnownPositive(val);
+    }
+
+    private boolean isKnownPredicate(Predicate pred, SCEV lhs, SCEV rhs)
+    {
+        if (hasSameValue(lhs, rhs))
+            return ICmpInst.isTrueWhenEqual(pred);
+
+        switch (pred)
+        {
+            default:
+                Util.shouldNotReachHere("Unexpected ICmpInst::Predicate value!");
+                break;
+            case ICMP_SGT:
+            {
+                pred = Predicate.ICMP_SLT;
+                SCEV temp = lhs;
+                lhs = rhs;
+                rhs = temp;
+                break;
+            }
+            case ICMP_SLT:
+            {
+                ConstantRange lhsRange = getSignedRange(lhs);
+                ConstantRange rhsRange = getSignedRange(rhs);
+                if (lhsRange.getSignedMax().slt(rhsRange.getSignedMin()))
+                    return true;
+                if (lhsRange.getSignedMin().sge(rhsRange.getSignedMax()))
+                    return false;
+                break;
+            }
+            case ICMP_SGE:
+            {
+                pred = Predicate.ICMP_SLE;
+                SCEV temp = lhs;
+                lhs = rhs;
+                rhs = temp;
+                break;
+            }
+            case ICMP_SLE:
+            {
+                ConstantRange lhsRange = getSignedRange(lhs);
+                ConstantRange rhsRange = getSignedRange(rhs);
+                if (lhsRange.getSignedMax().sle(rhsRange.getSignedMin()))
+                    return true;
+                if (lhsRange.getSignedMin().sgt(rhsRange.getSignedMax()))
+                    return false;
+                break;
+            }
+            case ICMP_UGT:
+            {
+                pred = Predicate.ICMP_ULT;
+                SCEV temp = lhs;
+                lhs = rhs;
+                rhs = temp;
+                break;
+            }
+            case ICMP_ULT:
+            {
+                ConstantRange lhsRange = getUnsignedRange(lhs);
+                ConstantRange rhsRange = getUnsignedRange(rhs);
+                if (lhsRange.getUnsignedMax().slt(rhsRange.getUnsignedMin()))
+                    return true;
+                if (lhsRange.getUnsignedMin().sge(rhsRange.getUnsignedMax()))
+                    return false;
+                break;
+            }
+            case ICMP_UGE:
+            {
+                pred = Predicate.ICMP_ULE;
+                SCEV temp = lhs;
+                lhs = rhs;
+                rhs = temp;
+                break;
+            }
+            case ICMP_ULE:
+            {
+                ConstantRange lhsRange = getUnsignedRange(lhs);
+                ConstantRange rhsRange = getUnsignedRange(rhs);
+                if (lhsRange.getUnsignedMax().ult(rhsRange.getUnsignedMin()))
+                    return true;
+                if (lhsRange.getUnsignedMin().uge(rhsRange.getUnsignedMax()))
+                    return false;
+                break;
+            }
+            case ICMP_NE:
+            {
+                if (getUnsignedRange(lhs).intersectWith(getUnsignedRange(rhs)).isEmptySet())
+                    return true;
+                if (getSignedRange(lhs).intersectWith(getSignedRange(rhs)).isEmptySet())
+                    return true;
+
+                SCEV diff = getMinusSCEV(lhs, rhs);
+                if (isKnownNonZero(diff))
+                    return true;
+                break;
+            }
+            case ICMP_EQ:
+                break;
+        }
+        return false;
+    }
+
+    private ConstantRange getUnsignedRange(SCEV s)
+    {
+        if (s instanceof SCEVConstant)
+        {
+            SCEVConstant c = (SCEVConstant)s;
+            return new ConstantRange(c.getValue().getValue());
+        }
+
+        if (s instanceof SCEVAddExpr)
+        {
+            SCEVAddExpr add = (SCEVAddExpr)s;
+            ConstantRange x = getUnsignedRange(add.getOperand(0));
+            for (int i = 1, e = add.getNumOperands(); i < e; i++)
+                x = x.add(getUnsignedRange(add.getOperand(i)));
+            return x;
+        }
+        if (s instanceof SCEVMulExpr)
+        {
+            SCEVMulExpr mul = (SCEVMulExpr)s;
+            ConstantRange x = getUnsignedRange(mul.getOperand(0));
+            for (int i = 1, e = mul.getNumOperands(); i < e; i++)
+                x = x.add(getUnsignedRange(mul.getOperand(i)));
+            return x;
+        }
+
+        if (s instanceof SCEVSDivExpr)
+        {
+            SCEVSDivExpr div = (SCEVSDivExpr)s;
+            ConstantRange x = getUnsignedRange(div.getLHS());
+            ConstantRange y = getUnsignedRange(div.getRHS());
+            return x.udiv(y);
+        }
+
+        ConstantRange fullset = new ConstantRange(getTypeSizeBits(s.getType()), true);
+        if (s instanceof SCEVAddRecExpr)
+        {
+            SCEVAddRecExpr addRec = (SCEVAddRecExpr)s;
+            SCEV t = getIterationCount(addRec.getLoop());
+            if (!(t instanceof SCEVConstant))
+                return fullset;
+
+            SCEVConstant tripCount = (SCEVConstant)t;
+            if (addRec.isAffine())
+            {
+                Type ty = addRec.getType();
+                SCEV maxBECount = getMaxIterationCount(addRec.getLoop());
+                if (getTypeSizeBits(maxBECount.getType())
+                        <= getTypeSizeBits(ty))
+                {
+                    maxBECount = getNoopOrZeroExtend(maxBECount, ty);
+                    SCEV start = addRec.getStart();
+                    SCEV step = addRec.getStepRecurrence();
+                    SCEV end = addRec.evaluateAtIteration(maxBECount);
+
+
+                    // Check for overflow.
+                    if (!step.isOne() && isKnownPredicate(Predicate.ICMP_ULT,
+                            start, end) && !(step.isAllOnesValue()
+                    && isKnownPredicate(Predicate.ICMP_UGT, start, end)))
+                        return fullset;
+
+                    ConstantRange startRange = getUnsignedRange(start);
+                    ConstantRange endRange = getUnsignedRange(end);
+                    APInt min = APInt.umin(startRange.getUnsignedMin(),
+                            endRange.getUnsignedMin());
+                    APInt max = APInt.umax(startRange.getUnsignedMax(),
+                            endRange.getUnsignedMax());
+                    if (min.isMinValue() && max.isMaxValue())
+                        return fullset;
+                    return new ConstantRange(min, max.increase());
+                }
+            }
+        }
+
+        if (s instanceof SCEVUnknown)
+        {
+            SCEVUnknown u = (SCEVUnknown)s;
+            int bitwidth = getTypeSizeBits(u.getType());
+            APInt mask = APInt.getAllOnesValue(bitwidth);
+            APInt zeros = new APInt(bitwidth, 0), ones = new APInt(bitwidth, 0);
+            ValueTracking.computeMaskedBits(u.getValue(), mask, zeros, ones, td);;
+
+            APInt tmp = zeros.negative().increase();
+            if (ones.eq(tmp))
+                return fullset;
+            return new ConstantRange(ones, tmp);
+        }
+        return fullset;
+    }
+
+    private ConstantRange getSignedRange(SCEV s)
+    {
+        if (s instanceof SCEVConstant)
+        {
+            SCEVConstant c = (SCEVConstant)s;
+            return new ConstantRange(c.getValue().getValue());
+        }
+
+        if (s instanceof SCEVAddExpr)
+        {
+            SCEVAddExpr add = (SCEVAddExpr)s;
+            ConstantRange x = getSignedRange(add.getOperand(0));
+            for (int i = 1, e = add.getNumOperands(); i < e; i++)
+                x = x.add(getSignedRange(add.getOperand(i)));
+            return x;
+        }
+        if (s instanceof SCEVMulExpr)
+        {
+            SCEVMulExpr mul = (SCEVMulExpr)s;
+            ConstantRange x = getSignedRange(mul.getOperand(0));
+            for (int i = 1, e = mul.getNumOperands(); i < e; i++)
+                x = x.add(getSignedRange(mul.getOperand(i)));
+            return x;
+        }
+
+        if (s instanceof SCEVSDivExpr)
+        {
+            SCEVSDivExpr div = (SCEVSDivExpr)s;
+            ConstantRange x = getSignedRange(div.getLHS());
+            ConstantRange y = getSignedRange(div.getRHS());
+            return x.udiv(y);
+        }
+
+        ConstantRange fullset = new ConstantRange(getTypeSizeBits(s.getType()), true);
+        if (s instanceof SCEVAddRecExpr)
+        {
+            SCEVAddRecExpr addRec = (SCEVAddRecExpr)s;
+            SCEV t = getIterationCount(addRec.getLoop());
+            if (!(t instanceof SCEVConstant))
+                return fullset;
+
+            SCEVConstant tripCount = (SCEVConstant)t;
+            if (addRec.isAffine())
+            {
+                Type ty = addRec.getType();
+                SCEV maxBECount = getMaxIterationCount(addRec.getLoop());
+                if (getTypeSizeBits(maxBECount.getType())
+                        <= getTypeSizeBits(ty))
+                {
+                    maxBECount = getNoopOrZeroExtend(maxBECount, ty);
+                    SCEV start = addRec.getStart();
+                    SCEV step = addRec.getStepRecurrence();
+                    SCEV end = addRec.evaluateAtIteration(maxBECount);
+
+
+                    // Check for overflow.
+                    if (!step.isOne() && isKnownPredicate(Predicate.ICMP_SLT,
+                            start, end) && !(step.isAllOnesValue()
+                            && isKnownPredicate(Predicate.ICMP_SGT, start, end)))
+                        return fullset;
+
+                    ConstantRange startRange = getSignedRange(start);
+                    ConstantRange endRange = getSignedRange(end);
+                    APInt min = APInt.smin(startRange.getSignedMin(),
+                            endRange.getSignedMin());
+                    APInt max = APInt.smax(startRange.getSignedMax(),
+                            endRange.getSignedMax());
+                    if (min.isMinSignedValue() && max.isMaxSignedValue())
+                        return fullset;
+                    return new ConstantRange(min, max.increase());
+                }
+            }
+        }
+
+        if (s instanceof SCEVUnknown)
+        {
+            SCEVUnknown u = (SCEVUnknown)s;
+            int bitwidth = getTypeSizeBits(u.getType());
+            int ns = computeNumSignBits(u.getValue(), td);
+            if (ns == 1)
+                return fullset;
+            return new ConstantRange(APInt.getSignedMinValue(bitwidth).ashr(ns - 1),
+                    APInt.getSignedMaxValue(bitwidth).ashr(ns - 1).increase());
+        }
+        return fullset;
+    }
+
+    public SCEV getMaxIterationCount(Loop loop)
     {
         return null;
     }

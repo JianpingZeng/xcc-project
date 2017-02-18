@@ -345,6 +345,12 @@ public abstract class ConstantExpr extends Constant
         return null;
     }
 
+    public static Constant getNot(ConstantInt value)
+    {
+        assert value.getType().isIntegerType();
+        return get(Operator.Xor, value, Constant.getAllOnesValue(value.getType()));
+    }
+
     static class ExprMapKeyType
     {
         Operator op;

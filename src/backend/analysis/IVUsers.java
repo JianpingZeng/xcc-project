@@ -84,7 +84,7 @@ public final class IVUsers extends LoopPass implements Printable
 	 * @param inst
 	 *
 	 */
-	private boolean addUsersIfInteresting(Instruction inst)
+	public boolean addUsersIfInteresting(Instruction inst)
 	{
 		// Avoiding that instruction of typed FP.
 		if (!se.isSCEVable(inst.getType()))

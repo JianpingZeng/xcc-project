@@ -114,14 +114,14 @@ public abstract class LoopBase<BlockT, LoopT>
     }
 
     /**
-     * Check to see if a basic block is the loop exit block or not on that
+     * Check to see if a basic block is the loop exiting block or not that
      * if the any successor block of the given bb is outside this loop, so that
-     * this bb would be a loop exit block..
+     * this bb would be a loop exiting block..
      * @param bb
-     * @return True if the given block is the exit block of this loop, otherwise
+     * @return True if the given block is the exiting block of this loop, otherwise
      * returned false.
      */
-    public abstract boolean isLoopExitBlock(BlockT bb);
+    public abstract boolean isLoopExitingBlock(BlockT bb);
 
     /**
      * Computes the backward edge leading to the header block in the loop.
@@ -180,15 +180,27 @@ public abstract class LoopBase<BlockT, LoopT>
      * Returns a list of all loop exit block.
      * @return
      */
-    public ArrayList<BlockT> getExitBlocks()
+    public abstract ArrayList<BlockT> getExitBlocks();
+
+	/**
+     * Returns the unique exit blocks list of this loop.
+     * <p>
+     * The unique exit block means that if there are multiple edge from
+     * a block in loop to this exit block, we just count one.
+     * </p>
+     * @return
+     */
+    public abstract ArrayList<BlockT> getUniqueExitBlocks();
+
+	/**
+     * If there is just one unique exit block of this loop, return it. Otherwise
+     * return {@code null}.
+     * @return
+     */
+    public BlockT getUniqueExitBlock()
     {
-        ArrayList<BlockT> exitBlocks = new ArrayList<>(blocks.size());
-        blocks.forEach(bb ->
-        {
-            if (isLoopExitBlock(bb))
-                exitBlocks.add(bb);
-        });
-        return exitBlocks;
+        ArrayList<BlockT> list = getUniqueExitBlocks();
+        return list.size() == 1 ? list.get(0) : null;
     }
 
     /**

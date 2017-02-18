@@ -78,6 +78,12 @@ public abstract class User extends Value
         operandList.set(index, use);
     }
 
+    public void setOperand(int index, Value opVal)
+    {
+        assert index >= 0 && index < getNumOfOperands();
+        operandList.get(index).setValue(opVal);
+    }
+
     public Use getOperand(int index)
     {
         assert (index >= 0 && index < getNumOfOperands());

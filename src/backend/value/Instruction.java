@@ -198,6 +198,48 @@ public abstract class Instruction extends User
         return getParent().indexOf(this);
     }
 
+    public boolean isIdenticalTo(Instruction otherInst)
+    {
+        return isIdenticalToWhenDefined(otherInst);
+    }
+
+    public boolean isIdenticalToWhenDefined(Instruction otherInst)
+    {
+        if (getOpcode() != otherInst.getOpcode()
+                || getNumOfOperands() != otherInst.getNumOfOperands()
+                || getType() != otherInst.getType()
+                || !getClass().equals(otherInst.getClass()))
+            return false;
+
+        for (int i = 0, e = getNumOfOperands(); i < e; i++)
+            if (operand(i) != otherInst.operand(i))
+                return false;
+
+        if (this instanceof LoadInst)
+        {
+            LoadInst li = (LoadInst)this;
+            return li.isVolatile == ((LoadInst)otherInst).isVolatile;
+        }
+        if (this instanceof StoreInst)
+        {
+            return ((StoreInst)this).isVolatile() ==
+                    ((StoreInst)otherInst).isVolatile();
+        }
+        if (this instanceof CmpInst)
+        {
+            return ((CmpInst)this).getPredicate() ==
+                    ((CmpInst)otherInst).getPredicate();
+        }
+        return true;
+    }
+
+    public void moveBefore(Instruction insertPos)
+    {
+        int idx = insertPos.getParent().indexOf(insertPos);
+        insertPos.getParent().insertBefore(this, idx);
+        this.eraseFromBasicBlock();
+    }
+
     /**
      * The abstract base class definition for unary operator.
      */
@@ -1609,6 +1651,24 @@ public abstract class Instruction extends User
             pred = getSwappedPredicate();
             operandList.get(0).swap(operandList.get(1));
         }
+
+	    /**
+	     * Return true if the specified compare predicate is
+         * true when both operands are equal
+         * @param pred
+         * @return
+         */
+        public static boolean isTrueWhenEqual(Predicate pred)
+        {
+            return pred == ICMP_EQ || pred == ICMP_UGE
+                    || pred == ICMP_SGE || pred == ICMP_ULE
+                    || pred == ICMP_SLE;
+        }
+
+        public boolean isTrueWhenEqual()
+        {
+            return isTrueWhenEqual(getPredicate());
+        }
     }
 
     /**
@@ -2412,6 +2472,23 @@ public abstract class Instruction extends User
                     return null;
             }
             return val;
+        }
+
+	    /**
+         * Gets the basic block corresponding to the use {@code u}.
+         * @param u
+         * @return
+         */
+        public BasicBlock getIncomingBlock(Use u)
+        {
+            assert u.getUser().equals(this);
+            return ((Instruction)u.getValue()).getParent();
+        }
+
+        @Override
+        public PhiNode clone()
+        {
+            return (PhiNode)super.clone();
         }
     }
 

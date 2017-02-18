@@ -1,7 +1,9 @@
 package backend.analysis;
 
+import backend.hir.BasicBlock;
 import backend.type.Type;
 import backend.value.ConstantInt;
+import jlang.sema.APInt;
 
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -32,6 +34,11 @@ public final class SCEVConstant extends SCEV
         }
         return scevConstantMap.get(val);
     }
+
+	public static SCEV get(APInt val)
+	{
+		return get(ConstantInt.get(val));
+	}
 
 	public ConstantInt getValue()
 	{
@@ -92,6 +99,20 @@ public final class SCEVConstant extends SCEV
 	public Type getType()
 	{
 		return value.getType();
+	}
+
+	/**
+	 * Return true if elements that makes up this SCEV dominates
+	 * the specified basic block
+	 *
+	 * @param bb
+	 * @param dt
+	 * @return
+	 */
+	@Override
+	public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+	{
+		return false;
 	}
 
 	@Override
