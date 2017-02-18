@@ -17,9 +17,10 @@ package backend.analysis;
  */
 
 import backend.codegen.MachineBasicBlock;
-
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 
 /**
@@ -43,7 +44,7 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
     }
 
     @Override
-    public boolean isLoopExitBlock(MachineBasicBlock bb)
+    public boolean isLoopExitingBlock(MachineBasicBlock bb)
     {
         if (!contains(bb))
             return false;
@@ -102,6 +103,33 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
     }
 
     /**
+     * If there is a single loop latch block, return it. Otherwise, return null.
+     * <b>A latch block is a block where the control flow branch back to the
+     * loop header block.
+     * </b>
+     *
+     * @return
+     */
+    @Override
+    public MachineBasicBlock getLoopLatch()
+    {
+        MachineBasicBlock header = getHeaderBlock();
+        if (header == null) return null;
+        MachineBasicBlock latch = null;
+        for (MachineBasicBlock pred : header.getPredecessors())
+        {
+            if (contains(pred))
+            {
+                // If there are more than two latch blocks, return null.
+                if (latch != null)
+                    return null;
+                latch = pred;
+            }
+        }
+        return latch;
+    }
+
+    /**
      * Return true if the specified machine loop contained in this.
      * @param loop
      * @return
@@ -152,6 +180,65 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
         }
     }
 
+    /**
+     * Returns a list of all loop exit block.
+     * @return
+     */
+    @Override
+    public ArrayList<MachineBasicBlock> getExitBlocks()
+    {
+        ArrayList<MachineBasicBlock> exitBBs = new ArrayList<>();
+        for (MachineBasicBlock block : blocks)
+        {
+            for (MachineBasicBlock succ : block.getSuccessors())
+            {
+                if (!blocks.contains(succ))
+                    exitBBs.add(succ);
+            }
+        }
+        return exitBBs;
+    }
+
+    /**
+     * Returns the unique exit blocks list of this loop.
+     * <p>
+     * The unique exit block means that if there are multiple edge from
+     * a block in loop to this exit block, we just count one.
+     * </p>
+     * @return
+     */
+    @Override
+    public ArrayList<MachineBasicBlock> getUniqueExitBlocks()
+    {
+        HashSet<MachineBasicBlock> switchExitBlocks = new HashSet<>();
+        ArrayList<MachineBasicBlock> exitBBs = new ArrayList<>();
+
+        for (MachineBasicBlock curBB : blocks)
+        {
+            switchExitBlocks.clear();
+            for (MachineBasicBlock succBB : curBB.getSuccessors())
+            {
+                MachineBasicBlock firstPred = succBB.getPred(0);
+
+                if (curBB != firstPred)
+                    continue;
+
+                if (curBB.getNumSuccessors() <= 2)
+                {
+                    exitBBs.add(succBB);
+                    continue;
+                }
+
+                if (!switchExitBlocks.contains(succBB))
+                {
+                    switchExitBlocks.add(succBB);
+                    exitBBs.add(succBB);
+                }
+            }
+        }
+        return exitBBs;
+    }
+    
     @Override
     public void print(OutputStream os, int depth)
     {
@@ -167,7 +254,7 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
                 writer.printf("Block#%s", bb.getNumber());
                 if (bb == getHeaderBlock())
                     writer.print("<header>");
-                if (isLoopExitBlock(bb))
+                if (isLoopExitingBlock(bb))
                     writer.print("<exit>");
             }
             writer.println();
