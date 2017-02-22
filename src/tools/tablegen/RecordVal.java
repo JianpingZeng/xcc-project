@@ -36,7 +36,7 @@ public final class RecordVal
         this.name = name;
         this.ty = ty;
         this.prefix = prefix;
-        value = ty.convertValue(new UnsetInit());
+        value = ty.convertValue(UnsetInit.getInstance());
         assert value != null :"Cannot create unset value for current type!";
     }
 
