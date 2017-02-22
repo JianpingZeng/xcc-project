@@ -173,7 +173,7 @@ public abstract class RecTy
             BitsInit ret = new BitsInit(size);
 
             for (int i = 0; i < size; i++)
-                ret.setBit(i, new UnsetInit());
+                ret.setBit(i, UnsetInit.getInstance());
             return ret;
         }
         @Override

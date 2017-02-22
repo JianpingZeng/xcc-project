@@ -62,7 +62,7 @@ public final class TGParser
 
     private int anonCounter = 0;
     private Record curRec = null;
-
+    
     /**
      * This method is called when an error needed to be reported.
      */
@@ -302,7 +302,7 @@ SPECIAL_TOKEN:
 {
       <SPACES: ([" ", "\t", "\n", "r", "\f"])+>  // white spaces.
     | <LINE_COMMENT :"//" (~["\n", "\r"])* ("\n" | "\r\n" | "\r")> // single line coment
-    | <BLOCK_COMMENT : "/*" (~["*"])* "*" ("*" | (~["*","/"] (~["*"])* "*"))* "/">    // block comment.
+    | <BLOCK_COMMENT : "/*" (~[])* "*/">    // block comment.
 }
 
 // Keywords
@@ -319,40 +319,34 @@ TOKEN:
     | <DEF    :     "def">
     | <FIELD  :   "field">
     | <LET    :     "let">
-    | <IN     :      "in">
+    | <IN     :      "in">    
     | <SRATOK :    "!sra">
     | <SRLTOK :    "!srl">
     | <SHLTOK :    "!shl">
-    | <STRCONCATTOK: "!strconcat">
+    | <STRCONCATTOK: "!strconcat">    
 }
 
-// Any legal alpha character or '_'.
-TOKEN:
-{
-    <ALPHA: ["a"-"z", "A"-"Z", "_"]>
-}
-
-TOKEN:
-{
-    <DIGIT: ["0"-"9"]>
-}
 
 // Integer literal.
 TOKEN:
 {
-    <INTVAL: (["+", "-"])? ["1"-"9"] (<DIGIT>)* | "0" ["X","x"] (<DIGIT> | ["a"-"f","A"-"F"])+ | "0b" (["0","1"])+ >
+    <INTVAL: 
+    (["+", "-"])? ["1"-"9"] (["0"-"9"])*
+    | "0" ["X","x"] (["0"-"9"] | ["a"-"f"] |["A"-"F"])+
+    | "0b" (["0","1"])+ 
+    >
 }
 
 // Identifier.
 TOKEN:
 {
-    <IDENTIFIER: <ALPHA> (<ALPHA> | <DIGIT>)*>
+    <IDENTIFIER: ["a"-"z", "A"-"Z", "_"] (["a"-"z", "A"-"Z", "_"] | ["0"-"9"])*>
 }
 
 // VarName.
 TOKEN:
 {
-    <VARNAME: "$" <ALPHA> (<ALPHA>| <DIGIT>)*>
+    <VARNAME: "$" ["a"-"z", "A"-"Z", "_"] (["a"-"z", "A"-"Z", "_"] | ["0"-"9"])*>
 }
 
 // String literal.
@@ -399,7 +393,7 @@ Record parseClassID():
     Record ret;
 }
 {
-    t = <IDENTIFIER>
+    t = <IDENTIFIER> 
     {
         ret = records.getClass(t.image);
         if (ret == null)
@@ -430,8 +424,9 @@ RecTy parseType():
 
 int parseOptPrefix():{}
 {
-    {}{return 0;}
     <FIELD> { return 1;}
+    |
+    {/*empty.*/}{return 0;}
 }
 
 Init parseOptValue():{Init val;}
@@ -446,7 +441,7 @@ Init parseIDValue():
   Token t;
 }
 {
-  t = <IDENTIFIER>
+  t = <IDENTIFIER> 
   {
     Record d;
     RecordVal rv = (curRec != null ? curRec.getValue(t.image) : null);
@@ -478,20 +473,15 @@ Init parseValueHead():
     ArrayList<Pair<Init, String>> dagList;
 }
 {
-    LOOKAHEAD(<IDENTIFIER>)
-    res = parseIDValue()
+    t = <INTVAL>
     {
-        return res;
+        return new IntInit(Integer.parseInt(t.image)); 
     }
-    | t = <INTVAL>
-    {
-        return new IntInit(Integer.parseInt(t.image));
-    }
-    | t = <STRINGVAL>
+    | t = <STRINGVAL> 
     {
         return new StringInit(t.image);
     }
-    |t = <CODE_FRAGMENT>
+    |t = <CODE_FRAGMENT> 
     {
         return new CodeInit(t.image);
     }
@@ -515,7 +505,7 @@ Init parseValueHead():
         }
         return init;
     }
-    | t = <IDENTIFIER> "<" list = parseValueListNE() ">"
+    | LOOKAHEAD(<IDENTIFIER> "<") t = <IDENTIFIER> "<" list = parseValueListNE() ">"
     {
         // This is a CLASS<initvalslist> expression.  This is supposed to synthesize
         // a new anonymous definition, deriving from CLASS<initvalslist> with no
@@ -530,24 +520,24 @@ Init parseValueHead():
         // Create the new record, set it as CurRec temporarily.
         curRec = new Record("anonymous.val."+(anonCounter++));
         addSubClass(klass, list); // Add info about the subclass to the curRec.
-
+        
         curRec.resolveReferences();
-
+        
         records.addDef(curRec);
-        // The result of the expression is a reference to the new record.
+        // The result of the expression is a reference to the new record.          
         Init ret = new DefInit(curRec);
-
+        
         // Restore the old CurRec
-        curRec = oldRec;
+        curRec = oldRec;       
         return ret;
     }
     | <LBRAKET> list = parseValueList() <RBRAKET>
     {
         return new ListInit(list);
-    }
+    }    
     | <LPAREN> res = parseIDValue() dagList = parseDagArgList() <RPAREN>
     {
-        return new DagInit(res, dagList);
+        return new DagInit(res, dagList);        
     }
     | <SHLTOK> <LPAREN> res = parseValue() <COMMA> res2 = parseValue() <RPAREN>
     {
@@ -565,6 +555,10 @@ Init parseValueHead():
     {
         return new BinOpInit(BinOpInit.BinaryOp.STRCONCAT, res, res2).fold();
     }
+    |res = parseIDValue()
+     {
+         return res;
+     }
 }
 
 Init parseValueRest(Init res):
@@ -581,7 +575,7 @@ Init parseValueRest(Init res):
             tokError("Cannot access field '" + t.image + "' of value '" + res.toString() + "'!\n");
             System.exit(-1);
         }
-        res = new FieldInit(res, t.image);
+        return new FieldInit(res, t.image);
     }
     | "{" bitlist = parseBitList() "}"
     {
@@ -591,7 +585,7 @@ Init parseValueRest(Init res):
             tokError("Invalid bit range for value '"+res.toString() + "'!\n");
             System.exit(-1);
         }
-        res = ret;
+        return ret;
     }
     |
     "[" bitlist = parseBitList() "]"
@@ -602,10 +596,7 @@ Init parseValueRest(Init res):
             tokError("Invalid list slice for value '" + res.toString() + "'!\n");
             System.exit(-1);
         }
-        res = ret;
-    }
-    {
-        return res;
+        return ret;
     }
 }
 
@@ -617,7 +608,7 @@ Init parseValue():
     TIntArrayList bitlist;
 }
 {
-    res = parseValueHead()
+    res = parseValueHead() 
     (
         res = parseValueRest(res)
     )*
@@ -631,13 +622,13 @@ String parseOptVarName():
     Token t;
 }
 {
-    <COLON> t = <VARNAME>
+    <COLON> t = <VARNAME> 
     {
         return t.image;
     }
     |
     // empty.
-    {return new String();}
+    {return new String();}    
 }
 
 ArrayList<Pair<Init, String>> parseDagArgListNE():
@@ -651,12 +642,12 @@ ArrayList<Pair<Init, String>> parseDagArgListNE():
     {
         ret.add(new Pair<Init, String>(res, varname));
     }
-    (res = parseValue() varname = parseOptVarName()
+    (<COMMA> res = parseValue() varname = parseOptVarName()
     {
         ret.add(new Pair<Init, String>(res, varname));
     }
     )*
-    {
+    {        
         return ret;
     }
 }
@@ -665,11 +656,11 @@ ArrayList<Pair<Init, String>> parseDagArgList():
 {
     ArrayList<Pair<Init, String>> ret;
 }
-{
+{    
     ret = parseDagArgListNE()
     {
         return ret;
-    }
+    }          
     |// empty.
     { return new ArrayList<Pair<Init, String>>();}
 }
@@ -680,7 +671,7 @@ void parseRBitListRest(TIntArrayList list):
 }
 {
     LOOKAHEAD(<INTVAL> "-")
-    t=<INTVAL> "-" t2=<INTVAL>
+    t=<INTVAL> "-" t2=<INTVAL> 
     {
         int x = Integer.parseInt(t.image);
         int y = Integer.parseInt(t2.image);
@@ -694,12 +685,12 @@ void parseRBitListRest(TIntArrayList list):
             for (int i = x; i <= y; i++)
                 list.add(i);
         }
-        else
+        else 
         {
             for (int i = x; i >=y; i--)
                 list.add(i);
         }
-    }
+    }    
     |LOOKAHEAD(2) t =<INTVAL> t2=<INTVAL>
     {
         int x = Integer.parseInt(t.image);
@@ -716,22 +707,22 @@ void parseRBitListRest(TIntArrayList list):
             for (int i = x; i <= y; i++)
                 list.add(i);
         }
-        else
+        else 
         {
             for (int i = x; i >= y; i--)
                 list.add(i);
         }
     }
     |
-    t = <INTVAL>
+    t = <INTVAL> 
     {
-        list.add(Integer.parseInt(t.image));
+        list.add(Integer.parseInt(t.image));     
     }
 }
 
 TIntArrayList parseRBitList():
 {
-    Token t, t2;
+    Token t, t2;  
     TIntArrayList list = new TIntArrayList();
 }
 {
@@ -754,7 +745,7 @@ TIntArrayList parseOptBitList():
 {
     TIntArrayList ret;
 }
-{
+{   
     "{" ret = parseBitList() "}" {return ret;}
     |
     // empty.
@@ -770,7 +761,7 @@ ArrayList<Init> parseValueList():
     |
     // empty.
     { return new ArrayList<Init>(); }
-
+    
 }
 
 ArrayList<Init> parseValueListNE():
@@ -779,13 +770,13 @@ ArrayList<Init> parseValueListNE():
     ArrayList<Init> ret = new ArrayList<Init>();
 }
 {
-    ii = parseValue()
+    ii = parseValue() 
     {
         ret.add(ii);
     }
     ("," ii = parseValue()
     {
-        ret.add(ii);
+        ret.add(ii);      
     })*
     {
         return ret;
@@ -818,7 +809,7 @@ void parseBodyItem():
     Init val;
 }
 {
-    parseDeclaration() ";" {}
+    parseDeclaration() <SEMI> {}
     | <LET> t = <IDENTIFIER> bits = parseOptBitList() <EQ> val=parseValue() <SEMI>
     {
         setValue(t.image, bits, val);
@@ -827,7 +818,8 @@ void parseBodyItem():
 
 void parseBodyList():{}
 {
-    {}{/*empty*/} (parseBodyItem())*
+    (parseBodyItem())+
+    |{}{/*empty*/}
 }
 
 void parseBody():{}
@@ -848,8 +840,8 @@ SubClassReference parseSubClassReference():
     {
         return new SubClassReference(rec, templateArgs);
     }
-
-    | rec = parseClassID()
+    
+    | rec = parseClassID() 
     {
         return new SubClassReference(rec, new ArrayList<Init>());
     }
@@ -861,7 +853,7 @@ ArrayList<SubClassReference> parseClassListNE():
     SubClassReference res;
 }
 {
-    res = parseSubClassReference()
+    res = parseSubClassReference() 
     {
         ret.add(res);
     }
@@ -880,7 +872,7 @@ ArrayList<SubClassReference> parseClassList():
 {
     ArrayList<SubClassReference> ret;
 }
-{
+{    
     <COLON> ret = parseClassListNE()
     {
         return ret;
@@ -893,17 +885,17 @@ ArrayList<SubClassReference> parseClassList():
 
 void parseDeclListNE():
 {
-    String arg;
+    String arg;    
 }
 {
-    arg = parseDeclaration()
-    {
-        curRec.addTemplateArg(arg);
+    arg = parseDeclaration() 
+    { 
+        curRec.addTemplateArg(arg); 
     }
     (
         <COMMA> arg = parseDeclaration()
         {
-            curRec.addTemplateArg(arg);
+            curRec.addTemplateArg(arg); 
         }
     )*
 }
@@ -938,7 +930,7 @@ String parseObjectName():
     String id;
 }
 {
-    id = parseOptID()
+    id = parseOptID() 
     {
         return id;
     }
@@ -949,13 +941,13 @@ void parseClassName():
     String name;
 }
 {
-    name = parseObjectName()
+    name = parseObjectName() 
     {
         // If a class of this name already exists, it must be a forward ref.
         if ((curRec = records.getClass(name)) != null)
         {
             // If the body was previously defined, this is an error.
-            if (!(curRec.getValues().isEmpty()
+            if (!(curRec.getValues().isEmpty() 
 && !curRec.getSuperClasses().isEmpty() &&
 curRec.getTemplateArgs().isEmpty()))
             {
@@ -963,7 +955,7 @@ curRec.getTemplateArgs().isEmpty()))
                 System.exit(-1);
             }
         }
-        else
+        else 
         {
             // If this is the first reference to this class, create and add it.
             curRec = new Record(name);
@@ -980,7 +972,7 @@ void parseDefName():
     name = parseObjectName()
     {
         curRec = new Record(name);
-
+        
         // Ensure redefinition doesn't happen.
         if (records.getDef(curRec.getName()) != null)
         {
@@ -988,7 +980,7 @@ void parseDefName():
             System.exit(-1);
         }
         records.addDef(curRec);
-    }
+    }   
 }
 
 Record parseObjectBody():
@@ -1003,7 +995,7 @@ Record parseObjectBody():
         {
             addSubClass(sub.rec, sub.templateArgs);
         }
-
+        
         // Process any variables on the set stack.
         for (ArrayList<LetRecord> list : letStack)
         {
@@ -1013,10 +1005,10 @@ Record parseObjectBody():
             }
         }
     }
-    parseBody()
-    {
-        ret = curRec;
-        curRec = null;
+    parseBody() 
+    { 
+        ret = curRec; 
+        curRec = null; 
         return ret;
     }
 }
@@ -1052,14 +1044,14 @@ Record parseDefInst():
     }
 }
 
-void parseLetItem():
+void parseLetItem(): 
 {
     Token t;
     TIntArrayList bits;
     Init val;
 }
 {
-    t = <IDENTIFIER> bits = parseOptBitList() <EQ> val = parseValue()
+    t = <IDENTIFIER> bits = parseOptBitList() <EQ> val = parseValue() 
     {
         letStack.peek().add(new LetRecord(t.image, bits, val));
     }
@@ -1075,10 +1067,10 @@ void parseLetList():{}
  */
 void parseLetCommand():{}
 {
-    <LET>
+    <LET> 
     {
-        letStack.push(new ArrayList<LetRecord>());
-    }
+        letStack.push(new ArrayList<LetRecord>());   
+    }   
     parseLetList() <IN>
 }
 
@@ -1088,7 +1080,7 @@ void parseLetRest():{}
     {
         letStack.pop();
     }
-    | parseObject()
+    | parseObject() 
     {
         letStack.pop();
     }
@@ -1100,7 +1092,7 @@ void parseLetInst():{}
 }
 void parseObject():{}
 {
-    parseClassInst()
+    parseClassInst() 
     | parseDefInst()
     | parseLetInst()
 }

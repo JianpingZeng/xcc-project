@@ -49,51 +49,47 @@ public interface TGParserConstants {
   /** RegularExpression Id. */
   int STRCONCATTOK = 19;
   /** RegularExpression Id. */
-  int ALPHA = 20;
+  int INTVAL = 20;
   /** RegularExpression Id. */
-  int DIGIT = 21;
+  int IDENTIFIER = 21;
   /** RegularExpression Id. */
-  int INTVAL = 22;
+  int VARNAME = 22;
   /** RegularExpression Id. */
-  int IDENTIFIER = 23;
+  int STRINGVAL = 23;
   /** RegularExpression Id. */
-  int VARNAME = 24;
+  int INCLUDE_STR = 24;
   /** RegularExpression Id. */
-  int STRINGVAL = 25;
+  int CODE_FRAGMENT = 25;
   /** RegularExpression Id. */
-  int INCLUDE_STR = 26;
+  int PLUS = 26;
   /** RegularExpression Id. */
-  int CODE_FRAGMENT = 27;
+  int MINUS = 27;
   /** RegularExpression Id. */
-  int PLUS = 28;
+  int LBRAKET = 28;
   /** RegularExpression Id. */
-  int MINUS = 29;
+  int RBRAKET = 29;
   /** RegularExpression Id. */
-  int LBRAKET = 30;
+  int LBRACE = 30;
   /** RegularExpression Id. */
-  int RBRAKET = 31;
+  int RBRACE = 31;
   /** RegularExpression Id. */
-  int LBRACE = 32;
+  int LPAREN = 32;
   /** RegularExpression Id. */
-  int RBRACE = 33;
+  int RPAREN = 33;
   /** RegularExpression Id. */
-  int LPAREN = 34;
+  int COLON = 34;
   /** RegularExpression Id. */
-  int RPAREN = 35;
+  int SEMI = 35;
   /** RegularExpression Id. */
-  int COLON = 36;
+  int DOT = 36;
   /** RegularExpression Id. */
-  int SEMI = 37;
+  int COMMA = 37;
   /** RegularExpression Id. */
-  int DOT = 38;
+  int EQ = 38;
   /** RegularExpression Id. */
-  int COMMA = 39;
+  int QUESTION = 39;
   /** RegularExpression Id. */
-  int EQ = 40;
-  /** RegularExpression Id. */
-  int QUESTION = 41;
-  /** RegularExpression Id. */
-  int POUND = 42;
+  int POUND = 40;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -120,8 +116,6 @@ public interface TGParserConstants {
     "\"!srl\"",
     "\"!shl\"",
     "\"!strconcat\"",
-    "<ALPHA>",
-    "<DIGIT>",
     "<INTVAL>",
     "<IDENTIFIER>",
     "<VARNAME>",

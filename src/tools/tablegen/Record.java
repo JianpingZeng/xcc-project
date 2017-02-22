@@ -43,6 +43,9 @@ public final class Record
     public Record(String name)
     {
         this.name = name;
+        templateArgs = new ArrayList<>();
+        values = new ArrayList<>();
+        superClasses = new ArrayList<>();
     }
 
     public String getName()
