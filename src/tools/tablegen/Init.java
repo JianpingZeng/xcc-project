@@ -131,18 +131,12 @@ public abstract class Init
     public static class UnsetInit extends Init
     {
         private static final UnsetInit instance = new UnsetInit();
-
-        private UnsetInit() {}
-
-        /**
-         * Ensures that there is just one instance of this Class.
-         * @return
-         */
         public static UnsetInit getInstance()
         {
             return instance;
         }
 
+        private UnsetInit() {}
         @Override
         public Init convertInitializerTo(RecTy ty)
         {
@@ -1115,7 +1109,7 @@ public abstract class Init
         @Override
         public Init resolveReferences(Record r, RecordVal rval)
         {
-            Init newRec = rval != null ? rec.resolveReferences(r, rval) : rec;
+            Init newRec = (rval != null ? rec.resolveReferences(r, rval) : rec);
 
             Init bitsVal = newRec.getFieldInit(r, fieldName);
             if (bitsVal != null)
