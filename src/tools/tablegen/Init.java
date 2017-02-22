@@ -130,6 +130,19 @@ public abstract class Init
      */
     public static class UnsetInit extends Init
     {
+        private static final UnsetInit instance = new UnsetInit();
+
+        private UnsetInit() {}
+
+        /**
+         * Ensures that there is just one instance of this Class.
+         * @return
+         */
+        public static UnsetInit getInstance()
+        {
+            return instance;
+        }
+
         @Override
         public Init convertInitializerTo(RecTy ty)
         {
@@ -934,7 +947,7 @@ public abstract class Init
             varName = name;
         }
 
-        public String getVarName()
+        public String getName()
         {
             return varName;
         }
@@ -954,10 +967,10 @@ public abstract class Init
         @Override
         public Init resolveBitReference(Record r, RecordVal rval, int bit)
         {
-            if (r.isTemplateArg(getVarName())) return null;
-            if (rval != null && rval.getName() != getVarName()) return null;
+            if (r.isTemplateArg(getName())) return null;
+            if (rval != null && rval.getName() != getName()) return null;
 
-            RecordVal rv = r.getValue(getVarName());
+            RecordVal rv = r.getValue(getName());
             assert rv != null :"Reference to a non-existant variable?";
             assert rv.getValue() instanceof BitsInit;
             BitsInit bi = (BitsInit)rv.getValue();
@@ -974,10 +987,10 @@ public abstract class Init
         public Init resolveListElementReference(Record r, RecordVal rval,
                 int elt)
         {
-            if (r.isTemplateArg(getVarName())) return null;
-            if (rval != null && rval.getName() != getVarName()) return null;
+            if (r.isTemplateArg(getName())) return null;
+            if (rval != null && rval.getName() != getName()) return null;
 
-            RecordVal rv = r.getValue(getVarName());
+            RecordVal rv = r.getValue(getName());
             assert rv != null :"Reference to a non-existant variable?";
             assert rv.getValue() instanceof ListInit :"Invalid list element!";
             ListInit li = (ListInit)rv.getValue();
