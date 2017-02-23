@@ -18,6 +18,7 @@ package tools.tablegen;
 
 import tools.tablegen.Init.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 
@@ -28,6 +29,19 @@ import java.util.ArrayList;
 public abstract class RecTy
 {
     public abstract void print(PrintStream os);
+
+    /**
+     * Print out the result of {@linkplain #print(PrintStream)} to the String.
+     * @return
+     */
+    @Override
+    public String toString()
+    {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        print(new PrintStream(os));
+        return os.toString();
+    }
+
     public void dump()
     {
         print(System.err);

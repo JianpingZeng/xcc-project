@@ -18,6 +18,7 @@ package tools.tablegen;
 
 import tools.tablegen.Init.*;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -151,12 +152,16 @@ public final class Record
 
     public void resolveReferencesTo(RecordVal rv)
     {
-        values.forEach(val->
+        for(int i = 0, e = values.size(); i < e; i++)
         {
+            RecordVal val = values.get(i);
             Init v = val.getValue();
             if (v != null)
-                val.setValue(v.resolveReferences(this, rv));
-        });
+            {
+                Init res = v.resolveReferences(this, rv);
+                val.setValue(res);
+            }
+        }
     }
 
     public void dump()
@@ -404,5 +409,13 @@ public final class Record
             return ((CodeInit)rv.getValue()).getValue();
         throw new Exception("Record `" + getName() + "', field `" + fieldName +
                 "' does not have a CodeInit initializer!");
+    }
+
+    @Override
+    public String toString()
+    {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        print(new PrintStream(os), this);
+        return os.toString();
     }
 }
