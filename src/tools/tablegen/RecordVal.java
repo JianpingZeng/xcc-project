@@ -18,6 +18,7 @@ package tools.tablegen;
 
 import tools.tablegen.Init.UnsetInit;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
 /**
@@ -93,5 +94,13 @@ public final class RecordVal
             getValue().print(os);
         }
         if (printSem) os.println(";");
+    }
+
+    @Override
+    public String toString()
+    {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        print(new PrintStream(os));
+        return os.toString();
     }
 }

@@ -22,6 +22,9 @@ import tools.tablegen.Init.*;
 import tools.tablegen.RecTy.*;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Stack;
 
@@ -40,8 +43,7 @@ public final class TGParser
             this.name = name;
             value = val;
             hasBits = bits != null;
-            if (hasBits)
-                this.bits = bits;
+            if (hasBits) this.bits = bits;
         }
     }
 
@@ -54,7 +56,25 @@ public final class TGParser
             this.rec = rec;
             this.templateArgs = templateArgs;
         }
-        boolean isInvalid() { return rec == null; }
+    }
+
+    /**
+     * This class is used for saving the status of current parsing file, contains
+     * filename, r (the Reader object to reading filename),
+     * inputStream(currently at the last character consumed for include str),
+     * fileLineNo (the current line no when encountering include str.)
+     */
+    public static final class IncludeRec
+    {
+        String filename;
+        Reader r;
+        SimpleCharStream inputStream;
+        int startLine, startColumn;
+        IncludeRec(String filename, Reader r)
+        {
+            this.filename = filename;
+            this.r = r;
+        }
     }
 
     private final Stack<ArrayList<LetRecord>> letStack = new Stack<ArrayList<LetRecord>>();
@@ -62,15 +82,18 @@ public final class TGParser
 
     private int anonCounter = 0;
     private Record curRec = null;
-    
+
+    static ArrayList<String> includeDirectories;
+    static final Stack<IncludeRec> includeStack = new Stack<IncludeRec>();
+
     /**
      * This method is called when an error needed to be reported.
      */
-    public boolean tokError(String msg)
+    static void tokError(String msg)
     {
         System.err.println(msg);
-        return true;
     }
+
     /**
      * This is the entry point for parsing a table-gen grammar file.
      */
@@ -234,30 +257,47 @@ public final class TGParser
         addSuperClass(rec);
     }
 
+    /**
+     * This is the entry point to parsing a single file.
+     *
+     * @filename The input file name.
+     */
+    public static void parseFile(String filename, ArrayList<String> includeDirs)
+    {
+        parseFile(filename, includeDirs, false);
+    }
 
     /**
      * This is the entry point to parsing a single file.
+     *
      * @filename The input file name.
+     * @debug The flag to indicating whether enable debug.
      */
-    public static void parseFile(String filename)
-    {
-        parseFile(filename, false);
-    }
-    /**
-     * This is the entry point to parsing a single file.
-     * @filename The input file name.
-     * @debug   The flag to indicating whether enable debug.
-     */
-    public static void parseFile(String filename, boolean debug)
+    public static void parseFile(String filename,
+            ArrayList<String> includeDirs,
+            boolean debug)
     {
         BufferedReader r = null;
         try
         {
-            r = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
-            new TGParser(r, debug).parse();
+            IncludeRec incRec = null;
+            if (!filename.equals("-"))
+            {
+                r = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
+                incRec = new IncludeRec(filename, r);
+            }
+            else
+            {
+                r = new BufferedReader(new InputStreamReader(System.in));
+                incRec = new IncludeRec("stdin", r);
+            }
+
+            new TGParser(r, incRec, includeDirs, debug).parse();
         }
-        catch (FileNotFoundException ex) {
-            ex.printStackTrace();
+        catch (FileNotFoundException ex)
+        {
+            System.err.println("Could not open file '" + filename+"'!");
+            System.exit(-1);
         }
         finally
         {
@@ -269,17 +309,22 @@ public final class TGParser
                 }
                 catch (IOException e)
                 {
-                    e.printStackTrace();
+                    System.err.println(e.toString());
+                    System.exit(-1);
                 }
             }
         }
     }
+
     /**
      * Constructor method.
      */
-    private TGParser(Reader r, boolean debug)
+    private TGParser(Reader r, IncludeRec incRec,
+            ArrayList<String> includeDirs, boolean debug)
     {
         this(r);
+        includeStack.push(incRec);
+        includeDirectories = includeDirs;
         if (debug)
         {
             enable_tracing();
@@ -297,10 +342,10 @@ PARSER_END(TGParser)
  * Lexical Rules.
  */
 
-// Special token.
-SPECIAL_TOKEN:
+// Skip the white spaces, comments.
+SKIP:
 {
-      <SPACES: ([" ", "\t", "\n", "r", "\f"])+>  // white spaces.
+      <SPACES: ([" ", "\t", "\n", "\r", "\f"])+>  // white spaces.
     | <LINE_COMMENT :"//" (~["\n", "\r"])* ("\n" | "\r\n" | "\r")> // single line coment
     | <BLOCK_COMMENT : "/*" (~[])* "*/">    // block comment.
 }
@@ -331,22 +376,26 @@ TOKEN:
 TOKEN:
 {
     <INTVAL: 
-    (["+", "-"])? ["1"-"9"] (["0"-"9"])*
+    (["+", "-"])? (["0"-"9"])+
     | "0" ["X","x"] (["0"-"9"] | ["a"-"f"] |["A"-"F"])+
     | "0b" (["0","1"])+ 
     >
 }
 
+
 // Identifier.
+// The "#" means that those tokens are help definitions that do not produce tokens.
 TOKEN:
 {
-    <IDENTIFIER: ["a"-"z", "A"-"Z", "_"] (["a"-"z", "A"-"Z", "_"] | ["0"-"9"])*>
+    <IDENTIFIER: (<ALPHA>| "_") (<ALPHA>| "_" | <DIGIT>)*>
+    |<#DIGIT: ["0"-"9"]>
+    |<#ALPHA: ["a"-"z"] | ["A"-"Z"]>
 }
 
 // VarName.
 TOKEN:
 {
-    <VARNAME: "$" ["a"-"z", "A"-"Z", "_"] (["a"-"z", "A"-"Z", "_"] | ["0"-"9"])*>
+    <VARNAME: "$" (<ALPHA> | "_") (<ALPHA> | "_" | <DIGIT>)*>
 }
 
 // String literal.
@@ -359,12 +408,76 @@ TOKEN:
 TOKEN:
 {
     <INCLUDE_STR: "include" (" "|"\t"|"\n")+ "\"" (~["\""])* "\"">
+    {
+        {
+            // The action is to extract the file name from double quoted string.
+            int end = image.length();
+            assert image.charAt(end - 1) == '"' && image.toString().startsWith("include ");
+            int startPos = "include ".length();
+            while (image.charAt(startPos) != '"')
+            {
+            startPos++;
+            }
+            assert (end - startPos) >= 2 : "Double quoted not found?";
+            String filename = image.substring(startPos + 1, end - 1);
+
+            // Save the line number and input stream status.
+            TGParser.includeStack.peek().startLine = input_stream.getBeginLine();
+            TGParser.includeStack.peek().startColumn = input_stream.getBeginColumn();
+
+            Path path = Paths.get(filename);
+
+            if (!Files.exists(path))
+            {
+            // If we couldn't find the file in the current directory, look for it in
+            // the include directories.
+            String nextFileName = "";
+            boolean exist = false;
+            for (String incDir : TGParser.includeDirectories)
+            {
+               nextFileName = incDir + "/" + filename;
+               if (Files.exists(Paths.get(nextFileName)))
+               {
+                  exist = true;
+                  break;
+               }
+            }
+            if (!exist)
+            {
+               TGParser.tokError("Could not find include file '" + filename + "'!\u005cn");
+               System.exit(-1);
+            }
+            filename = nextFileName;
+            }
+
+            BufferedReader r = null;
+            try
+            {
+                r = new BufferedReader(
+                        new InputStreamReader(new FileInputStream(filename)));
+            }
+            catch (FileNotFoundException e)
+            {
+                TGParser.tokError("Could not find include file '" + filename + "'!\u005cn");
+                System.exit(-1);
+            }
+            TGParser.includeStack.push(new TGParser.IncludeRec(filename, r));
+
+            // switch the parsing control flow to the included file.
+            input_stream.ReInit(r);
+        }
+    }
 }
 
 // code fragment.
 TOKEN:
 {
     <CODE_FRAGMENT: "[" "{" ( (~["}"])+ | "}" ~["}"] )* "}" "]">
+    {
+        // The action is to remove the quoted code fragment.
+        int end = image.length();
+        matchedToken.image = image.substring(2, end-2);
+    }
 }
 
 // punctuation tokens.
@@ -385,6 +498,34 @@ TOKEN:
     |<EQ: "=">
     |<QUESTION: "?">
     |<POUND: "#">
+}
+
+<*>TOKEN:
+{
+    <EOF>
+    {
+        // Add action for <EOF> to go to back to the includer file
+        // if there is existing.
+        TGParser.IncludeRec rec = TGParser.includeStack.peek();
+        if (!rec.filename.equals("stdin"))
+        {
+            try
+            {
+                rec.r.close();
+            }
+            catch (IOException e)
+            {
+                TGParser.tokError(e.getMessage());
+                System.exit(-1);
+            }
+        }
+        TGParser.includeStack.pop();
+        if (TGParser.includeStack.isEmpty())
+            System.exit(0);
+
+        // Otherwise, restore the stack top record, continue to parse it.
+        input_stream.ReInit(rec.r, rec.startLine, rec.startColumn);
+    }
 }
 
 Record parseClassID():

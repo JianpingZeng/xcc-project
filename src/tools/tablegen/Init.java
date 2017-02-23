@@ -22,6 +22,7 @@ import tools.tablegen.RecTy.BitsRecTy;
 import tools.tablegen.RecTy.ListRecTy;
 import tools.tablegen.RecTy.RecordRecTy;
 
+import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 
@@ -44,6 +45,18 @@ public abstract class Init
      * @param os
      */
     public abstract void print(PrintStream os);
+
+    /**
+     * Print out the result of {@linkplain #print(PrintStream)} to the String.
+     * @return
+     */
+    @Override
+    public String toString()
+    {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        print(new PrintStream(os));
+        return os.toString();
+    }
 
     /**
      * Print out this value using stderr.
@@ -186,10 +199,13 @@ public abstract class Init
     public static class BitsInit extends Init
     {
         private ArrayList<Init> bits;
-
         public BitsInit(int size)
         {
-            bits = new ArrayList<>(size);
+            bits = new ArrayList<>();
+            // Fixme: initialize each element with UnsetInit rather than 'null',
+            // to avoid NullPointerException.
+            for (int i = 0; i < size; i++)
+                bits.add(UnsetInit.getInstance());
         }
 
         public int getNumBits() {return bits.size(); }
@@ -264,6 +280,9 @@ public abstract class Init
                 do
                 {
                     b = curBit;
+                    //System.out.println(r.toString());
+                    //System.out.println(rval.toString());
+
                     curBit = curBit.resolveReferences(r, rval);
                     changed |= !b.equals(curBit);
                 }while (!b.equals(curBit));
@@ -1035,7 +1054,7 @@ public abstract class Init
             RecordVal val = r.getValue(varName);
             if (rval == val || (rval == null && !(val.getValue() instanceof UnsetInit)))
                 return val.getValue();
-            return null;
+            return this;
         }
     }
 
@@ -1118,11 +1137,13 @@ public abstract class Init
                 return bvr.isComplete() ? bvr : this;
             }
 
-            if (newRec != rec)
+            if (!newRec.equals(rec))
             {
+                /**
                 dump();
                 newRec.dump();
                 System.err.println();
+                */
                 return new FieldInit(newRec, fieldName);
             }
             return this;

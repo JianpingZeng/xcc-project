@@ -42,10 +42,25 @@ public final class TGParser implements TGParserConstants
             this.rec = rec;
             this.templateArgs = templateArgs;
         }
+    }
 
-        boolean isInvalid()
+    /**
+     * This class is used for saving the status of current parsing file, contains
+     * filename, r (the Reader object to reading filename),
+     * inputStream(currently at the last character consumed for include str),
+     * fileLineNo (the current line no when encountering include str.)
+     */
+    public static final class IncludeRec
+    {
+        String filename;
+        Reader r;
+        SimpleCharStream inputStream;
+        int startLine, startColumn;
+
+        IncludeRec(String filename, Reader r)
         {
-            return rec == null;
+            this.filename = filename;
+            this.r = r;
         }
     }
 
@@ -55,13 +70,15 @@ public final class TGParser implements TGParserConstants
     private int anonCounter = 0;
     private Record curRec = null;
 
+    static ArrayList<String> includeDirectories;
+    static final Stack<IncludeRec> includeStack = new Stack<IncludeRec>();
+
     /**
      * This method is called when an error needed to be reported.
      */
-    public boolean tokError(String msg)
+    static void tokError(String msg)
     {
         System.err.println(msg);
-        return true;
     }
 
     /**
@@ -208,7 +225,10 @@ public final class TGParser implements TGParserConstants
                 String arg = targs.get(i);
                 if (i < templateArgs.size())
                 {
+                    // set the value for template argument.
                     setValue(arg, null, templateArgs.get(i));
+
+                    // resolve any reference to this template arg as the targ's value.
                     curRec.resolveReferencesTo(curRec.getValue(arg));
 
                     curRec.removeValue(arg);
@@ -238,9 +258,9 @@ public final class TGParser implements TGParserConstants
      *
      * @filename The input file name.
      */
-    public static void parseFile(String filename)
+    public static void parseFile(String filename, ArrayList<String> includeDirs)
     {
-        parseFile(filename, false);
+        parseFile(filename, includeDirs, false);
     }
 
     /**
@@ -249,18 +269,31 @@ public final class TGParser implements TGParserConstants
      * @filename The input file name.
      * @debug The flag to indicating whether enable debug.
      */
-    public static void parseFile(String filename, boolean debug)
+    public static void parseFile(String filename, ArrayList<String> includeDirs,
+            boolean debug)
     {
         BufferedReader r = null;
         try
         {
-            r = new BufferedReader(
-                    new InputStreamReader(new FileInputStream(filename)));
-            new TGParser(r, debug).parse();
+            IncludeRec incRec = null;
+            if (!filename.equals("-"))
+            {
+                r = new BufferedReader(
+                        new InputStreamReader(new FileInputStream(filename)));
+                incRec = new IncludeRec(filename, r);
+            }
+            else
+            {
+                r = new BufferedReader(new InputStreamReader(System.in));
+                incRec = new IncludeRec("stdin", r);
+            }
+
+            new TGParser(r, incRec, includeDirs, debug).parse();
         }
         catch (FileNotFoundException ex)
         {
-            ex.printStackTrace();
+            System.err.println("Could not open file '" + filename + "'!");
+            System.exit(-1);
         }
         finally
         {
@@ -272,7 +305,8 @@ public final class TGParser implements TGParserConstants
                 }
                 catch (IOException e)
                 {
-                    e.printStackTrace();
+                    System.err.println(e.toString());
+                    System.exit(-1);
                 }
             }
         }
@@ -281,9 +315,12 @@ public final class TGParser implements TGParserConstants
     /**
      * Constructor method.
      */
-    private TGParser(Reader r, boolean debug)
+    private TGParser(Reader r, IncludeRec incRec, ArrayList<String> includeDirs,
+            boolean debug)
     {
         this(r);
+        includeStack.push(incRec);
+        includeDirectories = includeDirs;
         if (debug)
         {
             enable_tracing();
@@ -351,9 +388,9 @@ public final class TGParser implements TGParserConstants
                 case BITS:
                 {
                     jj_consume_token(BITS);
-                    jj_consume_token(41);
+                    jj_consume_token(43);
                     t = jj_consume_token(INTVAL);
-                    jj_consume_token(42);
+                    jj_consume_token(44);
                     {
                         if ("" != null)
                             return new BitsRecTy(Integer.parseInt(t.image));
@@ -372,9 +409,9 @@ public final class TGParser implements TGParserConstants
                 case LIST:
                 {
                     jj_consume_token(LIST);
-                    jj_consume_token(41);
+                    jj_consume_token(43);
                     ty = parseType();
-                    jj_consume_token(42);
+                    jj_consume_token(44);
                     {
                         if ("" != null)
                             return new ListRecTy(ty);
@@ -609,9 +646,9 @@ public final class TGParser implements TGParserConstants
                     if (jj_2_1(2147483647))
                     {
                         t = jj_consume_token(IDENTIFIER);
-                        jj_consume_token(41);
+                        jj_consume_token(43);
                         list = parseValueListNE();
-                        jj_consume_token(42);
+                        jj_consume_token(44);
                         // This is a CLASS<initvalslist> expression.  This is supposed to synthesize
                         // a new anonymous definition, deriving from CLASS<initvalslist> with no
                         // body.
@@ -1420,9 +1457,9 @@ public final class TGParser implements TGParserConstants
             if (jj_2_4(2))
             {
                 rec = parseClassID();
-                jj_consume_token(41);
+                jj_consume_token(43);
                 templateArgs = parseValueListNE();
-                jj_consume_token(42);
+                jj_consume_token(44);
                 {
                     if ("" != null)
                         return new SubClassReference(rec, templateArgs);
@@ -1568,9 +1605,9 @@ public final class TGParser implements TGParserConstants
         trace_call("parseTemplateArgList");
         try
         {
-            jj_consume_token(41);
+            jj_consume_token(43);
             parseDeclListNE();
-            jj_consume_token(42);
+            jj_consume_token(44);
         }
         finally
         {
@@ -1585,7 +1622,7 @@ public final class TGParser implements TGParserConstants
         {
             switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk)
             {
-                case 41:
+                case 43:
                 {
                     parseTemplateArgList();
 
@@ -1778,6 +1815,7 @@ public final class TGParser implements TGParserConstants
             jj_consume_token(DEF);
             parseDefName();
             ret = parseObjectBody();
+
             ret.resolveReferences();
             // If ObjectBody has template arguments, it's an error.
             assert ret.getTemplateArgs()
@@ -2019,7 +2057,7 @@ public final class TGParser implements TGParserConstants
     {
         if (jj_scan_token(IDENTIFIER))
             return true;
-        if (jj_scan_token(41))
+        if (jj_scan_token(43))
             return true;
         return false;
     }
@@ -2028,7 +2066,7 @@ public final class TGParser implements TGParserConstants
     {
         if (jj_3R_10())
             return true;
-        if (jj_scan_token(41))
+        if (jj_scan_token(43))
             return true;
         return false;
     }
@@ -2087,18 +2125,18 @@ public final class TGParser implements TGParserConstants
 
     private static void jj_la1_init_0()
     {
-        jj_la1_0 = new int[] { 0x2007f0, 0x2000, 0x0, 0x42900000, 0x102f0000,
-                0x50000000, 0x50000000, 0x0, 0x0, 0x52bf0000, 0x100000, 0x0,
-                0x40000000, 0x52bf0000, 0x0, 0x2067f0, 0x2067f0, 0x2067f0,
-                0x40000000, 0x200000, 0x0, 0x0, 0x0, 0x0, 0x200000, 0x0,
-                0x40005800, 0x5800, 0x5800, };
+        jj_la1_0 = new int[] { 0x2007f0, 0x2000, 0x0, 0xa100000, 0x402f0000,
+                0x40000000, 0x40000000, 0x0, 0x0, 0x4a3f0000, 0x100000, 0x0,
+                0x0, 0x4a3f0000, 0x0, 0x2067f0, 0x2067f0, 0x2067f0, 0x0,
+                0x200000, 0x0, 0x0, 0x0, 0x0, 0x200000, 0x0, 0x5800, 0x5800,
+                0x5800, };
     }
 
     private static void jj_la1_init_1()
     {
-        jj_la1_1 = new int[] { 0x0, 0x0, 0x40, 0x80, 0x1, 0x10, 0x10, 0x4, 0x20,
-                0x81, 0x0, 0x20, 0x0, 0x81, 0x20, 0x0, 0x0, 0x0, 0x8, 0x0, 0x20,
-                0x4, 0x20, 0x200, 0x0, 0x20, 0x0, 0x0, 0x0, };
+        jj_la1_1 = new int[] { 0x0, 0x0, 0x100, 0x201, 0x4, 0x41, 0x41, 0x10,
+                0x80, 0x205, 0x0, 0x80, 0x1, 0x205, 0x80, 0x0, 0x0, 0x0, 0x21,
+                0x0, 0x80, 0x10, 0x80, 0x800, 0x0, 0x80, 0x1, 0x0, 0x0, };
     }
 
     final private JJCalls[] jj_2_rtns = new JJCalls[4];
@@ -2237,6 +2275,10 @@ public final class TGParser implements TGParserConstants
         else
             token = token.next = token_source.getNextToken();
         jj_ntk = -1;
+
+        // for debug.
+        //System.err.println(token.image);
+
         if (token.kind == kind)
         {
             jj_gen++;
@@ -2396,7 +2438,7 @@ public final class TGParser implements TGParserConstants
     public ParseException generateParseException()
     {
         jj_expentries.clear();
-        boolean[] la1tokens = new boolean[43];
+        boolean[] la1tokens = new boolean[45];
         if (jj_kind >= 0)
         {
             la1tokens[jj_kind] = true;
@@ -2419,7 +2461,7 @@ public final class TGParser implements TGParserConstants
                 }
             }
         }
-        for (int i = 0; i < 43; i++)
+        for (int i = 0; i < 45; i++)
         {
             if (la1tokens[i])
             {
