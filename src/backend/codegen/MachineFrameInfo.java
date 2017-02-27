@@ -1,7 +1,7 @@
 package backend.codegen;
 
 import backend.target.TargetData;
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 import backend.type.Type;
 
 import java.util.ArrayList;

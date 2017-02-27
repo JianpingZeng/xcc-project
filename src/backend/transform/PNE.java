@@ -5,7 +5,7 @@ import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 
 import java.util.ArrayList;
 import java.util.HashSet;

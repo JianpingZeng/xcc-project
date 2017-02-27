@@ -23,7 +23,7 @@ import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetRegisterInfo;
-import backend.target.x86.X86InstrSets;
+import backend.target.x86.X86InstrNames;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -229,7 +229,7 @@ public final class LiveVariable extends MachineFunctionPass
 
                 // process all the operands.
                 int numOperands = inst.getNumOperands();
-                if (inst.getOpCode() == X86InstrSets.PHI)
+                if (inst.getOpCode() == X86InstrNames.PHI)
                     numOperands = 1;
                 TargetInstrDescriptor instDesc = instInfo.get(inst.getOpCode());
 
@@ -544,7 +544,7 @@ public final class LiveVariable extends MachineFunctionPass
         {
             MachineInstr mi;
             for (int i = 0, e = mbb.size(); i < e &&
-                    ( mi = mbb.getInstAt(i)).getOpCode() == X86InstrSets.PHI; i++)
+                    ( mi = mbb.getInstAt(i)).getOpCode() == X86InstrNames.PHI; i++)
             {
                 for (int j = 1, sz = mi.getNumOperands(); j < sz; j++)
                     phiVarInfo[mi.getOperand(j+1).getMBB().getNumber()].

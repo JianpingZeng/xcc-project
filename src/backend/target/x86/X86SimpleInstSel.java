@@ -9,7 +9,7 @@ import backend.pass.FunctionPass;
 import backend.target.TargetData;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 import backend.type.SequentialType;
 import backend.type.StructType;
 import backend.type.Type;
@@ -198,7 +198,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				{
 					nextReg = makeAnotherReg(Type.Int32Ty);
 					// Emit an ADD to add fieldOff to the basePtr.
-					bmi(mbb, insertPos++, X86InstrSets.ADDri32, 2, nextReg).
+					bmi(mbb, insertPos++, X86InstrNames.ADDri32, 2, nextReg).
 							addReg(baseReg, UseType.Use).addZImm(fieldOff);
 				}
 				// The next type is the member of the structure selected by the
@@ -234,7 +234,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 					{
 						long offset = eltSize * ci.getZExtValue();
 						nextReg = makeAnotherReg(Type.Int32Ty);
-						bmi(mbb, insertPos++, X86InstrSets.ADDri32, 2, nextReg)
+						bmi(mbb, insertPos++, X86InstrNames.ADDri32, 2, nextReg)
 								.addReg(baseReg).addZImm(offset);
 					}
 				}
@@ -243,7 +243,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 					// If the element size is 1, we don't have to multiply, just add
 					int idxReg = getReg(idx, mbb, insertPos++);
 					nextReg = makeAnotherReg(Type.Int32Ty);
-					bmi(mbb, insertPos++, X86InstrSets.ADDrr32, 2, nextReg).
+					bmi(mbb, insertPos++, X86InstrNames.ADDrr32, 2, nextReg).
 							addReg(baseReg).addReg(idxReg);
 				}
 				else
@@ -257,7 +257,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 					// Emit a ADD to add offsetReg to baseReg.
 					nextReg = makeAnotherReg(Type.Int32Ty);
-					bmi(mbb, insertPos++, X86InstrSets.ADDrr32, 2, nextReg).
+					bmi(mbb, insertPos++, X86InstrNames.ADDrr32, 2, nextReg).
 							addReg(baseReg).addReg(offsetReg);
 				}
 			}
@@ -267,7 +267,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 		// After we processed all indices, the result is left in baseReg.
 		// Move it to destReg where we were expected to put the result.
-		bmi(mbb, insertPos++, X86InstrSets.MOVrr32, 1, destReg).addReg(baseReg);
+		bmi(mbb, insertPos++, X86InstrNames.MOVrr32, 1, destReg).addReg(baseReg);
 	}
 
 	private void emitCastOperation(int idx, Value op0,
@@ -304,9 +304,9 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 					int op1Reg = getReg(op1, mbb, insertPos++);
 					assert klass>=i8 && klass<=i32:"Unknown type class for this function";
 					int[] opcode = {
-							X86InstrSets.NEGr8,
-							X86InstrSets.NEGr16,
-							X86InstrSets.NEGr32
+							X86InstrNames.NEGr8,
+							X86InstrNames.NEGr16,
+							X86InstrNames.NEGr32
 					};
 					bmi(mbb,insertPos, opcode[klass], 1, destReg).addReg(op1Reg);
 					return;
@@ -318,13 +318,13 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		{
 			int[][] opcodeTab = {
 					// Arithmetic operators
-					{ X86InstrSets.ADDrr8, X86InstrSets.ADDrr16, X86InstrSets.ADDrr32, X86InstrSets.FpADD },  // ADD
-					{ X86InstrSets.SUBrr8, X86InstrSets.SUBrr16, X86InstrSets.SUBrr32, X86InstrSets.FpSUB },  // SUB
+					{ X86InstrNames.ADDrr8, X86InstrNames.ADDrr16, X86InstrNames.ADDrr32, X86InstrNames.FpADD },  // ADD
+					{ X86InstrNames.SUBrr8, X86InstrNames.SUBrr16, X86InstrNames.SUBrr32, X86InstrNames.FpSUB },  // SUB
 
 					// Bitwise operators
-					{ X86InstrSets.ANDrr8, X86InstrSets.ANDrr16, X86InstrSets.ANDrr32, 0 },  // AND
-					{ X86InstrSets.ORrr8, X86InstrSets.ORrr16, X86InstrSets.ORrr32, 0 },  // OR
-					{ X86InstrSets.XORrr8, X86InstrSets.XORrr16, X86InstrSets.XORrr32, 0 },  // XOR
+					{ X86InstrNames.ANDrr8, X86InstrNames.ANDrr16, X86InstrNames.ANDrr32, 0 },  // AND
+					{ X86InstrNames.ORrr8, X86InstrNames.ORrr16, X86InstrNames.ORrr32, 0 },  // OR
+					{ X86InstrNames.XORrr8, X86InstrNames.XORrr16, X86InstrNames.XORrr32, 0 },  // XOR
 			};
 
 			boolean isLong = false;
@@ -343,8 +343,8 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			if (isLong)
 			{
 				// Handle the upper 32 bits of long values...
-				int[] topTab = {X86InstrSets.ADCrr32, X86InstrSets.SBBrr32,
-						X86InstrSets.ANDrr32, X86InstrSets.ORrr32, X86InstrSets.XORrr32};
+				int[] topTab = { X86InstrNames.ADCrr32, X86InstrNames.SBBrr32,
+						X86InstrNames.ANDrr32, X86InstrNames.ORrr32, X86InstrNames.XORrr32};
 				bmi(mbb, insertPos++, topTab[operatorClass], 2, destReg+1).
 						addReg(op1Reg+1).addReg(op2Reg+1);
 			}
@@ -358,7 +358,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		// xor X, -1 --> not X.
 		if (operatorClass == 4 && ci1.isAllOnesValue())
 		{
-			int[] notTab = {X86InstrSets.NOTr8, X86InstrSets.NOTr16, X86InstrSets.NOTr32};
+			int[] notTab = { X86InstrNames.NOTr8, X86InstrNames.NOTr16, X86InstrNames.NOTr32};
 			bmi(mbb, insertPos, notTab[klass], 1, destReg).addReg(op0Reg);
 			return;
 		}
@@ -366,7 +366,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		// add X, -1 --> dec X.
 		if (operatorClass == 0 && ci1.isAllOnesValue())
 		{
-			int[] decTab = {X86InstrSets.DECr8, X86InstrSets.DECr16, X86InstrSets.DECr32};
+			int[] decTab = { X86InstrNames.DECr8, X86InstrNames.DECr16, X86InstrNames.DECr32};
 			bmi(mbb, insertPos, decTab[klass], 1, destReg).addReg(op0Reg);
 			return;
 		}
@@ -374,20 +374,20 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		// add X, 1 --> inc X.
 		if (operatorClass == 0 && ci1.equalsInt(1))
 		{
-			int[] incTab = {X86InstrSets.INCr8, X86InstrSets.INCr16, X86InstrSets.INCr32};
+			int[] incTab = { X86InstrNames.INCr8, X86InstrNames.INCr16, X86InstrNames.INCr32};
 			bmi(mbb, insertPos, incTab[klass], 1, destReg).addReg(op0Reg);
 			return;
 		}
 
 		int[][] opcodeTab = {
 			// Arithmetic operators
-			{ X86InstrSets.ADDri8, X86InstrSets.ADDri16, X86InstrSets.ADDri32 },  // ADD
-			{ X86InstrSets.SUBri8, X86InstrSets.SUBri16, X86InstrSets.SUBri32 },  // SUB
+			{ X86InstrNames.ADDri8, X86InstrNames.ADDri16, X86InstrNames.ADDri32 },  // ADD
+			{ X86InstrNames.SUBri8, X86InstrNames.SUBri16, X86InstrNames.SUBri32 },  // SUB
 
 			// Bitwise operators
-			{ X86InstrSets.ANDri8, X86InstrSets.ANDri16, X86InstrSets.ANDri32 },  // AND
-			{ X86InstrSets. ORri8, X86InstrSets. ORri16, X86InstrSets. ORri32 },  // OR
-			{ X86InstrSets.XORri8, X86InstrSets.XORri16, X86InstrSets.XORri32 },  // XOR
+			{ X86InstrNames.ANDri8, X86InstrNames.ANDri16, X86InstrNames.ANDri32 },  // AND
+			{ X86InstrNames. ORri8, X86InstrNames. ORri16, X86InstrNames. ORri32 },  // OR
+			{ X86InstrNames.XORri8, X86InstrNames.XORri16, X86InstrNames.XORri32 },  // XOR
 		};
 
 		assert klass < 3:"Invalid TypeClass in emitSimpleBinaryOperation";
@@ -407,9 +407,9 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 	{
 		int[][] extendOp = {
 				// int extended mov.
-				{X86InstrSets.MOVZXr32r8, X86InstrSets.MOVZXr32r16, X86InstrSets.MOVrr32},
+				{ X86InstrNames.MOVZXr32r8, X86InstrNames.MOVZXr32r16, X86InstrNames.MOVrr32},
 				// signed extended mov (there is no difference regardless of int).
-				{X86InstrSets.MOVSXr32r8, X86InstrSets.MOVSXr32r16, X86InstrSets.MOVrr32}
+				{ X86InstrNames.MOVSXr32r8, X86InstrNames.MOVSXr32r16, X86InstrNames.MOVrr32}
 		};
 
 		int isUnsigned = arg.ty.isUnsigned()?0:1;
@@ -459,7 +459,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			}
 
 			// adjust stack pointer for incoming arguments.
-			buildMI(mbb, X86InstrSets.ADJCALLSTACKDOWN, 1).addZImm(numBytes);
+			buildMI(mbb, X86InstrNames.ADJCALLSTACKDOWN, 1).addZImm(numBytes);
 
 			// Arguments go on the stack in reverse order, as specified by the ABI.
 			int argOffset = 0;
@@ -475,28 +475,28 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 						// Promote arg to 32 bits wide into a temporary register...
 						int r = makeAnotherReg(Type.Int32Ty);
 						promote32(r, arg);
-						addRegOffset(buildMI(mbb, X86InstrSets.MOVrm32, 5),
-								X86RegsSet.ESP, argOffset).addReg(r);
+						addRegOffset(buildMI(mbb, X86InstrNames.MOVrm32, 5),
+								X86RegNames.ESP, argOffset).addReg(r);
 						break;
 					}
 					case i32:
-						addRegOffset(buildMI(mbb, X86InstrSets.MOVrm32, 5),
-								X86RegsSet.ESP, argOffset).addReg(argReg);
+						addRegOffset(buildMI(mbb, X86InstrNames.MOVrm32, 5),
+								X86RegNames.ESP, argOffset).addReg(argReg);
 						break;
 					case i64:
-						addRegOffset(buildMI(mbb, X86InstrSets.MOVrm32, 5),
-								X86RegsSet.ESP, argOffset).addReg(argReg);
-						addRegOffset(buildMI(mbb, X86InstrSets.MOVrm32, 5),
-								X86RegsSet.ESP, argOffset + 4).addReg(argReg+1);
+						addRegOffset(buildMI(mbb, X86InstrNames.MOVrm32, 5),
+								X86RegNames.ESP, argOffset).addReg(argReg);
+						addRegOffset(buildMI(mbb, X86InstrNames.MOVrm32, 5),
+								X86RegNames.ESP, argOffset + 4).addReg(argReg+1);
 						argOffset += 4;
 						break;
 					case f32:
-						addRegOffset(buildMI(mbb, X86InstrSets.FSTr32, 5),
-								X86RegsSet.ESP, argOffset).addReg(argReg);
+						addRegOffset(buildMI(mbb, X86InstrNames.FSTr32, 5),
+								X86RegNames.ESP, argOffset).addReg(argReg);
 						break;
 					case f64:
-						addRegOffset(buildMI(mbb, X86InstrSets.FSTr64, 5),
-								X86RegsSet.ESP, argOffset).addReg(argReg);
+						addRegOffset(buildMI(mbb, X86InstrNames.FSTr64, 5),
+								X86RegNames.ESP, argOffset).addReg(argReg);
 						argOffset += 4;
 						break;
 					default:
@@ -507,12 +507,12 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		}
 		else
 		{
-			buildMI(mbb, X86InstrSets.ADJCALLSTACKDOWN, 1).addZImm(0);
+			buildMI(mbb, X86InstrNames.ADJCALLSTACKDOWN, 1).addZImm(0);
 		}
 
 		mbb.addLast(called);
 		// after calling to called. restore stack frame.
-		buildMI(mbb, X86InstrSets.ADJCALLSTACKUP, 1).addZImm(numBytes);
+		buildMI(mbb, X86InstrNames.ADJCALLSTACKUP, 1).addZImm(numBytes);
 
 		// If there is a return value, obtain the returned value from %al/%ax/%eax
 		// register.
@@ -526,10 +526,10 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				case i32:
 				{
 					// integer results are in %eax.
-					int[] retRegMove = {X86InstrSets.MOVrr8,
-							X86InstrSets.MOVrr16,
-							X86InstrSets.MOVrr32};
-					int[] retRegs = {X86RegsSet.AL, X86RegsSet.AX, X86RegsSet.EAX};
+					int[] retRegMove = { X86InstrNames.MOVrr8,
+							X86InstrNames.MOVrr16,
+							X86InstrNames.MOVrr32};
+					int[] retRegs = { X86RegNames.AL, X86RegNames.AX, X86RegNames.EAX};
 					buildMI(mbb, retRegMove[destClass], 1, res.reg).addReg(retRegs[destClass]);
 					break;
 				}
@@ -538,13 +538,15 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				case f80:
 				{
 					// floating-point return instruction.
-					buildMI(mbb, X86InstrSets.FpGETRESULT, 1, res.reg);
+					buildMI(mbb, X86InstrNames.FpGETRESULT, 1, res.reg);
 					break;
 				}
 				case i64:
 				{
-					buildMI(mbb, X86InstrSets.MOVrr32, 1, res.reg).addReg(X86RegsSet.EAX);
-					buildMI(mbb, X86InstrSets.MOVrr32, 1, res.reg+1).addReg(X86RegsSet.EDX);
+					buildMI(mbb, X86InstrNames.MOVrr32, 1, res.reg).addReg(
+                            X86RegNames.EAX);
+					buildMI(mbb, X86InstrNames.MOVrr32, 1, res.reg+1).addReg(
+                            X86RegNames.EDX);
 					break;
 				}
 				default:
@@ -570,12 +572,12 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			{
 				if (isDiv)
 				{
-					buildMI(mbb, X86InstrSets.FpDIV, 2, destReg).addReg(op1Reg)
+					buildMI(mbb, X86InstrNames.FpDIV, 2, destReg).addReg(op1Reg)
 							.addReg(op2Reg);
 				}
 				else
 				{
-					MachineInstr call = buildMI(X86InstrSets.CALLpcrel32, 1)
+					MachineInstr call = buildMI(X86InstrNames.CALLpcrel32, 1)
 							.addExternalSymbol("fmod", true).getMInstr();
 					ArrayList<ValueRecord> args = new ArrayList<>();
 					args.add(new ValueRecord(op1Reg, Type.DoubleTy));
@@ -589,7 +591,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				String[] fnName = { "__moddi3", "__divdi3", "__umoddi3",
 						"__udivdi3" };
 				int nameIdx = (ty.isUnsigned() ? 1 : 0) * 2 + (isDiv ? 1 : 0);
-				MachineInstr call = buildMI(X86InstrSets.CALLpcrel32, 1)
+				MachineInstr call = buildMI(X86InstrNames.CALLpcrel32, 1)
 						.addExternalSymbol(fnName[nameIdx], true).getMInstr();
 				ArrayList<ValueRecord> args = new ArrayList<>();
 				args.add(new ValueRecord(op1Reg, Type.Int64Ty));
@@ -606,14 +608,14 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		}
 
 		// Second, handle i8, i16, i32 integer.
-		int regs[] = { X86RegsSet.AL, X86RegsSet.AX, X86RegsSet.EAX };
-		int movOpcode[] = { X86InstrSets.MOVrr8, X86InstrSets.MOVrr16,
-				X86InstrSets.MOVrr32 };
-		int sarOpcode[] = { X86InstrSets.SARir8, X86InstrSets.SARir16,
-				X86InstrSets.SARir32 };
-		int clrOpcode[] = { X86InstrSets.XORrr8, X86InstrSets.XORrr16,
-				X86InstrSets.XORrr32 };
-		int extRegs[] = { X86RegsSet.AH, X86RegsSet.DX, X86RegsSet.EDX };
+		int regs[] = { X86RegNames.AL, X86RegNames.AX, X86RegNames.EAX };
+		int movOpcode[] = { X86InstrNames.MOVrr8, X86InstrNames.MOVrr16,
+				X86InstrNames.MOVrr32 };
+		int sarOpcode[] = { X86InstrNames.SARir8, X86InstrNames.SARir16,
+				X86InstrNames.SARir32 };
+		int clrOpcode[] = { X86InstrNames.XORrr8, X86InstrNames.XORrr16,
+				X86InstrNames.XORrr32 };
+		int extRegs[] = { X86RegNames.AH, X86RegNames.DX, X86RegNames.EDX };
 
 		int[][] divOpecode = {
 				// int division.
@@ -665,7 +667,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				case TypeClass.i8:
 				case TypeClass.i16:
 				case TypeClass.i32:
-					bmi(mbb, insertPos, X86InstrSets.SHLir32, 2, destReg).
+					bmi(mbb, insertPos, X86InstrNames.SHLir32, 2, destReg).
 							addReg(op1Reg).addZImm(consOp2);
 					return;
 			}
@@ -673,19 +675,20 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 		if (klass == TypeClass.i16)
 		{
-			bmi(mbb, insertPos, X86InstrSets.IMULri16, 2, destReg).
+			bmi(mbb, insertPos, X86InstrNames.IMULri16, 2, destReg).
 					addReg(op1Reg).addZImm(consOp2);
 			return;
 		}
 		else if (klass == TypeClass.i32)
 		{
-			bmi(mbb, insertPos, X86InstrSets.IMULri32, 2, destReg).
+			bmi(mbb, insertPos, X86InstrNames.IMULri32, 2, destReg).
 					addReg(op1Reg).addZImm(consOp2);
 			return;
 		}
 
 		// Most general case, emit a normal multiply.
-		int[] tab = {X86InstrSets.MOVir8, X86InstrSets.MOVir16, X86InstrSets.MOVir32};
+		int[] tab = {
+				X86InstrNames.MOVir8, X86InstrNames.MOVir16, X86InstrNames.MOVir32};
 
 		int tempReg = makeAnotherReg(ty);
 		bmi(mbb, insertPos, tab[klass], 1, tempReg).addZImm(consOp2);
@@ -705,24 +708,24 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			case f32:
 			case f64:
 			case f80:
-				bmi(mbb, insertPos, X86InstrSets.FpMUL, 2, destReg).
+				bmi(mbb, insertPos, X86InstrNames.FpMUL, 2, destReg).
 						addReg(op1Reg).addReg(op2Reg);
 				return;
 			case i32:
-				bmi(mbb, insertPos, X86InstrSets.IMULrr32, 2, destReg).
+				bmi(mbb, insertPos, X86InstrNames.IMULrr32, 2, destReg).
 						addReg(op1Reg).addReg(op2Reg);
 				return;
 			case i16:
-				bmi(mbb, insertPos, X86InstrSets.IMULrr16, 2, destReg).
+				bmi(mbb, insertPos, X86InstrNames.IMULrr16, 2, destReg).
 						addReg(op1Reg).addReg(op2Reg);
 				return;
 			case i8:
 				// Must use the MUL instruction, which forces use of AL...
-				bmi(mbb, insertPos++, X86InstrSets.MOVrr8, 1, X86RegsSet.AL).
+				bmi(mbb, insertPos++, X86InstrNames.MOVrr8, 1, X86RegNames.AL).
 						addReg(op1Reg);
-				bmi(mbb, insertPos++, X86InstrSets.MULr8, 1).addReg(op2Reg);
-				bmi(mbb, insertPos++, X86InstrSets.MOVrr8, 1, destReg).
-						addReg(X86RegsSet.AL);
+				bmi(mbb, insertPos++, X86InstrNames.MULr8, 1).addReg(op2Reg);
+				bmi(mbb, insertPos++, X86InstrNames.MOVrr8, 1, destReg).
+						addReg(X86RegNames.AL);
 				return;
 			default:
 			case i64:
@@ -807,15 +810,15 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			{
 				// Copy the value into the register pair.
 				long val = ((ConstantInt)(c)).getZExtValue();
-				bmi(mbb, idx++, X86InstrSets.MOVir32, 1, reg).addZImm(val & 0xFFFFFFF);
-				bmi(mbb, idx++, X86InstrSets.MOVir32, 1, reg+1).addZImm(val >>32);
+				bmi(mbb, idx++, X86InstrNames.MOVir32, 1, reg).addZImm(val & 0xFFFFFFF);
+				bmi(mbb, idx++, X86InstrNames.MOVir32, 1, reg+1).addZImm(val >>32);
 				return;
 			}
 
 			assert klass<=TypeClass.i32:"Invalid type class!";
 
 			int integralOpcodeTab[] = {
-				X86InstrSets.MOVir8, X86InstrSets.MOVir16, X86InstrSets.MOVir32
+				X86InstrNames.MOVir8, X86InstrNames.MOVir16, X86InstrNames.MOVir32
 			};
 
 			ConstantInt ci = (ConstantInt)c;
@@ -826,9 +829,9 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			ConstantFP cfp = (ConstantFP)c;
 			double val = cfp.getValue();
 			if (val == +0.0)
-				bmi(mbb, idx++, X86InstrSets.FLD0, 0, reg);
+				bmi(mbb, idx++, X86InstrNames.FLD0, 0, reg);
 			else if (val == +1.0)
-				bmi(mbb, idx++, X86InstrSets.FLD1, 0, reg);
+				bmi(mbb, idx++, X86InstrNames.FLD1, 0, reg);
 			else
 			{
 				// Otherwise, we need to spill it into constant pool.
@@ -837,14 +840,14 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				Type ty = cfp.getType();
 				assert ty == Type.FloatTy || ty==Type.DoubleTy;
 				int i = ty == Type.FloatTy?0:1;
-				int[] ops = {X86InstrSets.FLDr32, X86InstrSets.FLDr64};
+				int[] ops = { X86InstrNames.FLDr32, X86InstrNames.FLDr64};
 				addConstantPoolReference(bmi(mbb, idx++, ops[i], 4, reg), cpi, 0);
 			}
 		}
 		else if (c instanceof ConstantPointerNull)
 		{
 			// Copy zero (null pointer) to the register.
-			bmi(mbb, idx++, X86InstrSets.MOVir32, 1, reg).addZImm(0);
+			bmi(mbb, idx++, X86InstrNames.MOVir32, 1, reg).addZImm(0);
 		}
 		else
 		{
@@ -876,7 +879,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		if (val instanceof GlobalValue)
 		{
 			// move the address of global value into the register.
-			bmi(mbb, idx, X86InstrSets.MOVir32, 1, reg).
+			bmi(mbb, idx, X86InstrNames.MOVir32, 1, reg).
 					addGlobalAddress((GlobalValue)val, false).getMInstr();
 		}
 		else if (val instanceof Constant)
@@ -943,26 +946,26 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			switch (getClass(arg.getType()))
 			{
 				case TypeClass.i8:
-					addFrameReference(buildMI(mbb, X86InstrSets.MOVmr8, 4, reg), fi);
+					addFrameReference(buildMI(mbb, X86InstrNames.MOVmr8, 4, reg), fi);
 					break;
 				case TypeClass.i16:
-					addFrameReference(buildMI(mbb, X86InstrSets.MOVmr16, 4, reg), fi);
+					addFrameReference(buildMI(mbb, X86InstrNames.MOVmr16, 4, reg), fi);
 					break;
 				case TypeClass.i32:
-					addFrameReference(buildMI(mbb, X86InstrSets.MOVmr32, 4, reg), fi);
+					addFrameReference(buildMI(mbb, X86InstrNames.MOVmr32, 4, reg), fi);
 					break;
 				case TypeClass.i64:
-					addFrameReference(buildMI(mbb, X86InstrSets.MOVmr32, 4, reg), fi);
-					addFrameReference(buildMI(mbb, X86InstrSets.MOVmr32, 4, reg+1), fi, 4);
+					addFrameReference(buildMI(mbb, X86InstrNames.MOVmr32, 4, reg), fi);
+					addFrameReference(buildMI(mbb, X86InstrNames.MOVmr32, 4, reg+1), fi, 4);
 					break;
 				case TypeClass.f32:
-					addFrameReference(buildMI(mbb, X86InstrSets.FLDr32, 4, reg), fi);
+					addFrameReference(buildMI(mbb, X86InstrNames.FLDr32, 4, reg), fi);
 					break;
 				case TypeClass.f64:
-					addFrameReference(buildMI(mbb, X86InstrSets.FLDr64, 4, reg), fi);
+					addFrameReference(buildMI(mbb, X86InstrNames.FLDr64, 4, reg), fi);
 					break;
 				case TypeClass.f80:
-					addFrameReference(buildMI(mbb, X86InstrSets.FLDr80, 4, reg), fi);
+					addFrameReference(buildMI(mbb, X86InstrNames.FLDr80, 4, reg), fi);
 					argOffset += 2; // f80 requires 2 additional bytes.
 					break;
 				default:
@@ -1001,7 +1004,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				PhiNode phiNode = (PhiNode)bb.getInstAt(i);
 				// creates a machine phi node and insert it into mbb.
 				int phiReg = getReg(phiNode);
-				MachineInstr phiMI = buildMI(X86InstrSets.PHI, phiNode.getNumOfOperands(),
+				MachineInstr phiMI = buildMI(X86InstrNames.PHI, phiNode.getNumOfOperands(),
 						phiReg).getMInstr();
 				mbb.insert(numPhis++, phiMI);
 
@@ -1009,7 +1012,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				MachineInstr longPhiMI = null;
 				if (phiNode.getType() == Type.Int64Ty)
 				{
-					longPhiMI = buildMI(X86InstrSets.PHI, phiNode.getNumOfOperands(),
+					longPhiMI = buildMI(X86InstrNames.PHI, phiNode.getNumOfOperands(),
 							phiReg+1).getMInstr();
 					mbb.insert(numPhis++, longPhiMI);
 				}
@@ -1045,7 +1048,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 							// skip all machine phi nodes.
 							int k = 0;
 							for (int sz = predMBB.size();
-							     k < sz && predMBB.getInstAt(k).getOpCode() == X86InstrSets.PHI;
+							     k < sz && predMBB.getInstAt(k).getOpCode() == X86InstrNames.PHI;
 							     k++);
 
 							valReg = getReg(incomingVal, predMBB, k);
@@ -1105,7 +1108,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		if (inst.getNumOfOperands() == 0)
 		{
 			// emit 'ret'.
-			buildMI(mbb, X86InstrSets.RET, 0);
+			buildMI(mbb, X86InstrNames.RET, 0);
 			return null;
 		}
 
@@ -1116,35 +1119,35 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			case i8:
 			case i16:
 			case i32:
-				promote32(X86RegsSet.EAX, new ValueRecord(retReg, retValue.getType()));
+				promote32(X86RegNames.EAX, new ValueRecord(retReg, retValue.getType()));
 				// Declare that EAX are live on exit
-				buildMI(mbb, X86InstrSets.IMPLICIT_USE, 2).addReg(X86RegsSet.EAX)
-						.addReg(X86RegsSet.ESP);
+				buildMI(mbb, X86InstrNames.IMPLICIT_USE, 2).addReg(X86RegNames.EAX)
+						.addReg(X86RegNames.ESP);
 				break;
 			case f32:
 			case f64:
 			case f80:
-				buildMI(mbb, X86InstrSets.FpGETRESULT, 1).addReg(retReg);
+				buildMI(mbb, X86InstrNames.FpGETRESULT, 1).addReg(retReg);
 				// Declare that ST0 are live on exit
-				buildMI(mbb, X86InstrSets.IMPLICIT_USE, 2).
-						addReg(X86RegsSet.ST0).addReg(X86RegsSet.ESP);
+				buildMI(mbb, X86InstrNames.IMPLICIT_USE, 2).
+						addReg(X86RegNames.ST0).addReg(X86RegNames.ESP);
 				break;
 			case i64:
-				buildMI(mbb, X86InstrSets.MOVrr32, 1, X86RegsSet.EAX).
+				buildMI(mbb, X86InstrNames.MOVrr32, 1, X86RegNames.EAX).
 						addReg(retReg);
-				buildMI(mbb, X86InstrSets.MOVrr32, 1, X86RegsSet.EDX).
+				buildMI(mbb, X86InstrNames.MOVrr32, 1, X86RegNames.EDX).
 						addReg(retReg+1);
 				// Declare that EAX & EDX are live on exit
-				buildMI(mbb, X86InstrSets.IMPLICIT_USE, 3).
-						addReg(X86RegsSet.EAX).
-						addReg(X86RegsSet.EDX).
-						addReg(X86RegsSet.ESP);
+				buildMI(mbb, X86InstrNames.IMPLICIT_USE, 3).
+						addReg(X86RegNames.EAX).
+						addReg(X86RegNames.EDX).
+						addReg(X86RegNames.ESP);
 				break;
 			default:
 				assert false:"Invalid type class in ret";
 		}
 		// Emit a 'ret' instruction.
-		buildMI(mbb, X86InstrSets.RET, 0);
+		buildMI(mbb, X86InstrNames.RET, 0);
 		return null;
 	}
 	// Return the basic block which occurs lexically after the
@@ -1170,23 +1173,23 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		if (inst.isUnconditional())
 		{
 			if (inst.suxAt(0) != nextBB)
-				buildMI(mbb, X86InstrSets.JMP, 1).addPCDisp(inst.suxAt(0));
+				buildMI(mbb, X86InstrNames.JMP, 1).addPCDisp(inst.suxAt(0));
 			return null;
 		}
 
 		int condReg = getReg(inst.getCondition());
-		buildMI(mbb, X86InstrSets.CMPri8, 2).addReg(condReg).addZImm(0);
+		buildMI(mbb, X86InstrNames.CMPri8, 2).addReg(condReg).addZImm(0);
 		if (inst.suxAt(1) == nextBB)
 		{
 			if (inst.suxAt(0) != nextBB)
-				buildMI(mbb, X86InstrSets.JNE, 1).addPCDisp(inst.suxAt(0));
+				buildMI(mbb, X86InstrNames.JNE, 1).addPCDisp(inst.suxAt(0));
 		}
 		else
 		{
-			buildMI(mbb, X86InstrSets.JE, 1).addPCDisp(inst.suxAt(1));
+			buildMI(mbb, X86InstrNames.JE, 1).addPCDisp(inst.suxAt(1));
 
 			if (inst.suxAt(0) != nextBB)
-				buildMI(mbb, X86InstrSets.JMP, 1).addPCDisp(inst.suxAt(0));
+				buildMI(mbb, X86InstrNames.JMP, 1).addPCDisp(inst.suxAt(0));
 		}
 		return null;
 	}
@@ -1215,7 +1218,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 		int typeClass = getClass(inst.getType());
 		assert typeClass>=f32 && typeClass<=f80:"The type class is not a fp?";
-		buildMI(mbb, X86InstrSets.FpADD, 2, destReg).addReg(op0Reg).addReg(op1Reg);
+		buildMI(mbb, X86InstrNames.FpADD, 2, destReg).addReg(op0Reg).addReg(op1Reg);
 		return null;
 	}
 
@@ -1236,7 +1239,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 		int typeClass = getClass(inst.getType());
 		assert typeClass>=f32 && typeClass<=f80:"The type class is not a fp?";
-		buildMI(mbb, X86InstrSets.FpSUB, 2, destReg).addReg(op0Reg).addReg(op1Reg);
+		buildMI(mbb, X86InstrNames.FpSUB, 2, destReg).addReg(op0Reg).addReg(op1Reg);
 		return null;
 	}
 
@@ -1268,26 +1271,27 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			int op1Reg = getReg(inst.operand(1));
 
 			// lower multiply.
-			buildMI(mbb, X86InstrSets.MOVrr32, 1, X86RegsSet.EAX).addReg(op0Reg);
-			buildMI(mbb, X86InstrSets.MULr32, 1).addReg(op1Reg);
+			buildMI(mbb, X86InstrNames.MOVrr32, 1, X86RegNames.EAX).addReg(op0Reg);
+			buildMI(mbb, X86InstrNames.MULr32, 1).addReg(op1Reg);
 
 			int overflowReg = makeAnotherReg(Type.Int32Ty);
-			buildMI(mbb, X86InstrSets.MOVrr32, 1, destReg).addReg(X86RegsSet.EAX);
-			buildMI(mbb, X86InstrSets.MOVrr32, 1, overflowReg).addReg(X86RegsSet.EDX);
+			buildMI(mbb, X86InstrNames.MOVrr32, 1, destReg).addReg(X86RegNames.EAX);
+			buildMI(mbb, X86InstrNames.MOVrr32, 1, overflowReg).addReg(
+                    X86RegNames.EDX);
 
 			int ahblReg = makeAnotherReg(Type.Int32Ty);
-			bmi(mbb, mbb.size()-1, X86InstrSets.IMULrr32, 2, ahblReg).
+			bmi(mbb, mbb.size()-1, X86InstrNames.IMULrr32, 2, ahblReg).
 					addReg(op0Reg+1).addReg(op1Reg);
 
 			int ahbPlusOverlowReg = makeAnotherReg(Type.Int32Ty);
-			buildMI(mbb, X86InstrSets.ADDrr32, 2, ahbPlusOverlowReg).
+			buildMI(mbb, X86InstrNames.ADDrr32, 2, ahbPlusOverlowReg).
 					addReg(ahblReg).addReg(overflowReg);
 
 			int albHReg = makeAnotherReg(Type.Int32Ty);
-			bmi(mbb, mbb.size()-1, X86InstrSets.IMULrr32, 2, albHReg).
+			bmi(mbb, mbb.size()-1, X86InstrNames.IMULrr32, 2, albHReg).
 					addReg(op0Reg).addReg(op1Reg+1);
 
-			buildMI(mbb, X86InstrSets.ADDrr32, 2, destReg+1).
+			buildMI(mbb, X86InstrNames.ADDrr32, 2, destReg+1).
 					addReg(ahbPlusOverlowReg).addReg(albHReg);
 		}
 		return null;
@@ -1375,18 +1379,18 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 		int[][] ConstantOperand =
 		{
-			{ X86InstrSets.SHRir8, X86InstrSets.SHRir16, X86InstrSets.SHRir32, X86InstrSets.SHRDir32 },  // SHR
-			{ X86InstrSets.SARir8, X86InstrSets.SARir16, X86InstrSets.SARir32, X86InstrSets.SHRDir32 },  // SAR
-			{ X86InstrSets.SHLir8, X86InstrSets.SHLir16, X86InstrSets.SHLir32, X86InstrSets.SHLDir32 },  // SHL
-			{ X86InstrSets.SHLir8, X86InstrSets.SHLir16, X86InstrSets.SHLir32, X86InstrSets.SHLDir32 },  // SAL = SHL
+			{ X86InstrNames.SHRir8, X86InstrNames.SHRir16, X86InstrNames.SHRir32, X86InstrNames.SHRDir32 },  // SHR
+			{ X86InstrNames.SARir8, X86InstrNames.SARir16, X86InstrNames.SARir32, X86InstrNames.SHRDir32 },  // SAR
+			{ X86InstrNames.SHLir8, X86InstrNames.SHLir16, X86InstrNames.SHLir32, X86InstrNames.SHLDir32 },  // SHL
+			{ X86InstrNames.SHLir8, X86InstrNames.SHLir16, X86InstrNames.SHLir32, X86InstrNames.SHLDir32 },  // SAL = SHL
 		};
 
 		int[][] NonConstantOperand =
 		{
-			{ X86InstrSets.SHRrCL8, X86InstrSets.SHRrCL16, X86InstrSets.SHRrCL32},  // SHR
-			{ X86InstrSets.SARrCL8, X86InstrSets.SARrCL16, X86InstrSets.SARrCL32},  // SAR
-			{ X86InstrSets.SHLrCL8, X86InstrSets.SHLrCL16, X86InstrSets.SHLrCL32},  // SHL
-			{ X86InstrSets.SHLrCL8, X86InstrSets.SHLrCL16, X86InstrSets.SHLrCL32},  // SAL = SHL
+			{ X86InstrNames.SHRrCL8, X86InstrNames.SHRrCL16, X86InstrNames.SHRrCL32},  // SHR
+			{ X86InstrNames.SARrCL8, X86InstrNames.SARrCL16, X86InstrNames.SARrCL32},  // SAR
+			{ X86InstrNames.SHLrCL8, X86InstrNames.SHLrCL16, X86InstrNames.SHLrCL32},  // SHL
+			{ X86InstrNames.SHLrCL8, X86InstrNames.SHLrCL16, X86InstrNames.SHLrCL32},  // SAL = SHL
 		};
 
 		// Longs, as usual, are handled specially...
@@ -1412,12 +1416,12 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				} else {                 // Shifting more than 32 bits
 					Amount -= 32;
 					if (isLeftShift) {
-						buildMI(mbb, X86InstrSets.SHLir32, 2,destReg+1).addReg(srcReg).addZImm(Amount);
-						buildMI(mbb, X86InstrSets.MOVir32, 1,destReg  ).addZImm(0);
+						buildMI(mbb, X86InstrNames.SHLir32, 2,destReg+1).addReg(srcReg).addZImm(Amount);
+						buildMI(mbb, X86InstrNames.MOVir32, 1,destReg  ).addZImm(0);
 					} else {
-						int Opcode = isSigned ? X86InstrSets.SARir32 : X86InstrSets.SHRir32;
+						int Opcode = isSigned ? X86InstrNames.SARir32 : X86InstrNames.SHRir32;
 						buildMI(mbb, Opcode, 2, destReg).addReg(srcReg+1).addZImm(Amount);
-						buildMI(mbb, X86InstrSets.MOVir32, 1, destReg+1).addZImm(0);
+						buildMI(mbb, X86InstrNames.MOVir32, 1, destReg+1).addZImm(0);
 					}
 				}
 			} else {
@@ -1427,49 +1431,49 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 					// If this is a SHR of a Long, then we need to do funny sign extension
 					// stuff.  TmpReg gets the value to use as the high-part if we are
 					// shifting more than 32 bits.
-					buildMI(mbb, X86InstrSets.SARir32, 2, TmpReg).addReg(srcReg).addZImm(31);
+					buildMI(mbb, X86InstrNames.SARir32, 2, TmpReg).addReg(srcReg).addZImm(31);
 				} else {
 					// Other shifts use a fixed zero value if the shift is more than 32
 					// bits.
-					buildMI(mbb, X86InstrSets.MOVir32, 1, TmpReg).addZImm(0);
+					buildMI(mbb, X86InstrNames.MOVir32, 1, TmpReg).addZImm(0);
 				}
 
 				// Initialize CL with the shift amount...
 				int ShiftAmount = getReg(inst.operand(1));
-				buildMI(mbb, X86InstrSets.MOVrr8, 1, X86RegsSet.CL).addReg(ShiftAmount);
+				buildMI(mbb, X86InstrNames.MOVrr8, 1, X86RegNames.CL).addReg(ShiftAmount);
 
 				int TmpReg2 = makeAnotherReg(Type.Int32Ty);
 				int TmpReg3 = makeAnotherReg(Type.Int32Ty);
 				if (isLeftShift) {
 					// TmpReg2 = shld inHi, inLo
-					buildMI(mbb, X86InstrSets.SHLDrCL32, 2, TmpReg2).addReg(srcReg+1).addReg(srcReg);
+					buildMI(mbb, X86InstrNames.SHLDrCL32, 2, TmpReg2).addReg(srcReg+1).addReg(srcReg);
 					// TmpReg3 = shl  inLo, CL
-					buildMI(mbb, X86InstrSets.SHLrCL32, 1, TmpReg3).addReg(srcReg);
+					buildMI(mbb, X86InstrNames.SHLrCL32, 1, TmpReg3).addReg(srcReg);
 
 					// Set the flags to indicate whether the shift was by more than 32 bits.
-					buildMI(mbb, X86InstrSets.TESTri8, 2).addReg(X86RegsSet.CL).addZImm(32);
+					buildMI(mbb, X86InstrNames.TESTri8, 2).addReg(X86RegNames.CL).addZImm(32);
 
 					// DestHi = (>32) ? TmpReg3 : TmpReg2;
-					buildMI(mbb, X86InstrSets.CMOVNErr32, 2,
+					buildMI(mbb, X86InstrNames.CMOVNErr32, 2,
 							destReg+1).addReg(TmpReg2).addReg(TmpReg3);
 					// DestLo = (>32) ? TmpReg : TmpReg3;
-					buildMI(mbb, X86InstrSets.CMOVNErr32, 2, destReg).addReg(TmpReg3).addReg(TmpReg);
+					buildMI(mbb, X86InstrNames.CMOVNErr32, 2, destReg).addReg(TmpReg3).addReg(TmpReg);
 				} else {
 					// TmpReg2 = shrd inLo, inHi
-					buildMI(mbb, X86InstrSets.SHRDrCL32, 2, TmpReg2).addReg(srcReg).addReg(srcReg+1);
+					buildMI(mbb, X86InstrNames.SHRDrCL32, 2, TmpReg2).addReg(srcReg).addReg(srcReg+1);
 					// TmpReg3 = s[ah]r  inHi, CL
-					buildMI(mbb, isSigned ? X86InstrSets.SARrCL32 : X86InstrSets.SHRrCL32, 1, TmpReg3)
+					buildMI(mbb, isSigned ? X86InstrNames.SARrCL32 : X86InstrNames.SHRrCL32, 1, TmpReg3)
 							.addReg(srcReg+1);
 
 					// Set the flags to indicate whether the shift was by more than 32 bits.
-					buildMI(mbb, X86InstrSets.TESTri8, 2).addReg(X86RegsSet.CL).addZImm(32);
+					buildMI(mbb, X86InstrNames.TESTri8, 2).addReg(X86RegNames.CL).addZImm(32);
 
 					// DestLo = (>32) ? TmpReg3 : TmpReg2;
-					buildMI(mbb, X86InstrSets.CMOVNErr32, 2,
+					buildMI(mbb, X86InstrNames.CMOVNErr32, 2,
 							destReg).addReg(TmpReg2).addReg(TmpReg3);
 
 					// DestHi = (>32) ? TmpReg : TmpReg3;
-					buildMI(mbb, X86InstrSets.CMOVNErr32, 2,
+					buildMI(mbb, X86InstrNames.CMOVNErr32, 2,
 							destReg+1).addReg(TmpReg3).addReg(TmpReg);
 				}
 			}
@@ -1485,7 +1489,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			int[] opc = ConstantOperand[(isLeftShift?1:0)*2+(isSigned?1:0)];
 			buildMI(mbb, opc[klass], 2, destReg).addReg(srcReg).addZImm(cui.getZExtValue());
 		} else {                  // The shift amount is non-constant.
-			buildMI(mbb, X86InstrSets.MOVrr8, 1, X86RegsSet.CL).addReg(getReg(inst.operand(1)));
+			buildMI(mbb, X86InstrNames.MOVrr8, 1, X86RegNames.CL).addReg(getReg(inst.operand(1)));
 
 			int[] opc = ConstantOperand[(isLeftShift?1:0)*2+(isSigned?1:0)];
 			buildMI(mbb, opc[klass], 1, destReg).addReg(srcReg);
@@ -1520,25 +1524,25 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		switch (pred)
 		{
 			case ICMP_EQ:
-				return X86InstrSets.SETEr;
+				return X86InstrNames.SETEr;
 			case ICMP_NE:
-				return X86InstrSets.SETNEr;
+				return X86InstrNames.SETNEr;
 			case ICMP_UGT:
-				return X86InstrSets.SETAr;
+				return X86InstrNames.SETAr;
 			case ICMP_UGE:
-				return X86InstrSets.SETAEr;
+				return X86InstrNames.SETAEr;
 			case ICMP_ULT:
-				return X86InstrSets.SETBr;
+				return X86InstrNames.SETBr;
 			case ICMP_ULE:
-				return X86InstrSets.SETBEr;
+				return X86InstrNames.SETBEr;
 			case ICMP_SGT:
-				return X86InstrSets.SETGr;
+				return X86InstrNames.SETGr;
 			case ICMP_SGE:
-				return X86InstrSets.SETGEr;
+				return X86InstrNames.SETGEr;
 			case ICMP_SLT:
-				return X86InstrSets.SETLr;
+				return X86InstrNames.SETLr;
 			case ICMP_SLE:
-				return X86InstrSets.SETLEr;
+				return X86InstrNames.SETLEr;
 			default:
 				return -1;
 		}
@@ -1564,17 +1568,17 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				long op1Val = op1CI.getZExtValue();
 
 				if (op1Val == 0 && (ty.isSigned() ||
-							cc == X86InstrSets.SETEr ||
-							cc == X86InstrSets.SETNEr))
+							cc == X86InstrNames.SETEr ||
+							cc == X86InstrNames.SETNEr))
 				{
-					int[] testTab = {X86InstrSets.TESTrr8, X86InstrSets.TESTrr16,
-							X86InstrSets.TESTrr32};
+					int[] testTab = { X86InstrNames.TESTrr8, X86InstrNames.TESTrr16,
+							X86InstrNames.TESTrr32};
 					buildMI(mbb, testTab[klass], 2).addReg(op0Reg).addReg(op0Reg);
 					return null;
 				}
 
-				int[] testTab = {X86InstrSets.CMPri8, X86InstrSets.CMPri16,
-						X86InstrSets.CMPri32};
+				int[] testTab = { X86InstrNames.CMPri8, X86InstrNames.CMPri16,
+						X86InstrNames.CMPri32};
 				buildMI(mbb, testTab[klass], 2).addReg(op0Reg).addZImm(op1Val);
 				return null;
 			}
@@ -1584,13 +1588,13 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		switch (klass)
 		{
 			case i8:
-				buildMI(mbb, X86InstrSets.CMPrr8, 2).addReg(op0Reg).addReg(op1Reg);
+				buildMI(mbb, X86InstrNames.CMPrr8, 2).addReg(op0Reg).addReg(op1Reg);
 				break;
 			case i16:
-				buildMI(mbb, X86InstrSets.CMPrr16, 2).addReg(op0Reg).addReg(op1Reg);
+				buildMI(mbb, X86InstrNames.CMPrr16, 2).addReg(op0Reg).addReg(op1Reg);
 				break;
 			case i32:
-				buildMI(mbb, X86InstrSets.CMPrr32, 2).addReg(op0Reg).addReg(op1Reg);
+				buildMI(mbb, X86InstrNames.CMPrr32, 2).addReg(op0Reg).addReg(op1Reg);
 				break;
 			case i64:
 				// TODO compare 64 bit.
@@ -1612,11 +1616,11 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			case f32:
 			case f64:
 				// float comparison.
-				buildMI(mbb, X86InstrSets.FpUCOM, 2).addReg(op0Reg).addReg(op1Reg);
+				buildMI(mbb, X86InstrNames.FpUCOM, 2).addReg(op0Reg).addReg(op1Reg);
 				// save the FPU status register in %al.
-				buildMI(mbb, X86InstrSets.FNSTSWr8, 0);
+				buildMI(mbb, X86InstrNames.FNSTSWr8, 0);
 				// store AH into flags register, like sign, zero, auxiliary, carry etc.
-				buildMI(mbb, X86InstrSets.SAHF, 1);
+				buildMI(mbb, X86InstrNames.SAHF, 1);
 				break;
 			case f80:
 				// TODO
@@ -1638,19 +1642,19 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 		if (srcClass == i64 && destClass == i32)
 		{
-			buildMI(mbb, X86InstrSets.MOVrr32, 1, destReg).addReg(srcReg);
+			buildMI(mbb, X86InstrNames.MOVrr32, 1, destReg).addReg(srcReg);
 			return null;
 		}
 		int regRegMove[] =
 		{
-			X86InstrSets.MOVrr8,
-			X86InstrSets.MOVrr16, X86InstrSets.MOVrr32,
-				X86InstrSets.FpMOV, X86InstrSets.MOVrr32
+			X86InstrNames.MOVrr8,
+			X86InstrNames.MOVrr16, X86InstrNames.MOVrr32,
+				X86InstrNames.FpMOV, X86InstrNames.MOVrr32
 		};
 
 		// Handle cast of LARGER int to SMALLER int using a move to EAX followed by a
 		// move out of AX or AL.
-		int areg[] = {X86RegsSet.AL, X86RegsSet.AX, X86RegsSet.EAX, 0, X86RegsSet.EAX};
+		int areg[] = { X86RegNames.AL, X86RegNames.AX, X86RegNames.EAX, 0, X86RegNames.EAX};
 		buildMI(mbb, regRegMove[srcClass], 1, areg[srcClass]).addReg(srcReg);
 		buildMI(mbb, regRegMove[destClass], 1, areg[destClass]).addReg(areg[destReg]);
 		return null;
@@ -1670,14 +1674,14 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		boolean isLong = destClass == i64;
 		if (isLong) destClass = i32;
 
-		int[] opcodes = { X86InstrSets.MOVZXr16r8,
-				X86InstrSets.MOVZXr32r8,
-				X86InstrSets.MOVZXr32r16,
-				X86InstrSets.MOVrr32};
+		int[] opcodes = { X86InstrNames.MOVZXr16r8,
+				X86InstrNames.MOVZXr32r8,
+				X86InstrNames.MOVZXr32r16,
+				X86InstrNames.MOVrr32};
 
 		buildMI(mbb, opcodes[srcClass + destClass - 1], 1, destReg).addReg(srcReg);
 		if (isLong)
-			buildMI(mbb, X86InstrSets.MOVir32, 1, destReg+1).addZImm(0);
+			buildMI(mbb, X86InstrNames.MOVir32, 1, destReg+1).addZImm(0);
 		return null;
 	}
 
@@ -1695,14 +1699,14 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		boolean isLong = destClass == i64;
 		if (isLong) destClass = i32;
 
-		int[] opcodes = { X86InstrSets.MOVSXr16r8,
-				X86InstrSets.MOVSXr32r8,
-				X86InstrSets.MOVSXr32r16,
-				X86InstrSets.MOVrr32};
+		int[] opcodes = { X86InstrNames.MOVSXr16r8,
+				X86InstrNames.MOVSXr32r8,
+				X86InstrNames.MOVSXr32r16,
+				X86InstrNames.MOVrr32};
 
 		buildMI(mbb, opcodes[srcClass + destClass - 1], 1, destReg).addReg(srcReg);
 		if (isLong)
-			buildMI(mbb, X86InstrSets.SARir32, 1, destReg+1).
+			buildMI(mbb, X86InstrNames.SARir32, 1, destReg+1).
 					addReg(destReg).addZImm(31);
 		return null;
 	}
@@ -1720,22 +1724,22 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		// mode when truncating to an integer value.
 		//
 		int CWFrameIdx = mf.getFrameInfo().createStackObject(2, 2);
-		addFrameReference(buildMI(mbb, X86InstrSets.FNSTCWm16, 4), CWFrameIdx);
+		addFrameReference(buildMI(mbb, X86InstrNames.FNSTCWm16, 4), CWFrameIdx);
 
 		// Load the old value of the high byte of the control word...
 		int HighPartOfCW = makeAnotherReg(Type.Int8Ty);
-		addFrameReference(buildMI(mbb, X86InstrSets.MOVmr8, 4, HighPartOfCW),
+		addFrameReference(buildMI(mbb, X86InstrNames.MOVmr8, 4, HighPartOfCW),
 				CWFrameIdx, 1);
 
 		// Set the high part to be round to zero...
-		addFrameReference(buildMI(mbb, X86InstrSets.MOVim8, 5), CWFrameIdx, 1)
+		addFrameReference(buildMI(mbb, X86InstrNames.MOVim8, 5), CWFrameIdx, 1)
 				.addZImm(12);
 
 		// Reload the modified control word now...
-		addFrameReference(buildMI(mbb, X86InstrSets.FLDCWm16, 4), CWFrameIdx);
+		addFrameReference(buildMI(mbb, X86InstrNames.FLDCWm16, 4), CWFrameIdx);
 
 		// Restore the memory image of control word to original value
-		addFrameReference(buildMI(mbb, X86InstrSets.MOVrm8, 5), CWFrameIdx, 1)
+		addFrameReference(buildMI(mbb, X86InstrNames.MOVrm8, 5), CWFrameIdx, 1)
 				.addReg(HighPartOfCW);
 
 		// We don't have the facilities for directly storing byte sized data to
@@ -1773,29 +1777,29 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		int FrameIdx = mf.getFrameInfo()
 				.createStackObject(storeTy, tm.getTargetData());
 
-		int Op1[] = { 0, X86InstrSets.FISTr16, X86InstrSets.FISTr32, 0,
-				X86InstrSets.FISTPr64 };
+		int Op1[] = { 0, X86InstrNames.FISTr16, X86InstrNames.FISTr32, 0,
+				X86InstrNames.FISTPr64 };
 		addFrameReference(buildMI(mbb, Op1[StoreClass], 5), FrameIdx)
 				.addReg(srcReg);
 
 		if (destClass == i64)
 		{
-			addFrameReference(buildMI(mbb, X86InstrSets.MOVmr32, 4, destReg),
+			addFrameReference(buildMI(mbb, X86InstrNames.MOVmr32, 4, destReg),
 					FrameIdx);
 			addFrameReference(
-					buildMI(mbb, X86InstrSets.MOVmr32, 4, destReg + 1),
+					buildMI(mbb, X86InstrNames.MOVmr32, 4, destReg + 1),
 					FrameIdx, 4);
 		}
 		else
 		{
-			int Op2[] = { X86InstrSets.MOVmr8, X86InstrSets.MOVmr16,
-					X86InstrSets.MOVmr32 };
+			int Op2[] = { X86InstrNames.MOVmr8, X86InstrNames.MOVmr16,
+					X86InstrNames.MOVmr32 };
 			addFrameReference(buildMI(mbb, Op2[destClass], 4, destReg),
 					FrameIdx);
 		}
 
 		// Reload the original control word now...
-		addFrameReference(buildMI(mbb, X86InstrSets.FLDCWm16, 4), CWFrameIdx);
+		addFrameReference(buildMI(mbb, X86InstrNames.FLDCWm16, 4), CWFrameIdx);
 		return null;
 	}
 
@@ -1831,17 +1835,17 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			case Type.Int8TyID:
 				promoteType = Type.Int16Ty;
 				promoteOpcode = srcTy.isSigned()?
-						X86InstrSets.MOVSXr16r8: X86InstrSets.MOVZXr16r8;
+						X86InstrNames.MOVSXr16r8: X86InstrNames.MOVZXr16r8;
 				break;
 			case Type.Int16TyID:
 				promoteType = Type.Int32Ty;
 				promoteOpcode = srcTy.isSigned()?
-						X86InstrSets.MOVSXr32r16:X86InstrSets.MOVZXr32r16;
+						X86InstrNames.MOVSXr32r16: X86InstrNames.MOVZXr32r16;
 				break;
 			case Type.Int32TyID:
 				int tempReg = makeAnotherReg(Type.Int64Ty);
-				buildMI(mbb, X86InstrSets.MOVrr32, 1, tempReg).addReg(srcReg);
-				buildMI(mbb, X86InstrSets.MOVir32, 1, tempReg+1).addZImm(0);
+				buildMI(mbb, X86InstrNames.MOVrr32, 1, tempReg).addReg(srcReg);
+				buildMI(mbb, X86InstrNames.MOVir32, 1, tempReg+1).addZImm(0);
 				srcTy = Type.Int64Ty;
 				srcClass = i64;
 				srcReg = tempReg;
@@ -1852,7 +1856,9 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		if (promoteType != null)
 		{
 			int tempReg = makeAnotherReg(promoteType);
-			buildMI(mbb, srcTy.isSigned()?X86InstrSets.MOVSXr16r8:X86InstrSets.MOVZXr16r8
+			buildMI(mbb, srcTy.isSigned()?
+							X86InstrNames.MOVSXr16r8:
+							X86InstrNames.MOVZXr16r8
 					, 1, tempReg).addReg(srcReg);
 			srcTy = promoteType;
 			srcClass = getClass(promoteType);
@@ -1863,16 +1869,16 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
 		if (srcClass == i64)
 		{
-			addFrameReference(buildMI(mbb, X86InstrSets.MOVrm32, 5), frameIdx).addReg(srcReg);
-			addFrameReference(buildMI(mbb, X86InstrSets.MOVrm32, 5), frameIdx, 4).addReg(srcReg+1);
+			addFrameReference(buildMI(mbb, X86InstrNames.MOVrm32, 5), frameIdx).addReg(srcReg);
+			addFrameReference(buildMI(mbb, X86InstrNames.MOVrm32, 5), frameIdx, 4).addReg(srcReg+1);
 		}
 		else
 		{
-			int[] op1s = { X86InstrSets.MOVrm8, X86InstrSets.MOVrm16, X86InstrSets.MOVrm32};
+			int[] op1s = { X86InstrNames.MOVrm8, X86InstrNames.MOVrm16, X86InstrNames.MOVrm32};
 			addFrameReference(buildMI(mbb, op1s[srcClass], 5), frameIdx).addReg(srcReg);
 		}
 
-		int[] op2s = {0, X86InstrSets.FLDr16, X86InstrSets.FLDr32, 0, X86InstrSets.FLDr64};
+		int[] op2s = {0, X86InstrNames.FLDr16, X86InstrNames.FLDr32, 0, X86InstrNames.FLDr64};
 		addFrameReference(buildMI(mbb, op2s[srcClass], 5, destReg), frameIdx);
 		return null;
 	}
@@ -1920,8 +1926,8 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 	@Override
 	public Void visitBitCast(CastInst inst)
 	{
-		int[] opcodes = {X86InstrSets.MOVrr8, X86InstrSets.MOVrr16, X86InstrSets.MOVrr32,
-				X86InstrSets.MOVrr32};
+		int[] opcodes = { X86InstrNames.MOVrr8, X86InstrNames.MOVrr16, X86InstrNames.MOVrr32,
+				X86InstrNames.MOVrr32};
 		int srcClass = getClass(inst.operand(0).getType());
 		int destClass = getClass(inst.getType());
 		assert srcClass == destClass && srcClass < f32;
@@ -1951,7 +1957,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 				int align = tm.getTargetData().getTypeAlign(ty);
 
 				int frameIdx = mf.getFrameInfo().createStackObject(tySize, align);
-				addFrameReference(buildMI(mbb, X86InstrSets.LEAr32, 5, getReg(inst)), frameIdx);
+				addFrameReference(buildMI(mbb, X86InstrNames.LEAr32, 5, getReg(inst)), frameIdx);
 			}
 		}
 
@@ -1965,20 +1971,20 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		// following instruction for alignment in 16Byte.
 		// addedSizeReg = add totalSizeReg, 15.
 		int addedSizeReg = makeAnotherReg(Type.Int32Ty);
-		buildMI(mbb, X86InstrSets.ADDri32, 2, addedSizeReg).
+		buildMI(mbb, X86InstrNames.ADDri32, 2, addedSizeReg).
 				addReg(totalSizeReg).addZImm(15);
 		// alignSizeReg = and addedSizeReg, ~15.
 		int alignSizeReg = makeAnotherReg(Type.Int32Ty);
-		buildMI(mbb, X86InstrSets.ANDri32, 2, alignSizeReg).
+		buildMI(mbb, X86InstrNames.ANDri32, 2, alignSizeReg).
 				addReg(addedSizeReg).addZImm(~15);
 
 		// subtract size from stack pointer, thereby allocating some space.
-		buildMI(mbb, X86InstrSets.SUBrr32, 2, X86RegsSet.ESP).
-				addReg(X86RegsSet.ESP).addReg(alignSizeReg);
+		buildMI(mbb, X86InstrNames.SUBrr32, 2, X86RegNames.ESP).
+				addReg(X86RegNames.ESP).addReg(alignSizeReg);
 
 		// Put a pointer to the space into the result register, by copying
 		// the stack pointer.
-		buildMI(mbb, X86InstrSets.MOVrr32, 1, getReg(inst)).addReg(X86RegsSet.ESP);
+		buildMI(mbb, X86InstrNames.MOVrr32, 1, getReg(inst)).addReg(X86RegNames.ESP);
 
 		// Inform the frame information that we have just allocated a
 		// variable sized object.
@@ -1995,14 +2001,14 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		int klass = getClass(inst.getType());
 		if (klass == i64)
 		{
-			addDirectMem(buildMI(mbb, X86InstrSets.MOVmr32, 4, destReg), srcAddReg);
-			addRegOffset(buildMI(mbb, X86InstrSets.MOVmr32, 4, destReg+1), srcAddReg, 4);
+			addDirectMem(buildMI(mbb, X86InstrNames.MOVmr32, 4, destReg), srcAddReg);
+			addRegOffset(buildMI(mbb, X86InstrNames.MOVmr32, 4, destReg+1), srcAddReg, 4);
 		}
 
-		int[] opcodes = {X86InstrSets.MOVmr8, X86InstrSets.MOVmr16,
-				X86InstrSets.MOVmr32,
-				X86InstrSets.FLDr32,
-				X86InstrSets.FLDr64};
+		int[] opcodes = { X86InstrNames.MOVmr8, X86InstrNames.MOVmr16,
+				X86InstrNames.MOVmr32,
+				X86InstrNames.FLDr32,
+				X86InstrNames.FLDr64};
 		int opcode = opcodes[klass];
 		addDirectMem(buildMI(mbb, opcode, 4, destReg), srcAddReg);
 		return null;
@@ -2017,16 +2023,16 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		int klass = getClass(inst.operand(0).getType());
 		if (klass == i64)
 		{
-			addDirectMem(buildMI(mbb, X86InstrSets.MOVrm32, 1+4), destAddrReg).
+			addDirectMem(buildMI(mbb, X86InstrNames.MOVrm32, 1+4), destAddrReg).
 					addReg(srcReg);
-			addRegOffset(buildMI(mbb, X86InstrSets.MOVrm32, 1+4), destAddrReg, 4).
+			addRegOffset(buildMI(mbb, X86InstrNames.MOVrm32, 1+4), destAddrReg, 4).
 					addReg(srcReg+1);
 		}
 
-		int[] opcodes = {X86InstrSets.MOVrm8, X86InstrSets.MOVrm16,
-				X86InstrSets.MOVrm32,
-				X86InstrSets.FSTr32,
-				X86InstrSets.FSTr64};
+		int[] opcodes = { X86InstrNames.MOVrm8, X86InstrNames.MOVrm16,
+				X86InstrNames.MOVrm32,
+				X86InstrNames.FSTr32,
+				X86InstrNames.FSTr64};
 		int opcode = opcodes[klass];
 		addDirectMem(buildMI(mbb, opcode, 1+4), destAddrReg).addReg(srcReg);
 		return null;
@@ -2048,14 +2054,14 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			// handle intrinsic call.
 
 			// emit a CALL instruction with PC-relative displacement.
-			call = buildMI(X86InstrSets.CALLpcrel32, 1).
+			call = buildMI(X86InstrNames.CALLpcrel32, 1).
 					addGlobalAddress(f, true).getMInstr();
 		}
 		else
 		{
 			// indirect call.
 			int reg = getReg(inst.getCalledValue());
-			call = buildMI(X86InstrSets.CALLr32, 1).addReg(reg).getMInstr();
+			call = buildMI(X86InstrNames.CALLr32, 1).addReg(reg).getMInstr();
 		}
 
 		ArrayList<ValueRecord> args = new ArrayList<>();

@@ -11,7 +11,8 @@ import backend.target.TargetRegisterInfo;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class X86InstrInfo extends TargetInstrInfo implements X86InstrSets, X86RegsSet
+public class X86InstrInfo extends TargetInstrInfo implements X86InstrNames,
+        X86RegNames
 {
 	private static int[] ImplicitList1 = {EFLAGS};
 	private static int[] ImplicitList2 = {ESP};
@@ -340,9 +341,9 @@ public class X86InstrInfo extends TargetInstrInfo implements X86InstrSets, X86Re
 	@Override
 	public MachineInstr createNOPinstr()
 	{
-		return MachineInstrBuilder.buildMI(X86InstrSets.XCHGrr16, 2).
-				addReg(X86RegsSet.AX, UseType.UseAndDef).
-				addReg( X86RegsSet.AX, UseType.UseAndDef)
+		return MachineInstrBuilder.buildMI(X86InstrNames.XCHGrr16, 2).
+				addReg(X86RegNames.AX, UseType.UseAndDef).
+				addReg( X86RegNames.AX, UseType.UseAndDef)
 				.getMInstr();
 	}
 

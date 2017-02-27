@@ -53,45 +53,45 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
 
     // Map: A = B op C  into: ST(0) = ST(0) op ST(i)
     private static final TableEntry[] forwardST0Table = {
-            new TableEntry(X86InstrSets.FpADD, X86InstrSets.FADDST0r),
-            new TableEntry(X86InstrSets.FpDIV, X86InstrSets.FDIVST0r),
-            new TableEntry(X86InstrSets.FpMUL, X86InstrSets.FMULST0r),
-            new TableEntry(X86InstrSets.FpSUB, X86InstrSets.FSUBST0r),
-            new TableEntry(X86InstrSets.FpUCOM, X86InstrSets.FUCOMr) };
+            new TableEntry(X86InstrNames.FpADD, X86InstrNames.FADDST0r),
+            new TableEntry(X86InstrNames.FpDIV, X86InstrNames.FDIVST0r),
+            new TableEntry(X86InstrNames.FpMUL, X86InstrNames.FMULST0r),
+            new TableEntry(X86InstrNames.FpSUB, X86InstrNames.FSUBST0r),
+            new TableEntry(X86InstrNames.FpUCOM, X86InstrNames.FUCOMr) };
     // Map: A = B op C  into: ST(0) = ST(i) op ST(0)
     private static final TableEntry[] reverseST0Table =
     {
             // commutative
-        new TableEntry(X86InstrSets.FpADD, X86InstrSets.FADDST0r),
-        new TableEntry(X86InstrSets.FpDIV, X86InstrSets.FDIVRST0r),
+        new TableEntry(X86InstrNames.FpADD, X86InstrNames.FADDST0r),
+        new TableEntry(X86InstrNames.FpDIV, X86InstrNames.FDIVRST0r),
             // commutative
-        new TableEntry(X86InstrSets.FpMUL, X86InstrSets.FMULST0r),
-        new TableEntry(X86InstrSets.FpSUB, X86InstrSets.FSUBRST0r),
-        new TableEntry(X86InstrSets.FpUCOM, ~0)
+        new TableEntry(X86InstrNames.FpMUL, X86InstrNames.FMULST0r),
+        new TableEntry(X86InstrNames.FpSUB, X86InstrNames.FSUBRST0r),
+        new TableEntry(X86InstrNames.FpUCOM, ~0)
     };
 
     // ForwardSTiTable - Map: A = B op C  into: ST(i) = ST(0) op ST(i)
     private static final TableEntry[] forwardSTiTable =
     {
-        new TableEntry(X86InstrSets.FpADD, X86InstrSets.FADDrST0),
-        new TableEntry(X86InstrSets.FpDIV, X86InstrSets.FDIVRrST0),
-        new TableEntry(X86InstrSets.FpMUL, X86InstrSets.FMULrST0),
+        new TableEntry(X86InstrNames.FpADD, X86InstrNames.FADDrST0),
+        new TableEntry(X86InstrNames.FpDIV, X86InstrNames.FDIVRrST0),
+        new TableEntry(X86InstrNames.FpMUL, X86InstrNames.FMULrST0),
         // commutative
-        new TableEntry(X86InstrSets.FpSUB, X86InstrSets.FSUBRrST0),
-        new TableEntry(X86InstrSets.FpUCOM, X86InstrSets.FUCOMr)
+        new TableEntry(X86InstrNames.FpSUB, X86InstrNames.FSUBRrST0),
+        new TableEntry(X86InstrNames.FpUCOM, X86InstrNames.FUCOMr)
     };
 
     // Map: A = B op C  into: ST(i) = ST(i) op ST(0)
     private static final TableEntry[] reverseSTiTable =
     {
             // commutative
-        new TableEntry(X86InstrSets.FpADD, X86InstrSets.FADDrST0),
-        new TableEntry(X86InstrSets.FpDIV, X86InstrSets.FDIVrST0),
+        new TableEntry(X86InstrNames.FpADD, X86InstrNames.FADDrST0),
+        new TableEntry(X86InstrNames.FpDIV, X86InstrNames.FDIVrST0),
             // commutative
-        new TableEntry(X86InstrSets.FpMUL, X86InstrSets.FMULrST0),
+        new TableEntry(X86InstrNames.FpMUL, X86InstrNames.FMULrST0),
         // commutative
-        new TableEntry(X86InstrSets.FpSUB, X86InstrSets.FSUBrST0),
-        new TableEntry(X86InstrSets.FpUCOM, ~0)
+        new TableEntry(X86InstrNames.FpSUB, X86InstrNames.FSUBrST0),
+        new TableEntry(X86InstrNames.FpUCOM, ~0)
     };
 
     // ensure the table is sorted.
@@ -125,9 +125,9 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
     {
         assert mo.isPhysicalRegister():"Expects a FP register!";
         int reg = mo.getMachineRegNum();
-        assert reg>= X86RegsSet.FP0 && reg <= X86RegsSet.FP6
+        assert reg>= X86RegNames.FP0 && reg <= X86RegNames.FP6
                 : "Expects a FP register!";
-        return reg - X86RegsSet.FP0;
+        return reg - X86RegNames.FP0;
     }
 
     /***
@@ -163,7 +163,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
 
     private int getSTReg(int regNo)
     {
-        return stackTop - getSlot(regNo) + X86RegsSet.ST0;
+        return stackTop - getSlot(regNo) + X86RegNames.ST0;
     }
 
     /**
@@ -177,7 +177,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
         int stReg = getSTReg(regNo);
         pushReg(asReg);
 
-        MachineInstr mi = buildMI(X86InstrSets.FLDrr, 1).addReg(stReg).getMInstr();
+        MachineInstr mi = buildMI(X86InstrNames.FLDrr, 1).addReg(stReg).getMInstr();
         mbb.insert(insertPos++, mi);
         return insertPos;
     }
@@ -223,7 +223,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
 
             // Emit a fxch instr to update the runtime processors versio of
             // the status
-            MachineInstr mi = buildMI(X86InstrSets.FXCH, 1).addReg(stReg).getMInstr();
+            MachineInstr mi = buildMI(X86InstrNames.FXCH, 1).addReg(stReg).getMInstr();
             mbb.insert(insertPos++, mi);
         }
         return insertPos;
@@ -245,8 +245,8 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
         // If we have one _and_ we don't want to pop the operand, duplicate the value
         // on the stack instead of moving it.  This ensure that popping the value is
         // always ok.
-        if (mi.getOpCode() == X86InstrSets.FSTPr80
-                || mi.getOpCode() == X86InstrSets.FISTPr64)
+        if (mi.getOpCode() == X86InstrNames.FSTPr80
+                || mi.getOpCode() == X86InstrNames.FISTPr64)
         {
             idx = duplicateToTop(reg, 7, idx);
         }
@@ -256,8 +256,8 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
         }
         mi.removeOperand(4);
 
-        if (mi.getOpCode() == X86InstrSets.FSTPr80
-                || mi.getOpCode() == X86InstrSets.FISTPr64)
+        if (mi.getOpCode() == X86InstrNames.FSTPr80
+                || mi.getOpCode() == X86InstrNames.FISTPr64)
         {
             assert stackTop>= 0 :"Stack empty?";
             --stackTop;
@@ -285,7 +285,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
 
         int numOperands = mi.getNumOperands();
         assert numOperands == 3 || (numOperands == 2
-                && mi.getOpCode() == X86InstrSets.FpUCOM):"Illegal twoArgsFP inst";
+                && mi.getOpCode() == X86InstrNames.FpUCOM):"Illegal twoArgsFP inst";
 
         int dest = getFPReg(mi.getOperand(0));
         int op0 = getFPReg(mi.getOperand(numOperands-2));
@@ -293,7 +293,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
 
         // If this is an FpUCOM instruction, we must make sure the first operand is on
         // the top of stack, the other one can be anywhere...
-        if (mi.getOpCode() == X86InstrSets.FpUCOM)
+        if (mi.getOpCode() == X86InstrNames.FpUCOM)
             idx = moveToTop(op0, idx);
 
         int tos = getStackEntry(0);
@@ -305,7 +305,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
             idx = duplicateToTop(op0, dest, idx);
             op0 = tos = dest;
         }
-        assert (tos == op0 || tos == op1) && mi.getOpCode() == X86InstrSets.FpUCOM;
+        assert (tos == op0 || tos == op1) && mi.getOpCode() == X86InstrNames.FpUCOM;
 
         // We decide which form to use based on what is on the top of the stack.
         TableEntry[] instTable;
@@ -350,13 +350,13 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
             virReg2PhyRegMap[op1]       = ~0;
             stack[stackTop--] = ~0;
 
-            newMI = buildMI(X86InstrSets.FSTPrr, 1).addReg(stReg).getMInstr();
+            newMI = buildMI(X86InstrNames.FSTPrr, 1).addReg(stReg).getMInstr();
             mbb.insert(idx++, newMI);
         }
 
         // Update stack information so that we know the destination register is now on
         // the stack.
-        if (mi.getOpCode() != X86InstrSets.FpUCOM)
+        if (mi.getOpCode() != X86InstrNames.FpUCOM)
         {
             int updatedSlot = getSlot(updateST0 ? tos : nottos);
             assert(updatedSlot <= stackTop && dest < 7);
@@ -380,15 +380,15 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
         switch (mi.getOpCode())
         {
             default: assert false:"Unknwon SpecialFP instruction!";
-            case X86InstrSets.FpGETRESULT:
+            case X86InstrNames.FpGETRESULT:
                 assert stackTop == -1:"Stack should be empty after a call";
                 pushReg(getFPReg(mi.getOperand(0)));
                 break;
-            case X86InstrSets.FpSETRESULT:
+            case X86InstrNames.FpSETRESULT:
                 assert stackTop == 0:"Stack shoudl have one element on it for return ";
                 --stackTop;
                 break;
-            case X86InstrSets.FpMOV:
+            case X86InstrNames.FpMOV:
             {
                 // For FpMov we jsut duplicate the specified value
                 // to a new stack slot.

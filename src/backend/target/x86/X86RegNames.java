@@ -4,7 +4,7 @@ package backend.target.x86;
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface X86RegsSet
+public interface X86RegNames
 {
 	// 32-bit registers
 	int EAX = 0; 
