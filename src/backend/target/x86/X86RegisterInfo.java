@@ -1,6 +1,8 @@
 package backend.target.x86;
 
 import backend.codegen.*;
+import backend.target.TargetRegisterDesc;
+import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import tools.Util;
@@ -13,7 +15,8 @@ import static backend.codegen.MachineOperand.UseType.Use;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X86InstrSets
+public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
+		X86InstrNames
 {
 	// Now that we have all of the pieces, define the top-level register classes.
 	// The order specified in the register list is implicitly defined to be the
@@ -28,7 +31,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	{
 		public X86R8RegisterClass(int rs, int ra, int[] regs)
 		{
-			super(rs, ra, regs);
+			super(null, rs, ra, regs);
 		}
 	}
 
@@ -36,7 +39,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	{
 		public X86R16RegisterClass(int rs, int ra, int[] regs)
 		{
-			super(rs, ra, regs);
+			super(null, rs, ra, regs);
 		}
 
 		@Override
@@ -44,10 +47,10 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 		{
 			// If so, don't allocate SP or BP.
 			if (hasFP(mf))
-				return getNumRegs() - 2;
+				return super.allocatableEnd(mf) - 2;
 			else
 				// If not, just don't allocate SP.
-				return getNumRegs() - 1;
+				return super.allocatableEnd(mf) - 1;
 		}
 	}
 
@@ -55,17 +58,17 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	{
 		public X86R32RegisterClass(int rs, int ra, int[] regs)
 		{
-			super(rs, ra, regs);
+			super(null, rs, ra, regs);
 		}
 		@Override
 		public int allocatableEnd(MachineFunction mf)
 		{
 			// If so, don't allocate SP or BP.
 			if (hasFP(mf))
-				return getNumRegs() - 2;
+				return super.allocatableEnd(mf) - 2;
 			else
 				// If not, just don't allocate SP.
-				return getNumRegs() - 1;
+				return super.allocatableEnd(mf) - 1;
 		}
 	}
 
@@ -73,7 +76,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	{
 		public X86RSTRegisterClass(int rs, int ra, int[] regs)
 		{
-			super(rs, ra, regs);
+			super(null, rs, ra, regs);
 		}
 		@Override
 		public int allocatableEnd(MachineFunction mf){return 0;}
@@ -83,7 +86,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	{
 		public X86RFPRegisterClass(int rs, int ra, int[] regs)
 		{
-			super(rs, ra, regs);
+			super(null, rs, ra, regs);
 		}
 	}
 
@@ -111,43 +114,43 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 	 * A static array holds all register descriptor information
 	 * for each register in x86.
 	 */
-	private static MCRegisterDesc[] x86RegInfoDescs =
+	private static TargetRegisterDesc[] x86RegInfoDescs =
 			{
 					// 32bit general register.
-				new MCRegisterDesc("EAX", new int[]{AX, AH, AL}, null, 0, 0),
-				new MCRegisterDesc("EDX", new int[]{DX, DH, DL}, null, 0, 0),
-				new MCRegisterDesc("ESP", new int[]{SP}, null, 0, 0),
-				new MCRegisterDesc("ESI", new int[]{SI}, null, 0, 0),
+				new TargetRegisterDesc("EAX", new int[]{AX, AH, AL}, null, 0, 0),
+				new TargetRegisterDesc("EDX", new int[]{DX, DH, DL}, null, 0, 0),
+				new TargetRegisterDesc("ESP", new int[]{SP}, null, 0, 0),
+				new TargetRegisterDesc("ESI", new int[]{SI}, null, 0, 0),
 
 					// 16bit general register.
-				new MCRegisterDesc("AX", new int[]{AH, AL}, new int[]{EAX}, 0, 0),
-				new MCRegisterDesc("DX", new int[]{DH, DL}, new int[]{EDX}, 0, 0),
-				new MCRegisterDesc("SP", null, new int[]{ESP}, 0, 0),
-				new MCRegisterDesc("SI", null, new int[]{ESI}, 0, 0),
+				new TargetRegisterDesc("AX", new int[]{AH, AL}, new int[]{EAX}, 0, 0),
+				new TargetRegisterDesc("DX", new int[]{DH, DL}, new int[]{EDX}, 0, 0),
+				new TargetRegisterDesc("SP", null, new int[]{ESP}, 0, 0),
+				new TargetRegisterDesc("SI", null, new int[]{ESI}, 0, 0),
 
 					// 8bit general register.
-				new MCRegisterDesc("AL", null, new int[]{AX, EAX}, 0, 0),
-				new MCRegisterDesc("DL", null, new int[]{EDX}, 0, 0),
-				new MCRegisterDesc("AH", null, new int[]{AX, EAX}, 0, 0),
-				new MCRegisterDesc("DH", null, new int[]{DX, EAX}, 0, 0),
+				new TargetRegisterDesc("AL", null, new int[]{AX, EAX}, 0, 0),
+				new TargetRegisterDesc("DL", null, new int[]{EDX}, 0, 0),
+				new TargetRegisterDesc("AH", null, new int[]{AX, EAX}, 0, 0),
+				new TargetRegisterDesc("DH", null, new int[]{DX, EAX}, 0, 0),
 				// Pesudo floating point register.
-				new MCRegisterDesc("FP0", null, null, 0, 0),
-				new MCRegisterDesc("FP1", null, null, 0, 0),
-				new MCRegisterDesc("FP2", null, null, 0, 0),
-				new MCRegisterDesc("FP3", null, null, 0, 0),
-				new MCRegisterDesc("FP4", null, null, 0, 0),
-				new MCRegisterDesc("FP5", null, null, 0, 0),
-				new MCRegisterDesc("FP6", null, null, 0, 0),
+				new TargetRegisterDesc("FP0", null, null, 0, 0),
+				new TargetRegisterDesc("FP1", null, null, 0, 0),
+				new TargetRegisterDesc("FP2", null, null, 0, 0),
+				new TargetRegisterDesc("FP3", null, null, 0, 0),
+				new TargetRegisterDesc("FP4", null, null, 0, 0),
+				new TargetRegisterDesc("FP5", null, null, 0, 0),
+				new TargetRegisterDesc("FP6", null, null, 0, 0),
 
 				// stack floating point register.
-				new MCRegisterDesc("ST0", null, null, 0, 0),
-				new MCRegisterDesc("ST1", null, null, 0, 0),
-				new MCRegisterDesc("ST2", null, null, 0, 0),
-				new MCRegisterDesc("ST3", null, null, 0, 0),
-				new MCRegisterDesc("ST4", null, null, 0, 0),
-				new MCRegisterDesc("ST5", null, null, 0, 0),
-				new MCRegisterDesc("ST6", null, null, 0, 0),
-				new MCRegisterDesc("ST7", null, null, 0, 0),
+				new TargetRegisterDesc("ST0", null, null, 0, 0),
+				new TargetRegisterDesc("ST1", null, null, 0, 0),
+				new TargetRegisterDesc("ST2", null, null, 0, 0),
+				new TargetRegisterDesc("ST3", null, null, 0, 0),
+				new TargetRegisterDesc("ST4", null, null, 0, 0),
+				new TargetRegisterDesc("ST5", null, null, 0, 0),
+				new TargetRegisterDesc("ST6", null, null, 0, 0),
+				new TargetRegisterDesc("ST7", null, null, 0, 0),
 			};
 
 	private static int[] calleeSavedRegs = {ESI, EDI, EBX, EBP};
@@ -248,18 +251,18 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 				amount = Util.roundUp(amount, align);
 
 				// stack setup pseudo instrcution.
-				if (old.getOpCode() == X86InstrSets.ADJCALLSTACKDOWN)
+				if (old.getOpCode() == X86InstrNames.ADJCALLSTACKDOWN)
 				{
-					newOne = buildMI(X86InstrSets.SUBri32, 2, X86RegsSet.ESP).
-							addReg(X86RegsSet.ESP).
+					newOne = buildMI(X86InstrNames.SUBri32, 2, X86RegNames.ESP).
+							addReg(X86RegNames.ESP).
 							addZImm(amount).getMInstr();
 				}
 				else
 				{
-					assert (old.getOpCode() == X86InstrSets.ADJCALLSTACKUP);
+					assert (old.getOpCode() == X86InstrNames.ADJCALLSTACKUP);
 					// stack destroy pseudo instruction.
-					newOne = buildMI(X86InstrSets.ADDri32, 2, X86RegsSet.ESP).
-							addReg(X86RegsSet.ESP).
+					newOne = buildMI(X86InstrNames.ADDri32, 2, X86RegNames.ESP).
+							addReg(X86RegNames.ESP).
 							addZImm(amount).getMInstr();
 				}
 			}
@@ -301,7 +304,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegsSet, X
 		}
 
 		int frameIndex = mi.getOperand(i).getFrameIndex();
-		mi.setMachineOperandReg(i, hasFP(mf)?X86RegsSet.EBP : X86RegsSet.ESP);
+		mi.setMachineOperandReg(i, hasFP(mf)? X86RegNames.EBP : X86RegNames.ESP);
 
 		int offset = mf.getFrameInfo().getObjectOffset(frameIndex) +
 				(int)mi.getOperand(i+3).getImmedValue() + 4;

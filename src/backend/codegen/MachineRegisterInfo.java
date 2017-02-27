@@ -16,7 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 import tools.Pair;
 
 import java.util.ArrayList;

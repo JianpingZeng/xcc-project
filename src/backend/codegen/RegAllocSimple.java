@@ -7,7 +7,7 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;

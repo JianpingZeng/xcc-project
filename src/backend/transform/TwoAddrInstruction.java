@@ -7,7 +7,7 @@ import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 
 /**
  * @author Xlous.zeng

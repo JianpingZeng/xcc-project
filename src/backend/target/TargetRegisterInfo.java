@@ -14,110 +14,6 @@ import gnu.trove.list.array.TIntArrayList;
  */
 public abstract class TargetRegisterInfo
 {
-	/**
-	 * This record contains all of the information known about a
-	 * particular register.  The subRegs field (if not null) is an array of
-	 * registers that are sub-register of the specified register. The superRegs
-	 * field (if not null) is an array of registers that are super-register of
-	 * the specified register. This is needed for architectures like X86 which
-	 * have AL alias AX alias EAX. Registers that this does not apply to simply
-	 * should set this to null.
-	 */
-	public static class MCRegisterDesc
-	{
-		/**
-		 * Assembly language getName for the register.
-		 */
-		public String name;
-		/**
-		 * Register Alias Set, described above
-		 */
-		public int[] subRegs;
-
-		public int[] superRegs;
-		/**
-		 * flags identifying register properties (below).
-		 */
-		public int flags;
-		/**
-		 * Target Specific flags.
-		 */
-		public int tSFlags;
-
-		public MCRegisterDesc(String Name, int[] SubRegs,
-				int[] SuperRegs, int Flags, int TSFlags)
-		{
-			name = Name;
-			subRegs = SubRegs;
-			superRegs = SuperRegs;
-			flags = Flags;
-			tSFlags = TSFlags;
-		}
-	}
-
-	public abstract static class TargetRegisterClass
-	{
-		/**
-		 * The register size and alignment in Bytes.
-		 */
-		private int regSize, regAlign;
-		private int[] regs;
-
-		protected TargetRegisterClass(int rs, int ra, int[] regs)
-		{
-			regSize = rs;
-			regAlign = ra;
-			this.regs = regs;
-		}
-
-		public int getNumRegs()
-		{
-			return regs.length;
-		}
-
-		public int getRegister(int i)
-		{
-			assert i >= 0 && i < regs.length;
-			return regs[i];
-		}
-
-		/**
-		 * Return the size of the register in bytes, which is also the size
-		 * of a stack slot allocated to hold a spilled copy of this register.
-		 *
-		 * @return
-		 */
-		public int getRegSize()
-		{
-			return regSize;
-		}
-
-		/**
-		 * Return the minimum required alignment for a register of
-		 * this class.
-		 *
-		 * @return
-		 */
-		public int getRegAlign()
-		{
-			return regAlign;
-		}
-
-		/**
-		 * Obtains the begin index of the allocatable registers group.
-		 * @return
-		 */
-		public int allocatableBegin(MachineFunction mf) {return 0;}
-
-		/**
-		 * Obtains the index of machine register behind of the last allocatable
-		 * register. So the allocatable register is qualified with range
-		 * from [begin, end).
-		 * @return
-		 */
-		public int allocatableEnd(MachineFunction mf) {return getNumRegs();}
-	}
-
 	//=================================================================//
 	// The member of class TargetRegisterInfo.
 
@@ -136,7 +32,7 @@ public abstract class TargetRegisterInfo
 	public static final int FirstVirtualRegister = 1024;
 
 	
-	private MCRegisterDesc[] desc;
+	private TargetRegisterDesc[] desc;
 	/**
 	 * Mapping the machine register number to its register class.
 	 */
@@ -158,7 +54,7 @@ public abstract class TargetRegisterInfo
 	 */
 	private int callFrameDestroyOpCode;
 
-	protected TargetRegisterInfo(MCRegisterDesc[] desc,
+	protected TargetRegisterInfo(TargetRegisterDesc[] desc,
 			TargetRegisterClass[] regClasses, int callFrameSetupOpCode,
 			int callFrameDestroyOpCode)
 	{
@@ -182,7 +78,7 @@ public abstract class TargetRegisterInfo
 		this.callFrameDestroyOpCode = callFrameDestroyOpCode;
 	}
 
-	protected TargetRegisterInfo(MCRegisterDesc[] desc,
+	protected TargetRegisterInfo(TargetRegisterDesc[] desc,
 			TargetRegisterClass[] phyRegClasses)
 	{
 		this(desc, phyRegClasses, -1, -1);
@@ -194,7 +90,7 @@ public abstract class TargetRegisterInfo
 	 * @param regNo
 	 * @return
 	 */
-	public MCRegisterDesc get(int regNo)
+	public TargetRegisterDesc get(int regNo)
 	{
 		assert regNo >= 0 && regNo < desc.length;
 		return desc[regNo];

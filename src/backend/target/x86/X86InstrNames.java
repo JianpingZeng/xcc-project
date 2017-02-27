@@ -3,7 +3,7 @@ package backend.target.x86;
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface X86InstrSets
+public interface X86InstrNames
 {
 	// Pseudo instruction.
 	int PHI = 0;

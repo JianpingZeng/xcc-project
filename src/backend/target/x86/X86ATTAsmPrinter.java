@@ -573,7 +573,7 @@ public final class X86ATTAsmPrinter extends AsmPrinter
             {
                 // print pesudo instruction as comments;
                 os.print("\t#");
-                if (opcode == X86InstrSets.PHI)
+                if (opcode == X86InstrNames.PHI)
                 {
                     printOp(mi.getOperand(0));
                     os.print(" = phi ");

@@ -7,7 +7,7 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 
@@ -59,7 +59,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 		phyRegUsed = new HashMap<>();
 	}
 
-	private int getStackSlotForVirReg(int virReg, TargetRegisterInfo.TargetRegisterClass rc)
+	private int getStackSlotForVirReg(int virReg, TargetRegisterClass rc)
 	{
 		// Find the location virReg would belong.
 		if (stackSlotForVirReg.containsKey(virReg))
@@ -207,7 +207,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 
 		int phyReg = getReg(mbb, insertPos, virReg);
 
-		TargetRegisterInfo.TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 		int frameIdx = getStackSlotForVirReg(virReg, rc);
 
 		// note that this reg is just reloaded.
@@ -278,7 +278,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 		// We just spill those modified virtual register into memory cell.
 		if (isVirRegModified(virReg))
 		{
-			TargetRegisterInfo.TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
+			TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 			int frameIdx = getStackSlotForVirReg(virReg, rc);
 			regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
 

@@ -22,7 +22,7 @@ import backend.target.TargetFrameInfo;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
-import backend.target.TargetRegisterInfo.TargetRegisterClass;
+import backend.target.TargetRegisterClass;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Util;
 

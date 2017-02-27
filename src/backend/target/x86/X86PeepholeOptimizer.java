@@ -64,9 +64,9 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
         MachineInstr next = idx == mbb.size() - 1? null: mbb.getInstAt(idx+1);
         switch (curMI.getOpCode())
         {
-            case X86InstrSets.MOVrr8:
-            case X86InstrSets.MOVrr16:
-            case X86InstrSets.MOVrr32:
+            case X86InstrNames.MOVrr8:
+            case X86InstrNames.MOVrr16:
+            case X86InstrNames.MOVrr32:
                 // destroy X=X copy.
                 if (curMI.getOperand(0).getReg()
                         == curMI.getOperand(1).getReg())
@@ -77,18 +77,18 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                 }
                 res = false;
                 return idx+1;
-            case X86InstrSets.ADDri16:
-            case X86InstrSets.ADDri32:
-            case X86InstrSets.SUBri16:
-            case X86InstrSets.SUBri32:
-            case X86InstrSets.IMULri16:
-            case X86InstrSets.IMULri32:
-            case X86InstrSets.ANDri16:
-            case X86InstrSets.ANDri32:
-            case X86InstrSets.ORri16:
-            case X86InstrSets.ORri32:
-            case X86InstrSets.XORri16:
-            case X86InstrSets.XORri32:
+            case X86InstrNames.ADDri16:
+            case X86InstrNames.ADDri32:
+            case X86InstrNames.SUBri16:
+            case X86InstrNames.SUBri32:
+            case X86InstrNames.IMULri16:
+            case X86InstrNames.IMULri32:
+            case X86InstrNames.ANDri16:
+            case X86InstrNames.ANDri32:
+            case X86InstrNames.ORri16:
+            case X86InstrNames.ORri32:
+            case X86InstrNames.XORri16:
+            case X86InstrNames.XORri32:
                 assert curMI.getNumOperands() == 3:"There should have 3 opernds!";
                 if (curMI.getOperand(2).isImmediate())
                 {
@@ -100,18 +100,18 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                         switch (curMI.getOpCode())
                         {
                             default: assert false:"Unknown opcode value!";
-                            case X86InstrSets.ADDri16: opcode =X86InstrSets.ADDri16b;break;
-                            case X86InstrSets.ADDri32: opcode = X86InstrSets.ADDri32b; break;
-                            case X86InstrSets.SUBri16: opcode = X86InstrSets.SUBri16b; break;
-                            case X86InstrSets.SUBri32: opcode = X86InstrSets.SUBri32b; break;
-                            case X86InstrSets.IMULri16: opcode = X86InstrSets.IMULri16b; break;
-                            case X86InstrSets.IMULri32: opcode = X86InstrSets.IMULri32b; break;
-                            case X86InstrSets.ANDri16: opcode = X86InstrSets.ANDri16; break;
-                            case X86InstrSets.ANDri32: opcode = X86InstrSets.ANDri32b; break;
-                            case X86InstrSets.ORri16: opcode = X86InstrSets.ORri16b; break;
-                            case X86InstrSets.ORri32: opcode = X86InstrSets.ORri32b; break;
-                            case X86InstrSets.XORri16: opcode = X86InstrSets.XORri16b; break;
-                            case X86InstrSets.XORri32:opcode = X86InstrSets.XORri32b; break;
+                            case X86InstrNames.ADDri16: opcode = X86InstrNames.ADDri16b;break;
+                            case X86InstrNames.ADDri32: opcode = X86InstrNames.ADDri32b; break;
+                            case X86InstrNames.SUBri16: opcode = X86InstrNames.SUBri16b; break;
+                            case X86InstrNames.SUBri32: opcode = X86InstrNames.SUBri32b; break;
+                            case X86InstrNames.IMULri16: opcode = X86InstrNames.IMULri16b; break;
+                            case X86InstrNames.IMULri32: opcode = X86InstrNames.IMULri32b; break;
+                            case X86InstrNames.ANDri16: opcode = X86InstrNames.ANDri16; break;
+                            case X86InstrNames.ANDri32: opcode = X86InstrNames.ANDri32b; break;
+                            case X86InstrNames.ORri16: opcode = X86InstrNames.ORri16b; break;
+                            case X86InstrNames.ORri32: opcode = X86InstrNames.ORri32b; break;
+                            case X86InstrNames.XORri16: opcode = X86InstrNames.XORri16b; break;
+                            case X86InstrNames.XORri32:opcode = X86InstrNames.XORri32b; break;
                         }
 
                         int r0 = curMI.getOperand(0).getReg();
@@ -124,10 +124,10 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                 }
                 res = false;
                 return idx+1;
-            case X86InstrSets.BSWAPr32:
+            case X86InstrNames.BSWAPr32:
             {
                 // Change bswap EAX, bswap EAX into nothing.
-                if (next.getOpCode() == X86InstrSets.BSWAPr32
+                if (next.getOpCode() == X86InstrNames.BSWAPr32
                         && curMI.getOperand(0).getReg() ==
                         next.getOperand(0).getReg())
                 {
