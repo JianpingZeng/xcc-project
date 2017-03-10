@@ -21,6 +21,7 @@ import tools.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Objects;
 
 import static javafx.scene.input.KeyCode.R;
 
@@ -133,7 +134,7 @@ public final class CodeGenInstruction
                 NumOps = Rec.getValueAsInt("NumMIOperands");
                 MIOpInfo = Rec.getValueAsDag("MIOperandInfo");
             }
-            else if (Rec.getName() == "variable_ops")
+            else if (Objects.equals(Rec.getName(), "variable_ops"))
             {
                 hasVariableNumberOfOperands = true;
                 continue;

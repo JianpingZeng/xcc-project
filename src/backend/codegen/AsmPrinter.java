@@ -23,11 +23,13 @@ import backend.target.TargetMachine;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Value.UndefValue;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import tools.Util;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Objects;
 
 /**
  * This is a common base class be used for target-specific asmwriters. This
@@ -566,11 +568,27 @@ public abstract class AsmPrinter extends MachineFunctionPass
         os.print("\"");
     }
 
-    protected abstract void printAsmOperand(MachineInstr mi, int opNo,
-            int asmVariant, String extra);
+    protected void printAsmOperand(MachineInstr mi, int opNo,
+            int asmVariant, String extra)
+    {
+        throw new NotImplementedException();
+    }
 
-    protected abstract void printAsmMemoryOperand(MachineInstr mi, int opNo,
-            int asmVariant, String extra);
+    protected void printAsmMemoryOperand(MachineInstr mi, int opNo,
+            int asmVariant, String extra)
+    {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * This method formats and prints the specified machine
+     * instruction that is an inline asm.
+     * @param mi
+     */
+    protected void printInlineAsm(MachineInstr mi)
+    {
+
+    }
 
     public void switchSection(String newSection, GlobalValue gv)
     {
@@ -580,7 +598,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         else
             ns = "\t" + newSection;
 
-        if (currentSection != ns)
+        if (!Objects.equals(currentSection, ns))
         {
             currentSection = ns;
             if (currentSection != null && !currentSection.isEmpty())
