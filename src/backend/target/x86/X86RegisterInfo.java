@@ -90,19 +90,19 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 		}
 	}
 
-	private static X86R8RegisterClass x86R8RegClass =
+	final static X86R8RegisterClass x86R8RegClass =
 			new X86R8RegisterClass(1, 1, X86R8);
 
-	private static X86R16RegisterClass x86R16RegClass =
+	final static X86R16RegisterClass x86R16RegClass =
 			new X86R16RegisterClass(2, 2, X86R16);
 
-	private static X86R32RegisterClass x86R32RegClass =
+	final static X86R32RegisterClass x86R32RegClass =
 			new X86R32RegisterClass(4, 4, X86R32);
 
-	private static X86RFPRegisterClass x86RFPClass =
+	final static X86RFPRegisterClass x86RFPClass =
 			new X86RFPRegisterClass(4, 4, X86RFP);
 
-	private static X86RSTRegisterClass x86RSTClass =
+	final static X86RSTRegisterClass x86RSTClass =
 			new X86RSTRegisterClass(8, 4, X86RST);
 
 	/**

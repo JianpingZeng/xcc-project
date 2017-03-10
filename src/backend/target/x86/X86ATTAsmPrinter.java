@@ -195,14 +195,20 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
             }
             case MO_GlobalAddress:
             {
-                os.print("$");
+                boolean isCallOp = modifier != null && !modifier.equals("call");
+                boolean isMemOp = modifier != null && !modifier.equals("mem");
+                if (!isCallOp && !isMemOp)
+                    os.print("$");
+
                 os.print(mangler.getValueName(mo.getGlobal()));
                 return;
             }
             case MO_ExternalSymbol:
             {
-                os.print("$");
-                os.print(mo.getSymbolName());
+                boolean isCallOp = modifier != null && !modifier.equals("call");
+                if (!isCallOp)
+                    os.print("$");
+                os.printf("%s%s", globalPrefix, mo.getSymbolName());
                 return;
             }
             default:

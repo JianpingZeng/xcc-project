@@ -79,6 +79,7 @@ public class MachineFrameInfo
 
     public MachineFrameInfo()
     {
+        objects = new ArrayList<>();
         numFixedObjects = 0;
         stackSize = 0;
         hasVarSizedObjects = false;
@@ -214,12 +215,12 @@ public class MachineFrameInfo
     {
         assert size != 0 : "Cannot allocate zero size fixed stack objects!";
         objects.add(0, new StackObject(size, 1, SPOffset));
-        return -++numFixedObjects;
+        return -(++numFixedObjects);
     }
 
     /**
      * createStackObject - Create a new statically sized stack object, returning
-     * a postive identifier to represent it.
+     * a positive integer to represent it.
      */
     public int createStackObject(int size, int Alignment)
     {
