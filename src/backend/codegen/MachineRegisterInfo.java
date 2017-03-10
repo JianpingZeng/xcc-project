@@ -65,7 +65,7 @@ public final class MachineRegisterInfo
      * @param regClass
      * @return
      */
-    public int createVirtualRegister(TargetRegisterClass  regClass)
+    public int createVirtualRegister(TargetRegisterClass regClass)
     {
         vregInfo.add(new Pair<>(regClass, null));
         return vregInfo.size() - 1 + FirstVirtualRegister;

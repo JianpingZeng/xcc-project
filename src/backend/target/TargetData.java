@@ -1,7 +1,6 @@
 package backend.target;
 
-import backend.pass.ImmutablePass;
-import backend.pass.RegisterPass;
+import backend.pass.*;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
@@ -76,6 +75,11 @@ public class TargetData extends ImmutablePass
 		intAlignment = 4;
 		shortAlignment = 2;
 		byteAlignment = 1;
+	}
+
+	@Override public void initializePass()
+	{
+
 	}
 
 	public TargetData(String targetName, boolean isLittleEndian, int ptrSize,
@@ -219,6 +223,23 @@ public class TargetData extends ImmutablePass
 
 	@Override
 	public String getPassName(){return "Target Data pass!";}
+
+	@Override public Pass getAnalysisToUpDate(PassInfo pi)
+	{
+		return null;
+	}
+
+	@Override
+	public void addToPassManager(ModulePassManager pm, AnalysisUsage au)
+	{
+
+	}
+
+	@Override
+	public void addToPassManager(FunctionPassManager pm, AnalysisUsage au)
+	{
+
+	}
 
 	/**
 	 * This class is used to lazily compute structure layout information for

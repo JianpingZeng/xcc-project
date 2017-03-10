@@ -455,7 +455,7 @@ public final class AsmWriterEmitter extends TableGenBackend
             {
                 // If this is the operand that varies between all of the instructions,
                 // emit a switch for just this operand now.
-                os.print("    switch (MI->getOpcode()) {\n");
+                os.print("    switch (mi.getOpcode()) {\n");
                 LinkedList<Pair<String, AsmWriterOperand>> opsToPrint  = new LinkedList<>();
                 opsToPrint.add(Pair.get(firstInst.cgi.theDef.getName(),
                         firstInst.operands.get(i)));

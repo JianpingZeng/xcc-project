@@ -29,13 +29,14 @@ public class MachineBasicBlock
 
 	public MachineBasicBlock(final BasicBlock bb)
 	{
+		insts = new LinkedList<>();
 		this.bb = bb;
 		number = -1;
 		predecessors = new ArrayList<>();
 		successors = new ArrayList<>();
 	}
 
-	public BasicBlock getBasicBlock() {return bb;}
+	public BasicBlock getBasicBlock() { return bb; }
 
 	public int size() {return insts.size();}
 
