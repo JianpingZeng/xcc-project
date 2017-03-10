@@ -20,6 +20,7 @@ import backend.codegen.MVT;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 /**
  * This class corresponds to the Target class in .td file.
@@ -61,7 +62,7 @@ public final class CodeGenTarget
 
     private void readRegisters() throws Exception
     {
-        ArrayList<Record> regs = Record.records.getAllDerivedDefinition("Registere");
+        ArrayList<Record> regs = Record.records.getAllDerivedDefinition("Register");
         if (regs.isEmpty())
             throw new Exception("No 'Register' subclasses defined!");
         registers = new ArrayList<>();
@@ -167,5 +168,39 @@ public final class CodeGenTarget
     public ArrayList<CodeGenRegister> getRegisters()
     {
         return registers;
+    }
+
+    public HashMap<String, CodeGenInstruction> getInstructions()
+    {
+        return instructions;
+    }
+
+    /**
+     * Return all of the instructions defined by the target, ordered by their
+     * enum value.
+     * @param numberedInstructions
+     */
+    public void getInstructionsByEnumValue(
+            LinkedList<CodeGenInstruction> numberedInstructions)
+            throws Exception
+    {
+        if (!instructions.containsKey("PHI"))
+            throw new Exception("Could not find 'PHI' instruction");
+        CodeGenInstruction phi = instructions.get("PHI");
+
+        if (instructions.containsKey("INLINEASM"))
+            throw new Exception("Could not find 'INLINEASM instruction'");
+
+        CodeGenInstruction inlineAsm = instructions.get("INLINEASM");
+
+        // Print out the rest of the instructions set.
+        numberedInstructions.add(phi);
+        numberedInstructions.add(inlineAsm);
+        instructions.entrySet().forEach(entry->
+        {
+            CodeGenInstruction inst =  entry.getValue();
+            if (inst != phi && inst != inlineAsm)
+                numberedInstructions.add(inst);
+        });
     }
 }

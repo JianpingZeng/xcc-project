@@ -69,4 +69,26 @@ public final class MVT
                 return 128;
         }
     }
+
+    public static String getNameForMVT(MVT.ValueType ty)
+    {
+        switch (ty)
+        {
+            case Other: return "UNKNOWN";
+            case i1: return "i1";
+            case i8: return "i8";
+            case i16: return "i16";
+            case i32: return "i32";
+            case i64: return "i64";
+            case i128: return "i128";
+            case f32: return "f32";
+            case f64: return "f64";
+            case f80: return "f80";
+            case f128: return "f128";
+            case isVoid: return "void";
+            default:
+                assert false:"Illegal value type!";
+                return "";
+        }
+    }
 }
