@@ -15,11 +15,11 @@ options
 }
 
 PARSER_BEGIN(TGParser)
-package tools.tablegen;
+package backend.utils.tablegen;
 import gnu.trove.list.array.TIntArrayList;
 import tools.Pair;
-import tools.tablegen.Init.*;
-import tools.tablegen.RecTy.*;
+import backend.utils.tablegen.Init.*;
+import backend.utils.tablegen.RecTy.*;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -28,7 +28,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Stack;
 
-import static tools.tablegen.Record.records;
+import static backend.utils.tablegen.Record.records;
 
 public final class TGParser
 {

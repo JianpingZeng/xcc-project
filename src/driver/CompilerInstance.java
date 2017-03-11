@@ -1,30 +1,31 @@
 package driver;
 
-import driver.SourceFile.FileType;
-import jlang.codegen.BackendConsumer;
 import backend.hir.Module;
-import backend.lir.backend.ia32.IA32;
-import backend.lir.backend.ia32.IA32RegisterConfig;
+import backend.target.TargetMachine;
+import driver.SourceFile.FileType;
 import jlang.ast.ASTConsumer;
-import jlang.sema.ASTContext;
+import jlang.codegen.BackendConsumer;
 import jlang.sema.Decl;
 import jlang.sema.Sema;
-import backend.target.TargetMachine;
+import org.apache.commons.cli.CommandLine;
 import tools.Context;
 import tools.Log;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 import static driver.BackendAction.Backend_EmitAssembly;
-import static driver.BackendAction.Backend_EmitHir;
+import static driver.BackendAction.Backend_EmitIr;
 import static driver.CompileOptions.InliningMethod.NormalInlining;
 import static driver.CompileOptions.InliningMethod.OnlyAlwaysInlining;
-import static driver.ProgramAction.EmitHIR;
+import static driver.ProgramAction.EmitIR;
 import static driver.SourceFile.FileType.AsmSource;
-import static driver.SourceFile.FileType.HirSource;
+import static driver.SourceFile.FileType.IRSource;
 
 public class CompilerInstance
 {
@@ -35,25 +36,7 @@ public class CompilerInstance
      */
     private Log log;
 
-    private Context ctx;
-    /**
-     * A flag that marks whether debug parer.
-     */
-    private boolean debugParser = false;
-
-    private boolean verbose = false;
-
-    /**
-     * A flag that marks whether output TargetData file.
-     */
-    @SuppressWarnings("unused")
-    private boolean outputResult = false;
-
-    private Backend backend;
-    private Optimizer optimizer;
-
-    private ASTContext context;
-    private Options options;
+    private Context ctx = null;
 
 	/**
 	 * The program action which this compiler instance will takes.
@@ -66,29 +49,22 @@ public class CompilerInstance
      * line argument, default to X86.
      */
     private Function<Module, TargetMachine> targetMachineAllocator;
+    private CommandLine cmdLine;
 
-    public CompilerInstance(Context ctx)
+    private CompilerInstance(CommandLine cmdLine)
     {
         super();
         ctx.put(compilerKey, this);
-        this.ctx = ctx;
-        this.log = Log.instance(ctx);
-        options = Options.instance(ctx);
+        log = Log.instance(ctx);
+        this.cmdLine = cmdLine;
 
-        // TODO: to specify machine specification with command line option.
-        Backend backend = new IA32Backend(ctx, IA32.target(),
-                IA32RegisterConfig.newInstance());
-        Optimizer optimizer = new Optimizer(ctx);
-
-        this.debugParser = options.get("--debug-Parser") != null;
-        this.outputResult = options.get("-o") != null;
-        context = new ASTContext();
+        // Set the program action as ParseSyntaxOnly by default.
         progAction = ProgramAction.ParseSyntaxOnly;
     }
 
-    public static CompilerInstance make(Context context)
+    public static CompilerInstance construct(CommandLine cmdline)
     {
-        return new CompilerInstance(context);
+        return new CompilerInstance(cmdline);
     }
 
     /**
@@ -99,6 +75,10 @@ public class CompilerInstance
         return log.nerrors;
     }
 
+    /**
+     * This is the main entry point for compiling the specified list of source files.
+     * @param filenames A list of sources file to be processed.
+     */
     public void compile(List<SourceFile> filenames)
     {
         long msec = System.currentTimeMillis();
@@ -107,27 +87,27 @@ public class CompilerInstance
         targetMachineAllocator = TargetMachine::allocateIA32TargetMachine;
 
         // Sets the program action from command line option.
-        if (options.isDumpAst())
+        if (cmdLine.hasOption(ProgramAction.ASTDump.getOptName()))
             progAction = ProgramAction.ASTDump;
-        if (options.isParseASTOnly())
+        if (cmdLine.hasOption(ProgramAction.ParseSyntaxOnly.getOptName()))
             progAction = ProgramAction.ParseSyntaxOnly;
-        if (options.isEmitAssembly())
-            progAction = ProgramAction.EmitAssembly;
+        if (cmdLine.hasOption(ProgramAction.GenerateAsmCode.getOptName()))
+            progAction = ProgramAction.GenerateAsmCode;
 
         for (SourceFile name : filenames)
         {
             processInputFile(name);
         }
-        if (verbose)
+
+        int errCount = errorCount();
+        if (errCount >= 1)
+            printCount("error", errCount);
+
+        if (cmdLine.hasOption(ProgramAction.Verbose.getOptName()))
         {
             printVerbose("total",Long.toString(System.currentTimeMillis() - msec));
         }
-        int errCount = errorCount();
-        if (errCount == 1)
-            printCount("error", errCount);
-        else
-            printCount("error.plural", errCount);
-
+        
         // close logger stream.
         close();
     }
@@ -157,14 +137,14 @@ public class CompilerInstance
                 case ASTDump:
                     assert false:"Unsupported currently.";
                     return;
-                case EmitHIR:
-                case EmitAssembly:
+                case EmitIR:
+                case GenerateAsmCode:
                 {
                     BackendAction act;
-                    if(progAction == EmitHIR)
+                    if(progAction == EmitIR)
                     {
-                        act = Backend_EmitHir;
-                        os = computeOutFile(filename, HirSource);
+                        act = Backend_EmitIr;
+                        os = computeOutFile(filename, IRSource);
                     }
                     else
                     {
@@ -222,10 +202,12 @@ public class CompilerInstance
     private CompileOptions initializeCompileOptions()
     {
         CompileOptions compOpt = new CompileOptions();
-        if(options.optLevel() != null)
+        String optLevel = cmdLine.getOptionValue(ProgramAction.OptSpeed.getOptName());
+        if(optLevel != null)
         {
-            compOpt.optimizationLevel = Byte.parseByte(options.optLevel());
+            compOpt.optimizationLevel = Byte.parseByte(optLevel);
         }
+        compOpt.optimizeSize = cmdLine.hasOption(ProgramAction.OptSize.getOptName());
 
         if (compOpt.optimizationLevel > 1)
             compOpt.inlining = NormalInlining;
@@ -233,14 +215,9 @@ public class CompilerInstance
             compOpt.inlining = OnlyAlwaysInlining;
 
         compOpt.unrollLoops = compOpt.optimizationLevel>1;
-        compOpt.debugInfo = options.enableDebug();
+        compOpt.debugInfo = cmdLine.hasOption(ProgramAction.
+                GenerateDebugInfo.getOptName());
         return compOpt;
-    }
-
-    private ASTContext getASTConext()
-    {
-        assert context !=null:"CompilerInstance instance must have ASTContext!";
-        return context;
     }
 
     /**
@@ -269,5 +246,8 @@ public class CompilerInstance
     /**
      * Close the driver, flushing the logs
      */
-    public void close(){log.flush();}
+    public void close()
+    {
+        log.flush();
+    }
 }

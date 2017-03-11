@@ -1,4 +1,4 @@
-package tools.tablegen;
+package backend.utils.tablegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous
@@ -16,7 +16,7 @@ package tools.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.tablegen.Init.*;
+import backend.utils.tablegen.Init.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;

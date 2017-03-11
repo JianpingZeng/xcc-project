@@ -1,4 +1,4 @@
-package tools.tablegen;
+package backend.utils.tablegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous
@@ -16,8 +16,8 @@ package tools.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.tablegen.Init.DagInit;
-import tools.tablegen.Init.DefInit;
+import backend.utils.tablegen.Init.DagInit;
+import backend.utils.tablegen.Init.DefInit;
 
 import java.util.ArrayList;
 import java.util.HashSet;

@@ -8,6 +8,6 @@ public enum BackendAction
 {
 	Backend_EmitNothing,
 	Backend_EmitAssembly,
-	Backend_EmitHir,
+	Backend_EmitIr,
 	Backend_EmitObj,
 }

@@ -1,7 +1,7 @@
-package tools.tablegen;
+package backend.utils.tablegen;
 /*
  * Xlous C language Compiler
- * Copyright (c) 2015-2017, Xlous
+ * Copyright (c) 2015-2016, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,19 +20,7 @@ package tools.tablegen;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class CodeGenRegister
+public final class TableGen
 {
-    Record theDef;
-    String getName()
-    {
-        return theDef.getName();
-    }
 
-    int declaredSpillSize, declaredSpillAlignment;
-    CodeGenRegister(Record rec) throws Exception
-    {
-        theDef = rec;
-        declaredSpillSize = rec.getValueAsInt("SpillSize");
-        declaredSpillAlignment = rec.getValueAsInt("SpillAlignment");
-    }
 }
