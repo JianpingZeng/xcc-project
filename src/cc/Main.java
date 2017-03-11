@@ -4,20 +4,23 @@ import java.io.PrintWriter;
 
 public class Main
 {
-    public Main() {
+    public Main()
+    {
         super();
     }
-    static {
+    static
+    {
         ClassLoader loader = Main.class.getClassLoader();
         if (loader != null)
-            loader.setPackageAssertionStatus("cc", true);
+            loader.setPackageAssertionStatus(driver.Main.NAME, true);
     }
 
     /**
       * Command line interface.
       * @param args   The command line parameters.
       */
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         System.exit(compile(args));
     }
     
@@ -25,8 +28,9 @@ public class Main
       * Programmatic interface.
       * @param args   The command line parameters.
       */
-    public static int compile(String[] args) {
-		driver.Main compiler = new driver.Main("cc");
+    public static int compile(String[] args)
+    {
+		driver.Main compiler = new driver.Main(driver.Main.NAME);
         return compiler.compile(args);
     }
 
@@ -37,7 +41,7 @@ public class Main
       */
     public static int compile(String[] args, PrintWriter out) {
     	driver.Main compiler =
-                new driver.Main("cc", out);
+                new driver.Main(driver.Main.NAME, out);
         return compiler.compile(args);
     }
 }

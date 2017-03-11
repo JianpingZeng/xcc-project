@@ -1,4 +1,4 @@
-package tools.tablegen;
+package backend.utils.tablegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous

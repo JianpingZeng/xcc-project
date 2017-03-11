@@ -23,7 +23,7 @@ public abstract class TargetMachine
     {
         None,
         Default,
-        Aggressiv
+	    Aggressive
     }
 
 	/**

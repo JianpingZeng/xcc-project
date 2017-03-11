@@ -1,4 +1,4 @@
-package tools.tablegen;
+package backend.utils.tablegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous
@@ -20,6 +20,19 @@ package tools.tablegen;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class InstrInfoEmitter extends TableGenBackend
+public final class CodeGenRegister
 {
+    Record theDef;
+    String getName()
+    {
+        return theDef.getName();
+    }
+
+    int declaredSpillSize, declaredSpillAlignment;
+    CodeGenRegister(Record rec) throws Exception
+    {
+        theDef = rec;
+        declaredSpillSize = rec.getValueAsInt("SpillSize");
+        declaredSpillAlignment = rec.getValueAsInt("SpillAlignment");
+    }
 }

@@ -3304,7 +3304,7 @@ public final class Sema
         }
 
         // At this point, we know we have a real, complex or pointer jlang.type.
-        // Now make sure the operand is a modifiable lvalue.
+        // Now construct sure the operand is a modifiable lvalue.
         if (checkForModifiableLvalue(op, opLoc))
             return new QualType();
 
@@ -4017,7 +4017,7 @@ public final class Sema
         if (checkDeclInExpr(loc, decl))
             return exprError();
 
-        // make sure that we are referring to a value.
+        // construct sure that we are referring to a value.
         ValueDecl vd = (ValueDecl)decl;
         if (vd == null)
         {

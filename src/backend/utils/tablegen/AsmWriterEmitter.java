@@ -1,4 +1,4 @@
-package tools.tablegen;
+package backend.utils.tablegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -21,7 +21,7 @@ import tools.Pair;
 import java.io.PrintStream;
 import java.util.*;
 
-import static tools.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isLiteralTextOperand;
+import static backend.utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isLiteralTextOperand;
 
 /**
  * This class defined for generating partial code of AsmWriter, like Intel or

@@ -7,7 +7,6 @@ import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
-import driver.Options;
 import jlang.ast.Tree.*;
 import jlang.sema.Decl;
 import jlang.sema.Decl.FunctionDecl;
@@ -44,7 +43,7 @@ import static backend.value.GlobalValue.LinkageType.*;
  * <p>
  * When we performs that translating normal IR into IR in SSA form, all of global
  * variables will be ignored since the benefit of performing Memory-SSA can not
- * make up for loss of time and memory.
+ * construct up for loss of time and memory.
  *
  * Instead of a virtual register will be used for handling the global variable,
  * all of operations performed over global variable will takes effect on virtual

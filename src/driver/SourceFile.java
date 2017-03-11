@@ -12,7 +12,7 @@ public class SourceFile
 {
 	public enum FileType
 	{
-		HirSource(".hir"),
+		IRSource(".ir"),
 		CSource(".c"),
 		AsmSource(".s"),
 		Obj(".o"),
@@ -43,6 +43,7 @@ public class SourceFile
 		this.originName = name;
 		this.currentName = name;
 	}
+
 	@Override
 	public String toString()
 	{

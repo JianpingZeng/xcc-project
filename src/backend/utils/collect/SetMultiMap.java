@@ -1,4 +1,4 @@
-package tools.collect;
+package backend.utils.collect;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous

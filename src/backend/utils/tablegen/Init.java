@@ -1,4 +1,4 @@
-package tools.tablegen;
+package backend.utils.tablegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous
@@ -18,9 +18,9 @@ package tools.tablegen;
 
 import gnu.trove.list.array.TIntArrayList;
 import tools.Pair;
-import tools.tablegen.RecTy.BitsRecTy;
-import tools.tablegen.RecTy.ListRecTy;
-import tools.tablegen.RecTy.RecordRecTy;
+import backend.utils.tablegen.RecTy.BitsRecTy;
+import backend.utils.tablegen.RecTy.ListRecTy;
+import backend.utils.tablegen.RecTy.RecordRecTy;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;

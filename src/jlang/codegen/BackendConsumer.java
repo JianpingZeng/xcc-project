@@ -22,7 +22,6 @@ import backend.pass.*;
 import driver.BackendAction;
 import driver.CompileOptions;
 import jlang.ast.ASTConsumer;
-import driver.Options;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import backend.target.TargetData;
@@ -283,7 +282,7 @@ public class BackendConsumer extends ASTConsumer
             {
                 default:break;
                 case 1: optLevel = None;break;
-                case 3: optLevel = Aggressiv;break;
+                case 3: optLevel = Aggressive;break;
             }
 
             if (theTargetMachine.addPassesToEmitFile(pm, fast,
@@ -294,7 +293,7 @@ public class BackendConsumer extends ASTConsumer
             }
             return true;
         }
-        else if (action == Backend_EmitHir)
+        else if (action == Backend_EmitIr)
         {
             getPerModulePasses().add(new PrintModulePass(asmOutStream));
             buffer.append("Unsupport to emit hir code currently!");
