@@ -31,7 +31,7 @@ public abstract class TableGenBackend
      * All tablegen backends should implement the run method, which should be the main
      * entry point.
      */
-    public abstract void run() throws Exception;
+    public abstract void run(String outputFile) throws Exception;
 
     /**
      * Output a Java style header comment on the generated Java source file.

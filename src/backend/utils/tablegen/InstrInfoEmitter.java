@@ -22,4 +22,20 @@ package backend.utils.tablegen;
  */
 public final class InstrInfoEmitter extends TableGenBackend
 {
+    private RecordKeeper records;
+    public InstrInfoEmitter(RecordKeeper records)
+    {
+        this.records = records;
+    }
+
+    @Override
+    public void run(String outputFile) throws Exception
+    {
+
+    }
+
+    public void runEnums(String outputFile)
+    {
+
+    }
 }
