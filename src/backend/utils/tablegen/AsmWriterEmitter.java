@@ -32,12 +32,6 @@ import static backend.utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandTy
 public final class AsmWriterEmitter extends TableGenBackend
 {
     private PrintStream os;
-    private String path;
-
-    AsmWriterEmitter(String path)
-    {
-        this.path = path;
-    }
 
     private static boolean isLetter(char ch)
     {
@@ -302,7 +296,7 @@ public final class AsmWriterEmitter extends TableGenBackend
      * @throws Exception
      */
     @Override
-    public void run() throws Exception
+    public void run(String outputFile) throws Exception
     {
         emitSourceFileHeaderComment("Assembly Writer Source Fragment", os);
         CodeGenTarget target = new CodeGenTarget();
@@ -311,8 +305,10 @@ public final class AsmWriterEmitter extends TableGenBackend
         String className = target.getName() + "Gen" +
                 asmWriter.getValueAsString("AsmWriterClassName");
         String superName = target.getName() + asmWriter.getValueAsString("AsmWriterClassName");
-
-        os = new PrintStream(path + className +".java");
+        if (outputFile.equals("-"))
+            os = System.out;
+        else
+            os = new PrintStream(outputFile);
 
         int variant = asmWriter.getValueAsInt("Variant");
 
