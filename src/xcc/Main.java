@@ -1,4 +1,4 @@
-package cc;
+package xcc;
 
 import java.io.PrintWriter;
 
