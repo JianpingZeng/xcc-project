@@ -66,8 +66,9 @@ public class Main
     {
         for (ProgramAction action : ProgramAction.values())
         {
-            allOptions.add(new Option(action.getOptName(),
-                    action.isHasArg(), action.getDesc()));
+            allOptions.add(new CustomOption(action.getOptName(),
+                    action.isHasArg(), action.getDesc(),
+                    action.getChecker()));
         }
     }
 	/**
@@ -176,15 +177,17 @@ public class Main
 
         // process command line arguments
         List<SourceFile> filenames = processArgs(args);
+        if (cmdline.hasOption(ProgramAction.Verbose.getOptName()))
+        {
+            System.err.println(NAME +  "version " + VERSION + "on X86 machine");
+        }
+
         if (filenames.isEmpty())
         {
-            error("err.no.source.files");
-            return EXIT_CMDERR;
+            filenames.add(new SourceFile("-"));
         }
 
         CompilerInstance comp = CompilerInstance.construct(cmdline);
-        if (comp == null)
-            return EXIT_SYSERR;
         comp.compile(filenames);
         if (comp.errorCount() != 0)
             return EXIT_ERROR;

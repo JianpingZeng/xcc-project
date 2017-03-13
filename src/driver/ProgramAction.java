@@ -1,5 +1,7 @@
 package driver;
 
+import java.util.function.Predicate;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -30,8 +32,22 @@ public enum ProgramAction
     /**
      * Specify the optimize level for speed.
      */
-    OptSpeed("O", true,
-            "Specify the level of backend.transform"),
+    OptSpeed("O", true, "Specify the level of backend.transform",
+            (opt)->
+            {
+                String val = opt.getValue();
+                try
+                {
+                    int lev = Integer.parseInt(val);
+                    if (lev < 0 || lev > 3)
+                        return false;
+                    return true;
+                }
+                catch (NumberFormatException ex)
+                {
+                    return false;
+                }
+            }),
 
     /**
      * Specify the optimization level just for decreasing the generated code size
@@ -80,13 +96,20 @@ public enum ProgramAction
 	private String optName;
 	private boolean hasArg;
 	private String desc;
+	private Predicate<CustomOption> checker;
 
 	ProgramAction(String opt, boolean hasArg, String desc)
 	{
-		optName = opt;
-		this.hasArg = hasArg;
-		this.desc = desc;
+		this(opt, hasArg, desc, null);
 	}
+
+    ProgramAction(String opt, boolean hasArg, String desc, Predicate<CustomOption> checker)
+    {
+        optName = opt;
+        this.hasArg = hasArg;
+        this.desc = desc;
+        this.checker = checker;
+    }
 
 	public String getDesc()
     {
@@ -101,5 +124,10 @@ public enum ProgramAction
     public boolean isHasArg()
     {
         return hasArg;
+    }
+
+    public Predicate<CustomOption> getChecker()
+    {
+        return checker;
     }
 }
