@@ -480,7 +480,7 @@ public final class Sema
 
         // TODO LookupBiutin().
         // If we didn't find a use of this identifier, and if the identifier
-        // corresponds to a driver builtin, create the decl object for the
+        // corresponds to a jlang.driver builtin, create the decl object for the
         // builtin now, injecting it into translation unit scope, and return it.
         return  false;
     }

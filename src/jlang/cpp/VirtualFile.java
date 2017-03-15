@@ -1,7 +1,7 @@
-package backend.hir;
+package jlang.cpp;
 /*
- * Xlous C language Compiler.
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,26 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
+
+import java.io.IOException;
+
 /**
- * A jump destination is an abstract label, branching
- * which may require a jump out through normal cleanups.
- *
+ * An extremely lightweight virtual file interface.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class JumpDest
+interface VirtualFile
 {
-    private BasicBlock block;
-    private int index;
+    // String getParent();
+    boolean isFile();
 
-    public JumpDest(BasicBlock bb, int index)
-    {
-        block = bb;
-        this.index = index;
-    }
+    String getPath();
 
-    public boolean isValid() { return block != null;}
-    public BasicBlock getBasicBlock() { return block;}
-    public int getDestIndex() { return index;}
+    String getName();
+
+    VirtualFile getParentFile();
+
+    VirtualFile getChildFile(String name);
+
+    Source getSource() throws IOException;
 }

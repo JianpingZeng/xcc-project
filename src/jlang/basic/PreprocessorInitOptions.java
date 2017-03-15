@@ -1,7 +1,7 @@
-package backend.hir;
+package jlang.basic;
 /*
- * Xlous C language Compiler.
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,31 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
+import tools.Pair;
+
+import java.util.ArrayList;
+
 /**
- * A jump destination is an abstract label, branching
- * which may require a jump out through normal cleanups.
- *
  * @author Xlous.zeng
  * @version 0.1
  */
-public class JumpDest
+public final class PreprocessorInitOptions
 {
-    private BasicBlock block;
-    private int index;
+    private ArrayList<Pair<String, Boolean>/*isUndef*/> macros
+            = new ArrayList<>();
 
-    public JumpDest(BasicBlock bb, int index)
+    public void addMacroDef(String name)
     {
-        block = bb;
-        this.index = index;
+        macros.add(Pair.get(name, false));
     }
 
-    public boolean isValid() { return block != null;}
-    public BasicBlock getBasicBlock() { return block;}
-    public int getDestIndex() { return index;}
+    public void addMacroUndef(String name)
+    {
+        macros.add(Pair.get(name, true));
+    }
+
+    public ArrayList<Pair<String, Boolean>> getMacros()
+    {
+        return macros;
+    }
 }

@@ -1,4 +1,4 @@
-package driver;
+package jlang.basic;
 
 import java.io.File;
 
@@ -17,7 +17,7 @@ public class SourceFile
 		AsmSource(".s"),
 		Obj(".o"),
 		Executable("");
-		
+
 		public final String extension;
 		FileType(String extension)
 		{
@@ -34,7 +34,7 @@ public class SourceFile
 		}
 		public static FileType[] KNOWN_EXTENSIONS = values();
 	}
-	
+
 	private final String originName;
 	private String currentName;
 	

@@ -3,9 +3,9 @@ package jlang.exception;
 import java.util.Locale;
 
 /**
- * {@code CiBailout} is thrown when the driver refuses to compile a function
+ * {@code CiBailout} is thrown when the jlang.driver refuses to compile a function
  * because of problems with the function. This jlang.exception is <i>not</i>
- * meant to indicate problems with the driver itself.
+ * meant to indicate problems with the jlang.driver itself.
  */
 public class CiBailout extends RuntimeException
 {

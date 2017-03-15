@@ -7,7 +7,7 @@ import java.util.List;
 
 
 /**
- * An abstraction for internal driver strings. For efficiency reasons,
+ * An abstraction for internal jlang.driver strings. For efficiency reasons,
  *  GJC usesList hashed strings that are stored in a common large buffer.
  *
  *  Names represent unique hashable strings. Two names are equal

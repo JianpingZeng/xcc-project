@@ -7,17 +7,16 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 
-import java.io.FileOutputStream;
+import java.io.OutputStream;
 
 import static backend.codegen.LocalRegAllocator.createLocalRegAllocator;
 import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
-import static backend.transform.CFGSimplifyPass.createCFGSimplifyPass;
-import static backend.transform.LowerSwitch.createLowerSwitchPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.x86.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
 import static backend.target.x86.PEI.createX86PrologEpilogEmitter;
 import static backend.target.x86.X86PeepholeOptimizer.createX86PeepholeOptimizer;
 import static backend.target.x86.X86SimpleInstSel.createX86SimpleInstructionSelector;
+import static backend.transform.LowerSwitch.createLowerSwitchPass;
 
 /**
  * @author Xlous.zeng
@@ -68,7 +67,7 @@ public class X86TargetMachine extends TargetMachine
 	 */
 	@Override
 	public boolean addPassesToEmitFile(PassManager pm,
-			boolean fast, FileOutputStream asmOutStream,
+			boolean fast, OutputStream asmOutStream,
 			CodeGenFileType genFileType, CodeGenOpt optLevel)
 	{
 		// lowers switch instr into chained branch instr.
@@ -76,7 +75,8 @@ public class X86TargetMachine extends TargetMachine
 
 		// FIXME: The code generator does not properly handle functions with
 		// unreachable basic blocks.
-		pm.add(createCFGSimplifyPass());
+
+		//pm.add(createCFGSimplifyPass());
 
 		pm.add(createX86SimpleInstructionSelector(this));
 

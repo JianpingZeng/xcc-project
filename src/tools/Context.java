@@ -7,9 +7,9 @@ import java.util.HashMap;
 * Support for an abstract context, modelled loosely after ThreadLocal
 * but using a user-provided context instead of the current thread.
 *
-* Within the driver, a single Context is used for each invocation of
-* the driver.  The context is then used to ensure a single copy of
-* each driver phase exists per driver invocation.
+* Within the jlang.driver, a single Context is used for each invocation of
+* the jlang.driver.  The context is then used to ensure a single copy of
+* each jlang.driver phase exists per jlang.driver invocation.
 *
 * <p>Typical usage pattern is:
 * <pre>

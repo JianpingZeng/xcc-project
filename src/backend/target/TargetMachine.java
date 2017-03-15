@@ -4,7 +4,7 @@ import backend.hir.Module;
 import backend.pass.PassManager;
 import backend.target.x86.X86TargetMachine;
 
-import java.io.FileOutputStream;
+import java.io.OutputStream;
 
 /**
  * Primary interface to complete machine description for the backend.target machine.
@@ -107,7 +107,7 @@ public abstract class TargetMachine
     public abstract boolean addPassesToEmitFile(
     		PassManager pm,
             boolean fast,
-            FileOutputStream asmOutStream,
+            OutputStream asmOutStream,
             CodeGenFileType genFileType,
             CodeGenOpt optLevel);
 }

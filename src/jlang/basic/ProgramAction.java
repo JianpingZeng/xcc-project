@@ -1,4 +1,4 @@
-package driver;
+package jlang.basic;
 
 import java.util.function.Predicate;
 
@@ -91,7 +91,43 @@ public enum ProgramAction
 	 * Parse AST and dump them.
 	 */
 	ASTDump("fast-dump", false,
-            "Build ASTs and then debug dump them");
+            "Build ASTs and then debug dump them"),
+
+	DefaultVisibility("fvisibility", true, "Set the default symbol visibility",
+            opt->
+            {
+                String val = opt.getValue();
+               return val.equals("Default") || val.equals("Hidden")
+                       || val.equals("Protected");
+            }),
+
+	Std("std", true, "Language standard to compile for",
+            opt->
+            {
+                String val = opt.getValue();
+                return val.equals("c89") || val.equals("c90") ||
+                        val.equals("c99") || val.equals("c11")
+                        || val.equals("gnu89") || val.equals("gnu99");
+            }),
+
+	Trigraph("trigraphs", false, "Process trigraph sequences"),
+
+	DollarInIdents("fdollars-in-identifiers", false, "Allow '$' in identifier"),
+
+	Isysroot("isysroot", true, "Set the system root directory (usually '/')"),
+
+	I_dirs("I", true, "Add include to the include search path"),
+
+	Iquote_dirs("iquote", true, "Add directory to QUOTE include search path"),
+
+	Isystem("isystem", true, "Add directory to SYSTEM include search path"),
+
+	Nostdinc("nostdinc", false, "Disable standard #include directories"),
+
+    // Preprocessor initialization.
+	D_macros("D", true, "Predefine the specified macros"),
+
+	U_macros("U", true, "Undefine the specified macros");
 
 	private String optName;
 	private boolean hasArg;
@@ -103,7 +139,8 @@ public enum ProgramAction
 		this(opt, hasArg, desc, null);
 	}
 
-    ProgramAction(String opt, boolean hasArg, String desc, Predicate<CustomOption> checker)
+    ProgramAction(String opt, boolean hasArg, String desc,
+            Predicate<CustomOption> checker)
     {
         optName = opt;
         this.hasArg = hasArg;

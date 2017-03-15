@@ -2,7 +2,8 @@ package backend.pass;
 
 import backend.hir.Module;
 
-import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
 
 /**
  * @author Xlous.zeng
@@ -10,17 +11,34 @@ import java.io.FileOutputStream;
  */
 public class PrintModulePass extends ModulePass
 {
-	private FileOutputStream os;
+	private PrintStream os;
 
-	public PrintModulePass(FileOutputStream out)
+	public PrintModulePass(OutputStream out)
 	{
 		super();
-		os = out;
+		os = new PrintStream(out);
 	}
 
 	@Override
 	public boolean runOnModule(Module m)
 	{
 		return false;
+	}
+
+	@Override public String getPassName()
+	{
+		return null;
+	}
+
+	@Override
+	public void addToPassManager(ModulePassManager pm, AnalysisUsage au)
+	{
+
+	}
+
+	@Override
+	public void addToPassManager(FunctionPassManager pm, AnalysisUsage au)
+	{
+
 	}
 }

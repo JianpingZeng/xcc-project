@@ -2,7 +2,7 @@ package backend.hir;
 
 /**
  * Contains statistics gathered during the compilation of a method and reported back
- * from the driver as the getReturnValue of compilation.
+ * from the jlang.driver as the getReturnValue of compilation.
  *
  * @author Xlous.zeng
  */
