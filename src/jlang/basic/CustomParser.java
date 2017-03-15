@@ -1,4 +1,4 @@
-package driver;
+package jlang.basic;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous

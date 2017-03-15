@@ -12,7 +12,7 @@ public class Main
     {
         ClassLoader loader = Main.class.getClassLoader();
         if (loader != null)
-            loader.setPackageAssertionStatus(driver.Main.NAME, true);
+            loader.setPackageAssertionStatus(jlang.driver.Main.NAME, true);
     }
 
     /**
@@ -30,18 +30,18 @@ public class Main
       */
     public static int compile(String[] args)
     {
-		driver.Main compiler = new driver.Main(driver.Main.NAME);
+		jlang.driver.Main compiler = new jlang.driver.Main(jlang.driver.Main.NAME);
         return compiler.compile(args);
     }
 
     /**
       * Programmatic interface.
       * @param args   The command line parameters.
-      * @param out    Where the driver's output is directed.
+      * @param out    Where the jlang.driver's output is directed.
       */
     public static int compile(String[] args, PrintWriter out) {
-    	driver.Main compiler =
-                new driver.Main(driver.Main.NAME, out);
+    	jlang.driver.Main compiler =
+                new jlang.driver.Main(jlang.driver.Main.NAME, out);
         return compiler.compile(args);
     }
 }

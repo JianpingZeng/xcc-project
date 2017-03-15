@@ -19,25 +19,27 @@ package jlang.codegen;
 import backend.hir.BasicBlock;
 import backend.hir.Module;
 import backend.pass.*;
-import driver.BackendAction;
-import driver.CompileOptions;
-import jlang.ast.ASTConsumer;
-import jlang.sema.ASTContext;
-import jlang.sema.Decl;
 import backend.target.TargetData;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
+import jlang.ast.ASTConsumer;
+import jlang.basic.BackendAction;
+import jlang.basic.CompileOptions;
+import jlang.sema.ASTContext;
+import jlang.sema.Decl;
 import tools.Context;
 import tools.Log;
+import tools.Options;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-import static driver.BackendAction.*;
 import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
+import static jlang.basic.BackendAction.*;
 
 /**
  * <p>
@@ -68,7 +70,7 @@ public class BackendConsumer extends ASTConsumer
     private Log logger;
     private Module theModule;
     private HIRModuleGenerator gen;
-    private FileOutputStream asmOutStream;
+    private OutputStream asmOutStream;
     private TargetData theTargetData;
     private TargetMachine theTargetMachine;
 
@@ -79,7 +81,7 @@ public class BackendConsumer extends ASTConsumer
     public BackendConsumer(BackendAction act,
             CompileOptions opts,
             String moduleName,
-            FileOutputStream os,
+            OutputStream os,
             Context ctx,
             Function<Module, TargetMachine> targetMachineAllocator)
     {

@@ -5,7 +5,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 /**
- * A utility for printing driver debug and informational output to an output stream.
+ * A utility for printing jlang.driver debug and informational output to an output stream.
  * <p>
  * A {@link LogStream} instance maintains an internal buffer that is flushed to the underlying
  * output stream every time one of the {@code println} methods is invoked, or a newline character

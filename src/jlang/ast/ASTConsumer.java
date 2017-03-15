@@ -16,7 +16,6 @@ package jlang.ast;
  * permissions and limitations under the License.
  */
 
-import driver.BackendAction;
 import jlang.codegen.BackendConsumer;
 import jlang.sema.Decl;
 import tools.Context;

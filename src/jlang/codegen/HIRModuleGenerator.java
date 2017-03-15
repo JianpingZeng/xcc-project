@@ -29,9 +29,9 @@ import static backend.value.GlobalValue.LinkageType.*;
  * over AST. Afterwards, filling quad instruction into basic block over flow
  * graph.</p>
  * <p>
- * In this driver, all of source language constitute are converted into
+ * In this jlang.driver, all of source language constitute are converted into
  * SSA-based IR. So that entire optimizations rather no concerning about SSA are
- * associated. On the other hand, this driver is SSA-centeric.
+ * associated. On the other hand, this jlang.driver is SSA-centeric.
  * </p>
  * <p>
  * The method this class taken is derived from Matthias

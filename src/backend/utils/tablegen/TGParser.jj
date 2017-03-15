@@ -34,13 +34,13 @@ public final class TGParser
 {
     public static final class LetRecord
     {
-        String name;
+        String text;
         TIntArrayList bits;
         Init value;
         boolean hasBits;
-        LetRecord(String name, TIntArrayList bits, Init val)
+        LetRecord(String text, TIntArrayList bits, Init val)
         {
-            this.name = name;
+            this.text = text;
             value = val;
             hasBits = bits != null;
             if (hasBits) this.bits = bits;
@@ -260,7 +260,7 @@ public final class TGParser
     /**
      * This is the entry point to parsing a single file.
      *
-     * @filename The input file name.
+     * @filename The input file text.
      */
     public static void parseFile(String filename, ArrayList<String> includeDirs)
     {
@@ -270,7 +270,7 @@ public final class TGParser
     /**
      * This is the entry point to parsing a single file.
      *
-     * @filename The input file name.
+     * @filename The input file text.
      * @debug The flag to indicating whether enable debug.
      */
     public static void parseFile(String filename,
@@ -410,7 +410,7 @@ TOKEN:
     <INCLUDE_STR: "include" (" "|"\t"|"\n")+ "\"" (~["\""])* "\"">
     {
         {
-            // The action is to extract the file name from double quoted string.
+            // The action is to extract the file text from double quoted string.
             int end = image.length();
             assert image.charAt(end - 1) == '"' && image.toString().startsWith("include ");
             int startPos = "include ".length();
@@ -1079,13 +1079,13 @@ String parseObjectName():
 
 void parseClassName():
 {
-    String name;
+    String text;
 }
 {
-    name = parseObjectName() 
+    text = parseObjectName()
     {
-        // If a class of this name already exists, it must be a forward ref.
-        if ((curRec = records.getClass(name)) != null)
+        // If a class of this text already exists, it must be a forward ref.
+        if ((curRec = records.getClass(text)) != null)
         {
             // If the body was previously defined, this is an error.
             if (!(curRec.getValues().isEmpty() 
@@ -1099,7 +1099,7 @@ curRec.getTemplateArgs().isEmpty()))
         else 
         {
             // If this is the first reference to this class, create and add it.
-            curRec = new Record(name);
+            curRec = new Record(text);
             records.addClass(curRec);
         }
     }
@@ -1107,17 +1107,17 @@ curRec.getTemplateArgs().isEmpty()))
 
 void parseDefName():
 {
-    String name;
+    String text;
 }
 {
-    name = parseObjectName()
+    text = parseObjectName()
     {
-        curRec = new Record(name);
+        curRec = new Record(text);
         
         // Ensure redefinition doesn't happen.
         if (records.getDef(curRec.getName()) != null)
         {
-            tokError("Def '" + name + "' already defined!\n");
+            tokError("Def '" + text + "' already defined!\n");
             System.exit(-1);
         }
         records.addDef(curRec);
@@ -1142,7 +1142,7 @@ Record parseObjectBody():
         {
             for (LetRecord letCmd : list)
             {
-                setValue(letCmd.name, letCmd.hasBits? letCmd.bits : null, letCmd.value);
+                setValue(letCmd.text, letCmd.hasBits? letCmd.bits : null, letCmd.value);
             }
         }
     }

@@ -39,7 +39,7 @@ import static backend.transform.ConstantFolder.canConstantFoldCallTo;
 import static backend.transform.ConstantFolder.constantFoldCall;
 
 /**
- * This class is the main scalar evolution driver. Since client code (intentionally)
+ * This class is the main scalar evolution jlang.driver. Since client code (intentionally)
  * can't do much the SCEV objects directly, they must query this class for services.
  * @author Xlous.zeng
  * @version 0.1

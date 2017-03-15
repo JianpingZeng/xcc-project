@@ -1,7 +1,7 @@
-package backend.hir;
+package jlang.cpp;
 /*
- * Xlous C language Compiler.
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,24 @@ package backend.hir;
  */
 
 /**
- * A jump destination is an abstract label, branching
- * which may require a jump out through normal cleanups.
- *
  * @author Xlous.zeng
  * @version 0.1
  */
-public class JumpDest
+public final class SourceLocation
 {
-    private BasicBlock block;
-    private int index;
+    String filename;
+    int column;
+    int line;
 
-    public JumpDest(BasicBlock bb, int index)
+    public SourceLocation(String filename, int line, int col)
     {
-        block = bb;
-        this.index = index;
+        this.filename = filename;
+        column = col;
+        this.line = line;
     }
 
-    public boolean isValid() { return block != null;}
-    public BasicBlock getBasicBlock() { return block;}
-    public int getDestIndex() { return index;}
+    public SourceLocation(int line, int col)
+    {
+        this("", line, col);
+    }
 }

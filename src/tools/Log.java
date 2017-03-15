@@ -326,7 +326,7 @@ public class Log implements LayoutCharacters
         if (pos == Position.NOPOS)
         {
             writer.print(
-                    getText("driver.err.error", null, null, null, null, null,
+                    getText("jlang.driver.err.error", null, null, null, null, null,
                             null, null));
             printLines(writer, msg);
         }
@@ -394,7 +394,7 @@ public class Log implements LayoutCharacters
             if (!recorded.contains(coords))
             {
                 recorded.add(coords);
-                String msg = getText("driver.err." + key, arg0, arg1, arg2,
+                String msg = getText("jlang.driver.err." + key, arg0, arg1, arg2,
                         arg3, arg4, arg5, arg6);
                 printError(pos, msg, errWriter);
                 prompt();
@@ -434,10 +434,10 @@ public class Log implements LayoutCharacters
     {
         if (nwarnings < MaxWarnings && emitWarnings)
         {
-            String msg = getText("driver.warn." + key, arg0, arg1, arg2, arg3,
+            String msg = getText("jlang.driver.warn." + key, arg0, arg1, arg2, arg3,
                     null, null, null);
             printError(pos,
-                    getText("driver.warn.warning", null, null, null, null,
+                    getText("jlang.driver.warn.warning", null, null, null, null,
                             null, null, null) + msg, warnWriter);
         }
         nwarnings++;
@@ -457,9 +457,9 @@ public class Log implements LayoutCharacters
         if (emitWarnings)
         {
             noticeWriter
-                    .print(getText("driver.note.note", null, null, null, null,
+                    .print(getText("jlang.driver.note.note", null, null, null, null,
                             null, null, null));
-            String msg = getText("driver.note." + key, arg0, null, null, null,
+            String msg = getText("jlang.driver.note." + key, arg0, null, null, null,
                     null, null, null);
             printLines(noticeWriter, msg);
             noticeWriter.flush();
@@ -472,38 +472,38 @@ public class Log implements LayoutCharacters
      */
     public static String getLocalizedString(String key)
     {
-        return getText("driver.misc." + key, null, null, null, null, null,
+        return getText("jlang.driver.misc." + key, null, null, null, null, null,
                 null, null);
     }
 
     public static String getLocalizedString(String key, String arg0)
     {
-        return getText("driver.misc." + key, arg0, null, null, null, null,
+        return getText("jlang.driver.misc." + key, arg0, null, null, null, null,
                 null, null);
     }
 
     public static String getLocalizedString(String key, String arg0,
             String arg1)
     {
-        return getText("driver.misc." + key, arg0, arg1, null, null, null,
+        return getText("jlang.driver.misc." + key, arg0, arg1, null, null, null,
                 null, null);
     }
 
     public static String getLocalizedString(String key, String arg0,
             String arg1, String arg2)
     {
-        return getText("driver.misc." + key, arg0, arg1, arg2, null, null,
+        return getText("jlang.driver.misc." + key, arg0, arg1, arg2, null, null,
                 null, null);
     }
 
     public static String getLocalizedString(String key, String arg0,
             String arg1, String arg2, String arg3)
     {
-        return getText("driver.misc." + key, arg0, arg1, arg2, arg3, null,
+        return getText("jlang.driver.misc." + key, arg0, arg1, arg2, arg3, null,
                 null, null);
     }
 
-    private static final String compilerRB = "com.sun.tools.javac.v8.resources.driver";
+    private static final String compilerRB = "com.sun.tools.javac.v8.resources.jlang.driver";
     private static ResourceBundle messageRB;
 
     /**
@@ -517,7 +517,7 @@ public class Log implements LayoutCharacters
         }
         catch (MissingResourceException e)
         {
-            throw new Error("Fatal: Resource for driver is missing");
+            throw new Error("Fatal: Resource for jlang.driver is missing");
         }
     }
 
@@ -551,7 +551,7 @@ public class Log implements LayoutCharacters
             if (arg6 == null)
                 arg6 = "null";
             String[] args = { key, arg0, arg1, arg2, arg3, arg4, arg5, arg6 };
-            String msg = "driver message file broken: key={0} arguments={1}, {2}, {3}, {4}, {5}, {6}, {7}";
+            String msg = "jlang.driver message file broken: key={0} arguments={1}, {2}, {3}, {4}, {5}, {6}, {7}";
             return MessageFormat.format(msg, args);
         }
     }

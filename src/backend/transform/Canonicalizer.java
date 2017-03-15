@@ -801,7 +801,7 @@ public class Canonicalizer extends InstVisitor
 	}
 
 	/**
-	 * Attempts to fold two constant over the given operator, such as, LT, EQ, NE
+	 * Attempts to fold two constant over the given operator, such as, LT, EQEQ, NE
 	 * etc, and return the getReturnValue of comparison.
 	 *
 	 * @param cond The comparison operator.

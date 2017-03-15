@@ -244,7 +244,7 @@ public enum X86Instr implements X86II
 	def MOVZXr32r16: X86Inst<"movzx", 0xB7, MRMSrcReg, Arg8>, TB;         // R32 = zeroext(R16)
 
 
-	public String name;
+	public String text;
 	public int opCode;
 	/**
 	 * {@linkplain }
@@ -268,20 +268,20 @@ public enum X86Instr implements X86II
 	 */
 	public int fpForm;
 
-	X86Instr(String name, int opCode,
+	X86Instr(String text, int opCode,
 			int format, int argType)
 	{
-		this(name, opCode, format, argType, false, false, 0, 0);
+		this(text, opCode, format, argType, false, false, 0, 0);
 	}
 
-	X86Instr(String name, int opCode,
+	X86Instr(String text, int opCode,
 			int format, int argType,
 			boolean hasOpSizePrefix,
 			boolean printImplicitUses,
 			int prefix,
 			int fpForm)
 	{
-		this.name = name;
+		this.text = text;
 		this.opCode = opCode;
 		this.form = format;
 		this.argType = argType;
