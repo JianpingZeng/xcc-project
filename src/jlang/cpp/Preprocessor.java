@@ -20,6 +20,7 @@ import jlang.basic.HeaderSearch;
 import jlang.basic.LangOption;
 import jlang.diag.Diagnostics;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -28,40 +29,43 @@ import static jlang.cpp.PPTokenKind.*;
 import static jlang.cpp.PredefinedDirectiveCommand.CPP_ERROR;
 
 /**
+ * <p>
+ * A C Preprocessor.
+ * The Preprocessor outputs a token stream which does not need
+ * re-lexing for C or C++. Alternatively, the output text may be
+ * reconstructed by concatenating the {@link PPToken#getText() text}
+ * values of the returned {@link PPToken Tokens}.
+ * </p>
+ * <pre>
+ * Source file name and line number information is conveyed by lines of the form:
+ *
+ * # linenum filename flags
+ *
+ * These are called linemarkers. They are inserted as needed into
+ * the output (but never within a string or character constant). They
+ * mean that the following line originated in file filename at line
+ * linenum. filename will never contain any non-printing characters;
+ * they are replaced with octal escape sequences.
+ * </pre>
+ * <p>
+ * After the file name comes zero or more flags, which are `1', `2',
+ * `3', or `4'. If there are multiple flags, spaces separate them. Here
+ * is what the flags mean:
+ * <ol>
+ *     <li>This indicates the start of a new file.</li>
+ *     <li>This indicates returning to a file (after having included another
+ * file).</li>
+ *     <li>This indicates that the following text comes from a system header
+ * file, so certain warnings should be suppressed.</li>
+ *     <li>This indicates that the following text should be treated as being
+ * wrapped in an implicit extern "C" block.</li>
+ * </ol>
+ * </p>
  * @author Xlous.zeng
  * @version 0.1
  */
 public final class Preprocessor implements AutoCloseable
 {
-    private Diagnostics diag;
-    private LangOption langInfo;
-    private HeaderSearch headers;
-
-    /**
-     * This string is the predefined macros that preprocessor
-     * should use from the command line etc.
-     */
-    private String predefines;
-
-    public LangOption getLangOption()
-    {
-        return langInfo;
-    }
-
-    public String getPredefines()
-    {
-        return predefines;
-    }
-
-    public void setPredefines(String predefines)
-    {
-        this.predefines = predefines;
-    }
-
-    public List<PPToken> expand(MacroArgument macroMacroArgument)
-    {
-        return Collections.emptyList();
-    }
 
     private static final Source INTERNAL = new Source()
     {
@@ -89,6 +93,17 @@ public final class Preprocessor implements AutoCloseable
             return "internal data";
         }
     };
+    
+    private Diagnostics diag;
+    private LangOption langInfo;
+    private HeaderSearch headers;
+
+    /**
+     * This string is the predefined macros that preprocessor
+     * should use from the command line etc.
+     */
+    private String predefines;
+
     private static final Macro __LINE__ = new Macro(INTERNAL, "__LINE__");
     private static final Macro __FILE__ = new Macro(INTERNAL, "__FILE__");
     private static final Macro __COUNTER__ = new Macro(INTERNAL, "__COUNTER__");
@@ -110,6 +125,28 @@ public final class Preprocessor implements AutoCloseable
     private List<String> quoteincludepath;	/* -iquote */
 
     private List<String> sysincludepath;		/* -I */
+    private VirtualFileSystem fileSystem;
+
+
+    public LangOption getLangOption()
+    {
+        return langInfo;
+    }
+
+    public String getPredefines()
+    {
+        return predefines;
+    }
+
+    public void setPredefines(String predefines)
+    {
+        this.predefines = predefines;
+    }
+
+    public List<PPToken> expand(MacroArgument macroMacroArgument)
+    {
+        return Collections.emptyList();
+    }
 
     public Preprocessor(Diagnostics diag,
             LangOption langOptions,
@@ -129,6 +166,7 @@ public final class Preprocessor implements AutoCloseable
 
         quoteincludepath = headerSearch.getQuotedPaths();
         sysincludepath = headerSearch.getSystemPaths();
+        fileSystem = new JavaFileSystem();
     }
 
     /**
@@ -391,7 +429,7 @@ public final class Preprocessor implements AutoCloseable
         s.close();
 
         Source t = getSource();
-        if (getFeature(Feature.LINEMARKERS) && s.isNumbered() && t != null)
+        if (langInfo.gnuMode && s.isNumbered() && t != null)
         {
             /* We actually want 'did the nested source
              * contain a newline token', which isNumbered()
@@ -449,8 +487,7 @@ public final class Preprocessor implements AutoCloseable
             if (s == null)
             {
                 PPToken t = next_source();
-                if (t.getPPTokenKind() == P_LINE && !getFeature(
-                        Feature.LINEMARKERS))
+                if (t.getPPTokenKind() == P_LINE && !langInfo.gnuMode)
                     continue;
                 return t;
             }
@@ -482,7 +519,7 @@ public final class Preprocessor implements AutoCloseable
                 == CPPCOMMENT);
     }
 
-    private PPToken source_token_nonwhite() throws IOException, LexerException
+    private PPToken source_token_nonwhite() throws Exception
     {
         PPToken tok;
         do
@@ -501,7 +538,7 @@ public final class Preprocessor implements AutoCloseable
      * This method can, as of recent patches, return a P_LINE token.
      */
     private PPToken source_skipline(boolean white)
-            throws IOException, LexerException
+            throws Exception
     {
         // (new Exception("skipping line")).printStackTrace(System.out);
         Source s = getSource();
@@ -519,7 +556,7 @@ public final class Preprocessor implements AutoCloseable
 
     /* processes and expands a macro. */
     private boolean macro(Macro m, PPToken orig)
-            throws IOException, LexerException
+            throws Exception
     {
         PPToken tok;
         List<MacroArgument> args;
@@ -784,7 +821,7 @@ public final class Preprocessor implements AutoCloseable
     }
 
     /* processes a #define directive */
-    private PPToken define() throws IOException, LexerException
+    private PPToken define() throws Exception
     {
         PPToken tok = source_token_nonwhite();
         if (tok.getPPTokenKind() != IDENTIFIER)
@@ -865,7 +902,7 @@ public final class Preprocessor implements AutoCloseable
             else
             {
                 assert tok.getPPTokenKind() == RPAREN : "Expected RPAREN";
-                args = Collections.emptyList();
+                args = new ArrayList<>();
             }
 
             m.setArgs(args);
@@ -873,7 +910,7 @@ public final class Preprocessor implements AutoCloseable
         else
         {
             /* For searching. */
-            args = Collections.emptyList();
+            args = new ArrayList<>();
             source_untoken(tok);
         }
 
@@ -963,7 +1000,7 @@ public final class Preprocessor implements AutoCloseable
 
     }
 
-    private PPToken undef() throws IOException, LexerException
+    private PPToken undef() throws Exception
     {
         PPToken tok = source_token_nonwhite();
         if (tok.getPPTokenKind() != IDENTIFIER)
@@ -1016,7 +1053,7 @@ public final class Preprocessor implements AutoCloseable
     {
         for (String dir : path)
         {
-            VirtualFile file = getFileSystem().getFile(dir, name);
+            VirtualFile file = fileSystem.getFile(dir, name);
             if (include(file))
                 return true;
         }
@@ -1034,7 +1071,7 @@ public final class Preprocessor implements AutoCloseable
     {
         if (name.startsWith("/"))
         {
-            VirtualFile file = filesystem.getFile(name);
+            VirtualFile file = fileSystem.getFile(name);
             if (include(file))
                 return;
             StringBuilder buf = new StringBuilder();
@@ -1048,7 +1085,7 @@ public final class Preprocessor implements AutoCloseable
         {
             if (parent != null)
             {
-                VirtualFile pfile = filesystem.getFile(parent);
+                VirtualFile pfile = fileSystem.getFile(parent);
                 pdir = pfile.getParentFile();
             }
             if (pdir != null)
@@ -1136,11 +1173,11 @@ public final class Preprocessor implements AutoCloseable
             }
 
             /* Do the inclusion. */
-            include(source.getPath(), tok.getLine(), name, quoted, next);
+            include(source.getPath(), tok.getLocation().line, name, quoted, next);
 
             /* 'tok' is the 'nl' after the include. We use it after the
              * #line directive. */
-            if (getFeature(Feature.LINEMARKERS))
+            if (langInfo.gnuMode)
                 return line_token(1, source.getName(), " 1");
             return tok;
         }
@@ -1165,7 +1202,7 @@ public final class Preprocessor implements AutoCloseable
     protected void pragma(PPToken name, List<PPToken> value)
             throws Exception
     {
-        if (getFeature(Feature.PRAGMA_ONCE))
+        if (/*getFeature(Feature.PRAGMA_ONCE)*/false)
         {
             if ("once".equals(name.getText()))
             {
@@ -1246,7 +1283,7 @@ public final class Preprocessor implements AutoCloseable
 
     /* For #error and #warning. */
     private void error(PPToken pptok, boolean is_error)
-            throws IOException, LexerException
+            throws Exception
     {
         StringBuilder buf = new StringBuilder();
         buf.append('#').append(pptok.getText()).append(' ');
@@ -1275,7 +1312,7 @@ public final class Preprocessor implements AutoCloseable
     /* This bypasses token() for #elif expressions.
      * If we don't do this, then isActive() == false
      * causes token() to simply chew the entire input line. */
-    private PPToken expanded_token() throws IOException, LexerException
+    private PPToken expanded_token() throws Exception
     {
         for (; ; )
         {
@@ -1295,7 +1332,7 @@ public final class Preprocessor implements AutoCloseable
         }
     }
 
-    private PPToken expanded_token_nonwhite() throws IOException, LexerException
+    private PPToken expanded_token_nonwhite() throws Exception
     {
         PPToken tok;
         do
@@ -1308,7 +1345,7 @@ public final class Preprocessor implements AutoCloseable
 
     private PPToken expr_token = null;
 
-    private PPToken expr_token() throws IOException, LexerException
+    private PPToken expr_token() throws Exception
     {
         PPToken tok = expr_token;
 
@@ -1466,7 +1503,7 @@ public final class Preprocessor implements AutoCloseable
                 lhs = (Character) tok.getValue();
                 break;
             case IDENTIFIER:
-                if (warnings.contains(Warning.UNDEF))
+                if (/*warnings.contains(Warning.UNDEF)*/true)
                     warning(tok, "Undefined token '" + tok.getText()
                             + "' encountered in conditional.");
                 lhs = 0;
@@ -1531,7 +1568,7 @@ public final class Preprocessor implements AutoCloseable
                 case GT:
                     lhs = lhs > rhs ? 1 : 0;
                     break;
-                case '&':
+                case AND:
                     lhs = lhs & rhs;
                     break;
                 case XOR:
@@ -1647,8 +1684,7 @@ public final class Preprocessor implements AutoCloseable
                 if (s == null)
                 {
                     PPToken t = next_source();
-                    if (t.getPPTokenKind() == P_LINE && !getFeature(
-                            Feature.LINEMARKERS))
+                    if (t.getPPTokenKind() == P_LINE && !langInfo.gnuMode)
                         continue;
                     return t;
                 }
@@ -1676,11 +1712,11 @@ public final class Preprocessor implements AutoCloseable
                     case CCOMMENT:
                     case CPPCOMMENT:
                         // Patch up to preserve whitespace.
-                        if (getFeature(Feature.KEEPALLCOMMENTS))
+                        if (/**getFeature(Feature.KEEPALLCOMMENTS)*/true)
                             return tok;
                         if (!isActive())
                             return toWhitespace(tok);
-                        if (getFeature(Feature.KEEPCOMMENTS))
+                        if (/*getFeature(Feature.KEEPCOMMENTS)*/true)
                             return tok;
                         return toWhitespace(tok);
                     default:
@@ -1784,12 +1820,12 @@ public final class Preprocessor implements AutoCloseable
                     return tok;
 
                 case P_LINE:
-                    if (getFeature(Feature.LINEMARKERS))
+                    if (langInfo.gnuMode)
                         return tok;
                     break;
 
                 case UNKNOWN:
-                    if (getFeature(Feature.CSYNTAX))
+                    if (/*getFeature(Feature.CSYNTAX)*/true)
                         error(tok, String.valueOf(tok.getValue()));
                     return tok;
 
@@ -1799,7 +1835,6 @@ public final class Preprocessor implements AutoCloseable
 
                 case HASH:
                     tok = source_token_nonwhite();
-                    // (new Exception("here")).printStackTrace();
                     switch (tok.getPPTokenKind())
                     {
                         case NL:
@@ -1808,9 +1843,8 @@ public final class Preprocessor implements AutoCloseable
                         case IDENTIFIER:
                             break;
                         default:
-                            error(tok,
-                                    "Preprocessor directive not a word " + tok
-                                            .getText());
+                            error(tok,"Preprocessor directive not a word "
+                                    + tok.getText());
                             return source_skipline(false);
                     }
                     PredefinedDirectiveCommand ppcmd = PredefinedDirectiveCommand
@@ -1849,7 +1883,7 @@ public final class Preprocessor implements AutoCloseable
                         case CPP_INCLUDE_NEXT:
                             if (!isActive())
                                 return source_skipline(false);
-                            if (!getFeature(Feature.INCLUDENEXT))
+                            if (!/*getFeature(Feature.INCLUDENEXT)*/true)
                             {
                                 error(tok,
                                         "Directive include_next not enabled");
@@ -1925,8 +1959,8 @@ public final class Preprocessor implements AutoCloseable
                             {
                                 state.setSawElse();
                                 state.setActive(!state.isActive());
-                                return source_skipline(warnings.contains(
-                                        Warning.ENDIF_LABELS));
+                                return source_skipline(/*warnings.contains(
+                                        Warning.ENDIF_LABELS)*/true);
                             }
                             // break;
 
@@ -1983,8 +2017,8 @@ public final class Preprocessor implements AutoCloseable
 
                         case CPP_ENDIF:
                             pop_state();
-                            return source_skipline(
-                                    warnings.contains(Warning.ENDIF_LABELS));
+                            return source_skipline(/*
+                                    warnings.contains(Warning.ENDIF_LABELS)*/true);
                         // break;
 
                         case CPP_LINE:
@@ -2045,14 +2079,14 @@ public final class Preprocessor implements AutoCloseable
         Source s = getSource();
         while (s != null)
         {
-            buf.append(" -> ").append(String.valueOf(s)).append("\n");
+            buf.append(" -> ").append(String.valueOf(s)).append(File.separator);
             s = s.getParent();
         }
 
         Map<String, Macro> macros = new TreeMap<String, Macro>(getMacros());
         for (Macro macro : macros.values())
         {
-            buf.append("#").append("macro ").append(macro).append("\n");
+            buf.append("#").append("macro ").append(macro).append(File.separator);
         }
 
         return buf.toString();
@@ -2067,9 +2101,10 @@ public final class Preprocessor implements AutoCloseable
             s.close();
             s = s.getParent();
         }
-        for (Source s : inputs)
+
+        for (Source ss : inputs)
         {
-            s.close();
+            ss.close();
         }
     }
 }
