@@ -2,13 +2,10 @@ package jlang.cparser;
 
 import jlang.cparser.Token.*;
 import jlang.cparser.Token.IntLiteral.IntLong;
+import jlang.cpp.CPPReader;
+import jlang.cpp.Preprocessor;
 import tools.LayoutCharacters;
 import tools.Position;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 
 /**
  * The lexical analyzer maps an input stream consisting of ASCII characters into
@@ -58,56 +55,41 @@ public class Scanner implements Tag, LayoutCharacters
      * specify the column number of this token
      */
     private int col;
-
+    /**
+     * The cached character read from input stream.
+     */
     private char buf[];
+    /**
+     * the number of character in {@#linkplain buf} available currently.
+     */
     private int buflen = 0;
 
     private int bp;
 
-    public Scanner(InputStream in)
-    {
-        this(in, null);
-    }
-
-    public Scanner(InputStream in, String encoding)
+    public Scanner(Preprocessor pp)
     {
         this.keywords = Keywords.instance();
 
-        try
+        int bufsize = 10000;
+        buf = new char[bufsize];
+        try (CPPReader reader = new CPPReader(pp))
         {
-            int bufsize = in.available() + 1;
-            if (buf == null || buf.length < bufsize)
+            while (true)
             {
-                buf = new char[bufsize];
-            }
-            try (InputStreamReader reader = encoding == null ?
-                    new InputStreamReader(in) :
-                    new InputStreamReader(in, encoding))
-            {
-
-                while (true)
-                {
-                    int nread = reader.read(buf, buflen, buf.length - buflen);
-                    if (nread < 0)
-                        nread = 0;
-                    buflen = buflen + nread;
-                    if (buflen < buf.length)
-                        break;
-                    char[] newbuf = new char[buflen * 2];
-                    System.arraycopy(buf, 0, newbuf, 0, buflen);
-                    buf = newbuf;
-                }
+                int nread = reader.read(buf, buflen, buf.length - buflen);
+                if (nread < 0)
+                    nread = 0;
+                buflen = buflen + nread;
+                if (buflen < buf.length)
+                    break;
+                char[] newbuf = new char[buflen << 1];
+                System.arraycopy(buf, 0, newbuf, 0, buflen);
+                buf = newbuf;
             }
         }
-        catch (UnsupportedEncodingException e)
+        catch (Exception e)
         {
-            lexError("unsupported.encoding", encoding);
-            buf = new char[1];
-            buflen = 0;
-        }
-        catch (IOException e)
-        {
-            lexError("io.expcetion", e.toString());
+            lexError("io.exception:", e.getMessage());
             buf = new char[1];
             buflen = 0;
         }
