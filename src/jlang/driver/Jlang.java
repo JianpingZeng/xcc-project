@@ -22,8 +22,6 @@ import jlang.ast.ASTConsumer;
 import jlang.basic.*;
 import jlang.basic.ProgramAction;
 import jlang.codegen.BackendConsumer;
-import jlang.cparser.*;
-import jlang.cparser.Parser;
 import jlang.cpp.Preprocessor;
 import jlang.diag.Diagnostics;
 import jlang.sema.Decl;
@@ -177,7 +175,7 @@ public class Jlang
     private void parseAST(Preprocessor pp, ASTConsumer consumer)
     {
         Sema sema = new Sema(pp, consumer);
-        jlang.cparser.Parser parser = Parser.instance(pp, sema);
+        jlang.cparser.Parser parser = sema.getParser();
         ArrayList<Decl> declsGroup = new ArrayList<>(16);
 
         while (!parser.parseTopLevel(declsGroup)) // Not end of file.
@@ -346,7 +344,7 @@ public class Jlang
         return progAction;
     }
 
-    private static LangKind getLanguage(String filename)
+    private LangKind getLanguage(String filename)
     {
         int lastDotPos = filename.lastIndexOf('.');
         if (lastDotPos < 0)
@@ -371,14 +369,13 @@ public class Jlang
         }
     }
 
-    private static void initializeOption(LangOption options)
+    private void initializeOption(LangOption options)
     {
         // do nothing.
     }
 
-    private static void initializeLangOptions(LangOption langOption,
-            LangKind lk,
-            CommandLine cmdline)
+    private void initializeLangOptions(LangOption langOption,
+            LangKind lk)
     {
         boolean noPreprocess = false;
         switch (lk)
@@ -409,8 +406,8 @@ public class Jlang
         Lang_gnu99,
     }
 
-    private static void initializeLangStandard(LangOption options,
-            LangKind lk, CommandLine cmdline)
+    private void initializeLangStandard(LangOption options,
+            LangKind lk)
     {
         String std = cmdline.getOptionValue(ProgramAction.Std.getOptName());
         LangStd langStd = std != null? LangStd.valueOf(std) : Lang_unpsecified;
@@ -468,10 +465,8 @@ public class Jlang
     /**
      * Process the -I option and set them into the headerSearch object.
      * @param headerSearch
-     * @param cmdline
      */
-    private static void initializeIncludePaths(HeaderSearch headerSearch,
-            CommandLine cmdline)
+    private void initializeIncludePaths(HeaderSearch headerSearch)
     {
         boolean v = cmdline.hasOption(Verbose.getOptName());
         String isysroot = cmdline.getOptionValue(Isysroot.getOptName(), "/");
@@ -516,8 +511,8 @@ public class Jlang
         init.realize();
     }
 
-    private static void initializePreprocessorInitOptions(
-            PreprocessorInitOptions initOpts, CommandLine cmdline)
+    private void initializePreprocessorInitOptions(
+            PreprocessorInitOptions initOpts)
     {
         // Add macro from command line.
         String[] defines = cmdline.getOptionValues(D_macros.getOptName());
@@ -539,7 +534,7 @@ public class Jlang
      * @param buf
      * @param m
      */
-    private static void defineBuiltinMacro(StringBuilder buf, String m)
+    private void defineBuiltinMacro(StringBuilder buf, String m)
     {
         String cmd = "#define ";
         buf.append(cmd);
@@ -551,7 +546,8 @@ public class Jlang
             int end = m.indexOf("\n\r", eqPos + 1);
             if (end >= 0)
             {
-                java.lang.System.err.printf("warning: macro '%s' contains" + " embedded newline, text after the newline is ignored",
+                java.lang.System.err.printf("warning: macro '%s' contains"
+                                + " embedded newline, text after the newline is ignored",
                         m.substring(eqPos + 1));
             }
             else
@@ -568,7 +564,7 @@ public class Jlang
         buf.append(File.separator);
     }
 
-    private static void initializePredefinedMacros(LangOption langOptions,
+    private void initializePredefinedMacros(LangOption langOptions,
             StringBuilder buf)
     {
         defineBuiltinMacro(buf, "__xcc__=1"); // XCC version.
@@ -597,13 +593,13 @@ public class Jlang
      * @param buf
      * @param name
      */
-    private static void undefineBuiltinMacro(StringBuilder buf,
+    private void undefineBuiltinMacro(StringBuilder buf,
             String name)
     {
         buf.append("#undef ").append(name).append(File.separator);
     }
 
-    private static boolean initializePreprocessor(Preprocessor pp,
+    private boolean initializePreprocessor(Preprocessor pp,
             PreprocessorInitOptions initOpts)
     {
         StringBuilder predefinedBuffer = new StringBuilder();
@@ -642,14 +638,13 @@ public class Jlang
      * @param headerSearch
      * @return
      */
-    private static Preprocessor createAndInitPreprocessor(Diagnostics diag,
+    private Preprocessor createAndInitPreprocessor(Diagnostics diag,
             LangOption langOptions,
-            HeaderSearch headerSearch,
-            CommandLine cmdline)
+            HeaderSearch headerSearch)
     {
         Preprocessor pp = new Preprocessor(diag, langOptions, headerSearch);
         PreprocessorInitOptions initOptions = new PreprocessorInitOptions();
-        initializePreprocessorInitOptions(initOptions, cmdline);
+        initializePreprocessorInitOptions(initOptions);
 
         return initializePreprocessor(pp, initOptions)? null: pp;
     }
@@ -700,15 +695,15 @@ public class Jlang
             // Instance a Preprocessor.
             LangKind langkind = getLanguage(inputFile);
             LangOption langOption = new LangOption();
-            initializeLangOptions(langOption, langkind, cmdline);
-            initializeLangStandard(langOption, langkind, cmdline);
+            initializeLangOptions(langOption, langkind);
+            initializeLangStandard(langOption, langkind);
 
             // Handle -I option and set the include search.
             HeaderSearch headerSearch = new HeaderSearch();
-            initializeIncludePaths(headerSearch, cmdline);
+            initializeIncludePaths(headerSearch);
 
             Preprocessor pp = createAndInitPreprocessor(diag, langOption,
-                    headerSearch, cmdline);
+                    headerSearch);
 
             if (pp == null)
                 continue;

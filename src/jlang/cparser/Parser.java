@@ -1,40 +1,40 @@
 package jlang.cparser;
 
 import jlang.ast.Tree;
-import jlang.ast.Tree.*;
+import jlang.ast.Tree.CompoundStmt;
+import jlang.ast.Tree.Expr;
+import jlang.ast.Tree.InitListExpr;
+import jlang.ast.Tree.Stmt;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.FieldDeclarator;
 import jlang.cparser.DeclSpec.ParsedSpecifiers;
 import jlang.cparser.Declarator.TheContext;
 import jlang.cparser.Token.Ident;
-import jlang.sema.*;
+import jlang.cpp.Preprocessor;
+import jlang.sema.Decl;
 import jlang.sema.Decl.LabelDecl;
+import jlang.sema.PrecedenceLevel;
+import jlang.sema.Scope;
 import jlang.sema.Scope.ScopeFlags;
+import jlang.sema.Sema;
 import jlang.type.QualType;
-import tools.*;
+import tools.Log;
+import tools.OutParamWrapper;
+import tools.Position;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 
 import static jlang.cparser.DeclSpec.SCS.SCS_typedef;
-import static jlang.cparser.DeclSpec.TQ.TQ_const;
-import static jlang.cparser.DeclSpec.TQ.TQ_restrict;
-import static jlang.cparser.DeclSpec.TQ.TQ_volatile;
+import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.DeclSpec.TSC.TSC_complex;
 import static jlang.cparser.DeclSpec.TSS.TSS_signed;
 import static jlang.cparser.DeclSpec.TSS.TSS_unsigned;
 import static jlang.cparser.DeclSpec.TST.*;
 import static jlang.cparser.DeclSpec.TSW.TSW_long;
 import static jlang.cparser.DeclSpec.TSW.TSW_short;
-import static jlang.cparser.Parser.ParenParseOption.CastExpr;
-import static jlang.cparser.Parser.ParenParseOption.CompoundLiteral;
-import static jlang.cparser.Parser.ParenParseOption.SimpleExpr;
-import static jlang.sema.Sema.TagUseKind.TUK_declaration;
-import static jlang.sema.Sema.TagUseKind.TUK_definition;
-import static jlang.sema.Sema.TagUseKind.TUK_reference;
+import static jlang.cparser.Parser.ParenParseOption.*;
+import static jlang.sema.Sema.TagUseKind.*;
 
 /**
  * This is a jlang.parser for C language.
@@ -184,28 +184,11 @@ public class Parser implements Tag
 
     private Sema action;
 
-    private String file;
-
-    private Parser(String file, Context context, Sema sema)
+    private void init(Preprocessor pp, Sema action)
     {
-        this.file = file;
-        try
-        {
-            init(new FileInputStream(file), context, sema);
-        }
-        catch (FileNotFoundException e)
-        {
-            e.printStackTrace();
-        }
-    }
-
-    private void init(InputStream in, Context context, Sema action)
-    {
-        this.S = new Scanner(in);
-        this.log = Log.instance(context);
+        this.S = new Scanner(pp);
         this.action = action;
         keywords = Keywords.instance();
-        log = Log.instance(context);
         lookAheadToken = new LookAheadToken();
 
         // initialize look ahead token buffer
@@ -219,14 +202,14 @@ public class Parser implements Tag
     /**
      * Constructs a jlang.parser from a given scanner.
      */
-    private Parser(InputStream in, Context context, Sema action)
+    private Parser(Preprocessor pp, Sema action)
     {
-        init(in, context, action);
+        init(pp, action);
     }
 
-    public static Parser instance(InputStream in, Context context, Sema action)
+    public static Parser instance(Preprocessor pp, Sema action)
     {
-        return new Parser(in, context, action);
+        return new Parser(pp, action);
     }
 
     /**

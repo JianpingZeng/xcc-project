@@ -11,6 +11,7 @@ import jlang.cparser.DeclSpec.TST;
 import jlang.cparser.Token.CharLiteral;
 import jlang.cparser.Token.Ident;
 import jlang.cparser.Token.IntLiteral;
+import jlang.cpp.Preprocessor;
 import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.Type.TagTypeKind;
@@ -127,9 +128,9 @@ public final class Sema
     private static Context SEMA_CONTEXT = new Context();
     private ASTConsumer consumer;
 
-    public Sema(InputStream in, ASTConsumer consumer)
+    public Sema(Preprocessor pp, ASTConsumer consumer)
     {
-        parser = Parser.instance(in, SEMA_CONTEXT, this);
+        parser = Parser.instance(pp, this);
         this.consumer = consumer;
         initialize();
     }
