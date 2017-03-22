@@ -1,5 +1,6 @@
 package backend.pass;
 
+import backend.hir.Module;
 import backend.value.Function;
 import tools.Pair;
 
@@ -28,6 +29,28 @@ public abstract class FunctionPass implements Pass
 	 * @return
 	 */
 	public abstract boolean runOnFunction(Function f);
+
+	/**
+	 * Do some initialization jobs in pre-function pass.
+	 * This method must be overridden by concrete subclasses.
+	 * @param m
+	 * @return
+	 */
+	public boolean doInitialization(Module m)
+	{
+		return false;
+	}
+
+	/**
+	 * Do some initialization jobs in pre-function pass.
+	 * This method must be overridden by concrete subclasses.
+	 * @param m
+	 * @return
+	 */
+	public boolean doFinalization(Module m)
+	{
+		return false;
+	}
 
 	@Override
 	public void addToPassManager(FunctionPassManager pm, AnalysisUsage au)
