@@ -18,7 +18,7 @@ public class MachineFrameInfo
     public static class StackObject
     {
         /**
-         * The size of this object on the stack.
+         * The getNumOfSubLoop of this object on the stack.
          * 0 means variable object.
          */
         int size;
@@ -70,7 +70,7 @@ public class MachineFrameInfo
     private boolean hasCalls;
 
     /**
-     * This contains the size of largest call frame if the target
+     * This contains the getNumOfSubLoop of largest call frame if the target
      * uses frame setup/destroy instruction.  This information is important for frame pointer
      * elimination.  If is only valid during and after prolog/epilog code
      * insertion.
@@ -114,7 +114,7 @@ public class MachineFrameInfo
     }
 
     /**
-     * getObjectSize - Return the size of the specified object
+     * getObjectSize - Return the getNumOfSubLoop of the specified object
      */
     public int getObjectSize(int objectIdx)
     {
@@ -157,7 +157,7 @@ public class MachineFrameInfo
 
     /**
      * getStackSize - Return the number of bytes that must be allocated to hold
-     * all of the fixed size frame objects.  This is only valid after
+     * all of the fixed getNumOfSubLoop frame objects.  This is only valid after
      * Prolog/Epilog code insertion has finalized the stack frame layout.
      */
     public int getStackSize()
@@ -166,7 +166,7 @@ public class MachineFrameInfo
     }
 
     /**
-     * setStackSize - Set the size of the stack...
+     * setStackSize - Set the getNumOfSubLoop of the stack...
      */
     public void setStackSize(int size)
     {
@@ -188,7 +188,7 @@ public class MachineFrameInfo
     }
 
     /**
-     * getMaxCallFrameSize - Return the maximum size of a call frame that must be
+     * getMaxCallFrameSize - Return the maximum getNumOfSubLoop of a call frame that must be
      * allocated for an outgoing function call.  This is only available if
      * CallFrameSetup/Destroy pseudo instructions are used by the target, and
      * then only during or after prolog/epilog code insertion.
@@ -213,7 +213,7 @@ public class MachineFrameInfo
      */
     public int createFixedObject(int size, int SPOffset)
     {
-        assert size != 0 : "Cannot allocate zero size fixed stack objects!";
+        assert size != 0 : "Cannot allocate zero getNumOfSubLoop fixed stack objects!";
         objects.add(0, new StackObject(size, 1, SPOffset));
         return -(++numFixedObjects);
     }
@@ -224,7 +224,7 @@ public class MachineFrameInfo
      */
     public int createStackObject(int size, int Alignment)
     {
-        assert size != 0 : "Cannot allocate zero size stack objects!";
+        assert size != 0 : "Cannot allocate zero getNumOfSubLoop stack objects!";
         objects.add(new StackObject(size, Alignment, -1));
         return objects.size() - numFixedObjects - 1;
     }

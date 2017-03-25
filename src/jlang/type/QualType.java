@@ -253,7 +253,7 @@ public final class QualType extends Type implements Cloneable
         QualType ptrTy = getPointerType(arrayType.getElemType());
 
         // int x[restrict 4]-> int *restrict;
-        // TODO unhandle jlang.type qualifier in array size expression.
+        // TODO unhandle jlang.type qualifier in array getNumOfSubLoop expression.
         return ptrTy;
     }
 
@@ -579,14 +579,14 @@ public final class QualType extends Type implements Cloneable
                 if (lvat != null)
                 {
                     // FIXME: This isn't correct! But tricky to implement because
-                    // the array's size has to be the size of LHS, but the jlang.type
+                    // the array's getNumOfSubLoop has to be the getNumOfSubLoop of LHS, but the jlang.type
                     // has to be different.
                     return lhs;
                 }
                 if (rcat != null)
                 {
                     // FIXME: This isn't correct! But tricky to implement because
-                    // the array's size has to be the size of LHS, but the jlang.type
+                    // the array's getNumOfSubLoop has to be the getNumOfSubLoop of LHS, but the jlang.type
                     // has to be different.
                     return rhs;
                 }

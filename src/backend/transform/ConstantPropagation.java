@@ -18,7 +18,7 @@ import java.util.LinkedList;
  * @see CFGSimplifyPass
  * @see UnreachableBlockElim
  */
-public final class ConstantPropagation extends FunctionPass
+public final class ConstantPropagation implements FunctionPass
 {
 	public long numsInstKilled = 0;
 

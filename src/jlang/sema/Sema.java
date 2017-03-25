@@ -2066,7 +2066,7 @@ public final class Sema
             if (type.isIncompleteArrayType())
             {
                 parser.syntaxError(var.getLocation(),
-                        "definition of variable with array jlang.type needs an explicit size or an initializer");
+                        "definition of variable with array jlang.type needs an explicit getNumOfSubLoop or an initializer");
                 var.setInvalidDecl(true);
                 return;
             }
@@ -2898,7 +2898,7 @@ public final class Sema
         if (!t.isIncompleteType())
             return false;
 
-        // If we have a array jlang.type with constant size, attempt to instantiate it.
+        // If we have a array jlang.type with constant getNumOfSubLoop, attempt to instantiate it.
         QualType elemType = t;
         ArrayType.ConstantArrayType array = t.getAsConstantArrayType();
         if (array != null)

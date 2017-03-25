@@ -40,7 +40,7 @@ public final class RecordType extends TagType
     }
 
     /**
-     * Returns the size of the specified jlang.type in bits.
+     * Returns the getNumOfSubLoop of the specified jlang.type in bits.
      * </br>
      * This method doesn't work on incomplete types.
      *

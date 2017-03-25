@@ -194,7 +194,7 @@ public abstract class Init
 
     /**
      * Represents an initializer for a BitsRecTy value.
-     * It contains a vector of bits, whose size is determined by the type.
+     * It contains a vector of bits, whose getNumOfSubLoop is determined by the type.
      */
     public static class BitsInit extends Init
     {

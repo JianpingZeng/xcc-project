@@ -192,7 +192,7 @@ public final class CodeGenFunction
 		emitFunctionPrologue(curFn, curFnInfo, args);
 
 		// If any of the arguments have a variably modified type,
-		// make sure to emit type size.
+		// make sure to emit type getNumOfSubLoop.
 		args.forEach((pair)->
 		{
 			VarDecl vd = pair.first;
@@ -342,7 +342,7 @@ public final class CodeGenFunction
 		}
 		else
 		{
-			// A fixed size single-value varibale becomes an alloca in the entry block.
+			// A fixed getNumOfSubLoop single-value varibale becomes an alloca in the entry block.
 			Type lty = convertTypeForMem(ty);
 			if (lty.isSingleValueType())
 			{
@@ -1121,9 +1121,9 @@ public final class CodeGenFunction
 
 			Value vlaSize = emitVLASize(ty);
 
-			// downcast the VLA size expression.
+			// downcast the VLA getNumOfSubLoop expression.
 			vlaSize = builder.createIntCast(vlaSize, Type.Int32Ty, false, "");
-			// allocate an array with variable size.
+			// allocate an array with variable getNumOfSubLoop.
 			Value vla = builder.createAlloca(Type.Int8Ty, vlaSize, "vla");
 
 			// convert the pointer to array into regular pointer.
@@ -1182,7 +1182,7 @@ public final class CodeGenFunction
 			{
 				Type sizeTy = convertType(vat.getSizeExpr().getType());
 
-				// get the element size.
+				// get the element getNumOfSubLoop.
 				QualType elemTy = vat.getElemType();
 				Value elemSize;
 				if (elemTy.isVariableArrayType())
@@ -1265,7 +1265,7 @@ public final class CodeGenFunction
 		if (srcPtr.getType() != bp)
 			srcPtr = builder.createBitCast(srcPtr, bp, "tmp");
 
-		// Get the size and alignment info for this aggregate.
+		// Get the getNumOfSubLoop and alignment info for this aggregate.
 		Pair<Long, Integer> typeInfo = QualType.getTypeInfo(ty);
 
 		// Handle variable sized types.
@@ -1669,8 +1669,8 @@ public final class CodeGenFunction
 	 * </p>
 	 * <p>
 	 * <p>If this returns a normal address, and if the lvalue's C type
-	 * is fixed size, this method guarantees that the returned pointer type
-	 * will point to an HIR type of the same size of lvalue's type.
+	 * is fixed getNumOfSubLoop, this method guarantees that the returned pointer type
+	 * will point to an HIR type of the same getNumOfSubLoop of lvalue's type.
 	 * </p>
 	 *
 	 * @param expr
@@ -2141,8 +2141,8 @@ public final class CodeGenFunction
 			idx = builder.createTrunc(idx, IntegerType.get(pointerWidth), "trunc");
 		}
 
-		// We know that the pointer points to a type of the correct size,
-		// unless the size is a VLA
+		// We know that the pointer points to a type of the correct getNumOfSubLoop,
+		// unless the getNumOfSubLoop is a VLA
 		ArrayType.VariableArrayType vat = expr.getType().getAsVariableArrayType();
 		Value address;
 		if (vat != null)
@@ -2172,7 +2172,7 @@ public final class CodeGenFunction
 	private Value getVLASize(ArrayType.VariableArrayType vat)
 	{
 		Value size = vlaSizeMap.get(vat.getSizeExpr());
-		assert size!= null:"Did not emti size of type";
+		assert size!= null:"Did not emti getNumOfSubLoop of type";
 		return size;
 	}
 
@@ -2325,10 +2325,10 @@ public final class CodeGenFunction
 		if (address.getType() != bp)
 			address = builder.createBitCast(address, bp, "bitcast.tmp");
 
-		// Get the size and alignment info for this aggregate.
+		// Get the getNumOfSubLoop and alignment info for this aggregate.
 		Pair<Long, Integer> typeInfo = QualType.getTypeInfo(ty);
 
-		// don't emit code for zero size type.
+		// don't emit code for zero getNumOfSubLoop type.
 		if (typeInfo.first == 0)
 			return;
 

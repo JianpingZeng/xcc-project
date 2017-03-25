@@ -138,7 +138,7 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
         }
 
         if (hasDotTypeDotSizeDirective)
-            os.println("\t.size " + curFnName + ", .-" + curFnName);
+            os.println("\t.getNumOfSubLoop " + curFnName + ", .-" + curFnName);
 
         // we didn't change anything.
         return false;

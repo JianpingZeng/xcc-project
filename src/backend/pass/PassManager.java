@@ -18,27 +18,45 @@ package backend.pass;
 
 import backend.hir.Module;
 
+import java.util.HashSet;
+import java.util.LinkedList;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PassManager
+public class PassManager implements PassManagerBase
 {
-    private ModulePassManager mpm;
+    private LinkedList<Pass> passesToWork;
+    private HashSet<Pass> existed;
 
     public PassManager()
     {
-        mpm = new ModulePassManager();
+        passesToWork = new LinkedList<>();
+        existed = new HashSet<>();
     }
 
+    @Override
     public void add(Pass p)
     {
         assert p instanceof ModulePass :"Not a module pass?";
-        mpm.add((ModulePass)p);
+        if (existed.add(p))
+            passesToWork.add(p);
+    }
+
+    @Override
+    public PassManagerType getPassManagerType()
+    {
+        return PassManagerType.PMT_ModulePassManager;
     }
 
     public void run(Module m)
     {
-        mpm.run(m);
+        boolean changed = false;
+
+        for (Pass pass : passesToWork)
+        {
+            changed |= pass.run(m);
+        }
     }
 }

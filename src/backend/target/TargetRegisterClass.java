@@ -26,7 +26,7 @@ import backend.codegen.MachineFunction;
 public abstract class TargetRegisterClass
 {
     /**
-     * The register size and alignment in Bytes.
+     * The register getNumOfSubLoop and alignment in Bytes.
      */
     private int regSize, regAlign;
     private int[] regs;
@@ -47,7 +47,7 @@ public abstract class TargetRegisterClass
     }
 
     /**
-     * Return the size of the register in bytes, which is also the size
+     * Return the getNumOfSubLoop of the register in bytes, which is also the getNumOfSubLoop
      * of a stack slot allocated to hold a spilled copy of this register.
      *
      * @return

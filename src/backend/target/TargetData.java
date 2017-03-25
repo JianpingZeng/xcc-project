@@ -51,7 +51,7 @@ public class TargetData extends ImmutablePass
 	 */
 	private int doubleAlignment;
 	/**
-	 * Pointer size in bytes by default to 8.
+	 * Pointer getNumOfSubLoop in bytes by default to 8.
 	 */
 	private int pointerSize;
 	/**
@@ -136,7 +136,7 @@ public class TargetData extends ImmutablePass
 	}
 
 	/**
-	 * Obtains the data size and alignment for specified type on targeted machine.
+	 * Obtains the data getNumOfSubLoop and alignment for specified type on targeted machine.
 	 * @param type
 	 * @param td
 	 * @return
@@ -223,23 +223,6 @@ public class TargetData extends ImmutablePass
 
 	@Override
 	public String getPassName(){return "Target Data pass!";}
-
-	@Override public Pass getAnalysisToUpDate(PassInfo pi)
-	{
-		return null;
-	}
-
-	@Override
-	public void addToPassManager(ModulePassManager pm, AnalysisUsage au)
-	{
-
-	}
-
-	@Override
-	public void addToPassManager(FunctionPassManager pm, AnalysisUsage au)
-	{
-
-	}
 
 	/**
 	 * This class is used to lazily compute structure layout information for

@@ -18,10 +18,7 @@ package backend.transform;
 
 import backend.analysis.*;
 import backend.hir.BasicBlock;
-import backend.pass.AnalysisUsage;
-import backend.pass.LoopPass;
-import backend.pass.Pass;
-import backend.pass.RegisterPass;
+import backend.pass.*;
 import backend.support.SCEVExpander;
 import backend.type.Type;
 import backend.value.Instruction;
@@ -34,7 +31,6 @@ import backend.value.Use;
 import backend.value.Value;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Stack;
 
@@ -86,7 +82,7 @@ import java.util.Stack;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class IndVarSimplify extends LoopPass
+public final class IndVarSimplify implements LoopPass
 {
     private LoopInfo li;
     private ScalarEvolution se;
@@ -111,7 +107,7 @@ public final class IndVarSimplify extends LoopPass
     }
 
     @Override
-    public boolean runOnLoop(Loop loop)
+    public boolean runOnLoop(Loop loop, LPPassManager ppm)
     {
         // If the LoopSimplify form is not available, just return early.
         // A LoopSimplify form must having a preheader, a latch block and
@@ -127,13 +123,13 @@ public final class IndVarSimplify extends LoopPass
         changed = false;
 
         // Firstly, transforms all sub loops nested in current loop processed.
-        loop.getSubLoops().forEach(this::runOnLoop);
+        loop.getSubLoops().forEach(sub->runOnLoop(sub, ppm));
 
         // If there are any floating-point recurrences, attempt to
         // transform them to use integer recurrences.
         rewriteNonIntegerIVs(loop);
 
-        BasicBlock exitingBlock = loop.getExitBlock(); // may be null.
+        BasicBlock exitingBlock = loop.getExitingBlock(); // may be null.
         SCEV iterationCount = se.getIterationCount(loop);
 
         // Create a rewriter object that we will use to transform the code with.
@@ -175,7 +171,7 @@ public final class IndVarSimplify extends LoopPass
         }
 
         // Now that we know the largest of of the induction variable expressions
-        // in this loop, insert a canonical induction variable of the largest size.
+        // in this loop, insert a canonical induction variable of the largest getNumOfSubLoop.
         Value indVal = null;
         if (needCannIV)
         {
@@ -375,7 +371,7 @@ public final class IndVarSimplify extends LoopPass
      */
     private void sinkUnusedInvariants(Loop loop)
     {
-        BasicBlock exitBlock = loop.getExitBlock();
+        BasicBlock exitBlock = loop.getExitingBlock();
         if (exitBlock == null) return;
 
         Instruction insertPos = exitBlock.getInstAt(exitBlock.getFirstNonPhi());

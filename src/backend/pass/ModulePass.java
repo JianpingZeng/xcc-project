@@ -9,28 +9,19 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class ModulePass implements Pass
+public interface ModulePass extends Pass
 {
-	protected AnalysisResolver resolver = new ModulePassManager();
-	protected ArrayList<Pair<PassInfo, Pass>> analysisImpls
-			= new ArrayList<>();
-
-	public abstract boolean runOnModule(Module m);
-
-	@Override
-	public Pass getAnalysisToUpDate(PassInfo pi)
-	{
-		return resolver.getAnalysisToUpdate(pi);
-	}
-
-	public void addToPassManager(PassManagerBase pm, AnalysisUsage au)
-	{
-		pm.addPass(this, au);
-	}
+	/**
+	 * This method should be overridden by concrete subclasses to perform
+	 * user-defined operation.
+	 * @param m
+	 * @return
+	 */
+	boolean runOnModule(Module m);
 
 	@Override
-	public ArrayList<Pair<PassInfo, Pass>> getAnalysisImpls()
+	default boolean run(Module m)
 	{
-		return analysisImpls;
+		return runOnModule(m);
 	}
 }

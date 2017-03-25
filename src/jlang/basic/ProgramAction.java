@@ -50,7 +50,7 @@ public enum ProgramAction
             }),
 
     /**
-     * Specify the optimization level just for decreasing the generated code size
+     * Specify the optimization level just for decreasing the generated code getNumOfSubLoop
      */
     OptSize("Os", false,
             "Specify the level of backend.transform"),

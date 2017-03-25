@@ -101,7 +101,7 @@ public final class RecordLayoutInfo
             = new HashMap<>();
 
     /**
-     * Computes information for record layout, which suggests size and field
+     * Computes information for record layout, which suggests getNumOfSubLoop and field
      * offset informations.
      * @param decl
      * @return

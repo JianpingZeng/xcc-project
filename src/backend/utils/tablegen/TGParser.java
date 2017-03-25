@@ -156,7 +156,7 @@ public final class TGParser implements TGParserConstants
             }
 
             BitsInit curVal = (BitsInit) rv.getValue();
-            // Convert the incoming value to a bits type of the appropriate size...
+            // Convert the incoming value to a bits type of the appropriate getNumOfSubLoop...
             Init bi = val.convertInitializerTo(new BitsRecTy(bitlist.size()));
             if (bi == null)
             {

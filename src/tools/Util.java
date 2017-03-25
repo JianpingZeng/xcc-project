@@ -95,8 +95,8 @@ public class Util
 	}
 
 	/**
-	 * Rounds the input size up to the most least size of pow of align,  which
-	 * not less than {@@code size}.
+	 * Rounds the input getNumOfSubLoop up to the most least getNumOfSubLoop of pow of align,  which
+	 * not less than {@@code getNumOfSubLoop}.
 	 * @param size
 	 * @param align
 	 * @return
@@ -104,12 +104,12 @@ public class Util
 	public static int roundUp(int size, int align)
 	{
 		// insufficient algorithm
-		// return (size/align + 1) * align;
+		// return (getNumOfSubLoop/align + 1) * align;
 		return (size+(align-1))&~(align-1);
 	}
 	/**
-	 * Rounds the input size up to the most least size of pow of align,  which
-	 * not less than {@@code size}.
+	 * Rounds the input getNumOfSubLoop up to the most least getNumOfSubLoop of pow of align,  which
+	 * not less than {@@code getNumOfSubLoop}.
 	 * @param size
 	 * @param align
 	 * @return
@@ -117,7 +117,7 @@ public class Util
 	public static long roundUp(long size, long align)
 	{
 		// insufficient algorithm
-		// return (size/align + 1) * align;
+		// return (getNumOfSubLoop/align + 1) * align;
 		return (size+(align-1))&~(align-1);
 	}
 

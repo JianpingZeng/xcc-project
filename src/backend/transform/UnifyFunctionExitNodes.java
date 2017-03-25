@@ -33,7 +33,7 @@ import java.util.LinkedList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class UnifyFunctionExitNodes extends FunctionPass
+public final class UnifyFunctionExitNodes implements FunctionPass
 {
     private BasicBlock returnBlock;
     private static RegisterPass unifyFunctionExitNodes =

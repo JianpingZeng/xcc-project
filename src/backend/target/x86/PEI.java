@@ -107,7 +107,7 @@ public class PEI extends MachineFunctionPass
         // walking through all machine basic block for computing maxFrameSize.
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
-            // mbb.size() must be called each loop since there are maybe instr insert
+            // mbb.getNumOfSubLoop() must be called each loop since there are maybe instr insert
             // and deletion.
             for (int i = 0; i < mbb.size(); i++)
             {
@@ -240,7 +240,7 @@ public class PEI extends MachineFunctionPass
         // align the final stack pointer offset.
         offset = Util.roundUp(offset, stackAlign);
 
-        // set the final size of the current function stack frame.
+        // set the final getNumOfSubLoop of the current function stack frame.
         mfi.setStackSize(offset-tfi.getLocalAreaOffset());
     }
 

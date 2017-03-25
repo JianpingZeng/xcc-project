@@ -52,9 +52,9 @@ public final class UCE extends FunctionPass
 
     private boolean isChanged(List<BasicBlock> before, List<BasicBlock> now)
     {
-        if (before.size() != now.size())
+        if (before.getNumOfSubLoop() != now.getNumOfSubLoop())
             return true;
-        for (int idx = 0; idx < before.size(); idx++)
+        for (int idx = 0; idx < before.getNumOfSubLoop(); idx++)
             if (before.get(idx) != now.get(idx))
                 return true;
         return false;
@@ -64,7 +64,7 @@ public final class UCE extends FunctionPass
     {
         // We must usesList the index loop instead of interative loop, because
         // the getArraySize of reversePostOrder list is changing when iterating.
-        for (int idx = 0; idx < postOrder.size(); idx++)
+        for (int idx = 0; idx < postOrder.getNumOfSubLoop(); idx++)
         {
             BasicBlock curr = postOrder.get(idx);
             if (curr.isEmpty())
@@ -101,7 +101,7 @@ public final class UCE extends FunctionPass
                      *   B.j
                      *
                     // There is only one jump instruction in the B.i
-                    if (curr.size() == 1)
+                    if (curr.getNumOfSubLoop() == 1)
                     {
                         DomTree RDT = new DomTree(true, m);
                         RDT.recalculate();
@@ -138,7 +138,7 @@ public final class UCE extends FunctionPass
                     if (target.getNumOfPreds() == 1)
                         merge(curr, target);
 
-                    if (target.size() == 1 && (lastInst = target
+                    if (target.getNumOfSubLoop() == 1 && (lastInst = target
                             .getLastInst()) instanceof Instruction.ConditionalBranchInst)
                     {
                         go.insertBefore(lastInst);

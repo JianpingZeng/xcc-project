@@ -251,7 +251,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
                 }
                 else if (eltSize == 1)
                 {
-                    // If the element size is 1, we don't have to multiply, just add
+                    // If the element getNumOfSubLoop is 1, we don't have to multiply, just add
                     int idxReg = getReg(idx, mbb, insertPos++);
                     nextReg = makeAnotherReg(Type.Int32Ty);
                     bmi(mbb, insertPos++, X86InstrNames.ADDrr32, 2, nextReg).
@@ -1103,7 +1103,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
         //
         // [ESP] -- return address
         // [ESP + 4] -- first argument (leftmost lexically)
-        // [ESP + 8] -- second argument, if first argument is four bytes in size
+        // [ESP + 8] -- second argument, if first argument is four bytes in getNumOfSubLoop
 
         int argOffset = 0;
         MachineFrameInfo mfi = mf.getFrameInfo();
@@ -2341,7 +2341,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 			}
 		}
 
-		// create a register to hold the temporary result of multipling the type size.
+		// create a register to hold the temporary result of multipling the type getNumOfSubLoop.
 		int totalSizeReg = makeAnotherReg(Type.Int32Ty);
 		int srcReg = getReg(inst.getArraySize());
 
@@ -2358,7 +2358,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 		buildMI(mbb, X86InstrNames.ANDri32, 2, alignSizeReg).
 				addReg(addedSizeReg).addZImm(~15);
 
-		// subtract size from stack pointer, thereby allocating some space.
+		// subtract getNumOfSubLoop from stack pointer, thereby allocating some space.
 		buildMI(mbb, X86InstrNames.SUBrr32, 2, X86RegNames.ESP).
 				addReg(X86RegNames.ESP).addReg(alignSizeReg);
 

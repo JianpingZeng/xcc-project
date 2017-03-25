@@ -28,7 +28,7 @@ import static backend.support.BasicBlockUtil.splitBlockPredecessors;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LoopSimplify extends FunctionPass
+public final class LoopSimplify implements FunctionPass
 {
 	private LoopInfo li;
 	private DomTreeInfo dt;
@@ -90,7 +90,7 @@ public final class LoopSimplify extends FunctionPass
 			// predecessors that are inside of the loop.  This check guarantees that the
 			// loop preheader/header will dominate the exit blocks.  If the exit block has
 			// predecessors from outside of the loop, split the edge now.
-			exitBlocks = loop.getExitBlocks();
+			exitBlocks = loop.getExitingBlocks();
 
 			for (BasicBlock exitBB : exitBlocks)
 			{
@@ -158,9 +158,9 @@ public final class LoopSimplify extends FunctionPass
 		// loop-invariant instructions out of the way to open up more
 		// opportunities, and the disadvantage of having the responsibility
 		// to preserve dominator information.
-		if (exitBlocks.size() > 1 && loop.getExitBlock() != null)
+		if (exitBlocks.size() > 1 && loop.getExitingBlock() != null)
 		{
-			exitBlocks = loop.getExitBlocks();
+			exitBlocks = loop.getExitingBlocks();
 			for (Iterator<BasicBlock> itr = exitBlocks.iterator(); itr.hasNext();)
 			{
 				BasicBlock exitingBB = itr.next();

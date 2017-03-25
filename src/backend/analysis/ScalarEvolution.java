@@ -30,9 +30,7 @@ import backend.value.Instruction.CmpInst.Predicate;
 import jlang.sema.APInt;
 import tools.Util;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.*;
 
 import static backend.analysis.ValueTracking.computeNumSignBits;
 import static backend.transform.ConstantFolder.canConstantFoldCallTo;
@@ -691,7 +689,7 @@ public final class ScalarEvolution extends FunctionPass
     private SCEV computeIterationCount(Loop loop)
     {
         // If the loop has a non-one exit block count, we can't analyze it.
-        ArrayList<BasicBlock> exitBlocks = loop.getExitBlocks();
+        ArrayList<BasicBlock> exitBlocks = loop.getExitingBlocks();
 
         if (exitBlocks.size() != 1) return unknownValue;
 
@@ -1671,4 +1669,44 @@ public final class ScalarEvolution extends FunctionPass
     {
         return null;
     }
+
+    public void forgetLoopBackendTakenCount(Loop loop)
+    {
+        iterationCount.remove(loop);
+
+        LinkedList<Instruction> worklist = new LinkedList<>();
+        pushLoopPhis(loop, worklist);
+
+        HashSet<Instruction> visited = new HashSet<>();
+        while (!worklist.isEmpty())
+        {
+            Instruction inst = worklist.removeLast();
+            if (scalars.containsKey(inst))
+            {
+                scalars.remove(inst);
+                if (inst instanceof PhiNode)
+                    constantEvolutionLoopExitValue.remove(inst);
+            }
+            pushUseIntoStack(inst, worklist);
+        }
+    }
+
+    private void pushLoopPhis(Loop loop, LinkedList<Instruction> worklist)
+    {
+        BasicBlock header = loop.getHeaderBlock();
+        for (Instruction inst : header)
+        {
+            if (!(inst instanceof PhiNode))
+                break;
+            worklist.add(inst);
+        }
+    }
+
+    private void pushUseIntoStack(Instruction inst,
+            LinkedList<Instruction> worklist)
+    {
+        inst.getUseList().forEach(
+                u -> worklist.add((Instruction) u.getUser()));
+    }
 }
+

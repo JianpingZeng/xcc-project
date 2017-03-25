@@ -1,7 +1,7 @@
 package backend.pass;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,25 +18,27 @@ package backend.pass;
 
 import backend.analysis.Loop;
 import backend.analysis.LoopInfo;
+import backend.hir.Module;
 import backend.value.Function;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class LoopPass extends FunctionPass
+public interface LoopPass extends Pass
 {
     @Override
-    public boolean runOnFunction(Function f)
+    default void getAnalysisUsage(AnalysisUsage au)
     {
-        LoopInfo li = getAnalysisToUpDate(LoopInfo.class);
-        boolean changed = false;
-        for (Loop loop : li.getTopLevelLoop())
-        {
-            changed |= runOnLoop(loop);
-        }
-        return changed;
+        au.addRequired(LoopInfo.class);
     }
 
-    public abstract boolean runOnLoop(Loop loop);
+    boolean runOnLoop(Loop loop, LPPassManager ppm);
+
+    default boolean doInitialization(Loop loop, LPPassManager ppm)
+    {
+        return false;
+    }
+
+    default boolean doFinalization() { return false; }
 }
