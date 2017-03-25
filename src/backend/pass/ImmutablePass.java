@@ -10,19 +10,10 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class ImmutablePass implements Pass
+public interface ImmutablePass extends Pass
 {
-	protected AnalysisResolver resolver;
-	public ArrayList<Pair<PassInfo, Pass>> analysisImpls;
+	default boolean run(Module m) {return false;}
 
-	protected ImmutablePass() { analysisImpls = new ArrayList<>();}
+	void initializePass();
 
-	public boolean run(Module m) {return false;}
-
-	public abstract void initializePass();
-
-	public ArrayList<Pair<PassInfo, Pass>> getAnalysisImpls()
-	{
-		return analysisImpls;
-	}
 }

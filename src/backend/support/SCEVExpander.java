@@ -154,7 +154,7 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 				|| castOp == Operator.IntToPtr)
 				:"insertNoopCastOfTo cannot performs non-noop cast!";
 		assert se.getTypeSizeBits(val.getType()) == se.getTypeSizeBits(ty)
-				:"insertNoopCastOfTo cannot performs inequal type size!";
+				:"insertNoopCastOfTo cannot performs inequal type getNumOfSubLoop!";
 
 		if (castOp == Operator.BitCast && val.getType() == ty)
 			return val;

@@ -185,7 +185,7 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
      * @return
      */
     @Override
-    public ArrayList<MachineBasicBlock> getExitBlocks()
+    public ArrayList<MachineBasicBlock> getExitingBlocks()
     {
         ArrayList<MachineBasicBlock> exitBBs = new ArrayList<>();
         for (MachineBasicBlock block : blocks)

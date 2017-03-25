@@ -423,7 +423,7 @@ public final class AliasSetTracker
     }
 
     /**
-     * Given a pointer with size, finds a alias set which this pointer lives in.
+     * Given a pointer with getNumOfSubLoop, finds a alias set which this pointer lives in.
      * If there are multiply such alias set which alias the specified pointer, then
      * merge them together and return the unified set.
      * @param ptr

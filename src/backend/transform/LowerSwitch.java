@@ -34,7 +34,7 @@ import java.util.List;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LowerSwitch extends FunctionPass
+public final class LowerSwitch implements FunctionPass
 {
     /**
      * Register the LowerSwitch pass.

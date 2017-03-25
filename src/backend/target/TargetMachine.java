@@ -40,7 +40,7 @@ public abstract class TargetMachine
 	 */
 	private String name;
 	/**
-	 * Calculate type size and alignment.
+	 * Calculate type getNumOfSubLoop and alignment.
 	 */
 	private TargetData dataLayout;
 

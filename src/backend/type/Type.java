@@ -198,8 +198,8 @@ public abstract class Type extends Value implements PrimitiveID
     }
 
     /**
-     * Return true if it makes sense to take the size of this type.
-     * To get the actual size for a particular TargetData, it is reasonable
+     * Return true if it makes sense to take the getNumOfSubLoop of this type.
+     * To get the actual getNumOfSubLoop for a particular TargetData, it is reasonable
      * to use the TargetData subsystem to do that.
      * @return
      */

@@ -177,10 +177,11 @@ public abstract class LoopBase<BlockT, LoopT>
     }
 
     /**
-     * Returns a list of all loop exit block.
+     * Returns a list of all basic block contained in the this loop, but its
+     * successor is outside of this loop.
      * @return
      */
-    public abstract ArrayList<BlockT> getExitBlocks();
+    public abstract ArrayList<BlockT> getExitingBlocks();
 
 	/**
      * Returns the unique exit blocks list of this loop.
@@ -204,13 +205,13 @@ public abstract class LoopBase<BlockT, LoopT>
     }
 
     /**
-     * If {@linkplain #getExitBlocks()} exactly return one block, then this
+     * If {@linkplain #getExitingBlocks()} exactly return one block, then this
      * method will return it, otherwise return null;
      * @return
      */
-    public BlockT getExitBlock()
+    public BlockT getExitingBlock()
     {
-        ArrayList<BlockT> res = getExitBlocks();
+        ArrayList<BlockT> res = getExitingBlocks();
         if (res.size() == 1)
             return res.get(0);
         return null;
@@ -250,4 +251,9 @@ public abstract class LoopBase<BlockT, LoopT>
     public abstract void addBasicBlockIntoLoop(BlockT bb, LoopInfoBase<BlockT, LoopT> li);
     public abstract void print(OutputStream os, int depth);
     public abstract void dump();
+
+    public int getNumOfSubLoop()
+    {
+        return getSubLoops().size();
+    }
 }

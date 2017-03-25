@@ -275,7 +275,7 @@ public final class ConstantRange
      * Return the range that results from the intersection of this
      * range with another range.  The resultant range is guaranteed to include all
      * elements contained in both input ranges, and to have the smallest possible
-     * set size that does so.
+     * set getNumOfSubLoop that does so.
      * @param range
      * @return
      */

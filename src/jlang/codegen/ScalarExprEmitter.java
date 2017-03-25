@@ -298,7 +298,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         if (info.ty.isPointerType() &&
                 info.ty.<jlang.type.PointerType>getAs().isVariableArrayType())
         {
-            // The amount of the addition needs to account for the VLA size
+            // The amount of the addition needs to account for the VLA getNumOfSubLoop
             cgf.errorUnsupported(info.expr, "VLA pointer addition");;
         }
 
@@ -415,7 +415,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             rhs = builder.createPtrToInt(rhs, resultType, "sub.ptr.rhs.cast");
             Value bytesBetween = builder.createSub(lhs, rhs, "sub.ptr.sub");
 
-            // Optimize out the shift for element size of 1.
+            // Optimize out the shift for element getNumOfSubLoop of 1.
             if (eleSize == 1)
                 return bytesBetween;
 
@@ -428,7 +428,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     private Value emitShl(BinOpInfo info)
     {
         // It is required that the lhs and rhs to be the same type.
-        // Performs truncation or extending rhs to the same size as the lhs.
+        // Performs truncation or extending rhs to the same getNumOfSubLoop as the lhs.
         Value rhs = info.rhs;
         if (info.lhs.getType() != info.rhs.getType())
             rhs = builder.createIntCast(rhs, info.lhs.getType(), false, "shl.prom");
@@ -438,7 +438,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     private Value emitShr(BinOpInfo info)
     {
         // It is required that the lhs and rhs to be the same type.
-        // Performs truncation or extending rhs to the same size as the lhs.
+        // Performs truncation or extending rhs to the same getNumOfSubLoop as the lhs.
         Value rhs = info.rhs;
         if (info.lhs.getType() != info.rhs.getType())
             rhs = builder.createIntCast(rhs, info.lhs.getType(), false, "shr.prom");

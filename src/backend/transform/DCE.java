@@ -35,7 +35,7 @@ import java.util.LinkedList;
  * </p>
  * Created by Xlous zeng on 2016/3/8.
  */
-public class DCE extends FunctionPass
+public class DCE implements FunctionPass
 {
 	/**
 	 * The list where all critical instruction in Module term resides.
@@ -68,7 +68,6 @@ public class DCE extends FunctionPass
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		au.addRequired(DomTreeInfo.class);
-		super.getAnalysisUsage(au);
 	}
 
 	/**

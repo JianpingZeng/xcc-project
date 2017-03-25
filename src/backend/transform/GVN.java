@@ -10,7 +10,7 @@ import backend.value.Function;
  * @author xlous.zeng
  * @version 0.1
  */
-public final class GVN extends FunctionPass
+public final class GVN implements FunctionPass
 {
     @Override
     public String getPassName()

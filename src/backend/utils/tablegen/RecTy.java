@@ -308,7 +308,7 @@ public abstract class RecTy
     }
 
     /**
-     * Represent an integer value of no particular size.
+     * Represent an integer value of no particular getNumOfSubLoop.
      */
     public static class IntRecTy extends RecTy
     {

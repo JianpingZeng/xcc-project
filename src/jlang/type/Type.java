@@ -87,7 +87,7 @@ public abstract class Type implements TypeClass
 	public boolean isCanonical() {return canonicalType.getType() == this;}
 
     /**
-     * Returns the size of the specified jlang.type in bits.
+     * Returns the getNumOfSubLoop of the specified jlang.type in bits.
      * </br>
      * This method doesn't work on incomplete types.
      *
@@ -397,7 +397,7 @@ public abstract class Type implements TypeClass
      * Return true if this is an incomplete jlang.type (C99 6.2.5p1)
      * <br>
      * a jlang.type that can describe objects, but which lacks information needed to
-     * determine its size.
+     * determine its getNumOfSubLoop.
      * @return
      */
     public boolean isIncompleteType()

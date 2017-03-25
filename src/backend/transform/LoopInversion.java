@@ -2,6 +2,7 @@ package backend.transform;
 
 import backend.analysis.Loop;
 import backend.hir.BasicBlock;
+import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.value.Instruction;
 import backend.value.Instruction.BranchInst;
@@ -28,7 +29,7 @@ import backend.value.Value;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LoopInversion extends LoopPass
+public final class LoopInversion implements LoopPass
 {
     @Override
     public String getPassName()
@@ -42,7 +43,7 @@ public final class LoopInversion extends LoopPass
 	 * the Loop has exactly one entry block and exit block. 
 	 */
 	@Override
-	public boolean runOnLoop(Loop loop)
+	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		rotateLoop(loop);
 		return true;

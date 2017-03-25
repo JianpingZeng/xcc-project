@@ -32,7 +32,7 @@ public final class TypeDefType extends Type
     }
 
     /**
-     * Returns the size of the specified jlang.type in bits.
+     * Returns the getNumOfSubLoop of the specified jlang.type in bits.
      * </br>
      * This method doesn't work on incomplete types.
      *

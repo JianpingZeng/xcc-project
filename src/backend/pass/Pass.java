@@ -1,5 +1,6 @@
 package backend.pass;
 
+import backend.hir.Module;
 import tools.Pair;
 
 import java.util.ArrayList;
@@ -19,7 +20,7 @@ public interface Pass
 		PassInfo pi = getPassInfo(klass);
 		if (pi == null) return null;
 
-		return (T)getAnalysisToUpDate(pi);
+		return (T)PassDataBase.getAnalysisOrNull(pi);
 	}
 
 	/**
@@ -28,17 +29,6 @@ public interface Pass
 	 */
 	default void getAnalysisUsage(AnalysisUsage au) {}
 
-	/**
-	 * This class must be overridden by concrete subclass.
-	 * @param pi
-	 * @return
-	 */
-	Pass getAnalysisToUpDate(PassInfo pi);
-
-	void addToPassManager(ModulePassManager pm, AnalysisUsage au);
-
-	void addToPassManager(FunctionPassManager pm, AnalysisUsage au);
-
-	ArrayList<Pair<PassInfo, Pass>> getAnalysisImpls();
+	default boolean run(Module m) { return false; }
 }
 

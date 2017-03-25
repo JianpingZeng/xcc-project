@@ -161,7 +161,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
      */
     protected boolean commDirectiveTakesAlign;
     /**
-     * Indicates if there is a directive, ".size" or ".type". This is true
+     * Indicates if there is a directive, ".getNumOfSubLoop" or ".type". This is true
      * in the most ELF target.
      */
     protected boolean hasDotTypeDotSizeDirective;

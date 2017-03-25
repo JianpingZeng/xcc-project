@@ -33,7 +33,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class Mem2Reg extends FunctionPass
+public final class Mem2Reg implements FunctionPass
 {
     public static RegisterPass promotePass =
             new RegisterPass("Promote memory to Register", Mem2Reg.class);

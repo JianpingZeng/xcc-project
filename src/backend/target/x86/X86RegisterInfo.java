@@ -376,7 +376,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 			// eliminates the need for add/sub ESP brackets around call sites.
 			numBytes += mfi.getMaxCallFrameSize();
 
-			// round the size to a multiple of the alignment.
+			// round the getNumOfSubLoop to a multiple of the alignment.
 			int align = mf.getTargetMachine().getFrameInfo().getStackAlignment();
 			numBytes = ((numBytes + 4) + align - 1) / align * align - 4;
 
@@ -428,7 +428,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 			int numBytes = mfi.getStackSize();
 			if (numBytes!=0)
 			{
-				// addjust stack size: %esp += numBytes (up)
+				// addjust stack getNumOfSubLoop: %esp += numBytes (up)
 				mi = buildMI(ADDri32, 2, ESP).addReg(ESP, Use).addZImm(numBytes).getMInstr();
 				mbb.insert(mbbi++, mi);
 			}

@@ -163,7 +163,7 @@ public class APInt
         {
             // if all bits are used, we want to leave the value alone.
             // This also avoids the undefined behavior of >> when the shift
-            // is the same size as the word size(64).
+            // is the same getNumOfSubLoop as the word getNumOfSubLoop(64).
             return this;
         }
 
@@ -350,7 +350,7 @@ public class APInt
     private APInt shlSlowCase(int shiftAmt)
     {
         // If all the bits were shifted out, the result is 0. This avoids issues
-        // with shifting by the size of the integer type, which produces undefined
+        // with shifting by the getNumOfSubLoop of the integer type, which produces undefined
         // results. We define these "undefined results" to always be 0.
         if (shiftAmt == bitWidth)
             return new APInt(bitWidth, 0);
@@ -1496,13 +1496,13 @@ public class APInt
         }
 
         // If all the bits were shifted out, the result is 0. This avoids issues
-        // with shifting by the size of the integer type, which produces undefined
+        // with shifting by the getNumOfSubLoop of the integer type, which produces undefined
         // results. We define these "undefined results" to always be 0.
         if (shiftAmt == bitWidth)
             return new APInt(bitWidth, 0);
 
         // If none of the bits are shifted out, the result is *this. This avoids
-        // issues with shifting by the size of the integer type, which produces
+        // issues with shifting by the getNumOfSubLoop of the integer type, which produces
         // undefined results in the code below. This is also an optimization.
         if (shiftAmt == 0)
             return this;
@@ -1819,7 +1819,7 @@ public class APInt
 
     /**
      * Multiplies integer array x by integer array y and stores the result into
-     * the integer array dest. Note that dest's size must be >= xlen + ylen.
+     * the integer array dest. Note that dest's getNumOfSubLoop must be >= xlen + ylen.
      *
      * @param dest
      * @param x

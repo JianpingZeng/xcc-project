@@ -11,7 +11,7 @@ public final class IntegerType extends PrimitiveType
 
     private static String[] LengthName = {"char", "short", "int", "long"};
     /**
-     * The size of memory space that this jlang.type allocated in bits.
+     * The getNumOfSubLoop of memory space that this jlang.type allocated in bits.
      */
     private long size;
     private boolean isSigned;
@@ -27,7 +27,7 @@ public final class IntegerType extends PrimitiveType
         super(Int, isSigned?"signed ":"unsigned " + LengthName[Util.log2(size)]);
         this.size = size*8;
         this.isSigned = isSigned;
-        assert Util.isPowerOf2(size):"The size must be power of 2.";
+        assert Util.isPowerOf2(size):"The getNumOfSubLoop must be power of 2.";
     }
     @Override
     public boolean isSignedType()

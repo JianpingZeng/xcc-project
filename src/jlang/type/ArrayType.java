@@ -229,9 +229,9 @@ public abstract class ArrayType extends Type
     }
 
     /**
-     * This class represents a C array with an uncomplete size.
+     * This class represents a C array with an uncomplete getNumOfSubLoop.
      * For example 'int A[]' has an {@code IncompleteArrayType} where the element
-     * jlang.type is 'int' and the size of unspecifed.
+     * jlang.type is 'int' and the getNumOfSubLoop of unspecifed.
      */
     public static class IncompleteArrayType extends jlang.type.ArrayType
     {

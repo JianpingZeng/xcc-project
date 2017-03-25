@@ -2522,7 +2522,7 @@ public abstract class Instruction extends User
 
             reserve(1);
             assert arraySize.getType() == Type.Int32Ty
-                    :"Alloca array size != UnsignedIntTy";
+                    :"Alloca array getNumOfSubLoop != UnsignedIntTy";
             setOperand(0, arraySize, this);
         }
 

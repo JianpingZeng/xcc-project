@@ -27,7 +27,7 @@ import java.util.HashSet;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class DominatorFrontierBase extends FunctionPass
+public abstract class DominatorFrontierBase implements FunctionPass
 {
     protected HashMap<BasicBlock, HashSet<BasicBlock>> frontiers;
     protected ArrayList<BasicBlock> roots;

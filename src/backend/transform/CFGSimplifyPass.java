@@ -38,7 +38,7 @@ import static backend.transform.ConstantFolder.constantFoldTerminator;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class CFGSimplifyPass extends FunctionPass
+public final class CFGSimplifyPass implements FunctionPass
 {
     /**
      * calling this method to simplify cfg. It is possible that multiple passes

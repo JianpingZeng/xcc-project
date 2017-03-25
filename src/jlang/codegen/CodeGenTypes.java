@@ -536,7 +536,7 @@ public class CodeGenTypes
         if (!r.isIntegerType())
             return r;
 
-        // Otherwise, return an integer of the TargetData-specified size.
+        // Otherwise, return an integer of the TargetData-specified getNumOfSubLoop.
         return IntegerType.get((int)qualType.getTypeSize());
     }
 

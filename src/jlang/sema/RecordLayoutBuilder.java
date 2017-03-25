@@ -28,7 +28,7 @@ import java.util.ArrayList;
 /**
  * This class represents building an instance of {@linkplain RecordLayoutInfo}
  * , initializing each member of class {@linkplain RecordLayoutInfo}, for example
- * , size, dataSize and alignment etc.
+ * , getNumOfSubLoop, dataSize and alignment etc.
  *
  * @author Xlous.zeng
  * @version 0.1
@@ -36,7 +36,7 @@ import java.util.ArrayList;
 public final class RecordLayoutBuilder
 {
     /**
-     * The current size of the record layout.
+     * The current getNumOfSubLoop of the record layout.
      */
     private long size;
     /**
@@ -62,7 +62,7 @@ public final class RecordLayoutBuilder
     private boolean isUnion;
 
     /**
-     * The data size of the record being laid out with tail padding.
+     * The data getNumOfSubLoop of the record being laid out with tail padding.
      */
     private long dataSize;
 
@@ -86,7 +86,7 @@ public final class RecordLayoutBuilder
         initializeLayout(d);
         layoutFields(d);
 
-        // Finally, round the size of the total struct up to the
+        // Finally, round the getNumOfSubLoop of the total struct up to the
         // alignment of the struct itself.
         finishLayout(d);
     }
@@ -127,7 +127,7 @@ public final class RecordLayoutBuilder
         {
             // This is a flexible array member; we can't directly
             // query getTypeInfo about these, so we figure it out here.
-            // Flexible array members don't have any size, but they
+            // Flexible array members don't have any getNumOfSubLoop, but they
             // have to be aligned appropriately for their element jlang.type.'
             fieldSize = 0;
             ArrayType ty = fd.getDeclType().getAsArrayType();
@@ -142,7 +142,7 @@ public final class RecordLayoutBuilder
 
         if (packed)
             fieldAlign = 1;
-        // Round up the current record size to the field's alignment boundary.
+        // Round up the current record getNumOfSubLoop to the field's alignment boundary.
         fieldOffset = Util.roundUp(fieldOffset, fieldAlign);
 
         // TODO place field in empty subobject to make use of space.
@@ -157,7 +157,7 @@ public final class RecordLayoutBuilder
         else
             size = fieldOffset + fieldSize;
 
-        // Update the data size
+        // Update the data getNumOfSubLoop
         dataSize = getSizeInBits();
         alignment = fieldAlign;
     }

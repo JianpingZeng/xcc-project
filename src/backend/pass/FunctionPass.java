@@ -17,18 +17,18 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class FunctionPass implements Pass
+public interface FunctionPass extends Pass
 {
-	protected AnalysisResolver resolver = new FunctionPassManager();
-	protected ArrayList<Pair<PassInfo, Pass>> analysisImpls
-			= new ArrayList<>();
+	//protected AnalysisResolver resolver = new FunctionPassManager();
+	//ArrayList<Pair<PassInfo, Pass>> analysisImpls
+	//		= new ArrayList<>();
 	/**
 	 * To run this pass on a module, we simply call runOnFunction once for
 	 * each module.
 	 * @param f
 	 * @return
 	 */
-	public abstract boolean runOnFunction(Function f);
+	boolean runOnFunction(Function f);
 
 	/**
 	 * Do some initialization jobs in pre-function pass.
@@ -36,7 +36,7 @@ public abstract class FunctionPass implements Pass
 	 * @param m
 	 * @return
 	 */
-	public boolean doInitialization(Module m)
+	default boolean doInitialization(Module m)
 	{
 		return false;
 	}
@@ -47,36 +47,20 @@ public abstract class FunctionPass implements Pass
 	 * @param m
 	 * @return
 	 */
-	public boolean doFinalization(Module m)
+	default boolean doFinalization(Module m)
 	{
 		return false;
 	}
 
 	@Override
-	public void addToPassManager(FunctionPassManager pm, AnalysisUsage au)
+	default boolean run(Module m)
 	{
-		pm.addPass(this, au);
+		boolean changed = doInitialization(m);
+
+		for (Function f : m.getFunctionList())
+			changed |= runOnFunction(f);
+		changed |= doFinalization(m);
+		return changed;
 	}
 
-	@Override
-	public void addToPassManager(ModulePassManager pm, AnalysisUsage au)
-	{
-		pm.addPass(this, au);
-	}
-
-	@Override
-	public ArrayList<Pair<PassInfo, Pass>> getAnalysisImpls()
-	{
-		return analysisImpls;
-	}
-	/**
-	 * This class must be overridden by concrete subclass.
-	 * @param pi
-	 * @return
-	 */
-	@Override
-    public Pass getAnalysisToUpDate(PassInfo pi)
-	{
-		return resolver.getAnalysisToUpdate(pi);
-	}
 }

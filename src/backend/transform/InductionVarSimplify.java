@@ -6,6 +6,7 @@ import backend.analysis.LoopInfo;
 import backend.hir.BasicBlock;
 import backend.hir.Operator;
 import backend.pass.AnalysisUsage;
+import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.type.Type;
 import backend.value.Constant;
@@ -49,7 +50,7 @@ import static backend.transform.ConstantFolder.constantFoldBinaryInstruction;
  * @author xlos.zjp
  * @version 0.1
  */
-public final class InductionVarSimplify extends LoopPass
+public final class InductionVarSimplify implements LoopPass
 {
 
 	private static class IVRecord
@@ -96,7 +97,15 @@ public final class InductionVarSimplify extends LoopPass
 	}
 
 	@Override
-	public boolean runOnLoop(Loop loop)
+	public void getAnalysisUsage(AnalysisUsage au)
+	{
+		au.addRequired(DomTreeInfo.class);
+		au.addRequired(LoopInfo.class);
+		au.addRequired(LoopSimplify.class);
+		au.addRequired(UnreachableBlockElim.class);
+	}
+
+	@Override public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		li = getAnalysisToUpDate(LoopInfo.class);
 		dt = getAnalysisToUpDate(DomTreeInfo.class);
@@ -114,16 +123,6 @@ public final class InductionVarSimplify extends LoopPass
 			loop = loop.getParentLoop();
 		}while (loop != null);
 		return changed;
-	}
-
-	@Override
-	public void getAnalysisUsage(AnalysisUsage au)
-	{
-		au.addRequired(DomTreeInfo.class);
-		au.addRequired(LoopInfo.class);
-		au.addRequired(LoopSimplify.class);
-		au.addRequired(UnreachableBlockElim.class);
-		super.getAnalysisUsage(au);
 	}
 
 	/**

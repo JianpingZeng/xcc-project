@@ -292,7 +292,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	 */
 	public boolean hasDedicatedExits()
 	{
-		ArrayList<BasicBlock> exits = getExitBlocks();
+		ArrayList<BasicBlock> exits = getExitingBlocks();
 		for (BasicBlock exitBB : exits)
 		{
 			PredIterator<BasicBlock> predItr = exitBB.predIterator();
@@ -454,7 +454,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	 * @return
 	 */
 	@Override
-	public ArrayList<BasicBlock> getExitBlocks()
+	public ArrayList<BasicBlock> getExitingBlocks()
 	{
 		ArrayList<BasicBlock> exitBBs = new ArrayList<>();
 		for (BasicBlock block : blocks)
@@ -508,5 +508,10 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 			}
 		}
 		return exitBBs;
+	}
+
+	public boolean isEmpty()
+	{
+		return subLoops.isEmpty();
 	}
 }

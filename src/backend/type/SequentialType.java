@@ -21,7 +21,7 @@ import backend.value.Value;
 /**
  * This is the superclass of the array and pointer type
  * classes.  Both of these represent "arrays" in memory.  The array type
- * represents a specifically sized array, pointer types are unsized/unknown size
+ * represents a specifically sized array, pointer types are unsized/unknown getNumOfSubLoop
  * arrays.  SequentialType holds the common features of both, which stem from
  * the fact that both lay their components out in memory identically.
  * @author Xlous.zeng

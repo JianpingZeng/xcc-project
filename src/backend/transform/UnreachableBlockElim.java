@@ -32,7 +32,7 @@ import java.util.LinkedHashSet;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class UnreachableBlockElim extends FunctionPass
+public final class UnreachableBlockElim implements FunctionPass
 {
     @Override
     public String getPassName()

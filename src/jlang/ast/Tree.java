@@ -1003,7 +1003,7 @@ abstract public class Tree
                 t = type.getType().getEnumType().getDecl().getIntegerType();
             if (type.getType().isBooleanType())
                 return 1;
-            // for the primitive jlang.type, just use the standard jlang.type size.
+            // for the primitive jlang.type, just use the standard jlang.type getNumOfSubLoop.
             return t.getTypeSize();
         }
 
@@ -1300,7 +1300,7 @@ abstract public class Tree
             super(IntegerLiteralClass, type, EVK_RValue, loc);
             assert type.isIntegerType():"Illegal jlang.type in Integer literal.";
             assert value.getBitWidth() == type.getTypeSize()
-                    :"Integer jlang.type is not the correct size for constant.";
+                    :"Integer jlang.type is not the correct getNumOfSubLoop for constant.";
             val = value;
         }
 

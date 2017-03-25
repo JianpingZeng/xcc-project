@@ -23,7 +23,7 @@ import tools.Util;
  * @see GVN
  * @see CFGSimplifyPass
  */
-public class Canonicalizer extends InstVisitor
+public class Canonicalizer implements InstVisitor
 {
 	private Value result;
 

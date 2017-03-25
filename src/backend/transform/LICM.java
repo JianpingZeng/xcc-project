@@ -6,6 +6,7 @@ import backend.analysis.AliasSetTracker.AliasSet;
 import backend.hir.BasicBlock;
 import backend.hir.CallSite;
 import backend.pass.AnalysisUsage;
+import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.type.Type;
 import backend.value.Instruction;
@@ -43,7 +44,7 @@ import static backend.transform.PromoteMemToReg.promoteMemToReg;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LICM extends LoopPass
+public final class LICM implements LoopPass
 {
     /**
      * enable licm constant variables motion, default to false.
@@ -131,7 +132,7 @@ public final class LICM extends LoopPass
      * @return
      */
     @Override
-    public boolean runOnLoop(Loop loop)
+    public boolean runOnLoop(Loop loop, LPPassManager ppm)
     {
         changed = false;
         li = getAnalysisToUpDate(LoopInfo.class);
@@ -305,7 +306,7 @@ public final class LICM extends LoopPass
      */
     private void sink(Instruction inst)
     {
-        ArrayList<BasicBlock> exitBlocks = curLoop.getExitBlocks();
+        ArrayList<BasicBlock> exitBlocks = curLoop.getExitingBlocks();
         if (inst instanceof LoadInst)
             ++numMoveLoads;
         if (inst instanceof CallInst)

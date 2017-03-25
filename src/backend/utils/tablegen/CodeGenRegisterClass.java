@@ -80,7 +80,7 @@ public final class CodeGenRegisterClass
             elts.add(reg);
         }
 
-        // Allow targets to override the size in bits of the RegisterClass.
+        // Allow targets to override the getNumOfSubLoop in bits of the RegisterClass.
         int size = r.getValueAsInt("Size");
         spillSize = size != 0 ? size : MVT.getSizeInBits(vts.get(0));
         spillAlignment = r.getValueAsInt("Alignment");

@@ -51,7 +51,7 @@ public final class MVT
         switch (valueType)
         {
             default:
-                assert false:"Value type has no known size!";
+                assert false:"Value type has no known getNumOfSubLoop!";
                 return 0;
             case i1: return 1;
             case i8: return 8;

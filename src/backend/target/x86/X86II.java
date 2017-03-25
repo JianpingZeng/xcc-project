@@ -61,7 +61,7 @@ public interface X86II
 	//===------------------------------------------------------------------===//
 	// Actual flags...
 
-	// OpSize - Set if this instruction requires an operand size prefix (0x66);
+	// OpSize - Set if this instruction requires an operand getNumOfSubLoop prefix (0x66);
 	// which most often indicates that the instruction operates on 16 bit data
 	// instead of 32 bit data.
 	int OpSize      = 1 << 5;
@@ -86,7 +86,7 @@ public interface X86II
 	int DE = 8 << Op0Shift,   DF = 9 << Op0Shift;
 
 	//===------------------------------------------------------------------===//
-	// This three-bit field describes the size of a memory operand.  Zero is
+	// This three-bit field describes the getNumOfSubLoop of a memory operand.  Zero is
 	// unused so that we can tell if we forgot to set a value.
 	int ArgShift = 10;
 	int ArgMask  = 7 << ArgShift;

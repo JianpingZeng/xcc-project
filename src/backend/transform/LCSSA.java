@@ -2,10 +2,7 @@ package backend.transform;
 
 import backend.analysis.*;
 import backend.hir.BasicBlock;
-import backend.pass.AnalysisUsage;
-import backend.pass.LoopPass;
-import backend.pass.Pass;
-import backend.pass.RegisterPass;
+import backend.pass.*;
 import backend.support.PredIteratorCache;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
@@ -42,7 +39,7 @@ import java.util.HashMap;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LCSSA extends LoopPass
+public final class LCSSA implements LoopPass
 {
 	private LoopInfo li;
 	private DomTreeInfo dt;
@@ -70,14 +67,14 @@ public final class LCSSA extends LoopPass
 	 * @return
 	 */
 	@Override
-	public boolean runOnLoop(Loop loop)
+	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		predCache.clear();
 		li = getAnalysisToUpDate(LoopInfo.class);
 		dt = getAnalysisToUpDate(DomTreeInfo.class);
 
 		loopBlocks = new ArrayList<>(loop.getBlocks());
-		ArrayList<BasicBlock> exitBlocks = loop.getExitBlocks();
+		ArrayList<BasicBlock> exitBlocks = loop.getExitingBlocks();
 
 		ArrayList<Instruction> affectedValues = new ArrayList<>();
 		getLoopValueUsedOutsideLoop(loop, affectedValues, exitBlocks);
