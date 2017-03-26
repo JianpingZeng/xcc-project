@@ -17,6 +17,7 @@ package backend.analysis;
  */
 
 import backend.hir.BasicBlock;
+import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.pass.Pass;
 import backend.support.Printable;
@@ -33,7 +34,7 @@ import java.util.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class IVUsers extends LoopPass implements Printable
+public final class IVUsers implements Printable, LoopPass
 {
 	private Loop loop;
 	private LoopInfo li;
@@ -52,7 +53,7 @@ public final class IVUsers extends LoopPass implements Printable
 	public HashMap<SCEV, IVUsersOfOneStride> ivUsesByStride;
 
 	@Override
-	public boolean runOnLoop(Loop loop)
+	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		this.loop = loop;
 		li = getAnalysisToUpDate(LoopInfo.class);

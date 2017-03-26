@@ -17,7 +17,7 @@ package jlang.sema;
  */
 
 /**
- * Represents the result of getName look up.
+ * Represents the result of getName lookup up.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -38,7 +38,7 @@ public class LookupResult
         NotFound,
 
         /**
-         * Name look up found a single declaration that met the
+         * Name lookup up found a single declaration that met the
          * criteria. getFoundDecl() will return this declaration.
          */
         Found,

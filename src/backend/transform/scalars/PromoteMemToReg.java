@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.analysis.AliasSetTracker;
 import backend.analysis.DomTreeInfo;

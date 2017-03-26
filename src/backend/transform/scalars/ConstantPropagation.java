@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.pass.FunctionPass;
 import backend.value.*;
@@ -14,7 +14,7 @@ import java.util.LinkedList;
  * @author Xlous.zeng
  * @see Canonicalizer
  * @see DCE
- * @see GVN
+ * @see GVNPRE
  * @see CFGSimplifyPass
  * @see UnreachableBlockElim
  */

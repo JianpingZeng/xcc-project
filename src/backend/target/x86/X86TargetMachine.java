@@ -1,7 +1,7 @@
 package backend.target.x86;
 
 import backend.hir.Module;
-import backend.pass.PassManager;
+import backend.pass.PassManagerBase;
 import backend.target.TargetFrameInfo;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
@@ -16,7 +16,7 @@ import static backend.target.x86.FloatPointStackitifierPass.createX86FloatingPoi
 import static backend.target.x86.PEI.createX86PrologEpilogEmitter;
 import static backend.target.x86.X86PeepholeOptimizer.createX86PeepholeOptimizer;
 import static backend.target.x86.X86SimpleInstSel.createX86SimpleInstructionSelector;
-import static backend.transform.LowerSwitch.createLowerSwitchPass;
+import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
 
 /**
  * @author Xlous.zeng
@@ -66,7 +66,7 @@ public class X86TargetMachine extends TargetMachine
 	 * @return
 	 */
 	@Override
-	public boolean addPassesToEmitFile(PassManager pm,
+	public boolean addPassesToEmitFile(PassManagerBase pm,
 			boolean fast, OutputStream asmOutStream,
 			CodeGenFileType genFileType, CodeGenOpt optLevel)
 	{

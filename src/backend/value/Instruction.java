@@ -11,9 +11,10 @@ import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.List;
 
 import static backend.hir.Operator.*;
-import static backend.type.Type.Int32Ty;
+import static backend.type.Type.*;
 import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
@@ -238,6 +239,139 @@ public abstract class Instruction extends User
         int idx = insertPos.getParent().indexOf(insertPos);
         insertPos.getParent().insertBefore(this, idx);
         this.eraseFromBasicBlock();
+    }
+
+    public boolean isTerminator()
+    {
+        return isTerminator(getOpcode());
+    }
+
+    public boolean isBinaryOp()  
+    { 
+        return isBinaryOp(getOpcode()); 
+    }
+
+    public boolean isShift() { return isShift(getOpcode()); }
+    public boolean isCast()  { return isCast(getOpcode()); }
+
+
+
+    public String getOpcodeName(Operator opcode)
+    {
+        return opcode.opName;
+    }
+
+    static boolean isTerminator(Operator opcode) {
+    return opcode.ordinal() >= Ret.ordinal() && opcode.ordinal() <= Switch.ordinal();
+}
+
+    static boolean isBinaryOp(Operator opcode) {
+    return opcode.ordinal() >= Add.ordinal() && opcode.ordinal() <= AShr.ordinal();
+}
+
+	/**
+     * Determine if the Opcode is one of the shift instructions.
+     * @param Opcode
+     * @return
+     */
+    static boolean isShift(Operator Opcode) 
+    {
+        return Opcode.ordinal() >= Shl.ordinal()
+                && Opcode.ordinal() <= AShr.ordinal();
+    }
+
+	/**
+     * Return true if this is a logical shift left or a logical
+     * shift right.
+     * @return
+     */
+    public boolean isLogicalShift()  
+    {
+        return getOpcode() == Shl || getOpcode() == LShr;
+    }
+
+	/**
+     * Return true if this is an arithmetic shift right.
+     * @return
+     */
+    public boolean isArithmeticShift()  
+    {
+        return getOpcode() == AShr;
+    }
+
+	/**
+     * Determine if the opcode is one of the CastInst instructions.
+     * @param opcode
+     * @return
+     */
+    static boolean isCast(Operator opcode) 
+    {
+        return opcode.ordinal() >= Trunc.ordinal()
+                && opcode.ordinal() <= BitCast.ordinal();
+    }
+
+	/**
+     * <pre>
+     * Return true if the instruction is associative:
+     *   Associative operators satisfy:  x op (y op z) === (x op y) op z
+     * </pre>
+     * In LLVM, the Add, Mul, And, Or, and Xor operators are associative, when
+     * not applied to floating point types.
+     * @return
+     */
+    public boolean isAssociative()  
+    { 
+        return isAssociative(getOpcode(), getType()); 
+    }
+
+    static boolean isAssociative(Operator op,  Type ty)
+    {
+        if (ty == Int1Ty || ty.equals(Int8Ty) || ty.equals(Int16Ty)
+                || ty.equals(Int32Ty) || ty.equals(Int64Ty))
+        {
+            switch (op)
+            {
+                case Add:
+                case Mul:
+                case And:
+                case Or:
+                case Xor:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        else
+            return false;
+    }
+
+	/**
+     * <pre>
+     * Return true if the instruction is commutative:
+     *
+     *   Commutative operators satisfy: (x op y) === (y op x)
+     * </pre>
+     * In LLVM, these are the associative operators.
+     * @return
+     */
+    public boolean isCommutative()
+    {
+        return isCommutative(getOpcode());
+    }
+
+    static boolean isCommutative(Operator op)
+    {
+        switch (op)
+        {
+            case Add:
+            case Mul:
+            case And:
+            case Or:
+            case Xor:
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -1350,7 +1484,22 @@ public abstract class Instruction extends User
             }
         }
 
-	    /**
+        public static CmpInst create(Operator opcode, Predicate predicate,
+                Value newOp1, Value newOp2,
+                String name, Instruction insertBefore)
+        {
+            if (opcode == ICmp)
+            {
+                return new ICmpInst(predicate, newOp1, newOp2, name, insertBefore);
+            }
+            else
+            {
+                return new FCmpInst(predicate, newOp1, newOp2, name,
+                        insertBefore);
+            }
+        }
+
+        /**
          * This enumeration lists the possible predicates for CmpInst subclasses.
          * Values in the range 0-31 are reserved for FCmpInst, while values in the
          * range 32-64 are reserved for ICmpInst. This is necessary to ensure the
@@ -2318,6 +2467,14 @@ public abstract class Instruction extends User
             this.name = name;
         }
 
+        public PhiNode(Type ty, String name,
+                Instruction insertBefore)
+        {
+            super(ty, Phi, insertBefore);
+            reserve(4);
+            this.name = name;
+        }
+
         public PhiNode(Type type, int numReservedValue, String name,
                 BasicBlock insertAtEnd)
         {
@@ -2752,6 +2909,21 @@ public abstract class Instruction extends User
             this(ptr, idx, "", (Instruction)null);
         }
 
+        public GetElementPtrInst(Value ptr, List<Value> indices,
+                String name, Instruction insertBefore)
+        {
+            super(PointerType.get(checkType(getIndexedType(ptr.getType(), indices.get(0)))),
+                    GetElementPtr, insertBefore);
+            reserve(indices.size());
+            setOperand(0, ptr);
+            int i = 1;
+            for (Value idx : indices)
+            {
+                setOperand(i++, idx, this);
+            }
+            this.name = name;
+        }
+
         private void init(Value ptr, Value idx, String name)
         {
             assert getNumOfOperands() == 2:"NumOperands not initialized.";
@@ -2805,7 +2977,20 @@ public abstract class Instruction extends User
             return (PointerType)getPointerOperand().getType();
         }
 
-        public boolean hasIndices(){return getNumOfOperands() > 1;}
+        public boolean hasIndices()
+        {
+            return getNumOfOperands() > 1;
+        }
+
+        public int getIndexBegin()
+        {
+            return 1;
+        }
+
+        public int getIndexEnd()
+        {
+            return getNumOfOperands();
+        }
 
         /**
          * An interface for InstVisitor invoking.

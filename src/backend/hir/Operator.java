@@ -52,9 +52,9 @@ public enum Operator
 	FCmp("FCmp",ICmp.index + 1, 0),
 
 	// shift operation
-	Shl("ishl", FCmp.index + 1, 0),
+	Shl("shl", FCmp.index + 1, 0),
 	LShr("lshr", Shl.index + 1, 0),
-	AShr("lushr", LShr.index + 1, 0),
+	AShr("ashr", LShr.index + 1, 0),
 
 	// converts operation
 	//truncate integers.

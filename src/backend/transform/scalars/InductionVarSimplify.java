@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.Loop;
@@ -20,7 +20,7 @@ import backend.value.Value;
 import java.util.ArrayList;
 import java.util.List;
 
-import static backend.transform.ConstantFolder.constantFoldBinaryInstruction;
+import static backend.transform.scalars.ConstantFolder.constantFoldBinaryInstruction;
 
 /**
  * <p>

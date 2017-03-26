@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.hir.*;
 import backend.value.Constant;
@@ -20,7 +20,7 @@ import tools.Util;
  * @author Xlous.zeng
  * @see DCE
  * @see ConstantPropagation
- * @see GVN
+ * @see GVNPRE
  * @see CFGSimplifyPass
  */
 public class Canonicalizer implements InstVisitor

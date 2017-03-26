@@ -293,6 +293,8 @@ public class BackendConsumer extends ASTConsumer
                 buffer.append("Unable to interface with backend.target machine!\n");
                 return false;
             }
+
+            // TODO add passes to emit .s file. 2017.3.26 by xlous.zeng
             return true;
         }
         else if (action == Backend_EmitIr)

@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.hir.BasicBlock;
@@ -7,6 +7,8 @@ import backend.hir.PredIterator;
 import backend.hir.SuccIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.transform.scalars.BreakCriticalEdge;
+import backend.transform.scalars.DominatorFrontier;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.*;
@@ -497,7 +499,7 @@ public final class LoopSimplify implements FunctionPass
 	 *     ...
 	 *     br cond2, Loop, Out
 	 * </pre>
-	 * To identify this common case, we look at the PHI nodes in the header of the
+	 * To identify this common case, we lookup at the PHI nodes in the header of the
 	 * loop.  PHI nodes with unchanging values on one backedge correspond to values
 	 * that change in the "outer" loop, but not in the "inner" loop.
 	 *
@@ -615,7 +617,7 @@ public final class LoopSimplify implements FunctionPass
 					continue;
 				}
 
-				// Scan this phi node to look for a use of the PHI node itself.
+				// Scan this phi node to lookup for a use of the PHI node itself.
 				for (int i = 0, e = pn.getNumberIncomingValues(); i < e; i++)
 				{
 					if (pn.getIncomingValue(i) == pn &&

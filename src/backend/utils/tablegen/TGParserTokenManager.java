@@ -920,7 +920,7 @@ void TokenLexicalActions(Token matchedToken)
 
             if (!Files.exists(path))
             {
-            // If we couldn't find the file in the current directory, look for it in
+            // If we couldn't find the file in the current directory, lookup for it in
             // the include directories.
             String nextFileName = "";
             boolean exist = false;

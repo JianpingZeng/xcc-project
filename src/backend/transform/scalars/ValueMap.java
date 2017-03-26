@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.value.Instruction;
 import backend.value.Value;
@@ -7,13 +7,13 @@ import backend.value.Value;
  * {@code Instruction} to an integer.
  * <br>
  * This class is used for global redundant instruction elimination corporated with
- * {@code GVN} class.
+ * {@code GVNPRE} class.
  * <br>
  * Thanks to Maxime virtual machine team, because this source code mainly references
  * to it's contribution.
  * <br>
  * Created by Jianping Zeng  on 2016/3/17.
- * @see GVN
+ * @see GVNPRE
  */
 public class ValueMap
 {

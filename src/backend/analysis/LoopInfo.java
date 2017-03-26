@@ -17,8 +17,8 @@ import java.util.Stack;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LoopInfo extends FunctionPass
-	implements LoopInfoBase<BasicBlock, Loop>
+public final class LoopInfo
+		implements LoopInfoBase<BasicBlock, Loop>,FunctionPass
 {
 	private HashMap<BasicBlock, Loop> bbMap = new HashMap<>();
 
@@ -29,7 +29,6 @@ public final class LoopInfo extends FunctionPass
 	{
 		assert au != null;
 		au.addRequired(DomTree.class);
-		super.getAnalysisUsage(au);
 	}
 
 	@Override

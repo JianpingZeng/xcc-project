@@ -1700,7 +1700,7 @@ abstract public class Tree
         {
             Expr cee = getCallee().ignoreParensImpCasts();
 
-            // If we are calling a dereference, look at the pointer instead.
+            // If we are calling a dereference, lookup at the pointer instead.
             /**
             if (cee.tag == BinaryOperatorClass)
             {
