@@ -1413,7 +1413,7 @@ public final class GVNPRE implements FunctionPass
                         if (leader instanceof Instruction)
                         {
                             Instruction ii = (Instruction)leader;
-                            if (ii.getParent() != null && !inst.equals(inst))
+                            if (ii.getParent() != null && !ii.equals(inst))
                             {
                                 replace.add(Pair.get(inst, leader));
                                 erase.add(inst);
