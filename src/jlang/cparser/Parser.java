@@ -53,13 +53,13 @@ public class Parser implements Tag
     /**
      * A jlang.parser structure recording information about the state and
      * context of parsing.  Includes lexer information with up to two
-     * tokens of look-ahead; more are not needed for C.
+     * tokens of lookup-ahead; more are not needed for C.
      */
     static class LookAheadToken
     {
-        /* The look ahead token.*/
+        /* The lookup ahead token.*/
         Token[] tokens;
-        /* How many look-ahead tokens are available (0, 1 or 2).*/
+        /* How many lookup-ahead tokens are available (0, 1 or 2).*/
         short tokenAvail;
         /**
          * True if a syntax error is being recovered from; false otherwise.
@@ -178,7 +178,7 @@ public class Parser implements Tag
     private Log log;
 
     /**
-     * A buffer for storing look ahead tokens.
+     * A buffer for storing lookup ahead tokens.
      */
     private LookAheadToken lookAheadToken;
 
@@ -191,7 +191,7 @@ public class Parser implements Tag
         keywords = Keywords.instance();
         lookAheadToken = new LookAheadToken();
 
-        // initialize look ahead token buffer
+        // initialize lookup ahead token buffer
         if (lookAheadToken.tokenAvail == 0)
         {
             lookAheadToken.tokens[0] = S.token;
@@ -2203,7 +2203,7 @@ public class Parser implements Tag
         // parse the typename as the identifier getName and fall over misparsing
         // later parts of the diagnostic.
         //
-        // As such, we try to do some look-ahead in cases where this would
+        // As such, we try to do some lookup-ahead in cases where this would
         // otherwise be an "implicit-int" case to see if this is invalid.  For
         // example: "static foo_t x = 4;"  In this case, if we parsed foo_t as
         // an identifier with implicit int, we'd get a parse error because the
@@ -2598,7 +2598,7 @@ public class Parser implements Tag
                         //
                         // We'd really like to emit a missing semicolon error instead of emitting
                         // an error on the 'int' saying that you can't have two jlang.type specifiers in
-                        // the same declaration of X.  Because of this, we look ahead past this
+                        // the same declaration of X.  Because of this, we lookup ahead past this
                         // token to see if it's a jlang.type specifier.  IfStmt so, we know the code is
                         // otherwise invalid, so we can produce the expected semi error.
                         if (isKnownBeTypeSpecifier(peekToken()))

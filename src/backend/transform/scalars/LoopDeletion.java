@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.hir.BasicBlock;

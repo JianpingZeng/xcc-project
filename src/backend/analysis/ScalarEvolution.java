@@ -33,8 +33,8 @@ import tools.Util;
 import java.util.*;
 
 import static backend.analysis.ValueTracking.computeNumSignBits;
-import static backend.transform.ConstantFolder.canConstantFoldCallTo;
-import static backend.transform.ConstantFolder.constantFoldCall;
+import static backend.transform.scalars.ConstantFolder.canConstantFoldCallTo;
+import static backend.transform.scalars.ConstantFolder.constantFoldCall;
 
 /**
  * This class is the main scalar evolution jlang.driver. Since client code (intentionally)
@@ -42,7 +42,7 @@ import static backend.transform.ConstantFolder.constantFoldCall;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class ScalarEvolution extends FunctionPass
+public final class ScalarEvolution implements FunctionPass
 {
     public static int maxBruteForceIteration = 100;
     public static int numTripCountsComputed;
@@ -566,7 +566,7 @@ public final class ScalarEvolution extends FunctionPass
         if (val instanceof SCEVCommutativeExpr)
         {
             SCEVCommutativeExpr comm = (SCEVCommutativeExpr)val;
-            // Avoid performing the look-up in the common case where the specified
+            // Avoid performing the lookup-up in the common case where the specified
             // expression has no loop-variant portions.
             for (int i = 0, e = comm.getNumOperands(); i != e; ++i) {
                 SCEV opAtScope = getSCEVAtScope(comm.getOperand(i), loop);

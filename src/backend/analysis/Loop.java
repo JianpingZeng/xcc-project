@@ -4,6 +4,7 @@ import backend.hir.BasicBlock;
 import backend.hir.Operator;
 import backend.hir.PredIterator;
 import backend.hir.SuccIterator;
+import backend.transform.scalars.LoopSimplify;
 import backend.value.ConstantInt;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
@@ -307,7 +308,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	}
 
 	/**
-	 * Returns true if the loop is in the form that {@linkplain backend.transform.LoopSimplify}
+	 * Returns true if the loop is in the form that {@linkplain LoopSimplify}
 	 * transforms loops to, sometimes it is also called normal form.
 	 *
 	 * Normal-form loops have a preheader, a single backedge, and all of their

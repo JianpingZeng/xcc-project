@@ -30,7 +30,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class DomTreeInfo extends FunctionPass
+public final class DomTreeInfo implements FunctionPass
 {
     private DomTree dt;
 
@@ -43,7 +43,6 @@ public final class DomTreeInfo extends FunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.setPreservedAll();
-        super.getAnalysisUsage(au);
     }
 
     @Override

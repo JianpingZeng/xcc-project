@@ -16,10 +16,13 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTreeNodeBase;
 import backend.codegen.MachineBasicBlock;
 import backend.hir.BasicBlock;
 import backend.hir.PredIterator;
 import backend.hir.SuccIterator;
+import backend.value.Function;
 
 import java.util.*;
 
@@ -63,9 +66,9 @@ public final class DepthFirstOrder
 
         while (!worklist.isEmpty())
         {
-            BasicBlock curr = worklist.getLast();
-            visited.add(curr);
-            worklist.removeLast();
+            BasicBlock curr = worklist.removeLast();
+            if (!visited.add(curr))
+                continue;
 
             Stack<BasicBlock> res = new Stack<>();
             if (direction)
@@ -79,7 +82,7 @@ public final class DepthFirstOrder
                     res.push(itr.next());
             }
             if (!res.isEmpty())
-                res.forEach(bb-> worklist.addLast(bb) );
+                res.forEach(worklist::addLast);
         }
     }
 
@@ -117,9 +120,9 @@ public final class DepthFirstOrder
 
         while (!worklist.isEmpty())
         {
-            MachineBasicBlock curr = worklist.getLast();
-            visited.add(curr);
-            worklist.removeLast();
+            MachineBasicBlock curr = worklist.removeLast();
+            if (!visited.add(curr))
+                continue;
 
             List<MachineBasicBlock> list = direction ?
                     curr.getSuccessors() : curr.getPredecessors();
@@ -127,5 +130,47 @@ public final class DepthFirstOrder
             if (!list.isEmpty())
                 list.forEach(worklist::addLast);
         }
+    }
+
+    public static LinkedList<BasicBlock> postOrder(BasicBlock startBlock)
+    {
+        LinkedList<BasicBlock> res = new LinkedList<>();
+        HashSet<BasicBlock> visited = new HashSet<>();
+        visit(startBlock, res, visited);
+        return res;
+    }
+
+    private static void visit(BasicBlock bb, LinkedList<BasicBlock> res,
+            HashSet<BasicBlock> visited)
+    {
+        if (visited.add(bb))
+        {
+            for (SuccIterator itr = bb.succIterator(); itr.hasNext(); )
+                visit(itr.next(), res, visited);
+
+            res.add(bb);
+        }
+    }
+
+    public static LinkedList<DomTreeNodeBase<BasicBlock>> dfTravesal(
+            DomTreeNodeBase<BasicBlock> entryNode)
+    {
+        LinkedList<DomTreeNodeBase<BasicBlock>> ret = new LinkedList<>();
+        Stack<DomTreeNodeBase<BasicBlock>> stack = new Stack<>();
+        stack.push(entryNode);
+        ArrayList<DomTreeNodeBase<BasicBlock>> temps = new ArrayList<>();
+
+        while (!stack.isEmpty())
+        {
+            DomTreeNodeBase<BasicBlock> cur = stack.pop();
+            ret.add(cur);
+
+            temps.clear();
+            Collections.copy(temps, cur.getChildren());
+
+            Collections.reverse(temps);
+            temps.forEach(stack::push);
+        }
+        return ret;
     }
 }

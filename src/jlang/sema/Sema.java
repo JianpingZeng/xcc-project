@@ -52,7 +52,7 @@ public final class Sema
     }
 
     /**
-     * Describes the kind of getName look up to perform.
+     * Describes the kind of getName lookup up to perform.
      * <br>
      * When an identifier is encountered in a C program, a lookup is performed
      * to locate the declaration that introduced that identifier and that is
@@ -429,15 +429,15 @@ public final class Sema
     }
 
     /**
-     * Performs unqualified getName look up starting from current scope.
+     * Performs unqualified getName lookup up starting from current scope.
      * <br>
-     * Unqualified getName look up (C99 6.2.1) is used to find names within the
+     * Unqualified getName lookup up (C99 6.2.1) is used to find names within the
      * current scope, for example, 'x' in
      * <pre>
      *   int x;
      *   int f()
      *   {
-     *       return x;  // Unqualified names look finds 'x' in the global scope.
+     *       return x;  // Unqualified names lookup finds 'x' in the global scope.
      *   }
      *
      *   Different lookup criteria can find different names. For example, a
@@ -857,7 +857,7 @@ public final class Sema
         boolean isLinkageLookup = false;
 
         // If the declaration we're planning to build will be a function
-        // or object with linkage, then look for another declaration with
+        // or object with linkage, then lookup for another declaration with
         // linkage (C99 6.2.2p4-5
         if (d.getDeclSpec().getStorageClassSpec() == SCS.SCS_typedef)
         {

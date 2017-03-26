@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.analysis.LiveVariable;
 import backend.analysis.LiveVariable.VarInfo;
@@ -8,6 +8,7 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterClass;
+import backend.transform.scalars.PNE;
 
 /**
  * @author Xlous.zeng

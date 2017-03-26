@@ -1,6 +1,6 @@
 package backend.pass;
 
-import backend.transform.PromoteMemToReg;
+import backend.transform.scalars.PromoteMemToReg;
 
 /**
  * @author Xlous.zeng

@@ -18,7 +18,7 @@ package backend.analysis;
 
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
-import backend.transform.UnreachableMachineBlockElim;
+import backend.transform.scalars.UnreachableMachineBlockElim;
 import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;

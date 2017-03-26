@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -29,7 +29,7 @@ import backend.value.Value;
 
 import java.util.*;
 
-import static backend.transform.ConstantFolder.constantFoldTerminator;
+import static backend.transform.scalars.ConstantFolder.constantFoldTerminator;
 
 /**
  * This pass defined here for removing the unreachable basic block resides inside

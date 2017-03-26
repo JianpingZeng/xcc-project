@@ -1,4 +1,4 @@
-package backend.transform;
+package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.analysis.AliasAnalysis.ModRefBehavior;
@@ -22,7 +22,7 @@ import java.util.HashSet;
 
 import static backend.analysis.AliasAnalysis.ModRefBehavior.DoesNotAccessMemory;
 import static backend.analysis.AliasAnalysis.ModRefBehavior.OnlyReadsMemory;
-import static backend.transform.PromoteMemToReg.promoteMemToReg;
+import static backend.transform.scalars.PromoteMemToReg.promoteMemToReg;
 
 /** 
  * </p>
