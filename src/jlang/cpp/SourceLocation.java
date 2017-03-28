@@ -20,21 +20,102 @@ package jlang.cpp;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class SourceLocation
+public class SourceLocation
 {
-    String filename;
+    public static final SourceLocation NOPOS = new SourceLocation();
+
     int column;
     int line;
 
-    public SourceLocation(String filename, int line, int col)
+    public SourceLocation(int line, int col)
     {
-        this.filename = filename;
         column = col;
         this.line = line;
     }
 
-    public SourceLocation(int line, int col)
+    public SourceLocation(SourceLocation loc)
     {
-        this("", line, col);
+        column = loc.column;
+        line = loc.line;
+    }
+
+    public SourceLocation()
+    {
+        column = -1;
+        line = -1;
+    }
+
+    public boolean isValid()
+    {
+        return column < 0 || line < 0;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj) return true;
+        if (obj == null) return false;
+
+        if (getClass() != obj.getClass())
+            return false;
+        SourceLocation loc = (SourceLocation)obj;
+        return line == loc.line && column == loc.column;
+    }
+
+    public static class SourceRange
+    {
+        private SourceLocation start;
+        private SourceLocation end;
+
+        public SourceRange()
+        {
+            start = new SourceLocation();
+            end = new SourceLocation();
+        }
+
+        public SourceRange(SourceLocation start, SourceLocation end)
+        {
+            this.start = start;
+            this.end = end;
+        }
+
+        public SourceRange(SourceLocation loc)
+        {
+            this(loc, loc);
+        }
+
+        public SourceLocation getStart() { return start; }
+        public SourceLocation getEnd() { return end; }
+
+        public void setStart(SourceLocation start)
+        {
+            this.start = start;
+        }
+        public void setEnd(SourceLocation end)
+        {
+            this.end = end;
+        }
+
+        public boolean isValid()
+        {
+            return start.isValid() && end.isValid();
+        }
+
+        public boolean isInvalid()
+        {
+            return !isValid();
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null) return false;
+            if (this == obj) return true;
+            if (getClass() != obj.getClass())
+                return false;
+
+            SourceRange other = (SourceRange) obj;
+            return start.equals(other.start) && end.equals(other.end);
+        }
     }
 }

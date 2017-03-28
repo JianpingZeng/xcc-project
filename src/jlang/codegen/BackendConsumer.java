@@ -174,7 +174,7 @@ public class BackendConsumer extends ASTConsumer
         StringBuilder error = new StringBuilder();
         if (!addEmitPasses(error))
         {
-            System.err.println("ERROR: " + error.toString());
+            System.err.println("UNKNOWN: " + error.toString());
             System.exit(-1);
         }
 

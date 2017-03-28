@@ -5,12 +5,17 @@ import jlang.ast.Tree.CompoundStmt;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.InitListExpr;
 import jlang.ast.Tree.Stmt;
+import jlang.basic.LangOption;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.FieldDeclarator;
+import jlang.cparser.DeclSpec.ParamInfo;
 import jlang.cparser.DeclSpec.ParsedSpecifiers;
 import jlang.cparser.Declarator.TheContext;
 import jlang.cparser.Token.Ident;
 import jlang.cpp.Preprocessor;
+import jlang.cpp.SourceLocation;
+import jlang.cpp.SourceLocation.SourceRange;
+import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.sema.Decl.LabelDecl;
 import jlang.sema.PrecedenceLevel;
@@ -20,11 +25,11 @@ import jlang.sema.Sema;
 import jlang.type.QualType;
 import tools.Log;
 import tools.OutParamWrapper;
-import tools.Position;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import static java.util.Collections.emptyList;
 import static jlang.cparser.DeclSpec.SCS.SCS_typedef;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.DeclSpec.TSC.TSC_complex;
@@ -48,35 +53,9 @@ import static jlang.sema.Sema.TagUseKind.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class Parser implements Tag
+public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, DiagnosticCommonKindsTag
 {
-    /**
-     * A jlang.parser structure recording information about the state and
-     * context of parsing.  Includes lexer information with up to two
-     * tokens of lookup-ahead; more are not needed for C.
-     */
-    static class LookAheadToken
-    {
-        /* The lookup ahead token.*/
-        Token[] tokens;
-        /* How many lookup-ahead tokens are available (0, 1 or 2).*/
-        short tokenAvail;
-        /**
-         * True if a syntax error is being recovered from; false otherwise.
-         * c_parser_error sets this flag.  It should clear this flag when
-         * enough tokens have been consumed to recover from the error.
-         */
-        boolean error;
-
-        LookAheadToken()
-        {
-            tokens = new Token[2];
-            tokenAvail = 0;
-            error = false;
-        }
-    }
-
-    static class FieldCallBack
+    private static class FieldCallBack
     {
         Parser parser;
         Decl tagDecl;
@@ -177,26 +156,27 @@ public class Parser implements Tag
      */
     private Log log;
 
-    /**
-     * A buffer for storing lookup ahead tokens.
-     */
-    private LookAheadToken lookAheadToken;
-
     private Sema action;
+    private Preprocessor pp;
+    private Diagnostics diags;
+
+    public Diagnostics getDiags()
+    {
+        return diags;
+    }
+
+    public Preprocessor getPP()
+    {
+        return pp;
+    }
 
     private void init(Preprocessor pp, Sema action)
     {
+        this.pp = pp;
+        this.diags = pp.getDiagnostics();
         this.S = new Scanner(pp);
         this.action = action;
         keywords = Keywords.instance();
-        lookAheadToken = new LookAheadToken();
-
-        // initialize lookup ahead token buffer
-        if (lookAheadToken.tokenAvail == 0)
-        {
-            lookAheadToken.tokens[0] = S.token;
-            lookAheadToken.tokenAvail = 1;
-        }
     }
 
     /**
@@ -210,6 +190,31 @@ public class Parser implements Tag
     public static Parser instance(Preprocessor pp, Sema action)
     {
         return new Parser(pp, action);
+    }
+
+    LangOption getLangOption()
+    {
+        return pp.getLangOption();
+    }
+
+    Preprocessor getPreprocessor()
+    {
+        return pp;
+    }
+
+    public Sema getAction()
+    {
+        return action;
+    }
+
+    public Diagnostics.DiagnosticBuilder diag(SourceLocation loc, int diagID)
+    {
+        return diags.report(new FullSourceLoc(loc, pp.getInputFile()), diagID);
+    }
+
+    private Diagnostics.DiagnosticBuilder diag(Token tok, int diagID)
+    {
+        return diag(tok.getLocation(), diagID);
     }
 
     /**
@@ -233,16 +238,16 @@ public class Parser implements Tag
         while (!parseTopLevel(result));
 
         exitScope();
-        assert getCurScope() == null :"Scope imbalance!";
+        assert getCurScope() == null : "Scope imbalance!";
     }
 
     public boolean parseTopLevel(ArrayList<Decl> result)
     {
-        assert result!=null;
+        assert result != null;
 
         if (nextTokenIs(EOF))
         {
-            syntaxError(peekToken().loc, "ISO C forbids an empty source file.");
+            diag(S.token, ext_empty_source_file);
             action.actOnEndOfTranslationUnit();
             return true;
         }
@@ -261,23 +266,22 @@ public class Parser implements Tag
      */
     private ArrayList<Decl> parseExternalDeclaration()
     {
-        Token tok = peekToken();
-        int pos = tok.loc;
+        Token tok = S.token;
+        SourceLocation pos = tok.loc;
         switch (tok.tag)
         {
             case SEMI:
             {
-                syntaxError(pos,
-                        "ISO C does not allow extra ';' outside of a function");
+                diag(pos, ext_top_level_semi);
                 consumeToken();
                 return declGroups();
             }
             case RBRACE:
-                syntaxError(pos, "expected external declaration");
+                diag(pos, err_expected_external_declaration);
                 consumeToken();
                 return declGroups();
             case EOF:
-                syntaxError(pos, "expected external declaration");
+                diag(pos, err_expected_external_declaration);
                 return declGroups();
             /**
              * TODO current, inline asm isn't supported.
@@ -289,7 +293,7 @@ public class Parser implements Tag
                 // A function definition can not start with those keyword.
                 ArrayList<Stmt> stmts = new ArrayList<>();
                 OutParamWrapper<Integer> declEnd = new OutParamWrapper<>();
-                parseDeclaration(stmts, TheContext.FileContext, declEnd);
+                return parseDeclaration(stmts, TheContext.FileContext, declEnd);
             }
             /**
              * Else fall through, and yield a syntax error trying to parse
@@ -302,7 +306,7 @@ public class Parser implements Tag
                  * which after parsing the declaration specifiers, if any, and
                  * the first declarator.
                  */
-                return parseDeclarationOrFuncDefinition();
+                return parseDeclarationOrFunctionDefinition();
             }
         }
     }
@@ -310,32 +314,38 @@ public class Parser implements Tag
     /**
      * Parse a declaration or function definition (C90 6.5, 6.7.1, C99
      * 6.7, 6.9.1).
+     * <pre>
      * declaration:
-     * declaration-specifiers init-declarator-list[backend.transform] ;
-     * <p>
-     * function-definition:
-     * declaration-specifiers[backend.transform] declarator declaration-list[backend.transform]
-     * compound-statement
-     * <p>
+     *      declaration-specifiers init-declarator-list[opt] ';'
+     *      init-declarator-list ';'  [warn in C99 mode]
+     *
+     * function-definition: [C99 6.9.1]
+     *      declaration-specifiers declarator declaration-list
+     *      compound-statement
+     *
+     * function-definition: [C90] - implicit int result
+     *      declaration-specifiers[opt] declarator declaration-list[opt]
+     *      compound-statement
+     *
      * declaration-list:
-     * declaration
-     * declaration-list declaration
-     * <p>
+     *      declaration
+     *      declaration-list declaration
+     *
      * init-declarator-list:
-     * init-declarator
-     * init-declarator-list , init-declarator
-     * <p>
+     *      init-declarator
+     *      init-declarator-list , init-declarator
+     *
      * init-declarator:
-     * declarator simple-asm-subExpr[backend.transform] attributes[backend.transform]
-     * declarator simple-asm-subExpr[backend.transform] attributes[backend.transform] = initializer
-     * <p>
+     *      declarator simple-asm-subExpr[opt] attributes[opt]
+     *      declarator simple-asm-subExpr[opt] attributes[opt] = initializer
+     * <pre>
      * C99 requires declaration specifiers in a function definition; the
      * absence is diagnosed through the diagnosis of implicit int.  In GNU
      * C we also allow but diagnose declarations without declaration
      * specifiers, but only at top level (elsewhere they conflict with
      * other syntax).
      */
-    private ArrayList<Decl> parseDeclarationOrFuncDefinition()
+    private ArrayList<Decl> parseDeclarationOrFunctionDefinition()
     {
         DeclSpec declSpecs = new DeclSpec();
 
@@ -343,7 +353,7 @@ public class Parser implements Tag
         parseDeclarationSpecifiers(declSpecs);
 
         // C99 6.7.2.3p6: Handle "struct-or-union identifier;", "enum { X };"
-        // declaration-specifiers init-declarator-list[backend.transform] ';'
+        // declaration-specifiers init-declarator-list[opt] ';'
         if (nextTokenIs(SEMI))
         {
             consumeToken();
@@ -368,9 +378,9 @@ public class Parser implements Tag
      * parameters declaration-list, then start the compound-statement.
      * <pre>
      *       function-definition: [C99 6.9.1]
-     *         decl-specs      declarator declaration-list[backend.transform] compound-statement
+     *         decl-specs      declarator declaration-list[opt] compound-statement
      * [C90] function-definition: [C99 6.7.1] - implicit int result
-     * [C90]   decl-specs[backend.transform] declarator declaration-list[backend.transform] compound-statement
+     * [C90]   decl-specs[opt] declarator declaration-list[opt] compound-statement
      * </pre>
      * @param declarator
      * @return
@@ -396,7 +406,7 @@ public class Parser implements Tag
         // We should have an opening brace.
         if (nextTokenIsNot(LBRACE))
         {
-            syntaxError(peekToken().loc, "expected function body.");
+            diag(S.token, err_expected_fn_body);
             skipUntil(LBRACE, true);
 
             // if we didn't find a '{', bail out.
@@ -414,30 +424,35 @@ public class Parser implements Tag
 
     private Decl parseFunctionStatementBody(Decl funcDecl, ParseScope bodyScope)
     {
-        Token tok = peekToken();
-        assert tokenIs(tok, LBRACE);
+        assert nextTokenIs(LBRACE);
 
-        int lBraceLoc = tok.loc;
+        SourceLocation lBraceLoc = S.token.getLocation();
         ActionResult<Stmt> body = parseCompoundStatementBody(lBraceLoc);
-        return null;
+
+        if (body.isInvalid())
+            body = action.actOnCompoundStmtBody(lBraceLoc, lBraceLoc, emptyList(), false);
+
+        bodyScope.exit();
+        return action.actOnFinishFunctionBody(funcDecl, body.get());
     }
 
-    private ActionResult<Stmt> parseCompoundStatementBody(int startLoc)
+    private ActionResult<Stmt> parseCompoundStatementBody(SourceLocation startLoc)
     {
         ArrayList<Stmt> stmts = new ArrayList<>();
-        for (Token tok = peekToken(); !tokenIs(tok, RBRACE) && !tokenIs(tok, EOF);)
+        for (Token tok = S.token; !tokenIs(tok, RBRACE) && !tokenIs(tok, EOF);)
         {
             ActionResult<Stmt> res = parseStatementOrDeclaration(stmts, false);
             stmts.add(res.get());
         }
-        Token tok = peekToken();
+        Token tok = S.token;
         if (!tokenIs(tok, RBRACE))
         {
-            syntaxError(tok.loc, "expected '}'");
-            return null;
+            diag(S.token, err_expected_rbrace);
+            return new ActionResult<>();
         }
+        SourceLocation rbraceLoc = consumeBrace();
 
-        return new ActionResult<>(new CompoundStmt(stmts, startLoc));
+        return new ActionResult<>(new CompoundStmt(stmts, startLoc, rbraceLoc));
     }
 
     /**
@@ -474,13 +489,13 @@ public class Parser implements Tag
      *         for-statement
      *
      *       expression-statement:
-     *         expression[backend.transform] ';'
+     *         expression[opt] ';'
      *
      *       jump-statement:
      *         'goto' identifier ';'
      *         'continue' ';'
      *         'break' ';'
-     *         'return' expression[backend.transform] ';'
+     *         'return' expression[opt] ';'
      * </pre>
      * @param stmts
      * @return
@@ -488,7 +503,7 @@ public class Parser implements Tag
     private ActionResult<Stmt> parseStatementOrDeclaration(ArrayList<Stmt> stmts,
             boolean onlyStatements)
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         consumeToken();
         switch (tok.tag)
         {
@@ -506,17 +521,16 @@ public class Parser implements Tag
             {
                 if (!onlyStatements && isDeclarationSpecifier())
                 {
-                    int declStart = peekToken().loc;
-                    OutParamWrapper<Integer> end = new OutParamWrapper<>();
+                    SourceLocation declStart = S.token.loc;
+                    OutParamWrapper<SourceLocation> end = new OutParamWrapper<>();
                     ArrayList<Decl> decls = parseDeclaration(stmts, TheContext.BlockContext, end);
-                    int declEnd = end.get();
+                    SourceLocation declEnd = end.get();
 
                     return action.actOnDeclStmt(decls, declStart, declEnd);
                 }
                 if (nextTokenIs(RBRACE))
                 {
-                    // TODO report error
-                    syntaxError(peekToken().loc, "expected statement");
+                    diag(S.token.loc, err_expected_statement);
                     return null;
                 }
                 return parseExprStatement();
@@ -540,7 +554,7 @@ public class Parser implements Tag
             case SEMI:
             {
                 // null statement
-                int loc = consumeToken();
+                SourceLocation loc = consumeToken();
                 return new ActionResult<Stmt>(new Tree.NullStmt(loc));
             }
             case IF:
@@ -579,22 +593,22 @@ public class Parser implements Tag
      */
     private ActionResult<Stmt> parseLabeledStatement()
     {
-        Token identTok = peekToken();
-        assert tokenIs(identTok, IDENTIFIER) && ((Ident)identTok).name != null :
-         "Not a valid identifier";
+        assert nextTokenIs(IDENTIFIER) && S.token.getIdentifierInfo() != null
+                : "Not a valid identifier";
         consumeToken();
 
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, COLON) : "Not a label";
-        int colonLoc = consumeToken();
+        SourceLocation colonLoc = consumeToken();
 
         ActionResult<Stmt> res = parseStatement();
         if (res.isInvalid())
             return new ActionResult<Stmt>(new Tree.NullStmt(colonLoc));
 
-        LabelDecl ld = action.lookupOrCreateLabel(((Ident)identTok).name, identTok.loc);
+        LabelDecl ld = action.lookupOrCreateLabel(S.token.getIdentifierInfo(),
+                S.token.getLocation());
 
-        return action.actOnLabelStmt(identTok.loc, ld, colonLoc, res);
+        return action.actOnLabelStmt(S.token.getLocation(), ld, colonLoc, res);
     }
 
     /**
@@ -631,11 +645,11 @@ public class Parser implements Tag
         // far.  When parsing 'case 4', this is the 'case 3' node.
         ActionResult<Stmt> deepestParsedCaseStmt = null;
 
-        int colonLoc = Position.NOPOS;
+        SourceLocation colonLoc = SourceLocation.NOPOS;
         do
         {
             // consume 'case'
-            int caseLoc = consumeToken();
+            SourceLocation caseLoc = consumeToken();
 
             // parse the constant subExpr after'case'
             ActionResult<Expr> expr = parseConstantExpression();
@@ -652,7 +666,7 @@ public class Parser implements Tag
             else
             {
                 // TODO report error
-                syntaxError(caseLoc, "expected a ':'");
+                diag(caseLoc, err_expected_colon);
             }
 
             ActionResult<Stmt> Case = action.actOnCaseStmt(caseLoc, expr.get(), colonLoc);
@@ -667,7 +681,6 @@ public class Parser implements Tag
                     topLevelCase = Case;
                 else
                 {
-                    assert deepestParsedCaseStmt != null;
                     action.actOnCaseStmtBody(deepestParsedCaseStmt.get(), Case.get());
                 }
                 deepestParsedCaseStmt = Case;
@@ -684,8 +697,7 @@ public class Parser implements Tag
         }
         else
         {
-            // TODO report error
-            syntaxError(colonLoc, "label end of compound statement");
+            diag(colonLoc, err_label_end_of_compound_statement);
         }
 
         if (subStmt == null)
@@ -711,29 +723,28 @@ public class Parser implements Tag
         assert (nextTokenIs(DEFAULT)) :"Not a default statement!";
 
         // eat the 'default' keyword
-        int defaultLoc = consumeToken();
+        SourceLocation defaultLoc = consumeToken();
 
-        int colonLoc = Position.NOPOS;
+        SourceLocation colonLoc = SourceLocation.NOPOS;
         if (nextTokenIs(COLON))
         {
             colonLoc = consumeToken();
         }
         else
         {
-            // TODO report error
-            syntaxError(peekToken().loc, "expected a ':'");
+            diag(S.token, err_expected_colon);
         }
 
         // diagnose the common error "switch (X) { default:}", which is not valid.
         if (nextTokenIs(RBRACE))
         {
-            syntaxError(peekToken().loc, "label end of compound statement");
-            return null;
+            diag(S.token, err_label_end_of_compound_statement);
+            return new ActionResult<>();
         }
 
         ActionResult<Stmt> subStmt = parseStatement();
         if (subStmt == null)
-            return null;
+            return new ActionResult<>();
 
         return  action.actOnDefaultStmt(defaultLoc, colonLoc, subStmt.get());
     }
@@ -747,7 +758,7 @@ public class Parser implements Tag
      * Parse a "{}" block.
      * <pre>
      *   compound-statement: [C99 6.8.2]
-     *     { block-item-list[backend.transform] }
+     *     { block-item-list[opt] }
      *
      *    block-item-list:
      *      block-item
@@ -761,7 +772,7 @@ public class Parser implements Tag
      */
     private ActionResult<Stmt> parseCompoundStatement(boolean isStmtExpr, int scopeFlags)
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, LBRACE) : "Not a compound statement!";
 
         // Enter a scope to hold everything within the compound stmt.
@@ -772,7 +783,8 @@ public class Parser implements Tag
         return parseCompoundStatementBody(tok.loc, isStmtExpr);
     }
 
-    private ActionResult<Stmt> parseCompoundStatementBody(int startLoc, boolean isStmtExpr)
+    private ActionResult<Stmt> parseCompoundStatementBody(
+            SourceLocation startLoc, boolean isStmtExpr)
     {
         ArrayList<Stmt> stmts = new ArrayList<>();
         while (nextTokenIsNot(RBRACE) && nextTokenIsNot(EOF))
@@ -783,13 +795,13 @@ public class Parser implements Tag
         if (nextTokenIsNot(RBRACE))
         {
             //TODO report error
-            syntaxError(peekToken().loc, "not a matching '{'");
+            diag(S.token, err_expected_lbrace);
             return null;
         }
         // consume '}'
-        consumeToken();
+        SourceLocation endLoc = matchRHSPunctuation(RBRACE, startLoc);
 
-        return action.actOnCompoundStmtBody(startLoc, stmts, isStmtExpr);
+        return action.actOnCompoundStmtBody(startLoc, endLoc, stmts, isStmtExpr);
     }
 
     /**
@@ -804,12 +816,11 @@ public class Parser implements Tag
     private ActionResult<Stmt> parseIfStatement()
     {
         assert nextTokenIs(IF):"Not an if stmt!";
-        int ifLoc = consumeToken(); // eat 'if'
+        SourceLocation ifLoc = consumeToken(); // eat 'if'
 
         if (nextTokenIsNot(LPAREN))
         {
-            // TODO report error
-            syntaxError(peekToken().loc, "expected '(' after if");
+            diag(S.token, err_expected_lparen_after).addTaggedVal("if");
             return stmtError();
         }
         // C99 6.8.4p3 - In C99, the if statement is a block.  This is not
@@ -830,7 +841,7 @@ public class Parser implements Tag
         ParseScope InnerScope = new ParseScope(this,
                 ScopeFlags.DeclScope.value,
                 nextTokenIs(LBRACE));
-        int thenStmtLoc = peekToken().loc;
+        SourceLocation thenStmtLoc = S.token.loc;
         // parse the 'then' statement
         ActionResult<Stmt> thenStmt = parseStatement();
 
@@ -838,14 +849,14 @@ public class Parser implements Tag
         InnerScope.exit();
 
         // IfStmt there is a 'else' statement, parse it.
-        int elseStmtLoc = Position.NOPOS;
-        int elseLoc = Position.NOPOS;
+        SourceLocation elseStmtLoc = SourceLocation.NOPOS;
+        SourceLocation elseLoc = SourceLocation.NOPOS;
         ActionResult<Stmt> elseStmt = null;
         if (nextTokenIs(ELSE))
         {
             // eat the 'else' keyword.
             elseLoc = consumeToken();
-            elseStmtLoc = peekToken().loc;
+            elseStmtLoc = S.token.loc;
 
             // the scope for 'else' statement if there is a '{'
             InnerScope = new ParseScope(this,
@@ -892,23 +903,49 @@ public class Parser implements Tag
         return parseStatementOrDeclaration(stmts, true);
     }
 
+    private ActionResult<QualType> parseTypeName()
+    {
+        return parseTypeName(null);
+    }
+
+	/**
+     * type-name: [C99 6.7.6]
+     *      specifier-qualifier-list abstract-declarator[opt]
+     * @return
+     */
+    private ActionResult<QualType> parseTypeName(SourceRange range)
+    {
+        DeclSpec ds = new DeclSpec();
+        parseSpecifierQualifierList(ds);
+
+        // Parse the abstract-declarator, if present.
+        Declarator declaratorInfo = new Declarator(ds, TheContext.TypeNameContext);
+        parseDeclarator(declaratorInfo);
+        if (range != null)
+            range = declaratorInfo.getSourceRange();
+        if (declaratorInfo.isInvalidType())
+            return new ActionResult<>();
+
+        return action.actOnTypeName(getCurScope(), declaratorInfo);
+    }
+
     /**
      * This method parrse the unit that starts with a token "(",
      * based on what is allowed by {@code exprType}. The actual thing parsed is
      * returned in {@code exprType}. If {@code stopIfCastExpr} is true, it will
-     * only return the parsed jlang.type, not the cast-expression.
+     * only return the parsed type, not the cast-expression.
      * <pre>
      * primary-expression: [C99 6.5.1]
      *   '(' expression ')'
      *
      * postfix-expression: [C99 6.5.2]
-     * //TODO  '(' jlang.type-getName ')' '{' initializer-list '}'
-     * //TODO  '(' jlang.type-getName ')' '{' initializer-list ',' '}'
-     *   '(' jlang.type-getName ')' cast-expression
+     * //TODO  '(' type-getIdentifier ')' '{' initializer-list '}'
+     * //TODO  '(' type-getIdentifier ')' '{' initializer-list ',' '}'
+     *   '(' type-getIdentifier ')' cast-expression
      * </pre>
      * @param exprType
      * @param stopIfCastExpr
-     * @param isTypeCast
+     * @param parseAsExprList
      * @param castTy
      * @param rParenLoc
      * @return
@@ -916,45 +953,45 @@ public class Parser implements Tag
     private ActionResult<Expr> parseParenExpression(
             OutParamWrapper<ParenParseOption> exprType,
             boolean stopIfCastExpr,
-            boolean isTypeCast,
+            boolean parseAsExprList,
             OutParamWrapper<QualType> castTy,
-            OutParamWrapper<Integer> rParenLoc)
+            OutParamWrapper<SourceLocation> rParenLoc)
     {
         assert nextTokenIs(LPAREN):"Not a paren expression.";
         // eat the '('.
-        int lParenLoc = consumeToken();
+        SourceLocation lParenLoc = consumeParen();
         ActionResult<Expr> result = new ActionResult<>(true);
 
-        if (exprType.get().ordinal()>= CompoundLiteral.ordinal())
+        if (exprType.get().ordinal()>= CompoundLiteral.ordinal() && isDeclarationSpecifier())
         {
             // This is a compound literal expression or cast expression.
-
             // First of all, parse declarator.
-            DeclSpec ds = new DeclSpec();
-            parseSpecifierQualifierList(ds);
-            Declarator declaratorInfo = new Declarator(ds, TheContext.TypeNameContext);
-            parseDeclarator(declaratorInfo);
+            ActionResult<QualType> ty = parseTypeName();
 
-            int rparen = expect(RPAREN);
+            // Match the ')'.
+            if (nextTokenIs(RPAREN))
+                rParenLoc.set(consumeParen());
+            else
+                matchRHSPunctuation(RPAREN, lParenLoc);
+
             if (nextTokenIs(LBRACE))
             {
-                // eat the '{'.
-                consumeToken();
                 exprType.set(CompoundLiteral);
-                // TODO handle compound literal 2016.10.18.
+                // TODO return parseCompoundLiteralExpression(ty, lParenLoc, rParenLoc);
+                return null;
             }
             else if (exprType.get() == CastExpr)
             {
-                // We parsed '(' jlang.type-getName ')' and the thing after it wasn't a '('.
-                if (declaratorInfo.isInvalidType())
+                // We parsed '(' type-getIdentifier ')' and the thing after it wasn't a '('.
+                if (ty.isInvalid())
                     return exprError();
 
+                castTy.set(ty.get());
+
                 // Note that this doesn't parse the subsequent cast-expression, it just
-                // returns the parsed jlang.type to the callee.
+                // returns the parsed type to the callee.
                 if (stopIfCastExpr)
                 {
-                    ActionResult<QualType> ty = action.actOnTypeName(getCurScope(), declaratorInfo);
-                    castTy.set(ty.get());
                     return new ActionResult<Expr>();
                 }
 
@@ -962,27 +999,30 @@ public class Parser implements Tag
                 result = parseCastExpression(
                         /*isUnaryExpression*/false,
                         /*isAddressOfOperands*/false,
-                        /*isTypeCast*/true,
+                        /*(parseAsExprList)*/true,
                         /*placeHolder*/0);
                 if (!result.isInvalid())
                 {
                     result = action.actOnCastExpr(getCurScope(), lParenLoc,
-                            declaratorInfo, castTy, rParenLoc, result.get());
+                            castTy.get(), rParenLoc.get(), result.get());
                 }
                 return result;
             }
+            diag(S.token, err_expected_lbrace_in_compound_literal);
+            return exprError();
         }
-        else if (isTypeCast)
+        else if (parseAsExprList)
         {
+            // Parse the expression-list.
             ArrayList<Expr> exprs = new ArrayList<>();
-            ArrayList<Integer> commaLocs = new ArrayList<>();
+            ArrayList<SourceLocation> commaLocs = new ArrayList<>();
 
             if (!parseExpressionList(exprs, commaLocs))
             {
                 exprType.set(SimpleExpr);
                 result = action.actOnParenOrParenList(
                         rParenLoc.get(),
-                        peekToken().loc,
+                        S.token.getLocation(),
                         exprs);
             }
         }
@@ -996,13 +1036,19 @@ public class Parser implements Tag
             if (!result.isInvalid() && nextTokenIs(RPAREN))
             {
                 // obtains the location of next token of ')'.
-                int rparen = peekToken().loc;
+                SourceLocation rparen = S.token.getLocation();
                 result = action.actOnParenExpr(rParenLoc.get(), rparen, result.get());
             }
         }
-
-        int rparen = expect(RPAREN);
-        rParenLoc.set(rparen);
+        if (result.isInvalid())
+        {
+            skipUntil(RPAREN, true);
+            return exprError();
+        }
+        if (nextTokenIs(RPAREN))
+            rParenLoc.set(consumeParen());
+        else
+        matchRHSPunctuation(RPAREN, lParenLoc);
         return result;
     }
 
@@ -1016,7 +1062,7 @@ public class Parser implements Tag
      */
     private boolean parseExpressionList(
             ArrayList<Expr> exprs,
-            ArrayList<Integer> commaLocs)
+            ArrayList<SourceLocation> commaLocs)
     {
         while(true)
         {
@@ -1043,13 +1089,15 @@ public class Parser implements Tag
      * @param convertToBoolean
      * @return
      */
-    private boolean parseParenExpression(ActionResult<Expr>[] cond,
-            int loc,
+    private boolean parseParenExpression(
+            ActionResult<Expr>[] cond,
+            SourceLocation loc,
             boolean convertToBoolean)
     {
         assert cond != null && cond.length == 1;
         assert nextTokenIs(LPAREN);
-        int lparenLoc = consumeToken();
+        SourceLocation lparenLoc = consumeParen();
+
         cond[0] = parseExpression();
         if (!cond[0].isInvalid() && convertToBoolean)
         {
@@ -1165,14 +1213,14 @@ public class Parser implements Tag
      */
     private ActionResult<Stmt> parseSwitchStatement()
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, SWITCH) :"Not a switch statement?";
         // eat the 'switch'
-        int switchLoc = consumeToken();
+        SourceLocation switchLoc = consumeToken();
 
         if (nextTokenIsNot(LBRACE))
         {
-            syntaxError(peekToken().loc, "expected '{' after switch");
+            syntaxError(S.token.loc, "expected '{' after switch");
             return stmtError();
         }
         // C99 6.8.4p3. In C99, the switch statements is a block. This is not
@@ -1233,9 +1281,9 @@ public class Parser implements Tag
      */
     private ActionResult<Stmt> parseWhileStatement()
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, WHILE) :"Not a while statement!";
-        int whileLoc = tok.loc;
+        SourceLocation whileLoc = tok.loc;
         consumeToken();   // eat the 'while'
 
         if (nextTokenIsNot(LPAREN))
@@ -1289,9 +1337,9 @@ public class Parser implements Tag
      */
     private ActionResult<Stmt> parseDoStatement()
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, DO):"Not a do stmt!";
-        int doLoc = tok.loc;
+        SourceLocation doLoc = tok.loc;
 
         int scopeFlags = ScopeFlags.BreakScope.value|
                 ScopeFlags.ContinueScope.value | ScopeFlags.DeclScope.value;
@@ -1310,25 +1358,25 @@ public class Parser implements Tag
         {
             if (!body.isInvalid())
             {
-                syntaxError(peekToken().loc, "expected while");
+                syntaxError(S.token.loc, "expected while");
                 syntaxError(doLoc, "note matching", "do");
                 skipUntil(SEMI, true);
             }
             return stmtError();
         }
 
-        int whileLoc = consumeToken();
+        SourceLocation whileLoc = consumeToken();
 
         if (nextTokenIsNot(LPAREN))
         {
-            syntaxError(peekToken().loc, "expected '(' after", "do/while");
+            syntaxError(S.token.loc, "expected '(' after", "do/while");
             skipUntil(SEMI, true);
             return stmtError();
         }
 
-        int lParenLoc = consumeToken();  // eat '('.
+        SourceLocation lParenLoc = consumeParen();  // eat '('.
         ActionResult<Expr> cond = parseExpression();
-        int rParenLoc = consumeToken();  // eat ')'.
+        SourceLocation rParenLoc = consumeParen();  // eat ')'.
         doScope.exit();
 
         if (cond.isInvalid() || body.isInvalid())
@@ -1341,20 +1389,20 @@ public class Parser implements Tag
      * ParseForStatement
      * <pre>
      * for-statement: [C99 6.8.5.3]
-     *   'for' '(' expr[backend.transform] ';' expr[backend.transform] ';' expr[backend.transform] ')' statement
-     *   'for' '(' declaration expr[backend.transform] ';' expr[backend.transform] ')' statement
+     *   'for' '(' expr[opt] ';' expr[opt] ';' expr[opt] ')' statement
+     *   'for' '(' declaration expr[opt] ';' expr[opt] ')' statement
      * </pre>
      * @return
      */
     private ActionResult<Stmt> parseForStatement()
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, FOR):"Not a for loop";
-        int forLoc = consumeToken();
+        SourceLocation forLoc = consumeToken();
 
         if (nextTokenIsNot(LPAREN))
         {
-            syntaxError(peekToken().loc, "expected '(' after", "for");
+            syntaxError(S.token.loc, "expected '(' after", "for");
             skipUntil(SEMI, true);
             return stmtError();
         }
@@ -1365,7 +1413,7 @@ public class Parser implements Tag
                 | ScopeFlags.ControlScope.value;
 
         ParseScope forScope = new ParseScope(this, scopeFlags);
-        int lParenLoc = consumeToken();
+        SourceLocation lParenLoc = consumeParen();
 
         ActionResult<Expr> value;
         ActionResult<Stmt> firstPart = new ActionResult<Stmt>();
@@ -1375,25 +1423,25 @@ public class Parser implements Tag
         // parse the first part
         if (nextTokenIs(SEMI))
         {
-            // for (;
+            // for ';';
             consumeToken();
         }
         else if (isSimpleDeclaration())
         {
             // parse the declaration, for (int X = 4;
-            int declStart = peekToken().loc;
+            SourceLocation declStart = S.token.loc;
             ArrayList<Stmt> stmts = new ArrayList<>(32);
 
             ArrayList<Decl> declGroup = parseSimpleDeclaration(stmts, TheContext.ForContext,
                     false);
-            firstPart = action.actOnDeclStmt(declGroup, declStart, peekToken().loc);
+            firstPart = action.actOnDeclStmt(declGroup, declStart, S.token.loc);
             if (nextTokenIs(SEMI))
             {
                 consumeToken();
             }
             else
             {
-                syntaxError(peekToken().loc, "expected ';'");
+                syntaxError(S.token.loc, "expected ';'");
             }
         }
         else
@@ -1407,7 +1455,7 @@ public class Parser implements Tag
             else
             {
                 if (!value.isInvalid())
-                    syntaxError(peekToken().loc, "expected ';'");
+                    syntaxError(S.token.loc, "expected ';'");
                 else
                 {
                     skipUntil(RPAREN, true);
@@ -1442,7 +1490,7 @@ public class Parser implements Tag
         if (nextTokenIsNot(SEMI))
         {
             if (!secondPartIsInvalid)
-                syntaxError(peekToken().loc, "expected a ';'");
+                syntaxError(S.token.loc, "expected a ';'");
             else
                 skipUntil(RPAREN, true);
         }
@@ -1458,14 +1506,14 @@ public class Parser implements Tag
             thirdPart = parseExpression();
         }
 
-        tok = peekToken();
+        tok = S.token;
         if (!tokenIs(tok, RPAREN))
         {
-            syntaxError(peekToken().loc, "expected a ')'");
+            syntaxError(S.token.loc, "expected a ')'");
             skipUntil(RBRACE, true);
         }
 
-        int rParenLoc = tok.loc;
+        SourceLocation rParenLoc = consumeParen();
 
         // C99 6.8.5p5 - In C99, the body of the if statement is a scope, even if
         // there is no compound stmt.  C90 does not have this clause.  We only do this
@@ -1498,12 +1546,12 @@ public class Parser implements Tag
     /**
      * <pre>
      * simple-declaration: [C99 6.7: declaration]
-     *   declaration-specifiers init-declarator-list[backend.transform] ';'
+     *   declaration-specifiers init-declarator-list[opt] ';'
      *
      *   declaration-specifiers:
      *     storage-class-specifier declaration-specifiers
-     *     jlang.type-specifier declaration-specifiers
-     *     jlang.type-qualifier declaration-specifiers
+     *     type-specifier declaration-specifiers
+     *     type-qualifier declaration-specifiers
      *     function-specifier declaration-specifiers
      *
      *   initializer-declarator-list:
@@ -1531,7 +1579,7 @@ public class Parser implements Tag
         parseDeclarationSpecifiers(ds);
 
         // C99 6.7.2.3p6: Handle "struct-or-union identifier;", "enum { X };"
-        // declaration-specifiers init-declarator-list[backend.transform] ';'
+        // declaration-specifiers init-declarator-list[opt] ';'
         if (nextTokenIs(SEMI))
         {
             if (requiredSemi) consumeToken();
@@ -1568,8 +1616,7 @@ public class Parser implements Tag
             {
                 if (ds.getStorageClassSpec() == SCS_typedef)
                 {
-                    syntaxError(peekToken().loc,
-                            "function definition declared 'typedef'");
+                    diag(S.token, err_function_declared_typedef);
 
                     // recover by treating the 'typedef' as spurious
                     ds.clearStorageClassSpec();
@@ -1585,15 +1632,28 @@ public class Parser implements Tag
                 // actually a body.  Just fall through into the code that handles it as a
                 // prototype, and let the top-level code handle the erroneous declspec
                 // where it would otherwise expect a comma or semicolon.
+                diag(S.token, err_invalid_token_after_toplevel_declarator);
             }
             else
             {
-                syntaxError(peekToken().loc, "expected function body after function declarator");
-                skipUntil(SEMI, true);
-                return declGroups();
+                diag(S.token, err_expected_fn_body);
             }
+            skipUntil(SEMI, true);
+            return declGroups();
         }
 
+        ArrayList<Decl> res = parseInitDeclaratorListAfterFirstDeclarator
+                (d, ds, context);
+        // eat the last ';'.
+        expectAndConsume(SEMI, err_expected_semi_declaration);
+        return res;
+    }
+
+    private ArrayList<Decl> parseInitDeclaratorListAfterFirstDeclarator(
+            Declarator d,
+            DeclSpec ds,
+            TheContext context)
+    {
         ArrayList<Decl> declsInGroup = new ArrayList<>(8);
         Decl firstDecl = parseDeclarationAfterDeclarator(d);
 
@@ -1632,9 +1692,6 @@ public class Parser implements Tag
                     consumeToken();
             }
         }
-
-        // eat the last ';'.
-        consumeToken();
 
         return action.finalizeDeclaratorGroup(ds, declsInGroup);
     }
@@ -1690,7 +1747,7 @@ public class Parser implements Tag
     private ActionResult<Expr> parseInitializer()
     {
         if (nextTokenIsNot(LBRACE))
-            return parseAssignmentExpression();
+            return parseAssignExpression();
         return parseBraceInitializer();
     }
 
@@ -1761,24 +1818,79 @@ public class Parser implements Tag
         return new ActionResult<Expr>(true);
     }
 
+	/**
+     * Called when parsing an initializer that has a
+     * leading open brace.
+     * <pre>
+     *
+     *       initializer: [C99 6.7.8]
+     *         '{' initializer-list '}'
+     *         '{' initializer-list ',' '}'
+     * [GNU]   '{' '}'
+     *
+     *       initializer-list:
+     *         designation[opt] initializer
+     *         initializer-list ',' designation[opt] initializer
+     * </pre>
+     * @return
+     */
     private ActionResult<Expr> parseBraceInitializer()
     {
-        ActionResult<Expr> lhs = parseCastExpression(
-                /*isUnaryExpression=*/false, false, false, 0);
-        return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Assignment);
+        SourceLocation lbraceLoc = consumeBrace();
+
+        ArrayList<Expr> initExprs = new ArrayList<>();
+        if (nextTokenIs(BARBAR))
+        {
+            diag(lbraceLoc, ext_gnu_empty_initializer);
+
+            return action.actOnInitList(lbraceLoc, emptyList(), consumeBrace());
+        }
+
+        boolean initExprOK = true;
+        while (true)
+        {
+            ActionResult<Expr> init = parseInitializer();
+            if (!init.isInvalid())
+                initExprs.add(init.get());
+            else
+            {
+                initExprOK = false;
+                if (nextTokenIsNot(COMMA))
+                {
+                    skipUntil(RBRACE, false, true);
+                    break;
+                }
+            }
+
+            // If we don't have a comma continued list, we're done.
+            if (nextTokenIsNot(COMMA))
+                break;
+
+            // Eat the ','.
+            consumeToken();
+
+            /// Handle trailing comma.
+            if (nextTokenIs(RBRACE))
+                break;
+        }
+        if (initExprOK && nextTokenIs(RBRACE))
+            return action.actOnInitList(lbraceLoc, initExprs, consumeBrace());;
+
+        matchRHSPunctuation(RBRACE, lbraceLoc);
+        return exprError();
     }
 
     private ActionResult<Stmt> parseGotoStatement()
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, GOTO):"Not a goto stmt!";
-        int gotoLoc = consumeToken(); // eat the 'goto'
+        SourceLocation gotoLoc = consumeToken(); // eat the 'goto'
 
         // 'goto label'.
         ActionResult<Stmt> res = null;
         if (nextTokenIs(IDENTIFIER))
         {
-            Ident id = (Ident)peekToken();
+            Ident id = (Ident)S.token;
             LabelDecl ld = action.lookupOrCreateLabel(id.name, id.loc);
             res = action.actOnGotoStmt(gotoLoc, id.loc, ld);
             consumeToken();
@@ -1786,7 +1898,7 @@ public class Parser implements Tag
         else
         {
             // erroreous case
-            syntaxError(peekToken().loc, "expected a ", "identifier");
+            syntaxError(S.token.loc, "expected a ", "identifier");
             return stmtError();
         }
         return res;
@@ -1804,7 +1916,7 @@ public class Parser implements Tag
     private ActionResult<Stmt> parseContinueStatement()
     {
         assert nextTokenIs(CONTINUE):"Not a continue stmt!";
-        int continueLoc = consumeToken();
+        SourceLocation continueLoc = consumeToken();
         return action.actOnContinueStmt(continueLoc, getCurScope());
     }
 
@@ -1820,7 +1932,7 @@ public class Parser implements Tag
     private ActionResult<Stmt> parseBreakStatement()
     {
         assert nextTokenIs(BREAK):"Not a break stmt!";
-        int breakLoc = consumeToken();
+        SourceLocation breakLoc = consumeToken();
         return action.actOnBreakStmt(breakLoc, getCurScope());
     }
     /**
@@ -1834,9 +1946,9 @@ public class Parser implements Tag
      */
     private ActionResult<Stmt> parseReturnStatement()
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         assert tokenIs(tok, RETURN):"Not a return stmt!";
-        int returnLoc = consumeToken();
+        SourceLocation returnLoc = consumeToken();
 
         ActionResult<Expr> res = new ActionResult<>();
         if (nextTokenIsNot(SEMI))
@@ -1862,14 +1974,14 @@ public class Parser implements Tag
      * @return
      */
     private ArrayList<Decl> parseDeclaration(ArrayList<Stmt> stmts,
-            TheContext dc, OutParamWrapper<Integer> declEnd)
+            TheContext dc, OutParamWrapper<SourceLocation> declEnd)
     {
         assert declEnd != null;
 
         ArrayList<Decl> res = parseSimpleDeclaration(stmts, dc, false);
         if (nextTokenIsNot(SEMI))
         {
-            syntaxError(peekToken().loc, "expected a ';'");
+            diag(S.token.loc, err_expected_semi_after);
             skipUntil(SEMI, true);
         }
         else
@@ -1886,7 +1998,7 @@ public class Parser implements Tag
      */
     private ActionResult<Stmt> parseExprStatement()
     {
-        Token oldTok = peekToken();
+        Token oldTok = S.token;
 
         ActionResult<Expr> res = parseExpression();
         if (res.isInvalid())
@@ -1907,7 +2019,7 @@ public class Parser implements Tag
             // Recover parsing as a case statement.
             return parseCaseStatement();
         }
-        accept(SEMI);
+        expectAndConsume(SEMI, err_expected_semi_after);
 
         return action.actOnExprStmt(res);
     }
@@ -1931,7 +2043,7 @@ public class Parser implements Tag
      */
     private boolean isDeclarationAfterDeclarator()
     {
-        Token tok = peekToken();
+        Token tok = S.token;
         return tokenIs(tok, EQ)            // int X()= -> not a function def
                 || tokenIs(tok, COMMA)     // int X(), -> not a function def
                 || tokenIs(tok, SEMI);     // int X(); -> not a function def
@@ -1944,10 +2056,10 @@ public class Parser implements Tag
      * <pre>
      *
      * declaration-specifiers:
-     *   storage-class-specifier declaration-specifiers[backend.transform]
-     *   jlang.type-specifier declaration-specifiers[backend.transform]
-     *   jlang.type-qualifier declaration-specifiers[backend.transform]
-     *   function-specifier declaration-specifiers[backend.transform]
+     *   storage-class-specifier declaration-specifiers[opt]
+     *   type-specifier declaration-specifiers[opt]
+     *   type-qualifier declaration-specifiers[opt]
+     *   function-specifier declaration-specifiers[opt]
      *
      * Function specifiers (inline) are from C99, and are currently
      *   handled as storage class specifiers, as is __thread.
@@ -1965,7 +2077,7 @@ public class Parser implements Tag
      *   inline
      *
      * C90 6.5.2, C99 6.7.2:
-     * jlang.type-specifier:
+     * type-specifier:
      *   void
      *   char
      *   short
@@ -1980,13 +2092,13 @@ public class Parser implements Tag
      *   [_Imaginary removed in C99 TC2]
      *   struct-or-union-specifier
      *   enum-specifier
-     *   typedef-getName
+     *   typedef-getIdentifier
      *
      * (_Bool and _Complex are new in C99.)
      *
      * C90 6.5.3, C99 6.7.3:
      *
-     * jlang.type-qualifier:
+     * type-qualifier:
      *   const
      *   restrict
      *   volatile
@@ -2000,7 +2112,7 @@ public class Parser implements Tag
     {
         if (declSpecs.getSourceRange().isInvalid())
         {
-            int loc = peekToken().loc;
+            SourceLocation loc = S.token.loc;
             declSpecs.setRangeStart(loc);
             declSpecs.setRangeEnd(loc);
         }
@@ -2008,42 +2120,45 @@ public class Parser implements Tag
         out:
         while (nextTokenIs(IDENTIFIER) || nextTokenIsKeyword())
         {
-            Token tok = peekToken();
-            int loc = tok.loc;
+            Token tok = S.token;
+            SourceLocation loc = tok.getLocation();
             boolean isInvalid = false;
             String prevSpec = null;
-            String diag = null;
+            int diagID = -1;
 
             switch (tok.tag)
             {
                 case IDENTIFIER:
                 {
-                    // This identifier can only be a typedef getName if we haven't
-                    // already seen a jlang.type-specifier.
+                    // This identifier can only be a typedef getIdentifier if we haven't
+                    // already seen a type-specifier.
                     if (declSpecs.hasTypeSpecifier())
                         break out;
 
-                    // So, the current token is a typedef getName or error.
-                    QualType type = action.getTypeByName((Ident) tok, tok.loc,
-                                    getCurScope());
+                    // So, the current token is a typedef getIdentifier or error.
+                    QualType type = action.getTypeByName(
+                            tok.getIdentifierInfo(),
+                            tok.loc,
+                            getCurScope());
                     if (type == null)
                     {
+                        // return true, if there is incorrect.
                         if (parseImplicitInt(declSpecs))
-                            continue;
-                        break out;
+                            break out;
                     }
 
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper();
-                    OutParamWrapper<String> wrapper2 = new OutParamWrapper();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
 
                     isInvalid = declSpecs.setTypeSpecType(TST_typename, loc,
                             wrapper1, wrapper2, type);
                     prevSpec = wrapper1.get();
-                    diag = wrapper2.get();
+                    diagID = wrapper2.get();
 
                     if (isInvalid)
                         break;
 
+                    declSpecs.setRangeEnd(S.token.getLocation());
                     // the identifier
                     consumeToken();
                     continue;
@@ -2087,65 +2202,63 @@ public class Parser implements Tag
                 case COMPLEX:
                     isInvalid = declSpecs.setTypeSpecComplex(TSC_complex, loc);
                     break;
-
-                // jlang.type-specifier
                 case CHAR:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper();
-                    OutParamWrapper<String> wrapper2 = new OutParamWrapper();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
                     isInvalid = declSpecs.setTypeSpecType(TST_char, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
-                    diag = wrapper2.get();
+                    diagID = wrapper2.get();
                     break;
                 }
                 case INT:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper();
-                    OutParamWrapper<String> wrapper2 = new OutParamWrapper();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
                     isInvalid = declSpecs.setTypeSpecType(TST_int, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
-                    diag = wrapper2.get();
+                    diagID = wrapper2.get();
                     break;
                 }
                 case FLOAT:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper();
-                    OutParamWrapper<String> wrapper2 = new OutParamWrapper();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
                     isInvalid = declSpecs.setTypeSpecType(TST_float, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
-                    diag = wrapper2.get();
+                    diagID = wrapper2.get();
                     break;
                 }
                 case DOUBLE:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper();
-                    OutParamWrapper<String> wrapper2 = new OutParamWrapper();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
                     isInvalid = declSpecs.setTypeSpecType(TST_double, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
-                    diag = wrapper2.get();
+                    diagID = wrapper2.get();
                     break;
                 }
                 case VOID:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper();
-                    OutParamWrapper<String> wrapper2 = new OutParamWrapper();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
                     isInvalid = declSpecs.setTypeSpecType(TST_void, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
-                    diag = wrapper2.get();
+                    diagID = wrapper2.get();
                     break;
                 }
                 case BOOL:       {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper();
-                    OutParamWrapper<String> wrapper2 = new OutParamWrapper();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
                     isInvalid = declSpecs.setTypeSpecType(TST_bool, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
-                    diag = wrapper2.get();
+                    diagID = wrapper2.get();
                     break;
                 }
                 // enum specifier
                 case ENUM:
                 {
-                    loc = consumeToken();
+                    consumeToken();
                     parseEnumSpecifier(loc, declSpecs);
                     continue;
                 }
@@ -2154,11 +2267,12 @@ public class Parser implements Tag
                 case UNION:
                 {
                     // eat the 'struct' or 'union'.
-                    loc = consumeToken();
-                    parseStructOrUnionSpecifier(loc, declSpecs);
+                    int kind = tok.tag;
+                    consumeToken();
+                    parseStructOrUnionSpecifier(kind, loc, declSpecs);
                     continue;
                 }
-                // jlang.type-qualifiers
+                // type-qualifiers
                 case CONST:
                     isInvalid = declSpecs.setTypeQualifier(TQ_const, loc);
                     break;
@@ -2174,19 +2288,21 @@ public class Parser implements Tag
             // if the specifier is illegal, issue a diagnostic.
             if (isInvalid)
             {
-
+                assert prevSpec != null :"Method did not return previous specifier!";
+                assert diagID >= 0;
+                diag(tok, diagID).addTaggedVal(prevSpec);
             }
-            declSpecs.setRangeEnd(peekToken().loc);
+            declSpecs.setRangeEnd(S.token.loc);
             consumeToken();
         }
         // finish and return to caller
-        declSpecs.finish(this);
+        declSpecs.finish(diags, pp);
     }
 
     /**
      * This method is called when we have an non-typename
      * identifier in a declspec (which normally terminates the decl spec) when
-     * the declspec has no jlang.type specifier.  In this case, the declspec is either
+     * the declspec has no type specifier.  In this case, the declspec is either
      * malformed or is "implicit int" (in K&R and C89).
      *
      * @param ds
@@ -2195,20 +2311,20 @@ public class Parser implements Tag
     private boolean parseImplicitInt(DeclSpec ds)
     {
         assert nextTokenIs(IDENTIFIER) : "should have identifier.";
-        int loc = consumeToken();
+        SourceLocation loc = consumeToken();
 
-        // IfStmt we see an identifier that is not a jlang.type getName, we normally would
+        // IfStmt we see an identifier that is not a type getIdentifier, we normally would
         // parse it as the identifer being declared.  However, when a typename
         // is typo'd or the definition is not included, this will incorrectly
-        // parse the typename as the identifier getName and fall over misparsing
+        // parse the typename as the identifier getIdentifier and fall over misparsing
         // later parts of the diagnostic.
         //
         // As such, we try to do some lookup-ahead in cases where this would
         // otherwise be an "implicit-int" case to see if this is invalid.  For
         // example: "static foo_t x = 4;"  In this case, if we parsed foo_t as
         // an identifier with implicit int, we'd get a parse error because the
-        // next token is obviously invalid for a jlang.type.  Parse these as a case
-        // with an invalid jlang.type specifier.
+        // next token is obviously invalid for a type.  Parse these as a case
+        // with an invalid type specifier.
         assert !ds.hasTypeSpecifier() : "Type specifier checked above";
 
         // Since we know that this either implicit int (which is rare) or an
@@ -2221,10 +2337,42 @@ public class Parser implements Tag
             return false;
         }
 
+        String tagName = null;
+        int tagKind = -1;
+        String identifierInfo = S.token.getIdentifierInfo();
+        switch (action.isTagName(identifierInfo, getCurScope()))
+        {
+            default:break;
+            case TST_enum: tagName = "enum"; tagKind = Tag.ENUM; break;
+            case TST_struct: tagName = "struct"; tagKind = Tag.STRUCT; break;
+            case TST_union: tagName = "union"; tagKind = Tag.UNION; break;
+        }
+        if (tagName != null)
+        {
+            diag(loc, err_use_of_tag_name_without_tag)
+            .addTaggedVal(identifierInfo)
+            .addTaggedVal(tagName)
+            .addCodeModificationHint(
+                    CodeModificationHint.createInsertion(S.token.loc,
+                    tagName));
+
+            if (tagKind == ENUM)
+            {
+                parseEnumSpecifier(loc, ds);
+            }
+            else
+            {
+                parseStructOrUnionSpecifier(tagKind, loc, ds);
+            }
+            return true;
+        }
+        diag(loc, err_unknown_typename).addTaggedVal(identifierInfo);
+
         OutParamWrapper<String> prevSpec = new OutParamWrapper<>();
-        OutParamWrapper<String> diag = new OutParamWrapper<>();
+        OutParamWrapper<Integer> diag = new OutParamWrapper<>();
         // mark as an error
         ds.setTypeSpecType(TST_error, loc, prevSpec, diag);
+        ds.setRangeEnd(S.token.getLocation());
         consumeToken();
         return false;
     }
@@ -2262,38 +2410,36 @@ public class Parser implements Tag
      * Parse an enum specifier (C90 6.5.2.2, C99 6.7.2.2).
      * <pre>
      * enum-specifier:
-     *   enum identifier[backend.transform] { enumerator-list }
-     *   enum identifier[backend.transform] { enumerator-list , } [C99]
+     *   enum identifier[opt] { enumerator-list }
+     *   enum identifier[opt] { enumerator-list , } [C99]
      *   enum identifier
      * </pre>
      * @param startLoc
      * @param ds
      */
-    private void parseEnumSpecifier(int startLoc, DeclSpec ds)
+    private void parseEnumSpecifier(SourceLocation startLoc, DeclSpec ds)
     {
-        Token tok = peekToken();
-        int kwLoc = tok.loc;
+        Token tok = S.token;
 
-        // Must have either 'enum getName' or 'enum {...}'.
+        // Must have either 'enum name' or 'enum {...}'.
         if (!tokenIs(tok, IDENTIFIER) && !tokenIs(tok, LBRACE))
         {
-            // TODO report error
-            syntaxError(tok.loc, "expected an identifier or '{'");
+            diag(tok, err_expected_ident_lbrace);
             // skip the rest of this declarator, up until a ',' or ';' encounter.
             skipUntil(COMMA, true);
             return;
         }
 
         String name = null;
-        int nameLoc = Position.NOPOS;
+        SourceLocation nameLoc = SourceLocation.NOPOS;
         if (tokenIs(tok, IDENTIFIER))
         {
-            name = ((Ident)tok).name;
+            name = tok.getIdentifierInfo();
             nameLoc = tok.loc;
         }
 
-        // There are three options here.  IfStmt we have 'enum foo;', then this is a
-        // forward declaration.  IfStmt we have 'enum foo {...' then this is a
+        // There are three options here.  If we have 'enum foo;', then this is a
+        // forward declaration.  If we have 'enum foo {...' then this is a
         // definition. Otherwise we have something like 'enum foo xyz', a reference.
         Sema.TagUseKind tuk;
         if (tokenIs(tok, LBRACE))
@@ -2303,19 +2449,21 @@ public class Parser implements Tag
         else
             tuk = TUK_reference;
 
-        if (nameLoc == Position.NOPOS && tuk != TUK_definition)
+        if (name == null && tuk != TUK_definition)
         {
-            // TODO report error
-            syntaxError(tok.loc, "expected a identifier before ';'");
+            diag(tok, err_enumerator_unnamed_no_def);
+            // Skip the rest of this declarator, up until the comma or semicolon.
             skipUntil(COMMA, true);
             return;
         }
 
-        ActionResult<Decl> tagDecl = action.actOnTag(getCurScope(),
-                TST_enum, tuk,
-                startLoc, name,
-                nameLoc,
-                kwLoc);
+        ActionResult<Decl> tagDecl = action.actOnTag(
+                getCurScope(),
+                TST_enum,
+                tuk,
+                startLoc,
+                name,
+                nameLoc);
 
         if (tagDecl.isInvalid())
         {
@@ -2335,20 +2483,21 @@ public class Parser implements Tag
             parseEnumBody(startLoc, tagDecl.get());
 
         OutParamWrapper<String> prevSpecWrapper = new OutParamWrapper<>();
-        OutParamWrapper<String> diagWrapper = new OutParamWrapper<>();
+        OutParamWrapper<Integer> diagWrapper = new OutParamWrapper<>();
 
         if (ds.setTypeSpecType(TST_enum,
                 startLoc,
-                nameLoc != Position.NOPOS ? nameLoc : startLoc,
+                name != null ? nameLoc : startLoc,
                 prevSpecWrapper, diagWrapper,
                 tagDecl.get()))
         {
-            // TODO report error
-
+            diag(startLoc, diagWrapper.get()).
+                    addTaggedVal(prevSpecWrapper.get());
         }
     }
 
     /**
+     * Parse a {} enclosed enumerator-list.
      * <pre>
      * enumerator-list:
          enumerator
@@ -2361,27 +2510,29 @@ public class Parser implements Tag
      * @param startLoc
      * @param enumDecl
      */
-    private void parseEnumBody(int startLoc, Decl enumDecl)
+    private void parseEnumBody(SourceLocation startLoc, Decl enumDecl)
     {
         ParseScope enumScope = new ParseScope(this, ScopeFlags.DeclScope.value);
         action.actOnTagStartDefinition(getCurScope(), enumDecl);
 
         // eat '{'
-        int lBraceLoc = consumeToken();
+        SourceLocation lbraceLoc = consumeBrace();
         if (nextTokenIs(RBRACE))
         {
-            syntaxError(peekToken().loc, "empty enum.");
+            diag(S.token, ext_empty_struct_union_enum);
         }
-        Token tok = peekToken();
+
+        Token tok = S.token;
 
         ArrayList<Decl> enumConstantDecls = new ArrayList<>(32);
         Decl lastEnumConstDecl = null;
+        // Parse the enumerator-list.
         while(tokenIs(tok, IDENTIFIER))
         {
-            String name = ((Ident)tok).name;
-            int identLoc = consumeToken();
+            String name = tok.getIdentifierInfo();
+            SourceLocation identLoc = consumeToken();
 
-            int equalLoc = Position.NOPOS;
+            SourceLocation equalLoc = SourceLocation.NOPOS;
             ActionResult<Expr> val = null;
             if (nextTokenIs(EQ))
             {
@@ -2408,42 +2559,41 @@ public class Parser implements Tag
             enumConstantDecls.add(enumConstDecl);
             lastEnumConstDecl = enumConstDecl;
 
-            if (nextTokenIs(IDENTIFIER))
-            {
-                // we missing a ',' between enumerators
-                syntaxError(peekToken().loc, "enumerator list missing a ,'");
-                continue;
-            }
-
             // finish enumerator-list
             if (nextTokenIsNot(COMMA))
                 break;
-            int commaLoc = consumeToken();
+            SourceLocation commaLoc = consumeToken();
 
-            if (nextTokenIs(RBRACE))
-                break;
+            if (nextTokenIsNot(IDENTIFIER) && !getLangOption().c99)
+            {
+                // we missing a ',' between enumerators
+                diag(commaLoc, ext_enumerator_list_comma)
+                .addTaggedVal(getLangOption().c99)
+                .addCodeModificationHint(CodeModificationHint.createRemoval(
+                        new SourceRange(commaLoc)));
+            }
         }
 
         // eat the '}'
-       int rBraceLoc = consumeToken();
+       SourceLocation rBraceLoc = matchRHSPunctuation(RBRACE, lbraceLoc);
 
         action.actOnEnumBody(
                 startLoc,
-                lBraceLoc,
+                lbraceLoc,
                 rBraceLoc,
                 enumDecl,
                 enumConstantDecls,
                 getCurScope());
 
         enumScope.exit();
-        action.actOnTagStartDefinition(getCurScope(), enumDecl);
+        action.actOnTagFinishDefinition(getCurScope(), enumDecl, rBraceLoc);
     }
 
     /**
      * Parses C structs or unions specifiers.
      * <pre>
      *     struct-or-union-specifier: [C99 6.7.2.1]
-     *       struct-or-union identifier[backend.transform] '{' struct-contents '}'
+     *       struct-or-union identifier[opt] '{' struct-contents '}'
      *       struct-or-union identifier
      *
      *     struct-contents:
@@ -2458,173 +2608,170 @@ public class Parser implements Tag
      *      'union'
      * </pre>
      *
-     * @param loc
-     * @param ds
      */
-    private void parseStructOrUnionSpecifier(int loc, DeclSpec ds)
+    private void parseStructOrUnionSpecifier(
+            int tagTokKind,
+            SourceLocation startLoc,
+            DeclSpec ds)
     {
         DeclSpec.TST tagType;
-        int kind = peekToken().tag;
-        int startLoc = peekToken().loc;
-        if (kind == STRUCT)
+        if (tagTokKind == STRUCT)
             tagType = TST_struct;
         else
         {
-            assert kind == UNION : "Not a union specifier";
+            assert tagTokKind == UNION : "Not a union specifier";
             tagType = TST_union;
         }
 
-        // eat the 'struct' or 'union'.
-        int kwLoc = consumeToken();
+        // Parse the (optional) class name
+        String name = null;
+        SourceLocation nameLoc = SourceLocation.NOPOS;
+        if (nextTokenIs(IDENTIFIER))
+        {
+            name = S.token.getIdentifierInfo();
+            nameLoc = consumeToken();
+        }
 
         // There are four cases for the grammar starting with keyword class-specifier.
         // 1. forward declaration: for example, struct X;
         // 2. definition: for example, struct X {...};
         // 3. annoymous definition of struct: struct {...};
         // 4. reference used in varaible declaration: struct X x;
-        if (nextTokenIs(IDENTIFIER))
+
+        Sema.TagUseKind tuk;
+        if (nextTokenIs(LBRACE))
         {
-            Token tok = peekToken();
-            String name = ((Ident) tok).name;
-            int nameLoc = tok.loc;
+            // so,this is a struct definition.
+            tuk = TUK_definition;
+        }
+        else if (nextTokenIs(SEMI))
+            tuk = TUK_declaration;
+        else
+            tuk = TUK_reference;
 
-            // eat the getName = 'identifier'.
-            consumeToken();
-
-            Sema.TagUseKind tuk;
-            if (nextTokenIs(LBRACE))
+        if (name == null && (ds.getTypeSpecType() == TST_error
+                || tuk != TUK_definition))
+        {
+            if (ds.getTypeSpecType() != TST_error)
             {
-                // so,this is a struct definition.
-                tuk = TUK_definition;
+                // we have a declaration or reference to an anonymous struct.
+                diag(startLoc, err_anon_type_definition);
             }
-            else if (nextTokenIs(SEMI))
-                tuk = TUK_declaration;
-            else
-                tuk = TUK_reference;
-            consumeToken();
+            skipUntil(COMMA, true);
+            return;
+        }
 
-            if (name == null && (ds.getTypeSpecType() == TST_error
-                    || tuk != TUK_definition))
+        // create the tag portion of the struct or union.
+
+        // declaration or definitions of a struct or union type
+        ActionResult<Decl> tagOrTempResult =
+                action.actOnTag(
+                getCurScope(), tagType,
+                tuk, startLoc, name, nameLoc);
+        // if there is a body, parse it and perform actions
+        if (nextTokenIs(LBRACE))
+        {
+            parseStructOrUnionBody(startLoc, tagType, tagOrTempResult.get());
+        }
+        else if (tuk == TUK_definition)
+        {
+            diag(S.token, err_expected_lbrace);
+        }
+
+
+        if (tagOrTempResult.isInvalid())
+        {
+            ds.setTypeSpecError();
+            return;
+        }
+
+        OutParamWrapper<String> w1 = new OutParamWrapper<>();
+        OutParamWrapper<Integer> w2 = new OutParamWrapper<>();
+        String prevSpec = null;
+        int diagID = 0;
+        boolean result;
+
+        result = ds.setTypeSpecType(tagType, startLoc,
+                nameLoc!=SourceLocation.NOPOS?nameLoc: startLoc,
+                w1, w2,
+                tagOrTempResult.get());
+        prevSpec = w1.get();
+        diagID = w2.get();
+
+        if (result)
+        {
+            // report error
+            diag(startLoc, diagID).addTaggedVal(prevSpec);
+        }
+
+        if (tuk == TUK_definition)
+        {
+            boolean expectedSemi = true;
+            switch (S.token.tag)
             {
-                if (ds.getTypeSpecType() != TST_error)
+                default:
+                    break;
+                    // struct foo {...} ;
+                case Token.SEMI:
+                    // struct foo {...} *         P;
+                case Token.STAR:
+                    // struct foo {...} V         ;
+                case Token.IDENTIFIER:
+                    //(struct foo {...} )         {4}
+                case Token.RPAREN:
+                    // struct foo {...} (         x);
+                case Token.LPAREN:
+                    expectedSemi = false;
+                    break;
+                // type-specifier
+                case Token.CONST:             // struct foo {...} const     x;
+                case Token.VOLATILE:          // struct foo {...} volatile     x;
+                case Token.RESTRICT:          // struct foo {...} restrict     x;
+                case Token.INLINE:            // struct foo {...} inline   foo();
+                    // storage-class specifier
+                case Token.STATIC:            // struct foo {...} static     x;
+                case Token.EXTERN:            // struct foo {...} extern     x;
+                case Token.TYPEDEF:           // struct foo {...} typedef    x;
+                case Token.REGISTER:          // struct foo {...} register   x;
+                case Token.AUTO:              // struct foo {...} auto       x;
                 {
-                    // we have a declaration or reference to an anonymous struct.
-                    syntaxError(startLoc,
-                            "declaration of anonymous '%s' must be a definition",
-                            DeclSpec.getSpecifierName(tagType));
-                }
-                skipUntil(COMMA, true);
-                return;
-            }
-
-            // create the tag portion of the struct or union.
-
-            // declaration or definitions of a struct or union jlang.type
-            ActionResult<Decl> tagOrTempResult = action.actOnTag(
-                    getCurScope(), tagType,
-                    tuk, startLoc, name, nameLoc, kwLoc);
-            // if there is a body, parse it and perform actions
-            if (tuk == TUK_definition)
-            {
-                assert nextTokenIs(LBRACE);
-                parseStructOrUnionBody(startLoc, tagType, tagOrTempResult.get());
-            }
-
-            String prevSpec = null;
-            String diag = null;
-            boolean result;
-            if (!tagOrTempResult.isInvalid())
-            {
-                OutParamWrapper<String> w1 = new OutParamWrapper<>();
-                OutParamWrapper<String> w2 = new OutParamWrapper<>();
-
-                result = ds.setTypeSpecType(tagType, startLoc,
-                        nameLoc!=Position.NOPOS?nameLoc: startLoc,
-                        w1, w2,
-                        tagOrTempResult.get());
-            }
-            else
-            {
-                ds.setTypeSpecError();
-                return;
-            }
-
-            if (result)
-            {
-                // report error
-                syntaxError(startLoc, diag, prevSpec);
-            }
-
-            if (tuk == TUK_definition)
-            {
-                boolean expectedSemi = true;
-                switch (peekToken().tag)
-                {
-                    default:
-                        break;
-                        // struct foo {...} ;
-                    case Token.SEMI:
-                        // struct foo {...} *         P;
-                    case Token.STAR:
-                        // struct foo {...} V         ;
-                    case Token.IDENTIFIER:
-                        //(struct foo {...} )         {4}
-                    case Token.RPAREN:
-                        // struct foo {...} (         x);
-                    case Token.LPAREN:
+                    // As shown above, type qualifiers and storage class specifiers absolutely
+                    // can occur after class specifiers according to the grammar.  However,
+                    // almost no one actually writes code like this.  IfStmt we see one of these,
+                    // it is much more likely that someone missed a semi colon and the
+                    // type/storage class specifier we're seeing is part of the *next*
+                    // intended declaration, as in:
+                    //
+                    //   struct foo { ... }
+                    //   typedef int X;
+                    //
+                    // We'd really like to emit a missing semicolon error instead of emitting
+                    // an error on the 'int' saying that you can't have two type specifiers in
+                    // the same declaration of X.  Because of this, we lookup ahead past this
+                    // token to see if it's a type specifier.  IfStmt so, we know the code is
+                    // otherwise invalid, so we can produce the expected semi error.
+                    if (isKnownBeTypeSpecifier(S.token))
                         expectedSemi = false;
-                        break;
-                    // jlang.type-specifier
-                    case Token.CONST:             // struct foo {...} const     x;
-                    case Token.VOLATILE:          // struct foo {...} volatile     x;
-                    case Token.RESTRICT:          // struct foo {...} restrict     x;
-                    case Token.INLINE:            // struct foo {...} inline   foo();
-                        // storage-class specifier
-                    case Token.STATIC:            // struct foo {...} static     x;
-                    case Token.EXTERN:            // struct foo {...} extern     x;
-                    case Token.TYPEDEF:           // struct foo {...} typedef    x;
-                    case Token.REGISTER:          // struct foo {...} register   x;
-                    case Token.AUTO:              // struct foo {...} auto       x;
-                    {
-                        // As shown above, jlang.type qualifiers and storage class specifiers absolutely
-                        // can occur after class specifiers according to the grammar.  However,
-                        // almost no one actually writes code like this.  IfStmt we see one of these,
-                        // it is much more likely that someone missed a semi colon and the
-                        // jlang.type/storage class specifier we're seeing is part of the *next*
-                        // intended declaration, as in:
-                        //
-                        //   struct foo { ... }
-                        //   typedef int X;
-                        //
-                        // We'd really like to emit a missing semicolon error instead of emitting
-                        // an error on the 'int' saying that you can't have two jlang.type specifiers in
-                        // the same declaration of X.  Because of this, we lookup ahead past this
-                        // token to see if it's a jlang.type specifier.  IfStmt so, we know the code is
-                        // otherwise invalid, so we can produce the expected semi error.
-                        if (isKnownBeTypeSpecifier(peekToken()))
-                            expectedSemi = false;
-                        break;
-                    }
-
-                    // struct bar { struct foo {...} }
-                    case Token.RBRACE:
-                        // missing ';' at the end f struct is ccepted as an extension in C mode
-                        expectedSemi = false;
-                        break;
+                    break;
                 }
-                if (expectedSemi)
+
+                // struct bar { struct foo {...} }
+                case Token.RBRACE:
+                    // missing ';' at the end f struct is ccepted as an extension in C mode
+                    expectedSemi = false;
+                    break;
+            }
+            if (expectedSemi)
+            {
+                if (nextTokenIs(SEMI))
                 {
-                    if (nextTokenIs(SEMI))
-                    {
-                        consumeToken();
-                    }
-                    else
-                    {
-                        syntaxError(peekToken().loc,
-                                "expected a ';' after tag declaration %s",
-                                tagType == TST_union ? "union":"struct");
-                        skipUntil(SEMI, true);
-                    }
+                    consumeToken();
+                }
+                else
+                {
+                    diag(S.token, err_expected_semi_after).
+                            addTaggedVal(tagType == TST_union ? "union":"struct");
+                    skipUntil(SEMI, true);
                 }
             }
         }
@@ -2632,7 +2779,7 @@ public class Parser implements Tag
 
     /**
      * ReturnStmt true if we know that the specified token
-     * is definitely a jlang.type-specifier.  ReturnStmt false if it isn't part of a jlang.type
+     * is definitely a type-specifier.  ReturnStmt false if it isn't part of a type
      * specifier or if we're not sure.
      *
      * @param tok
@@ -2682,19 +2829,21 @@ public class Parser implements Tag
      *
      * struct-declarator:
      *  declarator
-     *  declarator[backend.transform] : constant-expression
+     *  declarator[opt] : constant-expression
      *
      *
      * @param recordLoc
      * @param tagType
      */
-    private void parseStructOrUnionBody(int recordLoc, DeclSpec.TST tagType,
+    private void parseStructOrUnionBody(
+            SourceLocation recordLoc,
+            DeclSpec.TST tagType,
             Decl tagDecl)
     {
         // expect a '{'.
-        int lBraceLoc = expect(LBRACE);
+        SourceLocation lBraceLoc = consumeBrace();
 
-        // obtains the struct or union specifier getName.
+        // obtains the struct or union specifier getIdentifier.
         String structOrUnion = DeclSpec.getSpecifierName(tagType);
 
         ParseScope structScope = new ParseScope(this,
@@ -2719,7 +2868,7 @@ public class Parser implements Tag
             // each iteration of this loop reads one struct-declaration.
             if (nextTokenIs(SEMI))
             {
-                syntaxWarning(peekToken().loc,
+                syntaxWarning(S.token.loc,
                         "extra semicolon in struct or union specified");
                 consumeToken();
                 continue;
@@ -2736,12 +2885,12 @@ public class Parser implements Tag
                 consumeToken();
             else if (nextTokenIs(RBRACE))
             {
-                syntaxError(peekToken().loc, "expected a ';' at the end.");
+                syntaxError(S.token.loc, "expected a ';' at the end.");
                 break;
             }
             else
             {
-                syntaxError(peekToken().loc, "expected a ';' at the end.");
+                syntaxError(S.token.loc, "expected a ';' at the end.");
                 skipUntil(RBRACE, true);
                 // if we stopped at a ';', consume it.
                 if (nextTokenIs(SEMI))
@@ -2749,7 +2898,7 @@ public class Parser implements Tag
             }
         }
 
-        int rBraceLoc = consumeToken();
+        SourceLocation rBraceLoc = consumeBrace();
         // eat '}'
         action.actOnFields(getCurScope(),
                 recordLoc,
@@ -2770,8 +2919,8 @@ public class Parser implements Tag
      *     specifier-qualifier-list struct-declarator-list
      *
      *   specifier-qualifier-list:
-     *     jlang.type-specifier specifier-qualifier-list[backend.transform]
-     *     jlang.type-qualifier specifier-qualifier-list[backend.transform]
+     *     type-specifier specifier-qualifier-list[opt]
+     *     type-qualifier specifier-qualifier-list[opt]
      *
      *   struct-declarator-list:
      *     struct-declarator
@@ -2779,7 +2928,7 @@ public class Parser implements Tag
      *
      *   struct-declarator:
      *     declarator
-     *     declarator[backend.transform] : constant-expression
+     *     declarator[opt] : constant-expression
      * </pre>
      *
      * @param ds
@@ -2804,7 +2953,7 @@ public class Parser implements Tag
 
             // struct-declarator:
             //   declarator
-            //   declarator[backend.transform] : constant-expression
+            //   declarator[opt] : constant-expression
             if (nextTokenIsNot(COLON))
             {
                 parseDeclarator(declaratorField.declarator);
@@ -2837,45 +2986,46 @@ public class Parser implements Tag
      * <p>
      * <p>
      * declarator:
-     *   pointer[backend.transform] direct-declarator
+     *   pointer[opt] direct-declarator
      * <p>
      * <p>
      * pointer:
-     *   '*' jlang.type-qualifier-list[backend.transform]
-     *   '*' jlang.type-qualifier-list[backend.transform] pointer
+     *   '*' type-qualifier-list[opt]
+     *   '*' type-qualifier-list[opt] pointer
      *
      * @param declarator
      */
     private void parseDeclarator(Declarator declarator)
     {
-        Token tok = peekToken();
-        consumeToken();
-        declarator.setRangeEnd(tok.loc);
-
-        // first, parse pointer
-        if (tokenIs(tok, STAR))
-        {
-            DeclSpec ds = new DeclSpec();
-            parseTypeQualifierListOpt(ds);
-            declarator.extendWithDeclSpec(ds);
-
-            // recursively parse remained piece
-            parseDeclarator(declarator);
-
-            // remember this pointer jlang.type and add it into declarator's jlang.type list.
-            declarator.addTypeInfo(DeclaratorChunk.getPointer
-                    (ds.getTypeQualifier(),
-                            tok.loc,
-                            ds.getConstSpecLoc(),
-                            ds.getVolatileSpecLoc(),
-                            ds.getRestrictSpecLoc()),
-                    ds.getRangeEnd());
-        }
-        else
+        Token tok = S.token;
+        //declarator.setRangeEnd(tok.loc);
+        if (nextTokenIsNot(STAR))
         {
             // parse direct-declartor
             parseDirectDeclarator(declarator);
+            return;
         }
+
+        // Otherwise, '*'-> pointer.
+        SourceLocation loc = consumeToken();
+        declarator.setRangeEnd(loc);
+
+
+        DeclSpec ds = new DeclSpec();
+        parseTypeQualifierListOpt(ds);
+        declarator.extendWithDeclSpec(ds);
+
+        // recursively parse remained piece
+        parseDeclarator(declarator);
+
+        // remember this pointer type and add it into declarator's type list.
+        declarator.addTypeInfo(DeclaratorChunk.getPointer
+                (ds.getTypeQualifier(),
+                        tok.loc,
+                        ds.getConstSpecLoc(),
+                        ds.getVolatileSpecLoc(),
+                        ds.getRestrictSpecLoc()),
+                ds.getRangeEnd());
     }
 
     /**
@@ -2884,14 +3034,14 @@ public class Parser implements Tag
      *   identifier
      *   '(' declarator ')'
      *   direct-declarator array-declarator
-     *   direct-declarator ( parameter-jlang.type-list )
-     *   direct-declarator ( identifier-list[backend.transform] )
+     *   direct-declarator ( parameter-type-list )
+     *   direct-declarator ( identifier-list[opt] )
 
-     * jlang.type-qualifier-list:
-     *   jlang.type-qualifier
-     *   jlang.type-qualifier-list jlang.type-qualifier
+     * type-qualifier-list:
+     *   type-qualifier
+     *   type-qualifier-list type-qualifier
      * <p>
-     * parameter-jlang.type-list:
+     * parameter-type-list:
      *   parameter-list
      *   parameter-list , ...
      * <p>
@@ -2901,7 +3051,7 @@ public class Parser implements Tag
      * <p>
      * parameter-declaration:
      *   declaration-specifiers declarator
-     *   declaration-specifiers abstract-declarator[backend.transform]
+     *   declaration-specifiers abstract-declarator[opt]
      * <p>
      * identifier-list:
      *   identifier
@@ -2909,12 +3059,12 @@ public class Parser implements Tag
      * <p>
      * abstract-declarator:
      *   pointer
-     *   pointer[backend.transform] direct-abstract-declarator
+     *   pointer[opt] direct-abstract-declarator
      * <p>
      * direct-abstract-declarator:
      *   ( abstract-declarator )
-     *   direct-abstract-declarator[backend.transform] array-declarator
-     *   direct-abstract-declarator[backend.transform] ( parameter-jlang.type-list[backend.transform] )
+     *   direct-abstract-declarator[opt] array-declarator
+     *   direct-abstract-declarator[opt] ( parameter-type-list[opt] )
      * @param declarator
      */
     private void parseDirectDeclarator(Declarator declarator)
@@ -2929,9 +3079,9 @@ public class Parser implements Tag
              declarator, they could start a parenthesized declarator or a
              parameter list.
              */
-            Ident id = ((Ident)peekToken());
-            assert id.name != null : "Not an identifier?";
-            declarator.setIdentifier(id, id.loc);
+            String id = S.token.getIdentifierInfo();
+            assert id != null : "Not an identifier?";
+            declarator.setIdentifier(id, S.token.getLocation());
             consumeToken();
         }
         else if (nextTokenIs(LPAREN))
@@ -2939,26 +3089,23 @@ public class Parser implements Tag
             // direct-declarator:
             //   '(' declarator ')'
             // e.g. char (*X) or int (*XX)(void)
-
-            consumeToken(); // eat the '('.
             parseParenDeclarator(declarator);
         }
         else if (declarator.mayOmitIdentifier())
         {
             // This could be something simple like "int" (in which case the declarator
             // portion is empty), if an abstract-declarator is allowed.
-            declarator.setIdentifier(null, peekToken().loc);
+            declarator.setIdentifier(null, S.token.loc);
         }
         else
         {
-            // TODO error report
             if (declarator.getContext() == TheContext.StructFieldContext)
-                syntaxError(declarator.getDeclSpec().getRangeStart(),
-                        "Expected member getName or ';'");
+                diag(S.token, err_expected_member_name_or_semi)
+                        .addSourceRange(declarator.getDeclSpec().getSourceRange())
             else
-                accept(LPAREN);
+                diag(S.token, err_expected_ident_lparen);
 
-            declarator.setIdentifier(null, peekToken().loc);
+            declarator.setIdentifier(null, S.token.getLocation());
             declarator.setInvalidType(true);
         }
 
@@ -2967,10 +3114,9 @@ public class Parser implements Tag
 
         while (true)
         {
-            Token tok = peekToken();
-            if (tokenIs(tok, LPAREN))
-                parseFunctionDeclarator(declarator);
-            else if (tokenIs(tok, LBRACKET))
+            if (nextTokenIs(LPAREN))
+                parseFunctionDeclarator(consumeParen(), declarator, false);
+            else if (nextTokenIs(LBRACKET))
                 parseBracketDeclarator(declarator);
             else
                 break;
@@ -2979,7 +3125,7 @@ public class Parser implements Tag
 
     private boolean isDeclarationSpecifier(boolean disambiguatingWithExpression)
     {
-        switch (peekToken().tag)
+        switch (S.token.tag)
         {
             default:return false;
             case IDENTIFIER:
@@ -3013,7 +3159,7 @@ public class Parser implements Tag
             case Tag.INLINE:
                 return true;
 
-            // typedefs-getName
+            // typedefs-getIdentifier
             case ANN_TYPENAME:
                 return !disambiguatingWithExpression;
         }
@@ -3021,7 +3167,7 @@ public class Parser implements Tag
 
     private boolean isDeclarationSpecifier()
     {
-        switch (peekToken().tag)
+        switch (S.token.tag)
         {
             default: return false;
             case Tag.TYPEDEF:
@@ -3058,14 +3204,15 @@ public class Parser implements Tag
     /**
      * direct-declarator:
      *   '(' declarator ')'
-     *   direct-declarator '(' parameter-jlang.type-list ')'
-     *   direct-declarator '(' identifier-list[backend.transform] ')'
+     *   direct-declarator '(' parameter-type-list ')'
+     *   direct-declarator '(' identifier-list[opt] ')'
      * @param declarator
      */
     private void parseParenDeclarator(Declarator declarator)
     {
         // eat the '('.
-        consumeToken();
+        assert nextTokenIs(LPAREN);
+        SourceLocation lparenLoc = consumeParen();
 
         assert !declarator.isPastIdentifier()
                 :"Should be called before passing identifier";
@@ -3099,114 +3246,188 @@ public class Parser implements Tag
         // argument list.  Recognize that this declarator will never have an
         // identifier (and remember where it would have been), then call into
         // ParseFunctionDeclarator to handle of argument list.
-        declarator.setIdentifier(null, peekToken().loc);
+        declarator.setIdentifier(null, S.token.loc);
         consumeToken();
-        parseFunctionDeclarator(declarator);
+        parseFunctionDeclarator(lparenLoc, declarator, true);
     }
 
-    private void parseFunctionDeclarator(Declarator declarator)
+	/**
+     * This method also handles this portion of the grammar:
+     * <pre>
+     *       parameter-type-list: [C99 6.7.5]
+     *         parameter-list
+     *         parameter-list ',' '...'
+     *
+     *       parameter-list: [C99 6.7.5]
+     *         parameter-declaration
+     *         parameter-list ',' parameter-declaration
+     *
+     *       parameter-declaration: [C99 6.7.5]
+     *         declaration-specifiers declarator
+     * [GNU]   declaration-specifiers declarator attributes
+     *         declaration-specifiers abstract-declarator[opt]
+     * [GNU]   declaration-specifiers abstract-declarator[opt] attributes
+     * </pre>
+     * @param declarator
+     */
+    private void parseFunctionDeclarator(
+            SourceLocation lparenLoc,
+            Declarator declarator,
+            boolean requireArg)
     {
         assert declarator.isPastIdentifier():"Should not call before identifier!";
-
-        // eat '('
-        int startLoc = consumeToken();
         // this should be true when the function has typed arguments.
         // Otherwise, it will be treated as K&R style function.
         boolean hasProto = false;
 
-        // build an array of information about the parsed arguments.
-        ArrayList<DeclSpec.ParamInfo> paramInfos = new ArrayList<>(8);
-        // The the location where we see an ellipsis.
-        int ellipsisLoc = Position.NOPOS;
-        DeclSpec ds = new DeclSpec();
+        // This parameter list may be empty.
+        SourceLocation rparenLoc;
+        SourceLocation endLoc;
+        if (nextTokenIs(RPAREN))
+        {
+            if (requireArg)
+                diag(S.token, err_argument_required_after_attribute);
 
-        int endLoc;
+            rparenLoc = consumeParen();
+            endLoc = rparenLoc;
+
+            // Remember that we parsed a function type.
+            declarator.addTypeInfo(DeclaratorChunk.getFunction(
+                hasProto, false, SourceLocation.NOPOS,
+                null, 0, lparenLoc, rparenLoc), endLoc);
+
+            return;
+        }
+
+        // Alternatively, this parameter list may be an identifier list form for a
+        // K&R-style function:  void foo(a,b,c)
+
         if (isFunctionDeclaratorIdentifierList())
         {
             // Parses the function declaration of K&R form.
-            parseFunctionDeclaratorIdentifierList(declarator, paramInfos);
-
-            endLoc = peekToken().loc;
-            // eat the ')'
-            consumeToken();
+            parseFunctionDeclaratorIdentifierList(lparenLoc, declarator);
+            return;
         }
-        else
+
+        // Finally, a normal, non-empty parameter type list.
+
+        // build an array of information about the parsed arguments.
+        ArrayList<ParamInfo> paramInfos = new ArrayList<>(8);
+        // The the location where we see an ellipsis.
+        SourceLocation ellipsisLoc = SourceLocation.NOPOS;
+        DeclSpec ds = new DeclSpec();
+
+        // enter function-declaration scope,
+        ParseScope protoTypeScope =
+                new ParseScope(this,
+                        ScopeFlags.FunctionProtoTypeScope.value
+                        | ScopeFlags.DeclScope.value);
+        if (nextTokenIsNot(RPAREN))
         {
-            // enter function-declaration scope,
-            ParseScope protoTypeScope =
-                    new ParseScope(this,
-                            ScopeFlags.FunctionProtoTypeScope.value
-                            | ScopeFlags.DeclScope.value);
-            if (nextTokenIsNot(RPAREN))
-            {
-                ellipsisLoc = parseParameterDeclarationClause(declarator, paramInfos);
-            }
-
-            hasProto = !paramInfos.isEmpty();
-
-            // if we have the closing ')', eat it.
-            endLoc = consumeToken();
-
-            // leave prototype scope
-            protoTypeScope.exit();
+            ellipsisLoc = parseParameterDeclarationClause(declarator, paramInfos);
         }
 
-        // TODO: remenber that we parsed a function jlang.type
+        hasProto = !paramInfos.isEmpty();
+
+        // if we have the closing ')', eat it.
+        rparenLoc = endLoc = matchRHSPunctuation(RPAREN, lparenLoc);
+
+        // leave prototype scope
+        protoTypeScope.exit();
+
         declarator.addTypeInfo(DeclaratorChunk.getFunction(hasProto,
-                ellipsisLoc != Position.NOPOS,
+                ellipsisLoc != SourceLocation.NOPOS,
                 ellipsisLoc,
                 paramInfos,
                 ds.getTypeQualifier(),
-                startLoc,
-                endLoc), endLoc);
+                lparenLoc,
+                rparenLoc), endLoc);
+
     }
 
     private boolean isFunctionDeclaratorIdentifierList()
     {
         return nextTokenIs(IDENTIFIER) && nextTokenIsNot(ANN_TYPENAME)
-                    && (tokenIs(peekAheadToken(), COMMA) || tokenIs(peekAheadToken(), RPAREN));
+                    && (tokenIs(peekAheadToken(), COMMA)
+                || tokenIs(peekAheadToken(), RPAREN));
     }
 
+	/**
+     * <pre>
+     * identifier-list: [C99 6.7.5]
+     *      identifier
+     *      identifier-list ',' identifier
+     * </pre>
+     * @param lparenLoc
+     * @param declarator
+     */
     private void parseFunctionDeclaratorIdentifierList(
-            Declarator declarator,
-            ArrayList<DeclSpec.ParamInfo> paramInfos)
+            SourceLocation lparenLoc,
+            Declarator declarator)
     {
-        HashSet<Ident> paramsSoFar = new HashSet<>(8);
-        while (true)
+        HashSet<String> paramsSoFar = new HashSet<>(8);
+        ArrayList<ParamInfo> paramInfos = new ArrayList<>();
+
+        // If there was no identifier specified for the declarator, either we are in
+        // an abstract-declarator, or we are in a parameter declarator which was found
+        // to be abstract.  In abstract-declarators, identifier lists are not valid:
+        // diagnose this.
+        if (declarator.getIdentifier() == null)
+            diag(S.token, ext_ident_list_in_param);
+
+        paramsSoFar.add(S.token.getIdentifierInfo());
+        paramInfos.add(new ParamInfo(S.token.getIdentifierInfo(),
+                S.token.getLocation(),
+                null));
+
+        // Consume the first identifier.
+        consumeToken();
+
+        while (nextTokenIs(COMMA))
         {
+            // Eat the comma.
+            consumeToken();
+
             // if the next token is not a identifier,
             // report the error and skip it until ')'.
             if (nextTokenIsNot(IDENTIFIER))
             {
-                // TODO report error
+                diag(S.token, err_expected_ident);
                 skipUntil(RPAREN, true);
                 paramInfos.clear();
                 return;
             }
+
             // reject typedef int y; int test(x, y), but continue parsing.
-            Ident id = (Ident)peekToken();
-            if (action.getTypeByName(id, id.loc, getCurScope()) != null)
+            String paramII = S.token.getIdentifierInfo();
+            if (action.getTypeByName(paramII, S.token.getLocation(), getCurScope()) != null)
             {
-                // TODO report error
-                syntaxError(id.loc, "unexpected typedef identifier.");
+                diag(S.token, err_unexpected_typedef_ident).
+                        addTaggedVal(paramII);
             }
 
-            if (!paramsSoFar.add(id))
+            // Verify that the argument identifier has not already been mentioned.
+            if (!paramsSoFar.add(paramII))
             {
-                // TODO report error
-                syntaxError(id.loc, "parameter redefinition in function parmeter list..");
+                diag(S.token, err_param_redefinition).addTaggedVal(paramII);
             }
             else
             {
-                paramInfos.add(new DeclSpec.ParamInfo(id.name, id.loc, null));
+                // Remember this identifier in ParamInfo.
+                paramInfos.add(new ParamInfo(paramII, S.token.getLocation(),
+                        null));
             }
-            consumeToken();
 
-            // the list continues if we see a comma.
-            if (nextTokenIsNot(COMMA))
-                break;
+            // Eat the identifier.
             consumeToken();
         }
+        // If we have the closing ')', eat it and we're done.
+        SourceLocation rparenloc = matchRHSPunctuation(RPAREN, lparenLoc);
+        declarator.addTypeInfo(DeclaratorChunk.getFunction(
+                false,
+                false, SourceLocation.NOPOS,
+                paramInfos, 0, lparenLoc, rparenloc),
+                rparenloc);
     }
 
     /**
@@ -3218,7 +3439,7 @@ public class Parser implements Tag
      * ellipsisLoc will be returned as result, if any was parsed.
      *
      * <pre>
-     *     parameter-jlang.type-list:[C99 6.7.5]
+     *     parameter-type-list:[C99 6.7.5]
      *      parameter-list
      *      parameter-list ',' '...'
      *
@@ -3228,17 +3449,18 @@ public class Parser implements Tag
      *
      *     parameter-declaration: [C99 6.7.5]
      *       declaration-speicifers declarator
-     *       declaration-specifiers abstract-declarator[backend.transform]
+     *       declaration-specifiers abstract-declarator[opt]
      * </pre>
      *
      * @param declarator
      * @param paramInfos
      * @return
      */
-    private int parseParameterDeclarationClause(Declarator declarator,
-            ArrayList<DeclSpec.ParamInfo> paramInfos)
+    private SourceLocation parseParameterDeclarationClause(
+            Declarator declarator,
+            ArrayList<ParamInfo> paramInfos)
     {
-        int ellipsisLoc = Position.NOPOS;
+        SourceLocation ellipsisLoc = SourceLocation.NOPOS;
         while(true)
         {
             if (nextTokenIs(ELLIPSIS))
@@ -3251,7 +3473,7 @@ public class Parser implements Tag
             // parse the declaration-specifiers
             // just use the parsingDeclaration "scope" of the declarator.
             DeclSpec ds = new DeclSpec();
-            int dsstartLoc = peekToken().loc;
+            SourceLocation dsstartLoc = S.token.getLocation();
 
             // parse the declaration specifiers
             parseDeclarationSpecifiers(ds);
@@ -3262,15 +3484,14 @@ public class Parser implements Tag
             parseDeclarator(paramDecls);
 
             // remember this parsed parameter in ParamInfo.
-            String paramName = paramDecls.getName();
+            String paramName = paramDecls.getIdentifier();
 
             // if no parameter specified, verify that "something" was specified,
-            // otherwise we have a missing jlang.type and identifier.
+            // otherwise we have a missing type and identifier.
             if (ds.isEmpty() && paramName == null
                     && paramDecls.getNumTypeObjects() == 0)
             {
-                // TODO report error
-                syntaxError(dsstartLoc, "missing parameter.");
+                diag(dsstartLoc, err_missing_param);
             }
             else
             {
@@ -3282,48 +3503,42 @@ public class Parser implements Tag
                 Decl param = action.actOnParamDeclarator(getCurScope(), paramDecls);
 
                 // Here, we can not handle default argument inC mode.
-                paramInfos.add(new DeclSpec.ParamInfo(paramName,
+                paramInfos.add(new ParamInfo(paramName,
                         paramDecls.getIdentifierLoc(), param));
             }
 
-            // IfStmt the next token is ',', consume it and keep reading argument
-            if (nextTokenIs(COMMA))
+            // If the next token is ',', consume it and keep reading argument
+            if (nextTokenIsNot(COMMA))
             {
-                // eat comma
-                consumeToken();
-            }
-            else if (nextTokenIs(ELLIPSIS))
-            {
-                ellipsisLoc = consumeToken();
-                // we have ellipsis without a proceeding ',', which is ill-formed
-                // in C. Complain and provide the fix.
-                // TODO report error
-                syntaxError(ellipsisLoc, "missing a ',' before '...'");
                 break;
             }
+            // Consume the comma.
+            consumeToken();
         }
         return ellipsisLoc;
     }
 
     /**
-     * [C90]   direct-declarator '[' constant-expression[backend.transform] ']'
-     * [C99]   direct-declarator '[' jlang.type-qual-list[backend.transform] assignment-subExpr[backend.transform] ']'
-     * [C99]   direct-declarator '[' 'static' jlang.type-qual-list[backend.transform] assign-subExpr ']'
-     * [C99]   direct-declarator '[' jlang.type-qual-list 'static' assignment-subExpr ']'
-     * [C99]   direct-declarator '[' jlang.type-qual-list[backend.transform] '*' ']'
+     * <pre>
+     * [C90]   direct-declarator '[' constant-expression[opt] ']'
+     * [C99]   direct-declarator '[' type-qual-list[opt] assignment-subExpr[opt] ']'
+     * [C99]   direct-declarator '[' 'static' type-qual-list[opt] assign-subExpr ']'
+     * [C99]   direct-declarator '[' type-qual-list 'static' assignment-subExpr ']'
+     * [C99]   direct-declarator '[' type-qual-list[opt] '*' ']'
+     * </pre>
      */
     private void parseBracketDeclarator(Declarator declarator)
     {
-        assert nextTokenIs(LBRACKET);
-        int lbracketLoc = consumeToken();
-        int rbracketLoc;
+        SourceLocation lbracketLoc = consumeBracket();
+
+        SourceLocation rbracketLoc = SourceLocation.NOPOS;
 
         // C array syntax has many features, but by-far the most common is [] and [4].
         // This code does a fast path to handle some of the most obvious cases.
         if (nextTokenIs(RBRACKET))
         {
             // eat the ']'.
-            rbracketLoc = consumeToken();
+            rbracketLoc = matchRHSPunctuation(RBRACKET, lbracketLoc);
 
             // remember that we parsed the empty array declaration.
             declarator.addTypeInfo(
@@ -3336,33 +3551,80 @@ public class Parser implements Tag
                 && tokenIs(peekAheadToken(), RBRACKET))
         {
             // [4] is evey common. parse the number
-            ActionResult<Expr> numOfSize = action.actOnNumericConstant(peekToken());
+            ActionResult<Expr> numOfSize = action.actOnNumericConstant(S.token);
 
             // eat the ']'.
-            rbracketLoc = consumeToken();
+            rbracketLoc = matchRHSPunctuation(RBRACKET, lbracketLoc);
+            if (numOfSize.isInvalid())
+                numOfSize.release();
 
-            // remember that we parsed a array jlang.type
-            declarator.addTypeInfo(
-                    DeclaratorChunk.getArray(0,
+            // remember that we parsed a array type
+            declarator.addTypeInfo(DeclaratorChunk.getArray(0,
                             false, false,
                             numOfSize.get(),
                             lbracketLoc, rbracketLoc),
                     rbracketLoc);
             return;
         }
-        else
+
+        // If valid, this location is the position where we read the 'static' keyword.
+        SourceLocation staticLoc = SourceLocation.NOPOS;
+        if (nextTokenIs(STATIC))
+            staticLoc = consumeToken();
+
+        // If there is a type-qualifier-list, read it now.
+        // Type qualifiers in an array subscript are a C99 feature.
+        DeclSpec ds = new DeclSpec();
+        parseTypeQualifierListOpt(ds);
+
+        // If we haven't already read 'static', check to see if there is one after the
+        // type-qualifier-list.
+        if (!staticLoc.isValid() && nextTokenIs(STATIC))
+            staticLoc = consumeToken();
+
+        // Handle "direct-declarator [ type-qual-list[opt] * ]".
+        boolean isStar = false;
+        ActionResult<Expr> numElements = new ActionResult<>();
+
+        if (nextTokenIs(STAR) && tokenIs(peekAheadToken(), RBRACKET))
         {
-            //TODO:  Currently, we can not to handle C99 feature
-            log.unreachable("Currently, we can not to handle C99 feature");
+            consumeToken();     // Eat the '*'.
+            if (staticLoc.isValid())
+            {
+                diag(staticLoc, err_unspecified_vla_size_with_static);
+                staticLoc = SourceLocation.NOPOS;
+            }
+            isStar = true;
+        }
+        else if (nextTokenIsNot(RBRACKET))
+        {
+            // Parse the constant-expression or assignment-expression now (depending
+            // on dialect).
+            numElements = parseAssignExpression();
+        }
+        // If there was an error parsing the assignment-expression, recovery.
+        if (numElements.isInvalid())
+        {
+            declarator.setInvalidType(true);
+            skipUntil(RBRACKET, true);
             return;
         }
+
+        SourceLocation endLoc = matchRHSPunctuation(RBRACKET, lbracketLoc);
+
+        // Remember that we parsed a array type, and remember its features.
+        declarator.addTypeInfo(DeclaratorChunk.getArray(
+                ds.getTypeQualifier(), staticLoc.isValid(),
+                isStar, numElements.get(),
+                lbracketLoc, rbracketLoc),
+                rbracketLoc);
     }
 
     /**
      * ParseTypeQualifierListOpt
      * <pre>
-     * jlang.type-qualifier-list: [C99 6.7.5]
-     *   jlang.type-qualifier
+     * type-qualifier-list: [C99 6.7.5]
+     *   type-qualifier
      * </pre>
      * @param ds
      */
@@ -3371,9 +3633,8 @@ public class Parser implements Tag
         while(true)
         {
             boolean isInvalid = false;
-            Token tok = peekToken();
-            int loc = tok.loc;
-            switch (tok.tag)
+            SourceLocation loc = S.token.getLocation();
+            switch (S.token.tag)
             {
                 case Tag.CONST:
                     isInvalid = ds.setTypeQualifier(TQ_const, loc);
@@ -3385,9 +3646,9 @@ public class Parser implements Tag
                     isInvalid = ds.setTypeQualifier(TQ_restrict, loc);
                     break;
                 default:
-                    // if this is not a jlang.type-qualifier token, we are done read jlang.type
+                    // if this is not a type-qualifier token, we are done read type
                     // qualifiers.
-                    ds.finish(this);
+                    ds.finish(diags, pp);
                     return;
             }
             // if the specifier combination was not legal, issue a diagnostic.
@@ -3401,8 +3662,8 @@ public class Parser implements Tag
 
     /**
      * specifier-qualifier-list:
-     *   jlang.type-specifier specifier-qualifier-list[backend.transform]
-     *   jlang.type-qualifier specifier-qualifier-list[backend.transform]
+     *   type-specifier specifier-qualifier-list[opt]
+     *   type-qualifier specifier-qualifier-list[opt]
      * @param ds
      */
     private void parseSpecifierQualifierList(DeclSpec ds)
@@ -3412,18 +3673,18 @@ public class Parser implements Tag
         // valid it
         parseDeclarationSpecifiers(ds);
 
-        // validate declspec for jlang.type-getName
+        // validate declspec for type-getIdentifier
         int specs = ds.getParsedSpecifiers();
         if (specs == ParsedSpecifiers.PQ_none)
         {
             // TODO report error
-            syntaxError(peekToken().loc, "typename requires specifier-qualifiers.");
+            syntaxError(S.token.loc, "typename requires specifier-qualifiers.");
         }
         // issue diagnostic and remove storage class if present
         if ((specs & ParsedSpecifiers.PQ_StorageClassSpecifier) != 0)
         {
             // TODO report error
-            syntaxError(peekToken().loc, "invalid storage class qualifiers.");
+            syntaxError(S.token.loc, "invalid storage class qualifiers.");
             ds.clearStorageClassSpec();
         }
 
@@ -3431,7 +3692,7 @@ public class Parser implements Tag
         if ((specs & ParsedSpecifiers.PQ_FunctionSpecifier) != 0)
         {
             if (ds.isInlineSpecifier())
-                syntaxError(peekToken().loc, "invalid inline specifier.");
+                syntaxError(S.token.loc, "invalid inline specifier.");
             ds.clearFunctionSpecifier();
         }
     }
@@ -3446,9 +3707,9 @@ public class Parser implements Tag
     private ActionResult<Expr> parseRHSOfBinaryExpression(ActionResult<Expr> lhs,
             int minPrec)
     {
-        int nextTokPrec = getBinOpPrecedence(peekToken().tag);
+        int nextTokPrec = getBinOpPrecedence(S.token.tag);
 
-        int colonLoc = Position.NOPOS;
+        SourceLocation colonLoc = SourceLocation.NOPOS;
         while(true)
         {
             // if this token has a lower precedence than we are allowed to parse
@@ -3457,7 +3718,7 @@ public class Parser implements Tag
                 return lhs;
 
             // consume the operator token, then advance the tokens stream.
-            Token opToken = peekToken();
+            Token opToken = S.token;
             consumeToken();
 
             // Special case handling for the ternary (?...:...) operator.
@@ -3482,7 +3743,7 @@ public class Parser implements Tag
                     // Special cas handling of "X ? Y:Z" where Y is empty.
                     //   logical-OR-expression '?' ':' conditional-expression   [GNU]
                     ternaryMiddle = null;
-                    syntaxError(peekToken().loc,
+                    syntaxError(S.token.loc,
                             "use of GNU ?: conditional expression extension, omitting middle operand");
                 }
 
@@ -3491,9 +3752,9 @@ public class Parser implements Tag
                 else
                 {
                     // We missing a ':' after ternary middle expression.
-                    syntaxError(peekToken().loc, "expected a ':'");
+                    syntaxError(S.token.loc, "expected a ':'");
                     syntaxError(opToken.loc, "to match this %s", "?");
-                    colonLoc = peekToken().loc;
+                    colonLoc = S.token.loc;
                 }
             }
 
@@ -3508,7 +3769,7 @@ public class Parser implements Tag
             // Remember the precedence of this operator and get the precedence of the
             // operator immediately to the right of the RHS.
             int thisPrec = nextTokPrec;
-            nextTokPrec = getBinOpPrecedence(peekToken().tag);
+            nextTokPrec = getBinOpPrecedence(S.token.tag);
 
             // Assignment and conditional expression are right-associative.
             boolean isRightAssoc = thisPrec == PrecedenceLevel.Conditional
@@ -3526,7 +3787,7 @@ public class Parser implements Tag
 
                 if (rhs.isInvalid())
                     lhs = exprError();
-                nextTokPrec = getBinOpPrecedence(peekToken().tag);
+                nextTokPrec = getBinOpPrecedence(S.token.tag);
             }
 
             assert (nextTokPrec <= thisPrec):"Recursive doesn't works!";
@@ -3559,15 +3820,15 @@ public class Parser implements Tag
         ActionResult<Expr> res = parseCastExpression(isUnaryExpression,
                 isAddressOfOperand, isTypeCast, x);
         if (x.get())
-            syntaxError(peekToken().loc, "expected an expression.");
+            diag(S.token, err_expected_expression);
         return res;
     }
 
     enum ParenParseOption
     {
         SimpleExpr,      // Only parse '(' expression ')'
-        CompoundLiteral, // Also allow '(' jlang.type-getName ')' '{' ... '}'
-        CastExpr         // Also allow '(' jlang.type-getName ')' <anything>
+        CompoundLiteral, // Also allow '(' type-getIdentifier ')' '{' ... '}'
+        CastExpr         // Also allow '(' type-getIdentifier ')' <anything>
     }
 
     /**
@@ -3576,7 +3837,7 @@ public class Parser implements Tag
      * id-expression that is the operand of address-of gets special treatment
      * due to member pointers.
      * @param isUnaryExpression
-     * @return A pair of both cast-expr and notCastExpr of jlang.type boolean.
+     * @return A pair of both cast-expr and notCastExpr of type boolean.
      */
     private ActionResult<Expr>
         parseCastExpression(
@@ -3585,9 +3846,8 @@ public class Parser implements Tag
             boolean isTypeCast,
             OutParamWrapper<Boolean> notCastExpr)
     {
-        // TODO parseCastExpression
         ActionResult<Expr> res = null;
-        Token nextTok = peekToken();
+        Token nextTok = S.token;
         int savedKind = nextTok.tag;
         notCastExpr.set(false);
 
@@ -3596,9 +3856,11 @@ public class Parser implements Tag
             case LPAREN:
             {
                 QualType castTy = null;
-                OutParamWrapper<QualType> out1 = new OutParamWrapper<>(castTy);
-                int rParenLoc = Position.NOPOS;
-                OutParamWrapper<Integer> out2 = new OutParamWrapper<>(rParenLoc);
+                OutParamWrapper<QualType> out1 = new OutParamWrapper<>();
+                SourceLocation rParenLoc = SourceLocation.NOPOS;
+                OutParamWrapper<SourceLocation> out2 =
+                        new OutParamWrapper<>(rParenLoc);
+
                 ParenParseOption parenExprTppe =
                         isUnaryExpression ? CompoundLiteral:CastExpr;
                 OutParamWrapper<ParenParseOption> out3 = new OutParamWrapper<>(parenExprTppe);
@@ -3610,13 +3872,16 @@ public class Parser implements Tag
                 rParenLoc = out2.get();
                 parenExprTppe = out3.get();
 
+                if (res.isInvalid())
+                    return res;
+
                 switch (parenExprTppe)
                 {
                     // nothing to do.
                     case SimpleExpr: break;
                     // nothing to do.
                     case CompoundLiteral:
-                        // We parsed '(' jlang.type-getName ')' '{' ... '}'.  If any suffixes of
+                        // We parsed '(' type-getIdentifier ')' '{' ... '}'.  If any suffixes of
                         // postfix-expression exist, parse them now.
                         break;
                     case CastExpr:
@@ -3635,8 +3900,8 @@ public class Parser implements Tag
                 break;
             case Token.IDENTIFIER:
             {
-                Ident id = (Ident)peekToken();
-                consumeToken();
+                String id = S.token.getIdentifierInfo();
+                SourceLocation loc = consumeToken();
 
                 // primary-expression: identifier
                 if (isAddressOfOperand && isPostfixExpressionSuffixStart())
@@ -3645,11 +3910,11 @@ public class Parser implements Tag
                 // Function designators are allowed to be undeclared (C99 6.5.1p2), so we
                 // need to know whether or not this identifier is a function designator or
                 // not.
-                res = action.actOnIdExpr(getCurScope(),
+                res = action.actOnIdentifierExpr(getCurScope(),
+                        loc,
                         id,
                         nextTokenIs(LPAREN),
-                        isAddressOfOperand,
-                        nextTokenIs(LPAREN));
+                        isAddressOfOperand);
                 break;
             }
             case CHARLITERAL:
@@ -3664,7 +3929,7 @@ public class Parser implements Tag
             {
                 // unary-expression: '++' unary-expression [C99]
                 // unary-expression: '--' unary-expression [C99]
-                int savedLoc = consumeToken();
+                SourceLocation savedLoc = consumeToken();
                 res = parseCastExpression(true, false, false, 0);
                 if (!res.isInvalid())
                     res = action.actOnUnaryOp(savedLoc, savedKind, res.get());
@@ -3677,7 +3942,7 @@ public class Parser implements Tag
             case TILDE:
             case BAR:
             {
-                int savedLoc = consumeToken();
+                SourceLocation savedLoc = consumeToken();
                 res = parseCastExpression(false, false, false, 0);
                 if (!res.isInvalid())
                     res = action.actOnUnaryOp(savedLoc, savedKind, res.get());
@@ -3696,7 +3961,7 @@ public class Parser implements Tag
             case DOUBLE:
             case VOID:
             {
-                syntaxError(peekToken().loc, "expected an expression");
+                diag(S.token, err_expected_expression);
                 return exprError();
             }
             default:
@@ -3705,8 +3970,7 @@ public class Parser implements Tag
         }
 
         // These can be followed by postfix-expr pieces.
-        ActionResult<Expr> postfixExpr = parsePostfixExpressionSuffix(res);
-        return postfixExpr;
+        return parsePostfixExpressionSuffix(res);
     }
     /**
      * Returns true if the next token would start a postfix-expression
@@ -3714,7 +3978,7 @@ public class Parser implements Tag
      */
     private boolean isPostfixExpressionSuffixStart()
     {
-        int kind = peekToken().tag;
+        int kind = S.token.tag;
         return kind == LBRACKET || kind == LPAREN || kind == DOT
                 || kind == SUBGT || kind == PLUSPLUS || kind == SUBSUB;
     }
@@ -3724,15 +3988,15 @@ public class Parser implements Tag
      * <pre>
      * unary-expression:  [C99 6.5.3]
      *   'sizeof' unary-expression
-     *   'sizeof' '(' jlang.type-getName ')'
+     *   'sizeof' '(' type-getIdentifier ')'
      * </pre>
      * @return
      */
     private ActionResult<Expr> parseUnaryExpression()
     {
         assert nextTokenIs(SIZEOF):"Not a sizeof expression!";
-        Token opTok = peekToken();
-        int opLoc = consumeToken();
+        Token opTok = S.token;
+        SourceLocation opLoc = consumeToken();
 
         return null;
     }
@@ -3745,13 +4009,13 @@ public class Parser implements Tag
      *   primary-expression
      *   postfix-expression '[' expression ']'
      *   postfix-expression '[' braced-init-list ']'
-     *   postfix-expression '(' argument-expression-list[backend.transform] ')'
+     *   postfix-expression '(' argument-expression-list[opt] ')'
      *   postfix-expression '.' identifier
      *   postfix-expression '->' identifier
      *   postfix-expression '++'
      *   postfix-expression '--'
-     *   '(' jlang.type-getName ')' '{' initializer-list '}'
-     *   '(' jlang.type-getName ')' '{' initializer-list ',' '}'
+     *   '(' type-getIdentifier ')' '{' initializer-list '}'
+     *   '(' type-getIdentifier ')' '{' initializer-list ',' '}'
      *
      * argument-expression-list: [C99 6.5.2]
      *   argument-expression
@@ -3762,10 +4026,10 @@ public class Parser implements Tag
      */
     private  ActionResult<Expr> parsePostfixExpressionSuffix(ActionResult<Expr> lhs)
     {
-        int loc;
+        SourceLocation loc;
         while(true)
         {
-            switch (peekToken().tag)
+            switch (S.token.tag)
             {
                 case IDENTIFIER:
                     // fall through; this is a primary expression.
@@ -3774,26 +4038,26 @@ public class Parser implements Tag
                 case LBRACKET:
                 {
                     // postfix-expression: p-e '[' expression ']'
-                    int lBracket = consumeToken();
+                    SourceLocation lBracketLoc = consumeBracket();
                     ActionResult<Expr> idx = parseExpression();
+                    SourceLocation rBracketLoc = consumeBracket();
 
-                    int rBracketLoc = peekToken().loc;
                     if (!lhs.isInvalid() && !idx.isInvalid() && nextTokenIs(RBRACKET))
-                        lhs = action.actOnArraySubscriptExpr(lhs.get(), lBracket,
+                        lhs = action.actOnArraySubscriptExpr(lhs.get(), lBracketLoc,
                                 idx.get(), rBracketLoc);
                     else
                         lhs = exprError();
 
                     // match the ']'.
-                    expect(RBRACKET);
+                    expectAndConsume(RBRACKET, err_expected_rsquare);
                     break;
                 }
                 case LPAREN:
                 {
-                    // p-e: p-e '(' argument-expression-list[backend.transform] ')'
-                    loc = consumeToken();
+                    // p-e: p-e '(' argument-expression-list[opt] ')'
+                    loc = consumeParen();
                     ArrayList<Expr> exprs = new ArrayList<>();
-                    ArrayList<Integer> commaLocs = new ArrayList<>();
+                    ArrayList<SourceLocation> commaLocs = new ArrayList<>();
 
                     if (!lhs.isInvalid())
                     {
@@ -3812,7 +4076,7 @@ public class Parser implements Tag
                                 || exprs.size() == commaLocs.size() + 1
                                 :"Unexpected number of commas!";
 
-                        lhs = action.actOnCallExpr(lhs.get(), loc, exprs, peekToken().loc);
+                        lhs = action.actOnCallExpr(lhs.get(), loc, exprs, S.token.loc);
                         // eat the ')'.
                         consumeToken();
                     }
@@ -3823,8 +4087,8 @@ public class Parser implements Tag
                     // postfix-expression: p-e '->' id-expression
                     // postfix-expression: p-e '.' id-expression
                     loc = consumeToken();
-                    Ident id = (Ident)peekToken();
-                    int opLoc = id.loc;
+                    Ident id = (Ident)S.token;
+                    SourceLocation opLoc = id.loc;
                     String name = id.name;
                     int opKind = id.tag;
 
@@ -3837,7 +4101,7 @@ public class Parser implements Tag
                 {
                     if (!lhs.isInvalid())
                     {
-                        Token tok = peekToken();
+                        Token tok = S.token;
                         lhs = action.actOnPostfixUnaryOp(tok.loc, tok.tag,lhs.get());
                     }
                     consumeToken();
@@ -3860,7 +4124,7 @@ public class Parser implements Tag
     {
         assert nextTokenIs(STRINGLITERAL):"Not a string literal!";
 
-        Token.StringLiteral str = (Token.StringLiteral)peekToken();
+        Token.StringLiteral str = (Token.StringLiteral)S.token;
         consumeToken();
         return action.actOnStringLiteral(str);
     }
@@ -3966,15 +4230,20 @@ public class Parser implements Tag
      */
     private boolean skipUntil(int tag, boolean stopAtSemi)
     {
-        return skipUntil(new int[] { tag }, stopAtSemi);
+        return skipUntil(new int[] { tag }, stopAtSemi, false);
+    }
+
+    private boolean skipUntil(int tag, boolean stopAtSemi, boolean dontConsume)
+    {
+        return skipUntil(new int[] { tag }, stopAtSemi, dontConsume);
     }
 
     private boolean skipUntil(int tag1, int tag2, boolean stopAtSemi)
     {
-        return skipUntil(new int[] { tag1, tag2 }, stopAtSemi);
+        return skipUntil(new int[] { tag1, tag2 }, stopAtSemi, false);
     }
 
-    private boolean skipUntil(int[] tags, boolean stopAtSemi)
+    private boolean skipUntil(int[] tags, boolean stopAtSemi, boolean dontConsume)
     {
         boolean isFirstTokenSkipped = true;
         while (true)
@@ -3983,11 +4252,18 @@ public class Parser implements Tag
             {
                 if (nextTokenIs(tag))
                 {
-                    consumeToken();
+                    if (dontConsume)
+                    {
+                        // Noop, don't consume the token;
+                    }
+                    else
+                    {
+                        consumeToken();
+                    }
                     return true;
                 }
             }
-            switch (peekToken().tag)
+            switch (S.token.tag)
             {
                 case Tag.EOF:
                     // ran out of tokens
@@ -4027,38 +4303,159 @@ public class Parser implements Tag
         }
     }
 
-    /**
-     * Checks if the next token is an identifier for typedef statement.
-     */
-    private boolean nextTokenIsTypeName()
+    private boolean isTokenParen()
     {
-        assert nextTokenIs(
-                IDENTIFIER) : "The next token must be an identifier.";
-        String name = ((Ident) peekToken()).name;
+        return S.token.tag == LPAREN || S.token.tag == RPAREN;
+    }
 
-        return false;
+    private boolean isTokenBracket()
+    {
+        return S.token.tag == LBRACKET || S.token.tag == RBRACKET;
+    }
+
+    private boolean isTokenBrace()
+    {
+        return S.token.tag == LBRACE || S.token.tag == RBRACE;
+    }
+
+    private boolean isTokenStringLiteral()
+    {
+        return S.token.tag == STRINGLITERAL;
     }
 
     /**
-     * Consume the next token from jlang.parser.
+     * Consume the next token (it must is StringToken, ParenToken,
+     * BraceToken, BracketToken) from Scanner.
      * @return  return the location of just consumed token.
      */
-    private int consumeToken()
+    private SourceLocation consumeToken()
     {
-        int loc;
-        if (lookAheadToken.tokenAvail == 2)
-        {
-            loc = lookAheadToken.tokens[0].loc;
-            lookAheadToken.tokens[0] = lookAheadToken.tokens[1];
-        }
+        assert !isTokenStringLiteral() && !isTokenParen() && !isTokenBracket() &&
+                !isTokenBrace() : "Should consume special tokens with Consume*Token";
+        prevTokLocation = S.token.getLocation();
+        S.lex();
+        return prevTokLocation;
+    }
+
+    private SourceLocation consumeAnyToken()
+    {
+        if (isTokenParen())
+            return consumeParen();
+        else if (isTokenBrace())
+            return consumeBrace();
+        else if (isTokenBracket())
+            return consumeBracket();
+        else if (isTokenStringLiteral())
+            return consumeStringToken();
         else
+            return consumeToken();
+
+    }
+    private int parenCount;
+    private SourceLocation consumeParen()
+    {
+        assert isTokenParen() : "wrong consume method";
+        if (S.token.tag == LPAREN)
+            ++parenCount;
+        else if (parenCount != 0)
+            --parenCount;       // Don't let unbalanced )'s drive the count negative.
+        prevTokLocation = S.token.getLocation();
+        S.lex();
+        return prevTokLocation;
+    }
+    private int bracketCount;
+
+    private SourceLocation consumeBracket()
+    {
+        assert isTokenBracket() : "wrong consume method";
+        if (S.token.tag == LBRACKET)
+            ++bracketCount;
+        else if (bracketCount != 0)
+            --bracketCount;     // Don't let unbalanced ]'s drive the count negative.
+
+        prevTokLocation = S.token.getLocation();
+        S.lex();
+        return prevTokLocation;
+    }
+
+    private SourceLocation consumeStringToken()
+    {
+        assert isTokenStringLiteral() :
+                "Should only consume string literals with this method";
+        prevTokLocation = S.token.getLocation();
+        S.lex();
+        return prevTokLocation;
+    }
+
+    private int braceCount;
+    private SourceLocation prevTokLocation;
+
+    private SourceLocation consumeBrace()
+    {
+        assert nextTokenIs(RBRACE) || nextTokenIs(LBRACE)
+                :"Wrong consume method";
+        Token tok = S.token;
+        if (tok.tag == LBRACE)
+            ++braceCount;
+        else
+            --braceCount;
+
+        prevTokLocation = tok.getLocation();
+        S.lex();
+        return prevTokLocation;
+    }
+
+    private boolean expectAndConsume(int expectedTok, int diagID)
+    {
+        return expectAndConsume(expectedTok, diagID, "", UNKNOWN);
+    }
+
+    private boolean expectAndConsume(int expectedTok, int diagID,
+            String msg, int skipToTok)
+    {
+        if (S.token.tag == expectedTok)
         {
-            assert lookAheadToken.tokenAvail == 1;
-            assert lookAheadToken.tokens[0].tag != EOF;
-            loc = lookAheadToken.tokens[0].loc;
+            consumeAnyToken();
+            return false;
         }
-        lookAheadToken.tokenAvail--;
-        return loc;
+
+        diag(S.token, diagID).addTaggedVal(msg);
+
+        if (skipToTok != UNKNOWN)
+            skipUntil(skipToTok, true);
+        return true;
+    }
+
+    private SourceLocation matchRHSPunctuation(int rhsTok,
+            SourceLocation lhsLoc)
+    {
+        if (S.token.tag == rhsTok)
+            return consumeAnyToken();
+
+        SourceLocation r = S.token.getLocation();
+        String lhsName = "unknown";
+        int did = err_parse_error;
+        switch (rhsTok)
+        {
+            default:break;
+            case RPAREN:
+                lhsName = "(";
+                did = err_expected_rparen;
+                break;
+            case RBRACE:
+                lhsName = "{";
+                did = err_expected_rbrace;
+                break;
+            case RBRACKET:
+                lhsName = "[";
+                did = err_expected_rsquare;
+                break;
+        }
+
+        diag(S.token, did);
+        diag(lhsLoc, note_matching).addTaggedVal(lhsName);
+        skipUntil(rhsTok, true);
+        return r;
     }
 
     /**
@@ -4068,35 +4465,7 @@ public class Parser implements Tag
      */
     private Token peekAheadToken()
     {
-        if (lookAheadToken.tokenAvail == 0)
-        {
-            lookAheadToken.tokens[0] = S.token;
-            S.nextToken();
-            lookAheadToken.tokens[1] = S.token;
-            S.nextToken();
-        }
-        else if (lookAheadToken.tokenAvail == 1)
-        {
-            lookAheadToken.tokens[1] = S.token;
-            S.nextToken();
-        }
-        return lookAheadToken.tokens[1];
-    }
-
-    /**
-     * ReturnStmt a reference to next token if necessary.
-     *
-     * @return
-     */
-    private Token peekToken()
-    {
-        if (lookAheadToken.tokenAvail == 0)
-        {
-            lookAheadToken.tokens[0] = S.token;
-            S.nextToken();
-            lookAheadToken.tokenAvail = 1;
-        }
-        return lookAheadToken.tokens[0];
+        return S.nextToken();
     }
 
     /**
@@ -4107,7 +4476,7 @@ public class Parser implements Tag
      */
     private boolean nextTokenIs(int expectedToken)
     {
-        return peekToken().tag == expectedToken;
+        return S.token.tag == expectedToken;
     }
 
     private boolean tokenIs(Token token, int expectedToken)
@@ -4123,7 +4492,7 @@ public class Parser implements Tag
      */
     private boolean nextTokenIsNot(int expectedToken)
     {
-        return peekToken().tag != expectedToken;
+        return !nextTokenIs(expectedToken);
     }
 
     /**
@@ -4133,153 +4502,6 @@ public class Parser implements Tag
      */
     private boolean nextTokenIsKeyword()
     {
-        Token token = peekToken();
-        return keywords.isKeyword(token);
-    }
-
-    /**
-     * Skips the parameter lists of function surrounding with parenthesis.
-     */
-    private void skipParenthesis()
-    {
-        while (true)
-        {
-            Token tok = peekToken();
-            consumeToken();
-            if (tokenIs(tok, EOF))
-                syntaxError(tok.loc, "Premature end of input");
-            if (tokenIs(tok, RPAREN))
-                return;
-            if (tokenIs(tok, LPAREN))
-                skipParenthesis();
-        }
-    }
-
-    /**
-     * Returns true if next token is equal to given token, false otherwise.
-     *
-     * @param token
-     * @return
-     */
-    private boolean match(int token)
-    {
-
-        return S.token.tag == token;
-    }
-
-    private boolean match(Token t, int token)
-    {
-        return t.tag == token;
-    }
-
-    /**
-     * IfStmt next input token matches given token, skip it, otherwise report an
-     * error.
-     */
-    private void accept(int token)
-    {
-        Token tok = peekToken();
-        if (tokenIs(tok, token))
-        {
-            consumeToken();
-        }
-        else
-        {
-            int pos = Position.line(tok.loc) > Position.line(S.prevEndPos + 1) ?
-                    S.prevEndPos + 1 :
-                    tok.loc;
-            syntaxError(pos, "expected a", keywords.token2string(token));
-        }
-        skipUntil(LBRACE, true);
-        if (nextTokenIs(SEMI))
-            consumeToken();
-    }
-
-    public void syntaxError(int pos, String key, String arg1, String arg2)
-    {
-        if (pos != S.errPos)
-            log.error(pos, key, arg1, arg2);
-        S.errPos = pos;
-    }
-
-    public void syntaxError(int pos, String key, String arg)
-    {
-        if (pos != S.errPos)
-            log.error(pos, key, arg);
-        //skipUntil(Tag.SEMI, true);
-        S.errPos = pos;
-    }
-
-    public void syntaxError(int pos, String key)
-    {
-        if (pos != S.errPos)
-            log.error(pos, key);
-        //skipUntil(Tag.SEMI, true);
-        S.errPos = pos;
-    }
-
-    /**
-     * Complains a warning at the specified position about info.
-     * @param pos
-     * @param key
-     */
-    public void syntaxWarning(int pos, String key)
-    {
-        if (pos != S.errPos)
-            log.warning(pos, key);
-        //skipUntil(Tag.SEMI, true);
-        S.errPos = pos;
-    }
-
-    /**
-     * Complains a warning at the specified position about info.
-     * @param pos
-     * @param key
-     */
-    public void syntaxWarning(int pos, String key, String msg)
-    {
-        if (pos != S.errPos)
-            log.warning(pos, key, msg);
-        //skipUntil(Tag.SEMI, true);
-        S.errPos = pos;
-    }
-
-    public void syntaxWarning(int pos, String key, String msg1, String msg2)
-    {
-        if (pos != S.errPos)
-            log.warning(pos, key, msg1, msg2);
-        //skipUntil(Tag.SEMI, true);
-        S.errPos = pos;
-    }
-
-    public void syntaxWarning(int pos, String key, String msg1, String msg2, String msg3)
-    {
-        if (pos != S.errPos)
-            log.warning(pos, key, msg1, msg2, msg3);
-        //skipUntil(Tag.SEMI, true);
-        S.errPos = pos;
-    }
-
-    /**
-     * Expects a token with specified tag, return its position if expected successfully,
-     * otherwise, return -1.
-     * @param tag
-     * @return
-     */
-    private int expect(int tag)
-    {
-        Token tok = peekToken();
-        if (tok.tag == tag)
-        {
-            return consumeToken();
-        }
-        syntaxError(tok.loc, "%s expected, but got %s",
-                Token.getTokenName(tag),
-                Token.getTokenName(tok.tag));
-
-        skipUntil(SEMI, true);
-        if (nextTokenIs(SEMI))
-            consumeToken();
-        return -1;
+        return keywords.isKeyword(S.token);
     }
 }

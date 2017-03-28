@@ -134,9 +134,9 @@ public abstract class Instruction extends User
     }
 
     /**
-     * Obtains the getName of this instruction.
+     * Obtains the getIdentifier of this instruction.
      *
-     * @return return the getName of this instruction.
+     * @return return the getIdentifier of this instruction.
      */
     public String name(){return instName;}
 
@@ -2606,7 +2606,7 @@ public abstract class Instruction extends User
             return getNumOfOperands()>>1;
         }
         /**
-         * Gets the getName of this phi node.
+         * Gets the getIdentifier of this phi node.
          *
          * @return
          */
@@ -2664,7 +2664,7 @@ public abstract class Instruction extends User
          * @param ty The data ty of allocated data which is instance of
          * @param arraySize  The number of elements if allocating is used for
          *                   array.
-         * @param name The getName of this instruction for debugging.
+         * @param name The getIdentifier of this instruction for debugging.
          */
         public AllocaInst(Type ty,
                 Value arraySize,
@@ -2729,7 +2729,7 @@ public abstract class Instruction extends User
         public void accept(InstVisitor visitor){}
 
         /**
-         * Gets the getName of this alloated variable.
+         * Gets the getIdentifier of this alloated variable.
          *
          * @return
          */

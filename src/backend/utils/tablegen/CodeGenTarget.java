@@ -55,7 +55,7 @@ public final class CodeGenTarget
         }
         catch (Exception e)
         {
-            throw new Exception("ERROR: Multiple subclasses of Target defined");
+            throw new Exception("UNKNOWN: Multiple subclasses of Target defined");
         }
 
     }

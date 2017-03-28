@@ -17,10 +17,12 @@ package jlang.sema;
  */
 
 /**
- * Represents the result of getName lookup up.
+ * Represents the result of getIdentifier lookup up.
  * @author Xlous.zeng
  * @version 0.1
  */
+
+import jlang.cpp.SourceLocation;
 
 import java.util.ArrayList;
 
@@ -46,16 +48,16 @@ public class LookupResult
         Ambiguous,
     }
     private String foundName;
-    private int nameLoc;
+    private SourceLocation nameLoc;
     private LookupResultKind resultKind;
     private Sema semaRef;
     private Sema.LookupNameKind lookupKind;
     private ArrayList<Decl.NamedDecl> decls;
 
     /**
-     * Indicates the getName space which this getName in.
+     * Indicates the getIdentifier space which this getIdentifier in.
      * There are four cases:
-     * 1. Ordinary getName; 2.Tag getName; 3.Member getName; 4.Label getName.
+     * 1. Ordinary getIdentifier; 2.Tag getIdentifier; 3.Member getIdentifier; 4.Label getIdentifier.
      */
     private IdentifierNamespace IDNS;
 
@@ -163,12 +165,13 @@ public class LookupResult
         }
         else
         {
-            semaRef.parser.syntaxError(nameLoc, "Resolve getName %s failed", foundName);
+            semaRef.parser.syntaxError(nameLoc, "Resolve getIdentifier %s failed", foundName);
             return;
         }
     }
 
-    LookupResult(Sema semaRef, String name, int nameLoc,
+    LookupResult(Sema semaRef, String name,
+            SourceLocation nameLoc,
             Sema.LookupNameKind lookupNameKind)
     {
         resultKind = NotFound;
@@ -184,7 +187,7 @@ public class LookupResult
         decls.clear();
     }
 
-    public int getNameLoc()
+    public SourceLocation getNameLoc()
     {
         return nameLoc;
     }

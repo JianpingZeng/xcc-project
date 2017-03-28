@@ -28,7 +28,7 @@ package backend.target;
 public final class TargetRegisterDesc
 {
     /**
-     * Assembly language getName for the register.
+     * Assembly language getIdentifier for the register.
      */
     public String name;
     /**

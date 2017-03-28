@@ -49,7 +49,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	private final LinkedList<Instruction> instructions;
 
 	/**
-	 * The getName of this block.
+	 * The getIdentifier of this block.
 	 */
 	public String bbName;
 

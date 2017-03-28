@@ -54,7 +54,7 @@ public class FileLexerSource extends InputLexerSource
     }
 
     /**
-     * This is not necessarily the same as getFile().getPath() in case we are in a chroot.
+     * This is not necessarily the same as getFilename().getPath() in case we are in a chroot.
      */
     @Override
     public String getPath()

@@ -20,9 +20,9 @@ public final class TypeDefType extends Type
      * @param tag
      * @param d
      */
-    public TypeDefType(int tag, TypeDefDecl d)
+    public TypeDefType(int tag, TypeDefDecl d, QualType canonicalType)
     {
-        super(tag);
+        super(tag, canonicalType);
         decl = d;
     }
 
@@ -38,12 +38,14 @@ public final class TypeDefType extends Type
      *
      * @return
      */
-    @Override public long getTypeSize()
+    @Override
+    public long getTypeSize()
     {
         return 0;
     }
 
-    @Override public boolean isSameType(Type other)
+    @Override
+    public boolean isSameType(Type other)
     {
         return false;
     }
@@ -54,7 +56,8 @@ public final class TypeDefType extends Type
      * @param target
      * @return
      */
-    @Override public boolean isCastableTo(Type target)
+    @Override
+    public boolean isCastableTo(Type target)
     {
         return false;
     }

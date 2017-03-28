@@ -1,16 +1,13 @@
 package jlang.ast;
 
-import jlang.cparser.DeclSpec.SourceRange;
+import backend.hir.BasicBlock;
+import jlang.cpp.SourceLocation;
+import jlang.cpp.SourceLocation.SourceRange;
 import jlang.sema.*;
 import jlang.sema.Decl.*;
-import jlang.symbol.Symbol;
-import jlang.symbol.Symbol.MethodSymbol;
-import jlang.symbol.VarSymbol;
 import jlang.type.*;
-import backend.hir.BasicBlock;
 import tools.Name;
 import tools.OutParamWrapper;
-import tools.Position;
 import tools.Util;
 
 import java.io.PrintWriter;
@@ -117,12 +114,12 @@ abstract public class Tree
 	/**
 	 * ConditionalExpr expression, of jlang.type ConditionalExpr.
 	 */
-	public static final int CondtionalOperatorClass = DefaultStmtClass + 1;
+	public static final int ConditionalOperatorClass = DefaultStmtClass + 1;
 
 	/**
 	 * IfStmt statements, of jlang.type IfStmt.
 	 */
-	public static final int IfStmtClass = CondtionalOperatorClass + 1;
+	public static final int IfStmtClass = ConditionalOperatorClass + 1;
 
 	/**
 	 * Expression statements, of jlang.type Exec.
@@ -293,7 +290,7 @@ abstract public class Tree
 		 * Constructs TopLevel tree node that represents a source file.
 		 * 
 		 * @param decls all of definitions in a source file.
-		 * @param sourceFile the getName of source file.
+		 * @param sourceFile the getIdentifier of source file.
 		 */
 		public TopLevel(ArrayList<DeclStmt> decls, String sourceFile)
 		{
@@ -327,8 +324,8 @@ abstract public class Tree
 	 */
 	public static class NullStmt extends Stmt
 	{
-	    final int loc;
-		public NullStmt(int loc)
+	    final SourceLocation loc;
+		public NullStmt(SourceLocation loc)
 		{
 			super(NullStmtClass);
             this.loc = loc;
@@ -351,10 +348,9 @@ abstract public class Tree
 		public Tree rettype;
 		public List<Tree> params;
 		public Tree body;
-		public MethodSymbol sym;
 
 		public MethodDef(Long flags, Name name, Tree rettype, 
-				List<Tree> params, Tree body, MethodSymbol sym)
+				List<Tree> params, Tree body)
 		{
 			super(MethodDefStmtClass);
 			this.flags = flags;
@@ -362,7 +358,6 @@ abstract public class Tree
 			this.rettype = rettype;
 			this.params = params;
 			this.body = body;
-			this.sym = sym;
 		}
 
 		public void accept(StmtVisitor v)
@@ -384,17 +379,15 @@ abstract public class Tree
 		public Name name;
 		public Tree varType;
 		public Tree init;
-		public VarSymbol sym;
 
 		public VarDef(long flags, Name name, Tree varType,
-				Tree init, VarSymbol sym)
+				Tree init)
 		{
 			super(VarDefStmtClass);
 			this.flags = flags;
 			this.name = name;
 			this.varType = varType;
 			this.init = init;
-			this.sym = sym;
 		}
 
 		public void accept(StmtVisitor v)
@@ -409,8 +402,11 @@ abstract public class Tree
     public static class DeclStmt extends Stmt implements Iterable<Decl>
     {
         final ArrayList<Decl> decls;
-        final int declStart, declEnd;
-	    public DeclStmt(ArrayList<Decl> decls, int declStart, int declEnd)
+        final SourceLocation declStart, declEnd;
+	    public DeclStmt(
+			    ArrayList<Decl> decls,
+			    SourceLocation declStart,
+			    SourceLocation declEnd)
 	    {
 		    super(DeclStmtClass);
             this.decls = decls;
@@ -436,13 +432,16 @@ abstract public class Tree
 	public static class CompoundStmt extends Stmt
 	{
 		public List<Stmt> stats;
-		public int rBraceLoc = Position.NOPOS;
-
-		public CompoundStmt(List<Stmt> stats, int loc)
+		public SourceLocation rBraceLoc = SourceLocation.NOPOS;
+		public SourceLocation lBraceLoc = SourceLocation.NOPOS;
+		public CompoundStmt(List<Stmt> stats,
+				SourceLocation l,
+				SourceLocation r)
 		{
 			super(CompoundStmtClass);
 			this.stats = stats;
-            this.rBraceLoc = loc;
+            this.rBraceLoc = r;
+			this.lBraceLoc = l;
 		}
 
 		public void accept(StmtVisitor v)
@@ -450,9 +449,15 @@ abstract public class Tree
 			v.visitCompoundStmt(this);
 		}
 
-		public Iterator<Stmt> iterator() { return stats.iterator();}
+		public Iterator<Stmt> iterator()
+		{
+			return stats.iterator();
+		}
 
-		public int getRBraceLoc() {return rBraceLoc;}
+		public SourceLocation getRBraceLoc()
+		{
+			return rBraceLoc;
+		}
 	}
 
 	
@@ -466,20 +471,15 @@ abstract public class Tree
 		 */
 		public Tree selected;
 		/**
-		 * getName of field to select
+		 * getIdentifier of field to select
 		 */
 		public Name name;
-		/**
-		 * jlang.symbol of the selected class
-		 */
-		public Symbol sym;
 
-		public SelectStmt(Tree selected, Name name, Symbol sym)
+		public SelectStmt(Tree selected, Name name)
 		{
 			super(SelectExprClass);
 			this.selected = selected;
 			this.name = name;
-			this.sym = sym;
 		}
 
 		public void accept(StmtVisitor v)
@@ -494,10 +494,12 @@ abstract public class Tree
 	{
 		public Stmt body;
 		public Expr cond;
-        public int doLoc, whileLoc, rParenLoc;
+        public SourceLocation doLoc, whileLoc, rParenLoc;
 
-		public DoStmt(Stmt body, Expr cond, int doLoc,
-                int whileLoc, int rParenLoc)
+		public DoStmt(Stmt body, Expr cond, 
+				SourceLocation doLoc,
+                SourceLocation whileLoc, 
+				SourceLocation rParenLoc)
 		{
 			super(DoStmtClass);
 			this.body = body;
@@ -531,12 +533,15 @@ abstract public class Tree
 		public Expr cond;
 		public Expr step;
 		public Stmt body;
-        public final int lParenLoc, rParenLoc, forLoc;
+        public final SourceLocation lParenLoc, rParenLoc, forLoc;
 
-		public ForStmt(int forLoc,
-                int lParenLoc,
-                Stmt init, Expr cond, Expr step, Stmt body,
-                int rParenLoc)
+		public ForStmt(SourceLocation forLoc,
+				SourceLocation lParenLoc,
+                Stmt init,
+				Expr cond,
+				Expr step,
+				Stmt body,
+				SourceLocation rParenLoc)
 		{
 			super(ForStmtClass);
 			this.init = init;
@@ -566,8 +571,8 @@ abstract public class Tree
 	{
 		public Expr cond;
 		public Stmt body;
-        public int whileLoc;
-		public WhileStmt(Expr cond, Stmt body, int whileLoc)
+        public SourceLocation whileLoc;
+		public WhileStmt(Expr cond, Stmt body, SourceLocation whileLoc)
 		{
 			super(WhileStmtClass);
 			this.cond = cond;
@@ -592,11 +597,11 @@ abstract public class Tree
 	{
 		public LabelDecl label;
 		public Stmt body;
-        public final int loc;
+        public final SourceLocation loc;
 		/** The corresponding basic block of this label.*/
 		public BasicBlock corrBB;
 
-		public LabelledStmt(LabelDecl label, Stmt body, int loc)
+		public LabelledStmt(LabelDecl label, Stmt body, SourceLocation loc)
 		{
 			super(LabelledStmtClass);
 			this.label = label;
@@ -620,9 +625,13 @@ abstract public class Tree
 		public Expr cond;
 		public Stmt thenpart;
 		public Stmt elsepart;
-        public final int ifLoc;
+        public final SourceLocation ifLoc;
 
-		public IfStmt(Expr cond, Stmt thenpart, Stmt elsepart, int ifLoc)
+		public IfStmt(
+				Expr cond,
+				Stmt thenpart,
+				Stmt elsepart,
+				SourceLocation ifLoc)
 		{
 			super(IfStmtClass);
 			this.cond = cond;
@@ -639,7 +648,7 @@ abstract public class Tree
 		}
 		public Stmt getThenPart() {return thenpart;}
 		public Stmt getElsePart() {return elsepart;}
-		public int getIfLoc() {return  ifLoc;}
+		public SourceLocation getIfLoc() {return  ifLoc;}
 	}
 
 	/**
@@ -712,8 +721,8 @@ abstract public class Tree
         }
         public abstract SwitchCase getNextCaseStmt();
 
-        public abstract int getCaseLoc();
-        public abstract int getColonLoc();
+        public abstract SourceLocation getCaseLoc();
+        public abstract SourceLocation getColonLoc();
         public abstract Stmt getSubStmt();
     }
 	/**
@@ -723,10 +732,14 @@ abstract public class Tree
     {
         public Expr value;
         public Stmt subStmt;
-        public final int caseLoc;
-        public final int colonLoc;
+        public final SourceLocation caseLoc;
+        public final SourceLocation colonLoc;
 
-        public CaseStmt(Expr value, Stmt caseBody, int caseLoc, int colonLoc)
+        public CaseStmt(
+		        Expr value,
+		        Stmt caseBody,
+		        SourceLocation caseLoc,
+		        SourceLocation colonLoc)
         {
             super(CaseStmtClass);
             this.value = value;
@@ -735,12 +748,12 @@ abstract public class Tree
             this.colonLoc = colonLoc;
         }
 
-        public int getCaseLoc()
+        public SourceLocation getCaseLoc()
         {
             return caseLoc;
         }
 
-        public int getColonLoc()
+        public SourceLocation getColonLoc()
         {
             return colonLoc;
         }
@@ -777,10 +790,13 @@ abstract public class Tree
 
     public static class DefaultStmt extends SwitchCase
     {
-        public final int defaultLoc;
-        public final int colonLoc;
+        public final SourceLocation defaultLoc;
+        public final SourceLocation colonLoc;
         public Stmt subStmt;
-        public DefaultStmt(int defaultLoc, int colonLoc, Stmt subStmt)
+        public DefaultStmt(
+		        SourceLocation defaultLoc,
+		        SourceLocation colonLoc,
+		        Stmt subStmt)
         {
             super(DefaultStmtClass);
             this.defaultLoc =defaultLoc;
@@ -797,12 +813,12 @@ abstract public class Tree
         }
 
         @Override
-        public int getCaseLoc()
+        public SourceLocation getCaseLoc()
         {
             return colonLoc;
         }
 
-        public int getColonLoc()
+        public SourceLocation getColonLoc()
         {
             return defaultLoc;
         }
@@ -824,9 +840,9 @@ abstract public class Tree
 	 */
 	public static class BreakStmt extends Stmt
 	{
-		public final int breakLoc;
+		public final SourceLocation breakLoc;
 
-		public BreakStmt(int breakLoc)
+		public BreakStmt(SourceLocation breakLoc)
 		{
 			super(BreakStmtClass);
 			this.breakLoc = breakLoc;
@@ -841,9 +857,11 @@ abstract public class Tree
 	public static class GotoStmt extends Stmt
 	{
 		public LabelDecl label;
-		public final int gotoLoc, labelLoc;
+		public final SourceLocation gotoLoc, labelLoc;
 
-		public GotoStmt(LabelDecl label, int gotoLoc, int labelLoc)
+		public GotoStmt(LabelDecl label,
+				SourceLocation gotoLoc,
+				SourceLocation labelLoc)
 		{
 			super(GotoStmtClass);
 			this.label = label;
@@ -861,9 +879,9 @@ abstract public class Tree
 	 */
 	public static class ContinueStmt extends Stmt
 	{
-		public final int continueLoc;
+		public final SourceLocation continueLoc;
 
-		public ContinueStmt(int continueLoc)
+		public ContinueStmt(SourceLocation continueLoc)
 		{
 			super(ContinueStmtClass);
 			this.continueLoc = continueLoc;
@@ -913,15 +931,17 @@ abstract public class Tree
     /**
      * This class represents an expression. Note that{@linkplain, Expr} is the
      * subclass of {@linkplain Stmt}. This allows an expression to be transparently
-     * used on any scenerio where a {@linkplain Stmt} rquired.
+     * used on any scenerio where a {@linkplain Stmt} required.
      */
 	public abstract static class Expr extends Stmt
     {
         private QualType type;
         private ExprValueKind valuekind;
-        private int loc;
+        private SourceLocation loc;
 
-        public Expr(int tag, QualType type, ExprValueKind valuekind, int loc)
+        public Expr(int tag, QualType type,
+		        ExprValueKind valuekind,
+		        SourceLocation loc)
         {
             super(tag);
             this.valuekind = valuekind;
@@ -929,11 +949,11 @@ abstract public class Tree
             this.loc = loc;
         }
 
-        public Expr(int tag, int loc)
+        public Expr(int tag, SourceLocation loc)
         {
             this(tag, null, null, loc);
         }
-        public int getLocation()
+        public SourceLocation getExprLocation()
         {
             return loc;
         }
@@ -1031,7 +1051,7 @@ abstract public class Tree
          * result will be returned.
          * @return
          */
-        public boolean evaluate(EvalResult result)
+        public boolean evaluate(EvalResult result, ASTContext ctx)
         {
             return ExprEvaluatorBase.evaluate(result, this);
         }
@@ -1152,14 +1172,14 @@ abstract public class Tree
         }
 
         /**
-         * Call {@linkplain #evaluate(EvalResult)} to see if this expression can
+         * Call {@linkplain #evaluate(EvalResult, ASTContext)} to see if this expression can
          * be constant folded, but get rid of evaluation result.
          * @return
          */
         public boolean isEvaluatable()
         {
             OutParamWrapper<EvalResult> result = new OutParamWrapper<>();
-            return evaluate(result.get()) && !result.get().hasSideEffects();
+            return evaluate(result.get(), null) && !result.get().hasSideEffects();
         }
 
 	    /**
@@ -1169,7 +1189,7 @@ abstract public class Tree
 	    public APSInt evaluateKnownConstInt()
 	    {
 	        EvalResult res = new EvalResult();
-	        boolean result = evaluate(res);
+	        boolean result = evaluate(res, null);
             assert result:"Cound not evaluate expression";
             assert res.val.isInt():"Expression did not be evaluated into integer.";
 		    return res.val.getInt();
@@ -1181,7 +1201,266 @@ abstract public class Tree
             return false;
         }
 
-        /**
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     * @return
+	     */
+	    public abstract SourceRange getSourceRange();
+
+	    public SourceLocation getLocStart()
+	    {
+		    return getSourceRange().getStart();
+	    }
+
+	    public SourceLocation getLocEnd()
+	    {
+		    return getSourceRange().getEnd();
+	    }
+
+	    public boolean isIntegerConstantExpr(
+			    OutParamWrapper<APSInt> iceResult,
+			    ASTContext ctx)
+	    {
+		    ICEDiag d = checkICE(this, ctx);
+		    if (d.val != 0)
+		    {
+			    if (loc != null) loc = d.loc;
+			    return false;
+		    }
+		    EvalResult evalResult = new EvalResult();
+		    if (!evaluate(evalResult, ctx))
+			    assert false:"ICE cannot be evaluated!";
+		    assert !evalResult.hasSideEffects :"ICE with side effect!";
+		    assert evalResult.val.isInt() :"ICE is not integer!";
+		    iceResult.set(evalResult.val.getInt());
+		    return true;
+	    }
+
+	    public static class ICEDiag
+	    {
+		    public int val;
+		    public SourceLocation loc;
+
+		    public ICEDiag(int v, SourceLocation l)
+		    {
+			    val = v;
+			    loc = l;
+		    }
+
+		    public ICEDiag() {super();}
+	    }
+	    public static ICEDiag noDiag() {return new ICEDiag(); }
+
+	    static ICEDiag checkEvalInICE(Expr e, ASTContext ctx)
+	    {
+		    EvalResult evalResult = new EvalResult();
+		    if (!e.evaluate(evalResult, ctx) || evalResult.hasSideEffects ||
+				    !evalResult.val.isInt())
+		    {
+			    return new ICEDiag(2, e.getLocStart());
+		    }
+		    return noDiag();
+	    }
+
+	    static ICEDiag checkICE(Expr e, ASTContext ctx)
+	    {
+		    if (!e.getType().isIntegerType())
+		    {
+		        return new ICEDiag(2, e.getLocStart());
+	        }
+
+		    switch (e.getStmtClass())
+		    {
+			    default:
+				    return new ICEDiag(2, e.getLocStart());
+			    case ParenExprClass:
+				    return checkICE(((ParenExpr) e).getSubExpr(), ctx);
+			    case IntegerLiteralClass:
+			    case CharacterLiteralClass:
+			    case CallExprClass:
+			    {
+				    CallExpr ce = (CallExpr) e;
+				    return new ICEDiag(2, e.getLocStart());
+			    }
+			    case DeclRefExprClass:
+				    if ((((DeclRefExpr) e)
+						    .getDecl()) instanceof EnumConstantDecl)
+					    return noDiag();
+				    return new ICEDiag(2, e.getLocStart());
+			    case UnaryOperatorClass:
+			    {
+				    UnaryExpr exp = (UnaryExpr) e;
+				    switch (exp.getOpCode())
+				    {
+					    default:
+						    return new ICEDiag(2, e.getLocStart());
+					    case UO_LNot:
+					    case UO_Plus:
+					    case UO_Minus:
+					    case UO_Not:
+					    case UO_Real:
+					    case UO_Imag:
+						    return checkICE(exp.getSubExpr(), ctx);
+				    }
+			    }
+			    case BinaryOperatorClass:
+			    {
+				    BinaryExpr exp = (BinaryExpr) e;
+				    switch (exp.getOpcode())
+				    {
+					    default:
+						    return new ICEDiag(2, e.getLocStart());
+					    case BO_Mul:
+					    case BO_Div:
+					    case BO_Rem:
+					    case BO_Add:
+					    case BO_Sub:
+					    case BO_Shl:
+					    case BO_Shr:
+					    case BO_LT:
+					    case BO_GT:
+					    case BO_LE:
+					    case BO_GE:
+					    case BO_EQ:
+					    case BO_NE:
+					    case BO_And:
+					    case BO_Xor:
+					    case BO_Or:
+					    case BO_Comma:
+					    {
+						    ICEDiag lhsResult = checkICE(exp.getLHS(), ctx);
+						    ICEDiag rhsResult = checkICE(exp.getRHS(), ctx);
+						    if (exp.getOpcode() == BO_Div
+								    || exp.getOpcode() == BO_Rem)
+						    {
+							    // Evaluate gives an error for undefined Div/Rem, so make sure
+							    // we don't evaluate one.
+							    if (lhsResult.val != 2 && rhsResult.val != 2)
+							    {
+								    APSInt REval = exp.getRHS().evaluateAsInt(ctx);
+								    if (REval == null)
+									    return new ICEDiag(1, e.getLocStart());
+								    if (REval.isSigned() && REval
+										    .isAllOnesValue())
+								    {
+									    APSInt LEval = exp.getRHS().evaluateAsInt(ctx);
+									    if (LEval.isMinSignedValue())
+										    return new ICEDiag(1,
+												    e.getLocStart());
+								    }
+							    }
+						    }
+						    if (exp.getOpcode() == BO_Comma)
+						    {
+							    if (ctx.getLangOptions().c99)
+							    {
+								    // C99 6.6p3 introduces a strange edge case: comma can be in an ICE
+								    // if it isn't evaluated.
+								    if (lhsResult.val == 0
+										    && rhsResult.val == 0)
+									    return new ICEDiag(1, e.getLocStart());
+							    }
+							    else
+							    {
+								    // In both C89 and C++, commas in ICEs are illegal.
+								    return new ICEDiag(2, e.getLocStart());
+							    }
+						    }
+						    if (lhsResult.val >= rhsResult.val)
+							    return lhsResult;
+						    return rhsResult;
+					    }
+					    case BO_LAnd:
+					    case BO_LOr:
+					    {
+						    ICEDiag lhsResult = checkICE(exp.getLHS(), ctx);
+						    ICEDiag rhsResult = checkICE(exp.getRHS(), ctx);
+						    if (lhsResult.val == 0 && rhsResult.val == 1)
+						    {
+							    // Rare case where the RHS has a comma "side-effect"; we need
+							    // to actually check the condition to see whether the side
+							    // with the comma is evaluated.
+							    if ((exp.getOpcode() == BO_LAnd) != (
+									    exp.getLHS().evaluateAsInt(ctx).eq(0)))
+								    return rhsResult;
+							    return noDiag();
+						    }
+
+						    if (lhsResult.val >= rhsResult.val)
+							    return lhsResult;
+						    return rhsResult;
+					    }
+				    }
+			    }
+			    case ImplicitCastClass:
+			    {
+				    Expr subExpr = ((CastExpr) e).getSubExpr();
+				    if (subExpr.getType().isIntegerType())
+					    return checkICE(subExpr, ctx);
+				    if (subExpr.ignoreParens() instanceof FloatLiteral)
+					    return noDiag();
+				    return new ICEDiag(2, e.getLocStart());
+			    }
+				case ConditionalOperatorClass:
+			    {
+				    ConditionalExpr exp = (ConditionalExpr) e;
+				    // If the condition (ignoring parens) is a __builtin_constant_p call,
+				    // then only the true side is actually considered in an integer constant
+				    // expression, and it is fully evaluated.  This is an important GNU
+				    // extension.  See GCC PR38377 for discussion.
+				    if (exp.getCond().ignoreParens() instanceof CallExpr)
+				    {
+					    CallExpr callCE = (CallExpr) exp.getCond()
+							    .ignoreParens();
+				    /*
+				    if (callCE -> isBuiltinCall(ctx) == Builtin::BI__builtin_constant_p)
+				    {
+					    EvalResult EVResult = new EvalResult();
+					    if (!e.evaluate(EVResult) || EVResult.hasSideEffects
+							    ||
+							    !EVResult.val.isInt())
+					    {
+						    return ICEDiag(2, e -> getLocStart());
+					    }
+					    return noDiag();
+				    }*/
+				    }
+				    ICEDiag condResult = checkICE(exp.getCond(), ctx);
+				    ICEDiag trueResult = checkICE(exp.getTrueExpr(), ctx);
+				    ICEDiag falseResult = checkICE(exp.getFalseExpr(), ctx);
+				    if (condResult.val == 2)
+					    return condResult;
+				    if (trueResult.val == 2)
+					    return trueResult;
+				    if (falseResult.val == 2)
+					    return falseResult;
+				    if (condResult.val == 1)
+					    return condResult;
+				    if (trueResult.val == 0 && falseResult.val == 0)
+					    return noDiag();
+				    // Rare case where the diagnostics depend on which side is evaluated
+				    // Note that if we get here, condResult is 0, and at least one of
+				    // trueResult and falseResult is non-zero.
+				    if (exp.getCond().evaluateAsInt(ctx).eq(0))
+				    {
+					    return falseResult;
+				    }
+				    return trueResult;
+			    }
+		    }
+	    }
+
+	    public APSInt evaluateAsInt(ASTContext ctx)
+	    {
+		    EvalResult evalResult = new EvalResult();
+		    boolean result = evaluate(evalResult, ctx);
+		    assert result:"Could not evaluate expression";
+		    assert evalResult.val.isInt() :"Expression did not evaluated to integer";
+		    return evalResult.val.getInt();
+	    }
+
+	    /**
          * This class contains detailed information about an evaluation expression.
          */
         public static class EvalResult
@@ -1196,14 +1475,14 @@ abstract public class Tree
              */
             private boolean hasSideEffects;
 
-            private String diag;
-            private final Expr diagExpr;
-            private int diagLoc;
+            public int diag;
+            public final Expr diagExpr;
+            public SourceLocation diagLoc;
 
             public EvalResult()
             {
                 diagExpr = null;
-                diagLoc = Position.NOPOS;
+                diagLoc = SourceLocation.NOPOS;
             }
 
             public boolean hasSideEffects()
@@ -1228,8 +1507,8 @@ abstract public class Tree
 
     /**
      * [C99 6.5.1p2]
-     * An reference to a declared variable getName(in which case it is a lvalue) or
-     * function getName (in which case it is a function designator).
+     * An reference to a declared variable getIdentifier(in which case it is a lvalue) or
+     * function getIdentifier (in which case it is a function designator).
      *
      */
     public static class DeclRefExpr extends Expr
@@ -1241,14 +1520,14 @@ abstract public class Tree
          */
         private NamedDecl d;
         /**
-         * The location of the declaration getName itself.
+         * The location of the declaration getIdentifier itself.
          */
-        private int location;
+        private SourceLocation location;
 
         public DeclRefExpr(String name, NamedDecl d,
                 QualType ty,
                 ExprValueKind valueKind,
-                int loc)
+                SourceLocation loc)
         {
             super(DeclRefExprClass, ty, valueKind, loc);
             this.name = name;
@@ -1268,12 +1547,12 @@ abstract public class Tree
         }
 
         @Override
-        public int getLocation()
+        public SourceLocation getExprLocation()
         {
             return location;
         }
 
-        public void setLocation(int location)
+        public void setLocation(SourceLocation location)
         {
             this.location = location;
         }
@@ -1287,6 +1566,16 @@ abstract public class Tree
         {
             this.name = name;
         }
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(getExprLocation());
+	    }
     }
 
     public static class IntegerLiteral extends Expr
@@ -1295,7 +1584,7 @@ abstract public class Tree
         public IntegerLiteral(
                 final APInt value,
                 QualType type,
-                int loc)
+                SourceLocation loc)
         {
             super(IntegerLiteralClass, type, EVK_RValue, loc);
             assert type.isIntegerType():"Illegal jlang.type in Integer literal.";
@@ -1311,6 +1600,17 @@ abstract public class Tree
         {
             v.visitIntegerLiteral(this);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(getExprLocation());
+	    }
     }
 
     public static class FloatLiteral extends Expr
@@ -1318,12 +1618,12 @@ abstract public class Tree
         private BigDecimal val;
         public FloatLiteral(QualType type,
                 ExprValueKind valuekind,
-                int loc)
+                SourceLocation loc)
         {
             super(FloatLiteralClass, type, valuekind, loc);
         }
 
-        public FloatLiteral(int loc)
+        public FloatLiteral(SourceLocation loc)
         {
             super(FloatLiteralClass, loc);
         }
@@ -1338,6 +1638,17 @@ abstract public class Tree
         {
             v.visitFloatLiteral(this);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(getExprLocation());
+	    }
     }
 
     public static class CharacterLiteral extends Expr
@@ -1347,13 +1658,13 @@ abstract public class Tree
                 char val,
                 QualType type,
                 ExprValueKind valuekind,
-                int loc)
+                SourceLocation loc)
         {
             super(CharacterLiteralClass, type, valuekind, loc);
             this.val = val;
         }
 
-        public CharacterLiteral(int loc)
+        public CharacterLiteral(SourceLocation loc)
         {
             super(CharacterLiteralClass, loc);
         }
@@ -1368,6 +1679,16 @@ abstract public class Tree
         {
             v.visitCharacterLiteral(this);
         }
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(getExprLocation());
+	    }
     }
 
     public static class StringLiteral extends Expr
@@ -1378,13 +1699,13 @@ abstract public class Tree
                 QualType type,
 		        String str,
                 ExprValueKind valuekind,
-                int loc)
+                SourceLocation loc)
         {
             super(CharacterLiteralClass, type, valuekind, loc);
 	        strData = str;
         }
 
-        public StringLiteral(int loc)
+        public StringLiteral(SourceLocation loc)
         {
             super(CharacterLiteralClass, loc);
         }
@@ -1399,6 +1720,17 @@ abstract public class Tree
 	    public int getByteLength() {return strData.length();}
 
 	    public void setStrData(String newStrData){this.strData = newStrData;}
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(getExprLocation());
+	    }
     }
 
     /**
@@ -1408,9 +1740,9 @@ abstract public class Tree
     public static class ParenExpr extends Expr
     {
         public Expr subExpr;
-        public int lParenLoc, rParenLoc;
+        public SourceLocation lParenLoc, rParenLoc;
 
-        public ParenExpr(Expr expr, int l, int r)
+        public ParenExpr(Expr expr, SourceLocation l, SourceLocation r)
         {
             super(ParenExprClass, l);
             this.subExpr = expr;
@@ -1418,6 +1750,7 @@ abstract public class Tree
             rParenLoc = r;
         }
 
+		@Override
         public SourceRange getSourceRange()
         {
             return new SourceRange(lParenLoc, rParenLoc);
@@ -1436,12 +1769,12 @@ abstract public class Tree
     public static class ParenListExpr extends Expr
     {
         private ArrayList<Expr> exprs;
-        private int lParenLoc, rParenLoc;
+        private SourceLocation lParenLoc, rParenLoc;
 
         public ParenListExpr(
-                int lParenLoc,
+                SourceLocation lParenLoc,
                 ArrayList<Expr> exprs,
-                int rParenLoc,
+                SourceLocation rParenLoc,
                 QualType type)
         {
             super(ParenListExprClass, type, EVK_RValue, lParenLoc);
@@ -1461,9 +1794,9 @@ abstract public class Tree
             return exprs.size();
         }
 
-        public int getExprLoc()
+        public SourceLocation getExprLoc()
         {
-            return Position.NOPOS;
+            return rParenLoc;
         }
 
         @Override
@@ -1471,6 +1804,17 @@ abstract public class Tree
         {
             v.visitParenListExpr(this);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(lParenLoc, rParenLoc);
+	    }
     }
 
     //===============================================================//
@@ -1489,7 +1833,7 @@ abstract public class Tree
                 ExprValueKind valueKind,
                 Expr expr,
                 final CastKind castKind,
-                int loc)
+                SourceLocation loc)
         {
             super(tag, ty, valueKind, loc);
             assert castKind != CK_Invalid :"creating cast with invalid cast kind.";
@@ -1518,7 +1862,7 @@ abstract public class Tree
                 ExprValueKind valueKind,
                 Expr expr,
                 CastKind castKind,
-                int loc)
+                SourceLocation loc)
         {
             super(ImplicitCastClass, ty, valueKind, expr, castKind, loc);
         }
@@ -1545,6 +1889,17 @@ abstract public class Tree
         {
             v.visitImplicitCastExpr(this);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return getSubExpr().getSourceRange();
+	    }
     }
 
     /**
@@ -1552,12 +1907,21 @@ abstract public class Tree
      */
     public static final class ExplicitCastExpr extends CastExpr
     {
-        private int lParenLoc;
-        private int rParenLoc;
+        private SourceLocation lParenLoc;
+        private SourceLocation rParenLoc;
+
+	    public ExplicitCastExpr(QualType ty,
+			    Expr expr, CastKind castKind,
+			    SourceLocation lParenLoc,
+			    SourceLocation rParenLoc)
+	    {
+		    this(ty, ExprValueKind.EVK_RValue, expr, castKind, lParenLoc, rParenLoc);
+	    }
 
         public ExplicitCastExpr(QualType ty, ExprValueKind valueKind,
                 Expr expr, CastKind castKind,
-                int lParenLoc, int rParenLoc)
+                SourceLocation lParenLoc,
+		        SourceLocation rParenLoc)
         {
             super(ExplicitCastClass, ty, valueKind, expr, castKind, lParenLoc);
             this.lParenLoc = lParenLoc;
@@ -1574,6 +1938,17 @@ abstract public class Tree
         {
             v.visitExplicitCastExpr(this);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(lParenLoc, rParenLoc);
+	    }
     }
 
     /**
@@ -1582,13 +1957,14 @@ abstract public class Tree
     public static class ArraySubscriptExpr extends Expr
     {
         private Expr[] subExprs;
-        private int rBracketLoc;
+        private SourceLocation rBracketLoc;
 
-        public ArraySubscriptExpr(Expr indexed, Expr
-                index,
+        public ArraySubscriptExpr(
+		        Expr indexed,
+		        Expr index,
                 QualType t,
                 ExprValueKind valueKind,
-                int rBracketLoc)
+                SourceLocation rBracketLoc)
         {
             super(ArraySubscriptExprClass, t, valueKind, rBracketLoc);
             subExprs = new Expr[2];
@@ -1599,7 +1975,7 @@ abstract public class Tree
 
         public ArraySubscriptExpr()
         {
-            super(ArraySubscriptExprClass, Position.NOPOS);
+            super(ArraySubscriptExprClass, SourceLocation.NOPOS);
         }
 
         public Expr getLHS()
@@ -1634,17 +2010,17 @@ abstract public class Tree
 
         public SourceRange getSourceRange()
         {
-            return new SourceRange(getLHS().getLocation(), rBracketLoc);
+            return new SourceRange(getLHS().getExprLocation(), rBracketLoc);
         }
 
-        public int getRBracketLoc()
+        public SourceLocation getRBracketLoc()
         {
             return rBracketLoc;
         }
 
-        public int getExprLoc()
+        public SourceLocation getExprLoc()
         {
-            return getBase().getLocation();
+            return getBase().getExprLocation();
         }
 
         @Override
@@ -1662,7 +2038,7 @@ abstract public class Tree
 	public static final class CallExpr extends Expr
 	{
 		/**
-		 * The getName of callee method.
+		 * The getIdentifier of callee method.
 		 */
 		public Expr fn;
 		/**
@@ -1670,20 +2046,23 @@ abstract public class Tree
 		 */
 		public ArrayList<Expr> args;
 
+		SourceLocation rparenLoc;
+
 		public CallExpr(Expr fn,
                 ArrayList<Expr> args,
                 QualType resultType,
                 ExprValueKind vk,
-                int rparenLoc)
+                SourceLocation rparenLoc)
 		{
 			super(CallExprClass, resultType, vk, rparenLoc);
 			this.fn = fn;
 			this.args = args;
+			this.rparenLoc = rparenLoc;
 		}
 
 		public CallExpr()
         {
-            super(CallExprClass, Position.NOPOS);
+            super(CallExprClass, SourceLocation.NOPOS);
         }
 
         public Expr getCallee()
@@ -1764,10 +2143,17 @@ abstract public class Tree
             final FunctionType fnType = calleeType.getFunctionType();
             return fnType.getReturnType();
         }
+
         @Override
 		public void accept(StmtVisitor v)
 		{
 			v.visitCallExpr(this);
+		}
+
+		@Override
+		public SourceRange getSourceRange()
+		{
+			return new SourceRange(getCallee().getExprLocation(), rparenLoc);
 		}
 	}
 
@@ -1782,15 +2168,15 @@ abstract public class Tree
         private Expr base;
 
         /**
-         * This is the decl being referenced by the field/member getName.
+         * This is the decl being referenced by the field/member getIdentifier.
          * In X.F, this is the decl referenced by F.
          */
         private ValueDecl memberDecl;
 
         /**
-         * This is the location of the member getName.
+         * This is the location of the member name.
          */
-        private int memberLoc;
+        private SourceLocation memberLoc;
 
         /**
          * True if this is "X->F", false if this is "X.F".
@@ -1803,7 +2189,7 @@ abstract public class Tree
                 ValueDecl memberDecl,
                 QualType type,
                 ExprValueKind valuekind,
-                int loc)
+                SourceLocation loc)
         {
             super(MemberExprClass, type, valuekind, loc);
             this.base = base;
@@ -1834,19 +2220,31 @@ abstract public class Tree
             isArrow = arrow;
         }
 
-        public int getMemberLoc()
+        public SourceLocation getMemberLoc()
         {
             return memberLoc;
         }
 
-        public void setMemberLoc(int memberLoc)
+        public void setMemberLoc(SourceLocation memberLoc)
         {
             this.memberLoc = memberLoc;
         }
 
-        public int getExprLoc() { return memberLoc;}
+		@Override
+        public SourceLocation getExprLocation() { return memberLoc;}
 
-        @Override
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(base.getExprLocation(), memberLoc);
+	    }
+
+	    @Override
         public void accept(StmtVisitor v)
         {
             v.visitMemberExpr(this);
@@ -1860,7 +2258,7 @@ abstract public class Tree
          * compound literal like "(int){4}".  This can be null if this is a
          * synthesized compound expression.
          */
-        private int lParenLoc;
+        private SourceLocation lParenLoc;
 
         /**
          * This can be an incomplete array jlang.type, in
@@ -1871,7 +2269,7 @@ abstract public class Tree
         private boolean isFileScope;
 
 
-        public CompoundLiteralExpr(int lParenLoc,
+        public CompoundLiteralExpr(SourceLocation lParenLoc,
                 QualType type,
                 ExprValueKind valuekind,
                 Expr init,
@@ -1885,7 +2283,7 @@ abstract public class Tree
 
         public CompoundLiteralExpr()
         {
-            super(CompoundLiteralExprClass, Position.NOPOS);
+            super(CompoundLiteralExprClass, SourceLocation.NOPOS);
         }
 
         public Expr getInitializer()
@@ -1908,12 +2306,12 @@ abstract public class Tree
             isFileScope = fileScope;
         }
 
-        public int getLParenLoc()
+        public SourceLocation getLParenLoc()
         {
             return lParenLoc;
         }
 
-        public void setLParenLoc(int lParenLoc)
+        public void setLParenLoc(SourceLocation lParenLoc)
         {
             this.lParenLoc = lParenLoc;
         }
@@ -1933,6 +2331,21 @@ abstract public class Tree
         {
             v.visitCompoundLiteralExpr(this);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    if (init == null)
+			    return new SourceRange();
+		    if (!lParenLoc.isValid())
+			    return init.getSourceRange();
+		    return new SourceRange(lParenLoc, init.getLocEnd());
+	    }
     }
 
 	/**
@@ -1943,17 +2356,18 @@ abstract public class Tree
 		private Expr subExpr;
 		private UnaryOperatorKind opcode;
         private ExprValueKind evk;
-
+		private SourceLocation loc;
 		public UnaryExpr(Expr subExpr,
                 UnaryOperatorKind opcode,
                 QualType type,
                 ExprValueKind evk,
-                int loc)
+                SourceLocation loc)
 		{
 			super(UnaryOperatorClass, loc);
 			this.subExpr = subExpr;
             this.opcode = opcode;
             this.evk = evk;
+			this.loc = loc;
 		}
 
 		public UnaryOperatorKind getOpCode()
@@ -2026,6 +2440,20 @@ abstract public class Tree
 		{
 			v.visitUnaryExpr(this);
 		}
+
+		/**
+		 * Obtains a source range from the lexical start to the lexical end in
+		 * source program.
+		 *
+		 * @return
+		 */
+		@Override public SourceRange getSourceRange()
+		{
+			if (isPostifx())
+				return new SourceRange(subExpr.getLocStart(), loc);
+			else
+				return new SourceRange(loc, subExpr.getLocEnd());
+		}
 	}
 
 	public static final class UnaryExprOrTypeTraitExpr extends Expr
@@ -2037,11 +2465,12 @@ abstract public class Tree
         private UnaryExprOrTypeTrait kind;
         private QualType ty;
         private Expr ex;
-        private int opLoc, rParenLoc;
+        private SourceLocation opLoc, rParenLoc;
 
         public UnaryExprOrTypeTraitExpr(UnaryExprOrTypeTrait kind,
                 QualType resultType,
-                int opLoc, int rp)
+                SourceLocation opLoc,
+		        SourceLocation rp)
         {
             super(UnaryExprOrTypeTraitClass, resultType, EVK_RValue, opLoc);
             this.kind = kind;
@@ -2054,7 +2483,8 @@ abstract public class Tree
         public UnaryExprOrTypeTraitExpr(UnaryExprOrTypeTrait kind,
                 Expr e,
                 QualType resultType,
-                int opLoc, int rp)
+                SourceLocation opLoc,
+		        SourceLocation rp)
         {
             super(UnaryExprOrTypeTraitClass, resultType, EVK_RValue, opLoc);
             this.kind = kind;
@@ -2069,6 +2499,17 @@ abstract public class Tree
         {
             v.visitUnaryExprOrTypeTraitExpr(this);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(opLoc, rParenLoc);
+	    }
     }
 
 	/**
@@ -2084,14 +2525,14 @@ abstract public class Tree
 		public Expr lhs;
 		public Expr rhs;
 		public BinaryOperatorKind opcode;
-        private int oploc;
+        private SourceLocation oploc;
 
 		public BinaryExpr(Expr lhs,
                 Expr rhs,
                 BinaryOperatorKind op,
                 ExprValueKind vk,
                 QualType resultTy,
-                int oploc)
+                SourceLocation oploc)
 		{
 			super(BinaryOperatorClass, resultTy, vk, oploc);
 			this.lhs = lhs;
@@ -2105,7 +2546,7 @@ abstract public class Tree
 
         public BinaryExpr(int kind)
         {
-            super(kind, Position.NOPOS);
+            super(kind, SourceLocation.NOPOS);
         }
 
         @Override
@@ -2114,9 +2555,9 @@ abstract public class Tree
 			v.visitBinaryExpr(this);
 		}
 
-		public int getOperatorLoc() { return oploc; }
+		public SourceLocation getOperatorLoc() { return oploc; }
 
-		public void setOperatorLoc(int loc) { oploc = loc;}
+		public void setOperatorLoc(SourceLocation loc) { oploc = loc;}
 
 		public BinaryOperatorKind getOpcode() { return opcode;}
 
@@ -2203,7 +2644,18 @@ abstract public class Tree
         {
             return opcode == BO_ShlAssign || opcode == BO_ShrAssign;
         }
-    }
+
+		/**
+		 * Obtains a source range from the lexical start to the lexical end in
+		 * source program.
+		 *
+		 * @return
+		 */
+		@Override public SourceRange getSourceRange()
+		{
+			return new SourceRange(lhs.getLocStart(), rhs.getLocEnd());
+		}
+	}
 
     /**
      * For compound assignments (e.g. +=), we keep
@@ -2224,7 +2676,7 @@ abstract public class Tree
                 QualType resultTy,
                 QualType compLHSType,
                 QualType compResultType,
-                int oploc)
+                SourceLocation oploc)
         {
             super(lhs, rhs, op, vk, resultTy, oploc);
             computationLHSType = compLHSType;
@@ -2266,15 +2718,15 @@ abstract public class Tree
         public Expr cond;
         public Expr truepart;
         public Expr falsepart;
-        private int qLoc, cLoc;
-        public ConditionalExpr(Expr cond, int qLoc,
+        private SourceLocation qLoc, cLoc;
+        public ConditionalExpr(Expr cond, SourceLocation qLoc,
                 Expr lhs,
-                int cLoc,
+                SourceLocation cLoc,
                 Expr rhs,
                 QualType t,
                 ExprValueKind vk)
         {
-            super(CondtionalOperatorClass, t, vk, cond.getLocation());
+            super(ConditionalOperatorClass, t, vk, cond.getExprLocation());
             this.cond = cond;
             truepart = lhs;
             falsepart = rhs;
@@ -2301,6 +2753,17 @@ abstract public class Tree
         {
             return falsepart;
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(cond.getLocStart(), falsepart.getLocEnd());
+	    }
     }
 
     /**
@@ -2344,10 +2807,12 @@ abstract public class Tree
     public static class InitListExpr extends Expr
     {
         // TODO improve it in the future. 2016.10.15 xlous.zeng.
-        private int lBraceLoc, rBraceLoc;
+        private SourceLocation lBraceLoc, rBraceLoc;
         private ArrayList<Expr> initExprs;
 
-        public InitListExpr(int lBraceLoc, int rBraceLoc, ArrayList<Expr> initList)
+        public InitListExpr(SourceLocation lBraceLoc,
+		        SourceLocation rBraceLoc,
+		        ArrayList<Expr> initList)
         {
             super(InitListExprClass, lBraceLoc);
             this.lBraceLoc = lBraceLoc;
@@ -2369,6 +2834,17 @@ abstract public class Tree
             assert i >= 0 && i < getNumInits();
             return initExprs.get(i);
         }
+
+	    /**
+	     * Obtains a source range from the lexical start to the lexical end in
+	     * source program.
+	     *
+	     * @return
+	     */
+	    @Override public SourceRange getSourceRange()
+	    {
+		    return new SourceRange(lBraceLoc, rBraceLoc);
+	    }
     }
 
 	public static class ErroneousTree extends Tree

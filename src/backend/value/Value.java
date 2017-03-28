@@ -15,10 +15,10 @@ import java.util.LinkedList;
 public class Value implements Cloneable
 {
 	/**
-	 * Obtains the getName of variable. it is null for other instruction.
+	 * Obtains the getIdentifier of variable. it is null for other instruction.
 	 *
 	 * <p>
-	 * The getName of variable, which is similar to IR in LLVM.
+	 * The getIdentifier of variable, which is similar to IR in LLVM.
 	 * For global variable and local variable, those are starts with jlang.symbol'@'
 	 * and '%' respectively.
 	 * <p>To visit <a href = "http://llvm.org/docs/LangRef.html#global-variables">

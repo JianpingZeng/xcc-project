@@ -16,6 +16,7 @@ package jlang.ast;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.BackendAction;
 import jlang.codegen.BackendConsumer;
 import jlang.sema.Decl;
 import tools.Context;
@@ -32,6 +33,12 @@ import java.util.ArrayList;
  */
 public abstract class ASTConsumer
 {
+    public static ASTConsumer createBackendConsumer(BackendAction act,
+            String moduleID, FileOutputStream os, Context ctx)
+    {
+        return new BackendConsumer(act, moduleID, os, ctx);
+    }
+
     /**
      * This method is invoked for initializing this ASTConsumer.
      */
@@ -53,9 +60,15 @@ public abstract class ASTConsumer
      */
     public abstract void handleTranslationUnit();
 
-    public static ASTConsumer createBackendConsumer(BackendAction act,
-            String moduleID, FileOutputStream os, Context ctx)
+	/**
+     * This callback is invoked each time a TagDecl
+     * (e.g. struct, union, enum) is completed.  This allows the client to
+     * hack on the type, which can occur at any point in the file (because these
+     * can be defined in declspecs).
+     * @param tag
+     */
+    public void handleTagDeclDefinition(Decl.TagDecl tag)
     {
-        return new BackendConsumer(act, moduleID, os, ctx);
+
     }
 }

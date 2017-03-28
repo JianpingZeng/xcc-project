@@ -32,5 +32,5 @@ public abstract class TagType extends Type
      * Determines if this jlang.type is being defined.
      * @return
      */
-    public boolean isDefined() { return decl.isBeingDefined(); }
+    public boolean isBeingDefined() { return decl.isBeingDefined(); }
 }

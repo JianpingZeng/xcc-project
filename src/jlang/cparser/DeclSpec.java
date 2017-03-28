@@ -3,6 +3,9 @@ package jlang.cparser;
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
 import jlang.cparser.Declarator.TheContext;
+import jlang.cpp.Preprocessor;
+import jlang.cpp.SourceLocation;
+import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.type.QualType;
 import tools.OutParamWrapper;
@@ -26,7 +29,7 @@ import static jlang.cparser.DeclSpec.TST.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class DeclSpec
+public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 {
 
     public static class DeclaratorChunk<T>
@@ -43,27 +46,27 @@ public class DeclSpec
         /**
          * The place where this jlang.type was defined.
          */
-        int loc;
+        SourceLocation loc;
         /**
          * IfStmt valid, the place where this chunk ends.
          */
-        int endLoc;
+        SourceLocation endLoc;
         /**
          * This hold the reference to concrete TypeInfo, e.g. PointerTypeInfo,
          * FunctionTypeInfo, ArrayTypeInfo.
          */
-        T typeInfo;
+        public T typeInfo;
 
         public static class PointerTypeInfo
         {
             // the jlang.type qualifiers : const/volatile/rstrict
             int typeQuals;
             // the location of the const-qualifier, if any
-            int constQualLoc;
+            SourceLocation constQualLoc;
             // the location of the volatile-qualifier, if any
-            int volatileQualLoc;
+            SourceLocation volatileQualLoc;
             // the location of the restrict-qualifier, if any
-            int restrictQualLoc;
+            SourceLocation restrictQualLoc;
         }
 
         public static class ArrayTypeInfo
@@ -100,7 +103,7 @@ public class DeclSpec
             /**
              * When isVariadic is true, the location of the ellipsis in the source.
              */
-            public int ellipsisLoc;
+            public SourceLocation ellipsisLoc;
             /**
              * The number of formal arguments provided for the declarator.
              */
@@ -115,7 +118,7 @@ public class DeclSpec
                 return !hasProtoType && numArgs != 0;
             }
 
-            int getEllipsisLoc() { return ellipsisLoc; }
+            SourceLocation getEllipsisLoc() { return ellipsisLoc; }
         }
 
         /**
@@ -128,8 +131,11 @@ public class DeclSpec
          * @return
          */
         public static DeclaratorChunk
-            getPointer(int typeQuals, int loc, int constQualLoc,
-                    int volatileQualLoc, int restrictQualLoc)
+            getPointer(int typeQuals,
+                SourceLocation loc,
+                SourceLocation constQualLoc,
+                SourceLocation volatileQualLoc,
+                SourceLocation restrictQualLoc)
         {
             DeclaratorChunk<PointerTypeInfo> res = new DeclaratorChunk<>();
             res.loc = loc;
@@ -137,6 +143,7 @@ public class DeclSpec
             res.typeInfo = new PointerTypeInfo();
             res.typeInfo.typeQuals = typeQuals;
             res.typeInfo.constQualLoc = constQualLoc;
+            res.typeInfo.volatileQualLoc = volatileQualLoc;
             res.typeInfo.restrictQualLoc = restrictQualLoc;
             return res;
         }
@@ -146,8 +153,8 @@ public class DeclSpec
                 boolean isStatic,
                 boolean isStar,
                 Tree.Expr numElts,
-                int lBracketLoc,
-                int rBracketLoc)
+                SourceLocation lBracketLoc,
+                SourceLocation rBracketLoc)
         {
             DeclaratorChunk<ArrayTypeInfo> res = new DeclaratorChunk<>();
             res.kind = ChunkKind.Array;
@@ -176,11 +183,11 @@ public class DeclSpec
         public static DeclaratorChunk
             getFunction(boolean hasProto,
                 boolean isVariadic,
-                int ellipsisLoc,
+                SourceLocation ellipsisLoc,
                 List<ParamInfo> argInfo,
                 int typeQuals,
-                int rangeBegin,
-                int rangeEnd)
+                SourceLocation rangeBegin,
+                SourceLocation rangeEnd)
         {
             DeclaratorChunk<FunctionTypeInfo> res = new DeclaratorChunk<>();
             res.kind = ChunkKind.Function;
@@ -202,10 +209,10 @@ public class DeclSpec
     public static class ParamInfo
     {
         public String name;
-        public int loc;
+        public SourceLocation loc;
         public Decl param;
 
-        public ParamInfo(String ID, int loc, Decl param)
+        public ParamInfo(String ID, SourceLocation loc, Decl param)
         {
             this.name = ID;
             this.loc = loc;
@@ -225,47 +232,6 @@ public class DeclSpec
         }
     }
 
-    public static class SourceRange
-    {
-        private int start;
-        private int end;
-
-        public SourceRange()
-        {
-            start = Position.NOPOS;
-            end = Position.NOPOS;
-        }
-
-        public SourceRange(int start, int end)
-        {
-            assert start != Position.NOPOS;
-            assert end != Position.NOPOS;
-            this.start = start;
-            this.end = end;
-        }
-
-        public int getStart() { return start; }
-        public int getEnd() { return end; }
-
-        public void setStart(int start)
-        {
-            assert start != Position.NOPOS;
-            this.start = start;
-        }
-        public void setEnd(int end)
-        {
-            assert end != Position.NOPOS;
-            this.end = end;
-        }
-        public boolean isValid()
-        {
-            return start != Position.NOPOS && end != Position.NOPOS;
-        }
-        public boolean isInvalid()
-        {
-            return !isValid();
-        }
-    }
     /**
      * Storage class specifiers.
      */
@@ -352,7 +318,7 @@ public class DeclSpec
         TST_enum("enum"),
         TST_union("union"),
         TST_struct("struct"),
-        TST_typename("jlang.type-getName"),
+        TST_typename("jlang.type-getIdentifier"),
         TST_error("error");
 
         String name;
@@ -414,18 +380,18 @@ public class DeclSpec
     private Decl declRep;
     private Expr exprRep;
 
-    private int storageClassLoc = Position.NOPOS,
-            TSWLoc = Position.NOPOS,
-            TSTLoc = Position.NOPOS,
-            TSTNameLoc = Position.NOPOS,
-            TSSLoc = Position.NOPOS,
-            TSCLoc = Position.NOPOS,
-            TQ_constLoc = Position.NOPOS,
-            TQ_restrictLoc = Position.NOPOS,
-            TQ_volatileLoc = Position.NOPOS,
-            ISLoc = Position.NOPOS;
+    private SourceLocation storageClassLoc = SourceLocation.NOPOS,
+            TSWLoc = SourceLocation.NOPOS,
+            TSTLoc = SourceLocation.NOPOS,
+            TSTNameLoc = SourceLocation.NOPOS,
+            TSSLoc = SourceLocation.NOPOS,
+            TSCLoc = SourceLocation.NOPOS,
+            TQ_constLoc = SourceLocation.NOPOS,
+            TQ_restrictLoc = SourceLocation.NOPOS,
+            TQ_volatileLoc = SourceLocation.NOPOS,
+            ISLoc = SourceLocation.NOPOS;
 
-    private SourceRange sourceRagne;
+    private SourceLocation.SourceRange sourceRagne;
 
     public DeclSpec()
     {
@@ -438,28 +404,32 @@ public class DeclSpec
         typeQualifier = TQ_unspecified.ordinal();
         inlineSpecifier = false;
 
-        sourceRagne = new SourceRange();
+        sourceRagne = new SourceLocation.SourceRange();
     }
 
-    public SourceRange getSourceRange()
+    public SourceLocation.SourceRange getSourceRange()
     {
         return sourceRagne;
     }
 
-    public void setRangeStart(int loc)
+    public void setRangeStart(SourceLocation loc)
     {
-        assert loc != Position.NOPOS;
         sourceRagne.setStart(loc);
     }
 
-    public void setRangeEnd(int loc)
+    public void setRangeEnd(SourceLocation loc)
     {
-        assert loc != Position.NOPOS;
         sourceRagne.setEnd(loc);
     }
 
-    public int getRangeStart() { return sourceRagne.start; }
-    public int getRangeEnd() { return sourceRagne.end; }
+    public SourceLocation getRangeStart()
+    {
+        return sourceRagne.getStart();
+    }
+    public SourceLocation getRangeEnd()
+    {
+        return sourceRagne.getEnd();
+    }
 
     public SCS getStorageClassSpec() { return storageClassSpec; }
     public void clearStorageClassSpec()
@@ -563,7 +533,7 @@ public class DeclSpec
      * @param val
      * @return
      */
-    public boolean setStorageClassSpec(SCS val, int loc)
+    public boolean setStorageClassSpec(SCS val, SourceLocation loc)
     {
         if (storageClassSpec != SCS_unspecified)
         {
@@ -578,7 +548,7 @@ public class DeclSpec
         return false;
     }
 
-    public boolean setTypeSpecWidth(TSW val, int loc)
+    public boolean setTypeSpecWidth(TSW val, SourceLocation loc)
     {
         if (typeSpecWidth == TSW_unspecified)
             TSWLoc = loc;
@@ -591,7 +561,7 @@ public class DeclSpec
         return false;
     }
 
-    public boolean setTypeSpecComplex(TSC val, int loc)
+    public boolean setTypeSpecComplex(TSC val, SourceLocation loc)
     {
         if (typeSpecComplex != TSC_unspecified)
             return badSpecifier(val, typeSpecComplex);
@@ -600,7 +570,7 @@ public class DeclSpec
         return false;
     }
 
-    public boolean setTypeSpecSign(TSS val, int loc)
+    public boolean setTypeSpecSign(TSS val, SourceLocation loc)
     {
         if (typeSpecSign != TSS_unspecified)
             return badSpecifier(val, typeSpecSign);
@@ -609,19 +579,20 @@ public class DeclSpec
         return false;
     }
 
-    public boolean setTypeSpecType(TST val, int loc,
+    public boolean setTypeSpecType(TST val,
+            SourceLocation loc,
             OutParamWrapper<String> prevDecl,
-            OutParamWrapper<String> diag,
+            OutParamWrapper<Integer> diag,
             QualType ty)
     {
         return setTypeSpecType(val, loc, loc, prevDecl, diag, ty);
     }
 
     public boolean setTypeSpecType(TST val,
-            int tagKwLoc,
-            int tagNameLoc,
+            SourceLocation tagKwLoc,
+            SourceLocation tagNameLoc,
             OutParamWrapper<String> prevDecl,
-            OutParamWrapper<String> diag,
+            OutParamWrapper<Integer> diag,
             Decl rep)
     {
         assert isDeclRep(val):"T does not store a decl";
@@ -629,8 +600,7 @@ public class DeclSpec
         if (typeSpecType != TST_unspecified)
         {
             prevDecl.set(getSpecifierName(val));
-            diag.set("cannot combine with previous '" + prevDecl
-                    +"' declaration specifier");
+            diag.set(err_invalid_decl_spec_combination);
             return true;
         }
 
@@ -641,17 +611,17 @@ public class DeclSpec
         return false;
     }
 
-    public boolean setTypeSpecType(TST val, int loc,
+    public boolean setTypeSpecType(TST val,
+            SourceLocation loc,
             OutParamWrapper<String> prevDecl,
-            OutParamWrapper<String> diag)
+            OutParamWrapper<Integer> diagID)
     {
         assert !isDeclRep(val) && !isTypeRep(val)
                 :"rep required for these jlang.type-spec kinds!";
         if (typeSpecType  != TST_unspecified)
         {
             prevDecl.set(getSpecifierName(typeSpecType));
-            diag.set("cannot combine with previous '" + prevDecl
-                    +"' declaration specifier");
+            diagID.set(err_invalid_decl_spec_combination);
             return true;
         }
         TSTLoc = loc;
@@ -660,9 +630,12 @@ public class DeclSpec
         return false;
     }
 
-    public boolean setTypeSpecType(TST val, int tagKwLoc, int tagNameLoc,
+    public boolean setTypeSpecType(TST val,
+            SourceLocation tagKwLoc,
+            SourceLocation tagNameLoc,
             OutParamWrapper<String> prevDecl,
-            OutParamWrapper<String> diag, QualType ty)
+            OutParamWrapper<Integer> diag,
+            QualType ty)
     {
         assert isTypeRep(val):"T does not store a jlang.type";
         assert ty != null:"no jlang.type provided!";
@@ -670,8 +643,7 @@ public class DeclSpec
         if (typeSpecType != TST_unspecified)
         {
             prevDecl.set(getSpecifierName(typeSpecType));
-            diag.set("cannot combine with previous '" + prevDecl
-                    +"' declaration specifier");
+            diag.set(err_invalid_decl_spec_combination);
             return true;
         }
         typeSpecType = val;
@@ -684,11 +656,11 @@ public class DeclSpec
     public boolean setTypeSpecError()
     {
         typeSpecType = TST_error;
-        TSTLoc = Position.NOPOS;
+        TSTLoc = SourceLocation.NOPOS;
         return false;
     }
 
-    public boolean setTypeQualifier(TQ val, int loc)
+    public boolean setTypeQualifier(TQ val, SourceLocation loc)
     {
         if ((typeQualifier & val.value) != 0)
             return badSpecifier(val, typeQualifier);
@@ -711,11 +683,20 @@ public class DeclSpec
         return false;
     }
 
-    public boolean setFunctionSpecInline(int loc)
+    public boolean setFunctionSpecInline(SourceLocation loc)
     {
         inlineSpecifier = true;
         ISLoc = loc;
         return false;
+    }
+
+    static Diagnostics.DiagnosticBuilder diag(
+            Diagnostics diags,
+            SourceLocation loc,
+            String srcFile,
+            int diagID)
+    {
+        return diags.report(new FullSourceLoc(loc, srcFile), diagID);
     }
 
     /**
@@ -723,8 +704,10 @@ public class DeclSpec
      * some cases which not can not conform C99 standard and issue some error
      * or warning diagnostic messages.
      */
-    public void finish(Parser p)
+    public void finish(Diagnostics diags, Preprocessor pp)
     {
+        String inputFile = pp.getInputFile();
+
         // signed/unsigned are only valid with int/char/
         if (typeSpecSign != TSS_unspecified)
         {
@@ -733,42 +716,48 @@ public class DeclSpec
             else if (typeSpecType != TST_int
                     && typeSpecType != TST_char)
             {
-                p.syntaxError(TSSLoc, "'%s' cannot be signed or unsigned",
-                        getSpecifierName(typeSpecType));
+                diag(diags, TSSLoc, inputFile, err_invalid_sign_spec)
+                    .addTaggedVal(getSpecifierName(typeSpecType));
+                // signed double -> double.
+                // signed float -> float.
                 typeSpecSign = TSS_unspecified;
             }
         }
 
-        // Validate the width of the jlang.type.
+        // Validate the width of the type.
         switch (typeSpecWidth)
         {
-            case TSW_unspecified:break;
+            case TSW_unspecified:
+                break;
             case TSW_short: // short int
             case TSW_longlong:
+            {
                 if (typeSpecType == TST_unspecified)
                     typeSpecType = TST_int; // short -> short int;
                 else if (typeSpecType != TST_int)
                 {
-                    p.syntaxError(TSWLoc, typeSpecWidth == TSW_short
-                                    ? "'short %s' is invalid":
-                                    "'long long %s' is invalid",
-                            getSpecifierName(typeSpecType));
+                    diag(diags, TSWLoc, inputFile, typeSpecWidth == TSW_short ?
+                            err_invalid_short_spec :
+                            err_invalid_longlong_spec).
+                            addTaggedVal(getSpecifierName(typeSpecType));
                     typeSpecType = TST_int;
                     typeSpecOwned = false;
                 }
                 break;
+            }
             case TSW_long:
-                    // long int, long double
+            {
+                // long int, long double
                 if (typeSpecType == TST_unspecified)
                     typeSpecType = TST_int; // long -> long int
                 else if (typeSpecType != TST_int && typeSpecType != TST_double)
                 {
-                    p.syntaxError(TSWLoc, "'long long %s' is invalid",
-                            getSpecifierName(typeSpecType));
+                    diag(diags, TSWLoc, inputFile, err_invalid_long_spec).addTaggedVal(getSpecifierName(typeSpecType));
                     typeSpecType = TST_int;
                     typeSpecOwned = false;
                 }
                 break;
+            }
         }
 
         // TODO: if the implementation does not implement _Complex or _Imaginary,
@@ -777,18 +766,20 @@ public class DeclSpec
         {
             if (typeSpecType != TST_unspecified)
             {
-                p.syntaxError(TSCLoc, "plain '_Complex' requires a jlang.type specifier; assuming '_Complex double'");
+                diag(diags, TSCLoc, inputFile, ext_plain_complex)
+                .addCodeModificationHint(CodeModificationHint.createInsertion(
+                   TSCLoc, " double"));
                 typeSpecType = TST_double; // _Complex -> _Complex double.
             }
             else if (typeSpecType == TST_int || typeSpecType == TST_char)
             {
                 // Note that this intentionally doesn't include _Complex _Bool
-                p.syntaxError(TSTLoc, "complex integer types are a GNU extension");
+                diag(diags, TSTLoc, inputFile, ext_integer_complex);
             }
             else if (typeSpecType!=TST_float && typeSpecType != TST_double)
             {
-                p.syntaxError(TSCLoc, "'_Complex %s' is invalid",
-                        getSpecifierName(typeSpecType));
+                diag(diags, TSCLoc, inputFile, err_invalid_complex_spec)
+                .addTaggedVal(getSpecifierName(typeSpecType));
                 typeSpecComplex = TSC_unspecified;
             }
         }
@@ -799,21 +790,21 @@ public class DeclSpec
         // 'data definition has no jlang.type or storage class'?
     }
 
-    public int getConstSpecLoc()
+    public SourceLocation getConstSpecLoc()
     {
         return TQ_constLoc;
     }
 
-    public int getVolatileSpecLoc()
+    public SourceLocation getVolatileSpecLoc()
     {
         return TQ_volatileLoc;
     }
-    public int getRestrictSpecLoc()
+    public SourceLocation getRestrictSpecLoc()
     {
         return TQ_restrictLoc;
     }
 
-    public int getInlineSpecLoc()
+    public SourceLocation getInlineSpecLoc()
     {
         return ISLoc;
     }
@@ -846,12 +837,12 @@ public class DeclSpec
                 && storageClassSpec != SCS_typedef;
     }
 
-    public int getTypeSpecWidthLoc()
+    public SourceLocation getTypeSpecWidthLoc()
     {
         return TSWLoc;
     }
 
-    public int getStorageClassSpecLoc()
+    public SourceLocation getStorageClassSpecLoc()
     {
         return storageClassLoc;
     }

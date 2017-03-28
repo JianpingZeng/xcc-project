@@ -21,28 +21,28 @@ public class Name {
     }
 
     /**
-      * The entityTable structure where the getName is stored
+      * The entityTable structure where the getIdentifier is stored
       */
     public Table table;
 
     /**
-     * The index where the bytes of this getName are stored in the global getName
+     * The index where the bytes of this getIdentifier are stored in the global getIdentifier
      *  buffer `names'.
      */
     public int index;
 
     /**
-     * The id of bytes in this getName.
+     * The id of bytes in this getIdentifier.
      */
     public int len;
 
     /**
-     * The next getName occupying the same hash bucket.
+     * The next getIdentifier occupying the same hash bucket.
      */
     Name next;
 
     /**
-     * The hashcode of a getName.
+     * The hashcode of a getIdentifier.
      */
     private static int hashValue(byte[] cs, int start, int len) {
         if (len > 0)
@@ -53,7 +53,7 @@ public class Name {
     }
 
     /**
-      * Is (the utf8 representation of) getName equal to
+      * Is (the utf8 representation of) getIdentifier equal to
       *  cs[start..start+len-1]?
       */
     private static boolean equals(byte[] names, int index, byte[] cs, int start,
@@ -65,7 +65,7 @@ public class Name {
     }
 
     /**
-      * Create a getName from the bytes in cs[start..start+len-1].
+      * Create a getIdentifier from the bytes in cs[start..start+len-1].
       *  Assume that bytes are in utf8 format.
       */
     public static Name fromUtf(Table table, byte[] cs, int start, int len) {
@@ -96,7 +96,7 @@ public class Name {
     }
 
     /**
-      * Create a getName from the bytes in array cs.
+      * Create a getIdentifier from the bytes in array cs.
       *  Assume that bytes are in utf8 format.
       */
     public static Name fromUtf(Table table, byte[] cs) {
@@ -104,7 +104,7 @@ public class Name {
     }
 
     /**
-      * Create a getName from the characters in cs[start..start+len-1].
+      * Create a getIdentifier from the characters in cs[start..start+len-1].
       */
     public static Name fromChars(Table table, char[] cs, int start, int len) {
         int nc = table.nc;
@@ -137,7 +137,7 @@ public class Name {
     }
 
     /**
-      * Create a getName from the characters in string s.
+      * Create a getIdentifier from the characters in string s.
       */
     public static Name fromString(Table table, String s) {
         char[] cs = s.toCharArray();
@@ -145,7 +145,7 @@ public class Name {
     }
 
     /**
-      * ReturnInst the Utf8 representation of this getName.
+      * ReturnInst the Utf8 representation of this getIdentifier.
       */
     public byte[] toUtf() {
         byte[] bs = new byte[len];
@@ -154,28 +154,28 @@ public class Name {
     }
 
     /**
-      * ReturnInst the string representation of this getName.
+      * ReturnInst the string representation of this getIdentifier.
       */
     public String toString() {
         return Convert.utf2string(table.names, index, len);
     }
 
     /**
-      * Copy all bytes of this getName to buffer cs, starting at start.
+      * Copy all bytes of this getIdentifier to buffer cs, starting at start.
       */
     public void getBytes(byte[] cs, int start) {
         System.arraycopy(table.names, index, cs, start, len);
     }
 
     /**
-      * ReturnInst the hash value of this getName.
+      * ReturnInst the hash value of this getIdentifier.
       */
     public int hashCode() {
         return index;
     }
 
     /**
-      * Is this getName equal to other?
+      * Is this getIdentifier equal to other?
       */
     public boolean equals(Object other) {
         if (other instanceof Name)
@@ -185,7 +185,7 @@ public class Name {
     }
 
     /**
-      * Compare this getName to other getName, yielding -1 if smaller, 0 if equal,
+      * Compare this getIdentifier to other getIdentifier, yielding -1 if smaller, 0 if equal,
       *  1 if greater.
       */
     public boolean less(Name that) {
@@ -204,21 +204,21 @@ public class Name {
     }
 
     /**
-      * Returns the getArraySize of this getName.
+      * Returns the getArraySize of this getIdentifier.
       */
     public int length() {
         return len;
     }
 
     /**
-      * Returns i'th byte of this getName.
+      * Returns i'th byte of this getIdentifier.
       */
     public byte byteAt(int i) {
         return table.names[index + i];
     }
 
     /**
-      * Returns first occurrence of byte b in this getName, len if not found.
+      * Returns first occurrence of byte b in this getIdentifier, len if not found.
       */
     public int indexOf(byte b) {
         byte[] names = table.names;
@@ -229,7 +229,7 @@ public class Name {
     }
 
     /**
-      * Returns last occurrence of byte b in this getName, -1 if not found.
+      * Returns last occurrence of byte b in this getIdentifier, -1 if not found.
       */
     public int lastIndexOf(byte b) {
         byte[] names = table.names;
@@ -240,7 +240,7 @@ public class Name {
     }
 
     /**
-      * Does this getName start with prefix?
+      * Does this getIdentifier start with prefix?
       */
     public boolean startsWith(Name prefix) {
         int i = 0;
@@ -251,7 +251,7 @@ public class Name {
     }
 
     /**
-      * Does this getName end with suffix?
+      * Does this getIdentifier end with suffix?
       */
     public boolean endsWith(Name suffix) {
         int i = len - 1;
@@ -265,7 +265,7 @@ public class Name {
     }
 
     /**
-      * Returns the sub-getName starting at position start, up to and
+      * Returns the sub-getIdentifier starting at position start, up to and
       *  excluding position end.
       */
     public Name subName(int start, int end) {
@@ -275,7 +275,7 @@ public class Name {
     }
 
     /**
-      * Replace all `from' bytes in this getName with `to' bytes.
+      * Replace all `from' bytes in this getIdentifier with `to' bytes.
       */
     public Name replace(byte from, byte to) {
         byte[] names = table.names;
@@ -299,7 +299,7 @@ public class Name {
     }
 
     /**
-      * ReturnInst the concatenation of this getName and getName `n'.
+      * ReturnInst the concatenation of this getIdentifier and getIdentifier `n'.
       */
     public Name append(Name n) {
         byte[] bs = new byte[len + n.len];
@@ -309,8 +309,8 @@ public class Name {
     }
 
     /**
-      * ReturnInst the concatenation of this getName, the given ASCII
-      *  character, and getName `n'.
+      * ReturnInst the concatenation of this getIdentifier, the given ASCII
+      *  character, and getIdentifier `n'.
       */
     public Name append(char c, Name n) {
         byte[] bs = new byte[len + n.len + 1];
@@ -392,7 +392,7 @@ public class Name {
          * Allocator
          *  @param hashSize the (constant) getArraySize to be used for the hash entityTable
          *                  needs to be a power of two.
-         *  @param nameSize the initial getArraySize of the getName entityTable.
+         *  @param nameSize the initial getArraySize of the getIdentifier entityTable.
          */
         public Table(int hashSize, int nameSize) {
             super();
@@ -423,7 +423,7 @@ public class Name {
         }
 
         /**
-          * Create a getName from the bytes in cs[start..start+len-1].
+          * Create a getIdentifier from the bytes in cs[start..start+len-1].
           *  Assume that bytes are in utf8 format.
           */
         public Name fromUtf(byte[] cs, int start, int len) {
@@ -431,7 +431,7 @@ public class Name {
         }
 
         /**
-          * Create a getName from the bytes in array cs.
+          * Create a getIdentifier from the bytes in array cs.
           *  Assume that bytes are in utf8 format.
           */
         public Name fromUtf(byte[] cs) {
@@ -439,14 +439,14 @@ public class Name {
         }
 
         /**
-          * Create a getName from the characters in cs[start..start+len-1].
+          * Create a getIdentifier from the characters in cs[start..start+len-1].
           */
         public Name fromChars(char[] cs, int start, int len) {
             return Name.fromChars(this, cs, start, len);
         }
 
         /**
-          * Create a getName from the characters in string s.
+          * Create a getIdentifier from the characters in string s.
           */
         public Name fromString(String s) {
             return Name.fromString(this, s);

@@ -1,5 +1,7 @@
 package jlang.cparser;
 
+import jlang.cpp.Source;
+import jlang.cpp.SourceLocation;
 import tools.Position;
 
 /**
@@ -9,12 +11,22 @@ import tools.Position;
 public class Token implements Tag
 {
     public final int tag;
-    public final int loc;
+    public final SourceLocation loc;
 
-    public Token(int tag, int loc)
+    public Token(int tag, SourceLocation loc)
     {
         this.tag = tag;
         this.loc = loc;
+    }
+
+    public SourceLocation getLocation()
+    {
+        return loc;
+    }
+
+    public String getIdentifierInfo()
+    {
+        return null;
     }
 
     public static class IntLiteral extends Token
@@ -33,7 +45,7 @@ public class Token implements Tag
         private boolean isUnsigned;
 
         public IntLiteral(char[] value,
-                int loc,
+                SourceLocation loc,
                 int radix,
                 IntLong IL,
                 boolean isUnsigned)
@@ -71,7 +83,7 @@ public class Token implements Tag
     {
         final float value;
 
-        public FLiteral(float value, int loc)
+        public FLiteral(float value, SourceLocation loc)
         {
             super(FLOATLITERAL, loc);
             this.value = value;
@@ -82,7 +94,7 @@ public class Token implements Tag
     {
         final double value;
 
-        public DLiteral(double value, int loc)
+        public DLiteral(double value, SourceLocation loc)
         {
             super(DOUBLELITERAL, loc);
             this.value = value;
@@ -93,7 +105,7 @@ public class Token implements Tag
     {
         final String value;
 
-        public StringLiteral(String value, int loc)
+        public StringLiteral(String value, SourceLocation loc)
         {
             super(STRINGLITERAL, loc);
             this.value = value;
@@ -106,7 +118,7 @@ public class Token implements Tag
     {
         final char value;
 
-        public CharLiteral(char value, int loc)
+        public CharLiteral(char value, SourceLocation loc)
         {
             super(CHARLITERAL, loc);
             this.value = value;
@@ -119,21 +131,26 @@ public class Token implements Tag
     {
         final String name;
 
-        public Ident(String name, int loc)
+        public Ident(String name, SourceLocation loc)
         {
             super(IDENTIFIER, loc);
             this.name = name;
         }
         public String getName() { return name;}
+
+        public String getIdentifierInfo()
+        {
+            return name;
+        }
     }
 
     public static class Keyword extends Token
     {
         public Keyword(int tag)
         {
-            this(tag, Position.NOPOS);
+            this(tag, new SourceLocation());
         }
-        public Keyword(int tag, int loc)
+        public Keyword(int tag, SourceLocation loc)
         {
             super(tag, loc);
         }

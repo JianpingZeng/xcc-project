@@ -215,7 +215,7 @@ public final class TGParser implements TGParserConstants
         if (targs.size() < templateArgs.size())
         {
             tokError(
-                    "ERROR: More template args specified than expected!\u005cn");
+                    "UNKNOWN: More template args specified than expected!\u005cn");
             System.exit(-1);
         }
         else
@@ -236,7 +236,7 @@ public final class TGParser implements TGParserConstants
                 else if (!curRec.getValue(arg).getValue().isComplete())
                 {
                     tokError(
-                            "ERROR: Value not specified for template argument #"
+                            "UNKNOWN: Value not specified for template argument #"
                                     + i + " (" + arg + ") of suclass '" + rec
                                     .getName() + "'!\u005cn");
                     System.exit(-1);

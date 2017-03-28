@@ -98,7 +98,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 				return visitCompoundLiteralExpr((CompoundLiteralExpr)s);
 			case Tree.CompoundStmtClass:
 				return visitCompoundStmt((CompoundStmt)s);
-			case Tree.CondtionalOperatorClass:
+			case Tree.ConditionalOperatorClass:
 				return visitConditionalExpr((ConditionalExpr)s);
 			case Tree.ContinueStmtClass:
 				return visitContinueStmt((ContinueStmt)s);

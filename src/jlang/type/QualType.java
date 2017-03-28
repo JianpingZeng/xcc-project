@@ -415,6 +415,11 @@ public final class QualType extends Type implements Cloneable
         return type.isRecordType();
     }
 
+    public boolean isStructureType()
+    {
+        return type.isRecordType() && type.getTypeClass() == TypeClass.Struct;
+    }
+
     /**
      * Checks if this jlang.type is enumeration jlang.type.
      *
@@ -426,7 +431,7 @@ public final class QualType extends Type implements Cloneable
     }
 
     /**
-     * Checks if this jlang.type is jlang.type-getName jlang.type.
+     * Checks if this jlang.type is jlang.type-getIdentifier jlang.type.
      *
      * @return
      */
