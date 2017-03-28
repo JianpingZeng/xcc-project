@@ -83,7 +83,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     @Override
     protected Boolean error(Expr expr)
     {
-        return error(expr.getLocation(),
+        return error(expr.getExprLocation(),
                 "invalid sub-expression in IntExprEvaluator",
                 expr);
     }
@@ -500,7 +500,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             default:
                 // Address, indirect, pre/post inc/dec, etc are not valid constant exprs.
                 // See C99 6.6p3.
-                return error(expr.getLocation(),"invalid sub-expression in IntExprEvaluator", expr);
+                return error(expr.getExprLocation(),"invalid sub-expression in IntExprEvaluator", expr);
             case UO_Plus:
                 return true;
             case UO_Minus:

@@ -19,6 +19,7 @@ package jlang.cpp;
 import jlang.basic.HeaderSearch;
 import jlang.basic.LangOption;
 import jlang.diag.Diagnostics;
+import jlang.diag.FullSourceLoc;
 
 import java.io.File;
 import java.io.IOException;
@@ -94,7 +95,7 @@ public final class Preprocessor implements AutoCloseable
         }
     };
     
-    private Diagnostics diag;
+    private Diagnostics diags;
     private LangOption langInfo;
     private HeaderSearch headers;
 
@@ -127,10 +128,21 @@ public final class Preprocessor implements AutoCloseable
     private List<String> sysincludepath;		/* -I */
     private VirtualFileSystem fileSystem;
 
+    private String inputFile;
 
     public LangOption getLangOption()
     {
         return langInfo;
+    }
+
+    public Diagnostics getDiagnostics()
+    {
+        return diags;
+    }
+
+    public String getInputFile()
+    {
+        return inputFile;
     }
 
     public String getPredefines()
@@ -152,7 +164,7 @@ public final class Preprocessor implements AutoCloseable
             LangOption langOptions,
             HeaderSearch headerSearch)
     {
-        this.diag = diag;
+        this.diags = diag;
         langInfo = langOptions;
         headers = headerSearch;
         inputs = new ArrayList<>();
@@ -174,7 +186,7 @@ public final class Preprocessor implements AutoCloseable
      * <p>
      * Inputs are processed in the order in which they are added.
      */
-    public void addInput(Source source)
+    private void addInput(Source source)
     {
         source.init(this);
         inputs.add(source);
@@ -187,6 +199,7 @@ public final class Preprocessor implements AutoCloseable
      */
     public void addInput(InputStream is, String name) throws IOException
     {
+        inputFile = name;
         addInput(new FileLexerSource(is, name));
     }
 
@@ -198,7 +211,7 @@ public final class Preprocessor implements AutoCloseable
      */
     protected void error(SourceLocation loc, String msg) throws LexerException
     {
-        //diag.report(source, loc, msg);
+        diags.report(new FullSourceLoc(loc, inputFile), 0);
     }
 
     /**

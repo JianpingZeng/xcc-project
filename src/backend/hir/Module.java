@@ -100,9 +100,9 @@ public final class Module implements Iterable<Function>
 	}
 
 	/**
-	 * Return the first global value in the module with the specified getName, of
+	 * Return the first global value in the module with the specified getIdentifier, of
 	 * arbitrary type.  This method returns null if a global with the specified
-	 * getName is not found.
+	 * getIdentifier is not found.
 	 * @param name
 	 * @return
 	 */
@@ -136,7 +136,7 @@ public final class Module implements Iterable<Function>
 		// Okay, the found function is exist. Does it has external linkage?
 		if (f.hasLocalLinkage())
 		{
-			// Clear the function's getName.
+			// Clear the function's getIdentifier.
 			f.setName("");
 
 			// Retry, now there won't be a conflict.

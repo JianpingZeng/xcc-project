@@ -999,7 +999,7 @@ private void jjCheckNAddStates(int start, int end)
     public TGParserTokenManager(SimpleCharStream stream){
 
       if (SimpleCharStream.staticFlag)
-            throw new Error("ERROR: Cannot use a static CharStream class with a non-static lexical analyzer.");
+            throw new Error("UNKNOWN: Cannot use a static CharStream class with a non-static lexical analyzer.");
 
     input_stream = stream;
   }

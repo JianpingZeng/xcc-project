@@ -20,7 +20,7 @@ public abstract class User extends Value
     public Operator opcode;
 
     /**
-     * The getName of this instruction.
+     * The getIdentifier of this instruction.
      */
     protected String instName;
 

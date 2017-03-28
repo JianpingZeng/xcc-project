@@ -111,4 +111,12 @@ public class DeclContext
     }
 
     public int getDeclCounts() { return declInScope.size(); }
+
+    public DeclContext getLookupContext()
+    {
+        DeclContext ctx = this;
+        while (ctx.isTransparentContext())
+            ctx = ctx.getParent();
+        return ctx;
+    }
 }

@@ -9,8 +9,8 @@ package jlang.cparser;
  */
 public interface Tag {
     int EOF = 0;
-    int ERROR = EOF + 1;
-    int IDENTIFIER = ERROR + 1;
+    int UNKNOWN = EOF + 1;
+    int IDENTIFIER = UNKNOWN + 1;
  
     // jlang.type specifier
     int VOID = IDENTIFIER + 1;

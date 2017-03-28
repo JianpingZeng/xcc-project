@@ -4,8 +4,13 @@ import jlang.cparser.Token.*;
 import jlang.cparser.Token.IntLiteral.IntLong;
 import jlang.cpp.CPPReader;
 import jlang.cpp.Preprocessor;
+import jlang.cpp.SourceLocation;
+import jlang.diag.DiagnosticLexKindsTag;
+import jlang.diag.Diagnostics;
+import jlang.diag.FullSourceLoc;
 import tools.LayoutCharacters;
-import tools.Position;
+
+import java.util.LinkedList;
 
 /**
  * The lexical analyzer maps an input stream consisting of ASCII characters into
@@ -14,33 +19,12 @@ import tools.Position;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class Scanner implements Tag, LayoutCharacters
+public class Scanner implements Tag, LayoutCharacters, DiagnosticLexKindsTag
 {
     /**
-     * The token, set by nextToken().
+     * The token, set by lex().
      */
     Token token;
-
-    /**
-     * The token's position. pos = line << Position.LINESHIFT + col. Line and
-     * column numbers start at 1.
-     */
-    private int pos;
-
-    /**
-     * The last character position of the token.
-     */
-    private int endPos;
-
-    /**
-     * The last character position of the previous token.
-     */
-    int prevEndPos;
-
-    /**
-     * The position where a lexical error occurred;
-     */
-    int errPos = Position.NOPOS;
 
     /**
      * The keyword table.
@@ -66,10 +50,21 @@ public class Scanner implements Tag, LayoutCharacters
 
     private int bp;
 
+    private Diagnostics diags;
+
+    private Preprocessor pp;
+
+	/**
+     * Those variable keep tracks of the look ahead tokens.
+     */
+    private final int Token_Ahead_Number = 2;
+    private LinkedList<Token> tokenAheads = new LinkedList<>();
+
     public Scanner(Preprocessor pp)
     {
         this.keywords = Keywords.instance();
-
+        diags = pp.getDiagnostics();
+        this.pp = pp;
         int bufsize = 10000;
         buf = new char[bufsize];
         try (CPPReader reader = new CPPReader(pp))
@@ -89,7 +84,7 @@ public class Scanner implements Tag, LayoutCharacters
         }
         catch (Exception e)
         {
-            lexError("io.exception:", e.getMessage());
+            lexError(err_lexer_error).addTaggedVal(e.getMessage());
             buf = new char[1];
             buflen = 0;
         }
@@ -98,7 +93,7 @@ public class Scanner implements Tag, LayoutCharacters
         col = 0;
         bp = -1;
         scanChar();
-        nextToken();
+        lex();
     }
 
     /**
@@ -139,351 +134,367 @@ public class Scanner implements Tag, LayoutCharacters
     }
 
     /**
-     * Read the next token.
+     * Retrieves the next token from token stream and consuming it.
      */
-    void nextToken()
+    void lex()
     {
-        try
+        readAheadTokens();
+        token = tokenAheads.removeFirst();
+    }
+
+	/**
+     * This peeks the ahead one token and returns it without consuming it.
+     * @return
+     */
+    Token nextToken()
+    {
+        readAheadTokens();
+        return tokenAheads.getFirst();
+    }
+
+    private void readAheadTokens()
+    {
+        while (tokenAheads.size() < Token_Ahead_Number
+                && tokenAheads.getLast().tag != EOF)
         {
-            prevEndPos = endPos;
-            sp = 0;
-            while (true)
+            nextToken2();
+        }
+    }
+
+    private void nextToken2()
+    {
+        sp = 0;
+        while (true)
+        {
+            switch (ch)
             {
-                pos = (line << Position.LINESHIFT) + col;
-                switch (ch)
-                {
-                    case ' ':
-                    case '\t':
-                    case FF:
-                    case CR:
-                    case LF:
-                        scanChar();
+                case ' ':
+                case '\t':
+                case FF:
+                case CR:
+                case LF:
+                    scanChar();
+                    break;
+
+                case ':':
+                    makeIdent(":");
+                    return;
+                case '+':
+                    scanChar();
+                    if (ch == '+')
+                    {
+                        makeIdent("++");
+                        return;
+                    }
+                    if (ch == '=')
+                    {
+                        makeIdent("+=");
+                        return;
+                    }
+                    makeIdent("+");
+                    return;
+                case '*':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("*=");
+                        return;
+                    }
+                    makeIdent(String.valueOf(ch));
+                    return;
+                case '=':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("==");
+                        return;
+                    }
+                    makeIdent(String.valueOf(ch));
+                    return;
+                case '!':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("!=");
+                        return;
+                    }
+                    makeIdent(String.valueOf(ch));
+                    return;
+                case '&':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("&=");
+                        return;
+                    }
+                    if (ch == '&')
+                    {
+                        makeIdent("&&");
+                        return;
+                    }
+                    makeIdent("&");
+                    return;
+                case '|':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("|=");
+                        return;
+                    }
+                    if (ch == '|')
+                    {
+                        makeIdent("||");
+                        return;
+                    }
+                    makeIdent("|");
+                    return;
+                case '^':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("^=");
+                        return;
+                    }
+                    makeIdent("^");
+                    return;
+                case '\"':
+                    readString();
+                    return;
+                case '\'':
+                    scanChar();
+                    if (ch == '\'')
+                        lexError(err_empty_character);
+                    else
+                    {
+                        if (ch == CR || ch == LF)
+                            lexError(backslash_newline_space);
+                        readChar();
+                    }
+                    return;
+                case '/':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("/=");
+                        return;
+                    }
+                    // for block comment
+                    if (ch == '*')
+                    {
+                        skipComment();
                         break;
-
-                    case ':':
-                        makeIdent(":");
-                        return;
-                    case '+':
-                        scanChar();
-                        if (ch == '+')
-                        {
-                            makeIdent("++");
-                            return;
-                        }
-                        if (ch == '=')
-                        {
-                            makeIdent("+=");
-                            return;
-                        }
-                        makeIdent("+");
-                        return;
-                    case '*':
-                        scanChar();
-                        if (ch == '=')
-                        {
-                            makeIdent("*=");
-                            return;
-                        }
-                        makeIdent(Character.toString(ch));
-                        return;
-                    case '=':
-                        scanChar();
-                        if (ch == '=')
-                        {
-                            makeIdent("==");
-                            return;
-                        }
-                        makeIdent(Character.toString(ch));
-                        return;
-                    case '!':
-                        scanChar();
-                        if (ch == '=')
-                        {
-                            makeIdent("!=");
-                            return;
-                        }
-                        makeIdent(Character.toString(ch));
-                        return;
-                    case '&':
-                        scanChar();
-                        if (ch == '=')
-                        {
-                            makeIdent("&=");
-                            return;
-                        }
-                        if (ch == '&')
-                        {
-                            makeIdent("&&");
-                            return;
-                        }
-                        makeIdent("&");
-                        return;
-                    case '|':
-                        scanChar();
-                        if (ch == '=')
-                        {
-                            makeIdent("|=");
-                            return;
-                        }
-                        if (ch == '|')
-                        {
-                            makeIdent("||");
-                            return;
-                        }
-                        makeIdent("|");
-                        return;
-                    case '^':
-                        scanChar();
-                        if (ch == '=')
-                        {
-                            makeIdent("^=");
-                            return;
-                        }
-                        makeIdent("^");
-                        return;
-                    case '\"':
-                        readString();
-                        return;
-                    case '\'':
-                        scanChar();
-                        if (ch == '\'')
-                            lexError("empty.char.list");
-                        else
-                        {
-                            if (ch == CR || ch == LF)
-                                lexError(pos, "illegal.line.end.in.char.lit");
-                            readChar();
-                        }
-                        return;
-                    case '/':
-                        scanChar();
-                        if (ch == '=')
-                        {
-                            makeIdent("/=");
-                            return;
-                        }
-                        // for block comment
-                        if (ch == '*')
-                        {
-                            skipComment();
-                        }
-                        // for single line comment
-                        if (ch == '/')
-                        {
-                            do
-                            {
-                                scanChar();
-                            } while (ch != CR && ch != LF && bp < buflen);
-                            break;
-                        }
-                        makeIdent("/");
-                        return;
-
-                    // scan identifier
-                    case 'A':
-                    case 'B':
-                    case 'C':
-                    case 'D':
-                    case 'E':
-                    case 'F':
-                    case 'G':
-                    case 'H':
-                    case 'I':
-                    case 'J':
-                    case 'K':
-                    case 'M':
-                    case 'N':
-                    case 'O':
-                    case 'P':
-                    case 'Q':
-                    case 'R':
-                    case 'S':
-                    case 'T':
-                    case 'V':
-                    case 'W':
-                    case 'X':
-                    case 'Y':
-                    case 'Z':
-                    case 'a':
-                    case 'b':
-                    case 'c':
-                    case 'd':
-                    case 'e':
-                    case 'f':
-                    case 'g':
-                    case 'h':
-                    case 'i':
-                    case 'j':
-                    case 'k':
-                    case 'l':
-                    case 'm':
-                    case 'n':
-                    case 'o':
-                    case 'p':
-                    case 'q':
-                    case 'r':
-                    case 's':
-                    case 't':
-                    case 'v':
-                    case 'w':
-                    case 'x':
-                    case 'y':
-                    case 'z':
-                    case '$':
-                    case '_':
-                        scanIdent();
-                        return;
-                    case '0':
-                        scanChar();
-                        if (ch == 'x' || ch == 'X')
+                    }
+                    // for single line comment
+                    if (ch == '/')
+                    {
+                        do
                         {
                             scanChar();
-                            if (digit(16) < 0)
-                                lexError("invalid.hex.number");
-                            scanNumber(16);
-                        }
-                        else
-                        {
-                            putChar('0');
-                            scanNumber(8);
-                        }
+                        } while (ch != CR && ch != LF && bp < buflen);
+                        break;
+                    }
+                    makeIdent("/");
+                    return;
+
+                // scan identifier
+                case 'A':
+                case 'B':
+                case 'C':
+                case 'D':
+                case 'E':
+                case 'F':
+                case 'G':
+                case 'H':
+                case 'I':
+                case 'J':
+                case 'K':
+                case 'M':
+                case 'N':
+                case 'O':
+                case 'P':
+                case 'Q':
+                case 'R':
+                case 'S':
+                case 'T':
+                case 'V':
+                case 'W':
+                case 'X':
+                case 'Y':
+                case 'Z':
+                case 'a':
+                case 'b':
+                case 'c':
+                case 'd':
+                case 'e':
+                case 'f':
+                case 'g':
+                case 'h':
+                case 'i':
+                case 'j':
+                case 'k':
+                case 'l':
+                case 'm':
+                case 'n':
+                case 'o':
+                case 'p':
+                case 'q':
+                case 'r':
+                case 's':
+                case 't':
+                case 'v':
+                case 'w':
+                case 'x':
+                case 'y':
+                case 'z':
+                //case '$':
+                case '_':
+                    scanIdent();
+                    return;
+                case '0':
+                    scanChar();
+                    if (ch == 'x' || ch == 'X')
+                    {
+                        scanChar();
+                        if (digit(16) < 0)
+                            lexError(ext_hexconstant_invalid);
+                        scanNumber(16);
+                    }
+                    else
+                    {
+                        putChar('0');
+                        scanNumber(8);
+                    }
+                    return;
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    scanNumber(10);
+                    return;
+                case '.':
+                    if (isDigit(buf[bp + 1]))
+                    {
+                        putChar('.');
+                        scanFractionAndSuffix();
                         return;
-                    case '1':
-                    case '2':
-                    case '3':
-                    case '4':
-                    case '5':
-                    case '6':
-                    case '7':
-                    case '8':
-                    case '9':
-                        scanNumber(10);
-                        return;
-                    case '.':
-                        if (isDigit(buf[bp + 1]))
-                        {
-                            putChar('.');
-                            scanFractionAndSuffix();
-                            return;
-                        }
+                    }
+                    scanChar();
+                    if (ch == '.')
+                    {
                         scanChar();
                         if (ch == '.')
                         {
-                            scanChar();
-                            if (ch == '.')
-                            {
-                                makeIdent("...");
-                                return;
-                            }
-                            makeIdent("..");
+                            makeIdent("...");
                             return;
                         }
-                        makeIdent(".");
+                        makeIdent("..");
                         return;
+                    }
+                    makeIdent(".");
+                    return;
 
-                    case '(':
-                    case ')':
-                    case ',':
-                    case ';':
-                    case '[':
-                    case ']':
-                    case '{':
-                    case '}':
-                    case '?':
-                    case '~':
-                        makeIdent(Character.toString(ch));
+                case '(':
+                case ')':
+                case ',':
+                case ';':
+                case '[':
+                case ']':
+                case '{':
+                case '}':
+                case '?':
+                case '~':
+                    makeIdent(String.valueOf(ch));
+                    return;
+
+                case '-':
+                    scanChar();
+                    if (ch == '-')
+                    {
+                        makeIdent("--");
                         return;
-
-                    case '-':
-                        scanChar();
-                        if (ch == '-')
-                        {
-                            makeIdent("--");
-                            return;
-                        }
-                        if (ch == '>')
-                        {
-                            makeIdent("->");
-                            return;
-                        }
-                        if (ch == '=')
-                        {
-                            makeIdent("-=");
-                            return;
-                        }
-                        makeIdent("-");
+                    }
+                    if (ch == '>')
+                    {
+                        makeIdent("->");
                         return;
-
-                    case '<':
-                        scanChar();
-                        if (ch == '<')
-                        {
-                            scanChar();
-                            if (ch == '=')
-                            {
-                                makeIdent("<<=");
-                                return;
-                            }
-                            makeIdent("<<");
-                            return;
-                        }
-                        if (ch == '=')
-                        {
-                            makeIdent("<=");
-                            return;
-                        }
-                        makeIdent("<");
+                    }
+                    if (ch == '=')
+                    {
+                        makeIdent("-=");
                         return;
+                    }
+                    makeIdent("-");
+                    return;
 
-                    case '>':
+                case '<':
+                    scanChar();
+                    if (ch == '<')
+                    {
                         scanChar();
                         if (ch == '=')
                         {
-                            makeIdent(">=");
+                            makeIdent("<<=");
                             return;
                         }
-                        if (ch == '>')
-                        {
-                            nextToken();
-                            if (ch == '=')
-                            {
-                                makeIdent(">>=");
-                                return;
-                            }
-                            makeIdent(">>");
-                            return;
-                        }
-                        makeIdent(">");
+                        makeIdent("<<");
                         return;
+                    }
+                    if (ch == '=')
+                    {
+                        makeIdent("<=");
+                        return;
+                    }
+                    makeIdent("<");
+                    return;
 
-                    case '%':
+                case '>':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent(">=");
+                        return;
+                    }
+                    if (ch == '>')
+                    {
                         scanChar();
                         if (ch == '=')
                         {
-                            makeIdent("%=");
+                            makeIdent(">>=");
                             return;
                         }
-                        makeIdent("%");
+                        makeIdent(">>");
                         return;
+                    }
+                    makeIdent(">");
+                    return;
 
-                    default:
-                        if (bp == buflen || ch == EOI && bp + 1 == buflen)
-                        {
-                            token = new Token(EOI, pos);
-                        }
-                        else
-                        {
-                            lexError("iilegal.char", Character.toString(ch));
-                            scanChar();
-                        }
+                case '%':
+                    scanChar();
+                    if (ch == '=')
+                    {
+                        makeIdent("%=");
                         return;
-                }
+                    }
+                    makeIdent("%");
+                    return;
+
+                default:
+                    if (bp == buflen || (ch == EOI && bp + 1 == buflen))
+                    {
+                        tokenAheads.addLast(new Token(EOI, new SourceLocation(line, col)));
+                    }
+                    else
+                    {
+                        lexError(err_invalid_character_to_charify).addTaggedVal(ch);
+                        scanChar();
+                    }
+                    return;
             }
-
-        }
-        finally
-        {
-            endPos = (line << Position.LINESHIFT) + col - 1;
         }
     }
 
@@ -537,7 +548,7 @@ public class Scanner implements Tag, LayoutCharacters
                 } while ('0' <= ch && ch <= '9');
                 return;
             }
-            lexError("malformed.fp.lit");
+            lexError(err_invalid_suffix_float_constant);
             sp = sp1;
         }
     }
@@ -552,7 +563,8 @@ public class Scanner implements Tag, LayoutCharacters
         {
             putChar(ch);
             scanChar();
-            token = new FLiteral(Float.parseFloat(sbuf.toString()), pos);
+            Float val = Float.parseFloat(String.valueOf(sbuf, 0, sp));
+            tokenAheads.addLast(new FLiteral(val, new SourceLocation(line, col)));
         }
         else
         {
@@ -561,7 +573,8 @@ public class Scanner implements Tag, LayoutCharacters
                 putChar(ch);
                 scanChar();
             }
-            token = new DLiteral(Double.parseDouble(sbuf.toString()), pos);
+            Float val = Float.parseFloat(String.valueOf(sbuf, 0, sp));
+            tokenAheads.addLast(new FLiteral(val, new SourceLocation(line, col)));
         }
     }
 
@@ -596,19 +609,20 @@ public class Scanner implements Tag, LayoutCharacters
         int result = Character.digit(c, base);
         if (result >= 0 && c > 127)
         {
-            lexWarning(pos + 1, "illegal.nonascii.digit");
-            ch = "0123456789abcdef".charAt(result);
+            lexError(err_invalid_octal_digit);
+            ch = "0123456789abcdef".charAt(0);
         }
         return result;
     }
 
     private void makeIdent(String s)
     {
-
+        Token tok;
         if (keywords.isKeyword(s))
-            this.token = keywords.getByName(s);
+            tok = keywords.getByName(s);
         else
-            token = new Ident(s, pos);
+            tok = new Ident(s, new SourceLocation(line, col));
+        tokenAheads.addLast(tok);
     }
 
     /**
@@ -624,20 +638,19 @@ public class Scanner implements Tag, LayoutCharacters
      */
     private void scanIdent()
     {
-        StringBuilder sb = new StringBuilder(ch);
+        putChar(ch);
         while (true)
         {
             scanChar();
             if (isDigit(ch) || (ch >= 'a' && ch <= 'z') || (ch >= 'A'
-                    && ch <= 'Z') || ch == '_' || ch == '$')
+                    && ch <= 'Z') || ch == '_')
             {
-                sb.append(ch);
+                putChar(ch);
             }
             else
                 break;
         }
-        makeIdent(sb.toString());
-
+        makeIdent(String.valueOf(sbuf, 0, sp));
     }
 
     private void scanNumber(int base)
@@ -672,7 +685,8 @@ public class Scanner implements Tag, LayoutCharacters
             }
             char[] temp = new char[sp];
             System.arraycopy(sbuf, 0, temp, 0, sp);
-            token = new IntLiteral(temp, pos, base, IntLong.IL_Long, isUnsigned);
+            tokenAheads.addLast(new IntLiteral(temp, new SourceLocation(line, col),
+                    base, IntLong.IL_Long, isUnsigned));
         }
         else if (ch == 'U' || ch == 'u')
         {
@@ -686,7 +700,8 @@ public class Scanner implements Tag, LayoutCharacters
             }
             char[] temp = new char[sp];
             System.arraycopy(sbuf, 0, temp, 0, sp);
-            token = new IntLiteral(temp, pos, base, il, false);
+            tokenAheads.addLast(new IntLiteral(temp, new SourceLocation(line, col),
+                    base, il, false));
         }
     }
 
@@ -695,23 +710,17 @@ public class Scanner implements Tag, LayoutCharacters
      */
     private void readString()
     {
-        StringBuilder sb = new StringBuilder();
         while (true)
         {
             scanChar();
             if (ch == EOF)
-                lexError(pos, "unterminated string");
+                lexError(err_unterminated_string);
             if (ch == '\"')
                 break;
-            if (ch != '\\')
-            {
-                sb.append(ch);
-                continue;
-            }
-            sb.append(ch);
+            putChar(ch);
         }
-        token = new StringLiteral(sbuf.toString(), pos);
-        return;
+        tokenAheads.addLast(new StringLiteral(String.valueOf(sbuf, 0, sp),
+                new SourceLocation(line, col)));
     }
 
     /**
@@ -719,62 +728,23 @@ public class Scanner implements Tag, LayoutCharacters
      */
     private void readChar()
     {
-        char tmp = ch;
         scanChar();
         if (ch != '\'')
         {
-            lexError(pos, "unclosed.char.literal");
+            lexError(err_unterminated_char);
         }
         else
         {
-            token = new CharLiteral(ch, pos);
+            tokenAheads.addLast(new CharLiteral(ch, new SourceLocation(line, col)));
         }
-    }
-
-    private void lexError(String key, String arg)
-    {
-        lexError(pos, key, arg);
-    }
-
-    /**
-     * Report an error at the given token position.
-     */
-    private void lexError(int pos, String key)
-    {
-        lexError(pos, key, null);
     }
 
     /**
      * Report an error at the current token position.
      */
-    private void lexError(String key)
+    private Diagnostics.DiagnosticBuilder lexError(int diagID)
     {
-        lexError(pos, key, null);
-    }
-
-    /**
-     * Report an error at the given position using the provided argument.
-     */
-    private void lexError(int pos, String msg, String arg)
-    {
-        int line = pos >> Position.LINESHIFT;
-        int col = pos & Position.COLUMNMASK;
-        System.err.println(
-                "At line " + line + "col " + col + ", a error occured:" + msg
-                        + ", " + arg);
-        token = new Token(ERROR, pos);
-        errPos = pos;
-    }
-
-    /**
-     * Report an warning at the given position using the provided argument.
-     */
-    private void lexWarning(int pos, String msg)
-    {
-        int line = pos >> Position.LINESHIFT;
-        int col = pos & Position.COLUMNMASK;
-        System.err.println(
-                "At line " + line + "col " + col + ", a warning occured:"
-                        + msg);
+        return diags.report(new FullSourceLoc(new SourceLocation(line, col),
+                pp.getInputFile()), diagID);
     }
 }

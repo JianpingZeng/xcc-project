@@ -11,6 +11,7 @@ import jlang.ast.Tree.LabelledStmt;
 import jlang.cparser.DeclContext;
 import jlang.cparser.DeclKind;
 import jlang.cparser.Declarator;
+import jlang.cpp.SourceLocation;
 import jlang.type.QualType;
 import jlang.type.Type;
 import tools.Position;
@@ -40,14 +41,16 @@ public abstract class Decl extends DeclContext
         SC_register
     }
 
-    private int location;
+    private SourceLocation location;
     private DeclKind kind;
     private boolean invalidDecl;
     private DeclContext context;
     private boolean isUsed;
     private IdentifierNamespace IDNS;
 
-    Decl(DeclKind kind, DeclContext context, int location)
+    private boolean implicit;
+
+    Decl(DeclKind kind, DeclContext context, SourceLocation location)
     {
         super(kind);
         this.location = location;
@@ -72,7 +75,7 @@ public abstract class Decl extends DeclContext
 
     public boolean isInvalidDecl() { return invalidDecl; }
 
-    public int getLocation()
+    public SourceLocation getLocation()
     {
         return location;
     }
@@ -134,28 +137,39 @@ public abstract class Decl extends DeclContext
         context = dc;
     }
 
+    public void setImplicit(boolean implicit)
+    {
+        this.implicit = implicit;
+    }
+
+    public boolean isImplicit()
+    {
+        return implicit;
+    }
+
     public static class TranslationUnitDecl extends Decl
     {
-        public TranslationUnitDecl(DeclContext context, int location)
+        public TranslationUnitDecl(DeclContext context, SourceLocation location)
         {
             super(DeclKind.CompilationUnitDecl, context, location);
         }
 
         public TranslationUnitDecl(DeclContext context)
         {
-            super(DeclKind.CompilationUnitDecl, context, Position.NOPOS);
+            super(DeclKind.CompilationUnitDecl, context, SourceLocation.NOPOS);
         }
     }
 
     /**
-     * This class represents a declaration with a getName, for example,
+     * This class represents a declaration with a getIdentifier, for example,
      * {@linkplain VarDecl}, {@linkplain LabelDecl} and {@linkplain TypeDecl}.
      */
     public static class NamedDecl extends Decl
     {
         String name;
 
-        NamedDecl(DeclKind kind, DeclContext context, String name, int location)
+        NamedDecl(DeclKind kind, DeclContext context, 
+                String name, SourceLocation location)
         {
             super(kind, context, location);
             this.name = name;
@@ -165,6 +179,17 @@ public abstract class Decl extends DeclContext
         {
             return name;
         }
+
+        public boolean hasLinkage()
+        {
+            if (this instanceof VarDecl)
+            {
+                VarDecl vd = (VarDecl)this;
+                return vd.hasExternalStorage() || vd.isFileVarDecl();
+            }
+
+            return (this instanceof FunctionDecl);
+        }
     }
 
     /**
@@ -173,7 +198,8 @@ public abstract class Decl extends DeclContext
     public static class LabelDecl extends NamedDecl
     {
         LabelledStmt stmt;
-        LabelDecl(String name, DeclContext context, LabelledStmt stmt, int location)
+        LabelDecl(String name, DeclContext context, 
+                LabelledStmt stmt, SourceLocation location)
         {
             super(DeclKind.LabelDecl, context, name, location);
             this.stmt = stmt;
@@ -196,7 +222,7 @@ public abstract class Decl extends DeclContext
         ValueDecl(DeclKind kind,
                 DeclContext context,
                 String name,
-                int location,
+                SourceLocation location,
                 QualType type)
         {
             super(kind, context, name, location);
@@ -215,7 +241,7 @@ public abstract class Decl extends DeclContext
         DeclaratorDecl(DeclKind kind,
                 DeclContext context,
                 String name,
-                int location,
+                SourceLocation location,
                 QualType type)
         {
             super(kind, context, name, location, type);
@@ -244,7 +270,7 @@ public abstract class Decl extends DeclContext
          */
         private int cachedFieldIndex;
 
-        FieldDecl(DeclContext context, String name, int location,
+        FieldDecl(DeclContext context, String name, SourceLocation location,
                 QualType type, Expr init, boolean hasInit)
         {
             super(FieldDecl, context, name, location, type);
@@ -341,7 +367,7 @@ public abstract class Decl extends DeclContext
         public VarDecl(DeclKind kind,
                 DeclContext context,
                 String name,
-                int location,
+                SourceLocation location,
                 QualType type, StorageClass sc)
         {
             super(kind, context, name, location, type);
@@ -521,7 +547,7 @@ public abstract class Decl extends DeclContext
         ParamVarDecl(DeclKind kind,
                 DeclContext context,
                 String name,
-                int location,
+                SourceLocation location,
                 QualType type,
                 StorageClass sc)
         {
@@ -560,26 +586,39 @@ public abstract class Decl extends DeclContext
     {
         private StorageClass sc;
         private ArrayList<ParamVarDecl> paramInfo;
-        private int endLoc;
+        private SourceLocation endLoc;
 
         private Tree.Stmt body;
 
         private boolean isInlineSpecified;
         private boolean hasImplicitReturnZero;
+        private boolean hasPrototype;
 
         FunctionDecl(String name,
                 DeclContext context,
-                int location,
+                SourceLocation location,
                 QualType type,
                 StorageClass sc,
-                boolean isInlineSpecified)
+                boolean isInline)
+        {
+            this(name, context, location, type, sc, isInline, false);
+        }
+
+        FunctionDecl(String name,
+                DeclContext context,
+                SourceLocation location,
+                QualType type,
+                StorageClass sc,
+                boolean isInline,
+                boolean hasPrototype)
         {
             super(FunctionDecl, context, name, location, type);
             this.sc = sc;
-            this.isInlineSpecified = isInlineSpecified;
+            this.isInlineSpecified = isInline;
             paramInfo = new ArrayList<>();
-            endLoc = Position.NOPOS;
+            endLoc = SourceLocation.NOPOS;
             body = null;
+            this.hasPrototype = hasPrototype;
         }
 
         public QualType getReturnType()
@@ -592,7 +631,7 @@ public abstract class Decl extends DeclContext
             paramInfo = paramInfo;
         }
 
-        public void setRangeEnd(int end)
+        public void setRangeEnd(SourceLocation end)
         {
             endLoc = end;
         }
@@ -681,6 +720,11 @@ public abstract class Decl extends DeclContext
             return hasImplicitReturnZero;
         }
 
+        public void setHasImplicitReturnZero(boolean b)
+        {
+            hasImplicitReturnZero = b;
+        }
+
 	    /**
          * Returns the compound statement attached to this function declaration.
          * @return
@@ -706,9 +750,9 @@ public abstract class Decl extends DeclContext
         protected TypeDecl(DeclKind kind,
                 DeclContext context,
                 String name,
-                int loc)
+                SourceLocation loc)
         {
-            super(kind, context, name,loc);
+            super(kind, context, name, loc);
         }
 
         public Type getTypeForDecl()
@@ -723,7 +767,7 @@ public abstract class Decl extends DeclContext
     }
 
     /**
-     * Represents a declaration of a typedef getName.
+     * Represents a declaration of a typedef getIdentifier.
      */
     public static class TypeDefDecl extends TypeDecl
     {
@@ -731,7 +775,7 @@ public abstract class Decl extends DeclContext
 
         public TypeDefDecl(DeclContext context,
                 String id,
-                int loc,
+                SourceLocation loc,
                 QualType type)
         {
             super(TypedefDecl, context, id, loc);
@@ -742,14 +786,14 @@ public abstract class Decl extends DeclContext
     }
 
     /**
-     * Base class for declarations which introduce a typedef-getName.
+     * Base class for declarations which introduce a typedef-getIdentifier.
      */
     public static class TypedefNameDecl extends TypeDecl
     {
         private QualType type;
 
         public TypedefNameDecl(DeclKind kind, DeclContext context, String name,
-                int loc)
+                SourceLocation loc)
         {
             super(kind, context, name, loc);
         }
@@ -775,17 +819,38 @@ public abstract class Decl extends DeclContext
          */
         protected boolean isFreeStanding;
 
+        private SourceLocation tagKkeywordLoc;
+        private SourceLocation rbraceLoc;
+	    /**
+         * If a TagDecl is anonymous and part of a typedef,
+         * this points to the TypedefDecl. Used for mangling.
+         */
+        private TypeDefDecl typedefAnonDecl;
+
         public TagDecl(DeclKind kind,
                 Type.TagTypeKind tagTypeKind,
                 DeclContext context,
                 String name,
-                int loc,
-                TagDecl prevDecl)
+                SourceLocation loc,
+                TagDecl prevDecl,
+                SourceLocation tkl)
         {
             super(kind, context, name, loc);
             isBeingDefined = false;
             this.tagTypeKind = tagTypeKind;
             setPreviousDecl(prevDecl);
+            tagKkeywordLoc = tkl;
+        }
+
+
+        public TagDecl(DeclKind kind,
+                Type.TagTypeKind tagTypeKind,
+                DeclContext context,
+                String name,
+                SourceLocation loc,
+                TagDecl prevDecl)
+        {
+            this(kind, tagTypeKind, context, name, loc, prevDecl, SourceLocation.NOPOS);;
         }
 
         private void setPreviousDecl(TagDecl prevDecl)
@@ -849,6 +914,39 @@ public abstract class Decl extends DeclContext
         {
             return tagTypeKind == TTK_enum;
         }
+
+        public void setRBraceLoc(SourceLocation rbraceloc)
+        {
+            this.rbraceLoc = rbraceloc;
+        }
+
+        public String getKindName()
+        {
+            switch (tagTypeKind)
+            {
+                case TTK_enum: return "enum";
+                case TTK_struct: return "struct";
+                case TTK_union: return "union";
+                default: return null;
+            }
+        }
+
+        public TagDecl getDefinition()
+        {
+            if (isCompleteDefinition)
+                return this;
+            return null;
+        }
+
+        public TypeDefDecl getTypedefAnonDecl()
+        {
+            return typedefAnonDecl;
+        }
+
+        public void setTypedefAnonDecl(TypeDefDecl typedefAnonDecl)
+        {
+            this.typedefAnonDecl = typedefAnonDecl;
+        }
     }
 
     public static class RecordDecl extends TagDecl
@@ -858,7 +956,7 @@ public abstract class Decl extends DeclContext
         public RecordDecl(String name,
                 Type.TagTypeKind tagTypeKind,
                 DeclContext context,
-                int loc,
+                SourceLocation loc,
                 RecordDecl prevDecl)
         {
             super(StructDecl, tagTypeKind, context, name, loc, prevDecl);
@@ -887,6 +985,11 @@ public abstract class Decl extends DeclContext
             assert index>= 0&&index<list.size();
             return (FieldDecl) list.get(index);
         }
+
+        public int getNumFields()
+        {
+            return getDeclsInContext().size();
+        }
     }
 
     /**
@@ -903,7 +1006,7 @@ public abstract class Decl extends DeclContext
 
         public EnumDecl(String name,
                 DeclContext context,
-                int loc,
+                SourceLocation loc,
                 EnumDecl prevDecl)
         {
             super(EnumDecl, TTK_enum, context, name, loc, prevDecl);
@@ -955,12 +1058,23 @@ public abstract class Decl extends DeclContext
         private APSInt val;
         EnumConstantDecl( String name,
                 DeclContext context,
-                int location,
+                SourceLocation location,
                 QualType type,
                 Tree.Stmt init)
         {
+            this(name, context, location, type, init, null);
+        }
+
+        EnumConstantDecl( String name,
+                DeclContext context,
+                SourceLocation location,
+                QualType type,
+                Tree.Stmt init,
+                APSInt val)
+        {
             super(DeclKind.EnumConstant, context, name, location, type);
             this.init = init;
+            this.val = val;
         }
 
         public Expr getInitExpr() { return (Tree.Expr)init; }

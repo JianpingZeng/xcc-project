@@ -115,7 +115,7 @@ public class ControlFlowGraph
 	 * Create a new basic block in this control flow graph.  The new basic block
 	 * is given a new, unique id id.
 	 *
-	 * @param bbName The getName of the basic block to be constructed.
+	 * @param bbName The getIdentifier of the basic block to be constructed.
 	 * @return the newly created basic block.
 	 */
 	public BasicBlock createBasicBlock(String bbName)

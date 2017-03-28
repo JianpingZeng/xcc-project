@@ -52,10 +52,16 @@ public class ActionResult<T>
 
 
     private static ActionResult emptyInstace = null;
+
     public static <T> ActionResult empty()
     {
         if (emptyInstace == null)
             emptyInstace = new ActionResult<T>();
         return emptyInstace;
+    }
+
+    public void release()
+    {
+        data = null;
     }
 }

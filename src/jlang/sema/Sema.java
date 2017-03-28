@@ -4,20 +4,26 @@ import jlang.ast.ASTConsumer;
 import jlang.ast.CastKind;
 import jlang.ast.Tree;
 import jlang.ast.Tree.*;
+import jlang.basic.LangOption;
 import jlang.cparser.*;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
+import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
 import jlang.cparser.DeclSpec.SCS;
 import jlang.cparser.DeclSpec.TST;
 import jlang.cparser.Token.CharLiteral;
 import jlang.cparser.Token.Ident;
 import jlang.cparser.Token.IntLiteral;
 import jlang.cpp.Preprocessor;
+import jlang.cpp.Source;
+import jlang.cpp.SourceLocation;
+import jlang.cpp.SourceLocation.SourceRange;
+import jlang.diag.*;
 import jlang.sema.Decl.*;
 import jlang.type.*;
+import jlang.type.ArrayType.VariableArrayType;
 import jlang.type.Type.TagTypeKind;
 import tools.*;
 
-import java.io.InputStream;
 import java.util.*;
 
 import static jlang.ast.CastKind.*;
@@ -27,6 +33,7 @@ import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
 import static jlang.cparser.Tag.*;
+import static jlang.diag.DiagnosticSemaTag.*;
 import static jlang.sema.BinaryOperatorKind.BO_Div;
 import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
@@ -42,7 +49,8 @@ import static jlang.sema.UnaryOperatorKind.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class Sema
+public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
+        DiagnosticSemaTag
 {
     public enum TagUseKind
     {
@@ -52,24 +60,24 @@ public final class Sema
     }
 
     /**
-     * Describes the kind of getName lookup up to perform.
+     * Describes the kind of getIdentifier lookup up to perform.
      * <br>
      * When an identifier is encountered in a C program, a lookup is performed
      * to locate the declaration that introduced that identifier and that is
      * currently in scope. C allows more than one declaration for the same identifier
      * to be in scope simultaneously if these identifiers belong to different
-     * categories, called getName spaces:
+     * categories, called getIdentifier spaces:
      * <ol>
      *   <li>
-     *     Label getName space: all identifiers declared as labels.
+     *     Label getIdentifier space: all identifiers declared as labels.
      *   </li>
      *   <li>
      *     Tag names: all identifiers declared as names of structs, unions and
-     *     enumerated types. Note that all three kinds of tags share one getName space.
+     *     enumerated types. Note that all three kinds of tags share one getIdentifier space.
      *   </li>
      *   <li>
      *     Member names: all identifiers declared as members of any one struct or
-     *     union. Every struct and union introduces its own getName space of this kind.
+     *     union. Every struct and union introduces its own getIdentifier space of this kind.
      *   </li>
      *   <li>
      *     All other identifiers, called ordinary identifiers to distinguish from
@@ -77,43 +85,43 @@ public final class Sema
      *   </li>
      * </ol>
      * <br>
-     * At the point of lookup, the getName space of an identifier is determined by
+     * At the point of lookup, the getIdentifier space of an identifier is determined by
      * the manner in which it is used:
      * <ol>
      *  <li>
      *   identifier appearing as the operand of a goto statement is looked up in
-     *   the label getName space.
+     *   the label getIdentifier space.
      *  </li>
      *  <li>
      *    identifier that follows the keyword struct, union, or enum is looked up
-     *    in the tag getName space.
+     *    in the tag getIdentifier space.
      *  </li>
      *  <li>
      *   identifier that follows the member access or member access through pointer
-     *   operator is looked up in the getName space of members of the jlang.type determined
+     *   operator is looked up in the getIdentifier space of members of the jlang.type determined
      *   by the left-hand operand of the member access operator.
      *  </li>
      *  <li>
-     *   all other identifiers are looked up in the getName space of ordinary identifiers.
+     *   all other identifiers are looked up in the getIdentifier space of ordinary identifiers.
      *  </li>
      * </ol>
      *
      * The task of resolving the various kinds of names into zero or more declarations
      * within a particular scope. The major entry point are
      * {@linkplain #lookupName(LookupResult, Scope)}, which peforms unqualified
-     * getName lookup.
+     * getIdentifier lookup.
      * <br>
-     * All getName lookup is performed based on specific criteria, which specify
-     * what names will visible to getName lookup and how far getName lookup should work.
+     * All getIdentifier lookup is performed based on specific criteria, which specify
+     * what names will visible to getIdentifier lookup and how far getIdentifier lookup should work.
      * These criteria are important both for capturing languages and for peformance,
-     * since getName lookup is often a bottleneck in the compilation of C. Name
+     * since getIdentifier lookup is often a bottleneck in the compilation of C. Name
      * lookup cirteria is specified via the {@linkplain LookupNameKind} enumeration.
      * <br>
-     * The result of getName lookup can vary based on the kind of getName lookup performed
-     * , the current languange, and the translation unit. In C, for example, getName
+     * The result of getIdentifier lookup can vary based on the kind of getIdentifier lookup performed
+     * , the current languange, and the translation unit. In C, for example, getIdentifier
      * lookup will either return nothing(no entity found) or a single declaration.
      *
-     * All of the possible results of getName lookup are captured by the {@linkplain
+     * All of the possible results of getIdentifier lookup are captured by the {@linkplain
      * LookupResult} class, which provides the ability to distinguish among them.
      */
     public enum LookupNameKind
@@ -127,10 +135,12 @@ public final class Sema
     private Stack<FunctionScopeInfo> functionScopes;
     private static Context SEMA_CONTEXT = new Context();
     private ASTConsumer consumer;
+    private ASTContext context;
 
-    public Sema(Preprocessor pp, ASTConsumer consumer)
+    public Sema(Preprocessor pp, ASTContext ctx, ASTConsumer consumer)
     {
         parser = Parser.instance(pp, this);
+        context = ctx;
         this.consumer = consumer;
         initialize();
     }
@@ -146,29 +156,93 @@ public final class Sema
         return consumer;
     }
 
-    public ASTContext getASTContext()
-    {
-        return context;
-    }
-
     public Parser getParser()
     {
         return parser;
     }
     /**
-     * IfStmt the identifier refers to a jlang.type getName within current scope,
-     * return the declaration of this jlang.type.
+     * Performs name lookup for a name that was parsed in the
+     * source code
+     * @param s The scope from which unqualified name lookup will
+     * @param name The name of the entity that name lookup will
+     * search for.
+     * @param lookupKind
+     * @return The result of unqualified name lookup.
+     */
+    public LookupResult lookupParsedName(Scope s, String name,
+            LookupNameKind lookupKind)
+    {
+        return lookupParsedName(s, name, lookupKind, SourceLocation.NOPOS);
+    }
+
+	/**
+     * Performs name lookup for a name that was parsed in the
+     * source code
+     * @param s The scope from which unqualified name lookup will
+     * @param name The name of the entity that name lookup will
+     * search for.
+     * @param lookupKind
+     * @param loc If provided, the source location where we're performing
+     * name lookup. At present, this is only used to produce diagnostics when
+     * C library functions (like "malloc") are implicitly declared.
+     * @return The result of unqualified name lookup.
+     */
+    public LookupResult lookupParsedName(Scope s, String name,
+            LookupNameKind lookupKind, SourceLocation loc)
+    {
+        LookupResult result = new LookupResult(this, name, loc, lookupKind);
+        lookupName(result, s);
+        return result;
+    }
+
+    /**
+     * If the identifier refers to the type, then this method just returns the
+     * declaration of this type within this scope.
      * <p>
-     * This routine performs ordinary getName lookup of the identifier within the given
-     * scope.
+     * This routine performs ordinary name lookup of the identifier II
+     * within the given scope, to determine whether the name refers to
+     * a type. If so, returns an a QualType corresponding to that
+     * type. Otherwise, returns NULL.
      *
-     * @param ID
-     * @param loc
+     * If name lookup results in an ambiguity, this routine will complain
+     * and then return NULL.
+     * </p>
+     *
+     * @param identifierInfo
+     * @param nameLoc
      * @param curScope
      * @return
      */
-    public QualType getTypeByName(Ident ID, int loc, Scope curScope)
+    public QualType getTypeByName(String identifierInfo,
+            SourceLocation nameLoc, Scope curScope)
     {
+        LookupResult res = lookupParsedName(curScope, identifierInfo,
+                LookupOrdinaryName);
+
+        NamedDecl ndecl = null;
+        switch (res.getResultKind())
+        {
+            case NotFound:
+            case Ambiguous:
+                return null;
+            case Found:
+                ndecl = res.getFoundDecl();
+                break;
+        }
+
+        if (ndecl != null)
+        {
+            QualType qt = new QualType();
+            if (ndecl instanceof TypeDecl)
+            {
+                TypeDecl td = (TypeDecl)ndecl;
+                if (qt.isNull())
+                    qt = new QualType(td.getTypeForDecl());
+            }
+            else
+                return null;
+            return qt;
+        }
         return null;
     }
 
@@ -182,9 +256,28 @@ public final class Sema
         curScope = cur;
     }
 
+	/**
+     * Determines if a tag with a given kind is acceptable as a redeclaration of
+     * the given tag declaration.
+     * @param previous
+     * @param newTag
+     * @param newTagLoc
+     * @param name
+     * @return  Return true if the new tag kind is acceptable, false otherwise.
+     */
+    private boolean isacceptableTagRedeclaration(
+            TagDecl previous,
+            TagTypeKind newTag,
+            SourceLocation newTagLoc,
+            String name)
+    {
+        TagTypeKind oldTag = previous.getTagKind();
+        return oldTag == newTag;
+    }
+
     /**
      * This method was invoked when it sees 'struct X {...}' or 'struct X;'.
-     * In the former class, the getName must be non null. In the later case, getName
+     * In the former class, the getIdentifier must be non null. In the later case, getIdentifier
      * will be null.
      *
      * @param curScope
@@ -196,13 +289,17 @@ public final class Sema
      * @param nameLoc
      * @return
      */
-    public ActionResult<Decl> actOnTag(Scope curScope, TST tagType,
-            TagUseKind tuk, int startLoc, String name, int nameLoc,
-            int kwLoc)
+    public ActionResult<Decl> actOnTag(
+            Scope curScope,
+            TST tagType,
+            TagUseKind tuk,
+            SourceLocation kwLoc,
+            String name,
+            SourceLocation nameLoc)
     {
-        // if this is not a definition, it must have a getName
-        assert (name != null || tuk
-                != TagUseKind.TUK_definition) : "Nameless record must be a definition.";
+        // if this is not a definition, it must have a getIdentifier
+        assert (name != null || tuk == TagUseKind.TUK_definition)
+                : "Nameless record must be a definition";
 
         TagTypeKind kind = TagTypeKind.getTagTypeKindForTypeSpec(tagType);
 
@@ -219,6 +316,8 @@ public final class Sema
                 LookupTagName);
         DeclContext searchDC = curContext;
         DeclContext dc = curContext;
+        NamedDecl prevDecl = null;
+        boolean invalid = false;
 
         if (name != null)
         {
@@ -227,10 +326,15 @@ public final class Sema
             lookupName(result, curScope);
 
             if (result.isAmbiguous())
-                return null;
-
-            if (result.isAmbiguous())
-                return ActionResult.empty();
+            {
+                name = null;
+                prevDecl = null;
+                invalid = true;
+            }
+            else
+            {
+                prevDecl = result.getFoundDecl();
+            }
 
             if (tuk != TagUseKind.TUK_reference)
             {
@@ -242,132 +346,146 @@ public final class Sema
                     searchDC = searchDC.getParent();
             }
         }
-        else if (curScope.isFunctionProtoTypeScope())
+        // If there is a previous tag definition or forward declaration was found,
+        // Handle it.
+        if (prevDecl != null)
         {
-            // If this is an enum declaration in function prototype scope,
-            // initalize context to the translation unit.
-            searchDC = new TranslationUnitDecl(searchDC);
-        }
-
-        if ((name != null) && result.isEmpty() &&
-                tuk == TagUseKind.TUK_reference)
-        {
-            assert result.isEmpty();
-            /**
-            while (searchDC.isRecord() || searchDC.isTransparentContext())
-                searchDC =searchDC.getParentLoop();
-
-            while (curScope.isStructScope()
-                    || (curScope.getFlags() & Scope.ScopeFlags.DeclScope.value) == 0
-                    || (curScope.getEntity() != null
-                    && curScope.getEntity().isTransparentContext()))
-                curScope = curScope.getParentLoop();
-             */
-            parser.syntaxError(startLoc, "the reference %s to a tag is not defined", name);
-            return ActionResult.empty();
-        }
-
-        if (!result.isEmpty())
-        {
-            NamedDecl prevDecl = result.getFoundDecl();
-
             if (prevDecl instanceof TagDecl)
             {
                 TagDecl prevTagDecl = (TagDecl)prevDecl;
-                if (tuk == TagUseKind.TUK_reference
-                        || isDeclInScope(prevDecl, searchDC, curScope))
+                // If this is a use of a previous tag, or if the tag is already declared
+                // in the same scope (so that the definition/declaration completes or
+                // rementions the tag), reuse the decl.
+                if (tuk == TagUseKind.TUK_reference || isDeclInScope(prevDecl, searchDC, curScope))
                 {
-                    boolean safeToContinue =
-                            prevTagDecl.getTagKind() != TagTypeKind.TTK_enum
-                            && kind != TagTypeKind.TTK_enum;
-                    if (safeToContinue)
+                    // Make sure that this wasn't declared as an enum and now used as a
+                    // struct or something similar.
+                    if (!isacceptableTagRedeclaration(prevTagDecl, kind, kwLoc, name))
                     {
-                        parser.syntaxError(nameLoc,
-                                "use of %s with tag jlang.type that does not match previous declaration",
-                                name);
-                    }
-                    else
-                    {
-                        parser.syntaxError(nameLoc,
-                                "use of %s with tag jlang.type that does not match previous declaration",
-                                name);
-                        parser.syntaxError(prevTagDecl.getLocation(), "previous use is here");
-                    }
-
-                    if (safeToContinue)
-                        kind = prevTagDecl.getTagKind();
-                    else
-                    {
-                        name = null;
-                        result.clear();
-                    }
-
-                    if (kind == TagTypeKind.TTK_enum && prevTagDecl.tagTypeKind == TagTypeKind.TTK_enum)
-                    {
-                        final EnumDecl prevEnum = (EnumDecl)prevDecl;
-
-                    }
-
-                    if (tuk == TagUseKind.TUK_reference)
-                        return new ActionResult<>(prevTagDecl);
-
-                    if (tuk == TagUseKind.TUK_definition)
-                    {
-                        if (prevTagDecl.isCompleteDefinition())
+                        boolean safeToContinue = (prevTagDecl.getTagKind() != TagTypeKind.TTK_enum
+                        && kind != TagTypeKind.TTK_enum);
+                        if (safeToContinue)
                         {
-                            parser.syntaxError(nameLoc, "nested redefinition of %s",name);
-                            parser.syntaxError(prevTagDecl.getLocation(), "previous definition is here");
+                            parser.diag(kwLoc, err_use_with_wrong_tag)
+                                    .addTaggedVal(name)
+                                    .addCodeModificationHint(
+                                            CodeModificationHint.createReplacement
+                                                    (new SourceRange(kwLoc),
+                                                        prevTagDecl.getKindName()));
+                        }
+                        else
+                        {
+                            parser.diag(kwLoc, err_use_with_wrong_tag).
+                                    addTaggedVal(name);
+                        }
+                        parser.diag(prevDecl.getLocation(), note_previous_use);
+                        if (safeToContinue)
+                            kind = prevTagDecl.getTagKind();
+                        else
+                        {
                             name = null;
-                            result.clear();
+                            prevDecl = null;
+                            invalid = true;
                         }
                     }
 
-                    // Okay, this is definition of a previously declared or referenced
-                    // tag PrevDecl. We're going to create a new Decl for it.
+                    if (!invalid)
+                    {
+                        // If this is a use, just return the declaration we found.
+                        if (tuk == TagUseKind.TUK_reference)
+                        {
+                            return new ActionResult<>(prevDecl);
+                        }
+                        // Diagnose attempts to redefine a tag.
+                        if (tuk == TagUseKind.TUK_definition)
+                        {
+                            TagDecl def = prevTagDecl.getDefinition();
+                            if (def != null)
+                            {
+                                parser.diag(nameLoc, err_redefinition)
+                                        .addTaggedVal(name);
+                                parser.diag(def.getLocation(), note_previous_definition);
+                                name = null;
+                                prevDecl = null;
+                                invalid = true;
+                            }
+                            else
+                            {
+                                // Reaching here, it indicates that the previous
+                                // is forward declaration, and this is actually
+                                // complete definition.
+                                TagType tag = (TagType)context.getTagDeclType(prevTagDecl).baseType();
+                                if (tag.isBeingDefined())
+                                {
+                                    parser.diag(nameLoc, err_nested_redefinition)
+                                            .addTaggedVal(name);
+                                    parser.diag(prevTagDecl.getLocation(), note_previous_definition);
+                                    name = null;
+                                    prevDecl = null;
+                                    invalid = true;
+                                }
+                            }
+                            // Okay, this is definition of a previously declared or referenced
+                            // tag PrevDecl. We're going to create a new Decl for it.
+                        }
+                    }
+                    // If we get here we have (another) forward declaration or we
+                    // have a definition.  Just create a new decl.
                 }
                 else
                 {
-                    // If we get here, this is a definition of a new tag jlang.type in a nested
+                    // If we get here, this is a definition of a new tag type in a nested
                     // scope, e.g. "struct foo; void bar() { struct foo; }", just create a
-                    // new decl/jlang.type.  We set PrevDecl to NULL so that the entities
+                    // new decl/type.  We set PrevDecl to NULL so that the entities
                     // have distinct types.
-                    result.clear();
+                    prevDecl = null;
+                }
+            }
+            else
+            {
+                // prevDecl is anything else kinds declaration with
+                // same name, we just compliation it.
+                if (isDeclInScope(prevDecl, searchDC, curScope))
+                {
+                    parser.diag(nameLoc, err_redefinition_different_kind)
+                            .addTaggedVal(name);
+                    parser.diag(prevDecl.getLocation(), note_previous_definition);
+                    name = null;
+                    prevDecl = null;
+                    invalid = true;
+                }
+                else
+                {
+                    // The existing declaration isn't relevant to us; we're in a
+                    // new scope, so clear out the previous declaration.
+                    prevDecl = null;
                 }
             }
         }
-        CreateNewDecl:
-        {
-            TagDecl prevDecl = null;
-            TagDecl newDecl = null;
-            if (result.isSingleResult())
-                prevDecl = (TagDecl) result.getFoundDecl();
 
-            int loc = nameLoc != Position.NOPOS?nameLoc:kwLoc;
+        //CreateNewDecl:
+        {
+            TagDecl newDecl = null;
+
+            // If there is an identifier, use the location of the identifier as the
+            // location of the decl, otherwise use the location of the struct/union
+            // keyword.
+            SourceLocation loc = nameLoc.isValid() ? nameLoc : kwLoc;
 
             boolean isForwardReference = false;
+            // Current tag is enum declaration, reference, or definition.
             if (tagType == TST.TST_enum)
             {
                 newDecl = new EnumDecl(name,searchDC, loc, (EnumDecl)prevDecl);
 
                 // if this is an undefined enum, warns it.
-                if (tuk != TagUseKind.TUK_definition)
+                if (tuk != TagUseKind.TUK_definition && !invalid)
                 {
-                    if (prevDecl != null && prevDecl.isCompleteDefinition())
-                    {
-                        EnumDecl def = (EnumDecl)prevDecl;
-                        parser.syntaxError(loc, "redeclaration of already-defined enum %s is a GNU extension",
-                                newDecl.name);
-                        parser.syntaxError(def.getLocation(), "previous definition is here");
-                    }
-                    else
-                    {
-                        parser.syntaxError(loc, "ISO C forbids forward references to 'enum' types");
+                    parser.diag(loc, ext_forward_ref_enum);
+                    if (tuk == TagUseKind.TUK_reference)
+                        isForwardReference = true;
 
-                        if (tuk == TagUseKind.TUK_reference)
-                            isForwardReference = true;
-                    }
                 }
-
                 if (enumUnderlying != null)
                 {
                     EnumDecl ed = (EnumDecl)newDecl;
@@ -378,16 +496,18 @@ public final class Sema
             else
             {
                 // struct/union
-
                 newDecl = new RecordDecl(name, kind, curContext, loc, (RecordDecl)prevDecl);
             }
+
+            if (invalid)
+                newDecl.setInvalidDecl(true);
 
             // If we're declaring or defining a tag in function prototype scope
             // in C, note that this jlang.type can only be used within the function.
             if (name != null && curScope.isFunctionProtoTypeScope())
             {
-                parser.syntaxError(loc, "declaration of %s will not be visible "
-                        + "outside of this function", newDecl.getDeclName());
+                parser.diag(loc, warn_decl_in_param_list)
+                .addTaggedVal(context.getTagDeclType(newDecl));
             }
 
             newDecl.setLexicalDeclaration(curContext);
@@ -429,9 +549,9 @@ public final class Sema
     }
 
     /**
-     * Performs unqualified getName lookup up starting from current scope.
+     * Performs unqualified getIdentifier lookup up starting from current scope.
      * <br>
-     * Unqualified getName lookup up (C99 6.2.1) is used to find names within the
+     * Unqualified getIdentifier lookup up (C99 6.2.1) is used to find names within the
      * current scope, for example, 'x' in
      * <pre>
      *   int x;
@@ -442,7 +562,7 @@ public final class Sema
      *
      *   Different lookup criteria can find different names. For example, a
      *   particular scope can have both a struct and a function of the same
-     *   getName, and each can be found by certain lookup criteria. For more
+     *   getIdentifier, and each can be found by certain lookup criteria. For more
      *   information about lookup criteria, see class {@linkplain LookupNameKind}.
      * </pre>
      *
@@ -462,7 +582,7 @@ public final class Sema
         // matches this identifier that is in the appropriate namespace.
         for (Decl decl : s.getDeclInScope())
         {
-            // skip anonymous or non getName declaration.
+            // skip anonymous or non getIdentifier declaration.
             if (!(decl instanceof NamedDecl))
                 continue;
             NamedDecl namedDecl = (NamedDecl)decl;
@@ -494,15 +614,24 @@ public final class Sema
         return s;
     }
 
-    public Decl actOnField(Scope scope, Decl tagDecl, int startLoc,
-            Declarator declarator, Expr bitFieldSize)
+    public Decl actOnField(
+            Scope scope,
+            Decl tagDecl,
+            SourceLocation startLoc,
+            Declarator declarator,
+            Expr bitFieldSize)
     {
         return null;
     }
 
-    public Decl actOnFields(Scope curScope, int recordLoc, Decl tagDecl,
-            ArrayList<Decl> fieldDecls, int startLoc, int endLoc)
+    public Decl actOnFields(Scope curScope,
+            SourceLocation recordLoc,
+            Decl tagDecl,
+            ArrayList<Decl> fieldDecls,
+            SourceLocation startLoc,
+            SourceLocation endLoc)
     {
+        // TODO: 2017/3/28  
         return null;
     }
 
@@ -652,11 +781,11 @@ public final class Sema
             //TODO report error inline non function.
         }
 
-        // ensure we have a invalid getName
-        String name = paramDecls.getName();
+        // ensure we have a invalid getIdentifier
+        String name = paramDecls.getIdentifier();
         if (name == null)
         {
-            // TODO report error: invalid identifier getName
+            // TODO report error: invalid identifier getIdentifier
             paramDecls.setInvalidType(true);
         }
 
@@ -700,6 +829,8 @@ public final class Sema
     public void actOnTagStartDefinition(Scope scope, Decl tagDecl)
     {
         TagDecl tag = (TagDecl) tagDecl;
+
+        // Enter teh tag context.
         pushDeclContext(scope, tag);
     }
 
@@ -717,10 +848,15 @@ public final class Sema
     }
 
     public void actOnTagFinishDefinition(Scope scope, Decl tagDecl,
-            int rBraceLoc)
+            SourceLocation rBraceLoc)
     {
         TagDecl tag = (TagDecl) tagDecl;
+        tag.setRBraceLoc(rBraceLoc);
+
         popDeclContext();
+        // Notify the consumer that we've defined a tag.
+        consumer.handleTagDeclDefinition(tag);
+
     }
 
     private void popDeclContext()
@@ -734,7 +870,8 @@ public final class Sema
         return decl.getDeclContext();
     }
 
-    private NamedDecl lookupSingleName(Scope s, String name, int loc,
+    private NamedDecl lookupName(Scope s,
+            String name, SourceLocation loc,
             LookupNameKind lookupKind)
     {
         LookupResult result = new LookupResult(this, name, loc, lookupKind);
@@ -767,16 +904,67 @@ public final class Sema
         }
     }
 
-    public Decl actOnEnumConstant(Scope scope, Decl enumConstDecl,
-            Decl lastConstEnumDecl, int identLoc, String name,
-            int equalLoc,
+    private EnumConstantDecl checkEnumConstant(
+            EnumDecl enumDecl,
+            EnumConstantDecl lastEnumConst,
+            SourceLocation idLoc,
+            String id,
+            Expr val)
+    {
+        APSInt enumVal = new APSInt(32);
+        QualType eltTy = new QualType();
+        if (val != null)
+        {
+            // Make sure to promote the operand type to int.
+            Expr temp = usualUnaryConversion(val).get();
+            if (!temp.equals(val))
+            {
+                val = temp;
+            }
+            // C99 6.7.2.2p2: Make sure we have an integer constant expression.
+            OutParamWrapper<APSInt> xx = new OutParamWrapper<>(enumVal);
+            boolean verifyRet = verifyIntegerConstantExpression(val, xx);
+            enumVal = xx.get();
+            if (verifyRet)
+                val = null;
+            else
+                eltTy = val.getType();
+        }
+        if (val == null)
+        {
+            if (lastEnumConst != null)
+            {
+                enumVal = lastEnumConst.getInitValue();
+                enumVal.increase();
+
+                if (enumVal.lt(lastEnumConst.getInitValue()))
+                    parser.diag(idLoc, warn_enum_value_overflow);
+                eltTy = lastEnumConst.getDeclType();
+            }
+            else
+            {
+                eltTy  = Type.IntTy;
+                enumVal.zextOrTrunc((int)eltTy.getTypeSize());
+            }
+        }
+        return new EnumConstantDecl(id, enumDecl, idLoc, eltTy, val, enumVal);
+    }
+
+    public Decl actOnEnumConstant(Scope scope,
+            Decl enumConstDecl,
+            Decl lastConstEnumDecl,
+            SourceLocation identLoc,
+            String name,
+            SourceLocation equalLoc,
             Expr val)
     {
         EnumDecl theEnumDecl = (EnumDecl) enumConstDecl;
         EnumConstantDecl lastEnumConst = (EnumConstantDecl) lastConstEnumDecl;
 
+        // The scope passed in may not be a decl scope.  Zip up the scope tree until
+        // we find one that is.
         Scope s = getNonFieldDeclScope(scope);
-        NamedDecl prevDecl = lookupSingleName(scope, name, identLoc,
+        NamedDecl prevDecl = lookupName(scope, name, identLoc,
                 LookupOrdinaryName);
 
         // redefinition diagnostic.
@@ -787,19 +975,19 @@ public final class Sema
             {
                 if (prevDecl instanceof EnumConstantDecl)
                 {
-                    // TODO report error redefinition of enumerator.
+                    parser.diag(identLoc, err_redefinition_of_enumerator);;
                 }
                 else
                 {
-                    // TODO report error redefinition
+                    parser.diag(identLoc, err_redefinition);
                 }
-                // TODO report error definition
+                parser.diag(prevDecl.getLocation(), note_previous_definition);
                 return null;
             }
         }
 
-        EnumConstantDecl newEnumConstDecl = new EnumConstantDecl(name,
-                curContext, identLoc, null, val);
+        EnumConstantDecl newEnumConstDecl = checkEnumConstant(theEnumDecl,
+                lastEnumConst, identLoc, name, val);
         if (newEnumConstDecl != null)
         {
             pushOnScopeChains(newEnumConstDecl, s, true);
@@ -807,17 +995,178 @@ public final class Sema
         return newEnumConstDecl;
     }
 
-    public void actOnEnumBody(int startLoc, int lBraceLoc, int rBraceLoc,
-            Decl decl, ArrayList<Decl> enumConstantDecls, Scope curScope)
+    public void actOnEnumBody(SourceLocation startLoc,
+            SourceLocation lBraceLoc,
+            SourceLocation rBraceLoc,
+            Decl decl,
+            ArrayList<Decl> enumConstantDecls,
+            Scope curScope)
     {
         EnumDecl enumDecl = (EnumDecl) decl;
+        QualType enumType = new QualType(enumDecl.getTypeForDecl());
 
+        int intWidth = context.target.getIntWidth();
+        int charWidth = context.target.getCharWidth();
+        int shortWidth = context.target.getShortWidth();
+
+        // Verify that all the values are okay, compute the size of the values, and
+        // reverse the list.
+        int numNegativeBits = 0;
+        int numPositiveBits = 0;
+
+        // Keep track of whether all elements have type int.
+        boolean allElementsInt = true;
+
+        for (Decl d : enumConstantDecls)
+        {
+            if (d instanceof EnumConstantDecl)
+            {
+                EnumConstantDecl ecd = (EnumConstantDecl) d;
+
+                // If the enum value doesn't fit in an int, emit an extension warning.
+                APSInt initVal = ecd.getInitValue();
+                assert initVal.getBitWidth() >= intWidth :
+                        "Shoult have promoted value to int";
+                if (initVal.getBitWidth() > intWidth)
+                {
+                    APSInt v = new APSInt(initVal);
+                    v.trunc(intWidth);
+                    v.extend(initVal.getBitWidth());
+                    if (v.ne(initVal))
+                        parser.diag(ecd.getLocation(), ext_enum_value_not_int);
+                }
+
+                // Keep track of the size of positive and negative values.
+                if (initVal.isUnsigned() || initVal.isNonNegative())
+                    numPositiveBits = Math.max(numPositiveBits, initVal.getActiveBits());
+                else
+                    numNegativeBits = Math.max(numNegativeBits, initVal.getMinSignedBits());
+
+                // Keep track of whether every enum element has type int (very commmon).
+                if (allElementsInt)
+                    allElementsInt = ecd.getDeclType().equals(Type.IntTy);
+            }
+        }
+        QualType bestType = new QualType();
+        int bestWidth;
+
+        // Figure out the type that should be used for this enum.
+        if (numNegativeBits != 0)
+        {
+            if(numNegativeBits <= intWidth && numPositiveBits < intWidth)
+            {
+                bestType = Type.IntTy;
+                bestWidth = intWidth;
+            }
+            else
+            {
+                bestWidth = context.target.getLongWidth();
+                if(numNegativeBits <= bestWidth && numPositiveBits < bestWidth)
+                    bestType = Type.LongTy;
+                else
+                {
+                    bestWidth = context.target.getLonglongWidth();
+                    if (numNegativeBits > bestWidth || numPositiveBits >= bestWidth)
+                        parser.diag(enumDecl.getLocation(), warn_enum_too_large);
+                    bestType = Type.LongLongTy;
+                }
+            }
+        }
+        else
+        {
+            // If there is no negative value, figure out which of uint, ulong, ulonglong
+            // fits.
+            if (numPositiveBits <= intWidth)
+            {
+                bestType = Type.UnsignedIntTy;
+                bestWidth = intWidth;
+            }
+            else
+            {
+                bestWidth = context.target.getLonglongWidth();
+                assert numPositiveBits <= bestWidth
+                        :"How could an initialization get larger than ULL?";
+                bestType = Type.UnsignedLongLongTy;
+            }
+        }
+
+        // Loop over all of the enumerator constants, changing their types to match
+        // the type of the enum if needed.
+        for (Decl d : enumConstantDecls)
+        {
+            if (d instanceof EnumConstantDecl)
+            {
+                EnumConstantDecl ecd = (EnumConstantDecl)d;
+                // Standard C says the enumerators have int type, but we allow, as an
+                // extension, the enumerators to be larger than int size.  If each
+                // enumerator value fits in an int, type it as an int, otherwise type it the
+                // same as the enumerator decl itself.  This means that in "enum { X = 1U }"
+                // that X has type 'int', not 'unsigned'.
+                if (ecd.getDeclType().equals(Type.IntTy))
+                {
+                    APSInt v = ecd.getInitValue();
+                    v.setIsUnsigned(true);
+                    ecd.setInitValue(v);
+
+                    continue;
+                }
+
+                // Determine whether the value fits into an int.
+                APSInt initVal = ecd.getInitValue();
+                boolean fitsInInt;
+                if (initVal.isUnsigned() || !initVal.isNegative())
+                    fitsInInt = initVal.getActiveBits() < intWidth;
+                else
+                    fitsInInt = initVal.getMinSignedBits() <= intWidth;
+
+                // If it fits into an integer type, force it.  Otherwise force it to match
+                // the enum decl type.
+                QualType newTy = new QualType();
+                int newWidth;
+                boolean newSign;
+                if (fitsInInt)
+                {
+                    newTy = Type.IntTy;
+                    newWidth = intWidth;
+                    newSign = true;
+                }
+                else if (ecd.getDeclType().equals(bestType))
+                {
+                    // Already the right type!
+                    continue;
+                }
+                else
+                {
+                    newTy = bestType;
+                    newWidth = bestWidth;
+                    newSign = bestType.isSignedType();
+                }
+
+                // Adjust the APSInt value.
+                initVal.extOrTrunc(newWidth);
+                initVal.setIssigned(newSign);
+                ecd.setInitValue(initVal);
+
+                // Adjust the Expr initializer and type.
+                if (ecd.getInitExpr() != null)
+                {
+                    ecd.setInitExpr(new ImplicitCastExpr(newTy, EVK_RValue,
+                            ecd.getInitExpr(), CastKind.CK_BitCast,
+                            ecd.getInitExpr().getExprLocation()));
+                }
+
+                ecd.setDeclType(newTy);
+            }
+        }
+
+        enumDecl.completeDefinition(bestType);
     }
+
 
     public void actOnTranslationUnitScope(Scope scope)
     {
         pushDeclContext(scope,
-                new TranslationUnitDecl(curContext, Position.NOPOS));
+                new TranslationUnitDecl(curContext, SourceLocation.NOPOS));
     }
 
     public Decl actOnFunctionDef(Scope fnBodyScope, Declarator declarator)
@@ -831,16 +1180,130 @@ public final class Sema
         return actOnStartOfFunctionDef(fnBodyScope, res);
     }
 
+    private void diagnoseFunctionSpecifiers(Declarator d)
+    {
+        if (d.getDeclSpec().isInlineSpecifier())
+            parser.diag(d.getDeclSpec().getInlineSpecLoc(),
+                    err_inline_non_function);
+    }
+
+    private TypeDefDecl parseTypedefDecl(Scope s, Declarator d, QualType ty)
+    {
+        assert d.getIdentifier() != null
+                :"Wrong callback for declspec without declarator";
+        assert !ty.isNull() :"GetTypeForDeclarator() returned null type";
+
+        TypeDefDecl newTD = new TypeDefDecl(curContext,
+                d.getIdentifier(), d.getIdentifierLoc(), ty);
+
+        if (ty.getType() instanceof TagType)
+        {
+            TagDecl td = ((TagType)ty.getType()).getDecl();
+            if (td.getDeclName() == null && td.getTypedefAnonDecl() == null)
+                td.setTypedefAnonDecl(newTD);
+        }
+
+        if (d.isInvalidType())
+            newTD.setInvalidDecl(true);
+        return newTD;
+    }
+
+	/**
+     * We just parsed a typedef 'New' which has the
+     * same name and scope as a previous declaration 'Old'.  Figure out
+     * how to resolve this situation, merging decls or emitting
+     * diagnostics as appropriate. If there was an error, set New to be invalid.
+     * @param newOne
+     * @param oldOne
+     */
+    private void mergeTypeDefDecl(TypeDefDecl newOne, Decl oldOne)
+    {
+        // If either decl is known invalid already, set the new one to be invalid and
+        // don't bother doing any merging checks.
+        if (newOne.isInvalidDecl() || oldOne.isInvalidDecl())
+        {
+            newOne.setInvalidDecl(true);
+            return;
+        }
+        // Verify the old decl was also a type.
+        if (!(oldOne instanceof TypeDecl))
+        {
+            parser.diag(newOne.getLocation(), err_redefinition_different_kind)
+                    .addTaggedVal(newOne.getDeclName());
+            if (oldOne.getLocation().isValid())
+            {
+                parser.diag(oldOne.getLocation(), note_previous_definition);
+                newOne.setInvalidDecl(true);
+                return;
+            }
+        }
+        TypeDecl oldTD = (TypeDecl)oldOne;
+
+        QualType oldType;
+        if (oldOne instanceof TypeDefDecl)
+            oldType = ((TypeDefDecl)oldOne).getUnderlyingType();
+        else
+            oldType = context.getTypeDeclType(oldTD, null);
+
+        // If the typedef types are not identical, reject them in all languages and
+        // with any extensions enabled.
+        if (oldType.equals(newOne.getUnderlyingType())
+                && oldType.getCanonicalTypeInternal()
+                != newOne.getUnderlyingType().getCanonicalTypeInternal())
+        {
+            parser.diag(newOne.getLocation(),
+                    err_redefinition_different_typedef)
+                    .addTaggedVal(newOne.getUnderlyingType())
+                    .addTaggedVal(oldType);
+            if (oldTD.getLocation().isValid())
+                parser.diag(oldTD.getLocation(), note_previous_definition);
+            newOne.setInvalidDecl(true);
+            return;
+        }
+
+        parser.diag(newOne.getLocation(), warn_redefinition_of_typedef)
+                .addTaggedVal(newOne.getDeclName());
+        parser.diag(oldTD.getLocation(), note_previous_definition);
+    }
+
+    private NamedDecl actOnTypedefDeclarator(Scope s,
+        Declarator d,
+        DeclContext dc,
+        QualType ty,
+        LookupResult previous,
+        OutParamWrapper<Boolean> redeclaration)
+    {
+        diagnoseFunctionSpecifiers(d);
+
+        TypeDefDecl newTD = parseTypedefDecl(s, d, ty);
+        if (newTD == null) return null;
+
+        if (d.isInvalidType())
+            newTD.setInvalidDecl(true);
+
+        if (previous.getFoundDecl() != null && isDeclInScope(previous.getFoundDecl(), dc, s))
+        {
+            redeclaration.set(true);
+            mergeTypeDefDecl(newTD, previous.getFoundDecl());
+        }
+
+        return newTD;
+    }
+
     private Decl handleDeclarator(Scope s, Declarator d)
     {
-        String name = d.getName();
-        int nameLoc = d.getIdentifierLoc();
+        String name = d.getIdentifier();
+        SourceLocation nameLoc = d.getIdentifierLoc();
 
         if (name == null)
         {
             if (!d.isInvalidType())
-                parser.syntaxError(d.getDeclSpec().getRangeStart(),
-                        "declarator requires an identifier");
+            {
+                parser.diag(d.getDeclSpec().getSourceRange().getStart(),
+                        err_declarator_need_ident)
+                        .addSourceRange(d.getDeclSpec().getSourceRange())
+                        .addSourceRange(d.getSourceRange());
+            }
             return null;
         }
         // The scope passed in may not be a decl scope.  Zip up the scope tree until
@@ -873,23 +1336,27 @@ public final class Sema
             isLinkageLookup = true;
 
         lookupName(previous, s);
+        boolean redeclaration = false;
+        OutParamWrapper<Boolean> xx = new OutParamWrapper<>(redeclaration);
 
         if (d.getDeclSpec().getStorageClassSpec() == SCS.SCS_typedef)
         {
-            New = null;/** TODO actOnTypedefDeclarator(s, d, ty, previous);*/
+            New = actOnTypedefDeclarator(s, d, curContext, ty, previous, xx);
         }
         else if (ty.isFunctionType())
         {
-            New = actOnFunctionDeclarator(s, d, curContext, ty, previous);
+            New = actOnFunctionDeclarator(s, d, curContext, ty, previous, xx);
         }
         else
         {
-            New = actOnVariableDeclarator(s, d, curContext, ty, previous);
+            New = actOnVariableDeclarator(s, d, curContext, ty, previous, xx);
         }
+        redeclaration = xx.get();
+
         if (New == null)
             return null;
 
-        if (New.getDeclName() != null)
+        if (New.getDeclName() != null && !(redeclaration && New.isInvalidDecl()))
             pushOnScopeChains(New, s, true);
 
         return New;
@@ -899,16 +1366,23 @@ public final class Sema
             Declarator d,
             DeclContext dc,
             QualType ty,
-            LookupResult previous)
+            LookupResult previous,
+            OutParamWrapper<Boolean> redeclaration)
     {
         assert ty.isFunctionType();
 
-        String name = d.getName();
-        int nameLoc = d.getIdentifierLoc();
+        String name = d.getIdentifier();
+        SourceLocation nameLoc = d.getIdentifierLoc();
         StorageClass sc = getFunctionStorageClass(d);
 
-        boolean isInlineSpecified = d.getDeclSpec().isInlineSpecifier();
-        FunctionDecl newFD = new FunctionDecl(name, dc, nameLoc, ty, sc, isInlineSpecified);
+        boolean isInline = d.getDeclSpec().isInlineSpecifier();
+        boolean hasPrototype = (d.getNumTypeObjects() != 0
+                && ((FunctionTypeInfo)d.getTypeObject(0).typeInfo).hasProtoType)
+                || (!(ty.getType() instanceof FunctionType) && ty.isFunctionType());
+
+        FunctionDecl newFD = new FunctionDecl(name, dc, nameLoc,
+                ty, sc, isInline, hasPrototype);
+
         if (newFD == null) return null;
 
         // Copy the parameter declarations from the declarator D to the function
@@ -916,7 +1390,7 @@ public final class Sema
         ArrayList<ParamVarDecl> params = new ArrayList<>(16);
         if (d.isFunctionDeclarator())
         {
-            DeclaratorChunk.FunctionTypeInfo fti = d.getFunctionTypeInfo();
+            FunctionTypeInfo fti = d.getFunctionTypeInfo();
 
             // Check for C99 6.7.5.3p10 - foo(void) is a non-varargs
             // function that takes no arguments, not a function that takes a
@@ -947,33 +1421,240 @@ public final class Sema
         }
         else
         {
-
+            // TODO FunctionPrototype.
         }
 
         // Finally, we know we have the right number of parameters, install them.
         newFD.setParams(params);
-        // Perform semantic checking on the function declaration.
-        if (!newFD.isInvalidDecl())
-        {
-            // TODO
-        }
 
         // Set this FunctionDecl's range up to the right paren.
         newFD.setRangeEnd(d.getSourceRange().getEnd());
         return newFD;
+    }
+    
+    private QualType tryToFixInvalidVariablyModifiedType(QualType ty,
+            ASTContext context, boolean sizeIsNegative)
+    {
+        // TODO: 2017/3/28
+        return null;
+    }
+
+	/**
+     * We just parsed a variable 'New' which has the same name
+     * and scope as a previous declaration 'Old'.  Figure out how to resolve this
+     * situation, merging decls or emitting diagnostics as appropriate.
+     * @param newOne
+     * @param oldOne
+     */
+    private void mergeVarDecl(VarDecl newOne, Decl oldOne)
+    {
+        if (newOne.isInvalidDecl() || oldOne.isInvalidDecl())
+        {
+            newOne.setInvalidDecl(true);
+            return;
+        }
+
+        if (!(oldOne instanceof VarDecl))
+        {
+            parser.diag(newOne.getLocation(), err_redefinition_different_kind)
+                    .addTaggedVal(newOne.getDeclName());
+            parser.diag(oldOne.getLocation(), note_previous_definition);
+            newOne.setInvalidDecl(true);
+            return;
+        }
+
+        VarDecl Old = (VarDecl)oldOne;
+
+        QualType mergedTy = context.mergeType(newOne.getDeclType(), Old.getDeclType());
+        if (mergedTy.isNull())
+        {
+            parser.diag(newOne.getLocation(), err_redefinition_different_type)
+            .addTaggedVal(newOne.getDeclName());
+            parser.diag(Old.getLocation(), note_previous_definition);
+            newOne.setInvalidDecl(true);
+            return;
+        }
+
+        newOne.setDeclType(mergedTy);
+
+        // C99 6.2.2p4: Check if we have a static decl followed by a non-static.
+        if (newOne.getStorageClass() == StorageClass.SC_static &&
+                (Old.getStorageClass() == StorageClass.SC_none 
+                        || Old.hasExternalStorage())) {
+            parser.diag(newOne.getLocation(), err_static_non_static).
+                    addTaggedVal(newOne.getDeclName());
+            parser.diag(Old.getLocation(), note_previous_definition);
+            newOne.setInvalidDecl(true);
+            return;
+        }
+        // C99 6.2.2p4: 
+        //   For an identifier declared with the storage-class specifier
+        //   extern in a scope in which a prior declaration of that
+        //   identifier is visible,23) if the prior declaration specifies
+        //   internal or external linkage, the linkage of the identifier at
+        //   the later declaration is the same as the linkage specified at
+        //   the prior declaration. If no prior declaration is visible, or
+        //   if the prior declaration specifies no linkage, then the
+        //   identifier has external linkage.
+        if (newOne.hasExternalStorage() && Old.hasLinkage())
+            /* Okay */;
+        else if (newOne.getStorageClass() != StorageClass.SC_static &&
+                Old.getStorageClass() == StorageClass.SC_static) {
+            parser.diag(newOne.getLocation(), err_non_static_static).
+                    addTaggedVal(newOne.getDeclName());
+            parser.diag(Old.getLocation(), note_previous_definition);
+            return newOne.setInvalidDecl();
+        }
+
+        // Variables with external linkage are analyzed in FinalizeDeclaratorGroup.
+
+        // FIXME: The test for external storage here seems wrong? We still
+        // need to check for mismatches.
+        if (!newOne.hasExternalStorage() && !newOne.isFileVarDecl() &&
+                // Don't complain about out-of-line definitions of static members.
+                !(Old.getDeclContext().isRecord() &&
+            !newOne.getDeclContext().isRecord()))
+        {
+            parser.diag(newOne.getLocation(), err_redefinition).
+                    addTaggedVal(newOne.getDeclName());
+            parser.diag(Old.getLocation(), note_previous_definition);
+            newOne.setInvalidDecl(true);
+            return;
+        }
+
+        // Keep a chain of previous declarations.
+        // todo newOne.setPreviousDeclaration(Old);
+    }
+
+	/**
+     * This routine performs all of the type-checking required for a
+     * variable declaration once it has been built. It is used both to
+     * check variables after they have been parsed and their declarators
+     * have been translated into a declaratio
+     * @param newVD
+     * @param prevDecl
+     * @param redeclaration
+     */
+    private void checkVariableDeclaration(VarDecl newVD,
+            NamedDecl prevDecl,
+            OutParamWrapper<Boolean> redeclaration)
+    {
+        if (newVD.isInvalidDecl())
+            return;
+        QualType ty = newVD.getDeclType();
+
+        boolean isVM = ty.isVariablyModifiedType();
+        if ((isVM && newVD.hasLinkage()) || (ty.isVariableArrayType()
+            && newVD.hasGlobalStorage()))
+        {
+            // TODO
+
+            boolean SizeIsNegative = false;
+            QualType FixedTy = tryToFixInvalidVariablyModifiedType(ty, context, SizeIsNegative);
+
+            if (FixedTy.isNull() && ty.isVariableArrayType()) {
+                VariableArrayType VAT = ty.getAsVariableArrayType();
+                // FIXME: This won't give the correct result for
+                // int a[10][n];
+                SourceRange SizeRange = VAT.getSizeExpr().getSourceRange();
+
+                if (newVD.isFileVarDecl())
+                    parser.diag(newVD.getLocation(), err_vla_decl_in_file_scope)
+                            .addSourceRange(SizeRange);
+                else if (newVD.getStorageClass() == StorageClass.SC_static)
+                    parser.diag(newVD.getLocation(), err_vla_decl_has_static_storage)
+                            .addSourceRange(SizeRange);
+                else
+                    parser.diag(newVD.getLocation(), err_vla_decl_has_extern_linkage)
+                            .addSourceRange(SizeRange);
+                newVD.setInvalidDecl(true);
+                return;
+            }
+
+            if (FixedTy.isNull())
+            {
+                if (newVD.isFileVarDecl())
+                    parser.diag(newVD.getLocation(), err_vm_decl_in_file_scope);
+                else
+                    parser.diag(newVD.getLocation(), err_vm_decl_has_extern_linkage);
+                newVD.setInvalidDecl(true);
+                return;
+            }
+
+            parser.diag(newVD.getLocation(), warn_illegal_constant_array_size);
+            newVD.setDeclType(FixedTy);
+            return;
+        }
+
+        if (ty.isVoidType() && !newVD.hasExternalStorage())
+        {
+            parser.diag(newVD.getLocation(), err_typecheck_decl_incomplete_type)
+                    .addTaggedVal(ty);
+            newVD.setInvalidDecl(true);
+            return;
+        }
+        if (prevDecl != null)
+        {
+            redeclaration.set(true);
+            mergeVarDecl(newVD, prevDecl);
+        }
     }
 
     private NamedDecl actOnVariableDeclarator(Scope s,
             Declarator d,
             DeclContext dc,
             QualType ty,
-            LookupResult previous)
+            LookupResult previous,
+            OutParamWrapper<Boolean> redeclaration)
     {
-        String name = d.getName();
-        int nameLoc = d.getIdentifierLoc();
+        String name = d.getIdentifier();
+        SourceLocation nameLoc = d.getIdentifierLoc();
         SCS scsSpec = d.getDeclSpec().getStorageClassSpec();
         StorageClass sc = storageClassSpecToVarDeclStorageClass(scsSpec);
+
+        if (name == null)
+        {
+            parser.diag(d.getIdentifierLoc(), err_bad_variable_name);
+            return null;
+        }
+
+        diagnoseFunctionSpecifiers(d);
+
+        if (!dc.isRecord() && s.getFuncParent() == null)
+        {
+            // C99 6.9p2: The storage-class specifiers auto and register shall not
+            // appear in the declaration specifiers in an external declaration.
+            if (sc == StorageClass.SC_auto || sc == StorageClass.SC_register)
+            {
+                if (sc == StorageClass.SC_register)
+                    parser.diag(d.getIdentifierLoc(), err_unsupported_global_register);
+                else
+                    parser.diag(d.getIdentifierLoc(), err_typecheck_sclass_fscope);
+                d.setInvalidType(true);
+            }
+        }
+
+        if (dc.isRecord() && !curContext.isRecord())
+        {
+            // This is an out-of-line definition of a static data member.
+            if(sc == StorageClass.SC_static)
+            {
+                parser.diag(d.getDeclSpec().getStorageClassSpecLoc(),
+                        err_static_out_of_line)
+                        .addCodeModificationHint(
+                        CodeModificationHint.createRemoval(
+                        new SourceRange(d.getDeclSpec().getStorageClassSpecLoc())));
+            }else if (sc == StorageClass.SC_none)
+                sc = StorageClass.SC_static;
+        }
+
+        // Create a variable decl now.
         VarDecl newVD = new VarDecl(DeclKind.VarDecl, dc, name, nameLoc,ty, sc);
+        if (d.isInvalidType())
+            newVD.setInvalidDecl(true);
+
+        checkVariableDeclaration(newVD, previous.getFoundDecl(),
+                redeclaration);
         return newVD;
     }
 
@@ -995,25 +1676,41 @@ public final class Sema
 
     private StorageClass getFunctionStorageClass(Declarator d)
     {
+        StorageClass sc;
         switch (d.getDeclSpec().getStorageClassSpec())
         {
-            default:
-                Util.shouldNotReachHere("Unknown storage class!");
+            default: assert false :"Unknown storage class!";
             case SCS_auto:
             case SCS_register:
-                parser.syntaxError(d.getDeclSpec().getStorageClassSpecLoc(),
-                        "illegal storage class on function");
+                parser.diag(d.getDeclSpec().getStorageClassSpecLoc(),
+                        err_typecheck_sclass_func);
                 d.setInvalidType(true);
                 break;
-            case SCS_unspecified:break;
-            case SCS_extern: return StorageClass.SC_extern;
+            case SCS_unspecified:
+                sc = StorageClass.SC_none;
+            case SCS_extern:
             case SCS_static:
             {
-                return StorageClass.SC_static;
+                if (curContext.getLookupContext().isFunction())
+                {
+                    // C99 6.7.1p5:
+                    //   The declaration of an identifier for a function that has
+                    //   block scope shall have no explicit storage-class specifier
+                    //   other than extern
+                    parser.diag(d.getDeclSpec().getStorageClassSpecLoc(),
+                            err_static_block_func);
+                    sc = StorageClass.SC_none;
+                }
+                else
+                {
+                    sc = StorageClass.SC_static;
+                }
+                break;
             }
         }
         // No explicit storage class has already been returned
-        return StorageClass.SC_none;
+        sc = StorageClass.SC_none;
+        return sc;
     }
 
     /**
@@ -1026,7 +1723,7 @@ public final class Sema
         // Determine the jlang.type of the declarator.
         DeclSpec ds = d.getDeclSpec();
         int declLoc = d.getIdentifierLoc();
-        if (declLoc == Position.NOPOS)
+        if (declLoc == SourceLocation.NOPOS)
             declLoc = ds.getSourceRange().getStart();
 
         QualType result = null;
@@ -1305,17 +2002,21 @@ public final class Sema
         parser.syntaxError(shadowedDecl.getLocation(), "previous declaration is here");
     }
 
-    public ActionResult<Stmt> actOnDeclStmt(ArrayList<Decl> decls,
-            int declStart, int declEnd)
+    public ActionResult<Stmt> actOnDeclStmt(
+            ArrayList<Decl> decls,
+            SourceLocation declStart,
+            SourceLocation declEnd)
     {
         if (decls.isEmpty())
             return null;
         return new ActionResult<Stmt>(new DeclStmt(decls, declStart, declEnd));
     }
 
-    public LabelDecl lookupOrCreateLabel(String name, int loc)
+    public LabelDecl lookupOrCreateLabel(
+            String name,
+            SourceLocation loc)
     {
-        NamedDecl res = lookupSingleName(curScope, name, loc, LookupLabelName);
+        NamedDecl res = lookupName(curScope, name, loc, LookupLabelName);
         if (res != null && res.getDeclContext() != curContext)
             res = null;
         if (res == null)
@@ -1329,8 +2030,11 @@ public final class Sema
         return (LabelDecl) res;
     }
 
-    public ActionResult<Stmt> actOnLabelStmt(int loc, LabelDecl ld,
-            int colonLoc, ActionResult<Stmt> stmt)
+    public ActionResult<Stmt> actOnLabelStmt(
+            SourceLocation loc,
+            LabelDecl ld,
+            SourceLocation colonLoc,
+            ActionResult<Stmt> stmt)
     {
         // if the label was multiple defined, reject it and issue diagnostic
         if (ld.stmt != null)
@@ -1345,10 +2049,13 @@ public final class Sema
         return new ActionResult<Stmt>(s);
     }
 
-    public ActionResult<Stmt> actOnCaseStmt(int caseLoc, Expr expr,
-            int colonLoc)
+    public ActionResult<Stmt> actOnCaseStmt(
+            SourceLocation caseLoc,
+            Expr expr,
+            SourceLocation colonLoc)
     {
         assert expr != null : "missing expression within case statement";
+
         if (verifyIntegerConstantExpression(expr))
             return null;
 
@@ -1357,6 +2064,50 @@ public final class Sema
 
     private boolean verifyIntegerConstantExpression(Expr expr)
     {
+        APSInt result = new APSInt(32);
+        OutParamWrapper<APSInt> xx = new OutParamWrapper<>();
+        return verifyIntegerConstantExpression(expr, xx);
+    }
+
+    private boolean verifyIntegerConstantExpression(Expr expr,
+            OutParamWrapper<APSInt> result)
+    {
+        OutParamWrapper<APSInt> iceResult = new OutParamWrapper<>();
+
+        if (expr.isIntegerConstantExpr(iceResult, context))
+        {
+            if (result.get() != null)
+                result.set(iceResult.get());
+            return false;
+        }
+        Expr.EvalResult evalResult = new Expr.EvalResult();
+        if (!expr.evaluate(evalResult) || !evalResult.val.isInt()
+                || evalResult.hasSideEffects())
+        {
+            parser.diag(expr.getExprLocation(), err_expr_not_ice).
+                    addSourceRange(expr.getSourceRange());
+            if (evalResult.diag >= 0)
+            {
+                if (evalResult.diag != note_invalid_subexpr_in_ice
+                        || !expr.ignoreParens().equals(evalResult.
+                        diagExpr.ignoreParens()))
+                {
+                    parser.diag(evalResult.diagLoc, evalResult.diag);
+                }
+            }
+            return true;
+        }
+
+        parser.diag(expr.getExprLocation(), ext_expr_not_ice)
+                .addSourceRange(expr.getSourceRange());
+
+        if (evalResult.diag >= 0 && Diagnostics.getDiagnosticLevel(ext_expr_not_ice)
+                != Diagnostics.Level.Ignored)
+            parser.diag(evalResult.diagLoc, evalResult.diag);
+
+        if (result.get() != null)
+            result.set(evalResult.val.getInt());
+
         return false;
     }
 
@@ -1367,30 +2118,62 @@ public final class Sema
         cs.subStmt = subStmt;
     }
 
-    public ActionResult<Stmt> actOnDefaultStmt(int defaultLoc, int colonLoc,
+    public ActionResult<Stmt> actOnDefaultStmt(
+            SourceLocation defaultLoc,
+            SourceLocation colonLoc,
             Stmt subStmt)
     {
         return new ActionResult<>(
                 new DefaultStmt(defaultLoc, colonLoc, subStmt));
     }
-
-    public ActionResult<Stmt> actOnCompoundStmtBody(int loc, List<Stmt> stmts,
-            boolean isStmtExpr)
+    
+    private void diagnoseUnusedExprResult(Stmt stmt)
     {
-        for (int i = 0; i < stmts.size(); i++)
-        {
-            Stmt elem = stmts.get(i);
-            if (isStmtExpr && i == stmts.size() - 1)
-                continue;
-
-            // TODO diagnose the unused expression.
-        }
-
-        return new ActionResult<>(new CompoundStmt(stmts, loc));
+        // TODO: 2017/3/28
     }
 
-    public ActionResult<Stmt> actOnIfStmt(int ifLoc,
-            ActionResult<Expr> condExpr, Stmt thenStmt, Stmt elseStmt)
+    public ActionResult<Stmt> actOnCompoundStmtBody(
+            SourceLocation l,
+            SourceLocation r,
+            List<Stmt> stmts,
+            boolean isStmtExpr)
+    {
+        int numElts = stmts.size();
+
+        // If we're in C89 mode, check that we don't have any decls after stmts.  If
+        // so, emit an extension diagnostic.
+        if (!getLangOptions().c99)
+        {
+            int i = 0;
+            // Skip over all declaration.
+            for (; i < numElts && (stmts.get(i) instanceof DeclStmt); i++);
+
+            // We found the end of the list or a statement.  Scan for another declstmt.
+            for (; i < numElts && !(stmts.get(i) instanceof DeclStmt); i++);
+
+            if (i != numElts)
+            {
+                Decl d = ((DeclStmt)stmts.get(i)).iterator().next();
+                parser.diag(d.getLocation(), ext_mixed_decls_code);
+            }
+        }
+
+        // Warn about unused expressions in statements.
+        for (int i = 0; i < numElts; i++)
+        {
+            if (isStmtExpr && i == numElts - 1)
+                continue;
+            diagnoseUnusedExprResult(stmts.get(i));
+        }
+
+        return new ActionResult<>(new CompoundStmt(stmts, l, r));
+    }
+
+    public ActionResult<Stmt> actOnIfStmt(
+            SourceLocation ifLoc,
+            ActionResult<Expr> condExpr,
+            Stmt thenStmt,
+            Stmt elseStmt)
     {
         if (condExpr.get() == null)
             return stmtError();
@@ -1405,16 +2188,15 @@ public final class Sema
      * @param expr
      * @return
      */
-    private ActionResult<Expr> convertToIntegerOrEnumerationType(int switchLoc,
+    private ActionResult<Expr> convertToIntegerOrEnumerationType(
+            SourceLocation switchLoc,
             Expr expr)
     {
         QualType t = expr.getType();
         // if the subExpr already is a integral or enumeration jlang.type, we got it.
         if (!t.getType().isIntegralOrEnumerationType())
         {
-            // TODO report error the condition of switch statement requires integer.
-            parser.syntaxError(switchLoc,
-                    "the condition of switch statement requires integer");
+            parser.diag(switchLoc, err_typecheck_expect_scalar_operand);
         }
         return new ActionResult<>(expr);
     }
@@ -1514,7 +2296,7 @@ public final class Sema
         }
 
         return new ActionResult<>(
-                new ImplicitCastExpr(ty, valueKind, expr, kind, expr.getLocation()));
+                new ImplicitCastExpr(ty, valueKind, expr, kind, expr.getExprLocation()));
     }
 
     public ActionResult<Stmt> actOnStartOfSwitchStmt(int switchLoc,
@@ -1550,15 +2332,10 @@ public final class Sema
         return functionScopes.peek();
     }
 
-    public BlockScopeInfo getCurBlock()
-    {
-        if (functionScopes.isEmpty())
-            return null;
-        return (BlockScopeInfo) functionScopes.peek();
-    }
-
-    public ActionResult<Stmt> actOnFinishSwitchStmt(int switchLoc,
-            Stmt switchStmt, Stmt body)
+    public ActionResult<Stmt> actOnFinishSwitchStmt(
+            SourceLocation switchLoc,
+            Stmt switchStmt,
+            Stmt body)
     {
         assert (switchStmt instanceof SwitchStmt) : "stmt must be switch stmt.";
         SwitchStmt ss = (SwitchStmt) switchStmt;
@@ -1611,9 +2388,9 @@ public final class Sema
                 // (C99 6.8.4.2p3) - get that value now.
                 CaseStmt cs = (CaseStmt) sc;
                 Expr lo = cs.getCondExpr();
-                APSInt loVal = lo.evaluateKownConstInt();
+                APSInt loVal = lo.evaluateKnownConstInt();
                 convertIntegerToTypeWarnOnOverflow(loVal, condWidth,
-                        condIsSigned, lo.getLocation(),
+                        condIsSigned, lo.getExprLocation(),
                         "warn case value overflow");
 
                 // if the case constant is not the same jlang.type as the condition, insert
@@ -1695,7 +2472,7 @@ public final class Sema
             // complain if we have a constant condition and we didn't find a match.
             if (!caseListErroneous && shouldCheckConstantCond)
             {
-                parser.syntaxWarning(condExpr.getLocation(),
+                parser.syntaxWarning(condExpr.getExprLocation(),
                         "missing case for condition",
                         constantCondValue.toString(10));
             }
@@ -1782,16 +2559,16 @@ public final class Sema
                     case 0:
                         break;
                     case 1:
-                        parser.syntaxWarning(condExpr.getLocation(),
+                        parser.syntaxWarning(condExpr.getExprLocation(),
                                 "missing one case", unhandledNames.get(0));
                         break;
                     case 2:
-                        parser.syntaxWarning(condExpr.getLocation(),
+                        parser.syntaxWarning(condExpr.getExprLocation(),
                                 "missing cases", unhandledNames.get(0),
                                 unhandledNames.get(1));
                         break;
                     default:
-                        parser.syntaxWarning(condExpr.getLocation(),
+                        parser.syntaxWarning(condExpr.getExprLocation(),
                                 "missing cases", unhandledNames.get(0),
                                 unhandledNames.get(1), unhandledNames.get(2));
                         break;
@@ -1817,8 +2594,9 @@ public final class Sema
     }
 
     private void convertIntegerToTypeWarnOnOverflow(APSInt loVal,
-            long condWidth, boolean condIsSigned, int loc, String dign)
+            long condWidth, boolean condIsSigned, SourceLocation loc, String dign)
     {
+        // TODO: 2017/3/28
     }
 
     /**
@@ -1839,7 +2617,10 @@ public final class Sema
         return expr.getType();
     }
 
-    public ActionResult<Stmt> actOnWhileStmt(int whileLoc, Expr cond, Stmt body)
+    public ActionResult<Stmt> actOnWhileStmt(
+            SourceLocation whileLoc,
+            Expr cond,
+            Stmt body)
     {
         if (cond == null)
             return stmtError();
@@ -1847,7 +2628,7 @@ public final class Sema
         return new ActionResult<>(new WhileStmt(cond, body, whileLoc));
     }
 
-    private ActionResult<Expr> checkBooleanCondition(Expr cond, int loc)
+    private ActionResult<Expr> checkBooleanCondition(Expr cond, SourceLocation loc)
     {
         ActionResult<Expr> result;
         result = defaultFunctionArrayConversion(cond);
@@ -1875,13 +2656,18 @@ public final class Sema
      * @param expr The expression to be evaluated.
      * @param loc  The location associated with the condition.
      */
-    private void checkImplicitConversion(Expr expr, int loc)
+    private void checkImplicitConversion(Expr expr, SourceLocation loc)
     {
-
+        // TODO: 2017/3/28
     }
 
-    public ActionResult<Stmt> actOnDoStmt(int doLoc, Stmt body, int whileLoc,
-            int lParenLoc, Expr cond, int rParenLoc)
+    public ActionResult<Stmt> actOnDoStmt(
+            SourceLocation doLoc,
+            Stmt body,
+            SourceLocation whileLoc,
+            SourceLocation lParenLoc,
+            Expr cond,
+            SourceLocation rParenLoc)
     {
         assert cond != null : "ActOnDoStmt(): missing expression";
 
@@ -1944,7 +2730,7 @@ public final class Sema
                     && tag instanceof EnumDecl)
             {
                 parser.syntaxError(ds.getSourceRange().getStart(),
-                        "typedef requires a getName");
+                        "typedef requires a getIdentifier");
                 return tag;
             }
 
@@ -1955,7 +2741,7 @@ public final class Sema
 
         // We're going to complain about a bunch of spurious specifiers;
         // only do this if we're declaring a tag, because otherwise we
-        // should be getting diag::ext_no_declarators.
+        // should be getting ext_no_declarators.
         if (emittedWarning || (tagD != null && tagD.isInvalidDecl()))
             return tagD;
 
@@ -2101,7 +2887,7 @@ public final class Sema
         return new ActionResult<>(e);
     }
 
-    public ActionResult<Expr> actOnBooleanCondition(Scope scope, int loc,
+    public ActionResult<Expr> actOnBooleanCondition(Scope scope, SourceLocation loc,
             Expr expr)
     {
         if (expr == null)
@@ -2110,8 +2896,13 @@ public final class Sema
         return checkBooleanCondition(expr, loc);
     }
 
-    public ActionResult<Stmt> actOnForStmt(int forLoc, int lParenLoc,
-            Stmt firstPart, Expr secondPart, Expr thirdPart, int rParenLoc,
+    public ActionResult<Stmt> actOnForStmt(
+            SourceLocation forLoc,
+            SourceLocation lParenLoc,
+            Stmt firstPart,
+            Expr secondPart,
+            Expr thirdPart,
+            SourceLocation rParenLoc,
             Stmt body)
     {
         if (firstPart instanceof DeclStmt || firstPart == null)
@@ -2140,7 +2931,9 @@ public final class Sema
         return stmtError();
     }
 
-    public ActionResult<Stmt> actOnGotoStmt(int gotoLoc, int idLoc,
+    public ActionResult<Stmt> actOnGotoStmt(
+            SourceLocation gotoLoc,
+            SourceLocation idLoc,
             LabelDecl ld)
     {
         getCurFunction().setHasBranchIntoScope();
@@ -2148,7 +2941,9 @@ public final class Sema
         return new ActionResult<>(new GotoStmt(ld, gotoLoc, idLoc));
     }
 
-    public ActionResult<Stmt> actOnContinueStmt(int continueLoc, Scope curScope)
+    public ActionResult<Stmt> actOnContinueStmt(
+            SourceLocation continueLoc,
+            Scope curScope)
     {
         Scope s = curScope.getContinueParent();
         if (s == null)
@@ -2161,7 +2956,9 @@ public final class Sema
         return new ActionResult<>(new ContinueStmt(continueLoc));
     }
 
-    public ActionResult<Stmt> actOnBreakStmt(int breakLoc, Scope curScope)
+    public ActionResult<Stmt> actOnBreakStmt(
+            SourceLocation breakLoc,
+            Scope curScope)
     {
         Scope s = curScope.getBreakParent();
         if (s == null)
@@ -2194,7 +2991,9 @@ public final class Sema
         return (FunctionDecl) dc;
     }
 
-    public ActionResult<Stmt> actOnReturnStmt(int returnLoc, Expr e)
+    public ActionResult<Stmt> actOnReturnStmt(
+            SourceLocation returnLoc,
+            Expr e)
     {
         final FunctionDecl fd = getCurFunctionDecl();
         QualType retType;
@@ -2229,7 +3028,7 @@ public final class Sema
                             CK_ToVoid).get();
                 }
 
-                parser.syntaxError(e.getLocation(), diag);
+                parser.syntaxError(e.getExprLocation(), diag);
 
                 checkImplicitConversion(e, returnLoc);
             }
@@ -2293,7 +3092,7 @@ public final class Sema
         }
         if (resTy != srcFrom)
             from = new ImplicitCastExpr(resTy, EVK_RValue, from,
-                    cast, from.getLocation());
+                    cast, from.getExprLocation());
 
         if (toType.isPointerType() && resTy.isPointerType())
         {
@@ -2302,7 +3101,7 @@ public final class Sema
         }
         if (!resTy.isCompatible(toType))
             from = new ImplicitCastExpr(toType, EVK_RValue, from,
-                    cast, from.getLocation());
+                    cast, from.getExprLocation());
         return new ActionResult<>(from);
     }
 
@@ -2316,6 +3115,7 @@ public final class Sema
     private void checkReturnStackAddress(Expr retValExpr, QualType retType,
             int returnLoc)
     {
+        // TODO: 2017/3/28
     }
 
     private ActionResult<Expr> ignoreValueConversion(Expr e)
@@ -2329,7 +3129,7 @@ public final class Sema
         }
 
         if (!e.getType().isVoidType())
-            parser.syntaxError(e.getLocation(), "imcomplete jlang.type ",
+            parser.syntaxError(e.getExprLocation(), "imcomplete jlang.type ",
                     e.getType().toString(), " where required complete jlang.type");
         return new ActionResult<>(e);
     }
@@ -2349,8 +3149,11 @@ public final class Sema
      * Binary Operators.  'Tok' is the token for the operator.
      * @return
      */
-    public ActionResult<Expr> actOnBinOp(int tokLoc,
-            int tokenKind, Expr lhs, Expr rhs)
+    public ActionResult<Expr> actOnBinOp(
+            SourceLocation tokLoc,
+            int tokenKind,
+            Expr lhs,
+            Expr rhs)
     {
         BinaryOperatorKind operatorKind = convertTokenKindToBinaryOpcode(tokenKind);
         assert lhs!= null:"actOnBinOp(): missing lhs!";
@@ -2372,7 +3175,7 @@ public final class Sema
      * @return
      */
     public ActionResult<Expr> buildBinOp(
-            int opLoc,
+            SourceLocation opLoc,
             BinaryOperatorKind opc,
             Expr lhs,
             Expr rhs)
@@ -2520,8 +3323,8 @@ public final class Sema
      * @return
      */
     public ActionResult<Expr> actOnConditionalOp(
-            int quesLoc,
-            int colonLoc,
+            SourceLocation quesLoc,
+            SourceLocation colonLoc,
             Expr condExpr,
             Expr lhsExpr,
             Expr rhsExpr)
@@ -2574,8 +3377,9 @@ public final class Sema
             ActionResult<Expr> lhs,
             ActionResult<Expr> rhs,
             ExprValueKind kind,
-            int quesLoc)
+            SourceLocation quesLoc)
     {
+        // TODO: 2017/3/28
         return null;
     }
 
@@ -2590,9 +3394,8 @@ public final class Sema
     private QualType checkAssignmentOperands(
             Expr lhs,
             ActionResult<Expr> rhs,
-            int loc,
-            QualType compoundType
-            )
+            SourceLocation loc,
+            QualType compoundType)
     {
         return null;
     }
@@ -2817,7 +3620,7 @@ public final class Sema
     }
 
     private boolean checkArithmeticOpPointerOperand(
-            int loc, Expr operand)
+            SourceLocation loc, Expr operand)
     {
         if (!operand.getType().isPointerType())
             return true;
@@ -2891,9 +3694,8 @@ public final class Sema
      * @return Return true if {@code t} is not a complete jlang.type, false otherwise.
      */
     private boolean requireCompleteType(
-            int loc,
-            QualType t
-            )
+            SourceLocation loc,
+            QualType t)
     {
         if (!t.isIncompleteType())
             return false;
@@ -2914,7 +3716,7 @@ public final class Sema
         // produce a error.
         if (tag != null && !tag.getDecl().isInvalidDecl())
             parser.syntaxError(tag.getDecl().getLocation(),
-                    tag.isDefined()?"definition of %s is not complete until the closing '}'":
+                    tag.isBeingDefined()?"definition of %s is not complete until the closing '}'":
                             "forward declaration of %s",
                     new QualType(tag).toString());
         return true;
@@ -2969,7 +3771,7 @@ public final class Sema
                 UnaryExpr negRex = new UnaryExpr(iExpr, UO_Minus,
                         iExpr.getType(),
                         EVK_RValue,
-                        iExpr.getLocation());
+                        iExpr.getExprLocation());
                 checkArrayAccess(lhs.get().ignoreParenCasts(), negRex);
                 if (compLHSTy != null) compLHSTy.set(lhs.get().getType());
                 return lhs.get().getType();
@@ -3067,17 +3869,18 @@ public final class Sema
 
     private QualType checkComparisonOperands(ActionResult<Expr> lhs,
             ActionResult<Expr> rhs,
-            int opLoc,
+            SourceLocation opLoc,
             BinaryOperatorKind opc,
             boolean isRelational)
     {
+        // TODO: 2017/3/28
         return null;
     }
 
     private QualType checkBitwiseOperands(
             ActionResult<Expr> lhs,
             ActionResult<Expr> rhs,
-            int opLoc)
+            SourceLocation opLoc)
     {
         return checkBitwiseOperands(lhs, rhs, opLoc, false);
     }
@@ -3085,28 +3888,27 @@ public final class Sema
     private QualType checkBitwiseOperands(
             ActionResult<Expr> lhs,
             ActionResult<Expr> rhs,
-            int opLoc,
-            boolean isCompAssign
-    )
+            SourceLocation opLoc,
+            boolean isCompAssign)
     {
+        // TODO: 2017/3/28
         return null;
     }
 
-    @Contract(value = "_, _, _, _ -> null", pure = true)
     private QualType checkLogicalOperands(
             ActionResult<Expr> lhs,
             ActionResult<Expr> rhs,
-            int opLoc,
+            SourceLocation opLoc,
             BinaryOperatorKind opc)
     {
+        // TODO: 2017/3/28
         return null;
     }
 
-    @Contract(value = "_, _, _ -> null", pure = true)
     private QualType checkCommaOperands(
             ActionResult<Expr> lhs,
             ActionResult<Expr> rhs,
-            int loc)
+            SourceLocation loc)
     {
         return null;
     }
@@ -3218,7 +4020,7 @@ public final class Sema
      * @return
      */
     public ActionResult<Expr> actOnUnaryOp(
-            int opLoc,
+            SourceLocation opLoc,
             int tokenKind,
             Expr inputExpr)
     {
@@ -3233,7 +4035,9 @@ public final class Sema
      * @param opLoc
      * @return
      */
-    private QualType checkIndirectOperand(Expr op, OutParamWrapper<ExprValueKind> vk, int opLoc)
+    private QualType checkIndirectOperand(Expr op,
+            OutParamWrapper<ExprValueKind> vk,
+            SourceLocation opLoc)
     {
         ActionResult<Expr> convRes = usualUnaryConversion(op);
         if (convRes.isInvalid())
@@ -3270,7 +4074,7 @@ public final class Sema
     private QualType checkInrementDecrementOperand(
             Expr op,
             OutParamWrapper<ExprValueKind> vk,
-            int opLoc,
+            SourceLocation opLoc,
             boolean isIncre,
             boolean isPrefix)
     {
@@ -3329,7 +4133,7 @@ public final class Sema
      * @param oploc
      * @return
      */
-    private boolean checkForModifiableLvalue(Expr e, int oploc)
+    private boolean checkForModifiableLvalue(Expr e, SourceLocation oploc)
     {
         // C99 6.3.2.1: an lvalue that does not have array jlang.type,
         // does not have an incomplete jlang.type, does not have a const-qualified jlang.type,
@@ -3363,7 +4167,7 @@ public final class Sema
      * @param opLoc
      * @return
      */
-    private QualType checkAddressOfOperand(Expr origOp, int opLoc)
+    private QualType checkAddressOfOperand(Expr origOp, SourceLocation opLoc)
     {
         // Make sure to ignore parentheses in subsequnet checks
         Expr op = origOp.ignoreParens();
@@ -3388,26 +4192,154 @@ public final class Sema
     {
         // C99 6.7.6: Type names have no identifier.  This is already validated by
         // the jlang.parser.
-        assert d.getName() == null:"Type must have no identifier!";
+        assert d.getIdentifier() == null:"Type must have no identifier!";
         // TODO
         return null;
+    }
+
+    public ActionResult<Expr> actOnCastOfParenListExpr(
+            Scope s,
+            SourceLocation lparenLoc,
+            SourceLocation rparenLoc,
+            Expr expr,
+            QualType castTy)
+    {
+        ParenListExpr pe = (ParenListExpr)expr;
+
+        expr = maybeConvertParenListExprToParenExpr(expr).get();
+        return actOnCastExpr(s, lparenLoc, castTy, rparenLoc, expr);
+    }
+
+	/**
+     * Check type constraints for casting between types.
+     * @param range
+     * @param castTy
+     * @param expr
+     * @param kind
+     * @return
+     */
+    private boolean checkCastTypes(
+            SourceRange range,
+            QualType castTy,
+            Expr expr,
+            OutParamWrapper<CastKind> kind)
+    {
+        expr = defaultFunctionArrayConversion(expr).get();
+
+        // C99 6.5.4p2: the cast type needs to be void or scalar and the expression
+        // type needs to be scalar.
+        if (castTy.isVoidType())
+        {
+            // Cast to void allows any expr type.
+        }
+        else if (!castTy.isScalarType())
+        {
+            if (castTy.getCanonicalTypeInternal().getUnQualifiedType().
+                    equals(expr.getType().getUnQualifiedType().getCanonicalTypeInternal())
+                    && (castTy.isStructureType() || castTy.isUnionType()))
+            {
+                // GCC struct/union extension: allow cast to self.
+                parser.diag(range.getStart(), ext_typecheck_cast_nonscalar)
+                        .addTaggedVal(castTy)
+                        .addSourceRange(expr.getSourceRange());
+                kind.set(CK_NoOp);
+            }
+            else if (castTy.isUnionType())
+            {
+                // GCC cast to union extension
+                RecordDecl rd = ((RecordType)castTy.getType()).getDecl();
+                int i = 0, e = rd.getNumFields();
+                for (; i < e; i++)
+                {
+                    FieldDecl fd = rd.getDeclAt(i);
+                    if (fd.getDeclType().getCanonicalTypeInternal().getUnQualifiedType().
+                            equals(expr.getType().getCanonicalTypeInternal().getUnQualifiedType()))
+                    {
+                        parser.diag(range.getStart(), ext_typecheck_cast_to_union)
+                                .addSourceRange(expr.getSourceRange());
+                        break;
+                    }
+                }
+                if (i == e)
+                {
+                    parser.diag(range.getStart(), err_typecheck_cast_to_union_no_type)
+                            .addTaggedVal(expr.getType())
+                            .addSourceRange(expr.getSourceRange());
+                    return true;
+                }
+                kind.set(CK_ToUnion);
+            }
+            else
+            {
+                // Reject any other conversions to non-scalar types.
+                parser.diag(range.getStart(), err_typecheck_cond_expect_scalar)
+                .addTaggedVal(castTy)
+                .addSourceRange(expr.getSourceRange());
+                return true;
+            }
+        }
+        else if (!expr.getType().isScalarType())
+        {
+            parser.diag(expr.getLocStart(),
+                    err_typecheck_expect_scalar_operand)
+            .addTaggedVal(expr.getType())
+            .addSourceRange(expr.getSourceRange());
+            return true;
+        }
+        else if (!castTy.isArithmeticType())
+        {
+            QualType castExprType = expr.getType();
+            if (castExprType.getIntegerType() == null
+                    && castExprType.isArithmeticType())
+            {
+                parser.diag(expr.getLocStart(),
+                        err_cast_pointer_from_non_pointer_int)
+                        .addTaggedVal(castExprType)
+                        .addSourceRange(expr.getSourceRange());
+                return true;
+            }
+        }
+        else if (!expr.getType().isArithmeticType())
+        {
+            if (!castTy.isIntegerType() && castTy.isArithmeticType())
+            {
+                parser.diag(expr.getLocStart(),
+                        err_cast_pointer_to_non_pointer_int)
+                        .addTaggedVal(castTy)
+                        .addSourceRange(expr.getSourceRange());
+                return true;
+            }
+        }
+        return false;
     }
 
     public ActionResult<Expr> actOnCastExpr(
             Scope s,
-            int lParenLoc,
-            Declarator d,
-            OutParamWrapper<QualType> castTy,
-            OutParamWrapper<Integer> rPrenLoc,
-            Expr expr
-            )
+            SourceLocation lParenLoc,
+            QualType castTy,
+            SourceLocation rParenLoc,
+            Expr castExpr)
     {
-        // TODO
-        return null;
+        CastKind kind = CastKind.CK_Invalid;
+
+        assert castTy != null && castExpr != null :
+                "actOnCastExpr(): missing type or castExpr";
+        if (castExpr instanceof ParenListExpr)
+            return actOnCastOfParenListExpr(s, lParenLoc, rParenLoc, castExpr, castTy);
+        OutParamWrapper<CastKind> x = new OutParamWrapper<>(kind);
+        if (checkCastTypes(new SourceRange(lParenLoc, rParenLoc), castTy, castExpr, x))
+            return exprError();
+
+        kind = x.get();
+        return new ActionResult<>(new ExplicitCastExpr(castTy,
+                castExpr, kind,
+                lParenLoc, rParenLoc));
     }
 
-    public ActionResult<Expr> actOnParenOrParenList
-            (int lParenLoc, int rParenLoc, ArrayList<Expr> exprs)
+    public ActionResult<Expr> actOnParenOrParenList(
+            SourceLocation lParenLoc,
+            SourceLocation rParenLoc,
+            ArrayList<Expr> exprs)
     {
         assert exprs!=null&& !exprs.isEmpty()
                 : "actOnParenOrParenList missing expression list!";
@@ -3423,8 +4355,10 @@ public final class Sema
 
     }
 
-    public ActionResult<Expr> actOnParenExpr
-            (int lParenLoc, int rParenLoc, Expr expr)
+    public ActionResult<Expr> actOnParenExpr(
+            SourceLocation lParenLoc,
+            SourceLocation rParenLoc,
+            Expr expr)
     {
         assert expr != null:"actOnParenExpr() missing expression.";
 
@@ -3432,8 +4366,10 @@ public final class Sema
     }
 
     public ActionResult<Expr> actOnArraySubscriptExpr(
-            Expr base, int lParenLoc,
-            Expr idx, int rParenLoc)
+            Expr base,
+            SourceLocation lParenLoc,
+            Expr idx,
+            SourceLocation rParenLoc)
     {
         // Since this might be a postfix expression, get rid of ParenListExprs.
         ActionResult<Expr> res = maybeConvertParenListExprToParenExpr(base);
@@ -3482,7 +4418,7 @@ public final class Sema
             // wasn't promoted because of the C90 rule that doesn't
             // allow promoting non-lvalue arrays.  Warn, then
             // force the promotion here.
-            parser.syntaxError(lhsExpr.getLocation(),
+            parser.syntaxError(lhsExpr.getExprLocation(),
                     "ISO C90 does not allow subscripting non-lvalue array");
             lhsExpr = implicitCastExprToType(lhsExpr,
                     QualType.getArrayDecayedType(lhsTy),
@@ -3497,7 +4433,7 @@ public final class Sema
         else if(rhsTy.isConstantArrayType())
         {
             // Same as previous, except for 123[f().a] case
-            parser.syntaxError(rhsExpr.getLocation(),
+            parser.syntaxError(rhsExpr.getExprLocation(),
                     "ISO C90 does not allow subscripting non-lvalue array");
             rhsExpr = implicitCastExprToType(rhsExpr,
                     QualType.getArrayDecayedType(rhsTy),
@@ -3528,7 +4464,7 @@ public final class Sema
         }
         if (resultTy.isFunctionType())
         {
-            parser.syntaxError(baseExpr.getLocation(),
+            parser.syntaxError(baseExpr.getExprLocation(),
                     "subscript of pointer to function jlang.type %s",
                     resultTy.toString());
             return exprError();
@@ -3572,10 +4508,9 @@ public final class Sema
      */
     public ActionResult<Expr> actOnCallExpr(
             Expr fn,
-            int lParenLoc,
+            SourceLocation lParenLoc,
             ArrayList<Expr> args,
-            int rParenLoc
-            )
+            SourceLocation rParenLoc)
     {
         ActionResult<Expr> result = maybeConvertParenListExprToParenExpr(fn);
         if (result.isInvalid()) return exprError();
@@ -3612,8 +4547,12 @@ public final class Sema
      * @param rParenLoc
      * @return
      */
-    private ActionResult<Expr> buildResolvedCallExpr(Expr fn, NamedDecl ndecl,
-            int lParenLoc, ArrayList<Expr> args, int rParenLoc)
+    private ActionResult<Expr> buildResolvedCallExpr(
+            Expr fn,
+            NamedDecl ndecl,
+            SourceLocation lParenLoc,
+            ArrayList<Expr> args,
+            SourceLocation rParenLoc)
     {
         FunctionDecl fnDecl = (FunctionDecl)ndecl;
         ActionResult<Expr> res = usualUnaryConversion(fn);
@@ -3651,7 +4590,7 @@ public final class Sema
 
         // check for a valid return jlang.type.
         if (checkCallReturnType(funcTy.getReturnType(),
-                fn.getLocation(), call, fnDecl))
+                fn.getExprLocation(), call, fnDecl))
             return exprError();
 
         call.setType(funcTy.getCallReturnType());
@@ -3690,7 +4629,7 @@ public final class Sema
                         arg = argE.get();
                     }
 
-                    if (requireCompleteType(arg.getLocation(),
+                    if (requireCompleteType(arg.getExprLocation(),
                             arg.getType()))
                         return exprError();
 
@@ -3718,7 +4657,7 @@ public final class Sema
     public ActionResult<Expr> actOnMemberAccessExpr(
             Scope s,
             Expr base,
-            int opLoc,
+            SourceLocation opLoc,
             int opKind,
             String name)
     {
@@ -3730,7 +4669,7 @@ public final class Sema
 
         LookupResult res = new LookupResult(this, name, opLoc, LookupMemberName);
         ActionResult<Expr> baseResult = new ActionResult<>(base);
-        OutParamWrapper<ActionResult> x = new OutParamWrapper<>(baseResult);
+        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(baseResult);
         result = lookupMemberExpr(res, x, isArrow, opLoc);
         baseResult = x.get();
 
@@ -3742,17 +4681,21 @@ public final class Sema
         return result;
     }
 
-    private ActionResult<Expr> buildMemberReference(Expr base,
-            QualType type, int opLoc, boolean isArrow,
+    private ActionResult<Expr> buildMemberReference(
+            Expr base,
+            QualType type,
+            SourceLocation opLoc,
+            boolean isArrow,
             LookupResult res)
     {
-
+        // TODO: 2017/3/28
     }
 
     private ActionResult<Expr> lookupMemberExpr(
             LookupResult res,
             OutParamWrapper<ActionResult<Expr>> baseExpr,
-            boolean isArrow, int opLoc)
+            boolean isArrow,
+            SourceLocation opLoc)
     {
         assert baseExpr.get().get() != null:"no base expressin!";
 
@@ -3772,7 +4715,7 @@ public final class Sema
 
         QualType baseType = baseExpr.get().get().getType();
         String memberName = res.getLookupName();
-        int memberLoc = res.getNameLoc();
+        SourceLocation memberLoc = res.getNameLoc();
 
         // For later jlang.type-checking purposes, turn arrow accesses into dot
         // accesses.
@@ -3797,7 +4740,7 @@ public final class Sema
         {
             RecordType rty = baseType.getRecordType();
             if (lookupMemberExprInRecord(res,
-                    baseExpr.get().get().getLocation(),
+                    baseExpr.get().get().getExprLocation(),
                     rty, opLoc))
                 return exprError();
 
@@ -3843,12 +4786,15 @@ public final class Sema
             t = t.clearQualified();
 
         return new ActionResult<>(
-                new ImplicitCastExpr(t, EVK_RValue, e, CK_LValueToRValue, e.getLocation())
+                new ImplicitCastExpr(t, EVK_RValue, e, CK_LValueToRValue, e.getExprLocation())
         );
     }
 
-    private boolean lookupMemberExprInRecord(LookupResult res,
-            int loc, RecordType rty, int opLoc)
+    private boolean lookupMemberExprInRecord(
+            LookupResult res,
+            SourceLocation loc,
+            RecordType rty,
+            SourceLocation opLoc)
     {
         RecordDecl recordDecl = rty.getDecl();
         if (requireCompleteType(opLoc, new QualType(rty)))
@@ -3858,7 +4804,10 @@ public final class Sema
     }
 
 
-    public ActionResult<Expr> actOnPostfixUnaryOp(int loc, int kind, Expr lhs)
+    public ActionResult<Expr> actOnPostfixUnaryOp(
+            SourceLocation loc,
+            int kind,
+            Expr lhs)
     {
         UnaryOperatorKind opc;
         switch (kind)
@@ -3874,7 +4823,7 @@ public final class Sema
     }
 
     private ActionResult<Expr> createUnaryOp(
-            int opLoc,
+            SourceLocation opLoc,
             UnaryOperatorKind opc,
             Expr inputExpr)
     {
@@ -3915,9 +4864,9 @@ public final class Sema
                     break;
                 else
                 {
-                    parser.syntaxError(opLoc,
-                            "invalid argument jlang.type %s to unary expression",
-                            resultTy.toString());
+                    parser.diag(opLoc, err_typecheck_unary_expr)
+                    .addTaggedVal(resultTy).addSourceRange
+                            (input.get().getSourceRange());
                     return exprError();
                 }
             }
@@ -3931,9 +4880,9 @@ public final class Sema
                     break;
                 else
                 {
-                    parser.syntaxError(opLoc,
-                            "invalid argument jlang.type %s to unary expression",
-                            resultTy.toString());
+                    parser.diag(opLoc, err_typecheck_unary_expr)
+                            .addTaggedVal(resultTy).addSourceRange
+                            (input.get().getSourceRange());
                     return exprError();
                 }
             }
@@ -3944,16 +4893,14 @@ public final class Sema
 
                 resultTy = input.get().getType();
 
-                if (resultTy.isScalarType())
-                {}
-                else
+                if (!resultTy.isScalarType())
                 {
-                    parser.syntaxError(opLoc,
-                            "invalid argument jlang.type %s to unary expression",
-                            resultTy.toString());
+                    parser.diag(opLoc, err_typecheck_unary_expr)
+                            .addTaggedVal(resultTy)
+                            .addSourceRange(input.get().getSourceRange());
                     return exprError();
                 }
-                // LNot always has jlang.type int. C99 6.5.3.3p5.
+                // LNot always has type int. C99 6.5.3.3p5.
                 resultTy = Type.IntTy;
                 break;
             }
@@ -3964,42 +4911,269 @@ public final class Sema
         // Checks for array bounds violation in the operands of the UnaryOperator,
         // except for the "*" and "&" operators that have to be handled specially
         // by checkArrayAccess()
-        if (opc != UO_AddrOf || opc != UO_Deref)
-            checkArrayAccess(input.get());
+        checkArrayAccess(input.get());
         return new ActionResult<>(new UnaryExpr(input.get(), opc, resultTy, vk, opLoc));
     }
 
-    public ActionResult<Expr> actOnIdExpr(
-            Scope s, Ident id,
-            boolean b,
-            boolean isAddressOfOperand,
-            boolean hasTrailingLParen)
+	/**
+	 * Diagnose the empty lookup.
+     * @param s
+     * @param res
+     * @return
+     */
+    private boolean diagnoseEmptyLookup(Scope s,
+            LookupResult res)
+    {
+        String name = res.getLookupName();
+
+        int diagnostic = err_undeclared_var_use;
+        //int diagnosticSuggest = err_undeclared_var_use_suggest;
+        // We can not recovery.
+        parser.diag(res.getNameLoc(), diagnostic).addTaggedVal(name);
+        return true;
+    }
+
+    private LangOption getLangOptions()
+    {
+        return parser.getPP().getLangOption();
+    }
+
+	/**
+	 * A mapping from external names to the most recent
+     * locally-scoped external declaration with that name.
+     *
+     * This map contains external declarations introduced in local
+     * scoped, e.g.,
+     *
+     * <code>
+     * void f()
+      *  {
+     *   void foo(int, int);
+     * }
+     * </code>
+     *
+     * Here, the name "foo" will be associated with the declaration on
+     * "foo" within f. This name is not visible outside of
+     * "f". However, we still find it in two cases:
+     *
+     *   - If we are declaring another external with the name "foo", we
+     *     can find "foo" as a previous declaration, so that the types
+     *     of this external declaration can be checked for
+     *     compatibility.
+     *
+     *   - If we would implicitly declare "foo" (e.g., due to a call to
+     *     "foo" in C when no prototype or definition is visible), then
+     *     we find this declaration of "foo" and complain that it is
+     *     not visible.
+     */
+    private HashMap<String, NamedDecl> locallyScopedExternalDecls
+            = new HashMap<>();
+
+    private Scope translateUnitScope;
+
+    /**
+	 * A undeclared identifier was used in a functon call, forming a call to
+     * an implicitly defined function (per C99 6.5.1p2).
+     * @param nameLoc
+     * @param name
+     * @param s
+     * @return
+     */
+    private NamedDecl implicitDefineFunction(SourceLocation nameLoc,
+            String name, Scope s)
+    {
+        // Before we produce a declaration for an implicitly defined
+        // function, see whether there was a locally-scoped declaration of
+        // this name as a function or variable. If so, use that
+        // (non-visible) declaration, and complain about it.
+        if (locallyScopedExternalDecls.containsKey(name))
+        {
+            NamedDecl prev = locallyScopedExternalDecls.get(name);
+            parser.diag(nameLoc, warn_use_out_of_scope_declaration)
+                    .addTaggedVal(prev.getDeclName());
+            parser.diag(prev.getLocation(), note_previous_declaration);
+            return prev;
+        }
+
+        // Extension in C99.  Legal in C90, but warn about it.
+        if (getLangOptions().c99)
+            parser.diag(nameLoc, ext_implicit_function_decl)
+                    .addTaggedVal(name);
+        else
+            parser.diag(nameLoc, warn_implicit_function_decl)
+                    .addTaggedVal(name);
+        DeclSpec ds = new DeclSpec();
+        OutParamWrapper<String> x = new OutParamWrapper<>();
+        OutParamWrapper<Integer> y = new OutParamWrapper<>();
+        boolean error = ds.setTypeSpecType(TST.TST_int, nameLoc, x, y);
+        String dummy = x.get();
+        int diagID = y.get();
+        assert !error :"Error setting up implicit decl!";
+        Declarator d = new Declarator(ds, Declarator.TheContext.BlockContext);
+        d.addTypeInfo(DeclaratorChunk.getFunction(false, false,
+                SourceLocation.NOPOS, null, 0, nameLoc, nameLoc),
+                SourceLocation.NOPOS);
+
+        d.setIdentifier(name, nameLoc);
+
+        // Insert this function into translation-unit scope.
+        DeclContext prevDC = curContext;
+        curContext = context.getTranslateUnitDecl();
+
+        FunctionDecl fd = (FunctionDecl) actOnDeclarator(translateUnitScope, d);
+        fd.setImplicit(true);
+        curContext = prevDC;
+        return fd;
+    }
+
+    public ActionResult<Expr> actOnIdentifierExpr(
+            Scope s,
+            SourceLocation loc,
+            String id,
+            boolean hasTrailingLParen,
+            boolean isAddressOfOperand)
     {
         assert !isAddressOfOperand && hasTrailingLParen:
                 "cannot be direct & operand and have a trailing lparen";
 
-        String name = id.getName();
-        int nameLoc = id.loc;
+        String name = id;
+        SourceLocation nameLoc = loc;
 
         // Perform the required lookup.
-        LookupResult res = new LookupResult(this, name, nameLoc, LookupOrdinaryName);
-        lookupName(res, s);
+        //LookupResult res = new LookupResult(this, name, nameLoc, LookupOrdinaryName);
+        LookupResult res = lookupParsedName(s, name, LookupOrdinaryName, nameLoc);
 
         if (res.isAmbiguous())
         {
-            parser.syntaxError(nameLoc, "There many declarations of %s ", name);
+            parser.diag(nameLoc, err_ambiguous_reference).addTaggedVal(name);
+            parser.diag(res.getFoundDecl().getLocation(), note_ambiguous_candidate)
+                    .addTaggedVal(res.getFoundDecl().getDeclName());
             return exprError();
         }
         if (res.isEmpty())
         {
-            parser.syntaxError(nameLoc, "The use of %s is not declared", name);
-            return exprError();
+            // Otherwise, this could be an implicitly declared function reference (legal
+            // in C90, extension in C99
+            if (hasTrailingLParen && name != null)
+            {
+                NamedDecl d = implicitDefineFunction(nameLoc, name, s);
+                if (d != null)
+                    res.addDecl(d);
+            }
+
+            // If this name wasn't predeclared and if this is not a function
+            // call, diagnose the problem.
+            if (res.isEmpty())
+            {
+                if (diagnoseEmptyLookup(s, res))
+                    return exprError();
+
+                assert !res.isEmpty() :"diagnoseEmptyLookup returned false!";
+            }
         }
 
-        // Make sure we find a declaration with specified getName.
+        // Make sure we find a declaration with specified getIdentifier.
         assert !res.isEmpty() && res.isSingleResult();
 
         return buildDeclarationNameExpr(res);
+    }
+
+    private void diagnoseUnusedParameters(ArrayList<ParamVarDecl> params)
+    {
+        // TODO: 2017/3/28  
+    }
+    
+    private void checkFallThroughForFunctionDef(FunctionDecl fd, Stmt body)
+    {
+        // TODO: 2017/3/28
+    }
+
+    private HashMap<String, LabelledStmt> functionLabelMap = new HashMap<>();
+
+    private HashMap<String, LabelledStmt> getLabelMap()
+    {
+        return functionLabelMap;
+    }
+
+    private Stack<SwitchStmt> functionSwitchStack = new Stack<>();
+
+    private Stack<SwitchStmt> getSwtichBlock()
+    {
+        return functionSwitchStack;
+    }
+
+	/**
+	 * his is set to true when a function or
+     * contains a VLA or an ObjC try block, which introduce
+     * scopes that need to be checked for goto conditions.  If a function does
+     * not contain this, then it need not have the jump checker run on it.
+     */
+    private boolean curFunctionNeedsScopeChecking;
+    
+    private void diagnoseInvalidJumps(Stmt body)
+    {
+        // TODO: 2017/3/28
+    }
+
+    public Decl actOnFinishFunctionBody(Decl funcDecl, Stmt fnBody)
+    {
+        if (funcDecl instanceof FunctionDecl)
+        {
+            FunctionDecl fd = (FunctionDecl)funcDecl;
+            fd.setBody(fnBody);
+
+            if (fd.isMain())
+            {
+                // C and C++ allow for main to automagically return 0.
+                // Implements C++ [basic.start.main]p5 and C99 5.1.2.2.3.
+                fd.setHasImplicitReturnZero(true);
+            }
+            else
+                checkFallThroughForFunctionDef(fd, fnBody);
+
+            if (!fd.isInvalidDecl())
+                diagnoseUnusedParameters(fd.getParamInfo());
+        }
+        else
+        {
+            return null;
+        }
+
+        popDeclContext();
+
+        // Verify and clean out per-function state.
+        for (Map.Entry<String, LabelledStmt> pair : functionLabelMap.entrySet())
+        {
+            LabelledStmt l = pair.getValue();
+
+            if (l.body != null)
+                continue;
+            parser.diag(l.loc, err_undeclared_label_use).addTaggedVal(l.getName());
+
+            if (fnBody == null)
+            {
+                // The whole function wasn't parsed correctly, just delete this.
+                continue;
+            }
+
+            l.body = new NullStmt(l.label.getLocation());
+
+            CompoundStmt compound = (CompoundStmt)fnBody;
+            ArrayList<Stmt> elts = new ArrayList<>();
+            elts.addAll(compound.stats);
+
+            elts.add(l);
+            compound.stats = elts;
+        }
+        functionLabelMap.clear();
+
+        if (fnBody == null)
+            return funcDecl;
+        // Verify that that gotos and switch cases don't jump into scopes illegally.
+        if (curFunctionNeedsScopeChecking)
+            diagnoseInvalidJumps(fnBody);
+
+        return funcDecl;
     }
 
     /**
@@ -4009,76 +5183,15 @@ public final class Sema
     private ActionResult<Expr> buildDeclarationNameExpr(
             LookupResult res)
     {
-        NamedDecl decl = res.getFoundDecl();
-        String name = res.getLookupName();
-
-        assert decl!= null:"cannot refer to a NULL declaration";
-        int loc = res.getNameLoc();
-
-        if (checkDeclInExpr(loc, decl))
-            return exprError();
-
-        // construct sure that we are referring to a value.
-        ValueDecl vd = (ValueDecl)decl;
-        if (vd == null)
-        {
-            parser.syntaxError(loc,
-                    "%s does not refer to a value",
-                    decl.getDeclName());
-            parser.syntaxError(decl.getLocation(),
-                    "declared here");
-            return exprError();
-        }
-
-        // Only create {@linkplain DeclRefExpr} for valid decls
-        if (vd.isInvalidDecl())
-            return exprError();
-
-        QualType type = vd.getDeclType();
-        ExprValueKind vk = EVK_RValue;
-        switch (decl.getDeclKind())
-        {
-            // Ignore al the non-ValueDecl kinds.
-            default:
-                Util.shouldNotReachHere("Unknown result");
-                break;
-            // Enum constants are always r-values and never references.
-            case EnumConstant:
-                vk = EVK_RValue;
-                break;
-            case VarDecl:
-                if (!type.hasQualifiers()
-                        && type.isVoidType())
-                {
-                    vk = EVK_RValue;
-                    break;
-                }
-                // fall through
-            case ParamVar:
-                vk = EVK_LValue;
-                break;
-            case FunctionDecl:
-            {
-                FunctionType fty = type.getFunctionType();
-                if (((FunctionDecl)vd).hasProtoType()
-                        && fty instanceof FunctionProtoType)
-                {
-                    vk = EVK_RValue;
-                }
-            }
-        }
-
-        Expr e = new DeclRefExpr(name, vd, type, vk, loc);
-        return new ActionResult<>(e);
+        return exprError();
     }
 
-    private boolean checkDeclInExpr(int loc, NamedDecl decl)
+    private boolean checkDeclInExpr(SourceLocation loc, NamedDecl decl)
     {
         if (decl instanceof TypedefNameDecl)
         {
-            parser.syntaxError(loc,
-                    "unexpected jlang.type getName %s: expected expression",
-                    decl.getDeclName());
+            parser.diag(loc, err_unexpected_typedef_ident)
+                    .addTaggedVal(decl.getDeclName());
             return true;
         }
         return false;
@@ -4091,7 +5204,7 @@ public final class Sema
      */
     public void actOnEndOfTranslationUnit()
     {
-
+        // TODO: 2017/3/28
     }
 
     /**
@@ -4231,6 +5344,15 @@ public final class Sema
         vd.setInit(init);
     }
 
+
+    public ActionResult<Expr> actOnInitList(SourceLocation lbraceLoc,
+            List<Expr> initExprs, SourceLocation rbraceLoc)
+    {
+        InitListExpr e = new InitListExpr(lbraceLoc, rbraceLoc, new ArrayList<>(initExprs));
+        e.setType(Type.VoidTy);
+        return new ActionResult<>(e);
+    }
+
     /**
      * Issues warning message if original variable used in initialization expression
      * @param decl
@@ -4251,8 +5373,41 @@ public final class Sema
         // "may accept other forms of constant expressions" jlang.exception.
         if (init.isConstantInitializer())
             return false;
-        parser.syntaxError(init.getLocation(),
+        parser.syntaxError(init.getExprLocation(),
                 "initializer element is not a compile-time constant");
         return true;
+    }
+
+	/**
+     * This method is called *for error recovery purposes only*
+     * to determine if the specified name is a valid tag name ("struct foo").  If
+     * so, this returns the TST for the tag corresponding to it (TST_enum,
+     * TST_union, TST_struct, TST_class).  This is used to diagnose cases in C
+     * where the user forgot to specify the tag.
+     * @param identifierInfo
+     * @param scope
+     * @return
+     */
+    public TST isTagName(String identifierInfo, Scope scope)
+    {
+        NamedDecl ndecl = lookupName(scope, identifierInfo,
+                SourceLocation.NOPOS, LookupTagName);
+        if (ndecl != null)
+        {
+            if (ndecl instanceof TagDecl)
+            {
+                TagDecl tdecl = (TagDecl) ndecl;
+                switch (tdecl.getTagKind())
+                {
+                    case TTK_struct:
+                        return TST.TST_struct;
+                    case TTK_union:
+                        return TST.TST_union;
+                    case TTK_enum:
+                        return TST.TST_enum;
+                }
+            }
+        }
+        return TST.TST_unspecified;
     }
 }

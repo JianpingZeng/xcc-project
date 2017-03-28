@@ -99,7 +99,7 @@ public final class RecordKeeper
     {
         Record klass = getClass(className);
         if (klass == null)
-            throw new Exception("ERROR: Couldn't find the `" + className
+            throw new Exception("UNKNOWN: Couldn't find the `" + className
                     + "' class!\n");
 
         ArrayList<Record> defs = new ArrayList<>();

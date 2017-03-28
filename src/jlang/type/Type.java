@@ -34,6 +34,9 @@ public abstract class Type implements TypeClass
     public static QualType LongTy = new QualType(new IntegerType(4, true));
     public static QualType UnsignedLongTy = new QualType(new IntegerType(4, false));
 
+    public static QualType LongLongTy = new QualType(new IntegerType(8, true));
+    public static QualType UnsignedLongLongTy = new QualType(new IntegerType(8, false));
+
     public static QualType FloatTy = new QualType(new RealType(4, "float"));
     public static QualType DoubleTy = new QualType(new RealType(8, "double"));
 
@@ -266,7 +269,7 @@ public abstract class Type implements TypeClass
     }
 
     /**
-     * Checks if this jlang.type is jlang.type-getName jlang.type.
+     * Checks if this jlang.type is jlang.type-getIdentifier jlang.type.
      *
      * @return
      */

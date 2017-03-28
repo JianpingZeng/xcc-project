@@ -125,7 +125,7 @@ public class Log implements LayoutCharacters
     }
 
     /**
-     * The getName of the file that's currently translated.
+     * The getIdentifier of the file that's currently translated.
      */
     private Name sourcename;
 
@@ -142,7 +142,7 @@ public class Log implements LayoutCharacters
     /**
      * A set of all errors generated so far. This is used to avoid printing an
      *  error message more than once. For each error, a pair consisting of the
-     *  source file getName and source code position of the errir is added to the set.
+     *  source file getIdentifier and source code position of the errir is added to the set.
      */
     private Set<Pair> recorded = new HashSet<>();
 
@@ -162,7 +162,7 @@ public class Log implements LayoutCharacters
     private int lastLine;
 
     /**
-     * Re-assign source getName, returning previous setting.
+     * Re-assign source getIdentifier, returning previous setting.
      */
     public Name useSource(Name name)
     {
@@ -174,7 +174,7 @@ public class Log implements LayoutCharacters
     }
 
     /**
-     * ReturnInst current source getName.
+     * ReturnInst current source getIdentifier.
      */
     public Name currentSource()
     {

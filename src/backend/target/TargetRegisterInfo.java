@@ -114,7 +114,7 @@ public abstract class TargetRegisterInfo
 	public int[] getSuperRegSet(int regNo) {return get(regNo).superRegs;}
 
 	/**
-	 * Return the symbolic target specified getName for the specified physical register.
+	 * Return the symbolic target specified getIdentifier for the specified physical register.
 	 *
 	 * @param regNo
 	 * @return

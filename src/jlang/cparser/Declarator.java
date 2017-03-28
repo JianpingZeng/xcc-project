@@ -1,7 +1,9 @@
 package jlang.cparser;
 
+import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
-import jlang.cparser.DeclSpec.SourceRange;
+import jlang.cpp.SourceLocation;
+import jlang.cpp.SourceLocation.SourceRange;
 import jlang.sema.Decl;
 import tools.OutParamWrapper;
 import tools.Position;
@@ -22,7 +24,7 @@ import java.util.ArrayList;
  */
 public class Declarator
 {
-    enum TheContext
+    public enum TheContext
     {
         FileContext,                // file scope declaraton.
         FunctionProtoTypeContext, // Within a function prototype.
@@ -47,7 +49,7 @@ public class Declarator
 
     private DeclSpec ds;
     private String name;
-    private int identifierLoc;
+    private SourceLocation identifierLoc;
     private SourceRange range;
 
     /**
@@ -76,9 +78,9 @@ public class Declarator
      * will be the most closely bound to the identifier, and the last one will
      * be the least closely bound.
      */
-    private ArrayList<DeclSpec.DeclaratorChunk> declTypeInfos;
+    private ArrayList<DeclaratorChunk> declTypeInfos;
 
-    Declarator(DeclSpec ds, TheContext context)
+    public Declarator(DeclSpec ds, TheContext context)
     {
         this.ds = ds;
         this.range = ds.getSourceRange();
@@ -90,7 +92,7 @@ public class Declarator
 
     public DeclSpec getDeclSpec() { return ds; }
 
-    public String getName() { return name; }
+    public String getIdentifier() { return name; }
 
     public TheContext getContext() { return context; }
 
@@ -111,15 +113,13 @@ public class Declarator
         this.range = range;
     }
 
-    public void setRangeEnd(int loc)
+    public void setRangeEnd(SourceLocation loc)
     {
-        assert loc != Position.NOPOS;
         range.setEnd(loc);
     }
 
-    public void setRangeStart(int loc)
+    public void setRangeStart(SourceLocation loc)
     {
-        assert loc != Position.NOPOS;
         range.setStart(loc);
     }
     /**
@@ -178,13 +178,14 @@ public class Declarator
     public void extendWithDeclSpec(DeclSpec ds)
     {
         SourceRange sr = ds.getSourceRange();
-        if (range.getStart() == Position.NOPOS)
+        if (range.getStart() == SourceLocation.NOPOS)
             range.setStart(sr.getStart());
-        if (range.getEnd() == Position.NOPOS)
+        if (range.getEnd() == SourceLocation.NOPOS)
             range.setEnd(sr.getEnd());
     }
 
-    public void setIdentifier(Token.Ident id, int IdLoc)
+    public void setIdentifier(String id,
+            SourceLocation IdLoc)
     {
         this.identifierLoc =IdLoc;
     }
@@ -194,11 +195,11 @@ public class Declarator
         this.invalidType = val;
     }
 
-    public void addTypeInfo(DeclSpec.DeclaratorChunk chunk,
-            int endLoc)
+    public void addTypeInfo(DeclaratorChunk chunk,
+            SourceLocation endLoc)
     {
         declTypeInfos.add(chunk);
-        if (endLoc != Position.NOPOS)
+        if (endLoc != SourceLocation.NOPOS)
             setRangeEnd(endLoc);
     }
 
@@ -207,12 +208,12 @@ public class Declarator
         return declTypeInfos.size();
     }
 
-    public int getIdentifierLoc()
+    public SourceLocation getIdentifierLoc()
     {
         return identifierLoc;
     }
 
-    public void setIdentifierLoc(String id, int loc)
+    public void setIdentifierLoc(String id, SourceLocation loc)
     {
         name = id;
         identifierLoc = loc;
@@ -289,7 +290,7 @@ public class Declarator
      */
     public boolean isPastIdentifier()
     {
-        // getName is valid.
+        // getIdentifier is valid.
         return name != null;
     }
 
@@ -304,4 +305,11 @@ public class Declarator
         isFunctionDeclarator(index);
         return (FunctionTypeInfo) declTypeInfos.get(index.get()).typeInfo;
     }
+
+    public DeclaratorChunk getTypeObject(int i)
+    {
+        assert i >= 0 && i < declTypeInfos.size();
+        return declTypeInfos.get(i);
+    }
+
 }
