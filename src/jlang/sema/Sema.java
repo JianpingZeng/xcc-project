@@ -665,8 +665,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 if (literal.getIntegerValue(resultVal))
                 {
                     // current long long can not be supported.
-                    parser.syntaxError(literal.loc, "%s integer too large",
-                            literal.toString());
+                    parser.diag(literal.loc, "%s integer too large").addTaggedVal
+                            (literal.toString());
                     return exprError();
                 }
                 else
@@ -714,7 +714,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     // something that does not fit in a signed long, but has no U suffix.
                     if (ty.isNull())
                     {
-                        parser.syntaxError(literal.loc, "%s integer too large for signed",
+                        parser.diag(literal.loc, "%s integer too large for signed",
                                 literal.toString());
                         ty = Type.UnsignedLongTy;
                         width = 32;
@@ -1748,7 +1748,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 if (!ds.hasTypeSpecifier())
                 {
                     // C99 requires a jlang.type specifier.
-                    parser.syntaxError(declLoc, "jlang.type specifier missing, defaults to 'int'");
+                    parser.diag(declLoc, "jlang.type specifier missing, defaults to 'int'");
                 }
                 // fall through
             case TST_int:
@@ -1850,7 +1850,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     // incomplete jlang.type.
                     if (!eleTy.isIncompleteOrObjectType())
                     {
-                        parser.syntaxError(ds.getRestrictSpecLoc(),
+                        parser.diag(ds.getRestrictSpecLoc(),
                                 "pointer to function jlang.type %s may not be 'restrict' qualified",
                                 eleTy.toString());
                         typeQuals &= ~TQ_restrict.value;
@@ -1858,7 +1858,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 }
                 else
                 {
-                    parser.syntaxError(ds.getRestrictSpecLoc(),
+                    parser.diag(ds.getRestrictSpecLoc(),
                             "restrict requires a pointer (%s is invalid)",
                             result.toString());
                     typeQuals &= ~TQ_restrict.value;
@@ -1882,7 +1882,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     loc = ds.getRestrictSpecLoc();
                 }
 
-                parser.syntaxError(loc, "jlang.type qualifiers can not applied into function jlang.type");
+                parser.diag(loc, "jlang.type qualifiers can not applied into function jlang.type");
             }
 
             QualType.Qualifier quals = QualType.Qualifier.fromCVRMask(typeQuals);
@@ -1999,7 +1999,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         parser.syntaxWarning(r.getNameLoc(),
                 "declaration shadows a variable %s",
                 name);
-        parser.syntaxError(shadowedDecl.getLocation(), "previous declaration is here");
+        parser.diag(shadowedDecl.getLocation(), "previous declaration is here");
     }
 
     public ActionResult<Stmt> actOnDeclStmt(
@@ -2299,7 +2299,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 new ImplicitCastExpr(ty, valueKind, expr, kind, expr.getExprLocation()));
     }
 
-    public ActionResult<Stmt> actOnStartOfSwitchStmt(int switchLoc,
+    public ActionResult<Stmt> actOnStartOfSwitchStmt(
+            SourceLocation switchLoc,
             Expr condExpr)
     {
         if (condExpr == null)
@@ -2374,9 +2375,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 if (prevDefaultStmt != null)
                 {
                     // TODO report error
-                    parser.syntaxError(ds.defaultLoc,
+                    parser.diag(ds.defaultLoc,
                             "multiple default statement defined");
-                    parser.syntaxError(prevDefaultStmt.defaultLoc,
+                    parser.diag(prevDefaultStmt.defaultLoc,
                             "previous default statement default here");
                     caseListErroneous = true;
                 }
@@ -2457,10 +2458,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     if (i != 0 && Case.first.eq(caseLists.get(i - 1).first))
                     {
                         // TODO If we have a duplicate, report it.
-                        parser.syntaxError(Case.second.getCaseLoc(),
+                        parser.diag(Case.second.getCaseLoc(),
                                 "duplicate case " + Case.first.toString(10));
                         Pair<APSInt, SwitchCase> prevDup = caseLists.get(i - 1);
-                        parser.syntaxError(prevDup.second.getCaseLoc(),
+                        parser.diag(prevDup.second.getCaseLoc(),
                                 "previous duplicate case" + prevDup.first
                                         .toString(10));
 
@@ -2639,7 +2640,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         QualType t = cond.getType();
         if (!t.isScalarType())  // C99 6.8.4 1p1
         {
-            parser.syntaxError(loc,
+            parser.diag(loc,
                     "statement requires expression of scalar jlang.type",
                     "(" + t.getType() + "invalid)");
             return exprError();
@@ -2714,7 +2715,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if ((typeQuals = ds.getTypeQualifier()) != 0)
         {
             if ((typeQuals & TQ_restrict.value) != 0)
-                parser.syntaxError(ds.getRestrictSpecLoc(),
+                parser.diag(ds.getRestrictSpecLoc(),
                         "restrict requires a pointer or reference");
         }
 
@@ -2729,12 +2730,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (ds.getStorageClassSpec() == SCS.SCS_typedef && tag != null
                     && tag instanceof EnumDecl)
             {
-                parser.syntaxError(ds.getSourceRange().getStart(),
+                parser.diag(ds.getSourceRange().getStart(),
                         "typedef requires a getIdentifier");
                 return tag;
             }
 
-            parser.syntaxError(ds.getSourceRange().getStart(),
+            parser.diag(ds.getSourceRange().getStart(),
                     "declaration does not declare anything");
             emittedWarning = true;
         }
@@ -2851,7 +2852,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // definitions with incomplete array jlang.type.
             if (type.isIncompleteArrayType())
             {
-                parser.syntaxError(var.getLocation(),
+                parser.diag(var.getLocation(),
                         "definition of variable with array jlang.type needs an explicit getNumOfSubLoop or an initializer");
                 var.setInvalidDecl(true);
                 return;
@@ -2919,7 +2920,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     if (vd != null && vd.isLocalVarDecl() && !vd
                             .hasLocalStorage())
                     {
-                        parser.syntaxError(d.getLocation(),
+                        parser.diag(d.getLocation(),
                                 "non-variable declaration in 'for' loop");
                     }
                 }
@@ -2949,7 +2950,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (s == null)
         {
             // C99 6.8.6.2p1: A break shall appear only in or as a loop body.
-            parser.syntaxError(continueLoc,
+            parser.diag(continueLoc,
                     "'continue' statement not in loop statement");
             return stmtError();
         }
@@ -2964,7 +2965,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (s == null)
         {
             // C99 6.8.6.3p1: A break shall appear only in or as a switch/loop body.
-            parser.syntaxError(breakLoc,
+            parser.diag(breakLoc,
                     "'break' statement not in loop or switch statement");
             return stmtError();
         }
@@ -3028,7 +3029,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                             CK_ToVoid).get();
                 }
 
-                parser.syntaxError(e.getExprLocation(), diag);
+                parser.diag(e.getExprLocation(), diag);
 
                 checkImplicitConversion(e, returnLoc);
             }
@@ -3036,7 +3037,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         else if (e == null)
         {
-            parser.syntaxError(returnLoc,
+            parser.diag(returnLoc,
                     "non void function should return a value at",
                     getCurFunctionDecl().getDeclName());
             res = new ReturnStmt(returnLoc);
@@ -3129,7 +3130,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
 
         if (!e.getType().isVoidType())
-            parser.syntaxError(e.getExprLocation(), "imcomplete jlang.type ",
+            parser.diag(e.getExprLocation(), "imcomplete jlang.type ",
                     e.getType().toString(), " where required complete jlang.type");
         return new ActionResult<>(e);
     }
@@ -3433,7 +3434,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             ActionResult<Expr> lhs,
             ActionResult<Expr> rhs)
     {
-        parser.syntaxError(loc,
+        parser.diag(loc,
                 "invalid operands to binary expression (%s and %s)",
                 lhs.get().getType().toString(),
                 rhs.get().getType().toString());
@@ -3628,12 +3629,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         QualType pointeeTy = operand.getType().getPointee();
         if (pointeeTy.isVoidType())
         {
-            parser.syntaxError(loc, "arithmetic on a pointer to void");
+            parser.diag(loc, "arithmetic on a pointer to void");
             return true;
         }
         if (pointeeTy.isFunctionType())
         {
-            parser.syntaxError(loc,
+            parser.diag(loc,
                     "arithmetic on a pointer to the function jlang.type '%s' is a GNU extension",
                     pointeeTy.toString());
             return true;
@@ -3644,24 +3645,24 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private void diagnoseArithmeticOnVoidPointer(int loc, Expr expr)
     {
-        parser.syntaxError(loc, "arithmetic on a pointer to void a GNU extension");
+        parser.diag(loc, "arithmetic on a pointer to void a GNU extension");
     }
 
     private void diagnoseArithmeticOnTwoVoidPointers(int loc, Expr lhs, Expr rhs)
     {
-        parser.syntaxError(loc, "arithmetic on a pointer to void a GNU extension");
+        parser.diag(loc, "arithmetic on a pointer to void a GNU extension");
     }
 
     private void diagnoseArithmeticOnFunctionPointer(int loc, Expr operand)
     {
-        parser.syntaxError(loc,
+        parser.diag(loc,
                 "arithmetic on a pointer to the function jlang.type '%s' is a GNU extension",
                 operand.getType().getPointee().toString());
     }
 
     private void diagnoseArithmeticOnTwoFunctionPointers(int loc, Expr lhs, Expr rhs)
     {
-        parser.syntaxError(loc,
+        parser.diag(loc,
                 "arithmetic on a pointer to the function jlang.type '%s' is a GNU extension",
                 lhs.getType().getPointee().toString());
     }
@@ -3715,7 +3716,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // If the jlang.type was a forward declaration of a struct/union jlang.type
         // produce a error.
         if (tag != null && !tag.getDecl().isInvalidDecl())
-            parser.syntaxError(tag.getDecl().getLocation(),
+            parser.diag(tag.getDecl().getLocation(),
                     tag.isBeingDefined()?"definition of %s is not complete until the closing '}'":
                             "forward declaration of %s",
                     new QualType(tag).toString());
@@ -3786,7 +3787,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 // Pointee types must be compatible C99 6.5.6p3
                 if (!lPointee.isCompatible(rpointee))
                 {
-                    parser.syntaxError(opLoc,
+                    parser.diag(opLoc,
                             "%diff %s and %s are not pointers to compatible types",
                             lhs.get().getType().toString(),
                             rhs.get().getType().toString());
@@ -4056,7 +4057,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {}
         if (result.isNull())
         {
-            parser.syntaxError(opLoc,
+            parser.diag(opLoc,
                     "indirection requires pointer operand (%s invalid)",
                     opTy.toString());
             return new QualType();
@@ -4096,13 +4097,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         else if (resType.isComplexType())
         {
             // C99 does not support ++/-- on complex types, we allow as an extension.
-            parser.syntaxError(opLoc,
+            parser.diag(opLoc,
                     "ISO C does not support '++'/'--' on complex integer jlang.type %s",
                     resType.toString());
         }
         else
         {
-            parser.syntaxError(opLoc, "cannot select "
+            parser.diag(opLoc, "cannot select "
                     + (isIncre?"increment":"decrement")
                     + " value of jlang.type %s", resType.toString());
             return new QualType();
@@ -4418,7 +4419,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // wasn't promoted because of the C90 rule that doesn't
             // allow promoting non-lvalue arrays.  Warn, then
             // force the promotion here.
-            parser.syntaxError(lhsExpr.getExprLocation(),
+            parser.diag(lhsExpr.getExprLocation(),
                     "ISO C90 does not allow subscripting non-lvalue array");
             lhsExpr = implicitCastExprToType(lhsExpr,
                     QualType.getArrayDecayedType(lhsTy),
@@ -4433,7 +4434,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         else if(rhsTy.isConstantArrayType())
         {
             // Same as previous, except for 123[f().a] case
-            parser.syntaxError(rhsExpr.getExprLocation(),
+            parser.diag(rhsExpr.getExprLocation(),
                     "ISO C90 does not allow subscripting non-lvalue array");
             rhsExpr = implicitCastExprToType(rhsExpr,
                     QualType.getArrayDecayedType(rhsTy),
@@ -4447,13 +4448,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         else
         {
-            parser.syntaxError(lParenLoc, "array subscript is not an integer");
+            parser.diag(lParenLoc, "array subscript is not an integer");
             return exprError();
         }
 
         if (!idxExpr.getType().isIntegerType())
         {
-            parser.syntaxError(lParenLoc, "array subscript is not an integer");
+            parser.diag(lParenLoc, "array subscript is not an integer");
             return exprError();
         }
         int t = idxExpr.getType().getTypeKind();
@@ -4464,7 +4465,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         if (resultTy.isFunctionType())
         {
-            parser.syntaxError(baseExpr.getExprLocation(),
+            parser.diag(baseExpr.getExprLocation(),
                     "subscript of pointer to function jlang.type %s",
                     resultTy.toString());
             return exprError();
@@ -4472,7 +4473,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         if (resultTy.isVoidType())
         {
-            parser.syntaxError(lParenLoc,
+            parser.diag(lParenLoc,
                     "subscript of a pointer to void is a GNU extension");
             if (!resultTy.hasQualifiers()) vk = EVK_RValue;
         }
@@ -4573,7 +4574,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
             if (funcTy == null)
             {
-                parser.syntaxError(lParenLoc,
+                parser.diag(lParenLoc,
                         "called object jlang.type %s is not a function or function pointer",
                         fn.getType().toString());
                 return exprError();
@@ -4582,7 +4583,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         else
         {
             // Handle calls to expressions of unknown-any jlang.type.
-            parser.syntaxError(lParenLoc,
+            parser.diag(lParenLoc,
                     "called object jlang.type %s is not a function or function pointer",
                     fn.getType().toString());
             return exprError();
@@ -4728,7 +4729,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             }
             else
             {
-                parser.syntaxError(memberLoc,
+                parser.diag(memberLoc,
                         "member reference jlang.type %s is not a pointer",
                         baseType.toString());
                 return exprError();
@@ -4749,7 +4750,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             return new ActionResult<>(null);
         }
 
-        parser.syntaxError(memberLoc,
+        parser.diag(memberLoc,
                 "member reference base jlang.type %s is not a structure or union",
                 baseType.toString());
         return exprError();
@@ -5264,7 +5265,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (!(decl instanceof VarDecl))
         {
             assert !(decl instanceof FieldDecl) : "field init shoudln't gt here!";
-            parser.syntaxError(decl.getLocation(),
+            parser.diag(decl.getLocation(),
                     "illegal initializer (only variables can be initialized)");
             decl.setInvalidDecl(true);
             return;
@@ -5297,7 +5298,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (vd.hasExternalStorage())
             {
                 // C99 6.7.8p5
-                parser.syntaxError(vd.getLocation(),
+                parser.diag(vd.getLocation(),
                         "'extern' variable cannot have an initializer");
                 vd.setInvalidDecl(true);
             }
@@ -5373,7 +5374,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // "may accept other forms of constant expressions" jlang.exception.
         if (init.isConstantInitializer())
             return false;
-        parser.syntaxError(init.getExprLocation(),
+        parser.diag(init.getExprLocation(),
                 "initializer element is not a compile-time constant");
         return true;
     }

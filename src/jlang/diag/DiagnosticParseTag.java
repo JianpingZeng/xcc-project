@@ -33,7 +33,8 @@ public interface DiagnosticParseTag
 	public static final int err_dup_virtual = err_destructor_class_name + 1;
 	public static final int err_enumerator_unnamed_no_def = err_dup_virtual + 1;
 	public static final int err_expected_asm_operand = err_enumerator_unnamed_no_def + 1;
-	public static final int err_expected_catch = err_expected_asm_operand + 1;
+	public static final int err_expected_case_before_expression = err_expected_asm_operand + 1;
+	public static final int err_expected_catch = err_expected_case_before_expression + 1;
 	public static final int err_expected_class_before = err_expected_catch + 1;
 	public static final int err_expected_class_name = err_expected_class_before + 1;
 	public static final int err_expected_colon_after = err_expected_class_name + 1;
