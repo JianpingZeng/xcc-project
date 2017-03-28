@@ -40,6 +40,7 @@ public enum DiagnosticParseKinds implements DiagnosticParseTag
 	ERR_ENUMERATOR_UNNAMED_NO_DEF(err_enumerator_unnamed_no_def, Error, MAP_ERROR, ""),
 	ERR_EXPECTED_ASM_OPERAND(err_expected_asm_operand, Error, MAP_ERROR,
 			"expected string literal or '[' for asm operand"),
+	ERR_EXPECTED_CASE_BEFORE_EXPRESSION(err_expected_case_before_expression, Error, MAP_ERROR, "expected 'case' before expression"),
 	ERR_EXPECTED_CATCH(err_expected_catch, Error, MAP_ERROR, "expected catch"),
 	ERR_EXPECTED_CLASS_BEFORE(err_expected_class_before, Error, MAP_ERROR,
 			"expected 'class' before '%0'"),

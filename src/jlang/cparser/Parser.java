@@ -292,7 +292,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             {
                 // A function definition can not start with those keyword.
                 ArrayList<Stmt> stmts = new ArrayList<>();
-                OutParamWrapper<Integer> declEnd = new OutParamWrapper<>();
+                OutParamWrapper<SourceLocation> declEnd = new OutParamWrapper<>();
                 return parseDeclaration(stmts, TheContext.FileContext, declEnd);
             }
             /**
@@ -1220,7 +1220,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         if (nextTokenIsNot(LBRACE))
         {
-            syntaxError(S.token.loc, "expected '{' after switch");
+            diag(S.token, err_expected_lparen_after).addTaggedVal("switch");
             return stmtError();
         }
         // C99 6.8.4p3. In C99, the switch statements is a block. This is not
@@ -1238,7 +1238,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
         condExpr = res[0];
 
-        ActionResult<Stmt> switchStmt = action.actOnStartOfSwitchStmt(switchLoc, condExpr.get());
+        ActionResult<Stmt> switchStmt = action.
+                actOnStartOfSwitchStmt(switchLoc, condExpr.get());
         if (switchStmt.isInvalid())
         {
             // skip the switch body
@@ -1288,7 +1289,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         if (nextTokenIsNot(LPAREN))
         {
-            syntaxError(whileLoc, "expected '(' after ", "while");
+            diag(whileLoc, err_expected_lparen_after).addTaggedVal("while");
             return stmtError();
         }
 
@@ -1358,8 +1359,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         {
             if (!body.isInvalid())
             {
-                syntaxError(S.token.loc, "expected while");
-                syntaxError(doLoc, "note matching", "do");
+                diag(S.token, err_expected_while);
+                diag(doLoc, note_matching).addTaggedVal("do");
                 skipUntil(SEMI, true);
             }
             return stmtError();
@@ -1369,7 +1370,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         if (nextTokenIsNot(LPAREN))
         {
-            syntaxError(S.token.loc, "expected '(' after", "do/while");
+            diag(S.token, err_expected_lparen_after).addTaggedVal("do/while");
             skipUntil(SEMI, true);
             return stmtError();
         }
@@ -1402,7 +1403,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         if (nextTokenIsNot(LPAREN))
         {
-            syntaxError(S.token.loc, "expected '(' after", "for");
+            diag(S.token, err_expected_lparen_after).addTaggedVal("for");
             skipUntil(SEMI, true);
             return stmtError();
         }
@@ -1441,7 +1442,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             }
             else
             {
-                syntaxError(S.token.loc, "expected ';'");
+                diag(S.token, err_expected_semi_for);
+                skipUntil(SEMI, true);
             }
         }
         else
@@ -1455,13 +1457,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             else
             {
                 if (!value.isInvalid())
-                    syntaxError(S.token.loc, "expected ';'");
-                else
-                {
-                    skipUntil(RPAREN, true);
-                    if (nextTokenIs(SEMI))
-                        consumeToken();
-                }
+                    diag(S.token, err_expected_semi_for);
+                skipUntil(SEMI, true);
             }
         }
 
@@ -1490,7 +1487,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (nextTokenIsNot(SEMI))
         {
             if (!secondPartIsInvalid)
-                syntaxError(S.token.loc, "expected a ';'");
+                diag(S.token, err_expected_semi_for);
             else
                 skipUntil(RPAREN, true);
         }
@@ -1509,7 +1506,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         tok = S.token;
         if (!tokenIs(tok, RPAREN))
         {
-            syntaxError(S.token.loc, "expected a ')'");
+            diag(S.token, err_expected_lparen_after).
+                    addTaggedVal(tok.getIdentifierInfo());
             skipUntil(RBRACE, true);
         }
 
@@ -1768,13 +1766,13 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         assert nextTokenIs(LBRACE);
 
-        int lBraceLoc = consumeToken(); // eat '{'
+        SourceLocation lBraceLoc = consumeToken(); // eat '{'
         ArrayList<Expr> initExpr = new ArrayList<>();
 
         if (nextTokenIs(RBRACE))
         {
-            int rBraceLoc = consumeToken();
-            syntaxError(lBraceLoc, "use of GNU empty initializer extension");
+            SourceLocation rBraceLoc = consumeToken();
+            diag(lBraceLoc, ext_gnu_empty_initializer);
             return new ActionResult<Expr>(new InitListExpr(lBraceLoc, rBraceLoc, new ArrayList<>()));
         }
 
@@ -1805,7 +1803,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         boolean close = nextTokenIs(RBRACE);
-        int rBraceLoc = consumeToken();
+        SourceLocation rBraceLoc = consumeToken();
         if (initExprOk && close)
         {
             return new ActionResult<Expr>(new InitListExpr(lBraceLoc, rBraceLoc, initExpr));
@@ -1898,7 +1896,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         else
         {
             // erroreous case
-            syntaxError(S.token.loc, "expected a ", "identifier");
+            diag(S.token,  err_expected_ident);
             return stmtError();
         }
         return res;
@@ -2014,12 +2012,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (nextTokenIs(COLON) && getCurScope().isSwitchScope()
                 && action.checkCaseExpression(res.get()))
         {
-            syntaxError(oldTok.loc, "expected 'case' keyword before expression");
+            diag(oldTok.loc, err_expected_case_before_expression)
+            .addCodeModificationHint(CodeModificationHint.
+                    createInsertion(oldTok.getLocation(), "case "));
 
             // Recover parsing as a case statement.
             return parseCaseStatement();
         }
-        expectAndConsume(SEMI, err_expected_semi_after);
+        expectAndConsume(SEMI, err_expected_semi_after_expr);
 
         return action.actOnExprStmt(res);
     }
@@ -2855,7 +2855,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (nextTokenIs(RBRACE))
         {
             consumeToken();
-            syntaxWarning(lBraceLoc, "empty %s is a GNU extension", structOrUnion);
+            diag(lBraceLoc, ext_empty_struct_union_enum).addTaggedVal(structOrUnion);
             skipUntil(SEMI, true);
         }
 
@@ -2868,8 +2868,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             // each iteration of this loop reads one struct-declaration.
             if (nextTokenIs(SEMI))
             {
-                syntaxWarning(S.token.loc,
-                        "extra semicolon in struct or union specified");
+                diag(S.token, ext_extra_struct_semi).addTaggedVal(DeclSpec
+                .getSpecifierName(tagType))
+                .addCodeModificationHint(CodeModificationHint.createRemoval
+                        (new SourceRange(S.token.getLocation())));
                 consumeToken();
                 continue;
             }
@@ -2885,12 +2887,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 consumeToken();
             else if (nextTokenIs(RBRACE))
             {
-                syntaxError(S.token.loc, "expected a ';' at the end.");
+                expectAndConsume(SEMI, ext_expected_semi_decl_list);
                 break;
             }
             else
             {
-                syntaxError(S.token.loc, "expected a ';' at the end.");
+                expectAndConsume(SEMI, ext_expected_semi_decl_list);
                 skipUntil(RBRACE, true);
                 // if we stopped at a ';', consume it.
                 if (nextTokenIs(SEMI))
@@ -3101,7 +3103,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         {
             if (declarator.getContext() == TheContext.StructFieldContext)
                 diag(S.token, err_expected_member_name_or_semi)
-                        .addSourceRange(declarator.getDeclSpec().getSourceRange())
+                        .addSourceRange(declarator.getDeclSpec().getSourceRange());
             else
                 diag(S.token, err_expected_ident_lparen);
 
@@ -3677,14 +3679,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         int specs = ds.getParsedSpecifiers();
         if (specs == ParsedSpecifiers.PQ_none)
         {
-            // TODO report error
-            syntaxError(S.token.loc, "typename requires specifier-qualifiers.");
+            diag(S.token, err_typename_requires_specqual);
         }
         // issue diagnostic and remove storage class if present
         if ((specs & ParsedSpecifiers.PQ_StorageClassSpecifier) != 0)
         {
-            // TODO report error
-            syntaxError(S.token.loc, "invalid storage class qualifiers.");
+            if (ds.getStorageClassSpecLoc().isValid())
+                diag(ds.getStorageClassSpecLoc(), err_typename_invalid_storageclass);
+
             ds.clearStorageClassSpec();
         }
 
@@ -3692,7 +3694,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if ((specs & ParsedSpecifiers.PQ_FunctionSpecifier) != 0)
         {
             if (ds.isInlineSpecifier())
-                syntaxError(S.token.loc, "invalid inline specifier.");
+                diag(ds.getInlineSpecLoc(), err_typename_invalid_functionspec);
             ds.clearFunctionSpecifier();
         }
     }
@@ -3743,17 +3745,19 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     // Special cas handling of "X ? Y:Z" where Y is empty.
                     //   logical-OR-expression '?' ':' conditional-expression   [GNU]
                     ternaryMiddle = null;
-                    syntaxError(S.token.loc,
-                            "use of GNU ?: conditional expression extension, omitting middle operand");
+                    diag(S.token, ext_gnu_conditional_expr);
                 }
 
                 if (nextTokenIs(COLON))
                     colonLoc = consumeToken(); // eat the ':'.
                 else
                 {
+                    SourceLocation filoc = S.token.getLocation();
                     // We missing a ':' after ternary middle expression.
-                    syntaxError(S.token.loc, "expected a ':'");
-                    syntaxError(opToken.loc, "to match this %s", "?");
+                    diag(S.token, err_expected_colon)
+                    .addCodeModificationHint(CodeModificationHint.
+                            createInsertion(filoc, ": "));
+                    diag(opToken, note_matching).addTaggedVal("?");
                     colonLoc = S.token.loc;
                 }
             }
