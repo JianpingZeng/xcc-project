@@ -1,0 +1,1244 @@
+/**
+ * This is a grammar description file as the input of JavaCC, then the JavaCC
+ * would generates several source files which used for parsing table gen file.
+ */
+
+/**
+ * option illustration.
+ */
+options
+{
+    STATIC = false;
+    DEBUG_PARSER = true;
+    UNICODE_INPUT = false;
+    JDK_VERSION = "1.8";
+}
+
+PARSER_BEGIN(TGParser)
+package utils.tablegen;
+import gnu.trove.list.array.TIntArrayList;
+import tools.Pair;
+import utils.tablegen.Init.*;
+import utils.tablegen.RecTy.*;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Stack;
+
+import static utils.tablegen.Record.records;
+
+public final class TGParser
+{
+    public static final class LetRecord
+    {
+        String text;
+        TIntArrayList bits;
+        Init value;
+        boolean hasBits;
+        LetRecord(String text, TIntArrayList bits, Init val)
+        {
+            this.text = text;
+            value = val;
+            hasBits = bits != null;
+            if (hasBits) this.bits = bits;
+        }
+    }
+
+    public static final class SubClassReference
+    {
+        Record rec;
+        ArrayList<Init> templateArgs;
+        SubClassReference(Record rec, ArrayList<Init> templateArgs)
+        {
+            this.rec = rec;
+            this.templateArgs = templateArgs;
+        }
+    }
+
+    /**
+     * This class is used for saving the status of current parsing file, contains
+     * filename, r (the Reader object to reading filename),
+     * inputStream(currently at the last character consumed for include str),
+     * fileLineNo (the current line no when encountering include str.)
+     */
+    public static final class IncludeRec
+    {
+        String filename;
+        Reader r;
+        SimpleCharStream inputStream;
+        int startLine, startColumn;
+        IncludeRec(String filename, Reader r)
+        {
+            this.filename = filename;
+            this.r = r;
+        }
+    }
+
+    private final Stack<ArrayList<LetRecord>> letStack = new Stack<ArrayList<LetRecord>>();
+    private boolean parseTemplateArgs = false;
+
+    private int anonCounter = 0;
+    private Record curRec = null;
+
+    static ArrayList<String> includeDirectories;
+    static final Stack<IncludeRec> includeStack = new Stack<IncludeRec>();
+
+    /**
+     * This method is called when an error needed to be reported.
+     */
+    static void tokError(String msg)
+    {
+        System.err.println(msg);
+    }
+
+    /**
+     * This is the entry point for parsing a table-gen grammar file.
+     */
+    public void parse()
+    {
+        try
+        {
+            parseObjectList();
+        }
+        catch (ParseException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void addValue(RecordVal rv)
+    {
+        RecordVal rval = curRec.getValue(rv.getName());
+        if (rval != null)
+        {
+            tokError("New definition of '"+rv.getName()
+                    + "' of type '" + rv.getType().toString() +
+                    "' is incompatible with previous definition of type '"
+                    + rval.getType().toString() + "'!\u005cn");
+            System.exit(-1);
+        }
+        else
+            curRec.addValue(rv);
+    }
+
+    private void addSuperClass(Record rc)
+    {
+        if (curRec.isSubClassOf(rc))
+        {
+            tokError("Already subclass of '" + rc.getName()+"'!\u005cn");
+            System.exit(-1);
+        }
+        curRec.addSuperClass(rc);
+    }
+
+    private void setValue(String valName, TIntArrayList bitlist, Init val)
+    {
+        if (val == null) return;
+
+        RecordVal rv = curRec.getValue(valName);
+        if (rv == null)
+        {
+            tokError("Value '" + valName + "' Unknown!\u005cn");
+            System.exit(-1);
+        }
+
+        // Do not allow assignments like 'X = X'.  This will just cause infinite loops
+        // in the resolution machinery.
+        if (bitlist == null)
+        {
+            if (val instanceof VarInit)
+            {
+                VarInit vi = (VarInit)val;
+                if (vi.getName().equals(valName))
+                    return;
+            }
+        }
+
+        // If we are assigning to a subset of the bits in the value... then we must be
+        // assigning to a field of BitsRecTy, which must have a BitsInit initializer.
+        if (bitlist != null)
+        {
+            if (!(rv.getValue() instanceof BitsInit))
+            {
+                tokError("Value '" + valName + "' is not a bits type!\u005cn");
+                System.exit(-1);
+            }
+
+            BitsInit curVal = (BitsInit)rv.getValue();
+            // Convert the incoming value to a bits type of the appropriate size...
+            Init bi = val.convertInitializerTo(new BitsRecTy(bitlist.size()));
+            if (bi == null)
+            {
+                val.convertInitializerTo(new BitsRecTy(bitlist.size()));
+                tokError("Initializer '" + val.toString() + "' not compatible with bit range!\u005cn");
+                System.exit(-1);
+            }
+
+            // We should have a BitsInit type now...
+            assert bi instanceof BitsInit;
+            BitsInit binit = (BitsInit)bi;
+
+            BitsInit newVal = new BitsInit(curVal.getNumBits());
+            for (int i = 0, e = bitlist.size(); i < e; i++)
+            {
+                int b = bitlist.get(i);
+                if (newVal.getBit(b) != null)
+                {
+                    tokError("Cannot set bit #"+b+" of value '"+valName
+                            +"' more than once!\u005cn");
+                    System.exit(-1);
+                }
+                newVal.setBit(b, binit.getBit(i));
+            }
+
+            for (int i = 0, e = curVal.getNumBits(); i < e; i++)
+            {
+                if (newVal.getBit(i) == null)
+                {
+                    newVal.setBit(i, curVal.getBit(i));
+                }
+            }
+            val = newVal;
+        }
+        if (rv.setValue(val))
+        {
+            tokError("Value '"+valName+"' of type '"+rv.getType().toString()
+                    + "' is incompatible with initializer '"+val.toString()+"'!\u005cn");
+            System.exit(-1);
+        }
+    }
+
+    /**
+     * Add {@code rec} as a subclass to curRec, resolving templateArgs as
+     * rec's template arguments.
+     */
+    private void addSubClass(Record rec, ArrayList<Init> templateArgs)
+    {
+        ArrayList<RecordVal> vals = rec.getValues();
+        for (RecordVal rv : vals)
+            addValue(rv);
+
+        ArrayList<String> targs = rec.getTemplateArgs();
+        if (targs.size() < templateArgs.size())
+        {
+            tokError("ERROR: More template args specified than expected!\u005cn");
+            System.exit(-1);
+        }
+        else
+        {
+            for (int i = 0, e = targs.size(); i < e; i++)
+            {
+                String arg = targs.get(i);
+                if (i < templateArgs.size())
+                {
+                    setValue(arg, null, templateArgs.get(i));
+                    curRec.resolveReferencesTo(curRec.getValue(arg));
+
+                    curRec.removeValue(arg);
+                }
+                else if (!curRec.getValue(arg).getValue().isComplete())
+                {
+                    tokError("ERROR: Value not specified for template argument #"
+                            +i+ " ("+ arg+") of suclass '"+rec.getName() + "'!\u005cn");
+                    System.exit(-1);
+                }
+            }
+        }
+
+        // Since everything went well, we can now set the "superclass" list for the
+        // current record.
+        ArrayList<Record> supers = rec.getSuperClasses();
+        for (Record sc : supers)
+            addSuperClass(sc);
+
+        addSuperClass(rec);
+    }
+
+    /**
+     * This is the entry point to parsing a single file.
+     *
+     * @filename The input file text.
+     */
+    public static void parseFile(String filename, ArrayList<String> includeDirs)
+    {
+        parseFile(filename, includeDirs, false);
+    }
+
+    /**
+     * This is the entry point to parsing a single file.
+     *
+     * @filename The input file text.
+     * @debug The flag to indicating whether enable debug.
+     */
+    public static void parseFile(String filename,
+            ArrayList<String> includeDirs,
+            boolean debug)
+    {
+        BufferedReader r = null;
+        try
+        {
+            IncludeRec incRec = null;
+            if (!filename.equals("-"))
+            {
+                r = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
+                incRec = new IncludeRec(filename, r);
+            }
+            else
+            {
+                r = new BufferedReader(new InputStreamReader(System.in));
+                incRec = new IncludeRec("stdin", r);
+            }
+
+            new TGParser(r, incRec, includeDirs, debug).parse();
+        }
+        catch (FileNotFoundException ex)
+        {
+            System.err.println("Could not open file '" + filename+"'!");
+            System.exit(-1);
+        }
+        finally
+        {
+            if (r != null)
+            {
+                try
+                {
+                    r.close();
+                }
+                catch (IOException e)
+                {
+                    System.err.println(e.toString());
+                    System.exit(-1);
+                }
+            }
+        }
+    }
+
+    /**
+     * Constructor method.
+     */
+    private TGParser(Reader r, IncludeRec incRec,
+            ArrayList<String> includeDirs, boolean debug)
+    {
+        this(r);
+        includeStack.push(incRec);
+        includeDirectories = includeDirs;
+        if (debug)
+        {
+            enable_tracing();
+        }
+        else
+        {
+            disable_tracing();
+        }
+    }
+}
+
+PARSER_END(TGParser)
+
+/**
+ * Lexical Rules.
+ */
+
+// Skip the white spaces, comments.
+SKIP:
+{
+      <SPACES: ([" ", "\t", "\n", "\r", "\f"])+>  // white spaces.
+    | <LINE_COMMENT :"//" (~["\n", "\r"])* ("\n" | "\r\n" | "\r")> // single line coment
+    | <BLOCK_COMMENT : "/*" (~[])* "*/">    // block comment.
+}
+
+// Keywords
+TOKEN:
+{
+      <BIT    :     "bit">
+    | <BITS   :    "bits">
+    | <INT    :     "int">
+    | <STRING :  "string">
+    | <LIST   :    "list">
+    | <CODE   :    "code">
+    | <DAG    :    "dag">
+    | <CLASS  :   "class">
+    | <DEF    :     "def">
+    | <FIELD  :   "field">
+    | <LET    :     "let">
+    | <IN     :      "in">    
+    | <SRATOK :    "!sra">
+    | <SRLTOK :    "!srl">
+    | <SHLTOK :    "!shl">
+    | <STRCONCATTOK: "!strconcat">    
+}
+
+
+// Integer literal.
+TOKEN:
+{
+    <INTVAL: 
+    (["+", "-"])? (["0"-"9"])+
+    | "0" ["X","x"] (["0"-"9"] | ["a"-"f"] |["A"-"F"])+
+    | "0b" (["0","1"])+ 
+    >
+}
+
+
+// Identifier.
+// The "#" means that those tokens are help definitions that do not produce tokens.
+TOKEN:
+{
+    <IDENTIFIER: (<ALPHA>| "_") (<ALPHA>| "_" | <DIGIT>)*>
+    |<#DIGIT: ["0"-"9"]>
+    |<#ALPHA: ["a"-"z"] | ["A"-"Z"]>
+}
+
+// VarName.
+TOKEN:
+{
+    <VARNAME: "$" (<ALPHA> | "_") (<ALPHA> | "_" | <DIGIT>)*>
+}
+
+// String literal.
+TOKEN:
+{
+    <STRINGVAL: "\"" (~["\"", "\\", "\n", "\r"])* "\"">
+}
+
+// include string.
+TOKEN:
+{
+    <INCLUDE_STR: "include" (" "|"\t"|"\n")+ "\"" (~["\""])* "\"">
+    {
+        {
+            // The action is to extract the file text from double quoted string.
+            int end = image.length();
+            assert image.charAt(end - 1) == '"' && image.toString().startsWith("include ");
+            int startPos = "include ".length();
+            while (image.charAt(startPos) != '"')
+            {
+            startPos++;
+            }
+            assert (end - startPos) >= 2 : "Double quoted not found?";
+            String filename = image.substring(startPos + 1, end - 1);
+
+            // Save the line number and input stream status.
+            TGParser.includeStack.peek().startLine = input_stream.getBeginLine();
+            TGParser.includeStack.peek().startColumn = input_stream.getBeginColumn();
+
+            Path path = Paths.get(filename);
+
+            if (!Files.exists(path))
+            {
+            // If we couldn't find the file in the current directory, look for it in
+            // the include directories.
+            String nextFileName = "";
+            boolean exist = false;
+            for (String incDir : TGParser.includeDirectories)
+            {
+               nextFileName = incDir + "/" + filename;
+               if (Files.exists(Paths.get(nextFileName)))
+               {
+                  exist = true;
+                  break;
+               }
+            }
+            if (!exist)
+            {
+               TGParser.tokError("Could not find include file '" + filename + "'!\u005cn");
+               System.exit(-1);
+            }
+            filename = nextFileName;
+            }
+
+            BufferedReader r = null;
+            try
+            {
+                r = new BufferedReader(
+                        new InputStreamReader(new FileInputStream(filename)));
+            }
+            catch (FileNotFoundException e)
+            {
+                TGParser.tokError("Could not find include file '" + filename + "'!\u005cn");
+                System.exit(-1);
+            }
+            TGParser.includeStack.push(new TGParser.IncludeRec(filename, r));
+
+            // switch the parsing control flow to the included file.
+            input_stream.ReInit(r);
+        }
+    }
+}
+
+// code fragment.
+TOKEN:
+{
+    <CODE_FRAGMENT: "[" "{" ( (~["}"])+ | "}" ~["}"] )* "}" "]">
+    {
+        // The action is to remove the quoted code fragment.
+        int end = image.length();
+        matchedToken.image = image.substring(2, end-2);
+    }
+}
+
+// punctuation tokens.
+TOKEN:
+{
+     <PLUS: "+">
+    |<MINUS: "-">
+    |<LBRAKET: "[">
+    |<RBRAKET: "]">
+    |<LBRACE: "{">
+    |<RBRACE: "}">
+    |<LPAREN: "(">
+    |<RPAREN: ")">
+    |<COLON: ":">
+    |<SEMI: ";">
+    |<DOT: ".">
+    |<COMMA: ",">
+    |<EQ: "=">
+    |<QUESTION: "?">
+    |<POUND: "#">
+}
+
+<*>TOKEN:
+{
+    <EOF>
+    {
+        // Add action for <EOF> to go to back to the includer file
+        // if there is existing.
+        TGParser.IncludeRec rec = TGParser.includeStack.peek();
+        if (!rec.filename.equals("stdin"))
+        {
+            try
+            {
+                rec.r.close();
+            }
+            catch (IOException e)
+            {
+                TGParser.tokError(e.getMessage());
+                System.exit(-1);
+            }
+        }
+        TGParser.includeStack.pop();
+        if (TGParser.includeStack.isEmpty())
+            System.exit(0);
+
+        // Otherwise, restore the stack top record, continue to parse it.
+        input_stream.ReInit(rec.r, rec.startLine, rec.startColumn);
+    }
+}
+
+Record parseClassID():
+{
+    Token t;
+    Record ret;
+}
+{
+    t = <IDENTIFIER> 
+    {
+        ret = records.getClass(t.image);
+        if (ret == null)
+        {
+            tokError("Couldn't find class '" + t.image+"'!\n");
+            System.exit(-1);
+        }
+        return ret;
+    }
+}
+
+RecTy parseType():
+{
+    Token t;
+    RecTy ty;
+    Record res;
+}
+{
+    <STRING> { return new StringRecTy(); }
+    | <BIT> { return new BitRecTy(); }
+    | <BITS> "<" t = <INTVAL> ">"{ return new BitsRecTy(Integer.parseInt(t.image));}
+    | <INT> { return new IntRecTy(); }
+    | <LIST> "<" ty = parseType() ">" { return new ListRecTy(ty); }
+    | <CODE> { return new CodeRecTy(); }
+    | <DAG> { return new DagRecTy(); }
+    | res = parseClassID() {return new RecordRecTy(res);}
+}
+
+int parseOptPrefix():{}
+{
+    <FIELD> { return 1;}
+    |
+    {/*empty.*/}{return 0;}
+}
+
+Init parseOptValue():{Init val;}
+{
+    <EQ> val = parseValue() { return val; }
+    // empty.
+    | {} {return null;}
+}
+
+Init parseIDValue():
+{
+  Token t;
+}
+{
+  t = <IDENTIFIER> 
+  {
+    Record d;
+    RecordVal rv = (curRec != null ? curRec.getValue(t.image) : null);
+    if (rv != null)
+      return new VarInit(t.image, rv.getType());
+    else if (curRec != null && curRec.isTemplateArg(curRec.getName()+":"+t.image))
+    {
+        rv = curRec.getValue(curRec.getName()+":"+t.image);
+        assert rv != null:"Template arg does not exist!";
+        return new VarInit(curRec.getName() + ":"+t.image, rv.getType());
+    }
+    else if ((d = records.getDef(t.image)) != null)
+    {
+        return new DefInit(d);
+    }
+    else
+    {
+        tokError("Variable not defined: '" + t.image + "'!\n");
+        System.exit(-1);
+    }
+  }
+}
+
+Init parseValueHead():
+{
+    Init res, res2;
+    Token t;
+    ArrayList<Init> list;
+    ArrayList<Pair<Init, String>> dagList;
+}
+{
+    t = <INTVAL>
+    {
+        return new IntInit(Integer.parseInt(t.image)); 
+    }
+    | t = <STRINGVAL> 
+    {
+        return new StringInit(t.image);
+    }
+    |t = <CODE_FRAGMENT> 
+    {
+        return new CodeInit(t.image);
+    }
+    | <QUESTION>
+    {
+        return UnsetInit.getInstance();
+    }
+    | <LBRACE> list = parseValueList() <RBRACE>
+    {
+        int sz = list.size();
+        BitsInit init = new BitsInit(sz);
+        for (int i = 0; i < sz; i++)
+        {
+            Init bit = list.get(i).convertInitializerTo(new BitRecTy());
+            if (bit == null)
+            {
+                tokError("Element #" + i + " (" + bit.toString() + ") is not convertable to a bit!\n");
+                System.exit(-1);
+            }
+            init.setBit(sz - i - 1, bit);
+        }
+        return init;
+    }
+    | LOOKAHEAD(<IDENTIFIER> "<") t = <IDENTIFIER> "<" list = parseValueListNE() ">"
+    {
+        // This is a CLASS<initvalslist> expression.  This is supposed to synthesize
+        // a new anonymous definition, deriving from CLASS<initvalslist> with no
+        // body.
+        Record klass = records.getClass(t.image);
+        if (klass == null)
+        {
+            tokError("Expected a class, got '"+t.image+"'!\n");
+            System.exit(-1);
+        }
+        Record oldRec = curRec;
+        // Create the new record, set it as CurRec temporarily.
+        curRec = new Record("anonymous.val."+(anonCounter++));
+        addSubClass(klass, list); // Add info about the subclass to the curRec.
+        
+        curRec.resolveReferences();
+        
+        records.addDef(curRec);
+        // The result of the expression is a reference to the new record.          
+        Init ret = new DefInit(curRec);
+        
+        // Restore the old CurRec
+        curRec = oldRec;       
+        return ret;
+    }
+    | <LBRAKET> list = parseValueList() <RBRAKET>
+    {
+        return new ListInit(list);
+    }    
+    | <LPAREN> res = parseIDValue() dagList = parseDagArgList() <RPAREN>
+    {
+        return new DagInit(res, dagList);        
+    }
+    | <SHLTOK> <LPAREN> res = parseValue() <COMMA> res2 = parseValue() <RPAREN>
+    {
+        return new BinOpInit(BinOpInit.BinaryOp.SHL, res, res2).fold();
+    }
+    | <SRATOK> <LPAREN> res = parseValue() <COMMA> res2 = parseValue() <RPAREN>
+    {
+        return new BinOpInit(BinOpInit.BinaryOp.SRA, res, res2).fold();
+    }
+    | <SRLTOK> <LPAREN> res = parseValue() <COMMA> res2 = parseValue() <RPAREN>
+    {
+        return new BinOpInit(BinOpInit.BinaryOp.SRL, res, res2).fold();
+    }
+    | <STRCONCATTOK> <LPAREN> res = parseValue() <COMMA> res2 = parseValue() <RPAREN>
+    {
+        return new BinOpInit(BinOpInit.BinaryOp.STRCONCAT, res, res2).fold();
+    }
+    |res = parseIDValue()
+     {
+         return res;
+     }
+}
+
+Init parseValueRest(Init res):
+{
+    Token t;
+    ArrayList<Init> list;
+    TIntArrayList bitlist;
+}
+{
+    "." t = <IDENTIFIER>
+    {
+        if (res.getFieldType(t.image) == null)
+        {
+            tokError("Cannot access field '" + t.image + "' of value '" + res.toString() + "'!\n");
+            System.exit(-1);
+        }
+        return new FieldInit(res, t.image);
+    }
+    | "{" bitlist = parseBitList() "}"
+    {
+        Init ret = res.convertInitializerBitRange(bitlist);
+        if (ret == null)
+        {
+            tokError("Invalid bit range for value '"+res.toString() + "'!\n");
+            System.exit(-1);
+        }
+        return ret;
+    }
+    |
+    "[" bitlist = parseBitList() "]"
+    {
+        Init ret = res.convertIntListSlice(bitlist);
+        if (ret == null)
+        {
+            tokError("Invalid list slice for value '" + res.toString() + "'!\n");
+            System.exit(-1);
+        }
+        return ret;
+    }
+}
+
+Init parseValue():
+{
+    Init res;
+    Token t;
+    ArrayList<Init> list;
+    TIntArrayList bitlist;
+}
+{
+    res = parseValueHead() 
+    (
+        res = parseValueRest(res)
+    )*
+    {
+        return res;
+    }
+}
+
+String parseOptVarName():
+{
+    Token t;
+}
+{
+    <COLON> t = <VARNAME> 
+    {
+        return t.image;
+    }
+    |
+    // empty.
+    {return new String();}    
+}
+
+ArrayList<Pair<Init, String>> parseDagArgListNE():
+{
+    Init res;
+    String varname;
+    ArrayList<Pair<Init, String>> ret = new ArrayList<Pair<Init, String>>();
+}
+{
+    res = parseValue() varname = parseOptVarName()
+    {
+        ret.add(new Pair<Init, String>(res, varname));
+    }
+    (<COMMA> res = parseValue() varname = parseOptVarName()
+    {
+        ret.add(new Pair<Init, String>(res, varname));
+    }
+    )*
+    {        
+        return ret;
+    }
+}
+
+ArrayList<Pair<Init, String>> parseDagArgList():
+{
+    ArrayList<Pair<Init, String>> ret;
+}
+{    
+    ret = parseDagArgListNE()
+    {
+        return ret;
+    }          
+    |// empty.
+    { return new ArrayList<Pair<Init, String>>();}
+}
+
+void parseRBitListRest(TIntArrayList list):
+{
+    Token t, t2;
+}
+{
+    LOOKAHEAD(<INTVAL> "-")
+    t=<INTVAL> "-" t2=<INTVAL> 
+    {
+        int x = Integer.parseInt(t.image);
+        int y = Integer.parseInt(t2.image);
+        if (x < 0 || y < 0)
+        {
+            tokError("Invalid range: " + x + "-" + y + "!\n");
+            System.exit(-1);
+        }
+        if (x < y)
+        {
+            for (int i = x; i <= y; i++)
+                list.add(i);
+        }
+        else 
+        {
+            for (int i = x; i >=y; i--)
+                list.add(i);
+        }
+    }    
+    |LOOKAHEAD(2) t =<INTVAL> t2=<INTVAL>
+    {
+        int x = Integer.parseInt(t.image);
+        int y = Integer.parseInt(t2.image);
+        y = -y;
+        if (x < 0 || y < 0)
+        {
+            tokError("Invalid range: " + x + "-" + y + "!\n");
+            System.exit(-1);
+        }
+
+        if (x < y)
+        {
+            for (int i = x; i <= y; i++)
+                list.add(i);
+        }
+        else 
+        {
+            for (int i = x; i >= y; i--)
+                list.add(i);
+        }
+    }
+    |
+    t = <INTVAL> 
+    {
+        list.add(Integer.parseInt(t.image));     
+    }
+}
+
+TIntArrayList parseRBitList():
+{
+    Token t, t2;  
+    TIntArrayList list = new TIntArrayList();
+}
+{
+    parseRBitListRest(list)
+    (<COMMA> parseRBitListRest(list))*
+    {
+        return list;
+    }
+}
+
+TIntArrayList parseBitList():
+{
+    TIntArrayList ret;
+}
+{
+    ret = parseRBitList() { return ret;}
+}
+
+TIntArrayList parseOptBitList():
+{
+    TIntArrayList ret;
+}
+{   
+    "{" ret = parseBitList() "}" {return ret;}
+    |
+    // empty.
+    {return null;}
+}
+
+ArrayList<Init> parseValueList():
+{
+    ArrayList<Init> res;
+}
+{
+    res = parseValueListNE() { return res; }
+    |
+    // empty.
+    { return new ArrayList<Init>(); }
+    
+}
+
+ArrayList<Init> parseValueListNE():
+{
+    Init ii;
+    ArrayList<Init> ret = new ArrayList<Init>();
+}
+{
+    ii = parseValue() 
+    {
+        ret.add(ii);
+    }
+    ("," ii = parseValue()
+    {
+        ret.add(ii);      
+    })*
+    {
+        return ret;
+    }
+}
+
+String parseDeclaration():
+{
+    Token t;
+    int prefix;
+    RecTy ty;
+    Init ii;
+}
+{
+    prefix = parseOptPrefix() ty = parseType() t = <IDENTIFIER> ii = parseOptValue()
+    {
+        String decName = t.image;
+        if (parseTemplateArgs)
+            decName = curRec.getName()+ ":" + decName;
+        addValue(new RecordVal(decName, ty, prefix));
+        setValue(decName, null, ii);
+        return decName;
+    }
+}
+
+void parseBodyItem():
+{
+    Token t;
+    TIntArrayList bits;
+    Init val;
+}
+{
+    parseDeclaration() <SEMI> {}
+    | <LET> t = <IDENTIFIER> bits = parseOptBitList() <EQ> val=parseValue() <SEMI>
+    {
+        setValue(t.image, bits, val);
+    }
+}
+
+void parseBodyList():{}
+{
+    (parseBodyItem())+
+    |{}{/*empty*/}
+}
+
+void parseBody():{}
+{
+    <SEMI>
+    | <LBRACE> parseBodyList() <RBRACE> {}
+}
+
+SubClassReference parseSubClassReference():
+{
+    Record rec;
+    SubClassReference ret;
+    ArrayList<Init> templateArgs;
+}
+{
+    LOOKAHEAD(2)
+    rec = parseClassID() "<" templateArgs = parseValueListNE() ">"
+    {
+        return new SubClassReference(rec, templateArgs);
+    }
+    
+    | rec = parseClassID() 
+    {
+        return new SubClassReference(rec, new ArrayList<Init>());
+    }
+}
+
+ArrayList<SubClassReference> parseClassListNE():
+{
+    ArrayList<SubClassReference> ret = new ArrayList<SubClassReference>();
+    SubClassReference res;
+}
+{
+    res = parseSubClassReference() 
+    {
+        ret.add(res);
+    }
+    (
+        <COMMA> res = parseSubClassReference()
+        {
+            ret.add(res);
+        }
+    )*
+    {
+        return ret;
+    }
+}
+
+ArrayList<SubClassReference> parseClassList():
+{
+    ArrayList<SubClassReference> ret;
+}
+{    
+    <COLON> ret = parseClassListNE()
+    {
+        return ret;
+    }
+    | // empty.
+    {
+        return new ArrayList<SubClassReference>();
+    }
+}
+
+void parseDeclListNE():
+{
+    String arg;    
+}
+{
+    arg = parseDeclaration() 
+    { 
+        curRec.addTemplateArg(arg); 
+    }
+    (
+        <COMMA> arg = parseDeclaration()
+        {
+            curRec.addTemplateArg(arg); 
+        }
+    )*
+}
+
+void parseTemplateArgList():{}
+{
+    "<" parseDeclListNE()">"
+}
+
+void parseOptTemplateArgList():{}
+{
+    parseTemplateArgList() {}
+    |
+    // empty.
+    {}
+}
+
+String parseOptID():
+{
+    Token t;
+}
+{
+    t = <IDENTIFIER> {return t.image; }
+    | // empty.
+    {
+        return "anonymous."+ (anonCounter++);
+    }
+}
+
+String parseObjectName():
+{
+    String id;
+}
+{
+    id = parseOptID() 
+    {
+        return id;
+    }
+}
+
+void parseClassName():
+{
+    String text;
+}
+{
+    text = parseObjectName()
+    {
+        // If a class of this text already exists, it must be a forward ref.
+        if ((curRec = records.getClass(text)) != null)
+        {
+            // If the body was previously defined, this is an error.
+            if (!(curRec.getValues().isEmpty() 
+&& !curRec.getSuperClasses().isEmpty() &&
+curRec.getTemplateArgs().isEmpty()))
+            {
+                tokError("Class '" + curRec.getName() + "' already defined!\n");
+                System.exit(-1);
+            }
+        }
+        else 
+        {
+            // If this is the first reference to this class, create and add it.
+            curRec = new Record(text);
+            records.addClass(curRec);
+        }
+    }
+}
+
+void parseDefName():
+{
+    String text;
+}
+{
+    text = parseObjectName()
+    {
+        curRec = new Record(text);
+        
+        // Ensure redefinition doesn't happen.
+        if (records.getDef(curRec.getName()) != null)
+        {
+            tokError("Def '" + text + "' already defined!\n");
+            System.exit(-1);
+        }
+        records.addDef(curRec);
+    }   
+}
+
+Record parseObjectBody():
+{
+    ArrayList<SubClassReference> subs;
+    Record ret;
+}
+{
+    subs = parseClassList()
+    {
+        for (SubClassReference sub : subs)
+        {
+            addSubClass(sub.rec, sub.templateArgs);
+        }
+        
+        // Process any variables on the set stack.
+        for (ArrayList<LetRecord> list : letStack)
+        {
+            for (LetRecord letCmd : list)
+            {
+                setValue(letCmd.text, letCmd.hasBits? letCmd.bits : null, letCmd.value);
+            }
+        }
+    }
+    parseBody() 
+    { 
+        ret = curRec; 
+        curRec = null; 
+        return ret;
+    }
+}
+
+Record parseClassInst():
+{
+    Record ret;
+}
+{
+    <CLASS> parseClassName()
+    {
+        parseTemplateArgs = true;
+    } parseOptTemplateArgList()
+    {
+        parseTemplateArgs = false;
+    } ret = parseObjectBody()
+    {
+        return ret;
+    }
+}
+
+Record parseDefInst():
+{
+    Record ret;
+}
+{
+    <DEF> parseDefName() ret = parseObjectBody()
+    {
+        ret.resolveReferences();
+        // If ObjectBody has template arguments, it's an error.
+        assert ret.getTemplateArgs().isEmpty() :"How does this get template args?";
+        return ret;
+    }
+}
+
+void parseLetItem(): 
+{
+    Token t;
+    TIntArrayList bits;
+    Init val;
+}
+{
+    t = <IDENTIFIER> bits = parseOptBitList() <EQ> val = parseValue() 
+    {
+        letStack.peek().add(new LetRecord(t.image, bits, val));
+    }
+}
+
+void parseLetList():{}
+{
+    parseLetItem() (<COMMA> parseLetItem())*
+}
+
+/**
+ * // LETCommand - A 'LET' statement start.
+ */
+void parseLetCommand():{}
+{
+    <LET> 
+    {
+        letStack.push(new ArrayList<LetRecord>());   
+    }   
+    parseLetList() <IN>
+}
+
+void parseLetRest():{}
+{
+    <LBRACE> parseObjectList() <RBRACE>
+    {
+        letStack.pop();
+    }
+    | parseObject() 
+    {
+        letStack.pop();
+    }
+}
+
+void parseLetInst():{}
+{
+    parseLetCommand() parseLetRest()
+}
+void parseObject():{}
+{
+    parseClassInst() 
+    | parseDefInst()
+    | parseLetInst()
+}
+
+void parseObjectList():{}
+{
+    parseObject() {} (parseObject())* <EOF>
+}
