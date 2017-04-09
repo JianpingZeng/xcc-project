@@ -1,7 +1,5 @@
 package xcc;
 
-import java.io.PrintWriter;
-
 public class Main
 {
     public Main()
@@ -12,7 +10,7 @@ public class Main
     {
         ClassLoader loader = Main.class.getClassLoader();
         if (loader != null)
-            loader.setPackageAssertionStatus(jlang.driver.Main.NAME, true);
+            loader.setPackageAssertionStatus(jlang.driver.Jlang.NAME, true);
     }
 
     /**
@@ -30,18 +28,7 @@ public class Main
       */
     public static int compile(String[] args)
     {
-		jlang.driver.Main compiler = new jlang.driver.Main(jlang.driver.Main.NAME);
-        return compiler.compile(args);
-    }
-
-    /**
-      * Programmatic interface.
-      * @param args   The command line parameters.
-      * @param out    Where the jlang.driver's output is directed.
-      */
-    public static int compile(String[] args, PrintWriter out) {
-    	jlang.driver.Main compiler =
-                new jlang.driver.Main(jlang.driver.Main.NAME, out);
+		jlang.driver.Jlang compiler = new jlang.driver.Jlang();
         return compiler.compile(args);
     }
 }

@@ -80,8 +80,8 @@ public class Jlang
      */
     private static final int EXIT_ABNORMAL = 4;
 
-    private static final String VERSION = "0.1";
-    private static final String NAME = "xcc";
+    public static final String VERSION = "0.1";
+    public static final String NAME = "xcc";
 
     /**
      * A list used for residing all of Option corresponding to legal command line
