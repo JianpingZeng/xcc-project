@@ -1,15 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="CflatCompiler" default="compile" basedir=".">
+<project name="XCC" default="compile" basedir=".">
     <target name="init">
         <property file="${user.home}/.ant-global.properties" />
         <property file="build.properties" />
     </target>
 
-    <target name="tgparser" depends="init">
+    <target name="generate_tblgen" depends="init">
         <javacc target="${tgparser.jj.file}" javacchome="${javacc.dir}" />
     </target>
 
-    <target name="compile" depends="init, parser">
+    <target name="generate_tg_backend" depends="generate_tblgen">
+        <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
+            <arg value="-gen-reg-names -o X86GenRegisterNames.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86Register.td"/>
+            <classpath>
+                <pathelement path="${build.classes.dir}"/>
+            </classpath>
+        </java>
+            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
+            <arg value="-gen-reg-info -o X86GenRegisterInfo.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86Register.td"/>
+            <classpath>
+                <pathelement path="${build.classes.dir}"/>
+            </classpath>
+        </java>
+            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
+            <arg value="-gen-instr-names -o X86GenInstrNames.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86InstrInfo.td"/>
+            <classpath>
+                <pathelement path="${build.classes.dir}"/>
+            </classpath>
+        </java>
+            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
+            <arg value="-gen-instr-info -o X86GenInstrInfo.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86InstrInfo.td"/>
+            <classpath>
+                <pathelement path="${build.classes.dir}"/>
+            </classpath>
+        </java>
+            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
+            <arg value="-gen-asm-print -o X86GenATTAsmPrinter.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td"/>
+            <classpath>
+                <pathelement path="${build.classes.dir}"/>
+            </classpath>
+        </java>
+    </target>
+
+    <target name="compile" depends="generate_tg_backend">
         <mkdir dir="${build.dir}" />
         <mkdir dir="${build.classes.dir}" />
         <javac destdir="${build.classes.dir}" srcdir="${src.dir}"
