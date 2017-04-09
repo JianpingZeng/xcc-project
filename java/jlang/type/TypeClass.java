@@ -9,21 +9,27 @@ package jlang.type;
  */
 public interface TypeClass
 {
+    int BuiltinTypeBegin = 1;
 
-    int Void = 1;
+    int Void = BuiltinTypeBegin;
     int Bool = Void + 1;
     int UnsignedChar = Bool + 1;
     int UnsignedShort = UnsignedChar + 1;
     int UnsignedInt = UnsignedShort + 1;
     int UnsignedLong = UnsignedInt + 1;
+    int UnsignedLongLong = UnsignedLong + 1;
 
-    int Char = UnsignedLong + 1;
+    int Char = UnsignedLongLong + 1;
     int Short = Char + 1;
     int Int = Short + 1;
     int LongInteger = Int + 1;
+    int LongLong = LongInteger + 1;
+    int Float = LongLong + 1;
+    int Double = Float + 1;
+    int LongDouble = Double + 1;
+    int BuiltinTypeEnd = LongDouble + 1;
 
-    int Real = LongInteger + 1;
-    int Complex = Real + 1;
+    int Complex = LongDouble + 1;
     int Enumerate = Complex + 1;
     int Pointer = Enumerate + 1;
     int Reference = Pointer + 1;

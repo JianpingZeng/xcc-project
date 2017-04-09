@@ -15,30 +15,10 @@ import tools.Util;
  */
 public abstract class Type implements TypeClass
 {
-    public static QualType VoidTy = new QualType(VoidType.New());
-
-    public static QualType BoolTy = new QualType(new IntegerType(1, false));
-
-    public static QualType CharTy = new QualType(new IntegerType(1, true));
-    public static QualType SignedCharTy = new QualType(new IntegerType(1, true));
-    public static QualType UnsignedCharTy = new QualType(new IntegerType(1, false));
-
-    public static QualType ShortTy = new QualType(new IntegerType(2, true));
-    public static QualType UnsignedShortTy = new QualType(
-            new IntegerType(2, false));
-
-    public static QualType IntTy = new QualType(new IntegerType(4, true));
-    public static QualType UnsignedIntTy = new QualType(
-            new IntegerType(4, false));
-
-    public static QualType LongTy = new QualType(new IntegerType(4, true));
-    public static QualType UnsignedLongTy = new QualType(new IntegerType(4, false));
-
-    public static QualType LongLongTy = new QualType(new IntegerType(8, true));
-    public static QualType UnsignedLongLongTy = new QualType(new IntegerType(8, false));
-
-    public static QualType FloatTy = new QualType(new RealType(4, "float"));
-    public static QualType DoubleTy = new QualType(new RealType(8, "double"));
+    public boolean isBuiltinType()
+    {
+        return tag >= BuiltinTypeBegin && tag < BuiltinTypeEnd;
+    }
 
     /**
      * The kind of a tag jlang.type.
@@ -90,7 +70,7 @@ public abstract class Type implements TypeClass
 	public boolean isCanonical() {return canonicalType.getType() == this;}
 
     /**
-     * Returns the getNumOfSubLoop of the specified jlang.type in bits.
+     * Returns the getNumOfSubLoop of the specified type in bits.
      * </br>
      * This method doesn't work on incomplete types.
      *
@@ -130,7 +110,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isPrimitiveType()
     {
-        return tag >= Bool && tag <= Real;
+        return tag >= Bool && tag <= Float;
     }
 
     /**
@@ -158,7 +138,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isRealType()
     {
-        return tag == Real;
+        return tag == Float;
     }
 
     /**
@@ -287,7 +267,7 @@ public abstract class Type implements TypeClass
     public boolean isScalarType()
     {
         if (isPrimitiveType())
-            return tag > Void && tag <= Real;
+            return tag > Void && tag <= Float;
         if (isEnumType())
         {
             return ((EnumType) this).getDecl().isCompleteDefinition();
@@ -378,7 +358,7 @@ public abstract class Type implements TypeClass
     {
         if (isPrimitiveType())
         {
-            return tag >= Bool && tag <= Real;
+            return tag >= Bool && tag <= Float;
         }
         if (isEnumType())
         {
@@ -471,7 +451,7 @@ public abstract class Type implements TypeClass
 
         FunctionType ft = getFunctionType();
         if (ft != null)
-            return ft.getReturnType().isVariablyModifiedType();
+            return ft.getResultType().isVariablyModifiedType();
         return false;
     }
 

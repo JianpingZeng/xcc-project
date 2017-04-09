@@ -1,6 +1,6 @@
 package jlang.diag;
-import static jlang.diag.Diagnostics.Level.*;
-import static jlang.diag.Diagnostics.Mapping.*;
+import static jlang.diag.Diagnostic.Level.*;
+import static jlang.diag.Diagnostic.Mapping.*;
 
 public enum DiagnosticCommonKinds implements DiagnosticCommonKindsTag
 {
@@ -11,6 +11,7 @@ public enum DiagnosticCommonKinds implements DiagnosticCommonKindsTag
 	ERR_PARAM_REDEFINITION(err_param_redefinition, Error, MAP_ERROR, "redefinition of parameter %0"),
 	ERR_PP_I_DASH_NOT_SUPPORTED(err_pp_I_dash_not_supported, Error, MAP_ERROR, "-I- not supported, please use -iquote instead"),
 	EXT_LONGLONG(ext_longlong, Note, MAP_IGNORE, "'long long' is an extension when C99 mode is not enabled"),
+	EXT_NO_DECLARATORS(ext_no_declarators, Note, MAP_WARNING, "declaration does not declare anything"),
 	NOTE_ALSO_FOUND_DECL(note_also_found_decl, Note, MAP_FATAL, "also found"),
 	NOTE_DUPLICATE_CASE_PREV(note_duplicate_case_prev, Note, MAP_FATAL, "previous case defined here"),
 	NOTE_FORWARD_DECLARATION(note_forward_declaration, Note, MAP_FATAL, "forward declaration of %0"),
@@ -26,12 +27,12 @@ public enum DiagnosticCommonKinds implements DiagnosticCommonKindsTag
 	WARN_INTEGER_TOO_LARGE_FOR_SIGNED(warn_integer_too_large_for_signed, Warning, MAP_WARNING, "integer constant is so large that it is unsigned");
 
 	public int diagID;
-	public Diagnostics.Level diagClass;
-	public Diagnostics.Mapping diagMapping;
+	public Diagnostic.Level diagClass;
+	public Diagnostic.Mapping diagMapping;
 	public String text;
 
-	DiagnosticCommonKinds(int diagID, Diagnostics.Level diagClass,
-			Diagnostics.Mapping diagMapping, String text)
+	DiagnosticCommonKinds(int diagID, Diagnostic.Level diagClass,
+			Diagnostic.Mapping diagMapping, String text)
 	{
 		this.diagID = diagID;
 		this.diagClass = diagClass;

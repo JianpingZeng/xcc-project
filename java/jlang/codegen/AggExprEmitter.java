@@ -372,7 +372,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
     }
 
 	/**
-     * Emit a null value depending on different QualType and store it into given
+     * emit a null value depending on different QualType and store it into given
      * address {@code lv}.
      * @param lv
      * @param ty

@@ -50,6 +50,11 @@ public class SourceLocation
         return column < 0 || line < 0;
     }
 
+    public long getRawEncoding()
+    {
+        return ((long)line << 32) | column;
+    }
+
     @Override
     public boolean equals(Object obj)
     {
@@ -84,10 +89,10 @@ public class SourceLocation
             this(loc, loc);
         }
 
-        public SourceLocation getStart() { return start; }
+        public SourceLocation getBegin() { return start; }
         public SourceLocation getEnd() { return end; }
 
-        public void setStart(SourceLocation start)
+        public void setBegin(SourceLocation start)
         {
             this.start = start;
         }

@@ -221,7 +221,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
             stack[virReg2PhyRegMap[regOnTop]] = stack[stackTop];
             stack[stackTop] = tmp;
 
-            // Emit a fxch instr to update the runtime processors versio of
+            // emit a fxch instr to update the runtime processors versio of
             // the status
             MachineInstr mi = buildMI(X86InstrNames.FXCH, 1).addReg(stReg).getMInstr();
             mbb.insert(insertPos++, mi);

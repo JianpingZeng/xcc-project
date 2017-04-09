@@ -17,6 +17,7 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree.*;
+import jlang.cpp.SourceLocation;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;
 import jlang.sema.Decl.VarDecl;
@@ -38,8 +39,9 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
     private OutParamWrapper<APValue> result;
 
-    public IntExprEvaluator(OutParamWrapper<APValue> result)
+    public IntExprEvaluator(OutParamWrapper<APValue> result, ASTContext ctx)
     {
+        super(ctx);
         this.result = result;
     }
 
@@ -47,7 +49,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         assert e.getType().isIntegralOrEnumerationType()
                 :"Invalid evaluation result.";
-        assert si.isSigned() == e.getType().isSignedIntegerOrEnumerationType()
+        assert si.isSigned() == context.isSignedIntegerOrEnumerationType(e.getType())
                 :"Invalid evaluation result.";
         assert si.getBitWidth() == e.getIntWidth():"Invalid evaluation result.";
 
@@ -63,7 +65,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
         result.set(new APValue(new APSInt(i)));
         result.get().getInt().setIsUnsigned(
-                e.getType().isUnsignedIntegerOrEnumerationType());
+                context.isUnsignedIntegerOrEnumerationType(e.getType()));
         return true;
     }
 
@@ -83,12 +85,11 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     @Override
     protected Boolean error(Expr expr)
     {
-        return error(expr.getExprLocation(),
-                "invalid sub-expression in IntExprEvaluator",
+        return error(expr.getExprLocation(), "invalid sub-expression in IntExprEvaluator",
                 expr);
     }
 
-    protected boolean error(int l, String diag, Expr e)
+    protected boolean error(SourceLocation loc, String diag, Expr e)
     {
         return false;
     }
@@ -120,9 +121,9 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         {
             EnumConstantDecl ecd = (EnumConstantDecl)d;
             boolean sameSign = ecd.getInitValue().isSigned()
-                    ==e.getType().isSignedIntegerOrEnumerationType();
+                    == context.isSignedIntegerOrEnumerationType(e.getType());
             boolean sameWidth = ecd.getInitValue().getBitWidth()
-                    == QualType.getIntWidth(e.getType());
+                    == context.getIntWidth(e.getType());
             if (sameSign && sameWidth)
             {
                 return success(ecd.getInitValue(), e);
@@ -135,7 +136,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 if (!sameSign)
                     val.setIssigned(!ecd.getInitValue().isSigned());
                 if (!sameWidth)
-                    val = val.extOrTrunc(QualType.getIntWidth(e.getType()));
+                    val = val.extOrTrunc(context.getIntWidth(e.getType()));
                 return success(val, e);
             }
         }
@@ -166,7 +167,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     vd.setEvaluatingValue();
 
                     Expr.EvalResult evalResult = new Expr.EvalResult();
-                    if (init.evaluate(evalResult) && !evalResult.hasSideEffects()
+                    if (init.evaluate(evalResult, context) && !evalResult.hasSideEffects()
                             && evalResult.getValue().isInt())
                     {
                         // Cache the evaluated value in the variable declaration.
@@ -217,7 +218,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         {
             OutParamWrapper<Boolean> lhsResult = new OutParamWrapper<>()
                     , rhsResult = new OutParamWrapper<>();
-            if (handleConversionToBool(expr.getLHS(), lhsResult))
+            if (handleConversionToBool(expr.getLHS(), lhsResult, context))
             {
                 // make constant folding operation.
                 // evaluating the RHS: 0&& RHS -> 0, 1||RHS -> 1
@@ -225,7 +226,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 {
                     return success(lhsResult.get()? 1:0, expr);
                 }
-                if (handleConversionToBool(expr.getRHS(), rhsResult))
+                if (handleConversionToBool(expr.getRHS(), rhsResult, context))
                 {
                     if (expr.getOpcode() == BinaryOperatorKind.BO_LOr)
                         return success(lhsResult.get() || rhsResult.get() ? 1:0, expr);
@@ -235,7 +236,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             }
             else
             {
-                if (handleConversionToBool(expr.getRHS(), lhsResult))
+                if (handleConversionToBool(expr.getRHS(), lhsResult, context))
                 {
                     if (rhsResult.get() == (expr.getOpcode() == BinaryOperatorKind.BO_LOr
                     || !rhsResult.get() == (expr.getOpcode() == BinaryOperatorKind.BO_LAnd)))
@@ -255,7 +256,6 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         {
             assert rhsTy.isComplexType():"Invalid comparison";
             // TODO Clang 3.0 ExprConstant.cpp:1398
-
         }
 
         if (lhsTy.isRealType() && rhsTy.isRealType())
@@ -302,11 +302,11 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     || expr.isEqualityOp())
             {
                 OutParamWrapper<LValue> lhsValue =new OutParamWrapper<>();
-                if (!evaluatePointer(expr.getLHS(), lhsValue))
+                if (!evaluatePointer(expr.getLHS(), lhsValue, context))
                     return false;
 
                 OutParamWrapper<LValue> rhsValue =new OutParamWrapper<>();
-                if (!evaluatePointer(expr.getRHS(), rhsValue))
+                if (!evaluatePointer(expr.getRHS(), rhsValue, context))
                     return false;
 
                 // Reject any bases from the normal codepath; we special-case comparisons
@@ -325,7 +325,8 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     OutParamWrapper<Boolean> bres = new OutParamWrapper<>();
                     if (evaluatePointerValueAsBool(lhsValue.get(), bres))
                         return false;
-                    return success(bres.get()?1:0 ^ (expr.getOpcode()==BinaryOperatorKind.BO_EQ?1:0), expr);
+                    return success(bres.get()?1:
+                            (expr.getOpcode() == BinaryOperatorKind.BO_EQ ? 1 : 0), expr);
                 }
                 else if (rhsValue.get().getLValueBase() != null)
                 {
@@ -341,13 +342,14 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     OutParamWrapper<Boolean> bres = new OutParamWrapper<>();
                     if (evaluatePointerValueAsBool(rhsValue.get(), bres))
                         return false;
-                    return success(bres.get()?1:0 ^ (expr.getOpcode()==BinaryOperatorKind.BO_EQ?1:0), expr);
+                    return success(bres.get()?1:
+                            (expr.getOpcode() == BinaryOperatorKind.BO_EQ ? 1 : 0), expr);
                 }
 
                 if (expr.getOpcode() == BinaryOperatorKind.BO_Sub)
                 {
                     QualType type = expr.getLHS().getType();
-                    QualType elemType = type.<PointerType>getAs().getPointeeType();
+                    QualType elemType = context.<PointerType>getAs(type).getPointeeType();
 
                     long elemSize = 1;
                     if (!elemType.isVoidType() && !elemType.isFunctionType())
@@ -481,7 +483,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             // LNot's operand isn't necessarily an integer, so
             // we handle it specially.
             OutParamWrapper<Boolean> bres = new OutParamWrapper<>();
-            if (!handleConversionToBool(expr.getSubExpr(), bres))
+            if (!handleConversionToBool(expr.getSubExpr(), bres, context))
                 return false;
 
             return success(bres.get()?0:1, expr);
@@ -564,7 +566,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             case CK_IntegralComplexToBoolean:
             {
                 OutParamWrapper<Boolean> boolResult = new OutParamWrapper<>();
-                if (!handleConversionToBool(subExpr, boolResult))
+                if (!handleConversionToBool(subExpr, boolResult, context))
                     return false;
                 return success(boolResult.get()?1:0, expr);
             }
@@ -580,13 +582,13 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     return destType.getTypeSize() == srcType.getTypeSize();
                 }
 
-                return success(handleIntToIntCast(destType, srcType, result.get().getInt()), expr);
+                return success(handleIntToIntCast(destType, srcType, result.get().getInt(), context), expr);
             }
 
             case CK_PointerToIntegral:
             {
                 OutParamWrapper<LValue> lv = new OutParamWrapper<>();
-                if (!evaluatePointer(subExpr, lv))
+                if (!evaluatePointer(subExpr, lv, context))
                     return false;
 
                 if (lv.get().getLValueBase() != null)
@@ -599,7 +601,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 }
 
                 APSInt asInt = APSInt.makeIntValue(lv.get().getLValueOffset(), srcType);
-                return success(handleIntToIntCast(destType, srcType, asInt), expr);
+                return success(handleIntToIntCast(destType, srcType, asInt, context), expr);
             }
 
             case CK_IntegralComplexToReal:
@@ -612,30 +614,30 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 if (!evaluateFloat(subExpr, f))
                     return false;
 
-                return success(handleFloatToIntCast(destType, srcType, f.get()), expr);
+                return success(handleFloatToIntCast(destType, srcType, f.get(), context), expr);
             }
         }
         Util.shouldNotReachHere("unknown cast result in integral value");
         return false;
     }
 
-    private static APSInt handleIntToIntCast(QualType destType, QualType srcType, APSInt i)
+    private static APSInt handleIntToIntCast(QualType destType, QualType srcType, APSInt i, ASTContext ctx)
     {
-        int destWidth = QualType.getIntWidth(destType);
+        int destWidth = ctx.getIntWidth(destType);
         APSInt result = i;
         // Figure out if this is a truncate, extend or noop cast.
         // If the input is signed, do a sign extend, noop, or truncate.
         result = result.extOrTrunc(destWidth);
-        result.setIsUnsigned(destType.isUnsignedIntegerOrEnumerationType());
+        result.setIsUnsigned(ctx.isUnsignedIntegerOrEnumerationType(destType));
         return result;
     }
 
-    private static APSInt handleFloatToIntCast(QualType destType, QualType srcType, BigDecimal val)
+    private static APSInt handleFloatToIntCast(QualType destType, QualType srcType, BigDecimal val, ASTContext ctx)
     {
-        int destWidth = QualType.getIntWidth(destType);
+        int destWidth = ctx.getIntWidth(destType);
 
         // Determine whether we are converting to unsigned or signed.
-        boolean destIsSigned = destType.isSignedIntegerOrEnumerationType();
+        boolean destIsSigned = ctx.isSignedIntegerOrEnumerationType(destType);
 
         APSInt result = new APSInt(val.intValue(), !destIsSigned);
         if (destIsSigned)

@@ -27,8 +27,9 @@ import java.math.BigDecimal;
 public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
     private OutParamWrapper<BigDecimal> result;
-    public FloatExprEvaluator(OutParamWrapper<BigDecimal> result)
+    public FloatExprEvaluator(OutParamWrapper<BigDecimal> result, ASTContext ctx)
     {
+        super(ctx);
         this.result = result;
     }
 
@@ -44,7 +45,8 @@ public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
         return false;
     }
 
-    @Override protected boolean visitCastExpr(Tree.CastExpr expr)
+    @Override
+    protected Boolean visitCastExpr(Tree.CastExpr expr)
     {
         return false;
     }

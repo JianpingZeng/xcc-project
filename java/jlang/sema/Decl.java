@@ -8,13 +8,14 @@ package jlang.sema;
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.LabelledStmt;
+import jlang.basic.Linkage;
 import jlang.cparser.DeclContext;
 import jlang.cparser.DeclKind;
 import jlang.cparser.Declarator;
 import jlang.cpp.SourceLocation;
 import jlang.type.QualType;
 import jlang.type.Type;
-import tools.Position;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -189,6 +190,76 @@ public abstract class Decl extends DeclContext
             }
 
             return (this instanceof FunctionDecl);
+        }
+
+        public String getIdentifier()
+        {
+            return name;
+        }
+
+        public Linkage getLinkage()
+        {
+            LinkageInfo info = getLVForDecl(this, LVFlags.createOnlyDeclLinkage());
+            return info.getLinkage();
+        }
+
+        static LinkageInfo getLVForDecl(NamedDecl decl, LVFlags flags)
+        {
+            if (decl.getDeclContext().isFileContext())
+            {
+                if (decl instanceof VarDecl)
+                {
+                    Decl.VarDecl var = (Decl.VarDecl)decl;
+                    // Explicitly declared static.
+                    if (var.getStorageClass() == StorageClass.SC_static)
+                        return LinkageInfo.internal();
+
+                    if (var.getStorageClass() == StorageClass.SC_none)
+                        return LinkageInfo.external();
+
+                    if (var.getStorageClass() == StorageClass.SC_extern)
+                        return LinkageInfo.external();
+                }
+                else if (decl instanceof FunctionDecl)
+                {
+                    Decl.FunctionDecl fnDecl = (Decl.FunctionDecl)decl;
+
+                    // Explicitly declared static.
+                    if (fnDecl.getStorageClass() == StorageClass.SC_static)
+                        return LinkageInfo.internal();
+
+                    return LinkageInfo.external();
+                }
+                else if (decl instanceof FieldDecl)
+                {
+                    //   - a data member of an anonymous union.
+                    Decl.FieldDecl field = (Decl.FieldDecl)decl;
+                    if (((RecordDecl)field.getDeclContext()).isAnonymousStructOrUnion())
+                        return LinkageInfo.internal();
+                }
+
+
+                // Set up the defaults.
+
+                // C99 6.2.2p5:
+                //   If the declaration of an identifier for an object has file
+                //   scope and no storage-class specifier, its linkage is
+                //   external.
+                LinkageInfo lv = new LinkageInfo();
+                return lv;
+            }
+            if (decl.getDeclContext().isFunction())
+            {
+                if (decl instanceof VarDecl)
+                {
+                    Decl.VarDecl var = (Decl.VarDecl)decl;
+                    if (var.getStorageClass() == StorageClass.SC_extern)
+                        return LinkageInfo.uniqueExternal();
+
+                    return new LinkageInfo();
+                }
+            }
+            return LinkageInfo.none();
         }
     }
 
@@ -623,7 +694,7 @@ public abstract class Decl extends DeclContext
 
         public QualType getReturnType()
         {
-            return getDeclType().getType().getFunctionType().getReturnType();
+            return getDeclType().getType().getFunctionType().getResultType();
         }
 
         public void setParams(ArrayList<ParamVarDecl> params)
@@ -951,7 +1022,7 @@ public abstract class Decl extends DeclContext
 
     public static class RecordDecl extends TagDecl
     {
-        private boolean annoymousStructOrUnion;
+        private boolean anonymousStructOrUnion;
 
         public RecordDecl(String name,
                 Type.TagTypeKind tagTypeKind,
@@ -960,7 +1031,7 @@ public abstract class Decl extends DeclContext
                 RecordDecl prevDecl)
         {
             super(StructDecl, tagTypeKind, context, name, loc, prevDecl);
-            annoymousStructOrUnion = false;
+            anonymousStructOrUnion = false;
         }
 
         void completeDefinition()
@@ -989,6 +1060,26 @@ public abstract class Decl extends DeclContext
         public int getNumFields()
         {
             return getDeclsInContext().size();
+        }
+
+	    /**
+         * Whether this is an anonymous struct or union.
+         * To be an anonymous struct or union, it must have been
+         * declared without a name and there must be no objects of this
+         * type declared, e.g.,
+         * <code>
+         *   union { int i; float f; };
+         * </code>
+         * is an anonymous union but neither of the following are:
+         * <code>
+         *  union X { int i; float f; };
+         *  union { int i; float f; } obj;
+         * </code>
+         * @return
+         */
+        public boolean isAnonymousStructOrUnion()
+        {
+            return anonymousStructOrUnion;
         }
     }
 

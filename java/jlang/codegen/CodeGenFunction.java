@@ -150,12 +150,12 @@ public final class CodeGenFunction
 		{
 			jlang.type.FunctionType ft = fd.getDeclType().getFunctionType();
 			for (int i = 0, e = fd.getNumParams(); i < e; i++)
-				functionArgList.add(new Pair<>(fd.getParamDecl(i), ft.getParamType(i)));
+				functionArgList.add(new Pair<>(fd.getParamDecl(i), ft.getArgType(i)));
 		}
 		CompoundStmt body = fd.getCompoundBody();
 		if (body != null)
 		{
-			// Emit the standard function prologue.
+			// emit the standard function prologue.
 			startFunction(fd, resTy, fn, functionArgList);
 			// Generates code for function body.
 			emitStmt(body);
@@ -224,7 +224,7 @@ public final class CodeGenFunction
 
 		Iterator<Argument> ai = fn.getArgumentList().iterator();
 
-		// Emit alloca inst for param decls.  Give the HIR argument nodes names.
+		// emit alloca inst for param decls.  Give the HIR argument nodes names.
 		Iterator<Argument> argItr = fn.getArgumentList().iterator();
 
 		// obtains the ABIArgInfo list (contains the type and arg AI) of formal
@@ -325,7 +325,7 @@ public final class CodeGenFunction
 	}
 
 	/**
-	 * Emit a alloca for realistic argument and fills locaVarMaps.
+	 * emit a alloca for realistic argument and fills locaVarMaps.
 	 * @param param
 	 * @param arg
 	 */
@@ -507,7 +507,7 @@ public final class CodeGenFunction
 
 		emitBranchOnBoolExpr(s.getCond(), thenBB, elseBB);
 
-		// Emit the 'then' code.
+		// emit the 'then' code.
 		emitBlock(thenBB);
 		emitStmt(s.getThenPart());
 		emitBranch(endBB);
@@ -520,12 +520,12 @@ public final class CodeGenFunction
 			emitBranch(endBB);
 		}
 
-		// Emit the continuation block for code after the if stmt.
+		// emit the continuation block for code after the if stmt.
 		emitBlock(endBB, true);
 	}
 
 	/**
-	 * Emit a branch instruction on the specified condition is evaluated as boolean.
+	 * emit a branch instruction on the specified condition is evaluated as boolean.
 	 * When condition is false, branch to {@code trueBB}, othewise to {@code falseBB}.
 	 * <p>Based on condition, it might be taken to simply the codegen of the branch.
 	 * </p>
@@ -566,7 +566,7 @@ public final class CodeGenFunction
 					return;
 				}
 
-				// Emit the LHS as a conditional.  If the LHS conditional is false, we
+				// emit the LHS as a conditional.  If the LHS conditional is false, we
 				// want to jump to the FalseBlock.
 				BasicBlock lhsTrue = createBasicBlock("land.lhs.true");
 				emitBranchOnBoolExpr(condBOp.getLHS(), lhsTrue, falseBB);
@@ -646,7 +646,7 @@ public final class CodeGenFunction
 	 */
 	public Value evaluateExprAsBool(Expr cond)
 	{
-		QualType boolTy = jlang.type.Type.BoolTy;
+		QualType boolTy = ASTContext.BoolTy;
 		assert !cond.getType()
 				.isComplexType() : "Current complex type not be supported.";
 
@@ -662,7 +662,7 @@ public final class CodeGenFunction
 	private void emitWhileStmt(WhileStmt s)
 	{
 		// create a basic block for condition when continue encountered in while.
-		// Emit the header for the loop, insert it, which will create an uncond br to
+		// emit the header for the loop, insert it, which will create an uncond br to
 		// it.
 		BasicBlock condBB = createBasicBlock("while.cond");
 		emitBlock(condBB);
@@ -689,7 +689,7 @@ public final class CodeGenFunction
 		if (emitBoolCondBranch)
 			builder.createCondBr(condVal, loopBody, exitBB);
 
-		// Emit the loop body.
+		// emit the loop body.
 		emitBlock(loopBody);
 		emitStmt(s.getBody());
 
@@ -698,7 +698,7 @@ public final class CodeGenFunction
 		// goto the condition.
 		emitBlock(condBB);
 
-		// Emit the exit block.
+		// emit the exit block.
 		emitBlock(exitBB, true);
 
 		// the loop header typically is just a branch if we skipping emitting
@@ -724,7 +724,7 @@ public final class CodeGenFunction
 
 	private void emitDoStmt(DoStmt s)
 	{
-		// Emit the body of the loop, insert it into blocks list.
+		// emit the body of the loop, insert it into blocks list.
 		BasicBlock loopBody = createBasicBlock("do.body");
 		BasicBlock loopEnd = createBasicBlock("do.end");
 
@@ -820,13 +820,13 @@ public final class CodeGenFunction
 		// Finally, branch back up to the condition for the next iteration.
 		emitBranch(condBlock);
 
-		// Emit the loop exit block.
+		// emit the loop exit block.
 		emitBlock(forEnd, true);
 	}
 
 	private void emitReturnStmt(ReturnStmt s)
 	{
-		// Emit the result value, even if unused, to evalute the side effects.
+		// emit the result value, even if unused, to evalute the side effects.
 		final Expr resultVal = s.getRetValue();
 
 		// if this function have no return value.
@@ -862,7 +862,7 @@ public final class CodeGenFunction
 	}
 
 	/**
-	 * Emit code to compute the specified expression with any type.
+	 * emit code to compute the specified expression with any type.
 	 *
 	 * @param e
 	 */
@@ -1224,7 +1224,7 @@ public final class CodeGenFunction
 	}
 
 	/**
-	 * Emit the computation of the specified expression of aggregate
+	 * emit the computation of the specified expression of aggregate
 	 * type.  The result is computed into {@code destPtr}.
 	 * <p>
 	 * Note that if {@code destPtr} is null, the value of the aggregate
@@ -1360,7 +1360,7 @@ public final class CodeGenFunction
 
 	public void emitBranch(BasicBlock targetBB)
 	{
-		// Emit a branch instruction from the current block to the
+		// emit a branch instruction from the current block to the
 		// TargetData block if this is a real one. If this is just a fall-through
 		// block after a terminator, don't emit it.
 		BasicBlock curBB = builder.getInsertBlock();
@@ -1658,7 +1658,7 @@ public final class CodeGenFunction
 	}
 
 	/**
-	 * Emit code to compute a designator that specifies the location of the
+	 * emit code to compute a designator that specifies the location of the
 	 * expression.
 	 * <p>This can return one of things: a simple address or a bitfield.
 	 * </p>
@@ -1837,7 +1837,7 @@ public final class CodeGenFunction
 		QualType fnType = calleeType.<jlang.type.PointerType>getAs()
 				.getPointee();
 		jlang.type.FunctionType fn = fnType.getAs();
-		QualType resultType = fn.getReturnType();
+		QualType resultType = fn.getResultType();
 
 		ArrayList<Pair<RValue, QualType>> callArgs = new ArrayList<>();
 		emitCallArgs(callArgs, fn, args);
@@ -1994,7 +1994,7 @@ public final class CodeGenFunction
 	}
 
 	/**
-	 * Emit function calling arguments.
+	 * emit function calling arguments.
 	 *
 	 * @param callArgs
 	 * @param fnType   The function type of called function definition is used for
@@ -2008,9 +2008,9 @@ public final class CodeGenFunction
 
 		if (fnType != null)
 		{
-			for (int i = 0, size = fnType.getNumParams(); i < size; i++)
+			for (int i = 0, size = fnType.getNumArgs(); i < size; i++)
 			{
-				QualType argType = fnType.getParamType(i);
+				QualType argType = fnType.getArgType(i);
 				Expr arg = args.get(idx);
 				assert argType.getCanonicalTypeInternal().getType() == arg
 						.getType().getCanonicalTypeInternal()
@@ -2021,11 +2021,11 @@ public final class CodeGenFunction
 			}
 
 			assert idx == args.size() || fnType
-					.isVarArgs() : "Extra arguments in non-varidadic function!";
+					.isVariadic() : "Extra arguments in non-varidadic function!";
 		}
 
 		// If we still have any arguments, emit them using the type of the argument.
-		for (int size = fnType.getNumParams(); idx < size; idx++)
+		for (int size = fnType.getNumArgs(); idx < size; idx++)
 		{
 			Expr arg = args.get(idx);
 			QualType argType = arg.getType();
@@ -2124,7 +2124,7 @@ public final class CodeGenFunction
 		QualType idxType = expr.getIdx().getType();
 		boolean idxSigned = idxType.isSignedType();
 
-		// The base must be a pointer, which is not an aggregate.  Emit it.
+		// The base must be a pointer, which is not an aggregate.  emit it.
 		Value base = emitScalarExpr(expr.getBase());
 
 		// Extend or truncate the index type to 32 or 64 bits.

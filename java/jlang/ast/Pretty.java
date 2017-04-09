@@ -77,7 +77,7 @@ public final class Pretty extends StmtVisitor
     }
 
     /**
-     * Enter a new precedence level. Emit a `(' if new precedence level is less
+     * Enter a new precedence level. emit a `(' if new precedence level is less
      * than precedence level so far.
      *
      * @param contextPrec The precedence level in force so far.
@@ -90,7 +90,7 @@ public final class Pretty extends StmtVisitor
     }
 
     /**
-     * Leave precedence level. Emit a `)' if subLoops precedence level is less than
+     * Leave precedence level. emit a `)' if subLoops precedence level is less than
      * precedence level we revert to.
      *
      * @param contextPrec The precedence level we revert to.

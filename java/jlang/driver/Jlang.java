@@ -23,7 +23,7 @@ import jlang.basic.*;
 import jlang.basic.ProgramAction;
 import jlang.codegen.BackendConsumer;
 import jlang.cpp.Preprocessor;
-import jlang.diag.Diagnostics;
+import jlang.diag.Diagnostic;
 import jlang.sema.Decl;
 import jlang.sema.Sema;
 import org.apache.commons.cli.*;
@@ -638,7 +638,7 @@ public class Jlang
      * @param headerSearch
      * @return
      */
-    private Preprocessor createAndInitPreprocessor(Diagnostics diag,
+    private Preprocessor createAndInitPreprocessor(Diagnostic diag,
             LangOption langOptions,
             HeaderSearch headerSearch)
     {
@@ -678,7 +678,7 @@ public class Jlang
         }
 
         // TODO Initialize a Diagnostic client instance.
-        Diagnostics diag = new Diagnostics();
+        Diagnostic diag = new Diagnostic();
 
         // TODO Obtains the target triple information.
 

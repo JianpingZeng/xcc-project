@@ -1,12 +1,12 @@
 package jlang.cparser;
 
 import jlang.cparser.Token.*;
-import jlang.cparser.Token.IntLiteral.IntLong;
+import jlang.cparser.Token.IntLiteral.IntLiteralKinds;
 import jlang.cpp.CPPReader;
 import jlang.cpp.Preprocessor;
 import jlang.cpp.SourceLocation;
 import jlang.diag.DiagnosticLexKindsTag;
-import jlang.diag.Diagnostics;
+import jlang.diag.Diagnostic;
 import jlang.diag.FullSourceLoc;
 import tools.LayoutCharacters;
 
@@ -50,7 +50,7 @@ public class Scanner implements Tag, LayoutCharacters, DiagnosticLexKindsTag
 
     private int bp;
 
-    private Diagnostics diags;
+    private Diagnostic diags;
 
     private Preprocessor pp;
 
@@ -686,17 +686,17 @@ public class Scanner implements Tag, LayoutCharacters, DiagnosticLexKindsTag
             char[] temp = new char[sp];
             System.arraycopy(sbuf, 0, temp, 0, sp);
             tokenAheads.addLast(new IntLiteral(temp, new SourceLocation(line, col),
-                    base, IntLong.IL_Long, isUnsigned));
+                    base, IntLiteralKinds.IL_Long, isUnsigned));
         }
         else if (ch == 'U' || ch == 'u')
         {
             // number constant is suffixed with unsigned.
             scanChar();
-            IntLong il = IntLong.IL_None;
+            IntLiteralKinds il = IntLiteralKinds.IL_Int;
             if (ch == 'L' || ch == 'l')
             {
                 scanChar();
-                il = IntLong.IL_Long;
+                il = IntLiteralKinds.IL_Long;
             }
             char[] temp = new char[sp];
             System.arraycopy(sbuf, 0, temp, 0, sp);
@@ -742,7 +742,7 @@ public class Scanner implements Tag, LayoutCharacters, DiagnosticLexKindsTag
     /**
      * Report an error at the current token position.
      */
-    private Diagnostics.DiagnosticBuilder lexError(int diagID)
+    private Diagnostic.DiagnosticBuilder lexError(int diagID)
     {
         return diags.report(new FullSourceLoc(new SourceLocation(line, col),
                 pp.getInputFile()), diagID);

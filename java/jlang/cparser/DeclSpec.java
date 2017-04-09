@@ -9,7 +9,6 @@ import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.type.QualType;
 import tools.OutParamWrapper;
-import tools.Position;
 
 import java.util.List;
 
@@ -414,7 +413,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
     public void setRangeStart(SourceLocation loc)
     {
-        sourceRagne.setStart(loc);
+        sourceRagne.setBegin(loc);
     }
 
     public void setRangeEnd(SourceLocation loc)
@@ -424,7 +423,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
     public SourceLocation getRangeStart()
     {
-        return sourceRagne.getStart();
+        return sourceRagne.getBegin();
     }
     public SourceLocation getRangeEnd()
     {
@@ -690,8 +689,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
         return false;
     }
 
-    static Diagnostics.DiagnosticBuilder diag(
-            Diagnostics diags,
+    static Diagnostic.DiagnosticBuilder diag(
+            Diagnostic diags,
             SourceLocation loc,
             String srcFile,
             int diagID)
@@ -704,7 +703,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
      * some cases which not can not conform C99 standard and issue some error
      * or warning diagnostic messages.
      */
-    public void finish(Diagnostics diags, Preprocessor pp)
+    public void finish(Diagnostic diags, Preprocessor pp)
     {
         String inputFile = pp.getInputFile();
 
@@ -767,7 +766,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             if (typeSpecType != TST_unspecified)
             {
                 diag(diags, TSCLoc, inputFile, ext_plain_complex)
-                .addCodeModificationHint(CodeModificationHint.createInsertion(
+                .addFixItHint(FixItHint.createInsertion(
                    TSCLoc, " double"));
                 typeSpecType = TST_double; // _Complex -> _Complex double.
             }

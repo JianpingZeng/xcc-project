@@ -1,6 +1,6 @@
 package jlang.diag;
-import static jlang.diag.Diagnostics.Level.*;
-import static jlang.diag.Diagnostics.Mapping.*;
+import static jlang.diag.Diagnostic.Level.*;
+import static jlang.diag.Diagnostic.Mapping.*;
 
 public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 {
@@ -129,6 +129,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_BUILTIN_DIRECT_INIT_MORE_THAN_ONE_ARG(err_builtin_direct_init_more_than_one_arg,Error, MAP_ERROR, "initializer of a builtin type can only take one argument"),
 	ERR_BUILTIN_FUNC_CAST_MORE_THAN_ONE_ARG(err_builtin_func_cast_more_than_one_arg,Error, MAP_ERROR, "function-style cast to a builtin type can only take one argument"),
 	ERR_BUILTIN_LONGJMP_INVALID_VAL(err_builtin_longjmp_invalid_val,Error, MAP_ERROR, "argument to __builtin_longjmp must be a constant 1"),
+	ERR_CALL_FUNCTION_INCOMPLETE_RETURN(err_call_function_incomplete_return, Error, MAP_ERROR, "calling %0 with incomplete return type %1"),
 	ERR_CALL_INCOMPLETE_ARGUMENT(err_call_incomplete_argument,Error, MAP_ERROR, "argument type %0 is incomplete"),
 	ERR_CALL_INCOMPLETE_RETURN(err_call_incomplete_return,Error, MAP_ERROR, "return type of called function (%0) is incomplete"),
 	ERR_CANNOT_DETERMINE_DECLARED_TYPE_OF_OVERLOADED_FUNCTION(err_cannot_determine_declared_type_of_overloaded_function,Error, MAP_ERROR, "can't determine the declared type of an overloaded function"),
@@ -335,6 +336,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_NEW_ARRAY_NONCONST(err_new_array_nonconst,Error, MAP_ERROR, "only the first dimension of an allocated array may be non-const"),
 	ERR_NEW_INCOMPLETE_TYPE(err_new_incomplete_type,Error, MAP_ERROR, "allocation of incomplete type %0"),
 	ERR_NEW_UNINITIALIZED_CONST(err_new_uninitialized_const,Error, MAP_ERROR, "must provide an initializer if the allocated object is 'const'"),
+	ERR_NO_MEMBER(err_no_member, Error, MAP_ERROR, "no member named %0 in %1"),
 	ERR_NON_STATIC_STATIC(err_non_static_static,Error, MAP_ERROR, "non-static declaration of %0 follows static declaration"),
 	ERR_NON_THREAD_THREAD(err_non_thread_thread,Error, MAP_ERROR, "non-thread-local declaration of %0 follows thread-local declaration"),
 	ERR_NON_VARIABLE_DECL_IN_FOR(err_non_variable_decl_in_for,Error, MAP_ERROR, "declaration of non-local variable in 'for' loop"),
@@ -531,7 +533,15 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_TYPECHECK_CALL_INVALID_ORDERED_COMPARE(err_typecheck_call_invalid_ordered_compare,Error, MAP_ERROR, "ordered compare requires two args of floating point type (%0 and %1)"),
 	ERR_TYPECHECK_CALL_NOT_FUNCTION(err_typecheck_call_not_function,Error, MAP_ERROR, "called object type %0 is not a function or function pointer"),
 	ERR_TYPECHECK_CALL_TOO_FEW_ARGS(err_typecheck_call_too_few_args,Error, MAP_ERROR, "too few arguments to %select{function|block|method}0 call"),
+	ERR_TYPECHECK_CALL_TOO_FEW_ARGS_AT_LEAST(err_typecheck_call_too_few_args_at_least, Error, MAP_ERROR,
+			"too few %select{|||execution configuration }0arguments to " +
+			"%select{function|block|method|kernel function}0 call, " +
+			"expected at least %1, have %2"),
 	ERR_TYPECHECK_CALL_TOO_MANY_ARGS(err_typecheck_call_too_many_args,Error, MAP_ERROR, "too many arguments to %select{function|block|method}0 call"),
+	ERR_TYPECHECK_TOO_MANY_ARGS_AT_LEAST(err_typecheck_call_too_many_args_at_most, Error, MAP_ERROR,
+			"too many %select{|||execution configuration }0arguments to " +
+			"%select{function|block|method|kernel function}0 call, " +
+			"expected at most %1, have %2"),
 	ERR_TYPECHECK_CAST_TO_UNION_NO_TYPE(err_typecheck_cast_to_union_no_type,Error, MAP_ERROR, "cast to union type from type %0 not present in union"),
 	ERR_TYPECHECK_CHOOSE_EXPR_REQUIRES_CONSTANT(err_typecheck_choose_expr_requires_constant,Error, MAP_ERROR, "'__builtin_choose_expr' requires a constant expression"),
 	ERR_TYPECHECK_CLOSURE_TOO_MANY_ARGS(err_typecheck_closure_too_many_args,Error, MAP_ERROR, "too many arguments to closure call"),
@@ -548,6 +558,8 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_TYPECHECK_EXT_VECTOR_NOT_TYPEDEF(err_typecheck_ext_vector_not_typedef,Error, MAP_ERROR, "ext_vector_type only applies to types, not variables"),
 	ERR_TYPECHECK_FIELD_VARIABLE_SIZE(err_typecheck_field_variable_size,Error, MAP_ERROR, "fields must have a constant size: 'variable length array in structure' extension will never be supported"),
 	ERR_TYPECHECK_ILLEGAL_INCREMENT_DECREMENT(err_typecheck_illegal_increment_decrement,Error, MAP_ERROR, "cannot modify value of type %0"),
+	ERR_INCOMPLETE_TYPE(err_incomplete_type, Error, MAP_ERROR, "incomplete type %0 where a complete type is required"),
+	ERR_TYPECHECK_INCOMPLETE_ARRAY_NEEDS_INITIALIZER(err_typecheck_incomplete_array_needs_initializer, Error, MAP_ERROR, "definition of variable with array type needs an explicit size or an initializer"),
 	ERR_TYPECHECK_INCOMPLETE_TAG(err_typecheck_incomplete_tag,Error, MAP_ERROR, "incomplete definition of type %0"),
 	ERR_TYPECHECK_INCOMPLETE_TYPE_NOT_MODIFIABLE_LVALUE(err_typecheck_incomplete_type_not_modifiable_lvalue,Error, MAP_ERROR, "incomplete type %0 is not assignable"),
 	ERR_TYPECHECK_INDIRECTION_REQUIRES_POINTER(err_typecheck_indirection_requires_pointer,Error, MAP_ERROR, "indirection requires pointer operand (%0 invalid)"),
@@ -560,6 +572,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_TYPECHECK_MEMBER_REFERENCE_ARROW(err_typecheck_member_reference_arrow,Error, MAP_ERROR, "member reference type %0 is not a pointer"),
 	ERR_TYPECHECK_MEMBER_REFERENCE_IVAR(err_typecheck_member_reference_ivar,Error, MAP_ERROR, "%0 does not have a member named %1"),
 	ERR_TYPECHECK_MEMBER_REFERENCE_STRUCT_UNION(err_typecheck_member_reference_struct_union,Error, MAP_ERROR, "member reference base type %0 is not a structure or union"),
+	ERR_TYPECHECK_MEMBER_REFERENCE_SUGGESTION(err_typecheck_member_reference_suggestion, Error, MAP_ERROR, "member reference type %0 is %select{a|not a}1 pointer; maybe you meant to use '%select{->|.}1'?"),
 	ERR_TYPECHECK_MEMBER_REFERENCE_TYPE(err_typecheck_member_reference_type,Error, MAP_ERROR, "cannot refer to type member %0 with '%select{.|->}1'"),
 	ERR_TYPECHECK_MEMBER_REFERENCE_UNKNOWN(err_typecheck_member_reference_unknown,Error, MAP_ERROR, "cannot refer to member %0 with '%select{.|->}1'"),
 	ERR_TYPECHECK_NEGATIVE_ARRAY_SIZE(err_typecheck_negative_array_size,Error, MAP_ERROR, "array size is negative"),
@@ -665,6 +678,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	EXT_FREESTANDING_COMPLEX(ext_freestanding_complex, Note, MAP_IGNORE, "complex numbers are an extension in a freestanding C99 implementation"),
 	EXT_FRIEND_INNER_CLASS(ext_friend_inner_class, Note, MAP_IGNORE, "C++ 98 does not allow inner classes as friends"),
 	EXT_GNU_PTR_FUNC_ARITH(ext_gnu_ptr_func_arith, Note, MAP_IGNORE, "arithmetic on pointer to function type %0 is a GNU extension"),
+	EXT_GNU_SUBSCRIPT_VOID_TYPE(ext_gnu_subscript_void_type, Note, MAP_IGNORE, "subscript of a pointer to void is a GNU extension"),
 	EXT_GNU_VOID_PTR(ext_gnu_void_ptr, Note, MAP_IGNORE, "use of GNU void* extension"),
 	EXT_IMPLICIT_FUNCTION_DECL(ext_implicit_function_decl, Note, MAP_IGNORE, "implicit declaration of function %0 is invalid in C99"),
 	EXT_IMPLICIT_LIB_FUNCTION_DECL(ext_implicit_lib_function_decl, Note, MAP_WARNING, "implicitly declaring C library function '%0' with type %1"),
@@ -710,6 +724,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	NOTE_AMBIGUOUS_CANDIDATE(note_ambiguous_candidate, Note, MAP_FATAL, "candidate found by name lookup is %q0"),
 	NOTE_AMBIGUOUS_MEMBER_FOUND(note_ambiguous_member_found, Note, MAP_FATAL, "member found by ambiguous name lookup"),
 	NOTE_ATTRIBUTE_OVERLOADABLE_PREV_OVERLOAD(note_attribute_overloadable_prev_overload, Note, MAP_FATAL, "previous overload of function is here"),
+	NOTE_CALLEE_DECL(note_callee_decl, Note, MAP_IGNORE, "%0 declared here"),
 	NOTE_DECLARED_AT(note_declared_at, Note, MAP_FATAL, "declared at"),
 	NOTE_DEFAULT_ARG_INSTANTIATION_HERE(note_default_arg_instantiation_here, Note, MAP_FATAL, "in instantiation of default argument for '%0' required here"),
 	NOTE_DEFAULT_ARGUMENT_DECLARED_HERE(note_default_argument_declared_here, Note, MAP_FATAL, "default argument declared here"),
@@ -720,9 +735,11 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	NOTE_FLEXIBLE_ARRAY_MEMBER(note_flexible_array_member, Note, MAP_FATAL, "initialized flexible array member %0 is here"),
 	NOTE_FUNCTION_TEMPLATE_DEDUCTION_INSTANTIATION_HERE(note_function_template_deduction_instantiation_here, Note, MAP_FATAL, "while substituting deduced template arguments into function template %0, here"),
 	NOTE_FUNCTION_TEMPLATE_SPEC_HERE(note_function_template_spec_here, Note, MAP_FATAL, "in instantiation of function template specialization %q0 requested here"),
+	NOTE_FUNCTION_WITH_INCOMPLETE_RETURN_TYPE(note_function_with_incomplete_return_type_declared_here, Note, MAP_WARNING, "%0 declared here"),
 	NOTE_INHERITANCE_IMPLICITLY_PRIVATE_HERE(note_inheritance_implicitly_private_here, Note, MAP_FATAL, "inheritance is implicitly 'private'"),
 	NOTE_INHERITANCE_SPECIFIER_HERE(note_inheritance_specifier_here, Note, MAP_FATAL, "'%0' inheritance specifier here"),
 	NOTE_LOCAL_VARIABLE_DECLARED_HERE(note_local_variable_declared_here, Note, MAP_FATAL, "%0 declared here"),
+	NOTE_MEMBER_DECLARED_HERE(note_member_declared_here, Note, MAP_FATAL, "member %0 declared here"),
 	NOTE_MEMBER_DEF_CLOSE_MATCH(note_member_def_close_match, Note, MAP_FATAL, "member declaration nearly matches"),
 	NOTE_MEMBER_OF_TEMPLATE_HERE(note_member_of_template_here, Note, MAP_FATAL, "member is declared here"),
 	NOTE_MEMBER_REFERENCE_NEEDS_CALL(note_member_reference_needs_call, Note, MAP_FATAL, "perhaps you meant to call this function with '()'?"),
@@ -809,6 +826,11 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	WARN_CONV_TO_SELF_NOT_USED(warn_conv_to_self_not_used, Warning, MAP_WARNING, "conversion function converting %0 to itself will never be used"),
 	WARN_CONV_TO_VOID_NOT_USED(warn_conv_to_void_not_used, Warning, MAP_WARNING, "conversion function converting %0 to %1 will never be used"),
 	WARN_DECL_IN_PARAM_LIST(warn_decl_in_param_list, Warning, MAP_WARNING, "declaration of %0 will not be visible outside of this function"),
+	WARN_DECL_SHADOW(warn_decl_shadow, Warning, MAP_WARNING, "declaration shadows a %select{"+
+			"local variable|" +
+			"variable in %2|" +
+			"static data member of %2|" +
+			"field of %2}1"),
 	WARN_DELETE_INCOMPLETE(warn_delete_incomplete, Warning, MAP_WARNING, "deleting pointer to incomplete type %0 may cause undefined behaviour"),
 	WARN_DEPRECATED(warn_deprecated, Warning, MAP_WARNING, "%0 is deprecated"),
 	WARN_DUP_CATEGORY_DEF(warn_dup_category_def, Warning, MAP_WARNING, "duplicate definition of category %1 on interface %0"),
@@ -841,12 +863,18 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	WARN_MAIN_ONE_ARG(warn_main_one_arg, Warning, MAP_WARNING, "one-argument 'main' is usually a mistake"),
 	WARN_MAYBE_FALLOFF_NONVOID_FUNCTION(warn_maybe_falloff_nonvoid_function, Warning, MAP_WARNING, "control may reach end of non-void function"),
 	WARN_MAYNOT_RESPOND(warn_maynot_respond, Warning, MAP_WARNING, "%0  may not respond to %1"),
+	WARN_MISSING_CASE_FOR_CONDITION(warn_missing_case_for_condition, Warning, MAP_WARNING, "no case matching constant switch condition '%0'"),
+	WARN_MISSING_CASE1(warn_missing_case1, Warning, MAP_WARNING, "enumeration value %0 not handled in switch"),
+	WARN_MISSING_CASE2(warn_missing_case2, Warning, MAP_WARNING, "enumeration values %0 and %1 not handled in switch"),
+	WARN_MISSING_CASE3(warn_missing_case3, Warning, MAP_WARNING, "enumeration values %0, %1, and %2 not handled in switch"),
+	WARN_MISSING_CASES(warn_missing_cases, Warning, MAP_WARNING, "%0 enumeration values not handled in switch: %1, %2, %3..."),
 	WARN_MISSING_PROTOTYPE(warn_missing_prototype, Warning, MAP_IGNORE, "no previous prototype for function %0"),
 	WARN_MISSING_SENTINEL(warn_missing_sentinel, Warning, MAP_WARNING, "missing sentinel in %select{function call|method dispatch|block call}0"),
 	WARN_MULTIPLE_METHOD_DECL(warn_multiple_method_decl, Warning, MAP_WARNING, "multiple methods named %0 found"),
 	WARN_NORETURN_FUNCTION_HAS_RETURN_EXPR(warn_noreturn_function_has_return_expr, Warning, MAP_ERROR, "function %0 declared 'noreturn' should not return"),
 	WARN_NOT_COMPOUND_ASSIGN(warn_not_compound_assign, Warning, MAP_WARNING, "use of unary operator that may be intended as compound assignment (%0=)"),
 	WARN_NOT_ENOUGH_ARGUMENT(warn_not_enough_argument, Warning, MAP_WARNING, "not enough variable arguments in %0 declaration to fit a sentinel"),
+	WARN_NOT_IN_ENUM(warn_not_in_enum, Warning, MAP_WARNING, "case value not in enumerated type %0"),
 	WARN_NS_ATTRIBUTE_WRONG_RETURN_TYPE(warn_ns_attribute_wrong_return_type, Warning, MAP_WARNING, "%0 attribute only applies to functions or methods that return a pointer or Objective-C object"),
 	WARN_NULL_ARG(warn_null_arg, Warning, MAP_WARNING, "null passed to a callee which requires a non-null argument"),
 	WARN_OBJC_PROPERTY_ATTR_MUTUALLY_EXCLUSIVE(warn_objc_property_attr_mutually_exclusive, Warning, MAP_IGNORE, "property attributes '%0' and '%1' are mutually exclusive"),
@@ -893,9 +921,11 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	WARN_SETTER_GETTER_IMPL_REQUIRED(warn_setter_getter_impl_required, Warning, MAP_WARNING, "property %0 requires method %1 to be defined - use @synthesize, @dynamic or provide a method implementation"),
 	WARN_SHIFT_GT_TYPEWIDTH(warn_shift_gt_typewidth, Warning, MAP_WARNING, "shift count >= width of type"),
 	WARN_SHIFT_NEGATIVE(warn_shift_negative, Warning, MAP_WARNING, "shift count is negative"),
+	WARN_STANDALONE_SPECIFIERS(warn_standalone_specifier, Warning, MAP_WARNING, "'%0' ignored on this declaration"),
 	WARN_STRINGCOMPARE(warn_stringcompare, Warning, MAP_WARNING, "result of comparison against %select{a string literal|@encode}0 is unspecified (use strcmp instead)"),
 	WARN_STRUCT_CLASS_TAG_MISMATCH(warn_struct_class_tag_mismatch, Warning, MAP_IGNORE, "%select{struct|class}0 %select{|template}1 %2 was previously declared as a %select{class|struct}0 %select{|template}1"),
 	WARN_SUBOBJECT_INITIALIZER_OVERRIDES(warn_subobject_initializer_overrides, Warning, MAP_WARNING, "subobject initialization overrides initialization of other fields within its enclosing subobject"),
+	WARN_SUBSCRIPT_IS_CHAR(warn_subscript_is_char, Warning, MAP_WARNING, "array subscript is of type 'char'"),
 	WARN_SUGGEST_NORETURN_BLOCK(warn_suggest_noreturn_block, Warning, MAP_IGNORE, "block could be attribute 'noreturn'"),
 	WARN_SUGGEST_NORETURN_FUNCTION(warn_suggest_noreturn_function, Warning, MAP_IGNORE, "function could be attribute 'noreturn'"),
 	WARN_TENTATIVE_INCOMPLETE_ARRAY(warn_tentative_incomplete_array, Warning, MAP_WARNING, "tentative array definition assumed to have one element"),
@@ -922,13 +952,13 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	WARN_WEAK_IDENTIFIER_UNDECLARED(warn_weak_identifier_undeclared, Warning, MAP_WARNING, "weak identifier %0 never declared");
 
 	public int diagID;
-	public Diagnostics.Level diagClass;
-	public Diagnostics.Mapping diagMapping;
+	public Diagnostic.Level diagClass;
+	public Diagnostic.Mapping diagMapping;
 	public String text;
 
 	DiagnosticSemaKinds(int diagID,
-Diagnostics.Level diagClass,
-Diagnostics.Mapping diagMapping,
+Diagnostic.Level diagClass,
+Diagnostic.Mapping diagMapping,
 String text)
 	{		this.diagID = diagID;
 		this.diagClass = diagClass;

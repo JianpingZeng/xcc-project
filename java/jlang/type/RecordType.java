@@ -83,4 +83,11 @@ public final class RecordType extends TagType
     }
 
     public Decl.RecordDecl getDecl() { return (RecordDecl)decl; }
+    // FIXME: This predicate is a helper to QualType/Type. It needs to
+    // recursively check all fields for const-ness. If any field is declared
+    // const, it needs to return false.
+    public boolean hasConstFields()
+    {
+        return false;
+    }
 }

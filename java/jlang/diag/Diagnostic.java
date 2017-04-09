@@ -33,7 +33,7 @@ import static jlang.diag.DiagnosticSemaTag.DiagnosticSemaKindsEnd;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class Diagnostics
+public final class Diagnostic
 {
 	/**
 	 * The level of the diagnostics.
@@ -64,7 +64,7 @@ public final class Diagnostics
 		Ext_Ignore, Ext_Warn, Ext_Error
 	}
 
-	enum ArgumentKind
+	public enum ArgumentKind
 	{
 		ak_std_string,      // std::string
 		ak_c_string,        // const char *
@@ -113,21 +113,21 @@ public final class Diagnostics
 	 * only support up to 10 arguments (%0-%9).  A single diagnostic with more
 	 * than that almost certainly has to be simplified anyway.
 	 */
-	private final int maxArguments = 10;
+	public static final int maxArguments = 10;
 
 	private int numDiagArgs;
 	private int numDiagRanges;
-	private int numCodeModificationHints;
+	private int numFixItHints;
 	private ArgumentKind[] diagArgumentsKind = new ArgumentKind[maxArguments];
 	private String[] diagArgumentsStr = new String[maxArguments];
 	private Object[] diagArgumentsVal = new Object[maxArguments];
 	private SourceRange[] diagRanges = new SourceRange[10];
-	private final int maxCodeModificationHints = 3;
+	public static final int maxFixItHints = 3;
 
-	private CodeModificationHint[] codeModificationHints =
-			new CodeModificationHint[maxCodeModificationHints];
+	private FixItHint[] fixItHints =
+			new FixItHint[maxFixItHints];
 
-	public Diagnostics(DiagnosticClient client)
+	public Diagnostic(DiagnosticClient client)
 	{
 		this.client = client;
 		lastDiagLevel = Level.Ignored;
@@ -139,16 +139,62 @@ public final class Diagnostics
 		Suppress
 	}
 
+	public int getID()
+	{
+		return curDiagID;
+	}
+
+	public int getNumDiagArgs()
+	{
+		return numDiagArgs;
+	}
+
+	public ArgumentKind getDiagArgKind(int index)
+	{
+		assert index >= 0 && index < diagArgumentsKind.length;
+		return diagArgumentsKind[index];
+	}
+
+	public String getArgStdStr(int index)
+	{
+		return diagArgumentsStr[index];
+	}
+
+	public Object getRawArg(int index)
+	{
+		return diagArgumentsVal[index];
+	}
+
+	public int getNumDiagRanges()
+	{
+		return numDiagRanges;
+	}
+
+	public SourceRange getRange(int index)
+	{
+		return diagRanges[index];
+	}
+
+	public int getNumFixItHints()
+	{
+		return numFixItHints;
+	}
+
+	public FixItHint getFixItHint(int index)
+	{
+		return fixItHints[index];
+	}
+
 	/**
 	 * @author xlous.zeng
 	 * @version 0.1
 	 */
-	public final class DiagnosticBuilder
+	public static class DiagnosticBuilder
 	{
-		private Diagnostics diagObj;
-		private int numArgs, numRanges, numCodeModificationHints;
+		private Diagnostic diagObj;
+		private int numArgs, numRanges, numFixItHints;
 
-		private DiagnosticBuilder(Diagnostics diag)
+		private DiagnosticBuilder(Diagnostic diag)
 		{
 			diagObj = diag;
 		}
@@ -158,13 +204,21 @@ public final class Diagnostics
 			super();
 		}
 
+		public DiagnosticBuilder(DiagnosticBuilder db)
+		{
+			this.diagObj = db.diagObj;
+			this.numArgs = db.numArgs;
+			this.numRanges = db.numRanges;
+			this.numFixItHints = db.numFixItHints;
+		}
+
 		public boolean emit()
 		{
 			if (diagObj == null)return false;
 
 			diagObj.numDiagArgs = numArgs;
 			diagObj.numDiagRanges = numRanges;
-			diagObj.numCodeModificationHints = numCodeModificationHints;
+			diagObj.numFixItHints = numFixItHints;
 
 			// Process the diagnostic, sending the accumulated information to the
 			// DiagnosticClient.
@@ -229,13 +283,13 @@ public final class Diagnostics
 			}
 			return this;
 		}
-		public DiagnosticBuilder addCodeModificationHint(CodeModificationHint hint)
+		public DiagnosticBuilder addFixItHint(FixItHint hint)
 		{
-			assert numCodeModificationHints < maxCodeModificationHints
+			assert numFixItHints < maxFixItHints
 					: "Too many arguments to diagnostics";
 			if (diagObj != null)
 			{
-				diagObj.codeModificationHints[numCodeModificationHints++] = hint;
+				diagObj.fixItHints[numFixItHints++] = hint;
 			}
 			return this;
 		}

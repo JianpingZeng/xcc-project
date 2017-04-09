@@ -6,7 +6,7 @@ import jlang.cpp.SourceLocation;
 import jlang.cpp.SourceLocation.SourceRange;
 import jlang.sema.Decl;
 import tools.OutParamWrapper;
-import tools.Position;
+
 import java.util.ArrayList;
 
 /**
@@ -120,7 +120,7 @@ public class Declarator
 
     public void setRangeStart(SourceLocation loc)
     {
-        range.setStart(loc);
+        range.setBegin(loc);
     }
     /**
      * Return true if the identifier is either optional or
@@ -178,8 +178,8 @@ public class Declarator
     public void extendWithDeclSpec(DeclSpec ds)
     {
         SourceRange sr = ds.getSourceRange();
-        if (range.getStart() == SourceLocation.NOPOS)
-            range.setStart(sr.getStart());
+        if (range.getBegin() == SourceLocation.NOPOS)
+            range.setBegin(sr.getBegin());
         if (range.getEnd() == SourceLocation.NOPOS)
             range.setEnd(sr.getEnd());
     }

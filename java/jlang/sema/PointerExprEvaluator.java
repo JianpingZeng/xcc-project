@@ -30,8 +30,9 @@ import tools.Util;
 public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
     private OutParamWrapper<LValue> result;
-    public PointerExprEvaluator(OutParamWrapper<LValue> result)
+    public PointerExprEvaluator(OutParamWrapper<LValue> result, ASTContext ctx)
     {
+        super(ctx);
         this.result = result;
     }
 
@@ -70,7 +71,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
             Util.swap(pExpr, iExpr);
 
         // If the pExpr is not pointer jlang.type, return false.
-        if (!evaluatePointer(pExpr, result))
+        if (!evaluatePointer(pExpr, result, context))
             return false;
 
         // So that, the pExpr must be pointer jlang.type
@@ -86,7 +87,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
                 : offset.getZExtValue();
 
         // Compute the new offset in the appropriate width.
-        QualType pointeeType = pExpr.getType().<PointerType>getAs().getPointeeType();
+        QualType pointeeType = context.<PointerType>getAs(pExpr.getType()).getPointeeType();
         long sizeOfPointee;
 
         // Explicitly handle GNU void* and function pointer arithmetic extensions.
@@ -108,7 +109,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
         // just handle '&' operator.
         if (expr.getOpCode() == UnaryOperatorKind.UO_AddrOf)
         {
-            return evaluateLValue(expr.getSubExpr(), result);
+            return evaluateLValue(expr.getSubExpr(), result, context);
         }
         return false;
     }
@@ -156,7 +157,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
 
             case CK_ArrayToPointerDecay:
             case CK_FunctionToPointerDecay:
-                return evaluateLValue(subExp, result);
+                return evaluateLValue(subExp, result, context);
         }
         return false;
     }

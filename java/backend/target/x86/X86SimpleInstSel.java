@@ -208,7 +208,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
                 if (fieldOff != 0)
                 {
                     nextReg = makeAnotherReg(Type.Int32Ty);
-                    // Emit an ADD to add fieldOff to the basePtr.
+                    // emit an ADD to add fieldOff to the basePtr.
                     bmi(mbb, insertPos++, X86InstrNames.ADDri32, 2, nextReg).
                             addReg(baseReg, UseType.Use).addZImm(fieldOff);
                 }
@@ -265,7 +265,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
                     int offsetReg = makeAnotherReg(Type.Int32Ty);
                     doMultiplyConst(insertPos++, offsetReg, Type.Int32Ty, idxReg, eltSize);
 
-                    // Emit a ADD to add offsetReg to baseReg.
+                    // emit a ADD to add offsetReg to baseReg.
                     nextReg = makeAnotherReg(Type.Int32Ty);
                     bmi(mbb, insertPos++, X86InstrNames.ADDrr32, 2, nextReg).
                             addReg(baseReg).addReg(offsetReg);
@@ -1098,7 +1098,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
     private void assignArgumentsWithVirtualReg(Function f)
     {
-        // Emit instructions to load the arguments...  On entry to a function on the
+        // emit instructions to load the arguments...  On entry to a function on the
         // X86, the stack frame looks like this:
         //
         // [ESP] -- return address
@@ -1315,7 +1315,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
             default:
                 assert false : "Invalid type class in ret";
         }
-        // Emit a 'ret' instruction.
+        // emit a 'ret' instruction.
         buildMI(mbb, X86InstrNames.RET, 0);
         return null;
     }
@@ -1910,7 +1910,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
             op1 = temp;
         }
 
-        // Emit a compare of op0 - op1.
+        // emit a compare of op0 - op1.
         if (!emitCompare(op0, op1, vt))
             return;
 

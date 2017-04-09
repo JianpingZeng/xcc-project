@@ -32,6 +32,7 @@ import jlang.ast.Tree.BinaryExpr;
 import jlang.ast.Tree.CompoundAssignExpr;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.UnaryExpr;
+import jlang.sema.ASTContext;
 import jlang.sema.BinaryOperatorKind;
 import jlang.sema.Decl;
 import jlang.type.QualType;
@@ -120,7 +121,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     }
 
     /**
-     * Emit a conversion from the specified type to the specified destination
+     * emit a conversion from the specified type to the specified destination
      * type, both of which are backend scalar types.
      * @param v
      * @param srcTy
@@ -217,7 +218,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     }
 
 	/**
-	 * Emit the code for loading the value of given expression.
+	 * emit the code for loading the value of given expression.
      * @param expr
      * @return
      */
@@ -472,7 +473,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
 
         BinOpInfo info = new BinOpInfo();
 
-        // Emit the rhs first.
+        // emit the rhs first.
         info.rhs = visit(expr.getRHS());
         info.ty = expr.getComputationResultType();
         info.expr = expr;
@@ -583,7 +584,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         BasicBlock endBlock = cgf.createBasicBlock("land.end");
         BasicBlock rhsBlock = cgf.createBasicBlock("land.rhs");
 
-        // Emit the branch first. if it is false, branch to end block.
+        // emit the branch first. if it is false, branch to end block.
         cgf.emitBranchOnBoolExpr(expr.getLHS(), rhsBlock, endBlock);
 
         // Any edges into the ContBlock are now from an (indeterminate number of)
@@ -649,7 +650,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             phiNode.addIncoming(ConstantInt.getTrue(), predItr.next());
         }
 
-        // Emit the rhs condition as a bool value.
+        // emit the rhs condition as a bool value.
         cgf.emitBlock(rhsBlock);
         Value rhsCond = cgf.evaluateExprAsBool(expr.getRHS());
 
@@ -721,7 +722,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
 
         return emitScalarConversion(result,
-                jlang.type.Type.BoolTy,
+                ASTContext.BoolTy,
                 expr.getType());
     }
 
@@ -979,7 +980,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     }
 
 	/**
-     * Emit code for an explicit or implicit cast.  Implicit casts
+     * emit code for an explicit or implicit cast.  Implicit casts
      * have to handle a more broad range of conversions than explicit casts, as they
      * handle things like function to ptr-to-function decay etc.
      * @param expr

@@ -23,7 +23,6 @@ import jlang.sema.Scope;
 import jlang.sema.Scope.ScopeFlags;
 import jlang.sema.Sema;
 import jlang.type.QualType;
-import tools.Log;
 import tools.OutParamWrapper;
 
 import java.util.ArrayList;
@@ -73,7 +72,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             // install the declarator into the current tagDecl.
             Decl field = parser.action.actOnField(
                     parser.getCurScope(), tagDecl,
-                    fd.declarator.getDeclSpec().getSourceRange().getStart(),
+                    fd.declarator.getDeclSpec().getSourceRange().getBegin(),
                     fd.declarator, fd.bitFieldSize);
             fieldDecls.add(field);
 
@@ -151,16 +150,15 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      * The keywords table.
      */
     private Keywords keywords;
-    /**
-     * A log for reporting error and warning information.
-     */
-    private Log log;
 
     private Sema action;
     private Preprocessor pp;
-    private Diagnostics diags;
+    /**
+     * A diagnose for reporting error and warning information in appropriate style.
+     */
+    private Diagnostic diags;
 
-    public Diagnostics getDiags()
+    public Diagnostic getDiags()
     {
         return diags;
     }
@@ -207,25 +205,25 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         return action;
     }
 
-    public Diagnostics.DiagnosticBuilder diag(SourceLocation loc, int diagID)
+    public Diagnostic.DiagnosticBuilder diag(SourceLocation loc, int diagID)
     {
         return diags.report(new FullSourceLoc(loc, pp.getInputFile()), diagID);
     }
 
-    private Diagnostics.DiagnosticBuilder diag(Token tok, int diagID)
+    private Diagnostic.DiagnosticBuilder diag(Token tok, int diagID)
     {
         return diag(tok.getLocation(), diagID);
     }
 
     /**
      * Parse a translation unit (C90 6.7, C99 6.9).
-     * <p>
+     * <pre>
      * translation-unit:
-     * external-declarations
-     * <p>
+     *   external-declarations
      * external-declarations:
-     * external-declaration
-     * external-declarations external-declaration
+     *   external-declaration
+     *   external-declarations external-declaration
+     * </pre>
      */
     public void compilationUnit()
     {
@@ -357,7 +355,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (nextTokenIs(SEMI))
         {
             consumeToken();
-            Decl theDecl = action.parseFreeStandingDeclSpec(getCurScope(), declSpecs);
+            Decl theDecl = action.parsedFreeStandingDeclSpec(getCurScope(), declSpecs);
             // This stmt in Clang just is used to inform people that a declaration
             // was parsed complete.
             // declSpecs.complete(theDecl);
@@ -504,7 +502,6 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             boolean onlyStatements)
     {
         Token tok = S.token;
-        consumeToken();
         switch (tok.tag)
         {
             // C99 6.8.1 labeled-statement
@@ -531,15 +528,16 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 if (nextTokenIs(RBRACE))
                 {
                     diag(S.token.loc, err_expected_statement);
-                    return null;
+                    return stmtError();
                 }
+                // expression[opt] ';'
                 return parseExprStatement();
             }
 
             case CASE:
             {
                 // C99 6.8.1: labeled-statement
-                return parseCaseStatement();
+                return parseCaseStatement(false, null);
             }
             case DEFAULT:
             {
@@ -555,7 +553,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             {
                 // null statement
                 SourceLocation loc = consumeToken();
-                return new ActionResult<Stmt>(new Tree.NullStmt(loc));
+                return action.actOnNullStmt(loc);
             }
             case IF:
             {
@@ -595,10 +593,11 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         assert nextTokenIs(IDENTIFIER) && S.token.getIdentifierInfo() != null
                 : "Not a valid identifier";
-        consumeToken();
+        Token identTok = S.token;  // Save the identifier token.
+        consumeToken(); // Eat the identifier.
 
-        Token tok = S.token;
-        assert tokenIs(tok, COLON) : "Not a label";
+        assert nextTokenIs(COLON) : "Not a label";
+        // identifier ':' statement
         SourceLocation colonLoc = consumeToken();
 
         ActionResult<Stmt> res = parseStatement();
@@ -618,9 +617,11 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      * </pre>
      * @return
      */
-    private ActionResult<Stmt> parseCaseStatement()
+    private ActionResult<Stmt> parseCaseStatement(
+            boolean missingCase,
+            ActionResult<Expr> expr)
     {
-        assert nextTokenIs(CASE) : "Not a case stmt!";
+        assert nextTokenIs(CASE) || missingCase : "Not a case stmt!";
 
         // It is very very common for code to contain many case statements recursively
         // nested, as in (but usually without indentation):
@@ -638,59 +639,89 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // TopLevelCase - This is the highest level we have parsed.  'case 1' in the
         // example above.
-        ActionResult<Stmt> topLevelCase = null;
+        ActionResult<Stmt> topLevelCase = new ActionResult<>(true);
 
         // This is the deepest statement we have parsed, which
         // gets updated each time a new case is parsed, and whose body is unset so
         // far.  When parsing 'case 4', this is the 'case 3' node.
-        ActionResult<Stmt> deepestParsedCaseStmt = null;
+        Stmt deepestParsedCaseStmt = null;
 
         SourceLocation colonLoc = SourceLocation.NOPOS;
         do
         {
             // consume 'case'
-            SourceLocation caseLoc = consumeToken();
+            SourceLocation caseLoc = missingCase ? expr.get().getExprLocation()
+                    : consumeToken();  // Eat the 'case'.
 
             // parse the constant subExpr after'case'
-            ActionResult<Expr> expr = parseConstantExpression();
-            if (expr.isInvalid())
+            ActionResult<Expr> lhs = missingCase ? expr : parseConstantExpression();
+            missingCase = false;
+
+            if (lhs.isInvalid())
             {
                 skipUntil(COLON, true);
-                return null;
+                return stmtError();
+            }
+            // GNU case range extension.
+            SourceLocation dotDotDotLoc;
+            ActionResult<Expr> rhs;
+            if (nextTokenIs(ELLIPSIS))
+            {
+                diag(S.token, ext_gnu_case_range);
+                dotDotDotLoc = consumeToken();
+
+                rhs = parseConstantExpression();
+                if (rhs.isInvalid())
+                {
+                    skipUntil(COLON, true);
+                    return stmtError();
+                }
             }
 
             if (nextTokenIs(COLON))
             {
                 colonLoc = consumeToken();
             }
+            else if (nextTokenIs(SEMI))
+            {
+                colonLoc = consumeToken();
+                diag(colonLoc, err_expected_colon_after).addTaggedVal("'case'")
+                .addFixItHint(
+                        FixItHint.createReplacement(colonLoc, ":"));
+            }
             else
             {
-                // TODO report error
-                diag(caseLoc, err_expected_colon);
+                diag(prevTokLocation, err_expected_colon_after).addTaggedVal("'case'")
+                .addFixItHint(
+                        FixItHint.createInsertion(prevTokLocation, ":"));
+                colonLoc = prevTokLocation;
             }
-
-            ActionResult<Stmt> Case = action.actOnCaseStmt(caseLoc, expr.get(), colonLoc);
-            if (Case ==null)
+            // Make semantic checking on case constant expression.
+            ActionResult<Stmt> Case = action.actOnCaseStmt(caseLoc, lhs.get(), colonLoc);
+            if (Case.isInvalid())
             {
-                if (topLevelCase == null)
+                if (topLevelCase.isInvalid())
                     return parseStatement();
             }
             else
             {
-                if (topLevelCase == null)
+                // If this is the first case statement we parsed, it becomes TopLevelCase.
+                // Otherwise we link it into the current chain.
+                Stmt nextDeepest = Case.get();
+                if (topLevelCase.isInvalid())
                     topLevelCase = Case;
                 else
                 {
-                    action.actOnCaseStmtBody(deepestParsedCaseStmt.get(), Case.get());
+                    action.actOnCaseStmtBody(deepestParsedCaseStmt, Case.get());
                 }
-                deepestParsedCaseStmt = Case;
+                deepestParsedCaseStmt = nextDeepest;
             }
             // handle all case statements
-        }while(nextTokenIs(CASE));
+        } while(nextTokenIs(CASE));
 
-        assert topLevelCase != null :"Should have parsed at least one case statement";
+        assert !topLevelCase.isInvalid() :"Should have parsed at least one case statement";
 
-        ActionResult<Stmt> subStmt = null;
+        ActionResult<Stmt> subStmt;
         if (nextTokenIsNot(RBRACE))
         {
             subStmt = parseStatement();
@@ -698,13 +729,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         else
         {
             diag(colonLoc, err_label_end_of_compound_statement);
+            subStmt = new ActionResult<>(true);
         }
 
-        if (subStmt == null)
-            subStmt = stmtError();
+        if (subStmt.isInvalid())
+            subStmt = action.actOnNullStmt(new SourceLocation());
 
         // install the case body into the most deeply-nested case statement
-        action.actOnCaseStmtBody(deepestParsedCaseStmt.get(), subStmt.get());
+        action.actOnCaseStmtBody(deepestParsedCaseStmt, subStmt.get());
 
         // return the top level parsed statement
         return  topLevelCase;
@@ -730,21 +762,31 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         {
             colonLoc = consumeToken();
         }
+        else if (nextTokenIs(SEMI))
+        {
+            colonLoc = consumeToken();
+            diag(colonLoc, err_expected_colon_after).addTaggedVal("'default'")
+                    .addFixItHint(
+                            FixItHint.createReplacement(colonLoc, ":"));
+        }
         else
         {
-            diag(S.token, err_expected_colon);
+            diag(prevTokLocation, err_expected_colon_after).addTaggedVal("'default'")
+            .addFixItHint(
+                    FixItHint.createInsertion(prevTokLocation, ":"));
+            colonLoc = prevTokLocation;
         }
 
         // diagnose the common error "switch (X) { default:}", which is not valid.
         if (nextTokenIs(RBRACE))
         {
             diag(S.token, err_label_end_of_compound_statement);
-            return new ActionResult<>();
+            return stmtError();
         }
 
         ActionResult<Stmt> subStmt = parseStatement();
-        if (subStmt == null)
-            return new ActionResult<>();
+        if (subStmt.isInvalid())
+            return stmtError();
 
         return  action.actOnDefaultStmt(defaultLoc, colonLoc, subStmt.get());
     }
@@ -772,15 +814,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseCompoundStatement(boolean isStmtExpr, int scopeFlags)
     {
-        Token tok = S.token;
-        assert tokenIs(tok, LBRACE) : "Not a compound statement!";
+        assert nextTokenIs(LBRACE) : "Not a compound statement!";
 
         // Enter a scope to hold everything within the compound stmt.
         // Compound statements can always hold declarations.
         ParseScope compoundScope = new ParseScope(this, scopeFlags);
 
         // parse the statements in the body.
-        return parseCompoundStatementBody(tok.loc, isStmtExpr);
+        return parseCompoundStatementBody(S.token.getLocation(), isStmtExpr);
     }
 
     private ActionResult<Stmt> parseCompoundStatementBody(
@@ -794,9 +835,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
         if (nextTokenIsNot(RBRACE))
         {
-            //TODO report error
             diag(S.token, err_expected_lbrace);
-            return null;
+            return stmtError();
         }
         // consume '}'
         SourceLocation endLoc = matchRHSPunctuation(RBRACE, startLoc);
@@ -815,7 +855,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseIfStatement()
     {
-        assert nextTokenIs(IF):"Not an if stmt!";
+        assert nextTokenIs(IF) : "Not an if stmt!";
         SourceLocation ifLoc = consumeToken(); // eat 'if'
 
         if (nextTokenIsNot(LPAREN))
@@ -825,14 +865,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
         // C99 6.8.4p3 - In C99, the if statement is a block.  This is not
         // the case for C90.
-        // But we take the jlang.parser working in the C99 mode for convenience.
+        // But we take the parser working in the C99 mode for convenience.
         ParseScope ifScope = new ParseScope(this, ScopeFlags.DeclScope.value);
-        ActionResult<Expr> condExpr = null;
-        ActionResult<Expr>[] res = new ActionResult[1];
-        if (parseParenExpression(res, ifLoc, true))
+        ActionResult<Expr> condExpr;
+        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>();
+        if (parseParenExpression(x, ifLoc, true))
             return  stmtError();
 
-        condExpr = res[0];
+        condExpr = x.get();
         // C99 6.8.4p3
         // In C99, the body of the if statement is a scope, even if
         // there is only a single statement but compound statement.
@@ -840,8 +880,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // the scope for 'then' statement if there is a '{'
         ParseScope InnerScope = new ParseScope(this,
                 ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE));
-        SourceLocation thenStmtLoc = S.token.loc;
+                nextTokenIs(LBRACE) && getLangOption().c99);
+
+        SourceLocation thenStmtLoc = S.token.getLocation();
         // parse the 'then' statement
         ActionResult<Stmt> thenStmt = parseStatement();
 
@@ -851,17 +892,18 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // IfStmt there is a 'else' statement, parse it.
         SourceLocation elseStmtLoc = SourceLocation.NOPOS;
         SourceLocation elseLoc = SourceLocation.NOPOS;
-        ActionResult<Stmt> elseStmt = null;
+        ActionResult<Stmt> elseStmt = new ActionResult<>();
+
         if (nextTokenIs(ELSE))
         {
             // eat the 'else' keyword.
             elseLoc = consumeToken();
-            elseStmtLoc = S.token.loc;
+            elseStmtLoc = S.token.getLocation();
 
             // the scope for 'else' statement if there is a '{'
             InnerScope = new ParseScope(this,
                     ScopeFlags.DeclScope.value,
-                    nextTokenIs(LBRACE));
+                    nextTokenIs(LBRACE) && getLangOption().c99);
 
             elseStmt = parseStatement();
 
@@ -870,13 +912,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         ifScope.exit();
+
         // IfStmt the condition expression is invalid and then return null as result.
         if (condExpr.isInvalid())
             return stmtError();
 
-        if (thenStmt.isInvalid() && elseStmt.isInvalid()
-                || thenStmt.isInvalid() && elseStmt.get() == null
-                || thenStmt.get() == null && elseStmt.isInvalid())
+        if ((thenStmt.isInvalid() && elseStmt.isInvalid())
+                || (thenStmt.isInvalid() && elseStmt.get() == null)
+                || (thenStmt.get() == null && elseStmt.isInvalid()))
         {
             // Both invalid, or one is invalid other is non-present
             return stmtError();
@@ -884,9 +927,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // Now if both are invalid, replace with a ';'
         if (thenStmt.isInvalid())
-            thenStmt = new ActionResult<Stmt>(new Tree.NullStmt(thenStmtLoc), true);
+            thenStmt = action.actOnNullStmt(thenStmtLoc);
         if (elseStmt.isInvalid())
-            elseStmt = new ActionResult<Stmt>(new Tree.NullStmt(elseStmtLoc), true);
+            elseStmt = action.actOnNullStmt(elseStmtLoc);
 
         return action.actOnIfStmt(ifLoc, condExpr, thenStmt.get(), elseStmt.get());
     }
@@ -895,7 +938,6 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         return new ActionResult<>(true);
     }
-
 
     private ActionResult<Stmt> parseStatement()
     {
@@ -1090,21 +1132,21 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      * @return
      */
     private boolean parseParenExpression(
-            ActionResult<Expr>[] cond,
+            OutParamWrapper<ActionResult<Expr>> cond,
             SourceLocation loc,
             boolean convertToBoolean)
     {
-        assert cond != null && cond.length == 1;
+        assert cond != null;
         assert nextTokenIs(LPAREN);
         SourceLocation lparenLoc = consumeParen();
 
-        cond[0] = parseExpression();
-        if (!cond[0].isInvalid() && convertToBoolean)
+        cond.set(parseExpression());
+        if (!cond.get().isInvalid() && convertToBoolean)
         {
             //TODO convert the condition expression to boolean
         }
 
-        if (cond[0].isInvalid() && nextTokenIsNot(RPAREN))
+        if (cond.get().isInvalid() && nextTokenIsNot(RPAREN))
         {
             skipUntil(SEMI, true);
             // skip may have stopped if it found the ')'. IfStmt so, we can
@@ -1225,21 +1267,21 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
         // C99 6.8.4p3. In C99, the switch statements is a block. This is not
         // implemented in C90. So, just take C99 into consideration for convenience.
-        ParseScope switchScope = new ParseScope(this, ScopeFlags.BlockScope.value
-        | ScopeFlags.SwitchScope.value | ScopeFlags.DeclScope.value |
-        ScopeFlags.ControlScope.value);
+        int scopeFlags = ScopeFlags.SwitchScope.value | ScopeFlags.BreakScope.value;
+        if (getLangOption().c99)
+            scopeFlags |= ScopeFlags.DeclScope.value | ScopeFlags.ControlScope.value;
+        ParseScope switchScope = new ParseScope(this, scopeFlags);
 
-        // Parse the condition exprsesion.
-        ActionResult<Expr> condExpr = null;
-        ActionResult<Expr>[] res = new ActionResult[1];
+        // Parse the condition expression.
+        ActionResult<Expr> condExpr;
+        OutParamWrapper<ActionResult<Expr>> res = new OutParamWrapper<>();
         if (parseParenExpression(res, switchLoc, false))
         {
             return stmtError();
         }
-        condExpr = res[0];
+        condExpr = res.get();
 
-        ActionResult<Stmt> switchStmt = action.
-                actOnStartOfSwitchStmt(switchLoc, condExpr.get());
+        ActionResult<Stmt> switchStmt = action.actOnStartOfSwitchStmt(switchLoc, condExpr.get());
         if (switchStmt.isInvalid())
         {
             // skip the switch body
@@ -1257,7 +1299,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // there is no compound stmt.  C90 does not have this clause.  We only do this
         // if the body isn't a compound statement to avoid push/pop in common cases.
         ParseScope innerScope = new ParseScope(this, ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE));
+                nextTokenIs(LBRACE) & getLangOption().c99);
 
         // read the body statement
         ActionResult<Stmt> body = parseStatement();
@@ -1267,7 +1309,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         switchScope.exit();
 
         if (body.isInvalid())
-            body = new ActionResult<Stmt>(new Tree.NullStmt(switchLoc));
+            body = action.actOnNullStmt(switchLoc);
 
         return  action.actOnFinishSwitchStmt(switchLoc, switchStmt.get(), body.get());
     }
@@ -1282,10 +1324,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseWhileStatement()
     {
-        Token tok = S.token;
-        assert tokenIs(tok, WHILE) :"Not a while statement!";
-        SourceLocation whileLoc = tok.loc;
-        consumeToken();   // eat the 'while'
+        assert nextTokenIs(WHILE) :"Not a while statement!";
+        // eat the 'while'
+        SourceLocation whileLoc = consumeToken();
 
         if (nextTokenIsNot(LPAREN))
         {
@@ -1295,25 +1336,32 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // C99 6.8.5p5 - In C99, the while statement is a block.  This is not
         // the case for C90.  Start the loop scope.
-        int scopeFlags = ScopeFlags.BlockScope.value
+        int scopeFlags = 0;
+        if (getLangOption().c99)
+            scopeFlags = ScopeFlags.BlockScope.value
                 | ScopeFlags.ContinueScope.value
                 | ScopeFlags.ControlScope.value
                 | ScopeFlags.DeclScope.value;
+        else
+            scopeFlags = ScopeFlags.BlockScope.value
+                    | ScopeFlags.ContinueScope.value;
 
         ParseScope whileScope = new ParseScope(this, scopeFlags);
-        ActionResult<Expr>[] wrapper = new ActionResult[1];
+
+        OutParamWrapper<ActionResult<Expr>> wrapper = new OutParamWrapper<>();
 
         // parse the condition.
         if (parseParenExpression(wrapper, whileLoc, true))
             return stmtError();
 
-        ActionResult<Expr> cond = wrapper[0];
+        ActionResult<Expr> cond = wrapper.get();
 
         // C99 6.8.5p5 - In C99, the body of the if statement is a scope, even if
         // there is no compound stmt.  C90 does not have this clause.  We only do this
         // if the body isn't a compound statement to avoid push/pop in common cases.
         ParseScope innerScope = new ParseScope(this, ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE));
+                nextTokenIs(LBRACE) && getLangOption().c99);
+
         // parse the body of while stmt.
         ActionResult<Stmt> body = parseStatement();
 
@@ -1321,7 +1369,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         innerScope.exit();
         whileScope.exit();
 
-        if (cond.isInvalid() && body.isInvalid())
+        if (cond.isInvalid() || body.isInvalid())
             return stmtError();
 
         return action.actOnWhileStmt(whileLoc, cond.get(), body.get());
@@ -1338,18 +1386,23 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseDoStatement()
     {
-        Token tok = S.token;
-        assert tokenIs(tok, DO):"Not a do stmt!";
-        SourceLocation doLoc = tok.loc;
+        assert nextTokenIs(DO):"Not a do stmt!";
 
-        int scopeFlags = ScopeFlags.BreakScope.value|
+        // eat the 'do'.
+        SourceLocation doLoc = consumeToken();
+        int scopeFlags = 0;
+        if (getLangOption().c99)
+            scopeFlags = ScopeFlags.BreakScope.value|
                 ScopeFlags.ContinueScope.value | ScopeFlags.DeclScope.value;
+        else
+            scopeFlags |= ScopeFlags.BreakScope.value |
+                    ScopeFlags.ContinueScope.value;
 
         ParseScope doScope = new ParseScope(this, scopeFlags);
 
         ParseScope innerScope = new ParseScope(this,
                 ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE));
+                nextTokenIs(LBRACE) && getLangOption().c99);
 
         ActionResult<Stmt> body = parseStatement();
         // Pop the body scope.
@@ -1366,6 +1419,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             return stmtError();
         }
 
+        // eat the 'while'.
         SourceLocation whileLoc = consumeToken();
 
         if (nextTokenIsNot(LPAREN))
@@ -1397,8 +1451,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseForStatement()
     {
-        Token tok = S.token;
-        assert tokenIs(tok, FOR):"Not a for loop";
+        assert nextTokenIs(FOR):"Not a for loop";
+        // eat the 'for'.
         SourceLocation forLoc = consumeToken();
 
         if (nextTokenIsNot(LPAREN))
@@ -1407,11 +1461,15 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             skipUntil(SEMI, true);
             return stmtError();
         }
-
-        int scopeFlags = ScopeFlags.BreakScope.value
+        int scopeFlags = 0;
+        if (getLangOption().c99)
+            scopeFlags = ScopeFlags.BreakScope.value
                 | ScopeFlags.ContinueScope.value
                 | ScopeFlags.DeclScope.value
                 | ScopeFlags.ControlScope.value;
+        else
+            scopeFlags = ScopeFlags.BreakScope.value
+                    | ScopeFlags.ContinueScope.value;
 
         ParseScope forScope = new ParseScope(this, scopeFlags);
         SourceLocation lParenLoc = consumeParen();
@@ -1448,6 +1506,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
         else
         {
+            // for (X = 4;
             value = parseExpression();
             if (!value.isInvalid())
                 firstPart = action.actOnExprStmt(value);
@@ -1503,11 +1562,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             thirdPart = parseExpression();
         }
 
-        tok = S.token;
-        if (!tokenIs(tok, RPAREN))
+        if (!nextTokenIs(RPAREN))
         {
             diag(S.token, err_expected_lparen_after).
-                    addTaggedVal(tok.getIdentifierInfo());
+                    addTaggedVal(S.token.getIdentifierInfo());
             skipUntil(RBRACE, true);
         }
 
@@ -1581,7 +1639,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (nextTokenIs(SEMI))
         {
             if (requiredSemi) consumeToken();
-            Decl decl = action.parseFreeStandingDeclSpec(getCurScope(), ds);
+            Decl decl = action.parsedFreeStandingDeclSpec(getCurScope(), ds);
 
             // TODO ds.complete(decl);
             return action.convertDeclToDeclGroup(decl);
@@ -1880,17 +1938,17 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     private ActionResult<Stmt> parseGotoStatement()
     {
-        Token tok = S.token;
-        assert tokenIs(tok, GOTO):"Not a goto stmt!";
+        assert nextTokenIs(GOTO):"Not a goto stmt!";
+
         SourceLocation gotoLoc = consumeToken(); // eat the 'goto'
 
         // 'goto label'.
         ActionResult<Stmt> res = null;
         if (nextTokenIs(IDENTIFIER))
         {
-            Ident id = (Ident)S.token;
-            LabelDecl ld = action.lookupOrCreateLabel(id.name, id.loc);
-            res = action.actOnGotoStmt(gotoLoc, id.loc, ld);
+            LabelDecl ld = action.lookupOrCreateLabel(S.token.getIdentifierInfo(),
+                    S.token.getLocation());
+            res = action.actOnGotoStmt(gotoLoc, S.token.getLocation(), ld);
             consumeToken();
         }
         else
@@ -1944,8 +2002,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseReturnStatement()
     {
-        Token tok = S.token;
-        assert tokenIs(tok, RETURN):"Not a return stmt!";
+        assert nextTokenIs(RETURN):"Not a return stmt!";
         SourceLocation returnLoc = consumeToken();
 
         ActionResult<Expr> res = new ActionResult<>();
@@ -2012,12 +2069,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (nextTokenIs(COLON) && getCurScope().isSwitchScope()
                 && action.checkCaseExpression(res.get()))
         {
+            // If a constant expression is followed by a colon inside a switch block,
+            // suggest a missing case keyword.
             diag(oldTok.loc, err_expected_case_before_expression)
-            .addCodeModificationHint(CodeModificationHint.
+            .addFixItHint(FixItHint.
                     createInsertion(oldTok.getLocation(), "case "));
 
             // Recover parsing as a case statement.
-            return parseCaseStatement();
+            return parseCaseStatement(true, res);
         }
         expectAndConsume(SEMI, err_expected_semi_after_expr);
 
@@ -2352,8 +2411,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             diag(loc, err_use_of_tag_name_without_tag)
             .addTaggedVal(identifierInfo)
             .addTaggedVal(tagName)
-            .addCodeModificationHint(
-                    CodeModificationHint.createInsertion(S.token.loc,
+            .addFixItHint(
+                    FixItHint.createInsertion(S.token.loc,
                     tagName));
 
             if (tagKind == ENUM)
@@ -2569,7 +2628,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 // we missing a ',' between enumerators
                 diag(commaLoc, ext_enumerator_list_comma)
                 .addTaggedVal(getLangOption().c99)
-                .addCodeModificationHint(CodeModificationHint.createRemoval(
+                .addFixItHint(FixItHint.createRemoval(
                         new SourceRange(commaLoc)));
             }
         }
@@ -2870,7 +2929,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             {
                 diag(S.token, ext_extra_struct_semi).addTaggedVal(DeclSpec
                 .getSpecifierName(tagType))
-                .addCodeModificationHint(CodeModificationHint.createRemoval
+                .addFixItHint(FixItHint.createRemoval
                         (new SourceRange(S.token.getLocation())));
                 consumeToken();
                 continue;
@@ -2945,7 +3004,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // specifier.
         if (nextTokenIs(SEMI))
         {
-            action.parseFreeStandingDeclSpec(getCurScope(), ds);
+            action.parsedFreeStandingDeclSpec(getCurScope(), ds);
             return;
         }
         // read struct-declarators until we find a ';'.
@@ -3757,7 +3816,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     SourceLocation filoc = S.token.getLocation();
                     // We missing a ':' after ternary middle expression.
                     diag(S.token, err_expected_colon)
-                    .addCodeModificationHint(CodeModificationHint.
+                    .addFixItHint(FixItHint.
                             createInsertion(filoc, ": "));
                     diag(opToken, note_matching).addTaggedVal("?");
                     colonLoc = S.token.loc;
