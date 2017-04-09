@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="CflatCompiler" default="compile" basedir=".">
+    <target name="init">
+        <property file="${user.home}/.ant-global.properties" />
+        <property file="build.properties" />
+    </target>
+
+    <target name="tgparser" depends="init">
+        <javacc target="${tgparser.jj.file}" javacchome="${javacc.dir}" />
+    </target>
+
+    <target name="compile" depends="init, parser">
+        <mkdir dir="${build.dir}" />
+        <mkdir dir="${build.classes.dir}" />
+        <javac destdir="${build.classes.dir}" srcdir="${src.dir}"
+               debug="true" optimize="true">
+            <compilerarg value="-Xlint:unchecked" />
+            <include name="java/**/*.java" />
+        </javac>
+        <jar jarfile="${build.jar}" basedir="${build.classes.dir}" />
+    </target>
+
+    <target name="recompile" depends="clean, compile" />
+
+    <target name="clean" depends="init, clean-build">
+        <delete file="${build.jar}" />
+    </target>
+
+    <target name="clean-build" depends="init">
+        <delete dir="${build.dir}" />
+        <delete file="${build.tgparser.dir}/TGParser.java" />
+        <delete file="${build.tgparser.dir}/TGParserConstants.java" />
+        <delete file="${build.tgparser.dir}/TGParserTokenManager.java" />
+        <delete file="${build.tgparser.dir}/ParseException.java" />
+        <delete file="${build.tgparser.dir}/Token.java" />
+        <delete file="${build.tgparser.dir}/TokenMgrError.java" />
+        <delete file="${build.tgparser.dir}/SimpleCharStream.java" />
+    </target>
+
+    <target name="dist">
+        <antcall target="clean" />
+        <antcall target="compile" />
+        <antcall target="clean-build" />
+    </target>
+</project>
