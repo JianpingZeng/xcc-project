@@ -11,10 +11,8 @@ import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
 import jlang.cparser.DeclSpec.SCS;
 import jlang.cparser.DeclSpec.TST;
 import jlang.cparser.Token.CharLiteral;
-import jlang.cparser.Token.Ident;
 import jlang.cparser.Token.IntLiteral;
 import jlang.cpp.Preprocessor;
-import jlang.cpp.Source;
 import jlang.cpp.SourceLocation;
 import jlang.cpp.SourceLocation.SourceRange;
 import jlang.diag.*;
@@ -27,13 +25,15 @@ import tools.*;
 import java.util.*;
 
 import static jlang.ast.CastKind.*;
+import static jlang.ast.Tree.ExprObjectKind.OK_BitField;
+import static jlang.ast.Tree.ExprObjectKind.OK_Ordinary;
 import static jlang.ast.Tree.ExprValueKind.EVK_LValue;
 import static jlang.ast.Tree.ExprValueKind.EVK_RValue;
+import static jlang.basic.Linkage.NoLinkage;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
 import static jlang.cparser.Tag.*;
-import static jlang.diag.DiagnosticSemaTag.*;
 import static jlang.sema.BinaryOperatorKind.BO_Div;
 import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
@@ -52,6 +52,15 @@ import static jlang.sema.UnaryOperatorKind.*;
 public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         DiagnosticSemaTag
 {
+	/**
+     * Used for emitting the right warning by DefaultVariadicArgumentPromotion.
+     */
+    enum VariadicCallType
+    {
+        VariadicFunction,
+        VariadicDoesNotApply
+    }
+
     public enum TagUseKind
     {
         TUK_reference,      // Reference to a tag: 'struct foo *X;'
@@ -160,6 +169,27 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     {
         return parser;
     }
+
+    PartialDiagnostic pdiag(int diagID)
+    {
+        return new PartialDiagnostic(diagID);
+    }
+
+    private SemaDiagnosticBuilder diag(SourceLocation loc, int diagID)
+    {
+        Diagnostic.DiagnosticBuilder db = parser.diag(loc, diagID);
+        return new SemaDiagnosticBuilder(db, this, diagID);
+    }
+
+    private SemaDiagnosticBuilder diag(SourceLocation loc, PartialDiagnostic pdiag)
+    {
+        int diagID = pdiag.getDiagID();
+        SemaDiagnosticBuilder builder = new SemaDiagnosticBuilder(
+                diag(loc, diagID), this, diagID);
+        pdiag.emit(builder);
+        return builder;
+    }
+
     /**
      * Performs name lookup for a name that was parsed in the
      * source code
@@ -284,7 +314,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * @param tagType  Indicates what kind of tag this is.
      * @param tuk      Indicates whether this is a reference/declaration/definition
      *                 of a tag.
-     * @param startLoc
+     * @param kwLoc
      * @param name
      * @param nameLoc
      * @return
@@ -309,7 +339,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // C99, Each enumerator that appears in the body of an enumeration
             // specifier becomes an integer constant with jlang.type int in the
             // enclosing scope and can be used whenever integer constants are required
-            enumUnderlying = Type.IntTy;
+            enumUnderlying = context.IntTy;
         }
 
         LookupResult result = new LookupResult(this, name, nameLoc,
@@ -366,19 +396,19 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         && kind != TagTypeKind.TTK_enum);
                         if (safeToContinue)
                         {
-                            parser.diag(kwLoc, err_use_with_wrong_tag)
+                            diag(kwLoc, err_use_with_wrong_tag)
                                     .addTaggedVal(name)
-                                    .addCodeModificationHint(
-                                            CodeModificationHint.createReplacement
+                                    .addFixItHint(
+                                            FixItHint.createReplacement
                                                     (new SourceRange(kwLoc),
                                                         prevTagDecl.getKindName()));
                         }
                         else
                         {
-                            parser.diag(kwLoc, err_use_with_wrong_tag).
+                            diag(kwLoc, err_use_with_wrong_tag).
                                     addTaggedVal(name);
                         }
-                        parser.diag(prevDecl.getLocation(), note_previous_use);
+                        diag(prevDecl.getLocation(), note_previous_use);
                         if (safeToContinue)
                             kind = prevTagDecl.getTagKind();
                         else
@@ -402,9 +432,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                             TagDecl def = prevTagDecl.getDefinition();
                             if (def != null)
                             {
-                                parser.diag(nameLoc, err_redefinition)
+                                diag(nameLoc, err_redefinition)
                                         .addTaggedVal(name);
-                                parser.diag(def.getLocation(), note_previous_definition);
+                                diag(def.getLocation(), note_previous_definition);
                                 name = null;
                                 prevDecl = null;
                                 invalid = true;
@@ -417,9 +447,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                                 TagType tag = (TagType)context.getTagDeclType(prevTagDecl).baseType();
                                 if (tag.isBeingDefined())
                                 {
-                                    parser.diag(nameLoc, err_nested_redefinition)
+                                    diag(nameLoc, err_nested_redefinition)
                                             .addTaggedVal(name);
-                                    parser.diag(prevTagDecl.getLocation(), note_previous_definition);
+                                    diag(prevTagDecl.getLocation(), note_previous_definition);
                                     name = null;
                                     prevDecl = null;
                                     invalid = true;
@@ -447,9 +477,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 // same name, we just compliation it.
                 if (isDeclInScope(prevDecl, searchDC, curScope))
                 {
-                    parser.diag(nameLoc, err_redefinition_different_kind)
+                    diag(nameLoc, err_redefinition_different_kind)
                             .addTaggedVal(name);
-                    parser.diag(prevDecl.getLocation(), note_previous_definition);
+                    diag(prevDecl.getLocation(), note_previous_definition);
                     name = null;
                     prevDecl = null;
                     invalid = true;
@@ -481,7 +511,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 // if this is an undefined enum, warns it.
                 if (tuk != TagUseKind.TUK_definition && !invalid)
                 {
-                    parser.diag(loc, ext_forward_ref_enum);
+                    diag(loc, ext_forward_ref_enum);
                     if (tuk == TagUseKind.TUK_reference)
                         isForwardReference = true;
 
@@ -506,7 +536,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // in C, note that this jlang.type can only be used within the function.
             if (name != null && curScope.isFunctionProtoTypeScope())
             {
-                parser.diag(loc, warn_decl_in_param_list)
+                diag(loc, warn_decl_in_param_list)
                 .addTaggedVal(context.getTagDeclType(newDecl));
             }
 
@@ -637,76 +667,106 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     public ActionResult<Expr> actOnNumericConstant(Token token)
     {
-        assert token != null
-                && (token.tag == Tag.INTLITERAL
+        assert token != null && (token.tag == Tag.INTLITERAL
                 || token.tag == Tag.LONGLITERAL
                 || token.tag == Tag.FLOATLITERAL
                 || token.tag == Tag.DOUBLELITERAL);
-
+        // FIXME: parse the int/long/float/double number with numericParser. 2017.4.8
+        Expr res = null;
         switch (token.tag)
         {
             case Tag.FLOATLITERAL:
             case Tag.DOUBLELITERAL:
             {
-                QualType ty = token.tag == FLOATLITERAL? Type.FloatTy:Type.DoubleTy;
-
-                APFloat val = new APFloat();
-                // TODO deal with float point number.
+                QualType ty;
+                double val = 0.0;
+                if (token.tag == FLOATLITERAL)
+                {
+                    ty = context.FloatTy;
+                    val = ((Token.FLiteral)token).getValue();
+                }
+                else
+                {
+                    ty = context.DoubleTy;
+                    val = ((Token.DLiteral)token).getValue();
+                }
+                res = new FloatLiteral(ty, val, token.getLocation());
             }
 
             case INTLITERAL:
             case LONGLITERAL:
+            case LONGLONG:
             {
                 QualType ty = new QualType();
                 IntLiteral literal = (IntLiteral)token;
 
-                APInt resultVal = new APInt(32, 0);
+                // long long is a C99 feature.
+                if (!getLangOptions().c99 && literal.isLongLong())
+                    diag(token.getLocation(), ext_longlong);
+
+                // Get the value in the widest-possible width.
+                APInt resultVal = new APInt(context.target.getIntMaxWidth(), 0);
 
                 if (literal.getIntegerValue(resultVal))
                 {
                     // current long long can not be supported.
-                    parser.diag(literal.loc, "%s integer too large").addTaggedVal
-                            (literal.toString());
-                    return exprError();
+                    diag(literal.loc, warn_integer_too_large).
+                            addTaggedVal(literal.toString());
+                    ty = context.UnsignedLongLongTy;
+                    assert context.getTypeSize(ty) == resultVal.getBitWidth()
+                            : "long long is not intmax_t";
                 }
                 else
                 {
-                    // TODO deal with integer
                     boolean allowedUnsigned =
                             literal.isUnsigned() || literal.getRadix() != 10;
 
                     // check from smallest to largest, picking the smallest jlang.type we can.
                     int width = 0;
-                    if (!literal.isLong())
+                    if (!literal.isLong() && !literal.isLongLong())
                     {
                         // Are int/ unsigned int possibility?
-                        int intSize = 32;
+                        int intSize = context.target.getIntWidth();
 
                         // does it fit in a unsigned int?
                         if (resultVal.isIntN(intSize))
                         {
                             BitSet x = new BitSet();
                             if (!literal.isUnsigned() && !resultVal.get(intSize - 1))
-                                ty = Type.IntTy;
+                                ty = context.IntTy;
                             else if (allowedUnsigned)
-                                ty = Type.UnsignedIntTy;
+                                ty = context.UnsignedIntTy;
                             width = intSize;
                         }
                     }
                     // Are long/unsigned long possibilities?
-                    if (ty.isNull() &&literal.isLong())
+                    if (ty.isNull() && !literal.isLongLong())
                     {
-                        int longSize = 32;
+                        int longSize = context.target.getLongWidth();
 
                         // does it fit in a unsigned long?
                         if (resultVal.isIntN(longSize))
                         {
                             // Does it fit in a signed long?
                             if(!literal.isUnsigned() && !resultVal.get(longSize - 1))
-                                ty = Type.LongTy;
+                                ty = context.LongTy;
                             else if (allowedUnsigned)
-                                ty = Type.UnsignedLongTy;
+                                ty = context.UnsignedLongTy;
                             width = longSize;
+                        }
+                    }
+
+                    if (ty.isNull())
+                    {
+                        int longlongSize = context.target.getLonglongWidth();
+                        // Does it fit in a unsigned long long?
+                        if (resultVal.isIntN(longlongSize))
+                        {
+                            if (!literal.isUnsigned() && !resultVal.get(longlongSize-1))
+                                ty = context.LongLongTy;
+                            else if (allowedUnsigned)
+                                ty = context.UnsignedLongLongTy;
+                            width = longlongSize;
                         }
                     }
 
@@ -714,10 +774,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     // something that does not fit in a signed long, but has no U suffix.
                     if (ty.isNull())
                     {
-                        parser.diag(literal.loc, "%s integer too large for signed",
-                                literal.toString());
-                        ty = Type.UnsignedLongTy;
-                        width = 32;
+                        diag(literal.loc, warn_integer_too_large_for_signed).
+                                addTaggedVal(literal.toString());
+                        ty = context.UnsignedLongTy;
+                        width = context.target.getLonglongWidth();
                     }
 
                     if (resultVal.getBitWidth() != width)
@@ -754,7 +814,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     /**
-     * Called from {@linkplain Parser#parseFunctionDeclarator(Declarator)}
+     * Called from {@linkplain Parser#parseFunctionDeclarator(SourceLocation, Declarator, boolean)}
      * to introduce parameters into function prototype scope.
      *
      * @param scope
@@ -836,9 +896,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private void pushDeclContext(Scope scope, TagDecl tag)
     {
-        DeclContext dc = tag;
-        curContext = dc;
-        scope.setEntity(dc);
+        curContext = tag;
+        scope.setEntity(curContext);
     }
 
     private void pushDeclContext(Scope scope, DeclContext dc)
@@ -916,7 +975,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (val != null)
         {
             // Make sure to promote the operand type to int.
-            Expr temp = usualUnaryConversion(val).get();
+            Expr temp = usualUnaryConversions(val).get();
             if (!temp.equals(val))
             {
                 val = temp;
@@ -938,12 +997,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 enumVal.increase();
 
                 if (enumVal.lt(lastEnumConst.getInitValue()))
-                    parser.diag(idLoc, warn_enum_value_overflow);
+                    diag(idLoc, warn_enum_value_overflow);
                 eltTy = lastEnumConst.getDeclType();
             }
             else
             {
-                eltTy  = Type.IntTy;
+                eltTy  = context.IntTy;
                 enumVal.zextOrTrunc((int)eltTy.getTypeSize());
             }
         }
@@ -975,13 +1034,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             {
                 if (prevDecl instanceof EnumConstantDecl)
                 {
-                    parser.diag(identLoc, err_redefinition_of_enumerator);;
+                    diag(identLoc, err_redefinition_of_enumerator);;
                 }
                 else
                 {
-                    parser.diag(identLoc, err_redefinition);
+                    diag(identLoc, err_redefinition);
                 }
-                parser.diag(prevDecl.getLocation(), note_previous_definition);
+                diag(prevDecl.getLocation(), note_previous_definition);
                 return null;
             }
         }
@@ -1033,7 +1092,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     v.trunc(intWidth);
                     v.extend(initVal.getBitWidth());
                     if (v.ne(initVal))
-                        parser.diag(ecd.getLocation(), ext_enum_value_not_int);
+                        diag(ecd.getLocation(), ext_enum_value_not_int);
                 }
 
                 // Keep track of the size of positive and negative values.
@@ -1044,7 +1103,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
                 // Keep track of whether every enum element has type int (very commmon).
                 if (allElementsInt)
-                    allElementsInt = ecd.getDeclType().equals(Type.IntTy);
+                    allElementsInt = ecd.getDeclType().equals(context.IntTy);
             }
         }
         QualType bestType = new QualType();
@@ -1055,20 +1114,20 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             if(numNegativeBits <= intWidth && numPositiveBits < intWidth)
             {
-                bestType = Type.IntTy;
+                bestType = context.IntTy;
                 bestWidth = intWidth;
             }
             else
             {
                 bestWidth = context.target.getLongWidth();
                 if(numNegativeBits <= bestWidth && numPositiveBits < bestWidth)
-                    bestType = Type.LongTy;
+                    bestType = context.LongTy;
                 else
                 {
                     bestWidth = context.target.getLonglongWidth();
                     if (numNegativeBits > bestWidth || numPositiveBits >= bestWidth)
-                        parser.diag(enumDecl.getLocation(), warn_enum_too_large);
-                    bestType = Type.LongLongTy;
+                        diag(enumDecl.getLocation(), warn_enum_too_large);
+                    bestType = context.LongLongTy;
                 }
             }
         }
@@ -1078,7 +1137,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // fits.
             if (numPositiveBits <= intWidth)
             {
-                bestType = Type.UnsignedIntTy;
+                bestType = context.UnsignedIntTy;
                 bestWidth = intWidth;
             }
             else
@@ -1086,7 +1145,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 bestWidth = context.target.getLonglongWidth();
                 assert numPositiveBits <= bestWidth
                         :"How could an initialization get larger than ULL?";
-                bestType = Type.UnsignedLongLongTy;
+                bestType = context.UnsignedLongLongTy;
             }
         }
 
@@ -1102,7 +1161,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 // enumerator value fits in an int, type it as an int, otherwise type it the
                 // same as the enumerator decl itself.  This means that in "enum { X = 1U }"
                 // that X has type 'int', not 'unsigned'.
-                if (ecd.getDeclType().equals(Type.IntTy))
+                if (ecd.getDeclType().equals(context.IntTy))
                 {
                     APSInt v = ecd.getInitValue();
                     v.setIsUnsigned(true);
@@ -1126,7 +1185,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 boolean newSign;
                 if (fitsInInt)
                 {
-                    newTy = Type.IntTy;
+                    newTy = context.IntTy;
                     newWidth = intWidth;
                     newSign = true;
                 }
@@ -1171,7 +1230,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     public Decl actOnFunctionDef(Scope fnBodyScope, Declarator declarator)
     {
-        assert getCurScope() == null : "Functio parsing confused";
+        assert getCurFunctionDecl() == null : "Function parsing confused";
         assert declarator.isFunctionDeclarator() : "Not a function declarator";
 
         Scope parentScope = fnBodyScope.getParent();
@@ -1183,7 +1242,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     private void diagnoseFunctionSpecifiers(Declarator d)
     {
         if (d.getDeclSpec().isInlineSpecifier())
-            parser.diag(d.getDeclSpec().getInlineSpecLoc(),
+            diag(d.getDeclSpec().getInlineSpecLoc(),
                     err_inline_non_function);
     }
 
@@ -1228,11 +1287,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // Verify the old decl was also a type.
         if (!(oldOne instanceof TypeDecl))
         {
-            parser.diag(newOne.getLocation(), err_redefinition_different_kind)
+            diag(newOne.getLocation(), err_redefinition_different_kind)
                     .addTaggedVal(newOne.getDeclName());
             if (oldOne.getLocation().isValid())
             {
-                parser.diag(oldOne.getLocation(), note_previous_definition);
+                diag(oldOne.getLocation(), note_previous_definition);
                 newOne.setInvalidDecl(true);
                 return;
             }
@@ -1251,19 +1310,19 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 && oldType.getCanonicalTypeInternal()
                 != newOne.getUnderlyingType().getCanonicalTypeInternal())
         {
-            parser.diag(newOne.getLocation(),
+            diag(newOne.getLocation(),
                     err_redefinition_different_typedef)
                     .addTaggedVal(newOne.getUnderlyingType())
                     .addTaggedVal(oldType);
             if (oldTD.getLocation().isValid())
-                parser.diag(oldTD.getLocation(), note_previous_definition);
+                diag(oldTD.getLocation(), note_previous_definition);
             newOne.setInvalidDecl(true);
             return;
         }
 
-        parser.diag(newOne.getLocation(), warn_redefinition_of_typedef)
+        diag(newOne.getLocation(), warn_redefinition_of_typedef)
                 .addTaggedVal(newOne.getDeclName());
-        parser.diag(oldTD.getLocation(), note_previous_definition);
+        diag(oldTD.getLocation(), note_previous_definition);
     }
 
     private NamedDecl actOnTypedefDeclarator(Scope s,
@@ -1299,7 +1358,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             if (!d.isInvalidType())
             {
-                parser.diag(d.getDeclSpec().getSourceRange().getStart(),
+                diag(d.getDeclSpec().getSourceRange().getBegin(),
                         err_declarator_need_ident)
                         .addSourceRange(d.getDeclSpec().getSourceRange())
                         .addSourceRange(d.getSourceRange());
@@ -1456,9 +1515,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         if (!(oldOne instanceof VarDecl))
         {
-            parser.diag(newOne.getLocation(), err_redefinition_different_kind)
+            diag(newOne.getLocation(), err_redefinition_different_kind)
                     .addTaggedVal(newOne.getDeclName());
-            parser.diag(oldOne.getLocation(), note_previous_definition);
+            diag(oldOne.getLocation(), note_previous_definition);
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1468,9 +1527,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         QualType mergedTy = context.mergeType(newOne.getDeclType(), Old.getDeclType());
         if (mergedTy.isNull())
         {
-            parser.diag(newOne.getLocation(), err_redefinition_different_type)
+            diag(newOne.getLocation(), err_redefinition_different_type)
             .addTaggedVal(newOne.getDeclName());
-            parser.diag(Old.getLocation(), note_previous_definition);
+            diag(Old.getLocation(), note_previous_definition);
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1481,9 +1540,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (newOne.getStorageClass() == StorageClass.SC_static &&
                 (Old.getStorageClass() == StorageClass.SC_none 
                         || Old.hasExternalStorage())) {
-            parser.diag(newOne.getLocation(), err_static_non_static).
+            diag(newOne.getLocation(), err_static_non_static).
                     addTaggedVal(newOne.getDeclName());
-            parser.diag(Old.getLocation(), note_previous_definition);
+            diag(Old.getLocation(), note_previous_definition);
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1500,10 +1559,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             /* Okay */;
         else if (newOne.getStorageClass() != StorageClass.SC_static &&
                 Old.getStorageClass() == StorageClass.SC_static) {
-            parser.diag(newOne.getLocation(), err_non_static_static).
+            diag(newOne.getLocation(), err_non_static_static).
                     addTaggedVal(newOne.getDeclName());
-            parser.diag(Old.getLocation(), note_previous_definition);
-            return newOne.setInvalidDecl();
+            diag(Old.getLocation(), note_previous_definition);
+            newOne.setInvalidDecl(true);
+            return;
         }
 
         // Variables with external linkage are analyzed in FinalizeDeclaratorGroup.
@@ -1515,9 +1575,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 !(Old.getDeclContext().isRecord() &&
             !newOne.getDeclContext().isRecord()))
         {
-            parser.diag(newOne.getLocation(), err_redefinition).
+            diag(newOne.getLocation(), err_redefinition).
                     addTaggedVal(newOne.getDeclName());
-            parser.diag(Old.getLocation(), note_previous_definition);
+            diag(Old.getLocation(), note_previous_definition);
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1530,7 +1590,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * This routine performs all of the type-checking required for a
      * variable declaration once it has been built. It is used both to
      * check variables after they have been parsed and their declarators
-     * have been translated into a declaratio
+     * have been translated into a declaration
      * @param newVD
      * @param prevDecl
      * @param redeclaration
@@ -1553,19 +1613,19 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             QualType FixedTy = tryToFixInvalidVariablyModifiedType(ty, context, SizeIsNegative);
 
             if (FixedTy.isNull() && ty.isVariableArrayType()) {
-                VariableArrayType VAT = ty.getAsVariableArrayType();
+                VariableArrayType VAT = context.getAsVariableArrayType(ty);
                 // FIXME: This won't give the correct result for
                 // int a[10][n];
                 SourceRange SizeRange = VAT.getSizeExpr().getSourceRange();
 
                 if (newVD.isFileVarDecl())
-                    parser.diag(newVD.getLocation(), err_vla_decl_in_file_scope)
+                    diag(newVD.getLocation(), err_vla_decl_in_file_scope)
                             .addSourceRange(SizeRange);
                 else if (newVD.getStorageClass() == StorageClass.SC_static)
-                    parser.diag(newVD.getLocation(), err_vla_decl_has_static_storage)
+                    diag(newVD.getLocation(), err_vla_decl_has_static_storage)
                             .addSourceRange(SizeRange);
                 else
-                    parser.diag(newVD.getLocation(), err_vla_decl_has_extern_linkage)
+                    diag(newVD.getLocation(), err_vla_decl_has_extern_linkage)
                             .addSourceRange(SizeRange);
                 newVD.setInvalidDecl(true);
                 return;
@@ -1574,21 +1634,21 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (FixedTy.isNull())
             {
                 if (newVD.isFileVarDecl())
-                    parser.diag(newVD.getLocation(), err_vm_decl_in_file_scope);
+                    diag(newVD.getLocation(), err_vm_decl_in_file_scope);
                 else
-                    parser.diag(newVD.getLocation(), err_vm_decl_has_extern_linkage);
+                    diag(newVD.getLocation(), err_vm_decl_has_extern_linkage);
                 newVD.setInvalidDecl(true);
                 return;
             }
 
-            parser.diag(newVD.getLocation(), warn_illegal_constant_array_size);
+            diag(newVD.getLocation(), warn_illegal_constant_array_size);
             newVD.setDeclType(FixedTy);
             return;
         }
 
         if (ty.isVoidType() && !newVD.hasExternalStorage())
         {
-            parser.diag(newVD.getLocation(), err_typecheck_decl_incomplete_type)
+            diag(newVD.getLocation(), err_typecheck_decl_incomplete_type)
                     .addTaggedVal(ty);
             newVD.setInvalidDecl(true);
             return;
@@ -1614,7 +1674,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         if (name == null)
         {
-            parser.diag(d.getIdentifierLoc(), err_bad_variable_name);
+            diag(d.getIdentifierLoc(), err_bad_variable_name);
             return null;
         }
 
@@ -1627,9 +1687,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (sc == StorageClass.SC_auto || sc == StorageClass.SC_register)
             {
                 if (sc == StorageClass.SC_register)
-                    parser.diag(d.getIdentifierLoc(), err_unsupported_global_register);
+                    diag(d.getIdentifierLoc(), err_unsupported_global_register);
                 else
-                    parser.diag(d.getIdentifierLoc(), err_typecheck_sclass_fscope);
+                    diag(d.getIdentifierLoc(), err_typecheck_sclass_fscope);
                 d.setInvalidType(true);
             }
         }
@@ -1639,10 +1699,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // This is an out-of-line definition of a static data member.
             if(sc == StorageClass.SC_static)
             {
-                parser.diag(d.getDeclSpec().getStorageClassSpecLoc(),
+                diag(d.getDeclSpec().getStorageClassSpecLoc(),
                         err_static_out_of_line)
-                        .addCodeModificationHint(
-                        CodeModificationHint.createRemoval(
+                        .addFixItHint(
+                        FixItHint.createRemoval(
                         new SourceRange(d.getDeclSpec().getStorageClassSpecLoc())));
             }else if (sc == StorageClass.SC_none)
                 sc = StorageClass.SC_static;
@@ -1682,7 +1742,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             default: assert false :"Unknown storage class!";
             case SCS_auto:
             case SCS_register:
-                parser.diag(d.getDeclSpec().getStorageClassSpecLoc(),
+                diag(d.getDeclSpec().getStorageClassSpecLoc(),
                         err_typecheck_sclass_func);
                 d.setInvalidType(true);
                 break;
@@ -1697,7 +1757,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     //   The declaration of an identifier for a function that has
                     //   block scope shall have no explicit storage-class specifier
                     //   other than extern
-                    parser.diag(d.getDeclSpec().getStorageClassSpecLoc(),
+                    diag(d.getDeclSpec().getStorageClassSpecLoc(),
                             err_static_block_func);
                     sc = StorageClass.SC_none;
                 }
@@ -1722,33 +1782,49 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     {
         // Determine the jlang.type of the declarator.
         DeclSpec ds = d.getDeclSpec();
-        int declLoc = d.getIdentifierLoc();
+        SourceLocation declLoc = d.getIdentifierLoc();
         if (declLoc == SourceLocation.NOPOS)
-            declLoc = ds.getSourceRange().getStart();
+            declLoc = ds.getSourceRange().getBegin();
 
         QualType result = null;
         switch (ds.getTypeSpecType())
         {
             case TST_void:
-                result = Type.VoidTy;
+                result = context.VoidTy;
                 break;
             case TST_char:
                 if (ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified)
-                    result = Type.CharTy;
+                    result = context.CharTy;
                 else if (ds.getTypeSpecSign() == DeclSpec.TSS.TSS_signed)
-                    result = Type.SignedCharTy;
+                    result = context.SignedCharTy;
                 else
                 {
                     assert ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unsigned
                             :"Unknown TSS value";
-                    result = Type.UnsignedCharTy;
+                    result = context.UnsignedCharTy;
                 }
                 break;
             case TST_unspecified:
-                if (!ds.hasTypeSpecifier())
+                // Unspecified typespec defaults to int in C90.
+                if (getLangOptions().implicitInt)
                 {
-                    // C99 requires a jlang.type specifier.
-                    parser.diag(declLoc, "jlang.type specifier missing, defaults to 'int'");
+                    // In C89 mode, we only warn if there is a completely missing declspec
+                    // when one is not allowed.
+                    if (ds.isEmpty())
+                    {
+                        diag(declLoc, ext_missing_declspec)
+                                .addSourceRange(ds.getSourceRange()).addFixItHint
+                                (FixItHint.createInsertion(ds.getSourceRange().getBegin(), "int"));
+                    }
+                }
+                else if (!ds.hasTypeSpecifier())
+                {
+                    // C99 require a type specifier.  For example, C99 6.7.2p2 says:
+                    // "At least one type specifier shall be given in the declaration
+                    // specifiers in each declaration, and in the specifier-qualifier list in
+                    // each struct declaration and type name."
+                    diag(declLoc, ext_missing_type_specifier).
+                            addSourceRange(ds.getSourceRange());
                 }
                 // fall through
             case TST_int:
@@ -1758,14 +1834,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     switch (ds.getTypeSpecWidth())
                     {
                         case TSW_unspecified:
-                            result = Type.IntTy;break;
+                            result = context.IntTy;
+                            break;
                         case TSW_short:
-                            result = Type.ShortTy;break;
+                            result = context.ShortTy;
+                            break;
                         case TSW_long:
-                            result = Type.LongTy;break;
+                            result = context.LongTy;
+                            break;
                         case TSW_longlong:
-                            parser.syntaxWarning(ds.getTypeSpecWidthLoc(),
-                                    "long long jlang.type is the features in C99.");
+                            result = context.LongLongTy;
+                            if (!getLangOptions().c99)
+                                diag(ds.getTypeSpecWidthLoc(), ext_longlong);
                             break;
                     }
                 }
@@ -1774,43 +1854,50 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     switch (ds.getTypeSpecWidth())
                     {
                         case TSW_unspecified:
-                            result = Type.UnsignedIntTy;break;
+                            result = context.UnsignedIntTy;break;
                         case TSW_short:
-                            result = Type.UnsignedShortTy;break;
+                            result = context.UnsignedShortTy;break;
                         case TSW_long:
-                            result = Type.UnsignedLongTy;break;
+                            result = context.UnsignedLongTy;break;
                         case TSW_longlong:
-                            parser.syntaxWarning(ds.getTypeSpecWidthLoc(),
-                                    "long long jlang.type is the features in C99.");
+                            result = context.UnsignedLongLongTy;
+                            if (!getLangOptions().c99)
+                                diag(ds.getTypeSpecWidthLoc(), ext_longlong);
                             break;
                     }
                 }
                 break;
             }
             case TST_float:
-                result = Type.FloatTy;break;
+                result = context.FloatTy;
+                break;
             case TST_double:
-                result = Type.DoubleTy;break;
+                result = context.DoubleTy;
+                break;
             case TST_bool:
                 // _Bool
-                result = Type.BoolTy;break;
+                result = context.BoolTy;
+                break;
             case TST_enum:
             case TST_struct:
             case TST_union:
             {
-                TypeDecl typeDecl = (TypeDecl) ds.getRepAsDecl();
-                if (typeDecl == null)
+                Decl decl = ds.getRepAsDecl();
+                if (!(decl instanceof TypeDecl))
                 {
-                    result = Type.IntTy;
+                    result = context.IntTy;
                     d.setInvalidType(true);
                     break;
                 }
+                TypeDecl typeDecl = (TypeDecl)decl;
 
-                assert ds.getTypeSpecWidth() == null && ds.getTypeSpecComplex() == null
-                        && ds.getTypeSpecSign() == null:"No qualifiers on tag names!";
+                assert ds.getTypeSpecWidth() == DeclSpec.TSW.TSW_unspecified
+                        && ds.getTypeSpecComplex() == DeclSpec.TSC.TSC_unspecified
+                        && ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified
+                        : "No qualifiers on tag names!";
 
                 // TypeQuals handled by caller.
-                result = QualType.getTypeDeclType(typeDecl);
+                result = context.getTypeDeclType(typeDecl);
 
                 if (typeDecl.isInvalidDecl())
                     d.setInvalidType(true);
@@ -1818,9 +1905,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             }
             case TST_typename:
             {
-                assert ds.getTypeSpecWidth() == null
-                        && ds.getTypeSpecComplex() == null
-                        && ds.getTypeSpecSign() == null
+                assert ds.getTypeSpecWidth() == DeclSpec.TSW.TSW_unspecified
+                        && ds.getTypeSpecComplex() == DeclSpec.TSC.TSC_unspecified
+                        && ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified
                         :"Can't handle qualifiers on typedef names yet";
 
                 result = ds.getRepAsType();
@@ -1829,7 +1916,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 break;
             }
             case TST_error:
-                result = Type.IntTy;
+                result = context.IntTy;
                 d.setInvalidType(true);
                 break;
         }
@@ -1847,20 +1934,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     QualType eleTy = result.getPointerType().getPointeeType();
 
                     // If we have a pointer, the pointee must have an object
-                    // incomplete jlang.type.
-                    if (!eleTy.isIncompleteOrObjectType())
+                    // incomplete type.
+                    if (!context.isIncompleteOrObjectType(eleTy))
                     {
-                        parser.diag(ds.getRestrictSpecLoc(),
-                                "pointer to function jlang.type %s may not be 'restrict' qualified",
-                                eleTy.toString());
+                        diag(ds.getRestrictSpecLoc(), err_typecheck_invalid_restrict_invalid_pointee)
+                                .addTaggedVal(eleTy).addSourceRange(ds.getSourceRange());
                         typeQuals &= ~TQ_restrict.value;
                     }
                 }
                 else
                 {
-                    parser.diag(ds.getRestrictSpecLoc(),
-                            "restrict requires a pointer (%s is invalid)",
-                            result.toString());
+                    diag(ds.getRestrictSpecLoc(), err_typecheck_invalid_restrict_not_pointer)
+                            .addTaggedVal(result).addSourceRange(ds.getSourceRange());
                     typeQuals &= ~TQ_restrict.value;
                 }
             }
@@ -1870,7 +1955,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // undefined."
             if (result.isFunctionType() && typeQuals != 0)
             {
-                int loc;
+                SourceLocation loc;
                 if ((typeQuals & TQ_const.value) != 0)
                     loc = ds.getConstSpecLoc();
                 else if ((typeQuals & TQ_volatile.value) != 0)
@@ -1882,11 +1967,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     loc = ds.getRestrictSpecLoc();
                 }
 
-                parser.diag(loc, "jlang.type qualifiers can not applied into function jlang.type");
+                diag(loc, warn_typecheck_function_qualifiers).
+                        addTaggedVal(result).
+                        addSourceRange(ds.getSourceRange());
             }
 
             QualType.Qualifier quals = QualType.Qualifier.fromCVRMask(typeQuals);
-            result = QualType.getQualifiedType(result, quals);
+            result = context.getQualifiedType(result, quals);
         }
         return result;
     }
@@ -1903,11 +1990,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // See if this is a redefinition.
         checkForFunctionRedefinition(fd);
 
-        // The return jlang.type of a function definition must be complete
+        // The return type of a function definition must be complete
         // (C99 6.9.1p3.
         QualType resultType = fd.getReturnType();
         if (!resultType.isVoidType() && !fd.isInvalidDecl())
-            requireCompleteType(fd.getLocation(), resultType);
+            requireCompleteType(fd.getLocation(), resultType,
+                    err_func_def_incomplete_result);
 
         fd.setInvalidDecl(true);
 
@@ -1925,7 +2013,6 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
             if (param.getDeclName() != null && fnBodyScope != null)
                 checkShadow(fnBodyScope, param);
-
             pushOnScopeChains(param, fnBodyScope, true);
         }
         return fd;
@@ -1938,12 +2025,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private void checkForFunctionRedefinition(FunctionDecl fd)
     {
-
+        // TODO: 2017/4/8
     }
 
     private void checkParmsForFunctionDef(ArrayList<ParamVarDecl> params)
     {
-
+        // TODO: 2017/4/8
     }
 
     private void checkShadow(Scope s, VarDecl d)
@@ -1954,6 +2041,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         checkShadow(s, d, r);
     }
 
+	/**
+     * Diagnose variable or built-in function shadowing.  Implements
+     * -Wshadow.
+     *
+     * This method is called whenever a VarDecl is added to a "useful"
+     * scope.
+     * @param s the scope in which the shadowing name is being declared
+     * @param d
+     * @param r the lookup of the name
+     */
     private void checkShadow(Scope s, VarDecl d, LookupResult r)
     {
         // Don't diagnose declarations at file scope.
@@ -1995,11 +2092,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         String name = r.getLookupName();
 
-        // Emit warning and note.
-        parser.syntaxWarning(r.getNameLoc(),
-                "declaration shadows a variable %s",
-                name);
-        parser.diag(shadowedDecl.getLocation(), "previous declaration is here");
+        // emit warning and note.
+        diag(r.getNameLoc(), warn_decl_shadow).
+                addTaggedVal(name).
+                addTaggedVal(kind).
+                addTaggedVal(oldDC, Diagnostic.ArgumentKind.ak_std_string);
+        diag(shadowedDecl.getLocation(), note_previous_declaration);
     }
 
     public ActionResult<Stmt> actOnDeclStmt(
@@ -2031,21 +2129,22 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     public ActionResult<Stmt> actOnLabelStmt(
-            SourceLocation loc,
-            LabelDecl ld,
+            SourceLocation identLoc,
+            LabelDecl theDecl,
             SourceLocation colonLoc,
-            ActionResult<Stmt> stmt)
+            ActionResult<Stmt> subStmt)
     {
         // if the label was multiple defined, reject it and issue diagnostic
-        if (ld.stmt != null)
+        if (theDecl.stmt != null)
         {
-            // TODO report error
-            return stmt;
+            diag(identLoc, err_redefinition_of_label).addTaggedVal(theDecl.getDeclName());
+            diag(theDecl.getLocation(), note_previous_declaration);
+            return subStmt;
         }
 
         // otherwise, things are well-form.
-        Tree.LabelledStmt s = new Tree.LabelledStmt(ld, stmt.get(), colonLoc);
-        ld.setStmt(s);
+        Tree.LabelledStmt s = new Tree.LabelledStmt(theDecl, subStmt.get(), colonLoc);
+        theDecl.setStmt(s);
         return new ActionResult<Stmt>(s);
     }
 
@@ -2057,7 +2156,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         assert expr != null : "missing expression within case statement";
 
         if (verifyIntegerConstantExpression(expr))
-            return null;
+            return stmtError();
 
         return new ActionResult<>(new CaseStmt(expr, null, caseLoc, colonLoc));
     }
@@ -2081,10 +2180,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             return false;
         }
         Expr.EvalResult evalResult = new Expr.EvalResult();
-        if (!expr.evaluate(evalResult) || !evalResult.val.isInt()
+        if (!expr.evaluate(evalResult, context)
+                || !evalResult.val.isInt()
                 || evalResult.hasSideEffects())
         {
-            parser.diag(expr.getExprLocation(), err_expr_not_ice).
+            diag(expr.getExprLocation(), err_expr_not_ice).
                     addSourceRange(expr.getSourceRange());
             if (evalResult.diag >= 0)
             {
@@ -2092,18 +2192,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         || !expr.ignoreParens().equals(evalResult.
                         diagExpr.ignoreParens()))
                 {
-                    parser.diag(evalResult.diagLoc, evalResult.diag);
+                    diag(evalResult.diagLoc, evalResult.diag);
                 }
             }
             return true;
         }
 
-        parser.diag(expr.getExprLocation(), ext_expr_not_ice)
+        diag(expr.getExprLocation(), ext_expr_not_ice)
                 .addSourceRange(expr.getSourceRange());
 
-        if (evalResult.diag >= 0 && Diagnostics.getDiagnosticLevel(ext_expr_not_ice)
-                != Diagnostics.Level.Ignored)
-            parser.diag(evalResult.diagLoc, evalResult.diag);
+        if (evalResult.diag >= 0 && Diagnostic.getDiagnosticLevel(ext_expr_not_ice)
+                != Diagnostic.Level.Ignored)
+            diag(evalResult.diagLoc, evalResult.diag);
 
         if (result.get() != null)
             result.set(evalResult.val.getInt());
@@ -2111,10 +2211,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         return false;
     }
 
-    public void actOnCaseStmtBody(Stmt stmt, Stmt subStmt)
+    public void actOnCaseStmtBody(Stmt caseStmt, Stmt subStmt)
     {
-        assert stmt != null;
-        CaseStmt cs = (CaseStmt) stmt;
+        assert caseStmt != null && caseStmt instanceof CaseStmt;
+        CaseStmt cs = (CaseStmt) caseStmt;
         cs.subStmt = subStmt;
     }
 
@@ -2154,7 +2254,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (i != numElts)
             {
                 Decl d = ((DeclStmt)stmts.get(i)).iterator().next();
-                parser.diag(d.getLocation(), ext_mixed_decls_code);
+                diag(d.getLocation(), ext_mixed_decls_code);
             }
         }
 
@@ -2196,9 +2296,26 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // if the subExpr already is a integral or enumeration jlang.type, we got it.
         if (!t.getType().isIntegralOrEnumerationType())
         {
-            parser.diag(switchLoc, err_typecheck_expect_scalar_operand);
+            diag(switchLoc, err_typecheck_expect_scalar_operand);
         }
         return new ActionResult<>(expr);
+    }
+
+    private ActionResult<Expr> defaultFunctionLValueConversion(Expr e)
+    {
+        return exprError();
+    }
+
+    private ActionResult<Expr> defaultFunctionArrayLValueConversion(Expr e)
+    {
+        ActionResult<Expr> res = defaultFunctionArrayConversion(e);
+        if (res.isInvalid())
+            return exprError();
+        res = defaultLvalueConversion(res.get());
+        if (res.isInvalid())
+            return exprError();
+
+        return res;
     }
 
     /**
@@ -2209,16 +2326,17 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     private ActionResult<Expr> defaultFunctionArrayConversion(Expr expr)
     {
         QualType ty = expr.getType();
-        assert !ty.isNull() : "DefaultFunctionArrayConversion - missing jlang.type.";
+        assert !ty.isNull() : "DefaultFunctionArrayConversion - missing type.";
         if (ty.getType().isFunctionType())
             expr = implicitCastExprToType(expr, ty, EVK_RValue,
                     CK_FunctionToPointerDecay).get();
-        else if (ty.getType().isConstantArrayType())
+        else if (ty.isArrayType())
         {
-            if (expr.isLValue())
+            if (expr.isLValue() || getLangOptions().c99)
             {
                 expr = implicitCastExprToType(expr,
-                        QualType.getArrayDecayedType(ty), EVK_RValue,
+                        context.getArrayDecayedType(ty),
+                        EVK_RValue,
                         CK_ArrayToPointerDecay).get();
             }
         }
@@ -2235,29 +2353,30 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * @param expr
      * @return
      */
-    private ActionResult<Expr> usualUnaryConversion(Expr expr)
+    private ActionResult<Expr> usualUnaryConversions(Expr expr)
     {
-        ActionResult<Expr> res = defaultFunctionArrayConversion(expr);
+        // First, convert to an r-value.
+        ActionResult<Expr> res = defaultFunctionArrayLValueConversion(expr);
         if (res.isInvalid())
             return new ActionResult<>(expr);
         expr = res.get();
 
         QualType t = expr.getType();
-        assert t != null : "UsualUnaryConversion - missing jlang.type";
+        assert !t.isNull() : "UsualUnaryConversion - missing type";
 
         // try to perform integral promotions if the object has a promotable jlang.type.
         if (t.getType().isIntegralOrEnumerationType())
         {
-            QualType ty = expr.isPromotableBitField();
+            QualType ty = expr.isPromotableBitField(context);
             if (!ty.isNull())
             {
                 expr = implicitCastExprToType(expr, ty, EVK_RValue,
                         CK_IntegralCast).get();
                 return new ActionResult<>(expr);
             }
-            if (ty.isPromotableIntegerType())
+            if (context.isPromotableIntegerType(ty))
             {
-                QualType qt = ty.getPromotedIntegerType();
+                QualType qt = context.getPromotedIntegerType(ty);
                 expr = implicitCastExprToType(expr, qt, EVK_RValue,
                         CK_IntegralCast).get();
                 return new ActionResult<>(expr);
@@ -2267,14 +2386,14 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     /**
-     * If the {@code expr} is not of jlang.type 'Type', perform an operation of inserting
-     * cast jlang.type for implicitly jlang.type casting.
+     * If the {@code expr} is not of type 'Type', perform an operation of inserting
+     * cast type for implicitly type casting.
      * </br>
      * If there is already an implicit cast, merge into the existing one.
      *
      * @param expr The expression to be casted.
-     * @param ty   The TargetData jlang.type which expr would be casted to.
-     * @param kind The kind of jlang.type cast.
+     * @param ty   The TargetData type which expr would be casted to.
+     * @param kind The kind of type cast.
      * @return The result expression have be implicitly casted.
      */
     private ActionResult<Expr> implicitCastExprToType(
@@ -2314,7 +2433,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         condExpr = condResult.get();
 
         // C99 6.7.4.2p5 - Integer promotion are performed on the controlling expression.
-        condResult = usualUnaryConversion(condExpr);
+        condResult = usualUnaryConversions(condExpr);
         if (condResult.isInvalid())
             return stmtError();
         condExpr = condResult.get();
@@ -2328,8 +2447,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     public FunctionScopeInfo getCurFunction()
     {
-        if (functionScopes.isEmpty())
-            return null;
+        assert !functionScopes.isEmpty() :
+                "Should not call this method when not in function scope";
         return functionScopes.peek();
     }
 
@@ -2340,8 +2459,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     {
         assert (switchStmt instanceof SwitchStmt) : "stmt must be switch stmt.";
         SwitchStmt ss = (SwitchStmt) switchStmt;
-        assert ss == getCurFunction().switchStack
-                .peek() : "switch stack missing push/pop";
+        assert ss == getCurFunction().switchStack.peek()
+                : "switch stack missing push/pop";
         ss.setBody(body);
         getCurFunction().switchStack.pop();
 
@@ -2350,13 +2469,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             return stmtError();
 
         QualType condType = condExpr.getType();
-        Expr condExprBeforePromotion = condExpr;
-        QualType condTypeBeforePromotion = getTypeBeforeIntegralPromotion(
-                condExprBeforePromotion);
+        if (!condType.isIntegerType())
+        {
+            diag(switchLoc, err_typecheck_statement_requires_integer)
+                    .addTaggedVal(condType).addSourceRange(condExpr.getSourceRange());
+            return stmtError();
+        }
 
-        long condWidth = condExprBeforePromotion.getIntWidth();
-        boolean condIsSigned = condExprBeforePromotion.
-                isSignedIntegerOrEnumeration();
+        long condWidth = context.getTypeSize(condType);
+        boolean condIsSigned = context.isSignedIntegerOrEnumerationType(condType);
 
         // Accumulate all of the case values in a vector so that we can sort them
         // and detect duplicates.
@@ -2369,16 +2490,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         for (SwitchCase sc = ss.getSwitchCaseList();
              sc != null; sc = sc.getNextCaseStmt())
         {
-            if (sc.tag == Tree.DefaultStmtClass)
+            if (sc instanceof DefaultStmt)
             {
                 DefaultStmt ds = (DefaultStmt) sc;
                 if (prevDefaultStmt != null)
                 {
-                    // TODO report error
-                    parser.diag(ds.defaultLoc,
-                            "multiple default statement defined");
-                    parser.diag(prevDefaultStmt.defaultLoc,
-                            "previous default statement default here");
+                    diag(ds.defaultLoc, err_multiple_default_labels_defined);
+                    diag(prevDefaultStmt.defaultLoc, note_duplicate_case_prev);
                     caseListErroneous = true;
                 }
                 prevDefaultStmt = ds;
@@ -2389,10 +2507,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 // (C99 6.8.4.2p3) - get that value now.
                 CaseStmt cs = (CaseStmt) sc;
                 Expr lo = cs.getCondExpr();
-                APSInt loVal = lo.evaluateKnownConstInt();
+                APSInt loVal = lo.evaluateAsInt(context);
+
+                // Convert the value to the same width/sign as the condition.
                 convertIntegerToTypeWarnOnOverflow(loVal, condWidth,
                         condIsSigned, lo.getExprLocation(),
-                        "warn case value overflow");
+                        warn_case_value_overflow);
 
                 // if the case constant is not the same jlang.type as the condition, insert
                 // an implicit cast
@@ -2406,42 +2526,35 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
             // If we don't have a default statement, check whether the
             // condition is constant.
-            // TODO complete the sematic validate for case substatement.
-            // TODO reference to LLVM SemaStmt.cpp:657.
             APSInt constantCondValue = null;
             boolean hasConstantCond = false;
             boolean shouldCheckConstantCond = false;
             if (prevDefaultStmt == null)
             {
-                Expr.EvalResult result = condExprBeforePromotion.evaluate();
-                hasConstantCond = result != null;
+                Expr.EvalResult result = new Expr.EvalResult();
+                hasConstantCond = condExpr.evaluate(result, context);
                 if (hasConstantCond)
                 {
-                    assert result.getValue()
-                            .isInt() : "switch condition evaluated to non-int";
+                    assert result.getValue().isInt()
+                            : "switch condition evaluated to non-int";
                     constantCondValue = result.getValue().getInt();
                     shouldCheckConstantCond = true;
 
                     int len = constantCondValue.getBitWidth();
-                    assert (len == condWidth
-                            && constantCondValue.isSigned() == condIsSigned);
+                    assert (len == condWidth && constantCondValue.isSigned() == condIsSigned);
                 }
             }
 
             // sort all the scalar case value so we can easily detect duplicates.
-            caseLists.sort(new Comparator<Pair<APSInt, SwitchCase>>()
+            caseLists.sort((lhs, rhs) ->
             {
-                @Override public int compare(Pair<APSInt, SwitchCase> lhs,
-                        Pair<APSInt, SwitchCase> rhs)
-                {
-                    if (lhs.first.lt(rhs.first))
-                        return -1;
-                    if (lhs.first.eq(rhs.first)
-                            && lhs.second.getCaseLoc() < rhs.second
-                            .getCaseLoc())
-                        return -1;
-                    return 1;
-                }
+                if (lhs.first.lt(rhs.first))
+                    return -1;
+                if (lhs.first.eq(rhs.first)
+                        && lhs.second.getCaseLoc().getRawEncoding() < rhs.second.getCaseLoc()
+                        .getRawEncoding())
+                    return -1;
+                return 1;
             });
 
             if (!caseLists.isEmpty())
@@ -2449,21 +2562,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 for (int i = 0, e = caseLists.size(); i < e; i++)
                 {
                     Pair<APSInt, SwitchCase> Case = caseLists.get(i);
-                    if (shouldCheckConstantCond && Case.first
-                            .eq(constantCondValue))
+                    if (shouldCheckConstantCond && Case.first.eq(constantCondValue))
                     {
                         shouldCheckConstantCond = false;
                     }
 
                     if (i != 0 && Case.first.eq(caseLists.get(i - 1).first))
                     {
-                        // TODO If we have a duplicate, report it.
-                        parser.diag(Case.second.getCaseLoc(),
-                                "duplicate case " + Case.first.toString(10));
+                        diag(Case.second.getCaseLoc(),err_duplicate_case).
+                                addTaggedVal(Case.first.toString(10));
                         Pair<APSInt, SwitchCase> prevDup = caseLists.get(i - 1);
-                        parser.diag(prevDup.second.getCaseLoc(),
-                                "previous duplicate case" + prevDup.first
-                                        .toString(10));
+                        diag(prevDup.second.getCaseLoc(), note_duplicate_case_prev)
+                                .addTaggedVal(prevDup.first.toString(10));
 
                         caseListErroneous = true;
                     }
@@ -2473,9 +2583,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // complain if we have a constant condition and we didn't find a match.
             if (!caseListErroneous && shouldCheckConstantCond)
             {
-                parser.syntaxWarning(condExpr.getExprLocation(),
-                        "missing case for condition",
-                        constantCondValue.toString(10));
+                diag(condExpr.getExprLocation(), warn_missing_case_for_condition).
+                        addTaggedVal(constantCondValue.toString(10)).
+                        addSourceRange(condExpr.getSourceRange());
             }
 
             // Check to see if switch is over an Enum and handles all of its
@@ -2483,7 +2593,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // we still do the analysis to preserve this information in the AST
             // (which can be used by flow-based analyes).
             //
-            final EnumType et = condTypeBeforePromotion.getType().getEnumType();
+            final EnumType et = condType.getType().getEnumType();
             // if switch has default case, the ignore it.
             if (!caseListErroneous && !hasConstantCond && et != null)
             {
@@ -2497,19 +2607,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     EnumConstantDecl enumDecl = (EnumConstantDecl) it.next();
                     APSInt val = enumDecl.getInitValue();
                     adjustAPSInt(val, condWidth, condIsSigned);
+                    enumVals.add(Pair.get(val, enumDecl));
                 }
 
-                enumVals.sort(new Comparator<Pair<APSInt, EnumConstantDecl>>()
+                enumVals.sort((o1, o2) ->
                 {
-                    @Override
-                    public int compare(Pair<APSInt, EnumConstantDecl> o1,
-                            Pair<APSInt, EnumConstantDecl> o2)
-                    {
-                        if (o1.first.lt(o2.first))
-                            return 1;
-                        else
-                            return -1;
-                    }
+                    if (o1.first.lt(o2.first))
+                        return 1;
+                    else
+                        return -1;
                 });
 
                 // See which case values aren't in enum.
@@ -2526,9 +2632,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                             next = ei.next();
                         if (!ei.hasNext() || next.first.gt(ci.first))
                         {
-                            parser.syntaxWarning(ci.second.getCaseLoc(),
-                                    "enum constant not in enum",
-                                    ed.getDeclName());
+                            diag(ci.second.getCaseLoc(), warn_not_in_enum).
+                                    addTaggedVal(ed.getDeclName());
                         }
                     }
                 }
@@ -2540,10 +2645,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
                 for (Pair<APSInt, EnumConstantDecl> ei : enumVals)
                 {
-                    APSInt ciVal;
-
-                    while (ci.hasNext() && ci.next().first.lt(ei.first))
-                        ;
+                    while (ci.hasNext() && ci.next().first.lt(ei.first));
 
                     if (ci.hasNext() && ci.next().first.eq(ei.first))
                         continue;
@@ -2555,24 +2657,31 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     }
                 }
 
+                // Produce a nice diagnostic if multiple values aren't handled.
                 switch (unhandledNames.size())
                 {
                     case 0:
                         break;
                     case 1:
-                        parser.syntaxWarning(condExpr.getExprLocation(),
-                                "missing one case", unhandledNames.get(0));
+                        diag(condExpr.getExprLocation(), warn_missing_case1).
+                                addTaggedVal(unhandledNames.get(0));
                         break;
                     case 2:
-                        parser.syntaxWarning(condExpr.getExprLocation(),
-                                "missing cases", unhandledNames.get(0),
-                                unhandledNames.get(1));
+                        diag(condExpr.getExprLocation(), warn_missing_case2).
+                                addTaggedVal(unhandledNames.get(0)).
+                                addTaggedVal(unhandledNames.get(1));
+                        break;
+                    case 3:
+                        diag(condExpr.getExprLocation(), warn_missing_case3).
+                                addTaggedVal(unhandledNames.get(0)).
+                                addTaggedVal(unhandledNames.get(1)).
+                                addTaggedVal(unhandledNames.get(2));
                         break;
                     default:
-                        parser.syntaxWarning(condExpr.getExprLocation(),
-                                "missing cases", unhandledNames.get(0),
-                                unhandledNames.get(1), unhandledNames.get(2));
-                        break;
+                        diag(condExpr.getExprLocation(), warn_missing_cases).
+                                addTaggedVal(unhandledNames.size()).
+                                addTaggedVal(unhandledNames.get(0)).
+                                addTaggedVal(unhandledNames.get(1));
                 }
                 if (!hasCaseNotInSwitch)
                     ss.setAllEnumCasesCovered();
@@ -2580,6 +2689,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         if (caseListErroneous)
             return stmtError();
+
         return new ActionResult<Stmt>(ss);
     }
 
@@ -2594,10 +2704,64 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         value.setIssigned(isSigned);
     }
 
-    private void convertIntegerToTypeWarnOnOverflow(APSInt loVal,
-            long condWidth, boolean condIsSigned, SourceLocation loc, String dign)
+	/**
+     * Converts the specified APSInt to the the specified width and sign. If an
+     * overflow occurs, detect it and issures a warning information with specified
+     * diagnostic.
+     * @param val
+     * @param newWidth
+     * @param newSign
+     * @param loc
+     * @param diagID
+     */
+    private void convertIntegerToTypeWarnOnOverflow(
+            APSInt val,
+            long newWidth,
+            boolean newSign,
+            SourceLocation loc,
+            int diagID)
     {
-        // TODO: 2017/3/28
+        if (newWidth > val.getBitWidth())
+        {
+            APSInt oldVal = new APSInt(val);
+            val.extend(newWidth);
+
+            if (!newSign && oldVal.isSigned() && oldVal.isNegative())
+            {
+                diag(loc, diagID).addTaggedVal(oldVal.toString(10))
+                        .addTaggedVal(val.toString(10));
+            }
+            val.setIssigned(newSign);
+        }
+        else if (newWidth < val.getBitWidth())
+        {
+            // If this is a trucation, check for overflow.
+            APSInt convVal = new APSInt(val);
+            convVal.trunc(newWidth);
+            convVal.setIssigned(newSign);
+            convVal.extend(val.getBitWidth());
+            convVal.setIssigned(newSign);
+            if (!convVal.eq(val))
+                diag(loc, diagID).addTaggedVal(val.toString(10)).
+                        addTaggedVal(convVal.toString(10));
+
+            // Regardless of whether a diagnostic was emitted, really do the
+            // truncation.
+            val.trunc(newWidth);
+            val.setIssigned(newSign);
+        }
+        else if (newSign != val.isSigned())
+        {
+            // Convert the sign to match the sign of the condition.  This can cause
+            // overflow as well.
+            APSInt oldVal = new APSInt(val);
+            val.setIssigned(newSign);
+
+            // Sign bit changed.
+            if (val.isNegative())
+                diag(loc, diagID).addTaggedVal(oldVal.toString(10)).
+                        addTaggedVal(val.toString(10));
+        }
     }
 
     /**
@@ -2623,7 +2787,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             Expr cond,
             Stmt body)
     {
-        if (cond == null)
+        if (cond == null || body == null)
             return stmtError();
         // TODO diagnostic unused expression results.
         return new ActionResult<>(new WhileStmt(cond, body, whileLoc));
@@ -2640,9 +2804,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         QualType t = cond.getType();
         if (!t.isScalarType())  // C99 6.8.4 1p1
         {
-            parser.diag(loc,
-                    "statement requires expression of scalar jlang.type",
-                    "(" + t.getType() + "invalid)");
+            diag(loc, err_typecheck_statement_requires_scalar).
+                    addTaggedVal(t).
+                    addSourceRange(cond.getSourceRange());
             return exprError();
         }
 
@@ -2679,7 +2843,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         checkImplicitConversion(cond, doLoc);
 
-        // TODO dignostic unused expression result.
+        // TODO diagnose unused expression result.
         return new ActionResult<>(new DoStmt(body, cond, doLoc, whileLoc, rParenLoc));
     }
 
@@ -2691,7 +2855,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * @param ds
      * @return
      */
-    public Decl parseFreeStandingDeclSpec(Scope s, DeclSpec ds)
+    public Decl parsedFreeStandingDeclSpec(Scope s, DeclSpec ds)
     {
         Decl tagD = null;
         TagDecl tag = null;
@@ -2714,9 +2878,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         int typeQuals;
         if ((typeQuals = ds.getTypeQualifier()) != 0)
         {
+            // Enforce C99 6.7.3p2: "Types other than pointer types derived from object
+            // or incomplete types shall not be restrict-qualified."
             if ((typeQuals & TQ_restrict.value) != 0)
-                parser.diag(ds.getRestrictSpecLoc(),
-                        "restrict requires a pointer or reference");
+                diag(ds.getRestrictSpecLoc(), err_typecheck_invalid_restrict_not_pointer)
+                        .addSourceRange(ds.getSourceRange());
         }
 
         if (ds.getTypeSpecType() == TST.TST_error)
@@ -2730,13 +2896,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (ds.getStorageClassSpec() == SCS.SCS_typedef && tag != null
                     && tag instanceof EnumDecl)
             {
-                parser.diag(ds.getSourceRange().getStart(),
-                        "typedef requires a getIdentifier");
+                diag(ds.getSourceRange().getBegin(), ext_typedef_without_a_name)
+                        .addSourceRange(ds.getSourceRange());
                 return tag;
             }
 
-            parser.diag(ds.getSourceRange().getStart(),
-                    "declaration does not declare anything");
+            diag(ds.getSourceRange().getBegin(), ext_no_declarators)
+                    .addSourceRange(ds.getSourceRange());
             emittedWarning = true;
         }
 
@@ -2749,16 +2915,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (ds.getTypeQualifier() > 0)
         {
             if ((ds.getTypeQualifier() & TQ_const.value) != 0)
-                parser.syntaxWarning(ds.getConstSpecLoc(),
-                        "const ignored on this declaration");
+                diag(ds.getConstSpecLoc(), warn_standalone_specifier).
+                        addTaggedVal("const");
             if ((ds.getTypeQualifier() & TQ_volatile.value) != 0)
-                parser.syntaxWarning(ds.getVolatileSpecLoc(),
-                        "volatile ignored on this declaration");
+                diag(ds.getVolatileSpecLoc(), warn_standalone_specifier).
+                        addTaggedVal("volatile");
         }
 
         if (ds.isInlineSpecifier())
-            parser.syntaxWarning(ds.getInlineSpecLoc(),
-                    "inline ignored on this declaration");
+            diag(ds.getInlineSpecLoc(), warn_standalone_specifier).
+                    addTaggedVal("inline");
 
         return tagD;
     }
@@ -2805,13 +2971,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 }
                 case DeclarationOnly:
                 {
-
                     // CompoundStmt scope. C99 6.7p7: If an identifier for an object is
                     // declared with no linkage (C99 6.2.2p6), the jlang.type for the
                     // object shall be complete.
-                    if (var.isLocalVarDecl() && !var.getLinkage() && !var.isInvalidDecl()
-                            && requireCompleteType(var.getLocation(), type))
+                    if (var.isLocalVarDecl() && var.getLinkage() != NoLinkage
+                            && !var.isInvalidDecl()
+                            && requireCompleteType(var.getLocation(), type,
+                            err_typecheck_decl_incomplete_type))
+                    {
                         var.setInvalidDecl(true);
+                    }
                     return;
                 }
                 case TentativeDefinition:
@@ -2823,10 +2992,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     // external linkage is valid (C99 6.2.2p5).
                     if (!var.isInvalidDecl())
                     {
-                        final ArrayType.IncompleteArrayType arrayT = type.getAsInompleteArrayType();
+                        final ArrayType.IncompleteArrayType arrayT = context.getAsInompleteArrayType(type);
                         if (arrayT != null)
                         {
-                            if (requireCompleteType(var.getLocation(), arrayT.getElemType()))
+                            if (requireCompleteType(var.getLocation(), arrayT.getElemType(),
+                                    err_illegal_decl_array_incomplete_type))
                                 var.setInvalidDecl(true);
                         }
                         else if (var.getStorageClass() == StorageClass.SC_static)
@@ -2840,8 +3010,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                             // is accepted by gcc. Hence here we issue a warning instead of
                             // an error and we do not invalidate the static declaration.
                             // NOTE: to avoid multiple warnings, only check the first declaration.
-                            if (var.getPreviousDeclaration() == null)
-                                requireCompleteType(var.getLocation(), type);
+                            // todo if (var.getPreviousDeclaration() == null)
+                            requireCompleteType(var.getLocation(), type,
+                                    ext_typecheck_decl_incomplete_type);
                         }
                     }
                     return;
@@ -2852,8 +3023,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // definitions with incomplete array jlang.type.
             if (type.isIncompleteArrayType())
             {
-                parser.diag(var.getLocation(),
-                        "definition of variable with array jlang.type needs an explicit getNumOfSubLoop or an initializer");
+                diag(var.getLocation(), err_typecheck_incomplete_array_needs_initializer);
                 var.setInvalidDecl(true);
                 return;
             }
@@ -2861,10 +3031,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (var.isInvalidDecl())
                 return;
 
-            if (requireCompleteType(var.getLocation(), QualType.getBaseElementType(type)))
+            if (requireCompleteType(var.getLocation(), context.getBaseElementType(type),
+                    err_typecheck_decl_incomplete_type))
             {
                 var.setInvalidDecl(true);
-                return;
             }
         }
     }
@@ -2920,8 +3090,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     if (vd != null && vd.isLocalVarDecl() && !vd
                             .hasLocalStorage())
                     {
-                        parser.diag(d.getLocation(),
-                                "non-variable declaration in 'for' loop");
+                        diag(d.getLocation(), err_non_variable_decl_in_for);
                     }
                 }
             }
@@ -2950,8 +3119,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (s == null)
         {
             // C99 6.8.6.2p1: A break shall appear only in or as a loop body.
-            parser.diag(continueLoc,
-                    "'continue' statement not in loop statement");
+            diag(continueLoc, err_continue_not_in_loop);
             return stmtError();
         }
         return new ActionResult<>(new ContinueStmt(continueLoc));
@@ -2965,8 +3133,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (s == null)
         {
             // C99 6.8.6.3p1: A break shall appear only in or as a switch/loop body.
-            parser.diag(breakLoc,
-                    "'break' statement not in loop or switch statement");
+            diag(breakLoc, err_break_not_in_loop_or_switch);
             return stmtError();
         }
         return new ActionResult<>(new BreakStmt(breakLoc));
@@ -2994,7 +3161,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     public ActionResult<Stmt> actOnReturnStmt(
             SourceLocation returnLoc,
-            Expr e)
+            Expr retValExpr)
     {
         final FunctionDecl fd = getCurFunctionDecl();
         QualType retType;
@@ -3013,33 +3180,43 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         ReturnStmt res = null;
         if (retType.isVoidType())
         {
-            if (e != null)
+            if (retValExpr != null)
             {
-                String diag = "void function should not return a value";
-                // C99 6.8.6.4p1
-                if (e.getType().isVoidType())
-                    diag = "void function should not return void expression";
+                // C99 6.8.6.4p1 (ext_ since GCC warns)
+                int diagID =  ext_return_has_expr;
+                if (retValExpr.getType().isVoidType())
+                    diagID = ext_return_has_void_expr;
                 else
                 {
-                    ActionResult<Expr> result = new ActionResult<>(e);
-                    result = ignoreValueConversion(e);
+                    ActionResult<Expr> result = ignoredValueConversions(retValExpr);
                     if (result.isInvalid())
                         return stmtError();
-                    e = implicitCastExprToType(e, Type.VoidTy, EVK_RValue,
+                    retValExpr = implicitCastExprToType(retValExpr, context.VoidTy, EVK_RValue,
                             CK_ToVoid).get();
                 }
 
-                parser.diag(e.getExprLocation(), diag);
+                if (diagID != ext_return_has_void_expr)
+                {
+                    NamedDecl curDecl = getCurFunctionDecl();
+                    diag(returnLoc, diagID)
+                            .addTaggedVal(curDecl.getDeclName())
+                            .addTaggedVal(0).
+                            addSourceRange(retValExpr.getSourceRange());
+                }
 
-                checkImplicitConversion(e, returnLoc);
+                checkImplicitConversion(retValExpr, returnLoc);
             }
-            res = new ReturnStmt(returnLoc, e);
+            res = new ReturnStmt(returnLoc, retValExpr);
         }
-        else if (e == null)
+        else if (retValExpr == null)
         {
-            parser.diag(returnLoc,
-                    "non void function should return a value at",
-                    getCurFunctionDecl().getDeclName());
+            int diagID = warn_return_missing_expr;  // C90 6.6.6.4p4
+            // C99 6.8.6.4p1 (ext_ since GCC warns)
+            if (getLangOptions().c99)
+                diagID = ext_return_missing_expr;
+            diag(returnLoc, diagID).
+                    addTaggedVal(fd.getIdentifier()).
+                    addTaggedVal(0);
             res = new ReturnStmt(returnLoc);
         }
         else
@@ -3049,24 +3226,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // C99 6.8.6.4p3(136): The return statement is not an assignment. The
             // overlap restriction of subclause 6.5.16.1 does not apply to the case of
             // function return.
-            checkReturnStackAddress(e, retType, returnLoc);
+            checkReturnStackAddress(retValExpr, retType, returnLoc);
+            checkImplicitConversion(retValExpr, returnLoc);
+            res = new ReturnStmt(returnLoc, retValExpr);
         }
-
-        if (e != null)
-        {
-            if (declaredRetType != retType)
-            {
-                ActionResult<Expr> result = performImplicitConversion(e,
-                        declaredRetType);
-                if (result.isInvalid())
-                    return stmtError();
-                e = result.get();
-            }
-
-            checkImplicitConversion(e, returnLoc);
-        }
-        res = new ReturnStmt(returnLoc, e);
-
         return new ActionResult<>(res);
     }
 
@@ -3080,8 +3243,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         CastKind cast = null;
         if (srcFrom.isConstantArrayType())
         {
-            decayedTy = new PointerType(
-                    srcFrom.getConstantArrayType().getElementType());
+            ArrayType.ConstantArrayType cat = context.getAsConstantArrayType(srcFrom);
+            decayedTy = new PointerType(context.getConstantArrayType(srcFrom, cat.getSize()).getElemType());
             resTy = new QualType(decayedTy, QualType.CONST_QUALIFIER);
             cast = CastKind.CK_ArrayToPointerDecay;
         }
@@ -3100,7 +3263,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (toType.isVoidType() && resTy.isVoidType())
                 return new ActionResult<>(from);
         }
-        if (!resTy.isCompatible(toType))
+        if (!context.isCompatible(resTy, toType))
             from = new ImplicitCastExpr(toType, EVK_RValue, from,
                     cast, from.getExprLocation());
         return new ActionResult<>(from);
@@ -3113,13 +3276,21 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * @param retType
      * @param returnLoc
      */
-    private void checkReturnStackAddress(Expr retValExpr, QualType retType,
-            int returnLoc)
+    private void checkReturnStackAddress(
+            Expr retValExpr,
+            QualType retType,
+            SourceLocation returnLoc)
     {
         // TODO: 2017/3/28
     }
 
-    private ActionResult<Expr> ignoreValueConversion(Expr e)
+	/**
+     * Perform the conversions required for an expression used in a
+     * context that ignores the result.
+     * @param e
+     * @return
+     */
+    private ActionResult<Expr> ignoredValueConversions(Expr e)
     {
         if (e.isRValue())
         {
@@ -3128,10 +3299,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
             return new ActionResult<>(e);
         }
+        ActionResult<Expr> res = defaultFunctionLValueConversion(e);
+        if (res.isInvalid())
+            return new ActionResult<>(e);
 
         if (!e.getType().isVoidType())
-            parser.diag(e.getExprLocation(), "imcomplete jlang.type ",
-                    e.getType().toString(), " where required complete jlang.type");
+            requireCompleteType(e.getExprLocation(), e.getType(), err_incomplete_type);
         return new ActionResult<>(e);
     }
 
@@ -3160,7 +3333,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         assert lhs!= null:"actOnBinOp(): missing lhs!";
         assert rhs!=null:"actOnBinOp(): missing rhs!";
 
-        // TODO Emit warnings for tricky precedence issues, e.g. "bitfield & 0x4 == 0"
+        // TODO emit warnings for tricky precedence issues, e.g. "bitfield & 0x4 == 0"
         return buildBinOp(tokLoc, operatorKind, lhs, rhs);
     }
 
@@ -3184,7 +3357,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         ActionResult<Expr> lhsExpr = new ActionResult<>(lhs);
         ActionResult<Expr> rhsExpr = new ActionResult<>(rhs);
 
-        // Result jlang.type of binary operator.
+        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(lhsExpr);
+        OutParamWrapper<ActionResult<Expr>> y = new OutParamWrapper<>(rhsExpr);
+
+        // Result type of binary operator.
         QualType resultTy = new QualType();
 
         // The following two variables are used for compound assignment operators
@@ -3195,110 +3371,120 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         switch (opc)
         {
             case BO_Assign:
-                resultTy = checkAssignmentOperands();
+                resultTy = checkAssignmentOperands(lhs, y, opLoc, resultTy);
                 break;
             case BO_Mul:
             case BO_Div:
-                resultTy = checkMultiplyDivideOperands(lhsExpr, rhsExpr, opLoc,
+                resultTy = checkMultiplyDivideOperands(x, y, opLoc,
                         false, opc == BO_Div);
                 break;
             case BO_Rem:
-                resultTy = checkRemainderOperands(lhsExpr, rhsExpr, opLoc, false);
+                resultTy = checkRemainderOperands(x, y, opLoc, false);
                 break;
             case BO_Add:
-                resultTy = checkAdditionOperands(lhsExpr, rhsExpr, opLoc);
+                resultTy = checkAdditionOperands(x, y, opLoc);
                 break;
             case BO_Sub:
-                resultTy = checkSubtractionOperands(lhsExpr, rhsExpr, opLoc);
+                resultTy = checkSubtractionOperands(x, y, opLoc);
                 break;
             case BO_Shl:
             case BO_Shr:
-                resultTy = checkShiftOperands(lhsExpr, rhsExpr, opLoc, opc);
+                resultTy = checkShiftOperands(x, y, opLoc, opc);
                 break;
             case BO_LE:
             case BO_LT:
             case BO_GE:
             case BO_GT:
-                resultTy = checkComparisonOperands(lhsExpr, rhsExpr, opLoc, opc, true);
+                resultTy = checkComparisonOperands(x, y, opLoc, opc, true);
                 break;
             case BO_EQ:
             case BO_NE:
-                resultTy = checkComparisonOperands(lhsExpr, rhsExpr, opLoc, opc, false);
+                resultTy = checkComparisonOperands(x, y, opLoc, opc, false);
                 break;
             case BO_And:
             case BO_Xor:
             case BO_Or:
-                resultTy = checkBitwiseOperands(lhsExpr, rhsExpr, opLoc);
+                resultTy = checkBitwiseOperands(x, y, opLoc);
                 break;
             case BO_LAnd:
             case BO_LOr:
-                resultTy = checkLogicalOperands(lhsExpr, rhsExpr, opLoc, opc);
+                resultTy = checkLogicalOperands(x, y, opLoc, opc);
                 break;
             case BO_MulAssign:
             case BO_DivAssign:
-                compResultTy = checkMultiplyDivideOperands(lhsExpr, rhsExpr, opLoc, true, opc == BO_DivAssign);
+                compResultTy = checkMultiplyDivideOperands(x, y, opLoc, true, opc == BO_DivAssign);
                 compLHSTy = compResultTy;
-                if (!compResultTy.isNull() && !lhsExpr.isInvalid() && !rhsExpr.isInvalid())
-                    resultTy = checkAssignmentOperands(lhsExpr.get(), rhsExpr, opLoc, compResultTy);
+                if (!compResultTy.isNull() && !x.get().isInvalid() && !y.get().isInvalid())
+                {
+                    resultTy = checkAssignmentOperands(x.get().get(), y, opLoc,
+                            compResultTy);
+                }
                 break;
             case BO_RemAssign:
-                compResultTy = checkRemainderOperands(lhsExpr, rhsExpr, opLoc, true);
+                compResultTy = checkRemainderOperands(x, y, opLoc, true);
                 compLHSTy = compResultTy;
-                if (!compResultTy.isNull() && !lhsExpr.isInvalid() && !rhsExpr.isInvalid())
-                    resultTy = checkAssignmentOperands(lhsExpr.get(), rhsExpr, opLoc, compResultTy);
+                if (!compResultTy.isNull() && !x.get().isInvalid() && !y.get().isInvalid())
+                    resultTy = checkAssignmentOperands(x.get().get(), y, opLoc, compResultTy);
                 break;
             case BO_AddAssign:
             {
-                OutParamWrapper<QualType> x = new OutParamWrapper<>(compLHSTy);
-                compResultTy = checkAdditionOperands(lhsExpr, rhsExpr, opLoc, x);
-                compLHSTy = x.get();
+                OutParamWrapper<QualType> xx = new OutParamWrapper<>(compLHSTy);
+                compResultTy = checkAdditionOperands(x, y, opLoc, xx);
+                compLHSTy = xx.get();
 
                 compLHSTy = compResultTy;
-                if (!compResultTy.isNull() && !lhsExpr.isInvalid() && !rhsExpr.isInvalid())
-                    resultTy = checkAssignmentOperands(lhsExpr.get(), rhsExpr,
+                if (!compResultTy.isNull() && !x.get().isInvalid() && !y.get().isInvalid())
+                    resultTy = checkAssignmentOperands(x.get().get(), y,
                             opLoc, compResultTy);
                 break;
             }
             case BO_SubAssign:
             {
-                OutParamWrapper<QualType> x = new OutParamWrapper<>(compLHSTy);
-                compResultTy = checkSubtractionOperands(lhsExpr, rhsExpr, opLoc,
-                        x);
-                compLHSTy = x.get();
+                OutParamWrapper<QualType> xx = new OutParamWrapper<>(compLHSTy);
+                compResultTy = checkSubtractionOperands(x, y, opLoc, xx);
+                compLHSTy = xx.get();
 
                 compLHSTy = compResultTy;
-                if (!compResultTy.isNull() && !lhsExpr.isInvalid() && !rhsExpr.isInvalid())
-                    resultTy = checkAssignmentOperands(lhsExpr.get(), rhsExpr,
-                            opLoc, compResultTy);
+                if (!compResultTy.isNull() && !x.get().isInvalid() && !y.get().isInvalid())
+                {
+                    resultTy = checkAssignmentOperands(x.get().get(), y, opLoc,
+                            compResultTy);
+                }
                 break;
             }
             case BO_ShrAssign:
             case BO_ShlAssign:
             {
-                compResultTy = checkShiftOperands(lhsExpr, rhsExpr, opLoc, opc, true);
+                compResultTy = checkShiftOperands(x, y, opLoc, opc, true);
 
                 compLHSTy = compResultTy;
-                if (!compResultTy.isNull() && !lhsExpr.isInvalid() && !rhsExpr.isInvalid())
-                    resultTy = checkAssignmentOperands(lhsExpr.get(), rhsExpr,
-                            opLoc, compResultTy);
+                if (!compResultTy.isNull() && !x.get().isInvalid() && !y.get().isInvalid())
+                {
+                    resultTy = checkAssignmentOperands(x.get().get(), y, opLoc,
+                            compResultTy);
+                }
                 break;
             }
             case BO_AndAssign:
             case BO_XorAssign:
             case BO_OrAssign:
             {
-                compResultTy = checkBitwiseOperands(lhsExpr, rhsExpr, opLoc, true);
+                compResultTy = checkBitwiseOperands(x, y, opLoc, true);
 
                 compLHSTy = compResultTy;
-                if (!compResultTy.isNull() && !lhsExpr.isInvalid() && !rhsExpr.isInvalid())
-                    resultTy = checkAssignmentOperands(lhsExpr.get(), rhsExpr,
+                if (!compResultTy.isNull() && !x.get().isInvalid() && !y.get().isInvalid())
+                    resultTy = checkAssignmentOperands(x.get().get(), y,
                             opLoc, compResultTy);
                 break;
             }
             case BO_Comma:
-                resultTy = checkCommaOperands(lhsExpr, rhsExpr, opLoc);
+                resultTy = checkCommaOperands(x, y, opLoc);
                 break;
         }
+
+        // Finish computing. restore the value of x and y into lhsExpr and rhsExpr respectively.
+        lhsExpr = x.get();
+        rhsExpr = y.get();
 
         if (resultTy.isNull() || lhsExpr.isInvalid() || rhsExpr.isInvalid())
             return exprError();
@@ -3335,10 +3521,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             commonExpr = condExpr;
 
-            if (commonExpr.getValuekind() == rhsExpr.getValuekind()
+            if (commonExpr.getValueKind() == rhsExpr.getValueKind()
                     && commonExpr.getType().isSameType(rhsExpr.getType()))
             {
-                ActionResult<Expr> commonRes = usualUnaryConversion(commonExpr);
+                ActionResult<Expr> commonRes = usualUnaryConversions(commonExpr);
                 if (commonRes.isInvalid())
                     return exprError();
                 commonExpr = commonRes.get();
@@ -3356,7 +3542,6 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             return exprError();
 
         //TODO DiagnoseConditionalPrecedence
-
         ConditionalExpr res = new ConditionalExpr(cond.get(), quesLoc, lhs.get(), colonLoc,
                 rhs.get(), result, EVK_RValue);
         return new ActionResult<>(res);
@@ -3394,29 +3579,30 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      */
     private QualType checkAssignmentOperands(
             Expr lhs,
-            ActionResult<Expr> rhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation loc,
             QualType compoundType)
     {
+        // TODO: 2017/4/9
         return null;
     }
 
     private QualType checkMultiplyDivideOperands(
-            ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
-            int opLoc,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            SourceLocation opLoc,
             boolean isCompAssign,
             boolean isDiv)
     {
         QualType compType = usualArithmeticConversions(lhs, rhs, isCompAssign);
 
-        if (lhs.isInvalid() || rhs.isInvalid())
+        if (lhs.get().isInvalid() || rhs.get().isInvalid())
             return new QualType();
 
-        if (!lhs.get().getType().isArithmeticType()
-                || !rhs.get().getType().isArithmeticType())
+        if (!lhs.get().get().getType().isArithmeticType()
+                || !rhs.get().get().getType().isArithmeticType())
         {
-            return invalidOperands(opLoc, lhs, rhs);
+            return invalidOperands(opLoc, lhs.get(), rhs.get());
         }
 
         /**
@@ -3430,44 +3616,371 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     private QualType invalidOperands(
-            int loc,
+            SourceLocation loc,
             ActionResult<Expr> lhs,
             ActionResult<Expr> rhs)
     {
-        parser.diag(loc,
-                "invalid operands to binary expression (%s and %s)",
-                lhs.get().getType().toString(),
-                rhs.get().getType().toString());
+        diag(loc, err_typecheck_invalid_operands).
+                addTaggedVal(lhs.get().getType()).
+                addTaggedVal(rhs.get().getType()).
+                addSourceRange(lhs.get().getSourceRange()).
+                addSourceRange(rhs.get().getSourceRange());
         return new QualType();
+    }
+
+    private boolean handleIntegerToComplexFloatConversion(
+            OutParamWrapper<ActionResult<Expr>> intExpr,
+            OutParamWrapper<ActionResult<Expr>> complexExpr,
+            QualType intType,
+            QualType complexType,
+            boolean skipCast)
+    {
+        if (intType.isComplexType() || intType.isRealType())
+            return true;
+        if (skipCast) return false;
+
+        if (intType.isIntegerType())
+        {
+            QualType fpTy = ((ComplexType)complexType.getType()).getElementType();
+            intExpr.set(implicitCastExprToType(intExpr.get().get(), fpTy,
+                    EVK_RValue, CK_IntegralToFloating));
+            intExpr.set(implicitCastExprToType(intExpr.get().get(), complexType,
+                    EVK_RValue, CK_FloatingRealToComplex));
+        }
+        else
+        {
+            assert intType.isComplexType();
+            intExpr.set(implicitCastExprToType(intExpr.get().get(), complexType,
+                    EVK_RValue, CK_IntegralComplexToFloatingComplex));
+        }
+        return false;
+    }
+
+    private QualType handleComplexFloatToComplexFloatConversion(
+            OutParamWrapper<ActionResult<Expr>> lhsExpr,
+            OutParamWrapper<ActionResult<Expr>> rhsExpr,
+            QualType lhsType,
+            QualType rhsType,
+            boolean isCompAssign)
+    {
+        int order = context.getFloatingTypeOrder(lhsType, rhsType);
+        if (order < 0)
+        {
+            // _Complex float -> _Complex double
+            if (!isCompAssign)
+                lhsExpr.set(implicitCastExprToType(lhsExpr.get().get(), rhsType,
+                        EVK_RValue, CK_FloatingComplexCast));
+            return rhsType;
+        }
+        if (order > 0)
+        {
+            // _Complex float -> _Complex double
+            rhsExpr.set(implicitCastExprToType(rhsExpr.get().get(), lhsType,
+                    EVK_RValue, CK_FloatingComplexCast));
+        }
+        return lhsType;
+    }
+
+	/**
+     * Converts otherExpr to complex float and promotes complexExpr if
+     * necessary.  Helper function of UsualArithmeticConversions()
+     * @param complexExpr
+     * @param otherExpr
+     * @param complexType
+     * @param otherType
+     * @param convertComplexExpr
+     * @param convertOtherExpr
+     * @return
+	 */
+    private QualType handleOtherComplexFloatConversion(
+            OutParamWrapper<ActionResult<Expr>> complexExpr,
+            OutParamWrapper<ActionResult<Expr>> otherExpr,
+            QualType complexType,
+            QualType otherType,
+            boolean convertComplexExpr,
+            boolean convertOtherExpr)
+    {
+        int order = context.getFloatingTypeOrder(complexType, otherType);
+        if (order > 0)
+        {
+            if (convertOtherExpr)
+            {
+                QualType fp = ((ComplexType)complexType.getType()).getElementType();
+                otherExpr.set(implicitCastExprToType(otherExpr.get().get(), fp,
+                        EVK_RValue, CK_FloatingCast));
+                otherExpr.set(implicitCastExprToType(otherExpr.get().get(), complexType,
+                        EVK_RValue, CK_FloatingRealToComplex));
+            }
+            return complexType;
+        }
+
+        // otherTy is at least as wide.  Find its corresponding complex type.
+        QualType result = (order == 0 ? complexType : (otherType));
+
+        // double -> _Complex double
+        if (convertOtherExpr)
+            otherExpr.set(implicitCastExprToType(otherExpr.get().get(), result,
+                    EVK_RValue, CK_FloatingRealToComplex));
+
+        // _Complex float -> _Complex double
+        if (convertComplexExpr && order < 0)
+            complexExpr.set(implicitCastExprToType(complexExpr.get().get(), result,
+                    EVK_RValue, CK_FloatingComplexCast));
+
+        return result;
+    }
+
+	/**
+	 * Handle arithmetic conversion with complex types.  Helper function of
+     * UsualArithmeticConversions()
+     * @param lhs
+     * @param rhs
+     * @param lhsType
+     * @param rhsType
+     * @param isCompAssign
+     * @return
+     */
+    private QualType handleComplexFloatConversion(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            QualType lhsType,
+            QualType rhsType,
+            boolean isCompAssign)
+    {
+        if (!handleIntegerToComplexFloatConversion(rhs, lhs, rhsType, lhsType, /*skipCast*/false))
+            return lhsType;
+
+        if (!handleIntegerToComplexFloatConversion(lhs, rhs, lhsType, rhsType, /*skipCast*/false))
+            return rhsType;
+
+        boolean lhsComplexFloat = lhsType.isComplexType();
+        boolean rhsComplexFloat = rhsType.isComplexType();
+
+        // If both are complex, just cast to the more precise type.
+        if (lhsComplexFloat && rhsComplexFloat)
+        {
+            QualType res = handleComplexFloatToComplexFloatConversion(lhs, rhs, lhsType,
+                    rhsType, isCompAssign);
+            return res;
+        }
+        // If only one operand is complex, promote it if necessary and convert the
+        // other operand to complex.
+        if (lhsComplexFloat)
+        {
+            QualType res = handleOtherComplexFloatConversion(lhs, rhs, lhsType, rhsType,
+                    /*convertComplexExpr*/!isCompAssign,
+                    /*convertOtherExpr*/ true);
+            return res;
+        }
+
+        assert rhsComplexFloat;
+
+        QualType res = handleOtherComplexFloatConversion(rhs, lhs, rhsType, lhsType,
+                /*convertComplexExpr*/true,
+                /*convertOtherExpr*/ !isCompAssign);
+        return res;
+    }
+
+	/**
+     * Handle arithmethic conversion with floating point types.  Helper
+     * function of UsualArithmeticConversions()
+     * @param lhs
+     * @param rhs
+     * @param LHSType
+     * @param RHSType
+     * @param IsCompAssign
+     * @return
+     */
+    private QualType handleFloatConversion(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            QualType LHSType,
+            QualType RHSType,
+            boolean IsCompAssign)
+    {
+        boolean LHSFloat = LHSType.isRealType();
+        boolean RHSFloat = RHSType.isRealType();
+
+        // If we have two real floating types, convert the smaller operand
+        // to the bigger result.
+        if (LHSFloat && RHSFloat) {
+            int order = context.getFloatingTypeOrder(LHSType, RHSType);
+            if (order > 0) {
+                rhs.set(implicitCastExprToType(rhs.get().get(), LHSType,
+                        EVK_RValue, CK_FloatingCast));
+                return LHSType;
+            }
+
+            assert order < 0 : "illegal float comparison";
+            if (!IsCompAssign)
+                lhs.set(implicitCastExprToType(lhs.get().get(), RHSType,
+                        EVK_RValue, CK_FloatingCast));
+            return RHSType;
+        }
+
+        if (LHSFloat)
+            return handleIntToFloatConversion(lhs, rhs, LHSType, RHSType,
+                                      /*convertFloat=*/!IsCompAssign,
+                                      /*convertInt=*/ true);
+        assert(RHSFloat);
+        return handleIntToFloatConversion(rhs, lhs, RHSType, LHSType,
+                                    /*convertInt=*/ true,
+                                    /*convertFloat=*/!IsCompAssign);
+    }
+
+	/**
+	 * Hande arithmetic conversion from integer to float.  Helper function
+     * of UsualArithmeticConversions()
+     * @param floatExpr
+     * @param intExpr
+     * @param floatTy
+     * @param intTy
+     * @param convertInt
+     * @param convertFloat
+     * @return
+     */
+    private QualType handleIntToFloatConversion(
+            OutParamWrapper<ActionResult<Expr>> floatExpr,
+            OutParamWrapper<ActionResult<Expr>> intExpr,
+            QualType floatTy,
+            QualType intTy,
+            boolean convertInt,
+            boolean convertFloat)
+    {
+        if (intTy.isIntegerType())
+        {
+            if (convertInt)
+                // Convert intExpr to the lhs floating point type.
+                intExpr.set(implicitCastExprToType(intExpr.get().get(), context.FloatTy,
+                        EVK_RValue, CK_IntegralToFloating));
+            return context.FloatTy;
+        }
+
+        // Convert both sides to the appropriate complex float.
+        //assert(intTy.isComplexType()isComplexIntegerType());
+        QualType result = context.getComplexType(context.FloatTy);
+
+        // _Complex int -> _Complex float
+        if (convertInt)
+            intExpr.set(implicitCastExprToType(intExpr.get().get(), result,
+                    EVK_RValue, CK_IntegralComplexToFloatingComplex));
+
+        // float -> _Complex float
+        if (convertFloat)
+            floatExpr.set(implicitCastExprToType(floatExpr.get().get(), result,
+                    EVK_RValue, CK_FloatingRealToComplex));
+
+        return result;
+    }
+
+    /// \brief Handle integer arithmetic conversions.  Helper function of
+    /// UsualArithmeticConversions()
+    private QualType handleIntegerConversion(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            QualType lhsType,
+            QualType rhsType,
+            boolean isCompAssign)
+    {
+        // The rules for this case are in C99 6.3.1.8
+        int order = context.getIntegerTypeOrder(lhsType, rhsType);
+        boolean lhsSigned = lhsType.isSignedType();
+        boolean rhsSigned = rhsType.isSignedType();
+        if (lhsSigned == rhsSigned)
+        {
+            // Same signedness; use the higher-ranked type
+            if (order >= 0)
+            {
+                rhs.set(implicitCastExprToType(rhs.get().get(), lhsType,
+                        EVK_RValue, CK_IntegralCast));
+                return lhsType;
+            }
+            else if (!isCompAssign)
+            {
+                lhs.set(implicitCastExprToType(lhs.get().get(), rhsType,
+                        EVK_RValue, CK_IntegralCast));
+            }
+            return rhsType;
+        }
+        else if (order != (lhsSigned ? 1 : -1))
+        {
+            // The unsigned type has greater than or equal rank to the
+            // signed type, so use the unsigned type
+            if (rhsSigned)
+            {
+                rhs.set(implicitCastExprToType(rhs.get().get(), lhsType,
+                        EVK_RValue, CK_IntegralCast));
+                return lhsType;
+            }
+            else if (!isCompAssign)
+            {
+                lhs.set(implicitCastExprToType(lhs.get().get(), rhsType,
+                        EVK_RValue, CK_IntegralCast));
+            }
+            return rhsType;
+        }
+        else if (context.getIntWidth(lhsType) != context.getIntWidth(rhsType))
+        {
+            // The two types are different widths; if we are here, that
+            // means the signed type is larger than the unsigned type, so
+            // use the signed type.
+            if (lhsSigned)
+            {
+                rhs.set(implicitCastExprToType(rhs.get().get(), lhsType,
+                        EVK_RValue, CK_IntegralCast));
+                return lhsType;
+            }
+            else if (!isCompAssign)
+            {
+                lhs.set(implicitCastExprToType(lhs.get().get(), rhsType,
+                        EVK_RValue, CK_IntegralCast));
+            }
+            return rhsType;
+        }
+        else
+        {
+            // The signed type is higher-ranked than the unsigned type,
+            // but isn't actually any bigger (like unsigned int and long
+            // on most 32-bit systems).  Use the unsigned type corresponding
+            // to the signed type.
+            QualType result = context.getCorrespondingUnsignedType(lhsSigned ? lhsType : rhsType);
+            rhs.set(implicitCastExprToType(rhs.get().get(), lhsType,
+                    EVK_RValue, CK_IntegralCast));
+            if (!isCompAssign)
+                lhs.set(implicitCastExprToType(lhs.get().get(), rhsType,
+                        EVK_RValue, CK_IntegralCast));
+            return result;
+        }
     }
 
     /**
      * Performs various conversions that are common to
      * binary operators (C99 6.3.1.8). If both operands aren't arithmetic, this
-     * routine returns the first non-arithmetic jlang.type found. The client is
+     * routine returns the first non-arithmetic type found. The client is
      * responsible for emitting appropriate error diagnostics.
+     * @param isCompAssign  Whether this operation is compound assginment.
      * @return
      */
     private QualType usualArithmeticConversions(
-            ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
             boolean isCompAssign)
     {
         if (!isCompAssign)
         {
-            lhs = usualUnaryConversion(lhs.get());
-            if (lhs.isInvalid())
+            lhs.set(usualUnaryConversions(lhs.get().get()));
+            if (lhs.get().isInvalid())
                 return new QualType();
         }
 
-        rhs = usualUnaryConversion(rhs.get());
-        if (lhs.isInvalid())
+        rhs.set(usualUnaryConversions(rhs.get().get()));
+        if (lhs.get().isInvalid())
             return new QualType();
 
         // For conversion purposes, we ignore any qualifiers.
         // For example, "const float" and "float" are equivalent.
-        QualType lhsType = lhs.get().getType().clearQualified();
-        QualType rhsType = rhs.get().getType().clearQualified();
+        QualType lhsType = lhs.get().get().getType().getUnQualifiedType();
+        QualType rhsType = rhs.get().get().getType().getUnQualifiedType();
 
         // if both types are identical, no conversions is desired.
         if (lhsType.equals(rhsType))
@@ -3478,48 +3991,53 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (!lhsType.isArithmeticType() || !rhsType.isArithmeticType())
             return lhsType;
 
-        // Apply unary and bitfield promotions to the LHS's jlang.type.
+        // Apply unary and bitfield promotions to the LHS's type.
         QualType lhsUnpromotedType = lhsType;
-        if (lhsType.isPromotableIntegerType())
-            lhsType = lhsType.getPromotedIntegerType();
-        QualType lhsBitfieldPromoteTy = lhs.get().isPromotableBitField();
+        if (context.isPromotableIntegerType(lhsType))
+            lhsType = context.getPromotedIntegerType(lhsType);
+
+        QualType lhsBitfieldPromoteTy = lhs.get().get().isPromotableBitField(context);
         if (!lhsBitfieldPromoteTy.isNull())
             lhsType = lhsBitfieldPromoteTy;
         if (lhsType != lhsUnpromotedType && !isCompAssign)
-            lhs = implicitCastExprToType(lhs.get(), lhsType, EVK_RValue,CK_IntegralCast);
+            lhs.set(implicitCastExprToType(lhs.get().get(), lhsType, EVK_RValue,CK_IntegralCast));
 
         // if both types are identical, no conversions is desired.
         if (lhsType.equals(rhsType))
             return lhsType;
 
-        // At this point, we have two different arithmetic jlang.type.
+        // At this point, we have two different arithmetic type.
 
         // Handle complex types first (C99 6.3.1.8p1)
         if (lhsType.isComplexType() || rhsType.isComplexType())
-            return handleComplexFloatConversion(this, );
+        {
+            return handleComplexFloatConversion(lhs, rhs, lhsType, rhsType,
+                    isCompAssign);
+        }
 
         // Now deal with real types, e.g. "float", "double", "long double".
         if (lhsType.isRealType() || rhsType.isRealType())
-            return handleFloatConversion();
+        {
+            return handleFloatConversion(lhs, rhs, lhsType, rhsType, isCompAssign);
+        }
 
         // Finally, we have two differing integer types
-        return handleIntegerConversion();
-
+        return handleIntegerConversion(lhs, rhs, lhsType, rhsType, isCompAssign);
     }
 
     private QualType checkRemainderOperands(
-            ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
-            int opLoc,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            SourceLocation opLoc,
             boolean isCompAssign)
     {
         QualType compType = usualArithmeticConversions(lhs, rhs, isCompAssign);
-        if (lhs.isInvalid() || rhs.isInvalid())
+        if (lhs.get().isInvalid() || rhs.get().isInvalid())
             return new QualType();
 
-        if (!lhs.get().getType().isIntegerType()
-                || !rhs.get().getType().isIntegerType())
-            return invalidOperands(opLoc, lhs, rhs);
+        if (!lhs.get().get().getType().isIntegerType()
+                || !rhs.get().get().getType().isIntegerType())
+            return invalidOperands(opLoc, lhs.get(), rhs.get());
 
         /**
          * TODO check for rem by zero.
@@ -3528,31 +4046,32 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         return compType;
     }
 
-    private QualType checkAdditionOperands(ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
-            int opLoc,
+    private QualType checkAdditionOperands(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            SourceLocation opLoc,
             OutParamWrapper<QualType> compLHSTy)
     {
         QualType compType = usualArithmeticConversions(lhs, rhs, compLHSTy!=null);
-        if (lhs.isInvalid() || rhs.isInvalid())
+        if (lhs.get().isInvalid() || rhs.get().isInvalid())
             return new QualType();
 
         // Handle the common case, both two operands are arithmetic jlang.type.
-        if (lhs.get().getType().isArithmeticType()
-                && rhs.get().getType().isArithmeticType())
+        if (lhs.get().get().getType().isArithmeticType()
+                && rhs.get().get().getType().isArithmeticType())
         {
             if (compLHSTy != null) compLHSTy.set(compType);
             return compType;
         }
 
         // Put any potential pointer into pExpr.
-        Expr pExp = lhs.get(), iExp = rhs.get();
+        Expr pExp = lhs.get().get(), iExp = rhs.get().get();
         if (iExp.getType().isPointerType())
             Util.swap(pExp, iExp);
 
         if (!pExp.getType().isPointerType() ||
                 !iExp.getType().isIntegerType())
-            return invalidOperands(opLoc, lhs, rhs);
+            return invalidOperands(opLoc, lhs.get(), rhs.get());
 
         if (!checkArithmeticOpPointerOperand(opLoc, pExp))
             return new QualType();
@@ -3563,27 +4082,30 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         checkArrayAccess(pExp, iExp);
         if (compLHSTy != null)
         {
-            QualType lhsTy = lhs.get().isPromotableBitField();
+            QualType lhsTy = lhs.get().get().isPromotableBitField(context);
             if (lhsTy.isNull())
             {
-                lhsTy = lhs.get().getType();
-                if (lhsTy.isPromotableIntegerType())
-                    lhsTy = lhsTy.getPromotedIntegerType();
+                lhsTy = lhs.get().get().getType();
+                if (context.isPromotableIntegerType(lhsTy))
+                    lhsTy = context.getPromotedIntegerType(lhsTy);
             }
             compLHSTy.set(lhsTy);
         }
         return pExp.getType();
     }
 
-    private QualType checkAdditionOperands(ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
-            int opLoc)
+    private QualType checkAdditionOperands(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>>  rhs,
+            SourceLocation opLoc)
     {
         return checkAdditionOperands(lhs, rhs, opLoc, null);
     }
 
     private boolean checkArithmeticOpPointerOperand(
-            int loc, Expr lhs, Expr rhs)
+            SourceLocation loc, 
+            Expr lhs, 
+            Expr rhs)
     {
         boolean isLHSPointer = lhs.getType().isPointerType();
         boolean isRHSPointer = rhs.getType().isPointerType();
@@ -3629,57 +4151,77 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         QualType pointeeTy = operand.getType().getPointee();
         if (pointeeTy.isVoidType())
         {
-            parser.diag(loc, "arithmetic on a pointer to void");
+            diag(loc, ext_gnu_void_ptr);
             return true;
         }
         if (pointeeTy.isFunctionType())
         {
-            parser.diag(loc,
-                    "arithmetic on a pointer to the function jlang.type '%s' is a GNU extension",
-                    pointeeTy.toString());
+            diag(loc, ext_gnu_ptr_func_arith).
+                    addTaggedVal(pointeeTy).
+                    addSourceRange(operand.getSourceRange());
             return true;
         }
 
         return !checkArithmeticIncompletePointerType(loc, operand);
     }
 
-    private void diagnoseArithmeticOnVoidPointer(int loc, Expr expr)
+    private void diagnoseArithmeticOnVoidPointer(SourceLocation loc, Expr expr)
     {
-        parser.diag(loc, "arithmetic on a pointer to void a GNU extension");
+        diag(loc, ext_gnu_void_ptr);
     }
 
-    private void diagnoseArithmeticOnTwoVoidPointers(int loc, Expr lhs, Expr rhs)
+    private void diagnoseArithmeticOnTwoVoidPointers(SourceLocation loc, Expr lhs, Expr rhs)
     {
-        parser.diag(loc, "arithmetic on a pointer to void a GNU extension");
+        diag(loc, ext_gnu_void_ptr);
     }
 
-    private void diagnoseArithmeticOnFunctionPointer(int loc, Expr operand)
+    private void diagnoseArithmeticOnFunctionPointer(SourceLocation loc, Expr operand)
     {
-        parser.diag(loc,
-                "arithmetic on a pointer to the function jlang.type '%s' is a GNU extension",
-                operand.getType().getPointee().toString());
+        diag(loc, ext_gnu_ptr_func_arith).addTaggedVal(operand.getType()).
+                addSourceRange(operand.getSourceRange());
     }
 
-    private void diagnoseArithmeticOnTwoFunctionPointers(int loc, Expr lhs, Expr rhs)
+    private void diagnoseArithmeticOnTwoFunctionPointers(SourceLocation loc, Expr lhs, Expr rhs)
     {
-        parser.diag(loc,
-                "arithmetic on a pointer to the function jlang.type '%s' is a GNU extension",
-                lhs.getType().getPointee().toString());
+        diag(loc, ext_gnu_ptr_func_arith).
+                addTaggedVal(lhs.getType()).
+                addTaggedVal(rhs.getType());
     }
 
     /**
-     *  Emit error if Operand is incomplete pointer jlang.type.
+     *  emit error if Operand is incomplete pointer jlang.type.
      * @return
      */
-    private boolean checkArithmeticIncompletePointerType(int loc, Expr op)
+    private boolean checkArithmeticIncompletePointerType(
+            SourceLocation loc,
+            Expr op)
     {
         if (op.getType().isPointerType())
         {
             QualType pointeeTy = op.getType().getPointee();
-            if (requireCompleteType(loc, pointeeTy))
+            if (requireCompleteType(loc, pointeeTy,
+                    pdiag(err_typecheck_arithmetic_incomplete_type).
+                            addTaggedVal(pointeeTy).
+                            addSourceRange(op.getSourceRange())));
                 return true;
         }
         return false;
+    }
+
+    private boolean requireCompleteType(
+            SourceLocation loc,
+            QualType t,
+            int diagID)
+    {
+        return requireCompleteType(loc, t, pdiag(diagID), Pair.get(new SourceLocation(), pdiag(0)));
+    }
+
+    private boolean requireCompleteType(
+            SourceLocation loc,
+            QualType t,
+            PartialDiagnostic pdiag)
+    {
+        return requireCompleteType(loc, t, pdiag, Pair.get(new SourceLocation(), pdiag(0)));
     }
 
     /**
@@ -3691,158 +4233,195 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * @param loc The location in the source code where the diagnostic message
      *            should refer.
      * @param t The jlang.type that this routine is examining for complete.
-     * @param diag The diagnostic message.
      * @return Return true if {@code t} is not a complete jlang.type, false otherwise.
      */
     private boolean requireCompleteType(
             SourceLocation loc,
-            QualType t)
+            QualType t,
+            PartialDiagnostic pdiag,
+            Pair<SourceLocation, PartialDiagnostic> notes)
     {
+        int diag = pdiag.getDiagID();
+
+        // If we have a complete type, we're done.
         if (!t.isIncompleteType())
             return false;
 
-        // If we have a array jlang.type with constant getNumOfSubLoop, attempt to instantiate it.
+        if (diag == 0)
+            return true;
+
+        // If we have a array type with constant getNumOfSubLoop, attempt to instantiate it.
         QualType elemType = t;
-        ArrayType.ConstantArrayType array = t.getAsConstantArrayType();
+        ArrayType.ConstantArrayType array = context.getAsConstantArrayType(t);
         if (array != null)
             elemType = array.getElemType();
 
-        final TagType tag = elemType.<TagType>getAs();
+        final TagType tag = context.<TagType>getAs(elemType);
         // Avoids diagnostic invalid decls as incomplete.
         if (tag != null && tag.getDecl().isInvalidDecl())
             return true;
 
-        // We have an incomplete jlang.type, producing dianostic message.
-        // If the jlang.type was a forward declaration of a struct/union jlang.type
-        // produce a error.
+        // We have an incomplete type. Produce a diagnostic.
+        diag(loc, pdiag).addTaggedVal(t);
+
+        if (notes.first.isValid())
+            diag(notes.first, notes.second);
+
+        // If the type was a forward declaration of a class/struct/union
+        // type, produce a note.
         if (tag != null && !tag.getDecl().isInvalidDecl())
-            parser.diag(tag.getDecl().getLocation(),
-                    tag.isBeingDefined()?"definition of %s is not complete until the closing '}'":
-                            "forward declaration of %s",
-                    new QualType(tag).toString());
+            diag(tag.getDecl().getLocation(), 
+                    tag.isBeingDefined() ? note_type_being_defined : note_forward_declaration).
+                    addTaggedVal(new QualType(tag));
+                    
         return true;
     }
 
     private void checkArrayAccess(Expr pExpr, Expr iExpr)
     {
-
+        // TODO: 2017/4/8  
     }
 
     private void checkArrayAccess(final Expr e)
     {
-
+        // TODO: 2017/4/8
     }
 
-    private QualType checkSubtractionOperands(ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
-            int opLoc)
+    private QualType checkSubtractionOperands(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            SourceLocation opLoc)
     {
-        return checkSubtractionOperands(lhs, rhs, opLoc, null);
+        return checkSubtractionOperands(lhs, rhs, opLoc, new OutParamWrapper<>());
     }
 
-    private QualType checkSubtractionOperands(ActionResult<Expr> lhs,
+	/**
+	 * Detect when a NULL constant is used improperly in an
+     * expression.  These are mainly cases where the null pointer is used as an
+     * integer instead of a pointer.
+     * @param lhs
+     * @param rhs
+     * @param opLoc
+     * @param isCompare
+     */
+    private void checkArithmeticNull(
+            Sema sema,
+            ActionResult<Expr> lhs,
             ActionResult<Expr> rhs,
-            int opLoc,
+            SourceLocation opLoc,
+            boolean isCompare)
+    {
+        // FIXME: 2017/4/8  this is not needed
+    }
+
+	/**
+	 * Emit error when two pointers are incompatible.
+     * @param sema
+     * @param loc
+     * @param lhs
+     * @param rhs
+     */
+    private static void diagnosePointerIncompatibility(
+            Sema sema,
+            SourceLocation loc,
+            Expr lhs, Expr rhs)
+    {
+        assert(lhs.getType().isPointerType());
+        assert(rhs.getType().isPointerType());
+        sema.diag(loc, err_typecheck_sub_ptr_compatible)
+                .addTaggedVal(lhs.getType()).
+                addTaggedVal(rhs.getType())
+                .addSourceRange(lhs.getSourceRange())
+                .addSourceRange(rhs.getSourceRange());
+    }
+
+    // C99 6.5.6
+    private QualType checkSubtractionOperands(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            SourceLocation opLoc,
             OutParamWrapper<QualType> compLHSTy)
     {
+        checkArithmeticNull(this, lhs.get(), rhs.get(), opLoc, /*isCompare*/false);
+
         QualType compType = usualArithmeticConversions(lhs, rhs, compLHSTy != null);
-        if (lhs.isInvalid() || rhs.isInvalid())
+        if (lhs.get().isInvalid() || rhs.get().isInvalid())
             return new QualType();
 
         // Handle the common case, both two operands are arithmetic jlang.type.
-        if (lhs.get().getType().isArithmeticType()
-                && rhs.get().getType().isArithmeticType())
+        if (lhs.get().get().getType().isArithmeticType()
+                && rhs.get().get().getType().isArithmeticType())
         {
             if (compLHSTy!=null) compLHSTy.set(compType);
             return compType;
         }
 
         // Either ptr - int  or ptr - ptr.
-        if (lhs.get().getType().isPointerType())
+        if (lhs.get().get().getType().isPointerType())
         {
-            QualType lPointee = lhs.get().getType().getPointee();
+            QualType lPointee = lhs.get().get().getType().getPointee();
 
             // The case is ptr - int.
-            if (rhs.get().getType().isIntegerType())
+            if (rhs.get().get().getType().isIntegerType())
             {
-                if (!checkArithmeticOpPointerOperand(opLoc, lhs.get()))
+                if (!checkArithmeticOpPointerOperand(opLoc, lhs.get().get()))
                     return new QualType();
 
-                Expr iExpr = rhs.get().ignoreParenCasts();
+                Expr iExpr = rhs.get().get().ignoreParenCasts();
                 UnaryExpr negRex = new UnaryExpr(iExpr, UO_Minus,
                         iExpr.getType(),
                         EVK_RValue,
                         iExpr.getExprLocation());
-                checkArrayAccess(lhs.get().ignoreParenCasts(), negRex);
-                if (compLHSTy != null) compLHSTy.set(lhs.get().getType());
-                return lhs.get().getType();
+                checkArrayAccess(lhs.get().get().ignoreParenCasts(), negRex);
+                if (compLHSTy != null) compLHSTy.set(lhs.get().get().getType());
+                return lhs.get().get().getType();
             }
 
             // handle ptr - ptr case
-            if (rhs.get().getType().isPointerType())
+            if (rhs.get().get().getType().isPointerType())
             {
-                final PointerType rhsPtry = rhs.get().getType().getPointerType();
+                final PointerType rhsPtry = rhs.get().get().getType().getPointerType();
                 QualType rpointee = rhsPtry.getPointee();
 
                 // Pointee types must be compatible C99 6.5.6p3
-                if (!lPointee.isCompatible(rpointee))
+                if (!context.isCompatible(lPointee, rpointee))
                 {
-                    parser.diag(opLoc,
-                            "%diff %s and %s are not pointers to compatible types",
-                            lhs.get().getType().toString(),
-                            rhs.get().getType().toString());
+                    diagnosePointerIncompatibility(this, opLoc, lhs.get().get(), rhs.get().get());
                     return new QualType();
                 }
 
-                if (!checkArithmeticOpPointerOperand(opLoc, lhs.get(), rhs.get()))
+                if (!checkArithmeticOpPointerOperand(opLoc, lhs.get().get(), rhs.get().get()))
                     return new QualType();
 
-                if (compLHSTy!= null) compLHSTy.set(lhs.get().getType());
-                return Type.IntTy;
+                if (compLHSTy!= null) compLHSTy.set(lhs.get().get().getType());
+                return context.getPointerDiffType();
             }
-
-            return invalidOperands(opLoc, lhs, rhs);
         }
 
-        // Put any potential pointer into pExpr.
-        Expr pExp = lhs.get(), iExp = rhs.get();
-        if (iExp.getType().isPointerType())
-            Util.swap(pExp, iExp);
-
-        if (!pExp.getType().isPointerType() ||
-                !iExp.getType().isIntegerType())
-            return invalidOperands(opLoc, lhs, rhs);
-
-        if (!checkArithmeticOpPointerOperand(opLoc, pExp))
-            return new QualType();
-        /**
-         * TODO check array bounds for pointer arithmetic.
-         *
-         */
-        checkArrayAccess(pExp, iExp);
-
-        return pExp.getType();
+        return invalidOperands(opLoc, lhs.get(), rhs.get());
     }
 
-    private QualType checkShiftOperands(ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
-            int opLoc,
+    private QualType checkShiftOperands(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            SourceLocation opLoc,
             BinaryOperatorKind opc)
 
     {
         return checkShiftOperands(lhs, rhs, opLoc, opc, false);
     }
 
-    private QualType checkShiftOperands(ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
-            int opLoc,
+    private QualType checkShiftOperands(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            SourceLocation opLoc,
             BinaryOperatorKind opc,
             boolean isCompAssign)
     {
-        if (!lhs.get().getType().isIntegerType()
-                || !rhs.get().getType().isIntegerType())
+        if (!lhs.get().get().getType().isIntegerType()
+                || !rhs.get().get().getType().isIntegerType())
         {
-            return invalidOperands(opLoc, lhs, rhs);
+            return invalidOperands(opLoc, lhs.get(), rhs.get());
         }
 
         // Shifts don't perform usual arithmetic conversions, they just do integer
@@ -3850,26 +4429,27 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         // For the LHS, do usual unary conversions, but then reset them away
         // if this is a compound assignment.
-        ActionResult<Expr> oldLHS = lhs;
+        ActionResult<Expr> oldLHS = lhs.get();
 
-        lhs = usualUnaryConversion(lhs.get());
-        if (lhs.isInvalid())
+        lhs.set(usualUnaryConversions(lhs.get().get()));
+        if (lhs.get().isInvalid())
             return new QualType();
 
-        QualType lhsType = lhs.get().getType();
-        if (isCompAssign) lhs = oldLHS;
+        QualType lhsType = lhs.get().get().getType();
+        if (isCompAssign) lhs.set(oldLHS);
 
         // The rhs is simpler
-        rhs = usualUnaryConversion(rhs.get());
-        if (rhs.isInvalid())
+        rhs.set(usualUnaryConversions(rhs.get().get()));
+        if (rhs.get().isInvalid())
             return new QualType();
 
         // TODO DiagnoseBadShiftValues
         return lhsType;
     }
 
-    private QualType checkComparisonOperands(ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
+    private QualType checkComparisonOperands(
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             BinaryOperatorKind opc,
             boolean isRelational)
@@ -3879,16 +4459,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     private QualType checkBitwiseOperands(
-            ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation opLoc)
     {
         return checkBitwiseOperands(lhs, rhs, opLoc, false);
     }
 
     private QualType checkBitwiseOperands(
-            ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             boolean isCompAssign)
     {
@@ -3897,8 +4477,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     private QualType checkLogicalOperands(
-            ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation opLoc,
             BinaryOperatorKind opc)
     {
@@ -3907,10 +4487,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     private QualType checkCommaOperands(
-            ActionResult<Expr> lhs,
-            ActionResult<Expr> rhs,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
             SourceLocation loc)
     {
+        // TODO: 2017/4/9
         return null;
     }
 
@@ -3959,7 +4540,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     {
         assert tok.tag == CHARLITERAL :"Invalid character literal!";
         CharLiteral ch = (CharLiteral)tok;
-        QualType ty = Type.IntTy;
+        QualType ty = context.IntTy;
 
         return new ActionResult<>(new CharacterLiteral(
                 ch.getValue(),
@@ -3978,7 +4559,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         String s = str.getValue();
         assert s!= null && s.length() > 0:"Must have at least one string!";
-        QualType strTy = Type.CharTy;
+        QualType strTy = context.CharTy;
         strTy = ArrayType.ConstantArrayType.getConstantType
                 (strTy, new APInt(32, s.length() + 1));
 
@@ -4040,9 +4621,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             OutParamWrapper<ExprValueKind> vk,
             SourceLocation opLoc)
     {
-        ActionResult<Expr> convRes = usualUnaryConversion(op);
+        ActionResult<Expr> convRes = usualUnaryConversions(op);
         if (convRes.isInvalid())
             return new QualType();
+
         op = convRes.get();
         QualType opTy = op.getType();
         QualType result = new QualType();
@@ -4051,22 +4633,25 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // is an incomplete jlang.type or void.  It would be possible to warn about
         // dereferencing a void pointer, but it's completely well-defined, and such a
         // warning is unlikely to catch any mistakes.
-        if (opTy.isPointerType())
-            result = opTy.getPointerType().getPointeeType();
+        PointerType pt = context.<PointerType>getAs(opTy);
+        if (pt != null)
+            result = pt.getPointeeType();
         else
-        {}
+        {
+            // TODO: 2017/4/8
+        }
+        
         if (result.isNull())
         {
-            parser.diag(opLoc,
-                    "indirection requires pointer operand (%s invalid)",
-                    opTy.toString());
+            diag(opLoc, err_typecheck_indirection_requires_pointer)
+                    .addTaggedVal(opTy).addSourceRange(op.getSourceRange());
             return new QualType();
         }
 
         // Dereferences are usually l-values...
         vk.set(EVK_LValue);
 
-        // ...except that certain expressions are never l-values in C.
+        // Except that certain expressions are never l-values in C.
         if (result.isCForbiddenLVaue())
             vk.set(EVK_RValue);
         return result;
@@ -4080,7 +4665,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             boolean isPrefix)
     {
         QualType resType = op.getType();
-        assert !resType.isNull():"no jlang.type for increment/decrement!";
+        assert !resType.isNull():"no type for increment/decrement!";
 
         if (resType.isRealType())
         {
@@ -4097,15 +4682,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         else if (resType.isComplexType())
         {
             // C99 does not support ++/-- on complex types, we allow as an extension.
-            parser.diag(opLoc,
-                    "ISO C does not support '++'/'--' on complex integer jlang.type %s",
-                    resType.toString());
+            diag(opLoc, ext_integer_increment_complex).addTaggedVal(resType)
+                    .addSourceRange(op.getSourceRange());
         }
         else
         {
-            parser.diag(opLoc, "cannot select "
-                    + (isIncre?"increment":"decrement")
-                    + " value of jlang.type %s", resType.toString());
+            diag(opLoc, err_typecheck_illegal_increment_decrement).
+                    addTaggedVal(resType).addTaggedVal(isIncre?1:0).addSourceRange(op.getSourceRange());
             return new QualType();
         }
 
@@ -4128,34 +4711,64 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     /**
-     * Verify that E is a modifiable lvalue.
-     * If not, emit an error and return true.  If so, return false.
+     * Verify that E is a modifiable lvalue. If not, emit an error and
+     * return true.  If so, return false.
      * @param e
      * @param oploc
      * @return
      */
     private boolean checkForModifiableLvalue(Expr e, SourceLocation oploc)
     {
-        // C99 6.3.2.1: an lvalue that does not have array jlang.type,
-        // does not have an incomplete jlang.type, does not have a const-qualified jlang.type,
+        // C99 6.3.2.1: an lvalue that does not have array type,
+        // does not have an incomplete jlang.type, does not have a const-qualified type,
         // and if it is a structure or union, does not have any member (including,
         // recursively, any member or element of all contained aggregates or unions)
-        // with a const-qualified jlang.type.
-        // TODO LLVM SemaExpr.cpp:6903
-        return true;
-        /*
-        if (e.getValuekind() == EVK_RValue)
-            return false;
+        // with a const-qualified type.
+        SourceLocation originLoc = oploc;
+        OutParamWrapper<SourceLocation> x = new OutParamWrapper<>(oploc);
+        Expr.IsModifiableLvalueResult res = e.isModifiableLvalue(context, x);
 
-        QualType resTy = e.getType();
-        if (resTy.isConstantArrayType())
-            return false;
-        if (resTy.isIncompleteType())
-            return false;
-        if (resTy.isRecordType() || resTy.isUnionType())
+        int diag = 0;
+        boolean needType = false;
+        switch (res)
         {
+            case MLV_ConstQualified:
+                diag = err_typecheck_assign_const;
+                break;
+            case MLV_ArrayType:
+                diag = err_typecheck_array_not_modifiable_lvalue;
+                needType = true;
+                break;
+            case MLV_NotObjectType:
+                diag = err_typecheck_non_object_not_modifiable_lvalue;
+                needType = true;
+                break;
+            case MLV_LValueCast:
+                diag = err_typecheck_lvalue_casts_not_supported;
+                break;
+            case MLV_Valid:
+                Util.shouldNotReachHere("did not take early return for MLV_Valid");
+            case MLV_InvalidExpression:
+                diag = err_typecheck_expression_not_modifiable_lvalue;
+                break;
+            case MLV_IncompleteType:
+            case MLV_IncompleteVoidType:
+                return requireCompleteType(oploc, e.getType(),
+                        pdiag(err_typecheck_incomplete_type_not_modifiable_lvalue).
+                                addSourceRange(e.getSourceRange()));
+        }
 
-        }*/
+        SourceRange assign = new SourceRange();
+        if (!oploc.equals(originLoc))
+            assign = new SourceRange(originLoc, originLoc);
+        if (needType)
+            diag(oploc, diag).addTaggedVal(e.getType()).
+                    addSourceRange(e.getSourceRange()).
+                    addSourceRange(assign);
+        else
+            diag(oploc, diag).addSourceRange(e.getSourceRange()).
+                    addSourceRange(assign);
+        return true;
     }
 
     /**
@@ -4240,7 +4853,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     && (castTy.isStructureType() || castTy.isUnionType()))
             {
                 // GCC struct/union extension: allow cast to self.
-                parser.diag(range.getStart(), ext_typecheck_cast_nonscalar)
+                diag(range.getBegin(), ext_typecheck_cast_nonscalar)
                         .addTaggedVal(castTy)
                         .addSourceRange(expr.getSourceRange());
                 kind.set(CK_NoOp);
@@ -4256,14 +4869,14 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     if (fd.getDeclType().getCanonicalTypeInternal().getUnQualifiedType().
                             equals(expr.getType().getCanonicalTypeInternal().getUnQualifiedType()))
                     {
-                        parser.diag(range.getStart(), ext_typecheck_cast_to_union)
+                        diag(range.getBegin(), ext_typecheck_cast_to_union)
                                 .addSourceRange(expr.getSourceRange());
                         break;
                     }
                 }
                 if (i == e)
                 {
-                    parser.diag(range.getStart(), err_typecheck_cast_to_union_no_type)
+                    diag(range.getBegin(), err_typecheck_cast_to_union_no_type)
                             .addTaggedVal(expr.getType())
                             .addSourceRange(expr.getSourceRange());
                     return true;
@@ -4273,7 +4886,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             else
             {
                 // Reject any other conversions to non-scalar types.
-                parser.diag(range.getStart(), err_typecheck_cond_expect_scalar)
+                diag(range.getBegin(), err_typecheck_cond_expect_scalar)
                 .addTaggedVal(castTy)
                 .addSourceRange(expr.getSourceRange());
                 return true;
@@ -4281,7 +4894,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         else if (!expr.getType().isScalarType())
         {
-            parser.diag(expr.getLocStart(),
+            diag(expr.getLocStart(),
                     err_typecheck_expect_scalar_operand)
             .addTaggedVal(expr.getType())
             .addSourceRange(expr.getSourceRange());
@@ -4293,7 +4906,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (castExprType.getIntegerType() == null
                     && castExprType.isArithmeticType())
             {
-                parser.diag(expr.getLocStart(),
+                diag(expr.getLocStart(),
                         err_cast_pointer_from_non_pointer_int)
                         .addTaggedVal(castExprType)
                         .addSourceRange(expr.getSourceRange());
@@ -4304,7 +4917,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             if (!castTy.isIntegerType() && castTy.isArithmeticType())
             {
-                parser.diag(expr.getLocStart(),
+                diag(expr.getLocStart(),
                         err_cast_pointer_to_non_pointer_int)
                         .addTaggedVal(castTy)
                         .addSourceRange(expr.getSourceRange());
@@ -4375,18 +4988,19 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // Since this might be a postfix expression, get rid of ParenListExprs.
         ActionResult<Expr> res = maybeConvertParenListExprToParenExpr(base);
 
-        if (res.isInvalid()) return exprError();
+        if (res.isInvalid())
+            return exprError();
         base = res.get();
 
         Expr lhsExpr = base;
         Expr rhsExpr = idx;
 
         // perform default conversion
-        res = defaultFunctionArrayConversion(lhsExpr);
+        res = defaultFunctionArrayLValueConversion(lhsExpr);
         if (res.isInvalid()) return exprError();
         lhsExpr = res.get();
 
-        res = defaultFunctionArrayConversion(rhsExpr);
+        res = defaultFunctionArrayLValueConversion(rhsExpr);
         if (res.isInvalid()) return exprError();
         rhsExpr = res.get();
 
@@ -4397,6 +5011,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // to the expression *((e1)+(e2)). This means the array "Base" may actually be
         // in the subscript position. As a result, we need to derive the array base
         // and index from the expression types.
+
+        // Following code was intended to take semantics checking on baseExpr and
+        // indexExpr. it is not worked in creating ArraySubscriptExpr.
         Expr baseExpr, idxExpr;
         QualType resultTy;
         if (lhsTy.isPointerType())
@@ -4412,17 +5029,17 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             idxExpr = lhsExpr;
             resultTy = rhsTy.getPointerType().getPointeeType();
         }
-        else if (lhsTy.isConstantArrayType())
+        else if (lhsTy.isArrayType())
         {
             // If we see an array that wasn't promoted by
             // DefaultFunctionArrayLvalueConversion, it must be an array that
             // wasn't promoted because of the C90 rule that doesn't
             // allow promoting non-lvalue arrays.  Warn, then
             // force the promotion here.
-            parser.diag(lhsExpr.getExprLocation(),
-                    "ISO C90 does not allow subscripting non-lvalue array");
+            diag(lhsExpr.getLocStart(), ext_subscript_non_lvalue)
+                    .addSourceRange(lhsExpr.getSourceRange());
             lhsExpr = implicitCastExprToType(lhsExpr,
-                    QualType.getArrayDecayedType(lhsTy),
+                    context.getArrayDecayedType(lhsTy),
                     EVK_RValue,
                     CK_ArrayToPointerDecay).get();
             lhsTy = lhsExpr.getType();
@@ -4431,13 +5048,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
             resultTy = lhsTy.getPointerType().getPointeeType();
         }
-        else if(rhsTy.isConstantArrayType())
+        else if(rhsTy.isArrayType())
         {
             // Same as previous, except for 123[f().a] case
-            parser.diag(rhsExpr.getExprLocation(),
-                    "ISO C90 does not allow subscripting non-lvalue array");
+            diag(rhsExpr.getLocStart(), ext_subscript_non_lvalue).
+                    addSourceRange(rhsExpr.getSourceRange());
             rhsExpr = implicitCastExprToType(rhsExpr,
-                    QualType.getArrayDecayedType(rhsTy),
+                    context.getArrayDecayedType(rhsTy),
                     EVK_RValue,
                     CK_ArrayToPointerDecay).get();
             rhsTy = rhsExpr.getType();
@@ -4448,43 +5065,60 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         else
         {
-            parser.diag(lParenLoc, "array subscript is not an integer");
+            diag(lParenLoc, err_typecheck_subscript_value).
+                    addSourceRange(lhsExpr.getSourceRange()).
+                    addSourceRange(rhsExpr.getSourceRange());
             return exprError();
         }
 
+        // C99 6.5.2.1p1
         if (!idxExpr.getType().isIntegerType())
         {
-            parser.diag(lParenLoc, "array subscript is not an integer");
+            diag(lParenLoc, err_typecheck_subscript_not_integer);
             return exprError();
         }
-        int t = idxExpr.getType().getTypeKind();
-        if (t == TypeClass.Char
-                || t == TypeClass.UnsignedChar)
+
+        if (context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.UnsignedChar)
+                || context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.Char))
         {
-            parser.syntaxWarning(lParenLoc, "array subscript is of jlang.type 'char'");
+            diag(lParenLoc, warn_subscript_is_char).
+                    addSourceRange(idxExpr.getSourceRange());
         }
+
+        // C99 6.5.2.1p1: "shall have type "pointer to *object* type".
         if (resultTy.isFunctionType())
         {
-            parser.diag(baseExpr.getExprLocation(),
-                    "subscript of pointer to function jlang.type %s",
-                    resultTy.toString());
+            diag(baseExpr.getLocStart(), err_subscript_function_type)
+                    .addTaggedVal(resultTy).
+                    addSourceRange(baseExpr.getSourceRange());
             return exprError();
         }
 
         if (resultTy.isVoidType())
         {
-            parser.diag(lParenLoc,
-                    "subscript of a pointer to void is a GNU extension");
-            if (!resultTy.hasQualifiers()) vk = EVK_RValue;
+            // GNU extension: subscripting on pointer to void.
+            diag(lParenLoc, ext_gnu_subscript_void_type)
+                    .addSourceRange(baseExpr.getSourceRange());
+
+            // C forbids expressions of unqualified void type from being l-values.
+            // See IsCForbiddenLValueType.
+            if (!resultTy.hasQualifiers())
+                vk = EVK_RValue;
+        }
+        else if (requireCompleteType(lParenLoc, resultTy,
+                pdiag(err_subscript_incomplete_type).
+                        addSourceRange(baseExpr.getSourceRange())))
+        {
+            return exprError();
         }
 
-        assert vk == EVK_RValue || !resultTy.isCForbiddenLVaue();
+        // Checking end!!!
 
-        return new ActionResult<>(new ArraySubscriptExpr(lhsExpr, rhsExpr, resultTy, vk, rParenLoc));
+        return new ActionResult<>(new ArraySubscriptExpr(lhsExpr, rhsExpr,
+                resultTy, vk, rParenLoc));
     }
 
-    private ActionResult<Expr> maybeConvertParenListExprToParenExpr(
-            Expr e)
+    private ActionResult<Expr> maybeConvertParenListExprToParenExpr(Expr e)
     {
         ParenListExpr ex = (ParenListExpr)e;
         if (ex == null)
@@ -4513,8 +5147,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             ArrayList<Expr> args,
             SourceLocation rParenLoc)
     {
+        // Since this might be a postfix expression, get rid of ParenListExprs.
         ActionResult<Expr> result = maybeConvertParenListExprToParenExpr(fn);
-        if (result.isInvalid()) return exprError();
+        if (result.isInvalid())
+            return exprError();
         fn = result.get();
 
         // Only the direct calling a function will be handled.
@@ -4536,13 +5172,255 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         return buildResolvedCallExpr(nakedFn, namedDecl, lParenLoc, args, rParenLoc);
     }
 
+    // Check for a valid return type
+    private boolean checkCallReturnType(
+            QualType returnType,
+            SourceLocation loc,
+            CallExpr ce,
+            FunctionDecl fd)
+    {
+        if (returnType.isVoidType() || !returnType.isIncompleteType())
+            return false;
+
+        PartialDiagnostic note = fd != null ? pdiag(note_function_with_incomplete_return_type_declared_here)
+                .addString(fd.getDeclName()) : pdiag(0);
+        SourceLocation noteLoc = fd != null ? fd.getLocation() : new SourceLocation();
+
+        return requireCompleteType(loc, returnType, fd != null ?
+                pdiag(err_call_function_incomplete_return)
+                    .addSourceRange(ce.getSourceRange()).addString(fd.getDeclName())
+                : pdiag(err_call_incomplete_return).
+                    addSourceRange(ce.getSourceRange()), Pair.get(noteLoc, note));
+    }
+
+
+	/**
+     * Converts the arguments specified in args to the parameter types of the
+     * function fnDecl with function prototype proto.
+     * call is the call expression itself, and fn is the function expression.
+     * @param call
+     * @param fn
+     * @param fndecl
+     * @param proto
+     * @param args
+     * @param rparenLoc
+     * @return
+	 */
+    private boolean convertArgumentsForCall(CallExpr call,
+            Expr fn,
+            FunctionDecl fndecl,
+            FunctionProtoType proto,
+            ArrayList<Expr> args,
+            SourceLocation rparenLoc)
+    {
+        // C99 6.5.2.2p7 - the arguments are implicitly converted, as if by
+        // assignment, to the types of the corresponding parameter, ...
+        int numArgsInProto = proto.getNumArgs();
+        boolean invalid = false;
+        int fnKind = 0;
+
+        // If too few arguments are available (and we don't have default
+        // arguments for the remaining parameters), don't make the call.
+        int numArgs = args.size();
+        if (numArgs < numArgsInProto)
+        {
+            diag(rparenLoc,
+                    err_typecheck_call_too_few_args).
+                    addTaggedVal(fnKind).
+                    addTaggedVal(numArgs).
+                    addSourceRange(fn.getSourceRange());
+
+            // Emit the location of the prototype.
+            if (fndecl != null)
+            {
+                diag(fndecl.getLocation(), note_callee_decl).
+                        addTaggedVal(fndecl.getDeclName());
+            }
+            call.setNumArgs(numArgsInProto);
+            return true;
+        }
+
+        // If too many are passed and not variadic, error on the extras and drop
+        // them.
+        if (numArgs > numArgsInProto)
+        {
+            if (!proto.isVariadic())
+            {
+                diag(args.get(numArgsInProto-1).getLocStart(), err_typecheck_call_too_many_args)
+                        .addTaggedVal(fnKind).addTaggedVal(numArgsInProto)
+                        .addTaggedVal(numArgs).addSourceRange(fn.getSourceRange())
+                        .addSourceRange(new SourceRange(args.get(numArgsInProto-1).getLocStart(),
+                                args.get(numArgs - 1).getLocEnd()));
+
+                // Emit the location of the prototype.
+                if (fndecl != null)
+                {
+                    diag(fndecl.getLocation(), note_callee_decl).
+                            addTaggedVal(fndecl.getDeclName());
+                }
+
+                // This drop off the extra arguments.
+                call.setNumArgs(numArgsInProto);
+                return true;
+            }
+        }
+        ArrayList<Expr> allArgs = new ArrayList<>();
+        VariadicCallType callType = proto.isVariadic() ?
+                VariadicCallType.VariadicFunction
+                : VariadicCallType.VariadicDoesNotApply;
+        invalid = gatherArgumentsForCall(call.getLocStart(), fndecl,
+                proto, 0, args, allArgs, callType);
+
+        if (invalid)
+            return true;
+
+        int totalNumArgs = allArgs.size();
+        for (int i = 0; i < totalNumArgs; ++i)
+            call.setArgAt(i, allArgs.get(i));
+
+        return false;
+    }
+
+    private boolean gatherArgumentsForCall(
+            SourceLocation callLoc,
+            FunctionDecl fnDecl,
+            FunctionProtoType proto,
+            int firstProtoArg,
+            ArrayList<Expr> args,
+            ArrayList<Expr> allArgs)
+    {
+        return gatherArgumentsForCall(callLoc, fnDecl, proto,
+                firstProtoArg, args, allArgs,
+                VariadicCallType.VariadicDoesNotApply);
+    }
+
+	/**
+	 * (C99 6.5.2.2p6). Used for function calls that do not have a prototype.
+     * Arguments that have type float are promoted to double.
+     *
+     * All other argument types are converted by UsualUnaryConversions().
+     * @param e
+     * @return
+     */
+    private ActionResult<Expr> defaultArgumentPromotion(Expr e)
+    {
+        QualType ty = e.getType();
+
+        assert !ty.isNull() :"defaultArgumentPromotion - missing type";
+
+        ActionResult<Expr> res = usualUnaryConversions(e);
+        if (res.isInvalid())
+            return new ActionResult<>(e);
+        e = res.get();
+
+        // If this is a 'float' (CVR qualified or typedef) promote to double.
+        if (context.isSpecifiedBuiltinType(ty, TypeClass.Float))
+            e = implicitCastExprToType(e, context.DoubleTy, EVK_RValue, CK_FloatingCast).get();
+        return new ActionResult<>(e);
+    }
+
+	/**
+     * Collector argument expressions for various form of call prototypes.
+     * @return
+     */
+    private boolean gatherArgumentsForCall(
+            SourceLocation callLoc,
+            FunctionDecl fnDecl,
+            FunctionProtoType proto,
+            int firstProtoArg,
+            ArrayList<Expr> args,
+            ArrayList<Expr> allArgs,
+            VariadicCallType callType)
+    {
+        int numArgInProto = proto.getNumArgs();
+        int numArgsToCheck = args.size();
+
+        boolean invalid = false;
+        if (numArgsToCheck != numArgInProto)
+            // Use default arguments for missing arguments
+            numArgsToCheck = numArgInProto;
+
+        int argIdx = 0;
+        for (int i = firstProtoArg; i < numArgsToCheck; ++i)
+        {
+            QualType protoArgType = proto.getArgType(i);
+
+            Expr arg = null;
+            if (argIdx < numArgsToCheck)
+            {
+                arg = args.get(argIdx++);
+
+                if (requireCompleteType(arg.getLocStart(),
+                        protoArgType,
+                        pdiag(err_call_incomplete_argument)
+                            .addSourceRange(arg.getSourceRange())))
+                {
+                    return true;
+                }
+
+                // Pass the argument
+                ParamVarDecl param = null;
+                if (fnDecl != null && i < fnDecl.getNumParams())
+                    param = fnDecl.getParamDecl(i);
+
+	            /**
+                 * TODO
+                 *    InitializedEntity Entity =
+                 Param? InitializedEntity::InitializeParameter(Context, Param)
+                 : InitializedEntity::InitializeParameter(Context, ProtoArgType,
+                 Proto.isArgConsumed(i));
+                 ExprResult ArgE = PerformCopyInitialization(Entity,
+                 SourceLocation(),
+                 Owned(Arg));
+                 if (ArgE.isInvalid())
+                 return true;
+
+                 Arg = ArgE.takeAs<Expr>();
+                 */
+            }
+            checkArrayAccess(arg);
+
+            allArgs.add(arg);
+        }
+
+        // If this is a variadic call, handle args passed through "...".
+        if (callType != VariadicCallType.VariadicDoesNotApply)
+        {
+            // Do argument promotion, (C99 6.5.2.2p7).
+            for (int i = argIdx; i < numArgsToCheck; i++)
+            {
+                ActionResult<Expr> arg = defaultArgumentPromotion(args.get(i));
+
+                invalid |= arg.isInvalid();
+                allArgs.add(arg.get());
+            }
+
+            // Check for array bounds violations.
+            for (int i = argIdx; i != numArgsToCheck; ++i)
+                checkArrayAccess(args.get(i));
+        }
+        return invalid;
+    }
+
+	/**
+     * Check a direct function call for various correctness
+     * and safety properties not strictly enforced by the C type system.
+     * @param fnDecl
+     * @param ce
+     * @return
+     */
+    private boolean checkFunctionCall(FunctionDecl fnDecl, CallExpr ce)
+    {
+        return false;
+    }
+
     /**
      * Build a call to a resolved expression, i.e. an expression not of
-     * \p OverloadTy.  The expression should unary-convert to an expression of
+     * OverloadTy.  The expression should unary-convert to an expression of
      * function-pointer.
      *
      * @param fn
-     * @param ndecl the declaration being called, if available
+     * @param ndecl The declaration being called, if available
      * @param lParenLoc
      * @param args
      * @param rParenLoc
@@ -4555,89 +5433,99 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             ArrayList<Expr> args,
             SourceLocation rParenLoc)
     {
-        FunctionDecl fnDecl = (FunctionDecl)ndecl;
-        ActionResult<Expr> res = usualUnaryConversion(fn);
+        FunctionDecl fnDecl = (ndecl instanceof FunctionDecl)
+                ? (FunctionDecl)ndecl : null;
+
+        // Promote the function operand.
+        ActionResult<Expr> res = usualUnaryConversions(fn);
         if (res.isInvalid())
             return exprError();
 
         fn = res.get();
 
-        CallExpr call = new CallExpr(fn, args, Type.BoolTy, EVK_RValue, rParenLoc);
+        CallExpr call = new CallExpr(fn, args, context.BoolTy, EVK_RValue, rParenLoc);
 
-        final FunctionType funcTy;
+        FunctionType funcTy;
         if (fn.getType().isPointerType())
         {
             // C99 6.5.2.2p1 - "The expression that denotes the called function shall
-            // have jlang.type pointer to function".
+            // have type pointer to function".
             PointerType pt = fn.getType().getPointerType();
             funcTy = pt.getPointeeType().getFunctionType();
 
             if (funcTy == null)
             {
-                parser.diag(lParenLoc,
-                        "called object jlang.type %s is not a function or function pointer",
-                        fn.getType().toString());
+                diag(lParenLoc, err_typecheck_call_not_function).
+                        addTaggedVal(fn.getType()).
+                        addSourceRange(fn.getSourceRange());
                 return exprError();
             }
         }
         else
         {
             // Handle calls to expressions of unknown-any jlang.type.
-            parser.diag(lParenLoc,
-                    "called object jlang.type %s is not a function or function pointer",
-                    fn.getType().toString());
+            diag(lParenLoc, err_typecheck_call_not_function).
+                    addTaggedVal(fn.getType()).
+                    addSourceRange(fn.getSourceRange());
             return exprError();
         }
 
-        // check for a valid return jlang.type.
-        if (checkCallReturnType(funcTy.getReturnType(),
-                fn.getExprLocation(), call, fnDecl))
+        // check for a valid return type.
+        if (checkCallReturnType(funcTy.getResultType(),
+                fn.getSourceRange().getBegin(),
+                call, fnDecl))
+        {
             return exprError();
+        }
 
-        call.setType(funcTy.getCallReturnType());
+        // We know the result type of call, set it.
+        call.setType(funcTy.getCallReturnType(context));
         call.setValueKind(EVK_RValue);
 
+        FunctionProtoType proto = null;
         if (funcTy instanceof FunctionProtoType)
         {
-            FunctionProtoType proto = (FunctionProtoType)funcTy;
-            if (convertArgumentsForCall(cal,, fn, fnDecl, proto, args, rParenLoc))
+            proto = (FunctionProtoType)funcTy;
+            if (convertArgumentsForCall(call, fn, fnDecl, proto, args, rParenLoc))
                 return exprError();
         }
         else
         {
             if (fnDecl != null)
             {
-
-                FunctionProtoType proto = null;
-                if (!fnDecl.hasProtoType())
-                    proto = fnDecl.getReturnType().getProtoType();
-
                 // Promote the argument (C99 6.5.2.2p6).
                 for (int i = 0, e = args.size(); i < e; i++)
                 {
                     Expr arg = args.get(i);
-                    if (proto != null && i < proto.getNumbArgs())
+                    if (proto != null && i < proto.getNumArgs())
                     {
-
+                        // TODO: 2017/4/9 initialize the arguments
                     }
                     else
                     {
                         ActionResult<Expr> argE = defaultArgumentPromotion(arg);
 
                         if (argE.isInvalid())
-                            return new ActionResult<>(true);
+                            return exprError();
 
                         arg = argE.get();
                     }
 
-                    if (requireCompleteType(arg.getExprLocation(),
-                            arg.getType()))
+                    if (requireCompleteType(arg.getLocStart(),
+                                            arg.getType(),
+                            pdiag(err_call_incomplete_argument)
+                            .addSourceRange(arg.getSourceRange())))
+                    {
                         return exprError();
-
+                    }
                     call.setArgAt(i, arg);
                 }
             }
         }
+
+        // TODO Check for sentinels
+        //if (NDecl)
+        //    DiagnoseSentinelCalls(NDecl, LParenLoc, Args, NumArgs);
 
         // Do special checking on direct calls to function.
         if (fnDecl != null)
@@ -4650,9 +5538,14 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     /**
-     * This method called when jlang.parser encounter something like
+     * This method called when parser encounter member access expression like
      *   expression.identifier
      *   expression->identifier
+     * @param s
+     * @param base The base expression.
+     * @param opLoc The source location of '.' or '->' token.
+     * @param opKind Indicates which the access operator is, either arrow or period.
+     * @param name The member name being accessed.
      * @return
      */
     public ActionResult<Expr> actOnMemberAccessExpr(
@@ -4678,22 +5571,142 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             return exprError();
         base = baseResult.get();
 
-        result = buildMemberReferenceExpr();
-        return result;
+        return buildMemberReferenceExpr(base, base.getType(), opLoc, isArrow, res);
     }
 
-    private ActionResult<Expr> buildMemberReference(
+	/**
+     * Build a MemberExpr AST node.
+     * @return
+     */
+    private MemberExpr buildMemberExpr(
             Expr base,
+            boolean isArrow,
+            ValueDecl member,
             QualType type,
+            ExprValueKind evk,
+            SourceLocation loc,
+            ExprObjectKind ok)
+    {
+        return new MemberExpr(base, isArrow, member, type, evk, loc, ok);
+    }
+
+    private ActionResult<Expr> buildFieldReferenceExpr(
+            Expr baseEpxr,
+            boolean isArrow,
+            FieldDecl field)
+    {
+        ExprValueKind vk = EVK_LValue;
+        ExprObjectKind ok = OK_Ordinary;
+
+        if (!isArrow)
+        {
+            if (baseEpxr.getObjectKind() == OK_Ordinary)
+                vk = baseEpxr.getValueKind();
+            else
+                vk = EVK_RValue;
+        }
+        if (vk != EVK_RValue && field.isBitField())
+        {
+            ok = OK_BitField;
+        }
+
+        // Figure out the type of the member; see C99 6.5.2.3p3
+        QualType memberType = field.getDeclType();
+        QualType baseType = baseEpxr.getType();
+        if (isArrow) baseType = context.<PointerType>getAs(baseType).getPointeeType();
+
+        QualType.Qualifier baseQuals = baseType.getQualifiers();
+        QualType.Qualifier memberQuals = memberType.getCanonicalTypeInternal().getQualifiers();
+        QualType.Qualifier combined = baseQuals.add(memberQuals);
+
+        if (!combined.equals(memberQuals))
+        {
+            memberType = context.getQualifiedType(memberType, combined);
+        }
+
+        return new ActionResult<>(buildMemberExpr(baseEpxr, isArrow, field,
+                memberType, vk, baseEpxr.getLocStart(), ok));
+    }
+
+    private ActionResult<Expr> buildMemberReferenceExpr(
+            Expr baseExpr,
+            QualType baseExprType,
             SourceLocation opLoc,
             boolean isArrow,
-            LookupResult res)
+            LookupResult lookupResult)
     {
-        // TODO: 2017/3/28
+        QualType baseType = baseExprType;
+        if (isArrow)
+        {
+            assert baseType.isPointerType();
+            baseType = context.<PointerType>getAs(baseType).getPointeeType();
+        }
+        if (lookupResult.isAmbiguous())
+            return exprError();
+        String memberName = lookupResult.getLookupName();
+        SourceLocation memberLoc = lookupResult.getNameLoc();
+
+        if (lookupResult.isEmpty())
+        {
+            NamedDecl dc = context.<RecordType>getAs(baseType).getDecl();
+            diag(lookupResult.getNameLoc(), err_no_member)
+            .addTaggedVal(memberName)
+            .addTaggedVal(dc.getDeclName())
+            .addSourceRange(baseExpr != null ? baseExpr.getSourceRange():new SourceRange());
+
+            return exprError();
+        }
+
+        assert lookupResult.isSingleResult();
+        NamedDecl memberDecl = lookupResult.getFoundDecl();
+
+        if (memberDecl.isInvalidDecl())
+            return exprError();
+
+        if (memberDecl instanceof FieldDecl)
+        {
+            FieldDecl fd = (FieldDecl)memberDecl;
+
+            return buildFieldReferenceExpr(baseExpr, isArrow, fd);
+        }
+
+        if (memberDecl instanceof VarDecl)
+        {
+            VarDecl var = (VarDecl)memberDecl;
+            return new ActionResult<>(buildMemberExpr(baseExpr, isArrow,
+                    var, var.getDeclType(), EVK_LValue, memberLoc, OK_Ordinary));
+        }
+
+        assert !(memberDecl instanceof FunctionDecl);
+
+        if (memberDecl instanceof EnumConstantDecl)
+        {
+            EnumConstantDecl Enum = (EnumConstantDecl)memberDecl;
+            return new ActionResult<>(buildMemberExpr(baseExpr, isArrow,
+                    Enum, Enum.getDeclType(), EVK_LValue, memberLoc, OK_Ordinary));
+        }
+
+        // We found something that we didn't expect. Complain.
+        if (memberDecl instanceof TypeDecl)
+        {
+            diag(memberLoc, err_typecheck_member_reference_type)
+                    .addTaggedVal(memberName)
+                    .addTaggedVal(baseType)
+                    .addTaggedVal(isArrow?1:0);
+        }
+        else
+        {
+            diag(memberLoc, err_typecheck_member_reference_unknown)
+                    .addTaggedVal(memberName)
+                    .addTaggedVal(baseType)
+                    .addTaggedVal(isArrow?1:0);
+        }
+        diag(memberDecl.getLocation(), note_member_declared_here).addTaggedVal(memberName);
+        return exprError();
     }
 
     private ActionResult<Expr> lookupMemberExpr(
-            LookupResult res,
+            LookupResult lookupResult,
             OutParamWrapper<ActionResult<Expr>> baseExpr,
             boolean isArrow,
             SourceLocation opLoc)
@@ -4701,7 +5714,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         assert baseExpr.get().get() != null:"no base expressin!";
 
         // Perform default conversions.
-         Expr e = baseExpr.get().get();
+        Expr e = baseExpr.get().get();
         baseExpr.set(defaultFunctionArrayConversion(e));
 
         if (baseExpr.get().isInvalid())
@@ -4715,8 +5728,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
 
         QualType baseType = baseExpr.get().get().getType();
-        String memberName = res.getLookupName();
-        SourceLocation memberLoc = res.getNameLoc();
+        String memberName = lookupResult.getLookupName();
+        SourceLocation memberLoc = lookupResult.getNameLoc();
 
         // For later jlang.type-checking purposes, turn arrow accesses into dot
         // accesses.
@@ -4727,11 +5740,22 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 PointerType ptr = baseType.getPointerType();
                 baseType = ptr.getPointeeType();
             }
+            else if (baseType.isRecordType())
+            {
+                // Recover from arrow accesses to records, e.g.:
+                //   struct MyRecord foo;
+                //   foo->bar
+                diag(opLoc, err_typecheck_member_reference_suggestion)
+                .addTaggedVal(baseType).addTaggedVal(isArrow?1:0).
+                        addSourceRange(baseExpr.get().get().getSourceRange())
+                        .addFixItHint(FixItHint.createReplacement(opLoc, "."));
+                isArrow = false;
+            }
             else
             {
-                parser.diag(memberLoc,
-                        "member reference jlang.type %s is not a pointer",
-                        baseType.toString());
+                diag(memberLoc, err_typecheck_member_reference_arrow)
+                        .addTaggedVal(baseType).
+                        addSourceRange(baseExpr.get().get().getSourceRange());
                 return exprError();
             }
         }
@@ -4740,27 +5764,45 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (baseType.isRecordType())
         {
             RecordType rty = baseType.getRecordType();
-            if (lookupMemberExprInRecord(res,
-                    baseExpr.get().get().getExprLocation(),
+            if (lookupMemberExprInRecord(lookupResult,
+                    baseExpr.get().get().getSourceRange(),
                     rty, opLoc))
                 return exprError();
 
             // Returning valid-but-null is how we indicate to the caller that
             // the lookup result was filled in.
-            return new ActionResult<>(null);
+            return exprError();
+        }
+        // Recover from dot accesses to pointers, e.g.:
+        //   type *foo;
+        //   foo.bar
+        if (baseType.isPointerType())
+        {
+            PointerType ptr = context.<PointerType>getAs(baseType);
+            if (!isArrow && ptr.getPointeeType().isRecordType())
+            {
+                diag(opLoc, err_typecheck_member_reference_suggestion)
+                        .addTaggedVal(baseType).addTaggedVal(isArrow?1:0)
+                        .addSourceRange(baseExpr.get().get().getSourceRange())
+                        .addFixItHint(FixItHint.createReplacement(opLoc, "->"));
+
+                // Recurse as an -> access.
+                isArrow = true;
+                return lookupMemberExpr(lookupResult, baseExpr, isArrow, opLoc);
+            }
         }
 
-        parser.diag(memberLoc,
-                "member reference base jlang.type %s is not a structure or union",
-                baseType.toString());
+
+        diag(memberLoc, err_typecheck_member_reference_struct_union)
+                .addTaggedVal(baseType)
+                .addSourceRange(baseExpr.get().get().getSourceRange());
         return exprError();
     }
 
     /**
-     * erforms lvalue-to-rvalue conversion on
-     * the operand.  This is DefaultFunctionArrayLvalueConversion,
-     * except that it assumes the operand isn't of function or array
-     * jlang.type.
+     * Performs lvalue-to-rvalue conversion on the operand.  This is
+     * DefaultFunctionArrayLvalueConversion, except that it assumes the operand
+     * isn't of function or array type.
      * @param e
      * @return
      */
@@ -4793,15 +5835,17 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private boolean lookupMemberExprInRecord(
             LookupResult res,
-            SourceLocation loc,
+            SourceRange baseRange,
             RecordType rty,
             SourceLocation opLoc)
     {
         RecordDecl recordDecl = rty.getDecl();
-        if (requireCompleteType(opLoc, new QualType(rty)))
+        if (requireCompleteType(opLoc, new QualType(rty),
+                pdiag(err_typecheck_incomplete_tag).
+                        addSourceRange(baseRange)))
             return true;
 
-        // TODO
+        return false;
     }
 
 
@@ -4848,7 +5892,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 resultTy = checkAddressOfOperand(input.get(), opLoc);
                 break;
             case UO_Deref:
-                input = defaultFunctionArrayConversion(inputExpr);
+                input = defaultFunctionArrayLValueConversion(inputExpr);
                 o1 = new OutParamWrapper<>(vk);
                 resultTy = checkIndirectOperand(input.get(), o1, opLoc);
                 vk = o1.get();
@@ -4857,7 +5901,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             case UO_Plus:
             case UO_Minus:
             {
-                input = usualUnaryConversion(input.get());
+                input = usualUnaryConversions(input.get());
                 if (input.isInvalid())
                     return exprError();
                 resultTy = input.get().getType();
@@ -4865,7 +5909,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     break;
                 else
                 {
-                    parser.diag(opLoc, err_typecheck_unary_expr)
+                    diag(opLoc, err_typecheck_unary_expr)
                     .addTaggedVal(resultTy).addSourceRange
                             (input.get().getSourceRange());
                     return exprError();
@@ -4873,7 +5917,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             }
             case UO_Not:  // bitwise not.
             {
-                input = usualUnaryConversion(input.get());
+                input = usualUnaryConversions(input.get());
                 if (input.isInvalid()) return exprError();
 
                 resultTy = input.get().getType();
@@ -4881,7 +5925,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     break;
                 else
                 {
-                    parser.diag(opLoc, err_typecheck_unary_expr)
+                    diag(opLoc, err_typecheck_unary_expr)
                             .addTaggedVal(resultTy).addSourceRange
                             (input.get().getSourceRange());
                     return exprError();
@@ -4896,13 +5940,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
                 if (!resultTy.isScalarType())
                 {
-                    parser.diag(opLoc, err_typecheck_unary_expr)
+                    diag(opLoc, err_typecheck_unary_expr)
                             .addTaggedVal(resultTy)
                             .addSourceRange(input.get().getSourceRange());
                     return exprError();
                 }
                 // LNot always has type int. C99 6.5.3.3p5.
-                resultTy = Type.IntTy;
+                resultTy = context.IntTy;
                 break;
             }
         }
@@ -4930,7 +5974,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         int diagnostic = err_undeclared_var_use;
         //int diagnosticSuggest = err_undeclared_var_use_suggest;
         // We can not recovery.
-        parser.diag(res.getNameLoc(), diagnostic).addTaggedVal(name);
+        diag(res.getNameLoc(), diagnostic).addTaggedVal(name);
         return true;
     }
 
@@ -4990,18 +6034,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (locallyScopedExternalDecls.containsKey(name))
         {
             NamedDecl prev = locallyScopedExternalDecls.get(name);
-            parser.diag(nameLoc, warn_use_out_of_scope_declaration)
+            diag(nameLoc, warn_use_out_of_scope_declaration)
                     .addTaggedVal(prev.getDeclName());
-            parser.diag(prev.getLocation(), note_previous_declaration);
+            diag(prev.getLocation(), note_previous_declaration);
             return prev;
         }
 
         // Extension in C99.  Legal in C90, but warn about it.
         if (getLangOptions().c99)
-            parser.diag(nameLoc, ext_implicit_function_decl)
+            diag(nameLoc, ext_implicit_function_decl)
                     .addTaggedVal(name);
         else
-            parser.diag(nameLoc, warn_implicit_function_decl)
+            diag(nameLoc, warn_implicit_function_decl)
                     .addTaggedVal(name);
         DeclSpec ds = new DeclSpec();
         OutParamWrapper<String> x = new OutParamWrapper<>();
@@ -5046,8 +6090,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         if (res.isAmbiguous())
         {
-            parser.diag(nameLoc, err_ambiguous_reference).addTaggedVal(name);
-            parser.diag(res.getFoundDecl().getLocation(), note_ambiguous_candidate)
+            diag(nameLoc, err_ambiguous_reference).addTaggedVal(name);
+            diag(res.getFoundDecl().getLocation(), note_ambiguous_candidate)
                     .addTaggedVal(res.getFoundDecl().getDeclName());
             return exprError();
         }
@@ -5149,7 +6193,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
             if (l.body != null)
                 continue;
-            parser.diag(l.loc, err_undeclared_label_use).addTaggedVal(l.getName());
+            diag(l.loc, err_undeclared_label_use).addTaggedVal(l.getName());
 
             if (fnBody == null)
             {
@@ -5191,7 +6235,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     {
         if (decl instanceof TypedefNameDecl)
         {
-            parser.diag(loc, err_unexpected_typedef_ident)
+            diag(loc, err_unexpected_typedef_ident)
                     .addTaggedVal(decl.getDeclName());
             return true;
         }
@@ -5225,10 +6269,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             return;
 
         QualType ty = vd.getDeclType();
-        if (requireCompleteType(vd.getLocation(), QualType.getBaseElementType(ty)))
+        if (requireCompleteType(vd.getLocation(),
+                context.getBaseElementType(ty),
+                err_typecheck_decl_incomplete_type))
         {
             vd.setInvalidDecl(true);
-            return;
         }
     }
 
@@ -5265,8 +6310,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (!(decl instanceof VarDecl))
         {
             assert !(decl instanceof FieldDecl) : "field init shoudln't gt here!";
-            parser.diag(decl.getLocation(),
-                    "illegal initializer (only variables can be initialized)");
+            diag(decl.getLocation(), err_illegal_initializer);
             decl.setInvalidDecl(true);
             return;
         }
@@ -5277,13 +6321,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // complete with the restriction that an array jlang.type might be completed by the
         // initializer; note that later code assumes this restriction.
         QualType baseDeclType = vd.getDeclType();
-        ArrayType array = baseDeclType.getAsInompleteArrayType();
+        ArrayType array = context.getAsInompleteArrayType(baseDeclType);
 
         if (array != null)
         {
             baseDeclType = array.getElemType();
         }
-        if (requireCompleteType(vd.getLocation(), baseDeclType))
+        if (requireCompleteType(vd.getLocation(), baseDeclType, err_typecheck_decl_incomplete_type))
         {
             decl.setInvalidDecl(true);
             return;
@@ -5298,8 +6342,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (vd.hasExternalStorage())
             {
                 // C99 6.7.8p5
-                parser.diag(vd.getLocation(),
-                        "'extern' variable cannot have an initializer");
+                diag(vd.getLocation(), err_block_extern_cant_init);
                 vd.setInvalidDecl(true);
             }
             else if(!vd.isInvalidDecl())
@@ -5316,9 +6359,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         else if (vd.isFileVarDecl())
         {
             if (vd.hasExternalStorage() &&
-                    !QualType.getBaseElementType(vd.getDeclType()).isConstQualifed())
+                    !context.getBaseElementType(vd.getDeclType()).isConstQualifed())
             {
-                parser.syntaxWarning(vd.getLocation(), "'extern' variable has an initializer");
+                diag(vd.getLocation(), warn_extern_init);
             }
             if (!vd.isInvalidDecl())
             {
@@ -5350,7 +6393,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             List<Expr> initExprs, SourceLocation rbraceLoc)
     {
         InitListExpr e = new InitListExpr(lbraceLoc, rbraceLoc, new ArrayList<>(initExprs));
-        e.setType(Type.VoidTy);
+        e.setType(context.VoidTy);
         return new ActionResult<>(e);
     }
 
@@ -5374,8 +6417,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // "may accept other forms of constant expressions" jlang.exception.
         if (init.isConstantInitializer())
             return false;
-        parser.diag(init.getExprLocation(),
-                "initializer element is not a compile-time constant");
+        diag(init.getExprLocation(), err_init_element_not_constant)
+                .addSourceRange(init.getSourceRange());
         return true;
     }
 
@@ -5410,5 +6453,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             }
         }
         return TST.TST_unspecified;
+    }
+
+    public ActionResult<Stmt> actOnNullStmt(SourceLocation loc)
+    {
+        return new ActionResult<>(new Tree.NullStmt(loc), true);
     }
 }

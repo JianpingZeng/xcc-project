@@ -16,7 +16,7 @@ public final class RealType extends PrimitiveType
      */
     public RealType(long size, String name)
     {
-        super(Real, name);
+        super(Float, name);
         this.size = size * 8;
     }
 

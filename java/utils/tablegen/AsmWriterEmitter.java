@@ -121,7 +121,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                 if (dollarPos >= asmString.length())
                     dollarPos = asmString.length();
 
-                // Emit a constant string fragment.
+                // emit a constant string fragment.
                 if (dollarPos != lastEmitted)
                 {
                     if (curVariant == varint || curVariant == ~0)
@@ -359,7 +359,7 @@ public final class AsmWriterEmitter extends TableGenBackend
             HashMap<CodeGenInstruction, AsmWriterInst> cgiMapToawi = new HashMap<>();
             instructions.forEach(inst-> cgiMapToawi.put(inst.cgi, inst));
 
-            // Emit a table of constant strings.
+            // emit a table of constant strings.
             os.print("  public static final String[] opStrs = {\n");
             numberedInstructions.forEach(cgi->
             {
@@ -378,7 +378,7 @@ public final class AsmWriterEmitter extends TableGenBackend
 
         os.print("\t@Override \n\tprotected boolean printInstruction(MachineOperation mi) \n{\n");
 
-        os.println("\t// Emit the opcode for the instruction.");
+        os.println("\t// emit the opcode for the instruction.");
         os.println("\tString asmStr = opStrs[mi.getOpcode()]");
         os.println("\tif (asmStr != null)");
         os.print("\t\tos.print(asmStr);\n\n");
@@ -404,7 +404,7 @@ public final class AsmWriterEmitter extends TableGenBackend
     }
 
     /**
-     * Emit the last instruction in the vector and any other
+     * emit the last instruction in the vector and any other
      * instructions that are suitably similar to it.
      * @param insts
      * @param os

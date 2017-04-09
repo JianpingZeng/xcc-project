@@ -1,8 +1,7 @@
 package jlang.cparser;
 
-import jlang.cpp.Source;
 import jlang.cpp.SourceLocation;
-import tools.Position;
+import jlang.sema.APInt;
 
 /**
  * @author Xlous.zeng
@@ -31,29 +30,32 @@ public class Token implements Tag
 
     public static class IntLiteral extends Token
     {
-        enum IntLong
+        public boolean getIntegerValue(APInt resultVal)
         {
-            IL_None,
+            return false;
+        }
+
+        enum IntLiteralKinds
+        {
+            IL_Int,
             IL_Long,
             IL_Longlong,
         }
 
         private final char[] buf;
         private final int radix;
-        private int len;
-        private IntLong IL;
+        private IntLiteralKinds IL;
         private boolean isUnsigned;
 
         public IntLiteral(char[] value,
                 SourceLocation loc,
                 int radix,
-                IntLong IL,
+                IntLiteralKinds IL,
                 boolean isUnsigned)
         {
             super(INTLITERAL, loc);
             buf = value;
             this.radix = radix;
-            len = value.length;
             this.IL = IL;
             this.isUnsigned = isUnsigned;
         }
@@ -68,14 +70,24 @@ public class Token implements Tag
             return radix;
         }
 
+        public boolean isInt()
+        {
+            return IL == IntLiteralKinds.IL_Int;
+        }
+
         public boolean isLong()
         {
-            return IL == IntLong.IL_Long;
+            return IL == IntLiteralKinds.IL_Long;
+        }
+
+        public boolean isLongLong()
+        {
+            return IL == IntLiteralKinds.IL_Longlong;
         }
 
         public String toString()
         {
-            return buf.toString();
+            return String.valueOf(buf);
         }
     }
 
@@ -88,6 +100,11 @@ public class Token implements Tag
             super(FLOATLITERAL, loc);
             this.value = value;
         }
+
+        public float getValue()
+        {
+            return value;
+        }
     }
 
     public static class DLiteral extends Token
@@ -98,6 +115,11 @@ public class Token implements Tag
         {
             super(DOUBLELITERAL, loc);
             this.value = value;
+        }
+
+        public double getValue()
+        {
+            return value;
         }
     }
 

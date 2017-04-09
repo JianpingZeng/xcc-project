@@ -16,6 +16,7 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,7 +36,7 @@ public class FunctionProtoType extends FunctionType
      *                   function body.
      * @param isVarArgs  indicates if it is variable parameter list.
      */
-    public FunctionProtoType(QualType returnType, List<Type> paramTypes,
+    public FunctionProtoType(QualType returnType, ArrayList<QualType> paramTypes,
             boolean isVarArgs)
     {
         super(returnType, paramTypes, isVarArgs);

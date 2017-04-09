@@ -31,6 +31,12 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
     protected abstract RetTy success(final APValue v, final Expr e);
 
     protected abstract RetTy error(final Expr expr);
+    protected  ASTContext context;
+
+    protected ExprEvaluatorBase(ASTContext ctx)
+    {
+        context = ctx;
+    }
 
     @Override
     public RetTy visitCallExpr(CallExpr expr)
@@ -40,7 +46,6 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
 
     protected abstract RetTy visitCastExpr(CastExpr expr);
 
-    @Override
     public RetTy visitTree(Tree stmt)
     {
         Util.shouldNotReachHere("Expression evaluator shouldn't called on Stmt!");
@@ -50,7 +55,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
     public RetTy visitConditionalExpr(ConditionalExpr expr)
     {
         OutParamWrapper<Boolean> boolResult = new OutParamWrapper<>();
-        if (!handleConversionToBool(expr.getCond(), boolResult))
+        if (!handleConversionToBool(expr.getCond(), boolResult, context))
             return error(expr);
 
         Expr evalExpr = boolResult.get() ? expr.getTrueExpr()
@@ -78,12 +83,13 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
 
     static boolean handleConversionToBool(
             Expr e,
-            OutParamWrapper<Boolean> boolResult)
+            OutParamWrapper<Boolean> boolResult,
+            ASTContext context)
     {
         if (e.getType().isIntegralOrEnumerationType())
         {
             OutParamWrapper<APSInt> intResult = new OutParamWrapper<>();
-            if (!evaluateInteger(e, intResult))
+            if (!evaluateInteger(e, intResult, context))
                 return false;
 
             boolResult.set(intResult.get().ne(0));
@@ -92,7 +98,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         else if (e.getType().isRealType())
         {
             OutParamWrapper<BigDecimal> floatResult = new OutParamWrapper<>();
-            if (!evaluateFloat(e, floatResult))
+            if (!evaluateFloat(e, floatResult, context))
                 return false;
             boolResult.set(floatResult.get().equals(0));
             return true;
@@ -100,7 +106,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         else if (e.getType().isPointerType())
         {
             OutParamWrapper<LValue> pointerResult = new OutParamWrapper<LValue>();
-            if (!evaluatePointer(e, pointerResult))
+            if (!evaluatePointer(e, pointerResult, context))
                 return false;
             return evaluatePointerValueAsBool(pointerResult.get(), boolResult);
         }
@@ -115,12 +121,12 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
      * @param result
      * @return
      */
-    public static boolean evaluateInteger(Expr expr, OutParamWrapper<APSInt> result)
+    public static boolean evaluateInteger(Expr expr, OutParamWrapper<APSInt> result, ASTContext ctx)
     {
         assert expr.getType().isIntegralOrEnumerationType();
 
         OutParamWrapper<APValue> val = new OutParamWrapper<>();
-        if (!evaluateIntegerOrLValue(expr, val) || !val.get().isInt())
+        if (!evaluateIntegerOrLValue(expr, val, ctx) || !val.get().isInt())
             return false;
         result.set(val.get().getInt());
         return true;
@@ -137,24 +143,26 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
      */
     public static boolean evaluateIntegerOrLValue(
             Expr expr,
-            OutParamWrapper<APValue> result)
+            OutParamWrapper<APValue> result,
+            ASTContext ctx)
     {
         assert expr.getType().isIntegralOrEnumerationType();
-        return new IntExprEvaluator(result).visit(expr);
+        return new IntExprEvaluator(result, ctx).visit(expr);
     }
 
-    public static boolean evaluateFloat(Expr e, OutParamWrapper<BigDecimal> result)
+    public static boolean evaluateFloat(Expr e, OutParamWrapper<BigDecimal> result, ASTContext ctx)
     {
         assert e.getType().isRealType();
-        return new FloatExprEvaluator(result).visit(e);
+        return new FloatExprEvaluator(result, ctx).visit(e);
     }
 
     public static boolean evaluatePointer(
             Expr e,
-            OutParamWrapper<LValue> reslut)
+            OutParamWrapper<LValue> reslut,
+            ASTContext context)
     {
         assert e.getType().isPointerType();
-        return new PointerExprEvaluator(reslut).visit(e);
+        return new PointerExprEvaluator(reslut, context).visit(e);
     }
 
     public static boolean evaluatePointerValueAsBool(
@@ -213,12 +221,12 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
      * @param e
      * @return
      */
-    public static boolean evaluate(Expr.EvalResult result, Expr e)
+    public static boolean evaluate(Expr.EvalResult result, Expr e, ASTContext context)
     {
         if (e.getType().isIntegralOrEnumerationType())
         {
             OutParamWrapper<APValue> x = new OutParamWrapper<>(result.getValue());
-            if (!new IntExprEvaluator(x).visit(e))
+            if (!new IntExprEvaluator(x, context).visit(e))
                 return false;
             result.val = x.get();
             if (result.getValue().isLValue() &&
@@ -232,7 +240,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         {
             LValue lv = new LValue();
             OutParamWrapper<LValue>  x = new OutParamWrapper<>(lv);
-            if (!evaluatePointer(e, x))
+            if (!evaluatePointer(e, x,context))
                 return false;
             lv = x.get();
             if (!isGlobalLValue(lv.getLValueBase()))
@@ -243,7 +251,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         {
             BigDecimal f = BigDecimal.ZERO;
             OutParamWrapper<BigDecimal> x = new OutParamWrapper<>(f);
-            if (!evaluateFloat(e, x))
+            if (!evaluateFloat(e, x, context))
                 return false;
 
             f = x.get();
@@ -260,8 +268,11 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         return true;
     }
 
-    public static boolean evaluateLValue(Expr expr, OutParamWrapper<LValue> result)
+    public static boolean evaluateLValue(
+            Expr expr,
+            OutParamWrapper<LValue> result,
+            ASTContext ctx)
     {
-        return new LValueExprEvaluator(result).visit(expr);
+        return new LValueExprEvaluator(result, ctx).visit(expr);
     }
 }

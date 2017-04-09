@@ -146,7 +146,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
             os.print("\n\t};\n\n");
         }
 
-        // Emit the ValueType arrays for each RegisterClass
+        // emit the ValueType arrays for each RegisterClass
         for (CodeGenRegisterClass rc : regClasses)
         {
             // Give the register class a legal C name.
@@ -165,7 +165,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         });
         os.println("\t}\n");
 
-        // Emit the register alias set.
+        // emit the register alias set.
         HashMap<Record, HashSet<Record>> registerAlias = new HashMap<>();
         ArrayList<CodeGenRegister> regs = target.getRegisters();
 
@@ -247,7 +247,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         os.println("\t};"); // The end of register descriptor.
 
 
-        // Emit the fields and constrctors for X86GenRegisterInfo.
+        // emit the fields and constrctors for X86GenRegisterInfo.
         os.print("\tpublic %sGenRegisterInfo(int callFrameSetupOpCode, "
                 + "int callFrameDestroyOpCode)");
         os.println();
@@ -255,7 +255,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         os.println("\tsuper(registerDescriptors, registerClasses, callFrameSetupOpCode, callFrameDestroyOpCode) \n\t{}");
         os.println();
 
-        // Emit the getCalleeSavedRegs method.
+        // emit the getCalleeSavedRegs method.
         os.println("private final int[] calleeSavedRegs = {\n\t");
         ArrayList<Record> csrs = target.getCalleeSavedRegisters();
         csrs.forEach(csr->os.print(csr.getName()+", "));
@@ -264,7 +264,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         os.println("public int[] getCalleeSavedRegs() { return calleeSavedRegs; }");
         os.println();
 
-        // Emit information about the callee saved register classes.
+        // emit information about the callee saved register classes.
         os.println("private final TargetRegisterClass[] calleeSavedRegClasses = {\n\t");
 
         csrs.forEach(csr->

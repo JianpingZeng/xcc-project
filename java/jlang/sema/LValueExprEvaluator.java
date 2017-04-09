@@ -31,8 +31,9 @@ import tools.OutParamWrapper;
 public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
     private OutParamWrapper<LValue> result;
-    public LValueExprEvaluator(OutParamWrapper<LValue> result)
+    public LValueExprEvaluator(OutParamWrapper<LValue> result, ASTContext context)
     {
+        super(context);
         this.result = result;
     }
 
@@ -57,7 +58,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
     }
 
     @Override
-    protected boolean visitCastExpr(Tree.CastExpr expr)
+    protected Boolean visitCastExpr(Tree.CastExpr expr)
     {
         switch (expr.getCastKind())
         {
@@ -87,9 +88,9 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
         QualType ty;
         if (expr.isArrow())
         {
-            if (!evaluatePointer(expr.getBase(), result))
+            if (!evaluatePointer(expr.getBase(), result, context))
                 return false;
-            ty = expr.getBase().getType().<PointerType>getAs().getPointeeType();
+            ty = context.<PointerType>getAs(expr.getBase().getType()).getPointeeType();
         }
         else
         {
@@ -98,8 +99,8 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
             ty = expr.getBase().getType();
         }
 
-        RecordDecl recordDecl = ty.<RecordType>getAs().getDecl();
-        RecordLayoutInfo recordLayoutInfo = RecordLayoutInfo.getRecordLayout(recordDecl);
+        RecordDecl recordDecl = context.<RecordType>getAs(ty).getDecl();
+        ASTRecordLayout recordLayout = ASTRecordLayout.getRecordLayout(context, recordDecl);
 
         if (!(expr.getMemberDecl() instanceof FieldDecl))
             return false;
@@ -107,7 +108,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
         FieldDecl field = (FieldDecl) expr.getMemberDecl();
 
         int i = field.getFieldIndex();
-        result.get().offset += QualType.toByteUnitFromBits(recordLayoutInfo.getFiedOffsetAt(i));
+        result.get().offset += context.toByteUnitFromBits(recordLayout.getFieldOffsetAt(i));
         return true;
     }
 
@@ -118,7 +119,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
 
     public Boolean visitArraySubscriptExpr(Tree.ArraySubscriptExpr expr)
     {
-        if (!evaluatePointer(expr.getBase(), result))
+        if (!evaluatePointer(expr.getBase(), result, context))
             return false;
 
         APSInt index = new APSInt();
@@ -136,7 +137,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         if (expr.getOpCode() == UnaryOperatorKind.UO_Deref)
         {
-            return evaluatePointer(expr, result);
+            return evaluatePointer(expr, result, context);
         }
         return false;
     }

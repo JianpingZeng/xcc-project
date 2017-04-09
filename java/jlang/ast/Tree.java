@@ -12,18 +12,18 @@ import tools.Util;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
 import static jlang.ast.CastKind.CK_Invalid;
+import static jlang.ast.Tree.Expr.IsLvalueResult.*;
+import static jlang.ast.Tree.Expr.IsModifiableLvalueResult.*;
+import static jlang.ast.Tree.ExprObjectKind.OK_Ordinary;
 import static jlang.ast.Tree.ExprValueKind.EVK_RValue;
 import static jlang.sema.BinaryOperatorKind.*;
 import static jlang.sema.UnaryOperatorKind.*;
-import static jlang.type.Type.IntTy;
-import static jlang.type.Type.UnsignedIntTy;
 
 /**
  * Root class for abstract syntax tree nodes. It provides definitions for
@@ -218,9 +218,17 @@ abstract public class Tree
 	public static List<Tree> emptyList = new LinkedList<>();
 
 	/**
-	 * The encoded position of current tree.
+	 * A further classification of the kind of object referenced by an
+	 * l-value or x-value.
 	 */
-	public int pos;
+	public enum ExprObjectKind
+	{
+		/// An ordinary object is located at an address in memory.
+		OK_Ordinary,
+
+		/// A bitfield object is a bitfield on a C record.
+		OK_BitField,
+	}
 
 	/**
 	 * The tag that represents the kind of this tree.
@@ -247,20 +255,6 @@ abstract public class Tree
 		this.accept(new Pretty(new PrintWriter(s), false));
 		return s.toString();
 	}
-
-	/**
-	 * Set the position and return this tree.
-	 * 
-	 * @param pos a given position.
-	 * @return
-	 */
-	public Tree setPos(int pos)
-	{
-		this.pos = pos;
-		return this;
-	}
-
-	public int getLoc() {return pos;}
 
 	public int getStmtClass()
     {
@@ -659,14 +653,14 @@ abstract public class Tree
 		private Expr cond;
 		private CaseStmt firstCase;
         private Stmt body;
-        private int switchLoc;
+        private SourceLocation switchLoc;
         /**
          * A flag which indicates whether all enum values are covered in current
          * switch statement by condition X - 'switch (X)'.
          */
         private boolean allEnumCasesCovered;
 
-		public SwitchStmt(Expr cond, int switchLoc)
+		public SwitchStmt(Expr cond, SourceLocation switchLoc)
 		{
 			super(SwitchStmtClass);
             this.cond = cond;
@@ -683,7 +677,7 @@ abstract public class Tree
             return cond;
         }
 
-        public int getSwitchLoc()
+        public SourceLocation getSwitchLoc()
         {
             return switchLoc;
         }
@@ -898,22 +892,36 @@ abstract public class Tree
 	 */
 	public static class ReturnStmt extends Stmt
 	{
-        public final int returnloc;
+        private final SourceLocation returnloc;
         private Expr retValue;
 
-        public ReturnStmt(int returnloc, Expr expr)
+        public ReturnStmt(SourceLocation returnloc, Expr retValExpr)
 		{
 			super(ReturnStmtClass);
             this.returnloc = returnloc;
-			retValue = expr;
+			retValue = retValExpr;
 		}
 
-        public ReturnStmt(int returnloc){this(returnloc, null);}
+        public ReturnStmt(SourceLocation returnloc)
+        {
+	        this(returnloc, null);
+        }
 
-		public void accept(StmtVisitor v){	v.visitReturnStmt(this);}
+		public void accept(StmtVisitor v)
+		{
+			v.visitReturnStmt(this);
+		}
 
-        public Expr getRetValue(){return retValue;}
-    }
+        public Expr getRetValue()
+        {
+	        return retValue;
+        }
+
+		public SourceLocation getReturnLoc()
+		{
+			return returnloc;
+		}
+	}
 
     /**
      * Represents the kind of object an expression reference to.
@@ -937,21 +945,25 @@ abstract public class Tree
     {
         private QualType type;
         private ExprValueKind valuekind;
+	    private ExprObjectKind ok;
         private SourceLocation loc;
 
-        public Expr(int tag, QualType type,
+        public Expr(int tag,
+		        QualType type,
+		        ExprObjectKind ok,
 		        ExprValueKind valuekind,
 		        SourceLocation loc)
         {
             super(tag);
             this.valuekind = valuekind;
+	        this.ok = ok;
             setType(type);
             this.loc = loc;
         }
 
         public Expr(int tag, SourceLocation loc)
         {
-            this(tag, null, null, loc);
+            this(tag, null, null, null, loc);
         }
         public SourceLocation getExprLocation()
         {
@@ -969,22 +981,22 @@ abstract public class Tree
          * or {@code null} if no promotion occurs.
          * @return
          */
-        public QualType isPromotableBitField()
+        public QualType isPromotableBitField(ASTContext ctx)
         {
             FieldDecl field = getBitField();
             if (field == null)
                 return new QualType();
             QualType t = field.getDeclType();
             long bitWidth = field.getBitWidthValue();
-            long intSize = IntTy.getType().getTypeSize();
+            long intSize = ctx.IntTy.getType().getTypeSize();
 
             // GCC extension compatibility: if the bit-field getTypeSize is less than or equal
             // to the getTypeSize of int, it gets promoted no matter what its jlang.type is.
             // For instance, unsigned long bf : 4 gets promoted to signed int.
             if (bitWidth < intSize)
-                return IntTy;
+                return ctx.IntTy;
             if (bitWidth == intSize)
-                return t.getType().isSignedType() ? IntTy : UnsignedIntTy;
+                return t.getType().isSignedType() ? ctx.IntTy : ctx.UnsignedIntTy;
 
             // Types bigger than int are not subject to promotions, and therefore act
             // like the base jlang.type.
@@ -1002,7 +1014,7 @@ abstract public class Tree
             Expr e = this;
             while (true)
             {
-                if (e.tag == ParenExprClass)
+                if (e instanceof ParenExpr)
                 {
                     e = ((ParenExpr)e).subExpr;
                     continue;
@@ -1066,7 +1078,7 @@ abstract public class Tree
             return valuekind == EVK_RValue;
         }
 
-        public ExprValueKind getValuekind()
+        public ExprValueKind getValueKind()
         {
             return valuekind;
         }
@@ -1210,7 +1222,7 @@ abstract public class Tree
 
 	    public SourceLocation getLocStart()
 	    {
-		    return getSourceRange().getStart();
+		    return getSourceRange().getBegin();
 	    }
 
 	    public SourceLocation getLocEnd()
@@ -1235,6 +1247,11 @@ abstract public class Tree
 		    assert evalResult.val.isInt() :"ICE is not integer!";
 		    iceResult.set(evalResult.val.getInt());
 		    return true;
+	    }
+
+	    public ExprObjectKind getObjectKind()
+	    {
+		    return ok;
 	    }
 
 	    public static class ICEDiag
@@ -1501,6 +1518,184 @@ abstract public class Tree
                 return ExprEvaluatorBase.isGlobalLValue(val.getLValueBase());
             }
         }
+
+	    /**
+	     * C99 6.3.2.1: an lvalue that does not have array type,
+	     * does not have an incomplete type, does not have a const-qualified type,
+	     * and if it is a structure or union, does not have any member (including,
+	     * recursively, any member or element of all contained aggregates or unions)
+	     * with a const-qualified type.
+	     */
+	    public enum IsModifiableLvalueResult
+	    {
+		    MLV_Valid,
+		    MLV_NotObjectType,
+		    MLV_IncompleteVoidType,
+		    MLV_InvalidExpression,
+		    MLV_LValueCast,           // Specialized form of MLV_InvalidExpression.
+		    MLV_IncompleteType,
+		    MLV_ConstQualified,
+		    MLV_ArrayType,
+	    }
+
+	    /**
+	     * C99 6.3.2.1: an lvalue is an expression with an object type or an
+	     * incomplete type other than void. Nonarray expressions that can be lvalues:
+	     *  - name, where name must be a variable
+	     *  - e[i]
+	     *  - (e), where e must be an lvalue
+	     *  - e.name, where e must be an lvalue
+	     *  - e->name
+	     *  - *e, the type of e cannot be a function type
+	     *  - string-constant
+	     *  - (__real__ e) and (__imag__ e) where e is an lvalue  [GNU extension]
+	     */
+	    public enum IsLvalueResult
+	    {
+		    LV_Valid,
+		    LV_NotObjectType,
+		    LV_IncompleteVoidType,
+		    LV_InvalidExpression,
+	    }
+
+	    /**
+	     * Determine whether the given declaration can be
+	     * an lvalue. This is a helper routine for isLvalue.
+	     * @param refDecl
+	     * @param ctx
+	     * @return
+	     */
+	    private boolean declCanBeLvalue(NamedDecl refDecl, ASTContext ctx)
+	    {
+		    return refDecl instanceof VarDecl || refDecl instanceof FieldDecl;
+	    }
+
+	    /**
+	     * Check whether the expression can be sanely treated like an l-value
+	     * @param ctx
+	     * @return
+	     */
+	    private IsLvalueResult isLvalueInternal(ASTContext ctx)
+	    {
+		    switch (getStmtClass())
+		    {
+			    // C99 6.5.1p4
+			    case StringLiteralClass:
+				    return LV_Valid;
+			    case ArraySubscriptExprClass:
+				    // C99 6.5.3p4 (e1[e2] == (*((e1)+(e2))))
+				    return LV_Valid;
+			    case DeclRefExprClass:
+				    NamedDecl refedDecl = ((DeclRefExpr)this).getDecl();
+				    if (declCanBeLvalue(refedDecl, ctx))
+					    return LV_Valid;
+				    break;
+			    case MemberExprClass:
+				    MemberExpr m = (MemberExpr)this;
+				    // C99 6.5.2.3p4
+				    return m.isArrow() ? LV_Valid : m.getBase().isLvalue(ctx);
+			    case UnaryOperatorClass:
+				    UnaryExpr ue = (UnaryExpr)this;
+				    if (ue.getOpCode() == UnaryOperatorKind.UO_Deref)
+					    return LV_Valid;
+				    break;
+			    case ImplicitCastClass:
+				    return LV_InvalidExpression;
+			    case ParenExprClass:
+				    return ((ParenExpr)this).getSubExpr().isLvalue(ctx);
+			    case BinaryOperatorClass:
+			    case CompoundAssignOperatorClass:
+				    return LV_InvalidExpression;
+			    case CallExprClass:
+				    break;
+			    case CompoundLiteralExprClass:
+				    // C99 6.5.2.5p5
+				    return LV_Valid;
+			    case ConditionalOperatorClass:
+				    return LV_InvalidExpression;
+		    }
+
+		    return LV_InvalidExpression;
+	    }
+
+	    /**
+	     * C99 6.3.2.1: an lvalue is an expression with an object type or an
+	     * incomplete type other than void. Nonarray expressions that can be lvalues:
+	     *  - name, where name must be a variable
+	     *  - e[i]
+	     *  - (e), where e must be an lvalue
+	     *  - e.name, where e must be an lvalue
+	     *  - e->name
+	     *  - *e, the type of e cannot be a function type
+	     *  - string-constant
+	     *  - (__real__ e) and (__imag__ e) where e is an lvalue  [GNU extension]
+	     * @param ctx
+	     * @return
+	     */
+	    private IsLvalueResult isLvalue(ASTContext ctx)
+	    {
+			IsLvalueResult res = isLvalueInternal(ctx);
+
+		    if (res != LV_Valid)
+			    return res;
+
+		    // first, check the type (C99 6.3.2.1). Expressions with function
+		    // type in C are not lvalues
+		    if (type.isFunctionType())
+			    return LV_NotObjectType;
+
+		    // Allow qualified void which is an incomplete type other than void (yuck).
+		    if (type.isVoidType() && type.getCanonicalTypeInternal().getCVRQualifiers() == 0)
+			    return LV_IncompleteVoidType;
+
+		    return LV_Valid;
+	    }
+	    public IsModifiableLvalueResult isModifiableLvalue(
+			    ASTContext context,
+			    OutParamWrapper<SourceLocation> loc)
+	    {
+			IsLvalueResult lvalResult = isLvalue(context);
+
+		    switch (lvalResult)
+		    {
+			    case LV_Valid:
+			    case LV_NotObjectType: return MLV_NotObjectType;
+			    case LV_IncompleteVoidType: return MLV_IncompleteVoidType;
+			    case LV_InvalidExpression:
+				    // If the top level is a C-style cast, and the subexpression is a valid
+				    // lvalue, then this is probably a use of the old-school "cast as lvalue"
+				    // GCC extension.  We don't support it, but we want to produce good
+				    // diagnostics when it happens so that the user knows why.
+				    if (ignoreParens() instanceof ExplicitCastExpr)
+				    {
+					    ExplicitCastExpr ce = (ExplicitCastExpr)ignoreParens();
+					    if (ce.getSubExpr().isLvalue(context) == LV_Valid)
+					    {
+						    if (loc != null)
+							    loc.set(ce.lParenLoc);
+						    return MLV_LValueCast;
+					    }
+				    }
+			        return MLV_InvalidExpression;
+		    }
+
+		    QualType ct = getType().getCanonicalTypeInternal();
+
+		    if (ct.isConstQualifed())
+			    return MLV_ConstQualified;
+		    if (ct.isArrayType())
+			    return MLV_ArrayType;
+		    if (ct.isIncompleteType())
+			    return MLV_IncompleteType;
+		    RecordType rt = context.<RecordType>getAs(ct);
+		    if (rt != null)
+		    {
+			    if (rt.hasConstFields())
+				    return MLV_ConstQualified;
+		    }
+
+		    return MLV_Valid;
+	    }
     }
 
     //************* Primary expression ******************************//
@@ -1526,10 +1721,11 @@ abstract public class Tree
 
         public DeclRefExpr(String name, NamedDecl d,
                 QualType ty,
+		        ExprObjectKind ok,
                 ExprValueKind valueKind,
                 SourceLocation loc)
         {
-            super(DeclRefExprClass, ty, valueKind, loc);
+            super(DeclRefExprClass, ty, ok, valueKind, loc);
             this.name = name;
             this.d = d;
             location = loc;
@@ -1586,7 +1782,7 @@ abstract public class Tree
                 QualType type,
                 SourceLocation loc)
         {
-            super(IntegerLiteralClass, type, EVK_RValue, loc);
+            super(IntegerLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
             assert type.isIntegerType():"Illegal jlang.type in Integer literal.";
             assert value.getBitWidth() == type.getTypeSize()
                     :"Integer jlang.type is not the correct getNumOfSubLoop for constant.";
@@ -1615,20 +1811,16 @@ abstract public class Tree
 
     public static class FloatLiteral extends Expr
     {
-        private BigDecimal val;
+        private double val;
         public FloatLiteral(QualType type,
-                ExprValueKind valuekind,
+                double value,
                 SourceLocation loc)
         {
-            super(FloatLiteralClass, type, valuekind, loc);
+            super(FloatLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
+	        val = value;
         }
 
-        public FloatLiteral(SourceLocation loc)
-        {
-            super(FloatLiteralClass, loc);
-        }
-
-        public BigDecimal getValue()
+        public double getValue()
         {
             return val;
         }
@@ -1657,10 +1849,9 @@ abstract public class Tree
         public CharacterLiteral(
                 char val,
                 QualType type,
-                ExprValueKind valuekind,
                 SourceLocation loc)
         {
-            super(CharacterLiteralClass, type, valuekind, loc);
+            super(CharacterLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
             this.val = val;
         }
 
@@ -1698,10 +1889,9 @@ abstract public class Tree
         public StringLiteral(
                 QualType type,
 		        String str,
-                ExprValueKind valuekind,
                 SourceLocation loc)
         {
-            super(CharacterLiteralClass, type, valuekind, loc);
+            super(CharacterLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
 	        strData = str;
         }
 
@@ -1777,7 +1967,7 @@ abstract public class Tree
                 SourceLocation rParenLoc,
                 QualType type)
         {
-            super(ParenListExprClass, type, EVK_RValue, lParenLoc);
+            super(ParenListExprClass, type, OK_Ordinary, EVK_RValue, lParenLoc);
             this.lParenLoc = lParenLoc;
             this.exprs = exprs;
             this.rParenLoc = rParenLoc;
@@ -1835,7 +2025,7 @@ abstract public class Tree
                 final CastKind castKind,
                 SourceLocation loc)
         {
-            super(tag, ty, valueKind, loc);
+            super(tag, ty, OK_Ordinary, valueKind, loc);
             assert castKind != CK_Invalid :"creating cast with invalid cast kind.";
             this.expr = expr;
             this.castKind = castKind;
@@ -1915,7 +2105,7 @@ abstract public class Tree
 			    SourceLocation lParenLoc,
 			    SourceLocation rParenLoc)
 	    {
-		    this(ty, ExprValueKind.EVK_RValue, expr, castKind, lParenLoc, rParenLoc);
+		    this(ty, EVK_RValue, expr, castKind, lParenLoc, rParenLoc);
 	    }
 
         public ExplicitCastExpr(QualType ty, ExprValueKind valueKind,
@@ -1966,7 +2156,7 @@ abstract public class Tree
                 ExprValueKind valueKind,
                 SourceLocation rBracketLoc)
         {
-            super(ArraySubscriptExprClass, t, valueKind, rBracketLoc);
+            super(ArraySubscriptExprClass, t, OK_Ordinary, valueKind, rBracketLoc);
             subExprs = new Expr[2];
             subExprs[0] = indexed;
             subExprs[1] = index;
@@ -2054,7 +2244,7 @@ abstract public class Tree
                 ExprValueKind vk,
                 SourceLocation rparenLoc)
 		{
-			super(CallExprClass, resultType, vk, rparenLoc);
+			super(CallExprClass, resultType, OK_Ordinary, vk, rparenLoc);
 			this.fn = fn;
 			this.args = args;
 			this.rparenLoc = rparenLoc;
@@ -2141,7 +2331,7 @@ abstract public class Tree
             }
 
             final FunctionType fnType = calleeType.getFunctionType();
-            return fnType.getReturnType();
+            return fnType.getResultType();
         }
 
         @Override
@@ -2154,6 +2344,37 @@ abstract public class Tree
 		public SourceRange getSourceRange()
 		{
 			return new SourceRange(getCallee().getExprLocation(), rparenLoc);
+		}
+
+		public int getNumArgs()
+		{
+			return args.size();
+		}
+
+		/**
+		 * This changes the number of arguments present in this call.
+		 * Any orphaned expressions are deleted by this, and any new operands are set
+		 * to null.
+		 * @param numArgs
+		 */
+		public void setNumArgs( int numArgs)
+		{
+			if (numArgs == getNumArgs())
+				return;
+
+			if (numArgs < getNumArgs())
+			{
+				for (int i = numArgs, e = getNumArgs(); i < e; i++)
+					args.remove(i);
+
+				args.trimToSize();
+				return;
+			}
+			// Otherwise, null out new args.
+			for (int i = numArgs - getNumArgs(); i != 0; --i)
+			{
+				args.add(null);
+			}
 		}
 	}
 
@@ -2189,9 +2410,10 @@ abstract public class Tree
                 ValueDecl memberDecl,
                 QualType type,
                 ExprValueKind valuekind,
-                SourceLocation loc)
+                SourceLocation loc,
+		        ExprObjectKind ok)
         {
-            super(MemberExprClass, type, valuekind, loc);
+            super(MemberExprClass, type, ok, valuekind, loc);
             this.base = base;
             this.isArrow = isArrow;
             this.memberDecl = memberDecl;
@@ -2275,7 +2497,7 @@ abstract public class Tree
                 Expr init,
                 boolean fileScope)
         {
-            super(CompoundLiteralExprClass, type, valuekind, lParenLoc);
+            super(CompoundLiteralExprClass, type, OK_Ordinary, valuekind, lParenLoc);
             this.lParenLoc = lParenLoc;
             ty = type;
             isFileScope = fileScope;
@@ -2355,7 +2577,6 @@ abstract public class Tree
 	{
 		private Expr subExpr;
 		private UnaryOperatorKind opcode;
-        private ExprValueKind evk;
 		private SourceLocation loc;
 		public UnaryExpr(Expr subExpr,
                 UnaryOperatorKind opcode,
@@ -2363,10 +2584,9 @@ abstract public class Tree
                 ExprValueKind evk,
                 SourceLocation loc)
 		{
-			super(UnaryOperatorClass, loc);
+			super(UnaryOperatorClass, type, OK_Ordinary, evk, loc);
 			this.subExpr = subExpr;
             this.opcode = opcode;
-            this.evk = evk;
 			this.loc = loc;
 		}
 
@@ -2472,7 +2692,7 @@ abstract public class Tree
                 SourceLocation opLoc,
 		        SourceLocation rp)
         {
-            super(UnaryExprOrTypeTraitClass, resultType, EVK_RValue, opLoc);
+            super(UnaryExprOrTypeTraitClass, resultType, OK_Ordinary, EVK_RValue, opLoc);
             this.kind = kind;
             isType = true;
             this.opLoc = opLoc;
@@ -2486,7 +2706,7 @@ abstract public class Tree
                 SourceLocation opLoc,
 		        SourceLocation rp)
         {
-            super(UnaryExprOrTypeTraitClass, resultType, EVK_RValue, opLoc);
+            super(UnaryExprOrTypeTraitClass, resultType, OK_Ordinary, EVK_RValue, opLoc);
             this.kind = kind;
             isType = true;
             this.opLoc = opLoc;
@@ -2534,7 +2754,7 @@ abstract public class Tree
                 QualType resultTy,
                 SourceLocation oploc)
 		{
-			super(BinaryOperatorClass, resultTy, vk, oploc);
+			super(BinaryOperatorClass, resultTy, OK_Ordinary, vk, oploc);
 			this.lhs = lhs;
 			this.rhs = rhs;
 			opcode = op;
@@ -2726,7 +2946,7 @@ abstract public class Tree
                 QualType t,
                 ExprValueKind vk)
         {
-            super(ConditionalOperatorClass, t, vk, cond.getExprLocation());
+            super(ConditionalOperatorClass, t, OK_Ordinary, vk, cond.getExprLocation());
             this.cond = cond;
             truepart = lhs;
             falsepart = rhs;
@@ -2760,7 +2980,8 @@ abstract public class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+	    public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(cond.getLocStart(), falsepart.getLocEnd());
 	    }

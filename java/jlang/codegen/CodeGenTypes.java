@@ -260,7 +260,7 @@ public class CodeGenTypes
             case UnsignedLong:
                 resultType = IntegerType.get((int) ty.getTypeSize());
                 break;
-            case Real:
+            case Float:
             {
                 if (((RealType) ty).isSinglePoint())
                     resultType = backend.type.Type.FloatTy;
@@ -352,7 +352,7 @@ public class CodeGenTypes
                     break;
                 }
                 CGFunctionInfo fi = getFunctionInfo2(new QualType(fnType), null);
-                boolean isVaridic = fnType.isVarArgs();
+                boolean isVaridic = fnType.isVariadic();
 
                 // The function type can be built; call the appropriate routines to
                 // build it.
@@ -548,7 +548,7 @@ public class CodeGenTypes
      */
     private boolean isFuncTypeConvertible(jlang.type.FunctionType fnType)
     {
-        if (!isFuncTypeArgumentConvitable(fnType.getReturnType()))
+        if (!isFuncTypeArgumentConvitable(fnType.getResultType()))
             return false;
 
         for (jlang.type.QualType t : fnType.getParamTypes())

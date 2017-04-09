@@ -1,8 +1,8 @@
 package jlang.diag;
 
-import static jlang.diag.Diagnostics.Level.Error;
-import static jlang.diag.Diagnostics.Level.*;
-import static jlang.diag.Diagnostics.Mapping.*;
+import static jlang.diag.Diagnostic.Level.Error;
+import static jlang.diag.Diagnostic.Level.*;
+import static jlang.diag.Diagnostic.Mapping.*;
 
 public enum DiagnosticLexKinds implements DiagnosticLexKindsTag 
 {
@@ -159,12 +159,12 @@ public enum DiagnosticLexKinds implements DiagnosticLexKindsTag
 	WARN_STDC_FENV_ACCESS_NOT_SUPPORTED(warn_stdc_fenv_access_not_supported, Warning, MAP_WARNING, "pragma STDC FENV_ACCESS ON is not supported, ignoring pragma");
 
 	public int diagID;
-	public Diagnostics.Level diagClass;
-	public Diagnostics.Mapping diagMapping;
+	public Diagnostic.Level diagClass;
+	public Diagnostic.Mapping diagMapping;
 	public String text;
 
-	DiagnosticLexKinds(int diagID, Diagnostics.Level diagClass,
-			Diagnostics.Mapping diagMapping, String text)
+	DiagnosticLexKinds(int diagID, Diagnostic.Level diagClass,
+			Diagnostic.Mapping diagMapping, String text)
 	{
 		this.diagID = diagID;
 		this.diagClass = diagClass;

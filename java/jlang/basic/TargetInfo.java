@@ -22,6 +22,19 @@ package jlang.basic;
  */
 public class TargetInfo
 {
+	public enum IntType
+	{
+		NoInt,
+		SignedShort,
+		UnsignedShort,
+		SignedInt,
+		UnsignedInt,
+		SignedLong,
+		UnsignedLong,
+		SignedLongLong,
+		UnsignedLongLong
+	}
+
 	private String triple;
 
 	protected boolean TLSSupported;
@@ -34,7 +47,11 @@ public class TargetInfo
 	protected int longDoubleWidth, longDoubleAlign;
 	protected int longWidth, longAlign;
 	protected int longlongWidth, longlongAlign;
+	protected int intMaxTWidth;
 	protected String descriptionString;
+
+	protected IntType SizeType, IntMaxType, UIntMaxType, PtrDiffType, IntPtrType, WCharType,
+			Char16Type, Char32Type, Int64Type;
 
 	public String getTriple()
 	{
@@ -46,12 +63,74 @@ public class TargetInfo
 		this.triple = triple;
 	}
 
-	public boolean isTLSSupported() {return  TLSSupported;}
-	public int getPointerWidth() {return pointerWidth; }
+	public boolean isTLSSupported()
+	{
+		return  TLSSupported;
+	}
 
-	public int getPointerAlign()
+	public IntType getSizeType()
+	{
+		return SizeType;
+	}
+
+	public IntType getIntMaxType()
+	{
+		return IntMaxType;
+	}
+
+	public IntType getUIntMaxType()
+	{
+		return UIntMaxType;
+	}
+
+	public IntType getPtrDiffType(int addrSpace)
+	{
+		return PtrDiffType;
+	}
+
+	public IntType getIntPtrType()
+	{
+		return IntPtrType;
+	}
+
+	public IntType getWCharType()
+	{
+		return WCharType;
+	}
+
+	public IntType getChar16Type()
+	{
+		return Char16Type;
+	}
+
+	public IntType getChar32Type()
+	{
+		return Char32Type;
+	}
+
+	public IntType getInt64Type()
+	{
+		return Int64Type;
+	}
+
+	public int getPointerWidth(int addressSpace)
+	{
+		return pointerWidth;
+	}
+
+	public int getPointerAlign(int addrSpace)
 	{
 		return pointerAlign;
+	}
+
+	public int getBoolWidth()
+	{
+		return 8;
+	}
+
+	public int getBoolAlign()
+	{
+		return 8;
 	}
 
 	public int getCharWidth()
@@ -137,5 +216,10 @@ public class TargetInfo
 	public String getDescriptionString()
 	{
 		return descriptionString;
+	}
+
+	public int getIntMaxWidth()
+	{
+		return intMaxTWidth;
 	}
 }

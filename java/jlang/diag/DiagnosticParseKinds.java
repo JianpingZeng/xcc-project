@@ -16,9 +16,9 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import static jlang.diag.Diagnostics.Level.Error;
-import static jlang.diag.Diagnostics.Level.*;
-import static jlang.diag.Diagnostics.Mapping.*;
+import static jlang.diag.Diagnostic.Level.Error;
+import static jlang.diag.Diagnostic.Level.*;
+import static jlang.diag.Diagnostic.Mapping.*;
 
 /**
  * @author xlous.zeng
@@ -356,12 +356,12 @@ public enum DiagnosticParseKinds implements DiagnosticParseTag
 			"expected '#pragma unused' argument to be a variable name");
 
 	public int diagID;
-	public Diagnostics.Level diagClass;
-	public Diagnostics.Mapping diagMapping;
+	public Diagnostic.Level diagClass;
+	public Diagnostic.Mapping diagMapping;
 	public String text;
 
-	DiagnosticParseKinds(int diagID, Diagnostics.Level diagClass,
-			Diagnostics.Mapping diagMapping, String text)
+	DiagnosticParseKinds(int diagID, Diagnostic.Level diagClass,
+			Diagnostic.Mapping diagMapping, String text)
 	{
 		this.diagID = diagID;
 		this.diagClass = diagClass;

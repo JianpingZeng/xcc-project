@@ -27,7 +27,7 @@ public enum ProgramAction
     /**
      * Indicates if letting the compiler emit assembly code in target machine.
      */
-    GenerateAsmCode("S", false, "Emit native assembly code"),
+    GenerateAsmCode("S", false, "emit native assembly code"),
 
     /**
      * Specify the optimize level for speed.

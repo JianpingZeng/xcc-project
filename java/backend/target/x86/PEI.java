@@ -189,7 +189,7 @@ public class PEI extends MachineFunctionPass
             insertPos = regInfo.storeRegToStackSlot(entry, insertPos, reg, frameIdx, rc);
         }
 
-        // Emit code for storing data from stack slot to register in each exit block.
+        // emit code for storing data from stack slot to register in each exit block.
         TargetInstrInfo instrInfo = mf.getTargetMachine().getInstrInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {

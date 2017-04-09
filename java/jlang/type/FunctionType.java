@@ -1,5 +1,7 @@
 package jlang.type;
 
+import jlang.sema.ASTContext;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -84,7 +86,7 @@ public class FunctionType extends Type
         return target.isFunctionType();
     }
 
-    public QualType getReturnType()
+    public QualType getResultType()
     {
         return returnType;
     }
@@ -94,7 +96,7 @@ public class FunctionType extends Type
         return paramTypes;
     }
 
-    public boolean isVarArgs()
+    public boolean isVariadic()
     {
         return isVarArgs;
     }
@@ -107,7 +109,7 @@ public class FunctionType extends Type
         }
         else
         {
-            assert !isVarArgs : "The isVarArgs must be false.";
+            assert !isVarArgs : "The isVariadic must be false.";
             return numArgs == paramTypes.size();
         }
     }
@@ -134,11 +136,16 @@ public class FunctionType extends Type
         return buf.toString();
     }
 
-    public int getNumParams() { return paramTypes.size(); }
+    public int getNumArgs() { return paramTypes.size(); }
 
-    public QualType getParamType(int i)
+    public QualType getArgType(int i)
     {
         assert i>=0 && i<paramTypes.size();
         return paramTypes.get(i);
+    }
+
+    public QualType getCallReturnType(ASTContext ctx)
+    {
+        return ctx.getLValueExprType(getResultType());
     }
 }
