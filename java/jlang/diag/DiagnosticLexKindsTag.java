@@ -2,8 +2,7 @@ package jlang.diag;
 
 public interface DiagnosticLexKindsTag
 {
-	public static final int DiagnosticLexKindsBegin = 1;
-	public static final int backslash_newline_space = DiagnosticLexKindsBegin;
+	public static final int backslash_newline_space = Diagnostic.DiagnosticLexKindsBegin;
 	public static final int charize_microsoft_ext = backslash_newline_space + 1;
 	public static final int err__Pragma_malformed = charize_microsoft_ext + 1;
 	public static final int err_defined_macro_name = err__Pragma_malformed + 1;
@@ -155,5 +154,4 @@ public interface DiagnosticLexKindsTag
 	public static final int warn_pragma_ignored = warn_pragma_diagnostic_unknown_warning + 1;
 	public static final int warn_stdc_fenv_access_not_supported = warn_pragma_ignored + 1;
 
-	public static final int DiagnosticLexKindsEnd = warn_stdc_fenv_access_not_supported + 1;
 }

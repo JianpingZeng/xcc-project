@@ -16,18 +16,17 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
+import gnu.trove.list.array.TIntArrayList;
 import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
+import jlang.basic.SourceRange;
 import jlang.type.QualType;
 
-import static jlang.diag.DiagnosticCommonKindsTag.DiagnosticCommonKindsBegin;
-import static jlang.diag.DiagnosticCommonKindsTag.DiagnosticCommonKindsEnd;
-import static jlang.diag.DiagnosticLexKindsTag.DiagnosticLexKindsBegin;
-import static jlang.diag.DiagnosticLexKindsTag.DiagnosticLexKindsEnd;
-import static jlang.diag.DiagnosticParseTag.DiagnosticParseKindsBegin;
-import static jlang.diag.DiagnosticParseTag.DiagnosticParseKindsEnd;
-import static jlang.diag.DiagnosticSemaTag.DiagnosticSemaKindsBegin;
-import static jlang.diag.DiagnosticSemaTag.DiagnosticSemaKindsEnd;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedList;
+
+import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Error;
+import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Ignore;
 
 /**
  * @author Xlous.zeng
@@ -35,7 +34,114 @@ import static jlang.diag.DiagnosticSemaTag.DiagnosticSemaKindsEnd;
  */
 public final class Diagnostic
 {
-	/**
+    public static final int DiagnosticCommonKindsBegin = 0;
+    public static final int DiagnosticCommonKindsEnd = DiagnosticCommonKindsBegin + 120;
+    public static final int DiagnosticLexKindsBegin = DiagnosticCommonKindsEnd;
+    public static final int DiagnosticLexKindsEnd = DiagnosticLexKindsBegin + 300;
+    public static final int DiagnosticParseKindsBegin = DiagnosticLexKindsEnd;
+
+    public static final int DiagnosticParseKindsEnd = DiagnosticParseKindsBegin + 500;
+    public static final int DiagnosticSemaKindsBegin = DiagnosticParseKindsEnd;
+    public static final int DiagnosticSemaKindsEnd = DiagnosticSemaKindsBegin + 3500;
+
+    public static final int DIAG_UPPER_LIMIT = DiagnosticSemaKindsEnd;
+
+
+    static class StaticDiagInfoRec implements Comparable<StaticDiagInfoRec>
+    {
+        int diagID;
+        Mapping mapping;
+        DiagnosticClass diagClass;
+        boolean sfinae;
+        String description;
+        String optionGroup;
+
+        StaticDiagInfoRec(int diagID,
+                Mapping mapping,
+                DiagnosticClass diagClass,
+                boolean sfinae,
+                String description,
+                String optionGroup)
+        {
+            this.diagID = diagID;
+            this.mapping = mapping;
+            this.sfinae = sfinae;
+            this.description = description;
+            this.optionGroup = optionGroup;
+        }
+
+        @Override
+        public int compareTo(StaticDiagInfoRec o)
+        {
+            return diagID - o.diagID;
+        }
+    }
+
+    private static final StaticDiagInfoRec[] staticDiagInfos;
+    static
+    {
+        int commonLen = DiagnosticCommonKinds.values().length;
+        int lexLen = DiagnosticLexKinds.values().length;
+        int parseLen = DiagnosticParseKinds.values().length;
+        int semaLen = DiagnosticSemaKinds.values().length;
+
+        staticDiagInfos = new StaticDiagInfoRec[commonLen + lexLen + parseLen + semaLen];
+        int idx = 0;
+        for (DiagnosticCommonKinds kinds : DiagnosticCommonKinds.values())
+        {
+            staticDiagInfos[idx++] = new StaticDiagInfoRec(kinds.diagID,
+                    kinds.diagMapping, kinds.diagClass,
+                    kinds.sfinae, kinds.text, kinds.optionGroup);
+        }
+
+        for (DiagnosticLexKinds kinds : DiagnosticLexKinds.values())
+        {
+            staticDiagInfos[idx++] = new StaticDiagInfoRec(kinds.diagID,
+                    kinds.diagMapping, kinds.diagClass,
+                    kinds.sfinae, kinds.text, kinds.optionGroup);
+        }
+
+        for (DiagnosticParseKinds kinds : DiagnosticParseKinds.values())
+        {
+            staticDiagInfos[idx++] = new StaticDiagInfoRec(kinds.diagID,
+                    kinds.diagMapping, kinds.diagClass,
+                    kinds.sfinae, kinds.text, kinds.optionGroup);
+        }
+
+        for (DiagnosticSemaKinds kinds : DiagnosticSemaKinds.values())
+        {
+            staticDiagInfos[idx++] = new StaticDiagInfoRec(kinds.diagID,
+                    kinds.diagMapping, kinds.diagClass,
+                    kinds.sfinae, kinds.text, kinds.optionGroup);
+        }
+    }
+
+    /**
+     * Return the StaticDiagInfoRec entry for the specified DiagID,
+     * or null if the ID is invalid.
+     * @param diagID
+     * @return
+     */
+    private static StaticDiagInfoRec getDiagInfo(int diagID)
+    {
+        StaticDiagInfoRec rec = new StaticDiagInfoRec(diagID, null, null, false, null, null);
+        Arrays.sort(staticDiagInfos);
+        int foundIndice = Arrays.binarySearch(staticDiagInfos, rec,
+                Comparator.comparingInt(o -> o.diagID));
+        StaticDiagInfoRec foundRec = staticDiagInfos[foundIndice];
+        return foundIndice >= 0 && foundRec.diagID == diagID? foundRec : null;
+    }
+
+    // Diagnostic classes.
+    public enum DiagnosticClass
+    {
+        CLASS_NOTE,
+        CLASS_WARNING,
+        CLASS_EXTENSION,
+        CLASS_ERROR,
+    }
+
+    /**
 	 * The level of the diagnostics.
 	 */
 	public enum Level
@@ -50,8 +156,10 @@ public final class Diagnostic
 		MAP_ERROR,     //< Map this diagnostic to an error.
 		MAP_FATAL,     //< Map this diagnostic to a fatal error.
 
-		/// Map this diagnostic to "warning", but make it immune to -Werror.  This
-		/// happens when you specify -Wno-error=foo.
+        /**
+         * Map this diagnostic to "warning", but make it immune to -Werror.  This
+         * happens when you specify -Wno-error=foo.
+         */
 		MAP_WARNING_NO_WERROR
 	}
 
@@ -67,19 +175,20 @@ public final class Diagnostic
 	public enum ArgumentKind
 	{
 		ak_std_string,      // std::string
-		ak_c_string,        // const char *
+		ak_c_string,        // String 
 		ak_sint,            // int
-		ak_uint,            // unsigned
+		ak_uint,            // int
 		ak_identifier,      // Identifier
 		ak_qualtype,        // QualType
 		ak_declarationname, // DeclarationName
 		ak_nameddecl        // NamedDecl *
 	}
 
+	private int allExtensionsSilenced; // Used by __extension__
 	/**
 	 * Ignores all warnings.
 	 */
-	private boolean ignoreAllWarings;
+	private boolean ignoreAllWarnings;
 	/**
 	 * Treat the warning as error.
 	 */
@@ -89,8 +198,17 @@ public final class Diagnostic
 	 */
 	private boolean suppressSystemWarnings;
 
+    /**
+     * Is there error occured?
+     */
 	private boolean errorOccurred;
+
 	private boolean fatalErrorOcurred;
+
+    /**
+     * Map extensions onto warnings or errors?
+     */
+	private ExtensionHandling extBehavior;
 
 	/**
 	 * This is the level of the last diagnostic emitted.  This is
@@ -102,7 +220,21 @@ public final class Diagnostic
 	private int numDiagnostics;
 	private int numErrors;
 
+	/**
+	 * This is a DiagnosticClient used for printing error or warning message
+     * out in appropriate style.
+	 */
 	private DiagnosticClient client;
+
+    /**
+     * Mapping information for diagnostics.  Mapping info is
+     * packed into four bits per diagnostic.  The low three bits are the mapping
+     * (an instance of diag::Mapping), or zero if unset.  The high bit is set
+     * when the mapping was established as a user mapping.  If the high bit is
+     * clear, then the low bits are set to the default value, and should be
+     * mapped with -pedantic, -Werror, etc.
+     */
+	private LinkedList<TIntArrayList> diagMappingsStack;
 
 	private int curDiagID;
 
@@ -124,14 +256,14 @@ public final class Diagnostic
 	private SourceRange[] diagRanges = new SourceRange[10];
 	public static final int maxFixItHints = 3;
 
-	private FixItHint[] fixItHints =
-			new FixItHint[maxFixItHints];
+	private FixItHint[] fixItHints = new FixItHint[maxFixItHints];
 
 	public Diagnostic(DiagnosticClient client)
 	{
 		this.client = client;
 		lastDiagLevel = Level.Ignored;
 		curDiagID = ~0;
+        diagMappingsStack = new LinkedList<>();
 	}
 
 	enum SuppressKind
@@ -139,7 +271,118 @@ public final class Diagnostic
 		Suppress
 	}
 
-	public int getID()
+    public DiagnosticClient getClient()
+    {
+        return client;
+    }
+
+    public void setClient(DiagnosticClient client)
+    {
+        this.client = client;
+    }
+
+    /**
+     * When set to true, any unmapped warnings are ignored.  If this and
+     * warningsAsErrors are both set, then this one wins.
+     * @param val
+     */
+    void setIgnoreAllWarnings(boolean val)
+    {
+        ignoreAllWarnings = val;
+    }
+    boolean getIgnoreAllWarnings()
+    {
+        return ignoreAllWarnings;
+    }
+
+    /**
+     * When set to true, any warnings reported are issued as errors.
+     * @param val
+     */
+    void setWarningsAsErrors(boolean val)
+    {
+        warningsAsErrors = val;
+    }
+    boolean getWarningsAsErrors()
+    {
+        return warningsAsErrors;
+    }
+
+    /**
+     * When set to true mask warnings that come from system headers.
+     * @param val
+     */
+    void setSuppressSystemWarnings(boolean val)
+    {
+        suppressSystemWarnings = val;
+    }
+
+    boolean getSuppressSystemWarnings()
+    {
+        return suppressSystemWarnings;
+	}
+
+    /**
+     * This is a counter bumped when an __extension__
+     * block is encountered.  When non-zero, all extension diagnostics are
+     * entirely silenced, no matter how they are mapped.
+     */
+    public void incrementAllExtensionsSilenced()
+    {
+        ++allExtensionsSilenced;
+    }
+    public void decrementAllExtensionsSilenced()
+    {
+        --allExtensionsSilenced;
+    }
+
+    /**
+     * This allows the client to specify that certain warnings are ignored.
+     * Notes can never be mapped, errors can only be mapped to fatal, and
+     * WARNINGs and EXTENSIONs can be mapped arbitrarily.
+     * @param diag
+     * @param Map
+     */
+    public void setDiagnosticMapping(int diag, Mapping Map)
+    {
+        assert diag < DIAG_UPPER_LIMIT : "Can only map builtin diagnostics";
+        assert (isBuiltinWarningOrExtension(diag) || Map == Mapping.MAP_FATAL) :
+                "Cannot map errors!";
+        setDiagnosticMappingInternal(diag, Map, true);
+    }
+
+    /**
+     * This controls whether otherwise-unmapped
+     * extension diagnostics are mapped onto ignore/warning/error.  This
+     * corresponds to the GCC -pedantic and -pedantic-errors option.
+     * @param h
+     */
+    void setExtensionHandlingBehavior(ExtensionHandling h)
+    {
+        extBehavior = h;
+    }
+
+    public boolean hasErrorOccurred()
+    {
+        return errorOccurred;
+    }
+
+    public boolean hasFatalErrorOcurred()
+    {
+        return fatalErrorOcurred;
+    }
+
+    public int getNumErrors()
+    {
+        return numErrors;
+    }
+
+    public int getNumDiagnostics()
+    {
+        return numDiagnostics;
+    }
+
+    public int getID()
 	{
 		return curDiagID;
 	}
@@ -185,6 +428,304 @@ public final class Diagnostic
 		return fixItHints[index];
 	}
 
+    //===--------------------------------------------------------------------===//
+    // Diagnostic classification and reporting interfaces.
+    //
+
+    /**
+     * Given a diagnostic ID, return a description of the issue.
+     * @param diagID
+     * @return
+     */
+    public static String getDescription(int diagID)
+    {
+        if (isDiagnosticLexKinds(diagID))
+            return DiagnosticLexKinds.values()[diagID - DiagnosticCommonKindsBegin].text;
+        else if (isDiagnosticParseKinds(diagID))
+            return DiagnosticParseKinds.values()[diagID - DiagnosticParseKindsBegin].text;
+        else if (isDiagnoticSemaKinds(diagID))
+            return DiagnosticSemaKinds.values()[diagID - DiagnosticSemaKindsBegin].text;
+        else
+        {
+            assert isDiagnosticCommonKinds(diagID);
+            return DiagnosticCommonKinds.values()[diagID - DiagnosticCommonKindsBegin].text;
+        }
+    }
+    
+    /**
+     * Return true if the unmapped diagnostic level of the specified diagnostic
+     * ID is a Warning or Extension. This only works on builtin diagnostics,
+     * not custom ones, and is not legal to call on NOTEs.
+     * @param diagID
+     * @return
+     */
+    public static boolean isBuiltinWarningOrExtension(int diagID)
+    {
+        return diagID < DIAG_UPPER_LIMIT &&
+                getBuiltinDiagClass(diagID) != DiagnosticClass.CLASS_ERROR;
+    }
+
+    /**
+     * Determine whether the given built-in diagnostic ID is a Note.
+     * @param diagID
+     * @return
+     */
+    public boolean isBuiltinNote(int diagID)
+    {
+        return diagID < DIAG_UPPER_LIMIT &&
+                getBuiltinDiagClass(diagID) == DiagnosticClass.CLASS_NOTE;
+    }
+
+    /**
+     * Determine whether the given built-in diagnostic ID is for an extension
+     * of some sort.
+     * @param diagID
+     * @return
+     */
+    public static boolean isBuiltinExtensionDiag(int diagID)
+    {
+        return diagID < DIAG_UPPER_LIMIT
+                && getBuiltinDiagClass(diagID) == DiagnosticClass.CLASS_EXTENSION;
+    }
+
+    /**
+     * Return the lowest-level warning option that enables the specified
+     * diagnostic.  If there is no -Wfoo flag that controls the diagnostic,
+     * this returns null.
+     * @param diagID
+     * @return
+     */
+    public static String getWarningOptionForDiag(int diagID)
+    {
+        StaticDiagInfoRec info = getDiagInfo(diagID);
+        if (info != null)
+            return info.optionGroup;
+        return null;
+    }
+
+    /**
+     * Determines whether the given built-in diagnostic ID is
+     /// for an error that is suppressed if it occurs during C++ template
+     /// argument deduction.
+     ///
+     /// When an error is suppressed due to SFINAE, the template argument
+     /// deduction fails but no diagnostic is emitted. Certain classes of
+     /// errors, such as those errors that involve C++ access control,
+     /// are not SFINAE errors.
+     * @param diagID
+     * @return
+     */
+    public static boolean isBuiltinSFINAEDiag(int diagID)
+    {
+        StaticDiagInfoRec info = getDiagInfo(diagID);
+        if (info != null)
+            return info.sfinae;
+        return false;
+    }
+
+    /// getDiagnosticLevel - Based on the way the client configured the Diagnostic
+    /// object, classify the specified diagnostic ID into a Level, consumable by
+    /// the DiagnosticClient.
+    public Diagnostic.Level getDiagnosticLevel(int diagID)
+    {
+        // Handle custom diagnostics, which cannot be mapped.
+        if (diagID >= DIAG_UPPER_LIMIT)
+            return null; // customDiagInfo.getLevel(diagID);
+
+        DiagnosticClass diagClass = getBuiltinDiagClass(diagID);
+        assert diagClass != DiagnosticClass.CLASS_NOTE : "Cannot get diagnostic level of a note!";
+        return getDiagnosticLevel(diagID, diagClass);
+    }
+
+    private static Mapping getDefaultDiagMapping(int diagID)
+    {
+        StaticDiagInfoRec info = getDiagInfo(diagID);
+        if (info != null)
+            return info.mapping;
+        return Mapping.MAP_FATAL;
+    }
+
+    /// getDiagnosticLevel - Based on the way the client configured the Diagnostic
+    /// object, classify the specified diagnostic ID into a Level, consumable by
+    /// the DiagnosticClient.
+    private Diagnostic.Level getDiagnosticLevel(int diagID, DiagnosticClass diagClass)
+    {
+        // Specific non-error diagnostics may be mapped to various levels from ignored
+        // to error.  Errors can only be mapped to fatal.
+        Diagnostic.Level result = Level.Fatal;
+
+        // Get the mapping information, if unset, compute it lazily.
+        Mapping mappingInfo = getDiagnosticMappingInfo(diagID);
+        if (mappingInfo.ordinal() == 0)
+        {
+            mappingInfo = getDefaultDiagMapping(diagID);
+            setDiagnosticMappingInternal(diagID, mappingInfo, false);
+        }
+
+        switch (Mapping.values()[mappingInfo.ordinal() & 7]) 
+        {
+            default: assert false : "Unknown mapping!";
+            case MAP_IGNORE:
+                // Ignore this, unless this is an extension diagnostic and we're mapping
+                // them onto warnings or errors.
+                if (!isBuiltinExtensionDiag(diagID) ||  // Not an extension
+                        extBehavior == Ext_Ignore ||        // Extensions ignored anyway
+                        (mappingInfo.ordinal() & 8) != 0)             // User explicitly mapped it.
+                    return Level.Ignored;
+                result = Level.Warning;
+                if (extBehavior == Ext_Error) 
+                    result = Level.Error;
+                break;
+            case MAP_ERROR:
+                result = Level.Error;
+                break;
+            case MAP_FATAL:
+                result = Level.Fatal;
+                break;
+            case MAP_WARNING:
+                // If warnings are globally mapped to ignore or error, do it.
+                if (ignoreAllWarnings)
+                    return Level.Ignored;
+
+                result = Level.Warning;
+
+                // If this is an extension diagnostic and we're in -pedantic-error mode, and
+                // if the user didn't explicitly map it, upgrade to an error.
+                if (extBehavior == Ext_Error && (mappingInfo.ordinal() & 8) == 0 &&
+                        isBuiltinExtensionDiag(diagID))
+                    result = Level.Error;
+
+                if (warningsAsErrors)
+                    result = Level.Error;
+                break;
+
+            case MAP_WARNING_NO_WERROR:
+                // Diagnostics specified with -Wno-error=foo should be set to warnings, but
+                // not be adjusted by -Werror or -pedantic-errors.
+                result = Level.Warning;
+
+                // If warnings are globally mapped to ignore or error, do it.
+                if (ignoreAllWarnings)
+                    return Level.Ignored;
+
+                break;
+        }
+
+        // Okay, we're about to return this as a "diagnostic to emit" one last check:
+        // if this is any sort of extension warning, and if we're in an __extension__
+        // block, silence it.
+        if (allExtensionsSilenced != 0 && isBuiltinExtensionDiag(diagID))
+            return Level.Ignored;
+
+        return result;
+    }
+
+
+    /**
+     * Based on the way the client configured the Diagnostic object, classify
+     * the specified diagnostic ID into a Level, consumable by the DiagnosticClient.
+     * @param diagID
+     * @return
+     */
+    public static DiagnosticClass getBuiltinDiagClass(int diagID)
+    {
+        StaticDiagInfoRec info = getDiagInfo(diagID);
+        if (info != null)
+            return info.diagClass;
+        return null;
+    }
+
+    /**
+     * Clear out the current diagnostic.
+     */
+    public void clear()
+    {
+        curDiagID = ~0;
+    }
+
+    /**
+     * This is the method used to report a diagnostic that is finally fully formed.
+     *
+     * @return Returns true if the diagnostic was emitted, false if it was
+     * suppressed.
+     */
+    private boolean processDiag()
+    {
+        return false;
+    }
+
+    /**
+     *  Issue the message to the client. {@code diagID} is a member of the
+     *  kind.  This actually returns aninstance of DiagnosticBuilder which emits
+     *  the diagnostics (through {@linkplain #processDiag()}). {@code loc}
+     *  represents the source location associated with the diagnostic, which can
+     *  be an invalid location if no position information is available.
+     * @param loc
+     * @param diagID
+     * @return
+     */
+    public DiagnosticBuilder report(FullSourceLoc loc, int diagID)
+    {
+        assert curDiagID == ~0 : "Multiple diagnostics in flight at once!";
+        curDiagLoc = loc;
+        curDiagID = diagID;
+        return new DiagnosticBuilder(this);
+    }
+
+    public static boolean isDiagnosticLexKinds(int diagID)
+    {
+        return diagID >= DiagnosticLexKindsBegin
+                && diagID < DiagnosticLexKindsEnd;
+    }
+
+    public static boolean isDiagnosticParseKinds(int diagID)
+    {
+        return diagID >= DiagnosticParseKindsBegin
+                && diagID < DiagnosticParseKindsEnd;
+    }
+
+    public static boolean isDiagnoticSemaKinds(int diagID)
+    {
+        return diagID >= DiagnosticSemaKindsBegin
+                && diagID < DiagnosticSemaKindsEnd;
+    }
+
+    public static boolean isDiagnosticCommonKinds(int diagID)
+    {
+        return diagID >= DiagnosticCommonKindsBegin
+                && diagID < DiagnosticCommonKindsEnd;
+    }
+
+    /**
+     * Return the mapping info currently set for the
+     /// specified builtin diagnostic.  This returns the high bit encoding, or zero
+     /// if the field is completely uninitialized.
+     * @param diag
+     * @return
+     */
+    private Mapping getDiagnosticMappingInfo(int diag)
+    {
+        TIntArrayList currentMappings = diagMappingsStack.getLast();
+        return Mapping.values()[(currentMappings.get(diag/2) >> (((diag & 1)*4) & 15))];
+    }
+
+    private void setDiagnosticMappingInternal(
+            int diagID,
+            Mapping map,
+            boolean isUser) 
+    {
+        int mapping = map.ordinal();
+        if (isUser) mapping |= 8;  // Set the high bit for user mappings.
+        int slot = diagMappingsStack.getLast().get(diagID/2);
+        int shift = (diagID & 1)*4;
+        slot &= ~(15 << shift);
+        slot |= mapping << shift;
+        diagMappingsStack.getLast().set(diagID/2, slot);
+    }
+
+
+
+    
 	/**
 	 * @author xlous.zeng
 	 * @version 0.1
@@ -292,63 +833,6 @@ public final class Diagnostic
 				diagObj.fixItHints[numFixItHints++] = hint;
 			}
 			return this;
-		}
-	}
-
-	private void clear()
-	{
-
-	}
-
-	private boolean processDiag()
-	{
-		return false;
-	}
-
-	public DiagnosticBuilder report(FullSourceLoc loc, int diagID)
-	{
-		assert curDiagID == ~0 :"Multiple diagnostics in flight at once!";
-		curDiagLoc = loc;
-		curDiagID = diagID;
-		return new DiagnosticBuilder(this);
-	}
-
-	public static boolean isDiagnosticLexKinds(int diagID)
-	{
-		return diagID >= DiagnosticLexKindsBegin
-				&& diagID < DiagnosticLexKindsEnd;
-	}
-
-	public static boolean isDiagnosticParseKinds(int diagID)
-	{
-		return diagID >= DiagnosticParseKindsBegin
-				&& diagID < DiagnosticParseKindsEnd;
-	}
-
-	public static boolean isDiagnoticSemaKinds(int diagID)
-	{
-		return diagID >= DiagnosticSemaKindsBegin
-				&& diagID < DiagnosticSemaKindsEnd;
-	}
-
-	public static boolean isDiagnosticCommonKinds(int diagID)
-	{
-		return diagID >= DiagnosticCommonKindsBegin
-				&& diagID < DiagnosticCommonKindsEnd;
-	}
-
-	public static Level getDiagnosticLevel(int diagID)
-	{
-		if (isDiagnosticLexKinds(diagID))
-			return DiagnosticLexKinds.values()[diagID - DiagnosticCommonKindsBegin].diagClass;
-		else if (isDiagnosticParseKinds(diagID))
-			return DiagnosticParseKinds.values()[diagID - DiagnosticParseKindsBegin].diagClass;
-		else if (isDiagnoticSemaKinds(diagID))
-			return DiagnosticSemaKinds.values()[diagID - DiagnosticSemaKindsBegin].diagClass;
-		else
-		{
-			assert isDiagnosticCommonKinds(diagID);
-			return DiagnosticCommonKinds.values()[diagID - DiagnosticCommonKindsBegin].diagClass;
 		}
 	}
 }

@@ -17,8 +17,7 @@ package jlang.sema;
  */
 
 import jlang.basic.CharSourceRange;
-import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
+import jlang.basic.SourceRange;
 import jlang.diag.FixItHint;
 import jlang.diag.Diagnostic;
 import jlang.diag.Diagnostic.ArgumentKind;

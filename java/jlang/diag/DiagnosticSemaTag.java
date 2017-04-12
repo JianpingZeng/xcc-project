@@ -1,12 +1,9 @@
 package jlang.diag;
 
-import static jlang.diag.DiagnosticParseTag.DiagnosticParseKindsEnd;
-
 public interface DiagnosticSemaTag
 {
-	public static final int DiagnosticSemaKindsBegin = DiagnosticParseKindsEnd;
 
-	public static final int err_abstract_type_in_decl = DiagnosticSemaKindsBegin;
+	public static final int err_abstract_type_in_decl = Diagnostic.DiagnosticSemaKindsBegin;
 	public static final int err_addr_of_label_in_protected_scope = err_abstract_type_in_decl + 1;
 	public static final int err_addr_ovl_ambiguous = err_addr_of_label_in_protected_scope + 1;
 	public static final int err_alignof_incomplete_type = err_addr_ovl_ambiguous + 1;
@@ -943,5 +940,4 @@ public interface DiagnosticSemaTag
 	public static final int warn_value_always_zero = warn_value_always_false + 1;
 	public static final int warn_weak_identifier_undeclared = warn_value_always_zero + 1;
 
-	public static final int DiagnosticSemaKindsEnd = warn_weak_identifier_undeclared + 1;
 }

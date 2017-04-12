@@ -651,8 +651,8 @@ Init parseValueHead():
         // This is a CLASS<initvalslist> expression.  This is supposed to synthesize
         // a new anonymous definition, deriving from CLASS<initvalslist> with no
         // body.
-        Record klass = records.getClass(t.image);
-        if (klass == null)
+        Record diagClass = records.getClass(t.image);
+        if (diagClass == null)
         {
             tokError("Expected a class, got '"+t.image+"'!\n");
             System.exit(-1);
@@ -660,7 +660,7 @@ Init parseValueHead():
         Record oldRec = curRec;
         // Create the new record, set it as CurRec temporarily.
         curRec = new Record("anonymous.val."+(anonCounter++));
-        addSubClass(klass, list); // Add info about the subclass to the curRec.
+        addSubClass(diagClass, list); // Add info about the subclass to the curRec.
         
         curRec.resolveReferences();
         

@@ -3,7 +3,7 @@ package jlang.cparser;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
 import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
+import jlang.basic.SourceRange;
 import jlang.sema.Decl;
 import tools.OutParamWrapper;
 

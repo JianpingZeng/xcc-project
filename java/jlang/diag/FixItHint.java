@@ -17,7 +17,7 @@ package jlang.diag;
  */
 
 import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
+import jlang.basic.SourceRange;
 
 /**
  * @author xlous.zeng

@@ -1,12 +1,9 @@
 package jlang.diag;
 
-import static jlang.diag.DiagnosticSemaTag.DiagnosticSemaKindsEnd;
-
 public interface DiagnosticCommonKindsTag
 {
-	public static final int DiagnosticCommonKindsBegin = DiagnosticSemaKindsEnd;
 
-	public static final int err_expected_colon = DiagnosticCommonKindsBegin;
+	public static final int err_expected_colon = Diagnostic.DiagnosticCommonKindsBegin;
 	public static final int err_expected_namespace_name = err_expected_colon + 1;
 	public static final int err_invalid_storage_class_in_func_decl = err_expected_namespace_name + 1;
 	public static final int err_no_declarators = err_invalid_storage_class_in_func_decl + 1;
@@ -28,5 +25,4 @@ public interface DiagnosticCommonKindsTag
 	public static final int warn_integer_too_large = note_using_decl + 1;
 	public static final int warn_integer_too_large_for_signed = warn_integer_too_large + 1;
 
-	public static final int DiagnosticCommonKindsEnd = warn_integer_too_large_for_signed + 1;
 }

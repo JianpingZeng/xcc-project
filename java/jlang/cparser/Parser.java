@@ -14,7 +14,7 @@ import jlang.cparser.Declarator.TheContext;
 import jlang.cparser.Token.Ident;
 import jlang.cpp.Preprocessor;
 import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
+import jlang.basic.SourceRange;
 import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.sema.Decl.LabelDecl;
