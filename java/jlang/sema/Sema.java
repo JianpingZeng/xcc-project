@@ -14,7 +14,7 @@ import jlang.cparser.Token.CharLiteral;
 import jlang.cparser.Token.IntLiteral;
 import jlang.cpp.Preprocessor;
 import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
+import jlang.basic.SourceRange;
 import jlang.diag.*;
 import jlang.sema.Decl.*;
 import jlang.type.*;
@@ -2201,7 +2201,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         diag(expr.getExprLocation(), ext_expr_not_ice)
                 .addSourceRange(expr.getSourceRange());
 
-        if (evalResult.diag >= 0 && Diagnostic.getDiagnosticLevel(ext_expr_not_ice)
+        if (evalResult.diag >= 0 && getParser().getDiags().getDiagnosticLevel(ext_expr_not_ice)
                 != Diagnostic.Level.Ignored)
             diag(evalResult.diagLoc, evalResult.diag);
 

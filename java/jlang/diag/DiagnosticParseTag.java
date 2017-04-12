@@ -16,17 +16,14 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import static jlang.diag.DiagnosticLexKindsTag.DiagnosticLexKindsEnd;
-
 /**
  * @author xlous.zeng
  * @version 0.1
  */
 public interface DiagnosticParseTag
 {
-	public static final int DiagnosticParseKindsBegin = DiagnosticLexKindsEnd;
 
-	public static final int err_anon_type_definition = DiagnosticParseKindsBegin;
+	public static final int err_anon_type_definition = Diagnostic.DiagnosticParseKindsBegin;
 	public static final int err_argument_required_after_attribute = err_anon_type_definition + 1;
 	public static final int err_declaration_does_not_declare_param = err_argument_required_after_attribute + 1;
 	public static final int err_destructor_class_name = err_declaration_does_not_declare_param + 1;
@@ -180,5 +177,4 @@ public interface DiagnosticParseTag
 	public static final int warn_pragma_unused_expected_punc = warn_pragma_pack_malformed + 1;
 	public static final int warn_pragma_unused_expected_var = warn_pragma_unused_expected_punc + 1;
 
-	public static final int DiagnosticParseKindsEnd = warn_pragma_unused_expected_var;
 }

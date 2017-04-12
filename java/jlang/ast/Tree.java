@@ -2,7 +2,7 @@ package jlang.ast;
 
 import backend.hir.BasicBlock;
 import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
+import jlang.basic.SourceRange;
 import jlang.sema.*;
 import jlang.sema.Decl.*;
 import jlang.type.*;

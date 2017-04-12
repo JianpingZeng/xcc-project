@@ -2,6 +2,7 @@ package jlang.cparser;
 
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
+import jlang.basic.SourceRange;
 import jlang.cparser.Declarator.TheContext;
 import jlang.cpp.Preprocessor;
 import jlang.cpp.SourceLocation;
@@ -390,7 +391,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             TQ_volatileLoc = SourceLocation.NOPOS,
             ISLoc = SourceLocation.NOPOS;
 
-    private SourceLocation.SourceRange sourceRagne;
+    private SourceRange sourceRagne;
 
     public DeclSpec()
     {
@@ -403,10 +404,10 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
         typeQualifier = TQ_unspecified.ordinal();
         inlineSpecifier = false;
 
-        sourceRagne = new SourceLocation.SourceRange();
+        sourceRagne = new SourceRange();
     }
 
-    public SourceLocation.SourceRange getSourceRange()
+    public SourceRange getSourceRange()
     {
         return sourceRagne;
     }

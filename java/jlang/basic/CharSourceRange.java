@@ -17,7 +17,6 @@ package jlang.basic;
  */
 
 import jlang.cpp.SourceLocation;
-import jlang.cpp.SourceLocation.SourceRange;
 
 /**
  * This class represents a character granular source range.
