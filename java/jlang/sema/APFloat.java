@@ -22,4 +22,9 @@ package jlang.sema;
  */
 public class APFloat
 {
+    public static final FltSemantics IEEEsingle = new FltSemantics((short) 127, (short)-126, 24, true );
+    public static final FltSemantics IEEEdouble = new FltSemantics((short)1023, (short)-1022, 53, true);
+    public static final FltSemantics IEEEquad = new FltSemantics((short)16383, (short)-16382, 113, true);
+    public static final FltSemantics x87DoubleExtended = new FltSemantics((short)16383, (short)-16382, 64, true);
+    public static final FltSemantics Bogus = new FltSemantics((short) 0, (short) 0, 0, true);
 }

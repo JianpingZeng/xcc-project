@@ -17,7 +17,6 @@ package jlang.diag;
  */
 
 import gnu.trove.list.array.TIntArrayList;
-import jlang.cpp.SourceLocation;
 import jlang.basic.SourceRange;
 import jlang.type.QualType;
 
@@ -220,6 +219,11 @@ public final class Diagnostic
 	private int numDiagnostics;
 	private int numErrors;
 
+    /**
+     * Information for uniquing and looking up custom diags.
+     */
+	private CustomDiagInfo customDiagInfo;
+
 	/**
 	 * This is a DiagnosticClient used for printing error or warning message
      * out in appropriate style.
@@ -238,7 +242,7 @@ public final class Diagnostic
 
 	private int curDiagID;
 
-	private SourceLocation curDiagLoc;
+	private FullSourceLoc curDiagLoc;
 
 	/**
 	 * The maximum number of arguments we can hold. We currently
@@ -251,7 +255,6 @@ public final class Diagnostic
 	private int numDiagRanges;
 	private int numFixItHints;
 	private ArgumentKind[] diagArgumentsKind = new ArgumentKind[maxArguments];
-	private String[] diagArgumentsStr = new String[maxArguments];
 	private Object[] diagArgumentsVal = new Object[maxArguments];
 	private SourceRange[] diagRanges = new SourceRange[10];
 	public static final int maxFixItHints = 3;
@@ -261,9 +264,23 @@ public final class Diagnostic
 	public Diagnostic(DiagnosticClient client)
 	{
 		this.client = client;
-		lastDiagLevel = Level.Ignored;
+		allExtensionsSilenced = 0;
+		ignoreAllWarnings = false;
+		warningsAsErrors = false;
+		suppressSystemWarnings = false;
+		extBehavior = Ext_Ignore;
+		errorOccurred = false;
+		fatalErrorOcurred = false;
+		numDiagArgs = 0;
+        numErrors = 0;
+
+        customDiagInfo = null;
 		curDiagID = ~0;
+        lastDiagLevel = Level.Ignored;
+
         diagMappingsStack = new LinkedList<>();
+        TIntArrayList blankDiags = new TIntArrayList(DIAG_UPPER_LIMIT/2);
+        diagMappingsStack.addLast(blankDiags);
 	}
 
 	enum SuppressKind
@@ -387,7 +404,12 @@ public final class Diagnostic
 		return curDiagID;
 	}
 
-	public int getNumDiagArgs()
+    public FullSourceLoc getCurDiagLoc()
+    {
+        return curDiagLoc;
+    }
+
+    public int getNumDiagArgs()
 	{
 		return numDiagArgs;
 	}
@@ -400,13 +422,38 @@ public final class Diagnostic
 
 	public String getArgStdStr(int index)
 	{
-		return diagArgumentsStr[index];
+	    assert getDiagArgKind(index) == ArgumentKind.ak_std_string
+                : "Invalid argument accessor!";
+		return (String) diagArgumentsVal[index];
 	}
 
-	public Object getRawArg(int index)
-	{
-		return diagArgumentsVal[index];
-	}
+	public int getArgSInt(int index)
+    {
+        assert getDiagArgKind(index) == ArgumentKind.ak_sint
+                : "Invalid argument accessor!";
+        return (Integer)diagArgumentsVal[index];
+    }
+
+    public int getArgUInt(int index)
+    {
+        assert getDiagArgKind(index) == ArgumentKind.ak_uint
+                : "Invalid argument accessor!";
+        return (Integer)diagArgumentsVal[index];
+    }
+
+    public String getArgIndentifier(int index)
+    {
+        assert getDiagArgKind(index) == ArgumentKind.ak_identifier
+                :"invalid argument accessor!";
+        return (String)diagArgumentsVal[index];
+    }
+
+    public Object getRawArg(int index)
+    {
+        assert getDiagArgKind(index) != ArgumentKind.ak_std_string
+                :"invalid argument accessor!";
+        return diagArgumentsVal[index];
+    }
 
 	public int getNumDiagRanges()
 	{
@@ -431,6 +478,33 @@ public final class Diagnostic
     //===--------------------------------------------------------------------===//
     // Diagnostic classification and reporting interfaces.
     //
+    public void pushMappings()
+    {
+        diagMappingsStack.addLast(diagMappingsStack.getLast());
+    }
+
+    public boolean popMappings()
+    {
+        if (diagMappingsStack.size() == 1)
+            return false;
+        diagMappingsStack.removeLast();
+        return true;
+    }
+
+    /**
+     * Return an ID for a diagnostic with the specified message
+     * and level.  If this is the first request for this diagnosic, it is
+     * registered and created, otherwise the existing ID is returned.
+     * @param level
+     * @param message
+     * @return
+     */
+    public int getCustomDiagID(Level level, String message)
+    {
+        if (customDiagInfo == null)
+            customDiagInfo = new CustomDiagInfo();
+        return customDiagInfo.getOrCreateDiagID(level, message, this);
+    }
 
     /**
      * Given a diagnostic ID, return a description of the issue.
@@ -505,13 +579,13 @@ public final class Diagnostic
 
     /**
      * Determines whether the given built-in diagnostic ID is
-     /// for an error that is suppressed if it occurs during C++ template
-     /// argument deduction.
-     ///
-     /// When an error is suppressed due to SFINAE, the template argument
-     /// deduction fails but no diagnostic is emitted. Certain classes of
-     /// errors, such as those errors that involve C++ access control,
-     /// are not SFINAE errors.
+     * for an error that is suppressed if it occurs during C++ template
+     * argument deduction.
+     *
+     * When an error is suppressed due to SFINAE, the template argument
+     * deduction fails but no diagnostic is emitted. Certain classes of
+     * errors, such as those errors that involve C++ access control,
+     * are not SFINAE errors.
      * @param diagID
      * @return
      */
@@ -523,9 +597,13 @@ public final class Diagnostic
         return false;
     }
 
-    /// getDiagnosticLevel - Based on the way the client configured the Diagnostic
-    /// object, classify the specified diagnostic ID into a Level, consumable by
-    /// the DiagnosticClient.
+    /**
+     * Based on the way the client configured the Diagnostic
+     * object, classify the specified diagnostic ID into a Level, consumable by
+     * the DiagnosticClient.
+     * @param diagID
+     * @return
+     */
     public Diagnostic.Level getDiagnosticLevel(int diagID)
     {
         // Handle custom diagnostics, which cannot be mapped.
@@ -545,9 +623,14 @@ public final class Diagnostic
         return Mapping.MAP_FATAL;
     }
 
-    /// getDiagnosticLevel - Based on the way the client configured the Diagnostic
-    /// object, classify the specified diagnostic ID into a Level, consumable by
-    /// the DiagnosticClient.
+    /**
+     * Based on the way the client configured the Diagnostic
+     * object, classify the specified diagnostic ID into a Level, consumable by
+     * the DiagnosticClient.
+     * @param diagID
+     * @param diagClass
+     * @return
+     */
     private Diagnostic.Level getDiagnosticLevel(int diagID, DiagnosticClass diagClass)
     {
         // Specific non-error diagnostics may be mapped to various levels from ignored
@@ -620,7 +703,6 @@ public final class Diagnostic
         return result;
     }
 
-
     /**
      * Based on the way the client configured the Diagnostic object, classify
      * the specified diagnostic ID into a Level, consumable by the DiagnosticClient.
@@ -651,7 +733,76 @@ public final class Diagnostic
      */
     private boolean processDiag()
     {
-        return false;
+        Level diagLevel;
+        int diagID = curDiagID;
+
+        // True if this diagnostic should be produced even in a system header.
+        boolean shouldEmitInSystemHeader;
+
+        if (diagID >= DIAG_UPPER_LIMIT)
+        {
+            // Handle custom diagnostics, which cannot be mapped.
+            diagLevel = customDiagInfo.getLevel(diagID);
+
+            // Custom diagnostics always are emitted in system headers.
+            shouldEmitInSystemHeader = true;
+        }
+        else
+        {
+            DiagnosticClass diagClass = getBuiltinDiagClass(diagID);
+            if (diagClass == DiagnosticClass.CLASS_NOTE)
+            {
+                diagLevel = Level.Note;
+                shouldEmitInSystemHeader = false;
+            }
+            else
+            {
+                shouldEmitInSystemHeader = diagClass == DiagnosticClass.CLASS_ERROR;
+                diagLevel = getDiagnosticLevel(diagID, diagClass);
+            }
+        }
+
+        if (diagLevel != Level.Note)
+        {
+            if (lastDiagLevel == Level.Fatal)
+                fatalErrorOcurred = true;
+
+            lastDiagLevel = diagLevel;
+        }
+
+        // If a fatal error has already been emitted, silence all subsequent
+        // diagnostics.
+        if (fatalErrorOcurred)
+            return false;
+
+        // If the client doesn't care about this message, don't issue it.  If this is
+        // a note and the last real diagnostic was ignored, ignore it too.
+        if (diagLevel == Level.Ignored || (diagLevel == Level.Note
+                && lastDiagLevel == Level.Ignored))
+            return false;
+
+        // If this diagnostic is in a system header and is not a clang error, suppress
+        // it.
+        if (suppressSystemWarnings && !shouldEmitInSystemHeader &&
+                getCurDiagLoc().isValid() &&
+                (diagLevel != Level.Note || lastDiagLevel == Level.Ignored))
+        {
+            return false;
+        }
+
+        if (diagLevel.compareTo(Level.Error) >= 0)
+        {
+            errorOccurred = true;
+            ++numErrors;
+        }
+
+        // Finally, report it.
+        client.handleDiagnostic(diagLevel, this);
+        if (client.includeInDiagnosticCounts())
+            ++numDiagnostics;
+
+        curDiagID= ~0;
+        return true;
     }
 
     /**
@@ -698,8 +849,8 @@ public final class Diagnostic
 
     /**
      * Return the mapping info currently set for the
-     /// specified builtin diagnostic.  This returns the high bit encoding, or zero
-     /// if the field is completely uninitialized.
+     * specified builtin diagnostic.  This returns the high bit encoding, or zero
+     * if the field is completely uninitialized.
      * @param diag
      * @return
      */
@@ -767,8 +918,6 @@ public final class Diagnostic
 
 			// Clear out the current diagnostic object.
 			diagObj.clear();
-
-			diagObj = null;
 			return emitted;
 		}
 
@@ -778,7 +927,7 @@ public final class Diagnostic
 			if (diagObj != null)
 			{
 				diagObj.diagArgumentsKind[numArgs] = ArgumentKind.ak_c_string;
-				diagObj.diagArgumentsStr[numArgs++] = str;
+				diagObj.diagArgumentsVal[numArgs++] = str;
 			}
 			return this;
 		}

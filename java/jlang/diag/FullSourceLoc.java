@@ -32,6 +32,9 @@ public class FullSourceLoc extends SourceLocation
 		this.filename = file;
 	}
 
+	public FullSourceLoc()
+	{}
+
 	public String getFilename()
 	{
 		return filename;

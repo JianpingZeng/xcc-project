@@ -17,7 +17,7 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree;
-import jlang.basic.LangOption;
+import jlang.basic.LangOptions;
 import jlang.basic.TargetInfo;
 import jlang.basic.TargetInfo.IntType;
 import jlang.cparser.DeclContext;
@@ -58,7 +58,7 @@ public final class ASTContext
 	public final QualType FloatTy = new QualType(new RealType(4, "float"));
 	public final QualType DoubleTy = new QualType(new RealType(8, "double"));
 
-	public LangOption langOptions;
+	public LangOptions langOptions;
 	public TargetInfo target;
 	public LinkedList<Type> types = new LinkedList<>();
 	private DeclContext translateUnitDecl;
@@ -167,7 +167,7 @@ public final class ASTContext
 	    return ptrTy;
 	}
 
-	public LangOption getLangOptions()
+	public LangOptions getLangOptions()
 	{
 		return langOptions;
 	}

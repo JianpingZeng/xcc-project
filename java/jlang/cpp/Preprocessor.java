@@ -17,7 +17,7 @@ package jlang.cpp;
  */
 
 import jlang.basic.HeaderSearch;
-import jlang.basic.LangOption;
+import jlang.basic.LangOptions;
 import jlang.diag.Diagnostic;
 import jlang.diag.FullSourceLoc;
 
@@ -96,7 +96,7 @@ public final class Preprocessor implements AutoCloseable
     };
     
     private Diagnostic diags;
-    private LangOption langInfo;
+    private LangOptions langInfo;
     private HeaderSearch headers;
 
     /**
@@ -130,7 +130,7 @@ public final class Preprocessor implements AutoCloseable
 
     private String inputFile;
 
-    public LangOption getLangOption()
+    public LangOptions getLangOption()
     {
         return langInfo;
     }
@@ -161,7 +161,7 @@ public final class Preprocessor implements AutoCloseable
     }
 
     public Preprocessor(Diagnostic diag,
-            LangOption langOptions,
+            LangOptions langOptions,
             HeaderSearch headerSearch)
     {
         this.diags = diag;
