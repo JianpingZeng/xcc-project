@@ -127,7 +127,29 @@ public enum ProgramAction
     // Preprocessor initialization.
 	D_macros("D", true, "Predefine the specified macros"),
 
-	U_macros("U", true, "Undefine the specified macros");
+	U_macros("U", true, "Undefine the specified macros"),
+
+    F_MESSAGE_LENGTH("-fmessage-length", true, "Format message diagnostics so that they fit " +
+            "within N columns or fewer, when possible.", opt ->
+    {
+        String val = opt.getValue();
+        try
+        {
+            int x = Integer.parseUnsignedInt(val);
+            return true;
+        }
+        catch (NumberFormatException e)
+        {
+            return false;
+        }
+    }),
+
+	TRIPLE("triple", true, "Specify target triple (e.g i686-apple-darwin)"),
+
+	TARGET_CPU("mcpu", true, "Target a specific cpu type (-mcpu=help for details)"),
+
+    TARGET_FEATURE("target-specific", true, "Target specific attributes");
+
 
 	private String optName;
 	private boolean hasArg;

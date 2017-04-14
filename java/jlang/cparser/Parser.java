@@ -5,7 +5,7 @@ import jlang.ast.Tree.CompoundStmt;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.InitListExpr;
 import jlang.ast.Tree.Stmt;
-import jlang.basic.LangOption;
+import jlang.basic.LangOptions;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.FieldDeclarator;
 import jlang.cparser.DeclSpec.ParamInfo;
@@ -190,7 +190,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         return new Parser(pp, action);
     }
 
-    LangOption getLangOption()
+    LangOptions getLangOption()
     {
         return pp.getLangOption();
     }

@@ -22,7 +22,7 @@ package jlang.basic;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LangOption
+public final class LangOptions
 {
     /**
      * Whether allowing trigraph in source file.

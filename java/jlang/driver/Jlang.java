@@ -23,9 +23,10 @@ import jlang.basic.*;
 import jlang.basic.ProgramAction;
 import jlang.codegen.BackendConsumer;
 import jlang.cpp.Preprocessor;
-import jlang.diag.Diagnostic;
+import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.sema.Sema;
+import jlang.system.Process;
 import org.apache.commons.cli.*;
 
 import java.io.*;
@@ -33,6 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
@@ -53,7 +55,7 @@ import static jlang.driver.Jlang.LangStd.*;
  * @author xlous.zeng
  *
  */
-public class Jlang
+public class Jlang implements DiagnosticFrontendKindsTag
 {
     /**
      * Result codes.
@@ -369,12 +371,12 @@ public class Jlang
         }
     }
 
-    private void initializeOption(LangOption options)
+    private void initializeOption(LangOptions options)
     {
         // do nothing.
     }
 
-    private void initializeLangOptions(LangOption langOption,
+    private void initializeLangOptions(LangOptions langOption,
             LangKind lk)
     {
         boolean noPreprocess = false;
@@ -391,7 +393,7 @@ public class Jlang
                 initializeOption(langOption);
                 break;
         }
-        langOption.setSymbolVisibility(LangOption.VisibilityMode.valueOf(
+        langOption.setSymbolVisibility(LangOptions.VisibilityMode.valueOf(
                 cmdline.getOptionValue("fvisibility", "Default")
         ));
     }
@@ -406,7 +408,7 @@ public class Jlang
         Lang_gnu99,
     }
 
-    private void initializeLangStandard(LangOption options,
+    private void initializeLangStandard(LangOptions options,
             LangKind lk)
     {
         String std = cmdline.getOptionValue(ProgramAction.Std.getOptName());
@@ -511,142 +513,54 @@ public class Jlang
         init.realize();
     }
 
-    private void initializePreprocessorInitOptions(
-            PreprocessorInitOptions initOpts)
-    {
-        // Add macro from command line.
-        String[] defines = cmdline.getOptionValues(D_macros.getOptName());
-        if (defines != null && defines.length > 0)
-        {
-            for (String m : defines)
-             initOpts.addMacroDef(m);
-        }
-        defines = cmdline.getOptionValues(U_macros.getOptName());
-        if (defines != null && defines.length > 0)
-        {
-            for (String u : defines)
-                initOpts.addMacroUndef(u);
-        }
-    }
-
     /**
-     * Append a #define line to buf for macro {@code m}.
-     * @param buf
-     * @param m
-     */
-    private void defineBuiltinMacro(StringBuilder buf, String m)
-    {
-        String cmd = "#define ";
-        buf.append(cmd);
-        int eqPos = m.indexOf("=");
-        if (eqPos >= 0)
-        {
-            // Turn 'X=Y' -> 'X Y'
-            buf.append(m.substring(0, eqPos)).append(" ");
-            int end = m.indexOf("\n\r", eqPos + 1);
-            if (end >= 0)
-            {
-                java.lang.System.err.printf("warning: macro '%s' contains"
-                                + " embedded newline, text after the newline is ignored",
-                        m.substring(eqPos + 1));
-            }
-            else
-            {
-                end = m.length();
-            }
-            buf.append(m.substring(eqPos+1, end));
-        }
-        else
-        {
-            // Push "macroname 1".
-            buf.append(m).append(" ").append("1");
-        }
-        buf.append(File.separator);
-    }
-
-    private void initializePredefinedMacros(LangOption langOptions,
-            StringBuilder buf)
-    {
-        defineBuiltinMacro(buf, "__xcc__=1"); // XCC version.
-        if (langOptions.asmPreprocessor)
-            defineBuiltinMacro(buf, "__ASSEMBLER__=1");
-
-        if (langOptions.c99)
-            defineBuiltinMacro(buf, "__STDC_VERSION__=199901L");
-        else if (!langOptions.gnuMode && langOptions.trigraph)
-            defineBuiltinMacro(buf, "__STDC_VERSION__=199409L");
-
-        if (!langOptions.gnuMode)
-            defineBuiltinMacro(buf, "__STRICT_ANSI=1");
-
-        if (langOptions.optimize)
-            defineBuiltinMacro(buf, "__OPTIMIZE__=1");
-        if (langOptions.optimizeSize)
-            defineBuiltinMacro(buf, "__OPTIMIZE_SIZE__=1");
-
-        // TODO Initialize target-specific preprocessor defines.
-    }
-
-    /**
-     * Append a #undef line to Buf for Macro.
-     * Macro should be of the form XXX and we emit "#undef XXX".
-     * @param buf
-     * @param name
-     */
-    private void undefineBuiltinMacro(StringBuilder buf,
-            String name)
-    {
-        buf.append("#undef ").append(name).append(File.separator);
-    }
-
-    private boolean initializePreprocessor(Preprocessor pp,
-            PreprocessorInitOptions initOpts)
-    {
-        StringBuilder predefinedBuffer = new StringBuilder();
-        String lineDirective = "# 1 \"<built-in>\" 3\n";
-        predefinedBuffer.append(lineDirective);
-
-        // Install things like __GNUC__, etc.
-        initializePredefinedMacros(pp.getLangOption(), predefinedBuffer);
-
-        // Add on the predefines from the driver.  Wrap in a #line directive to report
-        // that they come from the command line.
-        lineDirective = "# 1 \"<command line>\" 1\n";
-        predefinedBuffer.append(lineDirective);
-
-        // Process #define's and #undef's in the order they are given.
-        initOpts.getMacros().forEach(pair->
-        {
-            if (pair.second)
-                undefineBuiltinMacro(predefinedBuffer, pair.first);
-            else
-                defineBuiltinMacro(predefinedBuffer, pair.first);
-        });
-
-        // Append a line terminator into predefinedBuffer.
-        predefinedBuffer.append(File.separator);
-        pp.setPredefines(predefinedBuffer.toString());
-        // Once we are reaching this, done!
-        return false;
-    }
-
-    /**
-     * A factory method to create and initialize an object of {@linkplain Preprocessor}.
-     * from several arguments.
-     * @param diag
-     * @param langOptions
-     * @param headerSearch
+     * Process the various options that may affects the target triple and build a
+     * final aggregate string that we are compiling for.
      * @return
      */
-    private Preprocessor createAndInitPreprocessor(Diagnostic diag,
-            LangOption langOptions,
-            HeaderSearch headerSearch)
+    private static String createTargetTriple(CommandLine cmdline)
     {
-        Preprocessor pp = new Preprocessor(diag, langOptions, headerSearch);
-        PreprocessorInitOptions initOptions = new PreprocessorInitOptions();
-        initializePreprocessorInitOptions(initOptions);
+        // Initialize base triple.  If a -triple option has been specified, use
+        // that triple.  Otherwise, default to the host triple.
+        String triple = cmdline.getOptionValue(TRIPLE.getOptName());
+        if (triple != null)
+            triple = Process.getHostTriple();
 
-        return initializePreprocessor(pp, initOptions)? null: pp;
+        return triple;
+    }
+
+    /**
+     * Recompute the target feature list to only be the list of things that are
+     * enabled, based on the target cpu and feature list.
+     * @param target
+     * @param features
+     */
+    private void computeFeatureMap(TargetInfo target, HashMap<String, Boolean> features)
+    {
+        assert features.isEmpty() :"Invalid map";
+
+        // Initialze the feature map based on the target.
+        String targetCPU = cmdline.getOptionValue(TARGET_CPU.getOptName(), "");
+        target.getDefaultFeatures(targetCPU, features);
+
+        String[] targetFeatures = cmdline.getOptionValues(TARGET_FEATURE.getOptName());
+        if (targetFeatures == null || targetFeatures.length == 0)
+            return;
+
+        for (String name : targetFeatures)
+        {
+            char firstCh = name.charAt(0);
+            if (firstCh != '-' && firstCh != '+')
+            {
+                java.lang.System.err.printf("error: xcc: invalid target features string: %s\n", name);
+                java.lang.System.exit(EXIT_ERROR);
+            }
+            if (!target.setFeatureEnabled(features, name.substring(1), firstCh == '+'))
+            {
+                java.lang.System.err.printf("error: xcc: invalid target features string: %s\n", name.substring(1));
+                java.lang.System.exit(EXIT_ERROR);
+            }
+        }
     }
 
 	/**
@@ -677,10 +591,23 @@ public class Jlang
             filenames.add("-");
         }
 
-        // TODO Initialize a Diagnostic client instance.
-        Diagnostic diag = new Diagnostic();
+        int messageLength;
+        String val = cmdline.getOptionValue(F_MESSAGE_LENGTH.getOptName());
+        messageLength = val != null ? Integer.parseInt(val) : Process.getStandardErrColumns();
 
-        // TODO Obtains the target triple information.
+        DiagnosticClient client = new TextDiagnosticClient(java.lang.System.err,
+                true, true, true, true, true, true, messageLength, false);
+
+        Diagnostic diag = new Diagnostic(client);
+
+        // Get information about the target being compiled for.
+        String triple = createTargetTriple(cmdline);
+        TargetInfo target = TargetInfo.createTargetInfo(triple);
+        if (target == null)
+        {
+            diag.report(new FullSourceLoc(), err_fe_unknown_triple).addTaggedVal(triple);
+            return EXIT_ERROR;
+        }
 
         // Allocate backend.target machine, default to using X86.
         targetMachineAllocator = TargetMachine::allocateIA32TargetMachine;
@@ -688,13 +615,17 @@ public class Jlang
         // Parse the Program action.
         ProgramAction progAction = initializeProgAction();
 
+        // Compute the feature set, unfortunately this effects the language!
+        HashMap<String, Boolean> features = new HashMap<>();
+        computeFeatureMap(target, features);
+
         for (String inputFile : filenames)
         {
-            // Walk through all of source files, initialize LangOption and Language
+            // Walk through all of source files, initialize LangOptions and Language
             // Standard, and compile option.
             // Instance a Preprocessor.
             LangKind langkind = getLanguage(inputFile);
-            LangOption langOption = new LangOption();
+            LangOptions langOption = new LangOptions();
             initializeLangOptions(langOption, langkind);
             initializeLangStandard(langOption, langkind);
 
@@ -702,8 +633,9 @@ public class Jlang
             HeaderSearch headerSearch = new HeaderSearch();
             initializeIncludePaths(headerSearch);
 
-            Preprocessor pp = createAndInitPreprocessor(diag, langOption,
-                    headerSearch);
+            PreprocessorFactory ppFactory = new PreprocessorFactory(diag,
+                    langOption, target, headerSearch, cmdline);
+            Preprocessor pp = ppFactory.createAndInitPreprocessor();
 
             if (pp == null)
                 continue;

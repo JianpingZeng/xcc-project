@@ -4,7 +4,7 @@ import jlang.ast.ASTConsumer;
 import jlang.ast.CastKind;
 import jlang.ast.Tree;
 import jlang.ast.Tree.*;
-import jlang.basic.LangOption;
+import jlang.basic.LangOptions;
 import jlang.cparser.*;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
@@ -758,7 +758,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
                     if (ty.isNull())
                     {
-                        int longlongSize = context.target.getLonglongWidth();
+                        int longlongSize = context.target.getLongLongWidth();
                         // Does it fit in a unsigned long long?
                         if (resultVal.isIntN(longlongSize))
                         {
@@ -777,7 +777,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         diag(literal.loc, warn_integer_too_large_for_signed).
                                 addTaggedVal(literal.toString());
                         ty = context.UnsignedLongTy;
-                        width = context.target.getLonglongWidth();
+                        width = context.target.getLongLongWidth();
                     }
 
                     if (resultVal.getBitWidth() != width)
@@ -1124,7 +1124,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     bestType = context.LongTy;
                 else
                 {
-                    bestWidth = context.target.getLonglongWidth();
+                    bestWidth = context.target.getLongLongWidth();
                     if (numNegativeBits > bestWidth || numPositiveBits >= bestWidth)
                         diag(enumDecl.getLocation(), warn_enum_too_large);
                     bestType = context.LongLongTy;
@@ -1142,7 +1142,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             }
             else
             {
-                bestWidth = context.target.getLonglongWidth();
+                bestWidth = context.target.getLongLongWidth();
                 assert numPositiveBits <= bestWidth
                         :"How could an initialization get larger than ULL?";
                 bestType = context.UnsignedLongLongTy;
@@ -5978,7 +5978,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         return true;
     }
 
-    private LangOption getLangOptions()
+    private LangOptions getLangOptions()
     {
         return parser.getPP().getLangOption();
     }
