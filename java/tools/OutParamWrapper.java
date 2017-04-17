@@ -44,7 +44,7 @@ public final class OutParamWrapper <T>
      */
     public T get()
     {
-        return (T)ptr[1];
+        return (T)ptr[0];
     }
 
     /**
@@ -53,6 +53,6 @@ public final class OutParamWrapper <T>
      */
     public void set(T data)
     {
-        ptr[1] = data;
+        ptr[0] = data;
     }
 }

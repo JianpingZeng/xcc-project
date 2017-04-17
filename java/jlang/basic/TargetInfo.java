@@ -115,10 +115,10 @@ public abstract class TargetInfo
     private static void define(StringBuilder buf, String macro, String val)
     {
         String def = "#define ";
-        buf.append(def.toCharArray());
-        buf.append(macro.toCharArray());
+        buf.append(def);
+        buf.append(macro);
         buf.append(' ');
-        buf.append(val.toCharArray());
+        buf.append(val);
         buf.append('\n');
     }
 

@@ -28,6 +28,7 @@ import jlang.sema.Decl;
 import jlang.sema.Sema;
 import jlang.system.Process;
 import org.apache.commons.cli.*;
+import tools.commandline.CL;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -570,11 +571,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
 	 */
 	public int compile(String[] args)
 	{
-        if (args.length == 0)
-        {
-            printUsage();
-            return EXIT_CMDERR;
-        }
+	    // Parse the command line argument.
+        CL.parseCommandLineOptions(args);
 
         // load all options.
         allOptions.forEach(options::addOption);
