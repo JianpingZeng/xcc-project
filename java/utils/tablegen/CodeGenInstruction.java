@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
 
-import static javafx.scene.input.KeyCode.R;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -141,17 +139,17 @@ public final class CodeGenInstruction
             }
             else if (!Rec.isSubClassOf("RegisterClass"))
                 throw new Exception("Unknown operand class '" + Rec.getName()
-                        + "' in instruction '" + R.getName()
+                        + "' in instruction '" + r.getName()
                         + "' instruction!");
 
             // Check that the operand has a name and that it's unique.
             if (di.getArgName(i).isEmpty())
                 throw new Exception(
-                        "In instruction '" + R.getName() + "', operand #" + i
+                        "In instruction '" + r.getName() + "', operand #" + i
                                 + " has no name!");
             if (!OperandNames.add(di.getArgName(i)))
                 throw new Exception(
-                        "In instruction '" + R.getName() + "', operand #" + i
+                        "In instruction '" + r.getName() + "', operand #" + i
                                 + " has the same name as a previous operand!");
 
             operandList.add(new OperandInfo(Rec, di.getArgName(i), PrintMethod,

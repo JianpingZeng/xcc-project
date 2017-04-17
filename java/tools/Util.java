@@ -372,4 +372,14 @@ public class Util
 		return idx >= 1 && idx < bb.size() ?
 				bb.getInstAt(idx - 1) : null;
 	}
+
+	public static String fixedLengthString(int repeatNum, String unit)
+	{
+		return String.format("%1$" + repeatNum + "s", unit);
+	}
+
+	public static String fixedLengthString(int repeatNum, char unit)
+	{
+		return String.format("%1$" + repeatNum + "s", unit);
+	}
 }
