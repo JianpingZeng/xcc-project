@@ -18,6 +18,7 @@ package jlang.cpp;
 
 import jlang.basic.HeaderSearch;
 import jlang.basic.LangOptions;
+import jlang.basic.SourceManager;
 import jlang.diag.Diagnostic;
 import jlang.diag.FullSourceLoc;
 
@@ -98,6 +99,7 @@ public final class Preprocessor implements AutoCloseable
     private Diagnostic diags;
     private LangOptions langInfo;
     private HeaderSearch headers;
+    private SourceManager sourceMgr;
 
     /**
      * This string is the predefined macros that preprocessor
@@ -145,6 +147,12 @@ public final class Preprocessor implements AutoCloseable
         return inputFile;
     }
 
+    public SourceManager getSourceManager()
+    {
+        return sourceMgr;
+    }
+
+
     public String getPredefines()
     {
         return predefines;
@@ -162,11 +170,13 @@ public final class Preprocessor implements AutoCloseable
 
     public Preprocessor(Diagnostic diag,
             LangOptions langOptions,
-            HeaderSearch headerSearch)
+            HeaderSearch headerSearch,
+            SourceManager sourceMgr)
     {
         this.diags = diag;
         langInfo = langOptions;
         headers = headerSearch;
+        this.sourceMgr = sourceMgr;
         inputs = new ArrayList<>();
         macros = new HashMap<>();
         macros.put(__LINE__.getName(), __LINE__);
