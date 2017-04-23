@@ -23,6 +23,7 @@ import jlang.basic.*;
 import jlang.basic.ProgramAction;
 import jlang.codegen.BackendConsumer;
 import jlang.cpp.Preprocessor;
+import jlang.cpp.SourceLocation;
 import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.sema.Sema;
@@ -34,10 +35,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 import static jlang.basic.BackendAction.Backend_EmitAssembly;
@@ -564,6 +562,43 @@ public class Jlang implements DiagnosticFrontendKindsTag
         }
     }
 
+    //===----------------------------------------------------------------------===//
+    // SourceManager initialization.
+    //===----------------------------------------------------------------------===//
+    private boolean initializeSourceManager(Preprocessor pp, String inFile)
+    {
+        SourceManager sourceMgr = pp.getSourceManager();
+        if(!Objects.equals(inFile, "-"))
+        {
+            Path file = Paths.get(inFile);
+            if (file != null && Files.exists(file))
+                sourceMgr.createMainFileID(file, new SourceLocation());
+            if (sourceMgr.getMainFileID().isInvalid())
+            {
+                pp.getDiagnostics().report(new FullSourceLoc(), err_fe_error_reading)
+                        .addTaggedVal(inFile);
+                return true;
+            }
+        }
+        else
+        {
+            MemoryBuffer sb = MemoryBuffer.getSTDIN();
+
+            if (sb == null)
+            {
+                pp.getDiagnostics().report(new FullSourceLoc(), err_fe_error_reading_stdin);
+                return true;
+            }
+            sourceMgr.createMainFileIDForMemBuffer(sb);
+            if (sourceMgr.getMainFileID().isInvalid())
+            {
+                pp.getDiagnostics().report(new FullSourceLoc(), err_fe_error_reading_stdin);
+                return true;
+            }
+        }
+        return false;
+    }
+
 	/**
 	 * Programmatic interface for main function.
 	 * 
@@ -617,8 +652,20 @@ public class Jlang implements DiagnosticFrontendKindsTag
         HashMap<String, Boolean> features = new HashMap<>();
         computeFeatureMap(target, features);
 
+
+        SourceManager sourceManager = null;
+
         for (String inputFile : filenames)
         {
+            if (sourceManager == null)
+            {
+                sourceManager = new SourceManager();
+            }
+            else
+            {
+                sourceManager.clearIDTables();
+            }
+
             // Walk through all of source files, initialize LangOptions and Language
             // Standard, and compile option.
             // Instance a Preprocessor.
@@ -632,11 +679,16 @@ public class Jlang implements DiagnosticFrontendKindsTag
             initializeIncludePaths(headerSearch);
 
             PreprocessorFactory ppFactory = new PreprocessorFactory(diag,
-                    langOption, target, headerSearch, cmdline);
+                    langOption, target, sourceManager, headerSearch, cmdline);
             Preprocessor pp = ppFactory.createAndInitPreprocessor();
 
             if (pp == null)
                 continue;
+
+            // Initialize the source manager with the given input file.
+            if (initializeSourceManager(pp, inputFile))
+                continue;
+
             processInputFile(pp, inputFile, progAction);
         }
         return EXIT_OK;

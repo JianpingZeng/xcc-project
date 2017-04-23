@@ -17,42 +17,79 @@ package jlang.cpp;
  */
 
 /**
+ * This is a carefully crafted 32-bit identifier that encodes
+ * a full include stack, line and column number information for a position in
+ * an input translation unit.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class SourceLocation
+public class SourceLocation implements Comparable<SourceLocation>
 {
     public static final SourceLocation NOPOS = new SourceLocation();
 
-    int column;
-    int line;
-
-    public SourceLocation(int line, int col)
-    {
-        column = col;
-        this.line = line;
-    }
-
-    public SourceLocation(SourceLocation loc)
-    {
-        column = loc.column;
-        line = loc.line;
-    }
+    private int id;
+    private static final int macroBit = 1 << 31;
 
     public SourceLocation()
     {
-        column = -1;
-        line = -1;
+        super();
+        id = 0; // 0 is invalid fileID;
+    }
+
+    public boolean isFileID()
+    {
+        return (id & macroBit) == 0;
+    }
+
+    public boolean isMacroID()
+    {
+        return (id & macroBit) == 1;
     }
 
     public boolean isValid()
     {
-        return column < 0 || line < 0;
+        return id != 0;
     }
 
-    public long getRawEncoding()
+    public int getOffset()
     {
-        return ((long)line << 32) | column;
+        return id & ~macroBit;
+    }
+
+    public static SourceLocation getFileLoc(int id)
+    {
+        assert (id & macroBit) == 0 : "Ran out of source location";
+        SourceLocation l =  new SourceLocation();
+        l.id = id;
+        return l;
+    }
+
+    public static SourceLocation getMacroLoc(int id)
+    {
+        assert (id & macroBit) == 1 : "Ran out of source location";
+        SourceLocation l =  new SourceLocation();
+        l.id = id;
+        return l;
+    }
+
+    public SourceLocation getFileLocWithOffset(int offset)
+    {
+        assert ((getOffset() + offset) & macroBit) == 0 :"invalid location";
+        SourceLocation l = new SourceLocation();
+        l.id = id + offset;
+        return l;
+    }
+
+    public int getRawEncoding()
+    {
+        return id;
+    }
+
+    public static SourceLocation getFromRawEncoding(int loc)
+    {
+        SourceLocation res = new SourceLocation();
+        res.id = loc;
+        return res;
     }
 
     @Override
@@ -64,6 +101,18 @@ public class SourceLocation
         if (getClass() != obj.getClass())
             return false;
         SourceLocation loc = (SourceLocation)obj;
-        return line == loc.line && column == loc.column;
+        return  id == loc.id;
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return id;
+    }
+
+    @Override
+    public int compareTo(SourceLocation o)
+    {
+        return id - o.id;
     }
 }

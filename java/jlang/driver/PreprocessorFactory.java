@@ -16,10 +16,7 @@ package jlang.driver;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.HeaderSearch;
-import jlang.basic.LangOptions;
-import jlang.basic.PreprocessorInitOptions;
-import jlang.basic.TargetInfo;
+import jlang.basic.*;
 import jlang.cpp.Preprocessor;
 import jlang.diag.Diagnostic;
 import jlang.sema.APFloat;
@@ -42,15 +39,21 @@ class PreprocessorFactory
     private LangOptions opts;
     private TargetInfo target;
     private HeaderSearch headerInfo;
+    private SourceManager sourceMgr;
+
     private CommandLine cmdline;
 
     PreprocessorFactory(Diagnostic diag, LangOptions opts,
-            TargetInfo target, HeaderSearch headerInfo, CommandLine cmdline)
+            TargetInfo target,
+            SourceManager sourceMgr,
+            HeaderSearch headerInfo,
+            CommandLine cmdline)
     {
         this.diag = diag;
         this.opts = opts;
         this.target = target;
         this.headerInfo = headerInfo;
+        this.sourceMgr = sourceMgr;
         this.cmdline = cmdline;
     }
 
@@ -62,7 +65,7 @@ class PreprocessorFactory
      */
     public Preprocessor createAndInitPreprocessor()
     {
-        Preprocessor pp = new Preprocessor(diag, opts, headerInfo);
+        Preprocessor pp = new Preprocessor(diag, opts, headerInfo, sourceMgr);
         PreprocessorInitOptions initOptions = new PreprocessorInitOptions();
         initializePreprocessorInitOptions(initOptions);
 
