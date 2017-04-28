@@ -136,4 +136,41 @@ public class MemoryBuffer
     {
         return "mapped buffer";
     }
+
+    /**
+     * Allocate a new MemoryBuffer of the specified size that
+     * is completely initialized to zeros.  Note that the caller should
+     * initialize the memory allocated by this method.  The memory is owned by
+     * the MemoryBuffer object.
+     * @param size
+     * @param bufferName
+     * @return
+     */
+    public static MemoryBuffer getNewMemBuffer(int size, String bufferName)
+    {
+        char[] buf = new char[size];
+        return new MemoryBufferMem(buf, bufferName);
+    }
+
+    static class MemoryBufferMem extends MemoryBuffer
+    {
+        private String fileID;
+
+        public MemoryBufferMem(char[] buffer, String fid)
+        {
+            super(CharBuffer.wrap(buffer));
+            fileID = fid;
+        }
+
+        @Override
+        public String getBufferName()
+        {
+            return fileID;
+        }
+    }
+
+    public static MemoryBuffer getMemBuffer(String buffer, String name)
+    {
+        return new MemoryBufferMem(buffer.toCharArray(), name);
+    }
 }

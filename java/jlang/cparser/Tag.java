@@ -7,37 +7,64 @@ package jlang.cparser;
  * @author Xlous.zeng  
  * @version 0.1
  */
-public interface Tag {
-    int EOF = 0;
-    int UNKNOWN = EOF + 1;
-    int IDENTIFIER = UNKNOWN + 1;
- 
-    // jlang.type specifier
-    int VOID = IDENTIFIER + 1;
+public interface Tag
+{
+    // Not a token.
+    int UNKNOWN = 0;
+    // End of file.
+    int EOF = UNKNOWN + 1;
+    // End of preprocessing directive (end of line inside a
+    // directive).
+    int EOD = EOF + 1;
+
+    // The end of macro
+    int EOM = EOD + 1;
+
+    // C99 6.4.9: Comments.
+    int COMMENT = EOM + 1;  // Comment (only in -E -C[C] mode)
+
+    // C99 6.4.2: Identifiers.
+    int IDENTIFIER = COMMENT + 1;   // abcde123
+
+    // C99 6.4.4.1: Integer Constants
+    // C99 6.4.4.2: Floating Constants
+    int NUMERIC_CONSTANT = IDENTIFIER + 1; // 0x123
+
+    // C99 6.4.4: Character Constants
+    int CHAR_CONSTANT = NUMERIC_CONSTANT + 1;
+
+    // C99 6.4.5: String Literals.
+    int STRING_LITERAL = CHAR_CONSTANT + 1; // "foo"
+
+    int ANGLE_STRING_LITERAL = STRING_LITERAL + 1; // <foo>
+
+    // specifier
+    int VOID = STRING_LITERAL + 1;
     int BOOL = VOID + 1;
     int CHAR = BOOL + 1;
     int SHORT = CHAR + 1;
     int INT = SHORT + 1;
     int LONG = INT + 1;
-    int LONGLONG = LONG + 1;
-    int FLOAT = LONGLONG + 1;
+    int FLOAT = LONG + 1;
     int DOUBLE = FLOAT + 1;
-    int UNSIGNED = DOUBLE + 1;
+    int FALSE = DOUBLE + 1;
+    int UNSIGNED = FALSE + 1;
     int SIGNED = UNSIGNED + 1;
     int STRUCT = SIGNED + 1;
-    int UNION = STRUCT + 1;
+    int TRUE = STRUCT + 1;
+    int UNION = TRUE + 1;
     int ENUM = UNION + 1;
     int COMPLEX= ENUM + 1;
-    int ANN_TYPENAME = COMPLEX + 1;
+    int IMAGINARY = COMPLEX + 1;
 
     // storage class specifier
-    int STATIC = ANN_TYPENAME + 1;
+    int STATIC = IMAGINARY + 1;
     int REGISTER = STATIC + 1;
     int EXTERN = REGISTER + 1;
     int TYPEDEF = EXTERN + 1;
     int AUTO = TYPEDEF + 1;
     
-    // jlang.type qualifier
+    // qualifier
     int CONST = AUTO + 1;
     int VOLATILE = CONST + 1;
     int RESTRICT = VOLATILE + 1;
@@ -59,18 +86,10 @@ public interface Tag {
     int SIZEOF = RETURN + 1;
     int SWITCH = SIZEOF + 1;
     int WHILE = SWITCH + 1;
-    
-    // literal
-    int INTLITERAL = WHILE + 1;
-    int LONGLITERAL = INTLITERAL + 1;
-    int FLOATLITERAL = LONGLITERAL + 1;
-    int DOUBLELITERAL = FLOATLITERAL + 1;
-    int CHARLITERAL = DOUBLELITERAL + 1;
-    int STRINGLITERAL = CHARLITERAL + 1;
 
-    
-    // operator and seperator
-    int LPAREN = STRINGLITERAL + 1;
+
+    // C99 6.4.6: Punctuators.
+    int LPAREN = WHILE + 1;
     int RPAREN = LPAREN + 1;
     int LBRACE = RPAREN + 1;
     int RBRACE = LBRACE + 1;
@@ -119,7 +138,10 @@ public interface Tag {
     
     // for variable argument
     int ELLIPSIS = GTGTEQ + 1;
+
+    int HASH = ELLIPSIS + 1;
+    int HASHHASH = HASH + 1;
     
-    int TokenCount = ELLIPSIS + 1;
+    int TokenCount = HASHHASH;
 }
 

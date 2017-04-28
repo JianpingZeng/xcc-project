@@ -36,6 +36,11 @@ public class SourceLocation implements Comparable<SourceLocation>
         id = 0; // 0 is invalid fileID;
     }
 
+    public SourceLocation(SourceLocation loc)
+    {
+        id = loc.id;
+    }
+
     public boolean isFileID()
     {
         return (id & macroBit) == 0;

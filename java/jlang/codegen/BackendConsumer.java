@@ -25,6 +25,8 @@ import backend.target.TargetMachine.CodeGenOpt;
 import jlang.ast.ASTConsumer;
 import jlang.basic.BackendAction;
 import jlang.basic.CompileOptions;
+import jlang.basic.LangOptions;
+import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import tools.Context;
@@ -66,34 +68,49 @@ public class BackendConsumer extends ASTConsumer
 {
     private CompileOptions compileOptions;
     private BackendAction action;
-    private Options options;
-    private Log logger;
+    private Diagnostic diags;
+    private LangOptions langOpts;
     private Module theModule;
     private HIRModuleGenerator gen;
     private OutputStream asmOutStream;
     private TargetData theTargetData;
     private TargetMachine theTargetMachine;
+    private ASTContext context;
 
     private FunctionPassManager perFunctionPasses;
     private PassManager perModulePasses;
     private FunctionPassManager perCodeGenPasses;
 
-    public BackendConsumer(BackendAction act,
+    public BackendConsumer(
+            BackendAction act,
+            Diagnostic diags,
+            LangOptions langOpts,
             CompileOptions opts,
             String moduleName,
             OutputStream os,
-            Context ctx,
             Function<Module, TargetMachine> targetMachineAllocator)
     {
         action = act;
+        this.diags = diags;
+        this.langOpts = langOpts;
         compileOptions = opts;
-        options = Options.instance(ctx);
-        logger = Log.instance(ctx);
         theModule = new Module(moduleName);
-        gen = new HIRModuleGenerator(ctx, theModule);
+        gen = new HIRModuleGenerator(theModule);
         asmOutStream = os;
         theTargetMachine = targetMachineAllocator.apply(theModule);
         theTargetData = theTargetMachine.getTargetData();
+    }
+
+    public static ASTConsumer createBackendConsumer(
+            BackendAction act,
+            Diagnostic diags,
+            LangOptions langOpts,
+            CompileOptions compOpts,
+            String moduleID,
+            OutputStream os,
+            Function<Module, TargetMachine> targetMachine)
+    {
+        return new BackendConsumer(act, diags, langOpts, compOpts, moduleID, os, targetMachine);
     }
 
     /**
@@ -101,9 +118,14 @@ public class BackendConsumer extends ASTConsumer
      *
      */
     @Override
-    public void initialize()
+    public void initialize(ASTContext ctx)
     {
+        context = ctx;
 
+        gen.initialize(ctx);
+
+        theModule = gen.getModule();
+        theTargetData = new TargetData(ctx.getTargetDescription());
     }
 
     /**
@@ -133,12 +155,6 @@ public class BackendConsumer extends ASTConsumer
     @Override
     public void handleTranslationUnit()
     {
-        if (logger.nerrors> 0)
-        {
-            theModule = null;
-            return;
-        }
-
         // Emits assembly code or hir code for backend.target.
         emitAssembly();
 

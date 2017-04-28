@@ -1,21 +1,88 @@
 package jlang.cparser;
 
+import jlang.cpp.IdentifierInfo;
 import jlang.cpp.SourceLocation;
-import jlang.sema.APInt;
+import jlang.cpp.TokenKind;
+
+import static jlang.cparser.Token.TokenFlags.*;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class Token implements Tag
+public class Token
 {
-    public final int tag;
-    public final SourceLocation loc;
-
-    public Token(int tag, SourceLocation loc)
+    public static class StrData
     {
-        this.tag = tag;
-        this.loc = loc;
+        // Stores the spelling string for the Token.
+        public final String data;
+
+        /**
+         * The entire char buffer.
+         */
+        public final char[] buffer;
+        /**
+         * The starting index of the {@linkplain #data} in
+         * the {@linkplain #buffer}
+         */
+        public final int offset;
+
+        public StrData(char[] data, final char[] buffer, int offset)
+        {
+            this(String.valueOf(data), buffer, offset);
+        }
+
+        public StrData(String data, final char[] buffer, int offset)
+        {
+            this.data = data;
+            this.buffer = buffer;
+            this.offset = offset;
+        }
+    }
+
+    private SourceLocation loc;
+    /**
+     *  This is a union of three different pointer types, which depends
+     /// on what type of token this is:
+     ///  Identifiers, keywords, etc:
+     ///    This is an IdentifierInfo*, which contains the uniqued identifier
+     ///    spelling.
+     ///  Literals:  isLiteral() returns true.
+     ///    This is a pointer to the start of the token in a text buffer, which
+     ///    may be dirty (have trigraphs / escaped newlines).
+     */
+    private Object data;
+
+    private TokenKind kind;
+    private int flags;
+    private int length;
+
+    public interface TokenFlags
+    {
+        int StartOfLine   = 0x01,  // At start of line or only after whitespace.
+            LeadingSpace  = 0x02,  // Whitespace exists before this token.
+            DisableExpand = 0x04,  // This identifier may never be macro expanded.
+            NeedsCleaning = 0x08;   // Contained an escaped newline or trigraph.
+    }
+
+    public TokenKind getKind()
+    {
+        return kind;
+    }
+
+    public void setKind(TokenKind kind)
+    {
+        this.kind = kind;
+    }
+
+    public boolean is(TokenKind k) {return kind == k;}
+
+    public boolean isNot(TokenKind k) {return kind != k;}
+
+    public boolean isLiteral()
+    {
+        return is(TokenKind.Numeric_constant) || is(TokenKind.Char_constant)
+                || is(TokenKind.String_literal) || is(TokenKind.Angle_string_literal);
     }
 
     public SourceLocation getLocation()
@@ -23,186 +90,103 @@ public class Token implements Tag
         return loc;
     }
 
-    public String getIdentifierInfo()
+    public void setLocation(SourceLocation loc)
     {
-        return null;
+        this.loc = loc;
     }
 
-    public static class IntLiteral extends Token
+    public String getName()
     {
-        public boolean getIntegerValue(APInt resultVal)
-        {
-            return false;
-        }
-
-        enum IntLiteralKinds
-        {
-            IL_Int,
-            IL_Long,
-            IL_Longlong,
-        }
-
-        private final char[] buf;
-        private final int radix;
-        private IntLiteralKinds IL;
-        private boolean isUnsigned;
-
-        public IntLiteral(char[] value,
-                SourceLocation loc,
-                int radix,
-                IntLiteralKinds IL,
-                boolean isUnsigned)
-        {
-            super(INTLITERAL, loc);
-            buf = value;
-            this.radix = radix;
-            this.IL = IL;
-            this.isUnsigned = isUnsigned;
-        }
-
-        public boolean isUnsigned()
-        {
-            return isUnsigned;
-        }
-
-        public int getRadix()
-        {
-            return radix;
-        }
-
-        public boolean isInt()
-        {
-            return IL == IntLiteralKinds.IL_Int;
-        }
-
-        public boolean isLong()
-        {
-            return IL == IntLiteralKinds.IL_Long;
-        }
-
-        public boolean isLongLong()
-        {
-            return IL == IntLiteralKinds.IL_Longlong;
-        }
-
-        public String toString()
-        {
-            return String.valueOf(buf);
-        }
+        return kind.name;
     }
 
-    public static class FLiteral extends Token
+    public void startToken()
     {
-        final float value;
-
-        public FLiteral(float value, SourceLocation loc)
-        {
-            super(FLOATLITERAL, loc);
-            this.value = value;
-        }
-
-        public float getValue()
-        {
-            return value;
-        }
+        kind = TokenKind.Unknown;
+        flags = 0;
+        data = null;
+        loc = new SourceLocation();
     }
 
-    public static class DLiteral extends Token
+    public IdentifierInfo getIdentifierInfo()
     {
-        final double value;
-
-        public DLiteral(double value, SourceLocation loc)
-        {
-            super(DOUBLELITERAL, loc);
-            this.value = value;
-        }
-
-        public double getValue()
-        {
-            return value;
-        }
+        if (isLiteral()) return null;
+        return (IdentifierInfo)data;
     }
 
-    public static class StringLiteral extends Token
+    public void setIdentifierInfo(IdentifierInfo ii)
     {
-        final String value;
-
-        public StringLiteral(String value, SourceLocation loc)
-        {
-            super(STRINGLITERAL, loc);
-            this.value = value;
-        }
-
-        public String getValue() { return value; }
+        data = ii;
     }
 
-    public static class CharLiteral extends Token
+    public StrData getLiteralData()
     {
-        final char value;
-
-        public CharLiteral(char value, SourceLocation loc)
-        {
-            super(CHARLITERAL, loc);
-            this.value = value;
-        }
-
-        public char getValue() { return value; }
+        assert isLiteral(): "Cannot get literal data of non-literal";
+        return (StrData) data;
     }
 
-    public static class Ident extends Token
+    public void setLiteralData(char[] literal, char[] buffer, int offset)
     {
-        final String name;
-
-        public Ident(String name, SourceLocation loc)
-        {
-            super(IDENTIFIER, loc);
-            this.name = name;
-        }
-        public String getName() { return name;}
-
-        public String getIdentifierInfo()
-        {
-            return name;
-        }
+        assert isLiteral(): "Cannot get literal data of non-literal";
+        data = new StrData(String.valueOf(literal), buffer, offset);
     }
 
-    public static class Keyword extends Token
+    public void setLiteralData(String literal, char[] buffer, int offset)
     {
-        public Keyword(int tag)
-        {
-            this(tag, new SourceLocation());
-        }
-        public Keyword(int tag, SourceLocation loc)
-        {
-            super(tag, loc);
-        }
+        assert isLiteral(): "Cannot get literal data of non-literal";
+        data = new StrData(literal, buffer, offset);
     }
 
-    private static String[] names = {"eof", "error", "identifier",
-                                    "void", "_Bool", "char", "short",
-                                    "int", "long", "long long", "float",
-                                    "double", "unsigned", "signed",
-                                    "struct", "union", "_Complex",
-                                    "typename", "static", "register",
-                                    "extern", "typedef", "auto", "const",
-                                    "volatile", "restrict", "inline",
-                                    "break", "case", "continue", "default",
-                                    "do", "else", "for", "goto", "if",
-                                    "return", "sizeof", "switch", "while",
-                                    "for", "integer literal", "long literal",
-                                    "float literal", "double literal",
-                                    "char literal", "string literal",
-                                    "(", ")", "{", "}", "[", "]", ";",
-                                    ",", ".", "=", ">", "<", "!", "~",
-                                    "?", ":", "==", "<=", ">=", "!=",
-                                    "&&", "||", "++", "--", "+", "-",
-                                    "->", "*", "/", "&", "|", "^", "%",
-                                    "<<", ">>", "+=", "-=", "*=", "/=",
-                                    "&=", "|=", "^=", "%=", "<<=", ">>=",
-                                    "..."};
-    public static String getTokenName(int tag)
+    public void setFlag(int flag)
     {
-        assert tag>= EOF && tag < TokenCount:"invalid token tag " + tag;
-        return names[tag];
+        flags |= flag;
+    }
+
+    public void clearFlag(int flag)
+    {
+        flags &= ~flag;
+    }
+
+    public int getFlags()
+    {
+        return flags;
+    }
+
+    public void setFlagValue(int flag, boolean val)
+    {
+        if (val)
+            setFlag(flag);
+        else
+            clearFlag(flag);
+    }
+
+    public boolean isAtStartOfLine()
+    {
+        return (flags & StartOfLine) != 0;
+    }
+
+    public boolean hasLeadingSpace()
+    {
+        return (flags & LeadingSpace) != 0;
+    }
+
+    public boolean isExpandingDisabled()
+    {
+        return (flags & DisableExpand) != 0;
+    }
+
+    public boolean needsCleaning()
+    {
+        return (flags & NeedsCleaning) != 0;
+    }
+
+    public void setLength(int length)
+    {
+        this.length = length;
+    }
+
+    public int getLength()
+    {
+        return length;
     }
 }

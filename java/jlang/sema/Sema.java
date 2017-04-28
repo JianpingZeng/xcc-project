@@ -140,7 +140,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private Scope curScope;
     private DeclContext curContext;
-    final Parser parser;
+    private LangOptions langOpts;
+    private Preprocessor pp;
     private Stack<FunctionScopeInfo> functionScopes;
     private static Context SEMA_CONTEXT = new Context();
     private ASTConsumer consumer;
@@ -148,7 +149,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     public Sema(Preprocessor pp, ASTContext ctx, ASTConsumer consumer)
     {
-        parser = Parser.instance(pp, this);
+        langOpts = pp.getLangOptions();
+        this.pp = pp;
         context = ctx;
         this.consumer = consumer;
         initialize();
@@ -165,11 +167,6 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         return consumer;
     }
 
-    public Parser getParser()
-    {
-        return parser;
-    }
-
     PartialDiagnostic pdiag(int diagID)
     {
         return new PartialDiagnostic(diagID);
@@ -177,7 +174,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private SemaDiagnosticBuilder diag(SourceLocation loc, int diagID)
     {
-        Diagnostic.DiagnosticBuilder db = parser.diag(loc, diagID);
+        Diagnostic.DiagnosticBuilder db = pp.diag(loc, diagID);
         return new SemaDiagnosticBuilder(db, this, diagID);
     }
 
@@ -5980,7 +5977,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private LangOptions getLangOptions()
     {
-        return parser.getPP().getLangOption();
+        return parser.getPP().getLangOptions();
     }
 
 	/**

@@ -180,19 +180,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     /**
      * Constructs a jlang.parser from a given scanner.
      */
-    private Parser(Preprocessor pp, Sema action)
+    public Parser(Preprocessor pp, Sema action)
     {
         init(pp, action);
     }
 
-    public static Parser instance(Preprocessor pp, Sema action)
-    {
-        return new Parser(pp, action);
-    }
-
     LangOptions getLangOption()
     {
-        return pp.getLangOption();
+        return pp.getLangOptions();
     }
 
     Preprocessor getPreprocessor()
@@ -207,7 +202,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     public Diagnostic.DiagnosticBuilder diag(SourceLocation loc, int diagID)
     {
-        return diags.report(new FullSourceLoc(loc, pp.getInputFile()), diagID);
+        return diags.report(new FullSourceLoc(loc, pp.getSourceManager()), diagID);
     }
 
     private Diagnostic.DiagnosticBuilder diag(Token tok, int diagID)
