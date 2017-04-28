@@ -18,9 +18,11 @@ package jlang.sema;
 
 import jlang.ast.Tree;
 import jlang.basic.LangOptions;
+import jlang.basic.SourceManager;
 import jlang.basic.TargetInfo;
 import jlang.basic.TargetInfo.IntType;
 import jlang.cparser.DeclContext;
+import jlang.cpp.IdentifierTable;
 import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.ArrayType.ConstantArrayType;
@@ -60,8 +62,22 @@ public final class ASTContext
 
 	public LangOptions langOptions;
 	public TargetInfo target;
+	public IdentifierTable identifierTable;
+	public SourceManager sourceMgr;
+
 	public LinkedList<Type> types = new LinkedList<>();
 	private DeclContext translateUnitDecl;
+
+	public ASTContext(LangOptions opts, SourceManager sourceMgr,
+			TargetInfo targetInfo, IdentifierTable identifierTable)
+	{
+		langOptions = opts;
+		this.sourceMgr = sourceMgr;
+		target = targetInfo;
+		this.identifierTable = identifierTable;
+
+		// initBuiltType().
+	}
 
 	public QualType getPointerType(Type ty)
 	{

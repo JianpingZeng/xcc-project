@@ -1,4 +1,4 @@
-package jlang.basic;
+package jlang.cpp;
 /*
  * Extremely C language Compiler.
  * Copyright (c) 2015-2017, Xlous Zeng.
@@ -17,21 +17,21 @@ package jlang.basic;
  */
 
 /**
+ * An file used by {@linkplain IdentifierTable} that provides an interface
+ * for performing lookups from strings to {@linkplain IdentifierInfo} objects.
+ *
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class HeaderFileInfo
+public interface IdentifierInfoLookup
 {
     /**
-     * This is the number of times the file has been included
-     * already.
+     * Return the identifier token info for the specified named identifier.
+     * Unlike the version in {@linkplain IdentifierTable}, this returns null,
+     * the indicates the name not found.
+     *
+     * @param name
+     * @return
      */
-    public short numIncludes;
-
-    /**
-     * If this file has a #ifndef XXX (or equivalent) guard
-     /// that protects the entire contents of the file, this is the identifier
-     /// for the macro that controls whether or not it has any effect.
-     */
-    public String controllingMacrol;
+    IdentifierInfo get(String name);
 }

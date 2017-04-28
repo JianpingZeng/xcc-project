@@ -41,6 +41,9 @@ public final class LangOptions
      * Whether the '$' in identifier is allowed.
      */
     public boolean dollarIdents;
+
+    // For C94, C99.
+    public boolean digraphs;
     /**
      * Preprocessor in asm mode.
      */

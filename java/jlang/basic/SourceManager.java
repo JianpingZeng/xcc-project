@@ -18,6 +18,7 @@ package jlang.basic;
 
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import jlang.cparser.Token.StrData;
 import jlang.cpp.SourceLocation;
 import tools.Pair;
 
@@ -100,7 +101,8 @@ public class SourceManager
                 new SourceLocation(), 1,0, 0);
     }
 
-    public SourceLocation createInstantiationLoc(SourceLocation SpellingLoc,
+    public SourceLocation createInstantiationLoc(
+            SourceLocation SpellingLoc,
             SourceLocation ILocStart,
             SourceLocation ILocEnd,
             int TokLength,
@@ -149,7 +151,14 @@ public class SourceManager
         return createFileID(cache, includePos, character, preallocatedID, offset);
     }
 
-    public FileID createFileIDForMemBuffer(MemoryBuffer buffer,
+    public FileID createFileIDForMemBuffer(
+            MemoryBuffer buffer)
+    {
+        return createFileIDForMemBuffer(buffer, 0, 0);
+    }
+
+    public FileID createFileIDForMemBuffer(
+            MemoryBuffer buffer,
             int preallocatedID,
             int offset)
     {
@@ -279,15 +288,17 @@ public class SourceManager
         return getDecomposedLiteralLoc(literalLoc).second;
     }
 
-    public char[] getCharacterData(SourceLocation loc)
+    /**
+     * Compute the starting position for the given {@code loc} in input buffer.
+     * @param loc
+     * @return
+     */
+    public StrData getCharacterData(SourceLocation loc)
     {
         Pair<FileID, Integer> locInfo = getDecomposedLiteralLoc(loc);
 
-        CharBuffer cb = getSLocEntry(locInfo.first).getFile().getContentCache()
-                .getBuffer().getBuffer();
-        char[] buf = new char[cb.length() - locInfo.second];
-        System.arraycopy(cb.array(), locInfo.second, buf, 0, buf.length);;
-        return buf;
+        return new StrData(getSLocEntry(locInfo.first).getFile().getContentCache().
+                getBuffer().getBuffer().array(), locInfo.second);
     }
 
     public int getColumnNumber(FileID fid, int filePos)
@@ -480,7 +491,7 @@ public class SourceManager
         return entry.fileKind;
     }
 
-    public PresumedLoc getPresumeLoc(SourceLocation loc)
+    public PresumedLoc getPresumedLoc(SourceLocation loc)
     {
         if (!loc.isValid()) return new PresumedLoc();
 
@@ -981,5 +992,10 @@ public class SourceManager
         }while (!loc.isFileID());
 
         return Pair.get(fid, offset);
+    }
+
+    public char[] getBufferData(FileID fileID)
+    {
+        return getBuffer(fileID).getBuffer().array();
     }
 }

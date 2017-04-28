@@ -16,12 +16,9 @@ package jlang.ast;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.BackendAction;
-import jlang.codegen.BackendConsumer;
+import jlang.sema.ASTContext;
 import jlang.sema.Decl;
-import tools.Context;
 
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 
 /**
@@ -33,16 +30,11 @@ import java.util.ArrayList;
  */
 public abstract class ASTConsumer
 {
-    public static ASTConsumer createBackendConsumer(BackendAction act,
-            String moduleID, FileOutputStream os, Context ctx)
-    {
-        return new BackendConsumer(act, moduleID, os, ctx);
-    }
 
     /**
      * This method is invoked for initializing this ASTConsumer.
      */
-    public abstract void initialize();
+    public abstract void initialize(ASTContext ctx);
 
     /**
      * Handle the specified top level declaration.

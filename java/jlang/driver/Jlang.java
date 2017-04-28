@@ -21,17 +21,20 @@ import backend.target.TargetMachine;
 import jlang.ast.ASTConsumer;
 import jlang.basic.*;
 import jlang.basic.ProgramAction;
-import jlang.codegen.BackendConsumer;
 import jlang.cpp.Preprocessor;
 import jlang.cpp.SourceLocation;
 import jlang.diag.*;
+import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.sema.Sema;
 import jlang.system.Process;
 import org.apache.commons.cli.*;
 import tools.commandline.CL;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,6 +48,7 @@ import static jlang.basic.CompileOptions.InliningMethod.OnlyAlwaysInlining;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.System;
 import static jlang.basic.ProgramAction.*;
+import static jlang.codegen.BackendConsumer.createBackendConsumer;
 import static jlang.driver.Jlang.LangStd.*;
 
 /**
@@ -101,24 +105,11 @@ public class Jlang implements DiagnosticFrontendKindsTag
         }
     }
 
-    /**
-     * A table of all options that's passed to the JavaCompiler constructor.
-     */
-    private Options options = new Options();
-
-    /**
-     * The list of files to process
-     */
-    private List<String> filenames = new LinkedList<>();
-
-    private CommandLine cmdline = null;
-
     private Function<Module, TargetMachine> targetMachineAllocator;
 
     private void printUsage(String msg)
     {
         java.lang.System.err.println(msg);
-        new HelpFormatter().printHelp(NAME, options);
         java.lang.System.exit(EXIT_OK);
     }
 
@@ -127,7 +118,6 @@ public class Jlang implements DiagnosticFrontendKindsTag
      */
     private void printUsage()
     {
-        new HelpFormatter().printHelp(NAME, options);
         java.lang.System.exit(EXIT_OK);
     }
 
@@ -173,10 +163,14 @@ public class Jlang implements DiagnosticFrontendKindsTag
         return files;
     }
 
-    private void parseAST(Preprocessor pp, ASTConsumer consumer)
+    private void parseAST(Preprocessor pp, ASTConsumer consumer, ASTContext ctx)
     {
-        Sema sema = new Sema(pp, consumer);
-        jlang.cparser.Parser parser = sema.getParser();
+        Sema sema = new Sema(pp, ctx, consumer);
+
+        jlang.cparser.Parser parser = new jlang.cparser.Parser(pp, sema);
+        pp.enterMainFile();
+        consumer.initialize(ctx);
+
         ArrayList<Decl> declsGroup = new ArrayList<>(16);
 
         while (!parser.parseTopLevel(declsGroup)) // Not end of file.
@@ -274,33 +268,25 @@ public class Jlang implements DiagnosticFrontendKindsTag
                 }
 
                 CompileOptions compOpts = initializeCompileOptions();
-                consumer = new BackendConsumer(act, compOpts,
-                        infile, os, null,
+                consumer = createBackendConsumer(act,
+                        pp.getDiagnostics(),
+                        pp.getLangOptions(),
+                        compOpts,
+                        infile, os,
                         targetMachineAllocator);
-                consumer.initialize();
             }
         }
 
-        try
-        {
-            InputStream is;
-            if (!infile.equals("-"))
-            {
-                is = new FileInputStream(infile);
-                pp.addInput(is, infile);
-            }
-            else
-            {
-                is = java.lang.System.in;
-                pp.addInput(is, "<stdin>");
-            }
-        }
-        catch (IOException e)
-        {
-            error(e.getMessage());
-            java.lang.System.exit(0);
-        }
-        parseAST(pp, consumer);
+        ASTContext astCtx = null;
+        if (consumer != null)
+            astCtx = new ASTContext(
+                    pp.getLangOptions(),
+                    pp.getSourceManager(),
+                    pp.getTargetInfo(),
+                    pp.getIdentifierTable());
+        // If we have an ASTConsumer, run the parser with it.
+        if (consumer != null)
+            parseAST(pp, consumer, astCtx);
     }
 
     private CompileOptions initializeCompileOptions()
@@ -604,8 +590,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
 	 * 
 	 * @param args The command line parameters.
 	 */
-	public int compile(String[] args)
-	{
+	public int compile(String[] args) throws Exception
+    {
 	    // Parse the command line argument.
         CL.parseCommandLineOptions(args);
 

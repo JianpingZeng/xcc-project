@@ -22,7 +22,7 @@ import jlang.cpp.SourceLocation;
  * @author Xlous.zeng
  * @version null.1
  */
-class PresumedLoc
+public class PresumedLoc
 {
     private String filename;
     private int line, lol;
