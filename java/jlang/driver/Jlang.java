@@ -22,7 +22,7 @@ import jlang.ast.ASTConsumer;
 import jlang.basic.*;
 import jlang.basic.ProgramAction;
 import jlang.cpp.Preprocessor;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.diag.*;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;

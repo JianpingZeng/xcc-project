@@ -2,8 +2,9 @@ package jlang.cparser;
 
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
+import jlang.cpp.IdentifierInfo;
 import jlang.sema.Decl;
 import tools.OutParamWrapper;
 
@@ -48,7 +49,7 @@ public class Declarator
     }
 
     private DeclSpec ds;
-    private String name;
+    private IdentifierInfo name;
     private SourceLocation identifierLoc;
     private SourceRange range;
 
@@ -92,7 +93,7 @@ public class Declarator
 
     public DeclSpec getDeclSpec() { return ds; }
 
-    public String getIdentifier() { return name; }
+    public IdentifierInfo getIdentifier() { return name; }
 
     public TheContext getContext() { return context; }
 
@@ -213,7 +214,7 @@ public class Declarator
         return identifierLoc;
     }
 
-    public void setIdentifierLoc(String id, SourceLocation loc)
+    public void setIdentifierLoc(IdentifierInfo id, SourceLocation loc)
     {
         name = id;
         identifierLoc = loc;

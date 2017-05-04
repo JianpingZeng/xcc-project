@@ -16,8 +16,6 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
-import jlang.cpp.SourceLocation;
-
 /**
  * Each InstantiationInfo encodes the Instantiation
  * location - where the token was ultimately instantiated, and the

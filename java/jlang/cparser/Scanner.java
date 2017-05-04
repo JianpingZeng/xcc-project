@@ -1,10 +1,10 @@
 package jlang.cparser;
 
-import jlang.cparser.Token.*;
-import jlang.cparser.Token.IntLiteral.IntLiteralKinds;
-import jlang.cpp.CPPReader;
+import jlang.cpp.Tag;
+import jlang.cpp.Token;
+import jlang.cpp.Token.IntLiteral.IntLiteralKinds;
 import jlang.cpp.Preprocessor;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.diag.DiagnosticLexKindsTag;
 import jlang.diag.Diagnostic;
 import jlang.diag.FullSourceLoc;

@@ -16,7 +16,7 @@ package jlang.cpp;
  * permissions and limitations under the License.
  */
 
-import jlang.cparser.Token;
+import jlang.basic.SourceLocation;
 
 import java.util.ArrayList;
 
@@ -232,6 +232,11 @@ public final class MacroInfo
     public void setIsC99Varargs()
     {
         isC99Varargs = true;
+    }
+
+    public void setIsGNUVarargs()
+    {
+        isGNUVarargs = true;
     }
 
     public void setGNUVarargs()

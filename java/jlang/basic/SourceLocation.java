@@ -1,4 +1,4 @@
-package jlang.cpp;
+package jlang.basic;
 /*
  * Extremely C language Compiler.
  * Copyright (c) 2015-2017, Xlous Zeng.

@@ -1,7 +1,7 @@
 package jlang.ast;
 
 import backend.hir.BasicBlock;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
 import jlang.sema.*;
 import jlang.sema.Decl.*;
@@ -1885,19 +1885,13 @@ abstract public class Tree
     public static class StringLiteral extends Expr
     {
 	    private String strData;
+		private boolean isWide;
+		private int numConcatenated;
+		private SourceLocation[] tokLocs;
 
-        public StringLiteral(
-                QualType type,
-		        String str,
-                SourceLocation loc)
+        public StringLiteral(QualType type)
         {
-            super(CharacterLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
-	        strData = str;
-        }
-
-        public StringLiteral(SourceLocation loc)
-        {
-            super(CharacterLiteralClass, loc);
+            super(CharacterLiteralClass, type, OK_Ordinary, EVK_RValue, null);
         }
 
         @Override
@@ -1917,9 +1911,24 @@ abstract public class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+	    public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(getExprLocation());
+	    }
+
+	    public static StringLiteral create(
+	    		String strData,
+			    boolean isWide,
+			    QualType strTy,
+			    ArrayList<SourceLocation> stringLocs)
+	    {
+	    	StringLiteral lit = new StringLiteral(strTy);
+	    	lit.strData = strData;
+	    	lit.isWide = isWide;
+	    	lit.tokLocs = new SourceLocation[stringLocs.size()];
+	    	stringLocs.toArray(lit.tokLocs);
+		    return lit;
 	    }
     }
 

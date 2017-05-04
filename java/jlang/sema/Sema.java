@@ -10,10 +10,10 @@ import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
 import jlang.cparser.DeclSpec.SCS;
 import jlang.cparser.DeclSpec.TST;
-import jlang.cparser.Token.CharLiteral;
-import jlang.cparser.Token.IntLiteral;
-import jlang.cpp.Preprocessor;
-import jlang.cpp.SourceLocation;
+import jlang.cpp.*;
+import jlang.cpp.Token.CharLiteral;
+import jlang.cpp.Token.IntLiteral;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
 import jlang.diag.*;
 import jlang.sema.Decl.*;
@@ -33,7 +33,7 @@ import static jlang.basic.Linkage.NoLinkage;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
-import static jlang.cparser.Tag.*;
+import static jlang.cpp.Tag.*;
 import static jlang.sema.BinaryOperatorKind.BO_Div;
 import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
@@ -240,10 +240,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * @param curScope
      * @return
      */
-    public QualType getTypeByName(String identifierInfo,
+    public QualType getTypeByName(IdentifierInfo identifierInfo,
             SourceLocation nameLoc, Scope curScope)
     {
-        LookupResult res = lookupParsedName(curScope, identifierInfo,
+        LookupResult res = lookupParsedName(curScope, identifierInfo.getName(),
                 LookupOrdinaryName);
 
         NamedDecl ndecl = null;
@@ -2108,15 +2108,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     }
 
     public LabelDecl lookupOrCreateLabel(
-            String name,
+            IdentifierInfo name,
             SourceLocation loc)
     {
-        NamedDecl res = lookupName(curScope, name, loc, LookupLabelName);
+        NamedDecl res = lookupName(curScope, name.getName(), loc, LookupLabelName);
         if (res != null && res.getDeclContext() != curContext)
             res = null;
         if (res == null)
         {
-            res = new LabelDecl(name, curContext, null, loc);
+            res = new LabelDecl(name.getName(), curContext, null, loc);
             Scope s = curScope.getFuncParent();
             assert s != null : "Not in a function?";
             pushOnScopeChains(res, s, true);
@@ -3322,7 +3322,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      */
     public ActionResult<Expr> actOnBinOp(
             SourceLocation tokLoc,
-            int tokenKind,
+            TokenKind tokenKind,
             Expr lhs,
             Expr rhs)
     {
@@ -4492,7 +4492,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         return null;
     }
 
-    public static BinaryOperatorKind convertTokenKindToBinaryOpcode(int tokenKind)
+    public static BinaryOperatorKind convertTokenKindToBinaryOpcode(TokenKind tokenKind)
     {
         BinaryOperatorKind opc = null;
         switch (tokenKind)
@@ -4512,7 +4512,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             case GT:            opc = BinaryOperatorKind.BO_GT; break;
             case BANGEQ:        opc = BinaryOperatorKind.BO_NE; break;
             case EQ:            opc = BinaryOperatorKind.BO_EQ; break;
-            case AMP:           opc = BinaryOperatorKind.BO_And; break;
+            case amp:           opc = BinaryOperatorKind.BO_And; break;
             case CARET:         opc = BinaryOperatorKind.BO_Xor; break;
             case BAR:           opc = BinaryOperatorKind.BO_Or; break;
             case AMPAMP:        opc = BinaryOperatorKind.BO_LAnd; break;
@@ -4547,35 +4547,43 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
 	/**
      * Allocates a array of type char for holding the string literal.
-     * @param str
+     * @param stringToks
      * @return
      */
-    public ActionResult<Expr> actOnStringLiteral(Token.StringLiteral str)
+    public ActionResult<Expr> actOnStringLiteral(ArrayList<Token> stringToks)
     {
-        assert !str.getValue().isEmpty():"string literal must have at least one char";
+        assert !stringToks.isEmpty():"string literal must have at least one char";
 
-        String s = str.getValue();
-        assert s!= null && s.length() > 0:"Must have at least one string!";
+        Token[] arr = new Token[stringToks.size()];
+        stringToks.toArray(arr);
+        StringLiteralParser literal = new StringLiteralParser(arr, pp);
+        if (literal.hadError)
+            return exprError();
+
+        ArrayList<SourceLocation> stringLocs = new ArrayList<>();
+        stringToks.forEach(tok->stringLocs.add(tok.getLocation()));
+
         QualType strTy = context.CharTy;
-        strTy = ArrayType.ConstantArrayType.getConstantType
-                (strTy, new APInt(32, s.length() + 1));
 
-        return new ActionResult<>(new StringLiteral(strTy, str.getValue(),
-                EVK_RValue, str.loc));
+        strTy = ArrayType.ConstantArrayType.getConstantType
+                (strTy, new APInt(32, literal.getNumStringChars() +1));
+
+        return new ActionResult<Expr>(StringLiteral.create(literal.getString(),
+                false, strTy, stringLocs));
     }
 
-    private UnaryOperatorKind convertTokenKindToUnaryOperator(int kind)
+    private UnaryOperatorKind convertTokenKindToUnaryOperator(TokenKind kind)
     {
         switch (kind)
         {
             default:
                 Util.shouldNotReachHere("Unknown unary operator!");
                 return null;
-            case PLUSPLUS:
+            case plusplus:
                 return UO_PreInc;
-            case SUBSUB:
+            case subsub:
                 return UO_PreDec;
-            case AMP:
+            case amp:
                 return UO_AddrOf;
             case STAR:
                 return UO_Deref;
@@ -4600,7 +4608,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      */
     public ActionResult<Expr> actOnUnaryOp(
             SourceLocation opLoc,
-            int tokenKind,
+            TokenKind tokenKind,
             Expr inputExpr)
     {
         UnaryOperatorKind opc = convertTokenKindToUnaryOperator(tokenKind);
@@ -5549,7 +5557,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             Scope s,
             Expr base,
             SourceLocation opLoc,
-            int opKind,
+            TokenKind opKind,
             String name)
     {
         boolean isArrow = opKind == SUBGT;
@@ -5848,7 +5856,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     public ActionResult<Expr> actOnPostfixUnaryOp(
             SourceLocation loc,
-            int kind,
+            TokenKind kind,
             Expr lhs)
     {
         UnaryOperatorKind opc;
@@ -5856,9 +5864,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             default:
                 Util.shouldNotReachHere("Unknown unary op!");
-            case PLUSPLUS:
+            case plusplus:
                 opc = UO_PostInc;break;
-            case SUBSUB:
+            case subsub:
                 opc = UO_PostDec;break;
         }
         return createUnaryOp(loc, opc, lhs);
@@ -6071,14 +6079,14 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     public ActionResult<Expr> actOnIdentifierExpr(
             Scope s,
             SourceLocation loc,
-            String id,
+            IdentifierInfo id,
             boolean hasTrailingLParen,
             boolean isAddressOfOperand)
     {
         assert !isAddressOfOperand && hasTrailingLParen:
                 "cannot be direct & operand and have a trailing lparen";
 
-        String name = id;
+        String name = id.getName();
         SourceLocation nameLoc = loc;
 
         // Perform the required lookup.
@@ -6429,9 +6437,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
      * @param scope
      * @return
      */
-    public TST isTagName(String identifierInfo, Scope scope)
+    public TST isTagName(IdentifierInfo identifierInfo, Scope scope)
     {
-        NamedDecl ndecl = lookupName(scope, identifierInfo,
+        NamedDecl ndecl = lookupName(scope, identifierInfo.getName(),
                 SourceLocation.NOPOS, LookupTagName);
         if (ndecl != null)
         {

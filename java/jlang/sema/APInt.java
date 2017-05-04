@@ -1692,6 +1692,10 @@ public class APInt
         return result;
     }
 
+    /**
+     * unary logical not operation.
+     * @return
+     */
     public boolean lNot()
     {
         if (isSingleWord())

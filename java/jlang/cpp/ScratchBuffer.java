@@ -18,6 +18,7 @@ package jlang.cpp;
 
 import jlang.basic.FileID;
 import jlang.basic.MemoryBuffer;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceManager;
 import tools.OutParamWrapper;
 

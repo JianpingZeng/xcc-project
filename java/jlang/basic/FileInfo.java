@@ -16,8 +16,6 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
-import jlang.cpp.SourceLocation;
-
 /**
  * <p>
  * Information about a FileID, basically just the logical file

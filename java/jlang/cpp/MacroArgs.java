@@ -17,7 +17,7 @@ package jlang.cpp;
  */
 
 import gnu.trove.list.array.TCharArrayList;
-import jlang.cparser.Token;
+import jlang.basic.SourceLocation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,7 +79,7 @@ public class MacroArgs
     /// by pre-expansion, return false.  Otherwise, conservatively return true.
     public boolean argNeedsPreexpansion(Token[] argToks, Preprocessor pp)
     {
-        for (int i = 0, e = argToks.length; i < e && argToks[i].isNot(Eof); i++)
+        for (int i = 0, e = argToks.length; i < e && argToks[i].isNot(eof); i++)
         {
             IdentifierInfo ii = argToks[i].getIdentifierInfo();
             if (ii != null)
@@ -101,7 +101,7 @@ public class MacroArgs
         for (; arg != 0; ++i)
         {
             assert i < getNumArguments();
-            if (unexpandedArgTokens[i].is(Eof))
+            if (unexpandedArgTokens[i].is(eof))
                 --arg;
         }
         assert i < getNumArguments();
@@ -114,7 +114,7 @@ public class MacroArgs
     public static int getArgLength(Token[] argPtr)
     {
         int numTokens = 0;
-        for (int i = 0, e = argPtr.length; i < e && argPtr[i].isNot(Eof); ++i)
+        for (int i = 0, e = argPtr.length; i < e && argPtr[i].isNot(eof); ++i)
             ++numTokens;
         return numTokens;
     }
@@ -143,7 +143,7 @@ public class MacroArgs
             Token t = new Token();
             result.add(t);
             pp.lex(t);
-        }while (result.get(result.size() - 1).isNot(Eof));
+        }while (result.get(result.size() - 1).isNot(eof));
 
         pp.removeTopOfLexerStack();
         return result;
@@ -162,7 +162,7 @@ public class MacroArgs
         }
 
         if (stringifiedArgs.get(argNo) == null ||
-                stringifiedArgs.get(argNo).isNot(String_literal))
+                stringifiedArgs.get(argNo).isNot(string_literal))
             stringifiedArgs.set(argNo, stringifyArgument(getUnexpArgument(argNo), pp));
         return stringifiedArgs.get(argNo);
     }
@@ -196,14 +196,14 @@ public class MacroArgs
     {
         Token tok = new Token();
         tok.startToken();
-        tok.setKind(String_literal);
+        tok.setKind(string_literal);
 
         int i = 0;
         TCharArrayList sb = new TCharArrayList();
         sb.add('\"');
 
         boolean isFirst = true;
-        for (; argToks[i].isNot(Eof); i++)
+        for (; argToks[i].isNot(eof); i++)
         {
             Token t = argToks[i];
 
@@ -216,8 +216,8 @@ public class MacroArgs
 
             // If this is a string or character constant, escape the token as specified
             // by 6.10.3.2p2.
-            if (tok.is(String_literal) ||   // string literal, "foo"
-                    tok.is(Char_constant))  // char literal
+            if (tok.is(string_literal) ||   // string literal, "foo"
+                    tok.is(char_constant))  // char literal
             {
                 String str = Lexer.stringify(pp.getSpelling(tok));
                 sb.add(str.toCharArray());

@@ -17,7 +17,7 @@ package jlang.cpp;
  */
 
 import jlang.basic.FileID;
-import jlang.cparser.Token;
+import jlang.basic.SourceLocation;
 
 import java.nio.file.Path;
 import java.util.Stack;
@@ -119,7 +119,7 @@ public abstract class PreprocessorLexer
         conditionalStack.push(ci);
     }
 
-    protected PPConditionalInfo popCOnditionalLevel()
+    protected PPConditionalInfo popConditionalLevel()
     {
         if (conditionalStack.isEmpty())
             return null;

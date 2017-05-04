@@ -18,6 +18,7 @@ package jlang.basic;
 
 import jlang.cpp.ExternalIdentifierLookup;
 import jlang.cpp.IdentifierInfo;
+import tools.OutParamWrapper;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -157,13 +158,13 @@ public final class HeaderSearch
             String filename,
             boolean isAngled,
             Path fromDir,
-            Path curDir,
+            OutParamWrapper<Path> curDir,
             Path curFileEntry)
     {
         // If 'Filename' is absolute, check to see if it exists and no searching.
         if (Paths.get(filename).isAbsolute())
         {
-            curDir = null;
+            curDir.set(null);
 
             // If this was an #include_next "/absolute/file", fail.
             if (fromDir != null) return null;
@@ -202,10 +203,10 @@ public final class HeaderSearch
             if (!fe.toFile().getName().equals(filename))
                 continue;
 
-            curDir = searchDirs.get(i);
+            curDir.set(searchDirs.get(i));
 
             // This file is a system header or C++ unfriendly if the dir is.
-            getFileInfo(fe).dirInfo = getFileInfo(curDir).dirInfo;
+            getFileInfo(fe).dirInfo = getFileInfo(curDir.get()).dirInfo;
             return fe;
         }
 

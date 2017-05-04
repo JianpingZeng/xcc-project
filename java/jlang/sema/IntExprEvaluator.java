@@ -17,7 +17,7 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree.*;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;
 import jlang.sema.Decl.VarDecl;

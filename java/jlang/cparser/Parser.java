@@ -11,9 +11,8 @@ import jlang.cparser.DeclSpec.FieldDeclarator;
 import jlang.cparser.DeclSpec.ParamInfo;
 import jlang.cparser.DeclSpec.ParsedSpecifiers;
 import jlang.cparser.Declarator.TheContext;
-import jlang.cparser.Token.Ident;
-import jlang.cpp.Preprocessor;
-import jlang.cpp.SourceLocation;
+import jlang.cpp.*;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
 import jlang.diag.*;
 import jlang.sema.Decl;
@@ -38,6 +37,7 @@ import static jlang.cparser.DeclSpec.TST.*;
 import static jlang.cparser.DeclSpec.TSW.TSW_long;
 import static jlang.cparser.DeclSpec.TSW.TSW_short;
 import static jlang.cparser.Parser.ParenParseOption.*;
+import static jlang.cpp.TokenKind.*;
 import static jlang.sema.Sema.TagUseKind.*;
 
 /**
@@ -158,6 +158,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private Diagnostic diags;
 
+    private int braceCount;
+
+    private SourceLocation prevTokLocation;
+
+    private Token tok;
+
     public Diagnostic getDiags()
     {
         return diags;
@@ -175,6 +181,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         this.S = new Scanner(pp);
         this.action = action;
         keywords = Keywords.instance();
+        consumeToken();
     }
 
     /**
@@ -238,9 +245,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         assert result != null;
 
-        if (nextTokenIs(EOF))
+        if (nextTokenIs(eof))
         {
-            diag(S.token, ext_empty_source_file);
+            diag(tok, ext_empty_source_file);
             action.actOnEndOfTranslationUnit();
             return true;
         }
@@ -259,21 +266,20 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ArrayList<Decl> parseExternalDeclaration()
     {
-        Token tok = S.token;
-        SourceLocation pos = tok.loc;
-        switch (tok.tag)
+        SourceLocation pos = tok.getLocation();
+        switch (tok.getKind())
         {
-            case SEMI:
+            case semi:
             {
                 diag(pos, ext_top_level_semi);
                 consumeToken();
                 return declGroups();
             }
-            case RBRACE:
+            case r_brace:
                 diag(pos, err_expected_external_declaration);
                 consumeToken();
                 return declGroups();
-            case EOF:
+            case eof:
                 diag(pos, err_expected_external_declaration);
                 return declGroups();
             /**
@@ -281,7 +287,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             case ASM:
             {}
             */
-            case TYPEDEF:
+            case Typedef:
             {
                 // A function definition can not start with those keyword.
                 ArrayList<Stmt> stmts = new ArrayList<>();
@@ -347,7 +353,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // C99 6.7.2.3p6: Handle "struct-or-union identifier;", "enum { X };"
         // declaration-specifiers init-declarator-list[opt] ';'
-        if (nextTokenIs(SEMI))
+        if (nextTokenIs(semi))
         {
             consumeToken();
             Decl theDecl = action.parsedFreeStandingDeclSpec(getCurScope(), declSpecs);
@@ -397,13 +403,13 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         // We should have an opening brace.
-        if (nextTokenIsNot(LBRACE))
+        if (nextTokenIsNot(l_brace))
         {
-            diag(S.token, err_expected_fn_body);
-            skipUntil(LBRACE, true);
+            diag(tok, err_expected_fn_body);
+            skipUntil(l_brace, true);
 
             // if we didn't find a '{', bail out.
-            if (nextTokenIsNot(LBRACE))
+            if (nextTokenIsNot(l_brace))
                 return null;
         }
 
@@ -417,9 +423,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     private Decl parseFunctionStatementBody(Decl funcDecl, ParseScope bodyScope)
     {
-        assert nextTokenIs(LBRACE);
+        assert nextTokenIs(l_brace);
 
-        SourceLocation lBraceLoc = S.token.getLocation();
+        SourceLocation lBraceLoc = tok.getLocation();
         ActionResult<Stmt> body = parseCompoundStatementBody(lBraceLoc);
 
         if (body.isInvalid())
@@ -432,15 +438,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     private ActionResult<Stmt> parseCompoundStatementBody(SourceLocation startLoc)
     {
         ArrayList<Stmt> stmts = new ArrayList<>();
-        for (Token tok = S.token; !tokenIs(tok, RBRACE) && !tokenIs(tok, EOF);)
+        for (; !tokenIs(tok, r_brace) && !tokenIs(tok, eof);)
         {
             ActionResult<Stmt> res = parseStatementOrDeclaration(stmts, false);
             stmts.add(res.get());
         }
-        Token tok = S.token;
-        if (!tokenIs(tok, RBRACE))
+        if (!tokenIs(tok, r_brace))
         {
-            diag(S.token, err_expected_rbrace);
+            diag(tok, err_expected_rbrace);
             return new ActionResult<>();
         }
         SourceLocation rbraceLoc = consumeBrace();
@@ -496,13 +501,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     private ActionResult<Stmt> parseStatementOrDeclaration(ArrayList<Stmt> stmts,
             boolean onlyStatements)
     {
-        Token tok = S.token;
-        switch (tok.tag)
+        switch (tok.getKind())
         {
             // C99 6.8.1 labeled-statement
-            case IDENTIFIER:
+            case Identifier:
             {
-                if (nextTokenIs(COLON))
+                if (nextTokenIs(colon))
                 {
                     // identifier ':' statement
                     return parseLabeledStatement();
@@ -513,65 +517,65 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             {
                 if (!onlyStatements && isDeclarationSpecifier())
                 {
-                    SourceLocation declStart = S.token.loc;
+                    SourceLocation declStart = tok.getLocation();
                     OutParamWrapper<SourceLocation> end = new OutParamWrapper<>();
                     ArrayList<Decl> decls = parseDeclaration(stmts, TheContext.BlockContext, end);
                     SourceLocation declEnd = end.get();
 
                     return action.actOnDeclStmt(decls, declStart, declEnd);
                 }
-                if (nextTokenIs(RBRACE))
+                if (nextTokenIs(r_brace))
                 {
-                    diag(S.token.loc, err_expected_statement);
+                    diag(tok.getLocation(), err_expected_statement);
                     return stmtError();
                 }
                 // expression[opt] ';'
                 return parseExprStatement();
             }
 
-            case CASE:
+            case Case:
             {
                 // C99 6.8.1: labeled-statement
                 return parseCaseStatement(false, null);
             }
-            case DEFAULT:
+            case Default:
             {
                 // C99 6.8.1: labeled-statement
                 return parseDefaultStatement();
             }
-            case LBRACE:
+            case l_brace:
             {
                 // C99 6.8.2: compound-statement
                 return parseCompoundStatement();
             }
-            case SEMI:
+            case semi:
             {
                 // null statement
                 SourceLocation loc = consumeToken();
                 return action.actOnNullStmt(loc);
             }
-            case IF:
+            case If:
             {
                 // C99 6.8.4.1: if-statement
                 return parseIfStatement();
             }
-            case SWITCH:
+            case Switch:
             {
                 return parseSwitchStatement();
             }
-            case WHILE:
+            case While:
                 return parseWhileStatement();
-            case DO:
+            case Do:
                 return parseDoStatement();
-            case FOR:
+            case For:
                 return parseForStatement();
-            case GOTO:
+            case Goto:
                 return parseGotoStatement();
-            case CONTINUE:
+            case Continue:
                 return parseContinueStatement();
-            case BREAK:
+            case Break:
                 return parseBreakStatement();
-            case RETURN:
+            case Return:
                 return parseReturnStatement();
         }
     }
@@ -586,12 +590,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseLabeledStatement()
     {
-        assert nextTokenIs(IDENTIFIER) && S.token.getIdentifierInfo() != null
+        assert nextTokenIs(Identifier) && tok.getIdentifierInfo() != null
                 : "Not a valid identifier";
-        Token identTok = S.token;  // Save the identifier token.
+        Token identTok = tok;  // Save the identifier token.
         consumeToken(); // Eat the identifier.
 
-        assert nextTokenIs(COLON) : "Not a label";
+        assert nextTokenIs(colon) : "Not a label";
         // identifier ':' statement
         SourceLocation colonLoc = consumeToken();
 
@@ -599,10 +603,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (res.isInvalid())
             return new ActionResult<Stmt>(new Tree.NullStmt(colonLoc));
 
-        LabelDecl ld = action.lookupOrCreateLabel(S.token.getIdentifierInfo(),
-                S.token.getLocation());
+        LabelDecl ld = action.lookupOrCreateLabel(tok.getIdentifierInfo(),
+                tok.getLocation());
 
-        return action.actOnLabelStmt(S.token.getLocation(), ld, colonLoc, res);
+        return action.actOnLabelStmt(tok.getLocation(), ld, colonLoc, res);
     }
 
     /**
@@ -616,7 +620,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             boolean missingCase,
             ActionResult<Expr> expr)
     {
-        assert nextTokenIs(CASE) || missingCase : "Not a case stmt!";
+        assert nextTokenIs(Case) || missingCase : "Not a case stmt!";
 
         // It is very very common for code to contain many case statements recursively
         // nested, as in (but usually without indentation):
@@ -654,30 +658,30 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
             if (lhs.isInvalid())
             {
-                skipUntil(COLON, true);
+                skipUntil(colon, true);
                 return stmtError();
             }
             // GNU case range extension.
             SourceLocation dotDotDotLoc;
             ActionResult<Expr> rhs;
-            if (nextTokenIs(ELLIPSIS))
+            if (nextTokenIs(ellipsis))
             {
-                diag(S.token, ext_gnu_case_range);
+                diag(tok, ext_gnu_case_range);
                 dotDotDotLoc = consumeToken();
 
                 rhs = parseConstantExpression();
                 if (rhs.isInvalid())
                 {
-                    skipUntil(COLON, true);
+                    skipUntil(colon, true);
                     return stmtError();
                 }
             }
 
-            if (nextTokenIs(COLON))
+            if (nextTokenIs(colon))
             {
                 colonLoc = consumeToken();
             }
-            else if (nextTokenIs(SEMI))
+            else if (nextTokenIs(semi))
             {
                 colonLoc = consumeToken();
                 diag(colonLoc, err_expected_colon_after).addTaggedVal("'case'")
@@ -712,12 +716,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 deepestParsedCaseStmt = nextDeepest;
             }
             // handle all case statements
-        } while(nextTokenIs(CASE));
+        } while(nextTokenIs(Case));
 
         assert !topLevelCase.isInvalid() :"Should have parsed at least one case statement";
 
         ActionResult<Stmt> subStmt;
-        if (nextTokenIsNot(RBRACE))
+        if (nextTokenIsNot(r_brace))
         {
             subStmt = parseStatement();
         }
@@ -747,17 +751,17 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseDefaultStatement()
     {
-        assert (nextTokenIs(DEFAULT)) :"Not a default statement!";
+        assert (nextTokenIs(Default)) :"Not a default statement!";
 
         // eat the 'default' keyword
         SourceLocation defaultLoc = consumeToken();
 
         SourceLocation colonLoc = SourceLocation.NOPOS;
-        if (nextTokenIs(COLON))
+        if (nextTokenIs(colon))
         {
             colonLoc = consumeToken();
         }
-        else if (nextTokenIs(SEMI))
+        else if (nextTokenIs(semi))
         {
             colonLoc = consumeToken();
             diag(colonLoc, err_expected_colon_after).addTaggedVal("'default'")
@@ -773,9 +777,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         // diagnose the common error "switch (X) { default:}", which is not valid.
-        if (nextTokenIs(RBRACE))
+        if (nextTokenIs(r_brace))
         {
-            diag(S.token, err_label_end_of_compound_statement);
+            diag(tok, err_label_end_of_compound_statement);
             return stmtError();
         }
 
@@ -809,32 +813,32 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseCompoundStatement(boolean isStmtExpr, int scopeFlags)
     {
-        assert nextTokenIs(LBRACE) : "Not a compound statement!";
+        assert nextTokenIs(l_brace) : "Not a compound statement!";
 
         // Enter a scope to hold everything within the compound stmt.
         // Compound statements can always hold declarations.
         ParseScope compoundScope = new ParseScope(this, scopeFlags);
 
         // parse the statements in the body.
-        return parseCompoundStatementBody(S.token.getLocation(), isStmtExpr);
+        return parseCompoundStatementBody(tok.getLocation(), isStmtExpr);
     }
 
     private ActionResult<Stmt> parseCompoundStatementBody(
             SourceLocation startLoc, boolean isStmtExpr)
     {
         ArrayList<Stmt> stmts = new ArrayList<>();
-        while (nextTokenIsNot(RBRACE) && nextTokenIsNot(EOF))
+        while (nextTokenIsNot(r_brace) && nextTokenIsNot(eof))
         {
             ActionResult<Stmt> res = parseStatementOrDeclaration(stmts, false);
             stmts.add(res.get());
         }
-        if (nextTokenIsNot(RBRACE))
+        if (nextTokenIsNot(r_brace))
         {
-            diag(S.token, err_expected_lbrace);
+            diag(tok, err_expected_lbrace);
             return stmtError();
         }
         // consume '}'
-        SourceLocation endLoc = matchRHSPunctuation(RBRACE, startLoc);
+        SourceLocation endLoc = matchRHSPunctuation(r_brace, startLoc);
 
         return action.actOnCompoundStmtBody(startLoc, endLoc, stmts, isStmtExpr);
     }
@@ -850,12 +854,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseIfStatement()
     {
-        assert nextTokenIs(IF) : "Not an if stmt!";
+        assert nextTokenIs(If) : "Not an if stmt!";
         SourceLocation ifLoc = consumeToken(); // eat 'if'
 
-        if (nextTokenIsNot(LPAREN))
+        if (nextTokenIsNot(l_paren))
         {
-            diag(S.token, err_expected_lparen_after).addTaggedVal("if");
+            diag(tok, err_expected_lparen_after).addTaggedVal("if");
             return stmtError();
         }
         // C99 6.8.4p3 - In C99, the if statement is a block.  This is not
@@ -875,9 +879,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // the scope for 'then' statement if there is a '{'
         ParseScope InnerScope = new ParseScope(this,
                 ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE) && getLangOption().c99);
+                nextTokenIs(l_brace) && getLangOption().c99);
 
-        SourceLocation thenStmtLoc = S.token.getLocation();
+        SourceLocation thenStmtLoc = tok.getLocation();
         // parse the 'then' statement
         ActionResult<Stmt> thenStmt = parseStatement();
 
@@ -889,16 +893,16 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         SourceLocation elseLoc = SourceLocation.NOPOS;
         ActionResult<Stmt> elseStmt = new ActionResult<>();
 
-        if (nextTokenIs(ELSE))
+        if (nextTokenIs(Else))
         {
             // eat the 'else' keyword.
             elseLoc = consumeToken();
-            elseStmtLoc = S.token.getLocation();
+            elseStmtLoc = tok.getLocation();
 
             // the scope for 'else' statement if there is a '{'
             InnerScope = new ParseScope(this,
                     ScopeFlags.DeclScope.value,
-                    nextTokenIs(LBRACE) && getLangOption().c99);
+                    nextTokenIs(l_brace) && getLangOption().c99);
 
             elseStmt = parseStatement();
 
@@ -994,7 +998,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             OutParamWrapper<QualType> castTy,
             OutParamWrapper<SourceLocation> rParenLoc)
     {
-        assert nextTokenIs(LPAREN):"Not a paren expression.";
+        assert nextTokenIs(l_paren):"Not a paren expression.";
         // eat the '('.
         SourceLocation lParenLoc = consumeParen();
         ActionResult<Expr> result = new ActionResult<>(true);
@@ -1006,12 +1010,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             ActionResult<QualType> ty = parseTypeName();
 
             // Match the ')'.
-            if (nextTokenIs(RPAREN))
+            if (nextTokenIs(r_paren))
                 rParenLoc.set(consumeParen());
             else
-                matchRHSPunctuation(RPAREN, lParenLoc);
+                matchRHSPunctuation(r_paren, lParenLoc);
 
-            if (nextTokenIs(LBRACE))
+            if (nextTokenIs(l_brace))
             {
                 exprType.set(CompoundLiteral);
                 // TODO return parseCompoundLiteralExpression(ty, lParenLoc, rParenLoc);
@@ -1045,7 +1049,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 }
                 return result;
             }
-            diag(S.token, err_expected_lbrace_in_compound_literal);
+            diag(tok, err_expected_lbrace_in_compound_literal);
             return exprError();
         }
         else if (parseAsExprList)
@@ -1059,7 +1063,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 exprType.set(SimpleExpr);
                 result = action.actOnParenOrParenList(
                         rParenLoc.get(),
-                        S.token.getLocation(),
+                        tok.getLocation(),
                         exprs);
             }
         }
@@ -1070,22 +1074,22 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             exprType.set(SimpleExpr);
 
             // Don't build a parentheses expression, since it is not needed.
-            if (!result.isInvalid() && nextTokenIs(RPAREN))
+            if (!result.isInvalid() && nextTokenIs(r_paren))
             {
                 // obtains the location of next token of ')'.
-                SourceLocation rparen = S.token.getLocation();
+                SourceLocation rparen = tok.getLocation();
                 result = action.actOnParenExpr(rParenLoc.get(), rparen, result.get());
             }
         }
         if (result.isInvalid())
         {
-            skipUntil(RPAREN, true);
+            skipUntil(r_paren, true);
             return exprError();
         }
-        if (nextTokenIs(RPAREN))
+        if (nextTokenIs(r_paren))
             rParenLoc.set(consumeParen());
         else
-        matchRHSPunctuation(RPAREN, lParenLoc);
+        matchRHSPunctuation(r_paren, lParenLoc);
         return result;
     }
 
@@ -1108,7 +1112,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 return true;
 
             exprs.add(res.get());
-            if (nextTokenIsNot(COMMA))
+            if (nextTokenIsNot(comma))
                 return false;
 
             // consume a ',' and add it's location into comma Locs list.
@@ -1132,7 +1136,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             boolean convertToBoolean)
     {
         assert cond != null;
-        assert nextTokenIs(LPAREN);
+        assert nextTokenIs(l_paren);
         SourceLocation lparenLoc = consumeParen();
 
         cond.set(parseExpression());
@@ -1141,12 +1145,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             //TODO convert the condition expression to boolean
         }
 
-        if (cond.get().isInvalid() && nextTokenIsNot(RPAREN))
+        if (cond.get().isInvalid() && nextTokenIsNot(r_paren))
         {
-            skipUntil(SEMI, true);
+            skipUntil(semi, true);
             // skip may have stopped if it found the ')'. IfStmt so, we can
             // continue parsing the if statement.
-            if (nextTokenIsNot(RPAREN))
+            if (nextTokenIsNot(r_paren))
                 return true;
         }
 
@@ -1250,14 +1254,13 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseSwitchStatement()
     {
-        Token tok = S.token;
-        assert tokenIs(tok, SWITCH) :"Not a switch statement?";
+        assert tokenIs(tok, Switch) :"Not a switch statement?";
         // eat the 'switch'
         SourceLocation switchLoc = consumeToken();
 
-        if (nextTokenIsNot(LBRACE))
+        if (nextTokenIsNot(l_brace))
         {
-            diag(S.token, err_expected_lparen_after).addTaggedVal("switch");
+            diag(tok, err_expected_lparen_after).addTaggedVal("switch");
             return stmtError();
         }
         // C99 6.8.4p3. In C99, the switch statements is a block. This is not
@@ -1280,13 +1283,13 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (switchStmt.isInvalid())
         {
             // skip the switch body
-            if (nextTokenIs(LBRACE))
+            if (nextTokenIs(l_brace))
             {
                 consumeToken();
-                skipUntil(RBRACE, false);
+                skipUntil(r_brace, false);
             }
             else
-                skipUntil(SEMI, true);
+                skipUntil(semi, true);
             return switchStmt;
         }
 
@@ -1294,7 +1297,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // there is no compound stmt.  C90 does not have this clause.  We only do this
         // if the body isn't a compound statement to avoid push/pop in common cases.
         ParseScope innerScope = new ParseScope(this, ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE) & getLangOption().c99);
+                nextTokenIs(l_brace) & getLangOption().c99);
 
         // read the body statement
         ActionResult<Stmt> body = parseStatement();
@@ -1319,11 +1322,11 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseWhileStatement()
     {
-        assert nextTokenIs(WHILE) :"Not a while statement!";
+        assert nextTokenIs(While) :"Not a while statement!";
         // eat the 'while'
         SourceLocation whileLoc = consumeToken();
 
-        if (nextTokenIsNot(LPAREN))
+        if (nextTokenIsNot(l_paren))
         {
             diag(whileLoc, err_expected_lparen_after).addTaggedVal("while");
             return stmtError();
@@ -1355,7 +1358,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // there is no compound stmt.  C90 does not have this clause.  We only do this
         // if the body isn't a compound statement to avoid push/pop in common cases.
         ParseScope innerScope = new ParseScope(this, ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE) && getLangOption().c99);
+                nextTokenIs(l_brace) && getLangOption().c99);
 
         // parse the body of while stmt.
         ActionResult<Stmt> body = parseStatement();
@@ -1381,7 +1384,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseDoStatement()
     {
-        assert nextTokenIs(DO):"Not a do stmt!";
+        assert nextTokenIs(Do):"Not a do stmt!";
 
         // eat the 'do'.
         SourceLocation doLoc = consumeToken();
@@ -1397,19 +1400,19 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         ParseScope innerScope = new ParseScope(this,
                 ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE) && getLangOption().c99);
+                nextTokenIs(l_brace) && getLangOption().c99);
 
         ActionResult<Stmt> body = parseStatement();
         // Pop the body scope.
         innerScope.exit();
 
-        if (nextTokenIsNot(WHILE))
+        if (nextTokenIsNot(While))
         {
             if (!body.isInvalid())
             {
-                diag(S.token, err_expected_while);
+                diag(tok, err_expected_while);
                 diag(doLoc, note_matching).addTaggedVal("do");
-                skipUntil(SEMI, true);
+                skipUntil(semi, true);
             }
             return stmtError();
         }
@@ -1417,10 +1420,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // eat the 'while'.
         SourceLocation whileLoc = consumeToken();
 
-        if (nextTokenIsNot(LPAREN))
+        if (nextTokenIsNot(l_paren))
         {
-            diag(S.token, err_expected_lparen_after).addTaggedVal("do/while");
-            skipUntil(SEMI, true);
+            diag(tok, err_expected_lparen_after).addTaggedVal("do/while");
+            skipUntil(semi, true);
             return stmtError();
         }
 
@@ -1446,14 +1449,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseForStatement()
     {
-        assert nextTokenIs(FOR):"Not a for loop";
+        assert nextTokenIs(For):"Not a for loop";
         // eat the 'for'.
         SourceLocation forLoc = consumeToken();
 
-        if (nextTokenIsNot(LPAREN))
+        if (nextTokenIsNot(l_paren))
         {
-            diag(S.token, err_expected_lparen_after).addTaggedVal("for");
-            skipUntil(SEMI, true);
+            diag(tok, err_expected_lparen_after).addTaggedVal("for");
+            skipUntil(semi, true);
             return stmtError();
         }
         int scopeFlags = 0;
@@ -1475,7 +1478,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         boolean secondPartIsInvalid = false;
 
         // parse the first part
-        if (nextTokenIs(SEMI))
+        if (nextTokenIs(semi))
         {
             // for ';';
             consumeToken();
@@ -1483,20 +1486,20 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         else if (isSimpleDeclaration())
         {
             // parse the declaration, for (int X = 4;
-            SourceLocation declStart = S.token.loc;
+            SourceLocation declStart = tok.getLocation();
             ArrayList<Stmt> stmts = new ArrayList<>(32);
 
             ArrayList<Decl> declGroup = parseSimpleDeclaration(stmts, TheContext.ForContext,
                     false);
-            firstPart = action.actOnDeclStmt(declGroup, declStart, S.token.loc);
-            if (nextTokenIs(SEMI))
+            firstPart = action.actOnDeclStmt(declGroup, declStart, tok.getLocation());
+            if (nextTokenIs(semi))
             {
                 consumeToken();
             }
             else
             {
-                diag(S.token, err_expected_semi_for);
-                skipUntil(SEMI, true);
+                diag(tok, err_expected_semi_for);
+                skipUntil(semi, true);
             }
         }
         else
@@ -1506,23 +1509,23 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             if (!value.isInvalid())
                 firstPart = action.actOnExprStmt(value);
 
-            if (nextTokenIs(SEMI))
+            if (nextTokenIs(semi))
                 consumeToken();
             else
             {
                 if (!value.isInvalid())
-                    diag(S.token, err_expected_semi_for);
-                skipUntil(SEMI, true);
+                    diag(tok, err_expected_semi_for);
+                skipUntil(semi, true);
             }
         }
 
         // parse the second part of the for specifier
-        if (nextTokenIs(SEMI))
+        if (nextTokenIs(semi))
         {
             // for (...;;
             // no second part
         }
-        else if (nextTokenIs(RPAREN))
+        else if (nextTokenIs(r_paren))
         {
             // missing both semicolons
         }
@@ -1538,30 +1541,30 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             secondPart = second;
         }
 
-        if (nextTokenIsNot(SEMI))
+        if (nextTokenIsNot(semi))
         {
             if (!secondPartIsInvalid)
-                diag(S.token, err_expected_semi_for);
+                diag(tok, err_expected_semi_for);
             else
-                skipUntil(RPAREN, true);
+                skipUntil(r_paren, true);
         }
 
-        if (nextTokenIs(SEMI))
+        if (nextTokenIs(semi))
             consumeToken();
 
         // parse the third part of for specifier
         ActionResult<Expr> thirdPart = null;
-        if (nextTokenIsNot(RPAREN))
+        if (nextTokenIsNot(r_paren))
         {
             // for (...;...;...)
             thirdPart = parseExpression();
         }
 
-        if (!nextTokenIs(RPAREN))
+        if (!nextTokenIs(r_paren))
         {
-            diag(S.token, err_expected_lparen_after).
-                    addTaggedVal(S.token.getIdentifierInfo());
-            skipUntil(RBRACE, true);
+            diag(tok, err_expected_lparen_after).
+                    addTaggedVal(tok.getIdentifierInfo());
+            skipUntil(r_brace, true);
         }
 
         SourceLocation rParenLoc = consumeParen();
@@ -1572,7 +1575,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         ParseScope innerScope = new ParseScope(this,
                 ScopeFlags.DeclScope.value,
-                nextTokenIs(LBRACE));
+                nextTokenIs(l_brace));
 
         ActionResult<Stmt> body = parseStatement();
         innerScope.exit();
@@ -1631,7 +1634,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // C99 6.7.2.3p6: Handle "struct-or-union identifier;", "enum { X };"
         // declaration-specifiers init-declarator-list[opt] ';'
-        if (nextTokenIs(SEMI))
+        if (nextTokenIs(semi))
         {
             if (requiredSemi) consumeToken();
             Decl decl = action.parsedFreeStandingDeclSpec(getCurScope(), ds);
@@ -1653,8 +1656,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (!d.hasName() && !d.mayOmitIdentifier())
         {
             // skip until ; or }
-            skipUntil(RBRACE, true);
-            if (nextTokenIs(SEMI))
+            skipUntil(r_brace, true);
+            if (nextTokenIs(semi))
                 consumeToken();
             return declGroups();
         }
@@ -1667,7 +1670,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             {
                 if (ds.getStorageClassSpec() == SCS_typedef)
                 {
-                    diag(S.token, err_function_declared_typedef);
+                    diag(tok, err_function_declared_typedef);
 
                     // recover by treating the 'typedef' as spurious
                     ds.clearStorageClassSpec();
@@ -1683,20 +1686,20 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 // actually a body.  Just fall through into the code that handles it as a
                 // prototype, and let the top-level code handle the erroneous declspec
                 // where it would otherwise expect a comma or semicolon.
-                diag(S.token, err_invalid_token_after_toplevel_declarator);
+                diag(tok, err_invalid_token_after_toplevel_declarator);
             }
             else
             {
-                diag(S.token, err_expected_fn_body);
+                diag(tok, err_expected_fn_body);
             }
-            skipUntil(SEMI, true);
+            skipUntil(semi, true);
             return declGroups();
         }
 
         ArrayList<Decl> res = parseInitDeclaratorListAfterFirstDeclarator
                 (d, ds, context);
         // eat the last ';'.
-        expectAndConsume(SEMI, err_expected_semi_declaration);
+        expectAndConsume(semi, err_expected_semi_declaration);
         return res;
     }
 
@@ -1715,7 +1718,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // If we don't have a comma, it is either the end of the list (a ';') or an
         // error, bail out.
-        while (nextTokenIs(COMMA))
+        while (nextTokenIs(comma))
         {
             // eat the ','.
             consumeToken();
@@ -1734,12 +1737,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         if (context != TheContext.ForContext
-                && nextTokenIsNot(SEMI))
+                && nextTokenIsNot(semi))
         {
             if (!isDeclarationSpecifier())
             {
-                skipUntil(RBRACE, true);
-                if (nextTokenIs(SEMI))
+                skipUntil(r_brace, true);
+                if (nextTokenIs(semi))
                     consumeToken();
             }
         }
@@ -1763,7 +1766,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         // inform the semantic module that we just parsed this declarator.
         Decl thisDecl = action.actOnDeclarator(getCurScope(), d);
-        if (nextTokenIs(EQ))
+        if (nextTokenIs(equal))
         {
             // eat the '='.
             consumeToken();
@@ -1771,7 +1774,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             ActionResult<Expr> init = parseInitializer();
             if (init.isInvalid())
             {
-                skipUntil(COMMA, true);
+                skipUntil(comma, true);
                 action.actOnInitializerError(thisDecl);
             }
             else
@@ -1797,7 +1800,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Expr> parseInitializer()
     {
-        if (nextTokenIsNot(LBRACE))
+        if (nextTokenIsNot(l_brace))
             return parseAssignExpression();
         return parseBraceInitializer();
     }
@@ -1817,12 +1820,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Expr> parseAssignmentExpression()
     {
-        assert nextTokenIs(LBRACE);
+        assert nextTokenIs(l_brace);
 
         SourceLocation lBraceLoc = consumeToken(); // eat '{'
         ArrayList<Expr> initExpr = new ArrayList<>();
 
-        if (nextTokenIs(RBRACE))
+        if (nextTokenIs(r_brace))
         {
             SourceLocation rBraceLoc = consumeToken();
             diag(lBraceLoc, ext_gnu_empty_initializer);
@@ -1839,23 +1842,23 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             else
             {
                 initExprOk = false;
-                if (nextTokenIsNot(COMMA))
+                if (nextTokenIsNot(comma))
                 {
-                    skipUntil(RBRACE, false);
+                    skipUntil(r_brace, false);
                     break;
                 }
             }
 
-            if (nextTokenIsNot(COMMA))
+            if (nextTokenIsNot(comma))
                 break;
 
             consumeToken();
 
-            if (nextTokenIs(RBRACE))
+            if (nextTokenIs(r_brace))
                 break;
         }
 
-        boolean close = nextTokenIs(RBRACE);
+        boolean close = nextTokenIs(r_brace);
         SourceLocation rBraceLoc = consumeToken();
         if (initExprOk && close)
         {
@@ -1890,7 +1893,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         SourceLocation lbraceLoc = consumeBrace();
 
         ArrayList<Expr> initExprs = new ArrayList<>();
-        if (nextTokenIs(BARBAR))
+        if (nextTokenIs(barbar))
         {
             diag(lbraceLoc, ext_gnu_empty_initializer);
 
@@ -1906,50 +1909,50 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             else
             {
                 initExprOK = false;
-                if (nextTokenIsNot(COMMA))
+                if (nextTokenIsNot(comma))
                 {
-                    skipUntil(RBRACE, false, true);
+                    skipUntil(r_brace, false, true);
                     break;
                 }
             }
 
             // If we don't have a comma continued list, we're done.
-            if (nextTokenIsNot(COMMA))
+            if (nextTokenIsNot(comma))
                 break;
 
             // Eat the ','.
             consumeToken();
 
             /// Handle trailing comma.
-            if (nextTokenIs(RBRACE))
+            if (nextTokenIs(r_brace))
                 break;
         }
-        if (initExprOK && nextTokenIs(RBRACE))
+        if (initExprOK && nextTokenIs(r_brace))
             return action.actOnInitList(lbraceLoc, initExprs, consumeBrace());;
 
-        matchRHSPunctuation(RBRACE, lbraceLoc);
+        matchRHSPunctuation(r_brace, lbraceLoc);
         return exprError();
     }
 
     private ActionResult<Stmt> parseGotoStatement()
     {
-        assert nextTokenIs(GOTO):"Not a goto stmt!";
+        assert nextTokenIs(Goto):"Not a goto stmt!";
 
         SourceLocation gotoLoc = consumeToken(); // eat the 'goto'
 
         // 'goto label'.
         ActionResult<Stmt> res = null;
-        if (nextTokenIs(IDENTIFIER))
+        if (nextTokenIs(Identifier))
         {
-            LabelDecl ld = action.lookupOrCreateLabel(S.token.getIdentifierInfo(),
-                    S.token.getLocation());
-            res = action.actOnGotoStmt(gotoLoc, S.token.getLocation(), ld);
+            LabelDecl ld = action.lookupOrCreateLabel(tok.getIdentifierInfo(),
+                    tok.getLocation());
+            res = action.actOnGotoStmt(gotoLoc, tok.getLocation(), ld);
             consumeToken();
         }
         else
         {
             // erroreous case
-            diag(S.token,  err_expected_ident);
+            diag(tok,  err_expected_ident);
             return stmtError();
         }
         return res;
@@ -1966,7 +1969,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseContinueStatement()
     {
-        assert nextTokenIs(CONTINUE):"Not a continue stmt!";
+        assert nextTokenIs(Continue):"Not a continue stmt!";
         SourceLocation continueLoc = consumeToken();
         return action.actOnContinueStmt(continueLoc, getCurScope());
     }
@@ -1982,7 +1985,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseBreakStatement()
     {
-        assert nextTokenIs(BREAK):"Not a break stmt!";
+        assert nextTokenIs(Break):"Not a break stmt!";
         SourceLocation breakLoc = consumeToken();
         return action.actOnBreakStmt(breakLoc, getCurScope());
     }
@@ -1997,17 +2000,17 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseReturnStatement()
     {
-        assert nextTokenIs(RETURN):"Not a return stmt!";
+        assert nextTokenIs(Return):"Not a return stmt!";
         SourceLocation returnLoc = consumeToken();
 
         ActionResult<Expr> res = new ActionResult<>();
-        if (nextTokenIsNot(SEMI))
+        if (nextTokenIsNot(semi))
         {
             // The case of return expression ';'.
             res = parseExpression();
             if (res.isInvalid())
             {
-                skipUntil(SEMI, true);
+                skipUntil(semi, true);
                 return stmtError();
             }
         }
@@ -2029,10 +2032,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         assert declEnd != null;
 
         ArrayList<Decl> res = parseSimpleDeclaration(stmts, dc, false);
-        if (nextTokenIsNot(SEMI))
+        if (nextTokenIsNot(semi))
         {
-            diag(S.token.loc, err_expected_semi_after);
-            skipUntil(SEMI, true);
+            diag(tok.getLocation(), err_expected_semi_after);
+            skipUntil(semi, true);
         }
         else
         {
@@ -2048,32 +2051,32 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Stmt> parseExprStatement()
     {
-        Token oldTok = S.token;
+        Token oldTok = tok;
 
         ActionResult<Expr> res = parseExpression();
         if (res.isInvalid())
         {
             // If the expression is invalid, skip ahead to the next semicolon
             // or '}'.
-            skipUntil(RBRACE, true);
-            if (nextTokenIs(SEMI))
+            skipUntil(r_brace, true);
+            if (nextTokenIs(semi))
                 consumeToken();
             return stmtError();
         }
 
-        if (nextTokenIs(COLON) && getCurScope().isSwitchScope()
+        if (nextTokenIs(colon) && getCurScope().isSwitchScope()
                 && action.checkCaseExpression(res.get()))
         {
             // If a constant expression is followed by a colon inside a switch block,
             // suggest a missing case keyword.
-            diag(oldTok.loc, err_expected_case_before_expression)
+            diag(oldTok.getLocation(), err_expected_case_before_expression)
             .addFixItHint(FixItHint.
                     createInsertion(oldTok.getLocation(), "case "));
 
             // Recover parsing as a case statement.
             return parseCaseStatement(true, res);
         }
-        expectAndConsume(SEMI, err_expected_semi_after_expr);
+        expectAndConsume(semi, err_expected_semi_after_expr);
 
         return action.actOnExprStmt(res);
     }
@@ -2088,7 +2091,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         assert declarator.isFunctionDeclarator() :"Isn't a function declarator";
         // int X() {}
-        return nextTokenIs(RBRACE);
+        return nextTokenIs(r_brace);
     }
     /**
      * Determines whether the current token is the part of declaration or
@@ -2097,10 +2100,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private boolean isDeclarationAfterDeclarator()
     {
-        Token tok = S.token;
-        return tokenIs(tok, EQ)            // int X()= -> not a function def
-                || tokenIs(tok, COMMA)     // int X(), -> not a function def
-                || tokenIs(tok, SEMI);     // int X(); -> not a function def
+        return tokenIs(tok, equal)            // int X()= -> not a function def
+                || tokenIs(tok, comma)     // int X(), -> not a function def
+                || tokenIs(tok, semi);     // int X(); -> not a function def
     }
 
     /**
@@ -2166,23 +2168,22 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         if (declSpecs.getSourceRange().isInvalid())
         {
-            SourceLocation loc = S.token.loc;
+            SourceLocation loc = tok.getLocation();
             declSpecs.setRangeStart(loc);
             declSpecs.setRangeEnd(loc);
         }
 
         out:
-        while (nextTokenIs(IDENTIFIER) || nextTokenIsKeyword())
+        while (nextTokenIs(Identifier) || nextTokenIsKeyword())
         {
-            Token tok = S.token;
             SourceLocation loc = tok.getLocation();
             boolean isInvalid = false;
             String prevSpec = null;
             int diagID = -1;
 
-            switch (tok.tag)
+            switch (tok.getKind())
             {
-                case IDENTIFIER:
+                case Identifier:
                 {
                     // This identifier can only be a typedef getIdentifier if we haven't
                     // already seen a type-specifier.
@@ -2192,7 +2193,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     // So, the current token is a typedef getIdentifier or error.
                     QualType type = action.getTypeByName(
                             tok.getIdentifierInfo(),
-                            tok.loc,
+                            tok.getLocation(),
                             getCurScope());
                     if (type == null)
                     {
@@ -2212,51 +2213,51 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     if (isInvalid)
                         break;
 
-                    declSpecs.setRangeEnd(S.token.getLocation());
+                    declSpecs.setRangeEnd(tok.getLocation());
                     // the identifier
                     consumeToken();
                     continue;
                 }
-                case STATIC:
+                case Static:
                     declSpecs.setStorageClassSpec(DeclSpec.SCS.SCS_static, loc);
                     break;
-                case EXTERN:
+                case Extern:
                     isInvalid = declSpecs
                             .setStorageClassSpec(DeclSpec.SCS.SCS_extern, loc);
                     break;
-                case REGISTER:
+                case Register:
                     declSpecs.setStorageClassSpec(DeclSpec.SCS.SCS_register,
                             loc);
                     break;
-                case TYPEDEF:
+                case Typedef:
                     isInvalid = declSpecs
                             .setStorageClassSpec(SCS_typedef, loc);
                     break;
-                case AUTO:
+                case Auto:
                     declSpecs.setStorageClassSpec(DeclSpec.SCS.SCS_auto, loc);
                     break;
 
-                case INLINE:
+                case Inline:
                     declSpecs.setFunctionSpecInline(loc);
                     break;
 
-                case UNSIGNED:
+                case Unsigned:
                     isInvalid = declSpecs.setTypeSpecSign(TSS_unsigned, loc);
                     break;
-                case SIGNED:
+                case Signed:
                     isInvalid = declSpecs.setTypeSpecSign(TSS_signed, loc);
                     break;
 
-                case LONG:
+                case Long:
                     isInvalid = declSpecs.setTypeSpecWidth(TSW_long, loc);
                     break;
-                case SHORT:
+                case Short:
                     isInvalid = declSpecs.setTypeSpecWidth(TSW_short, loc);
                     break;
-                case COMPLEX:
+                case Complex:
                     isInvalid = declSpecs.setTypeSpecComplex(TSC_complex, loc);
                     break;
-                case CHAR:
+                case Char:
                 {
                     OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
                     OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
@@ -2265,7 +2266,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     diagID = wrapper2.get();
                     break;
                 }
-                case INT:
+                case Int:
                 {
                     OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
                     OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
@@ -2274,7 +2275,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     diagID = wrapper2.get();
                     break;
                 }
-                case FLOAT:
+                case Float:
                 {
                     OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
                     OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
@@ -2283,7 +2284,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     diagID = wrapper2.get();
                     break;
                 }
-                case DOUBLE:
+                case Double:
                 {
                     OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
                     OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
@@ -2292,7 +2293,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     diagID = wrapper2.get();
                     break;
                 }
-                case VOID:
+                case Void:
                 {
                     OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
                     OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
@@ -2301,7 +2302,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     diagID = wrapper2.get();
                     break;
                 }
-                case BOOL:       {
+                case Bool:       {
                     OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
                     OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
                     isInvalid = declSpecs.setTypeSpecType(TST_bool, loc, wrapper1, wrapper2);
@@ -2310,30 +2311,30 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     break;
                 }
                 // enum specifier
-                case ENUM:
+                case Enum:
                 {
                     consumeToken();
                     parseEnumSpecifier(loc, declSpecs);
                     continue;
                 }
                 // struct-union specifier
-                case STRUCT:
-                case UNION:
+                case Struct:
+                case Union:
                 {
                     // eat the 'struct' or 'union'.
-                    int kind = tok.tag;
+                    TokenKind kind = tok.getKind();
                     consumeToken();
                     parseStructOrUnionSpecifier(kind, loc, declSpecs);
                     continue;
                 }
                 // type-qualifiers
-                case CONST:
+                case Const:
                     isInvalid = declSpecs.setTypeQualifier(TQ_const, loc);
                     break;
-                case VOLATILE:
+                case Volatile:
                     isInvalid = declSpecs.setTypeQualifier(TQ_volatile, loc);
                     break;
-                case RESTRICT:
+                case Restrict:
                     isInvalid = declSpecs.setTypeQualifier(TQ_restrict, loc);
                     break;
                 default:
@@ -2346,7 +2347,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 assert diagID >= 0;
                 diag(tok, diagID).addTaggedVal(prevSpec);
             }
-            declSpecs.setRangeEnd(S.token.loc);
+            declSpecs.setRangeEnd(tok.getLocation());
             consumeToken();
         }
         // finish and return to caller
@@ -2364,7 +2365,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private boolean parseImplicitInt(DeclSpec ds)
     {
-        assert nextTokenIs(IDENTIFIER) : "should have identifier.";
+        assert nextTokenIs(Identifier) : "should have identifier.";
         SourceLocation loc = consumeToken();
 
         // IfStmt we see an identifier that is not a type getIdentifier, we normally would
@@ -2392,14 +2393,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         String tagName = null;
-        int tagKind = -1;
-        String identifierInfo = S.token.getIdentifierInfo();
+        TokenKind tagKind = Unknown;
+        IdentifierInfo identifierInfo = tok.getIdentifierInfo();
         switch (action.isTagName(identifierInfo, getCurScope()))
         {
             default:break;
-            case TST_enum: tagName = "enum"; tagKind = Tag.ENUM; break;
-            case TST_struct: tagName = "struct"; tagKind = Tag.STRUCT; break;
-            case TST_union: tagName = "union"; tagKind = Tag.UNION; break;
+            case TST_enum: tagName = "enum"; tagKind = Enum; break;
+            case TST_struct: tagName = "struct"; tagKind = Struct; break;
+            case TST_union: tagName = "union"; tagKind = Union; break;
         }
         if (tagName != null)
         {
@@ -2407,10 +2408,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             .addTaggedVal(identifierInfo)
             .addTaggedVal(tagName)
             .addFixItHint(
-                    FixItHint.createInsertion(S.token.loc,
+                    FixItHint.createInsertion(tok.getLocation(),
                     tagName));
 
-            if (tagKind == ENUM)
+            if (tagKind == Enum)
             {
                 parseEnumSpecifier(loc, ds);
             }
@@ -2426,7 +2427,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         OutParamWrapper<Integer> diag = new OutParamWrapper<>();
         // mark as an error
         ds.setTypeSpecType(TST_error, loc, prevSpec, diag);
-        ds.setRangeEnd(S.token.getLocation());
+        ds.setRangeEnd(tok.getLocation());
         consumeToken();
         return false;
     }
@@ -2450,9 +2451,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private boolean isValidAfterIdentifierDeclarator(Token tok)
     {
-        return tokenIs(tok, LBRACKET) || tokenIs(tok, LPAREN) || tokenIs(tok,
-                SEMI) || tokenIs(tok, COMMA) || tokenIs(tok, EQ) || tokenIs(tok,
-                COLON);
+        return tokenIs(tok, l_bracket) || tokenIs(tok, l_paren) || tokenIs(tok,
+                semi) || tokenIs(tok, comma) || tokenIs(tok, equal) || tokenIs(tok,
+                colon);
     }
 
     private Scope getCurScope()
@@ -2473,32 +2474,30 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private void parseEnumSpecifier(SourceLocation startLoc, DeclSpec ds)
     {
-        Token tok = S.token;
-
         // Must have either 'enum name' or 'enum {...}'.
-        if (!tokenIs(tok, IDENTIFIER) && !tokenIs(tok, LBRACE))
+        if (!tokenIs(tok, Identifier) && !tokenIs(tok, l_brace))
         {
             diag(tok, err_expected_ident_lbrace);
             // skip the rest of this declarator, up until a ',' or ';' encounter.
-            skipUntil(COMMA, true);
+            skipUntil(comma, true);
             return;
         }
 
-        String name = null;
+        IdentifierInfo name = null;
         SourceLocation nameLoc = SourceLocation.NOPOS;
-        if (tokenIs(tok, IDENTIFIER))
+        if (tokenIs(tok, Identifier))
         {
             name = tok.getIdentifierInfo();
-            nameLoc = tok.loc;
+            nameLoc = tok.getLocation();
         }
 
         // There are three options here.  If we have 'enum foo;', then this is a
         // forward declaration.  If we have 'enum foo {...' then this is a
         // definition. Otherwise we have something like 'enum foo xyz', a reference.
         Sema.TagUseKind tuk;
-        if (tokenIs(tok, LBRACE))
+        if (tokenIs(tok, l_brace))
             tuk = TUK_definition;
-        else if (tokenIs(tok, SEMI))
+        else if (tokenIs(tok, semi))
             tuk = TUK_declaration;
         else
             tuk = TUK_reference;
@@ -2507,7 +2506,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         {
             diag(tok, err_enumerator_unnamed_no_def);
             // Skip the rest of this declarator, up until the comma or semicolon.
-            skipUntil(COMMA, true);
+            skipUntil(comma, true);
             return;
         }
 
@@ -2516,24 +2515,24 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 TST_enum,
                 tuk,
                 startLoc,
-                name,
+                name.getName(),
                 nameLoc);
 
         if (tagDecl.isInvalid())
         {
-            // the action failed to produce an enumeration tag.
+            // the action failed to produce an enumeration getKind().
             // if this is a definition, consume the entire definition.
-            if (tokenIs(tok, LBRACE))
+            if (tokenIs(tok, l_brace))
             {
                 consumeToken();
-                skipUntil(RBRACE, true);
+                skipUntil(r_brace, true);
             }
 
             ds.setTypeSpecError();
             return;
         }
 
-         if (tokenIs(tok, LBRACE))
+         if (tokenIs(tok, l_brace))
             parseEnumBody(startLoc, tagDecl.get());
 
         OutParamWrapper<String> prevSpecWrapper = new OutParamWrapper<>();
@@ -2571,24 +2570,22 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // eat '{'
         SourceLocation lbraceLoc = consumeBrace();
-        if (nextTokenIs(RBRACE))
+        if (nextTokenIs(r_brace))
         {
-            diag(S.token, ext_empty_struct_union_enum);
+            diag(tok, ext_empty_struct_union_enum);
         }
-
-        Token tok = S.token;
 
         ArrayList<Decl> enumConstantDecls = new ArrayList<>(32);
         Decl lastEnumConstDecl = null;
         // Parse the enumerator-list.
-        while(tokenIs(tok, IDENTIFIER))
+        while(tokenIs(tok, Identifier))
         {
-            String name = tok.getIdentifierInfo();
+            String name = tok.getIdentifierInfo().getName();
             SourceLocation identLoc = consumeToken();
 
             SourceLocation equalLoc = SourceLocation.NOPOS;
             ActionResult<Expr> val = null;
-            if (nextTokenIs(EQ))
+            if (nextTokenIs(equal))
             {
                 equalLoc = consumeToken();
                 val = parseConstantExpression();
@@ -2596,7 +2593,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 // enum-declaration-list until a comma.
                 if (val.isInvalid())
                 {
-                    skipUntil(COMMA, RBRACE, true);
+                    skipUntil(comma, r_brace, true);
                 }
             }
 
@@ -2614,11 +2611,11 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             lastEnumConstDecl = enumConstDecl;
 
             // finish enumerator-list
-            if (nextTokenIsNot(COMMA))
+            if (nextTokenIsNot(comma))
                 break;
             SourceLocation commaLoc = consumeToken();
 
-            if (nextTokenIsNot(IDENTIFIER) && !getLangOption().c99)
+            if (nextTokenIsNot(Identifier) && !getLangOption().c99)
             {
                 // we missing a ',' between enumerators
                 diag(commaLoc, ext_enumerator_list_comma)
@@ -2629,7 +2626,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         // eat the '}'
-       SourceLocation rBraceLoc = matchRHSPunctuation(RBRACE, lbraceLoc);
+       SourceLocation rBraceLoc = matchRHSPunctuation(r_brace, lbraceLoc);
 
         action.actOnEnumBody(
                 startLoc,
@@ -2664,25 +2661,25 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      *
      */
     private void parseStructOrUnionSpecifier(
-            int tagTokKind,
+            TokenKind tagTokKind,
             SourceLocation startLoc,
             DeclSpec ds)
     {
         DeclSpec.TST tagType;
-        if (tagTokKind == STRUCT)
+        if (tagTokKind == Struct)
             tagType = TST_struct;
         else
         {
-            assert tagTokKind == UNION : "Not a union specifier";
+            assert tagTokKind == Union : "Not a union specifier";
             tagType = TST_union;
         }
 
         // Parse the (optional) class name
-        String name = null;
+        IdentifierInfo name = null;
         SourceLocation nameLoc = SourceLocation.NOPOS;
-        if (nextTokenIs(IDENTIFIER))
+        if (nextTokenIs(Identifier))
         {
-            name = S.token.getIdentifierInfo();
+            name = tok.getIdentifierInfo();
             nameLoc = consumeToken();
         }
 
@@ -2693,12 +2690,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // 4. reference used in varaible declaration: struct X x;
 
         Sema.TagUseKind tuk;
-        if (nextTokenIs(LBRACE))
+        if (nextTokenIs(l_brace))
         {
             // so,this is a struct definition.
             tuk = TUK_definition;
         }
-        else if (nextTokenIs(SEMI))
+        else if (nextTokenIs(semi))
             tuk = TUK_declaration;
         else
             tuk = TUK_reference;
@@ -2711,25 +2708,25 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 // we have a declaration or reference to an anonymous struct.
                 diag(startLoc, err_anon_type_definition);
             }
-            skipUntil(COMMA, true);
+            skipUntil(comma, true);
             return;
         }
 
-        // create the tag portion of the struct or union.
+        // create the getKind() portion of the struct or union.
 
         // declaration or definitions of a struct or union type
         ActionResult<Decl> tagOrTempResult =
                 action.actOnTag(
                 getCurScope(), tagType,
-                tuk, startLoc, name, nameLoc);
+                tuk, startLoc, name.getName(), nameLoc);
         // if there is a body, parse it and perform actions
-        if (nextTokenIs(LBRACE))
+        if (nextTokenIs(l_brace))
         {
             parseStructOrUnionBody(startLoc, tagType, tagOrTempResult.get());
         }
         else if (tuk == TUK_definition)
         {
-            diag(S.token, err_expected_lbrace);
+            diag(tok, err_expected_lbrace);
         }
 
 
@@ -2761,33 +2758,33 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (tuk == TUK_definition)
         {
             boolean expectedSemi = true;
-            switch (S.token.tag)
+            switch (tok.getKind())
             {
                 default:
                     break;
                     // struct foo {...} ;
-                case Token.SEMI:
+                case semi:
                     // struct foo {...} *         P;
-                case Token.STAR:
+                case star:
                     // struct foo {...} V         ;
-                case Token.IDENTIFIER:
+                case Identifier:
                     //(struct foo {...} )         {4}
-                case Token.RPAREN:
+                case r_paren:
                     // struct foo {...} (         x);
-                case Token.LPAREN:
+                case l_paren:
                     expectedSemi = false;
                     break;
                 // type-specifier
-                case Token.CONST:             // struct foo {...} const     x;
-                case Token.VOLATILE:          // struct foo {...} volatile     x;
-                case Token.RESTRICT:          // struct foo {...} restrict     x;
-                case Token.INLINE:            // struct foo {...} inline   foo();
+                case Const:             // struct foo {...} const     x;
+                case Volatile:          // struct foo {...} volatile     x;
+                case Restrict:          // struct foo {...} restrict     x;
+                case Inline:            // struct foo {...} inline   foo();
                     // storage-class specifier
-                case Token.STATIC:            // struct foo {...} static     x;
-                case Token.EXTERN:            // struct foo {...} extern     x;
-                case Token.TYPEDEF:           // struct foo {...} typedef    x;
-                case Token.REGISTER:          // struct foo {...} register   x;
-                case Token.AUTO:              // struct foo {...} auto       x;
+                case Static:            // struct foo {...} static     x;
+                case Extern:            // struct foo {...} extern     x;
+                case Typedef:           // struct foo {...} typedef    x;
+                case Register:          // struct foo {...} register   x;
+                case Auto:              // struct foo {...} auto       x;
                 {
                     // As shown above, type qualifiers and storage class specifiers absolutely
                     // can occur after class specifiers according to the grammar.  However,
@@ -2804,28 +2801,28 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     // the same declaration of X.  Because of this, we lookup ahead past this
                     // token to see if it's a type specifier.  IfStmt so, we know the code is
                     // otherwise invalid, so we can produce the expected semi error.
-                    if (isKnownBeTypeSpecifier(S.token))
+                    if (isKnownBeTypeSpecifier(tok))
                         expectedSemi = false;
                     break;
                 }
 
                 // struct bar { struct foo {...} }
-                case Token.RBRACE:
+                case r_brace:
                     // missing ';' at the end f struct is ccepted as an extension in C mode
                     expectedSemi = false;
                     break;
             }
             if (expectedSemi)
             {
-                if (nextTokenIs(SEMI))
+                if (nextTokenIs(semi))
                 {
                     consumeToken();
                 }
                 else
                 {
-                    diag(S.token, err_expected_semi_after).
+                    diag(tok, err_expected_semi_after).
                             addTaggedVal(tagType == TST_union ? "union":"struct");
-                    skipUntil(SEMI, true);
+                    skipUntil(semi, true);
                 }
             }
         }
@@ -2841,27 +2838,25 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private boolean isKnownBeTypeSpecifier(Token tok)
     {
-        switch (tok.tag)
+        switch (tok.getKind())
         {
             default:
                 return false;
-            case SHORT:
-            case LONG:
-            case SIGNED:
-            case UNSIGNED:
-            case COMPLEX:
-            case VOID:
-            case CHAR:
-            case INT:
-            case FLOAT:
-            case DOUBLE:
-            case BOOL:
+            case Short:
+            case Long:
+            case Signed:
+            case Unsigned:
+            case Complex:
+            case Void:
+            case Char:
+            case Int:
+            case Float:
+            case Double:
+            case Bool:
 
-            case STRUCT:
-            case UNION:
-            case ENUM:
-
-            case ANN_TYPENAME:
+            case Struct:
+            case Union:
+            case Enum:
                 return true;
         }
     }
@@ -2906,26 +2901,26 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         action.actOnTagStartDefinition(getCurScope(), tagDecl);
 
         // Empty structs are an extension in C (C99 6.7.2.1p7)
-        if (nextTokenIs(RBRACE))
+        if (nextTokenIs(r_brace))
         {
             consumeToken();
             diag(lBraceLoc, ext_empty_struct_union_enum).addTaggedVal(structOrUnion);
-            skipUntil(SEMI, true);
+            skipUntil(semi, true);
         }
 
         // an array stores all fields declared in current struct/union body.
         ArrayList<Decl> fieldDecls = new ArrayList<>(32);
 
         // While we still have something to read until '}' or 'eof' encounter.
-        while (nextTokenIsNot(RBRACE) && nextTokenIsNot(EOF))
+        while (nextTokenIsNot(r_brace) && nextTokenIsNot(eof))
         {
             // each iteration of this loop reads one struct-declaration.
-            if (nextTokenIs(SEMI))
+            if (nextTokenIs(semi))
             {
-                diag(S.token, ext_extra_struct_semi).addTaggedVal(DeclSpec
+                diag(tok, ext_extra_struct_semi).addTaggedVal(DeclSpec
                 .getSpecifierName(tagType))
                 .addFixItHint(FixItHint.createRemoval
-                        (new SourceRange(S.token.getLocation())));
+                        (new SourceRange(tok.getLocation())));
                 consumeToken();
                 continue;
             }
@@ -2937,19 +2932,19 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     fieldDecls);
             parseStructDeclaration(ds, callBack);
 
-            if (nextTokenIs(SEMI))
+            if (nextTokenIs(semi))
                 consumeToken();
-            else if (nextTokenIs(RBRACE))
+            else if (nextTokenIs(r_brace))
             {
-                expectAndConsume(SEMI, ext_expected_semi_decl_list);
+                expectAndConsume(semi, ext_expected_semi_decl_list);
                 break;
             }
             else
             {
-                expectAndConsume(SEMI, ext_expected_semi_decl_list);
-                skipUntil(RBRACE, true);
+                expectAndConsume(semi, ext_expected_semi_decl_list);
+                skipUntil(r_brace, true);
                 // if we stopped at a ';', consume it.
-                if (nextTokenIs(SEMI))
+                if (nextTokenIs(semi))
                     consumeToken();
             }
         }
@@ -2997,7 +2992,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // If there are no declarators, this is a single standing declaration-
         // specifier.
-        if (nextTokenIs(SEMI))
+        if (nextTokenIs(semi))
         {
             action.parsedFreeStandingDeclSpec(getCurScope(), ds);
             return;
@@ -3010,18 +3005,18 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             // struct-declarator:
             //   declarator
             //   declarator[opt] : constant-expression
-            if (nextTokenIsNot(COLON))
+            if (nextTokenIsNot(colon))
             {
                 parseDeclarator(declaratorField.declarator);
             }
 
             // parse the constant-subExpr after declarator if there is a ':;
-            if (nextTokenIs(COLON))
+            if (nextTokenIs(colon))
             {
                 consumeToken();
                 ActionResult<Expr> result = parseConstantExpression();
                 if (result.isInvalid())
-                    skipUntil(SEMI, true);
+                    skipUntil(semi, true);
                 else
                     declaratorField.bitFieldSize = result.get();
             }
@@ -3029,7 +3024,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             // we are done with this declarator; invoke the callback
             callBack.invoke(declaratorField);
 
-            if (nextTokenIsNot(COMMA))
+            if (nextTokenIsNot(comma))
                 return;
 
             consumeToken();
@@ -3053,9 +3048,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private void parseDeclarator(Declarator declarator)
     {
-        Token tok = S.token;
-        //declarator.setRangeEnd(tok.loc);
-        if (nextTokenIsNot(STAR))
+        //declarator.setRangeEnd(tok.getLocation());
+        if (nextTokenIsNot(star))
         {
             // parse direct-declartor
             parseDirectDeclarator(declarator);
@@ -3077,7 +3071,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // remember this pointer type and add it into declarator's type list.
         declarator.addTypeInfo(DeclaratorChunk.getPointer
                 (ds.getTypeQualifier(),
-                        tok.loc,
+                        tok.getLocation(),
                         ds.getConstSpecLoc(),
                         ds.getVolatileSpecLoc(),
                         ds.getRestrictSpecLoc()),
@@ -3125,7 +3119,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private void parseDirectDeclarator(Declarator declarator)
     {
-        if (nextTokenIs(IDENTIFIER) && declarator.mayHaveIdentifier())
+        if (nextTokenIs(Identifier) && declarator.mayHaveIdentifier())
         {
             /**
              The direct declarator must start with an identifier (possibly
@@ -3135,12 +3129,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
              declarator, they could start a parenthesized declarator or a
              parameter list.
              */
-            String id = S.token.getIdentifierInfo();
+            String id = tok.getIdentifierInfo().getName();
             assert id != null : "Not an identifier?";
-            declarator.setIdentifier(id, S.token.getLocation());
+            declarator.setIdentifier(id, tok.getLocation());
             consumeToken();
         }
-        else if (nextTokenIs(LPAREN))
+        else if (nextTokenIs(l_paren))
         {
             // direct-declarator:
             //   '(' declarator ')'
@@ -3151,17 +3145,17 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         {
             // This could be something simple like "int" (in which case the declarator
             // portion is empty), if an abstract-declarator is allowed.
-            declarator.setIdentifier(null, S.token.loc);
+            declarator.setIdentifier(null, tok.getLocation());
         }
         else
         {
             if (declarator.getContext() == TheContext.StructFieldContext)
-                diag(S.token, err_expected_member_name_or_semi)
+                diag(tok, err_expected_member_name_or_semi)
                         .addSourceRange(declarator.getDeclSpec().getSourceRange());
             else
-                diag(S.token, err_expected_ident_lparen);
+                diag(tok, err_expected_ident_lparen);
 
-            declarator.setIdentifier(null, S.token.getLocation());
+            declarator.setIdentifier(null, tok.getLocation());
             declarator.setInvalidType(true);
         }
 
@@ -3170,9 +3164,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         while (true)
         {
-            if (nextTokenIs(LPAREN))
+            if (nextTokenIs(l_paren))
                 parseFunctionDeclarator(consumeParen(), declarator, false);
-            else if (nextTokenIs(LBRACKET))
+            else if (nextTokenIs(l_bracket))
                 parseBracketDeclarator(declarator);
             else
                 break;
@@ -3181,78 +3175,78 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     private boolean isDeclarationSpecifier(boolean disambiguatingWithExpression)
     {
-        switch (S.token.tag)
+        switch (tok.getKind())
         {
             default:return false;
-            case IDENTIFIER:
+            case Identifier:
                 return isDeclarationSpecifier();
-            case Tag.TYPEDEF:
-            case Tag.EXTERN:
-            case Tag.STATIC:
-            case Tag.AUTO:
-            case Tag.REGISTER:
+            case Typedef:
+            case Extern:
+            case Static:
+            case Auto:
+            case Register:
 
-            case Tag.SHORT:
-            case Tag.LONG:
-            case Tag.SIGNED:
-            case Tag.UNSIGNED:
-            case Tag.COMPLEX:
-            case Tag.VOID:
-            case Tag.CHAR:
-            case Tag.INT:
-            case Tag.FLOAT:
-            case Tag.DOUBLE:
-            case Tag.BOOL:
+            case Short:
+            case Long:
+            case Signed:
+            case Unsigned:
+            case Complex:
+            case Void:
+            case Char:
+            case Int:
+            case Float:
+            case Double:
+            case Bool:
 
-            case Tag.STRUCT:
-            case Tag.UNION:
-            case Tag.ENUM:
+            case Struct:
+            case Union:
+            case Enum:
 
-            case Tag.CONST:
-            case Tag.VOLATILE:
-            case Tag.RESTRICT:
+            case Const:
+            case Volatile:
+            case Restrict:
 
-            case Tag.INLINE:
+            case Inline:
                 return true;
 
             // typedefs-getIdentifier
-            case ANN_TYPENAME:
-                return !disambiguatingWithExpression;
+            //case ANN_TYPENAME:
+              //  return !disambiguatingWithExpression;
         }
     }
 
     private boolean isDeclarationSpecifier()
     {
-        switch (S.token.tag)
+        switch (tok.getKind())
         {
             default: return false;
-            case Tag.TYPEDEF:
-            case Tag.EXTERN:
-            case Tag.STATIC:
-            case Tag.AUTO:
-            case Tag.REGISTER:
+            case Typedef:
+            case Extern:
+            case Static:
+            case Auto:
+            case Register:
 
-            case Tag.SHORT:
-            case Tag.LONG:
-            case Tag.SIGNED:
-            case Tag.UNSIGNED:
-            case Tag.COMPLEX:
-            case Tag.VOID:
-            case Tag.CHAR:
-            case Tag.INT:
-            case Tag.FLOAT:
-            case Tag.DOUBLE:
-            case Tag.BOOL:
+            case Short:
+            case Long:
+            case Signed:
+            case Unsigned:
+            case Complex:
+            case Void:
+            case Char:
+            case Int:
+            case Float:
+            case Double:
+            case Bool:
 
-            case Tag.STRUCT:
-            case Tag.UNION:
-            case Tag.ENUM:
+            case Struct:
+            case Union:
+            case Enum:
 
-            case Tag.CONST:
-            case Tag.VOLATILE:
-            case Tag.RESTRICT:
+            case Const:
+            case Volatile:
+            case Restrict:
 
-            case Tag.INLINE:
+            case Inline:
                 return true;
         }
     }
@@ -3267,7 +3261,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     private void parseParenDeclarator(Declarator declarator)
     {
         // eat the '('.
-        assert nextTokenIs(LPAREN);
+        assert nextTokenIs(l_paren);
         SourceLocation lparenLoc = consumeParen();
 
         assert !declarator.isPastIdentifier()
@@ -3287,7 +3281,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         else
         {
             // 'int()' is a function.
-            isGrouping = !(nextTokenIs(RPAREN) || isDeclarationSpecifier());
+            isGrouping = !(nextTokenIs(r_paren) || isDeclarationSpecifier());
         }
         // If this is a grouping paren, handle:
         // direct-declarator: '(' declarator ')'
@@ -3304,7 +3298,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // argument list.  Recognize that this declarator will never have an
         // identifier (and remember where it would have been), then call into
         // ParseFunctionDeclarator to handle of argument list.
-        declarator.setIdentifier(null, S.token.loc);
+        declarator.setIdentifier(null, tok.getLocation());
         consumeToken();
         parseFunctionDeclarator(lparenLoc, declarator, true);
     }
@@ -3341,10 +3335,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // This parameter list may be empty.
         SourceLocation rparenLoc;
         SourceLocation endLoc;
-        if (nextTokenIs(RPAREN))
+        if (nextTokenIs(r_paren))
         {
             if (requireArg)
-                diag(S.token, err_argument_required_after_attribute);
+                diag(tok, err_argument_required_after_attribute);
 
             rparenLoc = consumeParen();
             endLoc = rparenLoc;
@@ -3380,7 +3374,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 new ParseScope(this,
                         ScopeFlags.FunctionProtoTypeScope.value
                         | ScopeFlags.DeclScope.value);
-        if (nextTokenIsNot(RPAREN))
+        if (nextTokenIsNot(r_paren))
         {
             ellipsisLoc = parseParameterDeclarationClause(declarator, paramInfos);
         }
@@ -3388,7 +3382,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         hasProto = !paramInfos.isEmpty();
 
         // if we have the closing ')', eat it.
-        rparenLoc = endLoc = matchRHSPunctuation(RPAREN, lparenLoc);
+        rparenLoc = endLoc = matchRHSPunctuation(r_paren, lparenLoc);
 
         // leave prototype scope
         protoTypeScope.exit();
@@ -3405,9 +3399,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     private boolean isFunctionDeclaratorIdentifierList()
     {
-        return nextTokenIs(IDENTIFIER) && nextTokenIsNot(ANN_TYPENAME)
-                    && (tokenIs(peekAheadToken(), COMMA)
-                || tokenIs(peekAheadToken(), RPAREN));
+        return nextTokenIs(Identifier) && (tokenIs(peekAheadToken(), comma)
+                || tokenIs(peekAheadToken(), r_paren));
     }
 
 	/**
@@ -3423,7 +3416,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             SourceLocation lparenLoc,
             Declarator declarator)
     {
-        HashSet<String> paramsSoFar = new HashSet<>(8);
+        HashSet<IdentifierInfo> paramsSoFar = new HashSet<>(8);
         ArrayList<ParamInfo> paramInfos = new ArrayList<>();
 
         // If there was no identifier specified for the declarator, either we are in
@@ -3431,48 +3424,48 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // to be abstract.  In abstract-declarators, identifier lists are not valid:
         // diagnose this.
         if (declarator.getIdentifier() == null)
-            diag(S.token, ext_ident_list_in_param);
+            diag(tok, ext_ident_list_in_param);
 
-        paramsSoFar.add(S.token.getIdentifierInfo());
-        paramInfos.add(new ParamInfo(S.token.getIdentifierInfo(),
-                S.token.getLocation(),
+        paramsSoFar.add(tok.getIdentifierInfo());
+        paramInfos.add(new ParamInfo(tok.getIdentifierInfo(),
+                tok.getLocation(),
                 null));
 
         // Consume the first identifier.
         consumeToken();
 
-        while (nextTokenIs(COMMA))
+        while (nextTokenIs(comma))
         {
             // Eat the comma.
             consumeToken();
 
             // if the next token is not a identifier,
             // report the error and skip it until ')'.
-            if (nextTokenIsNot(IDENTIFIER))
+            if (nextTokenIsNot(Identifier))
             {
-                diag(S.token, err_expected_ident);
-                skipUntil(RPAREN, true);
+                diag(tok, err_expected_ident);
+                skipUntil(r_paren, true);
                 paramInfos.clear();
                 return;
             }
 
             // reject typedef int y; int test(x, y), but continue parsing.
-            String paramII = S.token.getIdentifierInfo();
-            if (action.getTypeByName(paramII, S.token.getLocation(), getCurScope()) != null)
+            IdentifierInfo paramII = tok.getIdentifierInfo();
+            if (action.getTypeByName(paramII, tok.getLocation(), getCurScope()) != null)
             {
-                diag(S.token, err_unexpected_typedef_ident).
+                diag(tok, err_unexpected_typedef_ident).
                         addTaggedVal(paramII);
             }
 
             // Verify that the argument identifier has not already been mentioned.
             if (!paramsSoFar.add(paramII))
             {
-                diag(S.token, err_param_redefinition).addTaggedVal(paramII);
+                diag(tok, err_param_redefinition).addTaggedVal(paramII);
             }
             else
             {
                 // Remember this identifier in ParamInfo.
-                paramInfos.add(new ParamInfo(paramII, S.token.getLocation(),
+                paramInfos.add(new ParamInfo(paramII, tok.getLocation(),
                         null));
             }
 
@@ -3480,7 +3473,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             consumeToken();
         }
         // If we have the closing ')', eat it and we're done.
-        SourceLocation rparenloc = matchRHSPunctuation(RPAREN, lparenLoc);
+        SourceLocation rparenloc = matchRHSPunctuation(r_paren, lparenLoc);
         declarator.addTypeInfo(DeclaratorChunk.getFunction(
                 false,
                 false, SourceLocation.NOPOS,
@@ -3521,7 +3514,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         SourceLocation ellipsisLoc = SourceLocation.NOPOS;
         while(true)
         {
-            if (nextTokenIs(ELLIPSIS))
+            if (nextTokenIs(ellipsis))
             {
                 // consume the '...'
                 ellipsisLoc = consumeToken();
@@ -3531,7 +3524,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             // parse the declaration-specifiers
             // just use the parsingDeclaration "scope" of the declarator.
             DeclSpec ds = new DeclSpec();
-            SourceLocation dsstartLoc = S.token.getLocation();
+            SourceLocation dsstartLoc = tok.getLocation();
 
             // parse the declaration specifiers
             parseDeclarationSpecifiers(ds);
@@ -3542,7 +3535,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             parseDeclarator(paramDecls);
 
             // remember this parsed parameter in ParamInfo.
-            String paramName = paramDecls.getIdentifier();
+            IdentifierInfo paramName = paramDecls.getIdentifier();
 
             // if no parameter specified, verify that "something" was specified,
             // otherwise we have a missing type and identifier.
@@ -3566,7 +3559,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             }
 
             // If the next token is ',', consume it and keep reading argument
-            if (nextTokenIsNot(COMMA))
+            if (nextTokenIsNot(comma))
             {
                 break;
             }
@@ -3593,10 +3586,10 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // C array syntax has many features, but by-far the most common is [] and [4].
         // This code does a fast path to handle some of the most obvious cases.
-        if (nextTokenIs(RBRACKET))
+        if (nextTokenIs(r_bracket))
         {
             // eat the ']'.
-            rbracketLoc = matchRHSPunctuation(RBRACKET, lbracketLoc);
+            rbracketLoc = matchRHSPunctuation(r_bracket, lbracketLoc);
 
             // remember that we parsed the empty array declaration.
             declarator.addTypeInfo(
@@ -3605,14 +3598,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     rbracketLoc);
             return;
         }
-        else if (nextTokenIs(INTLITERAL)
-                && tokenIs(peekAheadToken(), RBRACKET))
+        else if (nextTokenIs(numeric_constant)
+                && tokenIs(peekAheadToken(), r_bracket))
         {
             // [4] is evey common. parse the number
-            ActionResult<Expr> numOfSize = action.actOnNumericConstant(S.token);
+            ActionResult<Expr> numOfSize = action.actOnNumericConstant(tok);
 
             // eat the ']'.
-            rbracketLoc = matchRHSPunctuation(RBRACKET, lbracketLoc);
+            rbracketLoc = matchRHSPunctuation(r_bracket, lbracketLoc);
             if (numOfSize.isInvalid())
                 numOfSize.release();
 
@@ -3627,7 +3620,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // If valid, this location is the position where we read the 'static' keyword.
         SourceLocation staticLoc = SourceLocation.NOPOS;
-        if (nextTokenIs(STATIC))
+        if (nextTokenIs(Static))
             staticLoc = consumeToken();
 
         // If there is a type-qualifier-list, read it now.
@@ -3637,14 +3630,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
         // If we haven't already read 'static', check to see if there is one after the
         // type-qualifier-list.
-        if (!staticLoc.isValid() && nextTokenIs(STATIC))
+        if (!staticLoc.isValid() && nextTokenIs(Static))
             staticLoc = consumeToken();
 
         // Handle "direct-declarator [ type-qual-list[opt] * ]".
         boolean isStar = false;
         ActionResult<Expr> numElements = new ActionResult<>();
 
-        if (nextTokenIs(STAR) && tokenIs(peekAheadToken(), RBRACKET))
+        if (nextTokenIs(star) && tokenIs(peekAheadToken(), r_bracket))
         {
             consumeToken();     // Eat the '*'.
             if (staticLoc.isValid())
@@ -3654,7 +3647,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             }
             isStar = true;
         }
-        else if (nextTokenIsNot(RBRACKET))
+        else if (nextTokenIsNot(r_bracket))
         {
             // Parse the constant-expression or assignment-expression now (depending
             // on dialect).
@@ -3664,11 +3657,11 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         if (numElements.isInvalid())
         {
             declarator.setInvalidType(true);
-            skipUntil(RBRACKET, true);
+            skipUntil(r_bracket, true);
             return;
         }
 
-        SourceLocation endLoc = matchRHSPunctuation(RBRACKET, lbracketLoc);
+        SourceLocation endLoc = matchRHSPunctuation(r_bracket, lbracketLoc);
 
         // Remember that we parsed a array type, and remember its features.
         declarator.addTypeInfo(DeclaratorChunk.getArray(
@@ -3691,16 +3684,16 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         while(true)
         {
             boolean isInvalid = false;
-            SourceLocation loc = S.token.getLocation();
-            switch (S.token.tag)
+            SourceLocation loc = tok.getLocation();
+            switch (tok.getKind())
             {
-                case Tag.CONST:
+                case Const:
                     isInvalid = ds.setTypeQualifier(TQ_const, loc);
                     break;
-                case Tag.VOLATILE:
+                case Volatile:
                     isInvalid = ds.setTypeQualifier(TQ_volatile, loc);
                     break;
-                case Tag.RESTRICT:
+                case Restrict:
                     isInvalid = ds.setTypeQualifier(TQ_restrict, loc);
                     break;
                 default:
@@ -3735,7 +3728,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         int specs = ds.getParsedSpecifiers();
         if (specs == ParsedSpecifiers.PQ_none)
         {
-            diag(S.token, err_typename_requires_specqual);
+            diag(tok, err_typename_requires_specqual);
         }
         // issue diagnostic and remove storage class if present
         if ((specs & ParsedSpecifiers.PQ_StorageClassSpecifier) != 0)
@@ -3765,7 +3758,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     private ActionResult<Expr> parseRHSOfBinaryExpression(ActionResult<Expr> lhs,
             int minPrec)
     {
-        int nextTokPrec = getBinOpPrecedence(S.token.tag);
+        int nextTokPrec = getBinOpPrecedence(tok.getKind());
 
         SourceLocation colonLoc = SourceLocation.NOPOS;
         while(true)
@@ -3776,14 +3769,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 return lhs;
 
             // consume the operator token, then advance the tokens stream.
-            Token opToken = S.token;
+            Token opToken = tok;
             consumeToken();
 
             // Special case handling for the ternary (?...:...) operator.
             ActionResult<Expr> ternaryMiddle = new ActionResult<>(true);
             if (nextTokPrec == PrecedenceLevel.Conditional)
             {
-                if(nextTokenIsNot(COLON))
+                if(nextTokenIsNot(colon))
                 {
                     // Handle this production specially
                     //   logical-OR-expression '?' expression ':' conditional-expression
@@ -3801,20 +3794,20 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     // Special cas handling of "X ? Y:Z" where Y is empty.
                     //   logical-OR-expression '?' ':' conditional-expression   [GNU]
                     ternaryMiddle = null;
-                    diag(S.token, ext_gnu_conditional_expr);
+                    diag(tok, ext_gnu_conditional_expr);
                 }
 
-                if (nextTokenIs(COLON))
+                if (nextTokenIs(colon))
                     colonLoc = consumeToken(); // eat the ':'.
                 else
                 {
-                    SourceLocation filoc = S.token.getLocation();
+                    SourceLocation filoc = tok.getLocation();
                     // We missing a ':' after ternary middle expression.
-                    diag(S.token, err_expected_colon)
+                    diag(tok, err_expected_colon)
                     .addFixItHint(FixItHint.
                             createInsertion(filoc, ": "));
                     diag(opToken, note_matching).addTaggedVal("?");
-                    colonLoc = S.token.loc;
+                    colonLoc = tok.getLocation();
                 }
             }
 
@@ -3829,7 +3822,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             // Remember the precedence of this operator and get the precedence of the
             // operator immediately to the right of the RHS.
             int thisPrec = nextTokPrec;
-            nextTokPrec = getBinOpPrecedence(S.token.tag);
+            nextTokPrec = getBinOpPrecedence(tok.getKind());
 
             // Assignment and conditional expression are right-associative.
             boolean isRightAssoc = thisPrec == PrecedenceLevel.Conditional
@@ -3847,7 +3840,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
                 if (rhs.isInvalid())
                     lhs = exprError();
-                nextTokPrec = getBinOpPrecedence(S.token.tag);
+                nextTokPrec = getBinOpPrecedence(tok.getKind());
             }
 
             assert (nextTokPrec <= thisPrec):"Recursive doesn't works!";
@@ -3857,12 +3850,12 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 // Combine the LHS and RHS into the LHS (e.g. builds AST)
                 if (ternaryMiddle.isInvalid())
                 {
-                    lhs = action.actOnBinOp( opToken.loc,
-                            opToken.tag, lhs.get(), rhs.get());
+                    lhs = action.actOnBinOp(opToken.getLocation(),
+                            opToken.getKind(), lhs.get(), rhs.get());
                 }
                 else
                 {
-                    lhs = action.actOnConditionalOp(opToken.loc, colonLoc,
+                    lhs = action.actOnConditionalOp(opToken.getLocation(), colonLoc,
                             lhs.get(), ternaryMiddle.get(), rhs.get());
                 }
             }
@@ -3880,7 +3873,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         ActionResult<Expr> res = parseCastExpression(isUnaryExpression,
                 isAddressOfOperand, isTypeCast, x);
         if (x.get())
-            diag(S.token, err_expected_expression);
+            diag(tok, err_expected_expression);
         return res;
     }
 
@@ -3907,13 +3900,13 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             OutParamWrapper<Boolean> notCastExpr)
     {
         ActionResult<Expr> res = null;
-        Token nextTok = S.token;
-        int savedKind = nextTok.tag;
+        Token nextTok = tok;
+        TokenKind savedKind = nextTok.getKind();
         notCastExpr.set(false);
 
         switch (savedKind)
         {
-            case LPAREN:
+            case l_paren:
             {
                 QualType castTy = null;
                 OutParamWrapper<QualType> out1 = new OutParamWrapper<>();
@@ -3951,16 +3944,13 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 }
                 break;
             }
-            case Token.INTLITERAL:
-            case Token.FLOATLITERAL:
-            case Token.DOUBLELITERAL:
-            case Token.LONGLITERAL:
+            case numeric_constant:
                 res = action.actOnNumericConstant(nextTok);
                 consumeToken();
                 break;
-            case Token.IDENTIFIER:
+            case Identifier:
             {
-                String id = S.token.getIdentifierInfo();
+                IdentifierInfo id = tok.getIdentifierInfo();
                 SourceLocation loc = consumeToken();
 
                 // primary-expression: identifier
@@ -3973,19 +3963,19 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 res = action.actOnIdentifierExpr(getCurScope(),
                         loc,
                         id,
-                        nextTokenIs(LPAREN),
+                        nextTokenIs(l_paren),
                         isAddressOfOperand);
                 break;
             }
-            case CHARLITERAL:
+            case char_constant: 
                 res = action.actOnCharacterConstant(nextTok);
                 consumeToken();
                 break;
-            case STRINGLITERAL:
+            case string_literal:
                 res = parseStringLiteralExpression();
                 break;
-            case PLUSPLUS:
-            case SUBSUB:
+            case plusplus:
+            case subsub:
             {
                 // unary-expression: '++' unary-expression [C99]
                 // unary-expression: '--' unary-expression [C99]
@@ -3996,11 +3986,11 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 return res;
             }
 
-            case STAR:
-            case PLUS:
-            case SUB:
-            case TILDE:
-            case BAR:
+            case star:
+            case plus:
+            case sub:
+            case tilde:
+            case bar:
             {
                 SourceLocation savedLoc = consumeToken();
                 res = parseCastExpression(false, false, false, 0);
@@ -4008,20 +3998,20 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     res = action.actOnUnaryOp(savedLoc, savedKind, res.get());
                 return res;
             }
-            case SIZEOF:
+            case Sizeof:
                 return parseUnaryExpression();
-            case CHAR:
-            case BOOL:
-            case SHORT:
-            case INT:
-            case LONG:
-            case SIGNED:
-            case UNSIGNED:
-            case FLOAT:
-            case DOUBLE:
-            case VOID:
+            case Char:
+            case Bool:
+            case Short:
+            case Int:
+            case Long:
+            case Signed:
+            case Unsigned:
+            case Float:
+            case Double:
+            case Void:
             {
-                diag(S.token, err_expected_expression);
+                diag(tok, err_expected_expression);
                 return exprError();
             }
             default:
@@ -4038,9 +4028,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private boolean isPostfixExpressionSuffixStart()
     {
-        int kind = S.token.tag;
-        return kind == LBRACKET || kind == LPAREN || kind == DOT
-                || kind == SUBGT || kind == PLUSPLUS || kind == SUBSUB;
+        TokenKind kind = tok.getKind();
+        return kind == l_bracket || kind == l_paren || kind == dot
+                || kind == arrow || kind == plusplus || kind == subsub;
     }
 
     /**
@@ -4054,9 +4044,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Expr> parseUnaryExpression()
     {
-        assert nextTokenIs(SIZEOF):"Not a sizeof expression!";
-        Token opTok = S.token;
-        SourceLocation opLoc = consumeToken();
+        assert nextTokenIs(Sizeof):"Not a sizeof expression!";
+        Token opTok = tok;
+        SourceLocation opLoc = consumeToken(); 
 
         return null;
     }
@@ -4089,30 +4079,30 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         SourceLocation loc;
         while(true)
         {
-            switch (S.token.tag)
+            switch (tok.getKind())
             {
-                case IDENTIFIER:
+                case Identifier:
                     // fall through; this is a primary expression.
                 default:
                     return lhs;
-                case LBRACKET:
+                case l_bracket:
                 {
                     // postfix-expression: p-e '[' expression ']'
                     SourceLocation lBracketLoc = consumeBracket();
                     ActionResult<Expr> idx = parseExpression();
                     SourceLocation rBracketLoc = consumeBracket();
 
-                    if (!lhs.isInvalid() && !idx.isInvalid() && nextTokenIs(RBRACKET))
+                    if (!lhs.isInvalid() && !idx.isInvalid() && nextTokenIs(r_bracket))
                         lhs = action.actOnArraySubscriptExpr(lhs.get(), lBracketLoc,
                                 idx.get(), rBracketLoc);
                     else
                         lhs = exprError();
 
                     // match the ']'.
-                    expectAndConsume(RBRACKET, err_expected_rsquare);
+                    expectAndConsume(r_bracket, err_expected_rsquare);
                     break;
                 }
-                case LPAREN:
+                case l_paren:
                 {
                     // p-e: p-e '(' argument-expression-list[opt] ')'
                     loc = consumeParen();
@@ -4121,14 +4111,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
                     if (!lhs.isInvalid())
                     {
-                        if (nextTokenIsNot(RPAREN))
+                        if (nextTokenIsNot(r_paren))
                             if (parseExpressionList(exprs, commaLocs))
                                 lhs = exprError();
                     }
 
                     if (lhs.isInvalid())
-                        skipUntil(RPAREN, true);
-                    else if (nextTokenIsNot(RPAREN))
+                        skipUntil(r_paren, true);
+                    else if (nextTokenIsNot(r_paren))
                         lhs = exprError();
                     else
                     {
@@ -4136,33 +4126,32 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                                 || exprs.size() == commaLocs.size() + 1
                                 :"Unexpected number of commas!";
 
-                        lhs = action.actOnCallExpr(lhs.get(), loc, exprs, S.token.loc);
+                        lhs = action.actOnCallExpr(lhs.get(), loc, exprs, tok.getLocation());
                         // eat the ')'.
                         consumeToken();
                     }
                 }
-                case Token.SUBGT:
-                case DOT:
+                case arrow: 
+                case dot:
                 {
                     // postfix-expression: p-e '->' id-expression
                     // postfix-expression: p-e '.' id-expression
                     loc = consumeToken();
-                    Ident id = (Ident)S.token;
-                    SourceLocation opLoc = id.loc;
-                    String name = id.name;
-                    int opKind = id.tag;
+                    IdentifierInfo ii = tok.getIdentifierInfo();
+                    SourceLocation opLoc = tok.getLocation();
+                    String name = ii.getName();
+                    TokenKind opKind = tok.getKind();
 
                     if (!lhs.isInvalid())
                         lhs = action.actOnMemberAccessExpr(getCurScope(),lhs.get(), opLoc, opKind, name);
                     break;
                 }
-                case PLUSPLUS:
-                case SUBSUB:
+                case plusplus:
+                case subsub:
                 {
                     if (!lhs.isInvalid())
                     {
-                        Token tok = S.token;
-                        lhs = action.actOnPostfixUnaryOp(tok.loc, tok.tag,lhs.get());
+                        lhs = action.actOnPostfixUnaryOp(tok.getLocation(), tok.getKind(), lhs.get());
                     }
                     consumeToken();
                     break;
@@ -4182,11 +4171,16 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private ActionResult<Expr> parseStringLiteralExpression()
     {
-        assert nextTokenIs(STRINGLITERAL):"Not a string literal!";
+        assert nextTokenIs(string_literal) : "Not a string literal!";
 
-        Token.StringLiteral str = (Token.StringLiteral)S.token;
-        consumeToken();
-        return action.actOnStringLiteral(str);
+        ArrayList<Token> stringToks = new ArrayList<>();
+        do
+        {
+            stringToks.add(tok);
+            consumeStringToken();
+        }while (nextTokenIs(string_literal));
+
+        return action.actOnStringLiteral(stringToks);
     }
 
     /**
@@ -4194,58 +4188,58 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      * @param kind
      * @return
      */
-    private int getBinOpPrecedence(int kind)
+    private int getBinOpPrecedence(TokenKind kind)
     {
         switch (kind)
         {
             default: return PrecedenceLevel.Unkonw;
-            case Token.GT:
+            case greater:
                 return PrecedenceLevel.Relational;
-            case Token.GTGT:
+            case greatergreater:
                 return PrecedenceLevel.Shift;
-            case Token.COMMA:
-            case Token.EQ:
-            case Token.STAREQ:
-            case Token.SLASHEQ:
-            case Token.PERCENTEQ:
-            case Token.PLUSEQ:
-            case Token.SUBEQ:
-            case Token.LTLTEQ:
-            case Token.GTGTEQ:
-            case Token.AMPEQ:
-            case Token.CARETEQ:
-            case Token.BAREQ:
+            case comma:
+            case equal: 
+            case starequal:
+            case slashequal:
+            case percentequal:
+            case plusequal:
+            case subequal:
+            case lesslessequal:
+            case greatergreaterequal:
+            case ampequal:
+            case caretequal:
+            case barequal:
                 return PrecedenceLevel.Assignment;
-            case Token.QUES:
+            case question:
                 return PrecedenceLevel.Conditional;
-            case Token.BARBAR:
+            case barbar:
                 return PrecedenceLevel.LogicalOr;
-            case Token.AMPAMP:
+            case ampamp:
                 return PrecedenceLevel.LogicalAnd;
-            case Token.BAR:
+            case bar:
                 return PrecedenceLevel.InclusiveOr;
-            case Token.CARET:
+            case caret:
                 return PrecedenceLevel.ExclusiveOr;
-            case Token.AMP:
+            case amp:
                 return PrecedenceLevel.And;
-            case Token.EQEQ:
-            case Token.BANGEQ:
+            case equalequal:
+            case bangequal:
                 return PrecedenceLevel.Equality;
-            case Token.LTEQ:
-            case Token.LT:
-            case Token.GTEQ:
+            case lessequal:
+            case less:
+            case greaterequal:
                 return PrecedenceLevel.Relational;
-            case Token.LTLT:
+            case lessless:
                 return PrecedenceLevel.Shift;
-            case Token.PLUS:
-            case Token.SUB:
+            case plus:
+            case sub:
                 return PrecedenceLevel.Additive;
-            case Token.PERCENT:
-            case Token.STAR:
-            case Token.SLASH:
+            case percent:
+            case star:
+            case slash:
                 return PrecedenceLevel.Multiplicative;
-            case Token.DOT:
-            case Token.SUBGT:
+            case dot:
+            case arrow:
                 return PrecedenceLevel.PointerToMember;
 
         }
@@ -4285,32 +4279,32 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      * the next token, or to some likely good stopping point.
      * IfStmt {@code stopAtSemi} is true, skipping will stop at a ';' character.
      *
-     * @param tag
-     * @param stopAtSemi
+     * @param kind       
+     * @param stopAtSemi 
      */
-    private boolean skipUntil(int tag, boolean stopAtSemi)
+    private boolean skipUntil(TokenKind kind, boolean stopAtSemi)
     {
-        return skipUntil(new int[] { tag }, stopAtSemi, false);
+        return skipUntil(new TokenKind[] { kind }, stopAtSemi, false);
     }
 
-    private boolean skipUntil(int tag, boolean stopAtSemi, boolean dontConsume)
+    private boolean skipUntil(TokenKind kind, boolean stopAtSemi, boolean dontConsume)
     {
-        return skipUntil(new int[] { tag }, stopAtSemi, dontConsume);
+        return skipUntil(new TokenKind[] { kind }, stopAtSemi, dontConsume);
     }
 
-    private boolean skipUntil(int tag1, int tag2, boolean stopAtSemi)
+    private boolean skipUntil(TokenKind tag1, TokenKind tag2, boolean stopAtSemi)
     {
-        return skipUntil(new int[] { tag1, tag2 }, stopAtSemi, false);
+        return skipUntil(new TokenKind[] { tag1, tag2 }, stopAtSemi, false);
     }
 
-    private boolean skipUntil(int[] tags, boolean stopAtSemi, boolean dontConsume)
+    private boolean skipUntil(TokenKind[] tags, boolean stopAtSemi, boolean dontConsume)
     {
         boolean isFirstTokenSkipped = true;
         while (true)
         {
-            for (int tag : tags)
+            for (TokenKind kind : tags)
             {
-                if (nextTokenIs(tag))
+                if (nextTokenIs(kind))
                 {
                     if (dontConsume)
                     {
@@ -4323,35 +4317,35 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                     return true;
                 }
             }
-            switch (S.token.tag)
+            switch (tok.getKind())
             {
-                case Tag.EOF:
+                case eof:
                     // ran out of tokens
                     return false;
-                case Tag.LPAREN:
+                case l_paren:
                     consumeToken();
-                    skipUntil(RPAREN, false);
+                    skipUntil(r_paren, false);
                     break;
-                case Tag.LBRACKET:
+                case l_bracket:
                     consumeToken();
-                    skipUntil(RBRACKET, false);
+                    skipUntil(r_bracket, false);
                     break;
-                case Tag.LBRACE:
+                case l_brace:
                     consumeToken();
-                    skipUntil(RBRACE, false);
+                    skipUntil(r_brace, false);
                     break;
 
-                case Tag.RPAREN:
-                case Tag.RBRACKET:
-                case Tag.RBRACE:
+                case r_paren:
+                case r_bracket:
+                case r_brace:
                     if (!isFirstTokenSkipped)
                         return false;
                     consumeToken();
                     break;
-                case Tag.STRINGLITERAL:
+                case string_literal:
                     consumeToken();
                     break;
-                case Tag.SEMI:
+                case semi:
                     if (stopAtSemi)
                         return false;
                     // fall through
@@ -4365,22 +4359,22 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     private boolean isTokenParen()
     {
-        return S.token.tag == LPAREN || S.token.tag == RPAREN;
+        return tok.is(l_paren) || tok.is(r_paren);
     }
 
     private boolean isTokenBracket()
     {
-        return S.token.tag == LBRACKET || S.token.tag == RBRACKET;
+        return tok.is(l_bracket) || tok.is(r_bracket);
     }
 
     private boolean isTokenBrace()
     {
-        return S.token.tag == LBRACE || S.token.tag == RBRACE;
+        return tok.is(l_brace) || tok.is(r_brace);
     }
 
     private boolean isTokenStringLiteral()
     {
-        return S.token.tag == STRINGLITERAL;
+        return tok.is(string_literal);
     }
 
     /**
@@ -4392,8 +4386,9 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         assert !isTokenStringLiteral() && !isTokenParen() && !isTokenBracket() &&
                 !isTokenBrace() : "Should consume special tokens with Consume*Token";
-        prevTokLocation = S.token.getLocation();
-        S.lex();
+        prevTokLocation = tok.getLocation();
+        tok = new Token();
+        pp.lex(tok);
         return prevTokLocation;
     }
 
@@ -4415,12 +4410,13 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     private SourceLocation consumeParen()
     {
         assert isTokenParen() : "wrong consume method";
-        if (S.token.tag == LPAREN)
+        if (tok.getKind() == l_paren)
             ++parenCount;
         else if (parenCount != 0)
             --parenCount;       // Don't let unbalanced )'s drive the count negative.
-        prevTokLocation = S.token.getLocation();
-        S.lex();
+        prevTokLocation = tok.getLocation();
+        tok = new Token();
+        pp.lex(tok);
         return prevTokLocation;
     }
     private int bracketCount;
@@ -4428,13 +4424,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     private SourceLocation consumeBracket()
     {
         assert isTokenBracket() : "wrong consume method";
-        if (S.token.tag == LBRACKET)
+        if (tok.getKind() == l_bracket)
             ++bracketCount;
         else if (bracketCount != 0)
             --bracketCount;     // Don't let unbalanced ]'s drive the count negative.
 
-        prevTokLocation = S.token.getLocation();
-        S.lex();
+        prevTokLocation = tok.getLocation();
+        tok = new Token();
+        pp.lex(tok);
         return prevTokLocation;
     }
 
@@ -4442,77 +4439,76 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     {
         assert isTokenStringLiteral() :
                 "Should only consume string literals with this method";
-        prevTokLocation = S.token.getLocation();
-        S.lex();
+        prevTokLocation = tok.getLocation();
+        tok = new Token();
+        pp.lex(tok);
         return prevTokLocation;
     }
 
-    private int braceCount;
-    private SourceLocation prevTokLocation;
-
     private SourceLocation consumeBrace()
     {
-        assert nextTokenIs(RBRACE) || nextTokenIs(LBRACE)
+        assert nextTokenIs(r_brace) || nextTokenIs(l_brace)
                 :"Wrong consume method";
-        Token tok = S.token;
-        if (tok.tag == LBRACE)
+        
+        if (tok.getKind() == l_brace)
             ++braceCount;
         else
             --braceCount;
 
         prevTokLocation = tok.getLocation();
-        S.lex();
+        tok = new Token();
+        pp.lex(tok);
         return prevTokLocation;
     }
 
-    private boolean expectAndConsume(int expectedTok, int diagID)
+    private boolean expectAndConsume(TokenKind expectedTok, int diagID)
     {
-        return expectAndConsume(expectedTok, diagID, "", UNKNOWN);
+        return expectAndConsume(expectedTok, diagID, "", Unknown);
     }
 
-    private boolean expectAndConsume(int expectedTok, int diagID,
-            String msg, int skipToTok)
+    private boolean expectAndConsume(TokenKind expectedTok, int diagID,
+            String msg, TokenKind skipToTok)
     {
-        if (S.token.tag == expectedTok)
+        if (tok.getKind() == expectedTok)
         {
             consumeAnyToken();
             return false;
         }
 
-        diag(S.token, diagID).addTaggedVal(msg);
+        diag(tok, diagID).addTaggedVal(msg);
 
-        if (skipToTok != UNKNOWN)
+        if (skipToTok != Unknown)
             skipUntil(skipToTok, true);
         return true;
     }
 
-    private SourceLocation matchRHSPunctuation(int rhsTok,
+    private SourceLocation matchRHSPunctuation(TokenKind rhsTok,
             SourceLocation lhsLoc)
     {
-        if (S.token.tag == rhsTok)
+        if (tok.getKind() == rhsTok)
             return consumeAnyToken();
 
-        SourceLocation r = S.token.getLocation();
+        SourceLocation r = tok.getLocation();
         String lhsName = "unknown";
         int did = err_parse_error;
         switch (rhsTok)
         {
             default:break;
-            case RPAREN:
+            case r_paren:
                 lhsName = "(";
                 did = err_expected_rparen;
                 break;
-            case RBRACE:
+            case r_brace:
                 lhsName = "{";
                 did = err_expected_rbrace;
                 break;
-            case RBRACKET:
+            case r_bracket:
                 lhsName = "[";
                 did = err_expected_rsquare;
                 break;
         }
 
-        diag(S.token, did);
+        diag(tok, did);
         diag(lhsLoc, note_matching).addTaggedVal(lhsName);
         skipUntil(rhsTok, true);
         return r;
@@ -4525,7 +4521,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private Token peekAheadToken()
     {
-        return S.nextToken();
+        return pp.peekAhead(1);
     }
 
     /**
@@ -4534,14 +4530,14 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      * @param expectedToken A TargetData token to be compared with next Token.
      * @return
      */
-    private boolean nextTokenIs(int expectedToken)
+    private boolean nextTokenIs(TokenKind expectedToken)
     {
-        return S.token.tag == expectedToken;
+        return tok.is(expectedToken);
     }
 
-    private boolean tokenIs(Token token, int expectedToken)
+    private boolean tokenIs(Token token, TokenKind expectedToken)
     {
-        return token.tag == expectedToken;
+        return token.is(expectedToken);
     }
 
     /**
@@ -4550,7 +4546,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      * @param expectedToken
      * @return
      */
-    private boolean nextTokenIsNot(int expectedToken)
+    private boolean nextTokenIsNot(TokenKind expectedToken)
     {
         return !nextTokenIs(expectedToken);
     }
@@ -4562,6 +4558,6 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private boolean nextTokenIsKeyword()
     {
-        return keywords.isKeyword(S.token);
+        return keywords.isKeyword(tok);
     }
 }

@@ -1,6 +1,8 @@
 package jlang.cparser;
 
-import jlang.cparser.Token.Keyword;
+import jlang.cpp.Tag;
+import jlang.cpp.Token;
+import jlang.cpp.Token.Keyword;
 
 import java.util.HashMap;
 import java.util.Map.Entry;

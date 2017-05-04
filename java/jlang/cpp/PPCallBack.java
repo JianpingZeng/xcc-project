@@ -17,7 +17,7 @@ package jlang.cpp;
  */
 
 import jlang.basic.CharacteristicKind;
-import jlang.cparser.Token;
+import jlang.basic.SourceLocation;
 
 /**
  * This interface provides a way to observe the actions of the
