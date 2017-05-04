@@ -304,11 +304,19 @@ public class APSInt extends APInt
         return new APSInt(super.sub(rhs), isUnsigned);
     }
 
+    /**
+     * unary ~ operation.
+     * @return
+     */
     public APSInt not()
     {
         return new APSInt(((APInt)this).not(), isUnsigned);
     }
 
+    /**
+     * unary minus operation
+     * @return
+     */
     public APSInt negative()
     {
         return new APSInt(((APInt)this).negative(), isUnsigned);

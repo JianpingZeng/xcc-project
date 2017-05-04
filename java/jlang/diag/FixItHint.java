@@ -16,7 +16,7 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
 
 /**

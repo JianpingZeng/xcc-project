@@ -16,8 +16,6 @@ package jlang.cpp;
  * permissions and limitations under the License.
  */
 
-import jlang.cparser.Token;
-
 import java.util.ArrayList;
 
 /**

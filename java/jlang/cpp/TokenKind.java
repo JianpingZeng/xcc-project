@@ -16,8 +16,6 @@ package jlang.cpp;
  * permissions and limitations under the License.
  */
 
-import jlang.cparser.Tag;
-
 import static jlang.cpp.IdentifierTable.*;
 
 /**
@@ -29,12 +27,12 @@ public enum TokenKind
     // Not a token.
     Unknown("unknown", Tag.UNKNOWN),
     // End of file.
-    Eof("eof", Tag.EOF),
+    eof("eof", Tag.EOF),
     // End of preprocessing directive (end of line inside a
     // directive).
     Eod("eod", Tag.EOD),
 
-    Eom("eom", Tag.EOM),
+    eom("eom", Tag.EOM),
 
     // C99 6.4.9: Comments.
     Comment("comment", Tag.COMMENT), // Comment (only in -E -C[C] mode)
@@ -44,14 +42,14 @@ public enum TokenKind
 
     // C99 6.4.4.1: Integer Constants
     // C99 6.4.4.2: Floating Constants
-    Numeric_constant("numeric_constant", Tag.NUMERIC_CONSTANT), // 0x123
+    numeric_constant("numeric_constant", Tag.NUMERIC_CONSTANT), // 0x123
 
     // C99 6.4.4: Character Constants
-    Char_constant("char_constant", Tag.CHAR_CONSTANT),
+    char_constant("char_constant", Tag.CHAR_CONSTANT),
 
     // C99 6.4.5: String Literals.
-    String_literal("string_literal", Tag.STRING_LITERAL), // "foo"
-    Angle_string_literal("angle_string_literal", Tag.ANGLE_STRING_LITERAL), // <foo>
+    string_literal("string_literal", Tag.STRING_LITERAL), // "foo"
+    angle_string_literal("angle_string_literal", Tag.ANGLE_STRING_LITERAL), // <foo>
 
     // specifier
     Void("void", Tag.VOID, KEYALL),

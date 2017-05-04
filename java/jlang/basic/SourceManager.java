@@ -18,8 +18,7 @@ package jlang.basic;
 
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import jlang.cparser.Token.StrData;
-import jlang.cpp.SourceLocation;
+import jlang.cpp.Token.StrData;
 import tools.Pair;
 
 import java.nio.CharBuffer;
@@ -582,7 +581,7 @@ public class SourceManager
      * @param isFileExit
      * @param isSystemHeader
      */
-    public void addLIneNote(SourceLocation loc, int lineNo, int filenameID,
+    public void addLineNote(SourceLocation loc, int lineNo, int filenameID,
             boolean isFileEntry, boolean isFileExit,
             boolean isSystemHeader)
     {

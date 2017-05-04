@@ -18,19 +18,25 @@ package jlang.cpp;
 
 import gnu.trove.list.array.TIntArrayList;
 import jlang.basic.*;
-import jlang.cparser.Token;
 import jlang.cpp.PPCallBack.FileChangeReason;
+import jlang.cpp.Preprocessor.DefinedTracker.TrackerState;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
 import jlang.diag.FullSourceLoc;
+import jlang.sema.APSInt;
 import tools.OutParamWrapper;
 import tools.Pair;
 
 import java.nio.file.Path;
 import java.util.*;
 
-import static jlang.cparser.Token.TokenFlags.*;
+import static jlang.basic.CharacteristicKind.C_User;
+import static jlang.cpp.Token.TokenFlags.*;
+import static jlang.cpp.PPCallBack.FileChangeReason.RenameFile;
+import static jlang.cpp.Preprocessor.DefinedTracker.TrackerState.DefinedMacro;
+import static jlang.cpp.Preprocessor.DefinedTracker.TrackerState.NotDefMacro;
 import static jlang.cpp.TokenKind.*;
+import static jlang.diag.DiagnosticCommonKindsTag.*;
 import static jlang.diag.DiagnosticLexKindsTag.*;
 
 /**
@@ -120,6 +126,8 @@ public final class Preprocessor
      * *  Only one of curLexer, or curTokenLexer will be non-null.
      */
     private Lexer curLexer;
+
+    private Path curDirLookup;
 
     /**
      * This is the current macro we are expanding, if we are
@@ -348,11 +356,6 @@ public final class Preprocessor
      * invoked (at which point the last position is popped).
      */
     private TIntArrayList backtrackPositions;
-
-    public List<PPToken> expand(MacroArgument macroMacroArgument)
-    {
-        return Collections.emptyList();
-    }
 
     public Preprocessor(Diagnostic diag, LangOptions langOptions,
             TargetInfo target, SourceManager sourceMgr,
@@ -786,7 +789,7 @@ public final class Preprocessor
 
             result.startToken();
             curLexer.bufferPtr = endPos;
-            curLexer.formTokenWithChars(result, endPos, TokenKind.Eof);
+            curLexer.formTokenWithChars(result, endPos, TokenKind.eof);
 
             // We are done with the #include file.
             curLexer = null;
@@ -820,9 +823,1981 @@ public final class Preprocessor
             curTokenLexer.lex(result);
     }
 
+    /**
+     * Convert a numeric token into an int value, emitting
+     * Diagnostic DiagID if it is invalid, and returning the value in val.
+     * @param digitTok
+     * @param lineNo
+     * @param diagID
+     * @param pp
+     * @return
+     */
+    private static boolean getLineValue(
+            Token digitTok,
+            OutParamWrapper<Integer> lineNo,
+            int diagID,
+            Preprocessor pp)
+    {
+        if (digitTok.isNot(numeric_constant))
+        {
+            pp.diag(digitTok.getLocation(), diagID);
+            if (digitTok.isNot(eom))
+                pp.discardUntilEndOfDirective();
+            return true;
+        }
+
+        String digitStr = pp.getSpelling(digitTok);
+
+        int val = 0;
+        for (int i = 0, e = digitStr.length(); i < e; ++i)
+        {
+            if (!Character.isDigit(digitStr.charAt(i)))
+            {
+                pp.diag(pp.advanceToTokenCharacter(digitTok.getLocation(), i),
+                        err_pp_line_digit_sequence);
+                pp.discardUntilEndOfDirective();
+                return true;
+            }
+
+            int nextVal = val * 10 + (digitStr.charAt(i) - '0');
+            if (nextVal < val)
+            {
+                // overflow.
+                pp.diag(digitTok, diagID);
+                pp.discardUntilEndOfDirective();
+                return true;
+            }
+            val = nextVal;
+        }
+
+        // Reject 0, this is needed both by #line numbers and flags.
+        if (val == 0)
+        {
+            pp.diag(digitTok, diagID);
+            pp.discardUntilEndOfDirective();
+            return true;
+        }
+
+        if (digitStr.charAt(0) == '0')
+            pp.diag(digitTok.getLocation(), warn_pp_line_decimal);
+        lineNo.set(val);
+        return false;
+    }
+
+    /**
+     * Parse and validate any flags at the end of a GNU line
+     * marker directive.
+     * @param isFileEntry
+     * @param isFileExit
+     * @param isSystemHeader
+     * @param pp
+     * @return
+     */
+    private static boolean readLineMarkerFlags(
+            OutParamWrapper<Boolean> isFileEntry,
+            OutParamWrapper<Boolean> isFileExit,
+            OutParamWrapper<Boolean> isSystemHeader,
+            Preprocessor pp)
+    {
+        int flagVal = 0;
+        Token flagTok = new Token();
+        pp.lex(flagTok);
+
+        if (flagTok.is(eom)) return false;
+        OutParamWrapper<Integer> x = new OutParamWrapper<>(flagVal);
+        if (getLineValue(flagTok, x, err_pp_linemarker_invalid_filename, pp))
+            return true;
+
+        flagVal = x.get();
+
+        if (flagVal == 1)
+        {
+            isFileEntry.set(true);
+
+            pp.lex(flagTok);
+            if (flagTok.is(eom)) return false;
+            x = new OutParamWrapper<>(flagVal);
+            if (getLineValue(flagTok, x, err_pp_linemarker_invalid_flag, pp))
+                return true;
+
+            flagVal = x.get();
+        }
+        else if (flagVal == 2)
+        {
+            isFileExit.set(true);
+
+            SourceManager sgr = pp.getSourceManager();
+
+            FileID curFileID = sgr.getDecomposedInstantiationLoc(flagTok.getLocation()).first;
+            PresumedLoc ploc = sgr.getPresumedLoc(flagTok.getLocation());
+
+            SourceLocation loc = ploc.getIncludeLoc();
+            if (!loc.isValid() || !sgr.getDecomposedInstantiationLoc(loc).first
+                    .equals(curFileID))
+            {
+                pp.diag(flagTok, err_pp_linemarker_invalid_pop);
+                pp.discardUntilEndOfDirective();
+                return true;
+            }
+
+            pp.lex(flagTok);
+            if (flagTok.is(eom)) return false;
+            if (getLineValue(flagTok, x, err_pp_linemarker_invalid_flag, pp))
+                return true;
+
+            flagVal = x.get();
+        }
+
+        if (flagVal != 3)
+        {
+            pp.diag(flagTok, err_pp_linemarker_invalid_flag);
+            pp.discardUntilEndOfDirective();
+            return true;
+        }
+
+        isSystemHeader.set(true);
+
+        pp.lex(flagTok);
+        if (flagTok.is(eom)) return false;
+        if (getLineValue(flagTok, x, err_pp_linemarker_invalid_flag, pp))
+            return true;
+
+        flagVal = x.get();
+
+        if (flagVal != 4)
+        {
+            pp.diag(flagTok, err_pp_linemarker_invalid_flag);
+            pp.discardUntilEndOfDirective();
+            return true;
+        }
+
+        // There are no more valid flags here.
+        pp.diag(flagTok, err_pp_linemarker_invalid_flag);
+        pp.discardUntilEndOfDirective();
+        return true;
+    }
+
+    /**
+     * Handle a GNU line marker directive, whose syntax is
+     /// one of the following forms:
+     ///
+     ///     # 42
+     ///     # 42 "file" ('1' | '2')?
+     ///     # 42 "file" ('1' | '2')? '3' '4'?
+     * @param digitTok
+     */
+    private void handleDigitDirective(Token digitTok)
+    {
+        // Validate the number and convert it to an int.  GNU does not have a
+        // line # limit other than it fit in 32-bits.
+        OutParamWrapper<Integer> lineNo = new OutParamWrapper<>(0);
+        if (getLineValue(digitTok, lineNo, err_pp_linemarker_requires_integer, this))
+            return;
+
+        Token strTok = new Token();
+        lex(strTok);
+
+        boolean isFileEntry = false, isFileExit = false;
+        boolean isSystemHeader = false;
+        int filenameID = -1;
+
+        // If the StrTok is "eom", then it wasn't present.  Otherwise, it must be a
+        // string followed by eom.
+        if (strTok.is(eom));  // OK! just return
+        else if (strTok.isNot(string_literal))
+        {
+            diag(strTok, err_pp_linemarker_invalid_filename);
+            discardUntilEndOfDirective();
+            return;
+        }
+        else
+        {
+            // Parse and validate the string, converting it into a unique ID.
+            StringLiteralParser literal = new StringLiteralParser(new Token[]{strTok}, this);;
+            if (literal.hadError)
+            {
+                discardUntilEndOfDirective();
+                return;
+            }
+
+            filenameID = sourceMgr.getLineTableFilenameID(literal.getString());
+
+            // If a filename was present, read any flags that are present.
+            OutParamWrapper<Boolean> x = new OutParamWrapper<>(isFileEntry),
+            y = new OutParamWrapper<>(isFileExit),
+            z = new OutParamWrapper<>(isSystemHeader);
+
+            if (readLineMarkerFlags(x, y, z, this))
+                return;
+            isFileEntry = x.get();
+            isFileExit = y.get();
+            isSystemHeader = z.get();
+        }
+
+        // Create a line note with this information.
+        sourceMgr.addLineNote(digitTok.getLocation(), lineNo.get(), filenameID,
+                isFileEntry, isFileExit, isSystemHeader);
+
+        if (callbacks != null)
+        {
+            FileChangeReason reason = RenameFile;
+            if (isFileEntry)
+                reason = FileChangeReason.EnterFile;
+            else if (isFileExit)
+                reason = FileChangeReason.ExitFile;
+            CharacteristicKind kind = C_User;
+            if (isSystemHeader)
+                kind = CharacteristicKind.C_System;
+
+            callbacks.fileChanged(digitTok.getLocation(), reason, kind);;
+        }
+    }
+
+    static class PPValue
+    {
+        private SourceRange range;
+
+        public APSInt val;
+
+        public PPValue(int bitWidth)
+        {
+            val = new APSInt(bitWidth);
+        }
+
+        public int getBitWidth() { return val.getBitWidth(); }
+
+        public boolean isUnsigned() {return val.isUnsigned(); }
+
+        public SourceRange getRange()
+        {
+            return range;
+        }
+
+        public void setRange(SourceLocation loc)
+        {
+            range = new SourceRange(loc, loc);
+        }
+
+        public void setRange(SourceLocation l, SourceLocation r)
+        {
+            range = new SourceRange(l, r);
+        }
+
+        public void setBegin(SourceLocation loc)
+        {
+            range.setBegin(loc);
+        }
+
+        public void setEnd(SourceLocation loc)
+        {
+            range.setEnd(loc);
+        }
+    }
+
+    static class DefinedTracker
+    {
+        /// Each time a Value is evaluated, it returns information about whether the
+        /// parsed value is of the form defined(X), !defined(X) or is something else.
+        enum TrackerState
+        {
+            DefinedMacro,
+            NotDefMacro,
+            Unknown,
+        }
+
+        /**
+         *  When the state is DefinedMacro or NotDefinedMacro, this
+         * indicates the macro that was checked.
+         */
+        TrackerState state;
+
+        IdentifierInfo theMacro;
+    }
+
+    /**
+     * Evaluate the token {@code peekTok} (and any others needed) and
+     * return the computed value in {@code result}. This function also returns
+     * information about the form of the expression in DT.  See above for
+     * information on what DT means.
+     *
+     * If ValueLive is false, then this value is being evaluated in a context where
+     * the result is not used.  As such, avoid diagnostics that relate to
+     * evaluation.
+     * @param result
+     * @param peekTok
+     * @param dt
+     * @param valueLive
+     * @param pp
+     * @return Return true if there was an error parsing.
+     */
+    private static boolean evaluateValue(
+            PPValue result,
+            Token peekTok,
+            DefinedTracker dt,
+            boolean valueLive,
+            Preprocessor pp)
+    {
+        dt.state = TrackerState.Unknown;
+
+        // If this tokens spelling is a pp-identifier, check to see if it is
+        // 'defined' or if it is a macro.
+        IdentifierInfo ii = peekTok.getIdentifierInfo();
+        if (ii != null)
+        {
+            // If this identifier isn't 'defined' and it wasn't macro expanded,
+            // it returns into a simple 0.
+            if (!ii.isStr("defined"))
+            {
+                if (valueLive)
+                    pp.diag(peekTok, warn_pp_undef_identifier);
+                result.val.assign(0);
+                result.val.setIsUnsigned(false); // '0' is signed intmat_t 0.
+                pp.lexNonComment(peekTok);
+                return false;
+            }
+
+            // Handle "defined X" and "defined(X)".
+            result.setBegin(peekTok.getLocation());
+
+            // Get the next token, don't expand it.
+            pp.lexNonComment(peekTok);
+
+            // Two options, it can either be a pp-identifier or a '('.
+            SourceLocation lParenLoc = new SourceLocation();
+            if (peekTok.is(l_paren))
+            {
+                // Found a left parenthesis, remember its localtion, skip it.
+                lParenLoc = peekTok.getLocation();
+                pp.lexUnexpandedToken(peekTok);
+            }
+
+            // if we don't have a pp-identifier now, this is an error.
+            if ((ii = peekTok.getIdentifierInfo()) == null)
+            {
+                pp.diag(peekTok, err_pp_defined_requires_identifier);
+                return true;
+            }
+
+            // Otherwise, we got an identifier, is it defined?
+            result.val.assign(ii.isHasMacroDefinition() ? 1 : 0);
+            result.val.setIsUnsigned(false);  // result is signed.
+
+            // If this is a macro, mark is as used.
+            if (!result.val.eq(0) && valueLive)
+            {
+                pp.getMacroInfo(ii).setIsUsed(true);
+            }
+
+            // Consume identifier.
+            result.setEnd(peekTok.getLocation());
+            pp.lexNonComment(peekTok);
+
+            // If we have seen a '(', ensure we also have a tailling ')'.
+            if (lParenLoc.isValid())
+            {
+                if (!peekTok.is(r_paren))
+                {
+                    pp.diag(peekTok.getLocation(), err_pp_missing_rparen);
+                    pp.diag(lParenLoc, note_matching).addTaggedVal("(");
+                    return true;
+                }
+
+                // consume the ')'.
+                result.setEnd(peekTok.getLocation());
+                pp.lexNonComment(peekTok);
+            }
+
+            // Success, remember that we saw defined(X).
+            dt.state = DefinedMacro;
+            dt.theMacro = ii;
+            return false;
+        }
+
+        switch (peekTok.getKind())
+        {
+            default:
+                pp.diag(peekTok.getLocation(), err_pp_expr_bad_token_start_expr);
+                return true;
+            case eom:
+            case r_paren:
+            {
+                // If there is no expression, report and exit.
+                pp.diag(peekTok, err_pp_expected_value_in_expr);
+                return true;
+            }
+            case numeric_constant:
+            {
+                String lit = pp.getSpelling(peekTok);
+                NumericLiteralParser litParser =
+                        new NumericLiteralParser(lit, peekTok.getLocation(), pp);
+                if (litParser.hadError)
+                {
+                    return true;    // Error occurred.
+                }
+                if (litParser.isFloatingLiteral() || litParser.isImaginary)
+                {
+                    pp.diag(peekTok, err_pp_illegal_floating_literal);
+                    return true;
+                }
+
+                assert litParser.isIntegerLiteral():"Unknown ppnumber";
+
+                // long long is C99 feature.
+                if (!pp.getLangOptions().c99 && litParser.isLongLong)
+                    pp.diag(peekTok, ext_longlong);
+
+                // Parse the integer lietal into result.
+                if (litParser.getIntegerValue(result.val))
+                {
+                    // Overflow parsing integer literal.
+                    if (valueLive) pp.diag(peekTok, warn_integer_too_large);
+                    result.val.setIsUnsigned(true);
+                }
+                else
+                {
+                    // Set the signedness of the result to match whether there was a U suffix
+                    // or not.
+                    result.val.setIsUnsigned(litParser.isUnsigned);
+
+                    if (!litParser.isUnsigned && result.val.isNegative())
+                    {
+                        if (valueLive && litParser.getRadix() != 16)
+                            pp.diag(peekTok, warn_integer_too_large_for_signed);
+                        result.val.setIsUnsigned(true);
+                    }
+                }
+
+                // Consume the token.
+                result.setRange(peekTok.getLocation());
+                pp.lexNonComment(peekTok);
+                return false;
+            }
+            case char_constant:
+            {
+                String tokStr = pp.getSpelling(peekTok);
+                CharLiteralParser literal =
+                        new CharLiteralParser(tokStr, peekTok.getLocation(), pp);
+                if (literal.hadError())
+                    return true;    // A diagnostic was already emitted.
+
+                TargetInfo ti = pp.getTargetInfo();
+                int numBits;
+                if (literal.isMultChar())
+                    numBits = ti.getIntWidth();
+                else
+                    numBits = ti.getCharWidth();
+
+                // set the width.
+                APSInt val = new APSInt(numBits);
+                // set the value
+                val.assign(literal.getValue());
+                val.setIsUnsigned(false);
+
+                if (result.val.getBitWidth() > val.getBitWidth())
+                {
+                    result.val = val.extend(result.val.getBitWidth());
+                }
+                else
+                {
+                    assert result.val.getBitWidth() == val.getBitWidth()
+                            :"intmax_t smaller than char?";
+                    result.val.assign(val);
+                }
+
+                // Consume the token.
+                result.setRange(peekTok.getLocation());
+                pp.lexUnexpandedToken(peekTok);
+                return false;
+            }
+            case l_paren:
+            {
+                // Parse the value and if there are any binary operators involved, parse
+                // them.
+                SourceLocation start = peekTok.getLocation();
+                pp.lexNonComment(peekTok);
+
+                if (evaluateValue(result, peekTok, dt, valueLive, pp))
+                    return true;
+
+                if (peekTok.is(r_paren))
+                {
+                    // done!
+                }
+                else
+                {
+                    // Otherwise, we have something like (x+y), and we consumed '(x'.
+                    if (evaluateDirectiveSubExpr(result, 1, peekTok, valueLive, pp))
+                        return true;
+
+                    if (peekTok.isNot(r_paren))
+                    {
+                        pp.diag(peekTok.getLocation(),
+                                err_pp_expected_rparen).addSourceRange(result.getRange());
+                        pp.diag(start, note_matching).addTaggedVal("(");
+                        return true;
+                    }
+                    dt.state = TrackerState.Unknown;
+                }
+                result.setRange(start, peekTok.getLocation());
+                pp.lexNonComment(peekTok);
+                return false;
+            }
+            case plus:
+            {
+                SourceLocation start = peekTok.getLocation();
+                // unary plus doesn't modify the value.
+                pp.lexNonComment(peekTok);
+                if (evaluateValue(result, peekTok, dt, valueLive, pp))
+                    return true;
+
+                result.setBegin(start);
+                return false;
+            }
+            case sub:
+            {
+                SourceLocation start = peekTok.getLocation();
+                // unary minus doesn't modify the value.
+                pp.lexNonComment(peekTok);
+                if (evaluateValue(result, peekTok, dt, valueLive, pp))
+                    return true;
+
+                result.setBegin(start);
+                // C99 6.5.3.3p3: The sign of the result matches the sign of the operand.
+                result.val.negative();
+
+                boolean overflow = !result.isUnsigned() && result.val.isMinSignedValue();
+                if (overflow && valueLive)
+                    pp.diag(peekTok.getLocation(), warn_pp_expr_overflow);
+
+                dt.state = TrackerState.Unknown;
+                return false;
+            }
+            case tilde:
+            {
+                SourceLocation start = peekTok.getLocation();
+                // unary ~ doesn't modify the value.
+                pp.lexNonComment(peekTok);
+                if (evaluateValue(result, peekTok, dt, valueLive, pp))
+                    return true;
+
+                result.setBegin(start);
+                // C99 6.5.3.3p4: The sign of the result matches the sign of the operand.
+                result.val.not();
+                dt.state = TrackerState.Unknown;
+                return false;
+            }
+            case bang:
+            {
+                SourceLocation start = peekTok.getLocation();
+                // unary ! doesn't modify the value.
+                pp.lexNonComment(peekTok);
+                if (evaluateValue(result, peekTok, dt, valueLive, pp))
+                    return true;
+
+                result.setBegin(start);
+                // C99 6.5.3.3p5: The sign of the result is 'int', aka it is signed.
+                result.val.lNot();
+
+                result.val.setIsUnsigned(false);
+                if (dt.state == DefinedMacro)
+                    dt.state = NotDefMacro;
+                else if (dt.state == NotDefMacro)
+                    dt.state = DefinedMacro;
+
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Evaluate the subexpression whose first token is
+     * peekTok (usually it is a operator, like 'x+y'), and whose precedence
+     * is PeekPrec.  This returns the result in lhs.
+     *
+     * If valueLive is false, then this value is being evaluated in a context where
+     * the result is not used.  As such, avoid diagnostics that relate to
+     * evaluation, such as division by zero warnings.
+     * @param lhs
+     * @param minPrec
+     * @param peekTok
+     * @param valueLive
+     * @param pp
+     * @return
+     */
+    private static boolean evaluateDirectiveSubExpr(
+            PPValue lhs, int minPrec,
+            Token peekTok, boolean valueLive,
+            Preprocessor pp)
+    {
+        int peekPrec = getPrecedence(peekTok.getKind());
+        if (peekPrec == ~0)
+        {
+            pp.diag(peekTok.getLocation(), err_pp_expr_bad_token_binop)
+                .addSourceRange(lhs.getRange());
+            return true;
+        }
+
+        while (true)
+        {
+            // Only the precedence of current operator is not less than previous pred,
+            // continue to handle this operator.
+            if (peekPrec < minPrec)
+                return false;
+
+            TokenKind operator = peekTok.getKind();
+
+            boolean rhsIsLive;
+            if (operator == ampamp && lhs.val.eq(0)) // 0 && X
+                rhsIsLive = false;
+            else if (operator == barbar && lhs.val.eq(1)) // 1 || X
+                rhsIsLive = false;
+            else if (operator == question && lhs.val.eq(0))  // 1 ? X : Y
+                rhsIsLive = false;
+            else
+                rhsIsLive = true;
+
+            SourceLocation opLoc = peekTok.getLocation();
+            pp.lexNonComment(peekTok);
+
+            // Parse the rhs of the operator.
+            PPValue rhs = new PPValue(lhs.getBitWidth());
+            DefinedTracker dt = new DefinedTracker();
+            if (evaluateValue(rhs, peekTok, dt, rhsIsLive, pp))
+                return true;
+
+            int thisPrec = peekPrec;
+            peekPrec = getPrecedence(peekTok.getKind());
+
+            if (peekPrec == ~0)
+            {
+                pp.diag(peekTok.getLocation(), err_pp_expr_bad_token_binop).
+                        addSourceRange(rhs.getRange());
+                return true;
+            }
+
+            int rhsPrec;
+            if (operator == question)
+                rhsPrec = getPrecedence(comma);
+            else
+                rhsPrec = thisPrec + 1;
+
+            if (peekPrec >= rhsPrec)
+            {
+                if (evaluateDirectiveSubExpr(rhs, rhsPrec, peekTok, rhsIsLive, pp))
+                    return true;
+                peekPrec = getPrecedence(peekTok.getKind());
+            }
+
+            assert peekPrec <= thisPrec :"Recursion didn't work!";
+
+            // Usual arithmetic conversions (C99 6.3.1.8p1): result is int if
+            // either operand is int.
+            APSInt res = new APSInt(lhs.getBitWidth());
+            switch (operator)
+            {
+                case question:
+                case lessless:
+                case greatergreater:
+                case comma:
+                case barbar:
+                case ampamp:
+                    break;
+                default:
+                    res.setIssigned(lhs.isUnsigned() | rhs.isUnsigned());
+
+                    if (valueLive && res.isUnsigned())
+                    {
+                        if (!lhs.isUnsigned() && lhs.val.isNegative())
+                        {
+                            pp.diag(opLoc, warn_pp_convert_lhs_to_positive)
+                                    .addTaggedVal(lhs.val.toString(10, true) + "to")
+                                    .addTaggedVal(lhs.val.toString(10, false));
+                        }
+                        if (!rhs.isUnsigned() && rhs.val.isNegative())
+                        {
+                            pp.diag(opLoc, warn_pp_convert_lhs_to_positive)
+                                    .addTaggedVal(rhs.val.toString(10, true) + "to")
+                                    .addTaggedVal(rhs.val.toString(10, false));
+                        }
+                    }
+                    lhs.val.setIsUnsigned(res.isUnsigned());
+                    rhs.val.setIsUnsigned(res.isUnsigned());
+            }
+
+            boolean overflow = false;
+            switch (operator)
+            {
+                default: assert false : "Unknown operator token!";
+                case percent:
+                    if (!rhs.val.eq(0))
+                        res = lhs.val.rem(rhs.val);
+                    else if (valueLive)
+                    {
+                        pp.diag(opLoc, err_pp_remainder_by_zero)
+                                .addSourceRange(lhs.getRange())
+                                .addSourceRange(rhs.getRange());
+                        return true;
+                    }
+                    break;
+                case slash:
+                    if (!rhs.val.eq(0))
+                    {
+                        res = lhs.val.div(rhs.val);
+                        if (lhs.val.isSigned())
+                            overflow = lhs.val.isMinSignedValue();
+                    }
+                    else if (valueLive)
+                    {
+                        pp.diag(opLoc, err_pp_division_by_zero)
+                                .addSourceRange(lhs.getRange())
+                                .addSourceRange(rhs.getRange());
+                        return true;
+                    }
+                    break;
+                case star:
+                    res = lhs.val.mul(rhs.val);
+                    if (res.isSigned() && !lhs.val.eq(0) && !rhs.val.eq(0))
+                        overflow = !(res.div(rhs.val).eq(lhs.val)) || !res.div(lhs.val).eq(rhs.val);
+                    break;
+                case lessless:
+                {
+                    // Determine whether overflow is about to happen.
+                    int ShAmt = (int)rhs.val.getLimitedValue(~0);
+                    if (ShAmt >= lhs.val.getBitWidth())
+                    {
+                        overflow = true;
+                        ShAmt = lhs.val.getBitWidth() - 1;
+                    }
+                    else if (lhs.isUnsigned())
+                        overflow = false;
+                    else if (lhs.val.isNonNegative()) // Don't allow sign change.
+                        overflow = ShAmt >= lhs.val.countLeadingZeros();
+                    else
+                        overflow = ShAmt >= lhs.val.countLeadingOnes();
+
+                    res = lhs.val.shl(ShAmt);
+                    break;
+                }
+                case greatergreater: {
+                    // Determine whether overflow is about to happen.
+                    int ShAmt = (int)(rhs.val.getLimitedValue(~0));
+                    if (ShAmt >= lhs.getBitWidth())
+                    {
+                        overflow = true;
+                        ShAmt = lhs.getBitWidth() - 1;
+                    }
+                    res = lhs.val.shl(ShAmt);
+                    break;
+                }
+                case plus:
+                    res = lhs.val.add(rhs.val);
+                    if (lhs.isUnsigned())
+                        overflow = false;
+                    else if (lhs.val.isNonNegative() == rhs.val.isNonNegative() &&
+                            res.isNonNegative() != lhs.val.isNonNegative())
+                        overflow = true;  // overflow for signed addition.
+                    break;
+                case sub:
+                    res = lhs.val.sub(rhs.val);
+                    if (lhs.isUnsigned())
+                        overflow = false;
+                    else if (lhs.val.isNonNegative() != rhs.val.isNonNegative() &&
+                            res.isNonNegative() != lhs.val.isNonNegative())
+                        overflow = true;  // overflow for signed subtraction.
+                    break;
+                case lessequal:
+                    res = new APSInt(lhs.val.le(rhs.val)?1:0);
+                    res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
+                    break;
+                case less:
+                    res = new APSInt(lhs.val.lt(rhs.val)?1:0);
+                    res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
+                    break;
+                case greaterequal:
+                    res = new APSInt(lhs.val.ge(rhs.val)?1:0);
+                    res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
+                    break;
+                case greater:
+                    res = new APSInt(lhs.val.gt(rhs.val)? 1: 0);
+                    res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
+                    break;
+                case bangequal:
+                    res = new APSInt(lhs.val.eq(rhs.val)? 0 : 1);
+                    res.setIsUnsigned(false);  // C99 6.5.9p3, result is always int (signed)
+                    break;
+                case equalequal:
+                    res = new APSInt(lhs.val.eq(rhs.val)?1:0);
+                    res.setIsUnsigned(false);  // C99 6.5.9p3, result is always int (signed)
+                    break;
+                case amp:
+                    res = lhs.val.and(rhs.val);
+                    break;
+                case caret:
+                    res = lhs.val.xor(rhs.val);
+                    break;
+                case bar:
+                    res = lhs.val.or(rhs.val);
+                    break;
+                case ampamp:
+                    res = new APSInt(!lhs.val.eq(0) && !rhs.val.eq(0) ? 1 : 0);
+                    res.setIsUnsigned(false);  // C99 6.5.13p3, result is always int (signed)
+                    break;
+                case barbar:
+                    res = new APSInt(!lhs.val.eq(0) || !rhs.val.eq(0) ? 1 : 0);
+                    res.setIsUnsigned(false);  // C99 6.5.14p3, result is always int (signed)
+                    break;
+                case comma:
+                    // Comma is invalid in pp expressions in c89/c++ mode, but is valid in C99
+                    // if not being evaluated.
+                    if (!pp.getLangOptions().c99 || valueLive)
+                        pp.diag(opLoc, ext_pp_comma_expr)
+                                .addSourceRange(lhs.getRange())
+                                .addSourceRange(rhs.getRange());
+                    res = rhs.val; // lhs = lhs,rhs -> rhs.
+                    break;
+                case question: {
+                    // Parse the : part of the expression.
+                    if (peekTok.isNot(colon)) {
+                        pp.diag(peekTok.getLocation(), err_expected_colon)
+                                .addSourceRange(lhs.getRange())
+                                .addSourceRange(rhs.getRange());
+                        pp.diag(opLoc, note_matching).addTaggedVal("?");
+                        return true;
+                    }
+                    // Consume the :.
+                    pp.lexNonComment(peekTok);
+
+                    // Evaluate the value after the :.
+                    boolean AfterColonLive = valueLive && lhs.val.eq(0);
+                    PPValue AfterColonVal = new PPValue(lhs.getBitWidth());
+                    DefinedTracker DT;
+                    if (evaluateValue(AfterColonVal, peekTok, dt, AfterColonLive, pp))
+                        return true;
+
+                    // Parse anything after the : with the same precedence as ?.  We allow
+                    // things of equal precedence because ?: is right associative.
+                    if (evaluateDirectiveSubExpr(AfterColonVal, thisPrec,
+                            peekTok, AfterColonLive, pp))
+                        return true;
+
+                    // Now that we have the condition, the lhs and the rhs of the :, evaluate.
+                    res = !lhs.val.eq(0) ? rhs.val : AfterColonVal.val;
+                    rhs.setEnd(AfterColonVal.getRange().getEnd());
+
+                    // Usual arithmetic conversions (C99 6.3.1.8p1): result is int if
+                    // either operand is int.
+                    res.setIsUnsigned(rhs.isUnsigned() | AfterColonVal.isUnsigned());
+
+                    // Figure out the precedence of the token after the : part.
+                    peekPrec = getPrecedence(peekTok.getKind());
+                    break;
+                }
+                case colon:
+                    // Don't allow :'s to float around without being part of ?: exprs.
+                    pp.diag(opLoc, err_pp_colon_without_question)
+                            .addSourceRange(lhs.getRange())
+                            .addSourceRange(rhs.getRange());
+                    return true;
+
+            }
+
+            if (overflow && valueLive)
+            {
+                pp.diag(opLoc, warn_pp_expr_overflow)
+                        .addSourceRange(lhs.getRange())
+                        .addSourceRange(rhs.getRange());
+            }
+            lhs.val = res;
+            lhs.setEnd(rhs.range.getEnd());
+            return false;
+        }
+    }
+
+    private void lexNonComment(Token result)
+    {
+        do
+        {
+            lex(result);
+        }while (result.is(Comment));
+    }
+
+    /**
+     * Return the precedence of the specified binary operator
+     * token.  This returns:
+     *   ~0 - Invalid token.
+     *   14 -> 3 - various operators.
+     *    0 - 'eom' or ')'
+     * @param tokKind
+     * @return
+     */
+    private static int getPrecedence(TokenKind tokKind)
+    {
+        switch (tokKind)
+        {
+            default:return ~0;
+            case percent:
+            case slash:
+            case star:
+                return 14;
+            case plus:
+            case sub:
+                return 13;
+            case lessless:
+            case greatergreater:
+                return 12;
+            case lessequal:
+            case less:
+            case greaterequal:
+            case greater:
+                return 11;
+            case bangequal:
+            case equalequal:
+                return 10;
+            case amp:
+                return 9;
+            case caret:
+                return 8;
+            case bar:
+                return 7;
+            case ampamp:
+                return 6;
+            case barbar:
+                return 5;
+            case question:
+                return 4;
+            case comma:
+                return 3;
+            case colon:
+                return 2;
+            case r_paren:
+            case eom:
+                return 0;
+        }
+    }
+
+    /**
+     * Evaluate an integer constant expression that
+     * may occur after a #if or #elif directive.  If the expression is equivalent
+     * to "!defined(X)" return X in IfNDefMacro.
+     * @param ifNDefMacro
+     * @return
+     */
+    private boolean evaluateDirectiveExpression(OutParamWrapper<IdentifierInfo> ifNDefMacro)
+    {
+        // Peek ahead one token.
+        Token tok = new Token();
+        lex(tok);
+
+        // C99 6.10.1p3 - All expressions are evaluated as intmax_t or uintmax_t.
+        int bitWidth = getTargetInfo().getIntMaxWidth();
+        PPValue resVal = new PPValue(bitWidth);
+        DefinedTracker dt = new DefinedTracker();
+        if (evaluateValue(resVal, tok, dt, true, this))
+        {
+            // Parse error, skip the rest of the macro line.
+            if (tok.isNot(eom))
+                discardUntilEndOfDirective();
+            return false;
+        }
+
+        if (tok.is(eom))
+        {
+            if (dt.state == NotDefMacro)
+                ifNDefMacro.set(dt.theMacro);
+
+            return !resVal.val.eq(0);
+        }
+
+        // Otherwise, we must have a binary operator (e.g. "#if 1 < 2"), so parse the
+        // operator and the stuff after it.
+        if (evaluateDirectiveSubExpr(resVal, getPrecedence(TokenKind.question),
+                tok, true, this))
+        {
+            // Parse error, skip the rest of the macro line.
+            if (tok.isNot(eom))
+                discardUntilEndOfDirective();
+            return false;
+        }
+
+        if (tok.isNot(eom))
+        {
+            diag(tok, err_pp_expected_eol);
+            discardUntilEndOfDirective();
+        }
+
+        return !resVal.val.eq(0);
+    }
+
+    /**
+     * Implements the #if directive.
+     * @param ifToken
+     * @param readAnyTokensBeforeDirective
+     */
+    private void handleIfDirective(Token ifToken, boolean readAnyTokensBeforeDirective)
+    {
+        ++NumIf;
+
+        // Parse and evaluation the conditional expression.
+        IdentifierInfo ifNDefMacro;
+        OutParamWrapper<IdentifierInfo> x = new OutParamWrapper<>();
+        boolean conditionalTrue = evaluateDirectiveExpression(x);
+        ifNDefMacro = x.get();
+
+        if (curLexer.getConditionalStackDepth() == 0)
+        {
+            if (!readAnyTokensBeforeDirective)
+                curLexer.miOpt.enterTopLevelIFNDEF(ifNDefMacro);
+            else
+                curLexer.miOpt.enterTopLevelConditional();
+        }
+
+        if (conditionalTrue)
+        {
+            curLexer.pushConditionalLevel(ifToken.getLocation(), false, true, false);
+        }
+        else
+        {
+            skipExcludedConditionalBlock(ifToken.getLocation(), false, false);
+        }
+    }
+
+    private void readMacroName(Token macroNameTok, boolean isDefineUndef)
+    {
+        lexUnexpandedToken(macroNameTok);
+
+        // Missing macro name.
+        if (macroNameTok.is(eom))
+        {
+            diag(macroNameTok, err_pp_missing_macro_name);
+            return;
+        }
+
+        IdentifierInfo ii = macroNameTok.getIdentifierInfo();
+        if (ii == null)
+        {
+            diag(macroNameTok, err_pp_macro_not_identifier);
+        }
+        else if (isDefineUndef && ii.getPPKeywordID() == PPKeyWordKind.pp_define)
+        {
+            // Error if defining "defined": C99 6.10.8.4.
+            diag(macroNameTok, err_defined_macro_name);
+        }
+        else if (isDefineUndef && ii.isHasMacroDefinition()
+                && getMacroInfo(ii).isBuiltinMacro())
+        {
+            // Error if defining "__LINE__" and other builtins: C99 6.10.8.4.
+            if (isDefineUndef)
+                diag(macroNameTok, pp_redef_builtin_macro);
+            else
+                diag(macroNameTok, pp_undef_builtin_macro);
+        }
+        else
+        {
+            // Okay, we got a good identifier node, return it.
+        }
+    }
+
+    /**
+     * We just read a #if or related directive and
+     * decided that the subsequent tokens are in the #if'd out portion of the
+     * file.  Lex the rest of the file, until we see an #endif.  If
+     * FoundNonSkipPortion is true, then we have already emitted code for part of
+     * this #if directive, so #else/#elif blocks should never be entered. If ElseOk
+     * is true, then #else directives are ok, if not, then we have already seen one
+     * so a #else directive is a duplicate.  When this returns, the caller can lex
+     * the first valid token.
+     * @param ifTokenLoc
+     * @param foundNonSkip
+     * @param foundElse
+     */
+    private void skipExcludedConditionalBlock(
+            SourceLocation ifTokenLoc,
+            boolean foundNonSkip,
+            boolean foundElse)
+    {
+        ++NumSkipped;
+        assert curTokenLexer == null && curLexer != null:"Lexing a macro, not file!";
+
+        curLexer.pushConditionalLevel(ifTokenLoc, false, foundNonSkip, foundElse);;
+
+
+        curLexer.lexingRawMode = true;
+        Token tok = new Token();
+        while (true)
+        {
+            if (curLexer != null)
+                curLexer.lex(tok);
+
+            if (tok.is(eof))
+            {
+                while (!curLexer.conditionalStack.isEmpty())
+                {
+                    diag(curLexer.conditionalStack.peek().ifLoc,
+                            err_pp_unterminated_conditional);
+                    curLexer.conditionalStack.pop();
+                }
+
+                break;
+            }
+
+            if (tok.isNot(hash) || !tok.isAtStartOfLine())
+                continue;
+
+            curLexer.parsingPreprocessorDirective = true;
+            if (curLexer != null)
+                curLexer.setCommentRetentionState(false);
+
+            lexUnexpandedToken(tok);
+
+            if (tok.isNot(Identifier))
+            {
+                curLexer.parsingPreprocessorDirective = false;
+                if (curLexer != null)
+                    curLexer.setCommentRetentionState(keepComments);;
+                continue;
+            }
+
+            String rawCharData = sourceMgr.getCharacterData(tok.getLocation()).data;
+            char firstChar = rawCharData.charAt(0);
+            if (firstChar >= 'a' && firstChar <= 'z'
+                    && firstChar != 'i' && firstChar != 'e')
+            {
+                curLexer.parsingPreprocessorDirective = false;
+                if (curLexer != null)
+                    curLexer.setCommentRetentionState(keepComments);;
+                continue;
+            }
+
+            if (rawCharData.equals("if")
+                    || rawCharData.equals("ifdef")
+                    || rawCharData.equals("ifndef"))
+            {
+                discardUntilEndOfDirective();
+                curLexer.pushConditionalLevel(tok.getLocation(), true,
+                        false, false);
+            }
+            else if (rawCharData.equals("endif"))
+            {
+                checkEndOfDirective("endif", false);
+                PPConditionalInfo condInfo;
+                condInfo = curLexer.popConditionalLevel();
+                assert condInfo != null:"Can't be skipping if not in a condition";
+
+                if (!condInfo.wasSkipping)
+                    break;
+            }
+            else if (rawCharData.equals("else"))
+            {
+                discardUntilEndOfDirective();
+                PPConditionalInfo condInfo = curLexer.peekConditionalLevel();
+
+                if (condInfo.foundElse)
+                    diag(tok, pp_err_else_after_else);
+
+                condInfo.foundElse= true;
+
+                if (!condInfo.wasSkipping && !condInfo.foundNonSkip)
+                {
+                    condInfo.foundNonSkip = true;
+                    break;
+                }
+            }
+            else if (rawCharData.equals("elif"))
+            {
+                PPConditionalInfo condInfo = curLexer.peekConditionalLevel();
+
+                boolean shouldEnter;
+
+                if (condInfo.wasSkipping || condInfo.foundNonSkip)
+                {
+                    discardUntilEndOfDirective();
+                    shouldEnter = false;
+                }
+                else
+                {
+                    assert curLexer.lexingRawMode : "We have to be skipping here!";
+
+                    curLexer.lexingRawMode = false;
+                    IdentifierInfo ifNdefMacro;
+                    OutParamWrapper<IdentifierInfo> x = new OutParamWrapper<>();
+                    shouldEnter = evaluateDirectiveExpression(x);
+                    ifNdefMacro = x.get();
+                    curLexer.lexingRawMode = true;
+                }
+
+                if (condInfo.foundElse)
+                    diag(tok, pp_err_elif_after_else);
+
+                if (shouldEnter)
+                {
+                    condInfo.foundNonSkip = true;
+                    break;
+                }
+            }
+
+            if (curLexer != null)
+            {
+                curLexer.parsingPreprocessorDirective = false;
+                curLexer.setCommentRetentionState(keepComments);
+            }
+        }
+
+        curLexer.lexingRawMode = false;
+    }
+
+    /**
+     * Implements the #ifdef/#ifndef directive.  isIfndef is
+     * true when this is a #ifndef directive.  ReadAnyTokensBeforeDirective is true
+     * if any tokens have been returned or pp-directives activated before this
+     * #ifndef has been lexed.
+     * @param result
+     * @param isIfndef
+     * @param readAnyTokensBeforeDirective
+     */
+    private void handleIfdefDirective(Token result, boolean isIfndef,
+            boolean readAnyTokensBeforeDirective)
+    {
+        ++NumIf;
+        Token directiveTok = result;
+
+        Token macroNameTok = new Token();
+        readMacroName(macroNameTok, false);
+
+        // Error reading macro name?  If so, diagnostic already issued.
+        if (macroNameTok.is(eom))
+        {
+            skipExcludedConditionalBlock(directiveTok.getLocation(), false, false);
+            return;
+        }
+
+        checkEndOfDirective(isIfndef ? "ifndef" : "ifdef", false);
+
+        if (curLexer.getConditionalStackDepth() == 0)
+        {
+            // If the start of a top-level #ifdef, inform MIOpt.
+            if (!readAnyTokensBeforeDirective)
+            {
+                assert isIfndef :"#ifdef shouldn't reach here";
+                curLexer.miOpt.enterTopLevelIFNDEF(macroNameTok.getIdentifierInfo());;
+            }
+            else
+                curLexer.miOpt.enterTopLevelConditional();
+        }
+
+        IdentifierInfo mii = macroNameTok.getIdentifierInfo();
+        MacroInfo mi = getMacroInfo(mii);
+
+        if (mi != null)
+        {
+            mi.setIsUsed(true);
+        }
+
+        if (mi == null == isIfndef)
+        {
+            // Whether the directive condition is true?
+            curLexer.pushConditionalLevel(directiveTok.getLocation(), false, true, false);
+        }
+        else
+        {
+            // otherwise, skip the following tokens when directive condition is not true.
+            skipExcludedConditionalBlock(directiveTok.getLocation(), false, false);
+        }
+    }
+
+    private void handleElifDirective(Token elifToken)
+    {
+        ++NumElse;
+
+        // #elif directive in a non-skipping conditional... start skipping.
+        // We don't care what the condition is, because we will always skip it (since
+        // the block immediately before it was included).
+        discardUntilEndOfDirective();
+
+        PPConditionalInfo ci;
+        if ((ci = curLexer.popConditionalLevel()) == null)
+        {
+            diag(elifToken, pp_err_elif_without_if);
+            return;
+        }
+
+        // If this is a top-level #elif, inform the miopt.
+        if (curLexer.getConditionalStackDepth() == 0)
+            curLexer.miOpt.enterTopLevelConditional();
+
+        // If this is a #elif with a #else before it, report the error.
+        if (ci.foundElse) diag(elifToken, pp_err_elif_after_else);
+
+        // Finally, skip the rest of the contents of this block and return the first
+        // token after it.
+        skipExcludedConditionalBlock(ci.ifLoc, true, ci.foundElse);
+    }
+
+    private void handleElseDirective(Token elseToken)
+    {
+        ++NumElse;
+
+        checkEndOfDirective("else", false);
+
+        PPConditionalInfo ci;
+        if ((ci = curLexer.popConditionalLevel()) == null)
+        {
+            diag(elseToken, pp_err_elif_without_if);
+            return;
+        }
+
+        if (curLexer.getConditionalStackDepth() == 0)
+            curLexer.miOpt.enterTopLevelConditional();
+
+        if (ci.foundElse) diag(elseToken, pp_err_else_after_else);
+
+        skipExcludedConditionalBlock(ci.ifLoc, true, true);
+    }
+
+    /**
+     * Implements the #endif directive.
+     * @param endifToken
+     */
+    private void handleEndifDirective(Token endifToken)
+    {
+        ++NumEndif;
+
+        checkEndOfDirective("endif", false);
+
+        PPConditionalInfo ci;
+        if ((ci = curLexer.popConditionalLevel()) == null)
+        {
+            diag(endifToken, err_pp_endif_without_if);
+            return;
+        }
+
+        if (curLexer.getConditionalStackDepth() == 0)
+            curLexer.miOpt.enterTopLevelConditional();
+
+        assert !ci.wasSkipping && !curLexer.lexingRawMode:
+                "This code should only be reachable in the non-skipping case!";
+    }
+
+    /**
+     * Handle cases where the #include name is expanded
+     /// from a macro as multiple tokens, which need to be glued together.  This
+     /// occurs for code like:
+     ///    #define FOO <a/b.h>
+     ///    #include FOO
+     /// because in this case, "<a/b.h>" is returned as 7 tokens, not one.
+     ///
+     /// This code concatenates and consumes tokens up to the '>' token.  It returns
+     /// false if the > was found, otherwise it returns true if it finds and consumes
+     /// the EOM marker.
+     * @param filenameBuffer
+     * @param pp
+     * @return
+     */
+    static boolean concatenateIncludeName(StringBuilder filenameBuffer, Preprocessor pp)
+    {
+        Token tok = new Token();
+        pp.lex(tok);
+        while (tok.isNot(eom))
+        {
+            if (tok.hasLeadingSpace())
+                filenameBuffer.append(' ');
+
+            filenameBuffer.append(pp.getSpelling(tok));
+
+            // If we found the '>' marker, return success.
+            if (tok.is(greater))
+                return false;
+
+            pp.lex(tok);
+        }
+
+        pp.diag(tok.getLocation(), err_pp_expects_filename);
+        return true;
+    }
+
+    private boolean getIncludeFilenameSpelling(SourceLocation loc, StringBuilder buf)
+    {
+        boolean isAngled = false;
+        // make sure the filename is <x> or "x".
+        char firstChar = buf.charAt(0), lastChar = buf.charAt(buf.length() - 1);
+        if (firstChar == '<')
+        {
+            if (lastChar != '>')
+            {
+                diag(loc, err_pp_expects_filename);
+                buf.delete(0, buf.length());
+                return true;
+            }
+            isAngled = true;
+        }
+        else if (firstChar == '"')
+        {
+            if (lastChar != '"')
+            {
+                diag(loc, err_pp_expects_filename);
+                buf.delete(0, buf.length());
+                return true;
+            }
+        }
+        else
+        {
+            diag(loc, err_pp_expects_filename);
+            buf.delete(0, buf.length());
+            return true;
+        }
+
+        // Diagnose #include "" as invalid.
+        if (buf.length() <= 2)
+        {
+            diag(loc, err_pp_empty_filename);
+            buf.delete(0, buf.length());
+            return true;
+        }
+
+        // SKipt the brackets.
+        buf.deleteCharAt(0);
+        buf.deleteCharAt(buf.length() - 1);
+        return isAngled;
+    }
+
+    private Path lookupFile(String filename, boolean isAngled,
+            OutParamWrapper<Path> curDir)
+    {
+        Path curFileEntry = null;
+        FileID fid = getCurrentFileLexer().getFileID();
+        curFileEntry = sourceMgr.getFileEntryForID(fid);
+
+        if (curFileEntry == null)
+        {
+            fid = sourceMgr.getMainFileID();
+            curFileEntry = sourceMgr.getFileEntryForID(fid);
+        }
+        curDir.set(curDirLookup);
+
+        Path fe = headerInfo
+                .lookupFile(filename, isAngled, null, curDir, curFileEntry);
+        if (fe != null)
+            return fe;
+
+        // Otherwise, lookup for it from include stack.
+        for (int i = includeMacroStack.size() - 1; i >= 0; ++i)
+        {
+            IncludeStackInfo entry = includeMacroStack.get(i);
+            if (isFileLexer(entry))
+            {
+                curFileEntry = sourceMgr.getFileEntryForID(entry.theLexer.getFileID());
+                if (curFileEntry != null)
+                {
+                    fe = headerInfo.lookupFile(filename, isAngled, null, curDir, curFileEntry);
+                    if (fe != null)
+                        return fe;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void handleIncludeDirective(Token includeToken)
+    {
+        handleIncludeDirective(includeToken, null, false);
+    }
+
+    private void handleIncludeDirective(Token includeToken, Path lookupFrom, boolean pragmaOnce)
+    {
+        Token filenameTok = new Token();
+        curLexer.lexIncludeFilename(filenameTok);
+
+        StringBuilder filename = new StringBuilder();
+        switch (filenameTok.getKind())
+        {
+            case eom:
+                return;
+            case angle_string_literal:
+            case string_literal:
+                filename.append(getSpelling(filenameTok));
+                break;
+            case less:
+                // This could be a <foo/bar.h> file coming from a macro expansion.  In this
+                // case, glue the tokens together into FilenameBuffer and interpret those.
+                filename.append('<');
+                if (concatenateIncludeName(filename, this))
+                    return;     // Found <eom> but no ">" diagnositcs already issured.
+                break;
+                default:
+                    diag(filenameTok, err_pp_expects_filename);
+                    discardUntilEndOfDirective();
+                    return;
+        }
+        boolean isAngled = getIncludeFilenameSpelling(filenameTok.getLocation(), filename);
+
+        if (filename.length() <= 0)
+        {
+            discardUntilEndOfDirective();
+            return;
+        }
+
+        checkEndOfDirective(includeToken.getIdentifierInfo().getName(), true);;
+
+        // Check that we don't have infinite #include recursion.
+        if (includeMacroStack.size() == maxAllowedIncludesStackDepth)
+        {
+            diag(filenameTok, err_pp_include_too_deep);
+            return;
+        }
+        OutParamWrapper<Path> curDir = new OutParamWrapper<>();
+        Path file = lookupFile(filename.toString(), isAngled, curDir);
+        if (file == null)
+        {
+            diag(filenameTok, err_pp_file_not_found)
+                    .addTaggedVal(filename.toString());
+            return;
+        }
+
+        if (!headerInfo.shouldEnterIncludeFile(file, pragmaOnce))
+            return;
+
+        CharacteristicKind kind1 = sourceMgr.getFileCharacteristicKind(filenameTok.getLocation());
+        CharacteristicKind kind2 = headerInfo.getFileDirFlavor(file);
+        CharacteristicKind fileType = kind1.ordinal() > kind2.ordinal()? kind1 : kind2;
+
+        FileID fid = sourceMgr.createFileID(file, filenameTok.getLocation(), fileType, 0, 0);
+        if (fid.isInvalid())
+        {
+            diag(filenameTok, err_pp_file_not_found).addTaggedVal(filename.toString());
+            return;
+        }
+
+        enterSourceFile(fid, curDir.get());
+    }
+
+    /**
+     * The -imacros command line option turns into a
+     * pseudo directive in the predefines buffer.  This handles it by sucking all
+     * tokens through the preprocessor and discarding them (only keeping the side
+     * effects on the preprocessor).
+     * @param includeMacroTok
+     */
+    private void handleIncludeMacrosDirective(Token includeMacroTok)
+    {
+        SourceLocation loc = includeMacroTok.getLocation();
+        if (sourceMgr.getBufferName(loc).equals("<built-in>"))
+        {
+            diag(includeMacroTok.getLocation(), pp_include_macros_out_of_predefines);
+            discardUntilEndOfDirective();
+            return;
+        }
+
+        handleIncludeDirective(includeMacroTok, null, false);
+
+        Token tmpTok = new Token();
+        do
+        {
+            lex(tmpTok);
+            assert tmpTok.isNot(eof) : "Didn't find end of -imacros!";
+        }while (tmpTok.isNot(hashhash));
+    }
+
+    /**
+     * Reads the formal arguments list of the function-like macro definition.
+     * Return {@code true} when error occurred, otherwise return {@code false}.
+     * @param mi
+     * @return
+     */
+    private boolean readMacroDefinitionArgList(MacroInfo mi)
+    {
+        ArrayList<IdentifierInfo> argLists = new ArrayList<>();
+
+        Token tok = new Token();
+        while (true)
+        {
+            lexUnexpandedToken(tok);
+            switch (tok.getKind())
+            {
+                case r_paren:
+                    if (argLists.isEmpty())
+                        return false;
+                    diag(tok, err_pp_expected_ident_in_arg_list);
+                    return true;
+                case ellipsis:
+                    // #define X(...) -> C99 feature.
+                    if (!langInfo.c99) diag(tok, ext_variadic_macro);
+
+                    lexUnexpandedToken(tok);
+                    if (tok.isNot(r_paren))
+                    {
+                        diag(tok, err_pp_missing_rparen);
+                        return true;
+                    }
+
+                    // Add the __VA_ARGS__ identifier as an argument.
+                    argLists.add(Ident__VA_ARGS__);
+                    mi.setIsC99Varargs();
+                    IdentifierInfo[] arr = new IdentifierInfo[argLists.size()];
+                    argLists.toArray(arr);
+                    mi.setArgumentList(arr);
+                case eom:
+                    diag(tok, err_pp_missing_rparen);
+                    return true;
+                default:
+                    // Handle keywords and identifiers here to accept things like
+                    // #define Foo(for) for.
+                    IdentifierInfo ii = tok.getIdentifierInfo();
+                    if (ii == null)
+                    {
+                        // #define X(1
+                        diag(tok, err_pp_invalid_tok_in_arg_list);
+                        return true;
+                    }
+
+                    // If this is already used as an argument, it is used multiple times (e.g.
+                    // #define X(A,A.
+                    if (argLists.contains(ii))
+                    {
+                        diag(tok, err_pp_duplicate_name_in_arg_list);
+                        return true;
+                    }
+
+                    // Add this macro argument into argument list.
+                    argLists.add(ii);
+
+                    // Lex the token after the identifier.
+                    lexUnexpandedToken(tok);
+
+                    switch (tok.getKind())
+                    {
+                        default:
+                            // #define X(A B)
+                            diag(tok, err_pp_expected_comma_in_arg_list);
+                            return true;
+                        case comma:
+                            break;  // #define X(A,
+                        case r_paren:
+                            // #define X(A)
+                            arr = new IdentifierInfo[argLists.size()];
+                            argLists.toArray(arr);
+                            mi.setArgumentList(arr);
+                            return false;
+                        case ellipsis:
+                            // #define X(A...) -> C99 feature.
+                            diag(tok, ext_named_variadic_macro);
+
+                            lexUnexpandedToken(tok);
+                            if (tok.isNot(r_paren))
+                            {
+                                diag(tok, err_pp_missing_rparen_in_macro_def);
+                                return true;
+                            }
+
+                            mi.setGNUVarargs();
+                            arr = new IdentifierInfo[argLists.size()];
+                            argLists.toArray(arr);
+                            mi.setArgumentList(arr);
+                            return false;
+                    }
+            }
+        }
+    }
+
+    /**
+     * Handle the #define pp directive.
+     * @param defineTok
+     */
+    private void handleDefineDirective(Token defineTok)
+    {
+        ++NumDefined;
+
+        Token macroNameTok = new Token();
+        readMacroName(macroNameTok, true);
+
+        if (macroNameTok.is(eom))
+            return;
+
+        Token lastTok = macroNameTok;
+
+        if (curLexer != null)
+            curLexer.setCommentRetentionState(keepComments);
+
+        MacroInfo mi = new MacroInfo(macroNameTok.getLocation());
+        Token tok = new Token();
+        lexUnexpandedToken(tok);
+
+        if (tok.is(eom))
+        {
+            // Done
+        }
+        else if (tok.hasLeadingSpace())
+        {
+            tok.clearFlag(LeadingSpace);
+        }
+        else if (tok.is(l_paren))
+        {
+            mi.setIsFunctionLike(true);
+            if (readMacroDefinitionArgList(mi))
+            {
+                if (curLexer.parsingPreprocessorDirective)
+                    discardUntilEndOfDirective();
+                return;
+            }
+
+            // If this is a definition of a variadic C99 function-like macro, not using
+            // the GNU named varargs extension, enabled __VA_ARGS__.
+
+            // "Poison" __VA_ARGS__, which can only appear in the expansion of a macro.
+            // This gets unpoisoned where it is allowed.
+            assert Ident__VA_ARGS__.isPoisoned(): "__VA_ARGS__ should be poisoned!";
+            if (mi.isC99Varargs())
+                Ident__VA_ARGS__.setIsPoisoned(false);
+
+            // Read the first token after the arg list for down below.
+            lexUnexpandedToken(tok);
+        }
+        else if (langInfo.c99)
+        {
+            // C99 requires whitespace between the macro definition and the body.  Emit
+            // a diagnostic for something like "#define X+".
+            diag(tok, ext_c99_whitespace_required_after_macro_name);
+        }
+        else
+        {
+            // C90 6.8 TC1 says: "In the definition of an object-like macro, if the
+            // first character of a replacement list is not a character required by
+            // subclause 5.2.1, then there shall be white-space separation between the
+            // identifier and the replacement list.".  5.2.1 lists this set:
+            //   "A-Za-z0-9!"#%&'()*+,_./:;<=>?[\]^_{|}~" as well as whitespace, which
+            // is irrelevant here.
+            boolean isInvalid = false;
+            if (tok.is(TokenKind.Unknown))
+            {
+                isInvalid = true;
+            }
+            if (isInvalid)
+                diag(tok, ext_missing_whitespace_after_macro_name);
+            else
+                diag(tok, warn_missing_whitespace_after_macro_name);
+        }
+
+        if (!tok.is(eom))
+        {
+            lastTok = tok;
+        }
+
+        // Read the rest of the macro body.
+        if (mi.isObjectLike())
+        {
+            // Object-like macros are very simple, just read their body.
+            while (tok.isNot(eom))
+            {
+                lastTok = tok;
+                mi.addTokenBody(tok);
+                lexUnexpandedToken(tok);
+            }
+        }
+        else
+        {
+            // Otherwise, read the body of a function-like macro.  While we are at it,
+            // check C99 6.10.3.2p1: ensure that # operators are followed by macro
+            // parameters in function-like macro expansions.
+            while (tok.isNot(eom))
+            {
+                lastTok = tok;
+                if (tok.isNot(hash))
+                {
+                    mi.addTokenBody(tok);
+
+                    // Obtains the next token of the macro body.
+                    lexUnexpandedToken(tok);
+                    continue;
+                }
+
+                // get the next tokens of the macro body.
+                lexUnexpandedToken(tok);
+
+                // check for a valid macro arg identifier.
+                IdentifierInfo argII;
+                if ((argII = tok.getIdentifierInfo()) == null || mi.getArgumentNum(argII) < 0)
+                {
+                    // If this is assembler-with-cpp mode, we accept random gibberish after
+                    // the '#' because '#' is often a comment character.  However, change
+                    // the kind of the token to tok::unknown so that the preprocessor isn't
+                    // confused.
+                    if (getLangOptions().asmPreprocessor && tok.isNot(eom))
+                    {
+                        lastTok.setKind(TokenKind.Unknown);
+                    }
+                    else
+                    {
+                        diag(tok, err_pp_stringize_not_parameter);
+
+                        //Disable __VA_ARGS__ again.
+                        Ident__VA_ARGS__.setIsPoisoned(true);
+                    }
+                }
+
+                // Things look ok, add the '#' and param name tokens to the macro.
+                mi.addTokenBody(lastTok);
+                mi.addTokenBody(tok);
+                lastTok = tok;
+
+                // Get the next token of the macro.
+                lexUnexpandedToken(tok);
+            }
+        }
+
+        //Disable __VA_ARGS__ again.
+        Ident__VA_ARGS__.setIsPoisoned(true);
+
+        // Check that there is no paste (##) operator at the begining or end of the
+        // replacement list.
+        int numTokens = mi.getNumTokens();
+        if (numTokens != 0)
+        {
+            if (mi.getReplacementToken(0).is(hashhash))
+            {
+                diag(mi.getReplacementToken(0), err_paste_at_start);
+                return;
+            }
+            if (mi.getReplacementToken(numTokens - 1).is(hashhash))
+            {
+                diag(mi.getReplacementToken(numTokens - 1), err_paste_at_end);
+                return;
+            }
+        }
+
+        // If this is the primary source file, remember that this macro hasn't been
+        // used yet.
+        if (isInPrimaryFile())
+            mi.setIsUsed(false);
+
+        mi.setDefinitionEndLoc(lastTok.getLocation());
+
+        MacroInfo otherMI = getMacroInfo(macroNameTok.getIdentifierInfo());
+        if (otherMI != null)
+        {
+            if (!getDiagnostics().getSuppressSystemWarnings()
+                    || !sourceMgr.isInSystemHeader(defineTok.getLocation()))
+            {
+                if (!otherMI.isUsed())
+                {
+                    diag(otherMI.getDefinitionLoc(), pp_macro_not_used);
+                }
+
+                if (!mi.isIdenticalTo(otherMI, this))
+                {
+                    diag(mi.getDefinitionLoc(), ext_pp_macro_redef)
+                            .addTaggedVal(macroNameTok.getIdentifierInfo());
+                    diag(otherMI.getDefinitionLoc(), note_previous_definition);
+                }
+            }
+        }
+
+        setMacroInfo(macroNameTok.getIdentifierInfo(), mi);
+        // If the callbacks wnat to know, tell them about the macro definition.
+        if (callbacks != null)
+            callbacks.macroDefined(macroNameTok.getIdentifierInfo(), mi);
+    }
+
+    /**
+     * Implements {@code #undef} directive.
+     * @param undefToken
+     */
+    private void handleUndefDirective(Token undefToken)
+    {
+        ++NumUndefined;
+
+        Token macroNameToken = new Token();
+        readMacroName(macroNameToken, false);
+
+        // error reading macro name?
+        if (macroNameToken.is(eom))
+            return;
+        // Check to see if this is the last token on the #undef line.
+        checkEndOfDirective("undef", false);
+
+        IdentifierInfo ii = macroNameToken.getIdentifierInfo();
+        MacroInfo mi = getMacroInfo(ii);
+        if (mi == null)
+            return;
+
+        if (!mi.isUsed())
+            diag(mi.getDefinitionLoc(), pp_macro_not_used);
+
+        if (callbacks != null)
+            callbacks.macroUndefined(ii, mi);
+        setMacroInfo(ii, mi);
+    }
+
+    /**
+     * Handle #line directive: C99 6.10.4.  The two
+     * acceptable forms are:
+     *   # line digit-sequence
+     *   # line digit-sequence "s-char-sequence"
+     * @param lineTok
+     */
+    private void handleLineDirective(Token lineTok)
+    {
+        // Read the line # and string argument.  Per C99 6.10.4p5, these tokens are
+        // expanded.
+        Token digitTok = new Token();
+        lex(digitTok);
+
+        OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
+        if (getLineValue(digitTok, x, err_pp_line_requires_integer, this))
+            return;
+        int lineNo = x.get();
+
+        // Enforce C99 6.10.4p3: "The digit sequence shall not specify ... a
+        // number greater than 2147483647".  C90 requires that the line # be <= 32767.
+        int lineLimit = langInfo.c99 ? 2147483647: 32767;
+        if (lineNo >= lineLimit)
+            diag(digitTok, ext_pp_line_too_big).addTaggedVal(lineLimit);
+
+        int filenameID = -1;
+        Token strTok = new Token();
+        lex(strTok);
+
+        if (strTok.is(eom));  // OK
+        else if (strTok.isNot(string_literal))
+        {
+            diag(strTok, err_pp_line_invalid_filename);
+            discardUntilEndOfDirective();
+            return;
+        }
+        else
+        {
+            // Parse and validate the string, converting it into a unique ID.
+            StringLiteralParser literal = new StringLiteralParser(new Token[]{strTok}, this);
+            assert !literal.anyWide :"Didn't allow wide string in";
+            if (literal.hadError)
+            {
+                discardUntilEndOfDirective();
+                return;
+            }
+
+            filenameID = sourceMgr.getLineTableFilenameID(literal.getString());
+            checkEndOfDirective("line", true);
+        }
+
+        sourceMgr.addLineNote(digitTok.getLocation(), lineNo, filenameID);
+
+        if (callbacks != null)
+            callbacks.fileChanged(digitTok.getLocation(), RenameFile, C_User);
+    }
+
+    /**
+     * Handle a #warning or #error directive.
+     * @param pragmaToken
+     * @param isWarning
+     */
+    private void handleUserDiagnosticDirective(Token pragmaToken, boolean isWarning)
+    {
+        String message = curLexer.readToEndOfLine();
+        if (isWarning)
+            diag(pragmaToken, pp_hash_warning).addTaggedVal(message);
+        else
+            diag(pragmaToken, err_pp_hash_error).addTaggedVal(message);
+    }
+
     public void handleDirective(Token result)
     {
-        // TODO: 17-4-28 完善处理条件编译指令
         // FIXME: Traditional: # with whitespace before it not recognized by K&R?
 
         // We just parsed a # character at the start of a line, so we're in directive
@@ -858,7 +2833,7 @@ public final class Preprocessor
         {
             switch (result.getKind())
             {
-                case Eom:
+                case eom:
                     return;   // null directive.
                 case Comment:
                     // Handle stuff like "# /*foo*/ define X" in -E -C mode.
@@ -866,10 +2841,11 @@ public final class Preprocessor
                     loop = true;
                     break;
 
-                case Numeric_constant:  // # 7  GNU line marker directive.
+                case numeric_constant:  // # 7  GNU line marker directive.
                     if (getLangOptions().asmPreprocessor)
                         break;  // # 4 is not a preprocessor directive in .S files.
-                    return handleDigitDirective(result);
+                    handleDigitDirective(result);
+                    return;
                 default:
                     IdentifierInfo II = result.getIdentifierInfo();
                     if (II == null)
@@ -882,39 +2858,51 @@ public final class Preprocessor
                             break;
                         // C99 6.10.1 - Conditional Inclusion.
                         case pp_if:
-                            return handleIfDirective(result,
+                            handleIfDirective(result,
                                     ReadAnyTokensBeforeDirective);
+                            return;
                         case pp_ifdef:
-                            return handleIfdefDirective(result, false, true/*not valid for miopt*/);
+                            handleIfdefDirective(result, false, true/*not valid for miopt*/);
+                            return;
                         case pp_ifndef:
-                            return handleIfdefDirective(result, true,
+                            handleIfdefDirective(result, true,
                                     ReadAnyTokensBeforeDirective);
+                            return;
                         case pp_elif:
-                            return handleElifDirective(result);
+                            handleElifDirective(result);
+                            return;
                         case pp_else:
-                            return handleElseDirective(result);
+                            handleElseDirective(result);
+                            return;
                         case pp_endif:
-                            return handleEndifDirective(result);
+                            handleEndifDirective(result);
+                            return;
 
                         // C99 6.10.2 - Source File Inclusion.
                         case pp_include:
-                            return handleIncludeDirective(result);       // Handle #include.
+                            handleIncludeDirective(result);       // Handle #include.
+                            return;
                         case pp___include_macros:
-                            return handleIncludeMacrosDirective(result); // Handle -imacros.
+                            handleIncludeMacrosDirective(result); // Handle -imacros.
+                            return;
 
                         // C99 6.10.3 - Macro Replacement.
                         case pp_define:
-                            return handleDefineDirective(result);
+                            handleDefineDirective(result);
+                            return;
                         case pp_undef:
-                            return handleUndefDirective(result);
+                            handleUndefDirective(result);
+                            return;
 
                         // C99 6.10.4 - Line Control.
                         case pp_line:
-                            return handleLineDirective(result);
+                            handleLineDirective(result);
+                            return;
 
                         // C99 6.10.5 - Error Directive.
                         case pp_error:
-                            return handleUserDiagnosticDirective(result, false);
+                            handleUserDiagnosticDirective(result, false);
+                            return;
 
                         // C99 6.10.6 - Pragma Directive.
                         case pp_pragma:
@@ -945,7 +2933,7 @@ public final class Preprocessor
         // If we reached here, the preprocessing token is not valid!
         diag(result, err_pp_invalid_directive);
 
-        // Read the rest of the PP line.
+        // Read the rest of the pp line.
         discardUntilEndOfDirective();
 
         // Okay, we're done parsing the directive.
@@ -1041,7 +3029,7 @@ public final class Preprocessor
             while (true)
             {
                 lexUnexpandedToken(tok);
-                if (tok.is(Eof) || tok.is(Eom))
+                if (tok.is(eof) || tok.is(eom))
                 {
                     // "#if f(<eof>" & "#if f(\n"
                     diag(macroName, err_unterm_macro_invoc);
@@ -1116,7 +3104,7 @@ public final class Preprocessor
 
             Token eofToken = new Token();
             eofToken.startToken();
-            eofToken.setKind(Eof);
+            eofToken.setKind(eof);
             eofToken.setLocation(tok.getLocation());
             eofToken.setLength(0);
             argTokens.add(eofToken);
@@ -1158,7 +3146,7 @@ public final class Preprocessor
 
             SourceLocation endLoc = tok.getLocation();
             tok.startToken();
-            tok.setKind(Eof);
+            tok.setKind(eof);
             tok.setLocation(endLoc);
             tok.setLength(0);
             argTokens.add(tok);
@@ -1208,7 +3196,7 @@ public final class Preprocessor
 
         // Read the '"..."'.
         lex(tok);
-        if (tok.isNot(String_literal))
+        if (tok.isNot(string_literal))
         {
             diag(pragmaLoc, err_pragma_comment_malformed);
             return;
@@ -1275,7 +3263,8 @@ public final class Preprocessor
      * @param charNo
      * @return
      */
-    private SourceLocation advanceToTokenCharacter(SourceLocation tokStart, int charNo)
+    public SourceLocation advanceToTokenCharacter(SourceLocation tokStart,
+            int charNo)
     {
         Token.StrData charData = sourceMgr.getCharacterData(tokStart);
         char[] buffer = charData.buffer;
@@ -1383,7 +3372,7 @@ public final class Preprocessor
 
             // __LINE__ expands to a simple numeric value.
             TmpBuffer = String.format("%d", PLoc.getLine());
-            tok.setKind(Numeric_constant);
+            tok.setKind(numeric_constant);
             createString(TmpBuffer, tok, tok.getLocation());
         } else if (ii == Ident__FILE__ || ii == Ident__BASE_FILE__) 
         {
@@ -1406,7 +3395,7 @@ public final class Preprocessor
             // Escape this filename.  Turn '\' -> '\\' '"' -> '\"'
             String FN = PLoc.getFilename();
             FN = '"' + Lexer.stringify(FN) + '"';
-            tok.setKind(String_literal);
+            tok.setKind(string_literal);
             createString(FN, tok, tok.getLocation());
         }
         else if (ii.equals(Ident__DATE__))
@@ -1414,7 +3403,7 @@ public final class Preprocessor
             if (!DATELoc.isValid())
                 computeDATE_TIME();
             
-            tok.setKind(String_literal);
+            tok.setKind(string_literal);
             tok.setLength("\"Mmm dd yyyy\"".length());
             tok.setLocation(sourceMgr.createInstantiationLoc(DATELoc, tok.getLocation(),
                     tok.getLocation(),
@@ -1424,7 +3413,7 @@ public final class Preprocessor
         {
             if (!TIMELoc.isValid())
                 computeDATE_TIME();
-            tok.setKind(String_literal);
+            tok.setKind(string_literal);
             tok.setLength("\"hh:mm:ss\"".length());
             tok.setLocation(sourceMgr.createInstantiationLoc(TIMELoc, tok.getLocation(),
                     tok.getLocation(),
@@ -1444,7 +3433,7 @@ public final class Preprocessor
 
             // __INCLUDE_LEVEL__ expands to a simple numeric value.
             TmpBuffer = String.format("%d", Depth);
-            tok.setKind(Numeric_constant);
+            tok.setKind(numeric_constant);
             createString(TmpBuffer, tok, tok.getLocation());
         }
         else if (ii.equals(Ident__TIMESTAMP__))
@@ -1477,7 +3466,7 @@ public final class Preprocessor
             StringBuilder buf = new StringBuilder('"');
             buf.append(result);
             buf.append('"'); // Replace the newline with a quote.
-            tok.setKind(String_literal);
+            tok.setKind(string_literal);
             createString(buf.toString(), tok, tok.getLocation());
         }
         else if (ii == Ident__COUNTER__)
@@ -1486,7 +3475,7 @@ public final class Preprocessor
 
             // __COUNTER__ expands to a simple numeric value.
             TmpBuffer = String.format("%d", counterValue++);
-            tok.setKind(Numeric_constant);
+            tok.setKind(numeric_constant);
             createString(TmpBuffer, tok, tok.getLocation());
         }
         else
@@ -1530,7 +3519,7 @@ public final class Preprocessor
     }
     /**
      * If an identifier token is read that is to be
-     * /// expanded as a macro, handle it and return the next token as 'Identifier'.
+     * * expanded as a macro, handle it and return the next token as 'Identifier'.
      *
      * @param identifier
      * @param mi
@@ -1731,7 +3720,7 @@ public final class Preprocessor
             lexUnexpandedToken(tmp);
         }
 
-        if (tmp.isNot(Eom))
+        if (tmp.isNot(eom))
         {
             // Add a fixit in GNU/C99 mode.  Don't offer a fixit for strict-C89,
             // because it is more trouble than it is worth to insert /**/ and check that
@@ -1754,7 +3743,7 @@ public final class Preprocessor
         do
         {
             lexUnexpandedToken(tmp);
-        }while (tmp.isNot(Eom));
+        }while (tmp.isNot(eom));
     }
 
     /**
@@ -1780,7 +3769,7 @@ public final class Preprocessor
             return peekAhead(n+1);
     }
 
-    private Token peekAhead(int n)
+    public Token peekAhead(int n)
     {
         assert cachedLexPos + n > cachedTokens.size(): "Confused caching.";
         for (int c = cachedLexPos + n - cachedTokens.size(); c > 0; --c)

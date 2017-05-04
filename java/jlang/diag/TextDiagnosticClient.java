@@ -18,7 +18,7 @@ package jlang.diag;
 
 import jlang.basic.LangOptions;
 import jlang.basic.SourceRange;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 
 import java.io.PrintStream;
 import java.util.ArrayList;

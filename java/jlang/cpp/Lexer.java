@@ -17,14 +17,13 @@ package jlang.cpp;
  */
 
 import jlang.basic.*;
-import jlang.cparser.Token;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
 import tools.OutParamWrapper;
 
-import static jlang.cparser.Token.TokenFlags.LeadingSpace;
-import static jlang.cparser.Token.TokenFlags.NeedsCleaning;
-import static jlang.cparser.Token.TokenFlags.StartOfLine;
+import static jlang.cpp.Token.TokenFlags.LeadingSpace;
+import static jlang.cpp.Token.TokenFlags.NeedsCleaning;
+import static jlang.cpp.Token.TokenFlags.StartOfLine;
 import static jlang.cpp.Lexer.WhiteSpacesKind.*;
 import static jlang.cpp.TokenKind.*;
 import static jlang.diag.DiagnosticLexKindsTag.*;
@@ -786,7 +785,7 @@ public class Lexer extends PreprocessorLexer
                     lex(tmp);
 
                     // Next, lex the character, which should handle the EOM transition.
-                    assert tmp.is(TokenKind.Eom) : "Unexpected token!";
+                    assert tmp.is(TokenKind.eom) : "Unexpected token!";
 
                     // Finally, we're done, return the string we found.
                     return result;
@@ -810,7 +809,7 @@ public class Lexer extends PreprocessorLexer
         {
             parsingPreprocessorDirective = false;
             // Update the location of token as well as BufferPtr.
-            formTokenWithChars(result, curPos, TokenKind.Eom);
+            formTokenWithChars(result, curPos, TokenKind.eom);
 
             setCommentRetentionState(pp.getCommentRetentionState());
             return true;  // Have a token.
@@ -822,7 +821,7 @@ public class Lexer extends PreprocessorLexer
         {
             result.startToken();
             this.bufferPtr = buffer.length;
-            formTokenWithChars(result, buffer.length, TokenKind.Eof);
+            formTokenWithChars(result, buffer.length, TokenKind.eof);
             return true;
         }
 
@@ -867,7 +866,7 @@ public class Lexer extends PreprocessorLexer
 
         lexingRawMode = false;
 
-        if (tok.is(TokenKind.Eof))
+        if (tok.is(TokenKind.eof))
             return 2;
         return tok.is(l_paren) ? 1 : 0;
     }
@@ -1289,7 +1288,7 @@ public class Lexer extends PreprocessorLexer
         int tokStart = this.bufferPtr;
         char[] literal = new char[curPos - tokStart];
         System.arraycopy(buffer, tokStart, literal, 0, literal.length);
-        formTokenWithChars(result, curPos, TokenKind.Numeric_constant);
+        formTokenWithChars(result, curPos, TokenKind.numeric_constant);
         result.setLiteralData(literal, buffer, tokStart);
     }
 
@@ -1428,7 +1427,7 @@ public class Lexer extends PreprocessorLexer
         int tokStart = this.bufferPtr;
         char[] tokenBuf = new char[x.get() - tokStart];
         System.arraycopy(buffer, tokStart, tokenBuf, 0, tokenBuf.length);;
-        formTokenWithChars(result, x.get(), Char_constant);
+        formTokenWithChars(result, x.get(), char_constant);
         result.setLiteralData(tokenBuf, buffer, tokStart);
     }
 
@@ -1472,7 +1471,7 @@ public class Lexer extends PreprocessorLexer
         int tokStart = this.bufferPtr;
         char[] tokenBuf = new char[x.get() - tokStart];
         System.arraycopy(buffer, tokStart, tokenBuf, 0, tokenBuf.length);
-        formTokenWithChars(result, x.get(), String_literal);
+        formTokenWithChars(result, x.get(), string_literal);
         result.setLiteralData(tokenBuf, buffer, tokStart);
     }
 
@@ -1517,7 +1516,7 @@ public class Lexer extends PreprocessorLexer
         int tokStart = this.bufferPtr;
         char[] tokenBuf = new char[x.get() - tokStart];
         System.arraycopy(buffer, tokStart, tokenBuf, 0, tokenBuf.length);;
-        formTokenWithChars(result, x.get(), Angle_string_literal);
+        formTokenWithChars(result, x.get(), angle_string_literal);
         result.setLiteralData(tokenBuf, buffer, tokStart);
     }
 
@@ -1613,7 +1612,7 @@ public class Lexer extends PreprocessorLexer
 
                     isAtStartOfLine = true;
 
-                    kind = TokenKind.Eom;
+                    kind = TokenKind.eom;
                     break;
                 }
 

@@ -12,7 +12,7 @@ import jlang.basic.Linkage;
 import jlang.cparser.DeclContext;
 import jlang.cparser.DeclKind;
 import jlang.cparser.Declarator;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.type.QualType;
 import jlang.type.Type;
 

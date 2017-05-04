@@ -17,14 +17,14 @@ package jlang.cpp;
  */
 
 import jlang.basic.FileID;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceManager;
-import jlang.cparser.Token;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static jlang.cparser.Token.TokenFlags.LeadingSpace;
-import static jlang.cparser.Token.TokenFlags.StartOfLine;
+import static jlang.cpp.Token.TokenFlags.LeadingSpace;
+import static jlang.cpp.Token.TokenFlags.StartOfLine;
 import static jlang.cpp.TokenKind.*;
 import static jlang.diag.DiagnosticLexKindsTag.*;
 
@@ -241,7 +241,7 @@ public class TokenLexer
             Token resultTokTmp = new Token();
             resultTokTmp.startToken();
 
-            resultTokTmp.setKind(String_literal);
+            resultTokTmp.setKind(string_literal);
             pp.createString(buffer.toString(), resultTokTmp, new SourceLocation());
 
             SourceLocation resultTokLoc = resultTokTmp.getLocation();
@@ -275,7 +275,7 @@ public class TokenLexer
 
                 boolean isInvalid = !l.lexFromRawLexer(result);
 
-                isInvalid |= result.is(Eof);
+                isInvalid |= result.is(eof);
 
                 if (isInvalid)
                 {
@@ -405,7 +405,7 @@ public class TokenLexer
                 else
                     resultArgToks = argTok;
 
-                if (resultArgToks[0].isNot(Eof))
+                if (resultArgToks[0].isNot(eof))
                 {
                     int firstResult = resultToks.size();
 

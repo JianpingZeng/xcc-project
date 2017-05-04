@@ -1,10 +1,8 @@
-package jlang.cparser;
+package jlang.cpp;
 
-import jlang.cpp.IdentifierInfo;
-import jlang.cpp.SourceLocation;
-import jlang.cpp.TokenKind;
+import jlang.basic.SourceLocation;
 
-import static jlang.cparser.Token.TokenFlags.*;
+import static jlang.cpp.Token.TokenFlags.*;
 
 /**
  * @author Xlous.zeng
@@ -81,8 +79,8 @@ public class Token
 
     public boolean isLiteral()
     {
-        return is(TokenKind.Numeric_constant) || is(TokenKind.Char_constant)
-                || is(TokenKind.String_literal) || is(TokenKind.Angle_string_literal);
+        return is(TokenKind.numeric_constant) || is(TokenKind.char_constant)
+                || is(TokenKind.string_literal) || is(TokenKind.angle_string_literal);
     }
 
     public SourceLocation getLocation()

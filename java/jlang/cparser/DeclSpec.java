@@ -2,10 +2,12 @@ package jlang.cparser;
 
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
+import jlang.basic.SourceManager;
 import jlang.basic.SourceRange;
 import jlang.cparser.Declarator.TheContext;
+import jlang.cpp.IdentifierInfo;
 import jlang.cpp.Preprocessor;
-import jlang.cpp.SourceLocation;
+import jlang.basic.SourceLocation;
 import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.type.QualType;
@@ -208,11 +210,11 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
     public static class ParamInfo
     {
-        public String name;
+        public IdentifierInfo name;
         public SourceLocation loc;
         public Decl param;
 
-        public ParamInfo(String ID, SourceLocation loc, Decl param)
+        public ParamInfo(IdentifierInfo ID, SourceLocation loc, Decl param)
         {
             this.name = ID;
             this.loc = loc;
@@ -693,10 +695,10 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
     static Diagnostic.DiagnosticBuilder diag(
             Diagnostic diags,
             SourceLocation loc,
-            String srcFile,
+            SourceManager mgr,
             int diagID)
     {
-        return diags.report(new FullSourceLoc(loc, srcFile), diagID);
+        return diags.report(new FullSourceLoc(loc, mgr), diagID);
     }
 
     /**
@@ -706,7 +708,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
      */
     public void finish(Diagnostic diags, Preprocessor pp)
     {
-        String inputFile = pp.getInputFile();
+        SourceManager sourceMgr = pp.getSourceManager();
 
         // signed/unsigned are only valid with int/char/
         if (typeSpecSign != TSS_unspecified)
@@ -716,7 +718,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             else if (typeSpecType != TST_int
                     && typeSpecType != TST_char)
             {
-                diag(diags, TSSLoc, inputFile, err_invalid_sign_spec)
+                diag(diags, TSSLoc, sourceMgr, err_invalid_sign_spec)
                     .addTaggedVal(getSpecifierName(typeSpecType));
                 // signed double -> double.
                 // signed float -> float.
@@ -736,7 +738,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
                     typeSpecType = TST_int; // short -> short int;
                 else if (typeSpecType != TST_int)
                 {
-                    diag(diags, TSWLoc, inputFile, typeSpecWidth == TSW_short ?
+                    diag(diags, TSWLoc, sourceMgr, typeSpecWidth == TSW_short ?
                             err_invalid_short_spec :
                             err_invalid_longlong_spec).
                             addTaggedVal(getSpecifierName(typeSpecType));
@@ -752,7 +754,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
                     typeSpecType = TST_int; // long -> long int
                 else if (typeSpecType != TST_int && typeSpecType != TST_double)
                 {
-                    diag(diags, TSWLoc, inputFile, err_invalid_long_spec).addTaggedVal(getSpecifierName(typeSpecType));
+                    diag(diags, TSWLoc, sourceMgr, err_invalid_long_spec).addTaggedVal(getSpecifierName(typeSpecType));
                     typeSpecType = TST_int;
                     typeSpecOwned = false;
                 }
@@ -766,7 +768,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
         {
             if (typeSpecType != TST_unspecified)
             {
-                diag(diags, TSCLoc, inputFile, ext_plain_complex)
+                diag(diags, TSCLoc, sourceMgr, ext_plain_complex)
                 .addFixItHint(FixItHint.createInsertion(
                    TSCLoc, " double"));
                 typeSpecType = TST_double; // _Complex -> _Complex double.
@@ -774,11 +776,11 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             else if (typeSpecType == TST_int || typeSpecType == TST_char)
             {
                 // Note that this intentionally doesn't include _Complex _Bool
-                diag(diags, TSTLoc, inputFile, ext_integer_complex);
+                diag(diags, TSTLoc, sourceMgr, ext_integer_complex);
             }
             else if (typeSpecType!=TST_float && typeSpecType != TST_double)
             {
-                diag(diags, TSCLoc, inputFile, err_invalid_complex_spec)
+                diag(diags, TSCLoc, sourceMgr, err_invalid_complex_spec)
                 .addTaggedVal(getSpecifierName(typeSpecType));
                 typeSpecComplex = TSC_unspecified;
             }

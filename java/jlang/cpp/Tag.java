@@ -1,4 +1,4 @@
-package jlang.cparser;
+package jlang.cpp;
 
 /**
  * An interface that defines codes for C language source tokens

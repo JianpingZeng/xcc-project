@@ -16,8 +16,6 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
-import jlang.cpp.SourceLocation;
-
 /**
  * This class represents a character granular source range.
  * The underlying SourceRange can either specify the starting/ending character

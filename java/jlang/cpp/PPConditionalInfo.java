@@ -16,6 +16,8 @@ package jlang.cpp;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.SourceLocation;
+
 /**
  * Information about the conditional stack (#if directives)
  * currently active.

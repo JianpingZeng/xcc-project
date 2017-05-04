@@ -16,8 +16,6 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
-import jlang.cpp.SourceLocation;
-
 /**
  * @author Xlous.zeng
  * @version 0.1

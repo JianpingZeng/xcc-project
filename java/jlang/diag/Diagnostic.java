@@ -18,6 +18,7 @@ package jlang.diag;
 
 import gnu.trove.list.array.TIntArrayList;
 import jlang.basic.SourceRange;
+import jlang.cpp.IdentifierInfo;
 import jlang.type.QualType;
 
 import java.util.Arrays;
@@ -334,7 +335,7 @@ public final class Diagnostic
         suppressSystemWarnings = val;
     }
 
-    boolean getSuppressSystemWarnings()
+    public boolean getSuppressSystemWarnings()
     {
         return suppressSystemWarnings;
 	}
@@ -962,6 +963,11 @@ public final class Diagnostic
 		{
 			return addTaggedVal(type, ArgumentKind.ak_qualtype);
 		}
+
+		public DiagnosticBuilder addTaggedVal(IdentifierInfo ii)
+        {
+            return addTaggedVal(ii, ArgumentKind.ak_identifier);
+        }
 
 		public DiagnosticBuilder addSourceRange(SourceRange range)
 		{

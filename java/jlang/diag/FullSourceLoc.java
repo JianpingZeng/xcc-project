@@ -19,8 +19,8 @@ package jlang.diag;
 import jlang.basic.FileID;
 import jlang.basic.MemoryBuffer;
 import jlang.basic.SourceManager;
-import jlang.cparser.Token.StrData;
-import jlang.cpp.SourceLocation;
+import jlang.cpp.Token.StrData;
+import jlang.basic.SourceLocation;
 import tools.Pair;
 
 /**
