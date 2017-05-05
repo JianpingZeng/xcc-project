@@ -113,7 +113,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 			case Tree.ExplicitCastClass:
 				return visitExplicitCastExpr((ExplicitCastExpr)s);
 			case Tree.FloatLiteralClass:
-				return visitFloatLiteral((FloatLiteral)s);
+				return visitFloatLiteral((FloatingLiteral)s);
 			case Tree.ForStmtClass:
 				return visitForStmt((ForStmt)s);
 			case Tree.GotoStmtClass:
@@ -327,7 +327,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 
     public T visitCompoundLiteralExpr(CompoundLiteralExpr literal) {return visitStmt(literal);}
 
-    public T visitFloatLiteral(FloatLiteral literal){return visitStmt(literal);}
+    public T visitFloatLiteral(FloatingLiteral literal){return visitStmt(literal);}
 
     public T visitStringLiteral(StringLiteral literal) {return visitStmt(literal);}
 

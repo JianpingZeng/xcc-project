@@ -46,7 +46,6 @@ public final class Diagnostic
 
     public static final int DIAG_UPPER_LIMIT = DiagnosticSemaKindsEnd;
 
-
     static class StaticDiagInfoRec implements Comparable<StaticDiagInfoRec>
     {
         int diagID;
@@ -184,6 +183,23 @@ public final class Diagnostic
 		ak_nameddecl        // NamedDecl *
 	}
 
+    interface ArgToStringFunctor
+    {
+        void apply(ArgumentKind kind, Object val,
+                String modifier, String argument,
+                StringBuilder outStr);
+    }
+
+    private static ArgToStringFunctor DummyArgToStringFunctor = new ArgToStringFunctor()
+    {
+        @Override
+        public void apply(ArgumentKind kind, Object val, String modifier,
+                String argument, StringBuilder outStr)
+        {
+            outStr.append("<can't format argument>");
+        }
+    };
+
 	private int allExtensionsSilenced; // Used by __extension__
 	/**
 	 * Ignores all warnings.
@@ -262,6 +278,8 @@ public final class Diagnostic
 
 	private FixItHint[] fixItHints = new FixItHint[maxFixItHints];
 
+	private ArgToStringFunctor argToStringFtr;
+
 	public Diagnostic(DiagnosticClient client)
 	{
 		this.client = client;
@@ -282,6 +300,7 @@ public final class Diagnostic
         diagMappingsStack = new LinkedList<>();
         TIntArrayList blankDiags = new TIntArrayList(DIAG_UPPER_LIMIT/2);
         diagMappingsStack.addLast(blankDiags);
+        argToStringFtr = DummyArgToStringFunctor;
 	}
 
 	enum SuppressKind
@@ -734,6 +753,7 @@ public final class Diagnostic
      */
     private boolean processDiag()
     {
+        DiagnosticInfo info = new DiagnosticInfo(this);
         Level diagLevel;
         int diagID = curDiagID;
 
@@ -798,7 +818,7 @@ public final class Diagnostic
         }
 
         // Finally, report it.
-        client.handleDiagnostic(diagLevel, this);
+        client.handleDiagnostic(diagLevel, info);
         if (client.includeInDiagnosticCounts())
             ++numDiagnostics;
 
@@ -874,8 +894,6 @@ public final class Diagnostic
         slot |= mapping << shift;
         diagMappingsStack.getLast().set(diagID/2, slot);
     }
-
-
 
     
 	/**
@@ -990,4 +1008,24 @@ public final class Diagnostic
 			return this;
 		}
 	}
+
+    public FixItHint[] getFixItHints()
+    {
+        return fixItHints;
+    }
+
+    /**
+     * This method converts a diagnostic argument (as an
+     * Object) into the string that represents it.
+     * @param kind
+     * @param val
+     * @param modifier
+     * @param argument
+     * @param outStr
+     */
+    public void convertArgToString(ArgumentKind kind, Object val,
+            String modifier, String argument, StringBuilder outStr)
+    {
+        argToStringFtr.apply(kind, val, modifier, argument, outStr);
+    }
 }

@@ -191,9 +191,9 @@ public class TokenLexer
             {
                 // We warn about __VA_ARGS__ with poisoning.
                 if (ii.isStr("__VA__ARGS__"))
-                    pp.diag(result, ext_pp_bad_vaargs_use);
+                    pp.diag(result, ext_pp_bad_vaargs_use).emit();
                 else
-                    pp.diag(result, err_pp_used_poisoned_id);
+                    pp.diag(result, err_pp_used_poisoned_id).emit();
             }
 
             if (!disableMacroExpansion && ii.isNeedsHandleIdentifier())
@@ -284,7 +284,7 @@ public class TokenLexer
                         sgr = pp.getSourceManager();
                         SourceLocation loc = sgr.createInstantiationLoc(pasteOpLoc,
                                 instantiationLocStart, instantiationLocEnd, 2, 0, 0);
-                        pp.diag(loc, err_pp_bad_paste).addTaggedVal(buffer.toString());
+                        pp.diag(loc, err_pp_bad_paste).addTaggedVal(buffer.toString()).emit();
                     }
 
                     --curToken;
@@ -439,7 +439,7 @@ public class TokenLexer
                         && argNo == macro.getNumArgs() - 1 && macro.isVariadic())
                 {
                     pp.diag(resultToks.get(resultToks.size() - 1).getLocation(),
-                            ext_paste_comma);
+                            ext_paste_comma).emit();
                     resultToks.remove(resultToks.size() - 1);
                 }
 
@@ -494,7 +494,7 @@ public class TokenLexer
                     .get(resultToks.size() - 1).is(comma))
             {
                 nextTokGetsSpace = false;
-                pp.diag(resultToks.get(resultToks.size() - 1), ext_paste_comma);
+                pp.diag(resultToks.get(resultToks.size() - 1), ext_paste_comma).emit();
                 resultToks.remove(resultToks.size() - 1);
             }
         }

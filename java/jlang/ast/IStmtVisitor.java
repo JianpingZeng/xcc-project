@@ -109,7 +109,7 @@ public interface IStmtVisitor<T>
 
     T visitCompoundLiteralExpr(CompoundLiteralExpr literal);
 
-    T visitFloatLiteral(FloatLiteral literal);
+    T visitFloatLiteral(FloatingLiteral literal);
 
     T visitStringLiteral(StringLiteral literal);
 

@@ -20,6 +20,7 @@ import jlang.basic.*;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
 import tools.OutParamWrapper;
+import tools.Pair;
 
 import static jlang.cpp.Token.TokenFlags.LeadingSpace;
 import static jlang.cpp.Token.TokenFlags.NeedsCleaning;
@@ -411,6 +412,33 @@ public class Lexer extends PreprocessorLexer
             if (newLineSize == 0) return start;
             start = afterEscape + newLineSize;
         }
+    }
+
+    /**
+     *  Relex the token at the specified location and return
+     * its length in bytes in the input file.  If the token needs cleaning (e.g.
+     * includes a trigraph or an escaped newline) then this count includes bytes
+     * that are part of that.
+     * @param loc
+     * @param sgr
+     * @param langOpts
+     * @return
+     */
+    public static int measureTokenLength(
+            SourceLocation loc,
+            SourceManager sgr,
+            LangOptions langOpts)
+    {
+        loc = sgr.getInstantiationLoc(loc);
+        Pair<FileID, Integer> locInfo = sgr.getDecomposedLoc(loc);
+        char[] strData = sgr.getBufferData(locInfo.first);
+        int pos = locInfo.second;
+
+        // Create a lexer starting at the beginning of this token.
+        Lexer theLexer = new Lexer(loc, langOpts, strData, pos, strData.length);
+        Token tok = new Token();
+        theLexer.lexFromRawLexer(tok);
+        return tok.getLength();
     }
 
     //===----------------------------------------------------------------------===//
@@ -830,8 +858,8 @@ public class Lexer extends PreprocessorLexer
         // If we are in a #if directive, emit an error.
         while (!conditionalStack.isEmpty())
         {
-            pp.diag(conditionalStack.peek().ifLoc,
-                    err_pp_unterminated_conditional);
+            pp.diag(conditionalStack.peek().ifLoc, err_pp_unterminated_conditional)
+                    .emit();
             conditionalStack.pop();
         }
 
@@ -1286,10 +1314,8 @@ public class Lexer extends PreprocessorLexer
 
         // Update the location of token as well as bufferPtr.
         int tokStart = this.bufferPtr;
-        char[] literal = new char[curPos - tokStart];
-        System.arraycopy(buffer, tokStart, literal, 0, literal.length);
         formTokenWithChars(result, curPos, TokenKind.numeric_constant);
-        result.setLiteralData(literal, buffer, tokStart);
+        result.setLiteralData(buffer, tokStart);
     }
 
     private void finishIdentifier(Token result, int curPos)
@@ -1425,10 +1451,8 @@ public class Lexer extends PreprocessorLexer
             diag(nullCharacterPos, null_in_char);
 
         int tokStart = this.bufferPtr;
-        char[] tokenBuf = new char[x.get() - tokStart];
-        System.arraycopy(buffer, tokStart, tokenBuf, 0, tokenBuf.length);;
         formTokenWithChars(result, x.get(), char_constant);
-        result.setLiteralData(tokenBuf, buffer, tokStart);
+        result.setLiteralData(buffer, tokStart);
     }
 
     /**
@@ -1469,10 +1493,8 @@ public class Lexer extends PreprocessorLexer
             diag(nullCharPos, null_in_string);
 
         int tokStart = this.bufferPtr;
-        char[] tokenBuf = new char[x.get() - tokStart];
-        System.arraycopy(buffer, tokStart, tokenBuf, 0, tokenBuf.length);
         formTokenWithChars(result, x.get(), string_literal);
-        result.setLiteralData(tokenBuf, buffer, tokStart);
+        result.setLiteralData(buffer, tokStart);
     }
 
     /**
@@ -1514,10 +1536,8 @@ public class Lexer extends PreprocessorLexer
             diag(nullCharacterPos, null_in_string);
 
         int tokStart = this.bufferPtr;
-        char[] tokenBuf = new char[x.get() - tokStart];
-        System.arraycopy(buffer, tokStart, tokenBuf, 0, tokenBuf.length);;
         formTokenWithChars(result, x.get(), angle_string_literal);
-        result.setLiteralData(tokenBuf, buffer, tokStart);
+        result.setLiteralData(buffer, tokStart);
     }
 
     private int consumeChar(int curPos, int size, Token tok)

@@ -66,7 +66,7 @@ public class CharLiteralParser
             if (numCharsSoFar != 0)
             {
                 if (litVal.countLeadingZeros() < 8)
-                    pp.diag(loc, warn_char_constant_too_large);
+                    pp.diag(loc, warn_char_constant_too_large).emit();
                 litVal.shlAssign(8);
             }
             litVal.assign(litVal.add(resultChar));
@@ -77,9 +77,9 @@ public class CharLiteralParser
         if (numCharsSoFar > 1)
         {
             if (numCharsSoFar != 4)
-                pp.diag(loc, ext_multichar_character_literal);
+                pp.diag(loc, ext_multichar_character_literal).emit();
             else
-                pp.diag(loc, ext_four_char_character_literal);
+                pp.diag(loc, ext_four_char_character_literal).emit();
             isMultChar = true;
         }
         else

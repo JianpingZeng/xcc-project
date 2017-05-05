@@ -43,12 +43,15 @@ public interface DiagnosticClient
      * the number of diagnostics reported by Diagnostic.
      * @return
      */
-    boolean includeInDiagnosticCounts();
+    default boolean includeInDiagnosticCounts()
+    {
+        return true;
+    }
 
     /**
      * Handle this diagnostic, reporting it or capturing it to a log as needed.
      * @param diagLevel
-     * @param diag
+     * @param info
      */
-    void handleDiagnostic(Diagnostic.Level diagLevel, Diagnostic diag);
+    void handleDiagnostic(Diagnostic.Level diagLevel, DiagnosticInfo info);
 }

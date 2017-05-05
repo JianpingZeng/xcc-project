@@ -34,6 +34,8 @@ import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
 import static jlang.cpp.Tag.*;
+import static jlang.cpp.TokenKind.char_constant;
+import static jlang.cpp.TokenKind.numeric_constant;
 import static jlang.sema.BinaryOperatorKind.BO_Div;
 import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
@@ -395,17 +397,17 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         {
                             diag(kwLoc, err_use_with_wrong_tag)
                                     .addTaggedVal(name)
-                                    .addFixItHint(
-                                            FixItHint.createReplacement
-                                                    (new SourceRange(kwLoc),
-                                                        prevTagDecl.getKindName()));
+                                    .addFixItHint(FixItHint.createReplacement
+                                    (new SourceRange(kwLoc),
+                                    prevTagDecl.getKindName()))
+                                    .emit();
                         }
                         else
                         {
                             diag(kwLoc, err_use_with_wrong_tag).
-                                    addTaggedVal(name);
+                                    addTaggedVal(name).emit();
                         }
-                        diag(prevDecl.getLocation(), note_previous_use);
+                        diag(prevDecl.getLocation(), note_previous_use).emit();
                         if (safeToContinue)
                             kind = prevTagDecl.getTagKind();
                         else
@@ -430,8 +432,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                             if (def != null)
                             {
                                 diag(nameLoc, err_redefinition)
-                                        .addTaggedVal(name);
-                                diag(def.getLocation(), note_previous_definition);
+                                        .addTaggedVal(name).emit();
+                                diag(def.getLocation(), note_previous_definition).emit();
                                 name = null;
                                 prevDecl = null;
                                 invalid = true;
@@ -445,8 +447,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                                 if (tag.isBeingDefined())
                                 {
                                     diag(nameLoc, err_nested_redefinition)
-                                            .addTaggedVal(name);
-                                    diag(prevTagDecl.getLocation(), note_previous_definition);
+                                            .addTaggedVal(name).emit();
+                                    diag(prevTagDecl.getLocation(), note_previous_definition).emit();
                                     name = null;
                                     prevDecl = null;
                                     invalid = true;
@@ -475,8 +477,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 if (isDeclInScope(prevDecl, searchDC, curScope))
                 {
                     diag(nameLoc, err_redefinition_different_kind)
-                            .addTaggedVal(name);
-                    diag(prevDecl.getLocation(), note_previous_definition);
+                            .addTaggedVal(name).emit();
+                    diag(prevDecl.getLocation(), note_previous_definition).emit();
                     name = null;
                     prevDecl = null;
                     invalid = true;
@@ -508,7 +510,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 // if this is an undefined enum, warns it.
                 if (tuk != TagUseKind.TUK_definition && !invalid)
                 {
-                    diag(loc, ext_forward_ref_enum);
+                    diag(loc, ext_forward_ref_enum).emit();
                     if (tuk == TagUseKind.TUK_reference)
                         isForwardReference = true;
 
@@ -534,7 +536,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (name != null && curScope.isFunctionProtoTypeScope())
             {
                 diag(loc, warn_decl_in_param_list)
-                .addTaggedVal(context.getTagDeclType(newDecl));
+                .addTaggedVal(context.getTagDeclType(newDecl)).emit();
             }
 
             newDecl.setLexicalDeclaration(curContext);
@@ -664,80 +666,92 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     public ActionResult<Expr> actOnNumericConstant(Token token)
     {
-        assert token != null && (token.tag == Tag.INTLITERAL
-                || token.tag == Tag.LONGLITERAL
-                || token.tag == Tag.FLOATLITERAL
-                || token.tag == Tag.DOUBLELITERAL);
+        assert token != null && token.is(numeric_constant);
         // FIXME: parse the int/long/float/double number with numericParser. 2017.4.8
-        Expr res = null;
-        switch (token.tag)
+        // A fast path for handling a single digit which is quite common case.
+        // Avoiding do something defficult.
+        if (token.getLength() == 1)
         {
-            case Tag.FLOATLITERAL:
-            case Tag.DOUBLELITERAL:
+            char val = pp.getSpellingOfSingleCharacterNumericConstant(token);
+            int intSize = pp.getTargetInfo().getIntWidth();
+            return new ActionResult<>(new IntegerLiteral(
+                    new APInt(intSize, val - '0'),
+                    context.IntTy, token.getLocation()
+            ));
+        }
+
+        String integerBuffer = pp.getSpelling(token);
+
+        // Creates a numeric parser for parsing the given number in string style.
+        NumericLiteralParser literal = new NumericLiteralParser(integerBuffer,
+                token.getLocation(), pp);
+
+        if (literal.hadError)
+            return exprError();
+
+        Expr res = null;
+
+        if (literal.isFloatingLiteral())
+        {
+            QualType ty;
+            if (literal.isFloat)
+                ty = context.FloatTy;
+            else if (!literal.isLong)
+                ty = context.DoubleTy;
+            else
+                ty = context.DoubleTy;      // FIXME: 17-5-5 Current long double is not supported.
+
+            FltSemantics format = context.getFloatTypeSemantics(ty);
+
+            boolean isExact = false;
+            OutParamWrapper<Boolean> x = new OutParamWrapper<>(isExact);
+            APFloat val = literal.getFloatValue(format, x);
+            isExact = x.get();
+            res = new FloatingLiteral(val, isExact, ty, token.getLocation());
+        }
+        else
+        {
+            QualType ty = new QualType();
+
+            // long long is C99 feature.
+            if (!pp.getLangOptions().c99 && literal.isLongLong)
             {
-                QualType ty;
-                double val = 0.0;
-                if (token.tag == FLOATLITERAL)
-                {
-                    ty = context.FloatTy;
-                    val = ((Token.FLiteral)token).getValue();
-                }
-                else
-                {
-                    ty = context.DoubleTy;
-                    val = ((Token.DLiteral)token).getValue();
-                }
-                res = new FloatLiteral(ty, val, token.getLocation());
+                diag(token.getLocation(), ext_longlong).emit();
             }
 
-            case INTLITERAL:
-            case LONGLITERAL:
-            case LONGLONG:
+            APInt resultVal = new APInt(context.target.getIntMaxWidth(), 0);
+            if (literal.getIntegerValue(resultVal))
             {
-                QualType ty = new QualType();
-                IntLiteral literal = (IntLiteral)token;
+                // if the value didn't fit into the uintmat_t, warn and force filt.
+                diag(token.getLocation(), warn_integer_too_large).emit();
+                ty = context.UnsignedLongLongTy;
+                assert (context.getTypeSize(ty) == resultVal.getBitWidth())
+                        :"long long is not intmax_t?";
+            }
+            else
+            {
+                // If this value fits into a ULL, try to figure out what else it
+                // fits into according to the rules of C99.6.4.4.1p5.
 
-                // long long is a C99 feature.
-                if (!getLangOptions().c99 && literal.isLongLong())
-                    diag(token.getLocation(), ext_longlong);
+                boolean allowUnsigned = literal.isUnsigned;
 
-                // Get the value in the widest-possible width.
-                APInt resultVal = new APInt(context.target.getIntMaxWidth(), 0);
-
-                if (literal.getIntegerValue(resultVal))
+                // Check from smallest to largest, picking the smallest type we can.
+                int width = 0;
+                if (!literal.isLong && !literal.isLongLong)
                 {
-                    // current long long can not be supported.
-                    diag(literal.loc, warn_integer_too_large).
-                            addTaggedVal(literal.toString());
-                    ty = context.UnsignedLongLongTy;
-                    assert context.getTypeSize(ty) == resultVal.getBitWidth()
-                            : "long long is not intmax_t";
-                }
-                else
-                {
-                    boolean allowedUnsigned =
-                            literal.isUnsigned() || literal.getRadix() != 10;
+                    int intSize = context.target.getIntWidth();
 
-                    // check from smallest to largest, picking the smallest jlang.type we can.
-                    int width = 0;
-                    if (!literal.isLong() && !literal.isLongLong())
+                    // Does it fit in a unsigned int?
+                    if (resultVal.isIntN(intSize))
                     {
-                        // Are int/ unsigned int possibility?
-                        int intSize = context.target.getIntWidth();
-
-                        // does it fit in a unsigned int?
-                        if (resultVal.isIntN(intSize))
-                        {
-                            BitSet x = new BitSet();
-                            if (!literal.isUnsigned() && !resultVal.get(intSize - 1))
-                                ty = context.IntTy;
-                            else if (allowedUnsigned)
-                                ty = context.UnsignedIntTy;
-                            width = intSize;
-                        }
+                        if (!literal.isUnsigned && !resultVal.get(intSize - 1))
+                            ty = context.IntTy;
+                        else if (allowUnsigned)
+                            ty = context.UnsignedIntTy;
+                        width = intSize;
                     }
                     // Are long/unsigned long possibilities?
-                    if (ty.isNull() && !literal.isLongLong())
+                    if (ty.isNull() && !literal.isLongLong)
                     {
                         int longSize = context.target.getLongWidth();
 
@@ -745,9 +759,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         if (resultVal.isIntN(longSize))
                         {
                             // Does it fit in a signed long?
-                            if(!literal.isUnsigned() && !resultVal.get(longSize - 1))
+                            if(!literal.isUnsigned && !resultVal.get(longSize - 1))
                                 ty = context.LongTy;
-                            else if (allowedUnsigned)
+                            else if (allowUnsigned)
                                 ty = context.UnsignedLongTy;
                             width = longSize;
                         }
@@ -759,9 +773,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         // Does it fit in a unsigned long long?
                         if (resultVal.isIntN(longlongSize))
                         {
-                            if (!literal.isUnsigned() && !resultVal.get(longlongSize-1))
+                            if (!literal.isUnsigned && !resultVal.get(longlongSize-1))
                                 ty = context.LongLongTy;
-                            else if (allowedUnsigned)
+                            else if (allowUnsigned)
                                 ty = context.UnsignedLongLongTy;
                             width = longlongSize;
                         }
@@ -771,7 +785,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     // something that does not fit in a signed long, but has no U suffix.
                     if (ty.isNull())
                     {
-                        diag(literal.loc, warn_integer_too_large_for_signed).
+                        diag(token.getLocation(), warn_integer_too_large_for_signed).emit().
                                 addTaggedVal(literal.toString());
                         ty = context.UnsignedLongTy;
                         width = context.target.getLongLongWidth();
@@ -782,11 +796,14 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 }
                 return new ActionResult<>(new IntegerLiteral(resultVal, ty, token.loc));
             }
-            default:
-                return exprError();
         }
-
+        if (literal.isImaginary)
+        {
+            // FIXME: 17-5-5 currently imaginary number is not supported
+        }
+        return new ActionResult<>(res);
     }
+        
 
     public void actOnPopScope(Scope curScope)
     {
@@ -830,7 +847,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         else if (ds.getStorageClassSpec() != SCS.SCS_unspecified)
         {
-            //TODO report error invalid storage class speciifer.
+            diag(ds.getStorageClassSpecLoc(), err_invalid_storage_class_in_func_decl).emit();
+            paramDecls.getDeclSpec().clearStorageClassSpec();
         }
 
         if (ds.isInlineSpecifier())
@@ -839,7 +857,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
 
         // ensure we have a invalid getIdentifier
-        String name = paramDecls.getIdentifier();
+        IdentifierInfo name = paramDecls.getIdentifier();
         if (name == null)
         {
             // TODO report error: invalid identifier getIdentifier
@@ -994,7 +1012,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 enumVal.increase();
 
                 if (enumVal.lt(lastEnumConst.getInitValue()))
-                    diag(idLoc, warn_enum_value_overflow);
+                    diag(idLoc, warn_enum_value_overflow).emit();
                 eltTy = lastEnumConst.getDeclType();
             }
             else
@@ -1031,13 +1049,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             {
                 if (prevDecl instanceof EnumConstantDecl)
                 {
-                    diag(identLoc, err_redefinition_of_enumerator);;
+                    diag(identLoc, err_redefinition_of_enumerator).emit();
                 }
                 else
                 {
-                    diag(identLoc, err_redefinition);
+                    diag(identLoc, err_redefinition).emit();
                 }
-                diag(prevDecl.getLocation(), note_previous_definition);
+                diag(prevDecl.getLocation(), note_previous_definition).emit();
                 return null;
             }
         }
@@ -1089,7 +1107,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     v.trunc(intWidth);
                     v.extend(initVal.getBitWidth());
                     if (v.ne(initVal))
-                        diag(ecd.getLocation(), ext_enum_value_not_int);
+                        diag(ecd.getLocation(), ext_enum_value_not_int).emit();
                 }
 
                 // Keep track of the size of positive and negative values.
@@ -1123,7 +1141,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 {
                     bestWidth = context.target.getLongLongWidth();
                     if (numNegativeBits > bestWidth || numPositiveBits >= bestWidth)
-                        diag(enumDecl.getLocation(), warn_enum_too_large);
+                        diag(enumDecl.getLocation(), warn_enum_too_large).emit();
                     bestType = context.LongLongTy;
                 }
             }
@@ -1239,8 +1257,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
     private void diagnoseFunctionSpecifiers(Declarator d)
     {
         if (d.getDeclSpec().isInlineSpecifier())
-            diag(d.getDeclSpec().getInlineSpecLoc(),
-                    err_inline_non_function);
+            diag(d.getDeclSpec().getInlineSpecLoc(), err_inline_non_function).emit();
     }
 
     private TypeDefDecl parseTypedefDecl(Scope s, Declarator d, QualType ty)
@@ -1285,10 +1302,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (!(oldOne instanceof TypeDecl))
         {
             diag(newOne.getLocation(), err_redefinition_different_kind)
-                    .addTaggedVal(newOne.getDeclName());
+                    .addTaggedVal(newOne.getDeclName()).emit();
             if (oldOne.getLocation().isValid())
             {
-                diag(oldOne.getLocation(), note_previous_definition);
+                diag(oldOne.getLocation(), note_previous_definition).emit();
                 newOne.setInvalidDecl(true);
                 return;
             }
@@ -1310,16 +1327,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             diag(newOne.getLocation(),
                     err_redefinition_different_typedef)
                     .addTaggedVal(newOne.getUnderlyingType())
-                    .addTaggedVal(oldType);
+                    .addTaggedVal(oldType).emit();
             if (oldTD.getLocation().isValid())
-                diag(oldTD.getLocation(), note_previous_definition);
+                diag(oldTD.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
         }
 
         diag(newOne.getLocation(), warn_redefinition_of_typedef)
-                .addTaggedVal(newOne.getDeclName());
-        diag(oldTD.getLocation(), note_previous_definition);
+                .addTaggedVal(newOne.getDeclName()).emit();
+        diag(oldTD.getLocation(), note_previous_definition).emit();
     }
 
     private NamedDecl actOnTypedefDeclarator(Scope s,
@@ -1358,7 +1375,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 diag(d.getDeclSpec().getSourceRange().getBegin(),
                         err_declarator_need_ident)
                         .addSourceRange(d.getDeclSpec().getSourceRange())
-                        .addSourceRange(d.getSourceRange());
+                        .addSourceRange(d.getSourceRange())
+                        .emit();
             }
             return null;
         }
@@ -1513,8 +1531,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (!(oldOne instanceof VarDecl))
         {
             diag(newOne.getLocation(), err_redefinition_different_kind)
-                    .addTaggedVal(newOne.getDeclName());
-            diag(oldOne.getLocation(), note_previous_definition);
+                    .addTaggedVal(newOne.getDeclName()).emit();
+            diag(oldOne.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1525,8 +1543,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (mergedTy.isNull())
         {
             diag(newOne.getLocation(), err_redefinition_different_type)
-            .addTaggedVal(newOne.getDeclName());
-            diag(Old.getLocation(), note_previous_definition);
+                .addTaggedVal(newOne.getDeclName()).emit();
+            diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1538,8 +1556,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 (Old.getStorageClass() == StorageClass.SC_none 
                         || Old.hasExternalStorage())) {
             diag(newOne.getLocation(), err_static_non_static).
-                    addTaggedVal(newOne.getDeclName());
-            diag(Old.getLocation(), note_previous_definition);
+                    addTaggedVal(newOne.getDeclName()).emit();
+            diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1557,8 +1575,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         else if (newOne.getStorageClass() != StorageClass.SC_static &&
                 Old.getStorageClass() == StorageClass.SC_static) {
             diag(newOne.getLocation(), err_non_static_static).
-                    addTaggedVal(newOne.getDeclName());
-            diag(Old.getLocation(), note_previous_definition);
+                    addTaggedVal(newOne.getDeclName()).emit();
+            diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1573,8 +1591,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             !newOne.getDeclContext().isRecord()))
         {
             diag(newOne.getLocation(), err_redefinition).
-                    addTaggedVal(newOne.getDeclName());
-            diag(Old.getLocation(), note_previous_definition);
+                    addTaggedVal(newOne.getDeclName()).emit();
+            diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
         }
@@ -1617,13 +1635,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
                 if (newVD.isFileVarDecl())
                     diag(newVD.getLocation(), err_vla_decl_in_file_scope)
-                            .addSourceRange(SizeRange);
+                            .addSourceRange(SizeRange)
+                            .emit();
                 else if (newVD.getStorageClass() == StorageClass.SC_static)
                     diag(newVD.getLocation(), err_vla_decl_has_static_storage)
-                            .addSourceRange(SizeRange);
+                            .addSourceRange(SizeRange)
+                            .emit();
                 else
                     diag(newVD.getLocation(), err_vla_decl_has_extern_linkage)
-                            .addSourceRange(SizeRange);
+                            .addSourceRange(SizeRange)
+                            .emit();
                 newVD.setInvalidDecl(true);
                 return;
             }
@@ -1631,14 +1652,14 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (FixedTy.isNull())
             {
                 if (newVD.isFileVarDecl())
-                    diag(newVD.getLocation(), err_vm_decl_in_file_scope);
+                    diag(newVD.getLocation(), err_vm_decl_in_file_scope).emit();
                 else
-                    diag(newVD.getLocation(), err_vm_decl_has_extern_linkage);
+                    diag(newVD.getLocation(), err_vm_decl_has_extern_linkage).emit();
                 newVD.setInvalidDecl(true);
                 return;
             }
 
-            diag(newVD.getLocation(), warn_illegal_constant_array_size);
+            diag(newVD.getLocation(), warn_illegal_constant_array_size).emit();
             newVD.setDeclType(FixedTy);
             return;
         }
@@ -1646,7 +1667,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (ty.isVoidType() && !newVD.hasExternalStorage())
         {
             diag(newVD.getLocation(), err_typecheck_decl_incomplete_type)
-                    .addTaggedVal(ty);
+                    .addTaggedVal(ty).emit();
             newVD.setInvalidDecl(true);
             return;
         }
@@ -1671,7 +1692,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         if (name == null)
         {
-            diag(d.getIdentifierLoc(), err_bad_variable_name);
+            diag(d.getIdentifierLoc(), err_bad_variable_name).emit();
             return null;
         }
 
@@ -1684,9 +1705,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (sc == StorageClass.SC_auto || sc == StorageClass.SC_register)
             {
                 if (sc == StorageClass.SC_register)
-                    diag(d.getIdentifierLoc(), err_unsupported_global_register);
+                    diag(d.getIdentifierLoc(), err_unsupported_global_register).emit();
                 else
-                    diag(d.getIdentifierLoc(), err_typecheck_sclass_fscope);
+                    diag(d.getIdentifierLoc(), err_typecheck_sclass_fscope).emit();
                 d.setInvalidType(true);
             }
         }
@@ -1696,11 +1717,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // This is an out-of-line definition of a static data member.
             if(sc == StorageClass.SC_static)
             {
-                diag(d.getDeclSpec().getStorageClassSpecLoc(),
-                        err_static_out_of_line)
-                        .addFixItHint(
-                        FixItHint.createRemoval(
-                        new SourceRange(d.getDeclSpec().getStorageClassSpecLoc())));
+                diag(d.getDeclSpec().getStorageClassSpecLoc(), err_static_out_of_line)
+                        .addFixItHint(FixItHint.createRemoval(
+                        new SourceRange(d.getDeclSpec().getStorageClassSpecLoc())))
+                        .emit();
             }else if (sc == StorageClass.SC_none)
                 sc = StorageClass.SC_static;
         }
@@ -1739,8 +1759,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             default: assert false :"Unknown storage class!";
             case SCS_auto:
             case SCS_register:
-                diag(d.getDeclSpec().getStorageClassSpecLoc(),
-                        err_typecheck_sclass_func);
+                diag(d.getDeclSpec().getStorageClassSpecLoc(), err_typecheck_sclass_func)
+                        .emit();
                 d.setInvalidType(true);
                 break;
             case SCS_unspecified:
@@ -1754,8 +1774,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     //   The declaration of an identifier for a function that has
                     //   block scope shall have no explicit storage-class specifier
                     //   other than extern
-                    diag(d.getDeclSpec().getStorageClassSpecLoc(),
-                            err_static_block_func);
+                    diag(d.getDeclSpec().getStorageClassSpecLoc(),err_static_block_func)
+                            .emit();
                     sc = StorageClass.SC_none;
                 }
                 else
@@ -1811,7 +1831,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     {
                         diag(declLoc, ext_missing_declspec)
                                 .addSourceRange(ds.getSourceRange()).addFixItHint
-                                (FixItHint.createInsertion(ds.getSourceRange().getBegin(), "int"));
+                                (FixItHint.createInsertion(ds.getSourceRange().getBegin(), "int"))
+                                .emit();
                     }
                 }
                 else if (!ds.hasTypeSpecifier())
@@ -1842,7 +1863,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         case TSW_longlong:
                             result = context.LongLongTy;
                             if (!getLangOptions().c99)
-                                diag(ds.getTypeSpecWidthLoc(), ext_longlong);
+                                diag(ds.getTypeSpecWidthLoc(), ext_longlong).emit();
                             break;
                     }
                 }
@@ -1859,7 +1880,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         case TSW_longlong:
                             result = context.UnsignedLongLongTy;
                             if (!getLangOptions().c99)
-                                diag(ds.getTypeSpecWidthLoc(), ext_longlong);
+                                diag(ds.getTypeSpecWidthLoc(), ext_longlong).emit();
                             break;
                     }
                 }
@@ -1935,14 +1956,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     if (!context.isIncompleteOrObjectType(eleTy))
                     {
                         diag(ds.getRestrictSpecLoc(), err_typecheck_invalid_restrict_invalid_pointee)
-                                .addTaggedVal(eleTy).addSourceRange(ds.getSourceRange());
+                                .addTaggedVal(eleTy).addSourceRange(ds.getSourceRange())
+                                .emit();
                         typeQuals &= ~TQ_restrict.value;
                     }
                 }
                 else
                 {
                     diag(ds.getRestrictSpecLoc(), err_typecheck_invalid_restrict_not_pointer)
-                            .addTaggedVal(result).addSourceRange(ds.getSourceRange());
+                            .addTaggedVal(result).addSourceRange(ds.getSourceRange())
+                            .emit();
                     typeQuals &= ~TQ_restrict.value;
                 }
             }
@@ -1966,7 +1989,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
                 diag(loc, warn_typecheck_function_qualifiers).
                         addTaggedVal(result).
-                        addSourceRange(ds.getSourceRange());
+                        addSourceRange(ds.getSourceRange()).
+                        emit();
             }
 
             QualType.Qualifier quals = QualType.Qualifier.fromCVRMask(typeQuals);
@@ -2093,8 +2117,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         diag(r.getNameLoc(), warn_decl_shadow).
                 addTaggedVal(name).
                 addTaggedVal(kind).
-                addTaggedVal(oldDC, Diagnostic.ArgumentKind.ak_std_string);
-        diag(shadowedDecl.getLocation(), note_previous_declaration);
+                addTaggedVal(oldDC, Diagnostic.ArgumentKind.ak_std_string)
+                .emit();
+        diag(shadowedDecl.getLocation(), note_previous_declaration).emit();
     }
 
     public ActionResult<Stmt> actOnDeclStmt(
@@ -2134,8 +2159,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // if the label was multiple defined, reject it and issue diagnostic
         if (theDecl.stmt != null)
         {
-            diag(identLoc, err_redefinition_of_label).addTaggedVal(theDecl.getDeclName());
-            diag(theDecl.getLocation(), note_previous_declaration);
+            diag(identLoc, err_redefinition_of_label).addTaggedVal(theDecl.getDeclName()).emit();
+            diag(theDecl.getLocation(), note_previous_declaration).emit();
             return subStmt;
         }
 
@@ -2182,25 +2207,25 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 || evalResult.hasSideEffects())
         {
             diag(expr.getExprLocation(), err_expr_not_ice).
-                    addSourceRange(expr.getSourceRange());
+                    addSourceRange(expr.getSourceRange()).emit();
             if (evalResult.diag >= 0)
             {
                 if (evalResult.diag != note_invalid_subexpr_in_ice
                         || !expr.ignoreParens().equals(evalResult.
                         diagExpr.ignoreParens()))
                 {
-                    diag(evalResult.diagLoc, evalResult.diag);
+                    diag(evalResult.diagLoc, evalResult.diag).emit();
                 }
             }
             return true;
         }
 
         diag(expr.getExprLocation(), ext_expr_not_ice)
-                .addSourceRange(expr.getSourceRange());
+                .addSourceRange(expr.getSourceRange()).emit();
 
-        if (evalResult.diag >= 0 && getParser().getDiags().getDiagnosticLevel(ext_expr_not_ice)
+        if (evalResult.diag >= 0 && pp.getDiagnostics().getDiagnosticLevel(ext_expr_not_ice)
                 != Diagnostic.Level.Ignored)
-            diag(evalResult.diagLoc, evalResult.diag);
+            diag(evalResult.diagLoc, evalResult.diag).emit();
 
         if (result.get() != null)
             result.set(evalResult.val.getInt());
@@ -2251,7 +2276,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (i != numElts)
             {
                 Decl d = ((DeclStmt)stmts.get(i)).iterator().next();
-                diag(d.getLocation(), ext_mixed_decls_code);
+                diag(d.getLocation(), ext_mixed_decls_code).emit();
             }
         }
 
@@ -2293,7 +2318,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         // if the subExpr already is a integral or enumeration jlang.type, we got it.
         if (!t.getType().isIntegralOrEnumerationType())
         {
-            diag(switchLoc, err_typecheck_expect_scalar_operand);
+            diag(switchLoc, err_typecheck_expect_scalar_operand).emit();
         }
         return new ActionResult<>(expr);
     }
@@ -2469,7 +2494,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (!condType.isIntegerType())
         {
             diag(switchLoc, err_typecheck_statement_requires_integer)
-                    .addTaggedVal(condType).addSourceRange(condExpr.getSourceRange());
+                    .addTaggedVal(condType).addSourceRange(condExpr.getSourceRange())
+                    .emit();
             return stmtError();
         }
 
@@ -2492,8 +2518,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 DefaultStmt ds = (DefaultStmt) sc;
                 if (prevDefaultStmt != null)
                 {
-                    diag(ds.defaultLoc, err_multiple_default_labels_defined);
-                    diag(prevDefaultStmt.defaultLoc, note_duplicate_case_prev);
+                    diag(ds.defaultLoc, err_multiple_default_labels_defined).emit();
+                    diag(prevDefaultStmt.defaultLoc, note_duplicate_case_prev).emit();
                     caseListErroneous = true;
                 }
                 prevDefaultStmt = ds;
@@ -2566,11 +2592,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
                     if (i != 0 && Case.first.eq(caseLists.get(i - 1).first))
                     {
-                        diag(Case.second.getCaseLoc(),err_duplicate_case).
-                                addTaggedVal(Case.first.toString(10));
+                        diag(Case.second.getCaseLoc(),err_duplicate_case)
+                                .addTaggedVal(Case.first.toString(10))
+                                .emit();
                         Pair<APSInt, SwitchCase> prevDup = caseLists.get(i - 1);
                         diag(prevDup.second.getCaseLoc(), note_duplicate_case_prev)
-                                .addTaggedVal(prevDup.first.toString(10));
+                                .addTaggedVal(prevDup.first.toString(10))
+                                .emit();
 
                         caseListErroneous = true;
                     }
@@ -2580,9 +2608,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // complain if we have a constant condition and we didn't find a match.
             if (!caseListErroneous && shouldCheckConstantCond)
             {
-                diag(condExpr.getExprLocation(), warn_missing_case_for_condition).
-                        addTaggedVal(constantCondValue.toString(10)).
-                        addSourceRange(condExpr.getSourceRange());
+                diag(condExpr.getExprLocation(), warn_missing_case_for_condition)
+                        .addTaggedVal(constantCondValue.toString(10))
+                        .addSourceRange(condExpr.getSourceRange())
+                        .emit();
             }
 
             // Check to see if switch is over an Enum and handles all of its
@@ -2629,8 +2658,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                             next = ei.next();
                         if (!ei.hasNext() || next.first.gt(ci.first))
                         {
-                            diag(ci.second.getCaseLoc(), warn_not_in_enum).
-                                    addTaggedVal(ed.getDeclName());
+                            diag(ci.second.getCaseLoc(), warn_not_in_enum)
+                                    .addTaggedVal(ed.getDeclName())
+                                    .emit();
                         }
                     }
                 }
@@ -2660,19 +2690,22 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     case 0:
                         break;
                     case 1:
-                        diag(condExpr.getExprLocation(), warn_missing_case1).
-                                addTaggedVal(unhandledNames.get(0));
+                        diag(condExpr.getExprLocation(), warn_missing_case1)
+                                .addTaggedVal(unhandledNames.get(0))
+                                .emit();
                         break;
                     case 2:
-                        diag(condExpr.getExprLocation(), warn_missing_case2).
-                                addTaggedVal(unhandledNames.get(0)).
-                                addTaggedVal(unhandledNames.get(1));
+                        diag(condExpr.getExprLocation(), warn_missing_case2)
+                                .addTaggedVal(unhandledNames.get(0))
+                                .addTaggedVal(unhandledNames.get(1))
+                                .emit();
                         break;
                     case 3:
-                        diag(condExpr.getExprLocation(), warn_missing_case3).
-                                addTaggedVal(unhandledNames.get(0)).
-                                addTaggedVal(unhandledNames.get(1)).
-                                addTaggedVal(unhandledNames.get(2));
+                        diag(condExpr.getExprLocation(), warn_missing_case3)
+                                .addTaggedVal(unhandledNames.get(0))
+                                .addTaggedVal(unhandledNames.get(1))
+                                .addTaggedVal(unhandledNames.get(2))
+                                .emit();
                         break;
                     default:
                         diag(condExpr.getExprLocation(), warn_missing_cases).
@@ -2726,7 +2759,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (!newSign && oldVal.isSigned() && oldVal.isNegative())
             {
                 diag(loc, diagID).addTaggedVal(oldVal.toString(10))
-                        .addTaggedVal(val.toString(10));
+                        .addTaggedVal(val.toString(10))
+                        .emit();
             }
             val.setIssigned(newSign);
         }
@@ -2740,7 +2774,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             convVal.setIssigned(newSign);
             if (!convVal.eq(val))
                 diag(loc, diagID).addTaggedVal(val.toString(10)).
-                        addTaggedVal(convVal.toString(10));
+                        addTaggedVal(convVal.toString(10)).
+                        emit();
 
             // Regardless of whether a diagnostic was emitted, really do the
             // truncation.
@@ -2757,7 +2792,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // Sign bit changed.
             if (val.isNegative())
                 diag(loc, diagID).addTaggedVal(oldVal.toString(10)).
-                        addTaggedVal(val.toString(10));
+                        addTaggedVal(val.toString(10)).emit();
         }
     }
 
@@ -2803,7 +2838,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             diag(loc, err_typecheck_statement_requires_scalar).
                     addTaggedVal(t).
-                    addSourceRange(cond.getSourceRange());
+                    addSourceRange(cond.getSourceRange()).
+                    emit();
             return exprError();
         }
 
@@ -2879,7 +2915,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // or incomplete types shall not be restrict-qualified."
             if ((typeQuals & TQ_restrict.value) != 0)
                 diag(ds.getRestrictSpecLoc(), err_typecheck_invalid_restrict_not_pointer)
-                        .addSourceRange(ds.getSourceRange());
+                        .addSourceRange(ds.getSourceRange()).emit();
         }
 
         if (ds.getTypeSpecType() == TST.TST_error)
@@ -2894,12 +2930,12 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     && tag instanceof EnumDecl)
             {
                 diag(ds.getSourceRange().getBegin(), ext_typedef_without_a_name)
-                        .addSourceRange(ds.getSourceRange());
+                        .addSourceRange(ds.getSourceRange()).emit();
                 return tag;
             }
 
             diag(ds.getSourceRange().getBegin(), ext_no_declarators)
-                    .addSourceRange(ds.getSourceRange());
+                    .addSourceRange(ds.getSourceRange()).emit();
             emittedWarning = true;
         }
 
@@ -2913,15 +2949,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             if ((ds.getTypeQualifier() & TQ_const.value) != 0)
                 diag(ds.getConstSpecLoc(), warn_standalone_specifier).
-                        addTaggedVal("const");
+                        addTaggedVal("const").emit();
             if ((ds.getTypeQualifier() & TQ_volatile.value) != 0)
                 diag(ds.getVolatileSpecLoc(), warn_standalone_specifier).
-                        addTaggedVal("volatile");
+                        addTaggedVal("volatile").emit();
         }
 
         if (ds.isInlineSpecifier())
             diag(ds.getInlineSpecLoc(), warn_standalone_specifier).
-                    addTaggedVal("inline");
+                    addTaggedVal("inline").emit();
 
         return tagD;
     }
@@ -3020,7 +3056,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // definitions with incomplete array jlang.type.
             if (type.isIncompleteArrayType())
             {
-                diag(var.getLocation(), err_typecheck_incomplete_array_needs_initializer);
+                diag(var.getLocation(), err_typecheck_incomplete_array_needs_initializer).emit();
                 var.setInvalidDecl(true);
                 return;
             }
@@ -3087,7 +3123,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     if (vd != null && vd.isLocalVarDecl() && !vd
                             .hasLocalStorage())
                     {
-                        diag(d.getLocation(), err_non_variable_decl_in_for);
+                        diag(d.getLocation(), err_non_variable_decl_in_for).emit();
                     }
                 }
             }
@@ -3116,7 +3152,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (s == null)
         {
             // C99 6.8.6.2p1: A break shall appear only in or as a loop body.
-            diag(continueLoc, err_continue_not_in_loop);
+            diag(continueLoc, err_continue_not_in_loop).emit();
             return stmtError();
         }
         return new ActionResult<>(new ContinueStmt(continueLoc));
@@ -3130,7 +3166,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (s == null)
         {
             // C99 6.8.6.3p1: A break shall appear only in or as a switch/loop body.
-            diag(breakLoc, err_break_not_in_loop_or_switch);
+            diag(breakLoc, err_break_not_in_loop_or_switch).emit();
             return stmtError();
         }
         return new ActionResult<>(new BreakStmt(breakLoc));
@@ -3197,8 +3233,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     NamedDecl curDecl = getCurFunctionDecl();
                     diag(returnLoc, diagID)
                             .addTaggedVal(curDecl.getDeclName())
-                            .addTaggedVal(0).
-                            addSourceRange(retValExpr.getSourceRange());
+                            .addTaggedVal(0)
+                            .addSourceRange(retValExpr.getSourceRange())
+                            .emit();
                 }
 
                 checkImplicitConversion(retValExpr, returnLoc);
@@ -3211,9 +3248,10 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // C99 6.8.6.4p1 (ext_ since GCC warns)
             if (getLangOptions().c99)
                 diagID = ext_return_missing_expr;
-            diag(returnLoc, diagID).
-                    addTaggedVal(fd.getIdentifier()).
-                    addTaggedVal(0);
+            diag(returnLoc, diagID)
+                    .addTaggedVal(fd.getIdentifier())
+                    .addTaggedVal(0)
+                    .emit();
             res = new ReturnStmt(returnLoc);
         }
         else
@@ -3621,7 +3659,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 addTaggedVal(lhs.get().getType()).
                 addTaggedVal(rhs.get().getType()).
                 addSourceRange(lhs.get().getSourceRange()).
-                addSourceRange(rhs.get().getSourceRange());
+                addSourceRange(rhs.get().getSourceRange()).
+                emit();
         return new QualType();
     }
 
@@ -4148,14 +4187,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         QualType pointeeTy = operand.getType().getPointee();
         if (pointeeTy.isVoidType())
         {
-            diag(loc, ext_gnu_void_ptr);
+            diag(loc, ext_gnu_void_ptr).emit();
             return true;
         }
         if (pointeeTy.isFunctionType())
         {
             diag(loc, ext_gnu_ptr_func_arith).
                     addTaggedVal(pointeeTy).
-                    addSourceRange(operand.getSourceRange());
+                    addSourceRange(operand.getSourceRange()).
+                    emit();
             return true;
         }
 
@@ -4164,25 +4204,26 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
     private void diagnoseArithmeticOnVoidPointer(SourceLocation loc, Expr expr)
     {
-        diag(loc, ext_gnu_void_ptr);
+        diag(loc, ext_gnu_void_ptr).emit();
     }
 
     private void diagnoseArithmeticOnTwoVoidPointers(SourceLocation loc, Expr lhs, Expr rhs)
     {
-        diag(loc, ext_gnu_void_ptr);
+        diag(loc, ext_gnu_void_ptr).emit();
     }
 
     private void diagnoseArithmeticOnFunctionPointer(SourceLocation loc, Expr operand)
     {
         diag(loc, ext_gnu_ptr_func_arith).addTaggedVal(operand.getType()).
-                addSourceRange(operand.getSourceRange());
+                addSourceRange(operand.getSourceRange()).emit();
     }
 
     private void diagnoseArithmeticOnTwoFunctionPointers(SourceLocation loc, Expr lhs, Expr rhs)
     {
         diag(loc, ext_gnu_ptr_func_arith).
                 addTaggedVal(lhs.getType()).
-                addTaggedVal(rhs.getType());
+                addTaggedVal(rhs.getType()).
+                emit();
     }
 
     /**
@@ -4259,17 +4300,17 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             return true;
 
         // We have an incomplete type. Produce a diagnostic.
-        diag(loc, pdiag).addTaggedVal(t);
+        diag(loc, pdiag).addTaggedVal(t).emit();
 
         if (notes.first.isValid())
-            diag(notes.first, notes.second);
+            diag(notes.first, notes.second).emit();
 
         // If the type was a forward declaration of a class/struct/union
         // type, produce a note.
         if (tag != null && !tag.getDecl().isInvalidDecl())
             diag(tag.getDecl().getLocation(), 
                     tag.isBeingDefined() ? note_type_being_defined : note_forward_declaration).
-                    addTaggedVal(new QualType(tag));
+                    addTaggedVal(new QualType(tag)).emit();
                     
         return true;
     }
@@ -4326,10 +4367,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         assert(lhs.getType().isPointerType());
         assert(rhs.getType().isPointerType());
         sema.diag(loc, err_typecheck_sub_ptr_compatible)
-                .addTaggedVal(lhs.getType()).
-                addTaggedVal(rhs.getType())
+                .addTaggedVal(lhs.getType())
+                .addTaggedVal(rhs.getType())
                 .addSourceRange(lhs.getSourceRange())
-                .addSourceRange(rhs.getSourceRange());
+                .addSourceRange(rhs.getSourceRange())
+                .emit();
     }
 
     // C99 6.5.6
@@ -4499,50 +4541,56 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             default:
                 Util.shouldNotReachHere("Unknown binary operator token!");
-            case STAR:          opc = BinaryOperatorKind.BO_Mul;break;
-            case SLASH:         opc = BO_Div; break;
-            case PERCENT:       opc = BinaryOperatorKind.BO_Rem; break;
-            case PLUS:          opc = BinaryOperatorKind.BO_Add; break;
-            case SUB:           opc = BinaryOperatorKind.BO_Sub;break;
-            case LTLT:          opc = BinaryOperatorKind.BO_Shl; break;
-            case GTGT:          opc = BinaryOperatorKind.BO_Shr; break;
-            case LTEQ:          opc = BinaryOperatorKind.BO_LE;break;
-            case LT:            opc = BinaryOperatorKind.BO_LT; break;
-            case GTEQ:          opc = BinaryOperatorKind.BO_GE; break;
-            case GT:            opc = BinaryOperatorKind.BO_GT; break;
-            case BANGEQ:        opc = BinaryOperatorKind.BO_NE; break;
-            case EQ:            opc = BinaryOperatorKind.BO_EQ; break;
+            case star:          opc = BinaryOperatorKind.BO_Mul;break;
+            case slash:         opc = BO_Div; break;
+            case percent:       opc = BinaryOperatorKind.BO_Rem; break;
+            case plus:          opc = BinaryOperatorKind.BO_Add; break;
+            case sub:           opc = BinaryOperatorKind.BO_Sub;break;
+            case lessless:          opc = BinaryOperatorKind.BO_Shl; break;
+            case greatergreater:          opc = BinaryOperatorKind.BO_Shr; break;
+            case lessequal:          opc = BinaryOperatorKind.BO_LE;break;
+            case less:            opc = BinaryOperatorKind.BO_LT; break;
+            case greaterequal:          opc = BinaryOperatorKind.BO_GE; break;
+            case greater:            opc = BinaryOperatorKind.BO_GT; break;
+            case bangequal:        opc = BinaryOperatorKind.BO_NE; break;
+            case equal:            opc = BinaryOperatorKind.BO_EQ; break;
             case amp:           opc = BinaryOperatorKind.BO_And; break;
-            case CARET:         opc = BinaryOperatorKind.BO_Xor; break;
-            case BAR:           opc = BinaryOperatorKind.BO_Or; break;
-            case AMPAMP:        opc = BinaryOperatorKind.BO_LAnd; break;
-            case BARBAR:        opc = BinaryOperatorKind.BO_LOr;break;
-            case EQEQ:          opc = BinaryOperatorKind.BO_Assign; break;
-            case STAREQ:        opc = BinaryOperatorKind.BO_MulAssign;break;
-            case SLASHEQ:       opc = BinaryOperatorKind.BO_DivAssign; break;
-            case PERCENTEQ:     opc = BinaryOperatorKind.BO_RemAssign;break;
-            case PLUSEQ:        opc = BinaryOperatorKind.BO_AddAssign; break;
-            case SUBEQ:         opc = BinaryOperatorKind.BO_SubAssign;break;
-            case LTLTEQ:        opc = BinaryOperatorKind.BO_ShlAssign;break;
-            case GTGTEQ:        opc = BinaryOperatorKind.BO_ShrAssign; break;
-            case AMPEQ:         opc = BinaryOperatorKind.BO_AndAssign; break;
-            case CARETEQ:       opc = BinaryOperatorKind.BO_XorAssign;break;
-            case BAREQ:         opc = BinaryOperatorKind.BO_OrAssign;break;
-            case COMMA:         opc = BinaryOperatorKind.BO_Comma;break;
+            case caret:         opc = BinaryOperatorKind.BO_Xor; break;
+            case bar:           opc = BinaryOperatorKind.BO_Or; break;
+            case ampamp:        opc = BinaryOperatorKind.BO_LAnd; break;
+            case barbar:        opc = BinaryOperatorKind.BO_LOr;break;
+            case equalequal:          opc = BinaryOperatorKind.BO_Assign; break;
+            case starequal:        opc = BinaryOperatorKind.BO_MulAssign;break;
+            case slashequal:       opc = BinaryOperatorKind.BO_DivAssign; break;
+            case percentequal:     opc = BinaryOperatorKind.BO_RemAssign;break;
+            case plusequal:        opc = BinaryOperatorKind.BO_AddAssign; break;
+            case subequal:         opc = BinaryOperatorKind.BO_SubAssign;break;
+            case lesslessequal:        opc = BinaryOperatorKind.BO_ShlAssign;break;
+            case greatergreaterequal:        opc = BinaryOperatorKind.BO_ShrAssign; break;
+            case ampequal:         opc = BinaryOperatorKind.BO_AndAssign; break;
+            case caretequal:       opc = BinaryOperatorKind.BO_XorAssign;break;
+            case barequal:         opc = BinaryOperatorKind.BO_OrAssign;break;
+            case comma:         opc = BinaryOperatorKind.BO_Comma;break;
         }
         return opc;
     }
 
     public ActionResult<Expr> actOnCharacterConstant(Token tok)
     {
-        assert tok.tag == CHARLITERAL :"Invalid character literal!";
-        CharLiteral ch = (CharLiteral)tok;
+        assert tok.is(char_constant) : "Invalid character literal!";
+
+        String charBuffer = pp.getSpelling(tok);
+        CharLiteralParser literal = new CharLiteralParser(charBuffer,
+                tok.getLocation(), pp);
+        if (literal.hadError())
+            return exprError();
+
         QualType ty = context.IntTy;
 
         return new ActionResult<>(new CharacterLiteral(
-                ch.getValue(),
-                ty, EVK_RValue,
-                ch.loc));
+                (int)literal.getValue(),
+                false,
+                ty, tok.getLocation()));
     }
 
 	/**
@@ -4585,15 +4633,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 return UO_PreDec;
             case amp:
                 return UO_AddrOf;
-            case STAR:
+            case star:
                 return UO_Deref;
-            case PLUS:
+            case plus:
                 return UO_Plus;
-            case SUB:
+            case sub:
                 return UO_Minus;
-            case TILDE:
+            case tilde:
                 return UO_Not;
-            case BANG:
+            case bang:
                 return UO_LNot;
         }
     }
@@ -4649,7 +4697,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (result.isNull())
         {
             diag(opLoc, err_typecheck_indirection_requires_pointer)
-                    .addTaggedVal(opTy).addSourceRange(op.getSourceRange());
+                    .addTaggedVal(opTy).addSourceRange(op.getSourceRange())
+                    .emit();
             return new QualType();
         }
 
@@ -4688,12 +4737,16 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             // C99 does not support ++/-- on complex types, we allow as an extension.
             diag(opLoc, ext_integer_increment_complex).addTaggedVal(resType)
-                    .addSourceRange(op.getSourceRange());
+                    .addSourceRange(op.getSourceRange())
+                    .emit();
         }
         else
         {
             diag(opLoc, err_typecheck_illegal_increment_decrement).
-                    addTaggedVal(resType).addTaggedVal(isIncre?1:0).addSourceRange(op.getSourceRange());
+                    addTaggedVal(resType).
+                    addTaggedVal(isIncre?1:0).
+                    addSourceRange(op.getSourceRange()).
+                    emit();
             return new QualType();
         }
 
@@ -4769,10 +4822,11 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (needType)
             diag(oploc, diag).addTaggedVal(e.getType()).
                     addSourceRange(e.getSourceRange()).
-                    addSourceRange(assign);
+                    addSourceRange(assign).
+                    emit();
         else
             diag(oploc, diag).addSourceRange(e.getSourceRange()).
-                    addSourceRange(assign);
+                    addSourceRange(assign).emit();
         return true;
     }
 
@@ -4860,7 +4914,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 // GCC struct/union extension: allow cast to self.
                 diag(range.getBegin(), ext_typecheck_cast_nonscalar)
                         .addTaggedVal(castTy)
-                        .addSourceRange(expr.getSourceRange());
+                        .addSourceRange(expr.getSourceRange())
+                        .emit();
                 kind.set(CK_NoOp);
             }
             else if (castTy.isUnionType())
@@ -4875,7 +4930,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                             equals(expr.getType().getCanonicalTypeInternal().getUnQualifiedType()))
                     {
                         diag(range.getBegin(), ext_typecheck_cast_to_union)
-                                .addSourceRange(expr.getSourceRange());
+                                .addSourceRange(expr.getSourceRange())
+                                .emit();
                         break;
                     }
                 }
@@ -4883,7 +4939,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 {
                     diag(range.getBegin(), err_typecheck_cast_to_union_no_type)
                             .addTaggedVal(expr.getType())
-                            .addSourceRange(expr.getSourceRange());
+                            .addSourceRange(expr.getSourceRange())
+                            .emit();
                     return true;
                 }
                 kind.set(CK_ToUnion);
@@ -4892,17 +4949,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             {
                 // Reject any other conversions to non-scalar types.
                 diag(range.getBegin(), err_typecheck_cond_expect_scalar)
-                .addTaggedVal(castTy)
-                .addSourceRange(expr.getSourceRange());
+                    .addTaggedVal(castTy)
+                    .addSourceRange(expr.getSourceRange())
+                    .emit();
                 return true;
             }
         }
         else if (!expr.getType().isScalarType())
         {
-            diag(expr.getLocStart(),
-                    err_typecheck_expect_scalar_operand)
-            .addTaggedVal(expr.getType())
-            .addSourceRange(expr.getSourceRange());
+            diag(expr.getLocStart(),err_typecheck_expect_scalar_operand)
+                    .addTaggedVal(expr.getType())
+                    .addSourceRange(expr.getSourceRange())
+                    .emit();
             return true;
         }
         else if (!castTy.isArithmeticType())
@@ -4914,7 +4972,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 diag(expr.getLocStart(),
                         err_cast_pointer_from_non_pointer_int)
                         .addTaggedVal(castExprType)
-                        .addSourceRange(expr.getSourceRange());
+                        .addSourceRange(expr.getSourceRange())
+                        .emit();
                 return true;
             }
         }
@@ -4925,7 +4984,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 diag(expr.getLocStart(),
                         err_cast_pointer_to_non_pointer_int)
                         .addTaggedVal(castTy)
-                        .addSourceRange(expr.getSourceRange());
+                        .addSourceRange(expr.getSourceRange())
+                        .emit();
                 return true;
             }
         }
@@ -5042,7 +5102,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // allow promoting non-lvalue arrays.  Warn, then
             // force the promotion here.
             diag(lhsExpr.getLocStart(), ext_subscript_non_lvalue)
-                    .addSourceRange(lhsExpr.getSourceRange());
+                    .addSourceRange(lhsExpr.getSourceRange()).emit();
             lhsExpr = implicitCastExprToType(lhsExpr,
                     context.getArrayDecayedType(lhsTy),
                     EVK_RValue,
@@ -5057,7 +5117,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             // Same as previous, except for 123[f().a] case
             diag(rhsExpr.getLocStart(), ext_subscript_non_lvalue).
-                    addSourceRange(rhsExpr.getSourceRange());
+                    addSourceRange(rhsExpr.getSourceRange()).emit();
             rhsExpr = implicitCastExprToType(rhsExpr,
                     context.getArrayDecayedType(rhsTy),
                     EVK_RValue,
@@ -5070,32 +5130,35 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         }
         else
         {
-            diag(lParenLoc, err_typecheck_subscript_value).
-                    addSourceRange(lhsExpr.getSourceRange()).
-                    addSourceRange(rhsExpr.getSourceRange());
+            diag(lParenLoc, err_typecheck_subscript_value)
+                    .addSourceRange(lhsExpr.getSourceRange())
+                    .addSourceRange(rhsExpr.getSourceRange())
+                    .emit();
             return exprError();
         }
 
         // C99 6.5.2.1p1
         if (!idxExpr.getType().isIntegerType())
         {
-            diag(lParenLoc, err_typecheck_subscript_not_integer);
+            diag(lParenLoc, err_typecheck_subscript_not_integer).emit();
             return exprError();
         }
 
         if (context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.UnsignedChar)
                 || context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.Char))
         {
-            diag(lParenLoc, warn_subscript_is_char).
-                    addSourceRange(idxExpr.getSourceRange());
+            diag(lParenLoc, warn_subscript_is_char)
+                    .addSourceRange(idxExpr.getSourceRange())
+                    .emit();
         }
 
         // C99 6.5.2.1p1: "shall have type "pointer to *object* type".
         if (resultTy.isFunctionType())
         {
             diag(baseExpr.getLocStart(), err_subscript_function_type)
-                    .addTaggedVal(resultTy).
-                    addSourceRange(baseExpr.getSourceRange());
+                    .addTaggedVal(resultTy)
+                    .addSourceRange(baseExpr.getSourceRange())
+                    .emit();
             return exprError();
         }
 
@@ -5103,7 +5166,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             // GNU extension: subscripting on pointer to void.
             diag(lParenLoc, ext_gnu_subscript_void_type)
-                    .addSourceRange(baseExpr.getSourceRange());
+                    .addSourceRange(baseExpr.getSourceRange())
+                    .emit();
 
             // C forbids expressions of unqualified void type from being l-values.
             // See IsCForbiddenLValueType.
@@ -5131,7 +5195,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         ActionResult<Expr> res = new ActionResult<>(ex.getExpr(0));
         for (int i = 0, size = ex.getNumExprs();!res.isInvalid()&&i < size; ++i)
-            res = actOnBinOp(ex.getExprLoc(), Token.COMMA, res.get(), ex.getExpr(i));
+            res = actOnBinOp(ex.getExprLoc(), Token.comma, res.get(), ex.getExpr(i));
 
         if (res.isInvalid())
             return exprError();
@@ -5233,13 +5297,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                     err_typecheck_call_too_few_args).
                     addTaggedVal(fnKind).
                     addTaggedVal(numArgs).
-                    addSourceRange(fn.getSourceRange());
+                    addSourceRange(fn.getSourceRange()).
+                    emit();
 
             // Emit the location of the prototype.
             if (fndecl != null)
             {
                 diag(fndecl.getLocation(), note_callee_decl).
-                        addTaggedVal(fndecl.getDeclName());
+                        addTaggedVal(fndecl.getDeclName()).
+                        emit();
             }
             call.setNumArgs(numArgsInProto);
             return true;
@@ -5255,13 +5321,15 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                         .addTaggedVal(fnKind).addTaggedVal(numArgsInProto)
                         .addTaggedVal(numArgs).addSourceRange(fn.getSourceRange())
                         .addSourceRange(new SourceRange(args.get(numArgsInProto-1).getLocStart(),
-                                args.get(numArgs - 1).getLocEnd()));
+                                args.get(numArgs - 1).getLocEnd()))
+                        .emit();
 
                 // Emit the location of the prototype.
                 if (fndecl != null)
                 {
                     diag(fndecl.getLocation(), note_callee_decl).
-                            addTaggedVal(fndecl.getDeclName());
+                            addTaggedVal(fndecl.getDeclName()).
+                            emit();
                 }
 
                 // This drop off the extra arguments.
@@ -5462,7 +5530,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             {
                 diag(lParenLoc, err_typecheck_call_not_function).
                         addTaggedVal(fn.getType()).
-                        addSourceRange(fn.getSourceRange());
+                        addSourceRange(fn.getSourceRange())
+                        .emit();
                 return exprError();
             }
         }
@@ -5471,7 +5540,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             // Handle calls to expressions of unknown-any jlang.type.
             diag(lParenLoc, err_typecheck_call_not_function).
                     addTaggedVal(fn.getType()).
-                    addSourceRange(fn.getSourceRange());
+                    addSourceRange(fn.getSourceRange()).
+                    emit();
             return exprError();
         }
 
@@ -5657,7 +5727,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             diag(lookupResult.getNameLoc(), err_no_member)
             .addTaggedVal(memberName)
             .addTaggedVal(dc.getDeclName())
-            .addSourceRange(baseExpr != null ? baseExpr.getSourceRange():new SourceRange());
+            .addSourceRange(baseExpr != null ? baseExpr.getSourceRange():new SourceRange())
+            .emit();
 
             return exprError();
         }
@@ -5697,16 +5768,20 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             diag(memberLoc, err_typecheck_member_reference_type)
                     .addTaggedVal(memberName)
                     .addTaggedVal(baseType)
-                    .addTaggedVal(isArrow?1:0);
+                    .addTaggedVal(isArrow?1:0)
+                    .emit();
         }
         else
         {
             diag(memberLoc, err_typecheck_member_reference_unknown)
                     .addTaggedVal(memberName)
                     .addTaggedVal(baseType)
-                    .addTaggedVal(isArrow?1:0);
+                    .addTaggedVal(isArrow?1:0)
+                    .emit();
         }
-        diag(memberDecl.getLocation(), note_member_declared_here).addTaggedVal(memberName);
+        diag(memberDecl.getLocation(), note_member_declared_here)
+                .addTaggedVal(memberName)
+                .emit();
         return exprError();
     }
 
@@ -5751,16 +5826,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 //   struct MyRecord foo;
                 //   foo->bar
                 diag(opLoc, err_typecheck_member_reference_suggestion)
-                .addTaggedVal(baseType).addTaggedVal(isArrow?1:0).
-                        addSourceRange(baseExpr.get().get().getSourceRange())
-                        .addFixItHint(FixItHint.createReplacement(opLoc, "."));
+                        .addTaggedVal(baseType).addTaggedVal(isArrow?1:0)
+                        .addSourceRange(baseExpr.get().get().getSourceRange())
+                        .addFixItHint(FixItHint.createReplacement(opLoc, "."))
+                        .emit();
                 isArrow = false;
             }
             else
             {
                 diag(memberLoc, err_typecheck_member_reference_arrow)
-                        .addTaggedVal(baseType).
-                        addSourceRange(baseExpr.get().get().getSourceRange());
+                        .addTaggedVal(baseType)
+                        .addSourceRange(baseExpr.get().get().getSourceRange())
+                        .emit();
                 return exprError();
             }
         }
@@ -5789,7 +5866,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 diag(opLoc, err_typecheck_member_reference_suggestion)
                         .addTaggedVal(baseType).addTaggedVal(isArrow?1:0)
                         .addSourceRange(baseExpr.get().get().getSourceRange())
-                        .addFixItHint(FixItHint.createReplacement(opLoc, "->"));
+                        .addFixItHint(FixItHint.createReplacement(opLoc, "->"))
+                        .emit();
 
                 // Recurse as an -> access.
                 isArrow = true;
@@ -5800,7 +5878,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         diag(memberLoc, err_typecheck_member_reference_struct_union)
                 .addTaggedVal(baseType)
-                .addSourceRange(baseExpr.get().get().getSourceRange());
+                .addSourceRange(baseExpr.get().get().getSourceRange())
+                .emit();
         return exprError();
     }
 
@@ -5916,7 +5995,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 {
                     diag(opLoc, err_typecheck_unary_expr)
                     .addTaggedVal(resultTy).addSourceRange
-                            (input.get().getSourceRange());
+                            (input.get().getSourceRange()).emit();
                     return exprError();
                 }
             }
@@ -5932,7 +6011,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 {
                     diag(opLoc, err_typecheck_unary_expr)
                             .addTaggedVal(resultTy).addSourceRange
-                            (input.get().getSourceRange());
+                            (input.get().getSourceRange()).emit();
                     return exprError();
                 }
             }
@@ -5947,7 +6026,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
                 {
                     diag(opLoc, err_typecheck_unary_expr)
                             .addTaggedVal(resultTy)
-                            .addSourceRange(input.get().getSourceRange());
+                            .addSourceRange(input.get().getSourceRange())
+                            .emit();
                     return exprError();
                 }
                 // LNot always has type int. C99 6.5.3.3p5.
@@ -5979,13 +6059,13 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         int diagnostic = err_undeclared_var_use;
         //int diagnosticSuggest = err_undeclared_var_use_suggest;
         // We can not recovery.
-        diag(res.getNameLoc(), diagnostic).addTaggedVal(name);
+        diag(res.getNameLoc(), diagnostic).addTaggedVal(name).emit();
         return true;
     }
 
     private LangOptions getLangOptions()
     {
-        return parser.getPP().getLangOptions();
+        return pp.getLangOptions();
     }
 
 	/**
@@ -6040,18 +6120,18 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         {
             NamedDecl prev = locallyScopedExternalDecls.get(name);
             diag(nameLoc, warn_use_out_of_scope_declaration)
-                    .addTaggedVal(prev.getDeclName());
-            diag(prev.getLocation(), note_previous_declaration);
+                    .addTaggedVal(prev.getDeclName()).emit();
+            diag(prev.getLocation(), note_previous_declaration).emit();
             return prev;
         }
 
         // Extension in C99.  Legal in C90, but warn about it.
         if (getLangOptions().c99)
             diag(nameLoc, ext_implicit_function_decl)
-                    .addTaggedVal(name);
+                    .addTaggedVal(name).emit();
         else
             diag(nameLoc, warn_implicit_function_decl)
-                    .addTaggedVal(name);
+                    .addTaggedVal(name).emit();
         DeclSpec ds = new DeclSpec();
         OutParamWrapper<String> x = new OutParamWrapper<>();
         OutParamWrapper<Integer> y = new OutParamWrapper<>();
@@ -6095,9 +6175,9 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
         if (res.isAmbiguous())
         {
-            diag(nameLoc, err_ambiguous_reference).addTaggedVal(name);
+            diag(nameLoc, err_ambiguous_reference).addTaggedVal(name).emit();
             diag(res.getFoundDecl().getLocation(), note_ambiguous_candidate)
-                    .addTaggedVal(res.getFoundDecl().getDeclName());
+                    .addTaggedVal(res.getFoundDecl().getDeclName()).emit();
             return exprError();
         }
         if (res.isEmpty())
@@ -6198,7 +6278,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
 
             if (l.body != null)
                 continue;
-            diag(l.loc, err_undeclared_label_use).addTaggedVal(l.getName());
+            diag(l.loc, err_undeclared_label_use).addTaggedVal(l.getName()).emit();
 
             if (fnBody == null)
             {
@@ -6241,7 +6321,8 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (decl instanceof TypedefNameDecl)
         {
             diag(loc, err_unexpected_typedef_ident)
-                    .addTaggedVal(decl.getDeclName());
+                    .addTaggedVal(decl.getDeclName())
+                    .emit();
             return true;
         }
         return false;
@@ -6315,7 +6396,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (!(decl instanceof VarDecl))
         {
             assert !(decl instanceof FieldDecl) : "field init shoudln't gt here!";
-            diag(decl.getLocation(), err_illegal_initializer);
+            diag(decl.getLocation(), err_illegal_initializer).emit();
             decl.setInvalidDecl(true);
             return;
         }
@@ -6347,7 +6428,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (vd.hasExternalStorage())
             {
                 // C99 6.7.8p5
-                diag(vd.getLocation(), err_block_extern_cant_init);
+                diag(vd.getLocation(), err_block_extern_cant_init).emit();
                 vd.setInvalidDecl(true);
             }
             else if(!vd.isInvalidDecl())
@@ -6366,7 +6447,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
             if (vd.hasExternalStorage() &&
                     !context.getBaseElementType(vd.getDeclType()).isConstQualifed())
             {
-                diag(vd.getLocation(), warn_extern_init);
+                diag(vd.getLocation(), warn_extern_init).emit();
             }
             if (!vd.isInvalidDecl())
             {
@@ -6423,7 +6504,7 @@ public final class Sema implements DiagnosticParseTag, DiagnosticCommonKindsTag,
         if (init.isConstantInitializer())
             return false;
         diag(init.getExprLocation(), err_init_element_not_constant)
-                .addSourceRange(init.getSourceRange());
+                .addSourceRange(init.getSourceRange()).emit();
         return true;
     }
 

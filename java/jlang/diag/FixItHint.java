@@ -25,9 +25,9 @@ import jlang.basic.SourceRange;
  */
 public class FixItHint
 {
-	private SourceLocation insertionLoc;
-	private String codeToInsert;
-	private SourceRange removeRange;
+	public SourceLocation insertionLoc;
+	public String codeToInsert;
+	public SourceRange removeRange;
 
 	/**
 	 * Create a code modification hint that inserts the given

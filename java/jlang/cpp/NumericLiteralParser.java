@@ -20,6 +20,7 @@ import jlang.basic.SourceLocation;
 import jlang.sema.APFloat;
 import jlang.sema.APInt;
 import jlang.sema.FltSemantics;
+import tools.OutParamWrapper;
 
 import static jlang.cpp.LiteralSupport.hexDigitValue;
 import static jlang.diag.DiagnosticLexKindsTag.*;
@@ -124,7 +125,7 @@ public class NumericLiteralParser
         return overflowOccurred;
     }
 
-    public APFloat getFloatValue(FltSemantics format, Boolean isExact)
+    public APFloat getFloatValue(FltSemantics format, OutParamWrapper<Boolean> isExact)
     {
         StringBuilder buf = new StringBuilder();
         int n = Math.min(suffixBegin, tokenStr.length);
@@ -137,7 +138,7 @@ public class NumericLiteralParser
         APFloat.opStatus status;
         status = v.convertFromString(buf.toString(), rmNearestTiesToEven);
         if (isExact != null)
-            isExact = status == APFloat.opOK;
+            isExact.set(status == APFloat.opOK);
         return v;
     }
 
@@ -170,7 +171,7 @@ public class NumericLiteralParser
                     || tokenStr[curPos] == 'E'))
             {
                 pp.diag(pp.advanceToTokenCharacter(loc, curPos), err_invalid_decimal_digit)
-                        .addTaggedVal(String.valueOf(tokenStr[curPos]));
+                        .addTaggedVal(String.valueOf(tokenStr[curPos])).emit();
                 hadError = true;
                 return;
             }
@@ -195,7 +196,7 @@ public class NumericLiteralParser
                 else
                 {
                     pp.diag(pp.advanceToTokenCharacter(loc, exponentPos),
-                            err_exponent_has_no_digits);
+                            err_exponent_has_no_digits).emit();
                     hadError = true;
                     return;
                 }
@@ -250,7 +251,7 @@ public class NumericLiteralParser
                 {
                     if (isImaginary) break; // can not repeated.
                     pp.diag(pp.advanceToTokenCharacter(loc, curPos),
-                            ext_imaginary_constant);
+                            ext_imaginary_constant).emit();
                     isImaginary = true;
                     continue;   // Success
                 }
@@ -265,7 +266,8 @@ public class NumericLiteralParser
             pp.diag(pp.advanceToTokenCharacter(loc, curPos),
                     isFPConstant ? err_invalid_suffix_float_constant
                     :err_invalid_suffix_integer_constant)
-                    .addTaggedVal(String.valueOf(tokenStr, suffixBegin, tokenStr.length - suffixBegin));
+                    .addTaggedVal(String.valueOf(tokenStr, suffixBegin, tokenStr.length - suffixBegin))
+                    .emit();
             hadError = true;
         }
     }
@@ -315,7 +317,7 @@ public class NumericLiteralParser
                 if (firstNonDigit == curPos)
                 {
                     pp.diag(pp.advanceToTokenCharacter(loc, exponent),
-                            err_exponent_has_no_digits);
+                            err_exponent_has_no_digits).emit();
                     hadError = true;
                     return;
                 }
@@ -323,13 +325,13 @@ public class NumericLiteralParser
                 curPos = firstNonDigit;
                 if (!pp.getLangOptions().hexFloats)
                 {
-                    pp.diag(loc, ext_hexconstant_invalid);
+                    pp.diag(loc, ext_hexconstant_invalid).emit();
                 }
             }
             else if (sawPeriod)
             {
                 pp.diag(pp.advanceToTokenCharacter(loc, curPos),
-                        err_hexconstant_requires_exponent);
+                        err_hexconstant_requires_exponent).emit();
                 hadError = true;
             }
             return;
@@ -339,7 +341,7 @@ public class NumericLiteralParser
         if (tokenStr[curPos] == 'B' || tokenStr[curPos] == 'b')
         {
             // 0x101010 is GCC extension.
-            pp.diag(loc, ext_binary_literal);
+            pp.diag(loc, ext_binary_literal).emit();
             ++curPos;
             radix = 2;
             digitBegin = curPos;
@@ -348,8 +350,9 @@ public class NumericLiteralParser
                 // Done
             else if (LiteralSupport.isHexDigit(tokenStr[curPos]))
             {
-                pp.diag(pp.advanceToTokenCharacter(loc, curPos),
-                    err_invalid_binary_digit).addTaggedVal(String.valueOf(tokenStr[curPos]));
+                pp.diag(pp.advanceToTokenCharacter(loc, curPos), err_invalid_binary_digit)
+                        .addTaggedVal(String.valueOf(tokenStr[curPos]))
+                        .emit();
                 hadError = true;
             }
 
@@ -382,8 +385,9 @@ public class NumericLiteralParser
         if (LiteralSupport.isHexDigit(tokenStr[curPos]) && tokenStr[curPos] != 'e'
                 && tokenStr[curPos] != 'E')
         {
-            pp.diag(pp.advanceToTokenCharacter(loc, curPos),
-                    err_invalid_octal_digit).addTaggedVal(String.valueOf(tokenStr[curPos]));
+            pp.diag(pp.advanceToTokenCharacter(loc, curPos),err_invalid_octal_digit).
+                    addTaggedVal(String.valueOf(tokenStr[curPos])).
+                    emit();
             hadError = true;
             return;
         }
@@ -409,8 +413,8 @@ public class NumericLiteralParser
                 curPos = firstNoDigit;
             else
             {
-                pp.diag(pp.advanceToTokenCharacter(loc, exponent),
-                        err_exponent_has_no_digits);
+                pp.diag(pp.advanceToTokenCharacter(loc, exponent), err_exponent_has_no_digits)
+                        .emit();
                 hadError = true;
             }
         }
