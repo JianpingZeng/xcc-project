@@ -84,11 +84,11 @@ public class LiteralSupport
                 resultChar = 8;
                 break;
             case 'e':
-                pp.diag(loc, ext_nonstandard_escape).addTaggedVal("e");
+                pp.diag(loc, ext_nonstandard_escape).addTaggedVal("e").emit();
                 resultChar = 27;
                 break;
             case 'E':
-                pp.diag(loc, ext_nonstandard_escape).addTaggedVal("e");
+                pp.diag(loc, ext_nonstandard_escape).addTaggedVal("e").emit();
                 resultChar = 27;
                 break;
             case 'f':
@@ -111,7 +111,7 @@ public class LiteralSupport
                 resultChar = 0;
                 if (startPos.get() == buf.length() || !isHexDigit(buf.charAt(startPos.get())))
                 {
-                    pp.diag(loc, err_hex_escape_no_digits);
+                    pp.diag(loc, err_hex_escape_no_digits).emit();
                     hadError.set(true);
                     break;
                 }
@@ -137,7 +137,7 @@ public class LiteralSupport
                 }
 
                 if (overflow)
-                    pp.diag(loc, warn_hex_escape_too_large);
+                    pp.diag(loc, warn_hex_escape_too_large).emit();
                 break;
             }
             case '0': case '1': case '2': case '3':
@@ -164,7 +164,7 @@ public class LiteralSupport
 
                 if (charWidth != 32 && (resultChar >> charWidth) != 0)
                 {
-                    pp.diag(loc, warn_octal_escape_too_large);
+                    pp.diag(loc, warn_octal_escape_too_large).emit();
                     resultChar &= ~0 << (32 - charWidth);
                 }
                 break;
@@ -173,14 +173,20 @@ public class LiteralSupport
             case '(': case '{': case '[': case '%':
             {
                 // GCC accepts these as extensions.  We warn about them as such though.
-                pp.diag(loc, ext_nonstandard_escape).addTaggedVal(String.valueOf(resultChar));
+                pp.diag(loc, ext_nonstandard_escape).
+                        addTaggedVal(String.valueOf(resultChar)).
+                        emit();
                 break;
             }
             default:
                 if (isPrintable(buf.charAt(startPos.get())))
-                    pp.diag(loc, ext_unknown_escape).addTaggedVal(String.valueOf(resultChar));
+                    pp.diag(loc, ext_unknown_escape).
+                            addTaggedVal(String.valueOf(resultChar)).
+                            emit();
                 else
-                    pp.diag(loc, ext_unknown_escape).addTaggedVal("x"+ Integer.toString(resultChar, 16));
+                    pp.diag(loc, ext_unknown_escape).
+                            addTaggedVal("x"+ Integer.toString(resultChar, 16)).
+                            emit();
         }
         return resultChar;
     }

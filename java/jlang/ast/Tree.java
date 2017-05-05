@@ -1415,7 +1415,7 @@ abstract public class Tree
 				    Expr subExpr = ((CastExpr) e).getSubExpr();
 				    if (subExpr.getType().isIntegerType())
 					    return checkICE(subExpr, ctx);
-				    if (subExpr.ignoreParens() instanceof FloatLiteral)
+				    if (subExpr.ignoreParens() instanceof FloatingLiteral)
 					    return noDiag();
 				    return new ICEDiag(2, e.getLocStart());
 			    }
@@ -1436,7 +1436,7 @@ abstract public class Tree
 					    EvalResult EVResult = new EvalResult();
 					    if (!e.evaluate(EVResult) || EVResult.hasSideEffects
 							    ||
-							    !EVResult.val.isInt())
+							    !EVResult.value.isInt())
 					    {
 						    return ICEDiag(2, e -> getLocStart());
 					    }
@@ -1809,23 +1809,42 @@ abstract public class Tree
 	    }
     }
 
-    public static class FloatLiteral extends Expr
+    public static class FloatingLiteral extends Expr
     {
-        private double val;
-        public FloatLiteral(QualType type,
-                double value,
+        private APFloat value;
+        private boolean isExact;
+        public FloatingLiteral(
+		        APFloat value,
+		        boolean isExact,
+        		QualType type,
                 SourceLocation loc)
         {
             super(FloatLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
-	        val = value;
+	        this.value = value;
+	        this.isExact = isExact;
         }
 
-        public double getValue()
+        public APFloat getValue()
         {
-            return val;
+            return value;
         }
 
-        @Override
+	    public void setValue(APFloat value)
+	    {
+		    this.value = value;
+	    }
+
+	    public boolean isExact()
+	    {
+		    return isExact;
+	    }
+
+	    public void setExact(boolean exact)
+	    {
+		    isExact = exact;
+	    }
+
+	    @Override
         public void accept(StmtVisitor v)
         {
             v.visitFloatLiteral(this);
@@ -1837,7 +1856,8 @@ abstract public class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+	    public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(getExprLocation());
 	    }
@@ -1845,9 +1865,12 @@ abstract public class Tree
 
     public static class CharacterLiteral extends Expr
     {
-        private char val;
+        private int val;
+        private boolean isWide;
+
         public CharacterLiteral(
-                char val,
+                int val,
+                boolean isWide,
                 QualType type,
                 SourceLocation loc)
         {
@@ -1855,12 +1878,7 @@ abstract public class Tree
             this.val = val;
         }
 
-        public CharacterLiteral(SourceLocation loc)
-        {
-            super(CharacterLiteralClass, loc);
-        }
-
-        public char getValue()
+        public int getValue()
         {
             return val;
         }

@@ -43,9 +43,7 @@ import static jlang.diag.DiagnosticLexKindsTag.*;
  * <p>
  * A C Preprocessor.
  * The Preprocessor outputs a token stream which does not need
- * re-lexing for C or C++. Alternatively, the output text may be
- * reconstructed by concatenating the {@link PPToken#getText() text}
- * values of the returned {@link PPToken Tokens}.
+ * re-lexing for C or C++.
  * </p>
  * <pre>
  * Source file name and line number information is conveyed by lines of the form:
@@ -162,14 +160,14 @@ public final class Preprocessor
 
         Token.StrData tokStart = sourceMgr.getCharacterData(tok.getLocation());
         if (!tok.needsCleaning())
-            return tokStart.data.substring(tokStart.offset, tok.getName().length());
+            return String.valueOf(Arrays.copyOfRange(tokStart.buffer, tokStart.offset, tok.getLength()));
 
         StringBuilder result = new StringBuilder();
         for (int i = tokStart.offset, e = tok.getLength() + tokStart.offset; i < e; )
         {
             OutParamWrapper<Integer> charSize = new OutParamWrapper<>(0);
             result.append(
-                    Lexer.getCharAndSizeNoWarn(tokStart.data.toCharArray(), i,
+                    Lexer.getCharAndSizeNoWarn(tokStart.buffer, i,
                             charSize, langInfo));
             i += charSize.get();
         }
@@ -194,7 +192,7 @@ public final class Preprocessor
         tok.setLocation(loc);
 
         if (tok.isLiteral())
-            tok.setLiteralData(spelling, scrachBuf.getBuffer(), dest);
+            tok.setLiteralData(scrachBuf.getBuffer(), dest);
     }
 
     public void handleComment(SourceRange comment)
@@ -256,9 +254,9 @@ public final class Preprocessor
         if (ii.isPoisoned() && curLexer != null)
         {
             if (!ii.equals(Ident__VA_ARGS__))
-                diag(token, err_pp_used_poisoned_id);
+                diag(token, err_pp_used_poisoned_id).emit();
             else
-                diag(token, ext_pp_bad_vaargs_use);
+                diag(token, ext_pp_bad_vaargs_use).emit();
         }
 
         // If this is a macro to be expanded, do it.
@@ -287,7 +285,7 @@ public final class Preprocessor
         // If this is an extension token, diagnose its use.
         // We avoid diagnosing tokens that originate from macro definitions.
         if (ii.isExtensionToken() && !disableMacroExpansion)
-            diag(token, ext_token_used);
+            diag(token, ext_token_used).emit();
     }
 
     public void enterTokenStream(Token[] toks, boolean disableMacroExpansion,
@@ -803,7 +801,7 @@ public final class Preprocessor
             for (Map.Entry<IdentifierInfo, MacroInfo> pair : macros.entrySet())
             {
                 if (!pair.getValue().isUsed())
-                    diag(pair.getValue().getDefinitionLoc(), pp_macro_not_used);
+                    diag(pair.getValue().getDefinitionLoc(), pp_macro_not_used).emit();
             }
         }
         return true;
@@ -840,7 +838,7 @@ public final class Preprocessor
     {
         if (digitTok.isNot(numeric_constant))
         {
-            pp.diag(digitTok.getLocation(), diagID);
+            pp.diag(digitTok.getLocation(), diagID).emit();
             if (digitTok.isNot(eom))
                 pp.discardUntilEndOfDirective();
             return true;
@@ -854,7 +852,7 @@ public final class Preprocessor
             if (!Character.isDigit(digitStr.charAt(i)))
             {
                 pp.diag(pp.advanceToTokenCharacter(digitTok.getLocation(), i),
-                        err_pp_line_digit_sequence);
+                        err_pp_line_digit_sequence).emit();
                 pp.discardUntilEndOfDirective();
                 return true;
             }
@@ -863,7 +861,7 @@ public final class Preprocessor
             if (nextVal < val)
             {
                 // overflow.
-                pp.diag(digitTok, diagID);
+                pp.diag(digitTok, diagID).emit();
                 pp.discardUntilEndOfDirective();
                 return true;
             }
@@ -873,13 +871,13 @@ public final class Preprocessor
         // Reject 0, this is needed both by #line numbers and flags.
         if (val == 0)
         {
-            pp.diag(digitTok, diagID);
+            pp.diag(digitTok, diagID).emit();
             pp.discardUntilEndOfDirective();
             return true;
         }
 
         if (digitStr.charAt(0) == '0')
-            pp.diag(digitTok.getLocation(), warn_pp_line_decimal);
+            pp.diag(digitTok.getLocation(), warn_pp_line_decimal).emit();
         lineNo.set(val);
         return false;
     }
@@ -935,7 +933,7 @@ public final class Preprocessor
             if (!loc.isValid() || !sgr.getDecomposedInstantiationLoc(loc).first
                     .equals(curFileID))
             {
-                pp.diag(flagTok, err_pp_linemarker_invalid_pop);
+                pp.diag(flagTok, err_pp_linemarker_invalid_pop).emit();
                 pp.discardUntilEndOfDirective();
                 return true;
             }
@@ -950,7 +948,7 @@ public final class Preprocessor
 
         if (flagVal != 3)
         {
-            pp.diag(flagTok, err_pp_linemarker_invalid_flag);
+            pp.diag(flagTok, err_pp_linemarker_invalid_flag).emit();
             pp.discardUntilEndOfDirective();
             return true;
         }
@@ -966,13 +964,13 @@ public final class Preprocessor
 
         if (flagVal != 4)
         {
-            pp.diag(flagTok, err_pp_linemarker_invalid_flag);
+            pp.diag(flagTok, err_pp_linemarker_invalid_flag).emit();
             pp.discardUntilEndOfDirective();
             return true;
         }
 
         // There are no more valid flags here.
-        pp.diag(flagTok, err_pp_linemarker_invalid_flag);
+        pp.diag(flagTok, err_pp_linemarker_invalid_flag).emit();
         pp.discardUntilEndOfDirective();
         return true;
     }
@@ -1006,7 +1004,7 @@ public final class Preprocessor
         if (strTok.is(eom));  // OK! just return
         else if (strTok.isNot(string_literal))
         {
-            diag(strTok, err_pp_linemarker_invalid_filename);
+            diag(strTok, err_pp_linemarker_invalid_filename).emit();
             discardUntilEndOfDirective();
             return;
         }
@@ -1149,7 +1147,7 @@ public final class Preprocessor
             if (!ii.isStr("defined"))
             {
                 if (valueLive)
-                    pp.diag(peekTok, warn_pp_undef_identifier);
+                    pp.diag(peekTok, warn_pp_undef_identifier).emit();
                 result.val.assign(0);
                 result.val.setIsUnsigned(false); // '0' is signed intmat_t 0.
                 pp.lexNonComment(peekTok);
@@ -1174,7 +1172,7 @@ public final class Preprocessor
             // if we don't have a pp-identifier now, this is an error.
             if ((ii = peekTok.getIdentifierInfo()) == null)
             {
-                pp.diag(peekTok, err_pp_defined_requires_identifier);
+                pp.diag(peekTok, err_pp_defined_requires_identifier).emit();
                 return true;
             }
 
@@ -1197,8 +1195,8 @@ public final class Preprocessor
             {
                 if (!peekTok.is(r_paren))
                 {
-                    pp.diag(peekTok.getLocation(), err_pp_missing_rparen);
-                    pp.diag(lParenLoc, note_matching).addTaggedVal("(");
+                    pp.diag(peekTok.getLocation(), err_pp_missing_rparen).emit();
+                    pp.diag(lParenLoc, note_matching).addTaggedVal("(").emit();
                     return true;
                 }
 
@@ -1216,13 +1214,13 @@ public final class Preprocessor
         switch (peekTok.getKind())
         {
             default:
-                pp.diag(peekTok.getLocation(), err_pp_expr_bad_token_start_expr);
+                pp.diag(peekTok.getLocation(), err_pp_expr_bad_token_start_expr).emit();
                 return true;
             case eom:
             case r_paren:
             {
                 // If there is no expression, report and exit.
-                pp.diag(peekTok, err_pp_expected_value_in_expr);
+                pp.diag(peekTok, err_pp_expected_value_in_expr).emit();
                 return true;
             }
             case numeric_constant:
@@ -1236,7 +1234,7 @@ public final class Preprocessor
                 }
                 if (litParser.isFloatingLiteral() || litParser.isImaginary)
                 {
-                    pp.diag(peekTok, err_pp_illegal_floating_literal);
+                    pp.diag(peekTok, err_pp_illegal_floating_literal).emit();
                     return true;
                 }
 
@@ -1244,13 +1242,13 @@ public final class Preprocessor
 
                 // long long is C99 feature.
                 if (!pp.getLangOptions().c99 && litParser.isLongLong)
-                    pp.diag(peekTok, ext_longlong);
+                    pp.diag(peekTok, ext_longlong).emit();
 
                 // Parse the integer lietal into result.
                 if (litParser.getIntegerValue(result.val))
                 {
                     // Overflow parsing integer literal.
-                    if (valueLive) pp.diag(peekTok, warn_integer_too_large);
+                    if (valueLive) pp.diag(peekTok, warn_integer_too_large).emit();
                     result.val.setIsUnsigned(true);
                 }
                 else
@@ -1262,7 +1260,7 @@ public final class Preprocessor
                     if (!litParser.isUnsigned && result.val.isNegative())
                     {
                         if (valueLive && litParser.getRadix() != 16)
-                            pp.diag(peekTok, warn_integer_too_large_for_signed);
+                            pp.diag(peekTok, warn_integer_too_large_for_signed).emit();
                         result.val.setIsUnsigned(true);
                     }
                 }
@@ -1331,9 +1329,9 @@ public final class Preprocessor
 
                     if (peekTok.isNot(r_paren))
                     {
-                        pp.diag(peekTok.getLocation(),
-                                err_pp_expected_rparen).addSourceRange(result.getRange());
-                        pp.diag(start, note_matching).addTaggedVal("(");
+                        pp.diag(peekTok.getLocation(),err_pp_expected_rparen).
+                                addSourceRange(result.getRange()).emit();
+                        pp.diag(start, note_matching).addTaggedVal("(").emit();
                         return true;
                     }
                     dt.state = TrackerState.Unknown;
@@ -1367,7 +1365,7 @@ public final class Preprocessor
 
                 boolean overflow = !result.isUnsigned() && result.val.isMinSignedValue();
                 if (overflow && valueLive)
-                    pp.diag(peekTok.getLocation(), warn_pp_expr_overflow);
+                    pp.diag(peekTok.getLocation(), warn_pp_expr_overflow).emit();
 
                 dt.state = TrackerState.Unknown;
                 return false;
@@ -1433,7 +1431,7 @@ public final class Preprocessor
         if (peekPrec == ~0)
         {
             pp.diag(peekTok.getLocation(), err_pp_expr_bad_token_binop)
-                .addSourceRange(lhs.getRange());
+                .addSourceRange(lhs.getRange()).emit();
             return true;
         }
 
@@ -1471,7 +1469,7 @@ public final class Preprocessor
             if (peekPrec == ~0)
             {
                 pp.diag(peekTok.getLocation(), err_pp_expr_bad_token_binop).
-                        addSourceRange(rhs.getRange());
+                        addSourceRange(rhs.getRange()).emit();
                 return true;
             }
 
@@ -1511,13 +1509,15 @@ public final class Preprocessor
                         {
                             pp.diag(opLoc, warn_pp_convert_lhs_to_positive)
                                     .addTaggedVal(lhs.val.toString(10, true) + "to")
-                                    .addTaggedVal(lhs.val.toString(10, false));
+                                    .addTaggedVal(lhs.val.toString(10, false))
+                                    .emit();
                         }
                         if (!rhs.isUnsigned() && rhs.val.isNegative())
                         {
                             pp.diag(opLoc, warn_pp_convert_lhs_to_positive)
                                     .addTaggedVal(rhs.val.toString(10, true) + "to")
-                                    .addTaggedVal(rhs.val.toString(10, false));
+                                    .addTaggedVal(rhs.val.toString(10, false))
+                                    .emit();
                         }
                     }
                     lhs.val.setIsUnsigned(res.isUnsigned());
@@ -1535,7 +1535,8 @@ public final class Preprocessor
                     {
                         pp.diag(opLoc, err_pp_remainder_by_zero)
                                 .addSourceRange(lhs.getRange())
-                                .addSourceRange(rhs.getRange());
+                                .addSourceRange(rhs.getRange())
+                                .emit();
                         return true;
                     }
                     break;
@@ -1550,7 +1551,8 @@ public final class Preprocessor
                     {
                         pp.diag(opLoc, err_pp_division_by_zero)
                                 .addSourceRange(lhs.getRange())
-                                .addSourceRange(rhs.getRange());
+                                .addSourceRange(rhs.getRange())
+                                .emit();
                         return true;
                     }
                     break;
@@ -1652,7 +1654,8 @@ public final class Preprocessor
                     if (!pp.getLangOptions().c99 || valueLive)
                         pp.diag(opLoc, ext_pp_comma_expr)
                                 .addSourceRange(lhs.getRange())
-                                .addSourceRange(rhs.getRange());
+                                .addSourceRange(rhs.getRange())
+                                .emit();
                     res = rhs.val; // lhs = lhs,rhs -> rhs.
                     break;
                 case question: {
@@ -1660,8 +1663,9 @@ public final class Preprocessor
                     if (peekTok.isNot(colon)) {
                         pp.diag(peekTok.getLocation(), err_expected_colon)
                                 .addSourceRange(lhs.getRange())
-                                .addSourceRange(rhs.getRange());
-                        pp.diag(opLoc, note_matching).addTaggedVal("?");
+                                .addSourceRange(rhs.getRange())
+                                .emit();
+                        pp.diag(opLoc, note_matching).addTaggedVal("?").emit();
                         return true;
                     }
                     // Consume the :.
@@ -1696,7 +1700,8 @@ public final class Preprocessor
                     // Don't allow :'s to float around without being part of ?: exprs.
                     pp.diag(opLoc, err_pp_colon_without_question)
                             .addSourceRange(lhs.getRange())
-                            .addSourceRange(rhs.getRange());
+                            .addSourceRange(rhs.getRange())
+                            .emit();
                     return true;
 
             }
@@ -1705,7 +1710,8 @@ public final class Preprocessor
             {
                 pp.diag(opLoc, warn_pp_expr_overflow)
                         .addSourceRange(lhs.getRange())
-                        .addSourceRange(rhs.getRange());
+                        .addSourceRange(rhs.getRange())
+                        .emit();
             }
             lhs.val = res;
             lhs.setEnd(rhs.range.getEnd());
@@ -1821,7 +1827,7 @@ public final class Preprocessor
 
         if (tok.isNot(eom))
         {
-            diag(tok, err_pp_expected_eol);
+            diag(tok, err_pp_expected_eol).emit();
             discardUntilEndOfDirective();
         }
 
@@ -1868,28 +1874,28 @@ public final class Preprocessor
         // Missing macro name.
         if (macroNameTok.is(eom))
         {
-            diag(macroNameTok, err_pp_missing_macro_name);
+            diag(macroNameTok, err_pp_missing_macro_name).emit();
             return;
         }
 
         IdentifierInfo ii = macroNameTok.getIdentifierInfo();
         if (ii == null)
         {
-            diag(macroNameTok, err_pp_macro_not_identifier);
+            diag(macroNameTok, err_pp_macro_not_identifier).emit();
         }
         else if (isDefineUndef && ii.getPPKeywordID() == PPKeyWordKind.pp_define)
         {
             // Error if defining "defined": C99 6.10.8.4.
-            diag(macroNameTok, err_defined_macro_name);
+            diag(macroNameTok, err_defined_macro_name).emit();
         }
         else if (isDefineUndef && ii.isHasMacroDefinition()
                 && getMacroInfo(ii).isBuiltinMacro())
         {
             // Error if defining "__LINE__" and other builtins: C99 6.10.8.4.
             if (isDefineUndef)
-                diag(macroNameTok, pp_redef_builtin_macro);
+                diag(macroNameTok, pp_redef_builtin_macro).emit();
             else
-                diag(macroNameTok, pp_undef_builtin_macro);
+                diag(macroNameTok, pp_undef_builtin_macro).emit();
         }
         else
         {
@@ -1933,7 +1939,7 @@ public final class Preprocessor
                 while (!curLexer.conditionalStack.isEmpty())
                 {
                     diag(curLexer.conditionalStack.peek().ifLoc,
-                            err_pp_unterminated_conditional);
+                            err_pp_unterminated_conditional).emit();
                     curLexer.conditionalStack.pop();
                 }
 
@@ -1957,8 +1963,10 @@ public final class Preprocessor
                 continue;
             }
 
-            String rawCharData = sourceMgr.getCharacterData(tok.getLocation()).data;
-            char firstChar = rawCharData.charAt(0);
+            Token.StrData strData = sourceMgr.getCharacterData(tok.getLocation());
+            char[] rawCharData = strData.buffer;
+            int offset = strData.offset;
+            char firstChar = rawCharData[offset];
             if (firstChar >= 'a' && firstChar <= 'z'
                     && firstChar != 'i' && firstChar != 'e')
             {
@@ -1968,15 +1976,41 @@ public final class Preprocessor
                 continue;
             }
 
-            if (rawCharData.equals("if")
-                    || rawCharData.equals("ifdef")
-                    || rawCharData.equals("ifndef"))
+            // Get the identifier name without trigraphs or embedded newlines.  Note
+            // that we can't use Tok.getIdentifierInfo() because its lookup is disabled
+            // when skipping.
+            String directive;
+            int idLen;
+            if (!tok.needsCleaning() && tok.getLength() < 20)
+            {
+                idLen = tok.getLength();
+                char[] temp = new char[idLen];
+                System.arraycopy(rawCharData, offset, temp, 0, idLen);
+                directive = String.valueOf(temp);
+            }
+            else
+            {
+                directive = getSpelling(tok);
+                if (directive.length() >= 20)
+                {
+                    if (curLexer != null)
+                    {
+                        curLexer.parsingPreprocessorDirective = false;
+                        curLexer.setCommentRetentionState(keepComments);
+                        continue;
+                    }
+                }
+            }
+
+            if (directive.equals("if")
+                    || directive.equals("ifdef")
+                    || directive.equals("ifndef"))
             {
                 discardUntilEndOfDirective();
                 curLexer.pushConditionalLevel(tok.getLocation(), true,
                         false, false);
             }
-            else if (rawCharData.equals("endif"))
+            else if (directive.equals("endif"))
             {
                 checkEndOfDirective("endif", false);
                 PPConditionalInfo condInfo;
@@ -1986,13 +2020,13 @@ public final class Preprocessor
                 if (!condInfo.wasSkipping)
                     break;
             }
-            else if (rawCharData.equals("else"))
+            else if (directive.equals("else"))
             {
                 discardUntilEndOfDirective();
                 PPConditionalInfo condInfo = curLexer.peekConditionalLevel();
 
                 if (condInfo.foundElse)
-                    diag(tok, pp_err_else_after_else);
+                    diag(tok, pp_err_else_after_else).emit();
 
                 condInfo.foundElse= true;
 
@@ -2002,7 +2036,7 @@ public final class Preprocessor
                     break;
                 }
             }
-            else if (rawCharData.equals("elif"))
+            else if (directive.equals("elif"))
             {
                 PPConditionalInfo condInfo = curLexer.peekConditionalLevel();
 
@@ -2026,7 +2060,7 @@ public final class Preprocessor
                 }
 
                 if (condInfo.foundElse)
-                    diag(tok, pp_err_elif_after_else);
+                    diag(tok, pp_err_elif_after_else).emit();
 
                 if (shouldEnter)
                 {
@@ -2116,7 +2150,7 @@ public final class Preprocessor
         PPConditionalInfo ci;
         if ((ci = curLexer.popConditionalLevel()) == null)
         {
-            diag(elifToken, pp_err_elif_without_if);
+            diag(elifToken, pp_err_elif_without_if).emit();
             return;
         }
 
@@ -2125,7 +2159,7 @@ public final class Preprocessor
             curLexer.miOpt.enterTopLevelConditional();
 
         // If this is a #elif with a #else before it, report the error.
-        if (ci.foundElse) diag(elifToken, pp_err_elif_after_else);
+        if (ci.foundElse) diag(elifToken, pp_err_elif_after_else).emit();
 
         // Finally, skip the rest of the contents of this block and return the first
         // token after it.
@@ -2141,14 +2175,14 @@ public final class Preprocessor
         PPConditionalInfo ci;
         if ((ci = curLexer.popConditionalLevel()) == null)
         {
-            diag(elseToken, pp_err_elif_without_if);
+            diag(elseToken, pp_err_elif_without_if).emit();
             return;
         }
 
         if (curLexer.getConditionalStackDepth() == 0)
             curLexer.miOpt.enterTopLevelConditional();
 
-        if (ci.foundElse) diag(elseToken, pp_err_else_after_else);
+        if (ci.foundElse) diag(elseToken, pp_err_else_after_else).emit();
 
         skipExcludedConditionalBlock(ci.ifLoc, true, true);
     }
@@ -2166,7 +2200,7 @@ public final class Preprocessor
         PPConditionalInfo ci;
         if ((ci = curLexer.popConditionalLevel()) == null)
         {
-            diag(endifToken, err_pp_endif_without_if);
+            diag(endifToken, err_pp_endif_without_if).emit();
             return;
         }
 
@@ -2210,7 +2244,7 @@ public final class Preprocessor
             pp.lex(tok);
         }
 
-        pp.diag(tok.getLocation(), err_pp_expects_filename);
+        pp.diag(tok.getLocation(), err_pp_expects_filename).emit();
         return true;
     }
 
@@ -2223,7 +2257,7 @@ public final class Preprocessor
         {
             if (lastChar != '>')
             {
-                diag(loc, err_pp_expects_filename);
+                diag(loc, err_pp_expects_filename).emit();
                 buf.delete(0, buf.length());
                 return true;
             }
@@ -2233,14 +2267,14 @@ public final class Preprocessor
         {
             if (lastChar != '"')
             {
-                diag(loc, err_pp_expects_filename);
+                diag(loc, err_pp_expects_filename).emit();
                 buf.delete(0, buf.length());
                 return true;
             }
         }
         else
         {
-            diag(loc, err_pp_expects_filename);
+            diag(loc, err_pp_expects_filename).emit();
             buf.delete(0, buf.length());
             return true;
         }
@@ -2248,7 +2282,7 @@ public final class Preprocessor
         // Diagnose #include "" as invalid.
         if (buf.length() <= 2)
         {
-            diag(loc, err_pp_empty_filename);
+            diag(loc, err_pp_empty_filename).emit();
             buf.delete(0, buf.length());
             return true;
         }
@@ -2323,7 +2357,7 @@ public final class Preprocessor
                     return;     // Found <eom> but no ">" diagnositcs already issured.
                 break;
                 default:
-                    diag(filenameTok, err_pp_expects_filename);
+                    diag(filenameTok, err_pp_expects_filename).emit();
                     discardUntilEndOfDirective();
                     return;
         }
@@ -2340,15 +2374,15 @@ public final class Preprocessor
         // Check that we don't have infinite #include recursion.
         if (includeMacroStack.size() == maxAllowedIncludesStackDepth)
         {
-            diag(filenameTok, err_pp_include_too_deep);
+            diag(filenameTok, err_pp_include_too_deep).emit();
             return;
         }
         OutParamWrapper<Path> curDir = new OutParamWrapper<>();
         Path file = lookupFile(filename.toString(), isAngled, curDir);
         if (file == null)
         {
-            diag(filenameTok, err_pp_file_not_found)
-                    .addTaggedVal(filename.toString());
+            diag(filenameTok, err_pp_file_not_found).
+                    addTaggedVal(filename.toString()).emit();
             return;
         }
 
@@ -2362,7 +2396,8 @@ public final class Preprocessor
         FileID fid = sourceMgr.createFileID(file, filenameTok.getLocation(), fileType, 0, 0);
         if (fid.isInvalid())
         {
-            diag(filenameTok, err_pp_file_not_found).addTaggedVal(filename.toString());
+            diag(filenameTok, err_pp_file_not_found).
+                    addTaggedVal(filename.toString()).emit();
             return;
         }
 
@@ -2381,7 +2416,7 @@ public final class Preprocessor
         SourceLocation loc = includeMacroTok.getLocation();
         if (sourceMgr.getBufferName(loc).equals("<built-in>"))
         {
-            diag(includeMacroTok.getLocation(), pp_include_macros_out_of_predefines);
+            diag(includeMacroTok.getLocation(), pp_include_macros_out_of_predefines).emit();
             discardUntilEndOfDirective();
             return;
         }
@@ -2415,16 +2450,16 @@ public final class Preprocessor
                 case r_paren:
                     if (argLists.isEmpty())
                         return false;
-                    diag(tok, err_pp_expected_ident_in_arg_list);
+                    diag(tok, err_pp_expected_ident_in_arg_list).emit();
                     return true;
                 case ellipsis:
                     // #define X(...) -> C99 feature.
-                    if (!langInfo.c99) diag(tok, ext_variadic_macro);
+                    if (!langInfo.c99) diag(tok, ext_variadic_macro).emit();
 
                     lexUnexpandedToken(tok);
                     if (tok.isNot(r_paren))
                     {
-                        diag(tok, err_pp_missing_rparen);
+                        diag(tok, err_pp_missing_rparen).emit();
                         return true;
                     }
 
@@ -2435,7 +2470,7 @@ public final class Preprocessor
                     argLists.toArray(arr);
                     mi.setArgumentList(arr);
                 case eom:
-                    diag(tok, err_pp_missing_rparen);
+                    diag(tok, err_pp_missing_rparen).emit();
                     return true;
                 default:
                     // Handle keywords and identifiers here to accept things like
@@ -2444,7 +2479,7 @@ public final class Preprocessor
                     if (ii == null)
                     {
                         // #define X(1
-                        diag(tok, err_pp_invalid_tok_in_arg_list);
+                        diag(tok, err_pp_invalid_tok_in_arg_list).emit();
                         return true;
                     }
 
@@ -2452,7 +2487,7 @@ public final class Preprocessor
                     // #define X(A,A.
                     if (argLists.contains(ii))
                     {
-                        diag(tok, err_pp_duplicate_name_in_arg_list);
+                        diag(tok, err_pp_duplicate_name_in_arg_list).emit();
                         return true;
                     }
 
@@ -2466,7 +2501,7 @@ public final class Preprocessor
                     {
                         default:
                             // #define X(A B)
-                            diag(tok, err_pp_expected_comma_in_arg_list);
+                            diag(tok, err_pp_expected_comma_in_arg_list).emit();
                             return true;
                         case comma:
                             break;  // #define X(A,
@@ -2478,12 +2513,12 @@ public final class Preprocessor
                             return false;
                         case ellipsis:
                             // #define X(A...) -> C99 feature.
-                            diag(tok, ext_named_variadic_macro);
+                            diag(tok, ext_named_variadic_macro).emit();
 
                             lexUnexpandedToken(tok);
                             if (tok.isNot(r_paren))
                             {
-                                diag(tok, err_pp_missing_rparen_in_macro_def);
+                                diag(tok, err_pp_missing_rparen_in_macro_def).emit();
                                 return true;
                             }
 
@@ -2554,7 +2589,7 @@ public final class Preprocessor
         {
             // C99 requires whitespace between the macro definition and the body.  Emit
             // a diagnostic for something like "#define X+".
-            diag(tok, ext_c99_whitespace_required_after_macro_name);
+            diag(tok, ext_c99_whitespace_required_after_macro_name).emit();
         }
         else
         {
@@ -2570,9 +2605,9 @@ public final class Preprocessor
                 isInvalid = true;
             }
             if (isInvalid)
-                diag(tok, ext_missing_whitespace_after_macro_name);
+                diag(tok, ext_missing_whitespace_after_macro_name).emit();
             else
-                diag(tok, warn_missing_whitespace_after_macro_name);
+                diag(tok, warn_missing_whitespace_after_macro_name).emit();
         }
 
         if (!tok.is(eom))
@@ -2625,7 +2660,7 @@ public final class Preprocessor
                     }
                     else
                     {
-                        diag(tok, err_pp_stringize_not_parameter);
+                        diag(tok, err_pp_stringize_not_parameter).emit();
 
                         //Disable __VA_ARGS__ again.
                         Ident__VA_ARGS__.setIsPoisoned(true);
@@ -2652,12 +2687,12 @@ public final class Preprocessor
         {
             if (mi.getReplacementToken(0).is(hashhash))
             {
-                diag(mi.getReplacementToken(0), err_paste_at_start);
+                diag(mi.getReplacementToken(0), err_paste_at_start).emit();
                 return;
             }
             if (mi.getReplacementToken(numTokens - 1).is(hashhash))
             {
-                diag(mi.getReplacementToken(numTokens - 1), err_paste_at_end);
+                diag(mi.getReplacementToken(numTokens - 1), err_paste_at_end).emit();
                 return;
             }
         }
@@ -2677,14 +2712,16 @@ public final class Preprocessor
             {
                 if (!otherMI.isUsed())
                 {
-                    diag(otherMI.getDefinitionLoc(), pp_macro_not_used);
+                    diag(otherMI.getDefinitionLoc(), pp_macro_not_used).emit();
                 }
 
                 if (!mi.isIdenticalTo(otherMI, this))
                 {
                     diag(mi.getDefinitionLoc(), ext_pp_macro_redef)
-                            .addTaggedVal(macroNameTok.getIdentifierInfo());
-                    diag(otherMI.getDefinitionLoc(), note_previous_definition);
+                            .addTaggedVal(macroNameTok.getIdentifierInfo())
+                            .emit();
+                    diag(otherMI.getDefinitionLoc(), note_previous_definition)
+                            .emit();
                 }
             }
         }
@@ -2718,7 +2755,7 @@ public final class Preprocessor
             return;
 
         if (!mi.isUsed())
-            diag(mi.getDefinitionLoc(), pp_macro_not_used);
+            diag(mi.getDefinitionLoc(), pp_macro_not_used).emit();
 
         if (callbacks != null)
             callbacks.macroUndefined(ii, mi);
@@ -2748,7 +2785,7 @@ public final class Preprocessor
         // number greater than 2147483647".  C90 requires that the line # be <= 32767.
         int lineLimit = langInfo.c99 ? 2147483647: 32767;
         if (lineNo >= lineLimit)
-            diag(digitTok, ext_pp_line_too_big).addTaggedVal(lineLimit);
+            diag(digitTok, ext_pp_line_too_big).addTaggedVal(lineLimit).emit();
 
         int filenameID = -1;
         Token strTok = new Token();
@@ -2757,7 +2794,7 @@ public final class Preprocessor
         if (strTok.is(eom));  // OK
         else if (strTok.isNot(string_literal))
         {
-            diag(strTok, err_pp_line_invalid_filename);
+            diag(strTok, err_pp_line_invalid_filename).emit();
             discardUntilEndOfDirective();
             return;
         }
@@ -2791,9 +2828,9 @@ public final class Preprocessor
     {
         String message = curLexer.readToEndOfLine();
         if (isWarning)
-            diag(pragmaToken, pp_hash_warning).addTaggedVal(message);
+            diag(pragmaToken, pp_hash_warning).addTaggedVal(message).emit();
         else
-            diag(pragmaToken, err_pp_hash_error).addTaggedVal(message);
+            diag(pragmaToken, err_pp_hash_error).addTaggedVal(message).emit();
     }
 
     public void handleDirective(Token result)
@@ -2826,7 +2863,7 @@ public final class Preprocessor
         //   def)
         // If so, the user is relying on non-portable behavior, emit a diagnostic.
         if (inMacroArgs)
-            diag(result, ext_embedded_directive);
+            diag(result, ext_embedded_directive).emit();
 
         boolean loop = false;
         do
@@ -2931,7 +2968,7 @@ public final class Preprocessor
         }
 
         // If we reached here, the preprocessing token is not valid!
-        diag(result, err_pp_invalid_directive);
+        diag(result, err_pp_invalid_directive).emit();
 
         // Read the rest of the pp line.
         discardUntilEndOfDirective();
@@ -3032,7 +3069,7 @@ public final class Preprocessor
                 if (tok.is(eof) || tok.is(eom))
                 {
                     // "#if f(<eof>" & "#if f(\n"
-                    diag(macroName, err_unterm_macro_invoc);
+                    diag(macroName, err_unterm_macro_invoc).emit();
                     macroName = tok;
                     return Pair.get(null, null);
                 }
@@ -3091,7 +3128,7 @@ public final class Preprocessor
                 if (argTokens.size() != argTokenStart)
                     argStartLoc = argTokens.get(argTokenStart).getLocation();
 
-                diag(argStartLoc, err_too_many_args_in_macro_invoc);
+                diag(argStartLoc, err_too_many_args_in_macro_invoc).emit();
                 return Pair.get(null, null);
             }
 
@@ -3099,7 +3136,7 @@ public final class Preprocessor
             // other modes.
             if(argTokens.size() == argTokenStart && !langInfo.c99)
             {
-                diag(tok, ext_empty_fnmacro_arg);
+                diag(tok, ext_empty_fnmacro_arg).emit();
             }
 
             Token eofToken = new Token();
@@ -3134,13 +3171,13 @@ public final class Preprocessor
                 // Varargs where the named vararg parameter is missing: ok as extension.
                 // #define A(x, ...)
                 // A("blah")
-                diag(tok, ext_missing_varargs_arg);
+                diag(tok, ext_missing_varargs_arg).emit();
 
                 isVarargsElided = true;
             }
             else
             {
-                diag(tok, err_too_few_args_in_macro_invoc);
+                diag(tok, err_too_few_args_in_macro_invoc).emit();
                 return Pair.get(null, null);
             }
 
@@ -3159,7 +3196,7 @@ public final class Preprocessor
         {
             // Emit the diagnostic at the macro name in case there is a missing ).
             // Emitting it at the , could be far away from the macro name.
-            diag(macroName, err_too_many_args_in_macro_invoc);
+            diag(macroName, err_too_many_args_in_macro_invoc).emit();
             return Pair.get(null, null);
         }
 
@@ -3190,7 +3227,7 @@ public final class Preprocessor
 
         if (tok.isNot(l_paren))
         {
-            diag(pragmaLoc, err_pragma_comment_malformed);
+            diag(pragmaLoc, err_pragma_comment_malformed).emit();
             return;
         }
 
@@ -3198,7 +3235,7 @@ public final class Preprocessor
         lex(tok);
         if (tok.isNot(string_literal))
         {
-            diag(pragmaLoc, err_pragma_comment_malformed);
+            diag(pragmaLoc, err_pragma_comment_malformed).emit();
             return;
         }
 
@@ -3209,7 +3246,7 @@ public final class Preprocessor
         lex(tok);
         if (tok.isNot(r_paren))
         {
-            diag(pragmaLoc, err_pragma_comment_malformed);
+            diag(pragmaLoc, err_pragma_comment_malformed).emit();
             return;
         }
 
@@ -3384,7 +3421,7 @@ public final class Preprocessor
             // #include stack instead of the current file.
             if (ii == Ident__BASE_FILE__) 
             {
-                diag(tok, ext_pp_base_file);
+                diag(tok, ext_pp_base_file).emit();
                 SourceLocation NextLoc = PLoc.getIncludeLoc();
                 while (NextLoc.isValid()) {
                     PLoc = sourceMgr.getPresumedLoc(NextLoc);
@@ -3420,7 +3457,7 @@ public final class Preprocessor
                     tok.getLength(), 0, 0));
         } else if (ii == Ident__INCLUDE_LEVEL__) 
         {
-            diag(tok, ext_pp_include_level);
+            diag(tok, ext_pp_include_level).emit();
 
             // Compute the presumed include depth of this token.  This can be affected
             // by GNU line markers.
@@ -3440,7 +3477,7 @@ public final class Preprocessor
         {
             // MSVC, ICC, GCC, VisualAge C++ extension.  The generated string should be
             // of the form "Ddd Mmm dd hh::mm::ss yyyy", which is returned by asctime.
-            diag(tok, ext_pp_timestamp);
+            diag(tok, ext_pp_timestamp).emit();
 
             // Get the file that we are lexing out of.  If we're currently lexing from
             // a tok, dig into the include stack.
@@ -3471,7 +3508,7 @@ public final class Preprocessor
         }
         else if (ii == Ident__COUNTER__)
         {
-            diag(tok, ext_pp_counter);
+            diag(tok, ext_pp_counter).emit();
 
             // __COUNTER__ expands to a simple numeric value.
             TmpBuffer = String.format("%d", counterValue++);
@@ -3693,7 +3730,7 @@ public final class Preprocessor
     {
         if (isInPrimaryFile())
         {
-            diag(onceTok, pp_pragma_once_in_main_file);
+            diag(onceTok, pp_pragma_once_in_main_file).emit();
             return;
         }
 
@@ -3728,7 +3765,7 @@ public final class Preprocessor
             FixItHint hint = null;
             if (langInfo.gnuMode || langInfo.c99)
                 hint = FixItHint.createInsertion(tmp.getLocation(), "//");
-            diag(tmp, ext_pp_extra_tokens_at_eol).addTaggedVal(dirType).addFixItHint(hint);
+            diag(tmp, ext_pp_extra_tokens_at_eol).addTaggedVal(dirType).addFixItHint(hint).emit();
             discardUntilEndOfDirective();
         }
     }
@@ -3779,5 +3816,25 @@ public final class Preprocessor
             cachedTokens.add(res);
         }
         return cachedTokens.get(cachedTokens.size() - 1);
+    }
+
+    /**
+     * Tok is a numeric constant with length 1, return the character.
+     * @param token
+     * @return
+     */
+    public char getSpellingOfSingleCharacterNumericConstant(Token token)
+    {
+        assert token != null && token.is(numeric_constant)
+                && token.getLength() == 1:"Called on unsupported token";
+        assert !token.needsCleaning():"Token can't need cleaning with lenght 1";
+
+        // If the token is carrying a literal data, just return its first character.
+        Token.StrData data = token.getLiteralData();
+        if (data != null)
+            return data.buffer[data.offset];
+        // Otherwise, performing the slower path.
+        data = sourceMgr.getCharacterData(token.getLocation());
+        return data.buffer[data.offset];
     }
 }

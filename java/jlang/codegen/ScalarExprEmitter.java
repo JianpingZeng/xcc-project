@@ -878,7 +878,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     {return backend.value.ConstantInt.get(expr.getValue());}
 
     @Override
-    public Value visitFloatLiteral(Tree.FloatLiteral expr)
+    public Value visitFloatLiteral(Tree.FloatingLiteral expr)
     {return backend.value.ConstantFP.get(expr.getValue());}
 
     @Override

@@ -240,7 +240,7 @@ public class MacroArgs
 
             if ((sb.size() - 1-firstNonSlash & 1) != 0)
             {
-                pp.diag(argToks[i - 1], pp_invalid_string_literal);
+                pp.diag(argToks[i - 1], pp_invalid_string_literal).emit();
                 sb.removeAt(sb.size() - 1);
             }
         }

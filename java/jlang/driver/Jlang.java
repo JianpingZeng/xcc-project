@@ -614,7 +614,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
         String val = cmdline.getOptionValue(F_MESSAGE_LENGTH.getOptName());
         messageLength = val != null ? Integer.parseInt(val) : Process.getStandardErrColumns();
 
-        DiagnosticClient client = new TextDiagnosticClient(java.lang.System.err,
+        DiagnosticClient client = new TextDiagnosticPrinter(java.lang.System.err,
                 true, true, true, true, true, true, messageLength, false);
 
         Diagnostic diag = new Diagnostic(client);
@@ -677,6 +677,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
             processInputFile(pp, inputFile, progAction);
         }
+
         return EXIT_OK;
 	}
 }

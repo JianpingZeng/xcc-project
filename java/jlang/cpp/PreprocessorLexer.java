@@ -154,7 +154,7 @@ public abstract class PreprocessorLexer
         parsingFilename = false;
 
         if (result.is(TokenKind.Eod))
-            pp.diag(result.getLocation(), err_pp_expects_filename);
+            pp.diag(result.getLocation(), err_pp_expects_filename).emit();
     }
 
     public boolean isLexingRawMode()

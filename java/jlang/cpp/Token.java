@@ -12,9 +12,6 @@ public class Token
 {
     public static class StrData
     {
-        // Stores the spelling string for the Token.
-        public final String data;
-
         /**
          * The entire char buffer.
          */
@@ -25,14 +22,8 @@ public class Token
          */
         public final int offset;
 
-        public StrData(char[] data, final char[] buffer, int offset)
+        public StrData(final char[] buffer, int offset)
         {
-            this(String.valueOf(data), buffer, offset);
-        }
-
-        public StrData(String data, final char[] buffer, int offset)
-        {
-            this.data = data;
             this.buffer = buffer;
             this.offset = offset;
         }
@@ -123,16 +114,10 @@ public class Token
         return (StrData) data;
     }
 
-    public void setLiteralData(char[] literal, char[] buffer, int offset)
+    public void setLiteralData(char[] buffer, int offset)
     {
         assert isLiteral(): "Cannot get literal data of non-literal";
-        data = new StrData(String.valueOf(literal), buffer, offset);
-    }
-
-    public void setLiteralData(String literal, char[] buffer, int offset)
-    {
-        assert isLiteral(): "Cannot get literal data of non-literal";
-        data = new StrData(literal, buffer, offset);
+        data = new StrData(buffer, offset);
     }
 
     public void setFlag(int flag)
