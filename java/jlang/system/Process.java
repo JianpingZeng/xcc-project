@@ -60,4 +60,9 @@ public class Process
 
         return triple;
     }
+
+    public static Boolean getStandardErrHasColors()
+    {
+        return false;
+    }
 }

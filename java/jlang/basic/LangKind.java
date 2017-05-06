@@ -22,8 +22,5 @@ package jlang.basic;
  */
 public enum LangKind
 {
-    Langkind_unspecified,
-    Langkind_c,
-    Langkind_cpp,
-    Langkind_asm_cpp,
+    langkind_unspecified, langkind_c, langkind_cpp, langkind_asm_cpp,
 }

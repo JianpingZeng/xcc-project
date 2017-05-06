@@ -21,13 +21,9 @@ import jlang.cpp.Preprocessor;
 import jlang.diag.Diagnostic;
 import jlang.sema.APFloat;
 import jlang.sema.FltSemantics;
-import org.apache.commons.cli.CommandLine;
 
 import java.io.File;
 import java.math.BigInteger;
-
-import static jlang.basic.ProgramAction.D_macros;
-import static jlang.basic.ProgramAction.U_macros;
 
 /**
  * @author Xlous.zeng
@@ -41,20 +37,16 @@ class PreprocessorFactory
     private HeaderSearch headerInfo;
     private SourceManager sourceMgr;
 
-    private CommandLine cmdline;
-
     PreprocessorFactory(Diagnostic diag, LangOptions opts,
             TargetInfo target,
             SourceManager sourceMgr,
-            HeaderSearch headerInfo,
-            CommandLine cmdline)
+            HeaderSearch headerInfo)
     {
         this.diag = diag;
         this.opts = opts;
         this.target = target;
         this.headerInfo = headerInfo;
         this.sourceMgr = sourceMgr;
-        this.cmdline = cmdline;
     }
 
     /**
@@ -65,7 +57,7 @@ class PreprocessorFactory
      */
     public Preprocessor createAndInitPreprocessor()
     {
-        Preprocessor pp = new Preprocessor(diag, opts, headerInfo, sourceMgr);
+        Preprocessor pp = new Preprocessor(diag, opts, target, sourceMgr, headerInfo);
         PreprocessorInitOptions initOptions = new PreprocessorInitOptions();
         initializePreprocessorInitOptions(initOptions);
 
@@ -76,16 +68,15 @@ class PreprocessorFactory
             PreprocessorInitOptions initOpts)
     {
         // Add macro from command line.
-        String[] defines = cmdline.getOptionValues(D_macros.getOptName());
-        if (defines != null && defines.length > 0)
+        if (!Jlang.D_Macros.isEmpty())
         {
-            for (String m : defines)
+            for (String m : Jlang.D_Macros)
                 initOpts.addMacroDef(m);
         }
-        defines = cmdline.getOptionValues(U_macros.getOptName());
-        if (defines != null && defines.length > 0)
+
+        if (!Jlang.U_macros.isEmpty())
         {
-            for (String u : defines)
+            for (String u : Jlang.U_macros)
                 initOpts.addMacroUndef(u);
         }
     }
