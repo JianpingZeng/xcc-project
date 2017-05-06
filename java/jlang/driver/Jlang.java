@@ -20,16 +20,15 @@ import backend.hir.Module;
 import backend.target.TargetMachine;
 import jlang.ast.ASTConsumer;
 import jlang.basic.*;
-import jlang.basic.ProgramAction;
+import jlang.basic.LangOptions.VisibilityMode;
 import jlang.cpp.Preprocessor;
-import jlang.basic.SourceLocation;
 import jlang.diag.*;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.sema.Sema;
 import jlang.system.Process;
-import org.apache.commons.cli.*;
-import tools.commandline.CL;
+import tools.OutParamWrapper;
+import tools.commandline.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -38,7 +37,10 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 import static jlang.basic.BackendAction.Backend_EmitAssembly;
@@ -47,9 +49,15 @@ import static jlang.basic.CompileOptions.InliningMethod.NormalInlining;
 import static jlang.basic.CompileOptions.InliningMethod.OnlyAlwaysInlining;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.System;
+import static jlang.basic.LangKind.*;
 import static jlang.basic.ProgramAction.*;
 import static jlang.codegen.BackendConsumer.createBackendConsumer;
-import static jlang.driver.Jlang.LangStd.*;
+import static jlang.driver.Jlang.LangStds.*;
+import static tools.commandline.Desc.desc;
+import static tools.commandline.FormattingFlags.Positional;
+import static tools.commandline.Initializer.init;
+import static tools.commandline.MiscFlags.CommaSeparated;
+import static tools.commandline.ValueDesc.valueDesc;
 
 /**
  * This class is used as programmatic interface for handling command line
@@ -60,6 +68,223 @@ import static jlang.driver.Jlang.LangStd.*;
  */
 public class Jlang implements DiagnosticFrontendKindsTag
 {
+    public static BooleanOpt Verbose = new BooleanOpt(
+            new OptionNameApplicator("v"),
+            desc("Enable verbose output"));
+
+    public static StringOpt OutputFile =
+            new StringOpt(new OptionNameApplicator("o"),
+            valueDesc("path"),
+            desc("Specify the output file"));
+
+    public static Opt<ProgramAction> ProgAction
+             = new Opt<ProgramAction>(new Parser<>(),
+            desc("Choose output type:"),
+            new NumOccurrencesApplicator(NumOccurrences.ZeroOrMore),
+            init(ParseSyntaxOnly), new ValueClass<>(
+                new ValueClass.Entry<>(PrintPreprocessedInput, "E",
+                    "Run preprocessor, emit preprocessed file"),
+                new ValueClass.Entry<>(ParseSyntaxOnly, "fsyntax-only",
+                    "Run parser and perform semantic analysis"),
+                new ValueClass.Entry<>(ASTDump, "ast-dump",
+                        "Build ASTs and then debug dump them"),
+                new ValueClass.Entry<>(GenerateAsmCode, "S",
+                        "Emit native assembly code"),
+                new ValueClass.Entry<>(EmitLLVM, "emit-llvm",
+                        "Build ASTs then convert to LLVM, emit .ll file"))
+            );
+
+    public static BooleanOpt NoShowColumn =
+            new BooleanOpt(new OptionNameApplicator("fno-show-column"),
+            desc("Do not include column number on diagnostics"));
+
+    public static BooleanOpt NoShowLocation =
+            new BooleanOpt(new OptionNameApplicator("f-no-show-source-location"),
+            desc("Do not include source location information with diagnostics"));;
+
+    public static BooleanOpt NoCaretDiagnostics =
+            new BooleanOpt(new OptionNameApplicator("fno-caret-diagnostics"),
+                    desc("Do not include source line and caret with diagnostics"));
+
+    public static BooleanOpt NoDiagnosticsFixIt =
+            new BooleanOpt(new OptionNameApplicator("fno-diagnostics-fixit-info"),
+                    desc("Do not include fixit information in diagnostics"));;
+
+    public static BooleanOpt PrintSourceRangeInfo =
+            new BooleanOpt(new OptionNameApplicator("fdiagnostics-print-source-range-info"),
+            desc("Print source range spans in numeric form"));
+
+    public static BooleanOpt PrintDiagnosticOption =
+            new BooleanOpt(new OptionNameApplicator("fdiagnostics-show-option"),
+            desc("Print diagnostic name with mappable diagnostics"));
+
+    public static IntOpt MessageLength =
+            new IntOpt(new OptionNameApplicator("fmessage-length"),
+            desc("Format message diagnostics so that they fit " +
+                    "within N columns or fewer, when possible."),
+            valueDesc("N"));
+
+    public static BooleanOpt NoColorDiagnostic =
+            new BooleanOpt(new OptionNameApplicator("fno-color-diagnostics"),
+            desc("Don't use colors when showing diagnostics " +
+                    "(automatically turned off if output is not a " +
+                    "terminal)."));
+
+    public static Opt<LangKind> BaseLang =
+            new Opt<LangKind>(new Parser<>(),
+            new OptionNameApplicator("x"),
+            desc("Base language to compile"),
+            init(langkind_unspecified),
+            new ValueClass<>(
+                    new ValueClass.Entry<>(langkind_c, "c", "C"),
+                    new ValueClass.Entry<>(langkind_cpp, "cpp-output", "Preprocessed C"),
+                    new ValueClass.Entry<>(langkind_asm_cpp, "assembler-with-cpp",
+                            "Preprocessed asm")));
+
+    public static Opt<VisibilityMode> SymbolVisibility =
+            new Opt<VisibilityMode>(new Parser<>(),
+            new OptionNameApplicator("fvisibility"),
+            desc("Set the default symbol visibility:"),
+            init(VisibilityMode.Default),
+            new ValueClass<>(new ValueClass.Entry<>(VisibilityMode.Default,
+                    "default", "Use default symbol visibility"),
+                    new ValueClass.Entry<>(VisibilityMode.Hidden,
+                            "hidden", "Use hidden symbol visibility"),
+                    new ValueClass.Entry<>(VisibilityMode.Protected,
+                            "protected", "Use protected symbol visibility")));
+
+    public static Opt<LangStds> LangStd =
+            new Opt<LangStds>(new Parser<>(),
+                    new OptionNameApplicator("std"),
+                    desc("Language standard to compile for"),
+                    init(Lang_unpsecified),
+                    new ValueClass<>(
+                        new ValueClass.Entry<>(Lang_c89, "c89","ISO C 1990"),
+                        new ValueClass.Entry<>(Lang_c99, "c99","ISO C 1999"),
+                        new ValueClass.Entry<>(Lang_c11, "c11", "ISO C 2011"),
+                        new ValueClass.Entry<>(Lang_gnu89, "gnu89",
+                                "ISO C 1990 with GNU extensions"),
+                        new ValueClass.Entry<>(Lang_gnu99, "gnu99",
+                                "ISO C 1999 with GNU extensions (default for C)")));
+
+    public static BooleanOpt Trigraphs =
+            new BooleanOpt(
+                    new OptionNameApplicator("trigraphs"),
+                    desc("Process trigraph sequences"));
+
+    public static BooleanOpt DollarsInIdents =
+            new BooleanOpt(
+                    new OptionNameApplicator("fdollars-in-identifiers"),
+                    desc("Allow '$' in identifiers"));
+
+    public static BooleanOpt OptSize =
+            new BooleanOpt(
+                    new OptionNameApplicator("Os"),
+                    desc("Optimize for size"));
+
+    public static StringOpt MainFileName =
+            new StringOpt(new OptionNameApplicator("main-file-name"),
+                    desc("Main file name to use for debug info"));
+
+    public static class OptLevelParser extends ParserUInt
+    {
+        public boolean parse(Option<?> O, String ArgName,
+                String Arg, OutParamWrapper<Integer> Val)
+        {
+            if (super.parse(O, ArgName, Arg, Val))
+                return true;
+            if (Val.get() > 3)
+                return O.error("'" + Arg + "' invalid optimization level!");
+            return false;
+        }
+    }
+
+    public static UIntOpt OptLevel = new UIntOpt(
+            new OptLevelParser(),
+            new OptionNameApplicator("O"),
+            new FormattingFlagsApplicator(FormattingFlags.Prefix),
+            desc("Optimization level"),
+            init(0));
+
+    public static StringOpt TargetTriple = new StringOpt(
+            new OptionNameApplicator("triple"),
+            desc("Specify target triple (e.g. x86_64-unknown-linux-gnu)"));
+
+    //===----------------------------------------------------------------------===//
+    // Preprocessor Initialization
+    //===----------------------------------------------------------------------===//
+    public static ListOpt<String> D_Macros = new ListOpt<String>(
+            new ParserString(),
+            new OptionNameApplicator("D"),
+            valueDesc("macro"),
+            desc("Predefine the specified macro"),
+            new FormattingFlagsApplicator(FormattingFlags.Prefix));
+
+    public static ListOpt<String> U_macros = new ListOpt<String>(
+            new ParserString(),
+            new OptionNameApplicator("U"),
+            new FormattingFlagsApplicator(FormattingFlags.Prefix),
+            valueDesc("macro"),
+            desc("Undefine the specified macro"));
+
+    public static ListOpt<String> ImplicitInclude = new ListOpt<String>(
+            new ParserString(),
+            new OptionNameApplicator("include"),
+            valueDesc("file"),
+            desc("Include file before parsing"));
+
+    public static ListOpt<String> I_dirs = new ListOpt<String>(
+        new ParserString(),
+        new OptionNameApplicator("I"),
+        desc("Add directory to include search path"),
+        valueDesc("directory"),
+        new FormattingFlagsApplicator(FormattingFlags.Prefix));
+
+    public static ListOpt<String> Iquote_dirs = new ListOpt<String>(
+            new ParserString(),
+            new OptionNameApplicator("iquote"),
+            valueDesc("directory"),
+            new FormattingFlagsApplicator(FormattingFlags.Prefix),
+            desc("Add directory to QUOTE include search path"));
+
+    public static ListOpt<String> Isystem_dirs = new ListOpt<String>(
+            new ParserString(),
+            new OptionNameApplicator("isystem"),
+            valueDesc("directory"),
+            new FormattingFlagsApplicator(FormattingFlags.Prefix),
+            desc("Add directory to SYSTEM include search path"));
+
+    public static BooleanOpt GenerateDebugInfo = new BooleanOpt(
+            new OptionNameApplicator("g"),
+            desc("Generate source level debug information"));
+
+    public StringOpt TargetCPU = new StringOpt(
+            new OptionNameApplicator("mcpu"),
+            desc("Target a specific cpu type (-mcpu=help for details)"));
+
+    public ListOpt<String> TargetFeatures = new ListOpt<String>(
+            new ParserString(),
+            new MiscFlagsApplicator(CommaSeparated),
+            new OptionNameApplicator("target-feature"),
+            desc("Target specific attributes"),
+            valueDesc("+a1,+a2,-a3,..."));
+
+    public static ListOpt<String> InputFilenames = new ListOpt<String>(
+            new ParserString(),
+            new FormattingFlagsApplicator(Positional),
+            desc("<input files>"));
+
+    public static StringOpt Isysroot = new StringOpt(
+        new OptionNameApplicator("isysroot"),
+            valueDesc("dir"),
+            init("/"),
+            desc("Set the system root directory (usually /)")
+    );
+
+    public static BooleanOpt nostdinc = new BooleanOpt(
+            new OptionNameApplicator("nostdinc"),
+            desc("Disable standard #include directories")
+    );
     /**
      * Result codes.
      */
@@ -87,23 +312,6 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
     public static final String VERSION = "0.1";
     public static final String NAME = "xcc";
-
-    /**
-     * A list used for residing all of Option corresponding to legal command line
-     * option and argument.
-     * <p>
-     * Note that: all the {@code Option} here are follow the style of GNU.
-     */
-    private static ArrayList<Option> allOptions = new ArrayList<>();
-
-    static
-    {
-        for (ProgramAction action : ProgramAction.values())
-        {
-            allOptions.add(new CustomOption(action.getOptName(),
-                    action.isHasArg(), action.getDesc(), action.getChecker()));
-        }
-    }
 
     private Function<Module, TargetMachine> targetMachineAllocator;
 
@@ -137,32 +345,6 @@ public class Jlang implements DiagnosticFrontendKindsTag
         error(msg, "");
     }
 
-    /**
-     * Process command line arguments: store all command line options in
-     * `options' table and return all source filenames.
-     *
-     * @param args An array of all of arguments.
-     * @return
-     */
-    private List<String> processArgs(String[] args)
-    {
-        List<String> files = new LinkedList<>();
-
-        try
-        {
-            CommandLineParser cmdParser = new DefaultParser();
-            cmdline = cmdParser.parse(options, args);
-
-            // add the left argument as the file to be parsed.
-            files.addAll(cmdline.getArgList());
-        }
-        catch (ParseException ex)
-        {
-            printUsage(ex.getMessage());
-        }
-        return files;
-    }
-
     private void parseAST(Preprocessor pp, ASTConsumer consumer, ASTContext ctx)
     {
         Sema sema = new Sema(pp, ctx, consumer);
@@ -185,7 +367,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
             String extension, StringBuilder outPath)
     {
         boolean usestdout = false;
-        String outfile = cmdline.getOptionValue(OutputFile.getOptName());
+        String outfile = OutputFile.value;
         OutputStream os = null;
         String outputFile = "";
         if (outfile == null || outfile.length() <= 0 || infile.equals("-"))
@@ -238,9 +420,11 @@ public class Jlang implements DiagnosticFrontendKindsTag
      *
      * @param infile
      */
-    private void processInputFile(Preprocessor pp,
+    private void processInputFile(
+            Preprocessor pp,
             String infile,
-            ProgramAction progAction)
+            ProgramAction progAction,
+            HashMap<String, Boolean> features)
     {
         ASTConsumer consumer;
         OutputStream os;
@@ -252,11 +436,11 @@ public class Jlang implements DiagnosticFrontendKindsTag
             case ASTDump:
                 assert false : "Unsupported currently.";
                 return;
-            case EmitIR:
+            case EmitLLVM:
             case GenerateAsmCode:
             {
                 BackendAction act;
-                if (progAction == EmitIR)
+                if (progAction == EmitLLVM)
                 {
                     act = Backend_EmitIr;
                     os = computeOutFile(infile, "ll", outpath);
@@ -267,7 +451,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
                     os = computeOutFile(infile, "s", outpath);
                 }
 
-                CompileOptions compOpts = initializeCompileOptions();
+                CompileOptions compOpts = initializeCompileOptions(features);
                 consumer = createBackendConsumer(act,
                         pp.getDiagnostics(),
                         pp.getLangOptions(),
@@ -277,36 +461,46 @@ public class Jlang implements DiagnosticFrontendKindsTag
             }
         }
 
-        ASTContext astCtx = null;
-        if (consumer != null)
-            astCtx = new ASTContext(
-                    pp.getLangOptions(),
-                    pp.getSourceManager(),
-                    pp.getTargetInfo(),
-                    pp.getIdentifierTable());
+        ASTContext astCtx = new ASTContext(
+                pp.getLangOptions(),
+                pp.getSourceManager(),
+                pp.getTargetInfo(),
+                pp.getIdentifierTable());
         // If we have an ASTConsumer, run the parser with it.
-        if (consumer != null)
-            parseAST(pp, consumer, astCtx);
+        parseAST(pp, consumer, astCtx);
     }
 
-    private CompileOptions initializeCompileOptions()
+    private CompileOptions initializeCompileOptions(HashMap<String, Boolean> features)
     {
         CompileOptions compOpt = new CompileOptions();
-        String optLevel = cmdline.getOptionValue(OptSpeed.getOptName());
-        if (optLevel != null)
+        compOpt.optimizeSize = OptSize.value;
+        compOpt.debugInfo = GenerateDebugInfo.value;
+        if (OptSize.value)
         {
-            compOpt.optimizationLevel = Byte.parseByte(optLevel);
+            // -Os implies -O2
+            compOpt.optimizationLevel = 2;
         }
-        compOpt.optimizeSize = cmdline.hasOption(OptSize.getOptName());
+        else
+        {
+            compOpt.optimizationLevel = OptLevel.value.byteValue();
+        }
 
+        // We must always run at least the always inlining pass.
         if (compOpt.optimizationLevel > 1)
             compOpt.inlining = NormalInlining;
         else
             compOpt.inlining = OnlyAlwaysInlining;
 
-        compOpt.unrollLoops = compOpt.optimizationLevel > 1;
-        compOpt.debugInfo = cmdline.hasOption(ProgramAction.
-                GenerateDebugInfo.getOptName());
+        // Can not unroll loops when enable optimize code size.
+        compOpt.unrollLoops = compOpt.optimizationLevel > 1 && !OptSize.value;
+        compOpt.CPU = TargetCPU.value;
+        compOpt.features.clear();
+        for (Map.Entry<String, Boolean> entry : features.entrySet())
+        {
+            String name = entry.getValue()?"+":"-";
+            name += entry.getKey();
+            compOpt.features.add(name);
+        }
         return compOpt;
     }
 
@@ -321,13 +515,9 @@ public class Jlang implements DiagnosticFrontendKindsTag
     private ProgramAction initializeProgAction()
     {
         ProgramAction progAction = ProgramAction.ParseSyntaxOnly;
-        // Sets the program action from command line option.
-        if (cmdline.hasOption(ProgramAction.ASTDump.getOptName()))
-            progAction = ProgramAction.ASTDump;
-        if (cmdline.hasOption(ProgramAction.ParseSyntaxOnly.getOptName()))
-            progAction = ProgramAction.ParseSyntaxOnly;
-        if (cmdline.hasOption(ProgramAction.GenerateAsmCode.getOptName()))
-            progAction = ProgramAction.GenerateAsmCode;
+        if (ProgAction.value != null)
+            progAction = ProgAction.value;
+
         return progAction;
     }
 
@@ -336,7 +526,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
         int lastDotPos = filename.lastIndexOf('.');
         if (lastDotPos < 0)
         {
-            return LangKind.Langkind_c;
+            return langkind_c;
         }
 
         String ext = filename.substring(lastDotPos + 1);
@@ -347,12 +537,12 @@ public class Jlang implements DiagnosticFrontendKindsTag
         {
             default:
             case "c":
-                return LangKind.Langkind_c;
+                return langkind_c;
             case "S":
             case "s":
-                return LangKind.Langkind_asm_cpp;
+                return langkind_asm_cpp;
             case "i":
-                return LangKind.Langkind_cpp;
+                return langkind_cpp;
         }
     }
 
@@ -368,22 +558,20 @@ public class Jlang implements DiagnosticFrontendKindsTag
         switch (lk)
         {
             default:assert false:"Unknown language kind!";
-            case Langkind_asm_cpp:
+            case langkind_asm_cpp:
                 langOption.asmPreprocessor = true;
                 // fall through.
-            case Langkind_cpp:
+            case langkind_cpp:
                 noPreprocess = true;
                 // fall through
-            case Langkind_c:
+            case langkind_c:
                 initializeOption(langOption);
                 break;
         }
-        langOption.setSymbolVisibility(LangOptions.VisibilityMode.valueOf(
-                cmdline.getOptionValue("fvisibility", "Default")
-        ));
+        langOption.setSymbolVisibility(SymbolVisibility.value);
     }
 
-    enum LangStd
+    enum LangStds
     {
         Lang_unpsecified,
         Lang_c89,
@@ -393,26 +581,35 @@ public class Jlang implements DiagnosticFrontendKindsTag
         Lang_gnu99,
     }
 
-    private void initializeLangStandard(LangOptions options,
-            LangKind lk)
+    private void initializeLangStandard(
+            LangOptions options,
+            LangKind lk,
+            TargetInfo target,
+            HashMap<String, Boolean> features)
     {
-        String std = cmdline.getOptionValue(ProgramAction.Std.getOptName());
-        LangStd langStd = std != null? LangStd.valueOf(std) : Lang_unpsecified;
+
+        // Allow the target to set the default the language options.
+        target.getDefaultLangOptions(options);
+
+        // Pass the map of target features to the target for validateion
+        // and processing.
+        target.handleTargetFeatures(features);
+
         // set the default language standard to c99.
-        if (langStd == Lang_unpsecified)
+        if (LangStd.value == Lang_unpsecified)
         {
             switch (lk)
             {
-                case Langkind_unspecified:
+                case langkind_unspecified:
                     assert false : "unknown base language";
-                case Langkind_c:
-                case Langkind_asm_cpp:
-                case Langkind_cpp:
-                    langStd = LangStd.Lang_c99;
+                case langkind_c:
+                case langkind_asm_cpp:
+                case langkind_cpp:
+                    LangStd.setValue(LangStds.Lang_c99);
                     break;
             }
         }
-        switch (langStd)
+        switch (LangStd.value)
         {
             default:assert false:"Unknown language standard!";
             case Lang_gnu99:
@@ -429,24 +626,35 @@ public class Jlang implements DiagnosticFrontendKindsTag
         }
 
         // Check to see if we are in gnu mode now.
-        options.gnuMode = langStd.ordinal() >= Lang_gnu89.ordinal()
-                && langStd.ordinal() <= Lang_gnu99.ordinal();
-        if (langStd == Lang_c89 || langStd == Lang_gnu89)
+        options.gnuMode = LangStd.value.ordinal() >= Lang_gnu89.ordinal()
+                && LangStd.value.ordinal() <= Lang_gnu99.ordinal();
+
+        if (LangStd.value == Lang_c89 || LangStd.value == Lang_gnu89)
             options.implicitInt = true;
 
         // the trigraph mode is enabled just not in gnu mode or it is specified
         // in command line by user explicitly.
-        options.trigraph = !options.gnuMode
-                || cmdline.hasOption(Trigraph.getOptName());
+        options.trigraph = !options.gnuMode;
+        if (Trigraphs.getPosition() != 0)
+            options.trigraph = Trigraphs.value;
+
         // Default to not accepting '$' in identifiers when preprocessing assembler,
         // but do accept when preprocessing C.
-        options.dollarIdents = lk != LangKind.Langkind_asm_cpp
+        options.dollarIdents = lk != langkind_asm_cpp;
                 // Explicit setting overrides default.
-                || cmdline.hasOption(ProgramAction.DollarInIdents.getOptName());
+        if (DollarsInIdents.getPosition() != 0)
+            options.dollarIdents = DollarsInIdents.value;
 
-        if (cmdline.hasOption(OptSize.getOptName())
-                || cmdline.getOptionValue(OptSpeed.getOptName()) != null)
+        options.optimizeSize = false;
+
+        // -Os implies -O2
+        if (OptSize.value || OptLevel.value !=0)
             options.optimize = true;
+
+        options.noInline = !OptSize.value && OptLevel.value == 0;
+
+        if (MainFileName.getPosition() != 0)
+            options.setMainFileName(MainFileName.value);
     }
 
     /**
@@ -455,42 +663,37 @@ public class Jlang implements DiagnosticFrontendKindsTag
      */
     private void initializeIncludePaths(HeaderSearch headerSearch)
     {
-        boolean v = cmdline.hasOption(Verbose.getOptName());
-        String isysroot = cmdline.getOptionValue(Isysroot.getOptName(), "/");
-        InitHeaderSearch init = new InitHeaderSearch(headerSearch, v, isysroot);
+        InitHeaderSearch init = new InitHeaderSearch(headerSearch, Verbose.value, Isysroot.value);
 
         // Handle the -I option.
-        String[] idirs = cmdline.getOptionValues(I_dirs.getOptName());
-        if (idirs != null && idirs.length > 0)
+        if (!I_dirs.isEmpty())
         {
-            for (String dir : idirs)
+            for (String dir : I_dirs)
             {
                 init.addPath(dir, Angled, false);
             }
         }
 
         // Handle -iquote... options.
-        String[] iquote_dirs = cmdline.getOptionValues(Iquote_dirs.getOptName());
-        if (iquote_dirs != null && iquote_dirs.length > 0)
+        if (!Iquote_dirs.isEmpty())
         {
-            for (String dir : iquote_dirs)
+            for (String dir : Iquote_dirs)
             {
                 init.addPath(dir, Quoted, false);
             }
         }
 
         // Handle -isystem... options.
-        String[] isystem_dirs = cmdline.getOptionValues(Isystem.getOptName());
-        if (isystem_dirs != null && isystem_dirs.length > 0)
+        if (!Isystem_dirs.isEmpty())
         {
-            for (String dir : isystem_dirs)
+            for (String dir : Isystem_dirs)
                 init.addPath(dir, System, false);
         }
 
         // Add default environment path.
         init.addDefaultEnvVarPaths();
 
-        if (!cmdline.hasOption(Nostdinc.getOptName()))
+        if (!nostdinc.value)
             init.addDefaultSystemIncludePaths();
 
         // Now that we have collected all of the include paths, merge them all
@@ -503,12 +706,12 @@ public class Jlang implements DiagnosticFrontendKindsTag
      * final aggregate string that we are compiling for.
      * @return
      */
-    private static String createTargetTriple(CommandLine cmdline)
+    private static String createTargetTriple()
     {
         // Initialize base triple.  If a -triple option has been specified, use
         // that triple.  Otherwise, default to the host triple.
-        String triple = cmdline.getOptionValue(TRIPLE.getOptName());
-        if (triple != null)
+        String triple = TargetTriple.value;
+        if (triple == null || triple.isEmpty())
             triple = Process.getHostTriple();
 
         return triple;
@@ -525,14 +728,13 @@ public class Jlang implements DiagnosticFrontendKindsTag
         assert features.isEmpty() :"Invalid map";
 
         // Initialze the feature map based on the target.
-        String targetCPU = cmdline.getOptionValue(TARGET_CPU.getOptName(), "");
+        String targetCPU = TargetCPU.value;
         target.getDefaultFeatures(targetCPU, features);
 
-        String[] targetFeatures = cmdline.getOptionValues(TARGET_FEATURE.getOptName());
-        if (targetFeatures == null || targetFeatures.length == 0)
+        if (TargetFeatures.isEmpty())
             return;
 
-        for (String name : targetFeatures)
+        for (String name : TargetFeatures)
         {
             char firstCh = name.charAt(0);
             if (firstCh != '-' && firstCh != '+')
@@ -542,7 +744,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
             }
             if (!target.setFeatureEnabled(features, name.substring(1), firstCh == '+'))
             {
-                java.lang.System.err.printf("error: xcc: invalid target features string: %s\n", name.substring(1));
+                java.lang.System.err.printf("error: xcc: invalid target features string: %s\n",
+                        name.substring(1));
                 java.lang.System.exit(EXIT_ERROR);
             }
         }
@@ -594,33 +797,39 @@ public class Jlang implements DiagnosticFrontendKindsTag
     {
 	    // Parse the command line argument.
         CL.parseCommandLineOptions(args);
-
-        // load all options.
-        allOptions.forEach(options::addOption);
-
-        // process command line arguments
-        List<String> filenames = processArgs(args);
-        if (cmdline.hasOption(Verbose.getOptName()))
+        if (Verbose.value)
         {
             java.lang.System.err.println(NAME +  "version " + VERSION + "on X86 machine");
         }
-
-        if (filenames.isEmpty())
+        if (InputFilenames.isEmpty())
         {
-            filenames.add("-");
+            InputFilenames.add("-");
         }
 
         int messageLength;
-        String val = cmdline.getOptionValue(F_MESSAGE_LENGTH.getOptName());
-        messageLength = val != null ? Integer.parseInt(val) : Process.getStandardErrColumns();
+        if (MessageLength.getNumOccurrences() == 0)
+            MessageLength.setValue(Process.getStandardErrColumns());
 
-        DiagnosticClient client = new TextDiagnosticPrinter(java.lang.System.err,
-                true, true, true, true, true, true, messageLength, false);
+        if (!NoColorDiagnostic.value)
+        {
+            NoColorDiagnostic.setValue(Process.getStandardErrHasColors());
+        }
 
-        Diagnostic diag = new Diagnostic(client);
+        DiagnosticClient diagClient = new TextDiagnosticPrinter(
+                java.lang.System.err,
+                !NoShowColumn.value,
+                !NoCaretDiagnostics.value,
+                !NoShowLocation.value,
+                PrintSourceRangeInfo.value,
+                PrintDiagnosticOption.value,
+                !NoDiagnosticsFixIt.value,
+                MessageLength.value,
+                !NoColorDiagnostic.value);
+
+        Diagnostic diag = new Diagnostic(diagClient);
 
         // Get information about the target being compiled for.
-        String triple = createTargetTriple(cmdline);
+        String triple = createTargetTriple();
         TargetInfo target = TargetInfo.createTargetInfo(triple);
         if (target == null)
         {
@@ -638,10 +847,9 @@ public class Jlang implements DiagnosticFrontendKindsTag
         HashMap<String, Boolean> features = new HashMap<>();
         computeFeatureMap(target, features);
 
-
         SourceManager sourceManager = null;
 
-        for (String inputFile : filenames)
+        for (String inputFile : InputFilenames)
         {
             if (sourceManager == null)
             {
@@ -655,17 +863,22 @@ public class Jlang implements DiagnosticFrontendKindsTag
             // Walk through all of source files, initialize LangOptions and Language
             // Standard, and compile option.
             // Instance a Preprocessor.
-            LangKind langkind = getLanguage(inputFile);
+
+            // Initialize the language options, inferring file types
+            // from input filenames.
             LangOptions langOption = new LangOptions();
+            diagClient.setLangOptions(langOption);
+
+            LangKind langkind = getLanguage(inputFile);
             initializeLangOptions(langOption, langkind);
-            initializeLangStandard(langOption, langkind);
+            initializeLangStandard(langOption, langkind, target, features);
 
             // Handle -I option and set the include search.
             HeaderSearch headerSearch = new HeaderSearch();
             initializeIncludePaths(headerSearch);
 
             PreprocessorFactory ppFactory = new PreprocessorFactory(diag,
-                    langOption, target, sourceManager, headerSearch, cmdline);
+                    langOption, target, sourceManager, headerSearch);
             Preprocessor pp = ppFactory.createAndInitPreprocessor();
 
             if (pp == null)
@@ -675,7 +888,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
             if (initializeSourceManager(pp, inputFile))
                 continue;
 
-            processInputFile(pp, inputFile, progAction);
+            processInputFile(pp, inputFile, progAction, features);
         }
 
         return EXIT_OK;

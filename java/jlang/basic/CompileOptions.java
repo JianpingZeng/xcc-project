@@ -1,5 +1,7 @@
 package jlang.basic;
 
+import java.util.ArrayList;
+
 /**
  * Keeps track of various options which control how the code is optimized and
  * passed to the backend.
@@ -8,7 +10,7 @@ package jlang.basic;
  */
 public class CompileOptions
 {
-	public enum InliningMethod
+    public enum InliningMethod
 	{
 		/**
 		 * Performs no inlining.
@@ -50,4 +52,6 @@ public class CompileOptions
 	 * An optional CPU to backend.target.
 	 */
 	public String CPU;
+
+	public ArrayList<String> features;
 }

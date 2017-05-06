@@ -73,6 +73,8 @@ public final class LangOptions
      */
     public boolean optimizeSize;
 
+    public boolean noInline;
+
     public enum VisibilityMode
     {
         Default,
