@@ -3,7 +3,7 @@ package backend.analysis;
 import backend.hir.BasicBlock;
 import backend.type.Type;
 import backend.value.ConstantInt;
-import jlang.sema.APInt;
+import jlang.basic.APInt;
 
 import java.io.PrintStream;
 import java.util.HashMap;

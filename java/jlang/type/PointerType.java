@@ -32,11 +32,6 @@ public final class PointerType extends Type
         this.pointeeType = baseType;
     }
 
-    @Override public long getTypeSize()
-    {
-        return size;
-    }
-
     public int getTypeSizeInBytes()
     {
         return (int)size>>3;

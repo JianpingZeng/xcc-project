@@ -27,7 +27,7 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import jlang.sema.APInt;
+import jlang.basic.APInt;
 import tools.Util;
 
 import java.util.*;
@@ -90,7 +90,7 @@ public final class ScalarEvolution implements FunctionPass
     @Override
     public String getPassName()
     {
-        return "Scalar Evolution pass on Function";
+        return "Scalar Evolution pass on FunctionProto";
     }
 
     @Override

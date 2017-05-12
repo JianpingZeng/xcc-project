@@ -16,8 +16,8 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
-import jlang.cpp.ExternalIdentifierLookup;
-import jlang.cpp.IdentifierInfo;
+import jlang.clex.ExternalIdentifierLookup;
+import jlang.clex.IdentifierInfo;
 import tools.OutParamWrapper;
 
 import java.io.File;

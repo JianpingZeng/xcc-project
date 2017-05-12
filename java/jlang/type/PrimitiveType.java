@@ -17,7 +17,7 @@ package jlang.type;
  */
 
 /**
- * This class represents the primitive jlang.type of C language.
+ * This class represents the primitive type of C language.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -35,9 +35,10 @@ public abstract class PrimitiveType extends Type
         super(tag);
         this.name = name;
     }
+
     @Override
     public boolean isSignedType()
     {
-        return tag>= Char && tag<= LongInteger;
+        return tag>= BuiltinTypeBegin && tag<= BuiltinTypeEnd;
     }
 }

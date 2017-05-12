@@ -33,8 +33,9 @@ public interface TypeClass
     int Enumerate = Complex + 1;
     int Pointer = Enumerate + 1;
     int Reference = Pointer + 1;
-    int Function = Reference + 1;
-    int Method = Function + 1;
+    int FunctionProto = Reference + 1;
+    int FunctionNoProto = FunctionProto + 1;
+    int Method = FunctionNoProto + 1;
     int ConstantArray = Method + 1;
     int IncompleteArray = ConstantArray + 1;
     int VariableArray = IncompleteArray + 1;

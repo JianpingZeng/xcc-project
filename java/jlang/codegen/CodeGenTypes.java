@@ -327,7 +327,7 @@ public class CodeGenTypes
                 resultType = backend.type.ArrayType.get(eltTy, a.getSize().getZExtValue());
                 break;
             }
-            case Function:
+            case FunctionProto:
             {
                 jlang.type.FunctionType fnType = (jlang.type.FunctionType) ty;
                 // First, check whether we can build the full function type.  If the

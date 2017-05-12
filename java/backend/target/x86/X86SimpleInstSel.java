@@ -103,7 +103,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
      * Top level implementation of instruction selector for x86 target on entire
      * function.
      *
-     * @param f The Function object to be converted to MachineFunction.
+     * @param f The FunctionProto object to be converted to MachineFunction.
      * @return Return {@code true} if the CFG is not changed.
      */
     @Override

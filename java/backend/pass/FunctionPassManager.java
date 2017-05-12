@@ -96,6 +96,6 @@ public class FunctionPassManager implements PassManagerBase, ModulePass
 	@Override
 	public String getPassName()
 	{
-		return "Function pass manager";
+		return "FunctionProto pass manager";
 	}
 }

@@ -11,7 +11,7 @@ import jlang.cparser.DeclSpec.FieldDeclarator;
 import jlang.cparser.DeclSpec.ParamInfo;
 import jlang.cparser.DeclSpec.ParsedSpecifiers;
 import jlang.cparser.Declarator.TheContext;
-import jlang.cpp.*;
+import jlang.clex.*;
 import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
 import jlang.diag.*;
@@ -37,7 +37,7 @@ import static jlang.cparser.DeclSpec.TST.*;
 import static jlang.cparser.DeclSpec.TSW.TSW_long;
 import static jlang.cparser.DeclSpec.TSW.TSW_short;
 import static jlang.cparser.Parser.ParenParseOption.*;
-import static jlang.cpp.TokenKind.*;
+import static jlang.clex.TokenKind.*;
 import static jlang.sema.Sema.TagUseKind.*;
 
 /**
@@ -1328,7 +1328,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         }
 
         // C99 6.8.5p5 - In C99, the while statement is a block.  This is not
-        // the case for C90.  Start the loop scope.
+        // the case for C90.  Star the loop scope.
         int scopeFlags = 0;
         if (getLangOption().c99)
             scopeFlags = ScopeFlags.BlockScope.value
@@ -2113,7 +2113,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      *   type-qualifier declaration-specifiers[opt]
      *   function-specifier declaration-specifiers[opt]
      *
-     * Function specifiers (inline) are from C99, and are currently
+     * FunctionProto specifiers (inline) are from C99, and are currently
      *   handled as storage class specifiers, as is __thread.
      *
      * C90 6.5.1, C99 6.7.1:
@@ -2511,7 +2511,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 TST_enum,
                 tuk,
                 startLoc,
-                name.getName(),
+                name,
                 nameLoc);
 
         if (tagDecl.isInvalid())
@@ -2577,7 +2577,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         // Parse the enumerator-list.
         while(tokenIs(tok, Identifier))
         {
-            String name = tok.getIdentifierInfo().getName();
+            IdentifierInfo name = tok.getIdentifierInfo();
             SourceLocation identLoc = consumeToken();
 
             SourceLocation equalLoc = SourceLocation.NOPOS;
@@ -2715,7 +2715,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         ActionResult<Decl> tagOrTempResult =
                 action.actOnTag(
                 getCurScope(), tagType,
-                tuk, startLoc, name.getName(), nameLoc);
+                tuk, startLoc, name, nameLoc);
         // if there is a body, parse it and perform actions
         if (nextTokenIs(l_brace))
         {
@@ -3960,7 +3960,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 if (isAddressOfOperand && isPostfixExpressionSuffixStart())
                     isAddressOfOperand = false;
 
-                // Function designators are allowed to be undeclared (C99 6.5.1p2), so we
+                // FunctionProto designators are allowed to be undeclared (C99 6.5.1p2), so we
                 // need to know whether or not this identifier is a function designator or
                 // not.
                 res = action.actOnIdentifierExpr(getCurScope(),

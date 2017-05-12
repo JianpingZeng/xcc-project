@@ -20,7 +20,7 @@ public final class Scope
         CompilationUnitScope(0),
 
         /**
-         * Function scope.
+         * FunctionProto scope.
          * This indicates that the scope corresponds to a function, which
          * means that labels are set here.
          */

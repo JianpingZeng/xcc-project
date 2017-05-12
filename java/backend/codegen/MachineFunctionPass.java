@@ -8,7 +8,7 @@ import backend.value.Function;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class MachineFunctionPass extends FunctionPass
+public abstract class MachineFunctionPass implements FunctionPass
 {
 	/**
 	 * This method must be overridded by concrete subclass for performing

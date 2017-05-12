@@ -414,7 +414,7 @@ public class Name {
             _false = fromString("false");
             _true = fromString("true");            
             Array = fromString("Array");
-            Method = fromString("Function");
+            Method = fromString("FunctionProto");
             SourceFile = fromString("SourceFile");            
         }
 

@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.APInt;
 import jlang.type.QualType;
 
 /**

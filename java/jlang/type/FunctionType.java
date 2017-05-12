@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * C99 6.7.5.3 - Function Declarators.
+ * C99 6.7.5.3 - FunctionProto Declarators.
  *
  * @author xlous.zeng
  * @version 0.1
@@ -34,9 +34,9 @@ public class FunctionType extends Type
      *                   function body.
      * @param isVarArgs indicates if it is variable parameter list.
      */
-    public FunctionType(QualType returnType, ArrayList<QualType> paramTypes, boolean isVarArgs)
+    public FunctionType(int typeClass, QualType returnType, ArrayList<QualType> paramTypes, boolean isVarArgs)
     {
-        super(Function);
+        super(typeClass);
         this.returnType = returnType;
         this.paramTypes = paramTypes;
         this.isVarArgs = isVarArgs;
@@ -70,22 +70,6 @@ public class FunctionType extends Type
         return true;
     }
 
-    @Override
-    public boolean isSameType(Type other)
-    {
-        if (!other.isFunctionType())
-            return false;
-        FunctionType ft = other.getFunctionType();
-        return returnType.isSameType(ft.returnType)
-                && isSameType(paramTypes, ft.paramTypes);
-    }
-
-    @Override
-    public boolean isCastableTo(Type target)
-    {
-        return target.isFunctionType();
-    }
-
     public QualType getResultType()
     {
         return returnType;
@@ -113,13 +97,6 @@ public class FunctionType extends Type
             return numArgs == paramTypes.size();
         }
     }
-
-    @Override
-    public long alignment()
-    {
-        throw new Error("FunctionType#alignment called");
-    }
-
     public String toString()
     {
         String sep = "";

@@ -27,24 +27,4 @@ public final class BooleanType extends PrimitiveType
     {
         return false;
     }
-
-    @Override
-    public long getTypeSize()
-    {
-        return 1;
-    }
-
-    @Override
-    public boolean isSameType(Type other)
-    {
-        if (!other.isBooleanType())
-            return false;
-        return equals(other);
-    }
-
-    @Override
-    public boolean isCastableTo(Type target)
-    {
-        return false;
-    }
 }

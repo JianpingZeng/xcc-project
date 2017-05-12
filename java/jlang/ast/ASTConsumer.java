@@ -28,13 +28,12 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class ASTConsumer
+public interface ASTConsumer
 {
-
     /**
      * This method is invoked for initializing this ASTConsumer.
      */
-    public abstract void initialize(ASTContext ctx);
+    void initialize(ASTContext ctx);
 
     /**
      * Handle the specified top level declaration.
@@ -44,13 +43,13 @@ public abstract class ASTConsumer
      * <code>'int a, b'</code>, there are two declarator chained.
      * @param decls
      */
-    public abstract void handleTopLevelDecls(ArrayList<Decl> decls);
+    void handleTopLevelDecls(ArrayList<Decl> decls);
 
     /**
      * This method is called when the parsing file for entire translation unit
      * was parsed.
      */
-    public abstract void handleTranslationUnit();
+    void handleTranslationUnit();
 
 	/**
      * This callback is invoked each time a TagDecl
@@ -59,8 +58,5 @@ public abstract class ASTConsumer
      * can be defined in declspecs).
      * @param tag
      */
-    public void handleTagDeclDefinition(Decl.TagDecl tag)
-    {
-
-    }
+    default void handleTagDeclDefinition(Decl.TagDecl tag){}
 }

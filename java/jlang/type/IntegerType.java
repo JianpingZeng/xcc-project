@@ -56,27 +56,6 @@ public final class IntegerType extends PrimitiveType
         return (minValue() <= val && val <= maxValue());
     }
 
-    @Override
-    public long getTypeSize()
-    {
-        return size;
-    }
-
-    @Override
-    public boolean isSameType(Type other)
-    {
-        if (!other.isIntegerType())
-            return false;
-
-        return equals(other.getIntegerType());
-    }
-
-    @Override
-    public boolean isCastableTo(Type target)
-    {
-        return false;
-    }
-
     public String toString()
     {
         return name;

@@ -20,7 +20,7 @@ import backend.hir.InstVisitor;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
-import jlang.sema.APInt;
+import jlang.basic.APInt;
 
 import java.math.BigDecimal;
 

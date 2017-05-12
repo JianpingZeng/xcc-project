@@ -422,6 +422,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_REDEFINITION_DIFFERENT_KIND(err_redefinition_different_kind,CLASS_ERROR, MAP_ERROR, "redefinition of %0 as different kind of symbol"),
 	ERR_REDEFINITION_DIFFERENT_TYPE(err_redefinition_different_type,CLASS_ERROR, MAP_ERROR, "redefinition of %0 with a different type"),
 	ERR_REDEFINITION_DIFFERENT_TYPEDEF(err_redefinition_different_typedef,CLASS_ERROR, MAP_ERROR, "typedef redefinition with different types (%0 vs %1)"),
+	ERR_REDEFINITION_EXTERN_INLINE(err_redefinition_extern_inline, CLASS_ERROR, MAP_ERROR, "redefinition of a 'extern inline' function %0 is not supported in %select{C99 mode|C++}1"),
 	ERR_REDEFINITION_OF_ENUMERATOR(err_redefinition_of_enumerator,CLASS_ERROR, MAP_ERROR, "redefinition of enumerator %0"),
 	ERR_REDEFINITION_OF_LABEL(err_redefinition_of_label,CLASS_ERROR, MAP_ERROR, "redefinition of label '%0'"),
 	ERR_REFERENCE_INIT_DROPS_QUALS(err_reference_init_drops_quals,CLASS_ERROR, MAP_ERROR, "initialization of reference to type %0 with a %1 of type %2 drops qualifiers"),

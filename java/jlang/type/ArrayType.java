@@ -1,7 +1,8 @@
 package jlang.type;
 
-import jlang.ast.Tree;
-import jlang.sema.APInt;
+import jlang.ast.Tree.Expr;
+import jlang.basic.SourceRange;
+import jlang.basic.APInt;
 
 /**
  * ConstantArrayType - C99 6.7.5.2 - Array Declarators.
@@ -12,18 +13,39 @@ import jlang.sema.APInt;
 public abstract class ArrayType extends Type
 {
     /**
-     * The jlang.type of element which Array holds.
+     * Capture whether this is a normal array (e.g. int X[10]),
+     * an array with a static size (e.g. int X[static 4]), or an
+     * array with a star size (e.g. int X[*]).
+     * <b>Note that:</b> 'static' is only allowed on function parameters.
+     */
+    public enum ArraySizeModifier
+    {
+        Normal, Static, Star
+    }
+
+    /**
+     * The type of element which Array holds.
      */
     private QualType elemType;
+
+    private ArraySizeModifier sizeModifier;
+
+    /**
+     * Capture qualifiers in declarations like:
+     * 'int X[static restrict 4]'. For function parameters only.
+     */
+    private int indexTypeQuals;
 
     /**
      * Constructor with one parameter which represents the kind of jlang.type
      * for reason of comparison convenient.
      */
-    public ArrayType(int tag, QualType elemTy)
+    public ArrayType(int tag, QualType elemTy, ArraySizeModifier sm, int tq)
     {
         super(tag);
-        this.elemType = elemTy;
+        elemType = elemTy;
+        sizeModifier = sm;
+        indexTypeQuals = tq;
     }
 
     public QualType getElemType()
@@ -31,15 +53,14 @@ public abstract class ArrayType extends Type
         return elemType;
     }
 
-    /**
-     * gets the getTypeSize as a pointer.
-     *
-     * @return
-     */
-    @Override
-    public long getTypeSize()
+    public ArraySizeModifier getSizeModifier()
     {
-        return 4;
+        return sizeModifier;
+    }
+
+    public int getIndexTypeQuals()
+    {
+        return indexTypeQuals;
     }
 
     public abstract int getIndexTypeCVRQualifiers();
@@ -61,17 +82,11 @@ public abstract class ArrayType extends Type
          *
          * @param elemTy
          */
-        public ConstantArrayType(QualType elemTy, APInt length)
+        public ConstantArrayType(QualType elemTy, APInt length, ArraySizeModifier asm, int tq)
         {
-            super(ConstantArray, elemTy);
+            super(ConstantArray, elemTy, asm, tq);
             //assert getSize.ult(0) : "The getSize for array must greater than zero!";
             size = length;
-        }
-
-        public ConstantArrayType(QualType elemTy)
-        {
-            super(ConstantArray, elemTy);
-            size = new APInt(32, 0);
         }
 
         public APInt getSize()
@@ -91,30 +106,6 @@ public abstract class ArrayType extends Type
                 return false;
             return !getElemType().isAllocatedArray();
         }
-        /**
-         * Gets the getTypeSize as allocated array.
-         *
-         * @return
-         */
-        @Override
-        public long allocSize()
-        {
-            return size.mul(getElemType().getTypeSize());
-        }
-
-        public long alignment()
-        {
-            return getElemType().alignment();
-        }
-
-        @Override
-        public boolean isSameType(Type other)
-        {
-            // getSize is not important
-            if (!other.isPointerType() && !other.isConstantArrayType())
-                return false;
-            return getElemType().isSameType(other.baseType());
-        }
 
         @Override
         public Type baseType()
@@ -122,43 +113,60 @@ public abstract class ArrayType extends Type
             return getElemType();
         }
 
-
-        /**
-         * Indicates if this jlang.type can be casted into TargetData jlang.type.
-         *
-         * @param target
-         * @return
-         */
-        @Override
-        public boolean isCastableTo(Type target)
-        {
-            return target.isPointerType() || target.isConstantArrayType();
-        }
-
         public String toString()
         {
             return getElemType().toString() + "[" + size.toString(10) + "]";
-        }
-
-        /**
-         * Returns the reference to the jlang.type for an array of the specified element jlang.type.
-         * @param elemTy
-         * @param size
-         * @return
-         */
-        public static QualType getConstantType(QualType elemTy, APInt size)
-        {
-            assert elemTy.isIncompleteType()
-                    || elemTy.isConstantSizeType():"Constant arrays of VLAs is illegal!";
-
-            ConstantArrayType New = new ConstantArrayType(elemTy, size);
-            return new QualType(New, 0);
         }
 
         @Override
         public int getIndexTypeCVRQualifiers()
         {
             return 0;
+        }
+    }
+
+    /**
+     * This class represents C arrays with a
+     * constant size specified by means of an integer constant expression.
+     * For example 'int A[sizeof(int)]' has ConstantArrayWithExprType where
+     * the element type is 'int' and the size expression is 'sizeof(int)'.
+     */
+    public static class ConstantArrayWithExprType extends ConstantArrayType
+    {
+        private Expr sizeExpr;
+        private SourceRange brackets;
+
+        public ConstantArrayWithExprType(
+                QualType elemTy,
+                APInt length,
+                Expr numElts,
+                ArraySizeModifier asm,
+                int tq,
+                SourceRange brackets)
+        {
+            super(elemTy, length, asm, tq);
+            sizeExpr = numElts;
+            this.brackets = brackets;
+        }
+    }
+
+    /**
+     * This class represents C arrays with a
+     * constant size that was not specified by an integer constant expression,
+     * but inferred by static semantics.
+     * For example 'int A[] = { 0, 1, 2 }' has ConstantArrayWithoutExprType.
+     * These types are non-canonical: the corresponding canonical type,
+     * having the size specified in an APInt object, is a ConstantArrayType.
+     */
+    public static class ConstantArrayWithoutExprType extends ConstantArrayType
+    {
+        public ConstantArrayWithoutExprType(
+                QualType elemTy,
+                APInt length,
+                ArraySizeModifier asm,
+                int tq)
+        {
+            super(elemTy, length, asm, tq);
         }
     }
 
@@ -185,46 +193,42 @@ public abstract class ArrayType extends Type
         /**
          * An assignment expression, which are only permitted within function block.
          */
-        private Tree.Expr sizeExpr;
+        private Expr sizeExpr;
+        /**
+         * The left and right array brackets.
+         */
+        private SourceRange brackets;
         /**
          * Constructor with one parameter which represents the kind of jlang.type
          * for reason of comparison convenient.
          *
          * @param elemTy
          */
-        public VariableArrayType(QualType elemTy, Tree.Expr sizeExpr)
+        public VariableArrayType(
+                QualType elemTy,
+                Expr sizeExpr,
+                ArraySizeModifier asm,
+                int tq,
+                SourceRange brackets)
         {
-            super(VariableArray, elemTy);
+            super(VariableArray, elemTy, asm, tq);
             this.sizeExpr = sizeExpr;
+            this.brackets = brackets;
         }
 
-        public Tree.Expr getSizeExpr()
+        public Expr getSizeExpr()
         {
             return sizeExpr;
-        }
-
-        @Override
-        public boolean isSameType(Type other)
-        {
-            return false;
-        }
-
-
-        /**
-         * Indicates if this jlang.type can be casted into TargetData jlang.type.
-         *
-         * @param target
-         * @return
-         */
-        @Override
-        public boolean isCastableTo(Type target)
-        {
-            return false;
         }
 
         public int getIndexTypeCVRQualifiers()
         {
             return sizeExpr.getType().getCVRQualifiers();
+        }
+
+        public SourceRange getBrackets()
+        {
+            return brackets;
         }
     }
 
@@ -241,27 +245,9 @@ public abstract class ArrayType extends Type
          *
          * @param elementType
          */
-        public IncompleteArrayType(QualType elementType)
+        public IncompleteArrayType(QualType elementType, ArraySizeModifier asm, int tq)
         {
-            super(IncompleteArray, elementType);
-        }
-
-        @Override
-        public boolean isSameType(Type other)
-        {
-            return false;
-        }
-
-        /**
-         * Indicates if this jlang.type can be casted into TargetData jlang.type.
-         *
-         * @param target
-         * @return
-         */
-        @Override
-        public boolean isCastableTo(Type target)
-        {
-            return false;
+            super(IncompleteArray, elementType, asm, tq);
         }
 
         @Override

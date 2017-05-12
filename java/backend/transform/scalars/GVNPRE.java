@@ -25,7 +25,7 @@ import java.util.*;
 import static backend.support.DepthFirstOrder.dfTravesal;
 
 /**
- * This class implements a pass on Function to perform global value numbering, and
+ * This class implements a pass on FunctionProto to perform global value numbering, and
  * Partial redundancy elimination based GVN.
  * <p>
  * The implementation original stem from the literature of "Value-based partial

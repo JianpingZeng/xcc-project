@@ -33,7 +33,7 @@ import static backend.transform.scalars.ConstantFolder.constantFoldTerminator;
 
 /**
  * This pass defined here for removing the unreachable basic block resides inside
- * Function.
+ * FunctionProto.
  *
  * @author Xlous.zeng
  * @version 0.1

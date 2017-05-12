@@ -17,10 +17,10 @@ package jlang.driver;
  */
 
 import jlang.basic.*;
-import jlang.cpp.Preprocessor;
+import jlang.clex.Preprocessor;
 import jlang.diag.Diagnostic;
-import jlang.sema.APFloat;
-import jlang.sema.FltSemantics;
+import jlang.basic.APFloat;
+import jlang.basic.FltSemantics;
 
 import java.io.File;
 import java.math.BigInteger;

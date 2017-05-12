@@ -14,7 +14,7 @@ package backend.transform;
 /*
 public final class UCE extends FunctionPass
 {
-    private Function m;
+    private FunctionProto m;
     private boolean changed = true;
     private List<BasicBlock> postOrder;
 
@@ -32,7 +32,7 @@ public final class UCE extends FunctionPass
      *
      * @param f
      *
-    @Override public boolean runOnFunction(Function f)
+    @Override public boolean runOnFunction(FunctionProto f)
     {
         postOrder = new ArrayList<>(f.cfg.postOrder());
         while (changed)

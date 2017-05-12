@@ -64,7 +64,7 @@ import static jlang.basic.BackendAction.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class BackendConsumer extends ASTConsumer
+public class BackendConsumer implements ASTConsumer
 {
     private CompileOptions compileOptions;
     private BackendAction action;

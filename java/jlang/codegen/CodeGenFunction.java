@@ -25,6 +25,7 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.TerminatorInst;
 import jlang.ast.Tree;
+import jlang.basic.APInt;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo.ArgInfo;
 import jlang.sema.*;
@@ -172,7 +173,7 @@ public final class CodeGenFunction
 		curFnDecl = fd;
 		fnRetTy = resTy;
 
-		assert fn.isDeclaration() : "Function already has body.";
+		assert fn.isDeclaration() : "FunctionProto already has body.";
 
 		BasicBlock entryBB = createBasicBlock("entry", curFn);
 

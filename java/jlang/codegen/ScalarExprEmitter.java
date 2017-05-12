@@ -588,7 +588,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         cgf.emitBranchOnBoolExpr(expr.getLHS(), rhsBlock, endBlock);
 
         // Any edges into the ContBlock are now from an (indeterminate number of)
-        // edges from this first condition.  All of these values will be false.  Start
+        // edges from this first condition.  All of these values will be false.  Star
         // setting up the PHI node in the endBlock for this.
         PhiNode phiNode = new PhiNode(Type.Int1Ty, 2, "phi", endBlock);
         for (Iterator<BasicBlock> predItr = endBlock.predIterator(); predItr.hasNext();)
@@ -642,7 +642,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         cgf.emitBranchOnBoolExpr(expr.getLHS(), rhsBlock, endBlock);
 
         // Any edges into the endBlock are now from an (indeterminate number of)
-        // edges from this first condition.  All of these values will be true.  Start
+        // edges from this first condition.  All of these values will be true.  Star
         // setting up the PHI node in the end Block for this.
         PhiNode phiNode = new PhiNode(Type.Int1Ty, 2, "phi", endBlock);
         for (Iterator<BasicBlock> predItr = endBlock.predIterator(); predItr.hasNext(); )

@@ -64,7 +64,7 @@ public enum CastKind
     ///   char[5][6] -> char(*)[6]
     CK_ArrayToPointerDecay,
 
-    /// CK_FunctionToPointerDecay - Function to pointer decay.
+    /// CK_FunctionToPointerDecay - FunctionProto to pointer decay.
     ///   void(int) -> void(*)(int)
     CK_FunctionToPointerDecay,
 

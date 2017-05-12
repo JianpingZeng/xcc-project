@@ -17,7 +17,6 @@ package jlang.type;
  */
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Represents a prototype with argument number and jlang.type info,
@@ -39,6 +38,6 @@ public class FunctionProtoType extends FunctionType
     public FunctionProtoType(QualType returnType, ArrayList<QualType> paramTypes,
             boolean isVarArgs)
     {
-        super(returnType, paramTypes, isVarArgs);
+        super(FunctionProto, returnType, paramTypes, isVarArgs);
     }
 }

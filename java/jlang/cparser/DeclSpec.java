@@ -5,8 +5,8 @@ import jlang.ast.Tree.Expr;
 import jlang.basic.SourceManager;
 import jlang.basic.SourceRange;
 import jlang.cparser.Declarator.TheContext;
-import jlang.cpp.IdentifierInfo;
-import jlang.cpp.Preprocessor;
+import jlang.clex.IdentifierInfo;
+import jlang.clex.Preprocessor;
 import jlang.basic.SourceLocation;
 import jlang.diag.*;
 import jlang.sema.Decl;
@@ -33,10 +33,9 @@ import static jlang.cparser.DeclSpec.TST.*;
  */
 public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 {
-
     public static class DeclaratorChunk<T>
     {
-        enum ChunkKind
+        public enum ChunkKind
         {
             Pointer,
             Array,
@@ -61,26 +60,26 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
         public static class PointerTypeInfo
         {
-            // the jlang.type qualifiers : const/volatile/rstrict
-            int typeQuals;
+            // the type qualifiers : const/volatile/rstrict
+            public int typeQuals;
             // the location of the const-qualifier, if any
-            SourceLocation constQualLoc;
+            public SourceLocation constQualLoc;
             // the location of the volatile-qualifier, if any
-            SourceLocation volatileQualLoc;
+            public SourceLocation volatileQualLoc;
             // the location of the restrict-qualifier, if any
-            SourceLocation restrictQualLoc;
+            public SourceLocation restrictQualLoc;
         }
 
         public static class ArrayTypeInfo
         {
             // the jlang.type qualifiers : const/volatile/rstrict
-            int typeQuals;
+            public int typeQuals;
             // true if this dimension included the 'static' kwyword.
-            boolean hasStatic;
+            public boolean hasStatic;
             // true if this dimension was [*].
-            boolean isStar;
+            public boolean isStar;
             // This is the getTypeSize of the array, or null if [] or [*] was specified.
-            Tree.Expr numElts;
+            public Tree.Expr numElts;
         }
 
         public static class FunctionTypeInfo
@@ -206,18 +205,33 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
             return res;
         }
+
+        public ChunkKind getKind()
+        {
+            return kind;
+        }
+
+        public SourceLocation getLocation()
+        {
+            return loc;
+        }
+
+        public SourceLocation getEndLocation()
+        {
+            return endLoc;
+        }
     }
 
     public static class ParamInfo
     {
         public IdentifierInfo name;
-        public SourceLocation loc;
+        public SourceLocation identLoc;
         public Decl param;
 
-        public ParamInfo(IdentifierInfo ID, SourceLocation loc, Decl param)
+        public ParamInfo(IdentifierInfo ID, SourceLocation identLoc, Decl param)
         {
             this.name = ID;
-            this.loc = loc;
+            this.identLoc = identLoc;
             this.param = param;
         }
     }
@@ -529,7 +543,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
      * tried to set "auto" on a spec with "extern" already set), they return true and
      * set PrevSpec and DiagID such that:
      * <pre>
-     *     Diag(loc, diagID)<<PrevSpec;
+     *     Diag(identLoc, diagID)<<PrevSpec;
      * </pre>
      * will yield a useful result.
      * @param val

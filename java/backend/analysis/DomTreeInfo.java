@@ -25,7 +25,7 @@ import backend.value.Instruction;
 import java.util.ArrayList;
 
 /**
- * Defines a class for computing dominator tree info on Function using
+ * Defines a class for computing dominator tree info on FunctionProto using
  * class {@linkplain DomTree}.
  * @author Xlous.zeng
  * @version 0.1
