@@ -17,4 +17,5 @@ public enum DeclKind
     FieldDecl,
     VarDecl,
     ParamVar,
+    OriginalParamVar,
 }

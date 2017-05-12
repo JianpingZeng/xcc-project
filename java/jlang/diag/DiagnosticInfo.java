@@ -17,7 +17,7 @@ package jlang.diag;
  */
 
 import jlang.basic.SourceRange;
-import jlang.cpp.IdentifierInfo;
+import jlang.clex.IdentifierInfo;
 import jlang.diag.Diagnostic.ArgumentKind;
 import tools.OutParamWrapper;
 import tools.Pair;

@@ -16,20 +16,20 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import jlang.ast.Tree;
-import jlang.basic.LangOptions;
-import jlang.basic.SourceManager;
-import jlang.basic.TargetInfo;
+import jlang.ast.Tree.Expr;
+import jlang.basic.*;
 import jlang.basic.TargetInfo.IntType;
 import jlang.cparser.DeclContext;
-import jlang.cpp.IdentifierTable;
+import jlang.clex.IdentifierTable;
 import jlang.sema.Decl.*;
 import jlang.type.*;
-import jlang.type.ArrayType.ConstantArrayType;
+import jlang.type.ArrayType.*;
 import tools.Pair;
 import tools.Util;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.TreeSet;
 
 import static jlang.sema.ASTContext.FloatingRank.DoubleRank;
 import static jlang.sema.ASTContext.FloatingRank.FloatRank;
@@ -42,6 +42,10 @@ import static jlang.type.TypeClass.*;
  */
 public final class ASTContext
 {
+    private ArrayList<Type> Types = new ArrayList<>();
+    private TreeSet<IncompleteArrayType> IncompleteArrayTypes = new TreeSet<>();
+
+
 	public final QualType VoidTy = new QualType(VoidType.New());
 	public final QualType BoolTy = new QualType(new IntegerType(1, false));
 	public final QualType CharTy = new QualType(new IntegerType(1, true));
@@ -79,7 +83,22 @@ public final class ASTContext
 		// initBuiltType().
 	}
 
-	public QualType getPointerType(Type ty)
+    /**
+     * Returns the reference to the jlang.type for an array of the specified element jlang.type.
+     * @param elemTy
+     * @param size
+     * @return
+     */
+    public QualType getConstantType(QualType elemTy, APInt size, ArraySizeModifier asm, int tq)
+    {
+        assert elemTy.isIncompleteType()
+                || elemTy.isConstantSizeType():"Constant arrays of VLAs is illegal!";
+
+        ConstantArrayType New = new ConstantArrayType(elemTy, size, asm, tq);
+        return new QualType(New, 0);
+    }
+
+    public QualType getPointerType(Type ty)
 	{
 	    PointerType New = new PointerType(ty);
 	    return new QualType(New, 0);
@@ -97,18 +116,18 @@ public final class ASTContext
 				? (ConstantArrayType)res : null;
 	}
 
-	public ArrayType.IncompleteArrayType getAsInompleteArrayType(QualType type)
+	public IncompleteArrayType getAsInompleteArrayType(QualType type)
 	{
 		ArrayType res = getAsArrayType(type);
-		return (res instanceof ArrayType.IncompleteArrayType)
-				? (ArrayType.IncompleteArrayType)res : null;
+		return (res instanceof IncompleteArrayType)
+				? (IncompleteArrayType)res : null;
 	}
 
-	public ArrayType.VariableArrayType getAsVariableArrayType(QualType type)
+	public VariableArrayType getAsVariableArrayType(QualType type)
 	{
 		ArrayType res = getAsArrayType(type);
-		return (res instanceof ArrayType.VariableArrayType)
-				? (ArrayType.VariableArrayType)res : null;
+		return (res instanceof VariableArrayType)
+				? (VariableArrayType)res : null;
 	}
 
 	public ArrayType getAsArrayType(QualType type)
@@ -133,22 +152,89 @@ public final class ASTContext
 			return getConstantArrayType(newElemTy, cat.getSize());
 		}
 
-		if (aty instanceof ArrayType.IncompleteArrayType)
+		if (aty instanceof IncompleteArrayType)
 		{
-			ArrayType.IncompleteArrayType icat = (ArrayType.IncompleteArrayType)aty;
+			IncompleteArrayType icat = (IncompleteArrayType)aty;
 			return getIncompleteArrayType(newElemTy);
 		}
 
-		ArrayType.VariableArrayType vat = (ArrayType.VariableArrayType)aty;
+		VariableArrayType vat = (VariableArrayType)aty;
 		return getVariableArrayType(newElemTy, vat.getSizeExpr());
 	}
 
-	public ArrayType.VariableArrayType getVariableArrayType(QualType elemTy, Tree.Expr sizeExpr)
+    /**
+     * Returns a reference to the type for a variable array of the specified
+     * element type.
+     * @param elemTy
+     * @param numElts
+     * @return
+     */
+	public QualType getVariableArrayType(
+	        QualType elemTy,
+            Expr numElts,
+            ArraySizeModifier asm,
+            int eltTypeQuals,
+            SourceRange brackets)
 	{
-		return new ArrayType.VariableArrayType(elemTy, sizeExpr);
+		VariableArrayType vat = new VariableArrayType(elemTy,
+                numElts, asm, eltTypeQuals, brackets);
+		Types.add(vat);
+		return new QualType(vat);
 	}
 
-	public ConstantArrayType getConstantArrayType(QualType elemTy, final APInt arraySize)
+    /**
+     * Return a reference to the type for
+     * an array of the specified element type.
+     * @param eltTy
+     * @param arraySizeIn
+     * @param arraySizeExpr
+     * @param asm
+     * @param eltTypeQuals
+     * @param brackets
+     * @return
+     */
+	public QualType getConstantArrayWithExprType(
+	        QualType eltTy,
+            APInt arraySizeIn,
+            Expr arraySizeExpr,
+            ArraySizeModifier asm,
+            int eltTypeQuals,
+            SourceRange brackets)
+    {
+        APInt arrSize = new APInt(arraySizeIn);
+        arrSize.zextOrTrunc(target.getPointerWidth(0));
+        ConstantArrayWithExprType arr = new ConstantArrayWithExprType(eltTy,
+                arrSize, arraySizeExpr, asm, eltTypeQuals,brackets);
+        Types.add(arr);
+        return new QualType(arr);
+    }
+
+    /**
+     * Return a reference to the type for an array of the specified element type.
+     * @param eltTy
+     * @param arraySizeIn
+     * @param asm
+     * @param eltTypeQuals
+     * @return
+     */
+    public QualType getConstantArrayWithoutExprType(
+            QualType eltTy,
+            APInt arraySizeIn,
+            ArraySizeModifier asm,
+            int eltTypeQuals)
+    {
+        APInt arrSize = new APInt(arraySizeIn);
+        arrSize.zextOrTrunc(target.getPointerWidth(0));
+
+        ConstantArrayWithoutExprType arr = new ConstantArrayWithoutExprType(
+                eltTy, arraySizeIn, asm, eltTypeQuals);
+        Types.add(arr);
+        return new QualType(arr);
+    }
+
+	public ConstantArrayType getConstantArrayType(
+	        QualType elemTy,
+            final APInt arraySize)
 	{
 		assert elemTy.isIncompleteType()||elemTy.isConstantSizeType()
 				:"Constant array of VLAs is illegal";
@@ -159,10 +245,44 @@ public final class ASTContext
 		return New;
 	}
 
-	public ArrayType.IncompleteArrayType getIncompleteArrayType(QualType elemTy)
+	public QualType getIncompleteArrayType(
+			QualType elemTy,
+			ArraySizeModifier sm,
+            int eltTypeQuals)
 	{
-		return new ArrayType.IncompleteArrayType(elemTy);
+		IncompleteArrayType arr = new IncompleteArrayType(elemTy, sm, eltTypeQuals);
+		Types.add(arr);
+		return new QualType(arr);
 	}
+
+    /**
+     * Return a normal function type with a typed argument
+     * list.
+     * @param isVariadic Indicates whether the argument list includes '...'.
+     * @return
+     */
+	public QualType getFunctionType(
+	        QualType resultTy,
+            ArrayList<QualType> argTys,
+            boolean isVariadic,
+            int typeQuals)
+    {
+        FunctionProtoType ftp = new FunctionProtoType(resultTy, argTys, isVariadic);
+        Types.add(ftp);
+        return new QualType(ftp);
+    }
+
+    /**
+     * Return a K&R style C function type like 'int()'.
+     * @param resultTy
+     * @return
+     */
+    public QualType getFunctionNoProtoType(QualType resultTy)
+    {
+        FunctionNoProtoType New = new FunctionNoProtoType(resultTy);
+        Types.add(New);
+        return new QualType(New);
+    }
 
 	/**
 	 * Returns the probably qualified result of specified array decaying into pointer
@@ -333,7 +453,7 @@ public final class ASTContext
 		switch (lhsClass)
 		{
 			case VariableArray:
-			case Function:
+			case FunctionProto:
 				Util.shouldNotReachHere("Types are eliminated abo e");
 
 			case Pointer:
@@ -386,8 +506,8 @@ public final class ASTContext
 				if (rcat != null)
 					return new QualType(getConstantArrayType(resultType, rcat.getSize()));
 
-				ArrayType.VariableArrayType lvat = getAsVariableArrayType(lhs);
-				ArrayType.VariableArrayType rvat = getAsVariableArrayType(rhs);
+				VariableArrayType lvat = getAsVariableArrayType(lhs);
+				VariableArrayType rvat = getAsVariableArrayType(rhs);
 				if (lvat != null && lhsElem.equals(resultType))
 					return lhs;
 
@@ -622,10 +742,10 @@ public final class ASTContext
 		return getQualifiedType(type, qs);
 	}
 
-	public QualType getBaseElementType(ArrayType.VariableArrayType vat)
+	public QualType getBaseElementType(VariableArrayType vat)
 	{
 		QualType eltType = vat.getElemType();
-		ArrayType.VariableArrayType eltVat = getAsVariableArrayType(eltType);
+		VariableArrayType eltVat = getAsVariableArrayType(eltType);
 		if (eltVat != null)
 			return getBaseElementType(eltVat);
 
@@ -730,7 +850,7 @@ public final class ASTContext
 		int align = 8;
 		switch (t.getTypeClass())
 		{
-			case Function:
+			case FunctionProto:
 				// GCC extension: alignof(function) = 32 bits
 				width = 0;
 				align = 32;
@@ -883,15 +1003,15 @@ public final class ASTContext
 			return new QualType(getConstantArrayType(newEltTy, cat.getSize()));
 		}
 
-		if (at instanceof ArrayType.IncompleteArrayType)
+		if (at instanceof IncompleteArrayType)
 		{
-			ArrayType.IncompleteArrayType iat = (ArrayType.IncompleteArrayType)at;
+			IncompleteArrayType iat = (IncompleteArrayType)at;
 			return new QualType(getIncompleteArrayType(newEltTy));
 		}
 
-		assert at instanceof ArrayType.VariableArrayType;
+		assert at instanceof VariableArrayType;
 
-		ArrayType.VariableArrayType vat = (ArrayType.VariableArrayType)at;
+		VariableArrayType vat = (VariableArrayType)at;
 		return new QualType(getVariableArrayType(newEltTy, vat.getSizeExpr()));
 	}
 
@@ -937,7 +1057,7 @@ public final class ASTContext
 		return !type.isRecordType() ? type.getUnQualifiedType() : type;
 	}
 
-	enum FloatingRank
+    enum FloatingRank
 	{
 		FloatRank, DoubleRank, LongDoubleRank
 	}
@@ -1085,5 +1205,32 @@ public final class ASTContext
 	{
 		// TODO: 2017/4/9
 		return null;
+	}
+
+    /*
+     * Checks if this the kind of this jlang.type is same as ty2.
+     */
+    public boolean isSameType(QualType ty1, QualType ty2)
+	{
+		return getCanonicalType(ty1) == getCanonicalType(ty2);
+	}
+
+    /**
+     * Return the APFloat 'semantics' for the specified
+     * scalar floating point type.
+     * @param ty
+     * @return
+     */
+	public FltSemantics getFloatTypeSemantics(QualType ty)
+	{
+	    assert ty.isBuiltinType():"Not a floating point type!";
+        PrimitiveType pty = ty.getAsBuiltinType();
+	    switch (pty.getTypeKind())
+        {
+            default: assert false :"Not a floating point type!";
+            case Float: return target.getFloatFormat();
+            case Double:    return target.getDoubleFormat();
+            case LongDouble:    return target.getLongDoubleFormat();
+        }
 	}
 }

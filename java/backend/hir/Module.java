@@ -51,7 +51,7 @@ public final class Module implements Iterable<Function>
 	 * An singleton method for instantiating an instance of this class.
 	 * @param context	An context environment.
 	 * @param vars	GlobalVariable declarations list.
-	 * @param functions	Function declarations list
+	 * @param functions	FunctionProto declarations list
 	 * @return	The instance of {@link Module}
 	 */
 	public static Module instance(Context context, List<GlobalVariable> vars,

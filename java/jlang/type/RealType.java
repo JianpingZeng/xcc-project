@@ -50,24 +50,4 @@ public final class RealType extends PrimitiveType
     {
         return (minValue() <= val && val <= maxValue());
     }
-
-    @Override
-    public long getTypeSize()
-    {
-        return size;
-    }
-
-    @Override
-    public boolean isSameType(Type other)
-    {
-        if (!other.isRealType())
-            return false;
-        return equals(other.getRealType());
-    }
-
-    @Override
-    public boolean isCastableTo(Type target)
-    {
-        return false;
-    }
 }

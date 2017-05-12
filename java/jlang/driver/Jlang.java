@@ -21,7 +21,7 @@ import backend.target.TargetMachine;
 import jlang.ast.ASTConsumer;
 import jlang.basic.*;
 import jlang.basic.LangOptions.VisibilityMode;
-import jlang.cpp.Preprocessor;
+import jlang.clex.Preprocessor;
 import jlang.diag.*;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
@@ -137,8 +137,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
             init(langkind_unspecified),
             new ValueClass<>(
                     new ValueClass.Entry<>(langkind_c, "c", "C"),
-                    new ValueClass.Entry<>(langkind_cpp, "cpp-output", "Preprocessed C"),
-                    new ValueClass.Entry<>(langkind_asm_cpp, "assembler-with-cpp",
+                    new ValueClass.Entry<>(langkind_cpp, "clex-output", "Preprocessed C"),
+                    new ValueClass.Entry<>(langkind_asm_cpp, "assembler-with-clex",
                             "Preprocessed asm")));
 
     public static Opt<VisibilityMode> SymbolVisibility =

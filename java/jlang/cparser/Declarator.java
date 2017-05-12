@@ -4,7 +4,7 @@ import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
 import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
-import jlang.cpp.IdentifierInfo;
+import jlang.clex.IdentifierInfo;
 import jlang.sema.Decl;
 import tools.OutParamWrapper;
 
@@ -35,7 +35,7 @@ public class Declarator
         ForContext,                 //  declaration within the first part of for.
     }
 
-    enum DeclarationKind
+    public enum DeclarationKind
     {
         /**
          * An abstract declarator.

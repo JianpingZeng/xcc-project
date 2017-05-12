@@ -1,6 +1,8 @@
 package jlang.ast;
 
 import backend.hir.BasicBlock;
+import jlang.basic.APFloat;
+import jlang.basic.APInt;
 import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
 import jlang.sema.*;
@@ -46,7 +48,7 @@ import static jlang.sema.UnaryOperatorKind.*;
  * @version 1.0
  *
  */
-abstract public class Tree
+public abstract class Tree
 {
 	/*
 	 * TopLevel nodes, of jlang.type TopLevel, representing entire source files.
@@ -58,7 +60,7 @@ abstract public class Tree
 	public static final int SelectExprClass = ImportStmtClass + 1;
 
 	/**
-	 * Function definitions, of jlang.type MethodDef.
+	 * FunctionProto definitions, of jlang.type MethodDef.
 	 */
 	public static final int MethodDefStmtClass = SelectExprClass + 1;
 
@@ -144,7 +146,7 @@ abstract public class Tree
 	public static final int ReturnStmtClass = ContinueStmtClass + 1;
 
 	/**
-	 * Function invocation expressions, of jlang.type CallExpr.
+	 * FunctionProto invocation expressions, of jlang.type CallExpr.
 	 */
 	public static final int CallExprClass = ReturnStmtClass + 1;
 
@@ -608,7 +610,10 @@ abstract public class Tree
 			v.visitLabelledStmt(this);
 		}
 
-		public String getName() {return label.getDeclName();}
+		public String getName()
+        {
+            return label.getDeclName().getName();
+        }
 	}
 
 	/**
@@ -1065,7 +1070,7 @@ abstract public class Tree
          */
         public boolean evaluate(EvalResult result, ASTContext ctx)
         {
-            return ExprEvaluatorBase.evaluate(result, this);
+            return ExprEvaluatorBase.evaluate(result, this, ctx);
         }
 
         public boolean isLValue()
@@ -1249,12 +1254,148 @@ abstract public class Tree
 		    return true;
 	    }
 
+	    public boolean isIntegerConstantExpr(ASTContext ctx)
+	    {
+	    	OutParamWrapper<APSInt> x = new OutParamWrapper<>(new APSInt());
+	    	return isIntegerConstantExpr(x, ctx);
+	    }
+
 	    public ExprObjectKind getObjectKind()
 	    {
 		    return ok;
 	    }
 
-	    public static class ICEDiag
+        /**
+         * Return true if this immediate expression should
+         * be warned about if the result is unused.  If so, fill in Loc and Ranges
+         * with location to warn on and the source range[s] to report with the
+         * warning.
+         * @param loc
+         * @param r1
+         * @param r2
+         * @return
+         */
+	    public boolean isUnusedResultAWarning(
+	    		OutParamWrapper<SourceLocation> loc,
+			    OutParamWrapper<SourceRange> r1,
+			    OutParamWrapper<SourceRange> r2)
+	    {
+	        switch (getStmtClass())
+            {
+                default:
+                    loc.set(getExprLocation());
+                    r1.set(getSourceRange());
+                    return true;
+                case ParenExprClass:
+                    return ((ParenExpr)this).getSubExpr().
+                            isUnusedResultAWarning(loc, r1, r2);
+                case UnaryOperatorClass:
+                {
+                    UnaryExpr ue = (UnaryExpr)this;
+                    switch (ue.getOpCode())
+                    {
+                        case UO_PostInc:
+                        case UO_PostDec:
+                        case UO_PreInc:
+                        case UO_PreDec:
+                            return false;   // No warning.
+                        case UO_Deref:
+                            // Dereference a volatile pointer is a side-effect.
+                            if (getType().isVolatileQualified())
+                                return false;   // No warning.
+                            break;
+                        case UO_Real:
+                        case UO_Imag:
+                            if (ue.getSubExpr().getType().isVolatileQualified())
+                                return false;
+                            break;
+                    }
+                    loc.set(ue.getExprLocation());
+                    r1.set(ue.getSubExpr().getSourceRange());
+                    return true;
+                }
+                case BinaryOperatorClass:
+                {
+                    BinaryExpr be = (BinaryExpr)this;
+                    if (be.getOpcode() == BO_Comma)
+                        return be.getRHS().isUnusedResultAWarning(loc, r1, r2)
+                                || be.getLHS().isUnusedResultAWarning(loc, r1, r2);
+
+                    if (be.isAssignmentOp())
+                        return false;
+
+                    loc.set(be.getOperatorLoc());
+                    r1.set(be.getLHS().getSourceRange());
+                    r2.set(be.getRHS().getSourceRange());
+                    return true;
+                }
+                case CompoundAssignOperatorClass:
+                    return false;
+                case ConditionalOperatorClass:
+                {
+                    ConditionalExpr expr = (ConditionalExpr)this;
+                    if (expr.getTrueExpr() != null &&
+                            expr.getTrueExpr().isUnusedResultAWarning(loc, r1, r2))
+                        return true;
+                    return expr.getFalseExpr().isUnusedResultAWarning(loc, r1, r2);
+                }
+                case MemberExprClass:
+                {
+                    // If the base pointer or element is to a volatile pointer/field, accessing
+                    // it is a side effect.
+                    if (getType().isVolatileQualified())
+                        return false;
+                    MemberExpr expr = (MemberExpr)this;
+                    loc.set(expr.getMemberLoc());
+                    r1.set(new SourceRange(loc.get(), loc.get()));
+                    r2.set(expr.getBase().getSourceRange());
+                    return true;
+                }
+                case ArraySubscriptExprClass:
+                {
+                    // If the base pointer or element is to a volatile pointer/field, accessing
+                    // it is a side effect.
+                    if (getType().isVolatileQualified())
+                        return false;
+
+                    ArraySubscriptExpr expr = (ArraySubscriptExpr)this;
+                    loc.set(expr.getRBracketLoc());
+                    r1.set(expr.getLHS().getSourceRange());
+                    r2.set(expr.getRHS().getSourceRange());
+                    return true;
+                }
+                case CallExprClass:
+                {
+                    CallExpr ce = (CallExpr)this;
+                    Expr calleeExpr = ce.getCallee().ignoreParenCasts();
+                    if (calleeExpr instanceof DeclRefExpr)
+                    {
+                        DeclRefExpr calleeDE = (DeclRefExpr)calleeExpr;
+
+                        // If the callee has attribute pure, const, or warn_unused_result, warn
+                        // about it. void foo() { strlen("bar"); } should warn.
+                        if (calleeDE.getDecl() instanceof FunctionDecl)
+                        {
+                            // TODO: 17-5-9 check function attributes
+                        }
+                    }
+                    return false;
+                }
+
+                case ExplicitCastClass:
+                    if (getType().isVoidType())
+                        return false;
+
+                    ExplicitCastExpr ce = (ExplicitCastExpr)this;
+                    loc.set(ce.getlParenLoc());
+                    r1.set(ce.getSourceRange());
+                    return true;
+                case ImplicitCastClass:
+                    return ((ImplicitCastExpr)this).getSubExpr().isUnusedResultAWarning(loc, r1, r2);
+            }
+	    }
+
+        public static class ICEDiag
 	    {
 		    public int val;
 		    public SourceLocation loc;
@@ -2162,10 +2303,21 @@ abstract public class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+        public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(lParenLoc, rParenLoc);
 	    }
+
+        public SourceLocation getlParenLoc()
+        {
+            return lParenLoc;
+        }
+
+        public SourceLocation getrParenLoc()
+        {
+            return rParenLoc;
+        }
     }
 
     /**

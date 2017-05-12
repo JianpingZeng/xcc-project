@@ -118,11 +118,11 @@ public final class QualType extends Type implements Cloneable
     }
 
     /**
-     * Checks if this jlang.type is static-qualified.
+     * Checks if this type is volatile-qualified.
      *
      * @return
      */
-    public boolean isStaticQualified()
+    public boolean isVolatileQualified()
     {
         return qualsFlag.isCVQualified(VOLATILE_QUALIFIER);
     }
@@ -147,6 +147,11 @@ public final class QualType extends Type implements Cloneable
         return qualsFlag.mask;
     }
 
+    public void setCVRQualifiers(int flags)
+    {
+        qualsFlag.addCVQualifier(flags);
+    }
+
     public Qualifier getQualifiers()
     {
         return qualsFlag;
@@ -160,50 +165,12 @@ public final class QualType extends Type implements Cloneable
     public boolean hasQualifiers()
     {
         return isConstQualifed() || isRestrictQualified()
-                || isStaticQualified();
-    }
-
-    public long getTypeSize()
-    {
-        return type.getTypeSize();
-    }
-
-    public long getTypeSizeInBytes()
-    {
-        return type.getTypeSize() >>3;
+                || isVolatileQualified();
     }
 
     public boolean isScalarType()
     {
         return type.isScalarType();
-    }
-
-    /**
-     * Indicates the number of memory spaces in bytes.
-     *
-     * @return
-     */
-    public long allocSize()
-    {
-        return type.getTypeSize();
-    }
-
-    /**
-     * The getSize of memory alignment in bytes.
-     *
-     * @return
-     */
-    public long alignment()
-    {
-        return type.alignment();
-    }
-
-    /*
-     * Checks if this the kind of this jlang.type is same as other.
-     */
-    public boolean isSameType(Type other)
-    {
-        return type.isSameType(other);
     }
 
     /**
@@ -395,17 +362,6 @@ public final class QualType extends Type implements Cloneable
     }
 
     /**
-     * Indicates if this jlang.type can be casted into TargetData jlang.type.
-     *
-     * @param target
-     * @return
-     */
-    public boolean isCastableTo(Type target)
-    {
-        return type.isCastableTo(target);
-    }
-
-    /**
      * @return
      */
     public Type baseType()
@@ -501,5 +457,27 @@ public final class QualType extends Type implements Cloneable
     {
         return (type.isVoidType() && !hasQualifiers())
                 || type.isFunctionType();
+    }
+
+    /**
+     * Return true if this is an incomplete or object
+     * type, in other words, not a function type.
+     * @return
+     */
+    public boolean isIncompleteOrObjectType()
+    {
+        return !isFunctionType();
+    }
+
+    public boolean isVariableModifiedType()
+    {
+        return type.isVariablyModifiedType();
+    }
+
+    public PrimitiveType getAsBuiltinType()
+    {
+        if (isBuiltinType())
+            return (PrimitiveType)type;
+        return null;
     }
 }

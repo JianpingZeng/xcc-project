@@ -2,7 +2,7 @@ package backend.analysis;
 
 import backend.target.TargetData;
 import backend.value.Value;
-import jlang.sema.APInt;
+import jlang.basic.APInt;
 
 /**
  * @author Xlous.zeng

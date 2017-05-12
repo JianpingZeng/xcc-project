@@ -1,7 +1,6 @@
 package jlang.type;
 
 import jlang.cparser.DeclSpec;
-import jlang.exception.SemanticError;
 import jlang.type.ArrayType.ConstantArrayType;
 import jlang.type.ArrayType.VariableArrayType;
 import tools.Util;
@@ -68,40 +67,6 @@ public abstract class Type implements TypeClass
     public int getTypeClass(){return tag;}
 
 	public boolean isCanonical() {return canonicalType.getType() == this;}
-
-    /**
-     * Returns the getNumOfSubLoop of the specified type in bits.
-     * </br>
-     * This method doesn't work on incomplete types.
-     *
-     * @return
-     */
-    public abstract long getTypeSize();
-
-    /**
-     * Indicates the number of memory spaces in bytes.
-     *
-     * @return
-     */
-    public long allocSize()
-    {
-        return getTypeSize();
-    }
-
-    /**
-     * The getSize of memory alignment in bytes.
-     *
-     * @return
-     */
-    public long alignment()
-    {
-        return allocSize();
-    }
-
-    /*
-     * Checks if this the kind of this jlang.type is same as other.
-     */
-    public abstract boolean isSameType(Type other);
 
     /**
      * Checks if this {@linkplain Type} is primitive jlang.type.
@@ -199,7 +164,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isFunctionType()
     {
-        return tag == Function;
+        return tag == FunctionProto;
     }
 
     /**
@@ -281,21 +246,13 @@ public abstract class Type implements TypeClass
     }
 
     /**
-     * Indicates if this jlang.type can be casted into TargetData jlang.type.
-     *
-     * @param target
-     * @return
-     */
-    public abstract boolean isCastableTo(Type target);
-
-    /**
      * 对于引用类型返回起基类型，该方法需要具体的子类进行覆盖。
      *
      * @return
      */
     public Type baseType()
     {
-        throw new SemanticError("#baseType called for undereferable jlang.type");
+        return null;
     }
 
     // Cast methods

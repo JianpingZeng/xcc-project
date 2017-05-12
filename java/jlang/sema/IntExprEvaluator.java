@@ -17,6 +17,7 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree.*;
+import jlang.basic.APInt;
 import jlang.basic.SourceLocation;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;
@@ -255,7 +256,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         if (lhsTy.isComplexType())
         {
             assert rhsTy.isComplexType():"Invalid comparison";
-            // TODO Clang 3.0 ExprConstant.cpp:1398
+            // TODO Clang 3.0 ExprConstant.clex:1398
         }
 
         if (lhsTy.isRealType() && rhsTy.isRealType())
@@ -606,7 +607,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
             case CK_IntegralComplexToReal:
             {
-                // TODO Clang3.0 ExprConstant.cpp:1907
+                // TODO Clang3.0 ExprConstant.clex:1907
             }
             case CK_FloatingToIntegral:
             {

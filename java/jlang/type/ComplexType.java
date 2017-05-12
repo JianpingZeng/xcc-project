@@ -22,20 +22,6 @@ public final class ComplexType extends Type
 
     public boolean isSignedType(){return false;}
 
-    @Override
-    public long getTypeSize(){return 0;}
-
-    @Override
-    public boolean isSameType(Type other)
-    {
-        if (!other.isComplexType())
-            return false;
-        return equals(other.getComplexTye());
-    }
-
-    @Override
-    public boolean isCastableTo(Type target){return false;}
-
     public String toString()
     {
         StringBuilder buffer = new StringBuilder("");

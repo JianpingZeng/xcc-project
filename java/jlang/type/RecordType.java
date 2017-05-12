@@ -22,60 +22,6 @@ public final class RecordType extends TagType
         super(Struct, decl);
     }
 
-    protected void computeOffsets()
-    {
-        long offset = 0;
-        long maxAlign = 1;
-        /*
-        for (Slot s : members)
-        {
-            offset = AsmUtils.align(offset, s.allocaSize());
-            s.setOffset(offset);
-            offset += s.allocaSize();
-            maxAlign = Math.max(maxAlign, s.alignment());
-        }
-        cachedSize = AsmUtils.align(offset, maxAlign);
-        cachedAlignment = maxAlign;
-        */
-    }
-
-    /**
-     * Returns the getNumOfSubLoop of the specified jlang.type in bits.
-     * </br>
-     * This method doesn't work on incomplete types.
-     *
-     * @return
-     */
-    @Override
-    public long getTypeSize()
-    {
-        return 0;
-    }
-
-    @Override
-    public boolean isSameType(Type other)
-    {
-        /*
-        if (!other.isRecordType())
-            return false;
-        RecordType rt = other.getRecordType();
-        return compareMembersType(rt.members, IS_SAME_TYPE);
-        */
-        return true;
-    }
-
-    @Override
-    public boolean isCastableTo(Type target)
-    {
-        /*
-        if (!TargetData.isRecordType())
-            return false;
-        RecordType rt = TargetData.getRecordType();
-        return compareMembersType(rt.members, IS_CASTABLE);
-        */
-        return true;
-    }
-
     @Override
     public String toString()
     {

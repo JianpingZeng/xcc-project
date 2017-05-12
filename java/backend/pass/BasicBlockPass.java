@@ -7,14 +7,13 @@ import backend.value.Function;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class BasicBlockPass extends FunctionPass
+public abstract class BasicBlockPass implements FunctionPass
 {
 	/**
 	 * To run this pass on a function, we simply call runOnBasicBlock once for
 	 * each function.
 	 * @return
 	 */
-	@Override
 	public boolean runOnFunction(Function f)
 	{
 		return false;

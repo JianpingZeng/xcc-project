@@ -421,7 +421,8 @@ public interface DiagnosticSemaTag
 	public static final int err_redefinition_different_kind = err_redefinition + 1;
 	public static final int err_redefinition_different_type = err_redefinition_different_kind + 1;
 	public static final int err_redefinition_different_typedef = err_redefinition_different_type + 1;
-	public static final int err_redefinition_of_enumerator = err_redefinition_different_typedef + 1;
+	public static final int err_redefinition_extern_inline = err_redefinition_different_typedef + 1;
+	public static final int err_redefinition_of_enumerator = err_redefinition_extern_inline + 1;
 	public static final int err_redefinition_of_label = err_redefinition_of_enumerator + 1;
 	public static final int err_reference_init_drops_quals = err_redefinition_of_label + 1;
 	public static final int err_reference_to_local_var_in_enclosing_function = err_reference_init_drops_quals + 1;

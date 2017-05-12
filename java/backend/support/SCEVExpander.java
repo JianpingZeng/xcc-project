@@ -10,8 +10,7 @@ import backend.value.*;
 import backend.value.Instruction.CastInst;
 import backend.value.Instruction.Op2;
 import backend.value.Instruction.PhiNode;
-import jdk.nashorn.internal.objects.NativeUint8Array;
-import jlang.sema.APInt;
+import jlang.basic.APInt;
 import tools.Pair;
 import tools.Util;
 

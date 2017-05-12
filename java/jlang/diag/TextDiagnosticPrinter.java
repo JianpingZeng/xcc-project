@@ -17,7 +17,7 @@ package jlang.diag;
  */
 
 import jlang.basic.*;
-import jlang.cpp.Lexer;
+import jlang.clex.Lexer;
 import tools.Pair;
 import tools.Util;
 

@@ -5,7 +5,7 @@ import backend.type.Type;
 import backend.value.Constant;
 import backend.value.ConstantExpr;
 import backend.value.ConstantInt;
-import jlang.sema.APInt;
+import jlang.basic.APInt;
 import tools.Pair;
 
 import java.io.PrintStream;

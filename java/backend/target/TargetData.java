@@ -15,7 +15,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class TargetData extends ImmutablePass
+public class TargetData implements ImmutablePass
 {
 	/**
 	 * Register the default TargetData pass.
@@ -77,7 +77,8 @@ public class TargetData extends ImmutablePass
 		byteAlignment = 1;
 	}
 
-	@Override public void initializePass()
+	@Override
+	public void initializePass()
 	{
 
 	}

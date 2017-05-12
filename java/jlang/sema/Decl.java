@@ -9,20 +9,20 @@ import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.LabelledStmt;
 import jlang.basic.Linkage;
+import jlang.basic.SourceLocation;
+import jlang.clex.IdentifierInfo;
 import jlang.cparser.DeclContext;
 import jlang.cparser.DeclKind;
 import jlang.cparser.Declarator;
-import jlang.basic.SourceLocation;
 import jlang.type.QualType;
+import jlang.type.RecordType;
 import jlang.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static jlang.cparser.DeclKind.*;
-import static jlang.type.Type.TagTypeKind.TTK_enum;
-import static jlang.type.Type.TagTypeKind.TTK_struct;
-import static jlang.type.Type.TagTypeKind.TTK_union;
+import static jlang.type.Type.TagTypeKind.*;
 
 /**
  * This class encapsulate information of declaration or definition, like
@@ -33,7 +33,7 @@ public abstract class Decl extends DeclContext
     public enum StorageClass
     {
         SC_none,
-        // for Function
+        // for FunctionProto
         SC_static,
         SC_extern,
 
@@ -167,16 +167,16 @@ public abstract class Decl extends DeclContext
      */
     public static class NamedDecl extends Decl
     {
-        String name;
+        IdentifierInfo name;
 
         NamedDecl(DeclKind kind, DeclContext context, 
-                String name, SourceLocation location)
+                IdentifierInfo name, SourceLocation location)
         {
             super(kind, context, location);
             this.name = name;
         }
 
-        public String getDeclName()
+        public IdentifierInfo getDeclName()
         {
             return name;
         }
@@ -194,7 +194,7 @@ public abstract class Decl extends DeclContext
 
         public String getIdentifier()
         {
-            return name;
+            return name.getName();
         }
 
         public Linkage getLinkage()
@@ -269,7 +269,7 @@ public abstract class Decl extends DeclContext
     public static class LabelDecl extends NamedDecl
     {
         LabelledStmt stmt;
-        LabelDecl(String name, DeclContext context, 
+        LabelDecl(IdentifierInfo name, DeclContext context,
                 LabelledStmt stmt, SourceLocation location)
         {
             super(DeclKind.LabelDecl, context, name, location);
@@ -292,7 +292,7 @@ public abstract class Decl extends DeclContext
 
         ValueDecl(DeclKind kind,
                 DeclContext context,
-                String name,
+                IdentifierInfo name,
                 SourceLocation location,
                 QualType type)
         {
@@ -311,7 +311,7 @@ public abstract class Decl extends DeclContext
     {
         DeclaratorDecl(DeclKind kind,
                 DeclContext context,
-                String name,
+                IdentifierInfo name,
                 SourceLocation location,
                 QualType type)
         {
@@ -321,7 +321,7 @@ public abstract class Decl extends DeclContext
 
     /**
      * This class is created by {@linkplain Sema#actOnField(Scope, Decl,
-     * int, Declarator, Expr)}
+     * SourceLocation, Declarator, Expr)}
      * to represents a member of a struct or union.
      */
     public static class FieldDecl extends DeclaratorDecl
@@ -341,8 +341,12 @@ public abstract class Decl extends DeclContext
          */
         private int cachedFieldIndex;
 
-        FieldDecl(DeclContext context, String name, SourceLocation location,
-                QualType type, Expr init, boolean hasInit)
+        FieldDecl(DeclContext context,
+                IdentifierInfo name,
+                SourceLocation location,
+                QualType type,
+                Expr init,
+                boolean hasInit)
         {
             super(FieldDecl, context, name, location, type);
             this.init = init;
@@ -398,6 +402,17 @@ public abstract class Decl extends DeclContext
         {
             return !hasInit && init != null && getDeclName() == null;
         }
+
+        public boolean isAnonymousStructOrUnion()
+        {
+            if (!isImplicit() || getDeclName() != null)
+                return false;
+
+            if (getDeclType().isRecordType())
+                return ((RecordType)getDeclType().getType()).getDecl().isAnonymousStructOrUnion();
+
+            return false;
+        }
     }
 
     public enum DefinitionKind
@@ -437,7 +452,7 @@ public abstract class Decl extends DeclContext
 
         public VarDecl(DeclKind kind,
                 DeclContext context,
-                String name,
+                IdentifierInfo name,
                 SourceLocation location,
                 QualType type, StorageClass sc)
         {
@@ -615,14 +630,25 @@ public abstract class Decl extends DeclContext
      */
     public static class ParamVarDecl extends VarDecl
     {
-        ParamVarDecl(DeclKind kind,
+        public ParamVarDecl(
+                DeclKind dk,
                 DeclContext context,
-                String name,
+                IdentifierInfo name,
                 SourceLocation location,
                 QualType type,
                 StorageClass sc)
         {
-            super(kind, context, name, location, type, sc);
+            super(dk, context, name, location, type, sc);
+        }
+
+        public static ParamVarDecl create(
+                DeclContext context,
+                IdentifierInfo name,
+                SourceLocation location,
+                QualType type,
+                StorageClass sc)
+        {
+            return new ParamVarDecl(ParamVar, context, name, location, type, sc);
         }
 
         public void setScopeInfo(int i, int protoTypeIndex)
@@ -637,6 +663,43 @@ public abstract class Decl extends DeclContext
          * the DeclContext appropriately.
          */
         public void setOwningFunction(DeclContext fd) {setDeclContext(fd);}
+    }
+
+    public static class OriginalParamVarDecl extends ParamVarDecl
+    {
+        protected QualType originalType;
+
+        public OriginalParamVarDecl(
+                DeclContext dc,
+                SourceLocation loc,
+                IdentifierInfo id,
+                QualType ty,
+                QualType originalType,
+                StorageClass sc)
+        {
+            super(OriginalParamVar, dc, id, loc, ty, sc);
+            this.originalType = originalType;
+        }
+
+        public static OriginalParamVarDecl create(DeclContext dc,
+                SourceLocation loc,
+                IdentifierInfo id,
+                QualType ty,
+                QualType originalType,
+                StorageClass sc)
+        {
+            return new OriginalParamVarDecl(dc, loc, id, ty, originalType, sc);
+        }
+
+        public QualType getOriginalType()
+        {
+            return originalType;
+        }
+
+        public void setOriginalType(QualType ty)
+        {
+            originalType = ty;
+        }
     }
 
     /**
@@ -665,7 +728,7 @@ public abstract class Decl extends DeclContext
         private boolean hasImplicitReturnZero;
         private boolean hasPrototype;
 
-        FunctionDecl(String name,
+        FunctionDecl(IdentifierInfo name,
                 DeclContext context,
                 SourceLocation location,
                 QualType type,
@@ -675,7 +738,7 @@ public abstract class Decl extends DeclContext
             this(name, context, location, type, sc, isInline, false);
         }
 
-        FunctionDecl(String name,
+        FunctionDecl(IdentifierInfo name,
                 DeclContext context,
                 SourceLocation location,
                 QualType type,
@@ -738,6 +801,7 @@ public abstract class Decl extends DeclContext
          */
         public boolean isDefined()
         {
+            // TODO: 17-5-9 finish redeclaration
             return hasBody();
         }
 
@@ -809,7 +873,7 @@ public abstract class Decl extends DeclContext
         }
     }
     /**
-     * Represents a declaration of a jlang.type.
+     * Represents a declaration of a type.
      */
     public static class TypeDecl extends NamedDecl
     {
@@ -820,7 +884,7 @@ public abstract class Decl extends DeclContext
 
         protected TypeDecl(DeclKind kind,
                 DeclContext context,
-                String name,
+                IdentifierInfo name,
                 SourceLocation loc)
         {
             super(kind, context, name, loc);
@@ -844,8 +908,9 @@ public abstract class Decl extends DeclContext
     {
         private QualType underlyingType;
 
-        public TypeDefDecl(DeclContext context,
-                String id,
+        public TypeDefDecl(
+                DeclContext context,
+                IdentifierInfo id,
                 SourceLocation loc,
                 QualType type)
         {
@@ -863,7 +928,10 @@ public abstract class Decl extends DeclContext
     {
         private QualType type;
 
-        public TypedefNameDecl(DeclKind kind, DeclContext context, String name,
+        public TypedefNameDecl(
+                DeclKind kind,
+                DeclContext context,
+                IdentifierInfo name,
                 SourceLocation loc)
         {
             super(kind, context, name, loc);
@@ -901,7 +969,7 @@ public abstract class Decl extends DeclContext
         public TagDecl(DeclKind kind,
                 Type.TagTypeKind tagTypeKind,
                 DeclContext context,
-                String name,
+                IdentifierInfo name,
                 SourceLocation loc,
                 TagDecl prevDecl,
                 SourceLocation tkl)
@@ -917,7 +985,7 @@ public abstract class Decl extends DeclContext
         public TagDecl(DeclKind kind,
                 Type.TagTypeKind tagTypeKind,
                 DeclContext context,
-                String name,
+                IdentifierInfo name,
                 SourceLocation loc,
                 TagDecl prevDecl)
         {
@@ -1022,9 +1090,24 @@ public abstract class Decl extends DeclContext
 
     public static class RecordDecl extends TagDecl
     {
+        /**
+         * This is true if this struct ends with a flexible
+         * array member (e.g. int X[]) or if this union contains a struct that does.
+         * If so, this cannot be contained in arrays or other structs as a member.
+         */
+        private boolean hasFlexibleArrayMember;
+        /**
+         * Whether this is the type of an anonymous struct or union.
+         */
         private boolean anonymousStructOrUnion;
+        /**
+         * This is true if this struct has at least one
+         * member containing an object
+         */
+        private boolean hasObjectMember;
 
-        public RecordDecl(String name,
+        public RecordDecl(
+                IdentifierInfo name,
                 Type.TagTypeKind tagTypeKind,
                 DeclContext context,
                 SourceLocation loc,
@@ -1081,6 +1164,26 @@ public abstract class Decl extends DeclContext
         {
             return anonymousStructOrUnion;
         }
+
+        public boolean hasFlexibleArrayNumber()
+        {
+            return hasFlexibleArrayMember;
+        }
+
+        public void setHasFlexibleArrayMember(boolean val)
+        {
+            hasFlexibleArrayMember = val;
+        }
+
+        public boolean hasObjectMember()
+        {
+            return hasObjectMember;
+        }
+
+        public void setHasObjectMember(boolean v)
+        {
+            hasObjectMember = v;
+        }
     }
 
     /**
@@ -1095,7 +1198,8 @@ public abstract class Decl extends DeclContext
          */
         private QualType integerType;
 
-        public EnumDecl(String name,
+        public EnumDecl(
+                IdentifierInfo name,
                 DeclContext context,
                 SourceLocation loc,
                 EnumDecl prevDecl)
@@ -1147,7 +1251,8 @@ public abstract class Decl extends DeclContext
          * The value.
          */
         private APSInt val;
-        EnumConstantDecl( String name,
+        EnumConstantDecl(
+                IdentifierInfo name,
                 DeclContext context,
                 SourceLocation location,
                 QualType type,
@@ -1156,7 +1261,8 @@ public abstract class Decl extends DeclContext
             this(name, context, location, type, init, null);
         }
 
-        EnumConstantDecl( String name,
+        EnumConstantDecl(
+                IdentifierInfo name,
                 DeclContext context,
                 SourceLocation location,
                 QualType type,

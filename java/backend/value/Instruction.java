@@ -2116,7 +2116,7 @@ public abstract class Instruction extends User
     }
 
     /**
-     * Function invocation instruction.
+     * FunctionProto invocation instruction.
      *
      * @author Xlous.zeng
      */

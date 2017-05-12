@@ -64,7 +64,7 @@ public final class UnifyFunctionExitNodes implements FunctionPass
      * BasicBlock, and converting all returns to unconditional branches to this
      * new basic block.  The singular exit node is returned.
      *
-     * If there are no return stmts in the Function, a null pointer is returned.
+     * If there are no return stmts in the FunctionProto, a null pointer is returned.
      * @param f
      * @return
      */

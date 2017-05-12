@@ -257,7 +257,7 @@ public final class SCEVAddExpr extends SCEVCommutativeExpr
             // If we found some loop invariants, fold them into the recurrence.
             if (!liOps.isEmpty())
             {
-                //  NLI + LI + { Start,+,Step}  -->  NLI + { LI+Start,+,Step }
+                //  NLI + LI + { Star,+,Step}  -->  NLI + { LI+Star,+,Step }
                 liOps.add(addRec.getStart());
 
                 ArrayList<SCEV> AddRecOps = new ArrayList<>();

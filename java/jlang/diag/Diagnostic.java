@@ -18,7 +18,7 @@ package jlang.diag;
 
 import gnu.trove.list.array.TIntArrayList;
 import jlang.basic.SourceRange;
-import jlang.cpp.IdentifierInfo;
+import jlang.clex.IdentifierInfo;
 import jlang.type.QualType;
 
 import java.util.Arrays;
@@ -829,7 +829,7 @@ public final class Diagnostic
     /**
      *  Issue the message to the client. {@code diagID} is a member of the
      *  kind.  This actually returns aninstance of DiagnosticBuilder which emits
-     *  the diagnostics (through {@linkplain #processDiag()}). {@code loc}
+     *  the diagnostics (through {@linkplain #processDiag()}). {@code identLoc}
      *  represents the source location associated with the diagnostic, which can
      *  be an invalid location if no position information is available.
      * @param loc

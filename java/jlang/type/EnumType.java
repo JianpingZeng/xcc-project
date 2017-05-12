@@ -38,29 +38,4 @@ public final class EnumType extends TagType
 
     @Override
     public EnumDecl getDecl() { return (EnumDecl) decl;}
-
-    @Override
-    public long getTypeSize()
-    {
-        return 0;
-    }
-
-    @Override
-    public boolean isSameType(Type other)
-    {
-        return false;
-    }
-
-
-    /**
-     * Indicates if this jlang.type can be casted into TargetData jlang.type.
-     *
-     * @param target
-     * @return
-     */
-    @Override
-    public boolean isCastableTo(Type target)
-    {
-        return false;
-    }
 }

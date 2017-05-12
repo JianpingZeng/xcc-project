@@ -18,7 +18,7 @@ package jlang.basic;
 
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import jlang.cpp.Token.StrData;
+import jlang.clex.Token.StrData;
 import tools.Pair;
 
 import java.nio.CharBuffer;
@@ -218,7 +218,7 @@ public class SourceManager
 
     public SourceRange getImmediateInstantiationRange(SourceLocation loc)
     {
-        assert loc.isMacroID() :"Not an instantiation loc!";
+        assert loc.isMacroID() :"Not an instantiation identLoc!";
         InstantiationInfo ii = getSLocEntry(getFileID(loc)).getInstantiation();
         return ii.getInstantiationLocRange();
     }
@@ -288,7 +288,7 @@ public class SourceManager
     }
 
     /**
-     * Compute the starting position for the given {@code loc} in input buffer.
+     * Compute the starting position for the given {@code identLoc} in input buffer.
      * @param loc
      * @return
      */
@@ -465,13 +465,13 @@ public class SourceManager
 
     public String getBufferName(SourceLocation loc)
     {
-        if (!loc.isValid()) return "<invalid loc>";
+        if (!loc.isValid()) return "<invalid identLoc>";
         return getBuffer(getFileID(loc)).getBufferName();
     }
 
     public CharacteristicKind getFileCharacteristicKind(SourceLocation loc)
     {
-        assert loc.isValid() : "Can't get file characteristic of invalid loc!";
+        assert loc.isValid() : "Can't get file characteristic of invalid identLoc!";
 
         Pair<FileID, Integer> locInfo = getDecomposedInstantiationLoc(loc);
 

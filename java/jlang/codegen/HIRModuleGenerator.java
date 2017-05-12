@@ -58,15 +58,10 @@ public class HIRModuleGenerator
 	private final static Context.Key AstToCfgKey = new Context.Key();
 	private List<GlobalVariable> vars;
 	private List<Function> functions;
-
     private TargetData theTargetData;
-
     private Function memCpyFn;
     private Function memMoveFn;
     private Function memSetFn;
-    private Context ctx;
-    private Options options;
-	private Log logger;
     private Module m;
     private CodeGenTypes cgTypes;
 
@@ -238,7 +233,7 @@ public class HIRModuleGenerator
     }
 
 	/**
-     * Create and return an backend Function with the specified type. If there
+     * Create and return an backend FunctionProto with the specified type. If there
      * is something in the module with the specified getIdentifier, return it potentially
      * bitcasted to the right type.
      *
