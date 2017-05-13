@@ -233,12 +233,12 @@ public abstract class Tree
 	}
 
 	/**
-	 * The tag that represents the kind of this tree.
+	 * The tc that represents the kind of this tree.
 	 */
 	public int tag;
 
 	/**
-	 * Constructor. Initialize tree with given tag.
+	 * Constructor. Initialize tree with given tc.
 	 * 
 	 * @param tag
 	 */
@@ -2450,7 +2450,7 @@ public abstract class Tree
 
             // If we are calling a dereference, lookup at the pointer instead.
             /**
-            if (cee.tag == BinaryOperatorClass)
+            if (cee.tc == BinaryOperatorClass)
             {
                 BinaryExpr be = (BinaryExpr)cee;
                 // Not to deal with '->' or '.' operator, since it just works

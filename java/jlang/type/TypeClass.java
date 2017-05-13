@@ -1,7 +1,7 @@
 package jlang.type;
 
 /**
- * An interfaces for jlang.type tag VALUES, which distinguish between
+ * An interfaces for jlang.type tc VALUES, which distinguish between
  * different sorts of types.
  * 
  * @author Xlous.zeng  
@@ -37,21 +37,23 @@ public interface TypeClass
     int FunctionNoProto = FunctionProto + 1;
     int Method = FunctionNoProto + 1;
     int ConstantArray = Method + 1;
-    int IncompleteArray = ConstantArray + 1;
+    int ConstantArrayWithExpr = ConstantArray + 1;
+    int ConstantArrayWithoutExpr = ConstantArrayWithExpr + 1;
+    int IncompleteArray = ConstantArrayWithoutExpr + 1;
     int VariableArray = IncompleteArray + 1;
     int Struct = VariableArray + 1;
     int Union = Struct + 1;
     int Enum = Union + 1;
     int TypeDef = Enum + 1;
     /**
-     * The tag of the missing jlang.type.
+     * The tc of the missing jlang.type.
      */
     int None = TypeDef + 1;
 
     int Label = None + 1;
     
     /**
-     * The tag of the error jlang.type.
+     * The tc of the error jlang.type.
      */
     int Error = None + 1;
 }

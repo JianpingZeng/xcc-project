@@ -16,13 +16,14 @@ import jlang.cparser.DeclKind;
 import jlang.cparser.Declarator;
 import jlang.type.QualType;
 import jlang.type.RecordType;
+import jlang.type.TagTypeKind;
 import jlang.type.Type;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static jlang.cparser.DeclKind.*;
-import static jlang.type.Type.TagTypeKind.*;
+import static jlang.type.TagTypeKind.*;
 
 /**
  * This class encapsulate information of declaration or definition, like
@@ -148,16 +149,21 @@ public abstract class Decl extends DeclContext
         return implicit;
     }
 
+    /**
+     * The top level declaration context.
+     */
     public static class TranslationUnitDecl extends Decl
     {
-        public TranslationUnitDecl(DeclContext context, SourceLocation location)
+        private ASTContext ctx;
+        private TranslationUnitDecl(ASTContext ctx)
         {
-            super(DeclKind.CompilationUnitDecl, context, location);
+            super(DeclKind.CompilationUnitDecl, null, SourceLocation.NOPOS);
+            this.ctx = ctx;
         }
 
-        public TranslationUnitDecl(DeclContext context)
+        public static TranslationUnitDecl create(ASTContext ctx)
         {
-            super(DeclKind.CompilationUnitDecl, context, SourceLocation.NOPOS);
+            return new TranslationUnitDecl(ctx);
         }
     }
 
@@ -192,9 +198,9 @@ public abstract class Decl extends DeclContext
             return (this instanceof FunctionDecl);
         }
 
-        public String getIdentifier()
+        public IdentifierInfo getIdentifier()
         {
-            return name.getName();
+            return name;
         }
 
         public Linkage getLinkage()
@@ -951,10 +957,10 @@ public abstract class Decl extends DeclContext
         protected boolean isBeingDefined;
         protected boolean isCompleteDefinition;
         protected DeclContext declContext;
-        protected Type.TagTypeKind tagTypeKind;
+        protected TagTypeKind tagTypeKind;
 
         /**
-         * True if this tag is free standing, e.g. "struct X;".
+         * True if this tc is free standing, e.g. "struct X;".
          */
         protected boolean isFreeStanding;
 
@@ -967,7 +973,7 @@ public abstract class Decl extends DeclContext
         private TypeDefDecl typedefAnonDecl;
 
         public TagDecl(DeclKind kind,
-                Type.TagTypeKind tagTypeKind,
+                TagTypeKind tagTypeKind,
                 DeclContext context,
                 IdentifierInfo name,
                 SourceLocation loc,
@@ -983,7 +989,7 @@ public abstract class Decl extends DeclContext
 
 
         public TagDecl(DeclKind kind,
-                Type.TagTypeKind tagTypeKind,
+                TagTypeKind tagTypeKind,
                 DeclContext context,
                 IdentifierInfo name,
                 SourceLocation loc,
@@ -1009,6 +1015,7 @@ public abstract class Decl extends DeclContext
 
             this.declContext = curContext;
         }
+
         public final boolean isBeingDefined() { return isBeingDefined; }
 
         public final boolean isCompleteDefinition()
@@ -1034,7 +1041,7 @@ public abstract class Decl extends DeclContext
             return isFreeStanding;
         }
 
-        public Type.TagTypeKind getTagKind()
+        public TagTypeKind getTagKind()
         {
             return tagTypeKind;
         }
@@ -1086,6 +1093,11 @@ public abstract class Decl extends DeclContext
         {
             this.typedefAnonDecl = typedefAnonDecl;
         }
+
+        public void setBeingDefined()
+        {
+            isBeingDefined = true;
+        }
     }
 
     public static class RecordDecl extends TagDecl
@@ -1108,7 +1120,7 @@ public abstract class Decl extends DeclContext
 
         public RecordDecl(
                 IdentifierInfo name,
-                Type.TagTypeKind tagTypeKind,
+                TagTypeKind tagTypeKind,
                 DeclContext context,
                 SourceLocation loc,
                 RecordDecl prevDecl)

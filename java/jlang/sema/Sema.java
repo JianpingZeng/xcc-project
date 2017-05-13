@@ -18,7 +18,7 @@ import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.ArrayType.ArraySizeModifier;
 import jlang.type.ArrayType.VariableArrayType;
-import jlang.type.Type.TagTypeKind;
+import jlang.type.TagTypeKind;
 import tools.Context;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -67,9 +67,9 @@ public final class Sema implements DiagnosticParseTag,
 
     public enum TagUseKind
     {
-        TUK_reference,      // Reference to a tag: 'struct foo *X;'
-        TUK_declaration,    // Forward declaration of a tag: 'struct foo;'
-        TUK_definition     // Definition of a tag: 'struct foo {int X;} Y;'
+        TUK_reference,      // Reference to a tc: 'struct foo *X;'
+        TUK_declaration,    // Forward declaration of a tc: 'struct foo;'
+        TUK_definition     // Definition of a tc: 'struct foo {int X;} Y;'
     }
 
     /**
@@ -107,7 +107,7 @@ public final class Sema implements DiagnosticParseTag,
      *  </li>
      *  <li>
      *    identifier that follows the keyword struct, union, or enum is looked up
-     *    in the tag getIdentifier space.
+     *    in the tc getIdentifier space.
      *  </li>
      *  <li>
      *   identifier that follows the member access or member access through pointer
@@ -288,13 +288,13 @@ public final class Sema implements DiagnosticParseTag,
     }
 
 	/**
-     * Determines if a tag with a given kind is acceptable as a redeclaration of
-     * the given tag declaration.
+     * Determines if a tc with a given kind is acceptable as a redeclaration of
+     * the given tc declaration.
      * @param previous
      * @param newTag
      * @param newTagLoc
      * @param name
-     * @return  Return true if the new tag kind is acceptable, false otherwise.
+     * @return  Return true if the new tc kind is acceptable, false otherwise.
      */
     private boolean isacceptableTagRedeclaration(
             TagDecl previous,
@@ -313,9 +313,9 @@ public final class Sema implements DiagnosticParseTag,
      * will be null.
      *
      * @param curScope
-     * @param tagType  Indicates what kind of tag this is.
+     * @param tagType  Indicates what kind of tc this is.
      * @param tuk      Indicates whether this is a reference/declaration/definition
-     *                 of a tag.
+     *                 of a tc.
      * @param kwLoc
      * @param name
      * @param nameLoc
@@ -372,22 +372,22 @@ public final class Sema implements DiagnosticParseTag,
             {
                 // This makes sure that we ignore the contexts associated
                 // with C structs, unions, and enums when looking for a matching
-                // tag declaration or definition.
+                // tc declaration or definition.
                 while (searchDC instanceof RecordDecl
                         || searchDC instanceof EnumDecl)
                     searchDC = searchDC.getParent();
             }
         }
-        // If there is a previous tag definition or forward declaration was found,
+        // If there is a previous tc definition or forward declaration was found,
         // Handle it.
         if (prevDecl != null)
         {
             if (prevDecl instanceof TagDecl)
             {
                 TagDecl prevTagDecl = (TagDecl)prevDecl;
-                // If this is a use of a previous tag, or if the tag is already declared
+                // If this is a use of a previous tc, or if the tc is already declared
                 // in the same scope (so that the definition/declaration completes or
-                // rementions the tag), reuse the decl.
+                // rementions the tc), reuse the decl.
                 if (tuk == TagUseKind.TUK_reference || isDeclInScope(prevDecl, searchDC, curScope))
                 {
                     // Make sure that this wasn't declared as an enum and now used as a
@@ -428,7 +428,7 @@ public final class Sema implements DiagnosticParseTag,
                         {
                             return new ActionResult<>(prevDecl);
                         }
-                        // Diagnose attempts to redefine a tag.
+                        // Diagnose attempts to redefine a tc.
                         if (tuk == TagUseKind.TUK_definition)
                         {
                             TagDecl def = prevTagDecl.getDefinition();
@@ -446,7 +446,7 @@ public final class Sema implements DiagnosticParseTag,
                                 // Reaching here, it indicates that the previous
                                 // is forward declaration, and this is actually
                                 // complete definition.
-                                TagType tag = (TagType)context.getTagDeclType(prevTagDecl).baseType();
+                                TagType tag = (TagType)context.getTagDeclType(prevTagDecl).getType();
                                 if (tag.isBeingDefined())
                                 {
                                     diag(nameLoc, err_nested_redefinition)
@@ -458,7 +458,7 @@ public final class Sema implements DiagnosticParseTag,
                                 }
                             }
                             // Okay, this is definition of a previously declared or referenced
-                            // tag PrevDecl. We're going to create a new Decl for it.
+                            // tc PrevDecl. We're going to create a new Decl for it.
                         }
                     }
                     // If we get here we have (another) forward declaration or we
@@ -466,7 +466,7 @@ public final class Sema implements DiagnosticParseTag,
                 }
                 else
                 {
-                    // If we get here, this is a definition of a new tag type in a nested
+                    // If we get here, this is a definition of a new tc type in a nested
                     // scope, e.g. "struct foo; void bar() { struct foo; }", just create a
                     // new decl/type.  We set PrevDecl to NULL so that the entities
                     // have distinct types.
@@ -505,7 +505,7 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation loc = nameLoc.isValid() ? nameLoc : kwLoc;
 
             boolean isForwardReference = false;
-            // Current tag is enum declaration, reference, or definition.
+            // Current tc is enum declaration, reference, or definition.
             if (tagType == TST.TST_enum)
             {
                 newDecl = new EnumDecl(name,searchDC, loc, (EnumDecl)prevDecl);
@@ -533,7 +533,7 @@ public final class Sema implements DiagnosticParseTag,
             if (invalid)
                 newDecl.setInvalidDecl(true);
 
-            // If we're declaring or defining a tag in function prototype scope
+            // If we're declaring or defining a tc in function prototype scope
             // in C, note that this type can only be used within the function.
             if (name != null && curScope.isFunctionProtoTypeScope())
             {
@@ -730,7 +730,7 @@ public final class Sema implements DiagnosticParseTag,
 
         // C99 6.7.2.1p8: A member of a structure or union may have any type other
         // than a variably modified type.
-        if (t.isVariableModifiedType())
+        if (t.isVariablyModifiedType())
         {
             boolean sizeIsNegative;
             OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
@@ -863,7 +863,7 @@ public final class Sema implements DiagnosticParseTag,
         for (int i = 0, e = record.getNumFields(); i < e; i++)
         {
             FieldDecl fd = record.getDeclAt(i);
-            Type fdTy = fd.getDeclType().baseType();
+            Type fdTy = fd.getDeclType().getType();
 
             if (!fd.isAnonymousStructOrUnion())
             {
@@ -909,7 +909,7 @@ public final class Sema implements DiagnosticParseTag,
             }
             else if (fdTy.isRecordType())
             {
-                RecordType fdtty = fdTy.getRecordType();
+                RecordType fdtty = fdTy.getAsRecordType();
                 if (fdtty.getDecl().hasFlexibleArrayNumber())
                 {
                     if (record != null && record.isUnion())
@@ -1142,7 +1142,8 @@ public final class Sema implements DiagnosticParseTag,
         if (ii != null)
         {
             // check redeclaration, e.g. int foo(int x, int x);
-            LookupResult result = new LookupResult(this, ii.getName(), paramDecls.getIdentifierLoc(), LookupOrdinaryName);
+            LookupResult result = new LookupResult(this, ii.getName(),
+                    paramDecls.getIdentifierLoc(), LookupOrdinaryName);
             lookupName(result, scope);
 
             if (result.isSingleResult())
@@ -1193,7 +1194,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         TagDecl tag = (TagDecl) tagDecl;
 
-        // Enter teh tag context.
+        // Enter teh tc context.
         pushDeclContext(scope, tag);
     }
 
@@ -1216,7 +1217,7 @@ public final class Sema implements DiagnosticParseTag,
         tag.setRBraceLoc(rBraceLoc);
 
         popDeclContext();
-        // Notify the consumer that we've defined a tag.
+        // Notify the consumer that we've defined a tc.
         consumer.handleTagDeclDefinition(tag);
 
     }
@@ -1501,7 +1502,7 @@ public final class Sema implements DiagnosticParseTag,
                 {
                     newTy = bestType;
                     newWidth = bestWidth;
-                    newSign = bestType.isSignedType();
+                    newSign = bestType.isSignedIntegerType();
                 }
 
                 // Adjust the APSInt value.
@@ -1527,8 +1528,8 @@ public final class Sema implements DiagnosticParseTag,
 
     public void actOnTranslationUnitScope(Scope scope)
     {
-        pushDeclContext(scope,
-                new TranslationUnitDecl(curContext, SourceLocation.NOPOS));
+        translateUnitScope = scope;
+        pushDeclContext(scope, context.getTranslateUnitDecl());
     }
 
     public Decl actOnFunctionDef(Scope fnBodyScope, Declarator declarator)
@@ -1614,8 +1615,8 @@ public final class Sema implements DiagnosticParseTag,
         // If the typedef types are not identical, reject them in all languages and
         // with any extensions enabled.
         if (oldType.equals(newOne.getUnderlyingType())
-                && oldType.getCanonicalTypeInternal()
-                != newOne.getUnderlyingType().getCanonicalTypeInternal())
+                && oldType.getType().getCanonicalTypeInternal()
+                != newOne.getUnderlyingType().getType().getCanonicalTypeInternal())
         {
             diag(newOne.getLocation(),
                     err_redefinition_different_typedef)
@@ -1817,7 +1818,7 @@ public final class Sema implements DiagnosticParseTag,
 
         if (ty.isPointerType())
         {
-            PointerType pty = ty.getPointerType();
+            PointerType pty = ty.getAsPointerType();
             QualType pointee = pty.getPointeeType();
             QualType fixedType = tryToFixInvalidVariablyModifiedType(pointee, context, sizeIsNegative);
             if (fixedType.isNull()) return fixedType;
@@ -2243,7 +2244,7 @@ public final class Sema implements DiagnosticParseTag,
                 assert ds.getTypeSpecWidth() == DeclSpec.TSW.TSW_unspecified
                         && ds.getTypeSpecComplex() == DeclSpec.TSC.TSC_unspecified
                         && ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unspecified
-                        : "No qualifiers on tag names!";
+                        : "No qualifiers on tc names!";
 
                 // TypeQuals handled by caller.
                 result = context.getTypeDeclType(typeDecl);
@@ -2465,7 +2466,7 @@ public final class Sema implements DiagnosticParseTag,
                                 }
                                 else
                                 {
-                                    if (argTy.isBuiltinType() && argTy.getTypeKind() == TypeClass.Float)
+                                    if (argTy.isBuiltinType() && argTy.getTypeClass() == TypeClass.Float)
                                         argTy = context.DoubleTy;
                                 }
                             }
@@ -2591,7 +2592,7 @@ public final class Sema implements DiagnosticParseTag,
             return new QualType();
         }
 
-        RecordType eltTy = t.getRecordType();
+        RecordType eltTy = t.getAsRecordType();
         if (eltTy != null)
         {
             // If the element type is a struct or union that contains a variadic
@@ -3054,7 +3055,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         QualType t = expr.getType();
         // if the subExpr already is a integral or enumeration type, we got it.
-        if (!t.getType().isIntegralOrEnumerationType())
+        if (!t.isIntegralOrEnumerationType())
         {
             diag(switchLoc, err_typecheck_expect_scalar_operand).emit();
         }
@@ -3357,7 +3358,7 @@ public final class Sema implements DiagnosticParseTag,
             // we still do the analysis to preserve this information in the AST
             // (which can be used by flow-based analyes).
             //
-            final EnumType et = condType.getType().getEnumType();
+            final EnumType et = condType.getType().getAsEnumType();
             // if switch has default case, the ignore it.
             if (!caseListErroneous && !hasConstantCond && et != null)
             {
@@ -3698,7 +3699,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // We're going to complain about a bunch of spurious specifiers;
-        // only do this if we're declaring a tag, because otherwise we
+        // only do this if we're declaring a tc, because otherwise we
         // should be getting ext_no_declarators.
         if (emittedWarning || (tagD != null && tagD.isInvalidDecl()))
             return tagD;
@@ -4037,14 +4038,14 @@ public final class Sema implements DiagnosticParseTag,
         if (srcFrom.isConstantArrayType())
         {
             ArrayType.ConstantArrayType cat = context.getAsConstantArrayType(srcFrom);
-            decayedTy = new PointerType(context.getConstantArrayType(srcFrom, cat.getSize()).getElemType());
+            decayedTy = context.getPointerType(cat.getElemType()).getType();
             resTy = new QualType(decayedTy, QualType.CONST_QUALIFIER);
             cast = CastKind.CK_ArrayToPointerDecay;
         }
         else if (srcFrom.isFunctionType())
         {
-            decayedTy = new PointerType(srcFrom.getFunctionType());
-            resTy = new QualType(decayedTy);
+            resTy = context.getPointerType(new QualType(srcFrom.getAsFunctionType()));
+            decayedTy = resTy.getType();
             cast = CastKind.CK_FunctionToPointerDecay;
         }
         if (resTy != srcFrom)
@@ -4109,7 +4110,9 @@ public final class Sema implements DiagnosticParseTag,
      */
     public boolean checkCaseExpression(Expr expr)
     {
-        return expr.getType().isIntegralOrEnumerationType();
+        if (expr.isIntegerConstantExpr(context))
+            return context.isSignedIntegerOrEnumerationType(expr.getType());
+        return false;
     }
 
     /**
@@ -4678,8 +4681,8 @@ public final class Sema implements DiagnosticParseTag,
     {
         // The rules for this case are in C99 6.3.1.8
         int order = context.getIntegerTypeOrder(lhsType, rhsType);
-        boolean lhsSigned = lhsType.isSignedType();
-        boolean rhsSigned = rhsType.isSignedType();
+        boolean lhsSigned = lhsType.isSignedIntegerType();
+        boolean rhsSigned = rhsType.isSignedIntegerType();
         if (lhsSigned == rhsSigned)
         {
             // Same signedness; use the higher-ranked type
@@ -4907,8 +4910,8 @@ public final class Sema implements DiagnosticParseTag,
         if (!isLHSPointer && !isRHSPointer) return true;
 
         QualType lhsPointeeTy = new QualType() , rhsPointeeTy = new QualType();
-        if (isLHSPointer) lhsPointeeTy = lhs.getType().getPointee();
-        if (isRHSPointer) rhsPointeeTy = rhs.getType().getPointee();
+        if (isLHSPointer) lhsPointeeTy = lhs.getType().getPointeeType();
+        if (isRHSPointer) rhsPointeeTy = rhs.getType().getPointeeType();
 
         // Check for arithmetic on pointers to incomplete types.
         boolean isLHSVoidPtr = isLHSPointer && lhsPointeeTy.isVoidType();
@@ -4942,7 +4945,7 @@ public final class Sema implements DiagnosticParseTag,
         if (!operand.getType().isPointerType())
             return true;
 
-        QualType pointeeTy = operand.getType().getPointee();
+        QualType pointeeTy = operand.getType().getPointeeType();
         if (pointeeTy.isVoidType())
         {
             diag(loc, ext_gnu_void_ptr).emit();
@@ -4994,7 +4997,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         if (op.getType().isPointerType())
         {
-            QualType pointeeTy = op.getType().getPointee();
+            QualType pointeeTy = op.getType().getPointeeType();
             if (requireCompleteType(loc, pointeeTy,
                     pdiag(err_typecheck_arithmetic_incomplete_type).
                             addTaggedVal(pointeeTy).
@@ -5156,7 +5159,7 @@ public final class Sema implements DiagnosticParseTag,
         // Either ptr - int  or ptr - ptr.
         if (lhs.get().get().getType().isPointerType())
         {
-            QualType lPointee = lhs.get().get().getType().getPointee();
+            QualType lPointee = lhs.get().get().getType().getPointeeType();
 
             // The case is ptr - int.
             if (rhs.get().get().getType().isIntegerType())
@@ -5177,8 +5180,8 @@ public final class Sema implements DiagnosticParseTag,
             // handle ptr - ptr case
             if (rhs.get().get().getType().isPointerType())
             {
-                final PointerType rhsPtry = rhs.get().get().getType().getPointerType();
-                QualType rpointee = rhsPtry.getPointee();
+                final PointerType rhsPtry = rhs.get().get().getType().getAsPointerType();
+                QualType rpointee = rhsPtry.getPointeeType();
 
                 // Pointee types must be compatible C99 6.5.6p3
                 if (!context.isCompatible(lPointee, rpointee))
@@ -5666,8 +5669,8 @@ public final class Sema implements DiagnosticParseTag,
         }
         else if (!castTy.isScalarType())
         {
-            if (castTy.getCanonicalTypeInternal().getUnQualifiedType().
-                    equals(expr.getType().getUnQualifiedType().getCanonicalTypeInternal())
+            if (castTy.getType().getCanonicalTypeInternal().getUnQualifiedType().
+                    equals(expr.getType().getUnQualifiedType().getType().getCanonicalTypeInternal())
                     && (castTy.isStructureType() || castTy.isUnionType()))
             {
                 // GCC struct/union extension: allow cast to self.
@@ -5685,8 +5688,8 @@ public final class Sema implements DiagnosticParseTag,
                 for (; i < e; i++)
                 {
                     FieldDecl fd = rd.getDeclAt(i);
-                    if (fd.getDeclType().getCanonicalTypeInternal().getUnQualifiedType().
-                            equals(expr.getType().getCanonicalTypeInternal().getUnQualifiedType()))
+                    if (fd.getDeclType().getType().getCanonicalTypeInternal().getUnQualifiedType().
+                            equals(expr.getType().getType().getCanonicalTypeInternal().getUnQualifiedType()))
                     {
                         diag(range.getBegin(), ext_typecheck_cast_to_union)
                                 .addSourceRange(expr.getSourceRange())
@@ -5725,8 +5728,7 @@ public final class Sema implements DiagnosticParseTag,
         else if (!castTy.isArithmeticType())
         {
             QualType castExprType = expr.getType();
-            if (castExprType.getIntegerType() == null
-                    && castExprType.isArithmeticType())
+            if (castExprType.isIntegerType() && castExprType.isArithmeticType())
             {
                 diag(expr.getLocStart(),
                         err_cast_pointer_from_non_pointer_int)
@@ -5844,14 +5846,14 @@ public final class Sema implements DiagnosticParseTag,
         {
             baseExpr = lhsExpr;
             idxExpr = rhsExpr;
-            resultTy = lhsTy.getPointerType().getPointeeType();
+            resultTy = lhsTy.getAsPointerType().getPointeeType();
         }
         else if (rhsTy.isPointerType())
         {
             // handle the uncommon case of "123[Ptr]".
             baseExpr = rhsExpr;
             idxExpr = lhsExpr;
-            resultTy = rhsTy.getPointerType().getPointeeType();
+            resultTy = rhsTy.getAsPointerType().getPointeeType();
         }
         else if (lhsTy.isArrayType())
         {
@@ -5870,7 +5872,7 @@ public final class Sema implements DiagnosticParseTag,
             baseExpr = lhsExpr;
             idxExpr = rhsExpr;
 
-            resultTy = lhsTy.getPointerType().getPointeeType();
+            resultTy = lhsTy.getAsPointerType().getPointeeType();
         }
         else if(rhsTy.isArrayType())
         {
@@ -5885,7 +5887,7 @@ public final class Sema implements DiagnosticParseTag,
 
             baseExpr = rhsExpr;
             idxExpr = lhsExpr;
-            resultTy = rhsTy.getPointerType().getPointeeType();
+            resultTy = rhsTy.getAsPointerType().getPointeeType();
         }
         else
         {
@@ -6285,8 +6287,8 @@ public final class Sema implements DiagnosticParseTag,
         {
             // C99 6.5.2.2p1 - "The expression that denotes the called function shall
             // have type pointer to function".
-            PointerType pt = fn.getType().getPointerType();
-            funcTy = pt.getPointeeType().getFunctionType();
+            PointerType pt = fn.getType().getAsPointerType();
+            funcTy = pt.getPointeeType().getAsFunctionType();
 
             if (funcTy == null)
             {
@@ -6453,7 +6455,7 @@ public final class Sema implements DiagnosticParseTag,
         if (isArrow) baseType = context.<PointerType>getAs(baseType).getPointeeType();
 
         QualType.Qualifier baseQuals = baseType.getQualifiers();
-        QualType.Qualifier memberQuals = memberType.getCanonicalTypeInternal().getQualifiers();
+        QualType.Qualifier memberQuals = memberType.getType().getCanonicalTypeInternal().getQualifiers();
         QualType.Qualifier combined = baseQuals.add(memberQuals);
 
         if (!combined.equals(memberQuals))
@@ -6579,7 +6581,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             if (baseType.isPointerType())
             {
-                PointerType ptr = baseType.getPointerType();
+                PointerType ptr = baseType.getAsPointerType();
                 baseType = ptr.getPointeeType();
             }
             else if (baseType.isRecordType())
@@ -6607,7 +6609,7 @@ public final class Sema implements DiagnosticParseTag,
         // Handle field access to simple records.
         if (baseType.isRecordType())
         {
-            RecordType rty = baseType.getRecordType();
+            RecordType rty = baseType.getAsRecordType();
             if (lookupMemberExprInRecord(lookupResult,
                     baseExpr.get().get().getSourceRange(),
                     rty, opLoc))
@@ -7272,10 +7274,10 @@ public final class Sema implements DiagnosticParseTag,
 
 	/**
      * This method is called *for error recovery purposes only*
-     * to determine if the specified name is a valid tag name ("struct foo").  If
-     * so, this returns the TST for the tag corresponding to it (TST_enum,
+     * to determine if the specified name is a valid tc name ("struct foo").  If
+     * so, this returns the TST for the tc corresponding to it (TST_enum,
      * TST_union, TST_struct, TST_class).  This is used to diagnose cases in C
-     * where the user forgot to specify the tag.
+     * where the user forgot to specify the tc.
      * @param identifierInfo
      * @param scope
      * @return

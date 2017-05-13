@@ -499,7 +499,7 @@ public abstract class TargetInfo
         return pointerWidth;
     }
 
-    public int getPoninterAlign(int addrSpace)
+    public int getPointerAlign(int addrSpace)
     {
         return pointerAlign;
     }

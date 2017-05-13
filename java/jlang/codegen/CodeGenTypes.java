@@ -335,7 +335,7 @@ public class CodeGenTypes
                 // cannot lower the function type.
                 if (!isFuncTypeConvertible(fnType))
                 {
-                    // This function's type depends on an incomplete tag type.
+                    // This function's type depends on an incomplete tc type.
                     // Return a placeholder type.
                     resultType = backend.type.StructType.get();
                     skipLayout = true;

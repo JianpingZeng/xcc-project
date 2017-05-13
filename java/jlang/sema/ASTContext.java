@@ -19,8 +19,8 @@ package jlang.sema;
 import jlang.ast.Tree.Expr;
 import jlang.basic.*;
 import jlang.basic.TargetInfo.IntType;
-import jlang.cparser.DeclContext;
 import jlang.clex.IdentifierTable;
+import jlang.cparser.DeclContext;
 import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.ArrayType.*;
@@ -28,13 +28,35 @@ import tools.Pair;
 import tools.Util;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.TreeSet;
 
-import static jlang.sema.ASTContext.FloatingRank.DoubleRank;
-import static jlang.sema.ASTContext.FloatingRank.FloatRank;
-import static jlang.sema.ASTContext.FloatingRank.LongDoubleRank;
-import static jlang.type.TypeClass.*;
+import static jlang.sema.ASTContext.FloatingRank.*;
+import static jlang.type.ArrayType.ArraySizeModifier.Normal;
+import static jlang.type.TypeClass.Bool;
+import static jlang.type.TypeClass.Char;
+import static jlang.type.TypeClass.ConstantArray;
+import static jlang.type.TypeClass.Double;
+import static jlang.type.TypeClass.Enum;
+import static jlang.type.TypeClass.Float;
+import static jlang.type.TypeClass.FunctionProto;
+import static jlang.type.TypeClass.IncompleteArray;
+import static jlang.type.TypeClass.Int;
+import static jlang.type.TypeClass.LongDouble;
+import static jlang.type.TypeClass.LongInteger;
+import static jlang.type.TypeClass.LongLong;
+import static jlang.type.TypeClass.Pointer;
+import static jlang.type.TypeClass.Short;
+import static jlang.type.TypeClass.Struct;
+import static jlang.type.TypeClass.TypeDef;
+import static jlang.type.TypeClass.Union;
+import static jlang.type.TypeClass.UnsignedChar;
+import static jlang.type.TypeClass.UnsignedInt;
+import static jlang.type.TypeClass.UnsignedLong;
+import static jlang.type.TypeClass.UnsignedLongLong;
+import static jlang.type.TypeClass.UnsignedShort;
+import static jlang.type.TypeClass.VariableArray;
+import static jlang.type.TypeClass.Void;
 
 /**
  * @author Xlous.zeng
@@ -42,35 +64,50 @@ import static jlang.type.TypeClass.*;
  */
 public final class ASTContext
 {
-    private ArrayList<Type> Types = new ArrayList<>();
+    private ArrayList<Type> types = new ArrayList<>();
+    private TreeSet<ComplexType> complexTypes = new TreeSet<>();
+    private TreeSet<PointerType> pointerTypes = new TreeSet<>();
+    private TreeSet<ConstantArrayType> constantArrayTypes = new TreeSet<>();
+    private TreeSet<IncompleteArrayType> incompleteArrayTypes = new TreeSet<>();
+    private TreeSet<VariableArrayType> variableArrayTypes = new TreeSet<>();
+    private TreeSet<FunctionNoProtoType> functionNoProtoTypes = new TreeSet<>();
+    private TreeSet<FunctionProtoType> functionProtoTypes = new TreeSet<>();
+    private HashMap<RecordDecl, ASTRecordLayout> astRecordLayoutMap = new HashMap<>();
+    /**
+     * A cache mapping from RecordDecls to ASTRecordLayouts.
+     * This is lazily created.  This is intentionally not serialized.
+     */
     private TreeSet<IncompleteArrayType> IncompleteArrayTypes = new TreeSet<>();
+    private DeclContext translateUnitDecl;
+    private SourceManager sourceMgr;
+    private TranslationUnitDecl tuDel;
 
+    private LangOptions langOptions;
+    public TargetInfo target;
+    public IdentifierTable identifierTable;
 
-	public final QualType VoidTy = new QualType(VoidType.New());
-	public final QualType BoolTy = new QualType(new IntegerType(1, false));
-	public final QualType CharTy = new QualType(new IntegerType(1, true));
-	public final QualType SignedCharTy = new QualType(new IntegerType(1, true));
-	public final QualType UnsignedCharTy = new QualType(new IntegerType(1, false));
-	public final QualType ShortTy = new QualType(new IntegerType(2, true));
-	public final QualType UnsignedShortTy = new QualType(
-	        new IntegerType(2, false));
-	public final QualType IntTy = new QualType(new IntegerType(4, true));
-	public final QualType UnsignedIntTy = new QualType(
-	        new IntegerType(4, false));
-	public final QualType LongTy = new QualType(new IntegerType(4, true));
-	public final QualType UnsignedLongTy = new QualType(new IntegerType(4, false));
-	public final QualType LongLongTy = new QualType(new IntegerType(8, true));
-	public final QualType UnsignedLongLongTy = new QualType(new IntegerType(8, false));
-	public final QualType FloatTy = new QualType(new RealType(4, "float"));
-	public final QualType DoubleTy = new QualType(new RealType(8, "double"));
+    // Built-in types.
+    public final QualType VoidTy;
+	public final QualType BoolTy;
+	public final QualType CharTy;
+	public final QualType SignedCharTy;
+	public final QualType UnsignedCharTy;
+	public final QualType ShortTy;
+	public final QualType UnsignedShortTy;
+	public final QualType IntTy;
+	public final QualType UnsignedIntTy;
+	public final QualType LongTy;
+	public final QualType UnsignedLongTy;
+	public final QualType LongLongTy;
+	public final QualType UnsignedLongLongTy;
+	public final QualType FloatTy;
+	public final QualType DoubleTy;
+    public final QualType LongDoubleTy;
+    public final QualType FloatComplexTy;
+    public final QualType DoubleComplexTy;
+    public final QualType LongDoubleComplexTy;
 
-	public LangOptions langOptions;
-	public TargetInfo target;
-	public IdentifierTable identifierTable;
-	public SourceManager sourceMgr;
-
-	public LinkedList<Type> types = new LinkedList<>();
-	private DeclContext translateUnitDecl;
+    public final QualType VoidPtrTy;
 
 	public ASTContext(LangOptions opts, SourceManager sourceMgr,
 			TargetInfo targetInfo, IdentifierTable identifierTable)
@@ -79,9 +116,45 @@ public final class ASTContext
 		this.sourceMgr = sourceMgr;
 		target = targetInfo;
 		this.identifierTable = identifierTable;
+        tuDel = TranslationUnitDecl.create(this);
 
-		// initBuiltType().
+        VoidTy = initBuiltinType(Void);
+        BoolTy = initBuiltinType(Bool);
+        CharTy = initBuiltinType(Char);
+        SignedCharTy = initBuiltinType(Char);
+        ShortTy = initBuiltinType(Short);
+        IntTy = initBuiltinType(Int);
+        LongTy = initBuiltinType(LongInteger);
+        LongLongTy = initBuiltinType(LongLong);
+
+        UnsignedCharTy = initBuiltinType(UnsignedChar);
+        UnsignedShortTy = initBuiltinType(UnsignedShort);
+        UnsignedIntTy = initBuiltinType(UnsignedInt);
+        UnsignedLongTy = initBuiltinType(UnsignedLong);
+        UnsignedLongLongTy = initBuiltinType(UnsignedLongLong);
+
+        FloatTy = initBuiltinType(Float);
+        DoubleTy = initBuiltinType(Double);
+        LongDoubleTy = initBuiltinType(LongDouble);
+        FloatComplexTy = getComplexType(FloatTy);
+        DoubleComplexTy = getComplexType(DoubleTy);
+        LongDoubleComplexTy = getComplexType(LongDoubleTy);
+
+        VoidPtrTy = getPointerType(VoidTy);
 	}
+
+	private QualType initBuiltinType(int tc)
+    {
+        QualType res = new QualType(new BuiltinType(tc));
+        types.add(res.getType());
+        return res;
+    }
+
+    public QualType getComplexType(QualType eltType)
+    {
+        // TODO: 17-5-13
+        return null;
+    }
 
     /**
      * Returns the reference to the jlang.type for an array of the specified element jlang.type.
@@ -98,11 +171,11 @@ public final class ASTContext
         return new QualType(New, 0);
     }
 
-    public QualType getPointerType(Type ty)
+    public QualType getPointerType(QualType ty)
 	{
-	    PointerType New = new PointerType(ty);
-	    return new QualType(New, 0);
-	}
+        // TODO: 17-5-13
+        return null;
+    }
 
 	public QualType getQualifiedType(QualType t, QualType.Qualifier qs)
 	{
@@ -155,11 +228,14 @@ public final class ASTContext
 		if (aty instanceof IncompleteArrayType)
 		{
 			IncompleteArrayType icat = (IncompleteArrayType)aty;
-			return getIncompleteArrayType(newElemTy);
+			return (ArrayType) getIncompleteArrayType(newElemTy, 
+                    icat.getSizeModifier(), icat.getIndexTypeQuals()).getType();
 		}
 
 		VariableArrayType vat = (VariableArrayType)aty;
-		return getVariableArrayType(newElemTy, vat.getSizeExpr());
+		return (ArrayType) getVariableArrayType(newElemTy, vat.getSizeExpr(), 
+                vat.getSizeModifier(), vat.getIndexTypeQuals(), vat.getBrackets())
+                .getType();
 	}
 
     /**
@@ -178,7 +254,7 @@ public final class ASTContext
 	{
 		VariableArrayType vat = new VariableArrayType(elemTy,
                 numElts, asm, eltTypeQuals, brackets);
-		Types.add(vat);
+		types.add(vat);
 		return new QualType(vat);
 	}
 
@@ -205,7 +281,7 @@ public final class ASTContext
         arrSize.zextOrTrunc(target.getPointerWidth(0));
         ConstantArrayWithExprType arr = new ConstantArrayWithExprType(eltTy,
                 arrSize, arraySizeExpr, asm, eltTypeQuals,brackets);
-        Types.add(arr);
+        types.add(arr);
         return new QualType(arr);
     }
 
@@ -228,7 +304,8 @@ public final class ASTContext
 
         ConstantArrayWithoutExprType arr = new ConstantArrayWithoutExprType(
                 eltTy, arraySizeIn, asm, eltTypeQuals);
-        Types.add(arr);
+        types.add(arr);
+        // TODO: 17-5-13
         return new QualType(arr);
     }
 
@@ -241,18 +318,19 @@ public final class ASTContext
 
 		APInt size = new APInt(arraySize);
 		size = size.zextOrTrunc(32);
-		ConstantArrayType New = new ConstantArrayType(elemTy, size);
+		ConstantArrayType New = null;
 		return New;
-	}
+
+        // TODO: 17-5-13
+    }
 
 	public QualType getIncompleteArrayType(
 			QualType elemTy,
 			ArraySizeModifier sm,
             int eltTypeQuals)
 	{
-		IncompleteArrayType arr = new IncompleteArrayType(elemTy, sm, eltTypeQuals);
-		Types.add(arr);
-		return new QualType(arr);
+        // TODO: 17-5-13
+        return null;
 	}
 
     /**
@@ -267,9 +345,8 @@ public final class ASTContext
             boolean isVariadic,
             int typeQuals)
     {
-        FunctionProtoType ftp = new FunctionProtoType(resultTy, argTys, isVariadic);
-        Types.add(ftp);
-        return new QualType(ftp);
+        // TODO: 17-5-13
+        return null;
     }
 
     /**
@@ -279,9 +356,8 @@ public final class ASTContext
      */
     public QualType getFunctionNoProtoType(QualType resultTy)
     {
-        FunctionNoProtoType New = new FunctionNoProtoType(resultTy);
-        Types.add(New);
-        return new QualType(New);
+        // TODO: 17-5-13
+        return null;
     }
 
 	/**
@@ -332,9 +408,10 @@ public final class ASTContext
 			return new QualType(decl.getTypeForDecl());
 
 		QualType cannonical = decl.getUnderlyingType();
-		decl.setTyepForDecl(new TypeDefType(TypeClass.TypeDef, decl, cannonical));
-		types.addLast(decl.getTypeForDecl());
-		return new QualType(decl.getTypeForDecl());
+		decl.setTyepForDecl(new TypedefType(TypeClass.TypeDef, decl, cannonical));
+		types.add(decl.getTypeForDecl());
+        // TODO: 17-5-13
+        return new QualType(decl.getTypeForDecl());
 	}
 
 	/**
@@ -376,7 +453,7 @@ public final class ASTContext
 			assert false:"TypeDecl without a type?";
 		}
 		if (prevDecl == null)
-			types.addLast(decl.getTypeForDecl());
+			types.add(decl.getTypeForDecl());
 		return new QualType(decl.getTypeForDecl());
 	}
 
@@ -434,13 +511,13 @@ public final class ASTContext
 			// a signed integer jlang.type, or an unsigned integer jlang.type.
 			// Compatibility is based on the underlying jlang.type, not the promotion
 			// jlang.type.
-			EnumType ety = lhs.getEnumType();
+			EnumType ety = lhs.getAsEnumType();
 			if (ety != null)
 			{
 				if (ety.getDecl().getIntegerType().equals(rhs.getUnQualifiedType()))
 					return rhs;
 			}
-			ety = rhs.getEnumType();
+			ety = rhs.getAsEnumType();
 			if (ety != null)
 			{
 				if (ety.getDecl().getIntegerType().equals(lhs.getUnQualifiedType()))
@@ -454,13 +531,13 @@ public final class ASTContext
 		{
 			case VariableArray:
 			case FunctionProto:
-				Util.shouldNotReachHere("Types are eliminated abo e");
+				Util.shouldNotReachHere("types are eliminated abo e");
 
 			case Pointer:
 			{
 				// Merge two pointer types, while trying to preserve typedef info.
-				QualType lhsPointee = getPointerType(lhs).getPointee();
-				QualType rhsPointee = getPointerType(rhs).getPointee();
+				QualType lhsPointee = getPointerType(lhs).getPointeeType();
+				QualType rhsPointee = getPointerType(rhs).getPointeeType();
 
 				if (unqualified)
 				{
@@ -532,7 +609,7 @@ public final class ASTContext
 				if (lhsElem.equals(resultType)) return lhs;
 				if (rhsElem.equals(resultType)) return rhs;
 
-				return new QualType(getIncompleteArrayType(resultType));
+				return getIncompleteArrayType(resultType, Normal, 0);
 			}
 
 			case TypeClass.Struct:
@@ -600,7 +677,7 @@ public final class ASTContext
 
 	public boolean isPromotableIntegerType(QualType type)
 	{
-		if (type.getType() instanceof PrimitiveType)
+		if (type.getType() instanceof BuiltinType)
 		{
 			switch (type.getTypeClass())
 			{
@@ -617,9 +694,9 @@ public final class ASTContext
 
 		// Enumerated types are promotable to their compatible integer types
 		// (C99 6.3.1.1)
-		if (type.isEnumType())
+		if (type.isEnumeralType())
 		{
-			EnumType et = type.getEnumType();
+			EnumType et = type.getAsEnumType();
 			QualType qt = et.getDecl().getIntegerType();
 			if (qt.isNull())
 				return false;
@@ -644,11 +721,11 @@ public final class ASTContext
 
 		if (type.getType() instanceof EnumType)
 			return ((EnumType) type.getType()).getDecl().getIntegerType();
-		if (type.isSignedType())
+		if (type.isSignedIntegerType())
 			return IntTy;
-		long promotableSize = type.getTypeSize();
-		long intSize = IntTy.getTypeSize();
-		assert !type.isSignedType() && promotableSize <= intSize;
+		long promotableSize = getTypeSize(type);
+		long intSize = getTypeSize(IntTy);
+		assert !type.isSignedIntegerType() && promotableSize <= intSize;
 
 		return promotableSize != intSize ? IntTy : UnsignedIntTy;
 	}
@@ -698,7 +775,7 @@ public final class ASTContext
 		if (decl.getTypeForDecl() != null)
 			return new QualType(decl.getTypeForDecl());
 
-		TypeDefType newType = new TypeDefType(TypeClass.TypeDef, decl, null);
+		TypedefType newType = new TypedefType(TypeClass.TypeDef, decl, null);
 		decl.setTyepForDecl(newType);
 		return new QualType(newType);
 	}
@@ -765,12 +842,12 @@ public final class ASTContext
 	}
 
 	public  <T extends Type> T convertInstanceOfObject(
-			Object o,
-			Class<? extends Type> clazz)
+			QualType o,
+			Class<? extends QualType> clazz)
 	{
 		try
 		{
-			return (T) clazz.cast(o);
+			return (T)clazz.cast(o).getType();
 		}
 		catch (ClassCastException e)
 		{
@@ -780,56 +857,45 @@ public final class ASTContext
 
 	public boolean isSignedIntegerOrEnumerationType(QualType type)
 	{
-		if (type.isPrimitiveType())
+		if (type.isBuiltinType())
 		{
-			return type.getTypeKind() >= TypeClass.Char
-					&& type.getTypeKind() <= TypeClass.LongInteger;
+			return type.getTypeClass() >= TypeClass.Char
+					&& type.getTypeClass() <= TypeClass.LongInteger;
 		}
-		if (type.isEnumType())
+		if (type.isEnumeralType())
 		{
 			EnumType et = (EnumType)type.getType();
 			if (et.getDecl().isCompleteDefinition())
-				return et.getDecl().getIntegerType().isSignedType();
+				return et.getDecl().getIntegerType().isSignedIntegerType();
 		}
 		return false;
 	}
 
 	public boolean isUnsignedIntegerOrEnumerationType(QualType type)
 	{
-		if (type.isPrimitiveType())
+		if (type.isBuiltinType())
 		{
-			return type.getTypeKind() >= TypeClass.Bool
-					&& type.getTypeKind() <= TypeClass.UnsignedLong;
+			return type.getTypeClass() >= TypeClass.Bool
+					&& type.getTypeClass() <= TypeClass.UnsignedLong;
 		}
-		if (type.isEnumType())
+		if (type.isEnumeralType())
 		{
 			EnumType et = (EnumType)type.getType();
 			if (et.getDecl().isCompleteDefinition())
-				return !et.getDecl().getIntegerType().isSignedType();
+				return !et.getDecl().getIntegerType().isSignedIntegerType();
 		}
 		return false;
 	}
 
-	public static int getIntWidth(QualType t)
+	public int getIntWidth(QualType t)
 	{
-		if (t.isEnumType())
+		if (t.isEnumeralType())
 		{
-			t = new QualType(t.getEnumType().getIntegerType());
+			t = new QualType(t.getAsEnumType().getDecl().getIntegerType().getType());
 		}
 		if (t.isBooleanType())
 			return 1;
-		return (int)t.getTypeSize();
-	}
-
-	/**
-	 * Return the ABI-specified alignment of a jlang.type, in bytes.
-	 * This method does not work on incomplete types.
-	 * @param t
-	 * @return
-	 */
-	public int getTypeAlignInBytes(QualType t)
-	{
-		return toByteUnitFromBits(t.alignment());
+		return (int) getTypeSize(t);
 	}
 
 	public Pair<Integer, Integer> getTypeInfoInBytes(Type t)
@@ -858,12 +924,12 @@ public final class ASTContext
 			case IncompleteArray:
 			case VariableArray:
 				width = 0;
-				align = (int)((ArrayType)t).getElemType().alignment();
+				align = getTypeAlign(((ArrayType)t).getElemType());
 				break;
 			case ConstantArray:
 			{
 				ConstantArrayType cat = ((ConstantArrayType)t);
-				Pair<Long, Integer> res = getTypeInfo(cat.getEnumType());
+				Pair<Long, Integer> res = getTypeInfo(cat.getAsEnumType());
 				width = res.first * cat.getSize().getZExtValue();
 				align = res.second;
 				width = Util.roundUp(width, align);
@@ -871,9 +937,10 @@ public final class ASTContext
 			}
 			case Pointer:
 			{
-				int as = ((PointerType)t).getPointerType().getTypeSizeInBytes();
-				width = as;
-				align = as;
+				int as = ((PointerType)t).getPointeeType().getAddressSpace();
+
+				width = target.getPointerWidth(as);
+				align = target.getPointerAlign(as);
 				break;
 			}
 
@@ -899,7 +966,7 @@ public final class ASTContext
 			}
 			case TypeDef:
 			{
-				TypeDefDecl typedef = ((TypeDefType)t).getDecl();
+				TypeDefDecl typedef = ((TypedefType)t).getDecl();
 				Pair<Long, Integer> info = getTypeInfo(typedef.getUnderlyingType().getType());
 
 				align = info.second;
@@ -912,45 +979,9 @@ public final class ASTContext
 		return new Pair<>(width, align);
 	}
 
-	public Pair<Integer, Integer> getTypeInfoInBytes(QualType t)
-	{
-		return getTypeInfoInBytes(t.getType());
-	}
-
-	public long toBits(long num)
-	{
-		return num<<3;
-	}
-
 	public int toByteUnitFromBits(long bits)
 	{
 		return (int)bits>>3;
-	}
-
-	/**
-	 * C99 6.7.5p3.
-	 * Return true for variable length array types and types that contain
-	 * variable array types in their declarator.
-	 * @return
-	 */
-	public boolean isVariablyModifiedType(QualType type)
-	{
-		// A VLA is a variably modified type.
-		if (type.isVariableArrayType())
-			return true;
-
-		jlang.type.Type ty = type.getArrayElementTypeNoQuals();
-		if (ty !=null)
-			return ty.isVariablyModifiedType();
-
-		PointerType pt = getAs(type);
-		if (pt != null)
-			return pt.getPointeeType().isVariablyModifiedType();
-
-		FunctionType ft = type.getFunctionType();
-		if (ft != null)
-			return ft.getResultType().isVariablyModifiedType();
-		return false;
 	}
 
 	public boolean isConstant(QualType type)
@@ -1006,26 +1037,16 @@ public final class ASTContext
 		if (at instanceof IncompleteArrayType)
 		{
 			IncompleteArrayType iat = (IncompleteArrayType)at;
-			return new QualType(getIncompleteArrayType(newEltTy));
+			return getIncompleteArrayType(newEltTy,
+                    iat.getSizeModifier(), iat.getIndexTypeQuals());
 		}
 
 		assert at instanceof VariableArrayType;
 
 		VariableArrayType vat = (VariableArrayType)at;
-		return new QualType(getVariableArrayType(newEltTy, vat.getSizeExpr()));
-	}
-
-	public boolean isFunctionPointerType(QualType type)
-	{
-		PointerType t = this.<PointerType>getAs(type);
-		if ( t != null)
-			return t.getPointee().isFunctionType();
-		return false;
-	}
-
-	public boolean isUnionType(QualType type)
-	{
-		return type.isUnionType();
+		return getVariableArrayType(newEltTy, vat.getSizeExpr(),
+                vat.getSizeModifier(), vat.getIndexTypeQuals(),
+                vat.getBrackets());
 	}
 
 	/**
@@ -1034,10 +1055,10 @@ public final class ASTContext
 	 * @param t2
 	 * @return
 	 */
-	public static boolean hasSameUnqualifiedType(QualType t1, QualType t2)
+	public boolean hasSameUnqualifiedType(QualType t1, QualType t2)
 	{
-		t1 = t1.getCanonicalTypeInternal();
-		t2 = t2.getCanonicalTypeInternal();
+		t1 = t1.getType().getCanonicalTypeInternal();
+		t2 = t2.getType().getCanonicalTypeInternal();
 		return t1.getUnQualifiedType() == t2.getUnQualifiedType();
 	}
 
@@ -1048,7 +1069,7 @@ public final class ASTContext
 	 */
 	public boolean isSpecifiedBuiltinType(QualType type, int typeClass)
 	{
-		return type.getTypeClass() == typeClass && type.isBuiltinType();
+		return type.isSpecifiedBuiltinType(typeClass);
 	}
 
 	public QualType getLValueExprType(QualType type)
@@ -1136,8 +1157,8 @@ public final class ASTContext
 		if (lhsC.equals(rhsC))
 			return 0;
 
-		boolean lhsUnsigned = (!lhsC.isSignedType() && lhsC.isIntegerType());
-		boolean rhsUnsigned = (!rhsC.isSignedType() && rhsC.isIntegerType());
+		boolean lhsUnsigned = !lhsC.isSignedIntegerType() && lhsC.isIntegerType();
+		boolean rhsUnsigned = !rhsC.isSignedIntegerType() && rhsC.isIntegerType();
 
 		int lhsRank = getIntegerRank(lhsC);
 		int rhsRank = getIntegerRank(rhsC);
@@ -1174,10 +1195,10 @@ public final class ASTContext
 
 	public QualType getCorrespondingUnsignedType(QualType type)
 	{
-		assert type.isSignedType() && type.isIntegerType() : "Unexpected type";
+		assert type.isSignedIntegerType() && type.isIntegerType() : "Unexpected type";
 
 		// For enums, we return the unsigned version of the base type.
-		if (type.isEnumType())
+		if (type.isEnumeralType())
 		{
 			type = (this.<EnumType>getAs(type)).getDecl().getIntegerType();
 		}
@@ -1201,12 +1222,6 @@ public final class ASTContext
 		return null;
 	}
 
-	public QualType getComplexType(QualType ty)
-	{
-		// TODO: 2017/4/9
-		return null;
-	}
-
     /*
      * Checks if this the kind of this jlang.type is same as ty2.
      */
@@ -1224,8 +1239,8 @@ public final class ASTContext
 	public FltSemantics getFloatTypeSemantics(QualType ty)
 	{
 	    assert ty.isBuiltinType():"Not a floating point type!";
-        PrimitiveType pty = ty.getAsBuiltinType();
-	    switch (pty.getTypeKind())
+        BuiltinType pty = ty.getAsBuiltinType();
+	    switch (pty.getTypeClass())
         {
             default: assert false :"Not a floating point type!";
             case Float: return target.getFloatFormat();

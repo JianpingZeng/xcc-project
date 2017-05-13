@@ -1,6 +1,8 @@
 package jlang.type;
 
 import jlang.ast.Tree.Expr;
+import jlang.basic.PrintingPolicy;
+import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
 import jlang.basic.APInt;
 
@@ -40,9 +42,9 @@ public abstract class ArrayType extends Type
      * Constructor with one parameter which represents the kind of jlang.type
      * for reason of comparison convenient.
      */
-    public ArrayType(int tag, QualType elemTy, ArraySizeModifier sm, int tq)
+    public ArrayType(int tc, QualType elemTy, ArraySizeModifier sm, int tq)
     {
-        super(tag);
+        super(tc);
         elemType = elemTy;
         sizeModifier = sm;
         indexTypeQuals = tq;
@@ -63,7 +65,6 @@ public abstract class ArrayType extends Type
         return indexTypeQuals;
     }
 
-    public abstract int getIndexTypeCVRQualifiers();
 
     /**
      * This class represents the canonical version of C arrays with a specified
@@ -94,34 +95,13 @@ public abstract class ArrayType extends Type
             return size;
         }
 
-        public boolean isAllocatedArray()
-        {
-            return size.ugt(0) && (!getElemType().isConstantArrayType()
-                    || getElemType().isAllocatedArray());
-        }
-
-        public boolean isIncompleteArrayArray()
-        {
-            if (!getElemType().isConstantArrayType())
-                return false;
-            return !getElemType().isAllocatedArray();
-        }
-
         @Override
-        public Type baseType()
+        public String getAsStringInternal(String inner, PrintingPolicy policy)
         {
-            return getElemType();
-        }
-
-        public String toString()
-        {
-            return getElemType().toString() + "[" + size.toString(10) + "]";
-        }
-
-        @Override
-        public int getIndexTypeCVRQualifiers()
-        {
-            return 0;
+            inner += '[';
+            inner += getSize().getZExtValue();
+            inner += ']';
+            return getElemType().getAsStringInternal(inner, policy);
         }
     }
 
@@ -148,6 +128,32 @@ public abstract class ArrayType extends Type
             sizeExpr = numElts;
             this.brackets = brackets;
         }
+
+        public Expr getSizeExpr()
+        {
+            return sizeExpr;
+        }
+
+        public SourceRange getBracketsRange()
+        {
+            return brackets;
+        }
+
+        public SourceLocation getLBracketLoc()
+        {
+            return brackets.getBegin();
+        }
+
+        public SourceLocation getRBracketLoc()
+        {
+            return brackets.getEnd();
+        }
+
+        @Override
+        public String getAsStringInternal(String inner, PrintingPolicy policy)
+        {
+            return super.getAsStringInternal(inner, policy);
+        }
     }
 
     /**
@@ -167,6 +173,17 @@ public abstract class ArrayType extends Type
                 int tq)
         {
             super(elemTy, length, asm, tq);
+        }
+
+        @Override
+        public String getAsStringInternal(String inner, PrintingPolicy policy)
+        {
+            if (policy.constantArraySizeAsWritten)
+            {
+                inner += "[]";
+                return getElemType().getAsStringInternal(inner, policy);
+            }
+            return super.getAsStringInternal(inner, policy);
         }
     }
 
@@ -230,6 +247,50 @@ public abstract class ArrayType extends Type
         {
             return brackets;
         }
+
+        static String appendTypeQualList(String str, int typeQuals)
+        {
+            boolean nonePrinted = true;
+            if ((typeQuals & QualType.CONST_QUALIFIER) != 0)
+            {
+                str += "const";
+                nonePrinted = false;
+            }
+            if ((typeQuals & QualType.VOLATILE_QUALIFIER) != 0)
+            {
+                str += nonePrinted + "volatile";
+                nonePrinted = false;
+            }
+            if ((typeQuals & QualType.RESTRICT_QUALIFIER) != 0)
+            {
+                str +=  nonePrinted + "restrict";
+                nonePrinted = false;
+            }
+            return str;
+        }
+
+        @Override
+        public String getAsStringInternal(String inner, PrintingPolicy policy)
+        {
+            inner += '[';
+
+            if (getIndexTypeQuals() != 0)
+            {
+                inner = appendTypeQualList(inner, getIndexTypeQuals());
+            }
+
+            if (getSizeModifier() == ArraySizeModifier.Static)
+                inner += "static";
+            else if (getSizeModifier() == ArraySizeModifier.Star)
+                inner += "*";
+
+            if (sizeExpr!= null)
+            {
+                inner += sizeExpr.toString();
+            }
+            inner += ']';
+            return getElemType().getAsStringInternal(inner, policy);
+        }
     }
 
     /**
@@ -251,9 +312,10 @@ public abstract class ArrayType extends Type
         }
 
         @Override
-        public int getIndexTypeCVRQualifiers()
+        public String getAsStringInternal(String inner, PrintingPolicy policy)
         {
-            return 0;
+            inner += "[]";
+            return getElemType().getAsStringInternal(inner, policy);
         }
     }
 }

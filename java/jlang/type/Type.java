@@ -1,431 +1,659 @@
 package jlang.type;
 
-import jlang.cparser.DeclSpec;
+import jlang.basic.LangOptions;
+import jlang.basic.PrintingPolicy;
 import jlang.type.ArrayType.ConstantArrayType;
+import jlang.type.ArrayType.IncompleteArrayType;
 import jlang.type.ArrayType.VariableArrayType;
-import tools.Util;
 
 /**
+ * <p>
  * The abstract root class of various jlang.type. It provides different definitions
  * for it's concrete subclass.
- *
+ * </p>
+ * A central concept with types is that each type always has a canonical type.
+ * A canonical type is the type with any typedef names stripped out of it or the
+ * types it references.  For example, consider:
+ * <pre>
+ *  typedef int  foo;
+ *  typedef foo* bar;
+ *  'int *'    'foo *'    'bar'
+ * </pre>
+ * <br></br>
+ * There will be a Type object created for 'int'.  Since int is canonical, its
+ * canonicaltype pointer points to itself.  There is also a Type for 'foo' (a
+ * TypedefType).  Its CanonicalType pointer points to the 'int' Type.  Next
+ * there is a PointerType that represents 'int*', which, like 'int', is
+ * canonical.  Finally, there is a PointerType type for 'foo*' whose canonical
+ * type is 'int*', and there is a TypedefType for 'bar', whose canonical type
+ * is also 'int*'.
+ * <p>
+ * Non-canonical types are useful for emitting diagnostics, without losing
+ * information about typedefs being used.  Canonical types are useful for type
+ * comparisons (they allow by-pointer equality tests) and useful for reasoning
+ * about whether something has a particular form (e.g. is a function type),
+ * because they implicitly, recursively, strip all typedefs out of a type.
+ * </p>
+ * Types, once created, are immutable.
  * @author Xlous.zeng
  * @version 0.1
  */
 public abstract class Type implements TypeClass
 {
-    public boolean isBuiltinType()
-    {
-        return tag >= BuiltinTypeBegin && tag < BuiltinTypeEnd;
-    }
-
     /**
-     * The kind of a tag jlang.type.
+     * The type class of this type.
      */
-    public enum TagTypeKind
-    {
-        TTK_struct, TTK_union, TTK_enum;
-
-        public static TagTypeKind getTagTypeKindForTypeSpec(DeclSpec.TST tagType)
-        {
-            switch (tagType)
-            {
-                case TST_struct:
-                    return TTK_struct;
-                case TST_union:
-                    return TTK_union;
-                case TST_enum:
-                    return TTK_enum;
-                default:
-                    Util.shouldNotReachHere("Type specifier is not a tag jlang.type kind");
-                    return TTK_union;
-            }
-        }
-    }
-
-    protected int tag;
-
+    protected int tc;
+    /**
+     * The canonical type which the original type has been removed typedef,
+     * modifiers after.
+     */
     private QualType canonicalType;
 
     /**
      * Constructor with one parameter which represents the kind of jlang.type
      * for reason of comparison convenient.
      *
-     * @param tag
+     * @param tc
      */
-    public Type(int tag)
+    public Type(int tc)
     {
-        this.tag = tag;
+        this(tc, new QualType());
     }
 
 	public Type(int typeClass, QualType canonical)
 	{
-		tag = typeClass;
+		tc = typeClass;
 		canonicalType = canonical.isNull()?new QualType(this, 0):canonical;
 	}
 
-    public int getTypeClass(){return tag;}
+    public int getTypeClass()
+    {
+        return tc;
+    }
 
-	public boolean isCanonical() {return canonicalType.getType() == this;}
+	public boolean isCanonical()
+    {
+        return canonicalType.getType() == this;
+    }
 
     /**
-     * Checks if this {@linkplain Type} is primitive jlang.type.
-     *
+     * <p>
+     * Determines whether the type describes an object in memory.
+     * </p>
+     * <p>
+     * Types are partitioned into 3 broad categories (C99 6.2.5p1):
+     * object types, function types, and incomplete types.
+     * </p>
      * @return
      */
-    public boolean isPrimitiveType()
+    public boolean isObjectType()
     {
-        return tag >= Bool && tag <= Float;
+        Type ty = canonicalType.getType();
+        return !(ty instanceof FunctionType
+                || ty instanceof IncompleteArrayType
+                || isVoidType());
     }
 
     /**
-     * Returns true if this jlang.type is void.
-     *
-     * @return
-     */
-    public boolean isVoidType()
-    {
-        return tag == Void;
-    }
-
-    /**
-     * Returns true if this tpe is integral jlang.type.
-     *
-     * @return
-     */
-    public boolean isIntegerType()
-    {
-        return false;
-    }
-
-    /**
-     * Returns true if this jlang.type is real jlang.type.
-     */
-    public boolean isRealType()
-    {
-        return tag == Float;
-    }
-
-    /**
-     * Returns true if this jlang.type is complex jlang.type.
-     *
-     * @return
-     */
-    public boolean isComplexType()
-    {
-        return tag == Complex;
-    }
-
-    /**
-     * Returns true if this jlang.type is boolean jlang.type.
-     *
-     * @return
-     */
-    public boolean isBooleanType()
-    {
-        return tag == Bool;
-    }
-
-    /**
-     * Checks whether this jlang.type is integral and qualified with signed.
-     *
-     * @return
-     * @throws Error
-     */
-    public boolean isSignedType()
-    {
-        throw new Error("#isSignedType for non-integer jlang.type");
-    }
-
-    /**
-     * Checks if this jlang.type is a pointer to actual jlang.type object.
-     *
-     * @return
-     */
-    public boolean isPointerType()
-    {
-        return tag == Pointer;
-    }
-
-    /**
-     * Checks if this jlang.type is reference jlang.type.
-     *
-     * @return
-     */
-    public boolean isReferenceType()
-    {
-        return tag == Reference;
-    }
-
-    /**
-     * Checks if this jlang.type is a formal function jlang.type in C or static member function jlang.type in C++.
-     *
-     * @return
-     */
-    public boolean isFunctionType()
-    {
-        return tag == FunctionProto;
-    }
-
-    /**
-     * Checks if this jlang.type is member function jlang.type of a class in C++.
-     *
-     * @return
-     */
-    public boolean isMethodType()
-    {
-        return tag == Method;
-    }
-
-    public boolean isArrayType()
-    {
-        return this instanceof ArrayType;
-    }
-
-    /**
-     * Checks if this jlang.type is array jlang.type.
-     *
-     * @return
-     */
-    public boolean isConstantArrayType() { return tag == ConstantArray;}
-
-    public boolean isVariableArrayType() {return tag == VariableArray;}
-
-    public boolean isIncompleteArrayType() { return tag == IncompleteArray;}
-
-    /**
-     * Determine whether this jlang.type is record jlang.type or not.
-     *
-     * @return return true if it is record, otherwise return false.
-     */
-    public boolean isRecordType()
-    {
-        return tag == Struct || tag == Union;
-    }
-
-    /**
-     * Checks if this jlang.type is enumeration jlang.type.
-     *
-     * @return
-     */
-    public boolean isEnumType()
-    {
-        return tag == Enum;
-    }
-
-    /**
-     * Checks if this jlang.type is jlang.type-getIdentifier jlang.type.
-     *
-     * @return
-     */
-    public boolean isUserType()
-    {
-        return tag == TypeDef;
-    }
-
-    // Ability methods (unary)
-    public boolean isAllocatedArray()
-    {
-        return false;
-    }
-
-    public boolean isScalarType()
-    {
-        if (isPrimitiveType())
-            return tag > Void && tag <= Float;
-        if (isEnumType())
-        {
-            return ((EnumType) this).getDecl().isCompleteDefinition();
-        }
-        return isPointerType() || isComplexType();
-    }
-
-    public boolean isCallable()
-    {
-        return false;
-    }
-
-    /**
-     * 对于引用类型返回起基类型，该方法需要具体的子类进行覆盖。
-     *
-     * @return
-     */
-    public Type baseType()
-    {
-        return null;
-    }
-
-    // Cast methods
-    public IntegerType getIntegerType()
-    {
-        return (IntegerType) this;
-    }
-
-    public RealType getRealType()
-    {
-        return (RealType) this;
-    }
-
-    public ComplexType getComplexTye()
-    {
-        return (ComplexType) this;
-    }
-
-    public PointerType getPointerType()
-    {
-        return (PointerType) this;
-    }
-
-    public FunctionType getFunctionType()
-    {
-        return (FunctionType) this;
-    }
-
-    public RecordType getRecordType()
-    {
-        return (RecordType) this;
-    }
-
-    public EnumType getEnumType()
-    {
-        return (EnumType) this;
-    }
-
-    /**
-     * Checks if this jlang.type is integral or enumeration.
-     *
-     * @return {@code true} returned if this jlang.type is integral or enumeration,
-     * otherwise, return {@code false}.
-     */
-    public boolean isIntegralOrEnumerationType()
-    {
-        if (isIntegerType() || isBooleanType())
-            return true;
-        if (isEnumType())
-            return getEnumType().getDecl().isCompleteDefinition();
-        return false;
-    }
-
-    public int getTypeKind()
-    {
-        return tag;
-    }
-
-    public boolean isArithmeticType()
-    {
-        if (isPrimitiveType())
-        {
-            return tag >= Bool && tag <= Float;
-        }
-        if (isEnumType())
-        {
-            // GCC allows forward declaration of enum types (forbid by C99 6.7.2.3p2).
-            // If a body isn't seen by the time we get here, return false.
-            return getEnumType().getDecl().isCompleteDefinition();
-        }
-        return isComplexType();
-    }
-
-    public QualType getPointee()
-    {
-        if (isPointerType())
-            return getPointerType().getPointee();
-        return new QualType();
-    }
-
-    /**
-     * Return true if this is an incomplete jlang.type (C99 6.2.5p1)
-     * <br>
-     * a jlang.type that can describe objects, but which lacks information needed to
-     * determine its getNumOfSubLoop.
+     * Return true if this is an incomplete type.
+     /// A type that can describe objects, but which lacks information needed to
+     /// determine its size (e.g. void, or a fwd declared struct). Clients of this
+     /// routine will need to determine if the size is actually required.
      * @return
      */
     public boolean isIncompleteType()
     {
-        if (isPrimitiveType())
+        switch (canonicalType.getTypeClass())
         {
-            // Void is the only incomplete builtin jlang.type.  Per C99 6.2.5p19,
-            // it can never be completed.
-            return isVoidType();
-        }
-        switch (tag)
-        {
+            default: return false;
+            case Void:
+                return true;
             case Struct:
-            case Union:
-                return !((TagType)this).getDecl().isCompleteDefinition();
-            case ConstantArray:
-                // An array is incomplete if its element jlang.type is incomplete
-                return ((ConstantArrayType)this).getElemType().isIncompleteType();
+            case Enum:
+                // A tagged type (struct/union/enum/class) is incomplete if the decl is a
+                // forward declaration, but not a full definition (C99 6.2.5p22).
+                return !((TagType)canonicalType.getType()).getDecl().isCompleteDefinition();
             case IncompleteArray:
+                return true;
+        }
+    }
+
+    /**
+     * Return true if this is an incomplete or object
+     * type, in other words, not a function type.
+     * @return
+     */
+    public boolean isIncompleteOrObjectType()
+    {
+        return !isFunctionType();
+    }
+
+    /**
+     * (C99 6.7.5.2p2) - Return true for variable array
+     * types that have a non-constant expression. This does not include "[]".
+     * @return
+     */
+    public boolean isVariablyModifiedType()
+    {
+        if (isVariableArrayType())
+            return true;
+
+        Type t = getArrayElementTypeNoTypeQual();
+        if (t != null)
+            return t.isVariablyModifiedType();
+
+        // A pointer can point to a variably modified type.
+        if (this instanceof PointerType)
+            return ((PointerType)this).getPointeeType().isVariablyModifiedType();
+
+        // A function can return a variably modified type
+        // This one isn't completely obvious, but it follows from the
+        // definition in C99 6.7.5p3. Because of this rule, it's
+        // illegal to declare a function returning a variably modified type.
+        FunctionType ft = getAsFunctionType();
+        if (ft != null)
+            return ft.getResultType().isVariablyModifiedType();
+        return false;
+    }
+
+    /**
+     * If this is an array type, return the
+     /// element type of the array, potentially with type qualifiers missing.
+     /// This method should never be used when type qualifiers are meaningful.
+     * @return
+     */
+    public Type getArrayElementTypeNoTypeQual()
+    {
+        if (this instanceof ArrayType)
+            return ((ArrayType)this).getElemType().getType();
+
+        if (!(canonicalType.getType() instanceof ArrayType))
+            return ((ArrayType)canonicalType.getType()).getElemType().getType();
+
+        // If this is a typedef for an array type, strip the typedef off without
+        // losing all typedef information.
+        return ((ArrayType)(getDesugaredType().getType())).getElemType().getType();
+    }
+
+    public QualType getDesugaredType()
+    {
+        if (this instanceof TypedefType)
+            return ((TypedefType)this).lookThroughTypedefs().getDesugaredType();
+        return new QualType(this);
+    }
+
+    public boolean isBuiltinType()
+    {
+        return this instanceof BuiltinType &&
+                tc >= BuiltinTypeBegin && tc < BuiltinTypeEnd;
+    }
+
+    /**
+     * Helper methods to distinguish type categories. All type predicates
+     /// operate on the canonical type, ignoring typedefs and qualifiers.
+     * @param tk
+     * @return
+     */
+    public boolean isSpecifiedBuiltinType(int tk)
+    {
+        assert tk >= BuiltinTypeBegin && tk < BuiltinTypeEnd;
+        return tk == tc;
+    }
+
+    /**
+     * // C99 6.2.5p17 (int, char, bool, enum)
+     * @return
+     */
+    public boolean isIntegerType()
+    {
+        if (canonicalType.getType() instanceof BuiltinType)
+            return tc >= Bool && tc <= LongLong;
+        if (canonicalType.getType() instanceof TagType)
+        {
+            // Incomplete enum types are not treated as integer types.
+            TagType tt = (TagType)canonicalType.getType();
+            if (tt.getDecl().isEnum() && tt.getDecl().isCompleteDefinition())
+                return true;
+        }
+        return false;
+    }
+
+    public boolean isEnumeralType()
+    {
+        if (canonicalType.getType() instanceof TagType)
+        {
+            return ((TagType)canonicalType.getType()).getDecl().isEnum();
+        }
+        return false;
+    }
+
+    public boolean isStructureType()
+    {
+        if (canonicalType.getType() instanceof RecordType)
+            return ((RecordType)canonicalType.getType()).getDecl().isStruct();
+        return false;
+    }
+
+    public boolean isUnionType()
+    {
+        if (canonicalType.getType() instanceof RecordType)
+            return ((RecordType)canonicalType.getType()).getDecl().isUnion();
+        return false;
+    }
+
+    public boolean isBooleanType()
+    {
+        return canonicalType.getType() instanceof BuiltinType && tc == Bool;
+    }
+
+    public boolean isCharType()
+    {
+        return canonicalType.getType() instanceof BuiltinType
+                && (tc == Char || tc == UnsignedChar);
+    }
+
+    public boolean isIntegralType()
+    {
+        return isIntegerType();
+    }
+
+    /**
+     * // C99 6.2.5p10 (float, double, long double)
+     * @return
+     */
+    public  boolean isRealFloatingType()
+    {
+        return canonicalType.getType() instanceof BuiltinType
+                && tc >= Float && tc <= LongDouble;
+    }
+
+    public boolean isComplexType()
+    {
+        if (canonicalType.getType() instanceof ComplexType)
+            return ((ComplexType)canonicalType.getType()).getElementType().isFloatingType();
+        return false;
+    }
+
+    public boolean isComplexIntegerType()
+    {
+        // Check for GCC complex integer extension.
+        if (canonicalType.getType() instanceof ComplexType)
+            return ((ComplexType)canonicalType.getType()).getElementType().isIntegerType();
+        return false;
+    }
+
+    public boolean isAnyComplexType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof ComplexType;
+    }
+
+    public boolean isFloatingType()
+    {
+        if (canonicalType.getType() instanceof BuiltinType)
+            return tc >= Float && tc <= LongDouble;
+        return isComplexType();
+    }
+
+    /**
+     * C99 6.2.5p17 (real floating + integer)
+     * @return
+     */
+    public boolean isRealType()
+    {
+        return isFloatingType() || isIntegerType();
+    }
+
+    /**
+     * C99 6.2.5p18 (integer + floating)
+     * @return
+     */
+    public boolean isArithmeticType()
+    {
+        return isRealType() || canonicalType.getType() instanceof ComplexType;
+    }
+
+    public boolean isVoidType()
+    {
+        return canonicalType.getType() instanceof BuiltinType
+                && tc == Void;
+    }
+
+    public boolean isDerivedType()
+    {
+        switch (canonicalType.getTypeClass())
+        {
+            case Pointer:
+            case VariableArray:
+            case ConstantArray:
+            case ConstantArrayWithExpr:
+            case ConstantArrayWithoutExpr:
+            case IncompleteArray:
+            case FunctionProto:
+            case FunctionNoProto:
+            case Struct:
                 return true;
             default:
                 return false;
         }
     }
 
-    /**
-     * Return true if this is not a variable sized jlang.type,
-     * according to the rules of C99 6.7.5p3.  It is not legal to call this on
-     * incomplete types
-     * @return
-     */
-    public boolean isConstantSizeType()
+    public boolean isScalarType()
     {
-        assert !isIncompleteType():"This doesn't make sense for incomplete types";
-
-        return !(this instanceof VariableArrayType);
+        if (canonicalType.getType() instanceof BuiltinType)
+            return tc != Void;
+        if (canonicalType.getType() instanceof TagType)
+        {
+            TagType tt = (TagType)canonicalType.getType();
+            if (tt.getDecl().isCompleteDefinition() && tt.getDecl().isEnum())
+                return true;
+        }
+        return canonicalType.getType() instanceof PointerType;
     }
 
-    public Type getArrayElementTypeNoQuals()
+    public boolean isAggregateType()
     {
-        if (this instanceof ArrayType)
-            return ((ArrayType)this).getElemType().getType();
+        Type t = canonicalType.getType();
+        return t instanceof RecordType || t instanceof ArrayType;
+    }
 
-        // TODO If this is a typedef for an array type, strip the typedef off without
-        // losing all typedef information.
+    public boolean isFunctionType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof FunctionType;
+    }
+
+    public boolean isFunctionNoProtoType()
+    {
+        return getAsFunctionNoProtoType() != null;
+    }
+
+    public boolean isFunctionProtoType()
+    {
+        return getAsFunctionProtoType() != null;
+    }
+
+    public boolean isPointerType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof PointerType;
+    }
+
+    public boolean isVoidPointerType()
+    {
+        PointerType pt = getAsPointerType();
+        if (pt != null)
+            return pt.getPointeeType().isVoidType();
+        return false;
+    }
+
+    public boolean isFunctionPointerType()
+    {
+        PointerType pt = getAsPointerType();
+        if (pt != null)
+            return pt.getPointeeType().isFunctionType();
+        return false;
+    }
+
+    public boolean isArrayType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof ArrayType;
+    }
+
+    public boolean isConstantArrayType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof ConstantArrayType;
+    }
+
+    public boolean isIncompleteArrayType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof IncompleteArrayType;
+    }
+
+    public boolean isVariableArrayType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof VariableArrayType;
+    }
+
+    public boolean isRecordType()
+    {
+        return canonicalType.getUnQualifiedType().getType() instanceof RecordType;
+    }
+
+    // Type Checking Functions: Check to see if this type is structurally the
+    // specified type, ignoring typedefs and qualifiers, and return a pointer to
+    // the best type we can.
+    public BuiltinType getAsBuiltinType()
+    {
+        // If this is directly a builtin type, return it.
+        if (this instanceof BuiltinType)
+            return (BuiltinType) this;
+
+        QualType ty = getDesugaredType();
+        if (ty.getType().canonicalType.getType() instanceof BuiltinType)
+            return (BuiltinType)ty.getType().canonicalType.getType();
         return null;
     }
 
+    public FunctionType getAsFunctionType()
+    {
+        // If this is directly a builtin type, return it.
+        if (this instanceof FunctionType)
+            return (FunctionType) this;
+
+        QualType ty = getDesugaredType();
+        if (ty.getType().canonicalType.getType() instanceof BuiltinType)
+            return (FunctionType) ty.getType().canonicalType.getType();
+        return null;
+    }
+
+    public FunctionNoProtoType getAsFunctionNoProtoType()
+    {
+        FunctionType ft = getAsFunctionType();
+        return ft !=null && ft instanceof FunctionNoProtoType ?
+                 (FunctionNoProtoType)ft : null;
+    }
+
+    public FunctionProtoType getAsFunctionProtoType()
+    {
+        FunctionType ft = getAsFunctionType();
+        return ft !=null && ft instanceof FunctionProtoType ?
+                (FunctionProtoType)ft : null;
+    }
+
+    public RecordType getAsStructureType()
+    {
+        if (this instanceof RecordType)
+            return (RecordType)this;
+
+        if (canonicalType.getType() instanceof RecordType)
+        {
+            RecordType rt = (RecordType)canonicalType.getType();
+            if (!rt.getDecl().isStruct())
+                return null;
+
+            Type ty = getDesugaredType().getType();
+            return ty instanceof RecordType ? (RecordType)ty : null;
+        }
+
+        // Look through type qualifiers.
+        if (canonicalType.getUnQualifiedType().getType() instanceof RecordType)
+            return canonicalType.getUnQualifiedType().getType().getAsStructureType();
+        return null;
+    }
+
+    public RecordType getAsUnionType()
+    {
+        if (this instanceof RecordType)
+            return (RecordType)this;
+
+        if (canonicalType.getType() instanceof RecordType)
+        {
+            RecordType rt = (RecordType)canonicalType.getType();
+            if (!rt.getDecl().isUnion())
+                return null;
+
+            Type ty = getDesugaredType().getType();
+            return ty instanceof RecordType ? (RecordType)ty : null;
+        }
+
+        // Look through type qualifiers.
+        if (canonicalType.getUnQualifiedType().getType() instanceof RecordType)
+            return canonicalType.getUnQualifiedType().getType().getAsUnionType();
+        return null;
+    }
+
+    public EnumType getAsEnumType()
+    {
+        Type t = canonicalType.getUnQualifiedType().getType();
+        return t instanceof EnumType ? (EnumType)t : null;
+    }
+
+    public TypedefType getAsTypedefType()
+    {
+        return this instanceof TypedefType ? (TypedefType)this : null;
+    }
+
+    public ComplexType getAsComplexType()
+    {
+        if (this instanceof ComplexType)
+            return (ComplexType)this;
+
+        if (!(canonicalType.getType() instanceof ComplexType))
+        {
+            return null;
+        }
+
+        // Look through type qualifiers.
+        Type ty = getDesugaredType().getType();
+        return ty instanceof ComplexType ? (ComplexType)ty : null;
+    }
+
+    public ComplexType getAsComplexIntegerType()
+    {
+        if (this instanceof ComplexType)
+        {
+            ComplexType ct = (ComplexType)this;
+            if (ct.getElementType().isIntegerType())
+                return ct;
+            return null;
+        }
+
+        if (!(canonicalType.getType() instanceof ComplexType))
+        {
+            return null;
+        }
+
+        // If this is a typedef for a complex type, strip the typedef off without
+        // losing all typedef information.
+        Type ty = getDesugaredType().getType();
+        return ty instanceof ComplexType ? (ComplexType)ty : null;
+    }
+
+    public PointerType getAsPointerType()
+    {
+        if (this instanceof PointerType)
+            return (PointerType)this;
+
+        if (!(canonicalType.getType() instanceof PointerType))
+        {
+            return null;
+        }
+
+        // If this is a typedef for a complex type, strip the typedef off without
+        // losing all typedef information.
+        Type ty = getDesugaredType().getType();
+        return ty instanceof PointerType ? (PointerType)ty : null;
+    }
+
+    public RecordType getAsRecordType()
+    {
+        if (this instanceof RecordType)
+            return (RecordType)this;
+
+        if (!(canonicalType.getType() instanceof RecordType))
+            return null;
+
+        Type ty = getDesugaredType().getType();
+        return ty instanceof RecordType ? (RecordType)ty : null;
+    }
+
+    public QualType getPointeeType()
+    {
+        PointerType pt = getAsPointerType();
+        if (pt != null)
+            return pt.getPointeeType();
+        return new QualType();
+    }
+
     /**
-     * C99 6.7.5p3.
-     * Return true for variable length array types and types that contain
-     * variable array types in their declarator.
+     * More type predicates useful for type checking/promotion.
      * @return
      */
-    public boolean isVariablyModifiedType()
+    public boolean isPromotableIntegerType()
     {
-        // A VLA is a variably modified type.
-        if (isVariableArrayType())
+        BuiltinType bt = getAsBuiltinType();
+        if (bt != null && tc >= Bool && tc <= UnsignedShort)
+        {
             return true;
-
-        jlang.type.Type ty = getArrayElementTypeNoQuals();
-        if (ty !=null)
-            return ty.isVariablyModifiedType();
-
-        PointerType pt = getPointerType();
-        if (pt != null)
-            return pt.getPointeeType().isVariablyModifiedType();
-
-        FunctionType ft = getFunctionType();
-        if (ft != null)
-            return ft.getResultType().isVariablyModifiedType();
+        }
         return false;
     }
 
-	/**
-	 * Obtains the canonical type underlying this type.
-	 * @return
-	 */
-	public QualType getCanonicalTypeInternal()
-	{
-		return canonicalType;
-	}
-
-    public boolean isUnionType()
+    /**
+     * Return true if this is an integer type that is
+     /// signed, according to C99 6.2.5p4 [char, signed char, short, int, long..],
+     /// an enum decl which has a signed representation
+     * @return
+     */
+    public boolean isSignedIntegerType()
     {
-        RecordType rt = getRecordType();
-        if (rt != null)
-            return rt.getDecl().isUnion();
+        if (isBuiltinType() && tc >= TypeClass.Char && tc <= LongLong)
+            return true;
+        EnumType et = getAsEnumType();
+        if (et != null)
+            return et.getDecl().getIntegerType().isSignedIntegerType();;
+
         return false;
+    }
+
+    public boolean isConstantSizeType()
+    {
+        assert !isIncompleteType():"This is not make sense for incomplete type";
+        return !(canonicalType.getType() instanceof VariableArrayType);
+    }
+
+    public void dump()
+    {
+        String str = "identifier";
+        LangOptions opts = new LangOptions();
+        System.err.println(getAsStringInternal(str, new PrintingPolicy(opts)));
+    }
+
+    public abstract String getAsStringInternal(String inner, PrintingPolicy policy);
+
+    public boolean isSpecifierType()
+    {
+        // Note that this intentionally does not use the canonical type.
+        switch (getTypeClass())
+        {
+            case Struct:
+            case Enum:
+            case TypeDef:
+            case Complex:
+                return true;
+            default:
+                if (tc >= BuiltinTypeBegin && tc < BuiltinTypeEnd)
+                    return true;
+                return false;
+        }
+    }
+
+    public QualType getCanonicalTypeInternal()
+    {
+        return canonicalType;
+    }
+
+    public boolean isIntegralOrEnumerationType()
+    {
+        return isIntegerType() || isEnumeralType();
     }
 }
