@@ -19,7 +19,7 @@ public final class RecordType extends TagType
      */
     public RecordType(RecordDecl decl)
     {
-        super(Struct, decl);
+        super(Struct, decl, new QualType());
     }
 
     @Override
@@ -28,12 +28,25 @@ public final class RecordType extends TagType
         return "struct " + decl.getDeclName();
     }
 
-    public Decl.RecordDecl getDecl() { return (RecordDecl)decl; }
+    public Decl.RecordDecl getDecl()
+    {
+        return (RecordDecl)decl;
+    }
+
     // FIXME: This predicate is a helper to QualType/Type. It needs to
     // recursively check all fields for const-ness. If any field is declared
     // const, it needs to return false.
     public boolean hasConstFields()
     {
         return false;
+    }
+
+    /**
+     * RecordType needs to check when it is created that all fields are in
+     // the same address space, and return that.
+     */
+    public int getAddressSpace()
+    {
+        return 0;
     }
 }

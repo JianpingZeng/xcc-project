@@ -43,7 +43,7 @@ public enum IdentifierNamespace
     IDNS_Member,
 
     /**
-     * Ordinary names.  In C, everything that's not a label, tag,
+     * Ordinary names.  In C, everything that's not a label, tc,
      * or member ends up here.
      */
     IDNS_Ordinary,

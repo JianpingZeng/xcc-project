@@ -16,14 +16,21 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.PrintingPolicy;
+
 /**
  * Represents a K&R-style 'int foo()' function, which has
  * no information available about its arguments.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class FunctionNoProtoType extends FunctionType
+public final class FunctionNoProtoType extends FunctionType
 {
+    public FunctionNoProtoType(QualType returnType, QualType canonical)
+    {
+        this(returnType, canonical, false);
+    }
+
     /**
      * Constructor with one parameter which represents the kind of jlang.type
      * for reason of comparison convenient.
@@ -31,8 +38,20 @@ public class FunctionNoProtoType extends FunctionType
      * @param returnType indicates what jlang.type would be returned.
       *
      */
-    public FunctionNoProtoType(QualType returnType)
+    public FunctionNoProtoType(QualType returnType, QualType canonical, boolean noReturn)
     {
         super(FunctionNoProto, returnType, null, false);
+    }
+
+    @Override
+    public String getAsStringInternal(String inner, PrintingPolicy policy)
+    {
+        if (!inner.isEmpty())
+            inner  = "(" + inner + ")";
+
+        inner += "()";
+        if (getNoReturnAttr())
+            inner += "__attribute__((noreturn))";
+        return getResultType().getAsStringInternal(inner, policy);
     }
 }

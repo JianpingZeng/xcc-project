@@ -16,6 +16,8 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.PrintingPolicy;
+
 import java.util.ArrayList;
 
 /**
@@ -24,8 +26,10 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class FunctionProtoType extends FunctionType
+public final class FunctionProtoType extends FunctionType
 {
+    private boolean isVariadic;
+    private QualType[] argInfo;
     /**
      * Constructor with one parameter which represents the kind of jlang.type
      * for reason of comparison convenient.
@@ -36,8 +40,60 @@ public class FunctionProtoType extends FunctionType
      * @param isVarArgs  indicates if it is variable parameter list.
      */
     public FunctionProtoType(QualType returnType, ArrayList<QualType> paramTypes,
-            boolean isVarArgs)
+            boolean isVarArgs, QualType canonical, boolean noReturn)
     {
-        super(FunctionProto, returnType, paramTypes, isVarArgs);
+        super(FunctionProto, returnType, canonical, noReturn);
+        isVariadic = isVarArgs;
+        argInfo = new QualType[paramTypes.size()];
+        paramTypes.toArray(argInfo);
+    }
+
+    public int getNumArgs()
+    {
+        return argInfo.length;
+    }
+
+    public QualType getArgType(int idx)
+    {
+        assert idx >= 0 && idx < getNumArgs();
+        return argInfo[idx];
+    }
+
+    public boolean isVariadic()
+    {
+        return isVariadic;
+    }
+
+    @Override
+    public String getAsStringInternal(String inner, PrintingPolicy policy)
+    {
+        if (!inner.isEmpty())
+            inner  = "(" + inner + ")";
+
+        inner += "()";
+        String temp = "";
+        PrintingPolicy pp = new PrintingPolicy(policy.opts);
+        pp.suppressSpecifiers = false;
+        for (int i = 0, e = getNumArgs(); i < e; i++)
+        {
+            if (i != 0) inner += ", ";
+            inner += getArgType(i).getAsStringInternal(temp, pp);
+        }
+
+        if (isVariadic)
+        {
+            if (getNumArgs() != 0)
+                inner += ", ";
+            inner += "...";
+        }
+        else if (getNumArgs() == 0)
+        {
+            // Do not emit int() if we have a proto, emit 'int(void)'.
+            inner += "void";
+        }
+        inner += ')';
+        if (getNoReturnAttr())
+            inner += "__attribute__((noreturn))";
+        return getResultType().getAsStringInternal(inner, policy);
     }
 }

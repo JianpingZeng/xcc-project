@@ -41,7 +41,7 @@ public interface ParserInterface<T>
         return String.valueOf(opt.value);
     }
     /**
-     * Determines the width of the option tag for printing.
+     * Determines the width of the option tc for printing.
      * @param opt
      * @return
      */

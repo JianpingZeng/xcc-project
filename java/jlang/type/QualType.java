@@ -1,18 +1,35 @@
 package jlang.type;
 
+import jlang.basic.LangOptions;
+import jlang.basic.PrintingPolicy;
+
+import static jlang.type.ArrayType.VariableArrayType.appendTypeQualList;
+
 /**
  * This class represents a wrapper which combines CV-qualified types as nodes.
+ * Which provides the same API as {@linkplain Type} by directly invoking those
+ * methods of {@linkplain Type}.
  *
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class QualType extends Type implements Cloneable
+public final class QualType implements Cloneable
 {
     public static final int CONST_QUALIFIER = 0x1;
     public static final int VOLATILE_QUALIFIER = 0x2;
     public static final int RESTRICT_QUALIFIER = 0x4;
     private static final int MASK =
             CONST_QUALIFIER | VOLATILE_QUALIFIER | RESTRICT_QUALIFIER;
+
+    public int getAddressSpace()
+    {
+        QualType ct = getType().getCanonicalTypeInternal();
+        if (ct.isArrayType())
+            return ((ArrayType)ct.getType()).getElemType().getAddressSpace();
+        if (ct.isRecordType())
+            return ((RecordType)ct.getType()).getAddressSpace();
+        return 0;
+    }
 
     public static class Qualifier
     {
@@ -67,7 +84,7 @@ public final class QualType extends Type implements Cloneable
 
     public QualType()
     {
-        super(0);
+        this(null, 0);
     }
 
     public QualType(final Type t)
@@ -77,7 +94,6 @@ public final class QualType extends Type implements Cloneable
 
     public QualType(final Type t, int quals)
     {
-        super(0);
         type = t;
         qualsFlag.addCVQualifier(quals);
     }
@@ -168,177 +184,6 @@ public final class QualType extends Type implements Cloneable
                 || isVolatileQualified();
     }
 
-    public boolean isScalarType()
-    {
-        return type.isScalarType();
-    }
-
-    /**
-     * Checks if this {@linkplain Type} is primitive jlang.type.
-     *
-     * @return
-     */
-    public boolean isPrimitiveType()
-    {
-        return type.isPrimitiveType();
-    }
-
-    /**
-     * Returns true if this jlang.type is void.
-     *
-     * @return
-     */
-    public boolean isVoidType()
-    {
-        return type.isVoidType();
-    }
-
-    /**
-     * Returns true if this tpe is integral jlang.type.
-     *
-     * @return
-     */
-    public boolean isIntegerType()
-    {
-        return type.isIntegerType();
-    }
-
-    /**
-     * Returns true if this jlang.type is real jlang.type.
-     */
-    public boolean isRealType()
-    {
-        return type.isRealType();
-    }
-
-    /**
-     * Returns true if this jlang.type is complex jlang.type.
-     *
-     * @return
-     */
-    public boolean isComplexType()
-    {
-        return type.isComplexType();
-    }
-
-    /**
-     * Returns true if this jlang.type is boolean jlang.type.
-     *
-     * @return
-     */
-    public boolean isBooleanType()
-    {
-        return type.isBooleanType();
-    }
-
-    /**
-     * Checks whether this jlang.type is integral and qualified with signed.
-     *
-     * @return
-     * @throws Error
-     */
-    public boolean isSignedType()
-    {
-        return type.isSignedType();
-    }
-
-    /**
-     * Checks if this jlang.type is a pointer to actual jlang.type object.
-     *
-     * @return
-     */
-    public boolean isPointerType()
-    {
-        return type.isPointerType();
-    }
-
-    /**
-     * Checks if this jlang.type is reference jlang.type.
-     *
-     * @return
-     */
-    public boolean isReferenceType()
-    {
-        return type.isReferenceType();
-    }
-
-    /**
-     * Checks if this jlang.type is a formal function jlang.type in C or static member function jlang.type in C++.
-     *
-     * @return
-     */
-    public boolean isFunctionType()
-    {
-        return type.isFunctionType();
-    }
-
-    /**
-     * Checks if this jlang.type is member function jlang.type of a class in C++.
-     *
-     * @return
-     */
-    public boolean isMethodType()
-    {
-        return type.isMethodType();
-    }
-
-    /**
-     * Checks if this jlang.type is array jlang.type.
-     *
-     * @return
-     */
-    public boolean isConstantArrayType(){return type.isConstantArrayType();}
-
-    public boolean isVariableArrayType() {return type.isVariableArrayType();}
-
-    public boolean isIncompleteArrayType(){return type.isIncompleteArrayType();}
-
-    /**
-     * Determine whether this jlang.type is record jlang.type or not.
-     *
-     * @return return true if it is record, otherwise return false.
-     */
-    public boolean isRecordType()
-    {
-        return type.isRecordType();
-    }
-
-    public boolean isStructureType()
-    {
-        return type.isRecordType() && type.getTypeClass() == TypeClass.Struct;
-    }
-
-    /**
-     * Checks if this jlang.type is enumeration jlang.type.
-     *
-     * @return
-     */
-    public boolean isEnumType()
-    {
-        return type.isEnumType();
-    }
-
-    /**
-     * Checks if this jlang.type is jlang.type-getIdentifier jlang.type.
-     *
-     * @return
-     */
-    public boolean isUserType()
-    {
-        return type.isUserType();
-    }
-
-    // Ability methods (unary)
-    public boolean isAllocatedArray()
-    {
-        return type.isAllocatedArray();
-    }
-
-    public boolean isCallable()
-    {
-        return type.isCallable();
-    }
-
     public static QualType getUnQualifiedType(QualType t)
     {
         return t.getUnQualifiedType();
@@ -361,70 +206,6 @@ public final class QualType extends Type implements Cloneable
         return new QualType(type, quals | getCVRQualifiers());
     }
 
-    /**
-     * @return
-     */
-    public Type baseType()
-    {
-        return type.baseType();
-    }
-
-    // Cast methods
-    public IntegerType getIntegerType()
-    {
-        return type.getIntegerType();
-    }
-
-    public RealType getRealType()
-    {
-        return type.getRealType();
-    }
-
-    public ComplexType getComplexTye()
-    {
-        return type.getComplexTye();
-    }
-
-    public PointerType getPointerType()
-    {
-        return type.getPointerType();
-    }
-
-    public FunctionType getFunctionType()
-    {
-        return type.getFunctionType();
-    }
-
-    public RecordType getRecordType()
-    {
-        return type.getRecordType();
-    }
-
-    public EnumType getEnumType()
-    {
-        return type.getEnumType();
-    }
-
-    /**
-     * Checks if this jlang.type is integral or enumeration.
-     *
-     * @return {@code true} returned if this jlang.type is integral or enumeration,
-     * otherwise, return {@code false}.
-     */
-    public boolean isIntegralOrEnumerationType()
-    {
-        if (isIntegerType() || isBooleanType())
-            return true;
-        if (isEnumType())
-            return getEnumType().getDecl().isCompleteDefinition();
-        return false;
-    }
-
-    public int getTypeKind()
-    {
-        return type.getTypeKind();
-    }
-
     public QualType clone()
     {
         return new QualType(type, qualsFlag.mask);
@@ -441,6 +222,7 @@ public final class QualType extends Type implements Cloneable
         ty.qualsFlag.removeCVQualified(MASK);
         return ty;
     }
+
     @Override
     public boolean equals(Object t1)
     {
@@ -459,6 +241,72 @@ public final class QualType extends Type implements Cloneable
                 || type.isFunctionType();
     }
 
+    public String getAsStringInternal(String s, PrintingPolicy policy)
+    {
+        if (isNull())
+        {
+            s += "NULL TYPE";
+            return s;
+        }
+
+        if (policy.suppressSpecifiers && type.isSpecifierType())
+            return s;
+
+        int tq = getCVRQualifiers();
+        if (tq != 0)
+        {
+            String tqs = appendTypeQualList("", tq);
+            if (!tqs.isEmpty())
+                s = tqs + " " + s;
+            else
+                s = tqs;
+        }
+
+        return type.getAsStringInternal(s, policy);
+    }
+
+    public String getAsString()
+    {
+        return getAsStringInternal("", new PrintingPolicy(new LangOptions()));
+    }
+
+    public void dump()
+    {
+        System.err.println(getAsString());
+    }
+
+    public boolean isCanonical()
+    {
+        return type.isCanonical();
+    }
+
+    /**
+     * <p>
+     * Determines whether the type describes an object in memory.
+     * </p>
+     * <p>
+     * Types are partitioned into 3 broad categories (C99 6.2.5p1):
+     * object types, function types, and incomplete types.
+     * </p>
+     * @return
+     */
+    public boolean isObjectType()
+    {
+        return type.isObjectType();
+    }
+
+    /**
+     * Return true if this is an incomplete type.
+     /// A type that can describe objects, but which lacks information needed to
+     /// determine its size (e.g. void, or a fwd declared struct). Clients of this
+     /// routine will need to determine if the size is actually required.
+     * @return
+     */
+    public boolean isIncompleteType()
+    {
+        return type.isIncompleteType();
+    }
+
     /**
      * Return true if this is an incomplete or object
      * type, in other words, not a function type.
@@ -466,18 +314,322 @@ public final class QualType extends Type implements Cloneable
      */
     public boolean isIncompleteOrObjectType()
     {
-        return !isFunctionType();
+        return type.isIncompleteOrObjectType();
     }
 
-    public boolean isVariableModifiedType()
+    /**
+     * (C99 6.7.5.2p2) - Return true for variable array
+     * types that have a non-constant expression. This does not include "[]".
+     * @return
+     */
+    public boolean isVariablyModifiedType()
     {
         return type.isVariablyModifiedType();
     }
 
-    public PrimitiveType getAsBuiltinType()
+    /**
+     * If this is an array type, return the
+     /// element type of the array, potentially with type qualifiers missing.
+     /// This method should never be used when type qualifiers are meaningful.
+     * @return
+     */
+    public Type getArrayElementTypeNoTypeQual()
     {
-        if (isBuiltinType())
-            return (PrimitiveType)type;
-        return null;
+        return type.getArrayElementTypeNoTypeQual();
+    }
+
+    public QualType getDesugaredType()
+    {
+        return type.getDesugaredType();
+    }
+
+    public boolean isBuiltinType()
+    {
+        return type.isBuiltinType();
+    }
+
+    /**
+     * Helper methods to distinguish type categories. All type predicates
+     /// operate on the canonical type, ignoring typedefs and qualifiers.
+     * @param tk
+     * @return
+     */
+    public boolean isSpecifiedBuiltinType(int tk)
+    {
+        return type.isSpecifiedBuiltinType(tk);
+    }
+
+    /**
+     * // C99 6.2.5p17 (int, char, bool, enum)
+     * @return
+     */
+    public boolean isIntegerType()
+    {
+        return type.isIntegerType();
+    }
+
+    public boolean isEnumeralType()
+    {
+        return type.isEnumeralType();
+    }
+
+    public boolean isStructureType()
+    {
+        return type.isStructureType();
+    }
+
+    public boolean isUnionType()
+    {
+        return type.isUnionType();
+    }
+    public boolean isBooleanType()
+    {
+        return type.isBooleanType();
+    }
+
+    public boolean isCharType()
+    {
+        return type.isCharType();
+    }
+
+    public boolean isIntegralType()
+    {
+        return type.isIntegerType();
+    }
+
+    /**
+     * // C99 6.2.5p10 (float, double, long double)
+     * @return
+     */
+    public  boolean isRealFloatingType()
+    {
+        return type.isRealFloatingType();
+    }
+
+    public boolean isComplexType()
+    {
+        return type.isComplexType();
+    }
+
+    public boolean isComplexIntegerType()
+    {
+        return type.isComplexIntegerType();
+    }
+
+    public boolean isAnyComplexType()
+    {
+        return type.isAnyComplexType();
+    }
+
+    public boolean isFloatingType()
+    {
+        return type.isFloatingType();
+    }
+
+    /**
+     * C99 6.2.5p17 (real floating + integer)
+     * @return
+     */
+    public boolean isRealType()
+    {
+        return type.isRealType();
+    }
+
+    /**
+     * C99 6.2.5p18 (integer + floating)
+     * @return
+     */
+    public boolean isArithmeticType()
+    {
+        return type.isArithmeticType();
+    }
+
+    public boolean isVoidType()
+    {
+        return type.isVoidType();
+    }
+
+    public boolean isDerivedType()
+    {
+        return type.isDerivedType();
+    }
+
+    public boolean isScalarType()
+    {
+        return type.isScalarType();
+    }
+
+    public boolean isAggregateType()
+    {
+        return type.isAggregateType();
+    }
+
+    public boolean isFunctionType()
+    {
+        return type.isFunctionType();
+    }
+
+    public boolean isFunctionNoProtoType()
+    {
+        return type.isFunctionNoProtoType();
+    }
+
+    public boolean isFunctionProtoType()
+    {
+        return type.isFunctionProtoType();
+    }
+
+    public boolean isPointerType()
+    {
+        return type.isPointerType();
+    }
+
+    public boolean isVoidPointerType()
+    {
+        return type.isVoidPointerType();
+    }
+
+    public boolean isFunctionPointerType()
+    {
+        return type.isFunctionPointerType();
+    }
+
+    public boolean isArrayType()
+    {
+        return type.isArrayType();
+    }
+
+    public boolean isConstantArrayType()
+    {
+        return type.isConstantArrayType();
+    }
+
+    public boolean isIncompleteArrayType()
+    {
+        return type.isIncompleteArrayType();
+    }
+
+    public boolean isVariableArrayType()
+    {
+        return type.isVariableArrayType();
+    }
+
+    public boolean isRecordType()
+    {
+        return type.isRecordType();
+    }
+
+    // Type Checking Functions: Check to see if this type is structurally the
+    // specified type, ignoring typedefs and qualifiers, and return a pointer to
+    // the best type we can.
+    public BuiltinType getAsBuiltinType()
+    {
+        return type.getAsBuiltinType();
+    }
+
+    public FunctionType getAsFunctionType()
+    {
+        return type.getAsFunctionType();
+    }
+
+    public FunctionNoProtoType getAsFunctionNoProtoType()
+    {
+        return type.getAsFunctionNoProtoType();
+    }
+
+    public FunctionProtoType getAsFunctionProtoType()
+    {
+        return type.getAsFunctionProtoType();
+    }
+
+    public RecordType getAsStructureType()
+    {
+        return type.getAsStructureType();
+    }
+
+    public RecordType getAsUnionType()
+    {
+        return type.getAsUnionType();
+    }
+
+    public EnumType getAsEnumType()
+    {
+        return type.getAsEnumType();
+    }
+
+    public TypedefType getAsTypedefType()
+    {
+        return type.getAsTypedefType();
+    }
+
+    public ComplexType getAsComplexType()
+    {
+        return type.getAsComplexType();
+    }
+
+    public ComplexType getAsComplexIntegerType()
+    {
+        return type.getAsComplexIntegerType();
+    }
+
+    public PointerType getAsPointerType()
+    {
+        return type.getAsPointerType();
+    }
+
+    public RecordType getAsRecordType()
+    {
+        return type.getAsRecordType();
+    }
+
+    public QualType getPointeeType()
+    {
+        return type.getPointeeType();
+    }
+
+    /**
+     * More type predicates useful for type checking/promotion.
+     * @return
+     */
+    public boolean isPromotableIntegerType()
+    {
+        return type.isPromotableIntegerType();
+    }
+
+    /**
+     * Return true if this is an integer type that is
+     /// signed, according to C99 6.2.5p4 [char, signed char, short, int, long..],
+     /// an enum decl which has a signed representation
+     * @return
+     */
+    public boolean isSignedIntegerType()
+    {
+        return type.isSignedIntegerType();
+    }
+
+    public boolean isConstantSizeType()
+    {
+        return type.isConstantSizeType();
+    }
+
+    public boolean isIntegralOrEnumerationType()
+    {
+        return type.isIntegralOrEnumerationType();
+    }
+
+    public boolean isSpecifierType()
+    {
+        return type.isSpecifierType();
+    }
+
+    public int getTypeClass()
+    {
+        return type.getTypeClass();
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return getCVRQualifiers() << 11 + type.hashCode();
     }
 }

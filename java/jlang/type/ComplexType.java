@@ -1,5 +1,7 @@
 package jlang.type;
 
+import jlang.basic.PrintingPolicy;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -20,16 +22,14 @@ public final class ComplexType extends Type
         elementType = eltType;
     }
 
-    public boolean isSignedType(){return false;}
-
-    public String toString()
-    {
-        StringBuilder buffer = new StringBuilder("");
-        return buffer.toString();
-    }
-
     public QualType getElementType()
     {
         return elementType;
+    }
+
+    @Override
+    public String getAsStringInternal(String inner, PrintingPolicy policy)
+    {
+        return "_Complex" + elementType.getAsStringInternal(inner, policy);
     }
 }

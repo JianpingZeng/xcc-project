@@ -33,7 +33,7 @@ public final class EnumType extends TagType
      */
     public EnumType(EnumDecl decl)
     {
-        super(Enum, decl);
+        super(Enum, decl, new QualType());
     }
 
     @Override
