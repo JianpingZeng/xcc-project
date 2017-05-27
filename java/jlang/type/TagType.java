@@ -72,4 +72,9 @@ public abstract class TagType extends Type
             inner = id + inner;
         return inner;
     }
+
+    public void setDecl(TagDecl decl)
+    {
+        this.decl = decl;
+    }
 }

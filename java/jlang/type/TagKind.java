@@ -22,11 +22,11 @@ import tools.Util;
 /**
  * The kind of a tc jlang.type.
  */
-public enum TagTypeKind
+public enum TagKind
 {
     TTK_struct, TTK_union, TTK_enum;
 
-    public static TagTypeKind getTagTypeKindForTypeSpec(DeclSpec.TST tagType)
+    public static TagKind getTagTypeKindForTypeSpec(DeclSpec.TST tagType)
     {
         switch (tagType)
         {

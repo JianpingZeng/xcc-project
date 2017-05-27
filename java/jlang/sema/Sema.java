@@ -18,7 +18,7 @@ import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.ArrayType.ArraySizeModifier;
 import jlang.type.ArrayType.VariableArrayType;
-import jlang.type.TagTypeKind;
+import jlang.type.TagKind;
 import tools.Context;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -298,12 +298,12 @@ public final class Sema implements DiagnosticParseTag,
      */
     private boolean isacceptableTagRedeclaration(
             TagDecl previous,
-            TagTypeKind newTag,
+            TagKind newTag,
             SourceLocation newTagLoc,
             IdentifierInfo name)
     {
         // TODO: 17-5-10
-        TagTypeKind oldTag = previous.getTagKind();
+        TagKind oldTag = previous.getTagKind();
         return oldTag == newTag;
     }
 
@@ -333,10 +333,10 @@ public final class Sema implements DiagnosticParseTag,
         assert (name != null || tuk == TagUseKind.TUK_definition)
                 : "Nameless record must be a definition";
 
-        TagTypeKind kind = TagTypeKind.getTagTypeKindForTypeSpec(tagType);
+        TagKind kind = TagKind.getTagTypeKindForTypeSpec(tagType);
 
         QualType enumUnderlying = null;
-        if (kind == TagTypeKind.TTK_enum)
+        if (kind == TagKind.TTK_enum)
         {
             // C99, Each enumerator that appears in the body of an enumeration
             // specifier becomes an integer constant with type int in the
@@ -394,8 +394,8 @@ public final class Sema implements DiagnosticParseTag,
                     // struct or something similar.
                     if (!isacceptableTagRedeclaration(prevTagDecl, kind, kwLoc, name))
                     {
-                        boolean safeToContinue = (prevTagDecl.getTagKind() != TagTypeKind.TTK_enum
-                        && kind != TagTypeKind.TTK_enum);
+                        boolean safeToContinue = (prevTagDecl.getTagKind() != TagKind.TTK_enum
+                        && kind != TagKind.TTK_enum);
                         if (safeToContinue)
                         {
                             diag(kwLoc, err_use_with_wrong_tag)

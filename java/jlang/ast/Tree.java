@@ -313,6 +313,18 @@ public abstract class Tree
 		{
 			super(tag);
 		}
+
+		public abstract SourceRange getSourceRange();
+
+		public SourceLocation getLocStart()
+		{
+			return getSourceRange().getBegin();
+		}
+
+		public SourceLocation getLocEnd()
+		{
+			return getSourceRange().getEnd();
+		}
 	}
 	/**
 	 * @author Xlous.zeng  
