@@ -59,7 +59,7 @@ public interface IStmtVisitor<T>
 
     T visitIfStmt(IfStmt stmt);
 
-    T visitLabelledStmt(LabelledStmt stmt);
+    T visitLabelledStmt(LabelStmt stmt);
 
     T visitNullStmt(NullStmt stmt);
 

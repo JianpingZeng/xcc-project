@@ -266,7 +266,7 @@ public enum DiagnosticParseKinds implements DiagnosticParseTag
 			CLASS_ERROR, MAP_ERROR,
 			"'static' may not be used with an unspecified variable length array size"),
 	ERR_USE_OF_TAG_NAME_WITHOUT_TAG(err_use_of_tag_name_without_tag, CLASS_ERROR,
-			MAP_ERROR, "use of tagged type %0 without '%1' tag"),
+			MAP_ERROR, "use of tagged type %0 without '%1' stmtClass"),
 	ERR_USING_NAMESPACE_IN_CLASS(err_using_namespace_in_class, CLASS_ERROR, MAP_ERROR,
 			"'using namespace' in class not allowed"),
 	ERR_VARIADIC_TEMPLATES(err_variadic_templates, CLASS_ERROR, MAP_ERROR,

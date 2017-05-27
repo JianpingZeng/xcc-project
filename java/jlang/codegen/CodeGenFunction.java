@@ -87,7 +87,7 @@ public final class CodeGenFunction
 	/**
 	 * Keeps track of the Basic block for each C label.
 	 */
-	private HashMap<Tree.LabelledStmt, BasicBlock> labelMap;
+	private HashMap<LabelStmt, BasicBlock> labelMap;
 
 	private HashMap<Tree.Expr, Type> vlaSizeMap;
 	private CGFunctionInfo curFnInfo;
@@ -967,7 +967,7 @@ public final class CodeGenFunction
 				emitDeclStmt((Tree.DeclStmt) s);
 				return true;
 			case LabelledStmtClass:
-				emitLabelStmt((Tree.LabelledStmt) s);
+				emitLabelStmt((LabelStmt) s);
 				return true;
 			case GotoStmtClass:
 				emitGotoStmt((Tree.GotoStmt) s);
@@ -987,18 +987,18 @@ public final class CodeGenFunction
 		}
 	}
 
-	private void emitLabelStmt(Tree.LabelledStmt stmt)
+	private void emitLabelStmt(LabelStmt stmt)
 	{
 		emitLabel(stmt);
 		emitStmt(stmt.body);
 	}
 
-	private void emitLabel(Tree.LabelledStmt s)
+	private void emitLabel(LabelStmt s)
 	{
 		emitBlock(getBasicBlockForLabel(s));
 	}
 
-	private BasicBlock getBasicBlockForLabel(Tree.LabelledStmt s)
+	private BasicBlock getBasicBlockForLabel(LabelStmt s)
 	{
 		BasicBlock BB = labelMap.get(s);
 		if (BB != null)
@@ -1307,7 +1307,7 @@ public final class CodeGenFunction
 
 		// If this is a labelled statement, we want to emit code for it.
 		// like this: if (0) {... foo: bar(); } goto foo;
-		if (s instanceof Tree.LabelledStmt)
+		if (s instanceof LabelStmt)
 			return true;
 
 		// If this is a case/default statement, and we haven't seen a switch, we have

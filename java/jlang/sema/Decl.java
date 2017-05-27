@@ -24,7 +24,7 @@ package jlang.sema;
 
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
-import jlang.ast.Tree.LabelledStmt;
+import jlang.ast.Tree.LabelStmt;
 import jlang.ast.Tree.StringLiteral;
 import jlang.basic.Linkage;
 import jlang.basic.SourceLocation;
@@ -546,20 +546,20 @@ public abstract class Decl
      */
     public static class LabelDecl extends NamedDecl
     {
-        LabelledStmt stmt;
+        LabelStmt stmt;
         LabelDecl(IdentifierInfo name, IDeclContext context,
-                LabelledStmt stmt, SourceLocation location)
+                Tree.LabelStmt stmt, SourceLocation location)
         {
             super(DeclKind.LabelDecl, context, name, location);
             this.stmt = stmt;
         }
 
-        public void setStmt(LabelledStmt stmt)
+        public void setStmt(Tree.LabelStmt stmt)
         {
             this.stmt = stmt;
         }
 
-        public LabelledStmt getStmt()
+        public Tree.LabelStmt getStmt()
         {
             return stmt;
         }
@@ -1635,7 +1635,7 @@ public abstract class Decl
             if (getTypeForDecl() instanceof TagType)
             {
                 TagType tt = (TagType)getTypeForDecl();
-                assert tt.getDecl() == this :"Attempt to redefine a tag definition?";
+                assert tt.getDecl() == this :"Attempt to redefine a stmtClass definition?";
                 tt.getDecl().completeDefinition();
             }
         }

@@ -127,7 +127,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 			case Tree.IntegerLiteralClass:
 				return visitIntegerLiteral((IntegerLiteral)s);
 			case Tree.LabelledStmtClass:
-				return visitLabelledStmt((LabelledStmt)s);
+				return visitLabelledStmt((LabelStmt)s);
 			case Tree.MemberExprClass:
 				return visitMemberExpr((MemberExpr)s);
 			case Tree.NullStmtClass:
@@ -277,7 +277,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 
 	public T visitIfStmt(IfStmt stmt) {return visitStmt(stmt);}
 
-	public T visitLabelledStmt(LabelledStmt stmt) {return visitStmt(stmt);}
+	public T visitLabelledStmt(LabelStmt stmt) {return visitStmt(stmt);}
 
 	public T visitNullStmt(NullStmt stmt) {return visitStmt(stmt);}
 
