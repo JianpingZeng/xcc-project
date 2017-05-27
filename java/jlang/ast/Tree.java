@@ -5,10 +5,10 @@ import jlang.basic.APFloat;
 import jlang.basic.APInt;
 import jlang.basic.SourceLocation;
 import jlang.basic.SourceRange;
+import jlang.clex.IdentifierInfo;
 import jlang.sema.*;
 import jlang.sema.Decl.*;
 import jlang.type.*;
-import tools.Name;
 import tools.OutParamWrapper;
 import tools.Util;
 
@@ -97,7 +97,7 @@ public abstract class Tree
 	public static final int ForStmtClass = WhileStmtClass + 1;
 
 	/**
-	 * LabelledStmt statement, of jlang.type LabelledStmt.
+	 * LabelStmt statement, of jlang.type LabelStmt.
 	 */
 	public static final int LabelledStmtClass = ForStmtClass + 1;
 
@@ -235,16 +235,16 @@ public abstract class Tree
 	/**
 	 * The tc that represents the kind of this tree.
 	 */
-	public int tag;
+	public int stmtClass;
 
 	/**
 	 * Constructor. Initialize tree with given tc.
 	 * 
-	 * @param tag
+	 * @param stmtClass
 	 */
-	public Tree(int tag)
+	public Tree(int stmtClass)
 	{
-		this.tag = tag;
+		this.stmtClass = stmtClass;
 	}
 
 	/**
@@ -260,7 +260,7 @@ public abstract class Tree
 
 	public int getStmtClass()
     {
-        return tag;
+        return stmtClass;
     }
 
 	/**
@@ -327,90 +327,51 @@ public abstract class Tree
 		}
 	}
 	/**
+     * This is the null statement ";": C99 6.8.3p3.
 	 * @author Xlous.zeng  
 	 * @version 0.1
 	 */
 	public static class NullStmt extends Stmt
 	{
-	    final SourceLocation loc;
-		public NullStmt(SourceLocation loc)
+	    private SourceLocation semiLoc;
+		public NullStmt(SourceLocation semiLoc)
 		{
 			super(NullStmtClass);
-            this.loc = loc;
+            this.semiLoc = semiLoc;
 		}
 
 		public void accept(StmtVisitor v)
 		{
 			v.visitNullStmt(this);
 		}
-	}
 
-	/**
-	 * @author Xlous.zeng  
-	 * @version 0.1
-	 */
-	public static class MethodDef extends Tree
-	{
-		public long flags;
-		public Name name;
-		public Tree rettype;
-		public List<Tree> params;
-		public Tree body;
-
-		public MethodDef(Long flags, Name name, Tree rettype, 
-				List<Tree> params, Tree body)
+		@Override
+		public SourceRange getSourceRange()
 		{
-			super(MethodDefStmtClass);
-			this.flags = flags;
-			this.name = name;
-			this.rettype = rettype;
-			this.params = params;
-			this.body = body;
+			return new SourceRange(semiLoc, semiLoc);
 		}
 
-		public void accept(StmtVisitor v)
-		{
+        public SourceLocation getSemiLoc()
+        {
+            return semiLoc;
+        }
 
-		}
-	}
-
-	/**
-	 * @author Xlous.zeng  
-	 * @version 0.1
-	 */
-	public static class VarDef extends Tree
-	{
-		/**
-		 * Is static or const?
-		 */
-		public long flags;
-		public Name name;
-		public Tree varType;
-		public Tree init;
-
-		public VarDef(long flags, Name name, Tree varType,
-				Tree init)
-		{
-			super(VarDefStmtClass);
-			this.flags = flags;
-			this.name = name;
-			this.varType = varType;
-			this.init = init;
-		}
-
-		public void accept(StmtVisitor v)
-		{
-			//v.visitVarDef(this);
-		}
-	}
+        public void setSemiLoc(SourceLocation semiLoc)
+        {
+            this.semiLoc = semiLoc;
+        }
+    }
 
     /**
-     * This
+     * Adaptor class for mixing declarations with statements and
+     * expressions. For example, CompoundStmt mixes statements, expressions
+     * and declarations (variables, types). Another example is ForStmt, where
+     * the first statement can be an expression or a declaration.
      */
     public static class DeclStmt extends Stmt implements Iterable<Decl>
     {
-        final ArrayList<Decl> decls;
-        final SourceLocation declStart, declEnd;
+        private ArrayList<Decl> decls;
+        private SourceLocation declStart, declEnd;
 	    public DeclStmt(
 			    ArrayList<Decl> decls,
 			    SourceLocation declStart,
@@ -422,6 +383,23 @@ public abstract class Tree
             this.declEnd = declEnd;
 	    }
 
+	    public boolean isSingleDecl()
+        {
+            return decls.size() == 1;
+        }
+
+        public Decl getSingleDecl()
+        {
+            assert isSingleDecl();
+            return decls.get(0);
+        }
+
+        public ArrayList<Decl> getDeclGroup()
+        {
+            assert !isSingleDecl();
+            return decls;
+        }
+
         public void accept(StmtVisitor v)
         {
             v.visitDeclStmt(this);
@@ -431,6 +409,32 @@ public abstract class Tree
         {
             return decls.iterator();
         }
+
+        public SourceLocation getStartLoc()
+        {
+            return declStart;
+        }
+
+        public void setStartLoc(SourceLocation loc)
+        {
+            declStart = loc;
+        }
+
+        public SourceLocation getEndLoc()
+        {
+            return declEnd;
+        }
+
+        public void setEndLoc(SourceLocation loc)
+        {
+            declEnd = loc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(declStart, declEnd);
+        }
     }
 
 	/**
@@ -439,15 +443,18 @@ public abstract class Tree
 	 */
 	public static class CompoundStmt extends Stmt
 	{
-		public List<Stmt> stats;
-		public SourceLocation rBraceLoc = SourceLocation.NOPOS;
-		public SourceLocation lBraceLoc = SourceLocation.NOPOS;
-		public CompoundStmt(List<Stmt> stats,
+		private Stmt[] stats;
+		private SourceLocation rBraceLoc;
+		private SourceLocation lBraceLoc;
+
+		public CompoundStmt(
+		        List<Stmt> stats,
 				SourceLocation l,
 				SourceLocation r)
 		{
 			super(CompoundStmtClass);
-			this.stats = stats;
+			this.stats = new Stmt[stats.size()];
+			stats.toArray(this.stats);
             this.rBraceLoc = r;
 			this.lBraceLoc = l;
 		}
@@ -457,18 +464,27 @@ public abstract class Tree
 			v.visitCompoundStmt(this);
 		}
 
-		public Iterator<Stmt> iterator()
-		{
-			return stats.iterator();
-		}
+        public Stmt[] getBody()
+        {
+            return stats;
+        }
 
-		public SourceLocation getRBraceLoc()
+        public boolean bodyEmpty()
+        {
+            return stats.length == 0;
+        }
+        public SourceLocation getRBraceLoc()
 		{
 			return rBraceLoc;
 		}
-	}
 
-	
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(lBraceLoc, rBraceLoc);
+        }
+    }
+
 	/**
 	 * Selects through packages or class for future.
 	 */	
@@ -481,9 +497,9 @@ public abstract class Tree
 		/**
 		 * getIdentifier of field to select
 		 */
-		public Name name;
+		public IdentifierInfo name;
 
-		public SelectStmt(Tree selected, Name name)
+		public SelectStmt(Tree selected, IdentifierInfo name)
 		{
 			super(SelectExprClass);
 			this.selected = selected;
@@ -494,7 +510,13 @@ public abstract class Tree
 		{
 			v.visitSelectStmt(this);
 		}
-	}
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return null;
+        }
+    }
 	/**
 	 * A do loop
 	 */
@@ -529,7 +551,47 @@ public abstract class Tree
 
         public Stmt getBody(){return body;}
 
+        public void setBody(Stmt body)
+        {
+            this.body = body;
+        }
+
         public Expr getCond(){return cond;}
+
+        public void setCond(Expr cond)
+        {
+            this.cond = cond;
+        }
+
+        public SourceLocation getDoLoc()
+        {
+            return doLoc;
+        }
+
+        public void setDoLoc(SourceLocation doLoc)
+        {
+            this.doLoc = doLoc;
+        }
+
+        public SourceLocation getWhileLoc()
+        {
+            return whileLoc;
+        }
+
+        public void setWhileLoc(SourceLocation whileLoc)
+        {
+            this.whileLoc = whileLoc;
+        }
+
+        public SourceLocation getRParenLoc()
+        {
+            return rParenLoc;
+        }
+
+        public void setRParenLoc(SourceLocation rParenLoc)
+        {
+            this.rParenLoc = rParenLoc;
+        }
     }
 
 	/**
@@ -567,9 +629,38 @@ public abstract class Tree
 		}
 
         public Stmt getInit() {return init;}
+
+        public void setInit(Stmt init)
+        {
+            this.init = init;
+        }
+
         public Expr getCond() {return cond;}
+
+        public void setCond(Expr cond)
+        {
+            this.cond = cond;
+        }
+
         public Expr getStep() {return step;}
+
+        public void setStep(Expr step)
+        {
+            this.step = step;
+        }
+
         public Stmt getBody() {return body;}
+
+        public void setBody(Stmt body)
+        {
+            this.body = body;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(forLoc, body.getLocEnd());
+        }
     }
 
 	/**
@@ -595,26 +686,52 @@ public abstract class Tree
 
         public Expr getCond(){return cond;}
 
+        public void setCond(Expr cond)
+        {
+            this.cond = cond;
+        }
+
         public Stmt getBody(){return body;}
+
+        public void setBody(Stmt body)
+        {
+            this.body = body;
+        }
+
+        public SourceLocation getWhileLoc()
+        {
+            return whileLoc;
+        }
+
+        public void setWhileLoc(SourceLocation whileLoc)
+        {
+            this.whileLoc = whileLoc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(whileLoc, body.getLocEnd());
+        }
     }
 
 	/**
 	 * A labelled expression or statement.
 	 */
-	public static class LabelledStmt extends Stmt
+	public static class LabelStmt extends Stmt
 	{
 		public LabelDecl label;
 		public Stmt body;
-        public final SourceLocation loc;
+        public final SourceLocation identLoc;
 		/** The corresponding basic block of this label.*/
 		public BasicBlock corrBB;
 
-		public LabelledStmt(LabelDecl label, Stmt body, SourceLocation loc)
+		public LabelStmt(LabelDecl label, Stmt body, SourceLocation loc)
 		{
 			super(LabelledStmtClass);
 			this.label = label;
 			this.body = body;
-            this.loc = loc;
+            this.identLoc = loc;
 		}
 
 		public void accept(StmtVisitor v)
@@ -622,33 +739,66 @@ public abstract class Tree
 			v.visitLabelledStmt(this);
 		}
 
-		public String getName()
+        public SourceLocation getIdentLoc()
+        {
+            return identLoc;
+        }
+
+        IdentifierInfo getID()
+        {
+            return label.getDeclName();
+        }
+
+        public String getName()
         {
             return label.getDeclName().getName();
         }
-	}
+
+        public Stmt getSubStmt()
+        {
+            return body;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(identLoc, body.getLocEnd());
+        }
+    }
 
 	/**
 	 * An "if ( ) { } else { }" block
 	 */
 	public static class IfStmt extends Stmt
 	{
-		public Expr cond;
-		public Stmt thenpart;
-		public Stmt elsepart;
-        public final SourceLocation ifLoc;
+		private Expr cond;
+		private Stmt thenpart;
+		private Stmt elsepart;
+        private SourceLocation ifLoc;
+        private SourceLocation elseLoc;
 
-		public IfStmt(
+        public IfStmt(
+                Expr cond,
+                Stmt thenpart,
+                Stmt elsepart,
+                SourceLocation ifLoc)
+        {
+            this(cond, thenpart, elsepart, ifLoc, new SourceLocation());
+        }
+
+        public IfStmt(
 				Expr cond,
 				Stmt thenpart,
 				Stmt elsepart,
-				SourceLocation ifLoc)
+				SourceLocation ifLoc,
+                SourceLocation elseLoc)
 		{
 			super(IfStmtClass);
 			this.cond = cond;
 			this.thenpart = thenpart;
 			this.elsepart = elsepart;
             this.ifLoc = ifLoc;
+            this.elseLoc = elseLoc;
 		}
 
 		public void accept(StmtVisitor v){ v.visitIfStmt(this);}
@@ -657,10 +807,37 @@ public abstract class Tree
 		{
 			return cond;
 		}
-		public Stmt getThenPart() {return thenpart;}
+
+        public Stmt getThenpart()
+        {
+            return thenpart;
+        }
+
+        public Stmt getElsepart()
+        {
+            return elsepart;
+        }
+
+        public Stmt getThenPart() {return thenpart;}
+
 		public Stmt getElsePart() {return elsepart;}
+
 		public SourceLocation getIfLoc() {return  ifLoc;}
-	}
+
+        public SourceLocation getElseLoc()
+        {
+            return elseLoc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            if (elsepart == null)
+                return new SourceRange(ifLoc, elsepart.getLocEnd());
+            else
+                return new SourceRange(ifLoc, thenpart.getLocEnd());
+        }
+    }
 
 	/**
 	 * A "switch ( ) { }" construction.
@@ -668,7 +845,8 @@ public abstract class Tree
 	public static class SwitchStmt extends Stmt
 	{
 		private Expr cond;
-		private CaseStmt firstCase;
+        // This points to a linked list of case and default statements.
+		private SwitchCase firstCase;
         private Stmt body;
         private SourceLocation switchLoc;
         /**
@@ -689,9 +867,19 @@ public abstract class Tree
             this.body = body;
         }
 
+        public Stmt getBody()
+        {
+            return body;
+        }
+
         public Expr getCond()
         {
             return cond;
+        }
+
+        public void setCond(Expr cond)
+        {
+            this.cond = cond;
         }
 
         public SourceLocation getSwitchLoc()
@@ -704,9 +892,14 @@ public abstract class Tree
 			v.visitSwitchStmt(this);
 		}
 
-        public CaseStmt getSwitchCaseList()
+        public SwitchCase getSwitchCaseList()
         {
             return firstCase;
+        }
+
+        public void setSwitchCaseList(SwitchCase cs)
+        {
+            firstCase = cs;
         }
 
         public void setAllEnumCasesCovered()
@@ -719,22 +912,49 @@ public abstract class Tree
             return allEnumCasesCovered;
         }
 
-        public Stmt getBody(){return body;}
+        public void addSwitchCase(SwitchCase sc)
+        {
+            assert sc.getNextSwitchCase() == null
+                    : "case/default already added to a switch";
+            sc.setNextSwitchCase(firstCase);
+            firstCase = sc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(switchLoc, body.getLocEnd());
+        }
     }
 
     public static abstract class SwitchCase extends Stmt
     {
-        private Stmt subStmt;
+        protected SwitchCase nextSwitchCase;
 
         public SwitchCase(int tag)
         {
             super(tag);
         }
-        public abstract SwitchCase getNextCaseStmt();
+
+        public SwitchCase getNextSwitchCase()
+        {
+            return nextSwitchCase;
+        }
+
+        public void setNextSwitchCase(SwitchCase nextSwitchCase)
+        {
+            this.nextSwitchCase = nextSwitchCase;
+        }
 
         public abstract SourceLocation getCaseLoc();
         public abstract SourceLocation getColonLoc();
         public abstract Stmt getSubStmt();
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange();
+        }
     }
 	/**
 	 * A "case  :" of a switch.
@@ -774,15 +994,6 @@ public abstract class Tree
 			v.visitCaseStmt(this);
 		}
 
-        @Override
-        public CaseStmt getNextCaseStmt()
-        {
-            if (subStmt.tag == CaseStmtClass)
-                return (CaseStmt)subStmt;
-            else
-                return null;
-        }
-
         public Stmt getSubStmt()
         {
             return subStmt;
@@ -796,6 +1007,16 @@ public abstract class Tree
         public void setCondExpr(Expr val)
         {
             value = val;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            CaseStmt cs = this;
+            while (cs.getSubStmt() instanceof CaseStmt)
+                cs = (CaseStmt) cs.getSubStmt();
+
+            return new SourceRange(caseLoc, cs.getSubStmt().getLocEnd());
         }
     }
 
@@ -812,15 +1033,6 @@ public abstract class Tree
             super(DefaultStmtClass);
             this.defaultLoc =defaultLoc;
             this.colonLoc = colonLoc;
-        }
-
-        @Override
-        public DefaultStmt getNextCaseStmt()
-        {
-            if (subStmt.tag == CaseStmtClass)
-                return (DefaultStmt)subStmt;
-            else
-                return null;
         }
 
         @Override
@@ -844,6 +1056,12 @@ public abstract class Tree
         {
             return subStmt;
         }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(defaultLoc, subStmt.getLocEnd());
+        }
     }
 
 	/**
@@ -851,7 +1069,7 @@ public abstract class Tree
 	 */
 	public static class BreakStmt extends Stmt
 	{
-		public final SourceLocation breakLoc;
+		private SourceLocation breakLoc;
 
 		public BreakStmt(SourceLocation breakLoc)
 		{
@@ -863,12 +1081,28 @@ public abstract class Tree
 		{
 			v.visitBreakStmt(this);
 		}
-	}
+
+        public SourceLocation getBreakLoc()
+        {
+            return breakLoc;
+        }
+
+        public void setBreakLoc(SourceLocation breakLoc)
+        {
+            this.breakLoc = breakLoc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(breakLoc);
+        }
+    }
 
 	public static class GotoStmt extends Stmt
 	{
-		public LabelDecl label;
-		public final SourceLocation gotoLoc, labelLoc;
+		private LabelDecl label;
+		private SourceLocation gotoLoc, labelLoc;
 
 		public GotoStmt(LabelDecl label,
 				SourceLocation gotoLoc,
@@ -879,18 +1113,55 @@ public abstract class Tree
 			this.gotoLoc = gotoLoc;
             this.labelLoc = labelLoc;
 		}
+
 		public void accept(StmtVisitor v)
 		{
 			v.visitGotoStmt(this);
 		}
-	}
+
+        public LabelDecl getLabel()
+        {
+            return label;
+        }
+
+        public void setLabel(LabelDecl label)
+        {
+            this.label = label;
+        }
+
+        public SourceLocation getGotoLoc()
+        {
+            return gotoLoc;
+        }
+
+        public void setGotoLoc(SourceLocation gotoLoc)
+        {
+            this.gotoLoc = gotoLoc;
+        }
+
+        public SourceLocation getLabelLoc()
+        {
+            return labelLoc;
+        }
+
+        public void setLabelLoc(SourceLocation labelLoc)
+        {
+            this.labelLoc = labelLoc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(gotoLoc, labelLoc);
+        }
+    }
 
 	/**
 	 * A continue of a loop.
 	 */
 	public static class ContinueStmt extends Stmt
 	{
-		public final SourceLocation continueLoc;
+		private SourceLocation continueLoc;
 
 		public ContinueStmt(SourceLocation continueLoc)
 		{
@@ -902,14 +1173,29 @@ public abstract class Tree
 		{
 			v.visitContinueStmt(this);
 		}
-	}
+
+        public SourceLocation getContinueLoc()
+        {
+            return continueLoc;
+        }
+
+        public void setContinueLoc(SourceLocation continueLoc)
+        {
+            this.continueLoc = continueLoc;
+        }
+
+        @Override public SourceRange getSourceRange()
+        {
+            return new SourceRange(continueLoc);
+        }
+    }
 
 	/**
 	 * A return statement.
 	 */
 	public static class ReturnStmt extends Stmt
 	{
-        private final SourceLocation returnloc;
+        private SourceLocation returnloc;
         private Expr retValue;
 
         public ReturnStmt(SourceLocation returnloc, Expr retValExpr)
@@ -934,11 +1220,30 @@ public abstract class Tree
 	        return retValue;
         }
 
-		public SourceLocation getReturnLoc()
+        public void setRetValue(Expr retValue)
+        {
+            this.retValue = retValue;
+        }
+
+        public SourceLocation getReturnLoc()
 		{
 			return returnloc;
 		}
-	}
+
+        public void setReturnloc(SourceLocation returnloc)
+        {
+            this.returnloc = returnloc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            if (retValue != null)
+                return new SourceRange(returnloc, retValue.getLocEnd());
+            else
+                return new SourceRange(returnloc);
+        }
+    }
 
     /**
      * Represents the kind of object an expression reference to.
@@ -953,6 +1258,7 @@ public abstract class Tree
          */
         EVK_LValue
     }
+
     /**
      * This class represents an expression. Note that{@linkplain, Expr} is the
      * subclass of {@linkplain Stmt}. This allows an expression to be transparently
@@ -965,32 +1271,35 @@ public abstract class Tree
 	    private ExprObjectKind ok;
         private SourceLocation loc;
 
-        public Expr(int tag,
+        public Expr(int stmtClass,
 		        QualType type,
 		        ExprObjectKind ok,
 		        ExprValueKind valuekind,
 		        SourceLocation loc)
         {
-            super(tag);
+            super(stmtClass);
             this.valuekind = valuekind;
 	        this.ok = ok;
             setType(type);
             this.loc = loc;
         }
 
-        public Expr(int tag, SourceLocation loc)
+        public Expr(int stmtClass, SourceLocation loc)
         {
-            this(tag, null, null, null, loc);
+            this(stmtClass, null, null, null, loc);
         }
+
         public SourceLocation getExprLocation()
         {
             return loc;
         }
+
         public void setType(QualType type)
         {
             assert type != null;
             this.type = type;
         }
+
         public QualType getType() { return type; }
 
         /**
@@ -1004,8 +1313,9 @@ public abstract class Tree
             if (field == null)
                 return new QualType();
             QualType t = field.getDeclType();
-            long bitWidth = field.getBitWidthValue();
-            long intSize = ctx.IntTy.getType().getTypeSize();
+            APSInt bitWidthAP = field.getBitWidth().evaluateAsInt(ctx);
+            long bitWidth = bitWidthAP.getZExtValue();
+            long intSize = ctx.getTypeSize(ctx.IntTy);
 
             // GCC extension compatibility: if the bit-field getTypeSize is less than or equal
             // to the getTypeSize of int, it gets promoted no matter what its jlang.type is.
@@ -1013,7 +1323,7 @@ public abstract class Tree
             if (bitWidth < intSize)
                 return ctx.IntTy;
             if (bitWidth == intSize)
-                return t.getType().isSignedType() ? ctx.IntTy : ctx.UnsignedIntTy;
+                return t.isSignedIntegerType() ? ctx.IntTy : ctx.UnsignedIntTy;
 
             // Types bigger than int are not subject to promotions, and therefore act
             // like the base jlang.type.
@@ -1045,30 +1355,30 @@ public abstract class Tree
             this.valuekind = valueKind;
         }
 
-        public long getIntWidth()
+        public long getIntWidth(ASTContext ctx)
         {
-            QualType t = null;
-            if (type.getType().isEnumType())
-                t = type.getType().getEnumType().getDecl().getIntegerType();
+            QualType t = new QualType();
+            if (type.isEnumeralType())
+                t = type.getAsEnumType().getDecl().getIntegerType();
             if (type.getType().isBooleanType())
                 return 1;
             // for the primitive jlang.type, just use the standard jlang.type getNumOfSubLoop.
-            return t.getTypeSize();
+            return ctx.getTypeSize(t);
         }
 
         public boolean isSignedIntegerOrEnumeration()
         {
-            if (type.getType().isPrimitiveType())
+            if (type.isBuiltinType())
             {
-                return type.getType().getTypeKind() >= TypeClass.Char
-                        && type.getType().getTypeKind() <= TypeClass.LongInteger;
+                return type.getTypeClass() >= TypeClass.Char
+                        && type.getTypeClass() <= TypeClass.LongInteger;
             }
 
-            if (type.getType().isEnumType())
+            if (type.isEnumeralType())
             {
-                EnumType et = type.getType().getEnumType();
+                EnumType et = type.getAsEnumType();
                 if (et.getDecl().isCompleteDefinition())
-                    return et.getDecl().getIntegerType().getType().isSignedType();
+                    return et.getDecl().getIntegerType().isSignedIntegerType();
             }
             return false;
         }
@@ -1105,12 +1415,12 @@ public abstract class Tree
             Expr e = this;
             while (true)
             {
-                if (e.tag == ParenExprClass)
+                if (e.stmtClass == ParenExprClass)
                 {
                     e = ((ParenExpr)e).subExpr;
                     continue;
                 }
-                if (e.tag == ImplicitCastClass)
+                if (e.stmtClass == ImplicitCastClass)
                 {
                     e = ((ImplicitCastExpr)e).getSubExpr();
                     continue;
@@ -1124,7 +1434,7 @@ public abstract class Tree
             Expr e = this;
             while (true)
             {
-                if (e.tag == ParenExprClass)
+                if (e.stmtClass == ParenExprClass)
                 {
                     e = ((ParenExpr)e).subExpr;
                     continue;
@@ -1145,7 +1455,7 @@ public abstract class Tree
          */
         public boolean isConstantInitializer()
         {
-            switch (tag)
+            switch (stmtClass)
             {
                 default:break;
                 case StringLiteralClass:
@@ -1798,11 +2108,12 @@ public abstract class Tree
 			    return LV_NotObjectType;
 
 		    // Allow qualified void which is an incomplete type other than void (yuck).
-		    if (type.isVoidType() && type.getCanonicalTypeInternal().getCVRQualifiers() == 0)
+		    if (type.isVoidType() && ctx.getCanonicalType(type).getCVRQualifiers() == 0)
 			    return LV_IncompleteVoidType;
 
 		    return LV_Valid;
 	    }
+
 	    public IsModifiableLvalueResult isModifiableLvalue(
 			    ASTContext context,
 			    OutParamWrapper<SourceLocation> loc)
@@ -1832,7 +2143,7 @@ public abstract class Tree
 			        return MLV_InvalidExpression;
 		    }
 
-		    QualType ct = getType().getCanonicalTypeInternal();
+		    QualType ct = context.getCanonicalType(getType());
 
 		    if (ct.isConstQualifed())
 			    return MLV_ConstQualified;
@@ -1931,13 +2242,14 @@ public abstract class Tree
     {
         public final APInt val;
         public IntegerLiteral(
+                ASTContext ctx,
                 final APInt value,
                 QualType type,
                 SourceLocation loc)
         {
             super(IntegerLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
             assert type.isIntegerType():"Illegal jlang.type in Integer literal.";
-            assert value.getBitWidth() == type.getTypeSize()
+            assert value.getBitWidth() == ctx.getTypeSize(type)
                     :"Integer jlang.type is not the correct getNumOfSubLoop for constant.";
             val = value;
         }
@@ -2469,7 +2781,7 @@ public abstract class Tree
                 // in C++.
             }
              */
-            if (cee.tag == UnaryOperatorClass)
+            if (cee.stmtClass == UnaryOperatorClass)
             {
                 UnaryExpr ue = (UnaryExpr)cee;
                 if (ue.getOpCode() == UnaryOperatorKind.UO_Deref)
@@ -2515,13 +2827,13 @@ public abstract class Tree
         public QualType getCallReturnType()
         {
             QualType calleeType = getCallee().getType();
-            PointerType ty = calleeType.getPointerType();
+            PointerType ty = calleeType.getAsPointerType();
             if ( ty != null)
             {
                 calleeType = ty.getPointeeType();
             }
 
-            final FunctionType fnType = calleeType.getFunctionType();
+            final FunctionType fnType = calleeType.getAsFunctionType();
             return fnType.getResultType();
         }
 

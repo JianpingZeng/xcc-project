@@ -59,9 +59,9 @@ public final class PrintingPolicy
     public boolean suppressSpecifiers;
 
     /**
-     * Whether type printing should skip printing the actual tag type.
+     * Whether type printing should skip printing the actual stmtClass type.
      ///
-     /// This is used when the caller needs to print a tag definition in front
+     /// This is used when the caller needs to print a stmtClass definition in front
      /// of the type, as in constructs like the following:
      ///
      /// \code
@@ -71,8 +71,8 @@ public final class PrintingPolicy
     public boolean suppressTag;
 
     /**
-     * If we are printing a tag type, suppresses printing of the
-     /// kind of tag, e.g., "struct", "union", "enum".
+     * If we are printing a stmtClass type, suppresses printing of the
+     /// kind of stmtClass, e.g., "struct", "union", "enum".
      */
     public boolean suppressTagKind;
     /**

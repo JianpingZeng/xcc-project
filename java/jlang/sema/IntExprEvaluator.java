@@ -52,7 +52,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 :"Invalid evaluation result.";
         assert si.isSigned() == context.isSignedIntegerOrEnumerationType(e.getType())
                 :"Invalid evaluation result.";
-        assert si.getBitWidth() == e.getIntWidth():"Invalid evaluation result.";
+        assert si.getBitWidth() == e.getIntWidth(context):"Invalid evaluation result.";
 
         result.set(new APValue(si));
         return true;
@@ -62,7 +62,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         assert e.getType().isIntegralOrEnumerationType()
                 :"Invalid evaluation result.";
-        assert i.getBitWidth() == e.getIntWidth():"Invalid evaluation result.";
+        assert i.getBitWidth() == e.getIntWidth(context):"Invalid evaluation result.";
 
         result.set(new APValue(new APSInt(i)));
         result.get().getInt().setIsUnsigned(
@@ -264,10 +264,10 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             OutParamWrapper<BigDecimal> rhs = new OutParamWrapper<>(new BigDecimal(0.0));
             OutParamWrapper<BigDecimal> lhs = new OutParamWrapper<>(new BigDecimal(0.0));
 
-            if (!evaluateFloat(expr.getRHS(), rhs))
+            if (!evaluateFloat(expr.getRHS(), rhs, context))
                 return false;
 
-            if (!evaluateFloat(expr.getLHS(), lhs))
+            if (!evaluateFloat(expr.getLHS(), lhs, context))
                 return false;
 
             int compResult = lhs.get().compareTo(rhs.get());
@@ -355,7 +355,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     long elemSize = 1;
                     if (!elemType.isVoidType() && !elemType.isFunctionType())
                     {
-                        elemSize = elemType.getTypeSize()>>3;
+                        elemSize = context.getTypeSize(elemType) >> 3;
                     }
 
                     long diff = lhsValue.get().getLValueOffset() - rhsValue.get().getLValueOffset();
@@ -388,7 +388,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             return false; // error in sub-expression.
 
         OutParamWrapper<APValue> rhsVal = new OutParamWrapper<>();
-        if (!evaluateIntegerOrLValue(expr.getRHS(), rhsVal))
+        if (!evaluateIntegerOrLValue(expr.getRHS(), rhsVal, context))
             return false;
 
         // Handle cases like (unsigned long)&a + 4.
@@ -580,7 +580,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 if (!result.get().isInt())
                 {
                     // Only allow casts of lvalues if they are lossless.
-                    return destType.getTypeSize() == srcType.getTypeSize();
+                    return context.getTypeSize(destType) == context.getTypeSize(srcType);
                 }
 
                 return success(handleIntToIntCast(destType, srcType, result.get().getInt(), context), expr);
@@ -594,7 +594,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
                 if (lv.get().getLValueBase() != null)
                 {
-                    if (destType.getTypeSize() != srcType.getTypeSize())
+                    if (context.getTypeSize(destType) != context.getTypeSize(srcType))
                         return false;
 
                      result.set(lv.get().moveInto());
@@ -612,7 +612,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             case CK_FloatingToIntegral:
             {
                 OutParamWrapper<BigDecimal> f = new OutParamWrapper<>();
-                if (!evaluateFloat(subExpr, f))
+                if (!evaluateFloat(subExpr, f, context))
                     return false;
 
                 return success(handleFloatToIntCast(destType, srcType, f.get(), context), expr);

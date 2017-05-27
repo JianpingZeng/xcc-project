@@ -956,6 +956,7 @@ public final class Sema implements DiagnosticParseTag,
             char val = pp.getSpellingOfSingleCharacterNumericConstant(token);
             int intSize = pp.getTargetInfo().getIntWidth();
             return new ActionResult<>(new IntegerLiteral(
+                    context,
                     new APInt(intSize, val - '0'),
                     context.IntTy, token.getLocation()));
         }
@@ -1074,7 +1075,7 @@ public final class Sema implements DiagnosticParseTag,
                     if (resultVal.getBitWidth() != width)
                         resultVal = resultVal.trunc(width);
                 }
-                return new ActionResult<>(new IntegerLiteral(resultVal, ty, token.getLocation()));
+                return new ActionResult<>(new IntegerLiteral(context,resultVal, ty, token.getLocation()));
             }
         }
         if (literal.isImaginary)
@@ -2884,7 +2885,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // otherwise, things are well-form.
-        Tree.LabelledStmt s = new Tree.LabelledStmt(theDecl, subStmt.get(), colonLoc);
+        LabelStmt s = new LabelStmt(theDecl, subStmt.get(), colonLoc);
         theDecl.setStmt(s);
         return new ActionResult<Stmt>(s);
     }
@@ -6982,9 +6983,9 @@ public final class Sema implements DiagnosticParseTag,
         // TODO: 2017/3/28
     }
 
-    private HashMap<String, LabelledStmt> functionLabelMap = new HashMap<>();
+    private HashMap<String, LabelStmt> functionLabelMap = new HashMap<>();
 
-    private HashMap<String, LabelledStmt> getLabelMap()
+    private HashMap<String, LabelStmt> getLabelMap()
     {
         return functionLabelMap;
     }
@@ -7036,13 +7037,13 @@ public final class Sema implements DiagnosticParseTag,
         popDeclContext();
 
         // Verify and clean out per-function state.
-        for (Map.Entry<String, LabelledStmt> pair : functionLabelMap.entrySet())
+        for (Map.Entry<String, LabelStmt> pair : functionLabelMap.entrySet())
         {
-            LabelledStmt l = pair.getValue();
+            LabelStmt l = pair.getValue();
 
             if (l.body != null)
                 continue;
-            diag(l.loc, err_undeclared_label_use).addTaggedVal(l.getName()).emit();
+            diag(l.identLoc, err_undeclared_label_use).addTaggedVal(l.getName()).emit();
 
             if (fnBody == null)
             {

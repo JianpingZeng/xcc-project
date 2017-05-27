@@ -145,7 +145,7 @@ interface IDeclContext
      * Find the declarations (if any) with the given Name in
      * this context. Returns a list that contains all of
      * the declarations with this name, with object, function, member,
-     * and enumerator names preceding any tag name. Note that this
+     * and enumerator names preceding any stmtClass name. Note that this
      * routine will not look into parent contexts.
      * @param name
      * @return
