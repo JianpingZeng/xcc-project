@@ -20,7 +20,6 @@ import jlang.ast.Tree.Expr;
 import jlang.basic.*;
 import jlang.basic.TargetInfo.IntType;
 import jlang.clex.IdentifierTable;
-import jlang.cparser.DeclContext;
 import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.ArrayType.*;
@@ -408,7 +407,7 @@ public final class ASTContext
 			return new QualType(decl.getTypeForDecl());
 
 		QualType cannonical = decl.getUnderlyingType();
-		decl.setTyepForDecl(new TypedefType(TypeClass.TypeDef, decl, cannonical));
+		decl.setTypeForDecl(new TypedefType(TypeClass.TypeDef, decl, cannonical));
 		types.add(decl.getTypeForDecl());
         // TODO: 17-5-13
         return new QualType(decl.getTypeForDecl());
@@ -436,17 +435,17 @@ public final class ASTContext
 		{
 			RecordDecl record = (RecordDecl)decl;
 			if (prevDecl != null)
-				decl.setTyepForDecl(prevDecl.getTypeForDecl());
+				decl.setTypeForDecl(prevDecl.getTypeForDecl());
 			else
-				decl.setTyepForDecl(new RecordType(record));
+				decl.setTypeForDecl(new RecordType(record));
 		}
 		else if (decl instanceof EnumDecl)
 		{
 			EnumDecl enumDecl = (EnumDecl)decl;
 			if (prevDecl != null)
-				decl.setTyepForDecl(prevDecl.getTypeForDecl());
+				decl.setTypeForDecl(prevDecl.getTypeForDecl());
 			else
-				decl.setTyepForDecl(new EnumType(enumDecl));
+				decl.setTypeForDecl(new EnumType(enumDecl));
 		}
 		else
 		{
@@ -776,7 +775,7 @@ public final class ASTContext
 			return new QualType(decl.getTypeForDecl());
 
 		TypedefType newType = new TypedefType(TypeClass.TypeDef, decl, null);
-		decl.setTyepForDecl(newType);
+		decl.setTypeForDecl(newType);
 		return new QualType(newType);
 	}
 
@@ -786,7 +785,7 @@ public final class ASTContext
 			return new QualType(record.getTypeForDecl());
 
 		RecordType newType = new RecordType(record);
-		record.setTyepForDecl(newType);
+		record.setTypeForDecl(newType);
 		return new QualType(newType);
 	}
 
@@ -796,7 +795,7 @@ public final class ASTContext
 			return new QualType(decl.getTypeForDecl());
 
 		EnumType newType = new EnumType(decl);
-		decl.setTyepForDecl(newType);
+		decl.setTypeForDecl(newType);
 		return new QualType(newType);
 	}
 

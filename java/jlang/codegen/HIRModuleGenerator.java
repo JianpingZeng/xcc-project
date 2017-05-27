@@ -107,7 +107,7 @@ public class HIRModuleGenerator
             case VarDecl:
                 emitGlobal(decl);
                 break;
-            case CompilationUnitDecl:
+            case TranslationUnitDecl:
             case BlockDecl:
             case FieldDecl:
             case ParamVar:

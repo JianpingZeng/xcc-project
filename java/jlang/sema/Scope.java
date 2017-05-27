@@ -1,7 +1,5 @@
 package jlang.sema;
 
-import jlang.cparser.DeclContext;
-
 import java.util.ArrayList;
 
 import static jlang.sema.Scope.ScopeFlags.*;
