@@ -6,6 +6,7 @@ import jlang.ast.Tree;
 import jlang.ast.Tree.*;
 import jlang.basic.*;
 import jlang.clex.*;
+import jlang.clex.TokenKind;
 import jlang.cparser.*;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.ArrayTypeInfo;
@@ -18,21 +19,19 @@ import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.ArrayType.ArraySizeModifier;
 import jlang.type.ArrayType.VariableArrayType;
-import jlang.type.TagKind;
-import tools.Context;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
+
 import java.util.*;
+
 import static jlang.ast.CastKind.*;
 import static jlang.ast.Tree.ExprObjectKind.OK_BitField;
 import static jlang.ast.Tree.ExprObjectKind.OK_Ordinary;
 import static jlang.ast.Tree.ExprValueKind.EVK_LValue;
 import static jlang.ast.Tree.ExprValueKind.EVK_RValue;
 import static jlang.basic.Linkage.NoLinkage;
-import static jlang.clex.TokenKind.arrow;
-import static jlang.clex.TokenKind.char_constant;
-import static jlang.clex.TokenKind.numeric_constant;
+import static jlang.clex.TokenKind.*;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Declarator.TheContext.FunctionProtoTypeContext;
 import static jlang.cparser.Parser.exprError;
@@ -143,11 +142,10 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private Scope curScope;
-    private DeclContext curContext;
+    private IDeclContext curContext;
     private LangOptions langOpts;
     private Preprocessor pp;
     private Stack<FunctionScopeInfo> functionScopes;
-    private static Context SEMA_CONTEXT = new Context();
     private ASTConsumer consumer;
     private ASTContext context;
 
@@ -171,7 +169,7 @@ public final class Sema implements DiagnosticParseTag,
         return consumer;
     }
 
-    PartialDiagnostic pdiag(int diagID)
+    private PartialDiagnostic pdiag(int diagID)
     {
         return new PartialDiagnostic(diagID);
     }
@@ -346,8 +344,8 @@ public final class Sema implements DiagnosticParseTag,
 
         LookupResult result = new LookupResult(this, name.getName(), nameLoc,
                 LookupTagName);
-        DeclContext searchDC = curContext;
-        DeclContext dc = curContext;
+        IDeclContext searchDC = curContext;
+        IDeclContext dc = curContext;
         NamedDecl prevDecl = null;
         boolean invalid = false;
 
@@ -508,7 +506,7 @@ public final class Sema implements DiagnosticParseTag,
             // Current tc is enum declaration, reference, or definition.
             if (tagType == TST.TST_enum)
             {
-                newDecl = new EnumDecl(name,searchDC, loc, (EnumDecl)prevDecl);
+                newDecl = EnumDecl.create(context, name, searchDC, loc, (EnumDecl)prevDecl);
 
                 // if this is an undefined enum, warns it.
                 if (tuk != TagUseKind.TUK_definition && !invalid)
@@ -1205,7 +1203,7 @@ public final class Sema implements DiagnosticParseTag,
         scope.setEntity(curContext);
     }
 
-    private void pushDeclContext(Scope scope, DeclContext dc)
+    private void pushDeclContext(Scope scope, IDeclContext dc)
     {
         curContext = dc;
         scope.setEntity(dc);
@@ -1228,7 +1226,7 @@ public final class Sema implements DiagnosticParseTag,
         curContext = getContainingDC(curContext);
     }
 
-    private DeclContext getContainingDC(DeclContext curContext)
+    private IDeclContext getContainingDC(IDeclContext curContext)
     {
         Decl decl = (Decl) curContext;
         return decl.getDeclContext();
@@ -1256,7 +1254,7 @@ public final class Sema implements DiagnosticParseTag,
      * @param s
      * @return
      */
-    private boolean isDeclInScope(NamedDecl decl, DeclContext context, Scope s)
+    private boolean isDeclInScope(NamedDecl decl, IDeclContext context, Scope s)
     {
         if (context instanceof FunctionDecl)
         {
@@ -1636,7 +1634,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private NamedDecl actOnTypedefDeclarator(Scope s,
         Declarator d,
-        DeclContext dc,
+        IDeclContext dc,
         QualType ty,
         LookupResult previous,
         OutParamWrapper<Boolean> redeclaration)
@@ -1733,7 +1731,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private NamedDecl actOnFunctionDeclarator(Scope s,
             Declarator d,
-            DeclContext dc,
+            IDeclContext dc,
             QualType ty,
             LookupResult previous,
             OutParamWrapper<Boolean> redeclaration)
@@ -2023,7 +2021,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private NamedDecl actOnVariableDeclarator(Scope s,
             Declarator d,
-            DeclContext dc,
+            IDeclContext dc,
             QualType ty,
             LookupResult previous,
             OutParamWrapper<Boolean> redeclaration)
@@ -2798,7 +2796,7 @@ public final class Sema implements DiagnosticParseTag,
         if (d.hasGlobalStorage())
             return;
 
-        DeclContext dc = d.getDeclContext();
+        IDeclContext dc = d.getDeclContext();
 
         // Only diagnose if we're shadowing an unambiguous field or variable.
         if (r.getResultKind() != Found)
@@ -2809,7 +2807,7 @@ public final class Sema implements DiagnosticParseTag,
                 && !(shadowedDecl instanceof FieldDecl))
             return;
 
-        DeclContext oldDC = shadowedDecl.getDeclContext();
+        IDeclContext oldDC = shadowedDecl.getDeclContext();
 
         // Only warn about certain kinds of shadowing for class members.
         if (dc != null && dc.isRecord())
@@ -3250,8 +3248,9 @@ public final class Sema implements DiagnosticParseTag,
         DefaultStmt prevDefaultStmt = null;
         boolean caseListErroneous = false;
 
-        for (SwitchCase sc = ss.getSwitchCaseList();
-             sc != null; sc = sc.getNextCaseStmt())
+        SwitchCase sc;
+        for (sc = ss.getSwitchCaseList();
+             sc != null; sc = sc.getNextSwitchCase());
         {
             if (sc instanceof DefaultStmt)
             {
@@ -3368,9 +3367,9 @@ public final class Sema implements DiagnosticParseTag,
                         64);
                 // gather all enum values, set their type and sort them.
                 // allowing easier comparision with caseLists.
-                for (Iterator<Decl> it = ed.iterator(); it.hasNext(); )
+                for (int i = 0, e = ed.getDeclCounts(); i < e; i++)
                 {
-                    EnumConstantDecl enumDecl = (EnumConstantDecl) it.next();
+                    EnumConstantDecl enumDecl = (EnumConstantDecl) ed.getDeclAt(i);
                     APSInt val = enumDecl.getInitValue();
                     adjustAPSInt(val, condWidth, condIsSigned);
                     enumVals.add(Pair.get(val, enumDecl));
@@ -3932,9 +3931,9 @@ public final class Sema implements DiagnosticParseTag,
         return new ActionResult<>(new BreakStmt(breakLoc));
     }
 
-    private DeclContext getFunctionLevelDeclContext()
+    private IDeclContext getFunctionLevelDeclContext()
     {
-        DeclContext dc = curContext;
+        IDeclContext dc = curContext;
         while (dc instanceof EnumDecl)
             dc = dc.getParent();
 
@@ -3948,7 +3947,7 @@ public final class Sema implements DiagnosticParseTag,
      */
     public FunctionDecl getCurFunctionDecl()
     {
-        DeclContext dc = getFunctionLevelDeclContext();
+        IDeclContext dc = getFunctionLevelDeclContext();
         return (FunctionDecl) dc;
     }
 
@@ -6912,7 +6911,7 @@ public final class Sema implements DiagnosticParseTag,
         d.setIdentifier(name, nameLoc);
 
         // Insert this function into translation-unit scope.
-        DeclContext prevDC = curContext;
+        IDeclContext prevDC = curContext;
         curContext = context.getTranslateUnitDecl();
 
         FunctionDecl fd = (FunctionDecl) actOnDeclarator(translateUnitScope, d);
@@ -6973,7 +6972,7 @@ public final class Sema implements DiagnosticParseTag,
         return buildDeclarationNameExpr(res);
     }
 
-    private void diagnoseUnusedParameters(ArrayList<ParamVarDecl> params)
+    private void diagnoseUnusedParameters(ParamVarDecl[] params)
     {
         // TODO: 2017/3/28  
     }
@@ -7054,12 +7053,15 @@ public final class Sema implements DiagnosticParseTag,
             l.body = new NullStmt(l.label.getLocation());
 
             CompoundStmt compound = (CompoundStmt)fnBody;
-            ArrayList<Stmt> elts = new ArrayList<>();
-            elts.addAll(compound.stats);
 
+            ArrayList<Stmt> elts = new ArrayList<>();
+            elts.addAll(Arrays.asList(compound.getBody()));
             elts.add(l);
-            compound.stats = elts;
+            Stmt[] body = new Stmt[elts.size()];
+            elts.toArray(body);
+            compound.setBody(body);
         }
+
         functionLabelMap.clear();
 
         if (fnBody == null)

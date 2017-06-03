@@ -133,7 +133,7 @@ public final class Scope
      * For example, the entity of a struct scope is the struct itself,
      * the entity of a function scope is a function itself.
      */
-    private DeclContext entity;
+    private IDeclContext entity;
 
     private ArrayList<Decl> declsInScope;
 
@@ -262,12 +262,12 @@ public final class Scope
         return declsInScope.contains(decl);
     }
 
-    public DeclContext getEntity()
+    public IDeclContext getEntity()
     {
         return entity;
     }
 
-    public void setEntity(DeclContext dc)
+    public void setEntity(IDeclContext dc)
     {
         this.entity = dc;
     }
