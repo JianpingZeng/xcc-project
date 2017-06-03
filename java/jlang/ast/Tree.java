@@ -14,10 +14,7 @@ import tools.Util;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import static jlang.ast.CastKind.CK_Invalid;
 import static jlang.ast.Tree.Expr.IsLvalueResult.*;
@@ -482,6 +479,17 @@ public abstract class Tree
         public SourceRange getSourceRange()
         {
             return new SourceRange(lBraceLoc, rBraceLoc);
+        }
+
+        public void setBody(Stmt[] body)
+        {
+            if (body != null)
+            {
+                stats = new Stmt[body.length];
+                System.arraycopy(body, 0, stats, 0, body.length);
+            }
+            else
+                stats = null;
         }
     }
 
@@ -2964,7 +2972,8 @@ public abstract class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+	    public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(base.getExprLocation(), memberLoc);
 	    }

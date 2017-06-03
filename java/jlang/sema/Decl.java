@@ -232,6 +232,11 @@ public abstract class Decl
         return getIdentifierNamespaceForKind(getKind());
     }
 
+    public boolean isSameInIdentifierNameSpace(IdentifierNamespace otherINS)
+    {
+        return getIdentifierNamespace() == otherINS;
+    }
+
     /**
      * This class represents the Translation unit declaration in each source
      * file or header file.
@@ -1003,7 +1008,7 @@ public abstract class Decl
         }
 
         public static ParamVarDecl create(
-                DeclContext context,
+                IDeclContext context,
                 IdentifierInfo name,
                 SourceLocation location,
                 QualType type,
@@ -1034,7 +1039,7 @@ public abstract class Decl
         protected QualType originalType;
 
         public OriginalParamVarDecl(
-                DeclContext dc,
+                IDeclContext dc,
                 SourceLocation loc,
                 IdentifierInfo id,
                 QualType ty,
@@ -1045,7 +1050,8 @@ public abstract class Decl
             this.originalType = originalType;
         }
 
-        public static OriginalParamVarDecl create(DeclContext dc,
+        public static OriginalParamVarDecl create(
+                IDeclContext dc,
                 SourceLocation loc,
                 IdentifierInfo id,
                 QualType ty,
@@ -1109,7 +1115,7 @@ public abstract class Decl
         }
 
         FunctionDecl(IdentifierInfo name,
-                DeclContext context,
+                IDeclContext context,
                 SourceLocation location,
                 QualType type,
                 StorageClass sc,
@@ -1542,7 +1548,7 @@ public abstract class Decl
          */
         protected boolean isBeingDefined;
         protected boolean isCompleteDefinition;
-        protected DeclContext declContext;
+        protected IDeclContext declContext;
         protected TagKind tagKind;
 
         /**
@@ -1602,7 +1608,7 @@ public abstract class Decl
             }
         }
 
-        public void setLexicalDeclaration(DeclContext curContext)
+        public void setLexicalDeclaration(IDeclContext curContext)
         {
             if (declContext == curContext)
                 return;
@@ -1895,7 +1901,7 @@ public abstract class Decl
         public RecordDecl(
                 IdentifierInfo name,
                 TagKind tagKind,
-                DeclContext context,
+                IDeclContext context,
                 SourceLocation loc,
                 RecordDecl prevDecl)
         {
@@ -1987,11 +1993,8 @@ public abstract class Decl
             integerType = new QualType();
         }
 
-        public EnumDecl create(ASTContext ctx,
-                IdentifierInfo name,
-                IDeclContext context,
-                SourceLocation loc,
-                EnumDecl prevDecl)
+        public static EnumDecl create(ASTContext ctx, IdentifierInfo name,
+                IDeclContext context, SourceLocation loc, EnumDecl prevDecl)
         {
             Decl.EnumDecl ed = new EnumDecl(name, context, loc, prevDecl);
             ctx.getTypeDeclType(ed, prevDecl);
@@ -2043,7 +2046,7 @@ public abstract class Decl
 
         EnumConstantDecl(
                 IdentifierInfo name,
-                DeclContext context,
+                IDeclContext context,
                 SourceLocation location,
                 QualType type,
                 Tree.Stmt init)
@@ -2053,7 +2056,7 @@ public abstract class Decl
 
         EnumConstantDecl(
                 IdentifierInfo name,
-                DeclContext context,
+                IDeclContext context,
                 SourceLocation location,
                 QualType type,
                 Tree.Stmt init,
