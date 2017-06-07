@@ -2,21 +2,27 @@ package jlang.codegen;
 
 import backend.hir.*;
 import backend.intrinsic.Intrinsic;
+import backend.support.NameMangler;
 import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import jlang.ast.Tree.*;
+import jlang.basic.CompileOptions;
+import jlang.diag.Diagnostic;
+import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.sema.Decl.FunctionDecl;
 import jlang.sema.Decl.VarDecl;
+import jlang.type.ArrayType;
 import jlang.type.QualType;
 import tools.Context;
 import tools.Log;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import static backend.value.ConstantExpr.*;
@@ -55,7 +61,6 @@ import static backend.value.GlobalValue.LinkageType.*;
  */
 public class HIRModuleGenerator
 {
-	private final static Context.Key AstToCfgKey = new Context.Key();
 	private List<GlobalVariable> vars;
 	private List<Function> functions;
     private TargetData theTargetData;
@@ -77,38 +82,62 @@ public class HIRModuleGenerator
      */
     private HashMap<String, GlobalValue> globalDeclMaps;
 
-	public HIRModuleGenerator(Context context, Module m)
+    private ASTContext ctx;
+    private CompileOptions compileOptions;
+    private TargetData td;
+    private Diagnostic diags;
+
+    private HashMap<String, Decl> deferredDecls = new HashMap<>();
+    private ArrayList<Decl> deferredDeclToEmit = new ArrayList<>();
+
+
+    public HIRModuleGenerator(ASTContext context,
+                              CompileOptions compOpts,
+                              Module m,
+                              TargetData td,
+                              Diagnostic diags)
     {
-		logger = Log.instance(context);
+        ctx = context;
+        compileOptions = compOpts;
+        this.m = m;
+        this.td = td;
+        this.diags = diags;
         vars = new ArrayList<>();
         functions = new ArrayList<>();
-        options = Options.instance(context);
-        this.m = m;
         cgTypes = new CodeGenTypes(this);
         constantStringMap = new HashMap<>();
         globalDeclMaps = new HashMap<>();
     }
 
-    public CodeGenTypes getCodeGenTypes() { return cgTypes;}
+    public CodeGenTypes getCodeGenTypes()
+    {
+        return cgTypes;
+    }
 
+    ASTContext getASTContext()
+    {
+        return ctx;
+    }
     /**
      * Emits HIR code for a single top level declaration.
      * @param decl
      */
     public void emitTopLevelDecl(Decl decl)
     {
-        // TODO if there are error occurred, stop code generation. 2016.10.29
-        switch(decl.getDeclKind())
+        // If an error has occurred, stop code generation, but continue
+        // parsing and semantic analysis (to ensure all warnings and errors
+        // are emitted).
+        if (diags.hasErrorOccurred())
+            return;
+
+        switch(decl.getKind())
         {
             case FunctionDecl:
+            case VarDecl:
                 // handle function declaration.
                 emitGlobal(decl);
                 break;
-            case VarDecl:
-                emitGlobal(decl);
-                break;
             case TranslationUnitDecl:
-            case BlockDecl:
             case FieldDecl:
             case ParamVar:
             case EnumConstant:
@@ -118,6 +147,16 @@ public class HIRModuleGenerator
             default:
                 assert decl instanceof Decl.TypeDecl:"Unsupported decl kind!";
         }
+    }
+
+    public void updateCompletedType(Decl.TagDecl tag)
+    {
+
+    }
+
+    public void emitTentativeDefinition(VarDecl var)
+    {
+
     }
 
     /**
@@ -137,9 +176,10 @@ public class HIRModuleGenerator
         {
             FunctionDecl fd = (FunctionDecl)decl;
             // skip function declaration.
-            if (!fd.hasBody())
+            if (!fd.isThisDeclarationADefinition())
                 return;
 
+            // Emit the LLVM code for this function declaration.
             emitGlobalFunctionDefinition(fd);
         }
         else
@@ -148,40 +188,75 @@ public class HIRModuleGenerator
             final VarDecl vd = (VarDecl)decl;
             assert vd.isFileVarDecl():"Cann't emit code for local variable!";
 
-            // defer code generation if this variable is just declaration.
-            if (vd.isThisDeclarationADefinition() != Decl.DefinitionKind.Definition)
-                return;
 
+            // Defer code generation when possible if this is a static definition, inline
+            // function etc.  These we only want to emit if they are used.
+            if (mayDeferGeneration(vd))
+            {
+                String mangledName = getMangledName(vd);
+                if (globalDeclMaps.containsKey(mangledName))
+                {
+                    deferredDeclToEmit.add(vd);
+                }
+                else
+                {
+                    // Otherwise, remember that we saw a deferred decl with this name.  The
+                    // first use of the mangled name will cause it to move into
+                    // DeferredDeclsToEmit.
+                    deferredDecls.put(mangledName, vd);
+                }
+                return;
+            }
+
+            // Otherwise emit the definition.
             emitGlobalVarDefinition(vd);
         }
+    }
+
+    private boolean mayDeferGeneration(FunctionDecl fd)
+    {
+        return false;
+    }
+
+    private boolean mayDeferGeneration(VarDecl vd)
+    {
+       assert vd.isFileVarDecl() :"Invalid decl";
+       return vd.getStorageClass() == Decl.StorageClass.SC_static;
+    }
+
+    private String getMangledName(Decl.NamedDecl decl)
+    {
+        assert decl.getIdentifier() != null:"Attempt to mangle unnamed decl";
+        return decl.getNameAsString();
     }
 
     private void emitGlobalVarDefinition(VarDecl vd)
     {
         Constant init = null;
-        QualType type = vd.getDeclType();
+        QualType astTy = vd.getDeclType();
 
         if (vd.getInit() == null)
         {
             // This a tentative definition. tentative definitions are
             // implicitly initialized with 0.
             // They should never have incomplete type.
-            assert type.getType().isIncompleteType():"Unexpected incomplete type!";
-	        init = emitNullConstant(type);
+            assert !astTy.getType().isIncompleteType():"Unexpected incomplete type!";
+	        init = emitNullConstant(astTy);
         }
 	    else
         {
-	        init = emitConstantExpr(vd.getInit(), type, null);
+	        init = emitConstantExpr(vd.getInit(), astTy, null);
 	        if (init == null)
 	        {
 		        QualType t = vd.getInit().getType();
-		        errorUnsupported(vd.getInit(), "static initializer");
+		        errorUnsupported(vd, "static initializer", false);
 		        init = UndefValue.get(getCodeGenTypes().convertType(t));
 	        }
         }
 
 	    Type initType = init.getType();
 	    Constant entry = getAddrOfGlobalVar(vd, initType);
+
 	    // Strip off a bitcast if we got one back.
 	    if (entry instanceof ConstantExpr)
 	    {
@@ -193,11 +268,38 @@ public class HIRModuleGenerator
 
 	    // Entry is now a global variable.
 	    GlobalVariable gv = (GlobalVariable)entry;
+
+        // We have a definition after a declaration with the wrong type.
+        // We must make a new GlobalVariable* and update everything that used OldGV
+        // (a declaration or tentative definition) with the new GlobalVariable*
+        // (which will be a definition).
+        //
+        // This happens if there is a prototype for a global (e.g.
+        // "extern int x[];") and then a definition of a different type (e.g.
+        // "int x[10];"). This also happens when an initializer has a different type
+        // from the type of the global (this happens with unions).
+        if (gv == null || !gv.getType().getElemType().equals(initType)
+                || gv.getType().getAddressSpace() != astTy.getAddressSpace())
+        {
+            // Remove the old entry from GlobalDeclMap so that we'll create a new one.
+            globalDeclMaps.remove(getMangledName(vd));
+
+            gv = (GlobalVariable) getAddrOfGlobalVar(vd, initType);
+            gv.setName(entry.getName());
+
+            // Replace all uses of the old global with the new global
+            Constant newPtrForOldDecl = ConstantExpr.getBitCast(gv, entry.getType());
+            entry.replaceAllUsesWith(newPtrForOldDecl);
+
+            // Erase the old global, since it is no longer used.
+            ((GlobalValue)entry).eraseFromParent();;
+        }
+
 	    gv.setInitializer(init);
 
 	    // if it is safe to mark the global constant, do that.
 	    gv.setConstant(false);
-	    if (vd.getDeclType().isConstant())
+	    if (vd.getDeclType().isConstant(ctx))
 		    gv.setConstant(true);
 
 	    // set the appropriate linkage type.
@@ -278,11 +380,70 @@ public class HIRModuleGenerator
         return getAddrOfGlobalVar(vd, null);
     }
 
+    /**
+     * Return the backend.Constant for the address of the given global address. If ty is non
+     * null and if the global var does not exist, then it will be greated with the specified
+     * type instead of whatever the normal requested type would be.
+     * @param vd
+     * @param ty
+     * @return
+     */
     public Constant getAddrOfGlobalVar(VarDecl vd, backend.type.Type ty)
     {
-        // TODO
-        return null;
+        assert vd.hasGlobalStorage() :"Not a global variable";
+        QualType astTy = vd.getDeclType();
+        if (ty == null)
+            ty = getCodeGenTypes().convertTypeForMem(astTy);
+
+        backend.type.PointerType pty = backend.type.PointerType.get(ty, astTy.getAddressSpace());
+        return getOrCreateLLVMGlobal(getMangledName(vd), pty, vd);
     }
+
+    /**
+     * If the specified mangled mangledName is not in the module, create and return an backend GlobalVariable
+     * with the specified type. If there is something in the module with the specified mangledName,
+     * return it potentially bitcasted to the right type.
+     *
+     * @param mangledName
+     * @param pty
+     * @param vd
+     * @return
+     */
+    private Constant getOrCreateLLVMGlobal(String mangledName, backend.type.PointerType pty, VarDecl vd)
+    {
+        if (globalDeclMaps.containsKey(mangledName))
+        {
+            GlobalValue entry = globalDeclMaps.get(mangledName);
+            if (entry.getType().equals(pty))
+                return entry;
+
+            // Make sure the result is of the correct type.
+            return ConstantExpr.getBitCast(entry, pty);
+        }
+
+        // This is the first use or definition of a mangled name.
+        // If there is a defered decl with this name, remember that we need to emit
+        // it at the end of file.
+        if (deferredDecls.containsKey(mangledName))
+        {
+            deferredDeclToEmit.add(vd);
+            deferredDecls.remove(mangledName);
+        }
+
+        GlobalVariable gv = new GlobalVariable(getModule(), pty.getElemType(),
+                false, ExternalLinkage, null, mangledName, null,
+                pty.getAddressSpace());
+
+        gv.setName(mangledName);
+
+        if (vd != null)
+        {
+            gv.setConstant(vd.getDeclType().isConstant(ctx));
+        }
+        globalDeclMaps.put(mangledName, gv);
+        return gv;
+    }
+
     /**
      * Emits code for global function definition.
      * @param fd
@@ -310,9 +471,15 @@ public class HIRModuleGenerator
 
     public Module getModule() { return m;}
 
+    /**
+     * Generates a null constant according specified type. For example, emit 0 for
+     * integral type, 0.0 for float pointing type.
+     * @param type
+     * @return
+     */
 	public Constant emitNullConstant(QualType type)
 	{
-		return Constant.getNullValue(getCodeGenTypes().convertType(type));
+	    return Constant.getNullValue(getCodeGenTypes().convertTypeForMem(type));
 	}
 
 	public Constant emitConstantExpr(Expr expr, QualType ty, CodeGenFunction cgf)
@@ -521,9 +688,13 @@ public class HIRModuleGenerator
         return getAddrOfConstantString(getStringForStringLiteral(expr), null);
     }
 
-	public void errorUnsupported(Stmt s, String msg)
+	public void errorUnsupported(Decl d, String type, boolean omitOnError)
 	{
-		logger.error(s.getLoc(), msg);
+        if (omitOnError && diags.hasErrorOccurred())
+            return;
+        int diagID = diags.getCustomDiagID(Diagnostic.Level.Error,
+                "cannot compile this %0 yet");
+        diags.report(ctx.getFullLoc(d.getLocation()), diagID).addTaggedVal(type).emit();
 	}
 
 	public void release() {}

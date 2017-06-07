@@ -22,9 +22,11 @@ public class GlobalVariable extends GlobalValue
             boolean isConstant,
             LinkageType linkage,
             Constant init,
-            String name)
+            String name,
+            GlobalVariable before,
+            int addressSpace)
     {
-        super(PointerType.get(ty),
+        super(PointerType.get(ty, addressSpace),
                 ValueKind.GlobalVariableVal,
                 linkage,
                 name);
@@ -35,8 +37,15 @@ public class GlobalVariable extends GlobalValue
             assert init.getType() == ty:"Initializer should be the same type as the GlobalVariable!";
             setOperand(0, new Use(init, this));
         }
-        if (m != null)
+        if (before != null)
+        {
+            int beforeIdx = before.getParent().getGlobalVariableList().indexOf(before);
+            before.getParent().getGlobalVariableList().add(beforeIdx+1, this);
+        }
+        else
+        {
             m.getGlobalVariableList().add(this);
+        }
     }
 
     /**

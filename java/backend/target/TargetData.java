@@ -8,6 +8,7 @@ import backend.type.Type;
 import tools.Pair;
 import tools.Util;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
@@ -17,6 +18,64 @@ import java.util.ArrayList;
  */
 public class TargetData implements ImmutablePass
 {
+    /**
+     * Enum used to categorise the alignment types stored by TargetAlignElem.
+     */
+    public enum AlignTypeEnum
+    {
+        INTEGER_ALIGN('i'),
+        VECTOR_ALIGN('v'),
+        FLOAT_ALIGN('f'),
+        AGGREGATE_TYPE('a'),
+        STACK_OBJECT('s');
+
+        public char name;
+        AlignTypeEnum(char name)
+        {
+            this.name = name;
+        }
+    }
+
+    public static class TargetAlignElem
+    {
+        public AlignTypeEnum alignType;
+        public byte abiAlign;
+        public byte prefAlign;
+        public int typeBitWidth;
+
+        public static TargetAlignElem get(
+                AlignTypeEnum alignType,
+                byte abiAlign,
+                byte prefAlign,
+                int typeBitWidth)
+        {
+            assert abiAlign <= prefAlign :"Preferred alignment worse than ABI";
+            TargetAlignElem elem = new TargetAlignElem();
+            elem.alignType = alignType;
+            elem.prefAlign = prefAlign;
+            elem.typeBitWidth = typeBitWidth;
+            return elem;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null) return false;
+            if (this == obj) return true;
+
+            if (getClass() != obj.getClass()) return false;
+
+            TargetAlignElem elem = (TargetAlignElem)obj;
+            return alignType == elem.alignType && abiAlign == elem.abiAlign
+                    && prefAlign == elem.prefAlign && typeBitWidth == elem.typeBitWidth;
+        }
+
+        public PrintStream dump(PrintStream os)
+        {
+            os.printf("%s%d:%d:%d", alignType.name, typeBitWidth, abiAlign * 8, prefAlign * 8);
+            return os;
+        }
+    }
 	/**
 	 * Register the default TargetData pass.
 	 */
@@ -51,24 +110,29 @@ public class TargetData implements ImmutablePass
 	 */
 	private int doubleAlignment;
 	/**
-	 * Pointer getNumOfSubLoop in bytes by default to 8.
+	 * Pointer size in bytes by default to 8.
 	 */
-	private int pointerSize;
+	private int pointerMemSize;
+
+	private int pointerABIAlign;
 	/**
 	 * default to 8.
 	 */
-	private int pointerAlignment;
+	private int pointerPrefAlign;
+
 	/**
 	 * default to "".
 	 */
 	private String targetName;
 
+	private ArrayList<TargetAlignElem> alignments = new ArrayList<>();
+
 	public TargetData()
 	{
 		this.targetName = "";
 		littleEndian = false;
-		pointerSize = 8;
-		pointerAlignment = 8;
+		pointerMemSize = 8;
+		pointerPrefAlign = 8;
 		doubleAlignment = 8;
 		floatAlignment = 4;
 		longAlignment = 8;
@@ -76,6 +140,153 @@ public class TargetData implements ImmutablePass
 		shortAlignment = 2;
 		byteAlignment = 1;
 	}
+
+	public TargetData(String targetDescription)
+	{
+		init(targetDescription);
+	}
+	/**
+	A TargetDescription string consists of a sequence of hyphen-delimited
+	specifiers for target endianness, pointer size and alignments, and various
+	primitive type sizes and alignments. A typical string looks something like:
+	<br><br>
+	"E-p:32:32:32-i1:8:8-i8:8:8-i32:32:32-i64:32:64-f32:32:32-f64:32:64"
+	<br><br>
+	(note: this string is not fully specified and is only an example.)
+	<p>
+	Alignments come in two flavors: ABI and preferred. ABI alignment (abi_align,
+	below) dictates how a type will be aligned within an aggregate and when used
+	as an argument.  Preferred alignment (pref_align, below) determines a type's
+	alignment when emitted as a global.
+	</p>
+	<p>
+	Specifier string details:
+	<br><br>
+	<i>[E|e]</i>: Endianness. "E" specifies a big-endian target data model, "e"
+	specifies a little-endian target data model.
+	<br><br>
+	<i>p:@verbatim<size>:<abi_align>:<pref_align>@endverbatim</i>: Pointer size,
+	ABI and preferred alignment.
+	<br><br>
+	<i>@verbatim<type><size>:<abi_align>:<pref_align>@endverbatim</i>: Numeric type
+	alignment. Type is
+	one of <i>i|f|v|a</i>, corresponding to integer, floating point, vector, or
+	aggregate.  Size indicates the size, e.g., 32 or 64 bits.
+	</p>
+	The default string, fully specified, is:
+	<br><br>
+	"E-p:64:64:64-a0:0:8-f32:32:32-f64:64:64"
+	"-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64"
+	"-v64:64:64-v128:128:128"
+	<br><br>
+	Note that in the case of aggregates, 0 is the default ABI and preferred
+	alignment. This is a special case, where the aggregate's computed worst-case
+	alignment will be used.
+	*/
+	private void init(String targetDescription) {
+        StringBuilder temp = new StringBuilder(targetDescription);
+
+        littleEndian = false;
+        pointerMemSize = 8;
+        pointerABIAlign = pointerPrefAlign = 8;
+
+        // Default alignments.
+        setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 1, (byte) 1, (byte) 1); // i1
+        setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 1, (byte) 1, (byte) 8); // i8
+        setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 2, (byte) 2, (byte) 16); // i16
+        setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 4, (byte) 4, (byte) 32); // i32
+        setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 8, (byte) 8, (byte) 64); // i64
+        setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 4, (byte) 4, (byte) 32); // f32
+        setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 8, (byte) 1, (byte) 64); // f64
+        setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 8, (byte) 8, (byte) 64); // v2i32, v1i64
+        setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 16, (byte) 16, (byte) 128); // v16i8, v8i16, v4i32,...
+        setAlignment(AlignTypeEnum.AGGREGATE_TYPE, (byte) 0, (byte) 8, (byte) 0); // struct
+
+        while (temp.length() != 0) {
+
+            String token = getToken(temp, "-");
+            String arg0 = getToken(temp, ":");
+            int i = 0;
+            switch (arg0.charAt(i)) {
+                case 'E':
+                    littleEndian = false;
+                    break;
+                case 'e':
+                    littleEndian = true;
+                    break;
+                case 'p':
+                    pointerMemSize = Integer.parseInt(getToken(temp, ":")) / 8;
+                    pointerABIAlign = Integer.parseInt(getToken(temp, ":")) / 8;
+                    pointerPrefAlign = Integer.parseInt(getToken(temp, ":")) / 8;
+
+                    if (pointerPrefAlign == 0)
+                        pointerPrefAlign = pointerABIAlign;
+                    break;
+                case 'i':
+                case 'v':
+                case 'f':
+                case 's':
+                case 'a': {
+                    AlignTypeEnum alignType = AlignTypeEnum.STACK_OBJECT;
+                    switch (arg0.charAt(i)) {
+                        case 'i':
+                            alignType = AlignTypeEnum.INTEGER_ALIGN;
+                            break;
+                        case 'v':
+                            alignType = AlignTypeEnum.VECTOR_ALIGN;
+                            break;
+                        case 'f':
+                            alignType = AlignTypeEnum.FLOAT_ALIGN;
+                            break;
+                        case 's':
+                            alignType = AlignTypeEnum.STACK_OBJECT;
+                            break;
+                        case 'a':
+                            alignType = AlignTypeEnum.AGGREGATE_TYPE;
+                            break;
+                    }
+                    int size = Integer.parseInt(arg0.substring(1));
+                    byte abiAlign = (byte) (Byte.parseByte(getToken(temp, ":")) / (byte) 8);
+                    byte prefAlign = (byte) (Integer.parseInt(getToken(temp, ":")) / 8);
+                    if (prefAlign == 0)
+                        prefAlign = abiAlign;
+                    setAlignment(alignType, abiAlign, prefAlign, size);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+
+	private String getToken(StringBuilder str, String delimiters)
+    {
+        int start = 0;
+        for (; start < str.length(); )
+            if (str.substring(start).startsWith(delimiters))
+                start += delimiters.length();
+        int end = 0;
+        end = str.indexOf(delimiters, start);
+        String result = str.substring(start, end);
+        str.delete(start, end);
+        return result;
+    }
+
+	private void setAlignment(AlignTypeEnum alignType, byte abiAlign, byte prefAlign, int bitWidth)
+    {
+        assert abiAlign <= prefAlign :"Preferred alignment worse than abi alignemnt.";
+        for (int i = 0, e = alignments.size(); i < e; ++i)
+        {
+            if (alignments.get(i).alignType == alignType
+                    && alignments.get(i).typeBitWidth == bitWidth)
+            {
+                // Update the abi, prefered alignments.
+                alignments.get(i).abiAlign = abiAlign;
+                alignments.get(i).prefAlign = prefAlign;
+                return;
+            }
+        }
+    }
 
 	@Override
 	public void initializePass()
@@ -89,10 +300,10 @@ public class TargetData implements ImmutablePass
 	{
 		this.targetName = targetName;
 		littleEndian = isLittleEndian;
-		pointerSize = ptrSize;
-		pointerAlignment = ptrAlign;
+		pointerMemSize = ptrSize;
+		pointerPrefAlign = ptrAlign;
 		doubleAlignment = doubleAlign;
-		assert pointerAlignment == doubleAlignment;
+		assert pointerPrefAlign == doubleAlignment;
 		floatAlignment = floatAlign;
 		longAlignment = longAlign;
 		intAlignment = intAlign;
@@ -104,8 +315,8 @@ public class TargetData implements ImmutablePass
 	{
 		targetName = td.getTargetName();
 		littleEndian = td.isLittleEndian();
-		pointerSize = td.pointerSize;
-		pointerAlignment = td.pointerAlignment;
+		pointerMemSize = td.pointerMemSize;
+		pointerPrefAlign = td.pointerPrefAlign;
 		doubleAlignment = td.doubleAlignment;
 		floatAlignment = td.floatAlignment;
 		longAlignment = td.longAlignment;
@@ -119,7 +330,7 @@ public class TargetData implements ImmutablePass
 		return IntegerType.get(getPointerSizeInBits());
 	}
 
-	public int getPointerSizeInBits() {return pointerSize *8;}
+	public int getPointerSizeInBits() {return pointerMemSize *8;}
 
 	public long getTypeSizeInBits(Type type)
 	{
@@ -170,7 +381,7 @@ public class TargetData implements ImmutablePass
 				break;
 			case Type.LabelTyID:
 			case Type.PointerTyID:
-				res = new Pair<>((long)td.getPointerSize(),td.getPointerAlignment());
+				res = new Pair<>((long)td.getPointerMemSize(),td.getPointerPrefAlign());
 				break;
 			case Type.ArrayTyID:
 			{
@@ -211,9 +422,9 @@ public class TargetData implements ImmutablePass
 
 	public int getDoubleAlignment() {return doubleAlignment;}
 
-	public int getPointerSize() {return pointerSize;}
+	public int getPointerMemSize() {return pointerMemSize;}
 
-	public int getPointerAlignment() {return pointerAlignment;}
+	public int getPointerPrefAlign() {return pointerPrefAlign;}
 
 	public String getTargetName(){return targetName;}
 

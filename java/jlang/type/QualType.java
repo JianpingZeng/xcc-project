@@ -1,7 +1,9 @@
 package jlang.type;
 
+import com.sun.org.apache.regexp.internal.RE;
 import jlang.basic.LangOptions;
 import jlang.basic.PrintingPolicy;
+import jlang.sema.ASTContext;
 
 import static jlang.type.ArrayType.VariableArrayType.appendTypeQualList;
 
@@ -29,6 +31,16 @@ public final class QualType implements Cloneable
         if (ct.isRecordType())
             return ((RecordType)ct.getType()).getAddressSpace();
         return 0;
+    }
+
+    public boolean isConstant(ASTContext ctx)
+    {
+        if (isConstQualifed())
+            return true;
+        if (getType().isArrayType())
+            return ctx.getAsArrayType(this).getElemType().isConstant(ctx);
+
+        return false;
     }
 
     public static class Qualifier

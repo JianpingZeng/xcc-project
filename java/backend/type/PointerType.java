@@ -28,12 +28,16 @@ public class PointerType extends SequentialType
     static {
         pointerTypes = new TypeMap<>();
     }
-    protected PointerType(Type elemType)
+
+    private int addressSpace;
+
+    protected PointerType(Type elemType, int addrSpace)
     {
         super(PointerTyID, elemType);
+        addressSpace = addrSpace;
     }
 
-    public static PointerType get(final Type valueType)
+    public static PointerType get(final Type valueType, int addrSpace)
     {
         assert valueType != null:"Can't get a pointer to <null> type";
         PointerType pt = pointerTypes.get(valueType);
@@ -41,5 +45,10 @@ public class PointerType extends SequentialType
             return pt;
         pointerTypes.put(valueType, pt);
         return pt;
+    }
+
+    public int getAddressSpace()
+    {
+        return addressSpace;
     }
 }

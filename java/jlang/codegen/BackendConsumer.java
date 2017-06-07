@@ -71,7 +71,7 @@ public class BackendConsumer implements ASTConsumer
     private Diagnostic diags;
     private LangOptions langOpts;
     private Module theModule;
-    private HIRModuleGenerator gen;
+    private CodeGenerator gen;
     private OutputStream asmOutStream;
     private TargetData theTargetData;
     private TargetMachine theTargetMachine;
@@ -94,8 +94,7 @@ public class BackendConsumer implements ASTConsumer
         this.diags = diags;
         this.langOpts = langOpts;
         compileOptions = opts;
-        theModule = new Module(moduleName);
-        gen = new HIRModuleGenerator(theModule);
+        gen = CodeGeneratorImpl.createLLVMCodeGen(diags, moduleName, compileOptions);
         asmOutStream = os;
         theTargetMachine = targetMachineAllocator.apply(theModule);
         theTargetData = theTargetMachine.getTargetData();
@@ -125,7 +124,7 @@ public class BackendConsumer implements ASTConsumer
         gen.initialize(ctx);
 
         theModule = gen.getModule();
-        theTargetData = new TargetData(ctx.getTargetDescription());
+        theTargetData = new TargetData(ctx.target.getTargetDescription());
     }
 
     /**
@@ -140,11 +139,8 @@ public class BackendConsumer implements ASTConsumer
     @Override
     public void handleTopLevelDecls(ArrayList<Decl> decls)
     {
-        for (Decl d : decls)
-        {
-            // Make sure that emits all elements for each decl.
-            gen.emitTopLevelDecl(d);
-        }
+        // Make sure that emits all elements for each decl.
+        gen.handleTopLevelDecls(decls);
     }
 
     /**
@@ -155,6 +151,8 @@ public class BackendConsumer implements ASTConsumer
     @Override
     public void handleTranslationUnit()
     {
+        gen.handleTranslationUnit();
+
         // Emits assembly code or hir code for backend.target.
         emitAssembly();
 
@@ -172,7 +170,19 @@ public class BackendConsumer implements ASTConsumer
         }
     }
 
-	/**
+    @Override
+    public void handleTagDeclDefinition(Decl.TagDecl tag)
+    {
+        gen.handleTagDeclDefinition(tag);
+    }
+
+    @Override
+    public void completeTentativeDefinition(Decl.VarDecl d)
+    {
+        gen.completeTentativeDefinition(d);
+    }
+
+    /**
      * Handle to interactive with backend to generate actual machine code
      * or assembly code.
      */
