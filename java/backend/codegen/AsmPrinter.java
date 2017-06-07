@@ -426,7 +426,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 os.print(data16BitDirective);
                 break;
             case Type.PointerTyID:
-                if (td.getPointerSize() == 8)
+                if (td.getPointerMemSize() == 8)
                 {
                     os.print(data64BitDirective);
                     break;

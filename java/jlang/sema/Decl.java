@@ -1451,6 +1451,18 @@ public abstract class Decl
         {
             return dc.getPrimaryContext();
         }
+
+        /**
+         * Returns whether this specific
+         * declaration of the function is also a definition. This does not
+         * determine whether the function has been defined (e.g., in a
+         * previous definition); for that information, use getBody.
+         * @return
+         */
+        public boolean isThisDeclarationADefinition()
+        {
+            return body != null;
+        }
     }
 
     /**

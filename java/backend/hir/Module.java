@@ -27,7 +27,6 @@ import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
  */
 public final class Module implements Iterable<Function>
 {
-	private static final Context.Key HIRKey = new Context.Key();
 	/**
 	 * A list of global variables.
 	 */
@@ -46,6 +45,11 @@ public final class Module implements Iterable<Function>
      * Human readable unique identifier for this module.
      */
     private String moduleID;
+
+    private String dataLayout;
+
+    private String targetTriple;
+
 	
 	/**
 	 * An singleton method for instantiating an instance of this class.
@@ -57,12 +61,7 @@ public final class Module implements Iterable<Function>
 	public static Module instance(Context context, List<GlobalVariable> vars,
 			List<Function> functions)
 	{
-		Module instance = (Module)context.get(HIRKey);
-		if (instance == null)
-		{
-			instance = null;// = new Module(vars, functions);
-			context.put(HIRKey, instance);
-		}
+		Module instance = null;
 		return instance;
 	}
 	
@@ -152,5 +151,25 @@ public final class Module implements Iterable<Function>
 
 		// Otherwise, we just found the existing function.
 		return f;
+	}
+
+	public void setTargetTriple(String targetTriple)
+	{
+		this.targetTriple = targetTriple;
+	}
+
+	public void setDataLayout(String dataLayout)
+	{
+		this.dataLayout = dataLayout;
+	}
+
+	public String getTargetTriple()
+	{
+		return targetTriple;
+	}
+
+	public String getDataLayout()
+	{
+		return dataLayout;
 	}
 }

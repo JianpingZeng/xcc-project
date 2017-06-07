@@ -16,11 +16,14 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.hir.Module;
+import backend.target.TargetData;
 import backend.type.*;
 import backend.type.FunctionType;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
+import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.sema.Decl.FieldDecl;
 import jlang.sema.Decl.VarDecl;
@@ -138,9 +141,9 @@ public class CodeGenTypes
     private HashMap<FieldDecl, BitFieldInfo> bitfields;
 
     private HashMap<jlang.type.Type, CGRecordLayout> cgRecordLayout;
-    public CodeGenTypes(HIRModuleGenerator module)
+    public CodeGenTypes(HIRModuleGenerator moduleBuilder)
     {
-        builder = module;
+        builder = moduleBuilder;
         typeCaches = new HashMap<>();
         recordBeingLaidOut = new HashSet<>();
         functionBeingProcessed = new HashSet<>();
@@ -218,6 +221,25 @@ public class CodeGenTypes
         boolean erased = functionBeingProcessed.remove(fi);
         assert erased:"Not in set?";
         return FunctionType.get(restType, argTypes, isVaridic);
+    }
+
+    /**
+     * Convert type {@code t} into a backend.type. This differs from {@linkplain
+     * #convertType(QualType)} in that it is used to convert to the memory representation
+     * for a type. For example, the scalar representation for _Bool is i1, but it's memory
+     * representation is usually i8 or i32, depending on the target.
+     * @param t
+     * @return
+     */
+    public backend.type.Type convertTypeForMem(QualType t)
+    {
+        backend.type.Type res = convertType(t);
+
+        // If this is a non-bool type, don't map it.
+        if (!res.equals(Type.Int1Ty))
+            return res;
+
+        return backend.type.IntegerType.get((int)builder.getASTContext().getTypeSize(t));
     }
 
     /**
@@ -519,26 +541,6 @@ public class CodeGenTypes
     }
 
     public boolean noRecordBeingLaidOut() { return recordBeingLaidOut.isEmpty();}
-
-    /**
-     * Convert type T into a backend.type.Type.  This differs from
-     * ConvertType in that it is used to convert to the memory representation for
-     * a type.  For example, the scalar representation for _Bool is i1, but the
-     * memory representation is usually i8 or i32, depending on the TargetData.
-     * @param qualType
-     * @return
-     */
-    public backend.type.Type convertTypeForMem(QualType qualType)
-    {
-        backend.type.Type r = convertType(qualType);
-
-        // If this is a non-bool type, don't map it.
-        if (!r.isIntegerType())
-            return r;
-
-        // Otherwise, return an integer of the TargetData-specified getNumOfSubLoop.
-        return IntegerType.get((int)qualType.getTypeSize());
-    }
 
     /**
      * Verify if a given function type is complete, i.e. return type and all

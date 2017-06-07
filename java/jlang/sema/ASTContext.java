@@ -20,6 +20,7 @@ import jlang.ast.Tree.Expr;
 import jlang.basic.*;
 import jlang.basic.TargetInfo.IntType;
 import jlang.clex.IdentifierTable;
+import jlang.diag.FullSourceLoc;
 import jlang.sema.Decl.*;
 import jlang.type.*;
 import jlang.type.ArrayType.*;
@@ -1075,6 +1076,11 @@ public final class ASTContext
 	{
 		// See C99 6.3.2.1p2.
 		return !type.isRecordType() ? type.getUnQualifiedType() : type;
+	}
+
+	public FullSourceLoc getFullLoc(SourceLocation location)
+	{
+		return new FullSourceLoc(location, sourceMgr);
 	}
 
     enum FloatingRank

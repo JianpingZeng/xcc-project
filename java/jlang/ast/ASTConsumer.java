@@ -59,4 +59,8 @@ public interface ASTConsumer
      * @param tag
      */
     default void handleTagDeclDefinition(Decl.TagDecl tag){}
+
+    default void completeTentativeDefinition(Decl.VarDecl d)
+    {
+    }
 }
