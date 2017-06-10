@@ -150,4 +150,10 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 		// TODO
 		return false;
 	}
+
+	public Argument argAt(int index)
+	{
+		assert index >= 0 && index < getNumOfArgs();
+		return argumentList.get(index);
+	}
 }

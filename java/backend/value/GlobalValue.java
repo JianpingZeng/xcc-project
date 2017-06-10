@@ -28,7 +28,6 @@ import static backend.value.GlobalValue.LinkageType.*;
  */
 public abstract class GlobalValue extends Constant
 {
-
     /**
      * An enumeration for the kinds of linkage for global variable and function.
      */
@@ -136,5 +135,41 @@ public abstract class GlobalValue extends Constant
     {
         assert (align & (align - 1)) == 0:"Alignment must be power of 2!";
         alignment = align;
+    }
+
+    static private boolean doesConstantDead(Constant c)
+    {
+        if (c instanceof GlobalValue) return false;
+
+        for (int i = 0; i < c.getNumUses(); i++)
+        {
+            User u = c.useAt(i).getUser();
+            if (!(u instanceof Constant))
+                return false;
+            if (!doesConstantDead((Constant)u))
+                return false;
+            c.getUseList().remove(i);
+        }
+        return true;
+    }
+
+    /**
+     * If there are any dead constant users dangling
+     * off of this global value, remove them.  This method is useful for clients
+     * that want to check to see if a global is unused, but don't want to deal
+     * with potentially dead constants hanging off of the globals.
+     */
+    public void removeDeadConstantUsers()
+    {
+        for(int i = 0; i < getNumUses(); i++)
+        {
+            User u = useAt(i).getUser();
+            if (!(u instanceof Constant))
+                continue;
+
+            Constant c = (Constant)u;
+            if (doesConstantDead(c))
+                usesList.remove(i);
+        }
     }
 }

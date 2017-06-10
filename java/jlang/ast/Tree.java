@@ -491,6 +491,11 @@ public abstract class Tree
             else
                 stats = null;
         }
+
+        public SourceLocation getLBraceLoc()
+		{
+			return lBraceLoc;
+		}
     }
 
 	/**

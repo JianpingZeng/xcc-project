@@ -7,6 +7,7 @@ import backend.hir.Operator;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
+import jlang.codegen.CallingConv;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -2124,6 +2125,7 @@ public abstract class Instruction extends User
     {
         // Returns the operand number of the first argument
         private final int ArgumentOffset = 1;
+        private CallingConv callingConv;
 
         public CallInst(Value[] args, Value target)
         {
@@ -2224,6 +2226,16 @@ public abstract class Instruction extends User
                 return new CallSite((CallInst) val);
             }
             return new CallSite();
+        }
+
+        public CallingConv getCallingConv()
+        {
+            return callingConv;
+        }
+
+        public void setCallingConv(CallingConv callingConv)
+        {
+            this.callingConv = callingConv;
         }
     }
 

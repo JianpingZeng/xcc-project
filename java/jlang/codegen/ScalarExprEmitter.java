@@ -571,13 +571,13 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 // Case#1: 1 && X.
                 Value rhsCond = cgf.evaluateExprAsBool(expr.getRHS());
                 // ZExt to int.
-                return builder.createZExt(rhsCond, cgf.BackendIntTy, "land.ext");
+                return builder.createZExt(rhsCond, cgf.BACKEND_INTTy, "land.ext");
             }
 
             // 0 && X: if it is safe, just elide the rhs, and return 0.
             if (!cgf.containsLabel(expr.getRHS(), false))
             {
-                return Constant.getNullValue(cgf.BackendIntTy);
+                return Constant.getNullValue(cgf.BACKEND_INTTy);
             }
         }
 
@@ -608,7 +608,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         phiNode.addIncoming(rhsCond, rhsBlock);
 
         // ZExt result to int.
-        return builder.createZExt(phiNode, cgf.BackendIntTy, "land.zext");
+        return builder.createZExt(phiNode, cgf.BACKEND_INTTy, "land.zext");
     }
 
     public Value visitBinLOr(BinaryExpr expr)
@@ -623,14 +623,14 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             {
                 //  1 || rhs.
                 if (!cgf.containsLabel(expr.getRHS(), false))
-                    return ConstantInt.get(cgf.BackendIntTy, 1);
+                    return ConstantInt.get(cgf.BACKEND_INTTy, 1);
             }
             else
             {
                 Value cond = cgf.evaluateExprAsBool(expr.getRHS());
 
                 // ZExt to int.
-                return builder.createZExt(cond, cgf.BackendIntTy, "lor.zext");
+                return builder.createZExt(cond, cgf.BACKEND_INTTy, "lor.zext");
             }
         }
 
@@ -661,7 +661,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         phiNode.addIncoming(rhsCond, rhsBlock);
 
         // ZExt result to int.
-        return builder.createZExt(rhsCond, cgf.BackendIntTy, "lor.zext");
+        return builder.createZExt(rhsCond, cgf.BACKEND_INTTy, "lor.zext");
     }
 
     public Value visitBinAssign(BinaryExpr expr)
