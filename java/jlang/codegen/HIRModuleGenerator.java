@@ -8,6 +8,7 @@ import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
+import backend.value.Instruction.CallInst;
 import jlang.ast.Tree.*;
 import jlang.basic.CompileOptions;
 import jlang.diag.Diagnostic;
@@ -331,7 +332,7 @@ public class HIRModuleGenerator
     {
         if (ty == null)
             ty = getCodeGenTypes().convertType(fd.getDeclType());
-        return getOrCreateFunction(fd.getDeclName(), ty, fd);
+        return getOrCreateFunction(fd.getNameAsString(), ty, fd);
     }
 
 	/**
@@ -341,25 +342,42 @@ public class HIRModuleGenerator
      *
      * If D is non-null, it specifies a decl that correspond to this.  This is used
      * to set the attributes on the function when it is first created.
-     * @param name
+     * @param mangledName
      * @param type
      * @param fd
      * @return
      */
-    private Constant getOrCreateFunction(String name, Type type, FunctionDecl fd)
+    private Constant getOrCreateFunction(String mangledName, Type type, FunctionDecl fd)
     {
-        GlobalValue entry = globalDeclMaps.get(name);
+        GlobalValue entry = globalDeclMaps.get(mangledName);
         if (entry != null)
         {
-            if (entry.getType().getElemType() == type)
+            if (entry.getType().getElemType().equals(type))
                 return entry;
 
             // Make sure the result is of the correct type.
-            Type ptrType = PointerType.get(type);
+            Type ptrType = PointerType.getUnqual(type);
             return getBitCast(entry, ptrType);
         }
 
-        // This function doesn't have a complete type(for example, return
+        // This is the first use or definition of a mangled name.  If there is a
+        // deferred decl with this name, remember that we need to emit it at the end
+        // of the file.
+        if (deferredDecls.containsKey(mangledName))
+        {
+            // Move the potentially referenced deferred decl to deferredDeclsToEmit list.
+            deferredDeclToEmit.add(fd);
+            deferredDecls.remove(mangledName);
+        }
+        else
+        {
+            // If this is the first reference to a inline function.
+            // queue up the deferred function body fo emission.
+            if (fd.isThisDeclarationADefinition() && mayDeferGeneration(fd))
+                deferredDeclToEmit.add(fd);
+        }
+
+        // This function doesn't have a complete type (for example, return
         // type is an incomplete struct). Use a fake type instead.
         boolean isIncompleteFunction = false;
         if (!(type instanceof FunctionType))
@@ -370,9 +388,9 @@ public class HIRModuleGenerator
 
         Function f = new Function((FunctionType)type, ExternalLinkage, "", getModule());
 
-        f.setName(name);
-        entry = f;
-        return entry;
+        f.setName(mangledName);
+        globalDeclMaps.put(mangledName, f);
+        return f;
     }
 
     public Constant getAddrOfGlobalVar(VarDecl vd)
@@ -444,6 +462,65 @@ public class HIRModuleGenerator
         return gv;
     }
 
+    private static void replaceUsesOfNonProtoTypeWithRealFuncion(GlobalValue old,
+                                                                 Function newFn)
+    {
+        if (!(old instanceof Function))
+            return;
+
+        Function oldFn = (Function)old;
+        Type newRetTy = newFn.getReturnType();
+        ArrayList<Value> argList = new ArrayList<>();
+        for (int i = 0, e = oldFn.getNumUses(); i < e; i++)
+        {
+            User u = oldFn.useAt(i).getUser();
+            if (!(u instanceof CallInst) || i != 0)
+                continue;
+
+            // If the return types don't match exactly, and if the call isn't dead, then
+            // we can't transform this call.
+            CallInst ci = (CallInst)u;
+            if (!ci.getType().equals(newRetTy) && !ci.isUseEmpty())
+                continue;
+
+
+            // If the function was passed too few arguments, don't transform.  If extra
+            // arguments were passed, we silently drop them.  If any of the types
+            // mismatch, we don't transform.
+            int argNo = 0;
+            boolean dontTransform = false;
+            for (int j = 0, sz = newFn.getNumOfArgs(); j < sz; j++, argNo++)
+            {
+                if (ci.getNumsOfArgs() == argNo ||
+                        !ci.argumentAt(argNo).getType().equals(newFn.argAt(j).getType()))
+                {
+                    dontTransform = true;
+                    break;
+                }
+            }
+
+            if (dontTransform)
+                continue;
+
+
+            // Okay, we can transform this.  Create the new call instruction and copy
+            // over the required information.
+            for (int j = 0; j < argNo; j++)
+                argList.add(ci.argumentAt(j));
+
+            Value[] args = new Value[argNo];
+            argList.toArray(args);
+            CallInst newCI = new CallInst(args, newFn,"", ci);
+            if (!newCI.getType().equals(Type.VoidTy))
+                newCI.setName(ci.getName());
+
+            newCI.setCallingConv(ci.getCallingConv());
+            if(!ci.isUseEmpty())
+                ci.replaceAllUsesWith(newCI);
+            ci.eraseFromBasicBlock();
+        }
+    }
+
     /**
      * Emits code for global function definition.
      * @param fd
@@ -453,7 +530,15 @@ public class HIRModuleGenerator
         FunctionType ty = (FunctionType) getCodeGenTypes().
                 convertType(fd.getDeclType());
 
-        // Gets or creats the prototype for the function.
+        if (fd.getDeclType().isFunctionNoProtoType())
+        {
+            assert ty.isVarArgs():"Didnot lower type as expected";
+            ArrayList<Type> args = new ArrayList<>();
+            args.addAll(ty.getParamTypes());
+            ty = FunctionType.get(ty.getReturnType(), args, false);
+        }
+
+        // Gets or creates the prototype for the function.
         Constant entry = getAddrOfFunction(fd, ty);
 
         // strip off a bitcast if we got back.
@@ -464,9 +549,37 @@ public class HIRModuleGenerator
             entry = ce.operand(0);
         }
 
+        if (!((GlobalValue)entry).getType().getElemType().equals(ty))
+        {
+            GlobalValue oldFn = (GlobalValue)entry;
+
+            assert oldFn.isDeclaration() :"Should not replace non-declaration";
+
+            globalDeclMaps.remove(getMangledName(fd));
+            Function newFn = (Function)getAddrOfFunction(fd, ty);
+            newFn.setName(oldFn.getName());
+
+            if (fd.getDeclType().isFunctionNoProtoType())
+            {
+                replaceUsesOfNonProtoTypeWithRealFuncion(oldFn, newFn);
+                oldFn.removeDeadConstantUsers();
+            }
+
+            if (!entry.isUseEmpty())
+            {
+                Constant newPtrForOldDecl = ConstantExpr.getBitCast(newFn, entry.getType());
+                entry.replaceAllUsesWith(newPtrForOldDecl);
+            }
+
+            oldFn.eraseFromParent();
+            entry = newFn;
+        }
+
         // create a function instance
         Function fn = (Function)entry;
         new CodeGenFunction(this).generateCode(fd, fn);
+
+        globalDeclMaps.put(getMangledName(fd), fn);
     }
 
     public Module getModule() { return m;}
@@ -486,7 +599,7 @@ public class HIRModuleGenerator
     {
         Expr.EvalResult result = new Expr.EvalResult();
 
-        boolean success = expr.evaluate(result);
+        boolean success = expr.evaluate(result, ctx);
 
         if (success)
         {
@@ -511,7 +624,7 @@ public class HIRModuleGenerator
                         if (!offset.isNullValue())
                         {
                             backend.type.Type type = PointerType.get(
-                                    backend.type.Type.Int8Ty);
+                                    backend.type.Type.Int8Ty, ty.getAddressSpace());
                             Constant casted = getBitCast(c, type);
                             casted = getElementPtr(casted, offset, 1);
                             c = getBitCast(casted, c.getType());
@@ -675,7 +788,7 @@ public class HIRModuleGenerator
         return new GlobalVariable(genModule.getModule(),
                 c.getType(), constant,
                 PrivateLinkage,
-                c, globalName);
+                c, globalName, null, 0);
     }
 
 	/**

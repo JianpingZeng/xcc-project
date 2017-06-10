@@ -47,6 +47,17 @@ public class PointerType extends SequentialType
         return pt;
     }
 
+    /**
+     * This constructs a pointer to an object of the
+     * specified type in the generic address space (address space zero).
+     * @param elemType
+     * @return
+     */
+    public static PointerType getUnqual(Type elemType)
+    {
+        return get(elemType, 0);
+    }
+
     public int getAddressSpace()
     {
         return addressSpace;

@@ -1,7 +1,7 @@
 package jlang.codegen;
 /*
- * Xlous C language CompilerInstance
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,12 +26,15 @@ import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.TerminatorInst;
 import jlang.ast.Tree;
 import jlang.basic.APInt;
+import jlang.basic.SourceLocation;
+import jlang.basic.TargetInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo.ArgInfo;
 import jlang.sema.*;
 import jlang.sema.Decl.*;
 import jlang.type.ArrayType;
 import jlang.type.ComplexType;
+import jlang.type.FunctionProtoType;
 import jlang.type.QualType;
 import tools.Pair;
 import tools.Util;
@@ -41,7 +44,7 @@ import java.util.*;
 import static jlang.ast.Tree.*;
 
 /**
- * This class responsible for generating HIR code.
+ * This class responsible for generating LLVM code from AST.
  *
  * @author Xlous.zeng
  * @version 0.1
@@ -49,6 +52,7 @@ import static jlang.ast.Tree.*;
 public final class CodeGenFunction
 {
 	private HIRModuleGenerator generator;
+	private TargetInfo target;
 	private FunctionDecl curFnDecl;
 	private Function curFn;
 	private QualType fnRetTy;
@@ -93,7 +97,7 @@ public final class CodeGenFunction
 	private CGFunctionInfo curFnInfo;
 
 	public int pointerWidth;
-	public Type BackendIntTy;
+	public Type BACKEND_INTTy;
 
 	static class BreakContinue
 	{
@@ -124,20 +128,27 @@ public final class CodeGenFunction
 	public CodeGenFunction(HIRModuleGenerator generator)
 	{
 		this.generator = generator;
+		target = generator.getASTContext().target;
 		builder = new HIRBuilder();
 		localVarMaps = new HashMap<>();
 		labelMap = new HashMap<>();
 		vlaSizeMap = new HashMap<>();
 		breakContinueStack = new Stack<>();
-		pointerWidth = 64;
+		pointerWidth = target.getPointerWidth(0);
+		BACKEND_INTTy = convertType(getContext().IntTy);
+	}
+
+	public ASTContext getContext()
+	{
+		return generator.getASTContext();
 	}
 
 	/**
 	 * This method is the entry for emitting HIR code for a function definition.
+     * All emited LLVM IR code will be stored in the Function object {@code fn}.
 	 * <p>
 	 * It responsible for several tasks, emitting code for standard function
 	 * prologue, function body statement, and function epilogue.
-	 *
 	 * </p>
 	 * @param fd
 	 * @param fn
@@ -146,18 +157,22 @@ public final class CodeGenFunction
 	{
 		QualType resTy = fd.getReturnType();
 
+		// Obtains the a pair of VarDecl and QualType for each formal parameter.
 		ArrayList<Pair<VarDecl, QualType>> functionArgList = new ArrayList<>(16);
 		if (fd.getNumParams() > 0)
 		{
-			jlang.type.FunctionType ft = fd.getDeclType().getFunctionType();
+            FunctionProtoType fproto = fd.getDeclType().getAsFunctionProtoType();
+            assert fproto != null :"Function def must have prototype!";
+
 			for (int i = 0, e = fd.getNumParams(); i < e; i++)
-				functionArgList.add(new Pair<>(fd.getParamDecl(i), ft.getArgType(i)));
+				functionArgList.add(new Pair<>(fd.getParamDecl(i), fproto.getArgType(i)));
 		}
+
 		CompoundStmt body = fd.getCompoundBody();
 		if (body != null)
 		{
 			// emit the standard function prologue.
-			startFunction(fd, resTy, fn, functionArgList);
+			startFunction(fd, resTy, fn, functionArgList, body.getLBraceLoc());
 			// Generates code for function body.
 			emitStmt(body);
 
@@ -166,8 +181,11 @@ public final class CodeGenFunction
 		}
 	}
 
-	private void startFunction(FunctionDecl fd, QualType resTy, Function fn,
-			ArrayList<Pair<VarDecl, QualType>> args)
+	private void startFunction(FunctionDecl fd,
+                               QualType resTy,
+                               Function fn,
+                               ArrayList<Pair<VarDecl, QualType>> args,
+                               SourceLocation startLoc)
 	{
 		curFn = fn;
 		curFnDecl = fd;
@@ -1481,7 +1499,7 @@ public final class CodeGenFunction
 	 * Complete HIR generation for current function, then it is legal to call
 	 * this function.
 	 */
-	public void finishFunction(int endLoc)
+	public void finishFunction(SourceLocation endLoc)
 	{
 		assert breakContinueStack.isEmpty()
 				:"mismatched push/pop in break/continue stack!";
