@@ -16,7 +16,6 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import javafx.scene.shape.VLineTo;
 import tools.Util;
 
 import java.util.ArrayList;
@@ -163,7 +162,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
         assert tm
                 .getRegInfo() instanceof X86RegisterInfo : "Current target doesn't have x86 reg info!";
         X86RegisterInfo mri = (X86RegisterInfo) tm.getRegInfo();
-        if (ty.getPrimitiveID() == Type.Int64TyID)
+        if (ty.getPrimitiveID() == Type.IntegerTyID)
         {
             TargetRegisterClass rc = mri.getRegClassForType(Type.Int32Ty);
             mf.getMachineRegisterInfo().createVirtualRegister(rc);
@@ -1077,14 +1076,14 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
     {
         switch (ty.getPrimitiveID())
         {
-            case Type.Int1TyID:
-            case Type.Int8TyID:
+            case Type.IntegerTyID:
+            case Type.IntegerTyID:
                 return TypeClass.i8;
-            case Type.Int16TyID:
+            case Type.IntegerTyID:
                 return TypeClass.i16;
-            case Type.Int32TyID:
+            case Type.IntegerTyID:
                 return TypeClass.i32;
-            case Type.Int64TyID:
+            case Type.IntegerTyID:
                 return i64;
             case Type.FloatTyID:
                 return TypeClass.f32;
@@ -2133,18 +2132,18 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
         int promoteOpcode = 0;
         switch (srcTy.getPrimitiveID())
         {
-            case Type.Int1TyID:
-            case Type.Int8TyID:
+            case Type.IntegerTyID:
+            case Type.IntegerTyID:
                 promoteType = Type.Int16Ty;
                 promoteOpcode = srcTy.isSigned()?
                         X86InstrNames.MOVSXr16r8: X86InstrNames.MOVZXr16r8;
                 break;
-            case Type.Int16TyID:
+            case Type.IntegerTyID:
                 promoteType = Type.Int32Ty;
                 promoteOpcode = srcTy.isSigned()?
                         X86InstrNames.MOVSXr32r16: X86InstrNames.MOVZXr32r16;
                 break;
-            case Type.Int32TyID:
+            case Type.IntegerTyID:
                 int tempReg = makeAnotherReg(Type.Int64Ty);
                 buildMI(mbb, X86InstrNames.MOVrr32, 1, tempReg).addReg(srcReg);
                 buildMI(mbb, X86InstrNames.MOVir32, 1, tempReg+1).addZImm(0);

@@ -16,10 +16,38 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.type.Type;
+
+import java.util.Set;
+import java.util.TreeSet;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
 public class CGRecordLayout
 {
+    private backend.type.Type sty;
+    private TreeSet<Integer> paddingFields;
+    public CGRecordLayout(Type ty, Set<Integer> paddingFields)
+    {
+        sty = ty;
+        this.paddingFields = new TreeSet<>();
+        this.paddingFields.addAll(paddingFields);
+    }
+
+    public Type getLLVMType()
+    {
+        return sty;
+    }
+
+    public boolean isPaddingField(int no)
+    {
+        return paddingFields.contains(no);
+    }
+
+    public int getNumPaddingFields()
+    {
+        return paddingFields.size();
+    }
 }

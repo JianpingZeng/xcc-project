@@ -44,11 +44,11 @@ public abstract class Constant extends User
     {
         switch (type.getPrimitiveID())
         {
-            case Type.Int1TyID:
-            case Type.Int8TyID:
-            case Type.Int16TyID:
-            case Type.Int32TyID:
-            case Type.Int64TyID:
+            case Type.IntegerTyID:
+            case Type.IntegerTyID:
+            case Type.IntegerTyID:
+            case Type.IntegerTyID:
+            case Type.IntegerTyID:
                 return ConstantInt.get((IntegerType) type, 0);
 
             case Type.FloatTyID:

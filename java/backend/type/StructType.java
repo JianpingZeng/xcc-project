@@ -29,23 +29,25 @@ import java.util.ArrayList;
  */
 public class StructType extends CompositeType
 {
-
     static class StructValType
     {
         ArrayList<Type> elemTypes;
-
-        StructValType(ArrayList<Type> args)
+        private boolean packed;
+        StructValType(ArrayList<Type> args, boolean packed)
         {
             elemTypes = new ArrayList<>(args.size());
-            for (Type t : args)
-                elemTypes.add(t);
+            elemTypes.addAll(args);
+            this.packed = packed;
         }
     }
     /**
      * An array of struct member type.
      */
     private ArrayList<Type> elementTypes;
+
     private static TypeMap<StructValType, StructType> structTypes;
+
+    private boolean packed;
 
     /**
      * A place holder type.
@@ -58,18 +60,39 @@ public class StructType extends CompositeType
 
     protected StructType(ArrayList<Type> memberTypes)
     {
-        super(StructTyID);
-        elementTypes = new ArrayList<>(memberTypes.size());
-        for (Type t : memberTypes)
-            elementTypes.add(t);
+        this(memberTypes, false);
     }
 
-    public static StructType get(ArrayList<Type> memberTypes)
+    private boolean isValidElementType(backend.type.Type elemTy)
     {
-        StructValType svt = new StructValType(memberTypes);
+        return  !(elemTy.equals(Type.VoidTy) || elemTy.equals(Type.LabelTy));
+    }
+
+    protected StructType(ArrayList<Type> memberTypes, boolean packed)
+    {
+        super(StructTyID);
+        elementTypes = new ArrayList<>(memberTypes.size());
+
+        this.packed = packed;
+        isAbstract = false;
+        for(int i = 0, e = memberTypes.size(); i < e; i++)
+        {
+            assert memberTypes.get(i) != null :"<null> type for structure type!";
+            assert isValidElementType(memberTypes.get(i)) :"Invalid type for structure element!";
+            isAbstract |= memberTypes.get(i).isAbstract();
+            this.elementTypes.add(memberTypes.get(i));
+        }
+        setAbstract(isAbstract);
+    }
+
+    public static StructType get(ArrayList<Type> memberTypes, boolean packed)
+    {
+        StructValType svt = new StructValType(memberTypes, packed);
         StructType st = structTypes.get(svt);
         if (st != null)
             return st;
+
+        st = new StructType(memberTypes, packed);
         structTypes.put(svt, st);
         return st;
     }
@@ -108,4 +131,9 @@ public class StructType extends CompositeType
     public int getNumOfElements() { return elementTypes.size();}
 
     public Type getElementType(int idx){return elementTypes.get(idx);}
+
+    public boolean isPacked()
+    {
+        return packed;
+    }
 }
