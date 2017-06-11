@@ -24,42 +24,70 @@ import tools.TypeMap;
  */
 public final class ArrayType extends SequentialType
 {
-
     static class ArrayValType
     {
         final Type valType;
-        final long size;
-
-        ArrayValType(final Type val, long sz)
+        final int numElts;
+        ArrayValType(Type val, int numElts)
         {
             valType = val;
-            size = sz;
+            this.numElts = numElts;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return numElts << 23 + valType.hashCode() << 11;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null) return false;
+            if (this == obj) return true;
+            if (getClass() != obj.getClass())
+                return false;
+
+            ArrayValType avt = (ArrayValType)obj;
+            return avt.valType.equals(valType) && avt.numElts == numElts;
         }
     }
 
-    private long numElements;
     private static TypeMap<ArrayValType, ArrayType> arrayTypes;
-    static {
+    static
+    {
         arrayTypes = new TypeMap<>();
     }
-    protected ArrayType(Type elemType, long numElts)
+
+    protected ArrayType(Type elemType, int numElts)
     {
         super(ArrayTyID, elemType);
-        numElements = numElts;
+        this.numElts = numElts;
+        setAbstract(elemType.isAbstract());
     }
 
-    public static ArrayType get(Type elemType, long numElts)
+    public static ArrayType get(Type elemType, long numElements)
     {
-        assert elemType!=null:"Can't get array of null types!";
-        ArrayValType avt = new ArrayValType(elemType, numElts);
+        assert elemType != null:"Can't get array of null types!";
+        ArrayValType avt = new ArrayValType(elemType, (int)numElements);
         ArrayType at = arrayTypes.get(avt);
         if (at != null)
             return at;
+
+        at = new ArrayType(elemType, (int)numElements);
 
         // Value not found.  Derive a new type!
         arrayTypes.put(avt, at);
         return at;
     }
 
-    public long getNumElements() { return numElements;}
+    public long getNumElements()
+    {
+        return numElts;
+    }
+
+    public boolean isValidElementType(Type eleTy)
+    {
+        return !(eleTy == Type.VoidTy || eleTy == Type.LabelTy);
+    }
 }

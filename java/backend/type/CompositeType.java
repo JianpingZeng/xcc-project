@@ -25,9 +25,9 @@ import backend.value.Value;
  */
 public abstract class CompositeType extends Type
 {
-    protected CompositeType(int primitiveID)
+    protected CompositeType(int typeID)
     {
-        super("", primitiveID);
+        super(typeID);
     }
 
     public abstract Type getTypeAtIndex(Value v);

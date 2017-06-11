@@ -830,7 +830,7 @@ public final class ScalarEvolution implements FunctionPass
         Type srcTy = value.getType();
         assert isSCEVable(srcTy);
 
-        int diff = srcTy.getPrimitiveSize() - ty.getPrimitiveSize();
+        int diff = getTypeSizeBits(srcTy) - getTypeSizeBits(ty);
         return diff == 0?value: diff < 0 ?
                 SCEVZeroExtendExpr.get(value, ty): SCEVTruncateExpr.get(value, ty);
     }

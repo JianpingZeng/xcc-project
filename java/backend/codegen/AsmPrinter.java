@@ -416,7 +416,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         }
 
         Type type = c.getType();
-        switch (type.getPrimitiveID())
+        switch (type.getTypeID())
         {
             case Type.IntegerTyID:
             case Type.IntegerTyID:

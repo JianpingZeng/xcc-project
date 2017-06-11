@@ -42,7 +42,7 @@ public abstract class Constant extends User
 
     public static Constant getNullValue(Type type)
     {
-        switch (type.getPrimitiveID())
+        switch (type.getTypeID())
         {
             case Type.IntegerTyID:
             case Type.IntegerTyID:

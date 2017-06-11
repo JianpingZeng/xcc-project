@@ -162,7 +162,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
         assert tm
                 .getRegInfo() instanceof X86RegisterInfo : "Current target doesn't have x86 reg info!";
         X86RegisterInfo mri = (X86RegisterInfo) tm.getRegInfo();
-        if (ty.getPrimitiveID() == Type.IntegerTyID)
+        if (ty.getTypeID() == Type.IntegerTyID)
         {
             TargetRegisterClass rc = mri.getRegClassForType(Type.Int32Ty);
             mf.getMachineRegisterInfo().createVirtualRegister(rc);
@@ -1074,7 +1074,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
     private static int getClass(Type ty)
     {
-        switch (ty.getPrimitiveID())
+        switch (ty.getTypeID())
         {
             case Type.IntegerTyID:
             case Type.IntegerTyID:
@@ -2130,7 +2130,7 @@ public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
 
         Type promoteType = null;
         int promoteOpcode = 0;
-        switch (srcTy.getPrimitiveID())
+        switch (srcTy.getTypeID())
         {
             case Type.IntegerTyID:
             case Type.IntegerTyID:

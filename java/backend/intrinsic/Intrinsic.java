@@ -40,10 +40,10 @@ public class Intrinsic
 		{
 			if (ty instanceof PointerType)
 			{
-				result += ".p" + Type.getString(((PointerType)ty).getElemType());
+				result += ".p" + (((PointerType)ty).getElemType()).getDescription();
 			}
 			else
-				result += "." + Type.getString(ty);
+				result += "." + ty.getDescription();
 		}
 		return result;
 	}
