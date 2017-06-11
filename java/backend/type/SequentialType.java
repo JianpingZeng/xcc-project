@@ -30,14 +30,18 @@ import backend.value.Value;
 public class SequentialType extends CompositeType
 {
     protected Type elemType;
-
-    protected SequentialType(int primitiveID, final Type elemType)
+    protected int numElts;
+    protected SequentialType(int primitiveID, Type elemType)
     {
         super(primitiveID);
         this.elemType = elemType;
+        numElts = 1;
     }
 
-    public Type getElemType() { return elemType;}
+    public Type getElemType()
+    {
+        return elemType;
+    }
 
     /**
      * Returns an element type at the specified position.

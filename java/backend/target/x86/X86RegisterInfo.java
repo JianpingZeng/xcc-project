@@ -443,7 +443,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 	 */
 	public TargetRegisterClass getRegClassForType(Type ty)
 	{
-		switch (ty.getPrimitiveID())
+		switch (ty.getTypeID())
 		{
 			case Type.IntegerTyID:
 			case Type.IntegerTyID:

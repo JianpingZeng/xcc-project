@@ -24,7 +24,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class FunctionType extends Type
+public class FunctionType extends DerivedType
 {
     static class FunctionValType
     {
@@ -32,8 +32,7 @@ public class FunctionType extends Type
         ArrayList<Type> argTypes;
         boolean isVarArg;
 
-        public FunctionValType(Type resultType,
-                ArrayList<Type> params,
+        public FunctionValType(Type resultType, ArrayList<Type> params,
                 boolean isVarArg)
         {
             retTy = resultType;
@@ -41,32 +40,56 @@ public class FunctionType extends Type
             params.forEach(x -> argTypes.add(x));
             this.isVarArg = isVarArg;
         }
+
+        @Override public int hashCode()
+        {
+            return retTy.hashCode() << 23 + argTypes.hashCode() << 11 + (
+                    isVarArg ?
+                            1 :
+                            0);
+        }
+
+        @Override public boolean equals(Object obj)
+        {
+            if (obj == null)
+                return false;
+            if (this == obj)
+                return true;
+            if (getClass() != obj.getClass())
+                return false;
+
+            FunctionValType fvt = (FunctionValType) obj;
+            return retTy.equals(fvt.retTy) && argTypes.equals(fvt.argTypes)
+                    && isVarArg == fvt.isVarArg;
+        }
     }
 
     private Type resultType;
     private ArrayList<Type> paramTypes;
     private boolean isVarArgs;
 
-    private static TypeMap<FunctionValType, FunctionType> functionTypes;
-    static
-    {
-        functionTypes = new TypeMap<>();
-    }
+    private static TypeMap<FunctionValType, FunctionType> functionTypes = new TypeMap<>();
 
-    private FunctionType(final Type retType,
-            final ArrayList<Type> argsType,
+    private FunctionType(Type retType, final ArrayList<Type> argsType,
             boolean isVarArgs)
     {
-        super("",  FunctionTyID);
+        super(FunctionTyID);
         resultType = retType;
         this.isVarArgs = isVarArgs;
-
+        isAbstract = retType.isAbstract();
         paramTypes = new ArrayList<>(argsType.size());
-        argsType.forEach((x)->paramTypes.add(x));
+        for (Type argTy : argsType)
+        {
+            assert isValidArgumentType(argTy)
+                    : "Not a valid type for function argument";
+            paramTypes.add(argTy);
+            isAbstract |= argTy.isAbstract();
+        }
+
+        setAbstract(isAbstract);
     }
 
-    public static FunctionType get(Type result,
-            ArrayList<Type> params,
+    public static FunctionType get(Type result, ArrayList<Type> params,
             boolean isVarArgs)
     {
         FunctionValType fvt = new FunctionValType(result, params, isVarArgs);
@@ -75,6 +98,36 @@ public class FunctionType extends Type
             return ft;
         functionTypes.put(fvt, ft);
         return ft;
+    }
+
+    public static FunctionType get(Type resultType, boolean isVarArgs)
+    {
+        return get(resultType, new ArrayList<>(), isVarArgs);
+    }
+
+    public static boolean isValidArgumentType(Type argTy)
+    {
+        return argTy.isFirstClassType() || (argTy instanceof OpaqueType);
+    }
+
+    public boolean isValidReturnType(Type retType)
+    {
+        if (retType.isFirstClassType())
+        {
+            return true;
+        }
+
+        if (retType == Type.VoidTy || retType instanceof OpaqueType)
+            return true;
+
+        if (!(retType instanceof StructType) || ((StructType)retType).getNumOfElements() == 0)
+            return false;
+
+        StructType st = (StructType)retType;
+        for (int i = 0, e = st.getNumOfElements(); i < e; i++)
+            if (!st.getElementType(i).isFirstClassType())
+                return false;
+        return true;
     }
 
     public boolean isVarArgs()
@@ -93,7 +146,13 @@ public class FunctionType extends Type
         return paramTypes.get(index);
     }
 
-    public int getNumParams() {return paramTypes.size();}
+    public int getNumParams()
+    {
+        return paramTypes.size();
+    }
 
-    public ArrayList<Type> getParamTypes() { return paramTypes;}
+    public ArrayList<Type> getParamTypes()
+    {
+        return paramTypes;
+    }
 }

@@ -1,7 +1,7 @@
 package backend.type;
 /*
- * Xlous C language CompilerInstance
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language CompilerInstance
+ * Copyright (c) 2015-2017, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,35 +16,55 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.hir.Module;
+import backend.support.TypePrinting;
+import tools.Util;
+
+import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 /**
  * This is a core base class for representing backend type of value.
+ * <p>
+ * The instances of the Type class are immutable: once they are created,
+ * they are never changed.  Also note that only one instance of a particular
+ * type is ever created.  Thus seeing if two types are equal is a matter of
+ * doing a trivial pointer comparison. To enforce that no two equal instances
+ * are created, Type instances can only be created via static factory methods
+ * in class Type and in derived classes.
+ * </p>
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class Type implements LLVMTypeID, AbstractTypeUser
+public class Type implements LLVMTypeID, AbstractTypeUser
 {
-    public static final OtherType VoidTy = OtherType.getVoidType();
-    public static final IntegerType Int1Ty = IntegerType.get(1);
+    public static final Type VoidTy = new Type(VoidTyID);
+    public static final Type LabelTy = new Type(LabelTyID);
 
+    public static final IntegerType Int1Ty = IntegerType.get(1);
     public static final IntegerType Int8Ty = IntegerType.get(8);
     public static final IntegerType Int16Ty = IntegerType.get(16);
     public static final IntegerType Int32Ty = IntegerType.get(32);
     public static final IntegerType Int64Ty = IntegerType.get(64);
 
-    public static final OtherType FloatTy = OtherType.getFloatType(32);
-    public static final OtherType DoubleTy = OtherType.getFloatType(64);
-    public static final OtherType FP128Ty = OtherType.getFloatType(128);
-    public static final OtherType X86_FP80Ty = OtherType.getFloatType(80);
-
-    public static final OtherType LabelTy = OtherType.getLabelType();
+    public static final Type FloatTy = new Type(FloatTyID);
+    public static final Type DoubleTy = new Type(DoubleTyID);
+    public static final Type FP128Ty = new Type(FP128TyID);
+    public static final Type X86_FP80Ty = new Type(X86_FP80TyID);
 
     /**
      * The current base type of this type.
      */
     private int id;
     protected boolean isAbstract;
+
+    /**
+     * Implement a list of the users that need to be notified if i am a type, and
+     * i get resolved into a more concrete type.
+     */
+    protected LinkedList<AbstractTypeUser> abstractTypeUsers;
+
     private static HashMap<Type, String> concreteTypeDescription;
     static
     {
@@ -55,6 +75,7 @@ public abstract class Type implements LLVMTypeID, AbstractTypeUser
     {
         id = typeID;
         isAbstract = false;
+        abstractTypeUsers = new LinkedList<>();
     }
 
     public void setAbstract(boolean anAbstract)
@@ -72,59 +93,64 @@ public abstract class Type implements LLVMTypeID, AbstractTypeUser
         return id;
     }
 
-    public static Type getPrimitiveType(int primitiveID)
+    public void print(PrintStream os)
     {
-        switch (primitiveID)
-        {
-            case VoidTyID: return VoidTy;
-            case IntegerTyID: return Int1Ty;
-            case IntegerTyID: return Int8Ty;
-            case IntegerTyID: return Int16Ty;
-            case IntegerTyID: return Int32Ty;
-            case IntegerTyID: return Int64Ty;
-            case FloatTyID: return FloatTy;
-            case DoubleTyID: return DoubleTy;
-            case LabelTyID: return LabelTy;
-            default:
-                return null;
-        }
+        new TypePrinting().print(this, os);
     }
 
-    public int getPrimitiveID()
+    public void dump()
     {
-        return id;
+        dump(null);
     }
 
-    public int getPrimitiveSize()
+    public void dump(Module context)
     {
-        switch (id)
+        // TODO: 17-6-11 writeTypeSymbolic(System.err, this, context);
+        //
+        System.err.println();
+    }
+
+    public String getDescription()
+    {
+        switch (getTypeID())
         {
             case VoidTyID:
-            case TypeTyID:
-            case LabelTyID:
-                return 0;
-
+                return "void";
             case IntegerTyID:
-            case IntegerTyID:
-                return 1;
-            case IntegerTyID:
-                return 2;
-            case IntegerTyID:
-                return 4;
-            case IntegerTyID:
-                return 8;
+                return "i" + ((IntegerType)this).getBitWidth();
             case FloatTyID:
-                return 4;
+                return "f32";
             case DoubleTyID:
-                return 8;
+                return "f64";
+            case LabelTyID:
+                return "label";
             default:
-                return 0;
+                return "<unkown type>";
         }
+    }
+
+    public boolean isInteger()
+    {
+        return id == IntegerTyID;
+    }
+
+    public boolean isFloatingPoint()
+    {
+        return id == FloatTyID || id == DoubleTyID
+                || id == X86_FP80TyID || id == FP128TyID;
     }
 
     public int getPrimitiveSizeInBits()
     {
-        return getPrimitiveSize() * 3;
+        switch (getTypeID())
+        {
+            case FloatTyID: return 32;
+            case DoubleTyID: return 64;
+            case X86_FP80TyID: return 80;
+            case FP128TyID: return 128;
+            case IntegerTyID: return ((IntegerType)this).getBitWidth();
+            default: return 0;
+        }
     }
 
     public boolean isSigned() {return false;}
@@ -166,13 +192,13 @@ public abstract class Type implements LLVMTypeID, AbstractTypeUser
     /**
      * Return true if the type is "first class", meaning it
      * is a valid type for a Value.
-     * @return
-     */
+    */
     public boolean isFirstClassType()
     {
-        return id != FunctionTyID && id != VoidTyID;
+        // There are more first-class kinds than non-first-class kinds, so a
+        // negative test is simpler than a positive one.
+        return id != FunctionTyID && id != VoidTyID && id != OpaqueTyID;
     }
-
 	/**
      * Return true if the type is a valid type for a virtual register in codegen.
      * This include all first-class type except struct and array type.
@@ -191,7 +217,10 @@ public abstract class Type implements LLVMTypeID, AbstractTypeUser
      * This includes struct and array types.
      * @return
      */
-    public boolean isAggregateType() {return id == StructTyID || id == ArrayTyID;}
+    public boolean isAggregateType()
+    {
+        return id == StructTyID || id == ArrayTyID;
+    }
     /**
      * Checks if this type could holded in register.
      * @return
@@ -216,7 +245,7 @@ public abstract class Type implements LLVMTypeID, AbstractTypeUser
         if (id != StructTyID && id != ArrayTyID)
             return false;
         // Otherwise we have to try harder to decide.
-        return isSizedDerivedType();
+        return isSizedDerivedType() || !isAbstract();
     }
 
     /**
@@ -243,40 +272,25 @@ public abstract class Type implements LLVMTypeID, AbstractTypeUser
         return true;
     }
 
+    public Type getScalarType()
+    {
+        return this;
+    }
+
     public int getScalarSizeBits()
     {
-        return getPrimitiveSize() << 3;
+        return getScalarType().getPrimitiveSizeInBits();
     }
 
-    public static String getString(Type type)
+    @Override
+    public void refineAbstractType(DerivedType oldTy, Type newTy)
     {
-        switch (type.getPrimitiveID())
-        {
-            case VoidTyID:
-                return "void";
-            case IntegerTyID:
-                return "i1";
-            case IntegerTyID:
-                return "i8";
-            case IntegerTyID:
-                return "i16";
-            case IntegerTyID:
-                return "i32";
-            case IntegerTyID:
-                return "i64";
-            case FloatTyID:
-                return "f32";
-            case DoubleTyID:
-                return "f64";
-            case LabelTyID:
-                return "label";
-            default:
-                return "other";
-        }
+        Util.shouldNotReachHere("Attempting to refine a derived type!");
     }
 
-    public String getDescription()
+    @Override
+    public void typeBecameConcrete(DerivedType absTy)
     {
-        return getName();
+        Util.shouldNotReachHere("DerivedType is already a concrete type!");
     }
 }

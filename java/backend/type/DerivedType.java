@@ -22,23 +22,44 @@ package backend.type;
  */
 public class DerivedType extends Type
 {
-    protected DerivedType(int primitiveID)
+    protected DerivedType(int typeID)
     {
-        super(primitiveID);
+        super(typeID);
     }
 
     protected void notifyUsesThatTypeBecameConcrete()
-    {}
-
-    protected void dropAllTypeUses()
     {
+        int oldSize = abstractTypeUsers.size();
+        while (!abstractTypeUsers.isEmpty())
+        {
+            AbstractTypeUser user = abstractTypeUsers.getLast();
+            user.typeBecameConcrete(this);
+
+            assert abstractTypeUsers.size() < oldSize-- :
+                    "AbstractTypeUser did not remove ifself";
+        }
     }
 
     protected void unlockRefineAbstractTypeTo(Type newType)
-    {}
+    {
+        assert isAbstract():"refinedAbstractTypeto: Current type is not abstract";
+        assert this !=newType:"Can not refine to itself!";
+
+        while (!abstractTypeUsers.isEmpty() && newType != this)
+        {
+            AbstractTypeUser user = abstractTypeUsers.getLast();
+            int oldSize = abstractTypeUsers.size();
+            user.refineAbstractType(this, newType);
+
+            assert abstractTypeUsers.size() != oldSize :
+                    "AbstractTypeUser did not remove ifself from user list!";
+        }
+    }
 
     public void refineAbstractTypeTo(Type newType)
-    {}
+    {
+        unlockRefineAbstractTypeTo(newType);
+    }
 
     public void dump()
     {

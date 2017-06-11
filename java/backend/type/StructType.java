@@ -39,24 +39,37 @@ public class StructType extends CompositeType
             elemTypes.addAll(args);
             this.packed = packed;
         }
+
+        @Override
+        public int hashCode()
+        {
+            return elemTypes.hashCode() << 23 + elemTypes.size() << 11 + (packed ?1:0);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null) return false;
+            if (this == obj) return true;
+            if (getClass() != obj.getClass()) return false;
+
+            StructValType svt = (StructValType)obj;
+
+            return elemTypes.equals(svt.elemTypes) && packed == svt.packed;
+        }
     }
     /**
      * An array of struct member type.
      */
     private ArrayList<Type> elementTypes;
-
-    private static TypeMap<StructValType, StructType> structTypes;
-
     private boolean packed;
+
+    private static TypeMap<StructValType, StructType> structTypes = new TypeMap<>();
 
     /**
      * A place holder type.
      */
-    private static StructType PlaceHolderType = new StructType(null);
-    static
-    {
-        structTypes = new TypeMap<>();
-    }
+    private static StructType PlaceHolderType;
 
     protected StructType(ArrayList<Type> memberTypes)
     {
@@ -65,7 +78,7 @@ public class StructType extends CompositeType
 
     private boolean isValidElementType(backend.type.Type elemTy)
     {
-        return  !(elemTy.equals(Type.VoidTy) || elemTy.equals(Type.LabelTy));
+        return  !(elemTy.equals(Type.VoidTy) || !elemTy.equals(Type.LabelTy));
     }
 
     protected StructType(ArrayList<Type> memberTypes, boolean packed)
@@ -99,10 +112,16 @@ public class StructType extends CompositeType
 
     public static StructType get()
     {
+        if (PlaceHolderType == null)
+            PlaceHolderType = new StructType(null);
+
         return PlaceHolderType;
     }
 
-    public ArrayList<Type> getElementTypes() { return elementTypes;}
+    public ArrayList<Type> getElementTypes()
+    {
+        return elementTypes;
+    }
 
     @Override
     public Type getTypeAtIndex(Value v)
@@ -126,14 +145,45 @@ public class StructType extends CompositeType
     }
 
     @Override
-    public Type getIndexType() {return Type.Int32Ty;}
+    public Type getIndexType()
+    {
+        return Type.Int32Ty;
+    }
 
-    public int getNumOfElements() { return elementTypes.size();}
+    public int getNumOfElements()
+    {
+        return elementTypes.size();
+    }
 
-    public Type getElementType(int idx){return elementTypes.get(idx);}
+    public Type getElementType(int idx)
+    {
+        return elementTypes.get(idx);
+    }
+
+    public Type getTypeAtIndex(int index)
+    {
+        assert index >= 0 && index < getNumOfElements() :"Invalid structure index!";
+        return elementTypes.get(index);
+    }
 
     public boolean isPacked()
     {
         return packed;
+    }
+
+    @Override
+    public void refineAbstractType(DerivedType oldTy, Type newTy)
+    {
+        for (StructValType svt : structTypes.keySet())
+        {
+            // TODO: 17-6-11
+        }
+    }
+
+    @Override
+    public void typeBecameConcrete(DerivedType absTy)
+    {
+        // TODO: 17-6-11
+        super.typeBecameConcrete(absTy);
     }
 }

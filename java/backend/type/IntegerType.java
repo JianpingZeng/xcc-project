@@ -19,6 +19,8 @@ package backend.type;
 import jlang.basic.APInt;
 import tools.Util;
 
+import java.util.HashMap;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -34,6 +36,8 @@ public class IntegerType extends DerivedType
     private static final IntegerType Int16Ty = new IntegerType(16);
     private static final IntegerType Int32Ty = new IntegerType(32);
     private static final IntegerType Int64Ty = new IntegerType(64);
+
+    private static HashMap<Integer, IntegerType> typeCaChes = new HashMap<>();
 
     private IntegerType(int numBits)
     {
@@ -63,8 +67,14 @@ public class IntegerType extends DerivedType
             case 16: return Int16Ty;
             case 32: return Int32Ty;
             case 64: return Int64Ty;
-            default: return null;
         }
+
+        if (typeCaChes.containsKey(numBits))
+            return typeCaChes.get(numBits);
+
+        IntegerType itt = new IntegerType(numBits);
+        typeCaChes.put(numBits, itt);
+        return itt;
     }
 
     public int getBitWidth()

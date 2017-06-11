@@ -25,7 +25,8 @@ import tools.TypeMap;
 public class PointerType extends SequentialType
 {
     private static TypeMap<Type, PointerType> pointerTypes;
-    static {
+    static
+    {
         pointerTypes = new TypeMap<>();
     }
 
@@ -35,6 +36,8 @@ public class PointerType extends SequentialType
     {
         super(PointerTyID, elemType);
         addressSpace = addrSpace;
+
+        setAbstract(elemType.isAbstract());
     }
 
     public static PointerType get(final Type valueType, int addrSpace)
@@ -43,6 +46,8 @@ public class PointerType extends SequentialType
         PointerType pt = pointerTypes.get(valueType);
         if (pt != null)
             return pt;
+
+        pt = new PointerType(valueType, addrSpace);
         pointerTypes.put(valueType, pt);
         return pt;
     }
@@ -56,6 +61,11 @@ public class PointerType extends SequentialType
     public static PointerType getUnqual(Type elemType)
     {
         return get(elemType, 0);
+    }
+
+    static boolean isValidElementType(Type eleTy)
+    {
+        return !(eleTy == Type.VoidTy || eleTy == Type.LabelTy);
     }
 
     public int getAddressSpace()

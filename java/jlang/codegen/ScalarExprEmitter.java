@@ -163,7 +163,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             // First, convert to the correct width so that we control the kind of
             // extension.
             backend.type.Type middleTy = IntegerType.get(cgf.pointerWidth);
-            boolean inputSigned = srcTy.isSignedType();
+            boolean inputSigned = srcTy.isSignedIntegerType();
             Value intResult = builder.createIntCast(v, middleTy, inputSigned, "conv");
 
             // Next, cast to pointer.
@@ -180,7 +180,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // Finally, we have the arithmetic types: real int/float.
         if (v.getType() instanceof IntegerType)
         {
-            boolean inputSigned = srcTy.isSignedType();
+            boolean inputSigned = srcTy.isSignedIntegerType();
             if (dstTy instanceof IntegerType)
                 return builder.createIntCast(v, dstTy, inputSigned, "conv");
             else if (inputSigned)
@@ -199,7 +199,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
 
         assert dstTy.isFloatingPointType():"Unknown real conversion";
-        if (dstTy.getPrimitiveID() < v.getType().getPrimitiveID())
+        if (dstTy.getTypeID() < v.getType().getTypeID())
             return builder.createFPTrunc(v, dstTy, "conv");
         else
             return builder.createFPExt(v, dstTy, "conv");
