@@ -1253,4 +1253,9 @@ public final class ASTContext
             case LongDouble:    return target.getLongDoubleFormat();
         }
 	}
+
+	public ASTRecordLayout getASTRecordLayout(RecordDecl d)
+	{
+		return getASTRecordLayout(d);
+	}
 }

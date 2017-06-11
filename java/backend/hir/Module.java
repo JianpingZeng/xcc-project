@@ -2,6 +2,7 @@ package backend.hir;
 
 import backend.type.FunctionType;
 import backend.type.PointerType;
+import backend.type.Type;
 import backend.value.*;
 import tools.Context;
 
@@ -50,7 +51,8 @@ public final class Module implements Iterable<Function>
 
     private String targetTriple;
 
-	
+	private HashMap<String, Type> typeSymbolTable;
+
 	/**
 	 * An singleton method for instantiating an instance of this class.
 	 * @param context	An context environment.
@@ -146,7 +148,7 @@ public final class Module implements Iterable<Function>
 
 		// If the function exists but has the wrong type, return a bitcast to the
 		// right type.
-		if (f.getType() != PointerType.get(type))
+		if (f.getType() != PointerType.get(type, 0))
 			return null;
 
 		// Otherwise, we just found the existing function.
@@ -171,5 +173,31 @@ public final class Module implements Iterable<Function>
 	public String getDataLayout()
 	{
 		return dataLayout;
+	}
+
+	/**
+	 * Insert an entry in the symbol table mapping from string to Type.  If there
+	 * is already an entry for this type, true is returned and the symbol table is
+	 * not modified.
+	 *
+	 * @param name
+	 * @param type
+	 * @return
+	 */
+	public boolean addTypeName(String name, Type type)
+	{
+		HashMap<String, Type> st = getTypeSymbolTable();
+		if (st.containsKey(name)) return true;
+
+		st.put(name, type);
+		return false;
+	}
+
+	public HashMap<String,Type> getTypeSymbolTable()
+	{
+		if (typeSymbolTable == null)
+			typeSymbolTable = new HashMap<>();
+
+		return typeSymbolTable;
 	}
 }

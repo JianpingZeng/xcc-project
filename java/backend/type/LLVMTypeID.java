@@ -25,32 +25,30 @@ package backend.type;
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface PrimitiveID
+public interface LLVMTypeID
 {
     int VoidTyID = 0;           //  0, 1: Basics...
-    int Int1TyID = VoidTyID + 1;
-    int Int8TyID = Int1TyID + 1;          //  2, 3: 8 bit types...
-    int Int16TyID = Int8TyID + 1;         //  4, 5: 16 bit types...
-
-    int Int32TyID = Int16TyID + 1;           //  6, 7: 32 bit types...
-    int Int64TyID = Int32TyID + 1;          //  8, 9: 64 bit types...
-
-    int FloatTyID = Int64TyID + 1;         // 10,11: Floating point types...
+    int FloatTyID = VoidTyID + 1;         // 10,11: Floating point types...
     int DoubleTyID = FloatTyID + 1;
+    int FP128TyID = DoubleTyID + 1;
+    int X86_FP80TyID = FP128TyID + 1;
 
-    int TypeTyID = DoubleTyID + 1;
+    int TypeTyID = X86_FP80TyID + 1;
     int LabelTyID = TypeTyID + 1;         // 12   : Labels...
+
 
     // Derived types... see DerivedTypes class...
     // Make sure FirstDerivedTyID stays up to date!!!
+    int IntegerTyID = LabelTyID + 1;          // Arbitrary bit width integers.
     int FunctionTyID = LabelTyID + 1;       // Functions... Structs...
     int StructTyID = FunctionTyID + 1;
     int ArrayTyID = StructTyID + 1;          // Array... pointer...
     int PointerTyID = ArrayTyID + 1;
+    int OpaqueTyID = PointerTyID + 1;
     //...
 
-    int NumPrimitiveIDs = PointerTyID + 1;   // Must remain as last defined ID
+    int NumPrimitiveIDs = OpaqueTyID + 1;   // Must remain as last defined ID
 
     int LastPrimitiveTyID = LabelTyID;
-    int FirstDerivedTyID = FunctionTyID;
+    int FirstDerivedTyID = IntegerTyID;
 }

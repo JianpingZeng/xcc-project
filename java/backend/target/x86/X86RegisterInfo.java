@@ -445,15 +445,15 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 	{
 		switch (ty.getPrimitiveID())
 		{
-			case Type.Int1TyID:
-			case Type.Int8TyID:
+			case Type.IntegerTyID:
+			case Type.IntegerTyID:
 				return x86R8RegClass;
-			case Type.Int16TyID:
+			case Type.IntegerTyID:
 				return x86R16RegClass;
-			case Type.Int32TyID:
+			case Type.IntegerTyID:
 			case Type.PointerTyID:
 				return x86R32RegClass;
-			case Type.Int64TyID:
+			case Type.IntegerTyID:
 				assert false:"Long type cannot filled in register!";
 				return null;
 			case Type.FloatTyID:

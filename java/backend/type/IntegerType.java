@@ -16,30 +16,40 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.APInt;
+import tools.Util;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class IntegerType extends Type
+public class IntegerType extends DerivedType
 {
     private int numBits;
     public static final int MIN_INT_BITS = 1;
     public static final int MAX_INT_BITS = (1<<23) - 1;
 
-    private static final IntegerType Int1Ty = new IntegerType("i1", Type.Int1TyID, 1);
-    private static final IntegerType Int8Ty = new IntegerType("i8", Type.Int8TyID, 8);
-    private static final IntegerType Int16Ty = new IntegerType("i16", Type.Int16TyID, 16);
-    private static final IntegerType Int32Ty = new IntegerType("int", Type.Int32TyID, 32);
-    private static final IntegerType Int64Ty = new IntegerType("long", Type.Int64TyID, 64);
+    private static final IntegerType Int1Ty = new IntegerType(1);
+    private static final IntegerType Int8Ty = new IntegerType(8);
+    private static final IntegerType Int16Ty = new IntegerType(16);
+    private static final IntegerType Int32Ty = new IntegerType(32);
+    private static final IntegerType Int64Ty = new IntegerType(64);
 
-    private IntegerType(String name, int primitiveID, int numBits)
+    private IntegerType(int numBits)
     {
-        super(name, primitiveID);
+        super(IntegerTyID);
         this.numBits = numBits;
     }
 
-    public boolean isSigned() { return true;}
-    public boolean isIntegerType() { return true;}
+    public boolean isSigned()
+    {
+        return true;
+    }
+
+    public boolean isIntegerType()
+    {
+        return true;
+    }
 
     public static IntegerType get(int numBits)
     {
@@ -60,5 +70,25 @@ public class IntegerType extends Type
     public int getBitWidth()
     {
         return numBits;
+    }
+
+    public long getBitMask()
+    {
+        return ~0L >> (64 - numBits);
+    }
+
+    public APInt getMask()
+    {
+        return APInt.getAllOnesValue(getBitWidth());
+    }
+
+    /**
+     * This method determines if the width of this IntegerType is a power of 2
+     * in terms of 8 bit bytes.
+     * @return
+     */
+    public boolean isPowerOf2ByteWidth()
+    {
+        return (numBits > 7) && Util.isPowerOf2(numBits);
     }
 }

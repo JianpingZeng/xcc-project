@@ -418,11 +418,11 @@ public abstract class AsmPrinter extends MachineFunctionPass
         Type type = c.getType();
         switch (type.getPrimitiveID())
         {
-            case Type.Int1TyID:
-            case Type.Int8TyID:
+            case Type.IntegerTyID:
+            case Type.IntegerTyID:
                 os.print(data8BitDirective);
                 break;
-            case Type.Int16TyID:
+            case Type.IntegerTyID:
                 os.print(data16BitDirective);
                 break;
             case Type.PointerTyID:
@@ -431,10 +431,10 @@ public abstract class AsmPrinter extends MachineFunctionPass
                     os.print(data64BitDirective);
                     break;
                 }
-            case Type.Int32TyID:
+            case Type.IntegerTyID:
                 os.print(data32BitDirective);
                 break;
-            case Type.Int64TyID:
+            case Type.IntegerTyID:
                 assert data64BitDirective != null:"Target cannot handle 64-bit constant!";
                 os.print(data64BitDirective);
                 break;

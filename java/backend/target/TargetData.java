@@ -1,15 +1,18 @@
 package backend.target;
 
-import backend.pass.*;
+import backend.pass.ImmutablePass;
+import backend.pass.RegisterPass;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
 import backend.type.Type;
-import tools.Pair;
 import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+
+import static backend.target.TargetData.AlignTypeEnum.*;
+import static backend.type.LLVMTypeID.*;
 
 /**
  *
@@ -183,7 +186,8 @@ public class TargetData implements ImmutablePass
 	alignment. This is a special case, where the aggregate's computed worst-case
 	alignment will be used.
 	*/
-	private void init(String targetDescription) {
+	private void init(String targetDescription)
+	{
         StringBuilder temp = new StringBuilder(targetDescription);
 
         littleEndian = false;
@@ -200,7 +204,7 @@ public class TargetData implements ImmutablePass
         setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 8, (byte) 1, (byte) 64); // f64
         setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 8, (byte) 8, (byte) 64); // v2i32, v1i64
         setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 16, (byte) 16, (byte) 128); // v16i8, v8i16, v4i32,...
-        setAlignment(AlignTypeEnum.AGGREGATE_TYPE, (byte) 0, (byte) 8, (byte) 0); // struct
+        setAlignment(AGGREGATE_TYPE, (byte) 0, (byte) 8, (byte) 0); // struct
 
         while (temp.length() != 0) {
 
@@ -242,7 +246,7 @@ public class TargetData implements ImmutablePass
                             alignType = AlignTypeEnum.STACK_OBJECT;
                             break;
                         case 'a':
-                            alignType = AlignTypeEnum.AGGREGATE_TYPE;
+                            alignType = AGGREGATE_TYPE;
                             break;
                     }
                     int size = Integer.parseInt(arg0.substring(1));
@@ -330,85 +334,65 @@ public class TargetData implements ImmutablePass
 		return IntegerType.get(getPointerSizeInBits());
 	}
 
-	public int getPointerSizeInBits() {return pointerMemSize *8;}
+	public int getPointerSizeInBits()
+    {
+        return pointerMemSize *8;
+    }
 
 	public long getTypeSizeInBits(Type type)
 	{
-		return getTypeSize(type)*8;
+        assert type.isSized() :"Can not getTypeInfo for unsized type";
+
+        switch (type.getTypeID())
+        {
+            case Type.VoidTyID:
+                return 8;
+            case Type.IntegerTyID:
+                return ((IntegerType)type).getBitWidth();
+            case Type.FloatTyID:
+                return 32;
+            case Type.DoubleTyID:
+                return 64;
+            case X86_FP80TyID:
+                return 80;
+            case FP128TyID:
+                return 128;
+
+            case LabelTyID:
+            case Type.PointerTyID:
+                return getPointerSizeInBits();
+            case Type.ArrayTyID:
+            {
+                ArrayType aty = (ArrayType)type;
+                return getTypeAllocSize(aty.getElemType()) * aty.getNumElements() * 8;
+            }
+            case Type.StructTyID:
+            {
+                // Get the struct layout annotation, which is createed lazily on demand.
+                return getStructLayout((StructType)type).getSizeInBits();
+            }
+            default:
+            {
+                assert false:"Bad type for getTypeInfo!";
+                break;
+            }
+        }
+        return 0;
 	}
 
 	public long getTypeSize(Type type)
 	{
-		return getTypeInfo(type, this).first;
+		return getTypeSizeInBits(type) / 8;
 	}
 
 	public int getTypeAlign(Type type)
 	{
-		return getTypeInfo(type, this).second;
+		return getAlignment(type, true);
 	}
 
-	/**
-	 * Obtains the data getNumOfSubLoop and alignment for specified type on targeted machine.
-	 * @param type
-	 * @param td
-	 * @return
-	 */
-	public static Pair<Long, Integer> getTypeInfo(Type type, TargetData td)
-	{
-		assert type.isSized() :"Can not getTypeInfo for unsized type";
-		Pair<Long, Integer> res = null;
-		switch (type.getPrimitiveID())
-		{
-			case Type.VoidTyID:
-			case Type.Int1TyID:
-			case Type.Int8TyID:
-				res = new Pair<>(1L, td.getByteAlignment());
-				break;
-			case Type.Int16TyID:
-				res = new Pair<>(2L, td.getShortAlignment());
-				break;
-			case Type.Int32TyID:
-				res = new Pair<>(4L, td.getIntAlignment());
-				break;
-			case Type.Int64TyID:
-				res = new Pair<>(8L, td.getLongAlignment());
-				break;
-			case Type.FloatTyID:
-				res = new Pair<>(4L, td.getFloatAlignment());
-				break;
-			case Type.DoubleTyID:
-				res = new Pair<>(8L, td.getDoubleAlignment());
-				break;
-			case Type.LabelTyID:
-			case Type.PointerTyID:
-				res = new Pair<>((long)td.getPointerMemSize(),td.getPointerPrefAlign());
-				break;
-			case Type.ArrayTyID:
-			{
-				final ArrayType aty = (ArrayType)type;
-				Pair<Long, Integer> eltInfo = getTypeInfo(aty.getElemType(), td);
-				res = new Pair<>(eltInfo.first*aty.getNumElements(), eltInfo.second);
-				break;
-			}
-			case Type.StructTyID:
-			{
-				// Get the struct layout annotation, which is createed lazily on demand.
-				final StructLayout layout = td.getStructLayout((StructType)type);
-				res = new Pair<>(layout.structSize, layout.structAlignment);
-				break;
-			}
+	public boolean isLittleEndian() {return littleEndian;}
 
-			case Type.TypeTyID:
-			default:
-			{
-				assert false:"Bad type for getTypeInfo!";
-				break;
-			}
-		}
-		return res;
-	}
-
-	public boolean isLittleEndian(){return littleEndian;}
+	public boolean isBigEndidan() {return !littleEndian;}
 
 	public int getByteAlignment(){return byteAlignment;}
 
@@ -425,6 +409,11 @@ public class TargetData implements ImmutablePass
 	public int getPointerMemSize() {return pointerMemSize;}
 
 	public int getPointerPrefAlign() {return pointerPrefAlign;}
+
+	public int getPointerABIAlign()
+	{
+		return pointerABIAlign;
+	}
 
 	public String getTargetName(){return targetName;}
 
@@ -453,9 +442,8 @@ public class TargetData implements ImmutablePass
 			// Loop over each element in struct type, placing them in memory.
 			for (Type eltTy : st.getElementTypes())
 			{
-				Pair<Long, Integer> typeInfo = getTypeInfo(eltTy, td);
-				long tySize = typeInfo.first;
-				int tyAlign = typeInfo.second;
+				long tySize = getTypeSize(eltTy);
+				int tyAlign = getTypeAlign(eltTy);
 
 				// Add padding if necessary to make the data alignment properly.
 				if (structSize % tyAlign != 0)
@@ -479,5 +467,122 @@ public class TargetData implements ImmutablePass
 			if (structSize % structAlignment != 0)
 				structSize = Util.roundUp(structSize, structAlignment);
 		}
+
+		public int getAlignment()
+		{
+			return structAlignment;
+		}
+
+        public long getSizeInBits()
+        {
+            return structSize * 8;
+        }
+    }
+
+	/**
+	 * Return the maximum number of bytes that may be
+	 * overwritten by storing the specified type.  For example, returns 5
+	 * for i36 and 10 for x86_fp80.
+	 * @param ty
+	 * @return
+	 */
+	public long getTypeStoreSize(Type ty)
+	{
+		return (getTypeSizeInBits(ty) + 7) / 8;
+	}
+
+	public int getAlignment(Type ty, boolean abiOrPref)
+	{
+		AlignTypeEnum alignType = null;
+		assert ty.isSized() :"Cannot getTypeInfo() on a type that is unsized";
+		switch (ty.getTypeID())
+		{
+			case LabelTyID:
+			case PointerTyID:
+				return abiOrPref ? getPointerABIAlign(): getPointerPrefAlign();
+			case ArrayTyID:
+				return getAlignment(((ArrayType)ty).getElemType(), abiOrPref);
+			case StructTyID:
+			{
+				StructType st = (StructType)ty;
+				if (st.isPacked() && abiOrPref)
+					return 1;
+
+				StructLayout layout = getStructLayout(st);
+				int align = getAlignmentInfo(AGGREGATE_TYPE, 0, abiOrPref, ty);
+				return Math.max(align, layout.getAlignment());
+			}
+			case IntegerTyID:
+			case VoidTyID:
+				alignType = INTEGER_ALIGN;
+				break;
+			case FloatTyID:
+			case DoubleTyID:
+			case X86_FP80TyID:
+			case FP128TyID:
+				alignType = FLOAT_ALIGN;
+				break;
+			default:
+				Util.shouldNotReachHere("Bad type for getAlignemnt!");
+				break;
+		}
+		return getAlignmentInfo(alignType, (int)getTypeSizeInBits(ty), abiOrPref, ty);
+	}
+
+	private int getAlignmentInfo(
+			AlignTypeEnum alignType,
+			int bitwidth,
+			boolean abiInfo,
+			Type ty)
+	{
+		int bestMatchIdx = -1;
+		int largestInt = -1;
+		for (int i = 0, e = alignments.size(); i < e; i++)
+		{
+			if (alignments.get(i).alignType == alignType
+					&& alignments.get(i).typeBitWidth == bitwidth)
+				return abiInfo?alignments.get(i).abiAlign : alignments.get(i).prefAlign;
+
+			if (alignType == INTEGER_ALIGN && alignments.get(i).alignType == INTEGER_ALIGN)
+			{
+				if (alignments.get(i).typeBitWidth > bitwidth
+						&& (bestMatchIdx == -1 || alignments.get(i).typeBitWidth
+							< alignments.get(bestMatchIdx).typeBitWidth))
+					bestMatchIdx = i;
+
+				if (largestInt == -1 || alignments.get(i).typeBitWidth > alignments.get(largestInt)
+						.typeBitWidth)
+					largestInt = i;
+			}
+		}
+
+		if (bestMatchIdx == -1)
+		{
+			if (alignType == INTEGER_ALIGN)
+			{
+				bestMatchIdx = largestInt;
+			}
+			else
+			{
+				assert false:"Unknown alignment type!";
+			}
+		}
+		return abiInfo ? alignments.get(bestMatchIdx).abiAlign : alignments.get(bestMatchIdx).prefAlign;
+	}
+
+	public int getABITypeAlignment(Type ty)
+	{
+		return getAlignment(ty, true);
+	}
+
+	public static long roundUpAlignment(long val, long aligment)
+	{
+		assert (aligment & (aligment -1)) == 0:"Alignment must be power of 2!";
+		return (val + aligment -1) & ~(aligment - 1);
+	}
+
+	public long getTypeAllocSize(Type ty)
+	{
+		return roundUpAlignment(getTypeStoreSize(ty), getABITypeAlignment(ty));
 	}
 }

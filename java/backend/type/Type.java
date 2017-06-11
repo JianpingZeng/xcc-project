@@ -16,9 +16,6 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import backend.value.Value;
-import backend.value.ValueKind;
-
 import java.util.HashMap;
 
 /**
@@ -26,7 +23,7 @@ import java.util.HashMap;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class Type extends Value implements PrimitiveID
+public abstract class Type implements LLVMTypeID, AbstractTypeUser
 {
     public static final OtherType VoidTy = OtherType.getVoidType();
     public static final IntegerType Int1Ty = IntegerType.get(1);
@@ -38,34 +35,41 @@ public abstract class Type extends Value implements PrimitiveID
 
     public static final OtherType FloatTy = OtherType.getFloatType(32);
     public static final OtherType DoubleTy = OtherType.getFloatType(64);
+    public static final OtherType FP128Ty = OtherType.getFloatType(128);
+    public static final OtherType X86_FP80Ty = OtherType.getFloatType(80);
+
     public static final OtherType LabelTy = OtherType.getLabelType();
-
-    public static class TypeType extends Type
-    {
-        TypeType()
-        {
-            super("type", Type.TypeTyID);
-        }
-    }
-
-    public static final TypeType TypeTy = new TypeType();
 
     /**
      * The current base type of this type.
      */
     private int id;
+    protected boolean isAbstract;
     private static HashMap<Type, String> concreteTypeDescription;
     static
     {
         concreteTypeDescription = new HashMap<>();
     }
 
-    protected Type(String name, int primitiveID)
+    protected Type(int typeID)
     {
-        super(TypeTy, ValueKind.TypeVal);
-        if (name !=null && !name.isEmpty())
-            concreteTypeDescription.put(this, name);
-        id = primitiveID;
+        id = typeID;
+        isAbstract = false;
+    }
+
+    public void setAbstract(boolean anAbstract)
+    {
+        isAbstract = anAbstract;
+    }
+
+    public boolean isAbstract()
+    {
+        return isAbstract;
+    }
+
+    public int getTypeID()
+    {
+        return id;
     }
 
     public static Type getPrimitiveType(int primitiveID)
@@ -73,11 +77,11 @@ public abstract class Type extends Value implements PrimitiveID
         switch (primitiveID)
         {
             case VoidTyID: return VoidTy;
-            case Int1TyID: return Int1Ty;
-            case Int8TyID: return Int8Ty;
-            case Int16TyID: return Int16Ty;
-            case Int32TyID: return Int32Ty;
-            case Int64TyID: return Int64Ty;
+            case IntegerTyID: return Int1Ty;
+            case IntegerTyID: return Int8Ty;
+            case IntegerTyID: return Int16Ty;
+            case IntegerTyID: return Int32Ty;
+            case IntegerTyID: return Int64Ty;
             case FloatTyID: return FloatTy;
             case DoubleTyID: return DoubleTy;
             case LabelTyID: return LabelTy;
@@ -100,14 +104,14 @@ public abstract class Type extends Value implements PrimitiveID
             case LabelTyID:
                 return 0;
 
-            case Int1TyID:
-            case Int8TyID:
+            case IntegerTyID:
+            case IntegerTyID:
                 return 1;
-            case Int16TyID:
+            case IntegerTyID:
                 return 2;
-            case Int32TyID:
+            case IntegerTyID:
                 return 4;
-            case Int64TyID:
+            case IntegerTyID:
                 return 8;
             case FloatTyID:
                 return 4;
@@ -177,7 +181,7 @@ public abstract class Type extends Value implements PrimitiveID
     public boolean isSingleValueType()
     {
         return id != VoidTyID && id <= LastPrimitiveTyID
-                || (id>=Int1TyID && id<=Int64TyID) ||
+                || (id>= IntegerTyID && id<= IntegerTyID) ||
                 id == PointerTyID;
     }
 
@@ -205,7 +209,7 @@ public abstract class Type extends Value implements PrimitiveID
      */
     public boolean isSized()
     {
-        if ((id >= Int1TyID && id <= Int64TyID)
+        if ((id >= IntegerTyID && id <= IntegerTyID)
                 || isFloatingPointType() || id == PointerTyID)
             return true;
 
@@ -250,15 +254,15 @@ public abstract class Type extends Value implements PrimitiveID
         {
             case VoidTyID:
                 return "void";
-            case Int1TyID:
+            case IntegerTyID:
                 return "i1";
-            case Int8TyID:
+            case IntegerTyID:
                 return "i8";
-            case Int16TyID:
+            case IntegerTyID:
                 return "i16";
-            case Int32TyID:
+            case IntegerTyID:
                 return "i32";
-            case Int64TyID:
+            case IntegerTyID:
                 return "i64";
             case FloatTyID:
                 return "f32";

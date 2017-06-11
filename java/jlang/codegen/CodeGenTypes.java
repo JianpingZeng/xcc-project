@@ -18,25 +18,31 @@ package jlang.codegen;
 
 import backend.hir.Module;
 import backend.target.TargetData;
-import backend.type.*;
 import backend.type.FunctionType;
-import backend.type.IntegerType;
+import backend.type.*;
 import backend.type.PointerType;
 import backend.type.Type;
+import jlang.basic.APFloat;
+import jlang.basic.FltSemantics;
+import jlang.basic.TargetInfo;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.sema.Decl.FieldDecl;
 import jlang.sema.Decl.VarDecl;
-import jlang.type.*;
 import jlang.type.ArrayType;
 import jlang.type.ArrayType.VariableArrayType;
+import jlang.type.*;
 import tools.Pair;
-import tools.Util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 
 import static jlang.type.TypeClass.*;
+import static jlang.type.TypeClass.Double;
 import static jlang.type.TypeClass.Enum;
+import static jlang.type.TypeClass.Float;
 import static jlang.type.TypeClass.Short;
 
 /**
@@ -141,7 +147,19 @@ public class CodeGenTypes
     private HashMap<FieldDecl, BitFieldInfo> bitfields;
 
     private HashMap<jlang.type.Type, CGRecordLayout> cgRecordLayout;
-    public CodeGenTypes(HIRModuleGenerator moduleBuilder)
+
+    private ASTContext context;
+    private TargetInfo target;
+    private Module theModule;
+    private TargetData targetData;
+    private ABIInfo theABIInfo;
+
+    private LinkedList<Pair<QualType, OpaqueType>> pointersToResolve;
+
+    private HashMap<jlang.type.Type, backend.type.Type> tagDeclTypes;
+    private HashMap<jlang.type.Type, backend.type.Type> functionTypes;
+
+    public CodeGenTypes(HIRModuleGenerator moduleBuilder, TargetData td)
     {
         builder = moduleBuilder;
         typeCaches = new HashMap<>();
@@ -152,6 +170,13 @@ public class CodeGenTypes
         cgRecordLayout = new HashMap<>();
         fieldInfo = new HashMap<>();
         bitfields = new HashMap<>();
+        context = moduleBuilder.getASTContext();
+        target = context.target;
+        theModule = moduleBuilder.getModule();
+        targetData = td;
+        pointersToResolve = new LinkedList<>();
+        tagDeclTypes = new HashMap<>();
+        functionTypes = new HashMap<>();
     }
 
     public backend.type.FunctionType getFunctionType(CGFunctionInfo fi, boolean isVaridic)
@@ -174,7 +199,7 @@ public class CodeGenTypes
                 restType = Type.VoidTy;
                 QualType ret = fi.getReturnType();
                 Type ty = convertType(ret);
-                argTypes.add(PointerType.get(ty));
+                argTypes.add(PointerType.get(ty, ret.getAddressSpace()));
                 break;
             }
             case Ignore:
@@ -196,7 +221,7 @@ public class CodeGenTypes
                 {
                     // Indirect argument always on stack.
                     Type ty = convertTypeForMem(argInfo.type);
-                    argTypes.add(PointerType.get(ty));
+                    argTypes.add(PointerType.get(ty, argInfo.type.getAddressSpace()));
                     break;
                 }
                 case Direct:
@@ -242,54 +267,114 @@ public class CodeGenTypes
         return backend.type.IntegerType.get((int)builder.getASTContext().getTypeSize(t));
     }
 
+    private backend.type.Type getTypeForFormat(FltSemantics flt)
+    {
+        if (flt.equals(APFloat.IEEEsingle))
+            return Type.FloatTy;
+        if (flt.equals(APFloat.IEEEdouble))
+            return Type.DoubleTy;
+        if (flt.equals(APFloat.IEEEquad))
+            return Type.FP128Ty;
+        if (flt.equals(APFloat.x87DoubleExtended))
+            return Type.X86_FP80Ty;
+        assert false:"Unknown float format!";
+        return null;
+    }
+
     /**
-     * Converts the specified type to its Backend type.
-     *
-     * @param type
+     * Code to verify a given function type is complete, i.e. the return type
+     * and all of the argument types are complete.
+     * @param fnType
      * @return
      */
-    public backend.type.Type convertType(QualType type)
+    static TagType verifyFunctionTypeComplete(jlang.type.FunctionType fnType)
     {
-        final jlang.type.Type ty = type.getType();
-        // RecordTypes are cached and processed specially.
-        if (ty instanceof RecordType)
+        if (fnType.getResultType().getType() instanceof jlang.type.TagType)
         {
-            RecordType rt = (RecordType) ty;
-            return convertRecordDeclType(rt.getDecl());
+            TagType tt = (TagType)fnType.getResultType().getType();
+            if(!tt.getDecl().isCompleteDefinition())
+                return tt;
+        }
+        if (fnType instanceof FunctionProtoType)
+        {
+            FunctionProtoType fpt = (FunctionProtoType)fnType;
+            for (int i = 0; i < fpt.getNumArgs(); i++)
+            {
+                if (fpt.getArgType(i).getType() instanceof jlang.type.TagType)
+                {
+                    TagType tt = (TagType)fpt.getArgType(i).getType();
+                    if (!tt.getDecl().isCompleteDefinition())
+                        return tt;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Laid out the tagged decl type like struct or union or enum.
+     * @param td
+     * @return
+     */
+    private backend.type.Type convertTagDeclType(Decl.TagDecl td)
+    {
+        jlang.type.Type key = context.getTagDeclType(td).getType();
+        if (tagDeclTypes.containsKey(key))
+            return tagDeclTypes.get(key);
+
+        if (!td.isCompleteDefinition())
+        {
+            backend.type.Type res = OpaqueType.get();
+            tagDeclTypes.put(key, res);
+            return res;
         }
 
-        // See if type is cached.
-        backend.type.Type found = typeCaches.get(ty);
-        if (found != null)
-            return found;
+        // If this is enum decl, just treat it as integral type.
+        if (td.isEnum())
+        {
+            return convertTypeRecursive(((Decl.EnumDecl)td).getIntegerType());
+        }
 
-        // If we don't caches for jlang type, compute it.
-        backend.type.Type resultType = null;
+        OpaqueType placeHolderType = OpaqueType.get();
+        tagDeclTypes.put(key, placeHolderType);
+
+        Decl.RecordDecl rd = (Decl.RecordDecl)td;
+
+        CGRecordLayout layout = CGRecordLayoutBuilder.computeLayout(this, rd);
+
+        cgRecordLayout.put(key, layout);
+        backend.type.Type resType = layout.getLLVMType();
+        placeHolderType.refineAbstractTypeTo(resType);
+        return placeHolderType;
+    }
+
+    private backend.type.Type convertNewType(QualType t)
+    {
+        jlang.type.Type ty = context.getCanonicalType(t).getType();
         switch (ty.getTypeClass())
         {
-            case Struct:
-            case Union:
-                Util.shouldNotReachHere("Record type have be handled above!");
-                break;
+            // Builtin type.
+            case Void:
+                // LLVM void type can only be used as the result of a function call.
+                // just map to the same as char.
+                return backend.type.IntegerType.get(8);
             case Bool:
-            case Char:
-            case Short:
-            case Int:
-            case LongInteger:
+                return Type.Int1Ty;
             case UnsignedChar:
             case UnsignedShort:
             case UnsignedInt:
             case UnsignedLong:
-                resultType = IntegerType.get((int) ty.getTypeSize());
-                break;
+            case UnsignedLongLong:
+            case Char:
+            case Short:
+            case Int:
+            case LongInteger:
+            case LongLong:
+                return backend.type.IntegerType.get((int) context.getTypeSize(t));
             case Float:
-            {
-                if (((RealType) ty).isSinglePoint())
-                    resultType = backend.type.Type.FloatTy;
-                else
-                    resultType = backend.type.Type.DoubleTy;
-                break;
-            }
+            case Double:
+            case LongDouble:
+                return getTypeForFormat(context.getFloatTypeSemantics(t));
 
             case Complex:
             {
@@ -298,46 +383,40 @@ public class CodeGenTypes
             }
             case Pointer:
             {
-                jlang.type.PointerType pt = ty.getPointerType();
+                jlang.type.PointerType pt = ty.getAsPointerType();
                 QualType qualType = pt.getPointeeType();
-                backend.type.Type pointeeType = convertTypeForMem(qualType);
-                if (pointeeType.isVoidType())
-                    pointeeType = backend.type.Type.Int8Ty;
-                // TODO introduce address space for specified TargetData.
-                resultType = backend.type.PointerType.get(pointeeType);
-                break;
+                OpaqueType pointeeType = OpaqueType.get();
+                pointersToResolve.add(Pair.get(qualType, pointeeType));
+                return backend.type.PointerType.get(pointeeType, qualType.getAddressSpace());
             }
             case VariableArray:
             {
-                VariableArrayType a = (VariableArrayType) ty;
-                assert a.getIndexTypeCVRQualifiers() == 0 : "FIXME: we only handle trivial array!";
+                VariableArrayType a = (VariableArrayType)ty;
+                assert a.getIndexTypeQuals() == 0 : "FIXME: we only handle trivial array!";
 
                 // VLAs resolve to the innermost element type; this matches
                 // the return of alloca, and there isn't any obviously better choice.
-                resultType = convertTypeForMem(a.getElemType());
-                break;
+                return convertTypeForMemRecursive(a.getElemType());
             }
             case IncompleteArray:
             {
                 ArrayType.IncompleteArrayType a = (ArrayType.IncompleteArrayType) ty;
-                assert a.getIndexTypeCVRQualifiers()
-                        == 0 : "FIXME: we only handle trivial array!";
+                assert a.getIndexTypeQuals() == 0
+                        : "FIXME: we only handle trivial array!";
 
                 // int X[] -> [0 x int], unless the element type is not sized.  If it is
                 // unsized (e.g. an incomplete struct) just use [0 x i8].
-                resultType = convertTypeForMem(a.getElemType());
-                if (!resultType.isSized())
+                Type eltTy = convertTypeForMemRecursive(a.getElemType());
+                if (!eltTy.isSized())
                 {
-                    skipLayout = true;
-                    resultType = backend.type.Type.Int8Ty;
+                    eltTy = Type.Int8Ty;
                 }
-                resultType = backend.type.ArrayType.get(resultType, 0);
-                break;
+                return backend.type.ArrayType.get(eltTy, 0);
             }
             case ConstantArray:
             {
-                ArrayType.ConstantArrayType a = (ArrayType.ConstantArrayType) ty;
-                backend.type.Type eltTy = convertTypeForMem(a.getElemType());
+                ArrayType.ConstantArrayType a = (ArrayType.ConstantArrayType)ty;
+                backend.type.Type eltTy = convertTypeForMemRecursive(a.getElemType());
 
                 // Lower arrays of undefined struct type to arrays of i8 just to have a
                 // concrete type.
@@ -346,78 +425,98 @@ public class CodeGenTypes
                     skipLayout = true;
                     eltTy = backend.type.Type.Int8Ty;
                 }
-                resultType = backend.type.ArrayType.get(eltTy, a.getSize().getZExtValue());
-                break;
+                return backend.type.ArrayType.get(eltTy, a.getSize().getZExtValue());
             }
+            case FunctionNoProto:
             case FunctionProto:
             {
                 jlang.type.FunctionType fnType = (jlang.type.FunctionType) ty;
                 // First, check whether we can build the full function type.  If the
                 // function type depends on an incomplete type (e.g. a struct or enum), we
                 // cannot lower the function type.
-                if (!isFuncTypeConvertible(fnType))
+                TagType tt = verifyFunctionTypeComplete(fnType);
+                if (tt != null)
                 {
-                    // This function's type depends on an incomplete tc type.
-                    // Return a placeholder type.
-                    resultType = backend.type.StructType.get();
-                    skipLayout = true;
-                    break;
-                }
+                    convertTagDeclType(tt.getDecl());
 
-                // While we're converting the argument types for a function, we don't want
-                // to recursively convert any pointed-to structs.  Converting directly-used
-                // structs is ok though.
-                if (!recordBeingLaidOut.add(ty))
+                    Type resultType = OpaqueType.get();
+                    functionTypes.put(ty, resultType);
+                    return resultType;
+                }
+                if (ty instanceof FunctionProtoType)
                 {
-                    resultType = StructType.get();
-                    skipLayout = true;
-                    break;
+                    FunctionProtoType fpt = (FunctionProtoType)ty;
+                    return getFunctionType(getFunctionInfo(fpt), fpt.isVariadic());
                 }
-                CGFunctionInfo fi = getFunctionInfo2(new QualType(fnType), null);
-                boolean isVaridic = fnType.isVariadic();
-
-                // The function type can be built; call the appropriate routines to
-                // build it.
-                if (functionBeingProcessed.contains(fi))
-                {
-                    resultType = StructType.get();
-                    skipLayout = true;
-                }
-                else
-                {
-                    // Otherwise, happy to go.
-                    resultType = getFunctionType(fi, isVaridic);
-                }
-
-                recordBeingLaidOut.remove(ty);
-
-                if (skipLayout)
-                    typeCaches.clear();
-
-                if (recordBeingLaidOut.isEmpty())
-                    while(!deferredRecords.isEmpty())
-                        convertRecordDeclType(deferredRecords.removeLast());
-                break;
+                FunctionNoProtoType fnpt = (FunctionNoProtoType)ty;
+                return getFunctionType(getFunctionInfo(fnpt), true);
             }
-
+            case Struct:
+            case Union:
             case Enum:
             {
-                Decl.EnumDecl ed = ((jlang.type.EnumType)ty).getDecl();
-                if (ed.isCompleteDefinition())
-                {
-                    return convertType(ed.getIntegerType());
-                }
+                Decl.TagDecl td = ((jlang.type.TagType)ty).getDecl();
+                backend.type.Type res = convertTagDeclType(td);
 
-                // Return a placeholder 'i32' type.  This can be changed later when the
-                // type is defined (see updateCompletedType), but is likely to be the
-                // "right" answer.
-                resultType = backend.type.Type.Int32Ty;
-                break;
+                StringBuilder typeName = new StringBuilder(td.getKindName());
+                typeName.append(".");
+                if (td.getIdentifier() != null)
+                    typeName.append(td.getNameAsString());
+                else if (t.getType() instanceof TypedefType)
+                {
+                    TypedefType tdf = (TypedefType)t.getType();
+                    typeName.append(tdf.getDecl().getNameAsString());
+                }
+                else
+                    typeName.append("anon");
+
+                theModule.addTypeName(typeName.toString(), res);
+                return res;
             }
         }
-        assert resultType!=null:"Don't convert type!";
-        typeCaches.put(ty, resultType);
+
+        return OpaqueType.get();
+    }
+
+    private backend.type.Type convertTypeRecursive(QualType ty)
+    {
+        ty = context.getCanonicalType(ty);
+
+        if (typeCaches.containsKey(ty.getType()))
+            return typeCaches.get(ty.getType());
+
+        Type resultType = convertNewType(ty);
+        typeCaches.put(ty.getType(), resultType);
         return resultType;
+    }
+
+    public backend.type.Type convertTypeForMemRecursive(QualType ty)
+    {
+        backend.type.Type resType = convertTypeRecursive(ty);
+        if (resType.equals(Type.Int1Ty))
+            return IntegerType.get((int) context.getTypeSize(ty));
+
+        return resType;
+    }
+
+    /**
+     * Converts the specified type to its Backend type.
+     *
+     * @param type
+     * @return
+     */
+    public backend.type.Type convertType(QualType type)
+    {
+        backend.type.Type result = convertTypeRecursive(type);
+
+        while (!pointersToResolve.isEmpty())
+        {
+            Pair<QualType, backend.type.OpaqueType> p = pointersToResolve.pop();
+            backend.type.Type llvmTy = convertTypeForMemRecursive(p.first);
+            p.second.refineAbstractTypeTo(llvmTy);
+        }
+
+        return result;
     }
 
     /**
@@ -553,18 +652,29 @@ public class CodeGenTypes
         if (!isFuncTypeArgumentConvitable(fnType.getResultType()))
             return false;
 
-        for (jlang.type.QualType t : fnType.getParamTypes())
-            if (!isFuncTypeArgumentConvitable(t))
-                return false;
+        if (fnType instanceof FunctionProtoType)
+        {
+            FunctionProtoType fpt = (FunctionProtoType)fnType;
+            for (int i = 0, e = fpt.getNumArgs(); i < e; i++)
+            {
+                if (!isFuncTypeArgumentConvitable(fpt.getArgType(i)))
+                    return false;
+            }
+            return true;
+        }
 
-        return true;
+        return false;
     }
 
     private boolean isFuncTypeArgumentConvitable(QualType ty)
     {
         // If this isn't a tagged type, we can convert it!
-        TagType tt = ty.<TagType>getAs();
-        if (tt == null) return true;
+        if (!(ty.getType() instanceof TagType))
+        {
+            return false;
+        }
+
+        TagType tt = (TagType)ty.getType();
 
         // If it's a tagged type used by-value, but is just a forward decl, we can't
         // convert it.  Note that getDefinition()==0 is not the same as !isDefinition.
@@ -588,6 +698,20 @@ public class CodeGenTypes
         return null;
     }
 
+    public CGFunctionInfo getFunctionInfo(FunctionProtoType fpt)
+    {
+        ArrayList<QualType> argTypes = new ArrayList<>();
+        for (int i = 0, e = fpt.getNumArgs(); i < e; i++)
+            argTypes.add(fpt.getArgType(i));
+
+        return getFunctionInfo2(fpt.getResultType(), argTypes);
+    }
+
+    public CGFunctionInfo getFunctionInfo(FunctionNoProtoType fnpt)
+    {
+        return getFunctionInfo2(fnpt.getResultType(), new ArrayList<QualType>());
+    }
+
     public CGFunctionInfo getFunctionInfo(QualType resultType,
             ArrayList<Pair<VarDecl, QualType>> callArgs)
     {
@@ -601,7 +725,7 @@ public class CodeGenTypes
     public CGFunctionInfo getFunctionInfo2(QualType resType, ArrayList<QualType> argTypes)
     {
         CGFunctionInfo fi = new CGFunctionInfo(resType, argTypes);
-
+        // TODO: 17-6-11  Create FoldingSet.
         // Compute ABI information.
         return fi;
     }
@@ -625,7 +749,9 @@ public class CodeGenTypes
     }
 
     public void addFieldInfo(FieldDecl fd, int no)
-    { fieldInfo.put(fd, no);}
+    {
+        fieldInfo.put(fd, no);
+    }
 
     public BitFieldInfo getBitFieldInfo(FieldDecl field)
     {
@@ -637,5 +763,15 @@ public class CodeGenTypes
     public void addBitFieldInfo(FieldDecl field, int fieldNo, int start, int size)
     {
         bitfields.put(field, new BitFieldInfo(fieldNo, start, size));
+    }
+
+    public ASTContext getContext()
+    {
+        return context;
+    }
+
+    public TargetData getTargetData()
+    {
+        return targetData;
     }
 }
