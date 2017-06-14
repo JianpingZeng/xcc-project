@@ -208,6 +208,11 @@ public class HIRBuilder
 		return insert(CastInst.create(op, val, destType, name, null));
 	}
 
+    public Value createBitCast(Value value, Type destTy)
+    {
+        return createBitCast(value, destTy, "");
+    }
+
 	public Value createBitCast(Value value, Type destTy, String name)
 	{
 		return createCast(Operator.BitCast, value, destTy, name);
@@ -715,7 +720,12 @@ public class HIRBuilder
 		return insert(Op2.createNot(v), name);
 	}
 
-	public Value createLoad(Value addr, boolean isVolatile, String name)
+	public LoadInst createLoad(Value addr)
+	{
+		return createLoad(addr, false, "");
+	}
+
+	public LoadInst createLoad(Value addr, boolean isVolatile, String name)
 	{
 		return insert(new LoadInst(addr, name), name);
 	}
@@ -741,8 +751,43 @@ public class HIRBuilder
 		return insert(new GetElementPtrInst(ptr, idx, name));
 	}
 
-	public CallInst createCall4(Value callee, Value arg1, Value arg2,
-			Value arg3, Value arg4,
+    /**
+     * This method is a variant of {@linkplain #createCall4(Value, Value, Value, Value, Value)}
+     * with empty name by default.
+     * @param callee
+     * @param arg1
+     * @param arg2
+     * @param arg3
+     * @param arg4
+     * @return
+     */
+    public CallInst createCall4(
+            Value callee,
+            Value arg1,
+            Value arg2,
+            Value arg3,
+            Value arg4)
+    {
+        return createCall4(callee, arg1, arg2, arg3, arg4);
+    }
+
+    /**
+     * Call the function specified by {@code callee} with some arguments, eg.
+     * arg1, arg2, arg3, arg4.
+     * @param callee
+     * @param arg1
+     * @param arg2
+     * @param arg3
+     * @param arg4
+     * @param name
+     * @return
+     */
+	public CallInst createCall4(
+	        Value callee,
+            Value arg1,
+            Value arg2,
+			Value arg3,
+            Value arg4,
 			String name)
 	{
 		Value[] args = {arg1, arg2, arg3, arg4};

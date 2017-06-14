@@ -2757,6 +2757,7 @@ public abstract class Instruction extends User
     public static class StoreInst extends Instruction
     {
         private boolean aVolatile;
+        private int alignment;
 
         /**
          * Constructs a new store instruction.
@@ -2826,6 +2827,17 @@ public abstract class Instruction extends User
         {
             return aVolatile;
         }
+
+        public void setAlignment(int align)
+        {
+            assert (align & (align - 1)) == 0 :"Alignment must be power of 2";
+            alignment = align;
+        }
+
+        public int getAlignment()
+        {
+            return alignment;
+        }
     }
 
     /**
@@ -2834,6 +2846,7 @@ public abstract class Instruction extends User
     public static class LoadInst extends Op1
     {
         private boolean isVolatile;
+        private int alignment;
 
         public LoadInst(Value from,
                 String name, Instruction insertBefore)
@@ -2884,6 +2897,17 @@ public abstract class Instruction extends User
         public boolean isVolatile()
         {
             return isVolatile;
+        }
+
+        public void setAlignment(int align)
+        {
+            assert (align & (align - 1)) == 0 :"Alignment must be power of 2!";
+            alignment = align;
+        }
+
+        public int getAlignment()
+        {
+            return alignment;
         }
     }
 

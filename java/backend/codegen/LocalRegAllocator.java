@@ -1,13 +1,13 @@
 package backend.codegen;
 
-import backend.transform.scalars.PNE;
-import backend.transform.scalars.TwoAddrInstruction;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetMachine;
-import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterClass;
+import backend.target.TargetRegisterInfo;
+import backend.transform.scalars.PNE;
+import backend.transform.scalars.TwoAddrInstruction;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 

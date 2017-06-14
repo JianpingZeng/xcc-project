@@ -20,10 +20,13 @@ import backend.hir.BasicBlock;
 import backend.hir.CallSite;
 import backend.hir.HIRBuilder;
 import backend.type.*;
+import backend.type.PointerType;
+import backend.type.Type;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.TerminatorInst;
+import com.sun.org.apache.regexp.internal.RE;
 import jlang.ast.Tree;
 import jlang.basic.APInt;
 import jlang.basic.SourceLocation;
@@ -32,11 +35,10 @@ import jlang.codegen.CodeGenTypes.CGFunctionInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo.ArgInfo;
 import jlang.sema.*;
 import jlang.sema.Decl.*;
+import jlang.type.*;
 import jlang.type.ArrayType;
-import jlang.type.ComplexType;
-import jlang.type.FunctionProtoType;
-import jlang.type.QualType;
 import tools.Pair;
+import tools.TypeMap;
 import tools.Util;
 
 import java.util.*;
@@ -93,7 +95,14 @@ public final class CodeGenFunction
 	 */
 	private HashMap<LabelStmt, BasicBlock> labelMap;
 
-	private HashMap<Tree.Expr, Type> vlaSizeMap;
+    /**
+     * This keeps track of the associated size for each VLA type.
+     */
+	private HashMap<Tree.Expr, Value> vlaSizeMap;
+
+    /**
+     * The CGFunctionInfo of the current function being compiled.
+     */
 	private CGFunctionInfo curFnInfo;
 
 	public int pointerWidth;
@@ -181,6 +190,15 @@ public final class CodeGenFunction
 		}
 	}
 
+    /**
+     * Emit function prologue code and compute how to pass function argument and
+     * the result is returned.
+     * @param fd
+     * @param resTy
+     * @param fn
+     * @param args
+     * @param startLoc
+     */
 	private void startFunction(FunctionDecl fd,
                                QualType resTy,
                                Function fn,
@@ -191,6 +209,7 @@ public final class CodeGenFunction
 		curFnDecl = fd;
 		fnRetTy = resTy;
 
+		// Before emit LLVM IR code for this function, it must be declaration.
 		assert fn.isDeclaration() : "FunctionProto already has body.";
 
 		BasicBlock entryBB = createBasicBlock("entry", curFn);
@@ -238,17 +257,17 @@ public final class CodeGenFunction
 			builder.createStore(zero, returnValue);
 		}
 
-		assert fn.getNumOfArgs() == args
-				.size() : "Mismatch between function signature and argumens";
+		assert fn.getNumOfArgs() == args.size()
+                : "Mismatch between function signature and argumens";
 
-		Iterator<Argument> ai = fn.getArgumentList().iterator();
-
-		// emit alloca inst for param decls.  Give the HIR argument nodes names.
-		Iterator<Argument> argItr = fn.getArgumentList().iterator();
+        // emit alloca inst for param decls.  Give the HIR argument nodes names.
+		int ai = 0, aiEnd = fn.getNumOfArgs();
 
 		// obtains the ABIArgInfo list (contains the type and arg AI) of formal
 		// type enclosing in FunctionType.
-		int infoItr = fi.getNumOfArgs();
+		int infoItr = 0;
+		fi.getNumOfArgs();
+
 		for (Pair<VarDecl, QualType> pair : args)
 		{
 			VarDecl arg = pair.first;
@@ -256,13 +275,13 @@ public final class CodeGenFunction
 			ABIArgInfo argAI = fi.getArgInfoAt(infoItr).info;
 
 			boolean isPromoted = arg instanceof ParamVarDecl;
-			assert !argItr.hasNext() : "Argument mismatch!";
+			assert ai != aiEnd: "Argument mismatch!";
 
 			switch (argAI.getKind())
 			{
 				case Indirect:
 				{
-					Value v = ai.next();
+					Value v = fn.argAt(ai);
 					if (hasAggregateBackendType(ty))
 					{
 						// Do nothing, aggregates and complex variables are accessed by
@@ -273,7 +292,7 @@ public final class CodeGenFunction
 						// Load a scalar value from indirect argument.
 						//int align = QualType.getTypeAlignInBytes(ty);
 						v = emitLoadOfScalar(v, false, ty);
-						if (!ty.isCompatible(arg.getDeclType()))
+						if (!getContext().isCompatible(ty, arg.getDeclType()))
 						{
 							// This must be a promotion, for something like
 							// "void a(x) short x; {..."
@@ -286,9 +305,10 @@ public final class CodeGenFunction
 					break;
 				}
 				case Direct:
+                case Extend:
 				{
-					assert ai.hasNext() : "Argument mismatch!";
-					Value v = ai.next();
+					assert ai != aiEnd : "Argument mismatch!";
+					Value v = fn.argAt(ai);
 					if (hasAggregateBackendType(ty))
 					{
 						// Create a temporary alloca to hold the argument; the rest of
@@ -299,7 +319,7 @@ public final class CodeGenFunction
 					}
 					else
 					{
-						if (!ty.isCompatible(arg.getDeclType()))
+						if (!getContext().isCompatible(ty, arg.getDeclType()))
 						{
 							// This must be a promotion, for something like
 							// "void a(x) short x; {..."
@@ -309,6 +329,22 @@ public final class CodeGenFunction
 					emitParamDecl(arg, v);
 					break;
 				}
+                case Expand:
+                {
+                    String name = arg.getNameAsString();
+                    Value temp = createTempAlloc(convertTypeForMem(ty), name + ".addr");
+
+                    // Emit each argument for each expanded structure field.
+                    int end = expandTypeFromArgs(ty, LValue.makeAddr(temp, 0), fn, ai);
+
+                    int index = 0;
+                    for (; ai < end; ++ai, ++index)
+                    {
+                        fn.argAt(index).setName(name + "." + index);
+                    }
+
+                    continue;
+                }
 				case Ignore:
 				{
 					// Initialize the local variable appropriately.
@@ -320,12 +356,102 @@ public final class CodeGenFunction
 					// Skip increment, no matching parameter.
 					continue;
 				}
+                case Coerce:
+                {
+                    assert ai != aiEnd :"Argument mismatch!";
+
+                    Value temp = createTempAlloc(convertTypeForMem(ty), "coerce");
+                    createCoercedStore(fn.argAt(ai), temp, this);
+                    if (!hasAggregateBackendType(ty))
+                    {
+                        temp = emitLoadOfScalar(temp, false, ty);
+                        if (!getContext().isCompatible(ty, arg.getDeclType()))
+                        {
+                            // This must be a promotion, for assumpting like
+                            // "void a(x)  short x; {...}"
+                            temp = emitScalarConversion(temp, ty, arg.getDeclType());
+                        }
+                    }
+                    emitParamDecl(arg, temp);
+                    break;
+                }
 			}
+			++ai;
 		}
-		assert !ai.hasNext():"Argument mismatch!";
+		assert ai == aiEnd :"Argument mismatch!";
 	}
 
-	/**
+    /**
+     * Create a store to {@code destPtr} from {@code src}, where the source
+     * and destination may have different type.
+     *
+     * This saftly handle the case when src type is larger than the type of
+     * destPtr type; the Upper bits of src will be lost.
+     * @param src
+     * @param destPtr
+     * @param cgf
+     */
+    private static void createCoercedStore(
+            Value src,
+            Value destPtr,
+            CodeGenFunction cgf)
+    {
+        Type srcTy = src.getType();
+        // The destination must be pointer to a value of type Element type.
+        Type destTy = ((PointerType)destPtr.getType()).getElemType();
+
+        long srcSize = cgf.generator.getTargetData().getTypeAllocSize(srcTy);
+        long destSize = cgf.generator.getTargetData().getTypeAllocSize(destTy);;
+
+        // If the size of source type is less than or equal to the destination size.
+        // It is safe to directly write.
+        if (srcSize <= destSize)
+        {
+            Value casted = cgf.builder.createBitCast(destPtr, PointerType.getUnqual(srcTy));
+            cgf.builder.createStore(src, casted).setAlignment(1);
+        }
+        else
+        {
+            // Otherwise, do coercion through memory. This is stupid, but simple.
+
+            Value tmp = cgf.createTempAlloc(srcTy);
+            cgf.builder.createStore(src, tmp);
+            Value casted = cgf.builder.createBitCast(tmp, PointerType.getUnqual(destTy));
+            Instruction.LoadInst li = cgf.builder.createLoad(casted);
+            li.setAlignment(1);
+            cgf.builder.createStore(li, destPtr);
+        }
+    }
+
+    private int expandTypeFromArgs(QualType ty, LValue lValue, Function fn,
+            int ai)
+    {
+        RecordType rt = ty.getAsStructureType();
+        assert rt != null :"Can only expand argument for structure type";
+
+        RecordDecl rd = rt.getDecl();
+        assert lValue.isSimple() :"Can not expand for structure type whose field"
+                + "is bitfield";
+        Value addr = lValue.getAddress();
+
+        for (int i = 0, e = rd.getNumFields(); i < e; i++)
+        {
+            FieldDecl fd = rd.getDeclAt(i);
+            QualType ft = fd.getDeclType();
+
+            LValue lv = emitLValueForField(addr, fd, false, 0);
+            if (hasAggregateBackendType(ft))
+                ai = expandTypeFromArgs(ft, lv, fn, ai);
+            else
+            {
+                emitStoreThroughLValue(RValue.get(fn.argAt(ai)), lv, ft);
+                ++ai;
+            }
+        }
+        return ai;
+    }
+
+    /**
 	 * Emits conversion instruction from the specified jlang type to another frotnend tyep.
 	 * <p>
 	 * Both type must be no Aggregate type.
@@ -350,7 +476,8 @@ public final class CodeGenFunction
 	 */
 	private void emitParamDecl(VarDecl param, Value arg)
 	{
-		assert param instanceof ParamVarDecl:"Invalid argument to emitParamDecl()";
+		assert param instanceof ParamVarDecl
+                : "Invalid argument to emitParamDecl()";
 
 		QualType ty = param.getDeclType();
 		Value destPtr = null;
@@ -377,7 +504,7 @@ public final class CodeGenFunction
 				// Otherwise, if this is an aggregate type, just use the input pointer.
 				destPtr = arg;
 			}
-			arg.setName(param.getDeclName());
+			arg.setName(param.getNameAsString());
 		}
 
 		Value entry = localVarMaps.get(param);
@@ -665,9 +792,9 @@ public final class CodeGenFunction
 	 */
 	public Value evaluateExprAsBool(Expr cond)
 	{
-		QualType boolTy = ASTContext.BoolTy;
-		assert !cond.getType()
-				.isComplexType() : "Current complex type not be supported.";
+		QualType boolTy =  getContext().BoolTy;
+		assert !cond.getType().isComplexType()
+                : "Current complex type not be supported.";
 
 		return emitScalarConversion(emitScalarExpr(cond), cond.getType(),
 				boolTy);
@@ -961,7 +1088,7 @@ public final class CodeGenFunction
 	public int constantFoldsToSimpleInteger(Expr expr)
 	{
 		Expr.EvalResult result = new Expr.EvalResult();
-		if (!expr.evaluate(result) || !result.getValue().isInt() || result
+		if (!expr.evaluate(result, getContext()) || !result.getValue().isInt() || result
 				.hasSideEffects())
 			return 0;   // can not foldable not integral or not fully evaluatable.
 
@@ -1034,9 +1161,10 @@ public final class CodeGenFunction
 	 */
 	public void emitCompoundStmt(Tree.CompoundStmt s)
 	{
-		for (Iterator<Tree.Stmt> itr = s.iterator(); itr.hasNext(); )
+	    Stmt[] stmts = s.getBody();
+	    for (Stmt stmt : stmts)
 		{
-			emitStmt(itr.next());
+			emitStmt(stmt);
 		}
 	}
 
@@ -1050,7 +1178,7 @@ public final class CodeGenFunction
 
 	public void emitDecl(Decl decl)
 	{
-		switch (decl.getDeclKind())
+		switch (decl.getKind())
 		{
 			default:
 				assert false : "Unknown decl type.";
@@ -1079,7 +1207,6 @@ public final class CodeGenFunction
 
 				// TODO handle variable modified type, 2016.11.3.
 				emitVLASize(ty);
-				return;
 			}
 		}
 	}
@@ -1127,7 +1254,7 @@ public final class CodeGenFunction
 			// A normal fixed sized variable becomes an alloca in the entry block.
 			backend.type.Type lty = convertTypeForMem(ty);
 			Instruction.AllocaInst alloca = createTempAlloc(lty);
-			alloca.setName(vd.getDeclName());
+			alloca.setName(vd.getNameAsString());
 
 			declPtr = alloca;
 		}
@@ -1136,7 +1263,7 @@ public final class CodeGenFunction
 			ensureInsertPoint();
 
 			Type elemTy = convertTypeForMem(ty);
-			Type elemPtrTy = PointerType.get(elemTy);
+			Type elemPtrTy = PointerType.getUnqual(elemTy);
 
 			Value vlaSize = emitVLASize(ty);
 
@@ -1188,44 +1315,47 @@ public final class CodeGenFunction
 
 	public Value emitVLASize(QualType type)
 	{
-		// todo handle variable sized type in the future. 2016.11.5.
-		assert type
-				.isVariablyModifiedType() : "Must pass variably modified type to EmitVLASizes!";
-		ensureInsertPoint();
+		assert type.isVariablyModifiedType()
+                : "Must pass variably modified type to EmitVLASizes!";
 
-		ArrayType.VariableArrayType vat = type.getAsVariableArrayType();
+		ensureInsertPoint();
+		ArrayType.VariableArrayType vat = getContext().getAsVariableArrayType(type);
+
 		if (vat != null)
 		{
-			Value sizeEntry = vlaSizeMap.get(vat.getSizeExpr());
-			if (sizeEntry == null)
+			Value sizeEntry = null;
+			if (!vlaSizeMap.containsKey(vat.getSizeExpr()))
 			{
 				Type sizeTy = convertType(vat.getSizeExpr().getType());
 
-				// get the element getNumOfSubLoop.
+				// get the element size.
 				QualType elemTy = vat.getElemType();
 				Value elemSize;
 				if (elemTy.isVariableArrayType())
 					elemSize = emitVLASize(elemTy);
 				else
-					elemSize = ConstantInt
-							.get(sizeTy, elemTy.getTypeSize() / 8);
+					elemSize = ConstantInt.get(sizeTy, getContext().getTypeSize(elemTy) / 8);
 
 				Value numElements = emitScalarExpr(vat.getSizeExpr());
-				numElements = builder
-						.createIntCast(numElements, sizeTy, false, "tmp");
+				numElements = builder.createIntCast(numElements, sizeTy, false, "tmp");
 				sizeEntry = builder.createMul(elemSize, numElements, "");
+
+                vlaSizeMap.put(vat.getSizeExpr(), sizeEntry);
 			}
+
+			sizeEntry = vlaSizeMap.get(vat.getSizeExpr());
 			return sizeEntry;
 		}
-		ArrayType at = type.getAsArrayType();
+
+		ArrayType at = getContext().getAsArrayType(type);
 		if (at != null)
 		{
 			emitVLASize(at.getElemType());
 			return null;
 		}
 
-		jlang.type.PointerType ptr = type.<jlang.type.PointerType>getAs();
-		assert ptr != null : "unknown VM type!";
+        assert type.getType() instanceof jlang.type.PointerType : "unknown VM type!";
+		jlang.type.PointerType ptr = (jlang.type.PointerType)type.getType();
 		emitVLASize(ptr.getPointeeType());
 		return null;
 	}
@@ -1275,17 +1405,17 @@ public final class CodeGenFunction
 		//
 		// int main()
 		// {
-		//     a = b;     // convert to memcpy calling in HIR.
+		//     a = b;     // convert to memcpy calling in LLVM IR.
 		// }
 		//
-		Type bp = PointerType.get(Type.Int8Ty);
+		Type bp = PointerType.getUnqual(Type.Int8Ty);
 		if (destPtr.getType() != bp)
 			destPtr = builder.createBitCast(destPtr, bp, "tmp");
 		if (srcPtr.getType() != bp)
 			srcPtr = builder.createBitCast(srcPtr, bp, "tmp");
 
-		// Get the getNumOfSubLoop and alignment info for this aggregate.
-		Pair<Long, Integer> typeInfo = QualType.getTypeInfo(ty);
+		// Get the size and alignment info for this aggregate.
+		Pair<Long, Integer> typeInfo = getContext().getTypeInfo(ty);
 
 		// Handle variable sized types.
 		Type intPtr = IntegerType.get(pointerWidth);
@@ -1294,8 +1424,7 @@ public final class CodeGenFunction
 		// indicate when either the source or the destination is volatile.
 		builder.createCall4(generator.getMemCpyFn(), destPtr, srcPtr,
 				ConstantInt.get(intPtr, typeInfo.first/8),
-				ConstantInt.get(Type.Int32Ty, typeInfo.second/8),
-				"");
+				ConstantInt.get(Type.Int32Ty, typeInfo.second/8));
 	}
 
 
@@ -1310,7 +1439,7 @@ public final class CodeGenFunction
 			PointerType destPtr = (PointerType) addr.getType();
 			if (destPtr.getElemType() != srcTy)
 			{
-				Type memTy = PointerType.get(srcTy);
+				Type memTy = PointerType.getUnqual(srcTy);
 				addr = builder.createBitCast(addr, memTy, "storetmp");
 			}
 		}
@@ -1340,7 +1469,7 @@ public final class CodeGenFunction
 		if (s instanceof Tree.CompoundStmt)
 		{
 			Tree.CompoundStmt cs = (Tree.CompoundStmt) s;
-			for (Tree.Stmt sub : cs.stats)
+			for (Tree.Stmt sub : cs.getBody())
 				if (containsLabel(sub, ignoreCaseStmts))
 					return true;
 		}
@@ -1436,7 +1565,7 @@ public final class CodeGenFunction
 					gv = new GlobalVariable(generator.getModule(),
 							init.getType(), oldGV.isConstant(),
 							LinkageType.InteralLinkage,
-							init, "");
+							init, "", null,0);
 
 					// Replace all uses of the old global with the new global
 					Constant newPtrForOldDecl = ConstantExpr
@@ -1460,16 +1589,16 @@ public final class CodeGenFunction
 
 		String contextName = "";
 		if (curFnDecl != null)
-			contextName = curFnDecl.getDeclName();
+			contextName = curFnDecl.getNameAsString();
 		else
 			assert false : "Unknown context for block var decl";
 
 		String name = contextName + separator + vd.getDeclName();
 		Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
 		return new GlobalVariable(generator.getModule(),
-				lty, ty.isConstant(),
+				lty, ty.isConstant(getContext()),
 				LinkageType.InteralLinkage,
-				generator.emitNullConstant(vd.getDeclType()), name);
+				generator.emitNullConstant(vd.getDeclType()), name, null, 0);
 	}
 
 	private void emitGotoStmt(Tree.GotoStmt s)
@@ -1549,7 +1678,6 @@ public final class CodeGenFunction
 				builder.setInsertPoint(bi.getParent());
 				bi.eraseFromBasicBlock();
 				returnBlock = null;
-				return;
 			}
 		}
 	}
@@ -1569,35 +1697,84 @@ public final class CodeGenFunction
 				case Ignore:
 					break;
 				case Direct:
+                case Extend:
 					// The internal return value temp always will have pointer
 					// to return-type types.
 					rv = builder.createLoad(returnValue, false, "ret");
 				case Indirect:
-					if (retTy.isComplexType())
-					{
-						// TODO complex type.
-					}
-					else if (hasAggregateBackendType(retTy))
-					{
-						emitAggregateCopy(curFn.getArgumentList().get(0),
-								returnValue, retTy, false);
-					}
-					else
-					{
-						emitStoreOfScalar(builder.createLoad(returnValue, false, "ret"),
-								curFn.getArgumentList().get(0),
-								false, retTy);
-					}
+                {
+                    if (retTy.isComplexType())
+                    {
+                        // TODO complex type.
+                    }
+                    else if (hasAggregateBackendType(retTy))
+                    {
+                        emitAggregateCopy(curFn.getArgumentList().get(0),
+                                returnValue, retTy, false);
+                    }
+                    else
+                    {
+                        emitStoreOfScalar(
+                                builder.createLoad(returnValue, false, "ret"),
+                                curFn.getArgumentList().get(0), false, retTy);
+                    }
+                }
+                case Coerce:
+                    rv = createCoercedLoad(returnValue, retAI.getCoerceType(), this);
+                    break;
+                case Expand:
+                    assert false :"Expand abi can not used for return argument!";
+                    break;
 			}
 		}
 
-		if (rv!=null)
+		if (rv != null)
 			builder.createRet(rv);
 		else
 			builder.createRetVoid();
 	}
 
-	private void emitContinueStmt(Tree.ContinueStmt s)
+    /**
+     * Create a load from {@code srcPtr} which interpreted as a pointer to
+     * an object of type {@code ty}.
+     * <p>
+     * This safely handles the case when the src type is smaller than destination
+     * type; in this situation the values of bit which not present in the src and
+     * undefined.
+     * </p>
+     * @param srcPtr
+     * @param ty
+     * @param cgf
+     * @return
+     */
+    private static Value createCoercedLoad(
+            Value srcPtr,
+            Type ty,
+            CodeGenFunction cgf)
+    {
+        Type srcTy = ((PointerType)srcPtr.getType()).getElemType();
+        long srcSize = cgf.generator.getTargetData().getTypeAllocSize(srcTy);
+        long destSize = cgf.generator.getTargetData().getTypeAllocSize(ty);
+
+        if (srcSize >= destSize)
+        {
+            //
+            Value casted = cgf.builder.createBitCast(srcPtr, PointerType.getUnqual(ty));
+            Instruction.LoadInst load = cgf.builder.createLoad(casted);
+            load.setAlignment(1);
+            return load;
+        }
+        else
+        {
+            Value tmp = cgf.createTempAlloc(ty);
+            Value casted = cgf.builder.createBitCast(tmp, PointerType.getUnqual(srcTy));
+            Instruction.StoreInst store = cgf.builder.createStore(cgf.builder.createLoad(srcPtr), casted);
+            store.setAlignment(1);
+            return cgf.builder.createLoad(tmp);
+        }
+    }
+
+    private void emitContinueStmt(Tree.ContinueStmt s)
 	{
 		assert !breakContinueStack
 				.isEmpty() : "break stmt not in a loop or switch!";
@@ -1633,14 +1810,14 @@ public final class CodeGenFunction
 		// that falls through to the next case which is IR intensive.  It also causes
 		// deep recursion which can run into stack depth limitations.  Handle
 		// sequential non-range case statements specially.
-		CaseStmt curCase = s;
-		CaseStmt nextCase = s.getNextCaseStmt();
+		SwitchCase curCase = s;
+		SwitchCase nextCase = s.getNextSwitchCase();
 		while (nextCase != null)
 		{
 			curCase = nextCase;
 			caseVal = curCase.getCondExpr().evaluateKnownConstInt();
 			switchInst.addCase(ConstantInt.get(caseVal), caseDest);
-			nextCase = curCase.getNextCaseStmt();
+			nextCase = curCase.getNextSwitchCase();
 		}
 
 		// Normal default recursion for non-cases.
@@ -1671,7 +1848,7 @@ public final class CodeGenFunction
 	public LValue emitUnSupportedLValue(Expr expr, String msg)
 	{
 		errorUnsupported(expr, msg);
-		Type ty = PointerType.get(convertType(expr.getType()));
+		Type ty = PointerType.getUnqual(convertType(expr.getType()));
 		return LValue.makeAddr(Value.UndefValue.get(ty),
 				expr.getType().getCVRQualifiers());
 	}
@@ -1760,7 +1937,7 @@ public final class CodeGenFunction
 			final PointerType desPtr = (PointerType) addr.getType();
 			if (desPtr.getElemType() != srcTy)
 			{
-				Type memTy = PointerType.get(srcTy);
+				Type memTy = PointerType.getUnqual(srcTy);
 				addr = builder.createBitCast(addr, memTy, "storetmp");
 			}
 		}
@@ -1853,9 +2030,8 @@ public final class CodeGenFunction
 		assert calleeType
 				.isFunctionPointerType() : "Call must have function pointer type!";
 
-		QualType fnType = calleeType.<jlang.type.PointerType>getAs()
-				.getPointee();
-		jlang.type.FunctionType fn = fnType.getAs();
+		QualType fnType = getContext().getPointerType(calleeType).getPointeeType();
+		jlang.type.FunctionType fn = fnType.getAsFunctionType();
 		QualType resultType = fn.getResultType();
 
 		ArrayList<Pair<RValue, QualType>> callArgs = new ArrayList<>();
@@ -2120,14 +2296,14 @@ public final class CodeGenFunction
 
 	public LValue emitUnaryOpLValue(UnaryExpr expr)
 	{
-		QualType exprType = expr.getType().getCanonicalTypeInternal();
+		QualType exprType = getContext().getCanonicalType(expr.getType());
 		switch (expr.getOpCode())
 		{
 			default:
 				assert false:"Unknown unary operator lvalue!";
 			case UO_Deref:
 			{
-				QualType t = expr.getSubExpr().getType().getPointee();
+				QualType t = expr.getSubExpr().getType().getPointeeType();
 				assert !t.isNull():"CodeGenFunction.emitUnaryOpLValue: illegal type";
 
 				return LValue.makeAddr(emitScalarExpr(expr.getSubExpr()),
@@ -2141,7 +2317,7 @@ public final class CodeGenFunction
 		// The index must always be an integer
 		Value idx = emitScalarExpr(expr.getIdx());
 		QualType idxType = expr.getIdx().getType();
-		boolean idxSigned = idxType.isSignedType();
+		boolean idxSigned = idxType.isSignedIntegerType();
 
 		// The base must be a pointer, which is not an aggregate.  emit it.
 		Value base = emitScalarExpr(expr.getBase());
@@ -2162,16 +2338,16 @@ public final class CodeGenFunction
 
 		// We know that the pointer points to a type of the correct getNumOfSubLoop,
 		// unless the getNumOfSubLoop is a VLA
-		ArrayType.VariableArrayType vat = expr.getType().getAsVariableArrayType();
+		ArrayType.VariableArrayType vat = getContext().getAsVariableArrayType(expr.getType());
 		Value address;
 		if (vat != null)
 		{
 			// TODO.
 			Value vlaSize = getVLASize(vat);
 			idx = builder.createMul(idx, vlaSize, "idxmul");
-			QualType baseType = QualType.getBaseElementType(vat);
+			QualType baseType = getContext().getBaseElementType(vat);
 
-			long baseTypeSize = baseType.getTypeSize() / 8;
+			long baseTypeSize = getContext().getTypeSize(baseType) / 8;
 			idx = builder.createUDiv(idx, ConstantInt.get(idx.getType(), baseTypeSize), "udiv");
 
 			address = builder.createInBoundsGEP(base, idx, "arrayidx");
@@ -2181,7 +2357,7 @@ public final class CodeGenFunction
 			address = builder.createInBoundsGEP(base, idx, "arrayidx");
 		}
 
-		QualType t = expr.getBase().getType().getPointee();
+		QualType t = expr.getBase().getType().getPointeeType();
 		assert !t.isNull():"CodeGenFunction.emitArraySubscriptExpr():Illegal base type";
 
 		LValue lv = LValue.makeAddr(address, t.getCVRQualifiers());
@@ -2205,8 +2381,8 @@ public final class CodeGenFunction
 		if (expr.isArrow())
 		{
 			baseValue = emitScalarExpr(baseExpr);
-			jlang.type.PointerType pty = baseExpr.getType().getAs();
-			if (pty.getPointee().isUnionType())
+			jlang.type.PointerType pty = baseExpr.getType().getAsPointerType();
+			if (pty.getPointeeType().isUnionType())
 				isUnion = true;
 			cvrQualifiers = pty.getPointeeType().getCVRQualifiers();
 		}
@@ -2246,7 +2422,7 @@ public final class CodeGenFunction
 					convertTypeForMem(field.getDeclType());
 
 			PointerType baseType = (PointerType)baseValue.getType();
-			v = builder.createBitCast(v, PointerType.get(fieldType),
+			v = builder.createBitCast(v, PointerType.getUnqual(fieldType),
 					"tmp");
 		}
 
@@ -2264,13 +2440,13 @@ public final class CodeGenFunction
 
 		Type fieldType = generator.getCodeGenTypes().convertTypeForMem(field.getDeclType());
 		PointerType baseType = (PointerType) baseValue.getType();
-		baseValue = builder.createBitCast(baseValue, PointerType.get(fieldType), "tmp");
+		baseValue = builder.createBitCast(baseValue, PointerType.getUnqual(fieldType), "tmp");
 
 		Value idx = ConstantInt.get(Type.Int32Ty, info.fieldNo);
 		Value v = builder.createGEP(baseValue, idx, "tmp");
 
 		return LValue.makeBitfield(v, info.start, info.size,
-				field.getDeclType().isSignedType(),
+				field.getDeclType().isSignedIntegerType(),
 				field.getDeclType().getCVRQualifiers() | cvrQualifiers);
 	}
 
@@ -2340,12 +2516,12 @@ public final class CodeGenFunction
 
 	public void emitMemSetToZero(Value address, QualType ty)
 	{
-		Type bp = PointerType.get(Type.Int8Ty);
+		Type bp = PointerType.getUnqual(Type.Int8Ty);
 		if (address.getType() != bp)
 			address = builder.createBitCast(address, bp, "bitcast.tmp");
 
 		// Get the getNumOfSubLoop and alignment info for this aggregate.
-		Pair<Long, Integer> typeInfo = QualType.getTypeInfo(ty);
+		Pair<Long, Integer> typeInfo = getContext().getTypeInfo(ty);
 
 		// don't emit code for zero getNumOfSubLoop type.
 		if (typeInfo.first == 0)

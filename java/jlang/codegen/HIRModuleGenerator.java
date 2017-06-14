@@ -1,29 +1,28 @@
 package jlang.codegen;
 
-import backend.hir.*;
+import backend.hir.Module;
+import backend.hir.Operator;
 import backend.intrinsic.Intrinsic;
-import backend.support.NameMangler;
 import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.CallInst;
-import jlang.ast.Tree.*;
+import jlang.ast.Tree.Expr;
+import jlang.ast.Tree.Stmt;
+import jlang.ast.Tree.StringLiteral;
 import jlang.basic.CompileOptions;
+import jlang.basic.SourceLocation;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
 import jlang.sema.Decl.FunctionDecl;
 import jlang.sema.Decl.VarDecl;
-import jlang.type.ArrayType;
 import jlang.type.QualType;
-import tools.Context;
-import tools.Log;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 
 import static backend.value.ConstantExpr.*;
@@ -105,7 +104,7 @@ public class HIRModuleGenerator
         this.diags = diags;
         vars = new ArrayList<>();
         functions = new ArrayList<>();
-        cgTypes = new CodeGenTypes(this);
+        cgTypes = new CodeGenTypes(this, td);
         constantStringMap = new HashMap<>();
         globalDeclMaps = new HashMap<>();
     }
@@ -801,13 +800,28 @@ public class HIRModuleGenerator
         return getAddrOfConstantString(getStringForStringLiteral(expr), null);
     }
 
-	public void errorUnsupported(Decl d, String type, boolean omitOnError)
-	{
+    void errorUnsupported(Stmt stmt, String type)
+    {
+        errorUnsupported(stmt.getLocStart(), type, false);
+    }
+
+    private void errorUnsupported(SourceLocation loc, String type, boolean omitOnError)
+    {
         if (omitOnError && diags.hasErrorOccurred())
             return;
         int diagID = diags.getCustomDiagID(Diagnostic.Level.Error,
                 "cannot compile this %0 yet");
-        diags.report(ctx.getFullLoc(d.getLocation()), diagID).addTaggedVal(type).emit();
+        diags.report(ctx.getFullLoc(loc), diagID).addTaggedVal(type).emit();
+    }
+
+    public void errorUnsupported(Decl d, String type)
+    {
+        errorUnsupported(d, type, false);
+    }
+
+	private void errorUnsupported(Decl d, String type, boolean omitOnError)
+	{
+	    errorUnsupported(d.getLocation(), type, omitOnError);
 	}
 
 	public void release() {}
