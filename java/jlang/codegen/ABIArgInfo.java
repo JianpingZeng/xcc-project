@@ -2,9 +2,7 @@ package jlang.codegen;
 
 import backend.type.Type;
 
-import static jlang.codegen.ABIArgInfo.Kind.Direct;
-import static jlang.codegen.ABIArgInfo.Kind.Ignore;
-import static jlang.codegen.ABIArgInfo.Kind.Indirect;
+import static jlang.codegen.ABIArgInfo.Kind.*;
 
 /**
  * @author Xlous.zeng
@@ -12,13 +10,15 @@ import static jlang.codegen.ABIArgInfo.Kind.Indirect;
  */
 public class ABIArgInfo
 {
-	public enum Kind
+    public enum Kind
 	{
 		/**
 		 * Pass the argument directly using the normal converted backend type.
 		 * Complex and array type are passed using first class aggregate.
 		 */
 		Direct,
+
+		Extend,
 
 		/**
 		 * Pass the argument indirectly by a hidden pointer.
@@ -29,10 +29,14 @@ public class ABIArgInfo
 		 * Ignore the passed in argument (treat as void).
 		 * Useful for void type and empty struct type.
 		 */
-		Ignore;
+		Ignore,
+
+		Coerce,
+
+		Expand;
 
 		public static final Kind FirstKind = Direct;
-		public static final Kind LastKind = Ignore;
+		public static final Kind LastKind = Expand;
 	}
 
 	private Kind kind;
@@ -64,9 +68,36 @@ public class ABIArgInfo
 		return new ABIArgInfo(Indirect, null);
 	}
 
-	public Kind getKind() {return kind;}
-	public boolean isDirect() {return kind == Direct;}
-	public boolean isIndirect() {return kind == Indirect;}
-	public boolean isIgnore() {return kind == Ignore;}
-	public Type getType() {return typeData;}
+    public Kind getKind()
+    {
+        return kind;
+    }
+
+    public boolean isDirect()
+    {
+        return kind == Direct;
+    }
+
+	public boolean isIndirect()
+    {
+        return kind == Indirect;
+    }
+
+	public boolean isIgnore()
+    {
+        return kind == Ignore;
+    }
+
+	public Type getType()
+    {
+        return typeData;
+    }
+
+    public Type getCoerceType()
+    {
+        assert kind == Coerce :"Invalid kind!";
+        return typeData;
+    }
+
+
 }
