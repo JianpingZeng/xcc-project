@@ -84,4 +84,10 @@ public class GlobalVariable extends GlobalValue
     {
         return !isExternal();
     }
+
+    @Override
+    public GlobalVariable clone()
+    {
+        return (GlobalVariable) super.clone();
+    }
 }

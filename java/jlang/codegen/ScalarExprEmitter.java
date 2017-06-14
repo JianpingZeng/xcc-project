@@ -389,7 +389,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             if (lhsEltType.isVoidType() || lhsEltType.isFunctionType())
             {
                 Type i8Ty = PointerType.get(Type.Int8Ty);
-                Value lhsCasted = builder.creatBitCast(info.lhs, i8Ty, "sub.ptr.bitcast");
+                Value lhsCasted = builder.createBitCast(info.lhs, i8Ty, "sub.ptr.bitcast");
                 Value res = builder.createGEP(lhsCasted, idx, "sub.ptr");
                 return builder.createBitCast(res, info.lhs.getType(), "bitcast");
             }

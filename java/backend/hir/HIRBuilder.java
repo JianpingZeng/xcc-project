@@ -169,7 +169,7 @@ public class HIRBuilder
 		return createCast(Operator.IntToPtr, val, destType, name);
 	}
 
-	public Value creatBitCast(Value val, Type destType, String name)
+	public Value createBitCast(Value val, Type destType, String name)
 	{
 		return createCast(Operator.BitCast, val, destType, name);
 	}
@@ -212,11 +212,6 @@ public class HIRBuilder
     {
         return createBitCast(value, destTy, "");
     }
-
-	public Value createBitCast(Value value, Type destTy, String name)
-	{
-		return createCast(Operator.BitCast, value, destTy, name);
-	}
 
 	/**
 	 * create an unconditional branch instruction-'br label X'.
