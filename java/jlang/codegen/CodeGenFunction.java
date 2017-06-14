@@ -553,16 +553,6 @@ public final class CodeGenFunction
 		return generator.getCodeGenTypes().convertType(t);
 	}
 
-	/**
-	 * Emits code for the function body through visiting CompoundStmt of function.
-	 */
-	private void emitFunctionBody()
-	{
-		assert curFnDecl.hasBody()
-				: "Can not emit stmt code for function with no body.";
-		emitStmt(curFnDecl.getBody());
-	}
-
 	public void emitStmt(Tree.Stmt stmt)
 	{
 		assert stmt != null : "Null Statement!";
