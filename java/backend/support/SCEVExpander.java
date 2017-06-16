@@ -12,7 +12,6 @@ import backend.value.Instruction.Op2;
 import backend.value.Instruction.PhiNode;
 import jlang.basic.APInt;
 import tools.Pair;
-import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -303,7 +302,7 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 					insertPtr = bb.getInstAt(bb.getFirstNonPhi());
 				}
 				while (isInsertedInstruction(insertPtr))
-					insertPtr = Util.next(insertPtr);
+					insertPtr = BasicBlockUtil.next(insertPtr);
 				break;
 			}
 		}

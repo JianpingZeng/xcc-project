@@ -18,7 +18,7 @@ package jlang.basic;
 
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import jlang.clex.Token.StrData;
+import jlang.clex.StrData;
 import tools.Pair;
 
 import java.nio.CharBuffer;

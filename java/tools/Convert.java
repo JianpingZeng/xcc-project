@@ -273,20 +273,5 @@ public class Convert {
         }
         return s;
     }
-
-    /**
-      * ReturnInst the last part of a class name.
-      */
-    public static Name shortName(Name classname) {
-        return classname.subName(classname.lastIndexOf((byte)'.') + 1, classname.len);
-    }
-
-    /**
-      * ReturnInst the package getIdentifier of a class getIdentifier, excluding the trailing '.',
-      *  "" if not existent.
-      */
-    public static Name packagePart(Name classname) {
-        return classname.subName(0, classname.lastIndexOf((byte)'.'));
-    }
 }
 
