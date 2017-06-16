@@ -158,7 +158,7 @@ public final class Preprocessor
     {
         assert tok.getLength() >= 0 : "Token character range is bogus!";
 
-        Token.StrData tokStart = sourceMgr.getCharacterData(tok.getLocation());
+        StrData tokStart = sourceMgr.getCharacterData(tok.getLocation());
         if (!tok.needsCleaning())
             return String.valueOf(Arrays.copyOfRange(tokStart.buffer, tokStart.offset, tok.getLength()));
 
@@ -1963,7 +1963,7 @@ public final class Preprocessor
                 continue;
             }
 
-            Token.StrData strData = sourceMgr.getCharacterData(tok.getLocation());
+            StrData strData = sourceMgr.getCharacterData(tok.getLocation());
             char[] rawCharData = strData.buffer;
             int offset = strData.offset;
             char firstChar = rawCharData[offset];
@@ -3303,7 +3303,7 @@ public final class Preprocessor
     public SourceLocation advanceToTokenCharacter(SourceLocation tokStart,
             int charNo)
     {
-        Token.StrData charData = sourceMgr.getCharacterData(tokStart);
+        StrData charData = sourceMgr.getCharacterData(tokStart);
         char[] buffer = charData.buffer;
         int offset = charData.offset;
         if (charNo == 0 && Lexer.isObviouslySimpleCharacter(buffer[offset]))
@@ -3830,7 +3830,7 @@ public final class Preprocessor
         assert !token.needsCleaning():"Token can't need cleaning with lenght 1";
 
         // If the token is carrying a literal data, just return its first character.
-        Token.StrData data = token.getLiteralData();
+        StrData data = token.getLiteralData();
         if (data != null)
             return data.buffer[data.offset];
         // Otherwise, performing the slower path.

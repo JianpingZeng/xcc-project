@@ -29,11 +29,6 @@ import jlang.basic.LangOptions;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
-import tools.Context;
-import tools.Log;
-import tools.Options;
-
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;

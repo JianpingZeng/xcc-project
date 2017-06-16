@@ -19,7 +19,7 @@ package jlang.diag;
 import jlang.basic.FileID;
 import jlang.basic.MemoryBuffer;
 import jlang.basic.SourceManager;
-import jlang.clex.Token.StrData;
+import jlang.clex.StrData;
 import jlang.basic.SourceLocation;
 import tools.Pair;
 

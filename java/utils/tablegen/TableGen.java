@@ -16,8 +16,6 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import org.apache.commons.cli.*;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.file.Files;

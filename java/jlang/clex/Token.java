@@ -10,25 +10,6 @@ import static jlang.clex.Token.TokenFlags.*;
  */
 public class Token
 {
-    public static class StrData
-    {
-        /**
-         * The entire char buffer.
-         */
-        public final char[] buffer;
-        /**
-         * The starting index of the {@linkplain #data} in
-         * the {@linkplain #buffer}
-         */
-        public final int offset;
-
-        public StrData(final char[] buffer, int offset)
-        {
-            this.buffer = buffer;
-            this.offset = offset;
-        }
-    }
-
     private SourceLocation loc;
     /**
      *  This is a union of three different pointer types, which depends
