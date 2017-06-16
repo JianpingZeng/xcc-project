@@ -30,9 +30,10 @@ import java.nio.file.Paths;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MemoryBuffer
+public class MemoryBuffer implements Cloneable
 {
     private CharBuffer buffer;
+    private int bufferStart;
 
     public MemoryBuffer(CharBuffer buffer)
     {
@@ -150,6 +151,86 @@ public class MemoryBuffer
     {
         char[] buf = new char[size];
         return new MemoryBufferMem(buf, bufferName);
+    }
+
+    public int getBufferStart()
+    {
+        return bufferStart;
+    }
+
+    public void advance()
+    {
+        ++bufferStart;
+    }
+
+    /**
+     * Obtains the current character indexed by {@linkplain #bufferStart}
+     * from CharBuffer.
+     * @return
+     */
+    public char getCurChar()
+    {
+        return buffer.charAt(bufferStart);
+    }
+
+    public char getCharAt(int i)
+    {
+        assert i>= getBufferStart() && i < buffer.length();
+        return buffer.charAt(i);
+    }
+
+    public String getSubString(int lineStart, int lineEnd)
+    {
+        assert bufferStart <= lineStart && lineStart < lineEnd
+                && lineEnd < buffer.length();
+        StringBuilder sb = new StringBuilder();
+        for (int i = lineStart; i < lineEnd; i++)
+            sb.append(buffer.charAt(i));
+
+        return sb.toString();
+    }
+
+    /**
+     * Checks if the other MemoryBuffer is within the current
+     * MemoryBuffer.
+     * @param other
+     * @return
+     */
+    public boolean contains(MemoryBuffer other)
+    {
+        return buffer.equals(other.getBuffer())
+                && other.getBufferStart() >= bufferStart
+                && other.getBufferStart() < buffer.length();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null) return false;
+        if (obj == this) return true;
+
+        if (getClass() != obj.getClass())
+            return false;
+        MemoryBuffer memBuf = (MemoryBuffer)obj;
+        return bufferStart == memBuf.bufferStart && buffer.equals(memBuf.buffer);
+    }
+
+    @Override
+    public MemoryBuffer clone()
+    {
+        try
+        {
+            return (MemoryBuffer)super.clone();
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    public void setBufferStart(int bufferStart)
+    {
+        this.bufferStart = bufferStart;
     }
 
     static class MemoryBufferMem extends MemoryBuffer
