@@ -7,7 +7,7 @@
     </content>
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" exported="" scope="RUNTIME" name="trove-3.0.3" level="project" />
+    <orderEntry type="library" exported="" name="trove-3.0.3" level="project" />
     <orderEntry type="library" exported="" name="javacc" level="project" />
   </component>
 </module>
