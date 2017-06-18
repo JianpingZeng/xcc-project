@@ -419,11 +419,25 @@ public abstract class AsmPrinter extends MachineFunctionPass
         switch (type.getTypeID())
         {
             case Type.IntegerTyID:
-            case Type.IntegerTyID:
-                os.print(data8BitDirective);
-                break;
-            case Type.IntegerTyID:
-                os.print(data16BitDirective);
+                int sz = (int)td.getTypeSize(type);
+                switch(sz)
+                {
+                    case 8:
+                        os.print(data8BitDirective);
+                        break;
+                    case 16:
+                        os.print(data16BitDirective);
+                        break;
+                    case 32:
+                        os.print(data32BitDirective);
+                        break;
+                    case 64:
+                        assert data64BitDirective != null:"Target cannot handle 64-bit constant!";
+                        os.print(data64BitDirective);
+                        break;
+                    default:
+                        assert false:"Unknown integral type";
+                }
                 break;
             case Type.PointerTyID:
                 if (td.getPointerMemSize() == 8)
@@ -431,12 +445,6 @@ public abstract class AsmPrinter extends MachineFunctionPass
                     os.print(data64BitDirective);
                     break;
                 }
-            case Type.IntegerTyID:
-                os.print(data32BitDirective);
-                break;
-            case Type.IntegerTyID:
-                assert data64BitDirective != null:"Target cannot handle 64-bit constant!";
-                os.print(data64BitDirective);
                 break;
             case Type.FloatTyID:
             case Type.DoubleTyID:

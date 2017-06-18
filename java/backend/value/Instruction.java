@@ -2921,7 +2921,7 @@ public abstract class Instruction extends User
                 String name,
                 Instruction insertBefore)
         {
-            super(PointerType.get(checkType(getIndexedType(ptr.getType(), idx))),
+            super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), idx))),
                     GetElementPtr, insertBefore);
             reserve(2);
             init(ptr, idx, name);
@@ -2929,7 +2929,7 @@ public abstract class Instruction extends User
 
         public GetElementPtrInst(Value ptr, Value idx, String name, BasicBlock insertAtEnd)
         {
-            super(PointerType.get(checkType(getIndexedType(ptr.getType(), idx))),
+            super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), idx))),
                     GetElementPtr, insertAtEnd);
             reserve(2);
             init(ptr, idx, name);
@@ -2948,7 +2948,7 @@ public abstract class Instruction extends User
         public GetElementPtrInst(Value ptr, List<Value> indices,
                 String name, Instruction insertBefore)
         {
-            super(PointerType.get(checkType(getIndexedType(ptr.getType(), indices.get(0)))),
+            super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices.get(0)))),
                     GetElementPtr, insertBefore);
             reserve(indices.size());
             setOperand(0, ptr);

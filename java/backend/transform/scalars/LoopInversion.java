@@ -1,4 +1,4 @@
-package backend.transform.scalars;
+/*package backend.transform.scalars;
 
 import backend.analysis.Loop;
 import backend.hir.BasicBlock;
@@ -29,6 +29,7 @@ import backend.value.Value;
  * @author Xlous.zeng
  * @version 0.1
  */
+/*
 public final class LoopInversion implements LoopPass
 {
     @Override
@@ -41,7 +42,7 @@ public final class LoopInversion implements LoopPass
 	 * Run loop rotation pass over given many loops.
 	 * Note that: before this pass performed, it is must to make sure that 
 	 * the Loop has exactly one entry block and exit block. 
-	 */
+	 *
 	@Override
 	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
@@ -157,10 +158,11 @@ public final class LoopInversion implements LoopPass
 	 * instruction in header block. 
 	 * @param loop
 	 * @return
-	 */
+	 *
 	private boolean isNeededRotation(Loop loop)
 	{
 		Value lastInst = loop.getHeaderBlock().getLastInst();
 		return (lastInst instanceof BranchInst);
 	}
 }
+*/

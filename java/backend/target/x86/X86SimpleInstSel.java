@@ -35,7 +35,7 @@ import static backend.value.Instruction.CmpInst.Predicate.LAST_ICMP_PREDICATE;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class X86SimpleInstSel extends FunctionPass implements InstVisitor<Void>
+public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
 {
     interface TypeClass
     {

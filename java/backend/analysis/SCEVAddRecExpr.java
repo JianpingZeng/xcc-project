@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import backend.hir.BasicBlock;
 import backend.hir.Operator;
 import backend.type.Type;
 import backend.value.Constant;
@@ -471,6 +472,13 @@ public class SCEVAddRecExpr extends SCEV
 	public Type getType()
 	{
 		return getStart().getType();
+	}
+
+	@Override
+	public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+	{
+		// TODO: 17-6-18
+		return false;
 	}
 
 	@Override

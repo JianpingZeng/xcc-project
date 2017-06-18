@@ -55,7 +55,7 @@ public final class Sema implements DiagnosticParseTag,
         DiagnosticCommonKindsTag,
         DiagnosticSemaTag
 {
-	/**
+    /**
      * Used for emitting the right warning by DefaultVariadicArgumentPromotion.
      */
     enum VariadicCallType
@@ -7311,5 +7311,10 @@ public final class Sema implements DiagnosticParseTag,
     public ActionResult<Stmt> actOnNullStmt(SourceLocation loc)
     {
         return new ActionResult<>(new Tree.NullStmt(loc), true);
+    }
+
+    public void actOnComment(SourceRange comment)
+    {
+        // TODO: 17-6-18 Acting on Comment
     }
 }

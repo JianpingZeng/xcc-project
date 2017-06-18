@@ -422,7 +422,7 @@ public abstract class RecTy
 
                 if (l == null || r == null) return null;
                 if (l != ui.getLhs() || r != ui.getRhs())
-                    return new BinOpInit(BinOpInit.BinaryOp.STRCONCAT, l, r);
+                    return new BinOpInit(BinOpInit.BinaryOp.STRCONCAT, l, r, this);
                 return ui;
             }
             return null;
@@ -539,7 +539,7 @@ public abstract class RecTy
                 else
                     return null;
             }
-            return new ListInit(elts);
+            return new ListInit(elts, this);
         }
         @Override
         public Init convertValue( BinOpInit ui) { return null; }

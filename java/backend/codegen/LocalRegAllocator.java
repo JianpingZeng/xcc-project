@@ -173,7 +173,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 
 	private int getFreeReg(TargetRegisterClass rc)
 	{
-		int size = rc.getNumRegs();
+		int size = rc.getRegSize();
 		for (int i = 0; i< size; i++)
 		{
 			int phyReg = rc.getRegister(i);
