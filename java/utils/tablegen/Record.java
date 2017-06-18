@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.SourceMgr;
 import utils.tablegen.Init.*;
 
 import java.io.ByteArrayOutputStream;
@@ -28,7 +29,7 @@ import java.util.Iterator;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class Record
+public final class Record implements Cloneable
 {
     /**
      * This is a global, static, and final object for keeping the map from
@@ -40,13 +41,15 @@ public final class Record
     private ArrayList<String> templateArgs;
     private ArrayList<RecordVal> values;
     private ArrayList<Record> superClasses;
+    private SourceMgr.SMLoc loc;
 
-    public Record(String name)
+    public Record(String name, SourceMgr.SMLoc loc)
     {
         this.name = name;
         templateArgs = new ArrayList<>();
         values = new ArrayList<>();
         superClasses = new ArrayList<>();
+        this.loc = loc;
     }
 
     public String getName()
@@ -417,5 +420,29 @@ public final class Record
         ByteArrayOutputStream os = new ByteArrayOutputStream();
         print(new PrintStream(os), this);
         return os.toString();
+    }
+
+    @Override
+    public Record clone()
+    {
+        try
+        {
+            Object obj = super.clone();
+
+            Record r = (Record)obj;
+            r.name = name;
+            r.loc = loc;
+            ArrayList<String> t = new ArrayList<>(templateArgs);
+            ArrayList<RecordVal> t2 = new ArrayList<>(values);
+            ArrayList<Record> s = new ArrayList<>(superClasses);
+            r.templateArgs = t;
+            r.values = t2;
+            r.superClasses = s;
+            return r;
+        }
+        catch (CloneNotSupportedException e)
+        {
+            return null;
+        }
     }
 }

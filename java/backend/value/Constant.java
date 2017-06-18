@@ -45,10 +45,6 @@ public abstract class Constant extends User
         switch (type.getTypeID())
         {
             case Type.IntegerTyID:
-            case Type.IntegerTyID:
-            case Type.IntegerTyID:
-            case Type.IntegerTyID:
-            case Type.IntegerTyID:
                 return ConstantInt.get((IntegerType) type, 0);
 
             case Type.FloatTyID:

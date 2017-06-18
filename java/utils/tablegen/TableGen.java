@@ -16,12 +16,15 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import tools.SourceMgr;
+import tools.commandline.*;
+
+import static tools.commandline.Desc.desc;
+import static tools.commandline.FormattingFlags.Positional;
+import static tools.commandline.FormattingFlags.Prefix;
+import static tools.commandline.Initializer.init;
+import static tools.commandline.ValueDesc.valueDesc;
+import static utils.tablegen.TableGen.ActionType.*;
 
 /**
  * @author Xlous.zeng
@@ -35,69 +38,61 @@ public final class TableGen
      */
     enum ActionType
     {
-        GenRegisterNames("gen-reg-names", "Generates register names"),
-        GenRegisterInfo("gen-reg-info", "Generates register information file"),
-        GenInstrNames("gen-instr-names", "Generates instr names"),
-        GenInstrInfo("gen-instr-info", "Generates instr information"),
-        GenAsmPrinter("gen-asm-print", "Generates assembly printer");
-
-        String optName;
-        String desc;
-
-        ActionType(String optName, String desc)
-        {
-            this.optName = optName;
-            this.desc = desc;
-        }
+        GenRegisterNames,
+        GenRegisterInfo,
+        GenInstrNames,
+        GenInstrInfo,
+        GenAsmPrinter,
     }
 
-    private static ArrayList<Option> allOpts = new ArrayList<>();
-    private static OptionGroup optGroup = new OptionGroup();
-    static
-    {
-        Option outputFileName = new Option("o", true,
-                "Specify the output file name");
+    private static Opt<ActionType> action = new Opt<ActionType>(
+            new Parser<>(),
+            desc("Action to performance"),
+            new ValueClass<>(
+                    new ValueClass.Entry<>(GenRegisterInfo, "gen-reg-names",
+                            "Generates register names"),
+                    new ValueClass.Entry<>(GenRegisterInfo, "gen-reg-info",
+                            "Generates register information file"),
+                    new ValueClass.Entry<>(GenInstrNames, "gen-instr-names",
+                            "Generates instr names"),
+                    new ValueClass.Entry<>(GenInstrInfo, "gen-instr-info",
+                            "Generates instr information"),
+                    new ValueClass.Entry<>(GenAsmPrinter, "gen-asm-print",
+                            "Generates assembly printer")
+            ));
 
-        Option includeDirs = new Option("I", true,
-                "Directory of includes file");
-        includeDirs.setArgs(Option.UNINITIALIZED);
+    private static StringOpt outputFileName = new StringOpt(
+            new OptionNameApplicator("o"),
+            init("-"),
+            desc("Specify the output file name"),
+            valueDesc("filename"));
 
-        for (ActionType act :  ActionType.values())
-            optGroup.addOption(new Option(act.optName, false, act.desc));
-        optGroup.setRequired(true);
+    private static ListOpt<String> includeDirs = new ListOpt<>(
+            new ParserString(),
+            new OptionNameApplicator("I"),
+            desc("Directory of includes file"),
+            valueDesc("directory"),
+            new FormattingFlagsApplicator(Prefix));
 
-        allOpts.add(outputFileName);
-        allOpts.add(includeDirs);
-    }
+    private static StringOpt inputFilename = new StringOpt(
+            new FormattingFlagsApplicator(Positional),
+            desc("<input file>"),
+            init("-"));
 
     public static void main(String[] args)
     {
-        CommandLine cmdline;
-        Options opts = new Options();
-        allOpts.forEach(opts::addOption);
-        opts.addOptionGroup(optGroup);
-
-        DefaultParser defaultParser = new DefaultParser();
         try
         {
-            cmdline = defaultParser.parse(opts, args);
-            List<String> leftArgs = cmdline.getArgList();
-            String outputFile = cmdline.getOptionValue("o");
-            if (outputFile == null)
+            CL.parseCommandLineOptions(args);
+            if (outputFileName.value == null)
             {
-                outputFile = "-";
-            }
-            else
-            {
-                if (!Files.exists(new File(outputFile).toPath()))
-                    throw new FileNotFoundException(outputFile);
+                outputFileName.value = "-";
             }
 
-            String inputFilename = leftArgs.isEmpty()? "-": leftArgs.get(0);
-            String[] includeDirs = cmdline.getOptionValues("I");
-            TGParser.parseFile(inputFilename, new ArrayList<>(Arrays.asList(includeDirs)));
+            TGParser.parseFile(inputFilename.value, includeDirs, new SourceMgr());
 
-            switch (ActionType.valueOf(optGroup.getSelected()))
+            String outputFile = outputFileName.value;
+            switch (action.value)
             {
                 case GenRegisterNames:
                     new RegisterInfoEmitter(Record.records).runEnums(outputFile);
@@ -115,19 +110,14 @@ public final class TableGen
                     new AsmWriterEmitter().run(outputFile);
                     break;
                 default:
-                    assert false :"Invalid action type!";
+                    assert false : "Invalid action type!";
                     System.exit(1);
             }
-        }
-        catch (FileNotFoundException ex)
-        {
-            System.err.println(ex.getMessage());
-            System.exit(-1);
         }
         catch (Exception ex)
         {
             System.err.println(ex.getMessage());
-            new HelpFormatter().printHelp("tblgen", opts);
+
             System.exit(-1);
         }
     }

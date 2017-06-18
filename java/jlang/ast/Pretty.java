@@ -1,9 +1,10 @@
 package jlang.ast;
 
+import jlang.ast.Tree.TopLevel;
+import tools.Convert;
+
 import java.io.PrintWriter;
 import java.util.List;
-import tools.Convert;
-import jlang.ast.Tree.TopLevel;
 
 /**
  * <p>
@@ -218,7 +219,7 @@ public final class Pretty extends StmtVisitor
      *
      * @param stats
      */
-    private void printStats(List<? extends Tree> stats)
+    private void printStats(Tree.Stmt[] stats)
     {
         for (Tree stat : stats)
         {
@@ -233,7 +234,7 @@ public final class Pretty extends StmtVisitor
         println();
         print("{");
         indent();
-        printStats(block.stats);
+        printStats(block.getBody());
         undent();
         align();
         print("}");

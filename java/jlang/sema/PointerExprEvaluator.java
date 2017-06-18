@@ -77,7 +77,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
         // So that, the pExpr must be pointer jlang.type
         APSInt offset = new APSInt();
         OutParamWrapper<APSInt> x = new OutParamWrapper<>(offset);
-        if (!evaluateInteger(iExpr, x))
+        if (!evaluateInteger(iExpr, x, context))
             return false;
         offset = x.get();
 
@@ -94,7 +94,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
         if (pointeeType.isVoidType() || pointeeType.isFunctionType())
             sizeOfPointee = 1;
         else
-            sizeOfPointee = pointeeType.getTypeSize();
+            sizeOfPointee = context.getTypeSize(pointeeType);
 
         if (expr.getOpcode() == BinaryOperatorKind.BO_Add)
             result.get().offset += additionalOffset*sizeOfPointee;
@@ -135,13 +135,13 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
             {
                 APValue value = new APValue();
                 OutParamWrapper<APValue> x = new OutParamWrapper<>(value);
-                if (!evaluateIntegerOrLValue(subExp, x))
+                if (!evaluateIntegerOrLValue(subExp, x, context))
                     break;
 
                 value = x.get();
                 if (value.isInt())
                 {
-                    value.setInt(value.getInt().extOrTrunc((int)expr.getType().getTypeSize()));
+                    value.setInt(value.getInt().extOrTrunc((int)context.getTypeSize(expr.getType())));
                     result.get().base = null;
                     result.get().offset = value.getInt().getZExtValue();
                     return true;

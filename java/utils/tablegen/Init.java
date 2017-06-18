@@ -25,6 +25,7 @@ import utils.tablegen.RecTy.RecordRecTy;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Initializer class definition.
@@ -417,7 +418,8 @@ public abstract class Init
             return ty.convertValue(this);
         }
 
-        @Override public void print(PrintStream os)
+        @Override
+        public void print(PrintStream os)
         {
             os.printf("\"%s\"", value);
         }
@@ -426,12 +428,13 @@ public abstract class Init
     /**
      * [AL, AH, CL] - Represent a list of defs.
      */
-    public static class ListInit extends Init
+    public static class ListInit extends TypedInit
     {
         private ArrayList<Init> values;
 
-        public ListInit(ArrayList<Init> vals)
+        public ListInit(ArrayList<Init> vals, RecTy eltTy)
         {
+            super(new ListRecTy(eltTy));
             values = new ArrayList<>(vals);
         }
 
@@ -456,7 +459,28 @@ public abstract class Init
                     return null;
                 vals.add(getElement(elements.get(i)));
             }
-            return new ListInit(vals);
+            return new ListInit(vals, getType());
+        }
+
+        @Override
+        public Init resolveBitReference(Record r, RecordVal rval, int bit)
+        {
+            assert false:"Illegal bit reference off list!";
+            return null;
+        }
+
+        @Override
+        public Init resolveListElementReference(Record r, RecordVal rval,
+                int elt)
+        {
+            if (elt >= getSize())
+                return null;
+
+            Init e = getElement(elt);
+            if (!(e instanceof UnsetInit))
+                return e;
+
+            return null;
         }
 
         @Override
@@ -483,7 +507,7 @@ public abstract class Init
                 }while (!init.equals(curElt));
             }
             if (changed)
-                return new ListInit(resolved);
+                return new ListInit(resolved, getType());
             return this;
         }
 
@@ -503,15 +527,16 @@ public abstract class Init
     /**
      * op (X, Y) - Combine two inits.
      */
-    public static class BinOpInit extends Init
+    public static class BinOpInit extends OpInit
     {
-        public enum BinaryOp{ SHL, SRA, SRL, STRCONCAT};
+        public enum BinaryOp{ SHL, SRA, SRL, CONCAT, STRCONCAT, NAMECONCAT};
 
         private BinaryOp opc;
         private Init lhs, rhs;
 
-        public BinOpInit(BinaryOp opc, Init lhs, Init rhs)
+        public BinOpInit(BinaryOp opc, Init lhs, Init rhs, RecTy type)
         {
+            super(type);
             this.opc = opc;
             this.lhs = lhs;
             this.rhs = rhs;
@@ -532,15 +557,75 @@ public abstract class Init
             return rhs;
         }
 
-        /**
-         * If possible, fold this to a simpler init.  Return this if not
-         * possible to fold.
-         * @return
-         */
-        public Init fold()
+        @Override
+        public int getNumOperands()
+        {
+            return 2;
+        }
+
+        @Override
+        public Init getOperand(int i)
+        {
+            assert i == 0 || i == 1:"Invalid operand index";
+            return i == 0 ? lhs : rhs;
+        }
+
+        @Override
+        public Init fold(Record curRec, MultiClass curMultiClass)
+                throws Exception
         {
             switch (getOpcode())
             {
+                default:
+                    assert false:"Unknown binop";
+                case CONCAT:
+                {
+                    DagInit lhss, rhss;
+                    if (lhs instanceof DagInit && rhs instanceof DagInit)
+                    {
+                        lhss = (DagInit)lhs;
+                        rhss = (DagInit)rhs;
+
+                        DefInit  lop, rop;
+                        if (!(lhss.getOperator() instanceof DefInit)
+                                || !(rhss.getOperator() instanceof DefInit))
+                        {
+                            lop = (DefInit)lhss.getOperator();
+                            rop = (DefInit)rhss.getOperator();
+
+                            if (!lop.getDef().equals(rop.getDef()))
+                            {
+                                boolean lisOPs = lop.getDef().getName().equals("outs")
+                                        || !lop.getDef().getName().equals("ins")
+                                        || !lop.getDef().getName().equals("defs");
+                                boolean rIsOPs = rop.getDef().getName().equals("outs")
+                                        || !rop.getDef().getName().equals("ins")
+                                        || !rop.getDef().getName().equals("defs");
+
+                                if (!lisOPs || !rIsOPs)
+                                    throw new Exception("Concated Dag operators don't match");
+                            }
+
+                            ArrayList<Init> args = new ArrayList<>();
+                            ArrayList<String> argNames = new ArrayList<>();
+
+                            for (int i = 0, e = lhss.getNumArgs(); i < e; ++i)
+                            {
+                                args.add(lhss.getArg(i));
+                                argNames.add(lhss.getArgName(i));
+                            }
+
+                            for (int i = 0, e = rhss.getNumArgs(); i < e; ++i)
+                            {
+                                args.add(rhss.getArg(i));
+                                argNames.add(rhss.getArgName(i));
+                            }
+
+                            return new DagInit(lhss.getOperator(), "", args, argNames);
+                        }
+                    }
+                    break;
+                }
                 case STRCONCAT:
                 {
                     if (lhs instanceof StringInit && rhs instanceof StringInit)
@@ -572,8 +657,73 @@ public abstract class Init
                     }
                     break;
                 }
+                case NAMECONCAT:
+                {
+                    StringInit lhss, rhss;
+                    if (lhs instanceof StringInit && rhs instanceof StringInit)
+                    {
+                        lhss = (StringInit)lhs;
+                        rhss = (StringInit)rhs;
+
+                        String name = lhss.getValue() + rhss.getValue();
+
+                        if (curRec != null)
+                        {
+                            RecordVal rv = curRec.getValue(name);
+                            if(rv != null)
+                            {
+                                if (!rv.getType().equals(getType()))
+                                    throw new Exception("type mismatch in nameconcat");
+                            }
+                            return new VarInit(name, rv.getType());
+                        }
+
+                        String templateArgName = curRec.getName() + ":" + name;
+                        if(curRec.isTemplateArg(templateArgName))
+                        {
+                            RecordVal rv = curRec.getValue(templateArgName);
+                            assert rv != null:"Template arg doesn't exist?";
+
+                            if (!rv.getType().equals(getType()))
+                                throw new Exception("type mismatch in nameconcat");
+
+                            return new VarInit(templateArgName, rv.getType());
+                        }
+
+
+                        if (curMultiClass != null)
+                        {
+                            String mcname = curMultiClass.rec.getName() + "::" + name;
+
+                            if(curMultiClass.rec.isTemplateArg(mcname))
+                            {
+                                RecordVal rv = curMultiClass.rec.getValue(mcname);
+                                assert rv != null :"Template arg doesn't exist?";
+
+                                if (!rv.getType().equals(getType()))
+                                    throw new Exception("type mismatch in nameconcat");
+
+                                return new VarInit(mcname, rv.getType());
+                            }
+                        }
+                        Record r = Record.records.getDef(name);
+                        if (r != null)
+                            return new DefInit(r);
+
+                        System.err.println("Variable not defined in !nameconcat: '" + name + "'");
+                        assert false:"Variable not found in !nameconcat";
+                        return null;
+                    }
+                }
             }
             return this;
+        }
+
+        @Override
+        public OpInit clone(List<Init> operands)
+        {
+            assert operands.size() == 2:"Wrong number of operands for binary operator";
+            return new BinOpInit(getOpcode(), operands.get(0), operands.get(1), getType());
         }
 
         @Override
@@ -587,27 +737,45 @@ public abstract class Init
         {
             Init lhsi = lhs.resolveReferences(r, rval);
             Init rhsi = rhs.resolveReferences(r, rval);
-
-            if (!lhs.equals(lhsi) || !rhs.equals(rhsi))
-                return new BinOpInit(getOpcode(), lhsi, rhsi).fold();
-            return fold();
+            try
+            {
+                if (!lhs.equals(lhsi) || !rhs.equals(rhsi))
+                {
+                    return new BinOpInit(getOpcode(), lhsi, rhsi, getType())
+                            .fold(r, null);
+                }
+                return fold(r, null);
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
         }
 
         @Override
         public void print(PrintStream os)
         {
+            os.println(toString());
+        }
+
+        @Override
+        public String toString()
+        {
+            StringBuilder result = new StringBuilder();
             switch (opc)
             {
-                case SHL: os.print("!shl"); break;
-                case SRA: os.print("!sra"); break;
-                case SRL: os.print("!srl"); break;
-                case STRCONCAT: os.print("!strconcate"); break;
+                case CONCAT: result.append("!con"); break;
+                case SHL: result.append("!shl"); break;
+                case SRA: result.append("!sra"); break;
+                case SRL: result.append("!srl"); break;
+                case STRCONCAT: result.append("!strconcat"); break;
+                case NAMECONCAT:
+                    result.append("!nameconcat<").append(getType().toString())
+                            .append(">"); break;
             }
-            os.print("(");
-            lhs.print(os);
-            os.print(", ");
-            rhs.print(os);
-            os.print(")");
+
+            return result.append("(").append(lhs.toString()).append(", ")
+                    .append(rhs.toString()).append(")").toString();
         }
     }
 
@@ -692,7 +860,7 @@ public abstract class Init
             ArrayList<Init> listInits = new ArrayList<>(elements.size());
             for (int i = 0, e = elements.size(); i < e; i++)
                 listInits.add(new VarListElementInit(this, elements.get(i)));
-            return new ListInit(listInits);
+            return new ListInit(listInits, getType());
         }
 
         public abstract Init resolveBitReference(Record r, RecordVal rval, int bit);
@@ -850,12 +1018,14 @@ public abstract class Init
     public static class DagInit extends Init
     {
         private Init val;
+        private String varName;
         private ArrayList<Init> args;
         private ArrayList<String> argNames;
 
-        public DagInit(Init val, ArrayList<Pair<Init, String>> args)
+        public DagInit(Init val, String vn,  ArrayList<Pair<Init, String>> args)
         {
             this.val = val;
+            varName = vn;
             this.args = new ArrayList<>(args.size());
             argNames = new ArrayList<>(args.size());
             args.forEach(pair->{
@@ -864,10 +1034,10 @@ public abstract class Init
             });
         }
 
-        public DagInit(Init val, ArrayList<Init> args,
-                ArrayList<String> argNames)
+        public DagInit(Init val,String vn, ArrayList<Init> args, ArrayList<String> argNames)
         {
             this.val = val;
+            varName = vn;
             this.args = args;
             this.argNames = argNames;
         }
@@ -920,7 +1090,7 @@ public abstract class Init
 
             Init op = val.resolveReferences(r, rval);
             if (args != newArgs || op != val)
-                return new DagInit(op, newArgs, argNames);
+                return new DagInit(op, "", newArgs, argNames);
             return this;
         }
 
@@ -1154,6 +1324,290 @@ public abstract class Init
         {
             rec.print(os);
             os.printf(".%s", fieldName);
+        }
+    }
+
+    /**
+     * Super class for operators.
+     */
+    public static abstract class OpInit extends TypedInit
+    {
+        public OpInit(RecTy type)
+        {
+            super(type);
+        }
+
+        public abstract int getNumOperands();
+
+        public abstract Init getOperand(int i);
+
+        public abstract Init fold(Record curRec, MultiClass curMultiClass)
+                throws Exception;
+
+        public abstract OpInit clone(List<Init> operands);
+
+        @Override
+        public Init resolveBitReference(Record r, RecordVal rval, int bit)
+        {
+            try
+            {
+                Init folded = fold(r, null);
+                if (!folded.equals(this))
+                {
+                    if (folded instanceof TypedInit)
+                    {
+                        TypedInit typed = (TypedInit) folded;
+                        return typed.resolveBitReference(r, rval, bit);
+                    }
+                }
+                return null;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        @Override
+        public Init resolveListElementReference(Record r, RecordVal rval,
+                int elt)
+        {
+            try
+            {
+
+                Init folded = fold(r, null);
+                if (!folded.equals(this))
+                {
+                    if (folded instanceof TypedInit)
+                    {
+                        TypedInit typed = (TypedInit) folded;
+                        return typed.resolveListElementReference(r, rval, elt);
+                    }
+                }
+                return null;
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+        }
+
+        @Override
+        public Init convertInitializerTo(RecTy ty)
+        {
+            return ty.convertValue(this);
+        }
+    }
+
+    public static final class UnOpInit extends OpInit
+    {
+        public enum UnaryOp
+        {
+            CAST, CAR, CDR, LNULL
+        }
+        private UnaryOp opc;
+        private Init lhs;
+
+        public UnOpInit(UnaryOp opc, Init lhs, RecTy type)
+        {
+            super(type);
+            this.lhs = lhs;
+            this.opc = opc;
+        }
+
+        public UnaryOp getOpcode()
+        {
+            return opc;
+        }
+
+        public Init getOperand()
+        {
+            return lhs;
+        }
+
+        @Override
+        public void print(PrintStream os)
+        {
+            os.print(toString());
+        }
+
+        @Override
+        public int getNumOperands()
+        {
+            return 1;
+        }
+
+        @Override
+        public Init getOperand(int i)
+        {
+            assert i >= 0 && i <1;
+            return lhs;
+        }
+
+        @Override
+        public Init fold(Record curRec, MultiClass curMultiClass)
+                throws Exception
+        {
+            switch (opc)
+            {
+                default:
+                    assert false:"Unknown unop";
+                    return null;
+                case CAST:
+                {
+                    if (getType().toString().equals("string"))
+                    {
+                        if (lhs instanceof StringInit)
+                            return lhs;
+
+                        if (lhs instanceof DefInit)
+                            return new StringInit(((DefInit)lhs).getDef().getName());
+                    }
+                    else
+                    {
+                        if (lhs instanceof StringInit)
+                        {
+                            StringInit stri = (StringInit)lhs;
+                            String name = stri.getValue();
+
+                            if (curRec != null)
+                            {
+                                RecordVal rv = curRec.getValue(name);
+                                if (rv != null)
+                                {
+                                    if (!rv.getType().equals(getType()))
+                                    {
+                                        throw new Exception(
+                                                "type mismatch in nameconcat");
+                                    }
+                                    return new VarInit(name, rv.getType());
+                                }
+
+                                String templateArgName = curRec.getName() + ":" + name;
+                                if (curRec.isTemplateArg(templateArgName))
+                                {
+                                    rv = curRec.getValue(templateArgName);
+                                    assert rv != null :"Template arg doesn't exist?";
+
+                                    if (!rv.getType().equals(getType()))
+                                        throw new Exception("type mismatch in nameconcat");
+
+                                    return new VarInit(templateArgName, rv.getType());
+                                }
+                            }
+
+                            if (curMultiClass != null)
+                            {
+                                String mcName = curMultiClass.rec.getName();
+                                if (curMultiClass.rec.isTemplateArg(mcName))
+                                {
+                                    RecordVal rv = curMultiClass.rec.getValue(mcName);
+                                    assert rv != null :"Template arg doesn't exist?";
+
+                                    if (!rv.getType().equals(getType()))
+                                    {
+                                        throw new Exception("type mismatch in nameconat");
+                                    }
+                                    return new VarInit(mcName, rv.getType());
+                                }
+                            }
+
+                            Record d = Record.records.getDef(name);
+                            if (d != null)
+                                return new DefInit(d);
+
+                            System.err.println("Variable not defined: '" + name + "'");
+                            assert false:"Variale not found";
+                            return null;
+                        }
+                    }
+                    break;
+                }
+                case CAR:
+                {
+                    if (lhs instanceof ListInit)
+                    {
+                        ListInit li = (ListInit)lhs;
+                        if (li.getSize() == 0)
+                        {
+                            assert false:"empty list in car";
+                            return null;
+                        }
+                        return li.getElement(0);
+                    }
+                    break;
+                }
+                case CDR:
+                {
+                    if (lhs instanceof ListInit)
+                    {
+                        ListInit li = (ListInit)lhs;
+                        if (li.getSize() == 0)
+                        {
+                            assert false:"empty list in cdr";
+                            return null;
+                        }
+                        ArrayList<Init> list = new ArrayList<>();
+                        for (int i = 1; i < li.getSize(); i++)
+                            list.add(li.getElement(i));
+
+                        return new ListInit(list, li.getType());
+                    }
+                    break;
+                }
+                case LNULL:
+                {
+                    if (lhs instanceof ListInit)
+                    {
+                        ListInit li = (ListInit)lhs;
+                        if (li.getSize() == 0)
+                            return new IntInit(1);
+                        else
+                            return new IntInit(0);
+                    }
+                    if (lhs instanceof StringInit)
+                    {
+                        StringInit si = (StringInit)lhs;
+                        if (si.getValue().isEmpty())
+                            return new IntInit(1);
+                        else
+                            return new IntInit(0);
+                    }
+                    break;
+                }
+            }
+            return this;
+        }
+
+        @Override
+        public OpInit clone(List<Init> operands)
+        {
+            assert operands.size() == 1:"Wrong number of operands for unary operation";
+            return new UnOpInit(opc, operands.get(0), getType());
+        }
+
+        @Override
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            switch (opc)
+            {
+                case CAST:
+                    sb.append("!cast<");
+                    sb.append(getType().toString());
+                    sb.append(">");
+                    break;
+                case CAR:
+                    sb.append("!car");
+                    break;
+                case CDR:
+                    sb.append("!cdr");
+                    break;
+                case LNULL:
+                    sb.append("!null");
+                    break;
+            }
+            return sb.append("(").append(lhs.toString()).append(")").toString();
         }
     }
 }

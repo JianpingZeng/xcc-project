@@ -9,7 +9,7 @@ import java.io.PrintStream;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PrintModulePass extends ModulePass
+public class PrintModulePass implements ModulePass
 {
 	private PrintStream os;
 
@@ -28,17 +28,5 @@ public class PrintModulePass extends ModulePass
 	@Override public String getPassName()
 	{
 		return null;
-	}
-
-	@Override
-	public void addToPassManager(ModulePassManager pm, AnalysisUsage au)
-	{
-
-	}
-
-	@Override
-	public void addToPassManager(FunctionPassManager pm, AnalysisUsage au)
-	{
-
 	}
 }

@@ -1,12 +1,11 @@
-package backend.transform.scalars;
+
+/*package backend.transform.scalars;
 
 import backend.hir.*;
 import backend.value.Constant;
 import backend.value.Instruction;
 import backend.value.Instruction.*;
 import backend.value.Value;
-import backend.lir.ci.LIRConstant;
-import backend.lir.ci.LIRKind;
 import tools.Util;
 
 /**
@@ -22,7 +21,7 @@ import tools.Util;
  * @see ConstantPropagation
  * @see GVNPRE
  * @see CFGSimplifyPass
- */
+ *
 public class Canonicalizer implements InstVisitor
 {
 	private Value result;
@@ -34,7 +33,7 @@ public class Canonicalizer implements InstVisitor
 	 *
 	 * @param inst The instruction to be folded.
 	 * @return The getReturnValue constant if successfully, otherwise, null returned.
-	 */
+	 *
 	public Value constantFoldInstruction(Value inst)
 	{
 		// handle phi nodes here
@@ -78,7 +77,7 @@ public class Canonicalizer implements InstVisitor
 	 * Visits {@code ShiftOp} with visitor pattern.
 	 *
 	 * @param inst The ShiftOp to be visited.
-	 */
+	 *
 	public void visitShiftOp(ShiftOp inst)
 	{
 		handleOp2(inst);
@@ -88,7 +87,7 @@ public class Canonicalizer implements InstVisitor
 	 * Visits {@code Negate} with vistor pattern.
 	 *
 	 * @param inst The inst to be visited.
-	 */
+	 *
 	public void visitNegate(Negate inst)
 	{
 		Value v = inst.x;
@@ -102,7 +101,7 @@ public class Canonicalizer implements InstVisitor
 	 * Folds the jlang.type conversion operation.
 	 *
 	 * @param inst The conversion instruction to be folded.
-	 */
+	 *
 	public void visitConvert(CastInst inst)
 	{
 		Value val = inst.operand(0);
@@ -258,7 +257,7 @@ public class Canonicalizer implements InstVisitor
 	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Integer} instance representing the folding getReturnValue
 	 * of two integer, if it is foldable. Otherwise, return null.
-	 */
+	 *
 	private Integer foldIntOp2(Operator opcode, int x, int y)
 	{
 		switch (opcode)
@@ -297,7 +296,7 @@ public class Canonicalizer implements InstVisitor
 	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Long} instance representing the folding getReturnValue
 	 * of two long integer, if it is foldable. Otherwise, return null.
-	 */
+	 *
 	private Long foldLongOp2(Operator opcode, long x, long y)
 	{
 		switch (opcode)
@@ -336,7 +335,7 @@ public class Canonicalizer implements InstVisitor
 	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Float} instance representing the folding getReturnValue
 	 * of two float point number, if it is foldable. Otherwise, return null.
-	 */
+	 *
 	private Float foldFloatOp2(Operator opcode, float x, float y)
 	{
 		switch (opcode)
@@ -361,7 +360,7 @@ public class Canonicalizer implements InstVisitor
 	 * @param y      The second LIROperand of operation.
 	 * @return An {@code Double} instance representing the folding getReturnValue
 	 * of two double number, if it is foldable. Otherwise, return null.
-	 */
+	 *
 	private Double foldDoubleOp2(Operator opcode, double x, double y)
 	{
 		switch (opcode)
@@ -675,7 +674,7 @@ public class Canonicalizer implements InstVisitor
 	 * and this operator of instruction is commutative.
 	 *
 	 * @param inst
-	 */
+	 *
 	private void moveConstantToRight(Op2 inst)
 	{
 		if (inst.x.isConstant() && inst.getOpcode().isCommutative())
@@ -778,7 +777,7 @@ public class Canonicalizer implements InstVisitor
 	 * to the right one.
 	 *
 	 * @param inst
-	 */
+	 *
 	private void reduceReflexiveIf(IfOp inst)
 	{
 		BasicBlock sux = null;
@@ -809,7 +808,7 @@ public class Canonicalizer implements InstVisitor
 	 * @param r      The right side LIROperand.
 	 * @return The getReturnValue of comparison, return true if comparison successfully
 	 * in specified op, otherwise, return false. ReturnInst null when the op is illegal.
-	 */
+	 *
 	private Boolean foldCondition(Condition cond, LIRConstant l, LIRConstant r)
 	{
 		LIRKind lk = l.kind;
@@ -865,7 +864,7 @@ public class Canonicalizer implements InstVisitor
 	 * Visits Arithmetic Operation with visitor pattern.
 	 *
 	 * @param inst The operation to be visited.
-	 */
+	 *
 	public void visitArithmeticOp(ArithmeticOp inst)
 	{
 		handleOp2(inst);
@@ -875,7 +874,7 @@ public class Canonicalizer implements InstVisitor
 	 * Visits Logical Operation with visitor pattern.
 	 *
 	 * @param inst The operation to be visited.
-	 */
+	 *
 	public void visitLogicOp(LogicOp inst)
 	{
 		handleOp2(inst);
@@ -962,7 +961,7 @@ public class Canonicalizer implements InstVisitor
 	 * instead of calling to the visitor to it's subclass, like {@code Constant}.
 	 *
 	 * @param val The instance of {@code Value} to be visited.
-	 */
+	 *
 	public void visitValue(Value val)
 	{
 		Util.shouldNotReachHere();
@@ -974,3 +973,4 @@ public class Canonicalizer implements InstVisitor
 		Util.shouldNotReachHere();
 	}
 }
+*/

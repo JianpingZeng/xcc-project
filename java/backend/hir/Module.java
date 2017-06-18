@@ -59,7 +59,7 @@ public final class Module implements Iterable<Function>
 	 * @param functions	FunctionProto declarations list
 	 * @return	The instance of {@link Module}
 	 */
-	public static Module instance(Context context, List<GlobalVariable> vars,
+	public static Module instance(List<GlobalVariable> vars,
 			List<Function> functions)
 	{
 		Module instance = null;

@@ -133,6 +133,17 @@ public class MemoryBuffer implements Cloneable
         return null;
     }
 
+    public static MemoryBuffer getFileOrSTDIN(String filename)
+    {
+        if (!filename.equals("-") && !filename.isEmpty())
+            return getFile(filename);
+        MemoryBuffer m = getSTDIN();
+        if (m != null) return m;
+
+        // If stdin was empty, M is null.  Cons up an empty memory buffer now.
+        return MemoryBuffer.getMemBuffer("", "<stdin>");
+    }
+
     public String getBufferName()
     {
         return "mapped buffer";

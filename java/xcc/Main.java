@@ -29,6 +29,14 @@ public class Main
     public static int compile(String[] args)
     {
 		jlang.driver.Jlang compiler = new jlang.driver.Jlang();
-        return compiler.compile(args);
+        try
+        {
+            return compiler.compile(args);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return -1;
     }
 }

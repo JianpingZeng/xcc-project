@@ -69,7 +69,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	private int getFreeReg(int virReg)
 	{
 		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
-		int size = rc.getNumRegs();
+		int size = rc.getRegSize();
 		while(true)
 		{
 			int regIdx = regClassIdx.get(rc);
