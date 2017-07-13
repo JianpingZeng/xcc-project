@@ -16,6 +16,11 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.set.hash.TIntHashSet;
+import tools.Pair;
+import tools.Util;
+
 import java.io.PrintStream;
 import java.util.*;
 
@@ -57,7 +62,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
             emitSourceFileHeaderComment("Target Register Enum Values", os);
 
             int initValue = 0;
-            os.printf("public interface %s \n{" + "\tint NoRegister = %d;\n",
+            os.printf("public interface %s \n{" + "\n\tint NoRegister = %d;\n",
                     className, initValue);
             initValue++;
             for (Record reg : registers)
@@ -74,7 +79,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
     public void run(String outputFile) throws Exception
     {
         // The file path where all enum values would be written.
-        String className = targetName + "GenRegisterInfo";
+        String className = targetName + "GenRegisterDesc";
 
         try (PrintStream os = outputFile.equals("-") ?
                 System.out : new PrintStream(outputFile))
@@ -86,14 +91,19 @@ public final class RegisterInfoEmitter extends TableGenBackend
             os.println("import backend.target.TargetRegisterInfo;");
             os.println("import backend.target.TargetRegisterClass;\n");
 
-            os.printf("public abstract class %s extends TargetRegisterInfo " + "implements %sGenRegisterNames, %sGenInstrNames{\t",
-                    className, targetName, targetName);
+            os.printf("public class %s extends TargetRegisterInfo " +
+                            "implements %sGenRegisterNames, %sGenInstrNames\n{\t",
+                            className, targetName, targetName);
 
-            // generates code for register classes.
+            // generates static array for register classes.
+            generateRegClassesArray(os);
+
+            // Generates the value type for each register class.
+            generateValueTypeForRegClass(os);
+
             generateRegisterClasses(os);
 
             // generates fields and nested classes.
-
         }
     }
 
@@ -102,82 +112,300 @@ public final class RegisterInfoEmitter extends TableGenBackend
 
     }
 
+    private void generateRegClassesArray(PrintStream os)
+    {
+        ArrayList<CodeGenRegisterClass> regClasses = target.getRegisterClasses();
+
+        for (CodeGenRegisterClass rc : regClasses)
+        {
+            String name = rc.theDef.getName();
+
+            os.printf("\n\t//%s Register Class...\n", name);
+            os.printf("\tpublic static final int[] %s = {\n\t\t", name);
+            for (Record r : rc.elts)
+            {
+                os.printf("%s, ", r.getName());
+            }
+            os.printf("\n\t};\n\n");
+        }
+    }
+
+    private void generateValueTypeForRegClass(PrintStream os)
+    {
+        ArrayList<CodeGenRegisterClass> regClasses = target.getRegisterClasses();
+
+        for (CodeGenRegisterClass rc : regClasses)
+        {
+            // Given the value type a legal Java name if it is anonymous.
+            String name = rc.theDef.getName() + "VTs";
+
+            os.printf("\n\t// %s Register Class Value Type...\n", name);
+            os.printf("\tpublic static final MVT.SimpleValueType[] %s = {\n\t\t", name);
+            for (int i = 0; i < rc.vts.size(); i++)
+                os.printf("MVT.%s, ", rc.vts.get(i));
+
+            os.print("MVT.SimpleValueType.Other\n\t};\n\n");
+        }
+    }
+
+    /**
+     * Sorting predicate to sort record by name.
+     */
+    private static class LessRecord implements Comparator<Record>
+    {
+        @Override
+        public int compare(Record o1, Record o2)
+        {
+            return o1.getName().compareTo(o2.getName());
+        }
+    }
+
+    /**
+     * Sorting predicate to sort the record by theire name field.
+     */
+    private static class LessRecordFieldName implements Comparator<Record>
+    {
+        @Override
+        public int compare(Record o1, Record o2)
+        {
+            try
+            {
+                return o1.getValueAsString("Name").compareTo(o2.getValueAsString("Name"));
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                return 0;
+            }
+        }
+    }
+
     private void generateRegisterClasses(PrintStream os) throws Exception
     {
         ArrayList<CodeGenRegisterClass> regClasses = target.getRegisterClasses();
+
+        // Output the register class ID.
+        int idx = 0;
+        os.println("\n\t// Defines the Register Class ID.");
+        for (CodeGenRegisterClass rc : regClasses)
+        {
+            os.printf("\tpublic static final int %sRegClassID", rc.getName());
+            os.printf(" = %d;\n", (idx+1));
+            ++idx;
+        }
+
+        os.printf("\n\n");
+
+        os.println("\t// Register Class declaration");
+        for (CodeGenRegisterClass rc : regClasses)
+        {
+            String name = rc.getName();
+
+            // defines a outer static variable.
+            os.printf("\tpublic final static %sClass "
+                    + "%sRegClass = %sClass.getInstance();\n", name, name, name);
+        }
+
+        os.println("\n");
 
         // Output register class define.
         for (CodeGenRegisterClass rc : regClasses)
         {
             String name = rc.getName();
             // output the register class definition.
-            os.printf(
-                    "\tpublic final static class %sClass extends TargetRegisterClass\t{",
+            os.printf("\n\tpublic final static class %sClass extends TargetRegisterClass\n\t{",
                     name);
 
-            os.println("// Only allow one instance for this class.");
-            os.printf("\tprivate static instance = new %sClass();\n", name);
-            os.println("public static %sClass getInstance() { return instance;}");
+            os.println("\n\t\t// Only allow one instance for this class.");
+            os.printf("\n\t\tprivate static instance = new %sClass();\n", name);
+            os.printf("\n\t\tpublic static %sClass getInstance() { return instance;}\n", name);
 
-            os.printf("\tprivate %sClass(){ super(%s, %d, %d, %s); }",
+            os.printf("\n\t\tprivate %sClass()\n\t\t{\n\t\t\t super(%s, %d, %d, %s); \n\t\t}\n",
                     name, rc.getName()+"VTs", rc.spillSize/8, rc.spillAlignment/8, name);
-            os.println(rc.methodBodies);
-            os.println("}");
 
-            // defines a outer static variable.
-            os.printf("\n\t public final static TargetRegisterClass "
-                    + "%sRegisterClass = %sClass.getInstance();\n", name, name);
+            os.println(rc.methodBodies);
+            os.println("\n\t}");
+        }
+
+        // Emit the sub-register classes for each RegisterClass.
+        TIntObjectHashMap<TIntHashSet> superClassMap = new TIntObjectHashMap<>();
+        TIntObjectHashMap<TIntHashSet> superRegClassMap = new TIntObjectHashMap<>();
+
+        os.println();
+        for (int k = 0; k < regClasses.size(); k++)
+        {
+            CodeGenRegisterClass rc = regClasses.get(k);
+            String name = rc.theDef.getName();
+
+            os.printf("\n\t// %s Sub-register Classes...\n", name);
+            os.printf("\tpublic static final TargetRegisterClass[] %sSubRegClasses = {\n\t\t", name);
+
+            boolean empty = true;
+
+            for (int j = 0, e = rc.subRegClasses.size(); j < e; ++j)
+            {
+                Record subReg = rc.subRegClasses.get(j);
+                int i = 0, e2 = regClasses.size();
+                for (; i != e2; ++i)
+                {
+                    CodeGenRegisterClass rc2 = regClasses.get(i);
+                    if (subReg.getName().equals(rc2.getName()))
+                    {
+                        if (!empty)
+                            os.printf(", ");
+                        os.printf("%sRegClass", rc2.theDef.getName());
+                        empty = false;
+
+                        if (!superRegClassMap.containsKey(i))
+                        {
+                            superRegClassMap.put(i, new TIntHashSet());
+                        }
+
+                        superRegClassMap.get(i).add(k);
+                        break;
+                    }
+                }
+                if (i == e2)
+                {
+                    throw new Exception("Register Class member '" + subReg.getName() +
+                        "' is not a valid RegisterClass!");
+                }
+            }
+
+            os.print(empty ? "" : ", ");
+            //os.print("null");
+            os.print("\n\t};\n");
+        }
+
+        // Emit the super-register classes for each RegisterClass.
+        for (int i = 0, e = regClasses.size(); i < e; ++i)
+        {
+            CodeGenRegisterClass rc = regClasses.get(i);
+
+            String name = rc.theDef.getName();
+            os.printf("\n\t// %s Super-register Classes...\n", name);
+            os.printf("\tpublic static final TargetRegisterClass[] %sSuperRegClasses = {\n\t\t", name);
+
+            boolean empty = true;
+            if (superRegClassMap.containsKey(i))
+            {
+                for (int val : superRegClassMap.get(i).toArray())
+                {
+                    CodeGenRegisterClass rc2 = regClasses.get(val);
+                    if (!empty)
+                        os.print(", ");
+                    os.printf("%sRegClass", rc2.theDef.getName());
+                    empty = false;
+                }
+            }
+
+            os.printf("%s", empty ? "":", ");
+            os.print("\n\t};\n");
+        }
+
+        // Emit the sub-classes array for each RegisterClass
+        for (int i = 0, e = regClasses.size(); i < e; ++i)
+        {
+            CodeGenRegisterClass rc = regClasses.get(i);
+
+            String name = rc.theDef.getName();
+
+            HashSet<Record> regSets = new HashSet<>();
+            regSets.addAll(rc.elts);
+
+            os.printf("\t// %s Register Class sub-classes...\n", name);
+            os.printf("\tpublic static final TargetRegisterClass[] %sSubClasses = {\n\t\t", name);
+
+            boolean empty = true;
+            for (int j = 0, e2 = regClasses.size(); j != e2; ++j)
+            {
+                CodeGenRegisterClass rc2 = regClasses.get(j);
+
+                // RC2 is a sub-class of RC if it is a valid replacement for any
+                // instruction operand where an RC register is required. It must satisfy
+                // these conditions:
+                //
+                // 1. All RC2 registers are also in RC.
+                // 2. The RC2 spill size must not be smaller that the RC spill size.
+                // 3. RC2 spill alignment must be compatible with RC.
+                //
+                // Sub-classes are used to determine if a virtual register can be used
+                // as an instruction operand, or if it must be copied first.
+                if (i == j || rc2.elts.size() > rc.elts.size()
+                        || (rc.spillAlignment!= 0 && rc2.spillAlignment % rc.spillAlignment != 0)
+                        || rc.spillSize > rc2.spillSize || !isSubRegisterClass(rc2, regSets))
+                    continue;
+
+                if (!empty) os.print(", ");
+                os.printf("%sRegClass", rc2.theDef.getName());
+                empty = false;
+
+                if (!superClassMap.containsKey(j))
+                {
+                    superClassMap.put(j, new TIntHashSet());
+                }
+                superClassMap.get(j).add(i);
+            }
+
+            os.printf("%s", empty ? "" : ", ");
+            os.printf("\n\t};\n\t");
+        }
+
+        for (int i = 0, e = regClasses.size(); i != e; i++)
+        {
+            CodeGenRegisterClass rc = regClasses.get(i);
+
+            String name = rc.theDef.getName();
+            os.printf("\t// %s Register Class super-classes...\n", name);
+            os.printf("\tpublic static final TargetRegisterClass[] %sSuperclasses = {\n\t\t", name);
+
+            boolean empty = true;
+            if (superClassMap.containsKey(i))
+            {
+                for (int val : superClassMap.get(i).toArray())
+                {
+                    CodeGenRegisterClass rc2 = regClasses.get(val);
+                    if (!empty) os.printf(", ");
+                    os.printf("%sRegClass", name);
+                    empty = false;
+                }
+            }
+
+            os.printf("%s", empty ? "":", ");
+            os.printf("\n\t};\n\n");
         }
 
         SetMultiMap<Record, CodeGenRegisterClass> regClassesBelongedTo = new SetMultiMap<>();
 
-        // Output register class array declaration.
-        for (CodeGenRegisterClass rc : regClasses)
-        {
-            String name = rc.theDef.getName();
-
-            os.println("\n//\t" + name + " Register Class.");
-            os.printf("public final static int[] %s={\n\t", name);
-            for (Record r : rc.elts)
-            {
-                os.print(r.getName() + ", ");
-                regClassesBelongedTo.put(r, rc);
-            }
-            os.print("\n\t};\n\n");
-        }
-
-        // emit the ValueType arrays for each RegisterClass
-        for (CodeGenRegisterClass rc : regClasses)
-        {
-            // Give the register class a legal C name.
-            String name = rc.theDef.getName() + "VTs";
-            os.printf("//\t%s Register Class Value types.\n", name);
-            os.printf("public static final MVT.ValueType[] %s = {\n\t", name);
-            rc.vts.forEach(vt->os.printf("MVT.ValueType.%s, ", vt));
-            os.print("MVT.ValueType.Other\n\t};\n\n");
-        }
 
         // Output RegisterClass array.
-        os.println("\tpublic final static TargetRegisterClass[] registerClasses = {\n");
+        os.println("\tpublic final static TargetRegisterClass[] registerClasses = {");
         regClasses.forEach(rc->
         {
-            os.println(rc.getName()+"RegClass,");
+            os.println("\t\t" + rc.theDef.getName()+"RegClass,");
         });
-        os.println("\t}\n");
+        os.println("\t};\n");
 
-        // emit the register alias set.
-        HashMap<Record, HashSet<Record>> registerAlias = new HashMap<>();
+        // emit the register sub-registers / super-registers, aliases set.
+        HashMap<Record, TreeSet<Record>> registerSubRegs = new HashMap<>();
+        HashMap<Record, TreeSet<Record>> registerSuperRegs = new HashMap<>();
+        HashMap<Record, TreeSet<Record>> registerAlias = new HashMap<>();
+        HashMap<Record, ArrayList<Pair<Integer, Record>>> subRegList = new HashMap<>();
+
         ArrayList<CodeGenRegister> regs = target.getRegisters();
 
-        regs.forEach(cgr->
+        try
         {
-            Record r = cgr.theDef;
-            try
+            for (CodeGenRegister cgr : regs)
             {
+                Record r = cgr.theDef;
                 ArrayList<Record> li = r.getValueAsListOfDefs("Aliases");
                 for (int i = 0, e = li.size(); i < e; i++)
                 {
                     Record reg = li.get(i);
+                    if (!registerAlias.containsKey(r))
+                        registerAlias.put(r, new TreeSet<>(new LessRecord()));
+
                     if (registerAlias.get(r).contains(reg))
                     {
                         System.err.println("Warning: register alias between "
@@ -194,68 +422,400 @@ public final class RegisterInfoEmitter extends TableGenBackend
                     registerAlias.get(reg).add(r);
                 }
             }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        });
 
+            // Process sub-register sets.
+            for (CodeGenRegister cgr : regs)
+            {
+                Record r = cgr.theDef;
+                ArrayList<Record> list = r.getValueAsListOfDefs("SubRegs");
+                if (!registerSubRegs.containsKey(r))
+                    registerSubRegs.put(r, new TreeSet<>(new LessRecord()));
+
+                for (Record subreg : list)
+                {
+                    if (registerSubRegs.get(r).contains(subreg))
+                    {
+                        System.err.printf("Warning: register %s specified as a sub-register of %s"
+                                + " multiple times!", subreg.getName(), subreg.getName());
+                    }
+                    addSubSuperReg(r, subreg, registerSubRegs, registerSuperRegs, registerAlias);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        // Print the SubregHashTable, a simple quadratically probed
+        // hash table for determining if a register is a subregister
+        // of another register.
+        int NumSubRegs = 0;
+        HashMap<Record, Integer> RegNo = new HashMap<>();
+        for (int i = 0, e = regs.size(); i != e; ++i) 
+        {
+            RegNo.put(regs.get(i).theDef,  i);
+            NumSubRegs += registerSubRegs.get(regs.get(i).theDef).size();
+        }
+        
+        int SubregHashTableSize = 2 * Util.NextPowerOf2(2 * NumSubRegs);
+        int[] SubregHashTable = new int[2 * SubregHashTableSize];
+        Arrays.fill(SubregHashTable, ~0);
+        
+        int hashMisses = 0;
+        for (int i = 0, e = regs.size(); i != e; ++i)
+        {
+            Record R = regs.get(i).theDef;
+            for (Record R3 : registerSubRegs.get(R))
+            {
+                // We have to increase the indices of both registers by one when
+                // computing the hash because, in the generated code, there
+                // will be an extra empty slot at register 0.
+                int index = ((i+1) + (RegNo.get(R3) + 1) * 37) & (SubregHashTableSize-1);
+                int ProbeAmt = 2;
+                while (SubregHashTable[index*2] != ~0 &&
+                        SubregHashTable[index*2+1] != ~0) {
+                    index = (index + ProbeAmt) & (SubregHashTableSize-1);
+                    ProbeAmt += 2;
+        
+                    hashMisses++;
+                }
+        
+                SubregHashTable[index*2] = i;
+                SubregHashTable[index*2+1] = RegNo.get(R3);
+            }
+        }
+        
+        os.printf("\n\n\t// Number of hash collisions: %d\n", hashMisses);
+        
+        if (SubregHashTableSize != 0) 
+        {
+            //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
+        
+            os.printf("\tint[] SubregHashTable = {\n");
+            for (int i = 0; i < SubregHashTableSize - 1; ++i) 
+            {
+                // Insert spaces for nice formatting.
+                os.printf("\t\t");
+        
+                if (SubregHashTable[2*i] != ~0) 
+                {
+                    os.printf("%s, %s\n", regs.get(SubregHashTable[2*i]).theDef.getName(), regs.get(SubregHashTable[2*i+1]).theDef.getName());
+                } 
+                else 
+                {
+                    os.printf("NoRegister, NoRegister, \n");
+                }
+            }
+        
+            int Idx = SubregHashTableSize*2-2;
+            if (SubregHashTable[Idx] != ~0) 
+            {
+                os.printf("\t\t%s, %s };\n",
+                        regs.get(SubregHashTable[Idx]).theDef.getName(),
+                        regs.get(SubregHashTable[Idx+1]).theDef.getName());
+            } 
+            else 
+            {
+                os.printf("\t\tNoRegister, NoRegister, \n");
+            }
+
+            os.printf("\t};\n");
+        
+            os.printf("\tint SubregHashTableSize = %d;\n", SubregHashTableSize);
+        }
+        else 
+        {
+            os.printf("\tint[] SubregHashTable = { ~0, ~0 };\n  int SubregHashTableSize = 1;\n");
+        }
+        
+        
+        // Print the SuperregHashTable, a simple quadratically probed
+        // hash table for determining if a register is a super-register
+        // of another register.
+        int NumSupRegs = 0;
+        RegNo.clear();
+        for (int i = 0, e = regs.size(); i != e; ++i) 
+        {
+            RegNo.put(regs.get(i).theDef, i);
+
+            if (!registerSuperRegs.containsKey(regs.get(i).theDef))
+                registerSuperRegs.put(regs.get(i).theDef, new TreeSet<>(new LessRecord()));
+
+            NumSupRegs += registerSuperRegs.get(regs.get(i).theDef).size();
+        }
+        
+        int SuperregHashTableSize = 2 * Util.NextPowerOf2(2 * NumSupRegs);
+        int[] SuperregHashTable = new int[2 * SuperregHashTableSize];
+        Arrays.fill(SuperregHashTable, ~0);
+        
+        hashMisses = 0;
+        
+        for (int i = 0, e = regs.size(); i != e; ++i) 
+        {
+            Record R = regs.get(i).theDef;
+            if (!registerSuperRegs.containsKey(R))
+                registerSuperRegs.put(R, new TreeSet<>(new LessRecord()));
+
+            for (Record RJ : registerSuperRegs.get(R))
+            {
+                // We have to increase the indices of both registers by one when
+                // computing the hash because, in the generated code, there
+                // will be an extra empty slot at register 0.
+                int index = ((i+1) + (RegNo.get(RJ) + 1) * 37) & (SuperregHashTableSize-1);
+                int ProbeAmt = 2;
+                while (SuperregHashTable[index*2] != ~0 &&
+                        SuperregHashTable[index*2+1] != ~0) 
+                {
+                    index = (index + ProbeAmt) & (SuperregHashTableSize-1);
+                    ProbeAmt += 2;
+        
+                    hashMisses++;
+                }
+        
+                SuperregHashTable[index*2] = i;
+                SuperregHashTable[index*2+1] = RegNo.get(RJ);
+            }
+        }
+        
+        os.printf("\n\n\t// Number of hash collisions: %s\n", hashMisses);
+        
+        if (SuperregHashTableSize != 0) 
+        {
+            //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
+        
+            os.printf("\tint[] SuperregHashTable = {\n");
+            for (int i = 0; i < SuperregHashTableSize - 1; ++i)
+            {
+                // Insert spaces for nice formatting.
+                os.printf("\t\t");
+        
+                if (SuperregHashTable[2*i] != ~0)
+                {
+                    os.printf(regs.get(SuperregHashTable[2*i]).theDef.getName() + ", "
+                            + regs.get(SuperregHashTable[2*i+1]).theDef.getName() + ", \n");
+                }
+                else
+                {
+                    os.printf("NoRegister,  NoRegister,\n");
+                }
+            }
+        
+            int Idx = SuperregHashTableSize*2-2;
+            if (SuperregHashTable[Idx] != ~0)
+            {
+                os.printf("\t\t");
+                os.printf(regs.get(SuperregHashTable[Idx]).theDef.getName() + ", "
+                        + regs.get(SuperregHashTable[Idx+1]).theDef.getName() + " };\n");
+            } 
+            else 
+            {
+                os.printf("\t\tNoRegister,  NoRegister\n");
+            }
+            os.printf("\t};\n");
+        
+            os.printf("\tint SuperregHashTableSize = %d;\n", SuperregHashTableSize);
+        } else {
+            os.printf("\tint[] SuperregHashTable = { ~0, ~0 };\n"
+                    + "\tint SuperregHashTableSize = 1;\n");
+        }
+        
+        // Print the AliasHashTable, a simple quadratically probed
+        // hash table for determining if a register aliases another register.
+        int NumAliases = 0;
+        RegNo.clear();
+        for (int i = 0, e = regs.size(); i != e; ++i)
+        {
+            RegNo.put(regs.get(i).theDef, i);
+            if (!registerAlias.containsKey(regs.get(i).theDef))
+                registerAlias.put(regs.get(i).theDef, new TreeSet<>(new LessRecord()));
+
+            NumAliases += registerAlias.get(regs.get(i).theDef).size();
+        }
+        
+        int AliasesHashTableSize = 2 * Util.NextPowerOf2(2 * NumAliases);
+        int[] AliasesHashTable = new int[2 * AliasesHashTableSize];
+        Arrays.fill(AliasesHashTable, ~0);
+        //std::fill(AliasesHashTable, AliasesHashTable + 2 * AliasesHashTableSize, ~0);
+        
+        hashMisses = 0;
+        
+        for (int i = 0, e = regs.size(); i != e; ++i) 
+        {
+            Record R = regs.get(i).theDef;
+            if (!registerAlias.containsKey(R))
+                registerAlias.put(R, new TreeSet<>(new LessRecord()));
+
+            for (Record RJ : registerAlias.get(R)) 
+            {
+                // We have to increase the indices of both registers by one when
+                // computing the hash because, in the generated code, there
+                // will be an extra empty slot at register 0.
+                int index = ((i+1) + (RegNo.get(RJ) + 1) * 37) & (AliasesHashTableSize-1);
+                int ProbeAmt = 2;
+                while (AliasesHashTable[index*2] != ~0 &&
+                        AliasesHashTable[index*2+1] != ~0) 
+                {
+                    index = (index + ProbeAmt) & (AliasesHashTableSize-1);
+                    ProbeAmt += 2;
+        
+                    hashMisses++;
+                }
+        
+                AliasesHashTable[index*2] = i;
+                AliasesHashTable[index*2+1] = RegNo.get(RJ);
+            }
+        }
+        
+        os.printf("\n\n\t// Number of hash collisions: %s\n", hashMisses);
+        
+        if (AliasesHashTableSize != 0) 
+        {
+            //std::string Namespace = regs[0].theDef->getValueAsString("Namespace");
+        
+            os.printf("\tint AliasesHashTable[] = {\n");
+            for (int i = 0; i < AliasesHashTableSize - 1; ++i) 
+            {
+
+                // Insert spaces for nice formatting.
+                os.printf("\t\t");
+        
+                if (AliasesHashTable[2*i] != ~0)
+                {
+                    os.printf(regs.get(AliasesHashTable[2*i]).theDef.getName() + ", "
+                            + regs.get(AliasesHashTable[2*i+1]).theDef.getName()+ ", \n");
+                }
+                else
+                {
+                    os.printf("NoRegister,  NoRegister,\n");
+                }
+            }
+        
+            int Idx = AliasesHashTableSize*2-2;
+            if (AliasesHashTable[Idx] != ~0)
+            {
+                os.printf("\t\t" + regs.get(AliasesHashTable[Idx]).theDef.getName() + ", "
+                        + regs.get(AliasesHashTable[Idx+1]).theDef.getName() + " };\n");
+            }
+            else
+            {
+                os.printf("\t\tNoRegister,  NoRegister,\n");
+            }
+
+            os.printf("\t};\n");
+        
+            os.printf("\tint AliasesHashTableSize = %d;\n" , AliasesHashTableSize);
+        }
+        else
+        {
+            os.printf("\tint[] AliasesHashTable = { ~0, ~0 };\n%s",
+                    "\tint AliasesHashTableSize = 1;\n");
+        }
+
+        
         if (!registerAlias.isEmpty())
+            os.printf("\n\n\t// Register Alias Sets...\n");
+        
+        // Emit the empty alias list
+        os.printf("\tint[] Empty_AliasSet = { };\n");
+        // Loop over all of the registers which have aliases, emitting the alias list
+        // to memory.
+        for (Map.Entry<Record, TreeSet<Record>> pair : registerAlias.entrySet())
         {
-            os.println("\n\n\t// Register Alias set.");
+            os.printf("\tint[] " + pair.getKey().getName() + "_AliasSet = { ");
+            pair.getValue().forEach(val->os.printf(val.getName() + ", "));
+            os.printf("};\n");
         }
-        os.println("public final static int[] empty_AliasSet = {};");
-
-        for (Map.Entry<Record, HashSet<Record>> pair : registerAlias.entrySet())
+        
+        if (!registerSubRegs.isEmpty())
+            os.printf("\n\n\t// Register Sub-registers Sets...\n");
+        
+        // Emit the empty sub-registers list
+        os.printf("\tint[] Empty_SubRegsSet = {};\n");
+        // Loop over all of the registers which have sub-registers, emitting the
+        // sub-registers list to memory.
+        for (Map.Entry<Record, TreeSet<Record>> pair : registerSubRegs.entrySet())
         {
-            os.println("\tint " + pair.getKey().getName() + "_AliasSet[] = { ");
-            for (Record reg : pair.getValue())
-            {
-                os.print(reg.getName() + ", ");
-            }
-            os.println("};");
+            os.printf("\tint[] " + pair.getKey().getName() + "_SubRegsSet = { ");
+
+            ArrayList<Record> SubRegsVector = new ArrayList<>(pair.getValue());
+            RegisterSorter RS = new RegisterSorter(registerSubRegs);
+            SubRegsVector.sort(RS);
+
+            for (int i = 0, e = SubRegsVector.size(); i != e; ++i)
+                os.printf(SubRegsVector.get(i).getName() + ", ");
+
+            os.printf("};\n");
+        }
+        
+        if (!registerSuperRegs.isEmpty())
+            os.printf("\n\n\t// Register Super-registers Sets...\n");
+        
+        // Emit the empty super-registers list
+        os.printf("  int Empty_SuperRegsSet[] = { 0 };\n");
+        // Loop over all of the registers which have super-registers, emitting the
+        // super-registers list to memory.
+
+        for (Map.Entry<Record, TreeSet<Record>> pair : registerSuperRegs.entrySet())
+        {
+            os.printf("\tint[] " + pair.getKey().getName() + "_SuperRegsSet = { ");
+
+            ArrayList<Record> SuperRegsVector = new ArrayList<>(pair.getValue());
+
+            RegisterSorter RS = new RegisterSorter(registerSubRegs);
+            SuperRegsVector.sort(RS);
+            for (int i = 0, e = SuperRegsVector.size(); i != e; ++i)
+                os.printf(SuperRegsVector.get(i).getName() + ", ");
+            os.printf("};\n");
         }
 
-        os.println("\n\tpublic static final TargetRegisterDesc[] registerDescriptors = {// Descriptor");
-        os.println("\t{ \"NOREG\", \t0 }, ");
+        // Now that register alias and sub-registers sets have been emitted, emit the
+        // register descriptors now.
+
+        os.printf("\n\tpublic static final TargetRegisterDesc[] registerDescriptors = {// Descriptor\n");
+        os.printf("\t\tnew TargetRegisterDesc(\"NOREG\", \"NOREG\", null, null, null),\n");
 
         // Now that register alias sets have been emitted, emit the register
         // descriptors now.
-        regs.forEach(cgr->
+        for (CodeGenRegister reg : regs)
         {
-            os.print("\t{ \"");
+            os.print("\t\tnew TargetRegisterDesc(\"");
             try
             {
-                String regName = cgr.theDef.getValueAsString("Name");
-
-                if (!regName.isEmpty())
-                    os.print(regName);
+                String asmName = reg.theDef.getValueAsString("AsmName");
+                if (!asmName.isEmpty())
+                    os.print(asmName);
                 else
-                    os.print(cgr.getName());
+                    os.print(reg.getName());
 
-                os.print("\", \t");
-                if (registerAlias.containsKey(cgr.theDef))
-                    os.println(cgr.getName() + "_AliasSet }, ");
+                os.print("\", ");
+                os.printf("\"%s\", ", reg.getName());
+
+                if (registerAlias.containsKey(reg.theDef))
+                    os.printf(reg.getName() + "_AliasSet, ");
                 else
-                    os.println("empty_AliasSet }, ");
+                    os.printf("Empty_AliasSet, ");
+
+                if (registerSubRegs.containsKey(reg.theDef))
+                    os.printf("%s_SubRegsSet, ", reg.getName());
+                else
+                    os.printf("Empty_SubRegsSet, ");
+
+                if (registerSuperRegs.containsKey(reg.theDef))
+                    os.printf("%s_SuperRegsSet", reg.getName());
+                else
+                    os.printf("Empty_SuperRegsSet");
+                os.printf("),\n");
             }
             catch (Exception e)
             {
                 e.printStackTrace();
             }
-        });
-        os.println("\t};"); // The end of register descriptor.
-
-
-        // emit the fields and constrctors for X86GenRegisterInfo.
-        os.print("\tpublic %sGenRegisterInfo(int callFrameSetupOpCode, "
-                + "int callFrameDestroyOpCode)");
-        os.println();
-        os.println("\t{");
-        os.println("\tsuper(registerDescriptors, registerClasses, callFrameSetupOpCode, callFrameDestroyOpCode) \n\t{}");
-        os.println();
+        }
+        os.println("\t};\n"); // The end of register descriptor.
 
         // emit the getCalleeSavedRegs method.
+        /*
         os.println("private final int[] calleeSavedRegs = {\n\t");
         ArrayList<Record> csrs = target.getCalleeSavedRegisters();
         csrs.forEach(csr->os.print(csr.getName()+", "));
@@ -285,8 +845,172 @@ public final class RegisterInfoEmitter extends TableGenBackend
                 regClassesBelongedTo.put(reg, rc);
             }
         });
-        os.println("\n\t};\n");
-        os.println("");
-        os.println("\t}");
+        */
+
+        String className = targetName + "GenRegisterDesc";
+
+        ArrayList<Record> subRegs = records.getAllDerivedDefinition("SubRegSet");
+        for (int i = 0, e = subRegs.size(); i != e; i++)
+        {
+            int subRegIdx = (int)subRegs.get(i).getValueAsInt("index");
+            ArrayList<Record> from = subRegs.get(i).getValueAsListOfDefs("From");
+            ArrayList<Record> to = subRegs.get(i).getValueAsListOfDefs("To");
+            if (from.size() != to.size())
+            {
+                System.err.println("Error: register list and sub-register not of equal length in SubRegSet");;
+                System.exit(1);
+            }
+
+            for (int ii = 0, ee = from.size(); ii < ee; ii++)
+            {
+                if (!subRegList.containsKey(from.get(ii)))
+                    subRegList.put(from.get(ii), new ArrayList<>());
+
+                subRegList.get(from.get(ii)).add(Pair.get(subRegIdx, to.get(ii)));;
+            }
+        }
+
+
+        // Emit the subregister + index mapping function based on the information
+        // calculated above.
+        os.printf("\tpublic int getSubRegs(int regNo, int index)\n\t{\n\t");
+        os.printf("switch(regNo)\n\t\t{\n\t\t\t");
+        os.printf("default: return 0;\n");
+
+        for (Map.Entry<Record, ArrayList<Pair<Integer, Record>>> pair :subRegList.entrySet())
+        {
+            os.printf("\t\t\tcase %s:\n", pair.getKey().getName());
+            os.printf("\t\t\t switch (index) {\n");
+            os.printf("\t\t\tdefault: return 0;\n");
+            for (int i = 0, e = pair.getValue().size(); i != e; i++)
+            {
+                os.printf("\t\t\t\tcase %d: return %s;\n", pair.getValue().get(i).first,
+                        pair.getValue().get(i).second.getName());
+            }
+            os.printf("\t\t\t};\n\t\t\t break;\n");
+        }
+        os.printf("\t};\n");
+        os.printf("\treturn 0;\n");
+        os.printf("}\n\n");
+
+
+
+        // emit the fields and constructors for X86GenRegisterInfo.
+        os.printf("\tpublic %s(int callFrameSetupOpCode, "
+                + "int callFrameDestroyOpCode)\n\t{\n\t\t", className);
+        os.println("super(registerDescriptors, registerClasses,"
+                + "\n\t\t\t\tcallFrameSetupOpCode, callFrameDestroyOpCode,"
+                + "\n\t\t\t\tSubregHashTable, SubregHashTableSize,"
+                + "\n\t\t\t\tSuperregHashTable, SuperregHashTableSize, "
+                + "\n\t\t\t\tAliasesHashTable, AliasesHashTableSize);");
+
+        os.println("\n\t}\n");
+        os.println("}");
+    }
+
+    private static void addSubSuperReg(Record r, Record s,
+            HashMap<Record, TreeSet<Record>> subRegs,
+            HashMap<Record, TreeSet<Record>> superRegs,
+            HashMap<Record, TreeSet<Record>> aliases)
+    {
+        if (r.equals(s))
+        {
+            System.err.println("Error: recursive sub-register relationship between "
+                + " register " + r.getName() + " and it's sub-registers?");
+            System.exit(1);
+        }
+
+        if (!subRegs.containsKey(r))
+            subRegs.put(r, new TreeSet<>(new LessRecord()));
+
+        if (!subRegs.get(r).add(s))
+            return;
+
+        addSuperReg(s, r, subRegs, superRegs, aliases);
+
+        if (!aliases.containsKey(r))
+            aliases.put(r, new TreeSet<>(new LessRecord()));
+        if (!aliases.containsKey(s))
+            aliases.put(s, new TreeSet<>(new LessRecord()));
+
+        aliases.get(r).add(s);
+        aliases.get(s).add(r);
+
+        if (subRegs.containsKey(s))
+        {
+            for (Record ss : subRegs.get(s))
+            {
+                addSubSuperReg(r, ss, subRegs, superRegs, aliases);
+            }
+        }
+    }
+
+    private static void addSuperReg(Record r, Record s,
+            HashMap<Record, TreeSet<Record>> subRegs,
+            HashMap<Record, TreeSet<Record>> superRegs,
+            HashMap<Record, TreeSet<Record>> aliases)
+    {
+        if (r.equals(s))
+        {
+            System.err.println("Error: recursive sub-register relationship"
+                + " between register " + r.getName() + " and its sub-register?");
+            System.exit(1);
+        }
+
+        if (!superRegs.containsKey(r))
+            superRegs.put(r, new TreeSet<>(new LessRecord()));
+
+        if (!subRegs.containsKey(s))
+            subRegs.put(s, new TreeSet<>(new LessRecord()));
+        if (!aliases.containsKey(r))
+            aliases.put(r, new TreeSet<>(new LessRecord()));
+        if (!aliases.containsKey(s))
+            aliases.put(s, new TreeSet<>(new LessRecord()));
+
+        if (!superRegs.get(r).add(s))
+            return;
+
+        subRegs.get(s).add(r);
+        aliases.get(r).add(s);
+        aliases.get(s).add(r);
+        if (superRegs.containsKey(s))
+        {
+            superRegs.get(s).forEach(ss-> {addSuperReg(r, ss, subRegs, superRegs, aliases);});
+        }
+    }
+
+    private static boolean isSubRegisterClass(CodeGenRegisterClass rc,
+            HashSet<Record> regSets)
+    {
+        for (Record r : rc.elts)
+        {
+            if (!regSets.contains(r))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static class RegisterSorter implements Comparator<Record>
+    {
+        private Map<Record, TreeSet<Record>> registerSubRegs;
+
+        public RegisterSorter(Map<Record, TreeSet<Record>> registerSubRegs)
+        {
+            this.registerSubRegs = registerSubRegs;
+        }
+
+        @Override
+        public int compare(Record o1, Record o2)
+        {
+            boolean res = registerSubRegs.containsKey(o1) && registerSubRegs.get(o1).contains(o2);
+            return res ? -1 : 1;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            return false;
+        }
     }
 }

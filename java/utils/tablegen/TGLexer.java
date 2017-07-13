@@ -19,6 +19,9 @@ package utils.tablegen;
 import jlang.support.MemoryBuffer;
 import tools.SourceMgr;
 import tools.SourceMgr.SMLoc;
+import tools.Util;
+
+import java.io.File;
 
 /**
  * This is a lexer for TableGen Files.
@@ -131,64 +134,95 @@ public final class TGLexer
      */
     private TokKind nextToken()
     {
-        tokStart = curPtr;
-        int curChar = getNextChar();
-        switch (curChar)
+        while (true)
         {
-            default:
-                // Handle the letters: [a-zA-Z].
-                if (Character.isJavaIdentifierPart(curChar) || curChar == '#')
-                    return lexIdentifier();
+            tokStart = curPtr;
+            int curChar = getNextChar();
+            switch (curChar)
+            {
+                default:
+                    // Handle the letters: [a-zA-Z].
+                    if (Character.isJavaIdentifierPart(curChar) || curChar == '#')
+                        return lexIdentifier();
 
-                // Unknown character, emit an error.
-                MemoryBuffer mb = curBuf.clone();
-                mb.setBufferStart(tokStart);
-                return returnError(mb, "unexpected character");
-            case EOF: return TokKind.Eof;
-            case ';': return TokKind.semi;
-            case ':': return TokKind.colon;
-            case ',': return TokKind.comma;
-            case '.': return TokKind.dot;
-            case '<': return TokKind.less;
-            case '=': return TokKind.equal;
-            case '>': return TokKind.greater;
-            case '?': return TokKind.question;
-            case ']': return TokKind.r_square;
-            case '{': return TokKind.l_brace;
-            case '}': return TokKind.r_brace;
-            case '(': return TokKind.l_paren;
-            case ')': return TokKind.r_parne;
-
-            case 0:
-            case ' ':
-            case '\t':
-            case '\n':
-            case '\r':
-                // ignores the whitespaces.
-                return nextToken();
-            case '/':
-                if(curBuf.getCharAt(curPtr) == '/')
-                    skipBCPLComment();
-                else if (curBuf.getCharAt(curPtr) == '*')
-                    if (skipCComment())
-                        return TokKind.Error;
-                else
-                {
                     // Unknown character, emit an error.
-                    MemoryBuffer mb2 = curBuf.clone();
-                    mb2.setBufferStart(tokStart);
-                    return returnError(mb2, "unexpected character");
-                }
-                return nextToken();
-            case '-':
-            case '+':
-            case '0': case '1': case '2': case '3': case '4': case '5': case '6':
-            case '7': case '8': case '9':
-                return lexNumber();
-            case '"': return lexString();
-            case '$': return lexVarName();
-            case '[': return lexBracket();
-            case '!': return lexExclaim();
+                    MemoryBuffer mb = curBuf.clone();
+                    mb.setBufferStart(tokStart);
+                    return returnError(mb, "unexpected character");
+                case EOF:
+                    return TokKind.Eof;
+                case ';':
+                    return TokKind.semi;
+                case ':':
+                    return TokKind.colon;
+                case ',':
+                    return TokKind.comma;
+                case '.':
+                    return TokKind.dot;
+                case '<':
+                    return TokKind.less;
+                case '=':
+                    return TokKind.equal;
+                case '>':
+                    return TokKind.greater;
+                case '?':
+                    return TokKind.question;
+                case ']':
+                    return TokKind.r_square;
+                case '{':
+                    return TokKind.l_brace;
+                case '}':
+                    return TokKind.r_brace;
+                case '(':
+                    return TokKind.l_paren;
+                case ')':
+                    return TokKind.r_parne;
+
+                case 0:
+                case ' ':
+                case '\t':
+                case '\n':
+                case '\r':
+                    // ignores the whitespaces.
+                    break;
+                case '/':
+                    if (curBuf.getCharAt(curPtr) == '/')
+                        skipBCPLComment();
+                    else if (curBuf.getCharAt(curPtr) == '*')
+                    {
+                        if (skipCComment())
+                            return TokKind.Error;
+                    }
+                    else
+                    {
+                        // Unknown character, emit an error.
+                        MemoryBuffer mb2 = curBuf.clone();
+                        mb2.setBufferStart(tokStart);
+                        return returnError(mb2, "unexpected character");
+                    }
+                    break;
+                case '-':
+                case '+':
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    return lexNumber();
+                case '"':
+                    return lexString();
+                case '$':
+                    return lexVarName();
+                case '[':
+                    return lexBracket();
+                case '!':
+                    return lexExclaim();
+            }
         }
     }
 
@@ -220,6 +254,13 @@ public final class TGLexer
                     curBufferIdx = sgr.findBufferContainingLoc(parentIncludeLoc);
                     curBuf = sgr.getMemoryBuffer(curBufferIdx);
                     curPtr = parentIncludeLoc.getPointer();
+
+                    // When current being parsed file encounter a EOF, attempt to
+                    // see if this is included from a another file, pop the including
+                    // file off buffer stack and continue parsing it if it is.
+                    // Otherwise this control flow should not be taken and just return
+                    // EOF.
+                    return getNextChar();
                 }
 
                 --curPtr;
@@ -241,7 +282,8 @@ public final class TGLexer
         ++curPtr;
         while (true)
         {
-            switch (curBuf.getCharAt(curPtr))
+            char ch = curBuf.getCharAt(curPtr);
+            switch (ch)
             {
                 case '\r':
                 case '\n':
@@ -298,7 +340,7 @@ public final class TGLexer
     {
         int identStart = tokStart;
 
-        int ch = curBuf.getCharAt(curPtr);
+        char ch = curBuf.getCharAt(curPtr);
         while (Character.isJavaIdentifierPart(ch) || ch == '#')
         {
             if (ch == '#')
@@ -311,7 +353,7 @@ public final class TGLexer
             {
                 ++curPtr;
             }
-            curBuf.getCharAt(curPtr);
+            ch = curBuf.getCharAt(curPtr);
         }
         String id = curBuf.getSubString(identStart, curPtr);
         switch (id)
@@ -340,6 +382,7 @@ public final class TGLexer
         return TokKind.Id;
     }
 
+
     private boolean lexInclude()
     {
         TokKind tok = nextToken();
@@ -354,6 +397,17 @@ public final class TGLexer
 
         MemoryBuffer mb2 = curBuf.clone();
         mb2.setBufferStart(curPtr);
+        if (!curBuf.isRegular() && Util.isAbsolutePath(filename))
+            assert false : "Can not include relative file from non regular file";
+
+        if (!Util.isAbsolutePath(filename))
+        {
+            String base = curBuf.getFilename();
+            int idx = base.lastIndexOf(File.separator);
+            if (idx != -1)
+                filename = base.substring(0, idx + 1) + filename;
+        }
+
         curBufferIdx = sgr.addIncludeFile(filename, SMLoc.get(mb2));
         if (curBufferIdx == -1)
         {
@@ -371,7 +425,7 @@ public final class TGLexer
         int strStart = curPtr;
 
         StringBuilder sb = new StringBuilder();
-        int ch = curBuf.getCharAt(curPtr);
+        char ch = curBuf.getCharAt(curPtr);
         while (ch != '"')
         {
             if (ch == 0 && curPtr == curBuf.length())
@@ -440,7 +494,7 @@ public final class TGLexer
 
     private TokKind lexVarName()
     {
-        int ch = curBuf.getCharAt(curPtr);
+        char ch = curBuf.getCharAt(curPtr);
         if (!Character.isLetter(ch) && ch != '_')
         {
             MemoryBuffer mb2 = curBuf.clone();
@@ -449,12 +503,14 @@ public final class TGLexer
         }
 
         int varnameStart = curPtr++;
-        ch = curBuf.getCharAt(curPtr++);
-        while (!Character.isJavaIdentifierPart(ch))
-            ch = curBuf.getCharAt(curPtr++);
+        while (Character.isDigit(ch = curBuf.getCharAt(curPtr))
+                || Character.isLetter(ch) || ch == '_')
+        {
+            ++curPtr;
+        }
 
         curStrVal = curBuf.getSubString(varnameStart, curPtr);
-        return TokKind.StrVal;
+        return TokKind.VarName;
     }
 
     /**
@@ -476,11 +532,14 @@ public final class TGLexer
 
                 int numStart = curPtr;
                 curChar = curBuf.getCharAt(curPtr);
-                while (Character.isDigit(curChar) || (curChar >= 'a' && curChar <='f')
+                while (Character.isDigit(curChar)
+                        || (curChar >= 'a' && curChar <='f')
                         || (curChar >= 'A' && curChar <= 'F'))
-                    ++curPtr;
+                {
+                    curChar = curBuf.getCharAt(++curPtr);
+                }
 
-                if (curPtr == numStart)
+                if (curPtr <= numStart)
                 {
                     MemoryBuffer mb2 = curBuf.clone();
                     mb2.setBufferStart(tokStart);
@@ -488,7 +547,8 @@ public final class TGLexer
                 }
                 try
                 {
-                    curIntVal = Integer.parseInt(curBuf.getSubString(numStart-2, curPtr), 16);
+                    String t = curBuf.getSubString(numStart, curPtr);
+                    curIntVal = Long.parseUnsignedLong(t, 16);
                     return TokKind.IntVal;
                 }
                 catch (NumberFormatException e)
@@ -506,9 +566,11 @@ public final class TGLexer
                 int numStart = curPtr;
                 curChar = curBuf.getCharAt(curPtr);
                 while (curChar == '0' || curChar == '1')
-                    ++curPtr;
+                {
+                    curChar = curBuf.getCharAt(++curPtr);
+                }
 
-                if (curPtr == numStart)
+                if (curPtr <= numStart)
                 {
                     MemoryBuffer mb2 = curBuf.clone();
                     mb2.setBufferStart(tokStart);
@@ -516,7 +578,7 @@ public final class TGLexer
                 }
                 try
                 {
-                    curIntVal = Integer.parseInt(curBuf.getSubString(numStart-2, curPtr), 2);
+                    curIntVal = Integer.parseInt(curBuf.getSubString(numStart, curPtr), 2);
                     return TokKind.IntVal;
                 }
                 catch (NumberFormatException e)
@@ -526,26 +588,22 @@ public final class TGLexer
                     return returnError(mb2, "Invalid binary number!");
                 }
             }
-            else
-            {
-                MemoryBuffer mb2 = curBuf.clone();
-                mb2.setBufferStart(tokStart);
-                return returnError(mb2, "Invalid number!");
-            }
         }
+        // Check for a sign without a digit.
+        if (!Character.isDigit(curBuf.getCharAt(curPtr)))
+        {
+            if (prevChar == '-')
+                return TokKind.minus;
+            else if (prevChar == '+')
+                return TokKind.plus;
+        }
+
         // leading '+' or '-'.
-        int numStart = curPtr;
         while (Character.isDigit(curBuf.getCharAt(curPtr)))
             ++curPtr;
-        if (curPtr == numStart)
-        {
-            return prevChar == '+' ? TokKind.plus : TokKind.minus;
-        }
         try
         {
-            curIntVal = Integer.parseInt(curBuf.getSubString(numStart, curPtr));
-            if (prevChar == '-')
-                curIntVal = -curIntVal;
+            curIntVal = Integer.parseInt(curBuf.getSubString(tokStart, curPtr));
             return TokKind.IntVal;
         }
         catch (NumberFormatException e)
@@ -600,8 +658,7 @@ public final class TGLexer
             return returnError(mb2, "Invalid \"!operator\"");
         }
         int start = curPtr++;
-        ch = curBuf.getCharAt(curPtr++);
-        while (Character.isLetter(ch))
+        while (Character.isLetter(curBuf.getCharAt(curPtr)))
             ++curPtr;
 
         int len = curPtr - start;

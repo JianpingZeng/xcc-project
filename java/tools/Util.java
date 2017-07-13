@@ -342,4 +342,63 @@ public class Util
 	{
 		return String.format("%1$" + repeatNum + "s", unit);
 	}
+
+	/**
+	 * Checks the file path specified by arg {@code path} is absolutely or not.
+	 * @param path
+	 * @return
+	 */
+	public static boolean isAbsolutePath(String path)
+	{
+	    assert !(path == null || path.isEmpty());
+		if (System.getProperties().getProperty("os.name").startsWith("Windows"))
+        {
+            // Windows operation system.
+            return path.startsWith("[A-Za-z]:");
+        }
+        else
+        {
+            // Unix like operation system.
+            return path.startsWith("/");
+        }
+	}
+
+	/**
+	 * Return the next number that is power of 2 and greater than the given parameter.
+	 * @param val
+	 * @return
+	 */
+    public static int NextPowerOf2(long val)
+    {
+	    val |= (val >> 1);
+	    val |= (val >> 2);
+	    val |= (val >> 4);
+	    val |= (val >> 8);
+	    val |= (val >> 16);
+	    val |= (val >> 32);
+	    return (int) (val + 1);
+    }
+
+	public static int findFirstNonOf(String src, String delims)
+	{
+		return findFirstNonOf(src, delims, 0);
+	}
+
+    public static int findFirstNonOf(String src, String delims, int startIdx)
+    {
+		for (int i = startIdx; i < src.length(); i++)
+			if (delims.indexOf(src.charAt(i)) == -1)
+				return i;
+
+		return -1;
+    }
+
+    public static int findFirstOf(String src, String delims, int startIdx)
+    {
+	    for (int i = startIdx; i < src.length(); i++)
+		    if (delims.indexOf(src.charAt(i)) != -1)
+			    return i;
+
+	    return -1;
+    }
 }

@@ -105,7 +105,7 @@ public abstract class RecTy
         @Override
         public Init convertValue(   IntInit ii)
         {
-            int val = ii.getValue();
+            long val = ii.getValue();
             if (val != 0 && val != 1) return null;
             return new BitInit(val != 0);
         }
@@ -213,7 +213,7 @@ public abstract class RecTy
         @Override
         public Init convertValue(   IntInit ii)
         {
-            int val = ii.getValue();
+            long val = ii.getValue();
             if (val >= 0)
             {
                 if ((val & ~((1L << size) - 1)) !=0)
@@ -372,7 +372,7 @@ public abstract class RecTy
         @Override
         public void print(PrintStream os)
         {
-            os.print("bit");
+            os.print("int");
         }
 
         @Override

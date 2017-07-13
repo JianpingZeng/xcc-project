@@ -16,7 +16,6 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
 
 /**
@@ -30,9 +29,9 @@ public abstract class TargetRegisterClass
      */
     private int regSize, regAlign;
     private int[] regs;
-    private MVT.ValueType[] vts;
+    private int[] vts;
 
-    protected TargetRegisterClass(MVT.ValueType[] vts, int rs, int ra, int[] regs)
+    protected TargetRegisterClass(int[] vts, int rs, int ra, int[] regs)
     {
         this.vts = vts;
         regSize = rs;

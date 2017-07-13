@@ -17,11 +17,15 @@ package utils.tablegen;
  */
 
 import tools.Pair;
+import tools.Util;
 
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.*;
 
+import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isLiteralStatementOperand;
 import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isLiteralTextOperand;
+import static utils.tablegen.AsmWriterEmitter.AsmWriterOperand.OperandType.isMachineInstrOperand;
 
 /**
  * This class defined for generating partial code of AsmWriter, like Intel or
@@ -33,16 +37,22 @@ public final class AsmWriterEmitter extends TableGenBackend
 {
     private PrintStream os;
 
-    private static boolean isLetter(char ch)
+    private static boolean isIdentPart(char ch)
     {
         return ch >= 'a' && ch <= 'z'
                 || ch >= 'A' && ch <= 'Z'
+                || ch >= '0' && ch <= '9'
                 || ch == '_';
     }
 
     static class AsmWriterOperand
     {
-        enum OperandType { isLiteralTextOperand, isMachineInstrOperand}
+        enum OperandType
+        {
+            isLiteralTextOperand,
+            isMachineInstrOperand,
+            isLiteralStatementOperand;
+        }
 
         String str;
 
@@ -54,15 +64,25 @@ public final class AsmWriterEmitter extends TableGenBackend
 
         AsmWriterOperand(String litStr)
         {
-            opTy = isLiteralTextOperand;
-            str = litStr;
+            this(litStr, isLiteralTextOperand);
         }
 
-        AsmWriterOperand(String printer, int opNo, String modifier)
+        public AsmWriterOperand(String litStr, OperandType opTy)
         {
-            opTy = OperandType.isMachineInstrOperand;
+            str = litStr;
+            this.opTy = opTy;
+        }
+
+        AsmWriterOperand(String printer, int opNo, String modifier, OperandType opTy)
+        {
+            this.opTy = opTy;
             str = printer;
             miModifier = modifier;
+            miOpNo = opNo;
+        }
+        AsmWriterOperand(String printer, int opNo, String modifier)
+        {
+            this(printer, opNo, modifier, isMachineInstrOperand);
         }
 
         @Override
@@ -77,63 +97,146 @@ public final class AsmWriterEmitter extends TableGenBackend
                 return false;
 
             AsmWriterOperand otherOp = (AsmWriterOperand) obj;
-            if (opTy != otherOp.opTy || !Objects.equals(str, otherOp.str))
+            if (!opTy.equals(otherOp.opTy) || str.equals(otherOp.str))
                 return false;
 
-            return opTy == OperandType.isMachineInstrOperand && (
-                    miOpNo != otherOp.miOpNo || !Objects
-                            .equals(miModifier, otherOp.miModifier));
+            if (opTy.equals(OperandType.isMachineInstrOperand))
+                return (miOpNo != otherOp.miOpNo || !miModifier.equals(otherOp.miModifier));;
+
+                return false;
         }
 
-        void emitCode(PrintStream os)
+        String emitCode()
         {
             if (opTy == isLiteralTextOperand)
-                os.print("os.print(\"" + str + "\");");
-            else
             {
-                os.print(str);
-                os.print("(mi, "+ miOpNo);
-                if (!miModifier.isEmpty())
-                    os.printf(", \"%s\"", miModifier);
-                os.print(");");
+                if (str.length() == 1)
+                    return "os.print('" + str + "');";
+                return "os.print(\"" + str + "\");";
             }
+            if (opTy.equals(isLiteralStatementOperand))
+                return str;
+            StringBuilder sb = new StringBuilder();
+            sb.append(str).append("(mi");
+            if (miOpNo != ~0)
+                sb.append(", ").append(miOpNo);
+            if (miModifier != null && !miModifier.isEmpty())
+                sb.append(", \"").append(miModifier).append("\"");
+
+            return sb.append(");").toString();
         }
     }
 
-    static class AsmWriterInst
+    public static class AsmWriterInst
     {
         ArrayList<AsmWriterOperand> operands;
 
         CodeGenInstruction cgi;
 
-        AsmWriterInst(CodeGenInstruction cgi, int varint) throws Exception
+        public AsmWriterInst(CodeGenInstruction cgi, Record asmWriter) throws Exception
         {
+            operands = new ArrayList<>();
             this.cgi = cgi;
             // ~0 if we are outside a {.|.|.} region, other #.
             int curVariant = ~0;
-            String asmString = cgi.asmString;
+            int curColumn = 0;
+            
+            int variant = (int) asmWriter.getValueAsInt("Variant");
+            int firstOperandColumn = (int) asmWriter.getValueAsInt("FirstOperandColumn");
+            int operandSpacing = (int) asmWriter.getValueAsInt("OperandSpacing");
+            String asmString = cgi.asmString.trim();
+
+            //if (TableGen.DEBUG)
+            //    System.out.println(asmString);
 
             int lastEmitted = 0;
             while (lastEmitted < asmString.length())
             {
                 // find the position of any character in the pattern.
-                int dollarPos = asmString.indexOf("[$ | \\| { | }]", lastEmitted);
-                if (dollarPos >= asmString.length())
+                int dollarPos = Util.findFirstOf(asmString, "${|}\\", lastEmitted);
+                if (dollarPos == -1)
                     dollarPos = asmString.length();
 
                 // emit a constant string fragment.
                 if (dollarPos != lastEmitted)
                 {
-                    if (curVariant == varint || curVariant == ~0)
-                        addLiteralString(asmString.substring(lastEmitted, dollarPos));;
+                    if (curVariant == variant || curVariant == ~0)
+                    {
+                        for (; lastEmitted != dollarPos; ++lastEmitted)
+                        {
+                            switch (asmString.charAt(lastEmitted))
+                            {
+                                case '\n':
+                                    addLiteralString("\\n");
+                                    break;
+                                case '\t':
+                                    if (firstOperandColumn == - 1 || operandSpacing == -1)
+                                        addLiteralString("\\t");
+                                    else
+                                    {
+                                        // We recognize a tab as an operand delimeter.
+                                        int destColumn = firstOperandColumn + curColumn++ * operandSpacing;
+                                        operands.add(new AsmWriterOperand("O.PadToColumn(" +
+                                                destColumn + ");\n",
+                                                isLiteralStatementOperand));
+                                    }
+                                    break;
+                                case '"':
+                                    addLiteralString("\\\"");
+                                    break;
+                                case '\\':
+                                    addLiteralString("\\\\");
+                                    break;
+                                default:
+                                    addLiteralString(String.valueOf(asmString.charAt(lastEmitted)));;
+                                    break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        lastEmitted = dollarPos;
+                    }
+                }
+                else if (asmString.charAt(dollarPos) == '\\')
+                {
+                    if (dollarPos + 1 != asmString.length() &&
+                            (curVariant == variant || curVariant == ~0))
+                    {
+                        if (asmString.charAt(dollarPos + 1) == 'n')
+                            addLiteralString("\\n");
+                        else if (asmString.charAt(dollarPos + 1) == 't')
+                        {
+                            if (firstOperandColumn == -1 || operandSpacing == -1)
+                            {
+                                addLiteralString("\\t");
+                                break;
+                            }
 
-                    lastEmitted = dollarPos;
+                            int destColumn = firstOperandColumn + curColumn++ * operandSpacing;
+
+                            operands.add(new AsmWriterOperand("O.PadToColumn(" +
+                                destColumn + "):\n", isLiteralStatementOperand));
+                            break;
+                        }
+                        else if ("${|}\\".indexOf(asmString.charAt(dollarPos + 1)) != -1)
+                        {
+                            addLiteralString(String.valueOf(asmString.charAt(dollarPos + 1)));
+                        }
+                        else
+                        {
+                            throw new Exception("Non-supported escaped character found in instruction '" +
+                                cgi.theDef.getName() + "'!");
+                        }
+                        lastEmitted = dollarPos + 2;
+                        continue;
+                    }
                 }
                 else if (asmString.charAt(dollarPos) == '{')
                 {
                     if (curVariant != ~0)
                         throw new Exception("Nested variants found for instruction"
-                        + "'" + cgi.theDef.getName() + "'!");
+                            + "'" + cgi.theDef.getName() + "'!");
                     lastEmitted = dollarPos + 1;
                     // We are now inside of the variant!
                     curVariant = 0;
@@ -158,7 +261,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                 else if (dollarPos + 1 != asmString.length()
                         && asmString.charAt(dollarPos+1) == '$')
                 {
-                    if (curVariant == varint || curVariant == ~0)
+                    if (curVariant == variant || curVariant == ~0)
                         addLiteralString("$");
                     lastEmitted = dollarPos + 2;
                 }
@@ -173,7 +276,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                         ++dollarPos;
                         ++varEnd;
                     }
-                    while (varEnd < asmString.length() && isLetter(asmString.charAt(varEnd)))
+                    while (varEnd < asmString.length() && isIdentPart(asmString.charAt(varEnd)))
                         ++varEnd;
 
                     String varName = asmString.substring(dollarPos + 1, varEnd);
@@ -182,12 +285,15 @@ public final class AsmWriterEmitter extends TableGenBackend
                     // into printOperand.
                     String modifier = "";
 
+                    // In order to avoid starting the next string at the terminating curly
+                    // brace, advance the end position past it if we found an opening curly
+                    // brace.
                     if (hasCurlyBraces)
                     {
                         if (varEnd >= asmString.length())
                         {
-                            throw new Exception("Reached end of string before t"
-                                    + "erminating curly brace in '" + cgi.theDef
+                            throw new Exception("Reached end of string before "
+                                    + "terminating curly brace in '" + cgi.theDef
                                     .getName() + "'");
                         }
                         // Look for a modifier string.
@@ -197,12 +303,12 @@ public final class AsmWriterEmitter extends TableGenBackend
                             if (varEnd >= asmString.length())
                             {
                                 throw new Exception(
-                                        "Reached end of string before t" + "erminating curly brace in '"
+                                        "Reached end of string before terminating curly brace in '"
                                                 + cgi.theDef.getName() + "'");
                             }
 
                             int modifierStart = varEnd;
-                            while (varEnd < asmString.length() && isLetter(
+                            while (varEnd < asmString.length() && isIdentPart(
                                     asmString.charAt(varEnd)))
                                 ++varEnd;
 
@@ -213,45 +319,39 @@ public final class AsmWriterEmitter extends TableGenBackend
                                 throw new Exception(
                                         "Bad operand modifier name in '" + cgi.theDef.getName() + "'");
                             }
-
-                            if (asmString.charAt(varEnd) != '}')
-                                throw new Exception(
-                                        "Variable name begining with '{' didn't end with '}' in "
-                                                + "' " + cgi.theDef.getName() + "'");
-
-                            ++varEnd;
-                        }
-                        if (varName.isEmpty())
-                        {
-                            throw new Exception("Stray '$' in '" + cgi.theDef.getName()
-                                    + "' asm string, maybe you want $$?");
                         }
 
+                        if (asmString.charAt(varEnd) != '}')
+                            throw new Exception(
+                                    "Variable name begining with '{' didn't end with '}' in "
+                                            + "' " + cgi.theDef.getName() + "'");
+
+                        ++varEnd;
+                    }
+
+                    if (varName.isEmpty() && modifier.isEmpty())
+                    {
+                        throw new Exception("Stray '$' in '" + cgi.theDef.getName()
+                                + "' asm string, maybe you want $$?");
+                    }
+                    if (varName.isEmpty())
+                        operands.add(new AsmWriterOperand("PrintSpecial", ~0, modifier));
+                    else
+                    {
                         int opNo = cgi.getOperandNamed(varName);
-
                         CodeGenInstruction.OperandInfo opInfo = cgi.operandList.get(opNo);
 
-                        int miOp = opInfo.miOperandNo;
-                        // If this is a two-address instruction and we are not accessing the
-                        // 0th operand, remove an operand.
-                        if (cgi.isTwoAddress && miOp != 0)
+                        if (curVariant == variant || curVariant == ~0)
                         {
-                            if (miOp == 1)
-                                throw new Exception("Should refer to #0 operand instead "
-                                        + "of #1 for two-address instruction '"
-                                        + cgi.theDef.getName() +"'");
-                            --miOp;
+                            int miOp = opInfo.miOperandNo;
+                            operands.add(new AsmWriterOperand(opInfo.printerMethodName, miOp, modifier));
                         }
-
-                        if (curVariant == varEnd || curVariant == ~0)
-                        {
-                            operands.add(new AsmWriterOperand(opInfo.printerMethodName,
-                                    miOp, modifier));
-                        }
-                        lastEmitted = varEnd;
                     }
+                    lastEmitted = varEnd;
                 }
             }
+
+            operands.add(new AsmWriterOperand("emitComments(mi);\n", isLiteralStatementOperand));
             addLiteralString("\\n");
         }
 
@@ -262,7 +362,7 @@ public final class AsmWriterEmitter extends TableGenBackend
          * @param other
          * @return
          */
-        int matchesAllButOneOp(AsmWriterInst other)
+        public int matchesAllButOneOp(AsmWriterInst other)
         {
             if (operands.size() != other.operands.size())
                 return ~1;
@@ -282,10 +382,9 @@ public final class AsmWriterEmitter extends TableGenBackend
 
         private void addLiteralString(String str)
         {
-            AsmWriterOperand lastOperand = operands.get(operands.size() - 1);
-            if (!operands.isEmpty() && lastOperand.opTy
+            if (!operands.isEmpty() && operands.get(operands.size() - 1).opTy
                     == isLiteralTextOperand)
-                lastOperand.str += str;
+                operands.get(operands.size() - 1).str += str;
             else
                 operands.add(new AsmWriterOperand(str));
         }
@@ -298,6 +397,11 @@ public final class AsmWriterEmitter extends TableGenBackend
     @Override
     public void run(String outputFile) throws Exception
     {
+        if (outputFile.equals("-"))
+            os = System.out;
+        else
+            os = new PrintStream(new FileOutputStream(outputFile));
+
         emitSourceFileHeaderComment("Assembly Writer Source Fragment", os);
         CodeGenTarget target = new CodeGenTarget();
         Record asmWriter = target.getAsmWriter();
@@ -305,12 +409,8 @@ public final class AsmWriterEmitter extends TableGenBackend
         String className = target.getName() + "Gen" +
                 asmWriter.getValueAsString("AsmWriterClassName");
         String superName = target.getName() + asmWriter.getValueAsString("AsmWriterClassName");
-        if (outputFile.equals("-"))
-            os = System.out;
-        else
-            os = new PrintStream(outputFile);
 
-        int variant = asmWriter.getValueAsInt("Variant");
+        long variant = asmWriter.getValueAsInt("Variant");
 
         os.printf("public final class %s extends %s{\n\t", className, superName);
 
@@ -325,11 +425,12 @@ public final class AsmWriterEmitter extends TableGenBackend
 
         ArrayList<AsmWriterInst> instructions = new ArrayList<>();
 
-        for (CodeGenInstruction inst : target.getInstructions().values())
+        Collection<CodeGenInstruction> values = target.getInstructions().values();
+        for (CodeGenInstruction inst : values)
         {
             String asmString = inst.asmString;
             if (!asmString.isEmpty())
-                instructions.add(new AsmWriterInst(inst, variant));
+                instructions.add(new AsmWriterInst(inst, asmWriter));
         }
 
         // If all of the instructions start with a constant string (a very very common
@@ -347,7 +448,7 @@ public final class AsmWriterEmitter extends TableGenBackend
             }
         }
 
-        LinkedList<CodeGenInstruction> numberedInstructions = new LinkedList<>();
+        ArrayList<CodeGenInstruction> numberedInstructions = new ArrayList<>();
 
         target.getInstructionsByEnumValue(numberedInstructions);
 
@@ -360,43 +461,43 @@ public final class AsmWriterEmitter extends TableGenBackend
             instructions.forEach(inst-> cgiMapToawi.put(inst.cgi, inst));
 
             // emit a table of constant strings.
-            os.print("  public static final String[] opStrs = {\n");
+            os.print("\tpublic static final String[] opStrs = {\n");
             numberedInstructions.forEach(cgi->
             {
                 if (!cgiMapToawi.containsKey(cgi))
-                    os.print("\tnull,\t//");
+                    os.print("\t\t\tnull,\t\t\t\t// ");
                 else
                 {
                     AsmWriterInst awi = cgiMapToawi.get(cgi);
-                    os.printf("\t\"%s \",\t//", awi.operands.get(0).str);
+                    os.printf("\t\t\t\"%s\",\t\t\t\t// ", awi.operands.get(0).str);
                 }
                 os.println(cgi.theDef.getName());
             });
 
-            os.print("};\n");
+            os.print("\t};\n\n");
         }
 
-        os.print("\t@Override \n\tprotected boolean printInstruction(MachineOperation mi) \n{\n");
+        os.print("\t@Override\n\tpublic boolean printInstruction(MachineOperation mi) \n\t{\n");
 
-        os.println("\t// emit the opcode for the instruction.");
-        os.println("\tString asmStr = opStrs[mi.getOpcode()]");
-        os.println("\tif (asmStr != null)");
-        os.print("\t\tos.print(asmStr);\n\n");
+        os.println("\t\t// emit the opcode for the instruction.");
+        os.println("\t\tString asmStr = opStrs[mi.getOpcode()]");
+        os.println("\t\tif (asmStr != null)\n");
+        os.print("\t\t\tos.print(asmStr);\n\n");
 
         // Because this is a vector we want to emit from the end.  Reverse all of the
         // elements in the vector.
         Collections.reverse(instructions);
 
-        os.print("\t switch (mi.getOpcode()) {\n");
-        os.print("\tdefault; return false;\n");
-        os.print("\tcase INLINEASM: printInlineAsm(mi); break;\n");
+        os.print("\t\tswitch (mi.getOpcode()) \n{\n");
+        os.print("\t\t\tdefault: return false;\n");
+        os.print("\t\t\tcase INLINEASM: printInlineAsm(mi); break;\n");
 
         while (!instructions.isEmpty())
             emitInstructions(instructions, os);
 
-        os.print("\t}// end of switch.\n");
-        os.print("\treturn true;\n");
-        os.print("}// end of printInstruction.\n");
+        os.print("\t\t\t}// end of switch.\n");
+        os.print("\t\treturn true;\n");
+        os.print("\t}// end of printInstruction.\n");
         os.print("}// end of interface.\n");
 
         // Close the print stream.
@@ -412,15 +513,16 @@ public final class AsmWriterEmitter extends TableGenBackend
     private static void emitInstructions(ArrayList<AsmWriterInst> insts,
             PrintStream os)
     {
-        int len = insts.size();
-        AsmWriterInst firstInst = insts.get(len - 1);
-        insts.remove(len - 1);
+        ListIterator<AsmWriterInst> itr = insts.listIterator(insts.size());
+        AsmWriterInst firstInst = itr.previous();
+        itr.remove();
 
         LinkedList<AsmWriterInst> similarInsts = new LinkedList<>();
         int differingOperand = ~0;
-        for (int i = insts.size(); i != 0; --i)
+        while (itr.hasPrevious())
         {
-            int diffOp = insts.get(i-1).matchesAllButOneOp(firstInst);
+            AsmWriterInst curInstr = itr.previous();
+            int diffOp = curInstr.matchesAllButOneOp(firstInst);
             if (diffOp != ~1)
             {
                 if (differingOperand == ~0)  // First match!
@@ -430,28 +532,28 @@ public final class AsmWriterEmitter extends TableGenBackend
                 // this class, move it to the similarInsts list.
                 if (differingOperand == diffOp || diffOp == ~0)
                 {
-                    similarInsts.add(insts.get(i - 1));
-                    insts.remove(i - 1);
+                    similarInsts.add(curInstr);
+                    itr.remove();
                 }
             }
         }
         
-        os.print("  case " + firstInst.cgi.theDef.getName() + ":\n");
+        os.print("\t\t\tcase " + firstInst.cgi.theDef.getName() + ":\n");
         for (int i = 0, e = similarInsts.size(); i != e; ++i)
-            os.print("  case " + similarInsts.get(i).cgi.theDef.getName() + ":\n");
+            os.print("\t\t\tcase " + similarInsts.get(i).cgi.theDef.getName() + ":\n");
         for (int i = 0, e = firstInst.operands.size(); i != e; ++i)
         {
             if (i != differingOperand)
             {
                 // If the operand is the same for all instructions, just print it.
                 os.print("\t");
-                firstInst.operands.get(i).emitCode(os);
+                os.printf("\t\t\t%s", firstInst.operands.get(i).emitCode());
             }
             else
             {
                 // If this is the operand that varies between all of the instructions,
                 // emit a switch for just this operand now.
-                os.print("    switch (mi.getOpcode()) {\n");
+                os.print("\t\tswitch (mi.getOpcode()) {\n");
                 LinkedList<Pair<String, AsmWriterOperand>> opsToPrint  = new LinkedList<>();
                 opsToPrint.add(Pair.get(firstInst.cgi.theDef.getName(),
                         firstInst.operands.get(i)));
@@ -472,7 +574,7 @@ public final class AsmWriterEmitter extends TableGenBackend
             }
             os.println();
         }
-        os.println("\tbreak;");
+        os.println("\t\t\t\tbreak;");
     }
 
     private static void printCases(
@@ -492,7 +594,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                 os.printf("\n\tcase %s: ", lastOne.first);
             }
         }
-        operand.emitCode(os);
+        os.printf("\t\t\t\t%s", operand.emitCode());
         os.print("break;\n");
     }
 }

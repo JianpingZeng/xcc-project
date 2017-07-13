@@ -24,6 +24,7 @@ import static tools.commandline.FormattingFlags.Positional;
 import static tools.commandline.FormattingFlags.Prefix;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.ValueDesc.valueDesc;
+import static utils.tablegen.Record.records;
 import static utils.tablegen.TableGen.ActionType.*;
 
 /**
@@ -34,31 +35,34 @@ public final class TableGen
 {
     /**
      * This enum contains all kind of action that user wnat to perform, includes
-     * GenRegisterNames, GenRegisterInfo, GenInstrNames, GenInstrInfo.
+     * GenRegisterNames, GenRegisterDesc, GenInstrNames, GenInstrDesc.
      */
     enum ActionType
     {
         GenRegisterNames,
-        GenRegisterInfo,
+        GenRegisterDesc,
         GenInstrNames,
-        GenInstrInfo,
+        GenInstrDesc,
         GenAsmPrinter,
+        PrintRecords,
     }
 
     private static Opt<ActionType> action = new Opt<ActionType>(
             new Parser<>(),
             desc("Action to performance"),
             new ValueClass<>(
-                    new ValueClass.Entry<>(GenRegisterInfo, "gen-reg-names",
+                    new ValueClass.Entry<>(GenRegisterNames, "gen-register-names",
                             "Generates register names"),
-                    new ValueClass.Entry<>(GenRegisterInfo, "gen-reg-info",
-                            "Generates register information file"),
+                    new ValueClass.Entry<>(GenRegisterDesc, "gen-register-desc",
+                            "Generates register description file"),
                     new ValueClass.Entry<>(GenInstrNames, "gen-instr-names",
-                            "Generates instr names"),
-                    new ValueClass.Entry<>(GenInstrInfo, "gen-instr-info",
-                            "Generates instr information"),
-                    new ValueClass.Entry<>(GenAsmPrinter, "gen-asm-print",
-                            "Generates assembly printer")
+                            "Generates instruction names"),
+                    new ValueClass.Entry<>(GenInstrDesc, "gen-instr-desc",
+                            "Generates instruction descriptions"),
+                    new ValueClass.Entry<>(GenAsmPrinter, "gen-asm-printer",
+                            "Generates assembly printer"),
+                    new ValueClass.Entry<>(PrintRecords, "print-records",
+                            "Print all records to stdout (default)")
             ));
 
     private static StringOpt outputFileName = new StringOpt(
@@ -79,6 +83,9 @@ public final class TableGen
             desc("<input file>"),
             init("-"));
 
+    // For debug, dump each def and class.
+    public static final boolean DEBUG = false;
+
     public static void main(String[] args)
     {
         try
@@ -89,22 +96,26 @@ public final class TableGen
                 outputFileName.value = "-";
             }
 
-            TGParser.parseFile(inputFilename.value, includeDirs, new SourceMgr());
+            if (TGParser.parseFile(inputFilename.value, includeDirs, new SourceMgr()))
+                System.exit(1);
 
             String outputFile = outputFileName.value;
             switch (action.value)
             {
-                case GenRegisterNames:
-                    new RegisterInfoEmitter(Record.records).runEnums(outputFile);
+                case PrintRecords:
+                    records.dump();
                     break;
-                case GenRegisterInfo:
-                    new RegisterInfoEmitter(Record.records).run(outputFile);
+                case GenRegisterNames:
+                    new RegisterInfoEmitter(records).runEnums(outputFile);
+                    break;
+                case GenRegisterDesc:
+                    new RegisterInfoEmitter(records).run(outputFile);
                     break;
                 case GenInstrNames:
-                    new InstrInfoEmitter(Record.records).runEnums(outputFile);
+                    new InstrInfoEmitter(records).runEnums(outputFile);
                     break;
-                case GenInstrInfo:
-                    new InstrInfoEmitter(Record.records).run(outputFile);
+                case GenInstrDesc:
+                    new InstrInfoEmitter(records).run(outputFile);
                     break;
                 case GenAsmPrinter:
                     new AsmWriterEmitter().run(outputFile);

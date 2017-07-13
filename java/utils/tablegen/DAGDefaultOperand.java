@@ -16,31 +16,13 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.SourceMgr;
-
 import java.util.ArrayList;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class MultiClass
+public final class DAGDefaultOperand
 {
-    public Record rec;
-    public ArrayList<Record> defProtoTypes;
-
-    public void dump()
-    {
-        System.err.println("Record:");
-        rec.dump();
-
-        System.err.println("Defs:");
-        defProtoTypes.forEach(Record::dump);
-    }
-
-    public MultiClass(String name, SourceMgr.SMLoc loc)
-    {
-        rec = new Record(name, loc);
-        defProtoTypes = new ArrayList<>();
-    }
+    public ArrayList<TreePatternNode> defaultOps = new ArrayList<>();
 }

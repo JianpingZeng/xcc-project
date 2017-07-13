@@ -22,7 +22,6 @@ import utils.tablegen.Init.*;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 
 /**
@@ -43,6 +42,12 @@ public final class Record implements Cloneable
     private ArrayList<Record> superClasses;
     private SourceMgr.SMLoc loc;
 
+    /**
+     * An unique ID.
+     */
+    private int id;
+    private static int lastID = 0;
+
     public Record(String name, SourceMgr.SMLoc loc)
     {
         this.name = name;
@@ -50,6 +55,7 @@ public final class Record implements Cloneable
         values = new ArrayList<>();
         superClasses = new ArrayList<>();
         this.loc = loc;
+        id = lastID++;
     }
 
     public String getName()
@@ -91,7 +97,7 @@ public final class Record implements Cloneable
 
     public boolean isTemplateArg(String name)
     {
-        return Collections.binarySearch(templateArgs, name) >= 0;
+        return templateArgs.contains(name);
     }
 
     public RecordVal getValue(String name)
@@ -110,7 +116,7 @@ public final class Record implements Cloneable
     public void addValue(RecordVal rv)
     {
         assert getValue(rv.getName()) == null:"Value already defined!";
-        values.add(rv);
+        values.add(rv.clone());
     }
 
     public void removeValue(String name)
@@ -348,7 +354,7 @@ public final class Record implements Cloneable
         if (rv == null || rv.getValue() == null)
             throw new Exception("Reord '" + getName() + "' does not have a field"
                     + " named '" + fieldName + "'!\n");
-        if (rv.getValue() instanceof IntInit)
+        if (rv.getValue() instanceof BitInit)
             return ((BitInit)rv.getValue()).getValue();
         throw new Exception("Record `" + getName() + "', field `" + fieldName +
                 "' does not have a BitInit initializer!");
@@ -362,7 +368,7 @@ public final class Record implements Cloneable
      * @return
      * @throws Exception
      */
-    public int getValueAsInt( String fieldName) throws Exception
+    public long getValueAsInt( String fieldName) throws Exception
     {
         RecordVal rv = getValue(fieldName);
         if (rv == null || rv.getValue() == null)
@@ -444,5 +450,26 @@ public final class Record implements Cloneable
         {
             return null;
         }
+    }
+
+    /**
+     * Determines whether this Record is a Declaration or not.
+     * <p>
+     * Return {@code true} if the record values belongs to this Record is empty
+     * and no super classes which this record inherits and no template arguments
+     * declared.
+     * </p>
+     * @return
+     */
+    public boolean isDeclaration()
+    {
+        return getValues().isEmpty()
+                && getSuperClasses().isEmpty()
+                && getTemplateArgs().isEmpty();
+    }
+
+    public int getID()
+    {
+        return id;
     }
 }

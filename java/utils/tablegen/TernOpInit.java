@@ -404,4 +404,24 @@ public final class TernOpInit extends Init.OpInit
                 .append(")")
                 .toString();
     }
+
+    @Override
+    public TernOpInit clone()
+    {
+        return new TernOpInit(opc, lhs.clone(), mhs.clone(), rhs.clone(), getType());
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == this) return true;
+        if (obj == null) return false;
+        if(getClass() != obj.getClass())
+            return false;
+
+        TernOpInit to = (TernOpInit)obj;
+        return opc == to.opc && lhs.equals(to.lhs)
+                && mhs.equals(to.mhs)
+                && rhs.equals(to.rhs);
+    }
 }
