@@ -139,6 +139,12 @@ public abstract class Init
         return this;
     }
 
+    @Override
+    public abstract Init clone();
+
+    @Override
+    public abstract boolean equals(Object obj);
+
     /**
      * Represents an uninitialized value-'?'.
      */
@@ -150,11 +156,33 @@ public abstract class Init
             return instance;
         }
 
-        private UnsetInit() {}
+        private UnsetInit()
+        {
+            super();
+        }
+
         @Override
         public Init convertInitializerTo(RecTy ty)
         {
             return ty.convertValue(this);
+        }
+
+        @Override
+        public UnsetInit clone()
+        {
+            return instance;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            UnsetInit other = (UnsetInit)obj;
+            return other == instance;
         }
 
         @Override
@@ -187,6 +215,22 @@ public abstract class Init
         }
 
         @Override
+        public BitInit clone()
+        {
+            return new BitInit(value);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+            return value == ((BitInit)obj).value;
+        }
+
+        @Override
         public void print(PrintStream os)
         {
             os.print(value? "1":"0");
@@ -200,16 +244,24 @@ public abstract class Init
     public static class BitsInit extends Init
     {
         private ArrayList<Init> bits;
+        private ArrayList<Boolean> setted;
         public BitsInit(int size)
         {
             bits = new ArrayList<>();
+            setted = new ArrayList<>();
             // Fixme: initialize each element with UnsetInit rather than 'null',
             // to avoid NullPointerException.
             for (int i = 0; i < size; i++)
+            {
                 bits.add(UnsetInit.getInstance());
+                setted.add(false);
+            }
         }
 
-        public int getNumBits() {return bits.size(); }
+        public int getNumBits()
+        {
+            return bits.size();
+        }
 
         public Init getBit(int bit)
         {
@@ -220,8 +272,9 @@ public abstract class Init
         public void setBit(int bit, Init val)
         {
             assert bit < bits.size() :"Bit index out of range";
-            assert bits.get(bit) == null :"Bit already set!";
+            assert !setted.get(bit) :"Bit already set!";
             bits.set(bit, val);
+            setted.set(bit, true);
         }
 
         @Override
@@ -287,11 +340,34 @@ public abstract class Init
                     curBit = curBit.resolveReferences(r, rval);
                     changed |= !b.equals(curBit);
                 }while (!b.equals(curBit));
+
+                newInit.setBit(i, curBit);
             }
 
             if (changed)
                 return newInit;
             return this;
+        }
+
+        @Override
+        public BitsInit clone()
+        {
+            BitsInit res = new BitsInit(getNumBits());
+            for (int i = 0, e = bits.size(); i < e; i++)
+                res.bits.set(i, bits.get(i).clone());
+
+            return res;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+            BitsInit bi = (BitsInit)obj;
+            return bits.equals(bi.bits);
         }
 
         // Print this bitstream with the specified format, returning true if
@@ -356,13 +432,17 @@ public abstract class Init
     /**
      * Represent an initalization by a literal integer value.
      */
-    public static class IntInit extends Init
+    public static class IntInit extends TypedInit
     {
-        private int value;
+        private long value;
 
-        public IntInit(int val) {value = val;}
+        public IntInit(long val)
+        {
+            super(new RecTy.IntRecTy());
+            value = val;
+        }
 
-        public int getValue()
+        public long getValue()
         {
             return value;
         }
@@ -390,6 +470,37 @@ public abstract class Init
         }
 
         @Override
+        public IntInit clone()
+        {
+            return new IntInit(value);
+        }
+
+        @Override public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            return ((IntInit)obj).value == value;
+        }
+
+        @Override
+        public Init resolveBitReference(Record r, RecordVal rval, int bit)
+        {
+            assert false:"Illegal bit reference off int";
+            return null;
+        }
+
+        @Override
+        public Init resolveListElementReference(Record r, RecordVal rval,
+                int elt)
+        {
+            assert false:"Illegal element reference off int";
+            return null;
+        }
+
+        @Override
         public void print(PrintStream os)
         {
             os.print(value);
@@ -399,11 +510,12 @@ public abstract class Init
     /**
      * Represent an initalization by a literal string value.
      */
-    public static class StringInit extends Init
+    public static class StringInit extends TypedInit
     {
         private String value;
         public StringInit(String val)
         {
+            super(new RecTy.StringRecTy());
             value = val;
         }
 
@@ -419,9 +531,41 @@ public abstract class Init
         }
 
         @Override
+        public StringInit clone()
+        {
+            return new StringInit(getValue());
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            return value.equals(((StringInit)obj).value);
+        }
+
+        @Override
         public void print(PrintStream os)
         {
-            os.printf("\"%s\"", value);
+            os.printf("%s", value);
+        }
+
+        @Override
+        public Init resolveBitReference(Record r, RecordVal rval, int bit)
+        {
+            assert false:"Illegal bit reference off string";
+            return null;
+        }
+
+        @Override
+        public Init resolveListElementReference(Record r, RecordVal rval,
+                int elt)
+        {
+            assert false:"Illegal element reference off string";
+            return null;
         }
     }
 
@@ -512,6 +656,28 @@ public abstract class Init
         }
 
         @Override
+        public ListInit clone()
+        {
+            ArrayList<Init> list = new ArrayList<>();
+            values.forEach(e->list.add(e.clone()));
+
+            return new ListInit(list, ((ListRecTy)getType()).getElementType());
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            ListInit li = (ListInit)obj;
+
+            return values.equals(li.values);
+        }
+
+        @Override
         public void print(PrintStream os)
         {
             os.print("[");
@@ -521,6 +687,17 @@ public abstract class Init
                 os.print(values.get(i));
             }
             os.print("]");
+        }
+
+        public Record getElementAsRecord(int index) throws Exception
+        {
+            assert index >= 0
+                    && index < getSize() : "List element index out of range!";
+            if (values.get(index) instanceof DefInit)
+            {
+                return ((DefInit)values.get(index)).getDef();
+            }
+            throw new Exception("Expected record in list!");
         }
     }
 
@@ -586,43 +763,38 @@ public abstract class Init
                         lhss = (DagInit)lhs;
                         rhss = (DagInit)rhs;
 
-                        DefInit  lop, rop;
-                        if (!(lhss.getOperator() instanceof DefInit)
-                                || !(rhss.getOperator() instanceof DefInit))
+                        DefInit lop = (DefInit) lhss.getOperator();
+                        DefInit rop = (DefInit) rhss.getOperator();
+
+                        if (!lop.getDef().equals(rop.getDef()))
                         {
-                            lop = (DefInit)lhss.getOperator();
-                            rop = (DefInit)rhss.getOperator();
+                            boolean lisOPs = lop.getDef().getName().equals("outs")
+                                    || !lop.getDef().getName().equals("ins")
+                                    || !lop.getDef().getName().equals("defs");
+                            boolean rIsOPs = rop.getDef().getName().equals("outs")
+                                    || !rop.getDef().getName().equals("ins")
+                                    || !rop.getDef().getName().equals("defs");
 
-                            if (!lop.getDef().equals(rop.getDef()))
-                            {
-                                boolean lisOPs = lop.getDef().getName().equals("outs")
-                                        || !lop.getDef().getName().equals("ins")
-                                        || !lop.getDef().getName().equals("defs");
-                                boolean rIsOPs = rop.getDef().getName().equals("outs")
-                                        || !rop.getDef().getName().equals("ins")
-                                        || !rop.getDef().getName().equals("defs");
-
-                                if (!lisOPs || !rIsOPs)
-                                    throw new Exception("Concated Dag operators don't match");
-                            }
-
-                            ArrayList<Init> args = new ArrayList<>();
-                            ArrayList<String> argNames = new ArrayList<>();
-
-                            for (int i = 0, e = lhss.getNumArgs(); i < e; ++i)
-                            {
-                                args.add(lhss.getArg(i));
-                                argNames.add(lhss.getArgName(i));
-                            }
-
-                            for (int i = 0, e = rhss.getNumArgs(); i < e; ++i)
-                            {
-                                args.add(rhss.getArg(i));
-                                argNames.add(rhss.getArgName(i));
-                            }
-
-                            return new DagInit(lhss.getOperator(), "", args, argNames);
+                            if (!lisOPs || !rIsOPs)
+                                throw new Exception("Concated Dag operators don't match");
                         }
+
+                        ArrayList<Init> args = new ArrayList<>();
+                        ArrayList<String> argNames = new ArrayList<>();
+
+                        for (int i = 0, e = lhss.getNumArgs(); i < e; ++i)
+                        {
+                            args.add(lhss.getArg(i));
+                            argNames.add(lhss.getArgName(i));
+                        }
+
+                        for (int i = 0, e = rhss.getNumArgs(); i < e; ++i)
+                        {
+                            args.add(rhss.getArg(i));
+                            argNames.add(rhss.getArgName(i));
+                        }
+
+                        return new DagInit(lhss.getOperator(), "", args, argNames);
                     }
                     break;
                 }
@@ -644,8 +816,8 @@ public abstract class Init
                     {
                         IntInit lhsi = (IntInit)lhs;
                         IntInit rhsi = (IntInit)rhs;
-                        int lhsv = lhsi.getValue(), rhsv = rhsi.getValue();
-                        int result;
+                        long lhsv = lhsi.getValue(), rhsv = rhsi.getValue();
+                        long result;
                         switch (getOpcode())
                         {
                             default:assert false:"Bad opcode!";
@@ -753,6 +925,24 @@ public abstract class Init
         }
 
         @Override
+        public BinOpInit clone()
+        {
+            return new BinOpInit(opc, lhs.clone(), rhs.clone(), getType());
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            BinOpInit boi = (BinOpInit)obj;
+            return opc == boi.opc && lhs.equals(boi.lhs) && rhs.equals(boi.rhs);
+        }
+
+        @Override
         public void print(PrintStream os)
         {
             os.println(toString());
@@ -800,6 +990,22 @@ public abstract class Init
         public Init convertInitializerTo(RecTy ty)
         {
             return ty.convertValue(this);
+        }
+
+        @Override
+        public CodeInit clone()
+        {
+            return new CodeInit(value);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+            return value.equals(((CodeInit)obj).value);
         }
 
         @Override
@@ -867,6 +1073,9 @@ public abstract class Init
 
         public abstract Init resolveListElementReference(Record r, RecordVal rval,
                 int elt);
+
+        @Override
+        public abstract TypedInit clone();
     }
 
     /**
@@ -906,8 +1115,26 @@ public abstract class Init
         @Override
         public Init resolveReferences(Record r, RecordVal rval)
         {
-            Init i = getVariable().resolveReferences(r, rval);
+            Init i = getVariable().resolveBitReference(r, rval, getBitNum());
             return i!= null? i : this;
+        }
+
+        @Override
+        public VarBitInit clone()
+        {
+            return new VarBitInit(ti.clone(), bit);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            VarBitInit vbi = (VarBitInit)obj;
+            return bit == vbi.bit && ti.equals(vbi.ti);
         }
     }
 
@@ -960,6 +1187,24 @@ public abstract class Init
         }
 
         @Override
+        public VarListElementInit clone()
+        {
+            return new VarListElementInit(ti.clone(), element);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            VarListElementInit vle = (VarListElementInit)obj;
+            return ti.equals(vle.ti) && element == vle.element;
+        }
+
+        @Override
         public Init resolveReferences(Record r, RecordVal rval)
         {
             Init i = getVariable().resolveListElementReference(r, rval, getElementNum());
@@ -970,12 +1215,13 @@ public abstract class Init
     /**
      * Represent a reference to a 'def' in the description.
      */
-    public static class DefInit extends Init
+    public static class DefInit extends TypedInit
     {
         private Record def;
 
         public DefInit(Record d)
         {
+            super(new RecordRecTy(d));
             def = d;
         }
 
@@ -1008,6 +1254,38 @@ public abstract class Init
         {
             os.print(def.getName());
         }
+
+        @Override
+        public Init resolveBitReference(Record r, RecordVal rval, int bit)
+        {
+            assert false:"Illegal bit reference off def";
+            return null;
+        }
+
+        @Override
+        public Init resolveListElementReference(Record r, RecordVal rval,
+                int elt)
+        {
+            assert false:"Illegal element reference off def";
+            return null;
+        }
+
+        @Override
+        public DefInit clone()
+        {
+            return new DefInit(def);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+            DefInit di = (DefInit)obj;
+            return def.equals(di.def);
+        }
     }
 
     /**
@@ -1015,7 +1293,7 @@ public abstract class Init
      * to have at least one value then a (possibly empty) list of arguments.  Each
      * argument can have a name associated with it.
      */
-    public static class DagInit extends Init
+    public static class DagInit extends TypedInit
     {
         private Init val;
         private String varName;
@@ -1024,6 +1302,7 @@ public abstract class Init
 
         public DagInit(Init val, String vn,  ArrayList<Pair<Init, String>> args)
         {
+            super(new RecTy.DagRecTy());
             this.val = val;
             varName = vn;
             this.args = new ArrayList<>(args.size());
@@ -1036,6 +1315,7 @@ public abstract class Init
 
         public DagInit(Init val,String vn, ArrayList<Init> args, ArrayList<String> argNames)
         {
+            super(new RecTy.DagRecTy());
             this.val = val;
             varName = vn;
             this.args = args;
@@ -1104,16 +1384,60 @@ public abstract class Init
                 os.print(" ");
                 args.get(0).print(os);
                 if (!argNames.get(0).isEmpty())
-                    os.printf(":$%f", argNames.get(0));
+                    os.printf(":$%s", argNames.get(0));
                 for (int i = 1, e = args.size(); i < e; i++)
                 {
                     os.print(", ");
                     args.get(i).print(os);
                     if (!argNames.get(i).isEmpty())
-                        os.printf(":$%f", argNames.get(i));
+                        os.printf(":$%s", argNames.get(i));
                 }
             }
             os.print(")");
+        }
+
+        @Override
+        public Init resolveBitReference(Record r, RecordVal rval, int bit)
+        {
+            assert false:"Illegal bit reference off dag";
+            return null;
+        }
+
+        @Override
+        public Init resolveListElementReference(Record r, RecordVal rval,
+                int elt)
+        {
+            assert false:"Illegal element reference off dag";
+            return null;
+        }
+
+        @Override
+        public DagInit clone()
+        {
+            ArrayList<Init> argList = new ArrayList<>();
+            ArrayList<String> argNameList = new ArrayList<>();
+            args.forEach(e->argList.add(e.clone()));
+            argNameList.addAll(argNames);
+
+            return new DagInit(val.clone(), varName, argList, argNameList);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+            DagInit di = (DagInit)obj;
+
+            return val.equals(di.val) && varName.equals(di.varName)
+                    && args.equals(di.args) && argNames.equals(di.argNames);
+        }
+
+        public String getName()
+        {
+            return varName;
         }
     }
 
@@ -1151,7 +1475,7 @@ public abstract class Init
         public Init resolveBitReference(Record r, RecordVal rval, int bit)
         {
             if (r.isTemplateArg(getName())) return null;
-            if (rval != null && rval.getName() != getName()) return null;
+            if (rval != null && !rval.getName().equals(getName())) return null;
 
             RecordVal rv = r.getValue(getName());
             assert rv != null :"Reference to a non-existant variable?";
@@ -1185,6 +1509,23 @@ public abstract class Init
             if (!(e instanceof UnsetInit))
                 return e;
             return null;
+        }
+
+        @Override
+        public VarInit clone()
+        {
+            return new VarInit(varName, getType());
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+
+            return varName.equals(((VarInit)obj).varName);
         }
 
         @Override
@@ -1293,6 +1634,24 @@ public abstract class Init
                 }
             }
             return null;
+        }
+
+        @Override
+        public FieldInit clone()
+        {
+            return new FieldInit(rec.clone(), fieldName);
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+            FieldInit fi = (FieldInit)obj;
+
+            return rec.equals(fi.rec) && fieldName.equals(fi.fieldName);
         }
 
         @Override
@@ -1608,6 +1967,24 @@ public abstract class Init
                     break;
             }
             return sb.append("(").append(lhs.toString()).append(")").toString();
+        }
+
+        @Override
+        public UnOpInit clone()
+        {
+            return new UnOpInit(opc, lhs.clone(), getType());
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == this) return true;
+            if (obj == null) return false;
+            if(getClass() != obj.getClass())
+                return false;
+            UnOpInit uo = (UnOpInit)obj;
+
+            return opc == uo.opc && lhs.equals(uo.lhs);
         }
     }
 }

@@ -55,7 +55,7 @@ public final class TGParser
     {
         SourceMgr.SMLoc loc;
         Record rec;
-        ArrayList<Init> templateArgs;
+        ArrayList<Init> templateArgs = new ArrayList<>();
 
         public boolean isInvalid()
         {
@@ -85,14 +85,12 @@ public final class TGParser
 
     private TGLexer lexer;
     private final Stack<ArrayList<LetRecord>> letStack = new Stack<ArrayList<LetRecord>>();
-    private HashMap<String, MultiClass> multiClasses;
+    private HashMap<String, MultiClass> multiClasses = new HashMap<>();
     private MultiClass curMultiClass;
-
-    private boolean parseTemplateArgs = false;
 
     private Record curRec = null;
 
-    static ArrayList<String> includeDirectories;
+    static ArrayList<String> includeDirectories = new ArrayList<>();
     static final Stack<IncludeRec> includeStack = new Stack<IncludeRec>();
 
     public TGParser(SourceMgr sgr)
@@ -144,9 +142,9 @@ public final class TGParser
                         + "' is incompatible with previous definition of type '"
                         + rval.getType().toString() + "'!\n");
             }
-            else
-                curRec.addValue(rv);
         }
+        else
+            curRec.addValue(rv);
         return false;
     }
 
@@ -180,7 +178,7 @@ public final class TGParser
 
         // Do not allow assignments like 'X = X'.  This will just cause infinite loops
         // in the resolution machinery.
-        if (bitlist == null)
+        if (bitlist == null || bitlist.isEmpty())
         {
             if (val instanceof VarInit)
             {
@@ -192,7 +190,7 @@ public final class TGParser
 
         // If we are assigning to a subset of the bits in the value... then we must be
         // assigning to a field of BitsRecTy, which must have a BitsInit initializer.
-        if (bitlist != null)
+        if (bitlist != null && !bitlist.isEmpty())
         {
             if (!(rv.getValue() instanceof BitsInit))
             {
@@ -258,7 +256,8 @@ public final class TGParser
                 return true;
 
         ArrayList<String> targs = sc.getTemplateArgs();
-        if (targs.size() < subClass.templateArgs.size())
+        if (targs != null && subClass.templateArgs != null
+                && targs.size() < subClass.templateArgs.size())
         {
             return error(subClass.loc,
                     "UNKNOWN: More template args specified than expected!\n");
@@ -271,7 +270,7 @@ public final class TGParser
                 if (i < subClass.templateArgs.size())
                 {
                     // set the value for template argument.
-                    if (setValue(curRec, subClass.loc, arg, new TIntArrayList(), subClass.templateArgs.get(i)))
+                    if (setValue(curRec, subClass.loc, arg, null, subClass.templateArgs.get(i)))
                         return true;
 
                     // resolve any reference to this template arg as the targ's value.
@@ -325,7 +324,6 @@ public final class TGParser
         srcMgr.addNewSourceBuffer(f, new SourceMgr.SMLoc());
         srcMgr.setIncludeDirs(includeDirs);
         TGParser parser = new TGParser(srcMgr);
-
         return parser.parse();
     }
 
@@ -432,6 +430,9 @@ public final class TGParser
 
             lexer.lex();
         }
+
+        // Remember to clear the let stack.
+        letStack.clear();
         return false;
     }
 
@@ -735,7 +736,7 @@ public final class TGParser
                 tokError("Unknown token when parsing a value");
                 break;
             case IntVal:
-                res = new Init.IntInit((int)lexer.getCurIntVal());
+                res = new Init.IntInit(lexer.getCurIntVal());
                 lexer.lex();
                 break;
             case StrVal:
@@ -774,6 +775,9 @@ public final class TGParser
                     return parseIDValue(curRec, name, nameLoc);
                 }
 
+                // Eat the '<', advance to the next token.
+                lexer.lex();
+
                 // This is a CLASS<initvalslist> expression.  This is supposed to synthesize
                 // a new anonymous definition, deriving from CLASS<initvalslist> with no
                 // body.
@@ -797,7 +801,7 @@ public final class TGParser
 
                 Record newRec = new Record("anonymous.val" + (anonCounter++), nameLoc);
                 SubClassReference scRef = new SubClassReference();
-                scRef.rec = newRec;
+                scRef.rec = klass;
                 scRef.loc = nameLoc;
                 scRef.templateArgs = valueList;
                 if (addSubClass(newRec, scRef))
@@ -897,9 +901,14 @@ public final class TGParser
                     lexer.lex();
                 }
 
+
                 RecTy eltTy = null;
+                /**
+                 * For make compatibel wit LLVM 1.3 tblgen
+                 */
                 for (int i = 0, e = vals.size(); i < e; i++)
                 {
+
                     if (!(vals.get(i) instanceof Init.TypedInit))
                     {
                         tokError("Untyped list element");
@@ -1492,7 +1501,7 @@ public final class TGParser
      * @param t2
      * @return
      */
-    private static RecTy resolveTypes(RecTy t1, RecTy t2)
+    public static RecTy resolveTypes(RecTy t1, RecTy t2)
     {
         if (!t1.typeIsConvertiableTo(t2))
         {
@@ -1654,7 +1663,7 @@ public final class TGParser
         ArrayList<Init> result = new ArrayList<>();
         RecTy itemType = eltTy;
         int argN = 0;
-        if (argsRec != null && eltTy != null)
+        if (argsRec != null && eltTy == null)
         {
             ArrayList<String> targs = argsRec.getTemplateArgs();
             RecordVal rv = argsRec.getValue(targs.get(argN));
@@ -1673,7 +1682,7 @@ public final class TGParser
 
         while (lexer.getCode() == TGLexer.TokKind.comma)
         {
-            lexer.lex();
+            lexer.lex();    // eat the ','.
 
             if (argsRec != null && eltTy == null)
             {
@@ -1733,7 +1742,7 @@ public final class TGParser
 
         if (curMultiClass != null)
         {
-            String mcName = curMultiClass.rec.getName() + ":" + name;
+            String mcName = curMultiClass.rec.getName() + "::" + name;
             if (curMultiClass.rec.isTemplateArg(mcName))
             {
                 RecordVal rv = curMultiClass.rec.getValue(mcName);
@@ -1797,6 +1806,8 @@ public final class TGParser
             curRec.resolveReferences();
 
         assert curRec.getTemplateArgs().isEmpty():"How does this get template args?";
+        //if (TableGen.DEBUG)
+        //    curRec.dump();
         return curRec;
     }
 
@@ -1884,10 +1895,10 @@ public final class TGParser
 
                 for (int j = 0, sz = targs.size(); j < sz; j++)
                 {
-                    if (i < templateVals.size())
+                    if (j < templateVals.size())
                     {
                         if (setValue(curRec, defmPrefixLoc, targs.get(j),
-                                new TIntArrayList(), templateVals.get(j)))
+                                null, templateVals.get(j)))
                             return true;
 
                         curRec.resolveReferencesTo(curRec.getValue(targs.get(j)));
@@ -1961,9 +1972,8 @@ public final class TGParser
         Record curRec = records.getClass(lexer.getCurStrVal());
         if (curRec != null)
         {
-            if (!curRec.getValues().isEmpty()
-                    || !curRec.getSuperClasses().isEmpty()
-                    || !curRec.getTemplateArgs().isEmpty())
+            // Check if the current Record is a declaration but definition.
+            if (!curRec.isDeclaration())
             {
                 return tokError("Class '" + curRec.getName() + "' already defined");
             }
@@ -1978,11 +1988,26 @@ public final class TGParser
         lexer.lex();
 
         if (lexer.getCode() == TGLexer.TokKind.less)
-            if (parseTempalteArgList(curRec))
+            if (parseTemplateArgList(curRec))
                 return true;
 
 
-        return parseObjectBody(curRec);
+        boolean res = parseObjectBody(curRec);
+        //if (TableGen.DEBUG)
+        //    curRec.dump();
+
+        // Dump the debug information for checking there is field changing of
+        // Record Register caused by RegisterWithSubRegs.
+        // Done
+        /**
+        if (TableGen.DEBUG)
+        {
+            Record r = Record.records.getClass("Register");
+            if (r != null)
+                r.dump();
+        }
+         */
+        return res;
     }
 
     /**
@@ -2100,9 +2125,8 @@ public final class TGParser
             return null;
         }
 
-        lexer.lex();
-
         MultiClass mc = multiClasses.get(lexer.getCurStrVal());
+        lexer.lex();
         return mc.rec;
     }
 
@@ -2276,7 +2300,7 @@ public final class TGParser
             lexer.lex();
             SourceMgr.SMLoc loc = lexer.getLoc();
             Init val = parseValue(curRec, type);
-            if (val == null || setValue(curRec, loc, declName, new TIntArrayList(), val))
+            if (val == null || setValue(curRec, loc, declName, null, val))
                 return "";
         }
 
@@ -2294,7 +2318,7 @@ public final class TGParser
      * @param curRec
      * @return
      */
-    private boolean parseTempalteArgList(Record curRec)
+    private boolean parseTemplateArgList(Record curRec)
     {
         assert lexer.getCode() == TGLexer.TokKind.less :"Not a template arg list!";
         lexer.lex();
@@ -2352,7 +2376,7 @@ public final class TGParser
         lexer.lex();
 
         if (lexer.getCode() == TGLexer.TokKind.less)
-            if (parseTempalteArgList(null))
+            if (parseTemplateArgList(null))
                 return true;
 
         boolean isHerits = false;
@@ -2406,6 +2430,11 @@ public final class TGParser
 
             lexer.lex();
         }
+        // if (TableGen.DEBUG)
+        //    curMultiClass.dump();
+
+        // Clear the current being parsed multiclass for avoiding make effect
+        // on subsequent parsing.
         curMultiClass = null;
         return false;
     }
@@ -2527,7 +2556,7 @@ public final class TGParser
             if (i < subMultiClass.templateArgs.size())
             {
                 if (setValue(curRec, subMultiClass.refLoc, smcTArgs.get(i),
-                        new TIntArrayList(), subMultiClass.templateArgs.get(i)))
+                        null, subMultiClass.templateArgs.get(i)))
                     return true;
 
                 curRec.resolveReferencesTo(curRec.getValue(smcTArgs.get(i)));
@@ -2539,7 +2568,7 @@ public final class TGParser
                     Record def = curMC.defProtoTypes.get(j);
 
                     if (setValue(def, subMultiClass.refLoc, smcTArgs.get(i),
-                            new TIntArrayList(), subMultiClass.templateArgs.get(i)))
+                            null, subMultiClass.templateArgs.get(i)))
                         return true;
 
                     def.resolveReferencesTo(def.getValue(smcTArgs.get(i)));

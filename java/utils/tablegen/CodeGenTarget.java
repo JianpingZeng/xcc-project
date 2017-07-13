@@ -16,11 +16,13 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.MVT;
+import gnu.trove.list.array.TIntArrayList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.HashSet;
+
+import static backend.codegen.MVT.Other;
 
 /**
  * This class corresponds to the Target class in .td file.
@@ -31,33 +33,38 @@ public final class CodeGenTarget
 {
     private Record targetRec;
     private ArrayList<Record> calleeSavedRegisters;
-    private MVT.ValueType pointerType;
+    private int pointerType;
 
 
-    private HashMap<String, CodeGenInstruction> instructions;
+    private HashMap<String, CodeGenInstruction> insts;
     private ArrayList<CodeGenRegister> registers;
     private ArrayList<CodeGenRegisterClass> registerClasses;
-    private ArrayList<MVT.ValueType> legalValueType;
+    private TIntArrayList legalValueTypes;
 
     public CodeGenTarget() throws Exception
     {
-        pointerType = MVT.ValueType.Other;
+        pointerType = Other;
+        legalValueTypes = new TIntArrayList();
 
-        try
-        {
-            ArrayList<Record> targets = Record.records.getAllDerivedDefinition("Target");
-            targetRec = targets.get(0);
+        ArrayList<Record> targets = Record.records.getAllDerivedDefinition("Target");
+        if (targets.isEmpty())
+            throw new Exception("Error: No target defined!");
+        if (targets.size() != 1)
+            throw new Exception("Error: Multiple subclasses of Target defined!");
 
-            calleeSavedRegisters = targetRec.getValueAsListOfDefs("CalleeSavedRegisters");
-            pointerType = getValueType(targetRec.getValueAsDef("PointerType"));
+        targetRec = targets.get(0);
 
-            readRegisters();
-        }
-        catch (Exception e)
-        {
-            throw new Exception("UNKNOWN: Multiple subclasses of Target defined");
-        }
+        // LLVM 1.0 introduced which is removed in LLVM 2.6.
+        // calleeSavedRegisters = targetRec.getValueAsListOfDefs("CalleeSavedRegisters");
+        // pointerType = getValueType(targetRec.getValueAsDef("PointerType"));
 
+        readRegisters();
+
+        // Read register classes description information from records.
+        readRegisterClasses();
+
+        // Read the instruction description information from records.
+        // readInstructions();
     }
 
     private void readRegisters() throws Exception
@@ -100,24 +107,18 @@ public final class CodeGenTarget
 
     private void readInstructions() throws Exception
     {
-        ArrayList<Record> insts = Record.records.getAllDerivedDefinition("Instruction");
-        if (insts.size() <= 2)
+        ArrayList<Record> instrs = Record.records.getAllDerivedDefinition("Instruction");
+        if (instrs.size() <= 2)
             throw new Exception("No 'Instruction' subclasses defined!");
 
         String instFormatName = getAsmWriter().getValueAsString("InstFormatName");
-        instructions = new HashMap<>();
-        insts.forEach(inst->
+        insts = new HashMap<>();
+        for (Record inst : instrs)
         {
-            try
-            {
-                String asmStr = inst.getValueAsString(instFormatName);
-                instructions.put(inst.getName(), new CodeGenInstruction(inst, asmStr));
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        });
+            String asmStr = inst.getValueAsString(instFormatName);
+            insts.put(inst.getName(), new CodeGenInstruction(inst, asmStr));
+
+        }
     }
 
     public static int AsmWriterNum = 0;
@@ -128,11 +129,6 @@ public final class CodeGenTarget
         if (AsmWriterNum >= li.size())
             throw  new Exception("Target does not have an AsmWriter #" + AsmWriterNum + "!");
         return li.get(AsmWriterNum);
-    }
-
-    static MVT.ValueType getValueType(Record rec) throws Exception
-    {
-        return MVT.ValueType.values()[rec.getValueAsInt("Value")];
     }
 
     public Record getTargetRecord()
@@ -150,7 +146,7 @@ public final class CodeGenTarget
         return calleeSavedRegisters;
     }
 
-    public MVT.ValueType getPointerType()
+    public int getPointerType()
     {
         return pointerType;
     }
@@ -171,36 +167,116 @@ public final class CodeGenTarget
     }
 
     public HashMap<String, CodeGenInstruction> getInstructions()
+            throws Exception
     {
-        return instructions;
+        if (insts == null || insts.isEmpty())
+            readInstructions();
+        return insts;
     }
 
     /**
-     * Return all of the instructions defined by the target, ordered by their
+     * Return all of the insts defined by the target, ordered by their
      * enum value.
      * @param numberedInstructions
      */
     public void getInstructionsByEnumValue(
-            LinkedList<CodeGenInstruction> numberedInstructions)
+            ArrayList<CodeGenInstruction> numberedInstructions)
             throws Exception
     {
-        if (!instructions.containsKey("PHI"))
+        if (!insts.containsKey("PHI"))
             throw new Exception("Could not find 'PHI' instruction");
-        CodeGenInstruction phi = instructions.get("PHI");
+        CodeGenInstruction phi = insts.get("PHI");
 
-        if (instructions.containsKey("INLINEASM"))
+        if (!insts.containsKey("INLINEASM"))
             throw new Exception("Could not find 'INLINEASM instruction'");
 
-        CodeGenInstruction inlineAsm = instructions.get("INLINEASM");
+        CodeGenInstruction inlineAsm = insts.get("INLINEASM");
 
-        // Print out the rest of the instructions set.
+        // Print out the rest of the insts set.
         numberedInstructions.add(phi);
         numberedInstructions.add(inlineAsm);
-        instructions.entrySet().forEach(entry->
+        insts.entrySet().forEach(entry->
         {
             CodeGenInstruction inst =  entry.getValue();
             if (inst != phi && inst != inlineAsm)
                 numberedInstructions.add(inst);
         });
+    }
+
+    public CodeGenInstruction getInstruction(String name) throws Exception
+    {
+        insts = getInstructions();
+        assert insts.containsKey(name):"Not an instruction!";
+        return insts.get(name);
+    }
+
+    /**
+     * Return the MVT::SimpleValueType that the specified TableGen
+     * record corresponds to.
+     * @param rec
+     * @return
+     * @throws Exception
+     */
+    public static int getValueType(Record rec) throws Exception
+    {
+        return (int) rec.getValueAsInt("Value");
+    }
+
+    public void readLegalValueTypes()
+    {
+        ArrayList<CodeGenRegisterClass> rcs = getRegisterClasses();
+        for (CodeGenRegisterClass rc : rcs)
+        {
+            for (int i = 0, e = rc.vts.size(); i != e; i++)
+                legalValueTypes.add(rc.vts.get(i));
+        }
+
+        // Remove duplicates.
+        HashSet<Integer> set = new HashSet<>();
+        for (int i = 0; i != legalValueTypes.size(); i++)
+            set.add(legalValueTypes.get(i));
+
+        legalValueTypes.clear();
+        legalValueTypes.addAll(set);
+    }
+
+    public TIntArrayList getLegalValueTypes()
+    {
+        if (legalValueTypes.isEmpty()) readLegalValueTypes();
+
+        return legalValueTypes;
+    }
+
+    public CodeGenRegisterClass getRegisterClass(Record r)
+    {
+        for (CodeGenRegisterClass rc : registerClasses)
+            if (rc.theDef.equals(r))
+                return rc;
+
+        assert false:"Didn't find the register class!";
+        return null;
+    }
+
+    /**
+     * Find the union of all possible SimpleValueTypes for the
+     * specified physical register.
+     * @param r
+     * @return
+     */
+    public TIntArrayList getRegisterVTs(Record r)
+    {
+        TIntArrayList res = new TIntArrayList();
+        for (CodeGenRegisterClass rc : registerClasses)
+        {
+            for (Record elt : rc.elts)
+            {
+                if (r.equals(elt))
+                {
+                    TIntArrayList inVTs = rc.getValueTypes();
+                    res.addAll(CodeGenDAGPatterns.convertVTs(inVTs));
+                }
+            }
+        }
+        return res;
     }
 }

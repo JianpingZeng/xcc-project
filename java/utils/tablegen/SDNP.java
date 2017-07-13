@@ -1,6 +1,6 @@
 package utils.tablegen;
 /*
- * Extremely C language Compiler
+ * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,31 +16,24 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.SourceMgr;
-
-import java.util.ArrayList;
-
 /**
+ *
+ * SelectionDAG node properties.
+ *  SDNPMemOperand: indicates that a node touches memory and therefore must
+ *                 have an associated memory operand that describes the access.
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class MultiClass
+public interface SDNP
 {
-    public Record rec;
-    public ArrayList<Record> defProtoTypes;
-
-    public void dump()
-    {
-        System.err.println("Record:");
-        rec.dump();
-
-        System.err.println("Defs:");
-        defProtoTypes.forEach(Record::dump);
-    }
-
-    public MultiClass(String name, SourceMgr.SMLoc loc)
-    {
-        rec = new Record(name, loc);
-        defProtoTypes = new ArrayList<>();
-    }
+    int SDNPCommutative = 0;
+    int SDNPAssociative = 1;
+    int SDNPHasChain = 2;
+    int SDNPOutFlag = 3;
+    int SDNPInFlag = 4;
+    int SDNPOptInFlag = 5;
+    int SDNPMayLoad = 6;
+    int SDNPMayStore = 7;
+    int SDNPSideEffect = 8;
+    int SDNPMemOperand = 9;
 }

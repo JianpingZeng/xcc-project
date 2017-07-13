@@ -28,7 +28,7 @@ public final class CodeGenRegister
         return theDef.getName();
     }
 
-    int declaredSpillSize, declaredSpillAlignment;
+    long declaredSpillSize, declaredSpillAlignment;
     CodeGenRegister(Record rec) throws Exception
     {
         theDef = rec;

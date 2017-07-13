@@ -16,12 +16,16 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import tools.Pair;
 import utils.tablegen.Init.DagInit;
 import utils.tablegen.Init.DefInit;
+import utils.tablegen.RecTy.DagRecTy;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
+
+import static utils.tablegen.Init.BinOpInit.BinaryOp.CONCAT;
 
 /**
  * @author Xlous.zeng
@@ -52,12 +56,18 @@ public final class CodeGenInstruction
         String printerMethodName;
 
         int miOperandNo;
-        int miNumOperands;
+        long miNumOperands;
 
         DagInit miOperandInfo;
 
+        /**
+         * Constraint information for this operand.
+         */
+        ArrayList<String> constraints;
+        public ArrayList<Boolean> doNotEncode;
+
         OperandInfo(Record r, String name, String printerMethodName,
-                int miOperandNo, int miNumOperands, DagInit operandInfo)
+                int miOperandNo, long miNumOperands, DagInit operandInfo)
         {
             rec = r;
             this.name = name;
@@ -65,52 +75,107 @@ public final class CodeGenInstruction
             this.miOperandNo = miOperandNo;
             this.miNumOperands = miNumOperands;
             this.miOperandInfo = operandInfo;
+            constraints = new ArrayList<>();
+            doNotEncode = new ArrayList<>();
         }
     }
+
+    /**
+     * Number of def operands declared.
+     */
+    int numDefs;
 
     ArrayList<OperandInfo> operandList;
 
     // Various boolean values we track for the instruction.
     boolean isReturn;
     boolean isBranch;
+    boolean isIndirectBranch;
     boolean isBarrier;
     boolean isCall;
-    boolean isLoad;
-    boolean isStore;
+    boolean canFoldAsLoad;
+    boolean isPredicable;
+    boolean mayLoad;
+    boolean mayStore;
     boolean isTwoAddress;
     boolean isConvertibleToThreeAddress;
     boolean isCommutable;
     boolean isTerminator;
+    boolean isReMaterializable;
     boolean hasDelaySlot;
     boolean usesCustomDAGSchedInserter;
-    boolean hasVariableNumberOfOperands;
+    boolean isVariadic;
     boolean hasCtrlDep;
+    boolean isNotDuplicable;
+    boolean hasOptionalDef;
+    boolean hasSideEffects;
+    boolean mayHaveSideEffects;
+    boolean neverHasSideEffects;
+    boolean isAsCheapAsAMove;
     boolean noResults;
 
     CodeGenInstruction(Record r, String asmStr) throws Exception
     {
         theDef = r;
-        name = r.getValueAsString("name");
-        isReturn = r.getValueAsBit("isReturn");
+        asmString = asmStr;
+        operandList = new ArrayList<>();
+        //name = r.getValueAsString("name");
+
         isReturn = r.getValueAsBit("isReturn");
         isBranch = r.getValueAsBit("isBranch");
+        isIndirectBranch = r.getValueAsBit("isIndirectBranch");
         isBarrier = r.getValueAsBit("isBarrier");
         isCall = r.getValueAsBit("isCall");
-        isLoad = r.getValueAsBit("isLoad");
-        isStore = r.getValueAsBit("isStore");
+        canFoldAsLoad = r.getValueAsBit("canFoldAsLoad");
+        mayLoad = r.getValueAsBit("mayLoad");
+        mayStore = r.getValueAsBit("mayStore");
         isTwoAddress = r.getValueAsBit("isTwoAddress");
-        isConvertibleToThreeAddress = r
-                .getValueAsBit("isConvertibleToThreeAddress");
+        isConvertibleToThreeAddress = r.getValueAsBit("isConvertibleToThreeAddress");
         isCommutable = r.getValueAsBit("isCommutable");
         isTerminator = r.getValueAsBit("isTerminator");
+        isReMaterializable = r.getValueAsBit("isReMaterializable");
         hasDelaySlot = r.getValueAsBit("hasDelaySlot");
         usesCustomDAGSchedInserter = r
                 .getValueAsBit("usesCustomDAGSchedInserter");
         hasCtrlDep = r.getValueAsBit("hasCtrlDep");
-        noResults = r.getValueAsBit("noResults");
-        hasVariableNumberOfOperands = false;
+        isNotDuplicable = r.getValueAsBit("isNotDuplicable");
+        hasSideEffects = r.getValueAsBit("hasSideEffects");
+        mayHaveSideEffects = r.getValueAsBit("mayHaveSideEffects");
+        neverHasSideEffects = r.getValueAsBit("neverHasSideEffects");
+        isAsCheapAsAMove = r.getValueAsBit("isAsCheapAsAMove");
+        hasOptionalDef = false; //r.getValueAsBit("hasOptionalDef");
+        //noResults = r.getValueAsBit("noResults");
+        isVariadic = false;
 
-        DagInit di = r.getValueAsDag("OperandList");
+        if ((mayHaveSideEffects ?1:0) + (neverHasSideEffects?1:0) + (hasSideEffects ?1:0) > 1)
+            throw new Exception(r.getName() + ": multiple conflicting side effect flags-set!");
+
+        DagInit di = null;
+        try
+        {
+            di = r.getValueAsDag("OutOperandList");
+        }
+        catch (Exception e)
+        {
+            asmString = null;
+            operandList.clear();
+            return;
+        }
+
+        numDefs = di.getNumArgs();
+        DagInit idi = null;
+        try
+        {
+            idi = r.getValueAsDag("InOperandList");
+        }
+        catch (Exception e)
+        {
+            asmString = null;
+            operandList.clear();
+            return;
+        }
+
+        di = (DagInit)((new Init.BinOpInit(CONCAT, di, idi, new DagRecTy())).fold(r, null));
 
         int MIOperandNo = 0;
         HashSet<String> OperandNames = new HashSet<>();
@@ -122,23 +187,43 @@ public final class CodeGenInstruction
 
             DefInit Arg = (DefInit) (di.getArg(i));
 
-            Record Rec = Arg.getDef();
+            Record rec = Arg.getDef();
             String PrintMethod = "printOperand";
-            int NumOps = 1;
-            DagInit MIOpInfo = null;
-            if (Rec.isSubClassOf("Operand"))
+            long numOps = 1;
+            DagInit miOpInfo = null;
+            if (rec.isSubClassOf("Operand"))
             {
-                PrintMethod = Rec.getValueAsString("PrintMethod");
-                NumOps = Rec.getValueAsInt("NumMIOperands");
-                MIOpInfo = Rec.getValueAsDag("MIOperandInfo");
+                PrintMethod = rec.getValueAsString("PrintMethod");
+                //numOps = rec.getValueAsInt("NumMIOperands");
+                miOpInfo = rec.getValueAsDag("MIOperandInfo");
+
+                if (!(miOpInfo.getOperator() instanceof DefInit) ||
+                        !((DefInit)miOpInfo.getOperator()).getDef().getName().equals("ops"))
+                {
+                    throw new Exception("Bad value for MIOperandInfo in operand '" +
+                        rec.getName() + "'\n");
+                }
+
+                int numArgs = miOpInfo.getNumArgs();
+                if (numArgs != 0)
+                    numOps = numArgs;
+
+                if (rec.isSubClassOf("PredicateOperand"))
+                {
+                    isPredicable = true;
+                }
+                else if (rec.isSubClassOf("OptionalDefOperand"))
+                    hasOptionalDef = true;
             }
-            else if (Objects.equals(Rec.getName(), "variable_ops"))
+            else if (Objects.equals(rec.getName(), "variable_ops"))
             {
-                hasVariableNumberOfOperands = true;
+                isVariadic = true;
                 continue;
             }
-            else if (!Rec.isSubClassOf("RegisterClass"))
-                throw new Exception("Unknown operand class '" + Rec.getName()
+            else if (!rec.isSubClassOf("RegisterClass") &&
+                    !rec.getName().equals("ptr_rc") &&
+                    !rec.getName().equals("unknown"))
+                throw new Exception("Unknown operand class '" + rec.getName()
                         + "' in instruction '" + r.getName()
                         + "' instruction!");
 
@@ -152,10 +237,127 @@ public final class CodeGenInstruction
                         "In instruction '" + r.getName() + "', operand #" + i
                                 + " has the same name as a previous operand!");
 
-            operandList.add(new OperandInfo(Rec, di.getArgName(i), PrintMethod,
-                    MIOperandNo, NumOps, MIOpInfo));
-            MIOperandNo += NumOps;
+            operandList.add(new OperandInfo(rec, di.getArgName(i), PrintMethod,
+                    MIOperandNo, numOps, miOpInfo));
+            MIOperandNo += numOps;
         }
+
+        // Parse the constraints.
+        parseConstraints(r.getValueAsString("Constraints"), this);
+
+        if (isTwoAddress)
+        {
+            if (!operandList.get(1).constraints.get(0).isEmpty())
+                throw new Exception(r.getName() + ": cannot use isTwoAddress property: instruction " +
+                        " already has constraint set!");
+            operandList.get(1).constraints.set(0, "((0 << 16) | (1 << TOI.TIED_TO))");
+        }
+
+        for (int op = 0, e = operandList.size(); op != e; op++)
+        {
+            for (int j = 0, ee = (int) operandList.get(op).miNumOperands; j != ee; j++)
+            {
+                if (operandList.get(op).constraints.get(j).isEmpty())
+                    operandList.get(op).constraints.set(j, "0");
+            }
+        }
+
+        String disableEncoding = r.getValueAsString("DisableEncoding");
+        while (true)
+        {
+            String[] opNames = disableEncoding.split(",\t");
+
+            if (opNames.length <= 0 || opNames[0].isEmpty())
+                break;
+
+            String opName = opNames[0];
+            Pair<Integer, Integer> op = parseOperandName(opName, false);
+
+            //if (op.second >= operandList.get(op.first).doNotEncode.size())
+            operandList.get(op.first).doNotEncode.add(true);
+        }
+    }
+
+    private static void parseConstraints(String constraints,
+            CodeGenInstruction inst)
+    {
+        // Make sure the constraints list for each operand is large enough to hold
+        // constraint info, even if none is present.
+        for (int i = 0, e = inst.operandList.size(); i != e; i++)
+        {
+            for (int j = 0; j < inst.operandList.get(i).miNumOperands; j++)
+                inst.operandList.get(i).constraints.add("");
+        }
+
+        if (constraints.isEmpty())
+            return;
+
+        String delims = ",";
+        for (String sub : constraints.split(delims))
+        {
+            if (!sub.isEmpty())
+            {
+                // Make sure the constraints list for each operand is large enough to hold
+                // constraint info, even if none is present.
+                for (int i = 0, e = inst.operandList.size(); i != e; i++)
+                {
+                    for (int j = 0; j < inst.operandList.get(i).miNumOperands; j++)
+                        inst.operandList.get(i).constraints.add("");
+                }
+            }
+        }
+    }
+
+
+    private Pair<Integer, Integer> parseOperandName(String opName)
+            throws Exception
+    {
+        return parseOperandName(opName, true);
+    }
+
+    private Pair<Integer, Integer> parseOperandName(String op, boolean allowWholeOp)
+            throws Exception
+    {
+        if (op.isEmpty() || op.charAt(0) != '$')
+            throw new Exception(theDef.getName() + ": Illegal operand name: '"
+                    + op + "'");
+
+        String opName = op.substring(1);
+        String subOpName = "";
+
+        int dotIdx = opName.indexOf('.');
+        if (dotIdx != -1)
+        {
+            subOpName = opName.substring(dotIdx + 1);
+            if (subOpName.isEmpty())
+                throw new Exception(theDef.getName() + ": illegal empty suboperand name in '" +
+                op + "'");
+            opName = opName.substring(0, dotIdx);
+        }
+
+        int opIdx = getOperandNamed(opName);
+
+        if (subOpName.isEmpty())
+        {
+            if (operandList.get(opIdx).miNumOperands > 1 && !allowWholeOp && subOpName.isEmpty())
+                throw new Exception(theDef.getName() + ": Illegal to refer to " +
+                " whole operand part of complex operand '" + op + "'");
+
+            return Pair.get(opIdx, 0);
+        }
+
+        DagInit miOpInfo = operandList.get(opIdx).miOperandInfo;
+        if (miOpInfo == null)
+        {
+            throw new Exception(theDef.getName() + ": unknown suboperand name in '" + op + "'");
+        }
+
+        for (int i = 0, e = miOpInfo.getNumArgs(); i != e; i++)
+            if (miOpInfo.getArgName(i).equals(subOpName))
+                return Pair.get(opIdx, i);
+
+        throw new Exception(theDef.getName() + ": unknown suboperand name in '" +
+                op + "'");
     }
 
     /**

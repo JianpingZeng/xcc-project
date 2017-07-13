@@ -1,4 +1,5 @@
 package jlang.support;
+
 /*
  * Extremely C language Compiler.
  * Copyright (c) 2015-2017, Xlous Zeng.
@@ -19,12 +20,11 @@ package jlang.support;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 /**
  * @author Xlous.zeng
@@ -32,51 +32,174 @@ import java.nio.file.Paths;
  */
 public class MemoryBuffer implements Cloneable
 {
-    private CharBuffer buffer;
+    private char[] buffer;
     private int bufferStart;
+    private String filename;
+    private boolean isRegular;
 
-    public MemoryBuffer(CharBuffer buffer)
+    public MemoryBuffer(char[] buffer)
     {
-        this.buffer = buffer;
+        this.buffer = new char[buffer.length];
+        System.arraycopy(buffer, 0, this.buffer, 0, buffer.length);
     }
 
-    public CharBuffer getBuffer()
+    public String getFilename()
+    {
+        return filename;
+    }
+
+    public void setFilename(String filename)
+    {
+        this.filename = filename;
+    }
+
+    public char[] getBuffer()
     {
         return buffer;
     }
 
     public int length()
     {
-        return buffer.length();
+        return buffer.length;
+    }
+
+    /**
+     * Determines whether this memory buffer is read from regular file (either stdin nor memory).
+     * @return
+     */
+    public boolean isRegular()
+    {
+        return isRegular;
+    }
+
+    public void setRegular(boolean regular)
+    {
+        isRegular = regular;
+    }
+
+    public int getBufferStart()
+    {
+        return bufferStart;
+    }
+
+    public void advance()
+    {
+        ++bufferStart;
+    }
+
+    /**
+     * Obtains the current character indexed by {@linkplain #bufferStart}
+     * from CharBuffer.
+     * @return
+     */
+    public char getCurChar()
+    {
+        return buffer[bufferStart];
+    }
+
+    public char getCharAt(int i)
+    {
+        int len = length();
+        if (i>= getBufferStart() && i < len)
+            return buffer[i];
+        return 0;
+    }
+
+    public String getSubString(int lineStart, int lineEnd)
+    {
+        assert 0 <= lineStart && lineStart <= lineEnd
+                && lineEnd < buffer.length;
+        StringBuilder sb = new StringBuilder();
+        for (int i = lineStart; i < lineEnd; i++)
+            sb.append(buffer[i]);
+
+        return sb.toString();
+    }
+
+    /**
+     * Checks if the other MemoryBuffer is within the current
+     * MemoryBuffer.
+     * @param other
+     * @return
+     */
+    public boolean contains(MemoryBuffer other)
+    {
+        boolean b1 = Arrays.equals(buffer, other.getBuffer()) ,
+                b2 = other.getBufferStart() >= bufferStart,
+                b3 = other.getBufferStart() <= buffer.length;   // must be less and equal.
+        return b1 && b2 && b3;
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null) return false;
+        if (obj == this) return true;
+
+        if (getClass() != obj.getClass())
+            return false;
+        MemoryBuffer memBuf = (MemoryBuffer)obj;
+        return bufferStart == memBuf.bufferStart && Arrays
+                .equals(buffer, memBuf.buffer);
+    }
+
+    @Override
+    public MemoryBuffer clone()
+    {
+        try
+        {
+            return (MemoryBuffer)super.clone();
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    public void setBufferStart(int bufferStart)
+    {
+        this.bufferStart = bufferStart;
     }
 
     public static MemoryBuffer getFile(Path path)
     {
+        String file = null;
         long sz = 0;
         try
         {
             sz = Files.size(path);
+            file = path.toFile().getCanonicalPath();
         }
         catch (IOException e)
         {
             System.err.println("Obtain the size of '"+ path.toString() + "' failed");
             System.exit(1);
         }
+        /*
         if (sz >= 4 * 1024)
         {
             try (FileChannel channel = FileChannel.open(path))
             {
                 ByteBuffer cb = channel.map(FileChannel.MapMode.READ_ONLY, 0, sz);
-                return new MemoryBuffer(cb.asCharBuffer());
+                CharBuffer charBuf = cb.asCharBuffer();
+
+                MemoryBuffer mb = new MemoryBuffer(charBuf.array());
+                mb.setFilename(file);
+                mb.setRegular(true);
+                return mb;
             }
-            catch (IOException e) {}
+            catch (IOException ignored) {}
         }
+        */
 
         try (BufferedReader reader = Files.newBufferedReader(path))
         {
             CharBuffer cb = CharBuffer.allocate((int)sz);
             int res = reader.read(cb);
-            return new MemoryBuffer(cb);
+            MemoryBuffer mb = new MemoryBuffer(cb.array());
+            mb.setFilename(file);
+            mb.setRegular(true);
+            return mb;
         }
         catch (IOException e)
         {
@@ -123,8 +246,12 @@ public class MemoryBuffer implements Cloneable
                 buf = newArray;
             }while (true);
 
-            CharBuffer cb = CharBuffer.wrap(buf, 0, offset);
-            return new MemoryBuffer(cb);
+            char[] newBuf = new char[offset];
+            System.arraycopy(buf, 0, newBuf, 0, offset);
+            MemoryBuffer mb = new MemoryBuffer(newBuf);
+            mb.setFilename("-");
+            mb.setRegular(false);
+            return mb;
         }
         catch (IOException e)
         {
@@ -164,93 +291,13 @@ public class MemoryBuffer implements Cloneable
         return new MemoryBufferMem(buf, bufferName);
     }
 
-    public int getBufferStart()
-    {
-        return bufferStart;
-    }
-
-    public void advance()
-    {
-        ++bufferStart;
-    }
-
-    /**
-     * Obtains the current character indexed by {@linkplain #bufferStart}
-     * from CharBuffer.
-     * @return
-     */
-    public char getCurChar()
-    {
-        return buffer.charAt(bufferStart);
-    }
-
-    public char getCharAt(int i)
-    {
-        assert i>= getBufferStart() && i < buffer.length();
-        return buffer.charAt(i);
-    }
-
-    public String getSubString(int lineStart, int lineEnd)
-    {
-        assert bufferStart <= lineStart && lineStart < lineEnd
-                && lineEnd < buffer.length();
-        StringBuilder sb = new StringBuilder();
-        for (int i = lineStart; i < lineEnd; i++)
-            sb.append(buffer.charAt(i));
-
-        return sb.toString();
-    }
-
-    /**
-     * Checks if the other MemoryBuffer is within the current
-     * MemoryBuffer.
-     * @param other
-     * @return
-     */
-    public boolean contains(MemoryBuffer other)
-    {
-        return buffer.equals(other.getBuffer())
-                && other.getBufferStart() >= bufferStart
-                && other.getBufferStart() < buffer.length();
-    }
-
-    @Override
-    public boolean equals(Object obj)
-    {
-        if (obj == null) return false;
-        if (obj == this) return true;
-
-        if (getClass() != obj.getClass())
-            return false;
-        MemoryBuffer memBuf = (MemoryBuffer)obj;
-        return bufferStart == memBuf.bufferStart && buffer.equals(memBuf.buffer);
-    }
-
-    @Override
-    public MemoryBuffer clone()
-    {
-        try
-        {
-            return (MemoryBuffer)super.clone();
-        }
-        catch (Exception e)
-        {
-            return null;
-        }
-    }
-
-    public void setBufferStart(int bufferStart)
-    {
-        this.bufferStart = bufferStart;
-    }
-
     static class MemoryBufferMem extends MemoryBuffer
     {
         private String fileID;
 
         public MemoryBufferMem(char[] buffer, String fid)
         {
-            super(CharBuffer.wrap(buffer));
+            super(buffer);
             fileID = fid;
         }
 
@@ -258,6 +305,15 @@ public class MemoryBuffer implements Cloneable
         public String getBufferName()
         {
             return fileID;
+        }
+
+        /**
+         * Determines whether this memory buffer is read from regular file (either stdin nor memory).
+         * @return
+         */
+        public boolean isRegular()
+        {
+            return false;
         }
     }
 

@@ -17,6 +17,7 @@ package utils.tablegen;
  */
 
 import backend.codegen.MVT;
+import gnu.trove.list.array.TIntArrayList;
 
 import java.util.ArrayList;
 
@@ -28,13 +29,18 @@ public final class CodeGenRegisterClass
 {
     Record theDef;
     ArrayList<Record> elts;
-    ArrayList<MVT.ValueType> vts;
-    int spillSize, spillAlignment;
+    TIntArrayList vts;
+    long spillSize, spillAlignment;
     String methodBodies;
+    long copyCost;
+    ArrayList<Record> subRegClasses;
 
-    public String getName() {return  theDef.getName(); }
+    public String getName()
+    {
+        return  theDef.getName();
+    }
 
-    public ArrayList<MVT.ValueType> getValueTypes()
+    public TIntArrayList getValueTypes()
     {
         return vts;
     }
@@ -44,7 +50,7 @@ public final class CodeGenRegisterClass
         return vts.size();
     }
 
-    public MVT.ValueType getValueTypeAt(int idx)
+    public int getValueTypeAt(int idx)
     {
         assert idx >= 0 && idx < vts.size();
         return vts.get(idx);
@@ -54,6 +60,10 @@ public final class CodeGenRegisterClass
 
     public CodeGenRegisterClass(Record r) throws Exception
     {
+        elts = new ArrayList<>();
+        vts = new TIntArrayList();
+        subRegClasses = new ArrayList<>();
+
         theDef = r;
 
         // Rename the anonymous register class.
@@ -80,22 +90,37 @@ public final class CodeGenRegisterClass
             elts.add(reg);
         }
 
+        // Obtains the information about SubRegisterClassList.
+        ArrayList<Record> subRegClassList = r.getValueAsListOfDefs("SubRegClassList");
+
+        for (Record subReg : subRegClassList)
+        {
+            if (!subReg.isSubClassOf("RegisterClass"))
+                throw new Exception("Register class member '" + subReg.getName()
+                + "' doest not derive from the RegisterClass class!");
+
+            subRegClasses.add(subReg);
+        }
+
         // Allow targets to override the getNumOfSubLoop in bits of the RegisterClass.
-        int size = r.getValueAsInt("Size");
-        spillSize = size != 0 ? size : MVT.getSizeInBits(vts.get(0));
+        long size = r.getValueAsInt("Size");
+        spillSize = size != 0 ? size : new MVT(vts.get(0)).getSizeInBits();
         spillAlignment = r.getValueAsInt("Alignment");
+        copyCost = r.getValueAsInt("CopyCost");
         methodBodies = r.getValueAsCode("MethodBodies");
     }
 
-    private static MVT.ValueType getValueType(Record rec, CodeGenTarget cgt)
+    private static int getValueType(Record rec, CodeGenTarget cgt)
             throws Exception
     {
-        MVT.ValueType vt = MVT.ValueType.values()[rec.getValueAsInt("Value")];
-        if (vt == MVT.ValueType.isPtr)
+        long val = rec.getValueAsInt("Value");
+        return (int)val;
+        /**
+        if (vt == MVT.SimpleValueType.isPtr)
         {
             assert cgt!= null:"Use a pointer type in a place that isn't supported as yet!";;
             vt = cgt.getPointerType();
         }
-        return vt;
+         */
     }
 }

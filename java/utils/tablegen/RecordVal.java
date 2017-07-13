@@ -103,4 +103,12 @@ public final class RecordVal
         print(new PrintStream(os));
         return os.toString();
     }
+
+    @Override
+    public RecordVal clone()
+    {
+        RecordVal rv = (RecordVal)new RecordVal(name, ty, prefix);
+        rv.value = value.clone();
+        return rv;
+    }
 }

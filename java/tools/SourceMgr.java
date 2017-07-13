@@ -19,6 +19,7 @@ package tools;
 import jlang.support.MemoryBuffer;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -85,7 +86,7 @@ public final class SourceMgr
     /**
      * This is all of the buffers that we are reading from.
      */
-    private LinkedList<SrcBuffer> buffers;
+    private ArrayList<SrcBuffer> buffers = new ArrayList<>();
     /**
      * This is the list of directories we should search for
      * include files in.
@@ -125,7 +126,7 @@ public final class SourceMgr
         SrcBuffer buffer = new SrcBuffer();
         buffer.buffer =  buf;
         buffer.includeLoc = includeLoc;
-        buffers.addLast(buffer);
+        buffers.add(buffer);
         return buffers.size() - 1;
     }
 
@@ -248,17 +249,17 @@ public final class SourceMgr
         assert curBuf != -1 :"Invalid or unspecified location!";
 
         MemoryBuffer curMB = getBufferInfo(curBuf).buffer;
-
-        int lineStart = loc.buffer.getBufferStart();
-        while (lineStart != curMB.getBufferStart()
-                && loc.buffer.getCharAt(lineStart - 1) != '\n'
-                && loc.buffer.getCharAt(lineStart - 1) != '\r')
+        assert curMB.getBuffer() == loc.buffer.getBuffer();
+        int lineStart = loc.getPointer();
+        while (lineStart >= curMB.getBufferStart()
+                && curMB.getCharAt(lineStart) != '\n'
+                && curMB.getCharAt(lineStart) != '\r')
             --lineStart;
 
         int lineEnd = loc.buffer.getBufferStart();
         while (lineEnd != curMB.length()
-                && loc.buffer.getCharAt(lineEnd) != '\n'
-                && loc.buffer.getCharAt(lineEnd) != '\r')
+                && curMB.getCharAt(lineEnd) != '\n'
+                && curMB.getCharAt(lineEnd) != '\r')
             ++lineEnd;
 
         String printedMsg = "";
@@ -271,7 +272,7 @@ public final class SourceMgr
         printedMsg += msg;
 
         return new SMDiagnostic(curMB.getBufferName(), findLineNumber(loc, curBuf),
-                loc.buffer.getBufferStart() - lineStart, printedMsg,
+                curMB.getBufferStart() - lineStart, printedMsg,
                 curMB.getSubString(lineStart, lineEnd));
     }
 

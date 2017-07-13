@@ -1,6 +1,6 @@
 package utils.tablegen;
 /*
- * Extremely C language Compiler
+ * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,31 +16,30 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import tools.SourceMgr;
-
-import java.util.ArrayList;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class MultiClass
+public final class InstAnalyzer
 {
-    public Record rec;
-    public ArrayList<Record> defProtoTypes;
+    CodeGenDAGPatterns cdp;
+    boolean mayStore;
+    boolean mayLoad;
+    boolean hasSideEffect;
 
-    public void dump()
+    public InstAnalyzer(CodeGenDAGPatterns cdp,
+            boolean mayStore,
+            boolean mayLoad,
+            boolean hasSideEffect)
     {
-        System.err.println("Record:");
-        rec.dump();
-
-        System.err.println("Defs:");
-        defProtoTypes.forEach(Record::dump);
+        this.cdp = cdp;
+        this.mayStore = mayStore;
+        this.mayLoad = mayLoad;
+        this.hasSideEffect = hasSideEffect;
     }
 
-    public MultiClass(String name, SourceMgr.SMLoc loc)
+    public boolean analyze(Record theDef)
     {
-        rec = new Record(name, loc);
-        defProtoTypes = new ArrayList<>();
+        return false;
     }
 }
