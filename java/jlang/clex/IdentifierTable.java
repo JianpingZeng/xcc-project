@@ -16,7 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.LangOptions;
+import jlang.support.LangOptions;
 
 import java.util.HashMap;
 

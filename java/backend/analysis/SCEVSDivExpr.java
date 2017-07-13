@@ -17,9 +17,7 @@ package backend.analysis;
  */
 
 import backend.type.Type;
-import backend.value.Constant;
-import backend.value.ConstantExpr;
-import backend.value.ConstantInt;
+import backend.value.*;
 import tools.Pair;
 
 import java.io.PrintStream;
@@ -120,6 +118,11 @@ public final class SCEVSDivExpr extends SCEV
     public Type getType()
     {
         return rhs.getType();
+    }
+
+    @Override public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+    {
+        return false;
     }
 
     @Override public void print(PrintStream os)

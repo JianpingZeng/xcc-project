@@ -18,6 +18,7 @@ package jlang.basic;
 
 import jlang.clex.ExternalIdentifierLookup;
 import jlang.clex.IdentifierInfo;
+import jlang.support.CharacteristicKind;
 import tools.OutParamWrapper;
 
 import java.io.File;

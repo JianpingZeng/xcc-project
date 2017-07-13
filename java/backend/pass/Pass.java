@@ -1,9 +1,6 @@
 package backend.pass;
 
-import backend.hir.Module;
-import tools.Pair;
-
-import java.util.ArrayList;
+import backend.value.Module;
 
 import static backend.pass.PassInfoSupport.getPassInfo;
 

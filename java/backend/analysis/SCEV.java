@@ -1,8 +1,8 @@
 package backend.analysis;
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.type.Type;
-import backend.value.ConstantExpr;
+import backend.value.Loop;
 
 import java.io.PrintStream;
 

@@ -1,6 +1,6 @@
 package backend.pass;
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.value.Function;
 
 import java.util.HashSet;

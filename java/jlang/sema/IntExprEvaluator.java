@@ -17,8 +17,9 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree.*;
-import jlang.basic.APInt;
-import jlang.basic.SourceLocation;
+import jlang.support.APInt;
+import jlang.support.APSInt;
+import jlang.support.SourceLocation;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;
 import jlang.sema.Decl.VarDecl;
@@ -74,7 +75,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         assert e.getType().isIntegralOrEnumerationType()
                 :"Invalid evaluation result.";
-        result.set(new APValue(APSInt.makeIntValue(value, e.getType())));
+        result.set(new APValue(ASTContext.makeIntValue(value, e.getType())));
         return true;
     }
     @Override
@@ -601,7 +602,8 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     return true;
                 }
 
-                APSInt asInt = APSInt.makeIntValue(lv.get().getLValueOffset(), srcType);
+                APSInt asInt = ASTContext
+                        .makeIntValue(lv.get().getLValueOffset(), srcType);
                 return success(handleIntToIntCast(destType, srcType, asInt, context), expr);
             }
 

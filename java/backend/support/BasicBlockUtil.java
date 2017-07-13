@@ -17,7 +17,7 @@ package backend.support;
  */
 
 import backend.analysis.DomTreeInfo;
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.transform.scalars.DominatorFrontier;
 import backend.pass.Pass;
 import backend.value.Instruction;

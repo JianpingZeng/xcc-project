@@ -1,20 +1,18 @@
 package backend.value;
 
-import backend.hir.BasicBlock;
-import backend.hir.CallSite;
-import backend.hir.InstVisitor;
-import backend.hir.Operator;
+import backend.support.CallSite;
+import backend.utils.InstVisitor;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
-import jlang.codegen.CallingConv;
+import jlang.support.CallingConv;
 import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static backend.hir.Operator.*;
+import static backend.value.Operator.*;
 import static backend.type.Type.*;
 import static backend.value.Instruction.CmpInst.Predicate.*;
 

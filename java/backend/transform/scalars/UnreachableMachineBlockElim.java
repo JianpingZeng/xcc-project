@@ -24,7 +24,7 @@ import backend.codegen.MachineFunctionPass;
 import backend.codegen.MachineInstr;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
-import backend.target.x86.X86InstrNames;
+import backend.target.TargetInstrInfo;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -87,7 +87,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                             itr.hasNext(); )
                     {
                         MachineInstr mi = itr.next();
-                        if (mi.getOpCode() != X86InstrNames.PHI)
+                        if (mi.getOpCode() != TargetInstrInfo.PHI)
                             break;
 
                         for (int j = mi.getNumOperands() - 1; j >= 2; j-=2)
@@ -120,7 +120,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
             for (int j = 0; j <  mbb.size(); )
             {
                 MachineInstr phi = mbb.getInstAt(j);
-                if (phi.getOpCode() != X86InstrNames.PHI)
+                if (phi.getOpCode() != TargetInstrInfo.PHI)
                     continue;
                 for (int k = phi.getNumOperands() - 1; k >= 2; k-=2)
                 {

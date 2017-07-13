@@ -1,7 +1,7 @@
 package jlang.codegen;
 
-import backend.hir.Module;
-import backend.hir.Operator;
+import backend.value.Module;
+import backend.value.Operator;
 import backend.intrinsic.Intrinsic;
 import backend.target.TargetData;
 import backend.type.FunctionType;
@@ -12,8 +12,8 @@ import backend.value.Instruction.CallInst;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.Stmt;
 import jlang.ast.Tree.StringLiteral;
-import jlang.basic.CompileOptions;
-import jlang.basic.SourceLocation;
+import jlang.support.CompileOptions;
+import jlang.support.SourceLocation;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;

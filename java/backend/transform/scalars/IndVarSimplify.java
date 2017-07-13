@@ -17,18 +17,16 @@ package backend.transform.scalars;
  */
 
 import backend.analysis.*;
-import backend.hir.BasicBlock;
+import backend.analysis.LoopInfo;
+import backend.value.*;
 import backend.pass.*;
-import backend.support.SCEVExpander;
+import backend.analysis.SCEVExpander;
 import backend.type.Type;
-import backend.value.Instruction;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Instruction.ICmpInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
-import backend.value.Use;
-import backend.value.Value;
 
 import java.util.ArrayList;
 import java.util.LinkedList;

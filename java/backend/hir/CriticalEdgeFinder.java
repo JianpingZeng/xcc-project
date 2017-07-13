@@ -1,4 +1,7 @@
-package backend.hir;
+/*package backend.hir;
+
+import backend.utils.ControlFlowGraph;
+import backend.value.BasicBlock;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,17 +15,17 @@ import java.util.Set;
  * edges are split by adding a block between the two blocks.
  * <br>
  * Created by Jianping Zeng  on 2016/3/17.
- */
+ *
 public class CriticalEdgeFinder
 {
 
 	private final ControlFlowGraph cfg;
 
-	/**
+
 	 * The graph edges represented as a map from source to targetAbstractLayer nodes.
 	 * Using a linked hash map makes compilation tracing more deterministic
 	 * and thus eases debugging.
-	 */
+	 *
 	private Map<BasicBlock, Set<BasicBlock>> edges =
 			new HashMap<BasicBlock, Set<BasicBlock>>();
 
@@ -82,3 +85,4 @@ public class CriticalEdgeFinder
 	}
 }
 
+*/

@@ -1,11 +1,13 @@
 package backend.analysis;
 
-import backend.hir.BasicBlock;
-import backend.hir.PredIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
+import backend.support.LoopInfoBase;
+import backend.utils.PredIterator;
+import backend.value.BasicBlock;
 import backend.value.Function;
+import backend.value.Loop;
 
 import java.util.ArrayList;
 import java.util.HashMap;

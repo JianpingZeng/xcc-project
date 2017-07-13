@@ -16,8 +16,8 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
-import backend.hir.CallSite;
+import backend.value.BasicBlock;
+import backend.support.CallSite;
 import backend.hir.HIRBuilder;
 import backend.type.IntegerType;
 import backend.type.PointerType;
@@ -27,8 +27,9 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.TerminatorInst;
 import jlang.ast.Tree;
-import jlang.basic.APInt;
-import jlang.basic.SourceLocation;
+import jlang.support.APInt;
+import jlang.support.APSInt;
+import jlang.support.SourceLocation;
 import jlang.basic.TargetInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo.ArgInfo;

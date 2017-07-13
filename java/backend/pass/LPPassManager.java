@@ -1,6 +1,6 @@
 package backend.pass;
 
-import backend.analysis.Loop;
+import backend.value.Loop;
 import backend.analysis.LoopInfo;
 import backend.value.Function;
 

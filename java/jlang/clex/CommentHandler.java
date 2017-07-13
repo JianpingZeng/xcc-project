@@ -16,7 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.SourceRange;
+import jlang.support.SourceRange;
 import jlang.sema.Sema;
 
 /**

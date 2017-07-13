@@ -16,7 +16,7 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.PrintingPolicy;
+import jlang.support.PrintingPolicy;
 
 /**
  * Represents a K&R-style 'int foo()' function, which has

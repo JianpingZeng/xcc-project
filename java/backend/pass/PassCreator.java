@@ -1,7 +1,5 @@
 package backend.pass;
 
-import backend.transform.scalars.PromoteMemToReg;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -14,8 +12,10 @@ public class PassCreator
 		if (optimizationLevel > 0)
 		{
 			//fpm.add(new CFGSimplificationPass());
+			/*
 			if (optimizationLevel == 1)
 				fpm.add(new PromoteMemToReg());
+			*/
 		}
 	}
 

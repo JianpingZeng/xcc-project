@@ -1,8 +1,7 @@
 package jlang.type;
 
-import com.sun.org.apache.regexp.internal.RE;
-import jlang.basic.LangOptions;
-import jlang.basic.PrintingPolicy;
+import jlang.support.LangOptions;
+import jlang.support.PrintingPolicy;
 import jlang.sema.ASTContext;
 
 import static jlang.type.ArrayType.VariableArrayType.appendTypeQualList;

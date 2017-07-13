@@ -21,6 +21,7 @@ import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
+import backend.support.LoopInfoBase;
 
 import java.util.*;
 

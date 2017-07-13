@@ -16,9 +16,9 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
-import backend.hir.PredIterator;
-import backend.hir.SuccIterator;
+import backend.value.BasicBlock;
+import backend.utils.PredIterator;
+import backend.utils.SuccIterator;
 import backend.pass.FunctionPass;
 import backend.value.Constant;
 import backend.value.Function;

@@ -22,7 +22,7 @@ package jlang.sema;
  * @version 0.1
  */
 
-import jlang.basic.SourceLocation;
+import jlang.support.SourceLocation;
 
 import java.util.ArrayList;
 

@@ -2,9 +2,9 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.codegen.MachineOperand.UseType;
-import backend.hir.BasicBlock;
-import backend.hir.InstVisitor;
-import backend.hir.Operator;
+import backend.value.BasicBlock;
+import backend.utils.InstVisitor;
+import backend.value.Operator;
 import backend.pass.FunctionPass;
 import backend.target.TargetData;
 import backend.target.TargetInstrInfo;

@@ -16,15 +16,15 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.SourceLocation;
-import jlang.basic.APFloat;
-import jlang.basic.APInt;
-import jlang.basic.FltSemantics;
+import jlang.support.SourceLocation;
+import jlang.support.APFloat;
+import jlang.support.APInt;
+import jlang.support.FltSemantics;
 import tools.OutParamWrapper;
 
-import static jlang.basic.APFloat.FltCategory.fcZero;
-import static jlang.basic.APFloat.OpStatus.opOK;
-import static jlang.basic.APFloat.RoundingMode.rmNearestTiesToEven;
+import static jlang.support.APFloat.FltCategory.fcZero;
+import static jlang.support.APFloat.OpStatus.opOK;
+import static jlang.support.APFloat.RoundingMode.rmNearestTiesToEven;
 import static jlang.clex.LiteralSupport.hexDigitValue;
 import static jlang.diag.DiagnosticLexKindsTag.*;
 

@@ -16,11 +16,11 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.InstVisitor;
+import backend.utils.InstVisitor;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
-import jlang.basic.APInt;
+import jlang.support.APInt;
 
 import java.math.BigDecimal;
 

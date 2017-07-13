@@ -17,6 +17,9 @@ package backend.analysis;
  */
 
 import backend.codegen.MachineBasicBlock;
+import backend.support.LoopBase;
+import backend.support.LoopInfoBase;
+
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;

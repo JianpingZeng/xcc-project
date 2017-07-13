@@ -1,9 +1,10 @@
 package backend.analysis;
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.type.Type;
 import backend.value.ConstantInt;
-import jlang.basic.APInt;
+import backend.value.Loop;
+import jlang.support.APInt;
 
 import java.io.PrintStream;
 import java.util.HashMap;

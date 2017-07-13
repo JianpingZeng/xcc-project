@@ -2,8 +2,8 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
-import backend.hir.BasicBlock;
-import backend.hir.SuccIterator;
+import backend.value.BasicBlock;
+import backend.utils.SuccIterator;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
 

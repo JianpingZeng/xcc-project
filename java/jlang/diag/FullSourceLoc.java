@@ -16,11 +16,11 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.FileID;
-import jlang.basic.MemoryBuffer;
+import jlang.support.FileID;
+import jlang.support.MemoryBuffer;
 import jlang.basic.SourceManager;
 import jlang.clex.StrData;
-import jlang.basic.SourceLocation;
+import jlang.support.SourceLocation;
 import tools.Pair;
 
 /**

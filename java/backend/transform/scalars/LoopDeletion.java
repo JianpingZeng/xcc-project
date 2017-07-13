@@ -1,13 +1,15 @@
 package backend.transform.scalars;
 
 import backend.analysis.*;
-import backend.hir.BasicBlock;
+import backend.analysis.LoopInfo;
+import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
+import backend.value.Loop;
 import backend.value.Value;
 
 import java.util.ArrayList;

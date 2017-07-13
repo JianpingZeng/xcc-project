@@ -16,7 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.MemoryBuffer;
+import jlang.support.MemoryBuffer;
 import tools.SourceMgr;
 import tools.SourceMgr.SMLoc;
 

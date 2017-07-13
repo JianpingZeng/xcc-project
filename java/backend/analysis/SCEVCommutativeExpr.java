@@ -17,6 +17,7 @@ package backend.analysis;
  */
 
 import backend.type.Type;
+import backend.value.Loop;
 import tools.Pair;
 
 import java.util.ArrayList;

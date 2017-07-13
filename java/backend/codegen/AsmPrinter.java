@@ -16,7 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.support.NameMangler;
 import backend.target.TargetData;
 import backend.target.TargetMachine;

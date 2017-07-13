@@ -12,29 +12,48 @@ import backend.codegen.MachineInstr;
  */
 public abstract class TargetInstrInfo
 {
-	public final static int M_NOP_FLAG = 1 << 0;
-	public final static int M_BRANCH_FLAG = 1 << 1;
-	public final static int M_CALL_FLAG = 1 << 2;
-	public final static int M_RET_FLAG = 1 << 3;
-	public final static int M_ARITH_FLAG = 1 << 4;
-	public final static int M_CC_FLAG = 1 << 6;
-	public final static int M_LOGICAL_FLAG = 1 << 6;
-	public final static int M_INT_FLAG = 1 << 7;
-	public final static int M_FLOAT_FLAG = 1 << 8;
-	public final static int M_CONDL_FLAG = 1 << 9;
-	public final static int M_LOAD_FLAG = 1 << 10;
-	public final static int M_PREFETCH_FLAG = 1 << 11;
-	public final static int M_STORE_FLAG = 1 << 12;
-	public final static int M_DUMMY_PHI_FLAG = 1 << 13;
-	public final static int M_PSEUDO_FLAG = 1 << 14;       // Pseudo instruction
-	// 3-addr instructions which really work like 2-addr ones, eg. X86 add/sub
-	public final static int M_2_ADDR_FLAG = 1 << 15;
+	/**
+	 * Invariant opcodes: All instruction sets have these as their low opcodes.
+	 */
+    public static final int PHI = 0;
+    public static final int INLINEASM = 1;
+    public static final int DBG_LABEL = 2;
+    public static final int EH_LABEL = 3;
+    public static final int GC_LABEL = 4;
+    public static final int DECLARE = 5;
 
-	// M_TERMINATOR_FLAG - Is this instruction part of the terminator for a basic
-	// block?  Typically this is things like return and branch instructions.
-	// Various passes use this to insert code into the bottom of a basic block, but
-	// before control flow occurs.
-	public final static int M_TERMINATOR_FLAG = 1 << 16;
+    /// EXTRACT_SUBREG - This instruction takes two operands: a register
+    /// that has subregisters, and a subregister index. It returns the
+    /// extracted subregister value. This is commonly used to implement
+    /// truncation operations on target architectures which support it.
+    public static final int EXTRACT_SUBREG = 6;
+
+    /// INSERT_SUBREG - This instruction takes three operands: a register
+    /// that has subregisters, a register providing an insert value, and a
+    /// subregister index. It returns the value of the first register with
+    /// the value of the second register inserted. The first register is
+    /// often defined by an IMPLICIT_DEF, as is commonly used to implement
+    /// anyext operations on target architectures which support it.
+    public static final int INSERT_SUBREG = 7;
+
+    /// IMPLICIT_DEF - This is the MachineInstr-level equivalent of undef.
+    public static final int IMPLICIT_DEF = 8;
+
+    /// SUBREG_TO_REG - This instruction is similar to INSERT_SUBREG except
+    /// that the first operand is an immediate integer constant. This constant
+    /// is often zero, as is commonly used to implement zext operations on
+    /// target architectures which support it, such as with x86-64 (with
+    /// zext from i32 to i64 via implicit zero-extension).
+    public static final int SUBREG_TO_REG = 9;
+
+    /// COPY_TO_REGCLASS - This instruction is a placeholder for a plain
+    /// register-to-register copy into a specific register class. This is only
+    /// used between instruction selection and MachineInstr creation, before
+    /// virtual registers have been created for all the instructions, and it's
+    /// only needed in cases where the register classes implied by the
+    /// instructions are insufficient. The actual MachineInstrs to perform
+    /// the copy are emitted with the TargetInstrInfo::copyRegToReg hook.
+    public static final int COPY_TO_REGCLASS = 10;
 
 	/**
 	 * Describing the machine instructions initialized only when the
@@ -183,107 +202,107 @@ public abstract class TargetInstrInfo
 	//=======independent flags listed above =========================//
 	public boolean isNop(int opCode)
 	{
-		return (get(opCode).flags & M_NOP_FLAG) != 0;
+		return (get(opCode).flags & TID.M_NOP_FLAG) != 0;
 	}
 
 	public boolean isBranch(int opCode)
 	{
-		return (get(opCode).flags & M_BRANCH_FLAG) != 0;
+		return (get(opCode).flags & TID.M_BRANCH_FLAG) != 0;
 	}
 
 	public boolean isCall(int opCode)
 	{
-		return (get(opCode).flags & M_CALL_FLAG) != 0;
+		return (get(opCode).flags & TID.M_CALL_FLAG) != 0;
 	}
 
 	public boolean isReturn(int opCode)
 	{
-		return (get(opCode).flags & M_RET_FLAG) != 0;
+		return (get(opCode).flags & TID.M_RET_FLAG) != 0;
 	}
 
 	public boolean isControlFlow(int opCode)
 	{
-		return (get(opCode).flags & M_BRANCH_FLAG) != 0
-				|| (get(opCode).flags & M_CALL_FLAG) != 0
-				|| (get(opCode).flags & M_RET_FLAG) != 0;
+		return (get(opCode).flags & TID.M_BRANCH_FLAG) != 0
+				|| (get(opCode).flags & TID.M_CALL_FLAG) != 0
+				|| (get(opCode).flags & TID.M_RET_FLAG) != 0;
 	}
 
 	public boolean isArith(int opCode)
 	{
-		return (get(opCode).flags & M_ARITH_FLAG) != 0;
+		return (get(opCode).flags & TID.M_ARITH_FLAG) != 0;
 	}
 
 	public boolean isCCInstr(int opCode)
 	{
-		return (get(opCode).flags & M_CC_FLAG) != 0;
+		return (get(opCode).flags & TID.M_CC_FLAG) != 0;
 	}
 
 	public boolean isLogical(int opCode)
 	{
-		return (get(opCode).flags & M_LOGICAL_FLAG) != 0;
+		return (get(opCode).flags & TID.M_LOGICAL_FLAG) != 0;
 	}
 
 	public boolean isIntInstr(int opCode)
 	{
-		return (get(opCode).flags & M_INT_FLAG) != 0;
+		return (get(opCode).flags & TID.M_INT_FLAG) != 0;
 	}
 
 	public boolean isFloatInstr(int opCode)
 	{
-		return (get(opCode).flags & M_FLOAT_FLAG) != 0;
+		return (get(opCode).flags & TID.M_FLOAT_FLAG) != 0;
 	}
 
 	public boolean isConditional(int opCode)
 	{
-		return (get(opCode).flags & M_CONDL_FLAG) != 0;
+		return (get(opCode).flags & TID.M_CONDL_FLAG) != 0;
 	}
 
 	public boolean isLoad(int opCode)
 	{
-		return (get(opCode).flags & M_LOAD_FLAG) != 0;
+		return (get(opCode).flags & TID.M_LOAD_FLAG) != 0;
 	}
 
 	public boolean isPrefetch(int opCode)
 	{
-		return (get(opCode).flags & M_PREFETCH_FLAG) != 0;
+		return (get(opCode).flags & TID.M_PREFETCH_FLAG) != 0;
 	}
 
 	public boolean isLoadOrPrefetch(int opCode)
 	{
-		return (get(opCode).flags & M_LOAD_FLAG) != 0
-				|| (get(opCode).flags & M_PREFETCH_FLAG) != 0;
+		return (get(opCode).flags & TID.M_LOAD_FLAG) != 0
+				|| (get(opCode).flags & TID.M_PREFETCH_FLAG) != 0;
 	}
 
 	public boolean isStore(int opCode)
 	{
-		return (get(opCode).flags & M_STORE_FLAG) != 0;
+		return (get(opCode).flags & TID.M_STORE_FLAG) != 0;
 	}
 
 	public boolean isMemoryAccess(int opCode)
 	{
-		return (get(opCode).flags & M_LOAD_FLAG) != 0
-				|| (get(opCode).flags & M_PREFETCH_FLAG) != 0
-				|| (get(opCode).flags & M_STORE_FLAG) != 0;
+		return (get(opCode).flags & TID.M_LOAD_FLAG) != 0
+				|| (get(opCode).flags & TID.M_PREFETCH_FLAG) != 0
+				|| (get(opCode).flags & TID.M_STORE_FLAG) != 0;
 	}
 
 	public boolean isDummyPhiInstr(int opCode)
 	{
-		return (get(opCode).flags & M_DUMMY_PHI_FLAG) != 0;
+		return (get(opCode).flags & TID.M_DUMMY_PHI_FLAG) != 0;
 	}
 
 	public boolean isPseudoInstr(int opCode)
 	{
-		return (get(opCode).flags & M_PSEUDO_FLAG) != 0;
+		return (get(opCode).flags & TID.M_PSEUDO_FLAG) != 0;
 	}
 
 	public boolean isTwoAddrInstr(int opCode)
 	{
-		return (get(opCode).flags & M_2_ADDR_FLAG) != 0;
+		return (get(opCode).flags & TID.M_2_ADDR_FLAG) != 0;
 	}
 
 	public boolean isTerminatorInstr(int Opcode)
 	{
-		return (get(Opcode).flags & M_TERMINATOR_FLAG) != 0;
+		return (get(Opcode).flags & TID.M_TERMINATOR_FLAG) != 0;
 	}
 
 	/**

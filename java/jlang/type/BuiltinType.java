@@ -16,8 +16,8 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.LangOptions;
-import jlang.basic.PrintingPolicy;
+import jlang.support.LangOptions;
+import jlang.support.PrintingPolicy;
 
 /**
  * This class represents the primitive type of C language.

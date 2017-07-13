@@ -16,7 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.hir.HIRBuilder;
 import backend.type.FunctionType;
 import backend.type.IntegerType;

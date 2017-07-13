@@ -1,9 +1,7 @@
 package jlang.codegen;
 
-import backend.hir.Module;
+import backend.value.Module;
 import jlang.ast.ASTConsumer;
-import jlang.basic.CompileOptions;
-import jlang.diag.Diagnostic;
 
 /**
  * Extremely C Compiler. Xlous zeng.

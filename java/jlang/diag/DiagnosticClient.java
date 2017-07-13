@@ -16,7 +16,7 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.LangOptions;
+import jlang.support.LangOptions;
 
 /**
  * This is an abstract interface, which should be implemented by client of

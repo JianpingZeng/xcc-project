@@ -48,7 +48,9 @@ public final class TypePrinting
     {}
 
     public boolean hasTypeName(Type ty)
-    {}
+    {
+        return false;
+    }
 
     public void addTypeName(Type ty, String name)
     {}

@@ -18,7 +18,7 @@ package backend.value;
 
 import backend.type.IntegerType;
 import backend.type.Type;
-import jlang.basic.APInt;
+import jlang.support.APInt;
 
 import java.util.HashMap;
 

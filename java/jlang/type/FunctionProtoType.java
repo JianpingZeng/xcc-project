@@ -16,7 +16,7 @@ package jlang.type;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.PrintingPolicy;
+import jlang.support.PrintingPolicy;
 
 import java.util.ArrayList;
 

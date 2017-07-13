@@ -16,16 +16,16 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
-import backend.hir.Module;
+import backend.value.BasicBlock;
+import backend.value.Module;
 import backend.pass.*;
 import backend.target.TargetData;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
 import jlang.ast.ASTConsumer;
-import jlang.basic.BackendAction;
-import jlang.basic.CompileOptions;
-import jlang.basic.LangOptions;
+import jlang.support.BackendAction;
+import jlang.support.CompileOptions;
+import jlang.support.LangOptions;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
@@ -36,7 +36,7 @@ import java.util.function.Function;
 
 import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
-import static jlang.basic.BackendAction.*;
+import static jlang.support.BackendAction.*;
 
 /**
  * <p>

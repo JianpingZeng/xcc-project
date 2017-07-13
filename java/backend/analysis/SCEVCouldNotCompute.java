@@ -17,6 +17,8 @@ package backend.analysis;
  */
 
 import backend.type.Type;
+import backend.value.BasicBlock;
+import backend.value.Loop;
 
 import java.io.PrintStream;
 
@@ -64,6 +66,13 @@ public final class SCEVCouldNotCompute extends SCEV
     {
         assert false : "Attempt to use a SCEVCouldNotCompute object!";
         return null;
+    }
+
+    @Override
+    public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+    {
+        // TODO: 17-7-1
+        return false;
     }
 
     @Override

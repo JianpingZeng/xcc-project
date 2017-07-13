@@ -16,7 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.pass.FunctionPass;
 
 import java.util.ArrayList;

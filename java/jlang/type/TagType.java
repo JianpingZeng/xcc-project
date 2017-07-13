@@ -1,6 +1,6 @@
 package jlang.type;
 
-import jlang.basic.PrintingPolicy;
+import jlang.support.PrintingPolicy;
 import jlang.sema.Decl;
 import jlang.sema.Decl.TagDecl;
 

@@ -1,7 +1,7 @@
 /*package backend.transform.scalars;
 
-import backend.analysis.Loop;
-import backend.hir.BasicBlock;
+import backend.value.Loop;
+import backend.value.BasicBlock;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.value.Instruction;

@@ -16,10 +16,8 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.Loop;
+import backend.value.Loop;
 import backend.analysis.LoopInfo;
-import backend.hir.Module;
-import backend.value.Function;
 
 /**
  * @author Xlous.zeng

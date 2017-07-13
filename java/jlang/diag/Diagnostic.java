@@ -17,7 +17,7 @@ package jlang.diag;
  */
 
 import gnu.trove.list.array.TIntArrayList;
-import jlang.basic.SourceRange;
+import jlang.support.SourceRange;
 import jlang.clex.IdentifierInfo;
 import jlang.type.QualType;
 
