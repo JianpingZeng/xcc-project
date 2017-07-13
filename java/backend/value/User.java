@@ -1,7 +1,5 @@
 package backend.value;
 
-import backend.hir.BasicBlock;
-import backend.hir.Operator;
 import backend.type.Type;
 
 import java.util.ArrayList;

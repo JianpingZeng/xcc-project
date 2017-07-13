@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.target.TargetInstrInfo;
 
 import java.util.ArrayList;

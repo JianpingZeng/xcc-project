@@ -1,9 +1,6 @@
 package backend.target;
 
-import backend.hir.Module;
-import backend.pass.PassManager;
 import backend.pass.PassManagerBase;
-import backend.target.x86.X86TargetMachine;
 
 import java.io.OutputStream;
 
@@ -61,17 +58,6 @@ public abstract class TargetMachine
 	protected TargetMachine(String name)
 	{
 		this(name, false, 8, 8, 8, 4, 8, 4, 2, 1);
-	}
-
-	/**
-	 * Allocates and returns a subclass of {@linkplain TargetMachine} that
-	 * implements the IA32 machine.
-	 * @param module
-	 * @return
-	 */
-	public static TargetMachine allocateIA32TargetMachine(Module module)
-	{
-		return new X86TargetMachine(module);
 	}
 
 	public String getName(){return name;}

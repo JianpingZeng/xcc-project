@@ -16,13 +16,14 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.pass.Pass;
 import backend.support.Printable;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
+import backend.value.Loop;
 import backend.value.Use;
 import tools.OutParamWrapper;
 import tools.Util;

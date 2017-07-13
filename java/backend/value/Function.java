@@ -1,8 +1,6 @@
 package backend.value;
 
 import backend.codegen.MachineFunction;
-import backend.hir.BasicBlock;
-import backend.hir.Module;
 import backend.type.FunctionType;
 import backend.type.Type;
 

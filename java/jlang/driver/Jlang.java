@@ -16,11 +16,13 @@ package jlang.driver;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.target.x86.X86TargetMachine;
+import backend.value.Module;
 import backend.target.TargetMachine;
 import jlang.ast.ASTConsumer;
 import jlang.basic.*;
-import jlang.basic.LangOptions.VisibilityMode;
+import jlang.support.*;
+import jlang.support.LangOptions.VisibilityMode;
 import jlang.clex.Preprocessor;
 import jlang.diag.*;
 import jlang.sema.ASTContext;
@@ -43,14 +45,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
-import static jlang.basic.BackendAction.Backend_EmitAssembly;
-import static jlang.basic.BackendAction.Backend_EmitIr;
-import static jlang.basic.CompileOptions.InliningMethod.NormalInlining;
-import static jlang.basic.CompileOptions.InliningMethod.OnlyAlwaysInlining;
+import static jlang.support.BackendAction.Backend_EmitAssembly;
+import static jlang.support.BackendAction.Backend_EmitIr;
+import static jlang.support.CompileOptions.InliningMethod.NormalInlining;
+import static jlang.support.CompileOptions.InliningMethod.OnlyAlwaysInlining;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.System;
-import static jlang.basic.LangKind.*;
-import static jlang.basic.ProgramAction.*;
+import static jlang.support.LangKind.*;
+import static jlang.support.ProgramAction.*;
 import static jlang.codegen.BackendConsumer.createBackendConsumer;
 import static jlang.driver.Jlang.LangStds.*;
 import static tools.commandline.Desc.desc;
@@ -838,7 +840,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
         }
 
         // Allocate backend.target machine, default to using X86.
-        targetMachineAllocator = TargetMachine::allocateIA32TargetMachine;
+        targetMachineAllocator = X86TargetMachine::allocateIA32TargetMachine;
 
         // Parse the Program action.
         ProgramAction progAction = initializeProgAction();

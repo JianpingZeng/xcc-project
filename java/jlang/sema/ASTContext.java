@@ -22,6 +22,7 @@ import jlang.basic.TargetInfo.IntType;
 import jlang.clex.IdentifierTable;
 import jlang.diag.FullSourceLoc;
 import jlang.sema.Decl.*;
+import jlang.support.*;
 import jlang.type.*;
 import jlang.type.ArrayType.*;
 import tools.Pair;
@@ -143,7 +144,14 @@ public final class ASTContext
         VoidPtrTy = getPointerType(VoidTy);
 	}
 
-	private QualType initBuiltinType(int tc)
+    public APSInt makeIntValue(long value, QualType type)
+    {
+        APSInt res = new APSInt(getIntWidth(type), !type.isSignedIntegerType());
+        res.assign(value);
+        return res;
+    }
+
+    private QualType initBuiltinType(int tc)
     {
         QualType res = new QualType(new BuiltinType(tc));
         types.add(res.getType());

@@ -16,7 +16,7 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.value.Module;
 
 import java.util.HashSet;
 import java.util.LinkedList;

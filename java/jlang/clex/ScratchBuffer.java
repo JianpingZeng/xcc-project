@@ -16,9 +16,9 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.FileID;
-import jlang.basic.MemoryBuffer;
-import jlang.basic.SourceLocation;
+import jlang.support.FileID;
+import jlang.support.MemoryBuffer;
+import jlang.support.SourceLocation;
 import jlang.basic.SourceManager;
 import tools.OutParamWrapper;
 

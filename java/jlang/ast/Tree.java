@@ -1,10 +1,7 @@
 package jlang.ast;
 
-import backend.hir.BasicBlock;
-import jlang.basic.APFloat;
-import jlang.basic.APInt;
-import jlang.basic.SourceLocation;
-import jlang.basic.SourceRange;
+import backend.value.BasicBlock;
+import jlang.support.*;
 import jlang.clex.IdentifierInfo;
 import jlang.sema.*;
 import jlang.sema.Decl.*;

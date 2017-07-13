@@ -16,13 +16,11 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
 import backend.codegen.MachineBasicBlock;
-import backend.hir.BasicBlock;
-import backend.hir.PredIterator;
-import backend.hir.SuccIterator;
-import backend.value.Function;
+import backend.value.BasicBlock;
+import backend.utils.PredIterator;
+import backend.utils.SuccIterator;
 
 import java.util.*;
 

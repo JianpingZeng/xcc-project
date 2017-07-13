@@ -16,8 +16,8 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.SourceLocation;
-import jlang.basic.APInt;
+import jlang.support.SourceLocation;
+import jlang.support.APInt;
 import tools.OutParamWrapper;
 
 import static jlang.clex.LiteralSupport.processCharEscape;

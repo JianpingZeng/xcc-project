@@ -16,13 +16,13 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.Linkage;
-import jlang.basic.Visibility;
+import jlang.support.Linkage;
+import jlang.support.Visibility;
 import tools.Pair;
 
-import static jlang.basic.Linkage.*;
-import static jlang.basic.Visibility.DefaultVisibility;
-import static jlang.basic.Visibility.minVisibility;
+import static jlang.support.Linkage.*;
+import static jlang.support.Visibility.DefaultVisibility;
+import static jlang.support.Visibility.minVisibility;
 
 /**
  * @author xlous.zeng

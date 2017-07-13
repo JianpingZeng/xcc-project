@@ -2,8 +2,8 @@ package jlang.cparser;
 
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
-import jlang.basic.SourceLocation;
-import jlang.basic.SourceRange;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
 import jlang.clex.IdentifierInfo;
 import jlang.sema.Decl;
 import tools.OutParamWrapper;

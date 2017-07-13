@@ -18,6 +18,7 @@ package jlang.diag;
 
 import jlang.basic.*;
 import jlang.clex.Lexer;
+import jlang.support.*;
 import tools.Pair;
 import tools.Util;
 

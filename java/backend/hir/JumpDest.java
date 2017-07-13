@@ -16,6 +16,8 @@ package backend.hir;
  * permissions and limitations under the License.
  */
 
+import backend.value.BasicBlock;
+
 /**
  * A jump destination is an abstract label, branching
  * which may require a jump out through normal cleanups.

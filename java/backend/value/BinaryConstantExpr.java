@@ -16,8 +16,6 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Operator;
-
 /**
  * @author Xlous.zeng
  * @version 0.1

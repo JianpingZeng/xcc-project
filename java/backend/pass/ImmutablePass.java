@@ -1,9 +1,6 @@
 package backend.pass;
 
-import backend.hir.Module;
-import tools.Pair;
-
-import java.util.ArrayList;
+import backend.value.Module;
 
 /**
  * his class is used to provide information that does not need to be run.

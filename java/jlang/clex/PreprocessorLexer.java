@@ -16,8 +16,8 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.FileID;
-import jlang.basic.SourceLocation;
+import jlang.support.FileID;
+import jlang.support.SourceLocation;
 
 import java.nio.file.Path;
 import java.util.Stack;

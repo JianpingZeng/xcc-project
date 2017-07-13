@@ -16,8 +16,8 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.CharacteristicKind;
-import jlang.basic.SourceLocation;
+import jlang.support.CharacteristicKind;
+import jlang.support.SourceLocation;
 
 /**
  * This interface provides a way to observe the actions of the

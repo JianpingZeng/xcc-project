@@ -17,6 +17,8 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree;
+import jlang.support.APSInt;
+
 import java.math.BigDecimal;
 import static jlang.sema.APValue.ValueKind.*;
 

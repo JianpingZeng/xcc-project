@@ -1,13 +1,11 @@
 package backend.transform.scalars;
 
 import backend.analysis.*;
-import backend.hir.BasicBlock;
+import backend.analysis.LoopInfo;
+import backend.value.*;
 import backend.pass.*;
 import backend.support.PredIteratorCache;
-import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
-import backend.value.Use;
-import backend.value.Value;
 
 import java.util.ArrayList;
 import java.util.HashMap;

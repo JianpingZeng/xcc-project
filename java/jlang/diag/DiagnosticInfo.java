@@ -16,7 +16,7 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.SourceRange;
+import jlang.support.SourceRange;
 import jlang.clex.IdentifierInfo;
 import jlang.diag.Diagnostic.ArgumentKind;
 import tools.OutParamWrapper;

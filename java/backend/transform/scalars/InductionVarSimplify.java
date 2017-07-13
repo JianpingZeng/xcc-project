@@ -1,10 +1,10 @@
 package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
-import backend.analysis.Loop;
+import backend.value.Loop;
 import backend.analysis.LoopInfo;
-import backend.hir.BasicBlock;
-import backend.hir.Operator;
+import backend.value.BasicBlock;
+import backend.value.Operator;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;

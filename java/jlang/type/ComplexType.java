@@ -1,6 +1,6 @@
 package jlang.type;
 
-import jlang.basic.PrintingPolicy;
+import jlang.support.PrintingPolicy;
 
 /**
  * @author Xlous.zeng

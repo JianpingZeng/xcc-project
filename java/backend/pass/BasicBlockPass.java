@@ -1,6 +1,6 @@
 package backend.pass;
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.value.Function;
 
 /**

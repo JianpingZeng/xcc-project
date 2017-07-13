@@ -16,14 +16,14 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.*;
 import backend.type.PointerType;
 import backend.type.Type;
-import jlang.basic.APFloat;
-import jlang.basic.FltSemantics;
+import jlang.support.APFloat;
+import jlang.support.FltSemantics;
 import jlang.basic.TargetInfo;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;

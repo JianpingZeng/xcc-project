@@ -23,14 +23,15 @@ import jlang.clex.Preprocessor.DefinedTracker.TrackerState;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
 import jlang.diag.FullSourceLoc;
-import jlang.sema.APSInt;
+import jlang.support.APSInt;
+import jlang.support.*;
 import tools.OutParamWrapper;
 import tools.Pair;
 
 import java.nio.file.Path;
 import java.util.*;
 
-import static jlang.basic.CharacteristicKind.C_User;
+import static jlang.support.CharacteristicKind.C_User;
 import static jlang.clex.Token.TokenFlags.*;
 import static jlang.clex.PPCallBack.FileChangeReason.RenameFile;
 import static jlang.clex.Preprocessor.DefinedTracker.TrackerState.DefinedMacro;

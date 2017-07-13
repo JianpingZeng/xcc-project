@@ -17,6 +17,7 @@ package backend.analysis;
  */
 
 import backend.type.Type;
+import backend.value.BasicBlock;
 import backend.value.Constant;
 import backend.value.ConstantExpr;
 import backend.value.ConstantInt;
@@ -250,6 +251,13 @@ public final class SCEVMulExpr extends SCEVCommutativeExpr
     public Type getType()
     {
         return null;
+    }
+
+    @Override
+    public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+    {
+        // TODO: 17-7-1
+        return false;
     }
 
     @Override

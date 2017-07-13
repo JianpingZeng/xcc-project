@@ -1,10 +1,10 @@
 package jlang.type;
 
 import jlang.ast.Tree.Expr;
-import jlang.basic.PrintingPolicy;
-import jlang.basic.SourceLocation;
-import jlang.basic.SourceRange;
-import jlang.basic.APInt;
+import jlang.support.PrintingPolicy;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
+import jlang.support.APInt;
 
 /**
  * ConstantArrayType - C99 6.7.5.2 - Array Declarators.

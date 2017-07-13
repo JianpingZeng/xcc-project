@@ -16,7 +16,6 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Operator;
 import backend.type.Type;
 
 /**

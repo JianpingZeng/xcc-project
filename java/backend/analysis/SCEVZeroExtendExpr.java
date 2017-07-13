@@ -17,7 +17,9 @@ package backend.analysis;
  */
 
 import backend.type.Type;
+import backend.value.BasicBlock;
 import backend.value.ConstantExpr;
+import backend.value.Loop;
 import tools.Pair;
 
 import java.io.PrintStream;
@@ -106,6 +108,13 @@ public final class SCEVZeroExtendExpr extends SCEV
     public Type getType()
     {
         return ty;
+    }
+
+    @Override
+    public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+    {
+        // TODO: 17-7-1
+        return false;
     }
 
     @Override

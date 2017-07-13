@@ -19,6 +19,7 @@ package jlang.basic;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import jlang.clex.StrData;
+import jlang.support.*;
 import tools.Pair;
 
 import java.nio.CharBuffer;
@@ -26,8 +27,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static jlang.basic.CharacteristicKind.C_System;
-import static jlang.basic.CharacteristicKind.C_User;
+import static jlang.support.CharacteristicKind.C_System;
+import static jlang.support.CharacteristicKind.C_User;
 
 /**
  * <p>

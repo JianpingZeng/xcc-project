@@ -16,8 +16,8 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
-import backend.hir.CallSite;
+import backend.value.BasicBlock;
+import backend.support.CallSite;
 import backend.value.Instruction;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.LoadInst;

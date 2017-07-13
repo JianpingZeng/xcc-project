@@ -17,7 +17,7 @@ package backend.value;
  */
 
 import backend.type.Type;
-import jlang.sema.APSInt;
+import jlang.support.APSInt;
 
 import java.math.BigDecimal;
 

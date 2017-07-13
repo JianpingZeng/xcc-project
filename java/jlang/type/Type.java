@@ -1,7 +1,7 @@
 package jlang.type;
 
-import jlang.basic.LangOptions;
-import jlang.basic.PrintingPolicy;
+import jlang.support.LangOptions;
+import jlang.support.PrintingPolicy;
 import jlang.type.ArrayType.ConstantArrayType;
 import jlang.type.ArrayType.IncompleteArrayType;
 import jlang.type.ArrayType.VariableArrayType;

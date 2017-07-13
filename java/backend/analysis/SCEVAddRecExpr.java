@@ -1,12 +1,9 @@
 package backend.analysis;
 
-import backend.hir.BasicBlock;
-import backend.hir.Operator;
+import backend.value.*;
+import backend.value.Operator;
 import backend.type.Type;
-import backend.value.Constant;
-import backend.value.ConstantExpr;
-import backend.value.ConstantInt;
-import jlang.basic.APInt;
+import jlang.support.APInt;
 import tools.Pair;
 
 import java.io.PrintStream;

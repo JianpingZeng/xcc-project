@@ -19,8 +19,10 @@ package jlang.driver;
 import jlang.basic.*;
 import jlang.clex.Preprocessor;
 import jlang.diag.Diagnostic;
-import jlang.basic.APFloat;
-import jlang.basic.FltSemantics;
+import jlang.support.APFloat;
+import jlang.support.FltSemantics;
+import jlang.support.LangOptions;
+import jlang.support.PreprocessorInitOptions;
 
 import java.io.File;
 import java.math.BigInteger;

@@ -17,7 +17,7 @@ package jlang.clex;
  */
 
 import gnu.trove.list.array.TCharArrayList;
-import jlang.basic.SourceLocation;
+import jlang.support.SourceLocation;
 
 import java.util.ArrayList;
 import java.util.Arrays;

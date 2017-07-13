@@ -16,11 +16,13 @@ package jlang.basic;
  * permissions and limitations under the License.
  */
 
+import jlang.support.FltSemantics;
+import jlang.support.LangOptions;
 import jlang.system.Triple;
 
 import java.util.HashMap;
 
-import static jlang.basic.APFloat.*;
+import static jlang.support.APFloat.*;
 
 /**
  * @author xlous.zeng

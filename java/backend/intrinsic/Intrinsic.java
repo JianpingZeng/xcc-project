@@ -1,6 +1,6 @@
 package backend.intrinsic;
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Function;

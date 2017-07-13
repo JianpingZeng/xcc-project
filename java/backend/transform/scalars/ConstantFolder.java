@@ -16,8 +16,8 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
-import backend.hir.Operator;
+import backend.value.BasicBlock;
+import backend.value.Operator;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.CmpInst.Predicate;

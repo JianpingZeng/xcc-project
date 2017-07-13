@@ -19,6 +19,7 @@ package jlang.clex;
 import jlang.basic.*;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
+import jlang.support.*;
 import tools.OutParamWrapper;
 import tools.Pair;
 

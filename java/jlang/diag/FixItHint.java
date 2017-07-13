@@ -16,8 +16,8 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.SourceLocation;
-import jlang.basic.SourceRange;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
 
 /**
  * @author xlous.zeng

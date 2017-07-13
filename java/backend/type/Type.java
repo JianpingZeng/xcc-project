@@ -16,7 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.support.TypePrinting;
 import tools.Util;
 

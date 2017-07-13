@@ -1,8 +1,7 @@
 package backend.value;
 
-import backend.hir.BasicBlock;
-import backend.hir.InstVisitor;
-import backend.hir.SuccIterator;
+import backend.utils.InstVisitor;
+import backend.utils.SuccIterator;
 import backend.type.Type;
 
 import java.util.HashMap;

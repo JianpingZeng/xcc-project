@@ -16,7 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.type.Type;
 import backend.value.Function;
 import backend.value.GlobalValue;

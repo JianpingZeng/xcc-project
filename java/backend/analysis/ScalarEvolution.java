@@ -16,9 +16,9 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
-import backend.hir.Operator;
-import backend.hir.PredIterator;
+import backend.value.BasicBlock;
+import backend.value.Operator;
+import backend.utils.PredIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.target.TargetData;
@@ -27,7 +27,7 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import jlang.basic.APInt;
+import jlang.support.APInt;
 import tools.Util;
 
 import java.util.*;
@@ -835,7 +835,7 @@ public final class ScalarEvolution implements FunctionPass
                 SCEVZeroExtendExpr.get(value, ty): SCEVTruncateExpr.get(value, ty);
     }
 
-    public SCEV getIntegerSCEV(int val, Type ty)
+    public static SCEV getIntegerSCEV(int val, Type ty)
     {
         Constant c;
         if (val == 0)
@@ -854,7 +854,7 @@ public final class ScalarEvolution implements FunctionPass
      * Returns a SCEV corresponding to -val = -1 * val.
      * @return
      */
-    public SCEV getNegativeSCEV(SCEV val)
+    public static SCEV getNegativeSCEV(SCEV val)
     {
         if (val instanceof SCEVConstant)
         {
@@ -871,7 +871,7 @@ public final class ScalarEvolution implements FunctionPass
      * @param rhs
      * @return
      */
-    public SCEV getMinusSCEV(SCEV lhs, SCEV rhs)
+    public static SCEV getMinusSCEV(SCEV lhs, SCEV rhs)
     {
         return SCEVAddExpr.get(lhs, getNegativeSCEV(rhs));
     }

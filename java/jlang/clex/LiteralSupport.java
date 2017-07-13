@@ -16,7 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.SourceLocation;
+import jlang.support.SourceLocation;
 import tools.OutParamWrapper;
 
 import static jlang.diag.DiagnosticLexKindsTag.*;

@@ -1,8 +1,8 @@
 package backend.analysis;
 
-import backend.hir.BasicBlock;
-import backend.hir.PredIterator;
-import backend.hir.SuccIterator;
+import backend.value.BasicBlock;
+import backend.utils.PredIterator;
+import backend.utils.SuccIterator;
 import backend.value.Function;
 import tools.Pair;
 
@@ -218,7 +218,8 @@ public final class DomTree
 	public void recalculate(Function f)
 	{
 	    m = f;
-		this.vertex = new BasicBlock[m.cfg.getNumberOfBasicBlocks()];
+		// FIXME: 17-7-1
+		this.vertex = new BasicBlock[1];//new BasicBlock[m.cfg.getNumberOfBasicBlocks()];
 		if (!isPostDominators)
 		{
 			// initialize the root

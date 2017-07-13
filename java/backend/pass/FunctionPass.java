@@ -1,10 +1,7 @@
 package backend.pass;
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.value.Function;
-import tools.Pair;
-
-import java.util.ArrayList;
 
 /**
  * This class is used to implement most global

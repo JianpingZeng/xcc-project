@@ -1,9 +1,8 @@
 package jlang.codegen;
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.target.TargetData;
-import jlang.ast.ASTConsumer;
-import jlang.basic.CompileOptions;
+import jlang.support.CompileOptions;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;

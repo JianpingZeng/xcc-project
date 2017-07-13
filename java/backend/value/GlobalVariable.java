@@ -1,6 +1,5 @@
 package backend.value;
 
-import backend.hir.Module;
 import backend.type.PointerType;
 import backend.type.Type;
 

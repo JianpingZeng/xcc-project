@@ -1,7 +1,7 @@
 package backend.support;
 
-import backend.hir.BasicBlock;
-import backend.hir.PredIterator;
+import backend.value.BasicBlock;
+import backend.utils.PredIterator;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
 import java.util.ArrayList;

@@ -17,11 +17,9 @@ package backend.hir;
  */
 
 import backend.type.Type;
-import backend.value.Constant;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import backend.value.Value;
 
 import java.util.LinkedList;
 

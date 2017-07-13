@@ -1,6 +1,6 @@
 package backend.target.x86;
 
-import backend.hir.Module;
+import backend.value.Module;
 import backend.pass.PassManagerBase;
 import backend.target.TargetFrameInfo;
 import backend.target.TargetInstrInfo;
@@ -41,7 +41,18 @@ public class X86TargetMachine extends TargetMachine
 		instrInfo = new X86InstrInfo();
 	}
 
-	@Override
+    /**
+     * Allocates and returns a subclass of {@linkplain TargetMachine} that
+     * implements the IA32 machine.
+     * @param module
+     * @return
+     */
+    public static TargetMachine allocateIA32TargetMachine(Module module)
+    {
+        return new X86TargetMachine(module);
+    }
+
+    @Override
 	public TargetInstrInfo getInstrInfo(){return instrInfo;}
 
 	@Override

@@ -17,10 +17,7 @@ package backend.analysis;
  */
 
 import backend.type.Type;
-import backend.value.Constant;
-import backend.value.ConstantFP;
-import backend.value.ConstantInt;
-import backend.value.Value;
+import backend.value.*;
 
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -86,6 +83,13 @@ public final class SCEVUnknown extends SCEV
     public Type getType()
     {
         return val.getType();
+    }
+
+    @Override
+    public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+    {
+        // TODO: 17-7-1
+        return false;
     }
 
     @Override public void print(PrintStream os)

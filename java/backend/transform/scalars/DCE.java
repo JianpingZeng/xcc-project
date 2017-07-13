@@ -2,7 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;

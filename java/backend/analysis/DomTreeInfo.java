@@ -16,7 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.hir.BasicBlock;
+import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;

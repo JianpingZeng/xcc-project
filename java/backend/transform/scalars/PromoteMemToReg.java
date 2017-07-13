@@ -2,9 +2,9 @@ package backend.transform.scalars;
 
 import backend.analysis.AliasSetTracker;
 import backend.analysis.DomTreeInfo;
-import backend.hir.BasicBlock;
-import backend.hir.PredIterator;
-import backend.hir.SuccIterator;
+import backend.value.BasicBlock;
+import backend.utils.PredIterator;
+import backend.utils.SuccIterator;
 import backend.type.PointerType;
 import backend.value.*;
 import backend.value.Instruction.*;

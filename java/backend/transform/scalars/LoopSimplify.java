@@ -1,18 +1,14 @@
 package backend.transform.scalars;
 
 import backend.analysis.*;
-import backend.hir.BasicBlock;
-import backend.hir.Operator;
-import backend.hir.PredIterator;
-import backend.hir.SuccIterator;
+import backend.analysis.LoopInfo;
+import backend.value.*;
+import backend.value.Operator;
+import backend.utils.PredIterator;
+import backend.utils.SuccIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
-import backend.transform.scalars.BreakCriticalEdge;
-import backend.transform.scalars.DominatorFrontier;
-import backend.value.Function;
-import backend.value.Instruction;
 import backend.value.Instruction.*;
-import backend.value.Value;
 import tools.OutParamWrapper;
 
 import java.util.*;

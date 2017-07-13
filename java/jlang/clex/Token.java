@@ -1,6 +1,6 @@
 package jlang.clex;
 
-import jlang.basic.SourceLocation;
+import jlang.support.SourceLocation;
 
 import static jlang.clex.Token.TokenFlags.*;
 

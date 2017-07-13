@@ -16,7 +16,7 @@
 package utils.tablegen;
 
 import gnu.trove.list.array.TIntArrayList;
-import jlang.basic.MemoryBuffer;
+import jlang.support.MemoryBuffer;
 import tools.Pair;
 import tools.SourceMgr;
 import utils.tablegen.Init.BinOpInit.BinaryOp;
