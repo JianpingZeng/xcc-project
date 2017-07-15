@@ -16,6 +16,7 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import gnu.trove.list.array.TIntArrayList;
 import tools.SourceMgr;
 import utils.tablegen.Init.*;
 
@@ -471,5 +472,22 @@ public final class Record implements Cloneable
     public int getID()
     {
         return id;
+    }
+
+    public TIntArrayList getValueAsListOfInts(String fieldName) throws Exception
+    {
+        ListInit list = getValueAsListInit(fieldName);
+        TIntArrayList res = new TIntArrayList();
+        for (int i = 0; i < list.getSize(); i++)
+        {
+            IntInit ii = list.getElement(i) instanceof IntInit ?
+                    (IntInit)list.getElement(i) : null;
+            if (ii != null)
+                res.add((int) ii.getValue());
+            else
+                throw new Exception("Record '" + getName() + "', field '" +
+                    fieldName + "' does not have a list of ints initializer!");
+        }
+        return res;
     }
 }

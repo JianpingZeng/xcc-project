@@ -258,6 +258,68 @@ public final class CodeGenTarget
     }
 
     /**
+     * Find the register class that contains the
+     * specified physical register.  If the register is not in a register
+     * class, return null. If the register is in multiple classes, and the
+     * classes have a superset-subset relationship and the same set of
+     * types, return the superclass.  Otherwise return null.
+     * @param r
+     * @return
+     */
+    public CodeGenRegisterClass getRegisterClassForRegister(Record r)
+    {
+        ArrayList<CodeGenRegisterClass> rcs = getRegisterClasses();
+        CodeGenRegisterClass foundRC = null;
+        for (int i = 0, e = rcs.size(); i != e; ++i)
+        {
+            CodeGenRegisterClass rc = registerClasses.get(i);
+            for (int ei = 0, ee = rc.elts.size(); ei != ee; ++ei)
+            {
+                if (r != rc.elts.get(ei))
+                    continue;
+
+                // If a register's classes have different types, return null.
+                if (foundRC != null && !rc.getValueTypes().equals(foundRC.getValueTypes()))
+                    return null;
+
+                // If this is the first class that contains the register,
+                // make a note of it and go on to the next class.
+                if (foundRC == null)
+                {
+                    foundRC = rc;
+                    break;
+                }
+
+                ArrayList<Record> elements = new ArrayList<>();
+                elements.addAll(rc.elts);
+
+                ArrayList<Record> foundElements = new ArrayList<>();
+                foundElements.addAll(foundRC.elts);
+
+                // Check to see if the previously found class that contains
+                // the register is a subclass of the current class. If so,
+                // prefer the superclass.
+                if(elements.containsAll(foundElements))
+                {
+                    foundRC = rc;
+                    break;
+                }
+
+                // Check to see if the previously found class that contains
+                // the register is a superclass of the current class. If so,
+                // prefer the superclass.
+                if (foundElements.containsAll(elements))
+                    break;
+
+                // Multiple classes, and neither is a superclass of the other.
+                // Return null.
+                return null;
+            }
+        }
+        return foundRC;
+    }
+
+    /**
      * Find the union of all possible SimpleValueTypes for the
      * specified physical register.
      * @param r
