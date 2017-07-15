@@ -47,7 +47,7 @@ public class SubtargetEmitter extends TableGenBackend
         int i = 0;
         for (Record r : defList)
         {
-            os.printf("public static final int %s", r.getName());
+            os.printf("\tpublic static final int %s", r.getName());
 
             if (isBits) os.printf(" = 1 << %d", i);
             else os.printf(" = %d", i);
@@ -69,8 +69,8 @@ public class SubtargetEmitter extends TableGenBackend
         featureList.sort(LessRecord);
 
         // Begin feature table
-        os.printf("// Sorted (by key) array of values for CPU features.\n"
-                + "public static final SubtargetFeatureKV[] featureKV = {\n");
+        os.printf("\t// Sorted (by key) array of values for CPU features.\n"
+                + "\tpublic static final SubtargetFeatureKV[] featureKV = {\n");
 
         for (int i = 0, e = featureList.size(); i != e; i++)
         {
@@ -84,7 +84,7 @@ public class SubtargetEmitter extends TableGenBackend
                 continue;
 
             // Emit as { "feature", "description", featureEnum, i1 | i2 | ... | in }
-            os.printf("\tnew SubtargetFeatureKV(\"%s\"", commandLineName);
+            os.printf("\t\tnew SubtargetFeatureKV(\"%s\"", commandLineName);
             os.printf("\"%s\", ", desc);
             os.printf("%s, ", name);
 
@@ -108,7 +108,7 @@ public class SubtargetEmitter extends TableGenBackend
         }
 
         // End of feature table.
-        os.printf("};\n");
+        os.printf("\t};\n");
     }
 
     /**
@@ -121,8 +121,8 @@ public class SubtargetEmitter extends TableGenBackend
 
         processorList.sort(LessRecord);
 
-        os.printf( "// Sorted (by key) array of values for CPU subtype.\n" +
-                "public static final SubtargetFeatureKV[] subTypeKV = {\n");
+        os.printf( "\t// Sorted (by key) array of values for CPU subtype.\n" +
+                "\tpublic static final SubtargetFeatureKV[] subTypeKV = {\n");
 
         // For each processor.
         for (int i = 0, e = processorList.size(); i != e; i++)
@@ -133,7 +133,7 @@ public class SubtargetEmitter extends TableGenBackend
             ArrayList<Record> featureList = processor.getValueAsListOfDefs("Features");
 
             // Emit as { "cpu", "description", f1 | f2 | ... fn },
-            os.printf("\tnew SubtargetFeatureKV(\"%s\", \"Select the %s processor\", ",
+            os.printf("\t\tnew SubtargetFeatureKV(\"%s\", \"Select the %s processor\", ",
                     name, name);
             if (featureList.isEmpty())
                 os.print("0");
@@ -149,12 +149,12 @@ public class SubtargetEmitter extends TableGenBackend
             // The "0" is for the "implies" section of this data structure.
             os.printf(", 0)");
 
-            if (++i < e) os.printf(",");
+            if (i < e - 1) os.printf(",");
             os.println();
         }
 
         // End processor table
-        os.println("};");
+        os.println("\t};");
     }
 
     /**
@@ -466,13 +466,13 @@ public class SubtargetEmitter extends TableGenBackend
         ArrayList<Record> features = records.getAllDerivedDefinition("SubtargetFeature");
         features.sort(LessRecord);
 
-        os.printf("/**");
-        os.printf(" * Parses features string setting specified subtarget options.");
-        os.println(" */");
-        os.println("public static String parseSubtargetFeatures(String fs, String cpu) {");
-        os.println("\tSubtargetFeatures features = new SubtargetFeatures(fs);");
-        os.println("\tfeatures.setCPUIfNone(cpu);");
-        os.println("\tint bits = features.getBits(subTypeKV,featureKV);");
+        os.printf("\t/**\n");
+        os.printf("\t * Parses features string setting specified subtarget options.\n");
+        os.println("\t */");
+        os.println("\tpublic static String parseSubtargetFeatures(String fs, String cpu) {");
+        os.println("\t\tSubtargetFeatures features = new SubtargetFeatures(fs);");
+        os.println("\t\tfeatures.setCPUIfNone(cpu);");
+        os.println("\t\tint bits = features.getBits(subTypeKV,featureKV);");
 
         for (int i = 0; i < features.size(); i++)
         {
@@ -483,25 +483,25 @@ public class SubtargetEmitter extends TableGenBackend
 
             if (value.equals("true") || value.equals("false"))
             {
-                os.printf("\tif ((bits & %s) != 0)", instance);
-                os.printf("\t\t%s = %s;\n", attribute, value);
+                os.printf("\t\tif ((bits & %s) != 0)\n", instance);
+                os.printf("\t\t\t%s = %s;\n", attribute, value);
             }
             else
             {
-                os.printf("\tif ((bits & %s) != 0 && %s < %s)", instance, attribute, value);
-                os.printf("\t\t%s = %s;\n", attribute, value);
+                os.printf("\t\tif ((bits & %s) != 0 && %s < %s)\n", instance, attribute, value);
+                os.printf("\t\t\t%s = %s;\n", attribute, value);
             }
         }
 
         if (hasItrineraries)
         {
             os.println();
-            os.print("\tInstrItinerary itinerary = (InstrItinerary)" +
-                    "\tfeatures.getInfo(procItinKV);\n" +
-                    "\tInstrItins = instrItineraryData(stages, operandCycles, itinerary);\n");
+            os.print("\t\tInstrItinerary itinerary = (InstrItinerary)" +
+                    "\t\tfeatures.getInfo(procItinKV);\n" +
+                    "\t\tInstrItins = instrItineraryData(stages, operandCycles, itinerary);\n");
         }
 
-        os.printf("\treturn Features.getCPU();\n}\n");
+        os.printf("\t\treturn Features.getCPU();\n\t}\n");
     }
 
     public SubtargetEmitter(RecordKeeper r)
@@ -526,11 +526,11 @@ public class SubtargetEmitter extends TableGenBackend
             emitSourceFileHeaderComment("Subtarget Enumeration Source Fragment", os);
             String className = target + "GenSubtarget";
 
-            os.printf("import backend.target.SubtargetFeatureKV;");
-            os.printf("import backend.target.InstrItinerary;");
+            os.printf("import backend.target.SubtargetFeatureKV;\n");
+            os.printf("import backend.target.InstrItinerary;\n\n");
             os.printf("public final class %s {\n", className);
 
-            enumeration(os, "FuncUni", true);
+            enumeration(os, "FuncUnit", true);
             os.println();
 
             enumeration(os, "SubtargetFeature", true);
