@@ -57,13 +57,14 @@ public class CallingConvEmitter extends TableGenBackend
             ArrayList<Record> ccs = records.getAllDerivedDefinition("CallingConv");
             CodeGenTarget target = new CodeGenTarget();
             String className = target.getName() + "GenCallingConv";
-            os.printf("public class %s", className);
+            os.printf("public class %s {\n", className);
 
             // Emit each calling convention description in full.
             for (Record cc : ccs)
             {
                 emitCallingConv(cc, os);
             }
+            os.println("}");
         }
     }
 
@@ -71,7 +72,7 @@ public class CallingConvEmitter extends TableGenBackend
     {
         ListInit ccActions = cc.getValueAsListInit("Actions");
         counter = 0;
-        os.printf("\npublic static bool %s(int valNo, EVT valVT,\n)", cc.getName());
+        os.printf("\n\tpublic static bool %s(int valNo, EVT valVT,\n", cc.getName());
         os.printf(Util.fixedLengthString(cc.getName().length() + 13, ' '));
         os.printf("EVT locVT, CCValAssign.LocInfo locInfo,\n");
         os.printf(Util.fixedLengthString(cc.getName().length() + 13, ' '));
@@ -83,7 +84,7 @@ public class CallingConvEmitter extends TableGenBackend
             os.println();
             emitAction(ccActions.getElementAsRecord(i), 2, os);
         }
-        os.printf("\n\treturn true;\t CC didn't match.\n");
+        os.printf("\n\treturn true;\t// CC didn't match.\n");
         os.println("}\n");
     }
 
@@ -101,7 +102,7 @@ public class CallingConvEmitter extends TableGenBackend
                 for (int i = 0, e = vts.getSize(); i != e; i++)
                 {
                     Record vt = vts.getElementAsRecord(i);
-                    if (i != 0) os.printf(" }} \n\t\t%s", indentStr);
+                    if (i != 0) os.printf(" ||\n%s%s", indentStr, indentStr);
                     os.printf("locVT == %s", MVT.getEnumName(getValueType(vt)));
                 }
             }
@@ -216,11 +217,12 @@ public class CallingConvEmitter extends TableGenBackend
                             indentStr);
 
                 if (align != 0)
-                    os.print(align);
+                    os.printf("%d, ", align);
                 else
                     os.printf("\n%s\tstate.getTarget().getTargetData()" +
                                     ".getABITypeAlignment(locVT.getTypeForEVT(state.getContext()));\n",
                             indentStr);
+                os.println();
                 os.print(indentStr);
                 os.printf("state.addLoc(CCValAssign.getMem(valNo, valVT, offset%d, locVT, locInfo));\n", counter);
                 os.print(indentStr);
@@ -232,7 +234,7 @@ public class CallingConvEmitter extends TableGenBackend
                 os.printf("%slocVT = %s;\n", indentStr, MVT.getEnumName(getValueType(destTy)));
                 os.printf("%sif (argFlags.isSExt())\n", indentStr);
                 os.printf("%s%slocInfo = CCValueAssign.SExt;\n", indentStr, indentStr);
-                os.printf("%selse if (argFlags.isZExt()\n)", indentStr);
+                os.printf("%selse if (argFlags.isZExt())\n", indentStr);
                 os.printf("%s%slocInfo = CCValAssign.ZExt;\n", indentStr, indentStr);
                 os.printf("%selse\n", indentStr);
                 os.printf("%s%slocInfo = CCValAssign.AExt;\n", indentStr, indentStr);

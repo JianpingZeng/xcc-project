@@ -420,6 +420,15 @@ public final class FastISelEmitter extends TableGenBackend
                 memo.subRegNo = (byte)subRegNo;
                 memo.physRegs = physRegInputs;
 
+                if (!simplePatterns.containsKey(operands))
+                    simplePatterns.put(operands, new HashMap<>());
+                if (!simplePatterns.get(operands).containsKey(opcodeName))
+                    simplePatterns.get(operands).put(opcodeName, new HashMap<>());
+                if (!simplePatterns.get(operands).get(opcodeName).containsKey(vt))
+                    simplePatterns.get(operands).get(opcodeName).put(vt, new HashMap<>());
+                if (!simplePatterns.get(operands).get(opcodeName).get(vt).containsKey(retVT))
+                    simplePatterns.get(operands).get(opcodeName).get(vt).put(retVT, new HashMap<>());
+
                 assert !simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck)
                         :"Duplicate pattern!";
                 simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).put(predicateCheck, memo);
@@ -432,18 +441,20 @@ public final class FastISelEmitter extends TableGenBackend
         public void printFunctionDefinitions(PrintStream os)
         {
             // Now emit code for all the patterns that we collected.
+            // int idx = 0;
             for (Map.Entry<OperandsSignature, HashMap<String, HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>>>>
                     pair : simplePatterns.entrySet())
             {
                 OperandsSignature operands = pair.getKey();
                 HashMap<String, HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>>> otm = pair.getValue();
 
+                // os.println("// " + (idx++));
                 for (Map.Entry<String, HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>>> pair2 : otm.entrySet())
                 {
                     String opcode = pair2.getKey();
                     HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>> tm = pair2.getValue();
 
-                    os.printf("// FastEmit functions for %s.\n", opcode);
+                    os.printf("// FastEmit functions for %s.", opcode);
                     os.println();
 
                     // Emit one function for each opcode,type pair.
@@ -458,7 +469,9 @@ public final class FastISelEmitter extends TableGenBackend
                                 int retVT = pair4.getKey();
                                 HashMap<String, InstructionMemo> pm = pair4.getValue();
                                 boolean hasPred = false;
-                                os.printf("int fastEmit%s%s%s", opcode, MVT.getName(vt), MVT.getName(retVT));
+                                os.printf("int fastEmit_%s_%s_%s", getLegalCName(opcode),
+                                        getLegalCName(MVT.getName(vt)),
+                                        getLegalCName(MVT.getName(retVT)));
                                 operands.printManglingSuffix(os);
                                 os.printf("(");
                                 operands.printParameters(os);
@@ -466,7 +479,6 @@ public final class FastISelEmitter extends TableGenBackend
 
                                 // Emit code for each possible instruction. There may be
                                 // multiple if there are subtarget concerns.
-
                                 for (Map.Entry<String, InstructionMemo> pi : pm.entrySet())
                                 {
                                     String predicateCheck = pi.getKey();
@@ -497,7 +509,7 @@ public final class FastISelEmitter extends TableGenBackend
                                         }
                                     }
 
-                                    os.printf("\treturn fastEmitInst");
+                                    os.printf("\t\treturn fastEmitInst_");
                                     if (memo.subRegNo == ~0)
                                     {
                                         operands.printManglingSuffix(os, memo.physRegs);
@@ -528,7 +540,9 @@ public final class FastISelEmitter extends TableGenBackend
                             });
 
                             // Emit one function for the type that demultiplexes on return type.
-                            os.printf("int fastEmit%s%s", opcode, MVT.getName(vt));
+                            os.printf("int fastEmit_%s_%s_",
+                                    getLegalCName(opcode),
+                                    getLegalCName(MVT.getName(vt)));
                             operands.printManglingSuffix(os);
                             os.print("(MVT retVT");
                             if (!operands.isEmpty())
@@ -540,9 +554,11 @@ public final class FastISelEmitter extends TableGenBackend
                                     .entrySet())
                             {
                                 int retVT = ri.getKey();
-                                os.printf("\tcase %s: return fastEmit%s%s%s",
-                                        MVT.getName(retVT), opcode, MVT.getName(vt),
-                                        MVT.getName(retVT));
+                                os.printf("\tcase %s: return fastEmit_%s_%s_%s_",
+                                        getLegalCName(MVT.getName(retVT)),
+                                        getLegalCName(opcode),
+                                        getLegalCName(MVT.getName(vt)),
+                                        getLegalCName(MVT.getName(retVT)));
                                 operands.printManglingSuffix(os);
                                 os.print("(");
                                 operands.printArguments(os);
@@ -553,8 +569,9 @@ public final class FastISelEmitter extends TableGenBackend
                         else
                         {
                             // Non-variadic return type.
-                            os.printf("int fastEmit%s%s",
-                                    opcode, MVT.getName(vt));
+                            os.printf("int fastEmit_%s_%s_",
+                                    getLegalCName(opcode),
+                                    getLegalCName(MVT.getName(vt)));
 
                             operands.printManglingSuffix(os);
                             os.printf("(MVT retVT");
@@ -563,7 +580,7 @@ public final class FastISelEmitter extends TableGenBackend
                             operands.printParameters(os);
                             os.printf(") {\n");
 
-                            os.printf("\tif(retVT.simpleVT != %s)\n\treturn 0;\n",
+                            os.printf("\tif(retVT.simpleVT != %s)\n\t\treturn 0;\n",
                                     MVT.getName(rm.entrySet().iterator().next().getKey()));
 
                             HashMap<String, InstructionMemo> pm = rm.entrySet().iterator().next().getValue();
@@ -599,7 +616,7 @@ public final class FastISelEmitter extends TableGenBackend
                                     }
                                 }
 
-                                os.printf("\\treturn fastEmitInst");
+                                os.printf("\treturn fastEmitInst_");
 
                                 if (memo.subRegNo == ~0)
                                 {
@@ -629,9 +646,9 @@ public final class FastISelEmitter extends TableGenBackend
                     }
 
                     // Emit one function for the opcode that demultiplexes based on the type.
-                    os.printf("int fastEmit%s", opcode);
+                    os.printf("int fastEmit_%s_", getLegalCName(opcode));
                     operands.printManglingSuffix(os);
-                    os.printf("MVT vt, MVT retVT");
+                    os.printf("(MVT vt, MVT retVT");
                     if (!operands.isEmpty())
                         os.print(", ");
 
@@ -641,9 +658,12 @@ public final class FastISelEmitter extends TableGenBackend
                     tm.keySet().forEach(vt->
                     {
                         String typeName = MVT.getName(vt);
-                        os.printf("\tcase %s: return fastEmit%s%s", typeName, opcode, typeName);
+                        os.printf("\tcase %s: return fastEmit_%s_%s_",
+                                typeName,
+                                getLegalCName(opcode),
+                                getLegalCName(typeName));
                         operands.printManglingSuffix(os);
-                        os.printf("retVT");
+                        os.printf("(retVT");
                         if (!operands.isEmpty())
                             os.printf(", ");
                         operands.printArguments(os);
@@ -656,14 +676,14 @@ public final class FastISelEmitter extends TableGenBackend
                     os.println();
                 }
 
-                os.printf("//Top level FastEmit function.\n");
+                os.printf("//Top level FastEmit function.");
                 os.println();
 
                 // Emit one function for the operand signature that demultiplexes based
                 // on opcode and type.
-                os.printf("int fastEmit");
+                os.printf("int fastEmit_");
                 operands.printManglingSuffix(os);
-                os.printf("MVT vt, MVT retVT, int opcode");
+                os.printf("(MVT vt, MVT retVT, int opcode");
                 if (!operands.isEmpty())
                     os.printf(", ");
 
@@ -672,7 +692,9 @@ public final class FastISelEmitter extends TableGenBackend
                 os.printf("\tswitch (opcode) {\n");
                 otm.keySet().forEach(opcode->
                 {
-                    os.printf("\tcase %s: return fastEmit%s", opcode, opcode);
+                    os.printf("\tcase %s: return fastEmit_%s_",
+                            opcode.replaceAll("::", "\\."),
+                            getLegalCName(opcode));
                     operands.printManglingSuffix(os);
                     os.printf("(vt, retVT");
                     if (!operands.isEmpty())
@@ -692,5 +714,10 @@ public final class FastISelEmitter extends TableGenBackend
     public static String getOpcodeName(Record r, CodeGenDAGPatterns cgp)
     {
         return cgp.getSDNodeInfo(r).getEnumName();
+    }
+
+    public static String getLegalCName(String originName)
+    {
+        return originName.replaceAll("::", "_").replaceAll("\\.", "_");
     }
 }
