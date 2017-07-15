@@ -43,8 +43,13 @@ public final class TableGen
         GenRegisterDesc,
         GenInstrNames,
         GenInstrDesc,
+        GenCallingConv,
         GenAsmPrinter,
         PrintRecords,
+        GenDAGISel,
+        GenFastISel,
+        GenSubtarget,
+
     }
 
     private static Opt<ActionType> action = new Opt<ActionType>(
@@ -59,10 +64,18 @@ public final class TableGen
                             "Generates instruction names"),
                     new ValueClass.Entry<>(GenInstrDesc, "gen-instr-desc",
                             "Generates instruction descriptions"),
+                    new ValueClass.Entry<>(GenCallingConv, "gen-callingconv",
+                            "Generate calling convention descriptions"),
                     new ValueClass.Entry<>(GenAsmPrinter, "gen-asm-printer",
                             "Generates assembly printer"),
                     new ValueClass.Entry<>(PrintRecords, "print-records",
-                            "Print all records to stdout (default)")
+                            "Print all records to stdout (default)"),
+                    new ValueClass.Entry<>(GenDAGISel, "gen-dag-isel",
+                            "Generate a DAG instruction selector"),
+                    new ValueClass.Entry<>(GenFastISel, "gen-fast-isel",
+                            "Generate a \"fast\" instruction selector"),
+                    new ValueClass.Entry<>(GenSubtarget, "gen-subtarget",
+                            "Generate subtarget enumerations")
             ));
 
     private static StringOpt outputFileName = new StringOpt(
@@ -117,8 +130,21 @@ public final class TableGen
                 case GenInstrDesc:
                     new InstrInfoEmitter(records).run(outputFile);
                     break;
+                case GenCallingConv:
+                    new CallingConvEmitter(records).run(outputFile);
+                    break;
                 case GenAsmPrinter:
                     new AsmWriterEmitter().run(outputFile);
+                    break;
+                case GenDAGISel:
+                    // TODO: 17-7-14
+                    assert false:"Current DAGIsel not supported!";
+                    break;
+                case GenFastISel:
+                    new FastISelEmitter(records).run(outputFile);
+                    break;
+                case GenSubtarget:
+                    new SubtargetEmitter(records).run(outputFile);
                     break;
                 default:
                     assert false : "Invalid action type!";

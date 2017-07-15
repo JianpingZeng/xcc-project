@@ -151,14 +151,14 @@ public final class RegisterInfoEmitter extends TableGenBackend
     /**
      * Sorting predicate to sort record by name.
      */
-    private static class LessRecord implements Comparator<Record>
+    public static Comparator<Record> LessRecord = new Comparator<Record>()
     {
         @Override
         public int compare(Record o1, Record o2)
         {
             return o1.getName().compareTo(o2.getName());
         }
-    }
+    };
 
     /**
      * Sorting predicate to sort the record by theire name field.
@@ -404,7 +404,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
                 {
                     Record reg = li.get(i);
                     if (!registerAlias.containsKey(r))
-                        registerAlias.put(r, new TreeSet<>(new LessRecord()));
+                        registerAlias.put(r, new TreeSet<>(LessRecord));
 
                     if (registerAlias.get(r).contains(reg))
                     {
@@ -429,7 +429,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
                 Record r = cgr.theDef;
                 ArrayList<Record> list = r.getValueAsListOfDefs("SubRegs");
                 if (!registerSubRegs.containsKey(r))
-                    registerSubRegs.put(r, new TreeSet<>(new LessRecord()));
+                    registerSubRegs.put(r, new TreeSet<>(LessRecord));
 
                 for (Record subreg : list)
                 {
@@ -540,7 +540,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
             RegNo.put(regs.get(i).theDef, i);
 
             if (!registerSuperRegs.containsKey(regs.get(i).theDef))
-                registerSuperRegs.put(regs.get(i).theDef, new TreeSet<>(new LessRecord()));
+                registerSuperRegs.put(regs.get(i).theDef, new TreeSet<>(LessRecord));
 
             NumSupRegs += registerSuperRegs.get(regs.get(i).theDef).size();
         }
@@ -555,7 +555,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         {
             Record R = regs.get(i).theDef;
             if (!registerSuperRegs.containsKey(R))
-                registerSuperRegs.put(R, new TreeSet<>(new LessRecord()));
+                registerSuperRegs.put(R, new TreeSet<>(LessRecord));
 
             for (Record RJ : registerSuperRegs.get(R))
             {
@@ -628,7 +628,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         {
             RegNo.put(regs.get(i).theDef, i);
             if (!registerAlias.containsKey(regs.get(i).theDef))
-                registerAlias.put(regs.get(i).theDef, new TreeSet<>(new LessRecord()));
+                registerAlias.put(regs.get(i).theDef, new TreeSet<>(LessRecord));
 
             NumAliases += registerAlias.get(regs.get(i).theDef).size();
         }
@@ -644,7 +644,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         {
             Record R = regs.get(i).theDef;
             if (!registerAlias.containsKey(R))
-                registerAlias.put(R, new TreeSet<>(new LessRecord()));
+                registerAlias.put(R, new TreeSet<>(LessRecord));
 
             for (Record RJ : registerAlias.get(R)) 
             {
@@ -921,7 +921,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
         }
 
         if (!subRegs.containsKey(r))
-            subRegs.put(r, new TreeSet<>(new LessRecord()));
+            subRegs.put(r, new TreeSet<>(LessRecord));
 
         if (!subRegs.get(r).add(s))
             return;
@@ -929,9 +929,9 @@ public final class RegisterInfoEmitter extends TableGenBackend
         addSuperReg(s, r, subRegs, superRegs, aliases);
 
         if (!aliases.containsKey(r))
-            aliases.put(r, new TreeSet<>(new LessRecord()));
+            aliases.put(r, new TreeSet<>(LessRecord));
         if (!aliases.containsKey(s))
-            aliases.put(s, new TreeSet<>(new LessRecord()));
+            aliases.put(s, new TreeSet<>(LessRecord));
 
         aliases.get(r).add(s);
         aliases.get(s).add(r);
@@ -958,14 +958,14 @@ public final class RegisterInfoEmitter extends TableGenBackend
         }
 
         if (!superRegs.containsKey(r))
-            superRegs.put(r, new TreeSet<>(new LessRecord()));
+            superRegs.put(r, new TreeSet<>(LessRecord));
 
         if (!subRegs.containsKey(s))
-            subRegs.put(s, new TreeSet<>(new LessRecord()));
+            subRegs.put(s, new TreeSet<>(LessRecord));
         if (!aliases.containsKey(r))
-            aliases.put(r, new TreeSet<>(new LessRecord()));
+            aliases.put(r, new TreeSet<>(LessRecord));
         if (!aliases.containsKey(s))
-            aliases.put(s, new TreeSet<>(new LessRecord()));
+            aliases.put(s, new TreeSet<>(LessRecord));
 
         if (!superRegs.get(r).add(s))
             return;
