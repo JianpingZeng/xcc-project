@@ -198,4 +198,14 @@ public class MachineBasicBlock
 		     i--);
 		return i;
 	}
+
+	public void remove(MachineInstr miToDelete)
+	{
+		insts.remove(miToDelete);
+	}
+
+	public boolean isLayoutSuccessor(MachineBasicBlock mbb)
+	{
+		return mbb.next == mbb;
+	}
 }

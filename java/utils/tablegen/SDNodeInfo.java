@@ -375,7 +375,7 @@ public final class SDNodeInfo
                         }
                         EVT ivt = new EVT(otherOperand.getTypeNum(0));
                         ivt = ivt.getVectorElementType();
-                        return nodeToApply.updateNodeType(ivt.getSimpleVT().simpleTy, pattern);
+                        return nodeToApply.updateNodeType(ivt.getSimpleVT().simpleVT, pattern);
                     }
                     return false;
                 }

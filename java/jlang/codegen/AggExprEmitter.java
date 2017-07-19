@@ -275,7 +275,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
         {
             backend.type.PointerType ptType = (backend.type.PointerType) destPtr
                     .getType();
-            ArrayType atType = (ArrayType) ptType.getElemType();
+            ArrayType atType = (ArrayType) ptType.getElementType();
 
             int numInitElements = expr.getNumInits();
             if (numInitElements > 0)

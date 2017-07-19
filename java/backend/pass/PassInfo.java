@@ -7,7 +7,7 @@ package backend.pass;
 public final class PassInfo
 {
     /**
-     * The name of pass.
+     * The asmName of pass.
      */
     private String passName;
     /**

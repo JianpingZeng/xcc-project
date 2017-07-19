@@ -17,7 +17,6 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
-import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetRegisterInfo;
 import backend.value.Function;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -153,23 +152,20 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
     public void printOperand(MachineInstr mi, int opNo, String modifier)
     {
         MachineOperand mo = mi.getOperand(opNo);
-        TargetRegisterInfo regInfo = tm.getRegInfo();
+        TargetRegisterInfo regInfo = tm.getRegisterInfo();
         switch (mo.getType())
         {
-            case MO_VirtualRegister:
-            case MO_MachineRegister:
+            case MO_Register:
             {
-                assert mo.isPhysicalRegister();
                 os.print("%");
                 os.print(regInfo.getName(mo.getReg()).toLowerCase());
                 return;
             }
-            case MO_SignExtendedImmed:
-            case MO_UnextendedImmed:
+            case MO_Immediate:
             {
                 if (modifier == null || modifier.equals("debug"))
                     os.print("$");
-                os.print((int)mo.getImmedValue());
+                os.print((int)mo.getImm());
                 return;
             }
             case MO_MachineBasicBlock:
@@ -182,15 +178,6 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
                 os.print(mbbNumber.get(mbb));
                 os.print("\t#");
                 os.print(mbb.getBasicBlock().getName());
-                return;
-            }
-            case MO_PCRelativeDisp:
-            {
-                assert mbbNumber.contains(mo.getVRegValue()):"Could find a BB in the numberForBB";
-                os.print(".LBB");
-                os.print(mbbNumber.get(mo.getVRegValue()));
-                os.print("\t#PC rel: ");
-                os.print(mo.getVRegValue().getName());
                 return;
             }
             case MO_GlobalAddress:
@@ -221,16 +208,16 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
         assert isMem(mi, opNo) : "Invalid memory reference!";
 
         MachineOperand baseReg = mi.getOperand(opNo);
-        int scaleVal = (int) mi.getOperand(opNo + 1).getImmedValue();
+        int scaleVal = (int) mi.getOperand(opNo + 1).getImm();
         MachineOperand indexReg = mi.getOperand(opNo + 2);
         MachineOperand disp = mi.getOperand(opNo + 3);
 
         if (baseReg.isFrameIndex())
         {
             os.print("[frame slot #");
-            os.print(baseReg.getFrameIndex());
-            if (disp.getImmedValue() != 0)
-                os.print("+" + disp.getImmedValue());
+            os.print(baseReg.getIndex());
+            if (disp.getImm() != 0)
+                os.print("+" + disp.getImm());
             os.print("]");
             return;
         }
@@ -241,7 +228,7 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
         }
         else
         {
-            int dispVal = (int)disp.getImmedValue();
+            int dispVal = (int)disp.getImm();
             if (dispVal != 0 || (indexReg.getReg() == 0) && baseReg.getReg() == 0)
                 os.print(dispVal);
         }

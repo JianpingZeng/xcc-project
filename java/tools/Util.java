@@ -351,7 +351,7 @@ public class Util
 	public static boolean isAbsolutePath(String path)
 	{
 	    assert !(path == null || path.isEmpty());
-		if (System.getProperties().getProperty("os.name").startsWith("Windows"))
+		if (System.getProperties().getProperty("os.asmName").startsWith("Windows"))
         {
             // Windows operation system.
             return path.startsWith("[A-Za-z]:");
@@ -400,5 +400,10 @@ public class Util
 			    return i;
 
 	    return -1;
+    }
+
+    public static boolean isInt32(long val)
+    {
+    	return (int)val == val;
     }
 }

@@ -92,7 +92,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
 
                         for (int j = mi.getNumOperands() - 1; j >= 2; j-=2)
                         {
-                            if (mi.getOperand(j).isMachineBasicBlock()
+                            if (mi.getOperand(j).isMBB()
                                     && mi.getOperand(j).getMBB() == mbb)
                             {
                                 mi.removeOperand(j);

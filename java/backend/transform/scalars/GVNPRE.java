@@ -815,7 +815,7 @@ public final class GVNPRE implements FunctionPass
     {
         if (bb.getTerminator().getNumOfSuccessors() == 1)
         {
-            BasicBlock succ = bb.getTerminator().suxAt(0);
+            BasicBlock succ = bb.getTerminator().getSuccessor(0);
             if (succ != bb && !visited.contains(succ))
             {
                 return true;
@@ -827,7 +827,7 @@ public final class GVNPRE implements FunctionPass
         }
         else if (bb.getTerminator().getNumOfSuccessors() > 1)
         {
-            BasicBlock first = bb.getTerminator().suxAt(0);
+            BasicBlock first = bb.getTerminator().getSuccessor(0);
             for (Value val : anticipatibleIn.get(first).getContents())
             {
                 anticOut.insert(val);
@@ -837,7 +837,7 @@ public final class GVNPRE implements FunctionPass
             for (int i = 1; i < bb.getTerminator().getNumOfSuccessors(); i++)
             {
                 ValueNumberedSet succAnticIn = anticipatibleIn.
-                        get(bb.getTerminator().suxAt(i));
+                        get(bb.getTerminator().getSuccessor(i));
 
                 ArrayList<Value> temps = new ArrayList<>();
                 for (Value val : anticOut.getContents())

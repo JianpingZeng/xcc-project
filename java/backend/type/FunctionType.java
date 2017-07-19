@@ -130,7 +130,7 @@ public class FunctionType extends DerivedType
         return true;
     }
 
-    public boolean isVarArgs()
+    public boolean isVarArg()
     {
         return isVarArgs;
     }

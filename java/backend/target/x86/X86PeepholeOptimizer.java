@@ -90,9 +90,9 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
             case X86InstrNames.XORri16:
             case X86InstrNames.XORri32:
                 assert curMI.getNumOperands() == 3:"There should have 3 opernds!";
-                if (curMI.getOperand(2).isImmediate())
+                if (curMI.getOperand(2).isImm())
                 {
-                    long val = curMI.getOperand(2).getImmedValue();
+                    long val = curMI.getOperand(2).getImm();
                     // If the value is the same when signed extended from 8 bits
                     if (val == (byte)val)
                     {

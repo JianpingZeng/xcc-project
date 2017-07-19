@@ -282,7 +282,7 @@ public final class IndVarSimplify implements LoopPass
         Value exitCount = rewriter.expandCodeFor(rhs, indVal.getType(), bi);
 
         Predicate opcode;
-        if (loop.contains(bi.suxAt(0)))
+        if (loop.contains(bi.getSuccessor(0)))
             opcode = Predicate.ICMP_NE;
         else
             opcode = Predicate.ICMP_EQ;

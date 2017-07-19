@@ -397,7 +397,7 @@ public final class CodeGenFunction
     {
         Type srcTy = src.getType();
         // The destination must be pointer to a value of type Element type.
-        Type destTy = ((PointerType)destPtr.getType()).getElemType();
+        Type destTy = ((PointerType)destPtr.getType()).getElementType();
 
         long srcSize = cgf.generator.getTargetData().getTypeAllocSize(srcTy);
         long destSize = cgf.generator.getTargetData().getTypeAllocSize(destTy);;
@@ -852,7 +852,7 @@ public final class CodeGenFunction
 		if (inst == null || !inst.isUnconditional())
 			return;
 
-		bb.replaceAllUsesWith(inst.suxAt(0));
+		bb.replaceAllUsesWith(inst.getSuccessor(0));
 		inst.eraseFromBasicBlock();
 		bb.eraseFromParent();
 	}
@@ -1424,7 +1424,7 @@ public final class CodeGenFunction
 			// Bool can have different representation in memory than in registers.
 			Type srcTy = val.getType();
 			PointerType destPtr = (PointerType) addr.getType();
-			if (destPtr.getElemType() != srcTy)
+			if (destPtr.getElementType() != srcTy)
 			{
 				Type memTy = PointerType.getUnqual(srcTy);
 				addr = builder.createBitCast(addr, memTy, "storetmp");
@@ -1661,7 +1661,7 @@ public final class CodeGenFunction
 			BranchInst bi = null;
 			if (use.getValue() instanceof BranchInst &&
 					(bi = (BranchInst)use.getValue()).isUnconditional()
-					&& bi.suxAt(0) == returnBlock)
+					&& bi.getSuccessor(0) == returnBlock)
 			{
 				// Reset the insertion point and delete the branch.
 				builder.setInsertPoint(bi.getParent());
@@ -1741,7 +1741,7 @@ public final class CodeGenFunction
             Type ty,
             CodeGenFunction cgf)
     {
-        Type srcTy = ((PointerType)srcPtr.getType()).getElemType();
+        Type srcTy = ((PointerType)srcPtr.getType()).getElementType();
         long srcSize = cgf.generator.getTargetData().getTypeAllocSize(srcTy);
         long destSize = cgf.generator.getTargetData().getTypeAllocSize(ty);
 
@@ -1924,7 +1924,7 @@ public final class CodeGenFunction
 			// Bool can have different representation in memory than in registers.
 			final Type srcTy = value.getType();
 			final PointerType desPtr = (PointerType) addr.getType();
-			if (desPtr.getElemType() != srcTy)
+			if (desPtr.getElementType() != srcTy)
 			{
 				Type memTy = PointerType.getUnqual(srcTy);
 				addr = builder.createBitCast(addr, memTy, "storetmp");
@@ -1946,7 +1946,7 @@ public final class CodeGenFunction
 		if (lv.isSimple())
 		{
 			Value ptr = lv.getAddress();
-			Type eltType = ((PointerType) ptr.getType()).getElemType();
+			Type eltType = ((PointerType) ptr.getType()).getElementType();
 
 			// Simple scalar lvalue.
 			if (eltType.isFirstClassType())
@@ -1968,7 +1968,7 @@ public final class CodeGenFunction
 		int bitfieldSize = lv.getBitfieldSize();
 		Value ptr = lv.getBitFieldAddr();
 
-		Type eltType = ((PointerType) ptr.getType()).getElemType();
+		Type eltType = ((PointerType) ptr.getType()).getElementType();
 		int eltTySize = (int)generator.getTargetData().getTypeSizeInBits(eltType);
 
 		int lowBits = Math.min(bitfieldSize, eltTySize - startBit);

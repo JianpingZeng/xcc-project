@@ -1,7 +1,7 @@
 package backend.target.x86;
 
 import backend.codegen.*;
-import backend.codegen.MachineOperand.UseType;
+import backend.codegen.MachineOperand.RegState;
 import backend.value.BasicBlock;
 import backend.utils.InstVisitor;
 import backend.value.Operator;
@@ -160,8 +160,8 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
     private int makeAnotherReg(Type ty)
     {
         assert tm
-                .getRegInfo() instanceof X86RegisterInfo : "Current target doesn't have x86 reg info!";
-        X86RegisterInfo mri = (X86RegisterInfo) tm.getRegInfo();
+                .getRegisterInfo() instanceof X86RegisterInfo : "Current target doesn't have x86 reg info!";
+        X86RegisterInfo mri = (X86RegisterInfo) tm.getRegisterInfo();
         if (ty.getTypeID() == Type.IntegerTyID)
         {
             TargetRegisterClass rc = mri.getRegClassForType(Type.Int32Ty);
@@ -209,7 +209,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
                     nextReg = makeAnotherReg(Type.Int32Ty);
                     // emit an ADD to add fieldOff to the basePtr.
                     bmi(mbb, insertPos++, X86InstrNames.ADDri32, 2, nextReg).
-                            addReg(baseReg, UseType.Use).addZImm(fieldOff);
+                            addReg(baseReg, RegState.Use).addZImm(fieldOff);
                 }
                 // The next type is the member of the structure selected by the
                 // index.
@@ -233,7 +233,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
                         idx = ci.operand(0);
                 }
 
-                ty = sty.getElemType();
+                ty = sty.getElementType();
                 int eltSize = (int) td.getTypeSize(ty);
 
                 // If idxReg is a constant, we don't need to generate mul instr.
@@ -1146,7 +1146,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
             // Each argument takes at least 4 bytes on the stack.
             argOffset += 4;
         }
-        if (f.getFunctionType().isVarArgs())
+        if (f.getFunctionType().isVarArg())
             varArgsFrameIndex = mfi.createFixedObject(1, argOffset);
     }
 
@@ -1230,11 +1230,11 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
                         phiValues.put(predMBB, valReg);
                     }
 
-                    phiMI.addRegOperand(valReg, UseType.Use);
+                    phiMI.addRegOperand(valReg, RegState.Use);
                     phiMI.addMachineBasicBlockOperand(predMBB);
                     if (longPhiMI != null)
                     {
-                        phiMI.addRegOperand(valReg + 1, UseType.Use);
+                        phiMI.addRegOperand(valReg + 1, RegState.Use);
                         phiMI.addMachineBasicBlockOperand(predMBB);
                     }
                 }
@@ -1355,31 +1355,31 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
         BasicBlock nextBB = getBlockAfter(bi.getParent());
 
         // Add the mbb successor.
-        mbb.addSuccessor(mbbMap.get(bi.suxAt(0)));
+        mbb.addSuccessor(mbbMap.get(bi.getSuccessor(0)));
         if (bi.isConditional())
-            mbb.addSuccessor(mbbMap.get(bi.suxAt(1)));
+            mbb.addSuccessor(mbbMap.get(bi.getSuccessor(1)));
 
         if (bi.isUnconditional())
         {
-            if (bi.suxAt(0) != nextBB)
+            if (bi.getSuccessor(0) != nextBB)
                 buildMI(mbb, X86InstrNames.JMP, 1).
-                        addMBB(mbbMap.get(bi.suxAt(0)));
+                        addMBB(mbbMap.get(bi.getSuccessor(0)));
             return null;
         }
 
         int condReg = getReg(bi.getCondition());
         buildMI(mbb, X86InstrNames.TESTrr8, 2).addReg(condReg).addReg(condReg);
-        if (bi.suxAt(1) == nextBB)
+        if (bi.getSuccessor(1) == nextBB)
         {
-            if (bi.suxAt(0) != nextBB)
-                buildMI(mbb, X86InstrNames.JNE, 1).addMBB(mbbMap.get(bi.suxAt(0)));
+            if (bi.getSuccessor(0) != nextBB)
+                buildMI(mbb, X86InstrNames.JNE, 1).addMBB(mbbMap.get(bi.getSuccessor(0)));
         }
         else
         {
-            buildMI(mbb, X86InstrNames.JE, 1).addMBB(mbbMap.get(bi.suxAt(1)));
+            buildMI(mbb, X86InstrNames.JE, 1).addMBB(mbbMap.get(bi.getSuccessor(1)));
 
-            if (bi.suxAt(0) != nextBB)
-                buildMI(mbb, X86InstrNames.JMP, 1).addMBB(mbbMap.get(bi.suxAt(0)));
+            if (bi.getSuccessor(0) != nextBB)
+                buildMI(mbb, X86InstrNames.JMP, 1).addMBB(mbbMap.get(bi.getSuccessor(0)));
         }
         return null;
     }

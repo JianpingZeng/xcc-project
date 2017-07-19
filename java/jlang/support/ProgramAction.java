@@ -7,7 +7,7 @@ package jlang.support;
 public enum ProgramAction
 {
     /**
-     * Specify the output file name.
+     * Specify the output file asmName.
      */
 	OutputFile,
 

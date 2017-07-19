@@ -47,7 +47,7 @@ def isVoid : ValueType<0  , 11>;   // Produces no value
 // in the target machine.  String n will become the "name" of the register.
 class RegisterBase<string n> {
   string Namespace = "";
-  string Name = n;
+  string asmName = n;
 
   // SpillSize - If this value is set to a non-zero value, it is the size in
   // bits of the spill slot required to hold this register.  If this value is
@@ -108,7 +108,7 @@ class RegisterClass<ValueType regType, int alignment, list<Register> regList> {
 // the Target/TargetInstrInfo.h file.
 //
 class Instruction {
-  string Name = "";         // The opcode string for this instruction
+  string asmName = "";         // The opcode string for this instruction
   string Namespace = "";
 
   dag OperandList;          // An dag containing the MI operand list.

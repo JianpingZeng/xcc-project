@@ -364,7 +364,7 @@ public class TargetData implements ImmutablePass
             case Type.ArrayTyID:
             {
                 ArrayType aty = (ArrayType)type;
-                return getTypeAllocSize(aty.getElemType()) * aty.getNumElements() * 8;
+                return getTypeAllocSize(aty.getElementType()) * aty.getNumElements() * 8;
             }
             case Type.StructTyID:
             {
@@ -477,6 +477,23 @@ public class TargetData implements ImmutablePass
         {
             return structSize * 8;
         }
+
+        public long getSizeInBytes()
+        {
+        	return structSize;
+        }
+
+        public long getElementOffset(long idx)
+        {
+        	assert idx >= 0 && idx < memberOffsets.size();
+        	return memberOffsets.get((int) idx);
+        }
+
+        public long getElementOffsetInBits(long idx)
+        {
+	        assert idx >= 0 && idx < memberOffsets.size();
+	        return memberOffsets.get((int) idx) * 8;
+        }
     }
 
 	/**
@@ -501,7 +518,7 @@ public class TargetData implements ImmutablePass
 			case PointerTyID:
 				return abiOrPref ? getPointerABIAlign(): getPointerPrefAlign();
 			case ArrayTyID:
-				return getAlignment(((ArrayType)ty).getElemType(), abiOrPref);
+				return getAlignment(((ArrayType)ty).getElementType(), abiOrPref);
 			case StructTyID:
 			{
 				StructType st = (StructType)ty;
@@ -584,5 +601,10 @@ public class TargetData implements ImmutablePass
 	public long getTypeAllocSize(Type ty)
 	{
 		return roundUpAlignment(getTypeStoreSize(ty), getABITypeAlignment(ty));
+	}
+
+	public int getPrefTypeAlignment(Type type)
+	{
+		return getAlignment(type, false);
 	}
 }

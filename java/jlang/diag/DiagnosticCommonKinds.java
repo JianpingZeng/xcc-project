@@ -5,7 +5,7 @@ import static jlang.diag.Diagnostic.Mapping.*;
 public enum DiagnosticCommonKinds implements DiagnosticCommonKindsTag
 {
 	ERR_EXPECTED_COLON(err_expected_colon, CLASS_ERROR, MAP_ERROR, "expected ':'"),
-	ERR_EXPECTED_NAMESPACE_NAME(err_expected_namespace_name, CLASS_ERROR, MAP_ERROR, "expected namespace name"),
+	ERR_EXPECTED_NAMESPACE_NAME(err_expected_namespace_name, CLASS_ERROR, MAP_ERROR, "expected namespace asmName"),
 	ERR_INVALID_STORAGE_CLASS_IN_FUNC_DECL(err_invalid_storage_class_in_func_decl, CLASS_ERROR, MAP_ERROR, "invalid storage class specifier in function declarator"),
 	ERR_NO_DECLARATORS(err_no_declarators, CLASS_ERROR, MAP_ERROR, "declaration does not declare anything"),
 	ERR_PARAM_REDEFINITION(err_param_redefinition, CLASS_ERROR, MAP_ERROR, "redefinition of parameter %0"),

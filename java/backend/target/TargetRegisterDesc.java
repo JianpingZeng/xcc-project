@@ -30,29 +30,29 @@ public final class TargetRegisterDesc
     /**
      * Assembly language getIdentifier for the register.
      */
+    public String asmName;
+
     public String name;
+
+    public int[] aliasSet;
+
     /**
      * Register Alias Set, described above
      */
     public int[] subRegs;
 
     public int[] superRegs;
-    /**
-     * flags identifying register properties (below).
-     */
-    public int flags;
-    /**
-     * Target Specific flags.
-     */
-    public int tSFlags;
 
-    public TargetRegisterDesc(String Name, int[] SubRegs,
-            int[] SuperRegs, int Flags, int TSFlags)
+    public TargetRegisterDesc(String asmName,
+            String name,
+            int[] as,
+            int[] SubRegs,
+            int[] SuperRegs)
     {
-        name = Name;
+        this.asmName = asmName;
+        this.name = name;
+        aliasSet = as;
         subRegs = SubRegs;
         superRegs = SuperRegs;
-        flags = Flags;
-        tSFlags = TSFlags;
     }
 }

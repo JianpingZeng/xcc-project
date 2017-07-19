@@ -17,7 +17,7 @@
 
 /**
  * This package defines some great useful classes served as managing the
- * information of command line option, like option name, what kind of option,
+ * information of command line option, like option asmName, what kind of option,
  * Positional or Prefix or Normal, the value of this option, e.g. -O -o -g in
  * gcc, parsing the value of each option in the given command line etc.
  * @author Xlous.zeng

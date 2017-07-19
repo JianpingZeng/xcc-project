@@ -12,7 +12,7 @@ import java.util.ArrayList;
  */
 public final class MachineConstantPool
 {
-    private ArrayList<Constant> constantPool;
+    private ArrayList<MachineConstantPoolEntry> constantPool;
     private TargetData td;
     private int poolAlignment;
 
@@ -27,12 +27,19 @@ public final class MachineConstantPool
      * @param c
      * @return
      */
-    public int getConstantPoolIndex(Constant c)
+    public int getConstantPoolIndex(Constant c, int align)
     {
-        for (int i = 0, e = constantPool.size(); i<e; i++)
-            if (constantPool.get(i) == c)
-                return i;
+        assert align != 0 :"Alignment must be specified.";
+        if (align > poolAlignment)
+            poolAlignment = align;
 
+        for (int i = 0, e = constantPool.size(); i<e; i++)
+        {
+            MachineConstantPoolEntry cc = constantPool.get(i);
+            if (cc == c && (cc.getAlignment()
+                    &))
+                return i;
+        }
         constantPool.add(c);
         return constantPool.size()-1;
     }

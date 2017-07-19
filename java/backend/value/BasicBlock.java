@@ -605,7 +605,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		assert index >= 0 && index < getNumSuccessors();
 		TerminatorInst inst = getTerminator();
 		if (inst == null) return null;
-		return inst.suxAt(index);
+		return inst.getSuccessor(index);
 	}
 
 	public int getNumPredecessors()

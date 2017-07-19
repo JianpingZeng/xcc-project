@@ -29,7 +29,7 @@ public final class OptionNameApplicator implements Modifier
     }
 
     /**
-     * Set the name of this option.
+     * Set the asmName of this option.
      * @param opt
      */
     @Override

@@ -123,7 +123,7 @@ public final class CL
         //
         ArrayList<Pair<String, Integer>> PositionalVals = new ArrayList<>();
 
-        // If the program has named positional arguments, and the name has been run
+        // If the program has named positional arguments, and the asmName has been run
         // across, keep track of which positional argument was named.  Otherwise put
         // the positional args into the PositionalVals list...
         Option ActivePositionalArg = null;
@@ -223,8 +223,8 @@ public final class CL
 
                         length = len.get();
                         // If the option is a prefixed option, then the value is simply the
-                        // rest of the name...  so fall through to later processing, by
-                        // setting up the argument name flags and value fields.
+                        // rest of the asmName...  so fall through to later processing, by
+                        // setting up the argument asmName flags and value fields.
                         //
                         if (PGOpt != null && PGOpt.getFormattingFlag() == Prefix)
                         {
@@ -241,7 +241,7 @@ public final class CL
 
                             do
                             {
-                                // Move current arg name out of RealName into RealArgName...
+                                // Move current arg asmName out of RealName into RealArgName...
                                 String RealArgName = RealName.substring(0, length);
                                 RealName = RealName.substring(length);
 
@@ -448,7 +448,7 @@ public final class CL
 
     /**
      * Scanning the registered option list for obtaining the positional option
-     * and a map from option name to option object.
+     * and a map from option asmName to option object.
      *
      * @param positionalOpts
      * @param optionsMap
@@ -520,7 +520,7 @@ public final class CL
             ++i;
 
         int begin = i, end = i;
-        // Scan till end of argument name.
+        // Scan till end of argument asmName.
         while (end < arg.length() && arg.charAt(end) != '=')
             ++end;
 
@@ -630,8 +630,8 @@ public final class CL
     };
 
     // getOptionPred - Check to see if there are any options that satisfy the
-    // specified predicate with names that are the prefixes in name.  This is
-    // checked by progressively stripping characters off of the name, checking to
+    // specified predicate with names that are the prefixes in asmName.  This is
+    // checked by progressively stripping characters off of the asmName, checking to
     // see if there options that satisfy the predicate.  If we find one, return it,
     // otherwise return null.
     //

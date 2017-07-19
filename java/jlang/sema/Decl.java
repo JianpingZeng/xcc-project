@@ -460,7 +460,7 @@ public abstract class Decl
         /**
          * et the identifier that names this declaration,
          * if there is one. This will return NULL if this declaration has
-         * no name
+         * no asmName
          * @return
          */
         public IdentifierInfo getIdentifier()
@@ -534,7 +534,7 @@ public abstract class Decl
         public boolean declarationReplaces(NamedDecl oldDecl)
         {
             assert getDeclName().equals(oldDecl.getDeclName()) :
-                    "Declaration name mismatch!";
+                    "Declaration asmName mismatch!";
             if (this instanceof FunctionDecl)
             {
                 return ((Decl.FunctionDecl)this).getPreviousDeclaration().equals(oldDecl);
@@ -1939,7 +1939,7 @@ public abstract class Decl
 	    /**
          * Whether this is an anonymous struct or union.
          * To be an anonymous struct or union, it must have been
-         * declared without a name and there must be no objects of this
+         * declared without a asmName and there must be no objects of this
          * type declared, e.g.,
          * <code>
          *   union { int i; float f; };

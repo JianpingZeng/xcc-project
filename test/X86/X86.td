@@ -50,8 +50,8 @@ def FeatureFMA4    : SubtargetFeature<"fma4", "HasFMA4", "true",
 // X86 processors supported.
 //===----------------------------------------------------------------------===//
 
-class Proc<string Name, list<SubtargetFeature> Features>
- : Processor<Name, NoItineraries, Features>;
+class Proc<string asmName, list<SubtargetFeature> Features>
+ : Processor<asmName, NoItineraries, Features>;
 
 def : Proc<"generic",         []>;
 def : Proc<"i386",            []>;
@@ -156,7 +156,7 @@ def X86InstrInfo : InstrInfo {
 //===----------------------------------------------------------------------===//
 
 // Commented by Xlous zeng on 2017.6.19
-// include "X86CallingConv.td"
+include "X86CallingConv.td"
 
 
 //===----------------------------------------------------------------------===//

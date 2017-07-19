@@ -268,7 +268,7 @@ public class Triple
     }
 
     /**
-     * Set the architecture (first) component of the triple by name.
+     * Set the architecture (first) component of the triple by asmName.
      * @param str
      */
     public void setArchName(String str)
@@ -284,7 +284,7 @@ public class Triple
 
     /**
      * Set the vendor (second) component of the triple
-     /// by name.
+     /// by asmName.
      * @param str
      */
     public void setVendorName(String str)
@@ -294,7 +294,7 @@ public class Triple
 
     /**
      * Set the operating system (third) component of the
-     /// triple by name.
+     /// triple by asmName.
      * @param str
      */
     public void setOSName(String str)
@@ -308,7 +308,7 @@ public class Triple
 
     /**
      * Set the optional environment (fourth)
-     /// component of the triple by name.
+     /// component of the triple by asmName.
      * @param str
      */
     public void setEnvironmentName(String str)
@@ -326,7 +326,7 @@ public class Triple
         setTriple(getArchName() + "-" + getVendorName() + "-" + str);
     }
 
-    /// getArchTypeName - Get the canonical name for the \arg Kind
+    /// getArchTypeName - Get the canonical asmName for the \arg Kind
     /// architecture.
     public static String getArchTypeName(ArchType kind)
     {
@@ -340,7 +340,7 @@ public class Triple
         }
     }
 
-    /// getVendorTypeName - Get the canonical name for the \arg Kind
+    /// getVendorTypeName - Get the canonical asmName for the \arg Kind
     /// vendor.
     public static String getVendorTypeName(VendorType kind)
     {
@@ -354,7 +354,7 @@ public class Triple
     }
 
 
-    /// getOSTypeName - Get the canonical name for the \arg Kind vendor.
+    /// getOSTypeName - Get the canonical asmName for the \arg Kind vendor.
     public static String getOSTypeName(OSType Kind)
     {
         switch (Kind)
@@ -366,7 +366,7 @@ public class Triple
     }
 
     /// getArchTypeForLLVMName - The canonical type for the given LLVM
-    /// architecture name (e.g., "x86").
+    /// architecture asmName (e.g., "x86").
     public static ArchType getArchTypeForLLVMName(String str)
     {
         switch (str)

@@ -89,7 +89,7 @@ public final class BreakCriticalEdge implements FunctionPass
         if (ti.getNumOfSuccessors() == 1)
             return false;
 
-        BasicBlock dest = ti.suxAt(succNum);
+        BasicBlock dest = ti.getSuccessor(succNum);
         PredIterator<BasicBlock> predItr = dest.predIterator();
 
         assert predItr.hasNext() : "No preds";
@@ -132,7 +132,7 @@ public final class BreakCriticalEdge implements FunctionPass
         if (!isCriticalEdge(ti, succNum, mergeIdenticalEdge))
             return false;
         BasicBlock tibb = ti.getParent();
-        BasicBlock destBB = ti.suxAt(succNum);
+        BasicBlock destBB = ti.getSuccessor(succNum);
         Function f = tibb.getParent();
 
         // Create a new block, linking it into the CFG.
@@ -162,7 +162,7 @@ public final class BreakCriticalEdge implements FunctionPass
         {
             for (int i = succNum+1, e = ti.getNumOfSuccessors(); i < e; i++)
             {
-                if (ti.suxAt(i) != destBB)
+                if (ti.getSuccessor(i) != destBB)
                     continue;
 
                 destBB.removePredecessor(tibb);

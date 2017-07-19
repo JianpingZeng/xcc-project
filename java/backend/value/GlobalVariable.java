@@ -12,6 +12,8 @@ public class GlobalVariable extends GlobalValue
      * Is this a global constant.
      */
     private boolean isConstantGlobal;
+    private boolean threadLocal;
+
     /**
      * Constructs a new instruction representing the specified constant.
      *
@@ -88,5 +90,10 @@ public class GlobalVariable extends GlobalValue
     public GlobalVariable clone()
     {
         return (GlobalVariable) super.clone();
+    }
+
+    public boolean isThreadLocal()
+    {
+        return threadLocal;
     }
 }

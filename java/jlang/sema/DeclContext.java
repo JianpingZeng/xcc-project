@@ -250,14 +250,14 @@ public class DeclContext implements IDeclContext
             lookupTable.put(d.getDeclName(), declNameEntries);
         }
 
-        // If the d is the first decl of same decl name,
+        // If the d is the first decl of same decl asmName,
         // we just set the only value by calling the method setOnlyValue.
         if (declNameEntries.isNull())
         {
             declNameEntries.setOnlyValue(d);
             return;
         }
-        // Otherwise, the d is the redeclaration of the same decl name.
+        // Otherwise, the d is the redeclaration of the same decl asmName.
         // check to see if there is already a decl for which declarationReplaces
         // returns true.  If there is one, just replace it and return.
         if(declNameEntries.handleRedeclaration(getParentASTContext(), d))

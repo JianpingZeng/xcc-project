@@ -2014,11 +2014,11 @@ public abstract class Tree
 	    /**
 	     * C99 6.3.2.1: an lvalue is an expression with an object type or an
 	     * incomplete type other than void. Nonarray expressions that can be lvalues:
-	     *  - name, where name must be a variable
+	     *  - asmName, where asmName must be a variable
 	     *  - e[i]
 	     *  - (e), where e must be an lvalue
-	     *  - e.name, where e must be an lvalue
-	     *  - e->name
+	     *  - e.asmName, where e must be an lvalue
+	     *  - e->asmName
 	     *  - *e, the type of e cannot be a function type
 	     *  - string-constant
 	     *  - (__real__ e) and (__imag__ e) where e is an lvalue  [GNU extension]
@@ -2094,11 +2094,11 @@ public abstract class Tree
 	    /**
 	     * C99 6.3.2.1: an lvalue is an expression with an object type or an
 	     * incomplete type other than void. Nonarray expressions that can be lvalues:
-	     *  - name, where name must be a variable
+	     *  - asmName, where asmName must be a variable
 	     *  - e[i]
 	     *  - (e), where e must be an lvalue
-	     *  - e.name, where e must be an lvalue
-	     *  - e->name
+	     *  - e.asmName, where e must be an lvalue
+	     *  - e->asmName
 	     *  - *e, the type of e cannot be a function type
 	     *  - string-constant
 	     *  - (__real__ e) and (__imag__ e) where e is an lvalue  [GNU extension]
@@ -2908,7 +2908,7 @@ public abstract class Tree
         private ValueDecl memberDecl;
 
         /**
-         * This is the location of the member name.
+         * This is the location of the member asmName.
          */
         private SourceLocation memberLoc;
 

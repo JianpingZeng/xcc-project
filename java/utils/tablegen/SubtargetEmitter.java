@@ -399,7 +399,7 @@ public class SubtargetEmitter extends TableGenBackend
     }
 
     /**
-     * generate cpu name to itinerary lookup table.
+     * generate cpu asmName to itinerary lookup table.
      * @param os
      */
     private void emitProcessorLookup(PrintStream os) throws Exception

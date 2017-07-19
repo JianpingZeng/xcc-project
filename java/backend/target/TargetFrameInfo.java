@@ -9,7 +9,7 @@ package backend.target;
  */
 public class TargetFrameInfo
 {
-	public enum StackDirection
+    public enum StackDirection
 	{
 		/**
 		 * Adding to the stack increasing the stack address.

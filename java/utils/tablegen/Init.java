@@ -1291,7 +1291,7 @@ public abstract class Init
     /**
      * (v a, b) - Represent a DAG tree value.  DAG inits are required
      * to have at least one value then a (possibly empty) list of arguments.  Each
-     * argument can have a name associated with it.
+     * argument can have a asmName associated with it.
      */
     public static class DagInit extends TypedInit
     {
