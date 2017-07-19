@@ -3971,50 +3971,44 @@ public abstract class X86GenRegisterInfo extends TargetRegisterInfo
 			 switch (index) {
 				default: return 0;
 					case 1: return R14B;
-			};
-			 break;
+			}
+
 			case R8W:
 			 switch (index) {
 			default: return 0;
 				case 1: return R8B;
-			};
-			 break;
+			}
 			case BX:
 			 switch (index) {
 			default: return 0;
 				case 1: return BL;
 				case 2: return BH;
 			}
-			 break;
 			case SI:
 			 switch (index) {
 			default: return 0;
 				case 1: return SIL;
-			};
-			 break;
+			}
 			case RSI:
 			 switch (index) {
 			default: return 0;
 				case 3: return SI;
 				case 4: return ESI;
 				case 1: return SIL;
-			};
-			 break;
+			}
 			case R14:
 			 switch (index) {
 			default: return 0;
 				case 3: return R14W;
 				case 4: return R14D;
 				case 1: return R14B;
-			};
-			 break;
+			}
 			case R10D:
 			 switch (index) {
 			default: return 0;
 				case 1: return R10B;
 				case 3: return R10W;
-			};
-			 break;
+			}
 			case CX:
 			 switch (index) {
 			default: return 0;

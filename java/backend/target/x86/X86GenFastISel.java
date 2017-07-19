@@ -8,13 +8,30 @@ package backend.target.x86; /**
  */
 
 import backend.codegen.MVT;
+import backend.codegen.MachineBasicBlock;
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineModuleInfo;
 import backend.codegen.selectDAG.ISD;
+import backend.value.BasicBlock;
+import backend.value.Instruction;
+import backend.value.Value;
+import gnu.trove.map.hash.TObjectIntHashMap;
+
+import java.util.HashMap;
 
 import static backend.target.x86.X86GenInstrNames.*;
 
 public final class X86GenFastISel extends X86FastISel {
 
-// FastEmit functions for ISD::ADDE.
+	public X86GenFastISel(MachineFunction mf, MachineModuleInfo mmi,
+			TObjectIntHashMap<Value> vm,
+			HashMap<BasicBlock, MachineBasicBlock> bm,
+			TObjectIntHashMap<Instruction.AllocaInst> am)
+	{
+		super(mf, mmi, vm, bm, am);
+	}
+
+	// FastEmit functions for ISD::ADDE.
 int fastEmit_ISD_ADDE_MVT_i32_ri(MVT retVT, int op0, long imm1) {
 	if(retVT.simpleVT != MVT.i32)
 		return 0;
