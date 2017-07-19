@@ -50,7 +50,7 @@ public class ConstantArray extends Constant
 		for (int i = 0, e = elementVals.size(); i < e; i++)
 		{
 			Constant c = elementVals.get(i);
-			assert c.getType() == ty.getElemType()
+			assert c.getType() == ty.getElementType()
 					:"Initializer for array element doesn't match array element type!";
 			setOperand(i, new Use(c, this));
 		}
@@ -128,7 +128,7 @@ public class ConstantArray extends Constant
 	 */
 	public boolean isString()
 	{
-		if (getType().getElemType() != Type.Int8Ty)
+		if (getType().getElementType() != Type.Int8Ty)
 			return false;
 
 		for (int i = 0, e = getNumOfOperands(); i < e; i++)

@@ -171,4 +171,27 @@ public abstract class GlobalValue extends Constant
                 usesList.remove(i);
         }
     }
+
+    public boolean isWeakForLinker()
+    {
+        // TODO: 17-7-19
+        return false;
+    }
+
+    /**
+     * An enumeration for the kinds of visibility of global values.
+     */
+    enum VisibilityTypes
+    {
+        DefaultVisibility,  ///< The GV is visible
+        HiddenVisibility,       ///< The GV is hidden
+        ProtectedVisibility     ///< The GV is protected
+    }
+
+    private VisibilityTypes visibility;
+
+    public boolean hasDefaultVisibility()
+    {
+        return visibility == VisibilityTypes.DefaultVisibility;
+    }
 }

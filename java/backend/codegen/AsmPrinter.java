@@ -41,7 +41,7 @@ import java.util.Objects;
 public abstract class AsmPrinter extends MachineFunctionPass
 {
     /**
-     * The current section name where we are emitting to.
+     * The current section asmName where we are emitting to.
      */
     private String currentSection;
     /**
@@ -61,11 +61,11 @@ public abstract class AsmPrinter extends MachineFunctionPass
      */
     protected TargetMachine tm;
     /**
-     * A name mangler for performing necessary mangling on global linkage entity.
+     * A asmName mangler for performing necessary mangling on global linkage entity.
      */
     protected NameMangler mangler;
     /**
-     * The name of current being processed machine function.
+     * The asmName of current being processed machine function.
      */
     protected String curFnName;
     /**
@@ -143,7 +143,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
      */
     protected String constantPoolSection;
     /**
-     * This is the name of a directive (if supported) that can
+     * This is the asmName of a directive (if supported) that can
      * be used to efficiently declare a local (internal) block of zero
      * initialized data in the .bss/.data section.  The syntax expected is:
      *   <LCOMMDirective> SYMBOLNAME LENGTHINBYTES, ALIGNMENT
@@ -623,13 +623,13 @@ public abstract class AsmPrinter extends MachineFunctionPass
         if (gv.hasInitializer())
         {
             // Always round up alignment of global doubles to 8 bytes.
-            if (gv.getType().getElemType() == Type.DoubleTy && align < 3)
+            if (gv.getType().getElementType() == Type.DoubleTy && align < 3)
                 align = 3;
             if (align < 4)
             {
                 // If the global is not external, see if it is large.  If so, give it a
                 // larger alignment.
-                if (tm.getTargetData().getTypeSize(gv.getType().getElemType()) > 128)
+                if (tm.getTargetData().getTypeSize(gv.getType().getElementType()) > 128)
                     align = 4;
             }
         }

@@ -202,7 +202,7 @@ public final class ScalarEvolution implements FunctionPass
                     assert !scalars.containsKey(pn) :"Phi node has already processed!";
                     scalars.put(pn, symbolicName);
 
-                    // Using this symbolic name for the PHI, analyze the value coming around
+                    // Using this symbolic asmName for the PHI, analyze the value coming around
                     // the back-edge.
 
                     SCEV beval = getSCEV(pn.getIncomingValue(backEdge));
@@ -259,7 +259,7 @@ public final class ScalarEvolution implements FunctionPass
 
     /**
      * This method is called when the specified instruction is needed to
-     * replace all reference to symbolic name with concrete value.
+     * replace all reference to symbolic asmName with concrete value.
      * This is used for PHI resolution.
      * Note that all user of the specified instruction also would be replaced.
      * @param val
@@ -722,7 +722,7 @@ public final class ScalarEvolution implements FunctionPass
             BranchInst exitBr = (BranchInst)ti;
             assert exitBr.isConditional() : "If unconditional, it can't be in loop!";
             return computeIterationCountExhaustively(loop, exitBr.getCondition(),
-                    exitBr.suxAt(0).equals(exitBlock));
+                    exitBr.getSuccessor(0).equals(exitBlock));
         }
         return unknownValue;
     }
@@ -1007,7 +1007,7 @@ public final class ScalarEvolution implements FunctionPass
                 continue;
 
             if (isImpliedCond(loopEntryPredicate.getCondition(), pred, lhs, rhs,
-                    loopEntryPredicate.suxAt(0) != predecessorDest))
+                    loopEntryPredicate.getSuccessor(0) != predecessorDest))
                 return true;
 
             predecessorDest = predecessor;

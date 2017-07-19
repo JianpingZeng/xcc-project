@@ -47,7 +47,7 @@ import static jlang.diag.DiagnosticLexKindsTag.*;
  * re-lexing for C or C++.
  * </p>
  * <pre>
- * Source file name and line number information is conveyed by lines of the form:
+ * Source file asmName and line number information is conveyed by lines of the form:
  *
  * # linenum filename flags
  *
@@ -58,7 +58,7 @@ import static jlang.diag.DiagnosticLexKindsTag.*;
  * they are replaced with octal escape sequences.
  * </pre>
  * <p>
- * After the file name comes zero or more flags, which are `1', `2',
+ * After the file asmName comes zero or more flags, which are `1', `2',
  * `3', or `4'. If there are multiple flags, spaces separate them. Here
  * is what the flags mean:
  * <ol>
@@ -496,7 +496,7 @@ public final class Preprocessor
                 insertNS = existing.getIfNamespace();
                 assert insertNS != null :
                         "Cannot have a pragma namespace and pragma"
-                                + " handler with the same name!";
+                                + " handler with the same asmName!";
             }
             else
             {
@@ -1872,7 +1872,7 @@ public final class Preprocessor
     {
         lexUnexpandedToken(macroNameTok);
 
-        // Missing macro name.
+        // Missing macro asmName.
         if (macroNameTok.is(eom))
         {
             diag(macroNameTok, err_pp_missing_macro_name).emit();
@@ -1977,7 +1977,7 @@ public final class Preprocessor
                 continue;
             }
 
-            // Get the identifier name without trigraphs or embedded newlines.  Note
+            // Get the identifier asmName without trigraphs or embedded newlines.  Note
             // that we can't use Tok.getIdentifierInfo() because its lookup is disabled
             // when skipping.
             String directive;
@@ -2098,7 +2098,7 @@ public final class Preprocessor
         Token macroNameTok = new Token();
         readMacroName(macroNameTok, false);
 
-        // Error reading macro name?  If so, diagnostic already issued.
+        // Error reading macro asmName?  If so, diagnostic already issued.
         if (macroNameTok.is(eom))
         {
             skipExcludedConditionalBlock(directiveTok.getLocation(), false, false);
@@ -2213,7 +2213,7 @@ public final class Preprocessor
     }
 
     /**
-     * Handle cases where the #include name is expanded
+     * Handle cases where the #include asmName is expanded
      /// from a macro as multiple tokens, which need to be glued together.  This
      /// occurs for code like:
      ///    #define FOO <a/b.h>
@@ -2668,7 +2668,7 @@ public final class Preprocessor
                     }
                 }
 
-                // Things look ok, add the '#' and param name tokens to the macro.
+                // Things look ok, add the '#' and param asmName tokens to the macro.
                 mi.addTokenBody(lastTok);
                 mi.addTokenBody(tok);
                 lastTok = tok;
@@ -2744,7 +2744,7 @@ public final class Preprocessor
         Token macroNameToken = new Token();
         readMacroName(macroNameToken, false);
 
-        // error reading macro name?
+        // error reading macro asmName?
         if (macroNameToken.is(eom))
             return;
         // Check to see if this is the last token on the #undef line.
@@ -3195,8 +3195,8 @@ public final class Preprocessor
         }
         else if (numActuals > minArgsExpected &&!mi.isVariadic())
         {
-            // Emit the diagnostic at the macro name in case there is a missing ).
-            // Emitting it at the , could be far away from the macro name.
+            // Emit the diagnostic at the macro asmName in case there is a missing ).
+            // Emitting it at the , could be far away from the macro asmName.
             diag(macroName, err_too_many_args_in_macro_invoc).emit();
             return Pair.get(null, null);
         }
@@ -3414,7 +3414,7 @@ public final class Preprocessor
             createString(TmpBuffer, tok, tok.getLocation());
         } else if (ii == Ident__FILE__ || ii == Ident__BASE_FILE__) 
         {
-            // C99 6.10.8: "__FILE__: The presumed name of the current source file (a
+            // C99 6.10.8: "__FILE__: The presumed asmName of the current source file (a
             // character string literal)". This can be affected by #line.
             PresumedLoc PLoc = sourceMgr.getPresumedLoc(tok.getLocation());
 
@@ -3597,7 +3597,7 @@ public final class Preprocessor
         if (mi.isFunctionLike())
         {
             // C99 6.10.3p10: If the preprocessing token immediately after the the macro
-            // name isn't a '(', this macro should not be expanded.
+            // asmName isn't a '(', this macro should not be expanded.
             if (!isNextPPTokenLParen())
                 return true;
 

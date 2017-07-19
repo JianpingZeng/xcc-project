@@ -2,7 +2,7 @@ package backend.codegen;
 
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetInstrInfo.TargetInstrDescriptor;
+import backend.target.TargetInstrDesc;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
@@ -375,7 +375,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 			MachineInstr mi = mbb.getInstAt(i);
 
 			int opcode = mi.getOpCode();
-			TargetInstrDescriptor desc = tm.getInstrInfo().get(opcode);
+			TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
 
 			// loop over all implicit used register, to mark it as recently used,
 			// so they don't get reallocated.
@@ -443,7 +443,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 					if (tm.getInstrInfo().isTwoAddrInstr(opcode) && j == 0)
 					{
 						// a = b + c --> b(a) += c;
-						assert  mi.getOperand(1).isRegister()
+						assert  mi.getOperand(1).isReg()
 								&& mi.getOperand(1).getReg() != 0
 								&& mi.getOperand(1).opIsUse()
 								:"Two address instruction invalid!";
@@ -504,7 +504,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 	{
 		this.mf = mf;
 		tm = mf.getTargetMachine();
-		regInfo = tm.getRegInfo();
+		regInfo = tm.getRegisterInfo();
 		instrInfo = tm.getInstrInfo();
 
 		for (MachineBasicBlock mbb : mf.getBasicBlocks())

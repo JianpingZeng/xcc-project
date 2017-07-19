@@ -50,12 +50,12 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     public FunctionType getFunctionType()
     {
-        return (FunctionType) super.getType().getElemType();
+        return (FunctionType) super.getType().getElementType();
     }
 
     public boolean isVarArg()
     {
-        return getFunctionType().isVarArgs();
+        return getFunctionType().isVarArg();
     }
 
 	/**

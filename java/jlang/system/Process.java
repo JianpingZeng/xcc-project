@@ -24,7 +24,7 @@ public class Process
 {
     public static int getStandardErrColumns()
     {
-        String os = System.getProperty("os.name").toLowerCase();
+        String os = System.getProperty("os.asmName").toLowerCase();
         switch (os)
         {
             case "linux":

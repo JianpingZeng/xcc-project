@@ -1,11 +1,8 @@
 package backend.target.x86;
 
+import backend.target.*;
 import backend.value.Module;
 import backend.pass.PassManagerBase;
-import backend.target.TargetFrameInfo;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetMachine;
-import backend.target.TargetRegisterInfo;
 
 import java.io.OutputStream;
 
@@ -41,7 +38,14 @@ public class X86TargetMachine extends TargetMachine
 		instrInfo = new X86InstrInfo();
 	}
 
-    /**
+	@Override
+	public X86Subtarget getSubtarget()
+	{
+		// TODO: 17-7-16
+		return null;
+	}
+
+	/**
      * Allocates and returns a subclass of {@linkplain TargetMachine} that
      * implements the IA32 machine.
      * @param module
@@ -56,10 +60,17 @@ public class X86TargetMachine extends TargetMachine
 	public TargetInstrInfo getInstrInfo(){return instrInfo;}
 
 	@Override
-	public TargetRegisterInfo getRegInfo() {return instrInfo.getRegisterInfo();}
+	public TargetRegisterInfo getRegisterInfo() {return instrInfo.getRegisterInfo();}
 
 	@Override
 	public TargetFrameInfo getFrameInfo() {return frameInfo;}
+
+	@Override
+	public X86TargetLowering getTargetLowering()
+	{
+		// TODO: 17-7-16
+		return null;
+	}
 
 	/**
 	 * Add passes to the specified pass manager to get assembly language code

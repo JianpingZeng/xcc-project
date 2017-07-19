@@ -190,13 +190,13 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     /**
-     * Performs name lookup for a name that was parsed in the
+     * Performs asmName lookup for a asmName that was parsed in the
      * source code
-     * @param s The scope from which unqualified name lookup will
-     * @param name The name of the entity that name lookup will
+     * @param s The scope from which unqualified asmName lookup will
+     * @param name The asmName of the entity that asmName lookup will
      * search for.
      * @param lookupKind
-     * @return The result of unqualified name lookup.
+     * @return The result of unqualified asmName lookup.
      */
     public LookupResult lookupParsedName(Scope s, String name,
             LookupNameKind lookupKind)
@@ -205,16 +205,16 @@ public final class Sema implements DiagnosticParseTag,
     }
 
 	/**
-     * Performs name lookup for a name that was parsed in the
+     * Performs asmName lookup for a asmName that was parsed in the
      * source code
-     * @param s The scope from which unqualified name lookup will
-     * @param name The name of the entity that name lookup will
+     * @param s The scope from which unqualified asmName lookup will
+     * @param name The asmName of the entity that asmName lookup will
      * search for.
      * @param lookupKind
      * @param loc If provided, the source location where we're performing
-     * name lookup. At present, this is only used to produce diagnostics when
+     * asmName lookup. At present, this is only used to produce diagnostics when
      * C library functions (like "malloc") are implicitly declared.
-     * @return The result of unqualified name lookup.
+     * @return The result of unqualified asmName lookup.
      */
     public LookupResult lookupParsedName(Scope s, String name,
             LookupNameKind lookupKind, SourceLocation loc)
@@ -228,12 +228,12 @@ public final class Sema implements DiagnosticParseTag,
      * If the identifier refers to the type, then this method just returns the
      * declaration of this type within this scope.
      * <p>
-     * This routine performs ordinary name lookup of the identifier II
-     * within the given scope, to determine whether the name refers to
+     * This routine performs ordinary asmName lookup of the identifier II
+     * within the given scope, to determine whether the asmName refers to
      * a type. If so, returns an a QualType corresponding to that
      * type. Otherwise, returns NULL.
      *
-     * If name lookup results in an ambiguity, this routine will complain
+     * If asmName lookup results in an ambiguity, this routine will complain
      * and then return NULL.
      * </p>
      *
@@ -474,7 +474,7 @@ public final class Sema implements DiagnosticParseTag,
             else
             {
                 // prevDecl is anything else kinds declaration with
-                // same name, we just compliation it.
+                // same asmName, we just compliation it.
                 if (isDeclInScope(prevDecl, searchDC, curScope))
                 {
                     diag(nameLoc, err_redefinition_different_kind)
@@ -1155,7 +1155,7 @@ public final class Sema implements DiagnosticParseTag,
                     diag(paramDecls.getIdentifierLoc(), err_param_redefinition)
                             .addTaggedVal(ii);
 
-                    // Recover by removing the name.
+                    // Recover by removing the asmName.
                     ii = null;
                     paramDecls.setIdentifier(null, paramDecls.getIdentifierLoc());
                     paramDecls.setInvalidType(true);
@@ -1576,7 +1576,7 @@ public final class Sema implements DiagnosticParseTag,
 
 	/**
      * We just parsed a typedef 'New' which has the
-     * same name and scope as a previous declaration 'Old'.  Figure out
+     * same asmName and scope as a previous declaration 'Old'.  Figure out
      * how to resolve this situation, merging decls or emitting
      * diagnostics as appropriate. If there was an error, set New to be invalid.
      * @param newOne
@@ -1855,7 +1855,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
 	/**
-     * We just parsed a variable 'New' which has the same name
+     * We just parsed a variable 'New' which has the same asmName
      * and scope as a previous declaration 'Old'.  Figure out how to resolve this
      * situation, merging decls or emitting diagnostics as appropriate.
      * @param newOne
@@ -2171,7 +2171,7 @@ public final class Sema implements DiagnosticParseTag,
                     // C99 require a type specifier.  For example, C99 6.7.2p2 says:
                     // "At least one type specifier shall be given in the declaration
                     // specifiers in each declaration, and in the specifier-qualifier list in
-                    // each struct declaration and type name."
+                    // each struct declaration and type asmName."
                     diag(loc, ext_missing_type_specifier).
                             addSourceRange(ds.getSourceRange());
                 }
@@ -2303,7 +2303,7 @@ public final class Sema implements DiagnosticParseTag,
             }
         }
 
-        // The name of the field we are declaring, if any.
+        // The asmName of the field we are declaring, if any.
         IdentifierInfo name = null;
         if (d.getIdentifier() != null)
             name = d.getIdentifier();
@@ -2542,7 +2542,7 @@ public final class Sema implements DiagnosticParseTag,
      *              the pointer type.
      * @param loc   The location of the entity whose type involves this pointer
      *              type or if there is no such entity.
-     * @param name  The entity name which involves pointer type.
+     * @param name  The entity asmName which involves pointer type.
      * @return
      */
     private QualType buildPointerType(
@@ -2570,7 +2570,7 @@ public final class Sema implements DiagnosticParseTag,
      * @param arraySize The expression describing the number of elements
      * @param typeQuals The cvr-qualifiers to be appied to the array's element type.
      * @param brackets  The location of left and right bracket.
-     * @param name  The name of entity that involves the array type, if any.
+     * @param name  The asmName of entity that involves the array type, if any.
      * @return  A suitable array type, if there are no errors.Otherwise, return null.
      */
     private QualType buildArrayType(QualType t, ArraySizeModifier asm,
@@ -2666,7 +2666,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         if (ii != null)
             return ii.getName();
-        return "type name";
+        return "type asmName";
     }
 
     private Decl actOnStartOfFunctionDef(Scope fnBodyScope, Decl d)
@@ -2786,9 +2786,9 @@ public final class Sema implements DiagnosticParseTag,
      *
      * This method is called whenever a VarDecl is added to a "useful"
      * scope.
-     * @param s the scope in which the shadowing name is being declared
+     * @param s the scope in which the shadowing asmName is being declared
      * @param d
-     * @param r the lookup of the name
+     * @param r the lookup of the asmName
      */
     private void checkShadow(Scope s, VarDecl d, LookupResult r)
     {
@@ -6384,7 +6384,7 @@ public final class Sema implements DiagnosticParseTag,
      * @param base The base expression.
      * @param opLoc The source location of '.' or '->' token.
      * @param opKind Indicates which the access operator is, either arrow or period.
-     * @param name The member name being accessed.
+     * @param name The member asmName being accessed.
      * @return
      */
     public ActionResult<Expr> actOnMemberAccessExpr(
@@ -6834,7 +6834,7 @@ public final class Sema implements DiagnosticParseTag,
 
 	/**
 	 * A mapping from external names to the most recent
-     * locally-scoped external declaration with that name.
+     * locally-scoped external declaration with that asmName.
      *
      * This map contains external declarations introduced in local
      * scoped, e.g.,
@@ -6846,11 +6846,11 @@ public final class Sema implements DiagnosticParseTag,
      * }
      * </code>
      *
-     * Here, the name "foo" will be associated with the declaration on
-     * "foo" within f. This name is not visible outside of
+     * Here, the asmName "foo" will be associated with the declaration on
+     * "foo" within f. This asmName is not visible outside of
      * "f". However, we still find it in two cases:
      *
-     *   - If we are declaring another external with the name "foo", we
+     *   - If we are declaring another external with the asmName "foo", we
      *     can find "foo" as a previous declaration, so that the types
      *     of this external declaration can be checked for
      *     compatibility.
@@ -6878,7 +6878,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         // Before we produce a declaration for an implicitly defined
         // function, see whether there was a locally-scoped declaration of
-        // this name as a function or variable. If so, use that
+        // this asmName as a function or variable. If so, use that
         // (non-visible) declaration, and complain about it.
         if (locallyScopedExternalDecls.containsKey(name))
         {
@@ -6934,7 +6934,7 @@ public final class Sema implements DiagnosticParseTag,
         SourceLocation nameLoc = loc;
 
         // Perform the required lookup.
-        //LookupResult res = new LookupResult(this, name, nameLoc, LookupOrdinaryName);
+        //LookupResult res = new LookupResult(this, asmName, nameLoc, LookupOrdinaryName);
         LookupResult res = lookupParsedName(s, name, LookupOrdinaryName, nameLoc);
 
         if (res.isAmbiguous())
@@ -6955,7 +6955,7 @@ public final class Sema implements DiagnosticParseTag,
                     res.addDecl(d);
             }
 
-            // If this name wasn't predeclared and if this is not a function
+            // If this asmName wasn't predeclared and if this is not a function
             // call, diagnose the problem.
             if (res.isEmpty())
             {
@@ -7277,7 +7277,7 @@ public final class Sema implements DiagnosticParseTag,
 
 	/**
      * This method is called *for error recovery purposes only*
-     * to determine if the specified name is a valid tc name ("struct foo").  If
+     * to determine if the specified asmName is a valid tc asmName ("struct foo").  If
      * so, this returns the TST for the tc corresponding to it (TST_enum,
      * TST_union, TST_struct, TST_class).  This is used to diagnose cases in C
      * where the user forgot to specify the tc.

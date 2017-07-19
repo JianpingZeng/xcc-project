@@ -56,9 +56,9 @@ public class EVT
         if (getClass() != obj.getClass())
             return false;
         EVT other = (EVT)obj;
-        if (v.simpleTy == other.v.simpleTy)
+        if (v.simpleVT == other.v.simpleVT)
         {
-            if (v.simpleTy == INVALID_SIMPLE_VALUE_TYPE)
+            if (v.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
                 return llvmTy == other.llvmTy;
             return true;
         }
@@ -71,7 +71,7 @@ public class EVT
      */
     public boolean isOverloaded()
     {
-        switch (v.simpleTy)
+        switch (v.simpleVT)
         {
             case iAny:
             case fAny:
@@ -91,7 +91,7 @@ public class EVT
     public static EVT getIntegerVT(int bitWidth)
     {
         MVT m = MVT.getIntegerVT(bitWidth);
-        if (m.simpleTy == INVALID_SIMPLE_VALUE_TYPE)
+        if (m.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
             return getExtendedIntegerVT(bitWidth);
         else
             return new EVT(m);
@@ -100,7 +100,7 @@ public class EVT
     public static EVT getVectorVT(EVT vt, int numElts)
     {
         MVT m = MVT.getVectorVT(vt.v, numElts);
-        if (m.simpleTy == INVALID_SIMPLE_VALUE_TYPE)
+        if (m.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
             return getExtendedVectorVT(vt, numElts);
         else
             return new EVT(m);
@@ -109,7 +109,7 @@ public class EVT
     public static EVT getIntVectorWithNumElements(int numElts)
     {
         MVT m = MVT.getIntVectorWithNumElements(numElts);
-        if (m.simpleTy == INVALID_SIMPLE_VALUE_TYPE)
+        if (m.simpleVT == INVALID_SIMPLE_VALUE_TYPE)
             return getVectorVT(new EVT(i8), numElts);
         else
             return new EVT(m);
@@ -117,7 +117,7 @@ public class EVT
 
     public boolean isSimple()
     {
-        return v.simpleTy <= LastSimpleValueType;
+        return v.simpleVT <= LastSimpleValueType;
     }
 
     public boolean isExtended()
@@ -128,44 +128,46 @@ public class EVT
     public boolean isFloatingPoint()
     {
         return isSimple() ?
-                (v.simpleTy >= f32 && v.simpleTy <= ppcf128) ||
-                (v.simpleTy >= v2f32 && v.simpleTy <= v4f64) :
+                (v.simpleVT >= f32 && v.simpleVT <= ppcf128) ||
+                (v.simpleVT >= v2f32 && v.simpleVT <= v4f64) :
                 isExtendedFloatingPoint();
     }
 
     public boolean isInteger()
     {
         return isSimple() ?
-                (v.simpleTy >= FIRST_INTEGER_VALUETYPE &&
-                 v.simpleTy <= LAST_INTEGER_VALUETYPE) ||
-                (v.simpleTy >= v2i8 && v.simpleTy <= v4i64)
+                (v.simpleVT >= FIRST_INTEGER_VALUETYPE &&
+                 v.simpleVT <= LAST_INTEGER_VALUETYPE) ||
+                (v.simpleVT >= v2i8 && v.simpleVT <= v4i64)
                 : isExtendedInteger();
     }
 
     public boolean isVector()
     {
-        return isSimple() ? (v.simpleTy >= FIRST_VECTOR_VALUETYPE
-                && v.simpleTy <= LAST_VECTOR_VALUETYPE) : isExtendedVector();
+        return isSimple() ? (v.simpleVT >= FIRST_VECTOR_VALUETYPE
+                && v.simpleVT <= LAST_VECTOR_VALUETYPE) : isExtendedVector();
     }
 
     public boolean is64BitVector()
     {
-        return isSimple() ? (v.simpleTy == v8i8 || v.simpleTy == v4i16 || v.simpleTy == v2i32
-                    || v.simpleTy == v1i64 || v.simpleTy == v2f32) : isExtended64BitVector();
+        return isSimple() ? (v.simpleVT == v8i8 || v.simpleVT
+                == v4i16 || v.simpleVT == v2i32
+                    || v.simpleVT == v1i64 || v.simpleVT == v2f32) : isExtended64BitVector();
     }
 
     public boolean is128BitVector()
     {
-        return isSimple()? (v.simpleTy == v16i8 || v.simpleTy == v8i16 || v.simpleTy == v4i32
-        || v.simpleTy == v2i64 || v.simpleTy == v4f32 || v.simpleTy == v2f64)
+        return isSimple()? (v.simpleVT == v16i8 || v.simpleVT
+                == v8i16 || v.simpleVT == v4i32
+        || v.simpleVT == v2i64 || v.simpleVT == v4f32 || v.simpleVT == v2f64)
                 : isExtended128BitVector();
     }
 
     public boolean is256BitVector()
     {
-        return isSimple()? (v.simpleTy == v4i64 || v.simpleTy == v8i32
-                || v.simpleTy == v16i16 || v.simpleTy == v32i8
-                || v.simpleTy == v8f32 || v.simpleTy == v4f64)
+        return isSimple()? (v.simpleVT == v4i64 || v.simpleVT == v8i32
+                || v.simpleVT == v16i16 || v.simpleVT == v32i8
+                || v.simpleVT == v8f32 || v.simpleVT == v4f64)
                 : isExtended256BitVector();
     }
 
@@ -227,7 +229,7 @@ public class EVT
      */
     public String getEVTString()
     {
-        switch (v.simpleTy)
+        switch (v.simpleVT)
         {
             default:
                 if (isVector())
@@ -280,13 +282,13 @@ public class EVT
 
     /**
      * This method returns an LLVM type corresponding to the
-     * specified EVT.  For integer types, this returns an unsigned type.  Note
+     * specified EVT.  For integer types, this returns an int type.  Note
      * that this will abort for types that cannot be represented.
      * @return
      */
     public Type getTypeForEVT()
     {
-        switch (v.simpleTy)
+        switch (v.simpleVT)
         {
             default:
                 assert isExtended() : "Type is not extended!";
@@ -396,7 +398,7 @@ public class EVT
 
     public Object getRawBits()
     {
-        return v.simpleTy <= LastSimpleValueType?v.simpleTy : llvmTy;
+        return v.simpleVT <= LastSimpleValueType?v.simpleVT : llvmTy;
     }
 
 
@@ -506,5 +508,46 @@ public class EVT
     {
         assert isSimple():"Expected a int!";
         return v;
+    }
+
+    /// isRound - Return true if the size is a power-of-two number of bytes.
+    public boolean isRound() 
+    {
+        int BitSize = getSizeInBits();
+        return BitSize >= 8 && (BitSize & (BitSize - 1)) == 0;
+    }
+
+    /// bitsEq - Return true if this has the same number of bits as VT.
+    public boolean bitsEq(EVT VT)
+    {
+        return getSizeInBits() == VT.getSizeInBits();
+    }
+
+    /**
+     * Return true if this has more bits than srcVT.
+     * @param srcVT
+     * @return
+     */
+    public boolean bitsGT(EVT srcVT)
+    {
+        return getSizeInBits() > srcVT.getSizeInBits();
+    }
+
+    /// bitsGE - Return true if this has no less bits than VT.
+    public boolean bitsGE(EVT VT)
+    {
+        return getSizeInBits() >= VT.getSizeInBits();
+    }
+
+    /// bitsLT - Return true if this has less bits than VT.
+    public boolean bitsLT(EVT VT)
+    {
+        return getSizeInBits() < VT.getSizeInBits();
+    }
+
+    /// bitsLE - Return true if this has no more bits than VT.
+    public boolean bitsLE(EVT VT)
+    {
+        return getSizeInBits() <= VT.getSizeInBits();
     }
 }

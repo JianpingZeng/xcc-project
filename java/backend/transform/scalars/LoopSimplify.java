@@ -218,8 +218,8 @@ public final class LoopSimplify implements FunctionPass
 				if (df != null)
 					df.removeBlock(exitingBB);
 
-				bi.suxAt(0).removePredecessor(exitingBB);
-				bi.suxAt(1).removePredecessor(exitingBB);
+				bi.getSuccessor(0).removePredecessor(exitingBB);
+				bi.getSuccessor(1).removePredecessor(exitingBB);
 				exitingBB.eraseFromParent();
 			}
 		}
@@ -245,8 +245,8 @@ public final class LoopSimplify implements FunctionPass
 				|| cond.getParent() != bb || !cond.hasOneUses())
 			return false;
 
-		BasicBlock trueDest = bi.suxAt(0);
-		BasicBlock falseDest = bi.suxAt(1);
+		BasicBlock trueDest = bi.getSuccessor(0);
+		BasicBlock falseDest = bi.getSuccessor(1);
 		if (trueDest == bb || falseDest == bb)
 			return false;
 
@@ -261,16 +261,16 @@ public final class LoopSimplify implements FunctionPass
 
 			Operator opcode;
 			boolean invertPredCond = false;
-			if (pbi.suxAt(0) == trueDest)
+			if (pbi.getSuccessor(0) == trueDest)
 				opcode = Operator.Or;
-			else if (pbi.suxAt(1) == falseDest)
+			else if (pbi.getSuccessor(1) == falseDest)
 				opcode = Operator.And;
-			else if (pbi.suxAt(0) == falseDest)
+			else if (pbi.getSuccessor(0) == falseDest)
 			{
 				opcode = Operator.And;
 				invertPredCond = true;
 			}
-			else if (pbi.suxAt(1) == trueDest)
+			else if (pbi.getSuccessor(1) == trueDest)
 			{
 				opcode = Operator.Or;
 				invertPredCond = true;
@@ -287,8 +287,8 @@ public final class LoopSimplify implements FunctionPass
 				Value newCond = Op2.createNot(pbi.getCondition(),
 						pbi.getCondition().getName()+".not", pbi);
 				pbi.setCondition(newCond);
-				BasicBlock oldTrue = pbi.suxAt(0);
-				BasicBlock oldFalse = pbi.suxAt(1);
+				BasicBlock oldTrue = pbi.getSuccessor(0);
+				BasicBlock oldFalse = pbi.getSuccessor(1);
 				pbi.setSuxAt(0, oldFalse);
 				pbi.setSuxAt(1, oldTrue);
 			}
@@ -303,12 +303,12 @@ public final class LoopSimplify implements FunctionPass
 			Value newCond = Op2.create(opcode, pbi.getCondition(),
 					newInst, "or.cond", pbi);
 			pbi.setCondition(newCond);
-			if (pbi.suxAt(0) == bb)
+			if (pbi.getSuccessor(0) == bb)
 			{
 				addPredecessorToBlock(trueDest, predBlock, bb);
 				pbi.setSuxAt(0, trueDest);
 			}
-			if (pbi.suxAt(1) == bb)
+			if (pbi.getSuccessor(1) == bb)
 			{
 				addPredecessorToBlock(falseDest, predBlock, bb);
 				pbi.setSuxAt(1, falseDest);
@@ -469,7 +469,7 @@ public final class LoopSimplify implements FunctionPass
 		{
 			TerminatorInst ti = backedgeBlocks.get(i).getTerminator();
 			for (int op = 0, sz = ti.getNumOfSuccessors(); op < sz; op++)
-				if (ti.suxAt(op) == header)
+				if (ti.getSuccessor(op) == header)
 					ti.setSuxAt(op, beBlock);
 		}
 

@@ -1,8 +1,9 @@
 package backend.codegen;
 
-import backend.codegen.MachineOperand.UseType;
+import backend.codegen.MachineOperand.RegState;
+import backend.target.TargetInstrDesc;
+import backend.value.ConstantFP;
 import backend.value.GlobalValue;
-import backend.value.Value;
 
 /**
  * This is a convenient helper class for creating a machine instruction on
@@ -15,243 +16,155 @@ public final class MachineInstrBuilder
 {
 	private MachineInstr mi;
 
-	public MachineInstrBuilder(MachineInstr instr) {mi = instr;}
-
-	public MachineInstrBuilder addReg(int regNo){return addReg(regNo, UseType.Use);}
-
-	/**
-	 * Adds a new virtual register operand into specified instruction.
-	 * @param regNo
-	 * @param utype
-	 * @return
-	 */
-	public MachineInstrBuilder addReg(int regNo, UseType utype)
+	public MachineInstrBuilder(MachineInstr instr)
 	{
-		mi.addRegOperand(regNo, utype);;
+		mi = instr;
+	}
+
+	public MachineInstr getMInstr()
+	{
+		return mi;
+	}
+
+	public MachineInstrBuilder addReg(int regNo)
+	{
+		return addReg(regNo, 0, 0);
+	}
+
+	public MachineInstrBuilder addReg(int regNo, int flags)
+	{
+		return addReg(regNo, flags, 0);
+	}
+
+	public MachineInstrBuilder addReg(int regNo, int flags, int subReg)
+	{
+		assert (flags & 0x1) == 0:
+				"Passing in 'true' to addReg is forbidden! Use enums instead.";
+		mi.addOperand(MachineOperand.createReg(regNo,
+				(flags & RegState.Define) != 0,
+				(flags & RegState.Implicit) != 0,
+				(flags & RegState.Kill) != 0,
+				(flags & RegState.Dead) != 0,
+				(flags & RegState.Undef) != 0,
+				(flags & RegState.EarlyClobber) != 0,
+				subReg));
+
 		return this;
 	}
 
-	/**
-	 * Add a backend value that used as a register.
-	 * @param val
-	 * @param utype
-	 * @return
-	 */
-	public MachineInstrBuilder addReg(Value val, UseType utype)
+	public MachineInstrBuilder addImm(long val)
 	{
-		mi.addRegOperand(val, utype, false);
+		mi.addOperand(MachineOperand.createImm(val));
 		return this;
 	}
 
-	public MachineInstrBuilder addCCReg(Value val, UseType utype)
+	public MachineInstrBuilder addFPImm(ConstantFP val)
 	{
-		mi.addCCRegOperand(val, utype);
+		mi.addOperand(MachineOperand.createFPImm(val));
 		return this;
 	}
 
-	/**
-	 * Add a backend value as an operand into operands list. But
-	 * it is worthwhile watching that the val will be defined as a register.
-	 * @param val
-	 * @return
-	 */
-	public MachineInstrBuilder addRegDef(Value val)
-	{
-		return addReg(val, UseType.Def);
-	}
-
-	/**
-	 * Add a backend value as an operand as a PC-relative displacement.
-	 * @param val
-	 * @return
-	 */
-	public MachineInstrBuilder addPCDisp(Value val)
-	{
-		mi.addPCDispOperand(val);
-		return this;
-	}
-
-	/**
-	 * Add a machine register as an operand.
-	 * @param reg
-	 * @param utype
-	 * @return
-	 */
-	public MachineInstrBuilder addMReg(int reg, UseType utype)
-	{
-		mi.addMachineRegOperand(reg, utype);
-		return this;
-	}
-
-	/**
-	 * Add a signed immediate value as an operand.
-	 * @param val
-	 * @return
-	 */
-	public MachineInstrBuilder addSImm(long val)
-	{
-		mi.addSignExtImmOperand(val);
-		return this;
-	}
-
-	/**
-	 * Add a zero extended immediate value as an operand.
-	 * @param val
-	 * @return
-	 */
-	public MachineInstrBuilder addZImm(long val)
-	{
-		mi.addZeroExtImmOperand(val);
-		return this;
-	}
-
-	/**
-	 * Add a machine basic block as an operand of branch instruction.
-	 * @param mbb
-	 * @return
-	 */
 	public MachineInstrBuilder addMBB(MachineBasicBlock mbb)
 	{
-		mi.addMachineBasicBlockOperand(mbb);
+		return addMBB(mbb, 0);
+	}
+
+	public MachineInstrBuilder addMBB(MachineBasicBlock mbb, int targetFlags)
+	{
+		mi.addOperand(MachineOperand.createMBB(mbb, targetFlags));
 		return this;
 	}
 
-	/**
-	 * Add a stack frame index as an operand, which is usually used for accessing
-	 * memory by [%ebp +- index].
-	 * @param idx
-	 * @return
-	 */
 	public MachineInstrBuilder addFrameIndex(int idx)
 	{
-		mi.addFrameIndexOperand(idx);
+		mi.addOperand(MachineOperand.createFrameIndex(idx));
 		return this;
 	}
 
-	public MachineInstrBuilder addConstantPool(int index)
+	public MachineInstrBuilder addConstantPoolIndex(int idx,
+			int offset,
+			int targetFlags)
 	{
-		mi.addConstantPoolIndexOperand(index);
+		mi.addOperand(MachineOperand.createConstantPoolIndex(idx, offset, targetFlags));
 		return this;
 	}
 
-	/**
-	 * Add a global value representing address as an operand of some instr, like
-	 * call instr.
-	 * @param addr
-	 * @param isPCRelative
-	 * @return
-	 */
-	public MachineInstrBuilder addGlobalAddress(GlobalValue addr,
-			boolean isPCRelative)
+	public MachineInstrBuilder addJumpTableIndex(int idx,
+			int targetFlags)
 	{
-		mi.addGlobalAddressOperand(addr, isPCRelative);
+		mi.addOperand(MachineOperand.createJumpTableIndex(idx, targetFlags));
 		return this;
 	}
 
-	public MachineInstrBuilder addExternalSymbol(String name,
-			boolean isPCRelative)
+	public MachineInstrBuilder addGlobalAddress(GlobalValue gv,
+			long offset,
+			int targetFlags)
 	{
-		mi.addExternalSymbolOperand(name, isPCRelative);
+		mi.addOperand(MachineOperand.createGlobalAddress(gv, offset, targetFlags));
 		return this;
 	}
 
-	/**
-	 * Builder interface.  Specify how to create the initial instruction
-	 * itself.  NumOperands is the number of operands to the machine instruction to
-	 * allow for memory efficient representation of machine instructions.
-	 * @param opcode
-	 * @param numOperands
-	 * @return
-	 */
-	public static MachineInstrBuilder buildMI(int opcode, int numOperands)
+	public MachineInstrBuilder addExternalSymbol(String symName,
+			long offset,
+			int targetFlags)
 	{
-		return new MachineInstrBuilder(new MachineInstr(opcode, numOperands));
+		mi.addOperand(MachineOperand.createExternalSymbol(symName, offset, targetFlags));
+		return this;
 	}
 
-	public static MachineInstrBuilder buildMI(int opcode, int numOperands, int destReg)
+	public MachineInstrBuilder addOperand(MachineOperand mo)
 	{
-		return new MachineInstrBuilder(new MachineInstr(opcode, numOperands+1)).
-				addReg(destReg, UseType.Def);
-	}
-
-	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb, int opcode, int numOperands)
-	{
-		return new MachineInstrBuilder(new MachineInstr(mbb, opcode, numOperands));
+		mi.addOperand(mo);
+		return this;
 	}
 
 	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
-			int opcode,
-			int numOperands,
+			int insertPos,
+			TargetInstrDesc desc)
+	{
+		MachineInstr mi = new MachineInstr(desc);
+		mbb.insert(insertPos, mi);
+		return new MachineInstrBuilder(mi);
+	}
+
+	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
+			TargetInstrDesc tid,
 			int destReg)
 	{
-		return new MachineInstrBuilder(new MachineInstr(mbb, opcode, numOperands+1))
-				.addReg(destReg, UseType.Def);
+		MachineInstr mi = new MachineInstr(mbb, tid);
+		mbb.addLast(mi);
+		return new MachineInstrBuilder(mi).addReg(destReg, RegState.Define);
 	}
 
-	public MachineInstr getMInstr(){return mi;}
-
-	/**
-	 * This function add a direct memory reference to this instruction.
-	 * that is, a dereference of an address in a register, with no scale, index
-	 * or displacement. An example is: [%eax].
-	 * @param mib
-	 * @param regNo
-	 * @return
-	 */
-	public static MachineInstrBuilder addDirectMem(MachineInstrBuilder mib, int regNo)
+	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
+			int insertPos,
+			TargetInstrDesc tid,
+			int destReg)
 	{
-		// regNo(1+ NoReg*0).
-		return mib.addReg(regNo, UseType.Use).addZImm(0).addReg(0, UseType.Use).addSImm(0);
+		MachineInstr mi = new MachineInstr(mbb, tid);
+		mbb.insert(insertPos, mi);
+		return new MachineInstrBuilder(mi).addReg(destReg, RegState.Define);
 	}
 
-	/**
-	 * This function is used to add a memory reference of the form
-	 * [Reg + Offset], i.e., one with no scale or index, but with a
-	 * displacement. An example is: DWORD PTR [EAX + 4].
-	 * @param mib
-	 * @param regNo
-	 * @param offset
-	 * @return
-	 */
-	public static MachineInstrBuilder addRegOffset(MachineInstrBuilder mib,
-			int regNo, int offset)
+	public static MachineInstrBuilder buildMI(TargetInstrDesc desc)
 	{
-		// regNo(offset+ NoReg*0).
-		return mib.addReg(regNo, UseType.Use).addZImm(0).addReg(0, UseType.Use).addSImm(offset);
+		return new MachineInstrBuilder(new MachineInstr(desc));
 	}
 
-	public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib, int fi)
+	public static MachineInstrBuilder buildMI(TargetInstrDesc desc, int destReg)
 	{
-		return addFrameReference(mib, fi, 0);
+		return new MachineInstrBuilder(new MachineInstr(desc)).
+				addReg(destReg, RegState.Define);
 	}
 
-	/**
-	 * This function is used to add a reference to the base of
-	 * an abstract object on the stack frame of the current function.  This
-	 * reference has base register as the FrameIndex offset until it is resolved.
-	 * This allows a constant offset to be specified as well...
-	 * @param mib
-	 * @param fi
-	 * @param offset
-	 * @return
-	 */
-	public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib, int fi, int offset)
+	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb, TargetInstrDesc desc)
 	{
-		return mib.addFrameIndex(fi).addZImm(1).addReg(0, UseType.Use).addSImm(0);
+		return new MachineInstrBuilder(new MachineInstr(mbb, desc));
 	}
 
-	/**
-	 * This function is used to add a reference to the
-	 * base of a constant value spilled to the per-function constant pool.  The
-	 * reference has base register ConstantPoolIndex offset which is retained until
-	 * either machine code emission or assembly output
-	 * @param mib
-	 * @param cpi
-	 * @param offset
-	 * @return
-	 */
-	public static MachineInstrBuilder addConstantPoolReference(MachineInstrBuilder mib, int cpi, int offset)
+	public MachineInstrBuilder addMemOperand(MachineMemOperand mmo)
 	{
-		return mib.addConstantPool(cpi).addZImm(1).addReg(0, UseType.Use).addSImm(0);
+		mi.addMemOperand(mmo);
+		return this;
 	}
 }

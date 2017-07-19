@@ -124,7 +124,7 @@ public abstract class TargetInfo
     }
 
     /**
-     * Define a macro name and standard variants.  For example if
+     * Define a macro asmName and standard variants.  For example if
      * MacroName is "unix", then this will define "__unix", "__unix__", and "unix"
      * when in GNU mode.
      *
@@ -407,7 +407,7 @@ public abstract class TargetInfo
 
     /**
      * Returns whether the passed in string
-     * is a valid register name according to GCC. This is used by Sema for
+     * is a valid register asmName according to GCC. This is used by Sema for
      * inline asm statements.
      *
      * @param name
@@ -419,7 +419,7 @@ public abstract class TargetInfo
     }
 
     /**
-     * Returns the "normalized" GCC register name.
+     * Returns the "normalized" GCC register asmName.
      * For example, on x86 it will return "ax" when "eax" is passed in.
      *
      * @param name

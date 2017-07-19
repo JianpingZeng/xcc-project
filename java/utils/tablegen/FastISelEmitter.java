@@ -38,6 +38,7 @@ public final class FastISelEmitter extends TableGenBackend
 {
     private RecordKeeper records;
     private CodeGenDAGPatterns cgp;
+    private String className;
 
     public FastISelEmitter(RecordKeeper rec) throws Exception
     {
@@ -60,9 +61,16 @@ public final class FastISelEmitter extends TableGenBackend
             emitSourceFileHeaderComment("\"Fast\" Instruction Selector for the "
                     + target.getName() + " target", os);
 
+            className = target.getName() + "GenFastISel";
+
+            os.println("import backend.target.x86.X86FastISel;");
+            os.println();
+            os.printf("public final class %s extends X86FastISel {\n\n", className);
             FastISelMap f = new FastISelMap();
             f.collectPatterns(cgp);
             f.printFunctionDefinitions(os);
+
+            os.println("}");
         }
         catch (FileNotFoundException e)
         {
@@ -549,7 +557,7 @@ public final class FastISelEmitter extends TableGenBackend
                                 os.printf(", ");
 
                             operands.printParameters(os);
-                            os.printf(") {\nswitch (retVT.simpleTy) {\n");
+                            os.printf(") {\nswitch (retVT.simpleVT) {\n");
                             for (Map.Entry<Integer, HashMap<String, InstructionMemo>> ri : rm
                                     .entrySet())
                             {

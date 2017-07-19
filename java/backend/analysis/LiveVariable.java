@@ -19,8 +19,8 @@ package backend.analysis;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
+import backend.target.TargetInstrDesc;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetInstrInfo.TargetInstrDescriptor;
 import backend.target.TargetRegisterInfo;
 import backend.transform.scalars.UnreachableMachineBlockElim;
 import gnu.trove.iterator.TIntIterator;
@@ -193,7 +193,7 @@ public final class LiveVariable extends MachineFunctionPass
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         this.mf = mf;
-        regInfo = mf.getTargetMachine().getRegInfo();
+        regInfo = mf.getTargetMachine().getRegisterInfo();
         machineRegInfo = mf.getMachineRegisterInfo();
         allocatablePhyRegs = regInfo.getAllocatableSet(mf);
         TargetInstrInfo instInfo = mf.getTargetMachine().getInstrInfo();
@@ -231,7 +231,7 @@ public final class LiveVariable extends MachineFunctionPass
                 int numOperands = inst.getNumOperands();
                 if (inst.getOpCode() == TargetInstrInfo.PHI)
                     numOperands = 1;
-                TargetInstrDescriptor instDesc = instInfo.get(inst.getOpCode());
+                TargetInstrDesc instDesc = instInfo.get(inst.getOpCode());
 
                 // process all implicit uses reg.
                 if (instDesc.implicitUses != null)
@@ -246,7 +246,7 @@ public final class LiveVariable extends MachineFunctionPass
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    if (mo.opIsUse() && mo.getReg() != 0 && mo.isRegister())
+                    if (mo.opIsUse() && mo.getReg() != 0 && mo.isReg())
                     {
                         int reg = mo.getReg();
                         if (machineRegInfo.isPhysicalReg(reg)
@@ -275,7 +275,7 @@ public final class LiveVariable extends MachineFunctionPass
                 {
                     MachineOperand mo = inst.getOperand(i);
                     int reg = mo.getReg();
-                    if (mo.opIsDef() && mo.isRegister() && mo.getReg() != 0)
+                    if (mo.opIsDef() && mo.isReg() && mo.getReg() != 0)
                     {
                         if (machineRegInfo.isPhysicalReg(reg)
                                 && allocatablePhyRegs.contains(reg))

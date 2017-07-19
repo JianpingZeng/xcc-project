@@ -34,7 +34,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
+import static backend.target.TargetMachine.CodeGenFileType.AsmFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
 import static jlang.support.BackendAction.*;
 
@@ -309,7 +309,7 @@ public class BackendConsumer implements ASTConsumer
             }
 
             if (theTargetMachine.addPassesToEmitFile(pm, fast,
-                    asmOutStream, AssemblyFile, optLevel))
+                    asmOutStream, AsmFile, optLevel))
             {
                 buffer.append("Unable to interface with backend.target machine!\n");
                 return false;

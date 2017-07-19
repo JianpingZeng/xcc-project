@@ -339,7 +339,7 @@ public class TokenLexer
         for (int i = 0; i < tokens.length; i++)
         {
             // If we found the stringify operator, get the argument stringified.  The
-            // preprocessor already verified that the following token is a macro name
+            // preprocessor already verified that the following token is a macro asmName
             // when the #define was parsed.
             Token curTok = tokens[i];
             if (curTok.is(TokenKind.hash))
@@ -356,7 +356,7 @@ public class TokenLexer
 
                 resultToks.add(res);
                 madeChange = true;
-                ++i;        // Skip arg name.
+                ++i;        // Skip arg asmName.
                 nextTokGetsSpace = false;
                 continue;
             }

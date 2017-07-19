@@ -746,7 +746,7 @@ public class HIRBuilder
 
     /**
      * This method is a variant of {@linkplain #createCall4(Value, Value, Value, Value, Value)}
-     * with empty name by default.
+     * with empty asmName by default.
      * @param callee
      * @param arg1
      * @param arg2

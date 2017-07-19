@@ -944,7 +944,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
     }
 
 	/**
-     * type-name: [C99 6.7.6]
+     * type-asmName: [C99 6.7.6]
      *      specifier-qualifier-list abstract-declarator[opt]
      * @return
      */
@@ -2470,7 +2470,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     private void parseEnumSpecifier(SourceLocation startLoc, DeclSpec ds)
     {
-        // Must have either 'enum name' or 'enum {...}'.
+        // Must have either 'enum asmName' or 'enum {...}'.
         if (!tokenIs(tok, Identifier) && !tokenIs(tok, l_brace))
         {
             diag(tok, err_expected_ident_lbrace).emit();
@@ -2671,7 +2671,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
             tagType = TST_union;
         }
 
-        // Parse the (optional) class name
+        // Parse the (optional) class asmName
         IdentifierInfo name = null;
         SourceLocation nameLoc = SourceLocation.NOPOS;
         if (nextTokenIs(Identifier))

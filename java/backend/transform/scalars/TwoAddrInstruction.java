@@ -8,7 +8,6 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterClass;
-import backend.transform.scalars.PNE;
 
 /**
  * @author Xlous.zeng
@@ -28,7 +27,7 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 	{
 		boolean changed = false;
 		TargetMachine tm = mf.getTargetMachine();
-		TargetRegisterInfo regInfo = tm.getRegInfo();
+		TargetRegisterInfo regInfo = tm.getRegisterInfo();
 		TargetInstrInfo instInfo = tm.getInstrInfo();
 		LiveVariable la = getAnalysisToUpDate(LiveVariable.class);
 		MachineRegisterInfo mri = mf.getMachineRegisterInfo();
@@ -53,9 +52,9 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 					/* TODO handle commutable operator.
 					if (!la.killRegister(mi, regB))
 					{
-						TargetInstrDescriptor desc = instInfo.get(mi.getOpCode());
+						TargetInstrDesc desc = instInfo.get(mi.getOpCode());
 						if (desc.tSFlags & X86InstrInfo.M_COMMUTABLE)
-						assert mi.getOperandValToReplace(2).isRegister()
+						assert mi.getOperandValToReplace(2).isReg()
 								&& mi.getOperandValToReplace(2).getReg() != 0:
 								"Two addr instruction must be a register.";
 						if (instInfo.)
@@ -77,7 +76,7 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 					// replace all occurrences of regB with regA.
 					for (int j = 1; j < mi.getNumOperands(); j++)
 					{
-						if (mi.getOperand(j).isRegister() &&
+						if (mi.getOperand(j).isReg() &&
 								mi.getOperand(j).getReg() == regB)
 							mi.setMachineOperandReg(j, regA);
 					}

@@ -36,8 +36,8 @@ public abstract class X86SharedAsmPrinter extends AsmPrinter
     static boolean isScale(MachineOperand mo)
     {
         long imm;
-        return mo.isImmediate() && (
-                ((imm = mo.getImmedValue()) & (imm - 1)) == 0)
+        return mo.isImm() && (
+                ((imm = mo.getImm()) & (imm - 1)) == 0)
                 && imm >= 1 && imm <= 8;
     }
 
@@ -51,10 +51,10 @@ public abstract class X86SharedAsmPrinter extends AsmPrinter
     {
         if (mi.getOperand(opNo).isFrameIndex()) return true;
         return mi.getNumOperands() >= opNo + 4 &&
-                mi.getOperand(opNo).isRegister()
+                mi.getOperand(opNo).isReg()
                 && isScale(mi.getOperand(opNo + 1))
-                && mi.getOperand(opNo + 2).isRegister()
-                && (mi.getOperand(opNo + 3).isImmediate()
+                && mi.getOperand(opNo + 2).isReg()
+                && (mi.getOperand(opNo + 3).isImm()
         || mi.getOperand(opNo + 3).isGlobalAddress()
         || mi.getOperand(opNo + 3).isConstantPoolIndex());
     }

@@ -22,7 +22,7 @@ import tools.Pair;
  * One of these records is kept for each identifier that
  * is lexed.  This contains information about whether the token was #define'd,
  * is a language keyword, or if it is a front-end token of some sort (e.g. a
- * variable or function name).  The preprocessor keeps this information in a
+ * variable or function asmName).  The preprocessor keeps this information in a
  * set, and all tok::identifier tokens have a pointer to one of these.
  * @author Xlous.zeng
  * @version 0.1

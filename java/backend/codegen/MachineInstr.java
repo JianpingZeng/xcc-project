@@ -1,14 +1,12 @@
 package backend.codegen;
 
-import backend.codegen.MachineOperand.MachineOperandType;
-import backend.codegen.MachineOperand.UseType;
 import backend.target.TargetInstrInfo;
-import backend.value.GlobalValue;
-import backend.value.Value;
+import backend.target.TargetInstrDesc;
+import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
-
-import static backend.codegen.MachineOperand.MachineOperandType.*;
 
 /**
  * Representation of each machine instruction.
@@ -34,312 +32,325 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
  */
 public class MachineInstr
 {
-	private int              opCode;              // the opcode
-	private int         opCodeFlags;         // flags modifying instrn behavior
+	private TargetInstrDesc tid;
+
+	private int opCode;              // the opcode
+	private int opCodeFlags;         // flags modifying instrn behavior
 
 	/**
 	 * |<-----Explicit operands--------->|-----Implicit operands------->|
 	 */
 	private ArrayList<MachineOperand> operands; // the operands
-	private int numImplicitRefs;             // number of implicit operands
+	private int numImplicitOps;             // number of implicit operands
 
 	private MachineBasicBlock parent;
 
+	private ArrayList<MachineMemOperand> memOperands = new ArrayList<>();
+
 	/**
 	 * Return true if it's illegal to add a new operand.
+	 *
 	 * @return
 	 */
 	private boolean operandsComplete()
 	{
-		int numOperands = TargetInstrInfo.TargetInstrDescriptors[opCode].numOperands;
-		if (numOperands>=0 && numOperands <= getNumOperands())
+		int numOperands = TargetInstrInfo.targetInstrDescs[opCode].numOperands;
+		if (numOperands >= 0 && numOperands <= getNumOperands())
 			return true;
 		return false;
 	}
 
-	public MachineInstr(int opCode, int numOperands)
+	public MachineInstr(TargetInstrDesc tid)
 	{
-		this.opCode = opCode;
-		opCodeFlags = 0;
-		operands = new ArrayList<>(numOperands);
-		numImplicitRefs = 0;
+		this(tid, false);
 	}
 
-	public MachineInstr(MachineBasicBlock mbb, int opCode, int numOperands)
+	public MachineInstr(TargetInstrDesc tid, boolean noImp)
 	{
-		this(opCode, numOperands);
-		assert mbb != null:"Can not use inserting operation with null basic block";
+		this.tid = tid;
+		if (!noImp && tid.getImplicitDefs() != null)
+		{
+			numImplicitOps += tid.getImplicitDefs().length;
+		}
+		if (!noImp && tid.getImplicitUses() != null)
+		{
+			numImplicitOps += tid.getImplicitUses().length;
+		}
+
+		operands = new ArrayList<>();
+		for (int idx = numImplicitOps + tid.getNumOperands(); idx > 0; idx--)
+			operands.add(null);
+		if (!noImp)
+			addImplicitDefUseOperands();
+	}
+
+	public MachineInstr(MachineBasicBlock mbb, TargetInstrDesc tid)
+	{
+		this(tid, false);
+		parent = mbb;
+		assert mbb
+				!= null : "Can not use inserting operation with null basic block";
 		mbb.addLast(this);
 	}
 
-	public int getOpCode(){return opCode;}
-	public int getOpCodeFlags(){return opCodeFlags;}
-	public int getNumOperands() {return operands.size() - numImplicitRefs;}
-	public int getNumImplicitRefs(){return numImplicitRefs;}
+	public void addImplicitDefUseOperands()
+	{
+		if (tid.implicitDefs != null)
+		{
+			for (int i = 0, e = tid.implicitDefs.length; i < e; i++)
+				addOperand(MachineOperand
+						.createReg(tid.getImplicitDefs()[i], true, true));
+		}
+		if (tid.implicitUses != null)
+		{
+			for (int i = 0; i < tid.implicitUses.length; i++)
+				addOperand(MachineOperand
+						.createReg(tid.implicitUses[i], false, true));
+		}
+	}
+
+	/**
+	 * Add the specified operand to the instruction.  If it is an
+	 * implicit operand, it is added to the end of the operand list.  If it is
+	 * an explicit operand it is added at the end of the explicit operand list
+	 * (before the first implicit operand).
+	 *
+	 * @param mo
+	 */
+	public void addOperand(MachineOperand mo)
+	{
+		// TODO: 17-7-16
+	}
+
+	public void removeOperand(int opNo)
+	{
+		assert opNo >= 0 && opNo < operands.size();
+
+		int size = operands.size();
+		if (opNo == size - 1)
+		{
+			if (operands.get(size - 1).isReg() && operands.get(size - 1).isOnRegUseList())
+				operands.get(size - 1).removeRegOperandFromRegInfo();
+
+			operands.remove(size - 1);
+			return;
+		}
+
+		MachineRegisterInfo regInfo = getRegInfo();
+		if (regInfo != null)
+		{
+			for (int i = opNo, e = operands.size(); i != e; i++)
+			{
+				if (operands.get(i).isReg())
+					operands.get(i).removeRegOperandFromRegInfo();
+			}
+		}
+		operands.remove(opNo);
+
+		if (regInfo != null)
+		{
+			for (int i = opNo, e = operands.size(); i != e; i++)
+			{
+				if (operands.get(i).isReg())
+					operands.get(i).addRegOperandToRegInfo(regInfo);
+			}
+		}
+	}
+
+	public MachineRegisterInfo getRegInfo()
+	{
+		return parent == null ? null :
+				parent.getParent().getMachineRegisterInfo();
+	}
+
+	public int getOpCode()
+	{
+		return tid.opCode;
+	}
+
+	public int getNumOperands()
+	{
+		return operands.size();
+	}
 
 	public MachineOperand getOperand(int index)
 	{
-		assert index>=0 && index < getNumOperands();
+		assert index >= 0 && index < getNumOperands();
 		return operands.get(index);
 	}
 
-	public void removeOperand(int index)
+	public int getExplicitOperands()
 	{
-		assert index>=0 && index < getNumOperands();
-		operands.remove(index);
+		int numOperands = tid.getNumOperands();
+		if (!tid.isVariadic())
+			return numOperands;
+
+		for (int i = numOperands, e = getNumOperands(); i != e; i++)
+		{
+			MachineOperand mo = getOperand(i);
+			if (!mo.isReg() || !mo.isImplicit())
+				numOperands++;
+		}
+		return numOperands;
 	}
 
-	public MachineOperand getImplicitOp(int index)
+	public boolean isIdenticalTo(MachineInstr other)
 	{
-		assert index>=0&&index< numImplicitRefs:
-			"implicit ref out of range!";
-		return operands.get(index + getNumOperands());
+		if (other.getOpCode() != getOpCode() || other.getNumOperands() != getNumOperands())
+			return false;
+
+		for (int i = 0, e = getNumOperands(); i != e; i++)
+			if (!getOperand(i).isIdenticalTo(other.getOperand(i)))
+				return false;
+		return true;
 	}
 
-	/**
-	 * Access to explicit or implicit operands of the instruction.
-	 * This returns the i'th entry in the operand list.
-	 * It corresponds to the i'th explicit operand or (i-N)'th implicit
-	 * operand, where N indicates the number of all explicit operands.
-	 * @param i
-	 * @return
-	 */
-	public MachineOperand getExplOrImplOperand(int i)
+	public MachineInstr removeFromParent()
 	{
-		assert i>=0&&i<operands.size();
-		return i<getNumOperands() ? getOperand(i)
-				: getImplicitOp(i-getNumOperands());
+		assert getParent() != null;
+		parent.remove(this);
+		return this;
 	}
 
-	public Value getImplicitRef(int i)
+	public boolean isLabel()
 	{
-		return getImplicitOp(i).getVRegValue();
+		int op = getOpCode();
+		return op == TargetInstrInfo.DBG_LABEL || op == TargetInstrInfo.EH_LABEL
+				|| op == TargetInstrInfo.GC_LABEL;
 	}
 
-	public void addImplicitRef(Value val, boolean isDef, boolean isDefAndUse)
+	public boolean isDebugLabel()
 	{
-		numImplicitRefs++;
-		addRegOperand(val, isDef, isDefAndUse);
+		return getOpCode() == TargetInstrInfo.DBG_LABEL;
 	}
 
-	/**
-	 * Add a MO_VirtualRegister operand to the end of the operands list.
-	 * @param val
-	 * @param isDef
-	 * @param isDefAndUse
-	 */
-	public void addRegOperand(Value val, boolean isDef, boolean isDefAndUse)
+	public boolean readsRegister(int reg, TargetRegisterInfo tri)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(val, MO_VirtualRegister,
-				!isDef ? UseType.Use : (isDefAndUse ?
-						UseType.UseAndDef : UseType.Def));
-		mo.setParentMI(this);
-		operands.add(mo);
+		return findRegisterUseOperandIdx(reg, false, tri) != -1;
 	}
 
-	public void addRegOperand(Value val, UseType utype, boolean isPCRelative)
+	public boolean killsRegister(int reg, TargetRegisterInfo tri)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(val, MO_VirtualRegister,
-				utype, isPCRelative);
-		mo.setParentMI(this);
-		operands.add(mo);
+		return findRegisterUseOperandIdx(reg, true, tri) != -1;
 	}
 
-	public void addCCRegOperand(Value val, UseType utype)
+	public boolean modifiedRegister(int reg, TargetRegisterInfo tri)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(val, MO_CCRegister,
-				utype, false);
-		mo.setParentMI(this);
-		operands.add(mo);
+		return findRegisterDefOperandIdx(reg, false, tri) != -1;
 	}
 
-	/**
-	 * Add a symbolic virtual register reference.
-	 * @param reg
-	 * @param isDef
-	 */
-	public void addRegOperand(int reg, boolean isDef)
+	public boolean registerDefIsDead(int reg, TargetRegisterInfo tri)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(reg, MO_VirtualRegister,
-				isDef?UseType.Def:UseType.Use);
-		mo.setParentMI(this);
-		operands.add(mo);
+		return findRegisterDefOperandIdx(reg, true, tri) != -1;
 	}
 
-	/**
-	 * Add a symbolic virtual register reference.
-	 * @param reg
-	 * @param utype
-	 */
-	public void addRegOperand(int reg, UseType utype)
+	public int findRegisterUseOperandIdx(int reg, boolean isKill,
+			TargetRegisterInfo tri)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(reg, MO_VirtualRegister, utype);
-		mo.setParentMI(this);
-		operands.add(mo);
 	}
 
-	public void addPCDispOperand(Value val)
+	public int findRegisterDefOperandIdx(int reg, boolean isKill,
+			TargetRegisterInfo tri)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(val, MO_PCRelativeDisp, UseType.Use);
-		mo.setParentMI(this);
-		operands.add(mo);
 	}
 
-	/**
-	 * Add a physical register operand into operands list.
-	 * @param reg
-	 * @param isDef
-	 */
-	public void addMachineRegOperand(int reg, boolean isDef)
+	public MachineOperand findRegisterDefOperand(int reg, boolean isDead,
+			TargetRegisterInfo tri)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(reg, MO_MachineRegister,
-				isDef?UseType.Def:UseType.Use);
-		mo.setParentMI(this);
-		operands.add(mo);
 	}
 
-	/**
-	 * Add a physical register operand into operands list.
-	 * @param reg
-	 * @param utype
-	 */
-	public void addMachineRegOperand(int reg, UseType utype)
+	public int findFirstPredOperandIdx()
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(reg, MO_MachineRegister,utype);
-		mo.setParentMI(this);
-		operands.add(mo);
 	}
 
-	/**
-	 * Add a zero extending immmediate operand.
-	 * @param intValue
-	 */
-	public void addZeroExtImmOperand(long intValue)
+	public boolean isRegTiedToUseOperand(int defOpIdx, int[] useOpIdx)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(intValue, MO_UnextendedImmed);
-		mo.setParentMI(this);
-		operands.add(mo);
+	}
+
+	public boolean isRegTiedToDefOperand(int useOpIdx, int[] defOpIdx)
+	{
+	}
+
+	public void copyKillDeadInfo(MachineInstr mi)
+	{
+		// TODO: 17-7-16
+	}
+
+	public void copyPredicates(MachineInstr mi)
+	{
+		// TODO: 17-7-16
+	}
+
+	/// addRegisterKilled - We have determined MI kills a register. Look for the
+	/// operand that uses it and mark it as IsKill. If AddIfNotFound is true,
+	/// add a implicit operand if it's not found. Returns true if the operand
+	/// exists / is added.
+	boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo,
+			boolean AddIfNotFound =false)
+	{
+	}
+
+	/// addRegisterDead - We have determined MI defined a register without a use.
+	/// Look for the operand that defines it and mark it as IsDead. If
+	/// AddIfNotFound is true, add a implicit operand if it's not found. Returns
+	/// true if the operand exists / is added.
+	boolean addRegisterDead(int IncomingReg, TargetRegisterInfo RegInfo,
+			boolean AddIfNotFound =false)
+	{
+	}
+
+	/// isSafeToMove - Return true if it is safe to move this instruction. If
+	/// SawStore is set to true, it means that there is a store (or call) between
+	/// the instruction's location and its intended destination.
+	boolean isSafeToMove(TargetInstrInfo TII, boolean SawStore)
+	{
+	}
+
+	/// isSafeToReMat - Return true if it's safe to rematerialize the specified
+	/// instruction which defined the specified register instead of copying it.
+	boolean isSafeToReMat(TargetInstrInfo TII, int DstReg)
+	{
+	}
+
+	/// hasVolatileMemoryRef - Return true if this instruction may have a
+	/// volatile memory reference, or if the information describing the
+	/// memory reference is not available. Return false if it is known to
+	/// have no volatile memory references.
+	boolean hasVolatileMemoryRef()
+	{}
+
+	public void print(PrintStream os, TargetMachine tm)
+	{}
+
+	public void dump()
+	{
+		print(System.err, null);
+	}
+
+	public void setDesc(TargetInstrDesc tid)
+	{
+		this.tid = tid;
 	}
 
 	/**
-	 * Add a signed extending immmediate operand.
-	 * @param intValue
+	 * Unlink all of the register operands in
+	 * this instruction from their respective use lists.  This requires that the
+	 * operands already be on their use lists
 	 */
-	public void addSignExtImmOperand(long intValue)
+	private void removeRegOperandsFromUseList()
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(intValue, MO_SignExtendedImmed);
-		mo.setParentMI(this);
-		operands.add(mo);
+		// TODO: 17-7-16
 	}
 
 	/**
-	 * Add a machine basic block operand into instruction.
-	 * @param mbb
+	 * Add all of the register operands in
+	 * this instruction from their respective use lists.  This requires that the
+	 * operands not be on their use lists yet.
+	 * @param regInfo
 	 */
-	public void addMachineBasicBlockOperand(MachineBasicBlock mbb)
+	private void addRegOperandsToUseLists(MachineRegisterInfo regInfo)
 	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(mbb);
-		mo.setParentMI(this);
-		operands.add(mo);
-	}
-
-	/**
-	 * Add an abstract stack frame index operand into instruction.
-	 * @param idx
-	 */
-	public void addFrameIndexOperand(int idx)
-	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(idx, MO_FrameIndex);
-		mo.setParentMI(this);
-		operands.add(mo);
-	}
-
-	/**
-	 * Add a constant pool index operand into instruction.
-	 * @param i
-	 */
-	public void addConstantPoolIndexOperand(int i)
-	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(i, MO_ConstantPoolIndex);
-		mo.setParentMI(this);
-		operands.add(mo);
-	}
-
-	/**
-	 * Add a global address operand into this instruction, like the instr "call _foo".
-	 * @param v
-	 * @param isPCRelative
-	 */
-	public void addGlobalAddressOperand(GlobalValue v, boolean isPCRelative)
-	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(v, MO_GlobalAddress, UseType.Use, isPCRelative);
-		mo.setParentMI(this);
-		operands.add(mo);
-	}
-
-	public void addExternalSymbolOperand(String symbolName, boolean isPCRelative)
-	{
-		assert !operandsComplete():"Attempting to add an operand to a "
-				+ "machine instr is already done";
-		MachineOperand mo = new MachineOperand(symbolName, isPCRelative);
-		mo.setParentMI(this);
-		operands.add(mo);
-	}
-
-	public void setMachineOperandReg(int i, int regNum)
-	{
-		assert i < getNumOperands();
-		MachineOperand op = operands.get(i);
-		op.setOpType(MO_MachineRegister);
-		op.setValue(null);
-		op.setReg(regNum);
-	}
-
-	public void setMachineOperandConst(int i, MachineOperandType type, long val)
-	{
-		assert  i < getNumOperands();
-		MachineOperand op = operands.get(i);
-		op.setOpType(type);
-		op.setImmedVal(val);
-		op.setValue(null);
-		op.setReg(-1);
-	}
-
-	public void setMachineOperandVal(int i, MachineOperandType opTy, Value v)
-	{
-		assert i < getNumOperands();
-		MachineOperand op = getOperand(i);
-		op.setValue(v);
-		op.setReg(-1);
-		op.setOpType(opTy);
+		// TODO: 17-7-16
 	}
 
 	public MachineBasicBlock getParent()
@@ -348,4 +359,14 @@ public class MachineInstr
 	}
 
 	public void setParent(MachineBasicBlock mbb) {parent = mbb;}
+
+	public TargetInstrDesc getDesc()
+	{
+		return tid;
+	}
+
+	public void addMemOperand(MachineMemOperand mmo)
+	{
+		memOperands.add(mmo);
+	}
 }

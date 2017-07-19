@@ -46,7 +46,7 @@ public class MachineFunction
 		frameInfo = new MachineFrameInfo();
 		machineRegisterInfo = new MachineRegisterInfo();
 		constantPool = new MachineConstantPool(tm.getTargetData());
-		phyRegDefUseList = new MachineOperand[tm.getRegInfo().getNumRegs()];
+		phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
 		// associate this machine function with HIR function.
 		fn.setMachineFunc(this);

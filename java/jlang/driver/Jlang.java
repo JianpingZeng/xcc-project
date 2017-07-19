@@ -118,7 +118,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
     public static BooleanOpt PrintDiagnosticOption =
             new BooleanOpt(new OptionNameApplicator("fdiagnostics-show-option"),
-            desc("Print diagnostic name with mappable diagnostics"));
+            desc("Print diagnostic asmName with mappable diagnostics"));
 
     public static IntOpt MessageLength =
             new IntOpt(new OptionNameApplicator("fmessage-length"),
@@ -185,8 +185,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
                     desc("Optimize for size"));
 
     public static StringOpt MainFileName =
-            new StringOpt(new OptionNameApplicator("main-file-name"),
-                    desc("Main file name to use for debug info"));
+            new StringOpt(new OptionNameApplicator("main-file-asmName"),
+                    desc("Main file asmName to use for debug info"));
 
     public static class OptLevelParser extends ParserUInt
     {

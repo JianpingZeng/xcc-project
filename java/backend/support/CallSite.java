@@ -41,7 +41,7 @@ public class CallSite
 	 * Return the pointer to function that is being called.
 	 * @return
 	 */
-	public Value getCallededValue()
+	public Value getCalledValue()
 	{
 		assert inst != null:"Not a call instruction!";
 		return inst.operand(0);
@@ -54,7 +54,7 @@ public class CallSite
 	 */
 	public Function getCalledFunction()
 	{
-		Value v = getCallededValue();
+		Value v = getCalledValue();
 		if (v instanceof Function)
 			return (Function)v;
 		return null;
@@ -96,6 +96,11 @@ public class CallSite
 	{
 		// TODO
 		return false;
+	}
+
+	public CallingConv getCallingConv()
+	{
+		return inst.getCallingConv();
 	}
 }
 

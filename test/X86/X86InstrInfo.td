@@ -180,7 +180,7 @@ def ptr_rc_nosp : PointerLikeRegClass<1>;
 // *mem - Operand definitions for the funky X86 addressing mode operands.
 //
 def X86MemAsmOperand : AsmOperandClass {
-  let Name = "Mem";
+  let asmName = "Mem";
   let SuperClass = ?;
 }
 class X86MemOperand<string printMethod> : Operand<iPTR> {
@@ -224,7 +224,7 @@ def piclabel: Operand<i32> {
 }
 
 def ImmSExt8AsmOperand : AsmOperandClass {
-  let Name = "ImmSExt8";
+  let asmName = "ImmSExt8";
   let SuperClass = ImmAsmOperand;
 }
 

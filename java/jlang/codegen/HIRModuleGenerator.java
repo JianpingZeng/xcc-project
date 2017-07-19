@@ -278,7 +278,7 @@ public class HIRModuleGenerator
         // "extern int x[];") and then a definition of a different type (e.g.
         // "int x[10];"). This also happens when an initializer has a different type
         // from the type of the global (this happens with unions).
-        if (gv == null || !gv.getType().getElemType().equals(initType)
+        if (gv == null || !gv.getType().getElementType().equals(initType)
                 || gv.getType().getAddressSpace() != astTy.getAddressSpace())
         {
             // Remove the old entry from GlobalDeclMap so that we'll create a new one.
@@ -351,7 +351,7 @@ public class HIRModuleGenerator
         GlobalValue entry = globalDeclMaps.get(mangledName);
         if (entry != null)
         {
-            if (entry.getType().getElemType().equals(type))
+            if (entry.getType().getElementType().equals(type))
                 return entry;
 
             // Make sure the result is of the correct type.
@@ -447,7 +447,7 @@ public class HIRModuleGenerator
             deferredDecls.remove(mangledName);
         }
 
-        GlobalVariable gv = new GlobalVariable(getModule(), pty.getElemType(),
+        GlobalVariable gv = new GlobalVariable(getModule(), pty.getElementType(),
                 false, ExternalLinkage, null, mangledName, null,
                 pty.getAddressSpace());
 
@@ -531,7 +531,7 @@ public class HIRModuleGenerator
 
         if (fd.getDeclType().isFunctionNoProtoType())
         {
-            assert ty.isVarArgs():"Didnot lower type as expected";
+            assert ty.isVarArg():"Didnot lower type as expected";
             ArrayList<Type> args = new ArrayList<>();
             args.addAll(ty.getParamTypes());
             ty = FunctionType.get(ty.getReturnType(), args, false);
@@ -548,7 +548,7 @@ public class HIRModuleGenerator
             entry = ce.operand(0);
         }
 
-        if (!((GlobalValue)entry).getType().getElemType().equals(ty))
+        if (!((GlobalValue)entry).getType().getElementType().equals(ty))
         {
             GlobalValue oldFn = (GlobalValue)entry;
 

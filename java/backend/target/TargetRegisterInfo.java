@@ -1,8 +1,10 @@
 package backend.target;
 
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
-import gnu.trove.list.array.TIntArrayList;
+import backend.codegen.*;
+import tools.BitMap;
+import tools.OutParamWrapper;
+
+import java.util.ArrayList;
 
 /**
  * This file describes an abstract interface used to get information about a
@@ -31,7 +33,6 @@ public abstract class TargetRegisterInfo
 	 */
 	public static final int FirstVirtualRegister = 1024;
 
-	
 	private TargetRegisterDesc[] desc;
 	/**
 	 * Mapping the machine register number to its register class.
@@ -47,16 +48,21 @@ public abstract class TargetRegisterInfo
 	 * The opcode of setting up stack frame for function being compiled.
 	 * If the target machine does not support it, this field will be -1.
 	 */
-	private int callFrameSetupOpCode;
+	private int callFrameSetupOpcode;
 	/**
 	 * The opcode of destroying stack frame for function being compiled.
 	 * If the target machine does not support it, this field will be -1.
 	 */
-	private int callFrameDestroyOpCode;
+	private int callFrameDestroyOpcode;
+
+	protected int[] subregHash;
+	protected int[] superregHash;
+	protected int[] aliasesHash;
 
 	protected TargetRegisterInfo(TargetRegisterDesc[] desc,
 			TargetRegisterClass[] regClasses, int callFrameSetupOpCode,
-			int callFrameDestroyOpCode)
+			int callFrameDestroyOpCode, int[] subregs, int[] superregs,
+			int[] aliases)
 	{
 		this.desc = desc;
 		this.regClasses = regClasses;
@@ -69,19 +75,98 @@ public abstract class TargetRegisterInfo
 			for (int j = 0, ee = regClasses[i].getRegSize(); j < ee; j++)
 			{
 				int reg = regClasses[i].getRegister(j);
-				assert phyRegClasses[reg] == null :
-						"register in more than one class!";
+				assert phyRegClasses[reg]
+						== null : "register in more than one class!";
 				phyRegClasses[reg] = regClasses[i];
 			}
 		}
-		this.callFrameSetupOpCode = callFrameSetupOpCode;
-		this.callFrameDestroyOpCode = callFrameDestroyOpCode;
+		this.callFrameSetupOpcode = callFrameSetupOpCode;
+		this.callFrameDestroyOpcode = callFrameDestroyOpCode;
+		subregHash = subregs;
+		superregHash = superregs;
+		aliasesHash = aliases;
 	}
 
 	protected TargetRegisterInfo(TargetRegisterDesc[] desc,
 			TargetRegisterClass[] phyRegClasses)
 	{
 		this(desc, phyRegClasses, -1, -1);
+	}
+
+	protected TargetRegisterInfo(TargetRegisterDesc[] desc,
+			TargetRegisterClass[] regClasses, int callFrameSetupOpCode,
+			int callFrameDestroyOpCode)
+	{
+		this(desc, regClasses, callFrameSetupOpCode, callFrameDestroyOpCode,
+				null, null, null);
+	}
+
+	public static boolean isPhysicalRegister(int reg)
+	{
+		assert reg != 0 : "this is not a register";
+		return reg < FirstVirtualRegister;
+	}
+
+	public static boolean isVirtualRegister(int reg)
+	{
+		assert reg != 0 : "this is not a register";
+		return reg >= FirstVirtualRegister;
+	}
+
+	public TargetRegisterClass getPhysicalRegisterRegClass(int reg)
+	{
+		return getPhysicalRegisterRegClass(reg, new EVT(new MVT(MVT.Other)));
+	}
+
+	public TargetRegisterClass getPhysicalRegisterRegClass(int reg, EVT vt)
+	{
+		assert isPhysicalRegister(reg):"reg must be physical register!";
+
+		TargetRegisterClass bestRC = null;
+		for (TargetRegisterClass rc : regClasses)
+		{
+			if ((vt.equals(new EVT(new MVT(MVT.Other))) || rc.hasType(vt)) &&
+					rc.contains(reg) && (bestRC == null || bestRC.hasSuperClass(rc)))
+			{
+				bestRC = rc;
+			}
+		}
+		return bestRC;
+	}
+
+	public static void getAllocatableSetForRC(MachineFunction mf,
+			TargetRegisterClass rc, BitMap r)
+	{
+		for (int i = rc.allocatableBegin(mf); i != rc.allocatableEnd(mf); i++)
+			r.set(rc.getRegister(i));
+	}
+
+	/**
+	 * Returns a bitset indexed by register number
+	 * indicating if a register is allocatable or not. If a register class is
+	 * specified, returns the subset for the class.
+	 *
+	 * @param mf
+	 * @param rc
+	 * @return
+	 */
+	public BitMap getAllocatableSet(MachineFunction mf, TargetRegisterClass rc)
+	{
+		BitMap allocatable = new BitMap(desc.length);
+		if (rc != null)
+		{
+			getAllocatableSetForRC(mf, rc, allocatable);
+			return allocatable;
+		}
+		for (TargetRegisterClass _rc : regClasses)
+			getAllocatableSetForRC(mf, _rc, allocatable);
+
+		return allocatable;
+	}
+
+	public BitMap getAllocatableSet(MachineFunction mf)
+	{
+		return getAllocatableSet(mf, null);
 	}
 
 	/**
@@ -96,35 +181,143 @@ public abstract class TargetRegisterInfo
 		return desc[regNo];
 	}
 
-	public TargetRegisterClass getRegClass(int regNo)
+	public int[] getAliasSet(int regNo)
 	{
-		assert regNo >= 0 && regNo < desc.length;
-		return phyRegClasses[regNo];
+		return get(regNo).aliasSet;
 	}
 
-	/**
-	 * Return the set of registers aliased with specified register, or null
-	 * list if there have none.
-	 *
-	 * @param regNo
-	 * @return
-	 */
-	public int[] getSubRegSet(int regNo){return get(regNo).subRegs;}
+	public int[] getSubRegisters(int regNo)
+	{
+		return get(regNo).subRegs;
+	}
 
-	public int[] getSuperRegSet(int regNo) {return get(regNo).superRegs;}
+	public int[] getSuperRegisters(int regNo)
+	{
+		return get(regNo).superRegs;
+	}
 
-	/**
-	 * Return the symbolic target specified getIdentifier for the specified physical register.
-	 *
-	 * @param regNo
-	 * @return
-	 */
+	public String getAsmName(int regNo)
+	{
+		return get(regNo).asmName;
+	}
+
 	public String getName(int regNo)
 	{
 		return get(regNo).name;
 	}
 
-	public abstract int[] getCalleeRegisters();
+	public int getNumRegs()
+	{
+		return desc.length;
+	}
+
+	public boolean regsOverlap(int regA, int regB)
+	{
+		if (regA == regB)
+			return true;
+
+		if (isVirtualRegister(regA) || isVirtualRegister(regB))
+			return false;
+
+		int index = (regA + regB * 37) & (aliasesHash.length - 1);
+		int probeAmt = 0;
+		while (aliasesHash[index * 2] != 0 && aliasesHash[index * 2 + 1] != 0)
+		{
+			if (aliasesHash[index * 2] == regA && aliasesHash[index * 2 + 1] == regB)
+				return true;
+
+			index = (index + probeAmt) & (aliasesHash.length - 1);
+			probeAmt += 2;
+		}
+		return false;
+	}
+
+	/**
+	 * Return true if regB is a sub-register of regA.
+	 *
+	 * @param regA
+	 * @param regB
+	 * @return
+	 */
+	public boolean isSubRegister(int regA, int regB)
+	{
+		int index = (regA + regB * 37) & (subregHash.length - 1);
+
+		int probeAmt = 2;
+		while (subregHash[index * 2] != 0 && subregHash[index * 2 + 1] != 0)
+		{
+			if (subregHash[index * 2] == regA && subregHash[index * 2 + 1] == regB)
+				return true;
+
+			index = (index + probeAmt) & (subregHash.length - 1);
+			probeAmt += 2;
+		}
+		return false;
+	}
+
+	/**
+	 * Returns true if regB is a super-register of regA.
+	 *
+	 * @param regA
+	 * @param regB
+	 * @return
+	 */
+	public boolean isSuperRegister(int regA, int regB)
+	{
+		int index = (regA + regB * 37) & (superregHash.length - 1);
+
+		int probeAmt = 2;
+		while (superregHash[index * 2] != 0 && superregHash[index * 2 + 1] != 0)
+		{
+			if (superregHash[index * 2] == regA
+					&& superregHash[index * 2 + 1] == regB)
+				return true;
+
+			index = (index + probeAmt) & (superregHash.length - 1);
+			probeAmt += 2;
+		}
+		return false;
+	}
+
+	public abstract int[] getCalledSavedRegs(MachineFunction mf);
+
+	public abstract TargetRegisterClass[] getCalleeSavedRegClasses(
+			MachineFunction mf);
+
+	public abstract BitMap getReservedRegs(MachineFunction mf);
+
+	/**
+	 * Returns the physical register number of sub-register "Index"
+	 * for physical register RegNo. Return zero if the sub-register does not
+	 * exist.
+	 *
+	 * @param regNo
+	 * @param index
+	 * @return
+	 */
+	public abstract int getSubReg(int regNo, int index);
+
+	public int getMatchingSuperReg(int reg, int subIdx, TargetRegisterClass rc)
+	{
+		int[] srs = getSuperRegisters(reg);
+		for (int sr : srs)
+		{
+			if (reg == getSubReg(sr, subIdx) && rc.contains(sr))
+				return sr;
+		}
+		return 0;
+	}
+
+	public TargetRegisterClass getMatchingSuperRegClass(TargetRegisterClass a,
+			TargetRegisterClass b)
+	{
+		return null;
+	}
+
+	public TargetRegisterClass[] getRegClasses()
+	{
+		return regClasses;
+	}
 
 	public int getNumRegClasses()
 	{
@@ -132,49 +325,130 @@ public abstract class TargetRegisterInfo
 	}
 
 	/**
-	 * Obtains the allocatable machine register set for the specified target.
+	 * Returns the register class associated with the enumeration
+	 * value.  See class TargetOperandInfo.
+	 *
+	 * @param i
+	 * @return
+	 */
+	public TargetRegisterClass getRegClass(int i)
+	{
+		assert i >= 0 && i < regClasses.length;
+		return regClasses[i];
+	}
+
+	/**
+	 * Returns a TargetRegisterClass used for pointer
+	 * values.  If a target supports multiple different pointer register classes,
+	 * kind specifies which one is indicated.
+	 *
+	 * @param kind
+	 * @return
+	 */
+	public TargetRegisterClass getPointerRegClass(int kind)
+	{
+		assert false : "Target didn't implement getPointerRegClass!";
+		return null;
+	}
+
+	/**
+	 * Returns a legal register class to copy a register
+	 * in the specified class to or from. Returns NULL if it is possible to copy
+	 * between a two registers of the specified class.
+	 *
+	 * @param rc
+	 * @return
+	 */
+	public TargetRegisterClass getCrossCopyRegClass(TargetRegisterClass rc)
+	{
+		return null;
+	}
+
+	/**
+	 * Resolves the specified register allocation hint
+	 * to a physical register. Returns the physical register if it is successful.
+	 *
+	 * @param type
+	 * @param reg
 	 * @param mf
 	 * @return
 	 */
-	public TIntArrayList getAllocatableSet(MachineFunction mf)
+	public int resolveRegAllocHint(int type, int reg, MachineFunction mf)
 	{
-		TIntArrayList list = new TIntArrayList();
-		for (TargetRegisterClass regClass : regClasses)
-			for (int i = regClass.allocatableBegin(mf),
-			     e = regClass.allocatableEnd(mf); i < e; i++)
-			{
-				list.add(regClass.getRegister(i));
-			}
-		return list;
+		if (type == 0 && reg != 0 && isPhysicalRegister(reg))
+			return reg;
+		return 0;
 	}
 
 	/**
-	 * Gets the number of machine registers in the specified target.
+	 * A callback to allow target a chance to update
+	 * register allocation hints when a register is "changed" (e.g. coalesced)
+	 * to another register. e.g. On ARM, some virtual registers should target
+	 * register pairs, if one of pair is coalesced to another register, the
+	 * allocation hint of the other half of the pair should be changed to point
+	 * to the new register.
+	 *
+	 * @param reg
+	 * @param newReg
+	 * @param mf
+	 */
+	public void updateRegAllocHint(int reg, int newReg, MachineFunction mf)
+	{
+
+	}
+
+	public boolean targetHandlessStackFrameRounding()
+	{
+		return false;
+	}
+
+	public boolean requireRegisterScavenging(MachineFunction mf)
+	{
+		return false;
+	}
+
+	public abstract boolean hasFP(MachineFunction mf);
+
+	public boolean hasReservedCallFrame(MachineFunction mf)
+	{
+		return !hasFP(mf);
+	}
+
+	public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
+			OutParamWrapper<Integer> frameIdx)
+	{
+		return false;
+	}
+
+	public boolean needsStackRealignment(MachineFunction mf)
+	{
+		return false;
+	}
+
+	/**
+	 * This method return the opcode of the frame setup instructions if
+	 * they exist (-1 otherwise).  Some targets use pseudo instructions in order
+	 * to abstract away the difference between operating with a frame pointer
+	 * and operating without, through the use of these two instructions.
+	 *
 	 * @return
 	 */
-	public int getNumRegs() {return desc.length;}
+	public int getCallFrameSetupOpcode()
+	{
+		return callFrameSetupOpcode;
+	}
 
 	/**
-	 * Checks to see if the specified register number represents a machine
-	 * register.
-	 * @param regNo
-	 * @return true if the {@code regNo} is a machine register.
+	 * This method return the opcode of the frame destroy instructions if
+	 * they exist (-1 otherwise).  Some targets use pseudo instructions in order
+	 * to abstract away the difference between operating with a frame pointer
+	 * and operating without, through the use of these two instructions.
+	 *
+	 * @return
 	 */
-	public boolean isPhysicalRegister(int regNo)
+	public int getCallFrameDestroyOpcode()
 	{
-		assert regNo > 0:"This is a invalid register number!";
-		return regNo < FirstVirtualRegister;
-	}
-	/**
-	 * Checks to see if the specified register number represents a virtual
-	 * register.
-	 * @param regNo
-	 * @return true if the {@code regNo} is a virtual register.
-	 */
-	public boolean isVirtualRegister(int regNo)
-	{
-		assert regNo > 0:"This is a invalid register number!";
-		return regNo >= FirstVirtualRegister;
+		return callFrameDestroyOpcode;
 	}
 
 	//===--------------------------------------------------------------------===//
@@ -185,6 +459,7 @@ public abstract class TargetRegisterInfo
 	/**
 	 * Inserts a machine isntr into machine basic block and return the next
 	 * insertion position.
+	 *
 	 * @param mbb
 	 * @param mbbi
 	 * @param srcReg
@@ -202,29 +477,6 @@ public abstract class TargetRegisterInfo
 			int destReg, int srcReg, TargetRegisterClass rc);
 
 	/**
-	 * This method return the opcode of the frame setup instructions if
-	 * they exist (-1 otherwise).  Some targets use pseudo instructions in order
-	 * to abstract away the difference between operating with a frame pointer
-	 * and operating without, through the use of these two instructions.
-	 * @return
-	 */
-	public int getCallFrameSetupOpcode()
-	{
-		return callFrameSetupOpCode;
-	}
-	/**
-	 * This method return the opcode of the frame destroy instructions if
-	 * they exist (-1 otherwise).  Some targets use pseudo instructions in order
-	 * to abstract away the difference between operating with a frame pointer
-	 * and operating without, through the use of these two instructions.
-	 * @return
-	 */
-	public int getCallFrameDestroyOpcode()
-	{
-		return callFrameDestroyOpCode;
-	}
-
-	/**
 	 * This method is called during prolog/epilog code insertion to eliminate
 	 * call frame setup and destroy pseudo instructions (but only if the
 	 * Target is using them).  It is responsible for eliminating these
@@ -235,18 +487,38 @@ public abstract class TargetRegisterInfo
 	public void eliminateCallFramePseudoInstr(MachineFunction mf,
 			MachineBasicBlock mbb, int idx)
 	{
-		assert (getCallFrameSetupOpcode() == -1 && getCallFrameDestroyOpcode() == -1)
-				: "eliminateCallFramePseudoInstr must be implemented if using"
+		assert (getCallFrameSetupOpcode() == -1
+				&& getCallFrameDestroyOpcode() == -1) :
+				"eliminateCallFramePseudoInstr must be implemented if using"
 						+ " call frame setup/destroy pseudo instructions!";
 		assert false : "Call Frame Pseudo Instructions do not exist on this target!";
 	}
+
+	public void processFunctionBeforeCalleeSavedScan(MachineFunction mf)
+	{
+		processFunctionBeforeCalleeSavedScan(mf, null);
+	}
+	/**
+	 * This method is called immediately
+	 * before PrologEpilogInserter scans the physical registers used to determine
+	 * what callee saved registers should be spilled. This method is optional.
+	 * @param mf
+	 * @param rs
+	 */
+	public void processFunctionBeforeCalleeSavedScan(MachineFunction mf,
+			RegScavenger rs)
+	{}
+
 	/**
 	 * This method is called immediately before the specified functions frame
 	 * layout (MF.getFrameInfo()) is finalized.  Once the frame is finalized,
 	 * MO_FrameIndex operands are replaced with direct ants.  This method is
 	 * optional.
 	 */
-	public abstract void processFunctionBeforeFrameFinalized(MachineFunction mf);
+	public void processFunctionBeforeFrameFinalized(MachineFunction mf)
+	{
+
+	}
 
 	/*
 	 * eliminateFrameIndex - This method must be overridden to eliminate abstract
@@ -256,7 +528,17 @@ public abstract class TargetRegisterInfo
 	 * specified instruction, as long as it keeps the iterator pointing the the
 	 * finished product.
 	 */
-	public abstract void eliminateFrameIndex(MachineFunction mf, MachineBasicBlock mbb, int ii);
+	public void eliminateFrameIndex(MachineFunction mf,
+			MachineBasicBlock mbb,
+			int ii)
+	{
+		eliminateFrameIndex(mf, mbb, ii, null);
+	}
+
+	public abstract void eliminateFrameIndex(MachineFunction mf,
+			MachineBasicBlock mbb,
+			int ii,
+			RegScavenger rs);
 
 	/**
 	 * This method insert prologue code into the function.
@@ -267,4 +549,32 @@ public abstract class TargetRegisterInfo
 	 */
 	public abstract void emitEpilogue(MachineFunction MF,
 			MachineBasicBlock mbb);
+
+	public abstract int getFrameRegister(MachineFunction mf);
+
+	public int getFrameIndexOffset(MachineFunction mf, int fi)
+	{
+		TargetFrameInfo tfi = mf.getTargetMachine().getFrameInfo();
+		MachineFrameInfo mfi = mf.getFrameInfo();
+		return mfi.getObjectOffset(fi) + mfi.getStackSize() -
+				tfi.getLocalAreaOffset() + mfi.getOffsetAdjustment();
+	}
+
+	/**
+	 * This method should return the register where the return
+	 * address can be found.
+	 * @return
+	 */
+	public abstract int getRARegister();
+
+	/**
+	 * Returns a list of machine moves that are assumed
+	 * on entry to all functions.  Note that LabelID is ignored (assumed to be
+	 * the beginning of the function.)
+	 * @param moves
+	 */
+	public void getInitializeFrameState(ArrayList<MachineMove> moves)
+	{
+
+	}
 }

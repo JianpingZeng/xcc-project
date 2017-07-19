@@ -33,7 +33,7 @@ public final class PNE extends MachineFunctionPass
 		instInfo = mf.getTargetMachine().getInstrInfo();
 		this.mf = mf;
 		mri = mf.getMachineRegisterInfo();
-		regInfo = mf.getTargetMachine().getRegInfo();
+		regInfo = mf.getTargetMachine().getRegisterInfo();
 
 		for (MachineBasicBlock mbb : mf.getBasicBlocks())
 		{
@@ -254,7 +254,7 @@ public final class PNE extends MachineFunctionPass
 		for (int i = 0, sz = mi.getNumOperands(); i < sz; i++)
 		{
 			MachineOperand mo = mi.getOperand(i);
-			if (mo.isRegister() && mo.getReg() != 0
+			if (mo.isReg() && mo.getReg() != 0
 					&& mo.getReg() == reg && mo.opIsUse())
 				return true;
 		}

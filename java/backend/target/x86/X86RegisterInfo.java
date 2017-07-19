@@ -1,23 +1,31 @@
 package backend.target.x86;
 
 import backend.codegen.*;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterDesc;
 import backend.target.TargetRegisterClass;
-import backend.target.TargetRegisterInfo;
 import backend.type.Type;
 import tools.Util;
 
-import static backend.codegen.MachineInstrBuilder.*;
-import static backend.codegen.MachineOperand.MachineOperandType.MO_SignExtendedImmed;
-import static backend.codegen.MachineOperand.UseType.Use;
+import static backend.target.x86.X86GenInstrNames.*;
+import static backend.target.x86.X86GenRegisterNames.*;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
-		X86InstrNames
+public class X86RegisterInfo extends X86GenRegisterInfo
 {
+	/**
+	 * The index of various sized subregister classes. Note that
+	 * these indices must be kept in sync with the class indices in the
+	 * X86RegisterInfo.td file.
+	 */
+	public final static int SUBREG_8BIT = 1;
+	public final static int SUBREG_8BIT_HI = 2;
+	public final static int SUBREG_16BIT = 3;
+	public final static int SUBREG_32BIT = 4;
+
 	// Now that we have all of the pieces, define the top-level register classes.
 	// The order specified in the register list is implicitly defined to be the
 	// register allocation order.
@@ -54,113 +62,65 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 		}
 	}
 
-	public static class X86R32RegisterClass extends TargetRegisterClass
-	{
-		public X86R32RegisterClass(int rs, int ra, int[] regs)
-		{
-			super(null, rs, ra, regs);
-		}
-		@Override
-		public int allocatableEnd(MachineFunction mf)
-		{
-			// If so, don't allocate SP or BP.
-			if (hasFP(mf))
-				return super.allocatableEnd(mf) - 2;
-			else
-				// If not, just don't allocate SP.
-				return super.allocatableEnd(mf) - 1;
-		}
-	}
-
-	public static class X86RSTRegisterClass extends TargetRegisterClass
-	{
-		public X86RSTRegisterClass(int rs, int ra, int[] regs)
-		{
-			super(null, rs, ra, regs);
-		}
-		@Override
-		public int allocatableEnd(MachineFunction mf){return 0;}
-	}
-
-	public static class X86RFPRegisterClass extends TargetRegisterClass
-	{
-		public X86RFPRegisterClass(int rs, int ra, int[] regs)
-		{
-			super(null, rs, ra, regs);
-		}
-	}
-
-	final static X86R8RegisterClass x86R8RegClass =
-			new X86R8RegisterClass(1, 1, X86R8);
-
-	final static X86R16RegisterClass x86R16RegClass =
-			new X86R16RegisterClass(2, 2, X86R16);
-
-	final static X86R32RegisterClass x86R32RegClass =
-			new X86R32RegisterClass(4, 4, X86R32);
-
-	final static X86RFPRegisterClass x86RFPClass =
-			new X86RFPRegisterClass(4, 4, X86RFP);
-
-	final static X86RSTRegisterClass x86RSTClass =
-			new X86RSTRegisterClass(8, 4, X86RST);
+	private X86TargetMachine tm;
+	private TargetInstrInfo tii;
 
 	/**
-	 * A static array holds all register classes for x86 target machine.
+	 * Is the target 64-bits.
 	 */
-	private static TargetRegisterClass[] x86RegisterClasses =
-			{ x86R8RegClass, x86R16RegClass, x86R32RegClass, x86RSTClass };
+	private boolean is64Bit;
+
 	/**
-	 * A static array holds all register descriptor information
-	 * for each register in x86.
+	 * Is the target on of win64 flavours
 	 */
-	private static TargetRegisterDesc[] x86RegInfoDescs =
-			{
-					// 32bit general register.
-				new TargetRegisterDesc("EAX", new int[]{AX, AH, AL}, null, 0, 0),
-				new TargetRegisterDesc("EDX", new int[]{DX, DH, DL}, null, 0, 0),
-				new TargetRegisterDesc("ESP", new int[]{SP}, null, 0, 0),
-				new TargetRegisterDesc("ESI", new int[]{SI}, null, 0, 0),
+	private boolean isWin64;
 
-					// 16bit general register.
-				new TargetRegisterDesc("AX", new int[]{AH, AL}, new int[]{EAX}, 0, 0),
-				new TargetRegisterDesc("DX", new int[]{DH, DL}, new int[]{EDX}, 0, 0),
-				new TargetRegisterDesc("SP", null, new int[]{ESP}, 0, 0),
-				new TargetRegisterDesc("SI", null, new int[]{ESI}, 0, 0),
+	/**
+	 * Stack slot size in bytes.
+	 */
+	private int slotSize;
 
-					// 8bit general register.
-				new TargetRegisterDesc("AL", null, new int[]{AX, EAX}, 0, 0),
-				new TargetRegisterDesc("DL", null, new int[]{EDX}, 0, 0),
-				new TargetRegisterDesc("AH", null, new int[]{AX, EAX}, 0, 0),
-				new TargetRegisterDesc("DH", null, new int[]{DX, EAX}, 0, 0),
-				// Pesudo floating point register.
-				new TargetRegisterDesc("FP0", null, null, 0, 0),
-				new TargetRegisterDesc("FP1", null, null, 0, 0),
-				new TargetRegisterDesc("FP2", null, null, 0, 0),
-				new TargetRegisterDesc("FP3", null, null, 0, 0),
-				new TargetRegisterDesc("FP4", null, null, 0, 0),
-				new TargetRegisterDesc("FP5", null, null, 0, 0),
-				new TargetRegisterDesc("FP6", null, null, 0, 0),
+	/**
+	 * Default stack alignment.
+	 */
+	private int stackAlign;
 
-				// stack floating point register.
-				new TargetRegisterDesc("ST0", null, null, 0, 0),
-				new TargetRegisterDesc("ST1", null, null, 0, 0),
-				new TargetRegisterDesc("ST2", null, null, 0, 0),
-				new TargetRegisterDesc("ST3", null, null, 0, 0),
-				new TargetRegisterDesc("ST4", null, null, 0, 0),
-				new TargetRegisterDesc("ST5", null, null, 0, 0),
-				new TargetRegisterDesc("ST6", null, null, 0, 0),
-				new TargetRegisterDesc("ST7", null, null, 0, 0),
-			};
+	/**
+	 * X86 physical register used as stack ptr.
+	 */
+	private int stackPtr;
+	/**
+	 * X86 physical register used as frame ptr.
+	 */
+	private int framePtr;
 
-	private static int[] calleeSavedRegs = {ESI, EDI, EBX, EBP};
-
-	private static TargetRegisterClass[] calleeSavedRegClasses =
-			{x86R32RegClass, x86R32RegClass, x86R32RegClass, x86R32RegClass};
-
-	public X86RegisterInfo()
+	public X86RegisterInfo(X86TargetMachine tm, TargetInstrInfo tii)
 	{
-		super(x86RegInfoDescs, x86RegisterClasses, ADJCALLSTACKDOWN, ADJCALLSTACKUP);
+		super(tm.getSubtarget().is64Bit() ?
+						ADJCALLSTACKDOWN64 :
+						ADJCALLSTACKDOWN32,
+				tm.getSubtarget().is64Bit() ?
+						ADJCALLSTACKUP64 :
+						ADJCALLSTACKUP32);
+		this.tm = tm;
+		this.tii = tii;
+		X86Subtarget subtarget = tm.getSubtarget();
+		is64Bit = subtarget.is64Bit();
+		isWin64 = subtarget.isTargetWin64();
+		stackAlign = tm.getFrameInfo().getStackAlignment();
+
+		if (is64Bit)
+		{
+			slotSize = 8;
+			stackPtr = RSP;
+			framePtr = RBP;
+		}
+		else
+		{
+			slotSize = 4;
+			stackPtr = ESP;
+			framePtr = EBP;
+		}
 	}
 
 	public static int getIdx(TargetRegisterClass rc)
@@ -244,7 +204,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 			// If we have a frame pointer, turn the adjcallstackup instruction into a
 			// 'sub ESP, <amt>' and the adjcallstackdown instruction into 'add ESP,
 			// <amt>'
-			long amount = old.getOperand(0).getImmedValue();
+			long amount = old.getOperand(0).getImm();
 			if (amount != 0)
 			{
 				int align = mf.getTargetMachine().getFrameInfo().getStackAlignment();
@@ -307,7 +267,7 @@ public class X86RegisterInfo extends TargetRegisterInfo implements X86RegNames,
 		mi.setMachineOperandReg(i, hasFP(mf)? X86RegNames.EBP : X86RegNames.ESP);
 
 		int offset = mf.getFrameInfo().getObjectOffset(frameIndex) +
-				(int)mi.getOperand(i+3).getImmedValue() + 4;
+				(int)mi.getOperand(i+3).getImm() + 4;
 
 		if (!hasFP(mf))
 			offset += mf.getFrameInfo().getStackSize();

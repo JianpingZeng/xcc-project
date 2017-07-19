@@ -958,7 +958,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             if (!op.getType().isVariableArrayType())
             {
                 assert v.getType() instanceof PointerType;
-                assert ((PointerType)v.getType()).getElemType() instanceof backend.type.ArrayType;
+                assert ((PointerType)v.getType()).getElementType() instanceof backend.type.ArrayType;
 
                 v = null; //TODO builder.createStructGEP(v, 0, "arraydecay");
             }
@@ -1032,7 +1032,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         {
             PointerType pt = (PointerType)inVal.getType();
             Constant inc = ConstantInt.get(Type.Int32Ty, amountVal);
-            if (!(pt.getElemType() instanceof FunctionType))
+            if (!(pt.getElementType() instanceof FunctionType))
             {
                 QualType ptee = valTy.getPointee();
                 nextVal = builder.createGEP(inVal, inc, "ptrincdec");

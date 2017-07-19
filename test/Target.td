@@ -218,7 +218,7 @@ def unknown;
 /// should be defined.
 class AsmOperandClass {
   /// The name to use for this class, which should be usable as an enum value.
-  string Name = ?;
+  string asmName = ?;
 
   /// The super class of this operand.
   AsmOperandClass SuperClass = ?;
@@ -239,7 +239,7 @@ class AsmOperandClass {
 }
 
 def ImmAsmOperand : AsmOperandClass {
-  let Name = "Imm";
+  let asmName = "Imm";
 }
 
 /// Operand Types - These provide the built-in operand types that may be used
@@ -486,10 +486,10 @@ class Target {
 //
 class SubtargetFeature<string n, string a,  string v, string d,
                        list<SubtargetFeature> i = []> {
-  // Name - Feature name.  Used by command line (-mattr=) to determine the
+  // asmName - Feature name.  Used by command line (-mattr=) to determine the
   // appropriate target chip.
   //
-  string Name = n;
+  string asmName = n;
 
   // Attribute - Attribute to be set by feature.
   //
@@ -516,10 +516,10 @@ class SubtargetFeature<string n, string a,  string v, string d,
 // instruction itineraries.
 //
 class Processor<string n, ProcessorItineraries pi, list<SubtargetFeature> f> {
-  // Name - Chip set name.  Used by command line (-mcpu=) to determine the
+  // asmName - Chip set name.  Used by command line (-mcpu=) to determine the
   // appropriate target chip.
   //
-  string Name = n;
+  string asmName = n;
 
   // ProcItin - The scheduling information for the target processor.
   //
@@ -532,7 +532,7 @@ class Processor<string n, ProcessorItineraries pi, list<SubtargetFeature> f> {
 //===----------------------------------------------------------------------===//
 // Pull in the common support for calling conventions.
 // Commented by Xlous zeng on 2017.6.19
-// include "./TargetCallingConv.td"
+include "./TargetCallingConv.td"
 
 //===----------------------------------------------------------------------===//
 // Pull in the common support for DAG isel generation.

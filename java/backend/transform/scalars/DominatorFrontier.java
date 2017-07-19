@@ -78,7 +78,7 @@ public final class DominatorFrontier extends DominatorFrontierBase
     {
         assert newBB.getTerminator().getNumOfSuccessors() == 1
                 :"newBB should have a single successors";
-        BasicBlock succ = newBB.getTerminator().suxAt(0);
+        BasicBlock succ = newBB.getTerminator().getSuccessor(0);
 
         ArrayList<BasicBlock> predBlocks = new ArrayList<>();
         for (PredIterator<BasicBlock> itr = newBB.predIterator(); itr.hasNext();)

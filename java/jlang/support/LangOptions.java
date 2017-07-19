@@ -86,7 +86,7 @@ public final class LangOptions
             VisibilityMode.Default;
 
     /**
-     * The user provided name for the 'main file'.
+     * The user provided asmName for the 'main file'.
      */
     private String mainFileName;
 

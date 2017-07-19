@@ -221,7 +221,7 @@ public final class MVT implements Comparable<MVT>
 
     public int getSizeInBits()
     {
-        switch (simpleTy)
+        switch (simpleVT)
         {
             case iPTR:
                 assert false : "Value type is target-dependent. Ask for TLI.";
@@ -308,44 +308,44 @@ public final class MVT implements Comparable<MVT>
         }
     }
 
-    public int simpleTy;
+    public int simpleVT;
 
     public MVT()
     {
-        simpleTy = INVALID_SIMPLE_VALUE_TYPE;
+        simpleVT = INVALID_SIMPLE_VALUE_TYPE;
     }
 
     public MVT(int svt)
     {
-        simpleTy = svt;
+        simpleVT = svt;
     }
 
     @Override 
     public int compareTo(MVT o)
     {
-        return Integer.compare(simpleTy, o.simpleTy);
+        return Integer.compare(simpleVT, o.simpleVT);
     }
 
     public boolean isFloatingPoint()
     {
-        return (simpleTy >= f32
-                && simpleTy < ppcf128) || (
-                simpleTy >= v2f32
-                        && simpleTy <= v4f64);
+        return (simpleVT >= f32
+                && simpleVT < ppcf128) || (
+                simpleVT >= v2f32
+                        && simpleVT <= v4f64);
     }
 
     public boolean isInteger()
     {
-        return (simpleTy >= FIRST_INTEGER_VALUETYPE
-                && simpleTy <= LAST_INTEGER_VALUETYPE)
-                || (simpleTy >= v2i8
-                && simpleTy <= v4f64);
+        return (simpleVT >= FIRST_INTEGER_VALUETYPE
+                && simpleVT <= LAST_INTEGER_VALUETYPE)
+                || (simpleVT >= v2i8
+                && simpleVT <= v4f64);
     }
 
     public boolean isVector()
     {
-        return (simpleTy <= FIRST_VECTOR_VALUETYPE
-                && simpleTy <= LAST_VECTOR_VALUETYPE);
+        return (simpleVT <= FIRST_VECTOR_VALUETYPE
+                && simpleVT <= LAST_VECTOR_VALUETYPE);
     }
 
     public boolean isPower2VectorType()
@@ -368,7 +368,7 @@ public final class MVT implements Comparable<MVT>
 
     public MVT getVectorElementType()
     {
-        switch (simpleTy)
+        switch (simpleVT)
         {
             default:
                 return new MVT(INVALID_SIMPLE_VALUE_TYPE);
@@ -403,7 +403,7 @@ public final class MVT implements Comparable<MVT>
 
     public int getVectorNumElements()
     {
-        switch (simpleTy)
+        switch (simpleVT)
         {
             default:
                 return ~0;
@@ -476,7 +476,7 @@ public final class MVT implements Comparable<MVT>
 
     public static MVT getVectorVT(MVT vt, int numElements)
     {
-        switch (vt.simpleTy)
+        switch (vt.simpleVT)
         {
             default:
                 break;

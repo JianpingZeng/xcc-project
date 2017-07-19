@@ -4,7 +4,7 @@ import backend.transform.scalars.PNE;
 import backend.transform.scalars.TwoAddrInstruction;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetInstrInfo.TargetInstrDescriptor;
+import backend.target.TargetInstrDesc;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterClass;
@@ -116,7 +116,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 			HashMap<Integer, Integer> virToPhyRegMap = new HashMap<>();
 
 			int opcode = mi.getOpCode();
-			TargetInstrDescriptor desc = tm.getInstrInfo().get(opcode);
+			TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
 			for (int useReg : desc.implicitUses)
 				regUsed.set(useReg);
 
@@ -142,7 +142,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 							if (instrInfo.isTwoAddrInstr(opcode) && i == 0)
 							{
 								// This maps a = b + c into b+= c, and save b into a.
-								assert mi.getOperand(1).isRegister()
+								assert mi.getOperand(1).isReg()
 										&& mi.getOperand(1).getReg()!=0
 										&& mi.getOperand(1).opIsUse()
 										:"Two address instruction invalid!";
@@ -181,7 +181,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	{
 		this.mf = mf;
 		tm = mf.getTargetMachine();
-		regInfo = tm.getRegInfo();
+		regInfo = tm.getRegisterInfo();
 		instrInfo = tm.getInstrInfo();
 
 		stackSlotForVirReg = new TIntIntHashMap();

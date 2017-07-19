@@ -34,7 +34,7 @@ public class PragmaNameSpace extends PragmaHandler
 
     /**
      * Check to see if there is already a handler for the
-     * specified name.  If not, return the handler for the null identifier if it
+     * specified asmName.  If not, return the handler for the null identifier if it
      * exists, otherwise return null.  If IgnoreNull is true (the default) then
      * the null handler isn't returned on failure to match.
      * @param name

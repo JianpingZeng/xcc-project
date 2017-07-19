@@ -62,7 +62,7 @@ public class PEI extends MachineFunctionPass
 
         // ALlow target machine to make final modification to the function
         // before the frame layout is finalized.
-        mf.getTargetMachine().getRegInfo().processFunctionBeforeFrameFinalized(mf);
+        mf.getTargetMachine().getRegisterInfo().processFunctionBeforeFrameFinalized(mf);
 
         // Calculate actual frame offsets for all of the stack object.
         calculateFrameObjectOffsets(mf);
@@ -85,7 +85,7 @@ public class PEI extends MachineFunctionPass
      */
     private void saveCalleeSavedRegisters(MachineFunction mf)
     {
-        TargetRegisterInfo regInfo = mf.getTargetMachine().getRegInfo();
+        TargetRegisterInfo regInfo = mf.getTargetMachine().getRegisterInfo();
         TargetFrameInfo frameInfo = mf.getTargetMachine().getFrameInfo();
 
         int[] calleeSavedRegs = regInfo.getCalleeRegisters();
@@ -119,7 +119,7 @@ public class PEI extends MachineFunctionPass
                     // concrete inst supported in the specified target.
                     assert mi.getNumOperands() == 1:"Call frame setup/destroy"
                             + " pseudo instruction must have a single immediate value";
-                    long size = mi.getOperand(0).getImmedValue();
+                    long size = mi.getOperand(0).getImm();
                     maxFrameSize = Math.max(maxFrameSize, size);
                     hasCall = true;
                     regInfo.eliminateCallFramePseudoInstr(mf, mbb, i);
@@ -250,7 +250,7 @@ public class PEI extends MachineFunctionPass
      */
     private void insertPrologEpilogCode(MachineFunction mf)
     {
-        TargetRegisterInfo regInfo = mf.getTargetMachine().getRegInfo();
+        TargetRegisterInfo regInfo = mf.getTargetMachine().getRegisterInfo();
         regInfo.emitPrologue(mf);
 
         TargetInstrInfo instInfo = mf.getTargetMachine().getInstrInfo();
@@ -272,8 +272,8 @@ public class PEI extends MachineFunctionPass
             return;
 
         TargetMachine tm = mf.getTargetMachine();
-        assert tm.getRegInfo() != null;
-        TargetRegisterInfo regInfo = tm.getRegInfo();
+        assert tm.getRegisterInfo() != null;
+        TargetRegisterInfo regInfo = tm.getRegisterInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             for (int i = 0; i < mbb.size(); i++)

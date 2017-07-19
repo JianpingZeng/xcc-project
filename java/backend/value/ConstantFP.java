@@ -17,9 +17,10 @@ package backend.value;
  */
 
 import backend.type.Type;
+import jlang.support.APFloat;
 import jlang.support.APSInt;
 
-import java.math.BigDecimal;
+import java.math.APFloat;
 
 /**
  * @author Xlous.zeng
@@ -27,14 +28,14 @@ import java.math.BigDecimal;
  */
 public class ConstantFP extends Constant
 {
-    private BigDecimal val;
+    private APFloat val;
     /**
      * Constructs a new instruction representing the specified constants.
      *
      * @param ty
      * @param v
      */
-    private ConstantFP(Type ty, BigDecimal v)
+    private ConstantFP(Type ty, APFloat v)
     {
         super(ty, ValueKind.ConstantFPVal);
         val = v;
@@ -42,15 +43,15 @@ public class ConstantFP extends Constant
 
     public static ConstantFP get(Type ty, double v)
     {
-        return get(ty, BigDecimal.valueOf(v));
+        return get(ty, new APFloat(v));
     }
 
-    public static ConstantFP get(Type ty, BigDecimal v)
+    public static ConstantFP get(Type ty, APFloat v)
     {
         return new ConstantFP(ty, v);
     }
 
-    public static Constant get(BigDecimal aFloat)
+    public static Constant get(APFloat aFloat)
     {
         // TODO
         return null;
@@ -67,5 +68,13 @@ public class ConstantFP extends Constant
         return null;
     }
 
-    public double getValue() {return val.doubleValue();}
+    public double getValue()
+    {
+        return val
+    }
+
+    public APFloat getValueAPF()
+    {
+        return val;
+    }
 }

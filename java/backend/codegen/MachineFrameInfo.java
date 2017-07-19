@@ -77,6 +77,8 @@ public class MachineFrameInfo
      */
     private int maxCallFrameSize;
 
+    private int offsetAdjustment;
+
     public MachineFrameInfo()
     {
         objects = new ArrayList<>();
@@ -255,5 +257,15 @@ public class MachineFrameInfo
         hasVarSizedObjects = true;
         objects.add(new StackObject(0, 1, -1));
         return objects.size() - numFixedObjects - 1;
+    }
+
+    public int getOffsetAdjustment()
+    {
+        return offsetAdjustment;
+    }
+
+    public void setOffsetAdjustment(int offset)
+    {
+        offsetAdjustment = offset;
     }
 }

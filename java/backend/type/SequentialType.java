@@ -38,7 +38,7 @@ public class SequentialType extends CompositeType
         numElts = 1;
     }
 
-    public Type getElemType()
+    public Type getElementType()
     {
         return elemType;
     }

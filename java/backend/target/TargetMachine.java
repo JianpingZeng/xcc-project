@@ -14,7 +14,7 @@ import java.io.OutputStream;
  */
 public abstract class TargetMachine
 {
-    /**
+	/**
      * Code generation optimization level.
      */
     public enum CodeGenOpt
@@ -30,8 +30,25 @@ public abstract class TargetMachine
      */
     public enum CodeGenFileType
     {
-        AssemblyFile, ObjectFile, DynamicLibrary
+        Error, None, AsmFile, ELfFile, MachOFile, DynamicLibrary
     }
+
+    public enum CodeModel
+    {
+    	Default,
+	    Small,
+	    Kernel,
+	    Medium,
+	    Large
+    }
+
+	public enum RelocModel
+	{
+		Default,
+		Static,
+		PIC_,
+		DynamicNoPIC
+	}
 
 	/**
 	 * The backend.target getIdentifier.
@@ -41,6 +58,10 @@ public abstract class TargetMachine
 	 * Calculate type getNumOfSubLoop and alignment.
 	 */
 	private TargetData dataLayout;
+
+	private CodeModel codeModel;
+
+	private RelocModel relocModel;
 
 	/**
 	 * Can only called by subclass.
@@ -60,7 +81,17 @@ public abstract class TargetMachine
 		this(name, false, 8, 8, 8, 4, 8, 4, 2, 1);
 	}
 
-	public String getName(){return name;}
+	public CodeModel getCodeModel()
+	{
+		return codeModel;
+	}
+
+	public RelocModel getRelocationModel()
+	{
+		return relocModel;
+	}
+
+	public String getName() {return name;}
 
 	// Interface to the major aspects of target machine information:
 	// 1.Instruction opcode and operand information.
@@ -71,11 +102,18 @@ public abstract class TargetMachine
 	// 6.Machine-level optimization information (peepole only).
 	public abstract TargetInstrInfo getInstrInfo();
 
-	public abstract TargetRegisterInfo getRegInfo();
+	public abstract TargetRegisterInfo getRegisterInfo();
 
 	public abstract TargetFrameInfo getFrameInfo();
 
-	public TargetData getTargetData(){return dataLayout;}
+	public TargetData getTargetData() {return dataLayout;}
+
+	public abstract TargetLowering getTargetLowering();
+
+	public TargetSubtarget getSubtarget()
+	{
+		return null;
+	}
 
 	/**
      * Add passes to the specified pass manager to get assembly language code

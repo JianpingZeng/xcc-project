@@ -16,7 +16,10 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.EVT;
+import backend.codegen.MVT;
 import backend.codegen.MachineFunction;
+import gnu.trove.set.hash.TIntHashSet;
 
 /**
  * @author Xlous.zeng
@@ -24,19 +27,61 @@ import backend.codegen.MachineFunction;
  */
 public abstract class TargetRegisterClass
 {
+    private int id;
+    private String name;
+    private TIntHashSet regSet;
+    private EVT[] vts;
+    private TargetRegisterClass[] subClasses;
+    private TargetRegisterClass[] superClasses;
+    private TargetRegisterClass[] subRegClasses;
+    private TargetRegisterClass[] superRegClasses;
+    private int copyCost;
+
     /**
      * The register getNumOfSubLoop and alignment in Bytes.
      */
     private int regSize, regAlign;
     private int[] regs;
-    private int[] vts;
 
-    protected TargetRegisterClass(int[] vts, int rs, int ra, int[] regs)
+    protected TargetRegisterClass(int id,
+            String name,
+            EVT[] vts,
+            TargetRegisterClass[] subcs,
+            TargetRegisterClass[] supercs,
+            TargetRegisterClass[] subregcs,
+            TargetRegisterClass[] superregcs,
+            int regsz, int regAlign,
+            int copyCost,
+            int[] regs)
     {
+        this.id = id;
+        this.name = name;
         this.vts = vts;
-        regSize = rs;
-        regAlign = ra;
+        subClasses  = subcs;
+        superClasses = supercs;
+        subRegClasses = subregcs;
+        superRegClasses  = superregcs;
+        regSize = regsz;
+        this.regAlign = regAlign;
         this.regs = regs;
+        this.copyCost = copyCost;
+        regSet = new TIntHashSet();
+        regSet.addAll(regs);
+    }
+
+    public int getID()
+    {
+        return id;
+    }
+
+    public String getName()
+    {
+        return name;
+    }
+
+    public int getNumRegs()
+    {
+        return regs.length;
     }
 
     public int getRegister(int i)
@@ -67,6 +112,11 @@ public abstract class TargetRegisterClass
         return regAlign;
     }
 
+    public EVT[] getVTs()
+    {
+        return vts;
+    }
+
     /**
      * Obtains the begin index of the allocatable registers group.
      *
@@ -87,5 +137,35 @@ public abstract class TargetRegisterClass
     public int allocatableEnd(MachineFunction mf)
     {
         return regs.length;
+    }
+
+    /**
+     * Return true if the specified register is included in this
+     * register class.
+     * @param reg
+     * @return
+     */
+    public boolean contains(int reg)
+    {
+        return regSet.contains(reg);
+    }
+
+    public boolean hasType(EVT vt)
+    {
+        for (int i = 0; vts[i].getSimpleVT().simpleVT != MVT.Other; ++i)
+        {
+            if (vts[i].equals(vt))
+                return true;
+        }
+        return false;
+    }
+
+    public boolean hasSuperClass(TargetRegisterClass rc)
+    {
+        for (TargetRegisterClass superRC : superRegClasses)
+            if (superRC.equals(rc))
+                return true;
+
+        return false;
     }
 }

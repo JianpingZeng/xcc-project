@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
- * This file defines a class which responsible for make name mangling for global
+ * This file defines a class which responsible for make asmName mangling for global
  * linkage entity of a module.
  *
  * @author Xlous.zeng
@@ -43,12 +43,12 @@ public class NameMangler
     private String prefix;
     /**
      * If this set, the target accepts global names in input.
-     * e.g. "foo bar" is a legal name. This syntax is used instead
+     * e.g. "foo bar" is a legal asmName. This syntax is used instead
      * of escape the space character. By default, this is false.
      */
     private boolean useQuotes;
     /**
-     * Memorize the name that we assign a value.
+     * Memorize the asmName that we assign a value.
      */
     private HashMap<Value, String> memo;
 

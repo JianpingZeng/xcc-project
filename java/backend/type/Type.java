@@ -260,7 +260,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser
 
         if (isArrayType())
         {
-            return ((ArrayType)this).getElemType().isSized();
+            return ((ArrayType)this).getElementType().isSized();
         }
         if (!isStructType())
             return false;

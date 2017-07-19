@@ -63,7 +63,7 @@ public abstract class Option<T>
     private Option<?> nextRegistered;
 
     /**
-     * The name of this option, like "help", "O".
+     * The asmName of this option, like "help", "O".
      */
     public String optionName;
     /**
@@ -177,7 +177,7 @@ public abstract class Option<T>
     }
 
     /**
-     * Prints option name followed by message.
+     * Prints option asmName followed by message.
      * @param message
      * @param optName
      * @return Always return true.

@@ -1,6 +1,11 @@
 package backend.target;
 
-import backend.codegen.MachineInstr;
+import backend.analysis.LiveVariable;
+import backend.codegen.*;
+import gnu.trove.list.array.TIntArrayList;
+import tools.OutParamWrapper;
+
+import java.util.ArrayList;
 
 /**
  * This class is an Interface to description of machine instructions, which
@@ -49,7 +54,7 @@ public abstract class TargetInstrInfo
     /// COPY_TO_REGCLASS - This instruction is a placeholder for a plain
     /// register-to-register copy into a specific register class. This is only
     /// used between instruction selection and MachineInstr creation, before
-    /// virtual registers have been created for all the instructions, and it's
+    /// public  registers have been created for all the instructions, and it's
     /// only needed in cases where the register classes implied by the
     /// instructions are insufficient. The actual MachineInstrs to perform
     /// the copy are emitted with the TargetInstrInfo::copyRegToReg hook.
@@ -59,95 +64,18 @@ public abstract class TargetInstrInfo
 	 * Describing the machine instructions initialized only when the
 	 * TargetMachine class is created
 	 */
-	public static TargetInstrDescriptor[] TargetInstrDescriptors;
-
-	public static class TargetInstrDescriptor
-	{
-		/**
-		 * The opcode of this instruction specfified with target machine.
-		 */
-		public int opCode;
-		/**
-		 * Assembly language mnemonic for the opcode.
-		 */
-		public String name;
-		/**
-		 * Number of args; -1 if variable #args
-		 */
-		public int numOperands;
-		/**
-		 * Position of the result; -1 if no result
-		 */
-		public int resultPos;
-		/**
-		 * Number of delay slots after instruction
-		 */
-		public int numDelaySlots;
-		/**
-		 * Latency in machine cycles
-		 */
-		public int latency;
-		/**
-		 * flags identifying machine instr class
-		 */
-		public int flags;
-		/**
-		 * Target Specific Flag values
-		 */
-		public int tSFlags;
-		/**
-		 * Registers implicitly read by this instr
-		 */
-		public int[] implicitUses;
-		/**
-		 * Registers implicitly defined by this instr
-		 */
-		public int[] implicitDefs;
-
-		public TargetInstrDescriptor(int opcode, String name, int numOprs,
-				int resPos, int flags, int TSFlags,
-				int[] implUses, int[] implDefs)
-		{
-			opCode = opcode;
-			this.name = name;
-			numOperands = numOprs;
-			resultPos =  resPos;
-			this.numDelaySlots =0;
-			this.latency = 0;
-			this.flags = flags;
-			tSFlags = TSFlags;
-			implicitUses = implUses;
-			implicitDefs = implDefs;
-		}
-
-		/**
-		 * The constructor that creats an instance of class {@linkplain TargetInstrDescriptor}
-		 * with the specified several parameters.
-		 * @param opcode    The opcode.
-		 * @param name      The instruction memonic.
-		 * @param numOprs   The number of operands are desired.
-		 * @param flags     The flags indicating machine instruction class.
-		 * @param TSFlags   The target-specified flags.
-		 * @param implUses  The implicitly used register.
-		 * @param implDefs  The implicit registers defined by this instruction.
-		 */
-		public TargetInstrDescriptor(int opcode, String name, int numOprs,
-				int flags, int TSFlags, int[] implUses, int[] implDefs)
-		{
-			this(opcode, name, numOprs, -1, flags, TSFlags, implUses, implDefs);
-		}
-	}
+	public static TargetInstrDesc[] targetInstrDescs;
 
 	/**
 	 * an array of target instruction.
 	 */
-	private TargetInstrDescriptor[] descs;
+	private TargetInstrDesc[] descs;
 
-	public TargetInstrInfo(TargetInstrDescriptor[] desc)
+	public TargetInstrInfo(TargetInstrDesc[] desc)
 	{
 		descs = desc;
-		assert TargetInstrDescriptors == null && desc != null;
-		TargetInstrDescriptors = desc;
+		assert targetInstrDescs == null && desc != null;
+		targetInstrDescs = desc;
 	}
 
 	public int getNumTotalOpCodes()
@@ -162,7 +90,7 @@ public abstract class TargetInstrInfo
 	 * @param opCode
 	 * @return
 	 */
-	public TargetInstrDescriptor get(int opCode)
+	public TargetInstrDesc get(int opCode)
 	{
 		assert opCode >= 0 && opCode < getNumTotalOpCodes();
 		return descs[opCode];
@@ -178,147 +106,387 @@ public abstract class TargetInstrInfo
 		return get(opCode).numOperands;
 	}
 
-	public int getResultPos(int opCode)
+	public boolean isTriviallyReMaterializable(MachineInstr mi)
 	{
-		return get(opCode).resultPos;
+		return mi.getDesc().isRematerializable() && isReallyTriviallyReMaterializable(mi);
 	}
 
-	public int getNumDelaySlots(int opCode)
+	protected boolean isReallyTriviallyReMaterializable(MachineInstr mi)
 	{
-		return get(opCode).numDelaySlots;
+		return false;
 	}
 
-	public int[] getImplicitUses(int opCode)
+	public boolean isMoveInstr(MachineInstr mi,
+			OutParamWrapper<Integer> srcReg,
+			OutParamWrapper<Integer> destReg,
+			OutParamWrapper<Integer> srcSubIdx,
+			OutParamWrapper<Integer> destSubIdx)
 	{
-		return get(opCode).implicitUses;
+		return false;
 	}
 
-	public int[] getImplicitDefs(int opCode)
+	public int isLoadFromStackSlot(MachineInstr mi,
+			OutParamWrapper<Integer> frameIndex)
 	{
-		return get(opCode).implicitDefs;
+		return 0;
 	}
 
-	//=======Query instruction class flags according to the machine. //
-	//=======independent flags listed above =========================//
-	public boolean isNop(int opCode)
+	public int isStoreToStackSlot(MachineInstr mi,
+			OutParamWrapper<Integer> frameIndex)
 	{
-		return (get(opCode).flags & TID.M_NOP_FLAG) != 0;
+		return 0;
 	}
 
-	public boolean isBranch(int opCode)
-	{
-		return (get(opCode).flags & TID.M_BRANCH_FLAG) != 0;
-	}
+	public abstract void reMaterialize(MachineBasicBlock mbb,
+			int insertPos,
+			int destReg,
+			int srcReg,
+			MachineInstr origin);
 
-	public boolean isCall(int opCode)
+	public boolean isInvariantLoad(MachineInstr mi)
 	{
-		return (get(opCode).flags & TID.M_CALL_FLAG) != 0;
-	}
-
-	public boolean isReturn(int opCode)
-	{
-		return (get(opCode).flags & TID.M_RET_FLAG) != 0;
-	}
-
-	public boolean isControlFlow(int opCode)
-	{
-		return (get(opCode).flags & TID.M_BRANCH_FLAG) != 0
-				|| (get(opCode).flags & TID.M_CALL_FLAG) != 0
-				|| (get(opCode).flags & TID.M_RET_FLAG) != 0;
-	}
-
-	public boolean isArith(int opCode)
-	{
-		return (get(opCode).flags & TID.M_ARITH_FLAG) != 0;
-	}
-
-	public boolean isCCInstr(int opCode)
-	{
-		return (get(opCode).flags & TID.M_CC_FLAG) != 0;
-	}
-
-	public boolean isLogical(int opCode)
-	{
-		return (get(opCode).flags & TID.M_LOGICAL_FLAG) != 0;
-	}
-
-	public boolean isIntInstr(int opCode)
-	{
-		return (get(opCode).flags & TID.M_INT_FLAG) != 0;
-	}
-
-	public boolean isFloatInstr(int opCode)
-	{
-		return (get(opCode).flags & TID.M_FLOAT_FLAG) != 0;
-	}
-
-	public boolean isConditional(int opCode)
-	{
-		return (get(opCode).flags & TID.M_CONDL_FLAG) != 0;
-	}
-
-	public boolean isLoad(int opCode)
-	{
-		return (get(opCode).flags & TID.M_LOAD_FLAG) != 0;
-	}
-
-	public boolean isPrefetch(int opCode)
-	{
-		return (get(opCode).flags & TID.M_PREFETCH_FLAG) != 0;
-	}
-
-	public boolean isLoadOrPrefetch(int opCode)
-	{
-		return (get(opCode).flags & TID.M_LOAD_FLAG) != 0
-				|| (get(opCode).flags & TID.M_PREFETCH_FLAG) != 0;
-	}
-
-	public boolean isStore(int opCode)
-	{
-		return (get(opCode).flags & TID.M_STORE_FLAG) != 0;
-	}
-
-	public boolean isMemoryAccess(int opCode)
-	{
-		return (get(opCode).flags & TID.M_LOAD_FLAG) != 0
-				|| (get(opCode).flags & TID.M_PREFETCH_FLAG) != 0
-				|| (get(opCode).flags & TID.M_STORE_FLAG) != 0;
-	}
-
-	public boolean isDummyPhiInstr(int opCode)
-	{
-		return (get(opCode).flags & TID.M_DUMMY_PHI_FLAG) != 0;
-	}
-
-	public boolean isPseudoInstr(int opCode)
-	{
-		return (get(opCode).flags & TID.M_PSEUDO_FLAG) != 0;
-	}
-
-	public boolean isTwoAddrInstr(int opCode)
-	{
-		return (get(opCode).flags & TID.M_2_ADDR_FLAG) != 0;
-	}
-
-	public boolean isTerminatorInstr(int Opcode)
-	{
-		return (get(Opcode).flags & TID.M_TERMINATOR_FLAG) != 0;
+		return false;
 	}
 
 	/**
-	 * Returns the target's implementation of NOP, which is
-	 * usually a pseudo-instruction, implemented by a degenerate version of
-	 * another instruction, e.g. X86: xchg ax, ax;
+	 * This method must be implemented by targets that
+	 * set the M_CONVERTIBLE_TO_3_ADDR flag.  When this flag is set, the target
+	 * may be able to convert a two-address instruction into one or more true
+	 * three-address instructions on demand.  This allows the X86 target (for
+	 * example) to convert ADD and SHL instructions into LEA instructions if they
+	 * would require register copies due to two-addressness.
+	 *
+	 * This method returns a null pointer if the transformation cannot be
+	 * performed, otherwise it returns the last new instruction.
+	 * @param mf
+	 * @param idxOfBB
+	 * @param mbb
+	 * @param idxOfInst
+	 * @param lv
 	 * @return
 	 */
-	public abstract MachineInstr createNOPinstr();
+	public MachineInstr convertToThreeAddress(MachineFunction mf, int idxOfBB,
+			MachineBasicBlock mbb, int idxOfInst,
+			LiveVariable lv)
+	{
+		return null;
+	}
+
+	public  MachineInstr commuteInstruction(MachineInstr mi)
+	{
+		return commuteInstruction(mi, false);
+	}
 
 	/**
-	 * Not having a special NOP opcode, we need to know if a given
-	 * instruction is interpreted as an `official' NOP instr, i.e., there may be
-	 * more than one way to `do nothing' but only one canonical way to slack off.
+	 * If a target has any instructions that are commutable,
+	 * but require converting to a different instruction or making non-trivial
+	 * changes to commute them, this method can overloaded to do this.  The
+	 * default implementation of this method simply swaps the first two operands
+	 * of MI and returns it.
+	 *
+	 * If a target wants to make more aggressive changes, they can construct and
+	 * return a new machine instruction.  If an instruction cannot commute, it
+	 * can also return null.
+	 *
+	 * If NewMI is true, then a new machine instruction must be created.
 	 * @param mi
+	 * @param newMI
 	 * @return
 	 */
-	public abstract boolean isNOPinstr(MachineInstr mi);
+	public abstract MachineInstr commuteInstruction(MachineInstr mi, boolean newMI);
+
+	/// findCommutedOpIndices - If specified MI is commutable, return the two
+	/// operand indices that would swap value. Return true if the instruction
+	/// is not in a form which this routine understands.
+	public abstract boolean findCommutedOpIndices(MachineInstr MI,
+			OutParamWrapper<Integer> SrcOpIdx1,
+		OutParamWrapper<Integer> SrcOpIdx2);
+
+	public  boolean AnalyzeBranch(MachineBasicBlock MBB, MachineBasicBlock TBB,
+			MachineBasicBlock FBB,
+			ArrayList<MachineOperand> Cond)
+	{
+		return AnalyzeBranch(MBB, TBB, FBB, Cond, false);
+	}
+	
+	/// AnalyzeBranch - Analyze the branching code at the end of MBB, returning
+	/// true if it cannot be understood (e.g. it's a switch dispatch or isn't
+	/// implemented for a target).  Upon success, this returns false and returns
+	/// with the following information in various cases:
+	///
+	/// 1. If this block ends with no branches (it just falls through to its succ)
+	///    just return false, leaving TBB/FBB null.
+	/// 2. If this block ends with only an unconditional branch, it sets TBB to be
+	///    the destination block.
+	/// 3. If this block ends with an conditional branch and it falls through to
+	///    a successor block, it sets TBB to be the branch destination block and
+	///    a list of operands that evaluate the condition. These
+	///    operands can be passed to other TargetInstrInfo methods to create new
+	///    branches.
+	/// 4. If this block ends with a conditional branch followed by an
+	///    unconditional branch, it returns the 'true' destination in TBB, the
+	///    'false' destination in FBB, and a list of operands that evaluate the
+	///    condition.  These operands can be passed to other TargetInstrInfo
+	///    methods to create new branches.
+	///
+	/// Note that RemoveBranch and InsertBranch must be implemented to support
+	/// cases where this method returns success.
+	///
+	/// If AllowModify is true, then this routine is allowed to modify the basic
+	/// block (e.g. delete instructions after the unconditional branch).
+	///
+	public  boolean AnalyzeBranch(MachineBasicBlock MBB, MachineBasicBlock TBB,
+		MachineBasicBlock FBB,
+		ArrayList<MachineOperand> Cond,
+		boolean AllowModify)
+	{
+		return true;
+	}
+
+	/// RemoveBranch - Remove the branching code at the end of the specific MBB.
+	/// This is only invoked in cases where AnalyzeBranch returns success. It
+	/// returns the number of instructions that were removed.
+	public  int RemoveBranch(MachineBasicBlock MBB)  
+	{
+	assert false : "Target didn't implement TargetInstrInfo::RemoveBranch!";
+	return 0;
+}
+
+	/// InsertBranch - Insert branch code into the end of the specified
+	/// MachineBasicBlock.  The operands to this method are the same as those
+	/// returned by AnalyzeBranch.  This is only invoked in cases where
+	/// AnalyzeBranch returns success. It returns the number of instructions
+	/// inserted.
+	///
+	/// It is also invoked by tail merging to add unconditional branches in
+	/// cases where AnalyzeBranch doesn't apply because there was no original
+	/// branch to analyze.  At least this much must be implemented, else tail
+	/// merging needs to be disabled.
+	public  int InsertBranch(MachineBasicBlock MBB,
+			MachineBasicBlock TBB,
+			MachineBasicBlock FBB,
+            ArrayList<MachineOperand> Cond)
+	{
+		assert false : "Target didn't implement TargetInstrInfo::InsertBranch!";
+		return 0;
+	}
+
+	/// copyRegToReg - Emit instructions to copy between a pair of registers. It
+	/// returns false if the target does not how to copy between the specified
+	/// registers.
+	public boolean copyRegToReg(MachineBasicBlock mbb,
+			int insertPos,
+			int dstReg,
+			int srcReg,
+			TargetRegisterClass dstRC,
+			TargetRegisterClass srcRC)
+	{
+		assert false:"Target didn't implement TargetLowering::copyRegToReg";
+		return false;
+	}
+
+	/// storeRegToStackSlot - Store the specified register of the given register
+	/// class to the specified stack frame index. The store instruction is to be
+	/// added to the given machine basic block before the specified machine
+	/// instruction. If isKill is true, the register operand is the last use and
+	/// must be marked kill.
+	public  void storeRegToStackSlot(MachineBasicBlock MBB,
+			int pos,
+			int SrcReg,
+			boolean isKill,
+			int FrameIndex,
+			TargetRegisterClass rc)
+	{
+		assert false : "Target didn't implement TargetInstrInfo::storeRegToStackSlot!";
+	}
+
+	/// loadRegFromStackSlot - Load the specified register of the given register
+	/// class from the specified stack frame index. The load instruction is to be
+	/// added to the given machine basic block before the specified machine
+	/// instruction.
+	public  void loadRegFromStackSlot(MachineBasicBlock MBB,
+			int pos,
+			int DestReg, 
+			int FrameIndex,
+			TargetRegisterClass rc)  
+	{
+		assert false : "Target didn't implement TargetInstrInfo::loadRegFromStackSlot!";
+	}
+
+	/// spillCalleeSavedRegisters - Issues instruction(s) to spill all callee
+	/// saved registers and returns true if it isn't possible / profitable to do
+	/// so by issuing a series of store instructions via
+	/// storeRegToStackSlot(). Returns false otherwise.
+	public  boolean spillCalleeSavedRegisters(MachineBasicBlock MBB,
+		int pos,
+        ArrayList<CalleeSavedInfo> CSI)
+	{
+		return false;
+	}
+
+	/// restoreCalleeSavedRegisters - Issues instruction(s) to restore all callee
+	/// saved registers and returns true if it isn't possible / profitable to do
+	/// so by issuing a series of load instructions via loadRegToStackSlot().
+	/// Returns false otherwise.
+	public  boolean restoreCalleeSavedRegisters(MachineBasicBlock MBB,
+			int pos,
+			ArrayList<CalleeSavedInfo> CSI)  
+	{
+		return false;
+	}
+
+	/// foldMemoryOperand - Attempt to fold a load or store of the specified stack
+	/// slot into the specified machine instruction for the specified operand(s).
+	/// If this is possible, a new instruction is returned with the specified
+	/// operand folded, otherwise NULL is returned. The client is responsible for
+	/// removing the old instruction and adding the new one in the instruction
+	/// stream.
+	public abstract MachineInstr foldMemoryOperand(MachineFunction MF,
+			MachineInstr MI,
+			TIntArrayList Ops,
+			int FrameIndex);
+
+	/// foldMemoryOperand - Same as the previous version except it allows folding
+	/// of any load and store from / to any address, not just from a specific
+	/// stack slot.
+	public abstract MachineInstr foldMemoryOperand(MachineFunction MF,
+		MachineInstr MI,
+		TIntArrayList Ops,
+		MachineInstr LoadMI);
+
+	
+	/// foldMemoryOperandImpl - Target-dependent implementation for
+	/// foldMemoryOperand. Target-independent code in foldMemoryOperand will
+	/// take care of adding a MachineMemOperand to the newly created instruction.
+	protected MachineInstr foldMemoryOperandImpl(MachineFunction MF,
+		MachineInstr MI,
+		TIntArrayList Ops,
+		int FrameIndex)  
+	{
+		return null;
+	}
+
+	/// foldMemoryOperandImpl - Target-dependent implementation for
+	/// foldMemoryOperand. Target-independent code in foldMemoryOperand will
+	/// take care of adding a MachineMemOperand to the newly created instruction.
+	public MachineInstr foldMemoryOperandImpl(MachineFunction MF,
+		MachineInstr MI,
+		TIntArrayList ops,
+		MachineInstr LoadMI)
+	{
+		return null;
+	}
+
+
+	/// canFoldMemoryOperand - Returns true for the specified load / store if
+	/// folding is possible.
+	public boolean canFoldMemoryOperand( MachineInstr MI, TIntArrayList ops)
+	{
+		return false;
+	}
+
+	/// unfoldMemoryOperand - Separate a single instruction which folded a load or
+	/// a store or a load and a store into two or more instruction. If this is
+	/// possible, returns true as well as the new instructions by reference.
+	public  boolean unfoldMemoryOperand(MachineFunction MF,
+			MachineInstr MI,
+			int Reg,
+			boolean UnfoldLoad,
+			boolean UnfoldStore,
+			ArrayList<MachineInstr> NewMIs)
+	{
+		return false;
+	}
+
+
+	/// getOpcodeAfterMemoryUnfold - Returns the opcode of the would be new
+	/// instruction after load / store are unfolded from an instruction of the
+	/// specified opcode. It returns zero if the specified unfolding is not
+	/// possible.
+	public  int getOpcodeAfterMemoryUnfold(int Opc,
+		boolean UnfoldLoad, boolean UnfoldStore)
+	{
+		return 0;
+	}
+
+	/// BlockHasNoFallThrough - Return true if the specified block does not
+	/// fall-through into its successor block.  This is primarily used when a
+	/// branch is unanalyzable.  It is useful for things like unconditional
+	/// indirect branches (jump tables).
+	public  boolean BlockHasNoFallThrough( MachineBasicBlock MBB)  {
+	return false;
+}
+
+	/// ReverseBranchCondition - Reverses the branch condition of the specified
+	/// condition list, returning false on success and true if it cannot be
+	/// reversed.
+	public boolean ReverseBranchCondition(ArrayList<MachineOperand> Cond)
+	{
+		return true;
+	}
+
+	/// insertNoop - Insert a noop into the instruction stream at the specified
+	/// point.
+	public abstract void insertNoop(MachineBasicBlock MBB, int pos);
+
+	/// isPredicated - Returns true if the instruction is already predicated.
+	///
+	public  boolean isPredicated( MachineInstr MI)
+	{
+		return false;
+	}
+
+	/// isUnpredicatedTerminator - Returns true if the instruction is a
+	/// terminator instruction that has not been predicated.
+	public abstract boolean isUnpredicatedTerminator( MachineInstr MI);
+
+	/// PredicateInstruction - Convert the instruction into a predicated
+	/// instruction. It returns true if the operation was successful.
+	public abstract boolean PredicateInstruction(MachineInstr MI,
+                         ArrayList<MachineOperand> Pred);
+
+	/// SubsumesPredicate - Returns true if the first specified predicate
+	/// subsumes the second, e.g. GE subsumes GT.
+	public boolean SubsumesPredicate( ArrayList<MachineOperand> Pred1,
+                          ArrayList<MachineOperand> Pred2)
+	{
+		return false;
+	}
+
+	/// DefinesPredicate - If the specified instruction defines any predicate
+	/// or condition code register(s) used for predication, returns true as well
+	/// as the definition predicate(s) by reference.
+	public  boolean DefinesPredicate(MachineInstr MI,
+		ArrayList<MachineOperand> Pred)
+	{
+		return false;
+	}
+
+	/// isSafeToMoveRegClassDefs - Return true if it's safe to move a machine
+	/// instruction that defines the specified register class.
+	public  boolean isSafeToMoveRegClassDefs( TargetRegisterClass RC)
+	{
+		return true;
+	}
+
+	/// isDeadInstruction - Return true if the instruction is considered dead.
+	/// This allows some late codegen passes to delete them.
+	public abstract boolean isDeadInstruction( MachineInstr MI);
+
+	/// GetInstSize - Returns the size of the specified Instruction.
+	///
+	public int GetInstSizeInBytes( MachineInstr MI)
+	{
+		assert false : "Target didn't implement TargetInstrInfo::GetInstSize!";
+		return 0;
+	}
+
+	/// GetFunctionSizeInBytes - Returns the size of the specified
+	/// MachineFunction.
+	///
+	public abstract  int GetFunctionSizeInBytes( MachineFunction MF);
+
+	/// Measure the specified inline asm to determine an approximation of its
+	/// length.
+	// public abstract int getInlineAsmLength(String Str, TargetAsmInfo TAI);
 }

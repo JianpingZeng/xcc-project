@@ -267,7 +267,7 @@ public final class AsmWriterEmitter extends TableGenBackend
                 }
                 else
                 {
-                    // Get the name of the variable.
+                    // Get the asmName of the variable.
                     int varEnd = dollarPos + 1;
                     boolean hasCurlyBraces = false;
                     if (varEnd < asmString.length() && asmString.charAt(varEnd) == '{')
@@ -317,13 +317,13 @@ public final class AsmWriterEmitter extends TableGenBackend
                             if (modifier.isEmpty())
                             {
                                 throw new Exception(
-                                        "Bad operand modifier name in '" + cgi.theDef.getName() + "'");
+                                        "Bad operand modifier asmName in '" + cgi.theDef.getName() + "'");
                             }
                         }
 
                         if (asmString.charAt(varEnd) != '}')
                             throw new Exception(
-                                    "Variable name begining with '{' didn't end with '}' in "
+                                    "Variable asmName begining with '{' didn't end with '}' in "
                                             + "' " + cgi.theDef.getName() + "'");
 
                         ++varEnd;

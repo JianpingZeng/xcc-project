@@ -5,7 +5,7 @@ import backend.utils.InstVisitor;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
-import jlang.support.CallingConv;
+import backend.support.CallingConv;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -1853,7 +1853,7 @@ public abstract class Instruction extends User
          * @param index
          * @return
          */
-        public abstract BasicBlock suxAt(int index);
+        public abstract BasicBlock getSuccessor(int index);
 
         /**
          * Obtains the number of successors.
@@ -2002,7 +2002,7 @@ public abstract class Instruction extends User
          * @return
          */
         @Override
-        public BasicBlock suxAt(int index)
+        public BasicBlock getSuccessor(int index)
         {
             assert (index >= 0 && index < getNumOfSuccessors());
             return (BasicBlock) operand(index);
@@ -2095,7 +2095,7 @@ public abstract class Instruction extends User
         public void accept(InstVisitor visitor){}
 
         @Override
-        public BasicBlock suxAt(int index)
+        public BasicBlock getSuccessor(int index)
         {
             assert true:"ReturnInst has no successors!";
             return null;
@@ -2151,7 +2151,7 @@ public abstract class Instruction extends User
                 String name, Instruction insertBefore)
         {
             super(((FunctionType)((PointerType)target.getType()).
-                    getElemType()).getReturnType(),
+                            getElementType()).getReturnType(),
                     Operator.Call, insertBefore);
             this.name = name.isEmpty()?Operator.Call.opName:name;
             init(target, args);
@@ -2161,7 +2161,7 @@ public abstract class Instruction extends User
                 String name, BasicBlock insertAtEnd)
         {
             super(((FunctionType)((PointerType)target.getType()).
-                    getElemType()).getReturnType(),
+                            getElementType()).getReturnType(),
                     Operator.Call, insertAtEnd);
             this.name = name.isEmpty()?Operator.Call.opName:name;
             init(target, args);
@@ -2417,18 +2417,6 @@ public abstract class Instruction extends User
             SwitchInst inst = new SwitchInst(getCondition(), getDefaultBlock(), getNumOfCases(),name);
             inst.operandList = new ArrayList<>(inst.operandList);
             return inst;
-        }
-
-        /**
-         * obtains the successor at specified index position.
-         *
-         * @param index
-         * @return
-         */
-        @Override
-        public BasicBlock suxAt(int index)
-        {
-            return getSuccessor(index);
         }
 
         /**
@@ -2719,7 +2707,7 @@ public abstract class Instruction extends User
 
         public Type getAllocatedType()
         {
-            return getType().getElemType();
+            return getType().getElementType();
         }
 
         /**
@@ -2849,7 +2837,7 @@ public abstract class Instruction extends User
         public LoadInst(Value from,
                 String name, Instruction insertBefore)
         {
-            super(((PointerType)from.getType()).getElemType(),
+            super(((PointerType)from.getType()).getElementType(),
                     Operator.Load,
                     from,
                     name,
@@ -2860,7 +2848,7 @@ public abstract class Instruction extends User
         public LoadInst(Value from,
                 String name)
         {
-            super(((PointerType)from.getType()).getElemType(),
+            super(((PointerType)from.getType()).getElementType(),
                     Operator.Load, from, name, (Instruction)null);
             assertOK();
         }
@@ -2868,7 +2856,7 @@ public abstract class Instruction extends User
         public LoadInst(Value from,
                 String name, BasicBlock insertAtEnd)
         {
-            super(((PointerType)from.getType()).getElemType(),
+            super(((PointerType)from.getType()).getElementType(),
                     Operator.Load, from, name, insertAtEnd);
             assertOK();
         }
@@ -2988,7 +2976,7 @@ public abstract class Instruction extends User
             // Check the pointer index.
             if (!pt.indexValid(idx)) return null;
 
-            return pt.getElemType();
+            return pt.getElementType();
         }
 
 	    /**

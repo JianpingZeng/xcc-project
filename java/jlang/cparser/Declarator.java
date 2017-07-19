@@ -231,7 +231,7 @@ public class Declarator
     }
 
     /**
-     * Whether this declarator has a name (for normal declarator) or not.
+     * Whether this declarator has a asmName (for normal declarator) or not.
      * @return
      */
     public boolean hasName()
