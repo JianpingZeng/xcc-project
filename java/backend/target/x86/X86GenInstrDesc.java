@@ -8,7 +8,6 @@ package backend.target.x86; /**
  */
 
 
-import backend.codegen.MachineFunction;
 import backend.target.*;
 
 import static backend.target.x86.X86GenRegisterInfo.*;
