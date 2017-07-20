@@ -1,3 +1,5 @@
+package backend.target.x86;
+
 /**
  * TableGen created file.
  * <p>
@@ -6,4415 +8,3817 @@
  * Powered by Xlous zeng
  * </p>
  */
-package backend.target.x86;
 
 import backend.codegen.MVT;
+import backend.codegen.MachineFunction;
+import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterDesc;
 import backend.target.TargetRegisterInfo;
+import backend.codegen.EVT;
 
 import static backend.target.x86.X86GenRegisterNames.*;
 
 public abstract class X86GenRegisterInfo extends TargetRegisterInfo
-{	
-	//GR16 Register Class...
-	public static final int[] GR16 = {
-		AX, CX, DX, SI, DI, BX, BP, SP, R8W, R9W, R10W, R11W, R14W, R15W, R12W, R13W, 
-	};
+{
+    //GR16 Register Class...
+    public static final int[] GR16 = { AX, CX, DX, SI, DI, BX, BP, SP, R8W, R9W,
+            R10W, R11W, R14W, R15W, R12W, R13W, };
 
+    //GR32 Register Class...
+    public static final int[] GR32 = { EAX, ECX, EDX, ESI, EDI, EBX, EBP, ESP,
+            R8D, R9D, R10D, R11D, R14D, R15D, R12D, R13D, };
 
-	//GR32 Register Class...
-	public static final int[] GR32 = {
-		EAX, ECX, EDX, ESI, EDI, EBX, EBP, ESP, R8D, R9D, R10D, R11D, R14D, R15D, R12D, R13D, 
-	};
+    //GR64 Register Class...
+    public static final int[] GR64 = { RAX, RCX, RDX, RSI, RDI, R8, R9, R10,
+            R11, RBX, R14, R15, R12, R13, RBP, RSP, RIP, };
 
+    //GR8_ABCD_L Register Class...
+    public static final int[] GR8_ABCD_L = { AL, CL, DL, BL, };
 
-	//GR64 Register Class...
-	public static final int[] GR64 = {
-		RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11, RBX, R14, R15, R12, R13, RBP, RSP, RIP, 
-	};
+    //GR8_ABCD_H Register Class...
+    public static final int[] GR8_ABCD_H = { AH, CH, DH, BH, };
 
+    //GR64_NOSP Register Class...
+    public static final int[] GR64_NOSP = { RAX, RCX, RDX, RSI, RDI, R8, R9,
+            R10, R11, RBX, R14, R15, R12, R13, RBP, };
 
-	//GR8_ABCD_L Register Class...
-	public static final int[] GR8_ABCD_L = {
-		AL, CL, DL, BL, 
-	};
+    //GR32_ABCD Register Class...
+    public static final int[] GR32_ABCD = { EAX, ECX, EDX, EBX, };
 
+    //CCR Register Class...
+    public static final int[] CCR = { EFLAGS, };
 
-	//GR8_ABCD_H Register Class...
-	public static final int[] GR8_ABCD_H = {
-		AH, CH, DH, BH, 
-	};
+    //GR64_ABCD Register Class...
+    public static final int[] GR64_ABCD = { RAX, RCX, RDX, RBX, };
 
+    //RFP80 Register Class...
+    public static final int[] RFP80 = { FP0, FP1, FP2, FP3, FP4, FP5, FP6, };
 
-	//GR64_NOSP Register Class...
-	public static final int[] GR64_NOSP = {
-		RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11, RBX, R14, R15, R12, R13, RBP, 
-	};
+    //GR32_NOREX Register Class...
+    public static final int[] GR32_NOREX = { EAX, ECX, EDX, ESI, EDI, EBX, EBP,
+            ESP, };
 
+    //RFP64 Register Class...
+    public static final int[] RFP64 = { FP0, FP1, FP2, FP3, FP4, FP5, FP6, };
 
-	//GR32_ABCD Register Class...
-	public static final int[] GR32_ABCD = {
-		EAX, ECX, EDX, EBX, 
-	};
+    //VR256 Register Class...
+    public static final int[] VR256 = { YMM0, YMM1, YMM2, YMM3, YMM4, YMM5,
+            YMM6, YMM7, YMM8, YMM9, YMM10, YMM11, YMM12, YMM13, YMM14, YMM15, };
 
+    //FR32 Register Class...
+    public static final int[] FR32 = { XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6,
+            XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15, };
 
-	//CCR Register Class...
-	public static final int[] CCR = {
-		EFLAGS, 
-	};
+    //FR64 Register Class...
+    public static final int[] FR64 = { XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6,
+            XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15, };
 
+    //VR128 Register Class...
+    public static final int[] VR128 = { XMM0, XMM1, XMM2, XMM3, XMM4, XMM5,
+            XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15, };
 
-	//GR64_ABCD Register Class...
-	public static final int[] GR64_ABCD = {
-		RAX, RCX, RDX, RBX, 
-	};
+    //GR64_NOREX Register Class...
+    public static final int[] GR64_NOREX = { RAX, RCX, RDX, RSI, RDI, RBX, RBP,
+            RSP, };
 
+    //GR8_NOREX Register Class...
+    public static final int[] GR8_NOREX = { AL, CL, DL, AH, CH, DH, BL, BH, SIL,
+            DIL, BPL, SPL, };
 
-	//RFP80 Register Class...
-	public static final int[] RFP80 = {
-		FP0, FP1, FP2, FP3, FP4, FP5, FP6, 
-	};
+    //RFP32 Register Class...
+    public static final int[] RFP32 = { FP0, FP1, FP2, FP3, FP4, FP5, FP6, };
 
+    //GR32_NOSP Register Class...
+    public static final int[] GR32_NOSP = { EAX, ECX, EDX, ESI, EDI, EBX, EBP,
+            R8D, R9D, R10D, R11D, R14D, R15D, R12D, R13D, };
 
-	//GR32_NOREX Register Class...
-	public static final int[] GR32_NOREX = {
-		EAX, ECX, EDX, ESI, EDI, EBX, EBP, ESP, 
-	};
+    //GR16_ABCD Register Class...
+    public static final int[] GR16_ABCD = { AX, CX, DX, BX, };
 
+    //VR64 Register Class...
+    public static final int[] VR64 = { MM0, MM1, MM2, MM3, MM4, MM5, MM6,
+            MM7, };
 
-	//RFP64 Register Class...
-	public static final int[] RFP64 = {
-		FP0, FP1, FP2, FP3, FP4, FP5, FP6, 
-	};
+    //GR8 Register Class...
+    public static final int[] GR8 = { AL, CL, DL, AH, CH, DH, BL, BH, SIL, DIL,
+            BPL, SPL, R8B, R9B, R10B, R11B, R14B, R15B, R12B, R13B, };
 
+    //GR64_NOREX_NOSP Register Class...
+    public static final int[] GR64_NOREX_NOSP = { RAX, RCX, RDX, RSI, RDI, RBX,
+            RBP, };
 
-	//VR256 Register Class...
-	public static final int[] VR256 = {
-		YMM0, YMM1, YMM2, YMM3, YMM4, YMM5, YMM6, YMM7, YMM8, YMM9, YMM10, YMM11, YMM12, YMM13, YMM14, YMM15, 
-	};
+    //GR16_NOREX Register Class...
+    public static final int[] GR16_NOREX = { AX, CX, DX, SI, DI, BX, BP, SP, };
 
+    //GR32_AD Register Class...
+    public static final int[] GR32_AD = { EAX, EDX, };
 
-	//FR32 Register Class...
-	public static final int[] FR32 = {
-		XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15, 
-	};
+    //RST Register Class...
+    public static final int[] RST = { ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7, };
 
+    // GR16VTs Register Class Value Type...
+    public static final EVT[] GR16VTs = { new EVT(new MVT(MVT.i16)),
+            new EVT(new MVT(MVT.Other)) };
 
-	//FR64 Register Class...
-	public static final int[] FR64 = {
-		XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15, 
-	};
-
-
-	//VR128 Register Class...
-	public static final int[] VR128 = {
-		XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15, 
-	};
-
-
-	//GR64_NOREX Register Class...
-	public static final int[] GR64_NOREX = {
-		RAX, RCX, RDX, RSI, RDI, RBX, RBP, RSP, 
-	};
-
-
-	//GR8_NOREX Register Class...
-	public static final int[] GR8_NOREX = {
-		AL, CL, DL, AH, CH, DH, BL, BH, SIL, DIL, BPL, SPL, 
-	};
-
-
-	//RFP32 Register Class...
-	public static final int[] RFP32 = {
-		FP0, FP1, FP2, FP3, FP4, FP5, FP6, 
-	};
-
-
-	//GR32_NOSP Register Class...
-	public static final int[] GR32_NOSP = {
-		EAX, ECX, EDX, ESI, EDI, EBX, EBP, R8D, R9D, R10D, R11D, R14D, R15D, R12D, R13D, 
-	};
-
-
-	//GR16_ABCD Register Class...
-	public static final int[] GR16_ABCD = {
-		AX, CX, DX, BX, 
-	};
-
-
-	//VR64 Register Class...
-	public static final int[] VR64 = {
-		MM0, MM1, MM2, MM3, MM4, MM5, MM6, MM7, 
-	};
-
-
-	//GR8 Register Class...
-	public static final int[] GR8 = {
-		AL, CL, DL, AH, CH, DH, BL, BH, SIL, DIL, BPL, SPL, R8B, R9B, R10B, R11B, R14B, R15B, R12B, R13B, 
-	};
-
-
-	//GR64_NOREX_NOSP Register Class...
-	public static final int[] GR64_NOREX_NOSP = {
-		RAX, RCX, RDX, RSI, RDI, RBX, RBP, 
-	};
-
-
-	//GR16_NOREX Register Class...
-	public static final int[] GR16_NOREX = {
-		AX, CX, DX, SI, DI, BX, BP, SP, 
-	};
-
-
-	//GR32_AD Register Class...
-	public static final int[] GR32_AD = {
-		EAX, EDX, 
-	};
-
-
-	//RST Register Class...
-	public static final int[] RST = {
-		ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7, 
-	};
-
-
-	// GR16VTs Register Class Value Type...
-	public static final int[] GR16VTs = {
-		MVT.i16, MVT.Other
-	};
-
-
-	// GR32VTs Register Class Value Type...
-	public static final int[] GR32VTs = {
-		MVT.i32, MVT.Other
-	};
-
-
-	// GR64VTs Register Class Value Type...
-	public static final int[] GR64VTs = {
-		MVT.i64, MVT.Other
-	};
-
-
-	// GR8_ABCD_LVTs Register Class Value Type...
-	public static final int[] GR8_ABCD_LVTs = {
-		MVT.i8, MVT.Other
-	};
-
-
-	// GR8_ABCD_HVTs Register Class Value Type...
-	public static final int[] GR8_ABCD_HVTs = {
-		MVT.i8, MVT.Other
-	};
-
-
-	// GR64_NOSPVTs Register Class Value Type...
-	public static final int[] GR64_NOSPVTs = {
-		MVT.i64, MVT.Other
-	};
-
-
-	// GR32_ABCDVTs Register Class Value Type...
-	public static final int[] GR32_ABCDVTs = {
-		MVT.i32, MVT.Other
-	};
-
-
-	// CCRVTs Register Class Value Type...
-	public static final int[] CCRVTs = {
-		MVT.i32, MVT.Other
-	};
-
-
-	// GR64_ABCDVTs Register Class Value Type...
-	public static final int[] GR64_ABCDVTs = {
-		MVT.i64, MVT.Other
-	};
-
-
-	// RFP80VTs Register Class Value Type...
-	public static final int[] RFP80VTs = {
-		MVT.f80, MVT.Other
-	};
-
-
-	// GR32_NOREXVTs Register Class Value Type...
-	public static final int[] GR32_NOREXVTs = {
-		MVT.i32, MVT.Other
-	};
-
-
-	// RFP64VTs Register Class Value Type...
-	public static final int[] RFP64VTs = {
-		MVT.f64, MVT.Other
-	};
-
-
-	// VR256VTs Register Class Value Type...
-	public static final int[] VR256VTs = {
-		MVT.v8i32, MVT.v4i64, MVT.v8f32, MVT.v4f64, MVT.Other
-	};
-
-
-	// FR32VTs Register Class Value Type...
-	public static final int[] FR32VTs = {
-		MVT.f32, MVT.Other
-	};
-
-
-	// FR64VTs Register Class Value Type...
-	public static final int[] FR64VTs = {
-		MVT.f64, MVT.Other
-	};
-
-
-	// VR128VTs Register Class Value Type...
-	public static final int[] VR128VTs = {
-		MVT.v16i8, MVT.v8i16, MVT.v4i32, MVT.v2i64, MVT.v4f32, MVT.v2f64, MVT.Other
-	};
-
-
-	// GR64_NOREXVTs Register Class Value Type...
-	public static final int[] GR64_NOREXVTs = {
-		MVT.i64, MVT.Other
-	};
-
-
-	// GR8_NOREXVTs Register Class Value Type...
-	public static final int[] GR8_NOREXVTs = {
-		MVT.i8, MVT.Other
-	};
-
-
-	// RFP32VTs Register Class Value Type...
-	public static final int[] RFP32VTs = {
-		MVT.f32, MVT.Other
-	};
-
-
-	// GR32_NOSPVTs Register Class Value Type...
-	public static final int[] GR32_NOSPVTs = {
-		MVT.i32, MVT.Other
-	};
-
-
-	// GR16_ABCDVTs Register Class Value Type...
-	public static final int[] GR16_ABCDVTs = {
-		MVT.i16, MVT.Other
-	};
-
-
-	// VR64VTs Register Class Value Type...
-	public static final int[] VR64VTs = {
-		MVT.v8i8, MVT.v4i16, MVT.v2i32, MVT.v1i64, MVT.v2f32, MVT.Other
-	};
-
-
-	// GR8VTs Register Class Value Type...
-	public static final int[] GR8VTs = {
-		MVT.i8, MVT.Other
-	};
-
-
-	// GR64_NOREX_NOSPVTs Register Class Value Type...
-	public static final int[] GR64_NOREX_NOSPVTs = {
-		MVT.i64, MVT.Other
-	};
-
-
-	// GR16_NOREXVTs Register Class Value Type...
-	public static final int[] GR16_NOREXVTs = {
-		MVT.i16, MVT.Other
-	};
-
-
-	// GR32_ADVTs Register Class Value Type...
-	public static final int[] GR32_ADVTs = {
-		MVT.i32, MVT.Other
-	};
-
-
-	// RSTVTs Register Class Value Type...
-	public static final int[] RSTVTs = {
-		MVT.f80, MVT.f64, MVT.f32, MVT.Other
-	};
-
-
-	// Defines the Register Class ID.
-	public static final int GR16RegClassID = 1;
-	public static final int GR32RegClassID = 2;
-	public static final int GR64RegClassID = 3;
-	public static final int GR8_ABCD_LRegClassID = 4;
-	public static final int GR8_ABCD_HRegClassID = 5;
-	public static final int GR64_NOSPRegClassID = 6;
-	public static final int GR32_ABCDRegClassID = 7;
-	public static final int CCRRegClassID = 8;
-	public static final int GR64_ABCDRegClassID = 9;
-	public static final int RFP80RegClassID = 10;
-	public static final int GR32_NOREXRegClassID = 11;
-	public static final int RFP64RegClassID = 12;
-	public static final int VR256RegClassID = 13;
-	public static final int FR32RegClassID = 14;
-	public static final int FR64RegClassID = 15;
-	public static final int VR128RegClassID = 16;
-	public static final int GR64_NOREXRegClassID = 17;
-	public static final int GR8_NOREXRegClassID = 18;
-	public static final int RFP32RegClassID = 19;
-	public static final int GR32_NOSPRegClassID = 20;
-	public static final int GR16_ABCDRegClassID = 21;
-	public static final int VR64RegClassID = 22;
-	public static final int GR8RegClassID = 23;
-	public static final int GR64_NOREX_NOSPRegClassID = 24;
-	public static final int GR16_NOREXRegClassID = 25;
-	public static final int GR32_ADRegClassID = 26;
-	public static final int RSTRegClassID = 27;
-
-
-	// Register Class declaration
-	public final static GR16Class GR16RegClass = GR16Class.getInstance();
-	public final static GR32Class GR32RegClass = GR32Class.getInstance();
-	public final static GR64Class GR64RegClass = GR64Class.getInstance();
-	public final static GR8_ABCD_LClass GR8_ABCD_LRegClass = GR8_ABCD_LClass.getInstance();
-	public final static GR8_ABCD_HClass GR8_ABCD_HRegClass = GR8_ABCD_HClass.getInstance();
-	public final static GR64_NOSPClass GR64_NOSPRegClass = GR64_NOSPClass.getInstance();
-	public final static GR32_ABCDClass GR32_ABCDRegClass = GR32_ABCDClass.getInstance();
-	public final static CCRClass CCRRegClass = CCRClass.getInstance();
-	public final static GR64_ABCDClass GR64_ABCDRegClass = GR64_ABCDClass.getInstance();
-	public final static RFP80Class RFP80RegClass = RFP80Class.getInstance();
-	public final static GR32_NOREXClass GR32_NOREXRegClass = GR32_NOREXClass.getInstance();
-	public final static RFP64Class RFP64RegClass = RFP64Class.getInstance();
-	public final static VR256Class VR256RegClass = VR256Class.getInstance();
-	public final static FR32Class FR32RegClass = FR32Class.getInstance();
-	public final static FR64Class FR64RegClass = FR64Class.getInstance();
-	public final static VR128Class VR128RegClass = VR128Class.getInstance();
-	public final static GR64_NOREXClass GR64_NOREXRegClass = GR64_NOREXClass.getInstance();
-	public final static GR8_NOREXClass GR8_NOREXRegClass = GR8_NOREXClass.getInstance();
-	public final static RFP32Class RFP32RegClass = RFP32Class.getInstance();
-	public final static GR32_NOSPClass GR32_NOSPRegClass = GR32_NOSPClass.getInstance();
-	public final static GR16_ABCDClass GR16_ABCDRegClass = GR16_ABCDClass.getInstance();
-	public final static VR64Class VR64RegClass = VR64Class.getInstance();
-	public final static GR8Class GR8RegClass = GR8Class.getInstance();
-	public final static GR64_NOREX_NOSPClass GR64_NOREX_NOSPRegClass = GR64_NOREX_NOSPClass.getInstance();
-	public final static GR16_NOREXClass GR16_NOREXRegClass = GR16_NOREXClass.getInstance();
-	public final static GR32_ADClass GR32_ADRegClass = GR32_ADClass.getInstance();
-	public final static RSTClass RSTRegClass = RSTClass.getInstance();
-
-
-	public final static class GR16Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static GR16Class instance = new GR16Class();
-
-		public static GR16Class getInstance() { return instance;}
-
-		private GR16Class()
-		{
-			 super(GR16VTs, 2, 2, GR16); 
-		}
-	}
-
-	public final static class GR32Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static GR32Class instance = new GR32Class();
-
-		public static GR32Class getInstance() { return instance;}
-
-		private GR32Class()
-		{
-			 super(GR32VTs, 4, 4, GR32); 
-		}
-	}
-
-	public final static class GR64Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static GR64Class instance = new GR64Class();
-
-		public static GR64Class getInstance() { return instance;}
-
-		private GR64Class()
-		{
-			 super(GR64VTs, 8, 8, GR64); 
-		}
-
-	}
-
-	public final static class GR8_ABCD_LClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static GR8_ABCD_LClass instance = new GR8_ABCD_LClass();
-
-		public static GR8_ABCD_LClass getInstance() { return instance;}
-
-		private GR8_ABCD_LClass()
-		{
-			 super(GR8_ABCD_LVTs, 1, 1, GR8_ABCD_L); 
-		}
-
-
-	}
-
-	public final static class GR8_ABCD_HClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR8_ABCD_HClass();
-
-		public static GR8_ABCD_HClass getInstance() { return instance;}
-
-		private GR8_ABCD_HClass()
-		{
-			 super(GR8_ABCD_HVTs, 1, 1, GR8_ABCD_H); 
-		}
-
-
-	}
-
-	public final static class GR64_NOSPClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR64_NOSPClass();
-
-		public static GR64_NOSPClass getInstance() { return instance;}
-
-		private GR64_NOSPClass()
-		{
-			 super(GR64_NOSPVTs, 8, 8, GR64_NOSP); 
-		}
-	}
-
-	public final static class GR32_ABCDClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR32_ABCDClass();
-
-		public static GR32_ABCDClass getInstance() { return instance;}
-
-		private GR32_ABCDClass()
-		{
-			 super(GR32_ABCDVTs, 4, 4, GR32_ABCD); 
-		}
-
-
-	}
-
-	public final static class CCRClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new CCRClass();
-
-		public static CCRClass getInstance() { return instance;}
-
-		private CCRClass()
-		{
-			 super(CCRVTs, 4, 4, CCR); 
-		}
-
-
-	}
-
-	public final static class GR64_ABCDClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR64_ABCDClass();
-
-		public static GR64_ABCDClass getInstance() { return instance;}
-
-		private GR64_ABCDClass()
-		{
-			 super(GR64_ABCDVTs, 8, 8, GR64_ABCD); 
-		}
-
-
-	}
-
-	public final static class RFP80Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new RFP80Class();
-
-		public static RFP80Class getInstance() { return instance;}
-
-		private RFP80Class()
-		{
-			 super(RFP80VTs, 10, 4, RFP80); 
-		}
-
-
-	}
-
-	public final static class GR32_NOREXClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR32_NOREXClass();
-
-		public static GR32_NOREXClass getInstance() { return instance;}
-
-		private GR32_NOREXClass()
-		{
-			 super(GR32_NOREXVTs, 4, 4, GR32_NOREX); 
-		}
-	}
-
-	public final static class RFP64Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new RFP64Class();
-
-		public static RFP64Class getInstance() { return instance;}
-
-		private RFP64Class()
-		{
-			 super(RFP64VTs, 8, 4, RFP64); 
-		}
-
-
-	}
-
-	public final static class VR256Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new VR256Class();
-
-		public static VR256Class getInstance() { return instance;}
-
-		private VR256Class()
-		{
-			 super(VR256VTs, 32, 32, VR256); 
-		}
-
-
-	}
-
-	public final static class FR32Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new FR32Class();
-
-		public static FR32Class getInstance() { return instance;}
-
-		private FR32Class()
-		{
-			 super(FR32VTs, 4, 4, FR32); 
-		}
-	}
-
-	public final static class FR64Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new FR64Class();
-
-		public static FR64Class getInstance() { return instance;}
-
-		private FR64Class()
-		{
-			 super(FR64VTs, 8, 8, FR64); 
-		}
-	}
-
-	public final static class VR128Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new VR128Class();
-
-		public static VR128Class getInstance() { return instance;}
-
-		private VR128Class()
-		{
-			 super(VR128VTs, 16, 16, VR128); 
-		}
-	}
-
-	public final static class GR64_NOREXClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR64_NOREXClass();
-
-		public static GR64_NOREXClass getInstance() { return instance;}
-
-		private GR64_NOREXClass()
-		{
-			 super(GR64_NOREXVTs, 8, 8, GR64_NOREX); 
-		}
-	}
-
-	public final static class GR8_NOREXClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR8_NOREXClass();
-
-		public static GR8_NOREXClass getInstance() { return instance;}
-
-		private GR8_NOREXClass()
-		{
-			 super(GR8_NOREXVTs, 1, 1, GR8_NOREX); 
-		}
-	}
-
-	public final static class RFP32Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new RFP32Class();
-
-		public static RFP32Class getInstance() { return instance;}
-
-		private RFP32Class()
-		{
-			 super(RFP32VTs, 4, 4, RFP32); 
-		}
-
-
-	}
-
-	public final static class GR32_NOSPClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR32_NOSPClass();
-
-		public static GR32_NOSPClass getInstance() { return instance;}
-
-		private GR32_NOSPClass()
-		{
-			 super(GR32_NOSPVTs, 4, 4, GR32_NOSP); 
-		}
-
-	}
-
-	public final static class GR16_ABCDClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR16_ABCDClass();
-
-		public static GR16_ABCDClass getInstance() { return instance;}
-
-		private GR16_ABCDClass()
-		{
-			 super(GR16_ABCDVTs, 2, 2, GR16_ABCD); 
-		}
-
-
-	}
-
-	public final static class VR64Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new VR64Class();
-
-		public static VR64Class getInstance() { return instance;}
-
-		private VR64Class()
-		{
-			 super(VR64VTs, 8, 8, VR64); 
-		}
-
-
-	}
-
-	public final static class GR8Class extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR8Class();
-
-		public static GR8Class getInstance() { return instance;}
-
-		private GR8Class()
-		{
-			 super(GR8VTs, 1, 1, GR8); 
-		}
-	}
-
-	public final static class GR64_NOREX_NOSPClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR64_NOREX_NOSPClass();
-
-		public static GR64_NOREX_NOSPClass getInstance() { return instance;}
-
-		private GR64_NOREX_NOSPClass()
-		{
-			 super(GR64_NOREX_NOSPVTs, 8, 8, GR64_NOREX_NOSP); 
-		}
-	}
-
-	public final static class GR16_NOREXClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR16_NOREXClass();
-
-		public static GR16_NOREXClass getInstance() { return instance;}
-
-		private GR16_NOREXClass()
-		{
-			 super(GR16_NOREXVTs, 2, 2, GR16_NOREX); 
-		}
-	}
-
-	public final static class GR32_ADClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new GR32_ADClass();
-
-		public static GR32_ADClass getInstance() { return instance;}
-
-		private GR32_ADClass()
-		{
-			 super(GR32_ADVTs, 4, 4, GR32_AD); 
-		}
-	}
-
-	public final static class RSTClass extends TargetRegisterClass
-	{
-		// Only allow one instance for this class.
-
-		private static instance = new RSTClass();
-
-		public static RSTClass getInstance() { return instance;}
-
-		private RSTClass()
-		{
-			 super(RSTVTs, 10, 4, RST); 
-		}
-	}
-
-
-	// GR16 Sub-register Classes...
-	public static final TargetRegisterClass[] GR16SubRegClasses = {
-		GR8RegClass, GR8RegClass, 
-	};
-
-	// GR32 Sub-register Classes...
-	public static final TargetRegisterClass[] GR32SubRegClasses = {
-		GR8RegClass, GR8RegClass, GR16RegClass, 
-	};
-
-	// GR64 Sub-register Classes...
-	public static final TargetRegisterClass[] GR64SubRegClasses = {
-		GR8RegClass, GR8RegClass, GR16RegClass, GR32RegClass, 
-	};
-
-	// GR8_ABCD_L Sub-register Classes...
-	public static final TargetRegisterClass[] GR8_ABCD_LSubRegClasses = {
-		
-	};
-
-	// GR8_ABCD_H Sub-register Classes...
-	public static final TargetRegisterClass[] GR8_ABCD_HSubRegClasses = {
-		
-	};
-
-	// GR64_NOSP Sub-register Classes...
-	public static final TargetRegisterClass[] GR64_NOSPSubRegClasses = {
-		GR8RegClass, GR8RegClass, GR16RegClass, GR32_NOSPRegClass, 
-	};
-
-	// GR32_ABCD Sub-register Classes...
-	public static final TargetRegisterClass[] GR32_ABCDSubRegClasses = {
-		GR8_ABCD_LRegClass, GR8_ABCD_HRegClass, GR16_ABCDRegClass, 
-	};
-
-	// CCR Sub-register Classes...
-	public static final TargetRegisterClass[] CCRSubRegClasses = {
-		
-	};
-
-	// GR64_ABCD Sub-register Classes...
-	public static final TargetRegisterClass[] GR64_ABCDSubRegClasses = {
-		GR8_ABCD_LRegClass, GR8_ABCD_HRegClass, GR16_ABCDRegClass, GR32_ABCDRegClass, 
-	};
-
-	// RFP80 Sub-register Classes...
-	public static final TargetRegisterClass[] RFP80SubRegClasses = {
-		
-	};
-
-	// GR32_NOREX Sub-register Classes...
-	public static final TargetRegisterClass[] GR32_NOREXSubRegClasses = {
-		GR8_NOREXRegClass, GR8_NOREXRegClass, GR16_NOREXRegClass, 
-	};
-
-	// RFP64 Sub-register Classes...
-	public static final TargetRegisterClass[] RFP64SubRegClasses = {
-		
-	};
-
-	// VR256 Sub-register Classes...
-	public static final TargetRegisterClass[] VR256SubRegClasses = {
-		
-	};
-
-	// FR32 Sub-register Classes...
-	public static final TargetRegisterClass[] FR32SubRegClasses = {
-		
-	};
-
-	// FR64 Sub-register Classes...
-	public static final TargetRegisterClass[] FR64SubRegClasses = {
-		
-	};
-
-	// VR128 Sub-register Classes...
-	public static final TargetRegisterClass[] VR128SubRegClasses = {
-		
-	};
-
-	// GR64_NOREX Sub-register Classes...
-	public static final TargetRegisterClass[] GR64_NOREXSubRegClasses = {
-		GR8_NOREXRegClass, GR8_NOREXRegClass, GR16_NOREXRegClass, GR32_NOREXRegClass, 
-	};
-
-	// GR8_NOREX Sub-register Classes...
-	public static final TargetRegisterClass[] GR8_NOREXSubRegClasses = {
-		
-	};
-
-	// RFP32 Sub-register Classes...
-	public static final TargetRegisterClass[] RFP32SubRegClasses = {
-		
-	};
-
-	// GR32_NOSP Sub-register Classes...
-	public static final TargetRegisterClass[] GR32_NOSPSubRegClasses = {
-		GR8RegClass, GR8RegClass, GR16RegClass, 
-	};
-
-	// GR16_ABCD Sub-register Classes...
-	public static final TargetRegisterClass[] GR16_ABCDSubRegClasses = {
-		GR8_ABCD_LRegClass, GR8_ABCD_HRegClass, 
-	};
-
-	// VR64 Sub-register Classes...
-	public static final TargetRegisterClass[] VR64SubRegClasses = {
-		
-	};
-
-	// GR8 Sub-register Classes...
-	public static final TargetRegisterClass[] GR8SubRegClasses = {
-		
-	};
-
-	// GR64_NOREX_NOSP Sub-register Classes...
-	public static final TargetRegisterClass[] GR64_NOREX_NOSPSubRegClasses = {
-		GR8_NOREXRegClass, GR8_NOREXRegClass, GR16_NOREXRegClass, GR32_NOREXRegClass, 
-	};
-
-	// GR16_NOREX Sub-register Classes...
-	public static final TargetRegisterClass[] GR16_NOREXSubRegClasses = {
-		GR8_NOREXRegClass, GR8_NOREXRegClass, 
-	};
-
-	// GR32_AD Sub-register Classes...
-	public static final TargetRegisterClass[] GR32_ADSubRegClasses = {
-		GR8_ABCD_LRegClass, GR8_ABCD_HRegClass, GR16_ABCDRegClass, 
-	};
-
-	// RST Sub-register Classes...
-	public static final TargetRegisterClass[] RSTSubRegClasses = {
-		
-	};
-
-	// GR16 Super-register Classes...
-	public static final TargetRegisterClass[] GR16SuperRegClasses = {
-		GR32_NOSPRegClass, GR64_NOSPRegClass, GR64RegClass, GR32RegClass, 
-	};
-
-	// GR32 Super-register Classes...
-	public static final TargetRegisterClass[] GR32SuperRegClasses = {
-		GR64RegClass, 
-	};
-
-	// GR64 Super-register Classes...
-	public static final TargetRegisterClass[] GR64SuperRegClasses = {
-		
-	};
-
-	// GR8_ABCD_L Super-register Classes...
-	public static final TargetRegisterClass[] GR8_ABCD_LSuperRegClasses = {
-		GR16_ABCDRegClass, GR64_ABCDRegClass, GR32_ABCDRegClass, GR32_ADRegClass, 
-	};
-
-	// GR8_ABCD_H Super-register Classes...
-	public static final TargetRegisterClass[] GR8_ABCD_HSuperRegClasses = {
-		GR16_ABCDRegClass, GR64_ABCDRegClass, GR32_ABCDRegClass, GR32_ADRegClass, 
-	};
-
-	// GR64_NOSP Super-register Classes...
-	public static final TargetRegisterClass[] GR64_NOSPSuperRegClasses = {
-		
-	};
-
-	// GR32_ABCD Super-register Classes...
-	public static final TargetRegisterClass[] GR32_ABCDSuperRegClasses = {
-		GR64_ABCDRegClass, 
-	};
-
-	// CCR Super-register Classes...
-	public static final TargetRegisterClass[] CCRSuperRegClasses = {
-		
-	};
-
-	// GR64_ABCD Super-register Classes...
-	public static final TargetRegisterClass[] GR64_ABCDSuperRegClasses = {
-		
-	};
-
-	// RFP80 Super-register Classes...
-	public static final TargetRegisterClass[] RFP80SuperRegClasses = {
-		
-	};
-
-	// GR32_NOREX Super-register Classes...
-	public static final TargetRegisterClass[] GR32_NOREXSuperRegClasses = {
-		GR64_NOREXRegClass, GR64_NOREX_NOSPRegClass, 
-	};
-
-	// RFP64 Super-register Classes...
-	public static final TargetRegisterClass[] RFP64SuperRegClasses = {
-		
-	};
-
-	// VR256 Super-register Classes...
-	public static final TargetRegisterClass[] VR256SuperRegClasses = {
-		
-	};
-
-	// FR32 Super-register Classes...
-	public static final TargetRegisterClass[] FR32SuperRegClasses = {
-		
-	};
-
-	// FR64 Super-register Classes...
-	public static final TargetRegisterClass[] FR64SuperRegClasses = {
-		
-	};
-
-	// VR128 Super-register Classes...
-	public static final TargetRegisterClass[] VR128SuperRegClasses = {
-		
-	};
-
-	// GR64_NOREX Super-register Classes...
-	public static final TargetRegisterClass[] GR64_NOREXSuperRegClasses = {
-		
-	};
-
-	// GR8_NOREX Super-register Classes...
-	public static final TargetRegisterClass[] GR8_NOREXSuperRegClasses = {
-		GR64_NOREXRegClass, GR32_NOREXRegClass, GR16_NOREXRegClass, GR64_NOREX_NOSPRegClass, 
-	};
-
-	// RFP32 Super-register Classes...
-	public static final TargetRegisterClass[] RFP32SuperRegClasses = {
-		
-	};
-
-	// GR32_NOSP Super-register Classes...
-	public static final TargetRegisterClass[] GR32_NOSPSuperRegClasses = {
-		GR64_NOSPRegClass, 
-	};
-
-	// GR16_ABCD Super-register Classes...
-	public static final TargetRegisterClass[] GR16_ABCDSuperRegClasses = {
-		GR64_ABCDRegClass, GR32_ABCDRegClass, GR32_ADRegClass, 
-	};
-
-	// VR64 Super-register Classes...
-	public static final TargetRegisterClass[] VR64SuperRegClasses = {
-		
-	};
-
-	// GR8 Super-register Classes...
-	public static final TargetRegisterClass[] GR8SuperRegClasses = {
-		GR32_NOSPRegClass, GR64_NOSPRegClass, GR64RegClass, GR32RegClass, GR16RegClass, 
-	};
-
-	// GR64_NOREX_NOSP Super-register Classes...
-	public static final TargetRegisterClass[] GR64_NOREX_NOSPSuperRegClasses = {
-		
-	};
-
-	// GR16_NOREX Super-register Classes...
-	public static final TargetRegisterClass[] GR16_NOREXSuperRegClasses = {
-		GR64_NOREXRegClass, GR32_NOREXRegClass, GR64_NOREX_NOSPRegClass, 
-	};
-
-	// GR32_AD Super-register Classes...
-	public static final TargetRegisterClass[] GR32_ADSuperRegClasses = {
-		
-	};
-
-	// RST Super-register Classes...
-	public static final TargetRegisterClass[] RSTSuperRegClasses = {
-		
-	};
-	// GR16 Register Class sub-classes...
-	public static final TargetRegisterClass[] GR16SubClasses = {
-		GR16_ABCDRegClass, GR16_NOREXRegClass, 
-	};
-		// GR32 Register Class sub-classes...
-	public static final TargetRegisterClass[] GR32SubClasses = {
-		GR32_ABCDRegClass, GR32_NOREXRegClass, GR32_NOSPRegClass, GR32_ADRegClass, 
-	};
-		// GR64 Register Class sub-classes...
-	public static final TargetRegisterClass[] GR64SubClasses = {
-		GR64_NOSPRegClass, GR64_ABCDRegClass, GR64_NOREXRegClass, GR64_NOREX_NOSPRegClass, 
-	};
-		// GR8_ABCD_L Register Class sub-classes...
-	public static final TargetRegisterClass[] GR8_ABCD_LSubClasses = {
-		
-	};
-		// GR8_ABCD_H Register Class sub-classes...
-	public static final TargetRegisterClass[] GR8_ABCD_HSubClasses = {
-		
-	};
-		// GR64_NOSP Register Class sub-classes...
-	public static final TargetRegisterClass[] GR64_NOSPSubClasses = {
-		GR64_ABCDRegClass, GR64_NOREX_NOSPRegClass, 
-	};
-		// GR32_ABCD Register Class sub-classes...
-	public static final TargetRegisterClass[] GR32_ABCDSubClasses = {
-		GR32_ADRegClass, 
-	};
-		// CCR Register Class sub-classes...
-	public static final TargetRegisterClass[] CCRSubClasses = {
-		
-	};
-		// GR64_ABCD Register Class sub-classes...
-	public static final TargetRegisterClass[] GR64_ABCDSubClasses = {
-		
-	};
-		// RFP80 Register Class sub-classes...
-	public static final TargetRegisterClass[] RFP80SubClasses = {
-		
-	};
-		// GR32_NOREX Register Class sub-classes...
-	public static final TargetRegisterClass[] GR32_NOREXSubClasses = {
-		GR32_ABCDRegClass, GR32_ADRegClass, 
-	};
-		// RFP64 Register Class sub-classes...
-	public static final TargetRegisterClass[] RFP64SubClasses = {
-		RFP80RegClass, 
-	};
-		// VR256 Register Class sub-classes...
-	public static final TargetRegisterClass[] VR256SubClasses = {
-		
-	};
-		// FR32 Register Class sub-classes...
-	public static final TargetRegisterClass[] FR32SubClasses = {
-		FR64RegClass, VR128RegClass, 
-	};
-		// FR64 Register Class sub-classes...
-	public static final TargetRegisterClass[] FR64SubClasses = {
-		VR128RegClass, 
-	};
-		// VR128 Register Class sub-classes...
-	public static final TargetRegisterClass[] VR128SubClasses = {
-		
-	};
-		// GR64_NOREX Register Class sub-classes...
-	public static final TargetRegisterClass[] GR64_NOREXSubClasses = {
-		GR64_ABCDRegClass, GR64_NOREX_NOSPRegClass, 
-	};
-		// GR8_NOREX Register Class sub-classes...
-	public static final TargetRegisterClass[] GR8_NOREXSubClasses = {
-		GR8_ABCD_LRegClass, GR8_ABCD_HRegClass, 
-	};
-		// RFP32 Register Class sub-classes...
-	public static final TargetRegisterClass[] RFP32SubClasses = {
-		RFP80RegClass, RFP64RegClass, 
-	};
-		// GR32_NOSP Register Class sub-classes...
-	public static final TargetRegisterClass[] GR32_NOSPSubClasses = {
-		GR32_ABCDRegClass, GR32_ADRegClass, 
-	};
-		// GR16_ABCD Register Class sub-classes...
-	public static final TargetRegisterClass[] GR16_ABCDSubClasses = {
-		
-	};
-		// VR64 Register Class sub-classes...
-	public static final TargetRegisterClass[] VR64SubClasses = {
-		
-	};
-		// GR8 Register Class sub-classes...
-	public static final TargetRegisterClass[] GR8SubClasses = {
-		GR8_ABCD_LRegClass, GR8_ABCD_HRegClass, GR8_NOREXRegClass, 
-	};
-		// GR64_NOREX_NOSP Register Class sub-classes...
-	public static final TargetRegisterClass[] GR64_NOREX_NOSPSubClasses = {
-		GR64_ABCDRegClass, 
-	};
-		// GR16_NOREX Register Class sub-classes...
-	public static final TargetRegisterClass[] GR16_NOREXSubClasses = {
-		GR16_ABCDRegClass, 
-	};
-		// GR32_AD Register Class sub-classes...
-	public static final TargetRegisterClass[] GR32_ADSubClasses = {
-		
-	};
-		// RST Register Class sub-classes...
-	public static final TargetRegisterClass[] RSTSubClasses = {
-		
-	};
-		// GR16 Register Class super-classes...
-	public static final TargetRegisterClass[] GR16Superclasses = {
-		
-	};
-
-	// GR32 Register Class super-classes...
-	public static final TargetRegisterClass[] GR32Superclasses = {
-		
-	};
-
-	// GR64 Register Class super-classes...
-	public static final TargetRegisterClass[] GR64Superclasses = {
-		
-	};
-
-	// GR8_ABCD_L Register Class super-classes...
-	public static final TargetRegisterClass[] GR8_ABCD_LSuperclasses = {
-		GR8_ABCD_LRegClass, GR8_ABCD_LRegClass, 
-	};
-
-	// GR8_ABCD_H Register Class super-classes...
-	public static final TargetRegisterClass[] GR8_ABCD_HSuperclasses = {
-		GR8_ABCD_HRegClass, GR8_ABCD_HRegClass, 
-	};
-
-	// GR64_NOSP Register Class super-classes...
-	public static final TargetRegisterClass[] GR64_NOSPSuperclasses = {
-		GR64_NOSPRegClass, 
-	};
-
-	// GR32_ABCD Register Class super-classes...
-	public static final TargetRegisterClass[] GR32_ABCDSuperclasses = {
-		GR32_ABCDRegClass, GR32_ABCDRegClass, GR32_ABCDRegClass, 
-	};
-
-	// CCR Register Class super-classes...
-	public static final TargetRegisterClass[] CCRSuperclasses = {
-		
-	};
-
-	// GR64_ABCD Register Class super-classes...
-	public static final TargetRegisterClass[] GR64_ABCDSuperclasses = {
-		GR64_ABCDRegClass, GR64_ABCDRegClass, GR64_ABCDRegClass, GR64_ABCDRegClass, 
-	};
-
-	// RFP80 Register Class super-classes...
-	public static final TargetRegisterClass[] RFP80Superclasses = {
-		RFP80RegClass, RFP80RegClass, 
-	};
-
-	// GR32_NOREX Register Class super-classes...
-	public static final TargetRegisterClass[] GR32_NOREXSuperclasses = {
-		GR32_NOREXRegClass, 
-	};
-
-	// RFP64 Register Class super-classes...
-	public static final TargetRegisterClass[] RFP64Superclasses = {
-		RFP64RegClass, 
-	};
-
-	// VR256 Register Class super-classes...
-	public static final TargetRegisterClass[] VR256Superclasses = {
-		
-	};
-
-	// FR32 Register Class super-classes...
-	public static final TargetRegisterClass[] FR32Superclasses = {
-		
-	};
-
-	// FR64 Register Class super-classes...
-	public static final TargetRegisterClass[] FR64Superclasses = {
-		FR64RegClass, 
-	};
-
-	// VR128 Register Class super-classes...
-	public static final TargetRegisterClass[] VR128Superclasses = {
-		VR128RegClass, VR128RegClass, 
-	};
-
-	// GR64_NOREX Register Class super-classes...
-	public static final TargetRegisterClass[] GR64_NOREXSuperclasses = {
-		GR64_NOREXRegClass, 
-	};
-
-	// GR8_NOREX Register Class super-classes...
-	public static final TargetRegisterClass[] GR8_NOREXSuperclasses = {
-		GR8_NOREXRegClass, 
-	};
-
-	// RFP32 Register Class super-classes...
-	public static final TargetRegisterClass[] RFP32Superclasses = {
-		
-	};
-
-	// GR32_NOSP Register Class super-classes...
-	public static final TargetRegisterClass[] GR32_NOSPSuperclasses = {
-		GR32_NOSPRegClass, 
-	};
-
-	// GR16_ABCD Register Class super-classes...
-	public static final TargetRegisterClass[] GR16_ABCDSuperclasses = {
-		GR16_ABCDRegClass, GR16_ABCDRegClass, 
-	};
-
-	// VR64 Register Class super-classes...
-	public static final TargetRegisterClass[] VR64Superclasses = {
-		
-	};
-
-	// GR8 Register Class super-classes...
-	public static final TargetRegisterClass[] GR8Superclasses = {
-		
-	};
-
-	// GR64_NOREX_NOSP Register Class super-classes...
-	public static final TargetRegisterClass[] GR64_NOREX_NOSPSuperclasses = {
-		GR64_NOREX_NOSPRegClass, GR64_NOREX_NOSPRegClass, GR64_NOREX_NOSPRegClass, 
-	};
-
-	// GR16_NOREX Register Class super-classes...
-	public static final TargetRegisterClass[] GR16_NOREXSuperclasses = {
-		GR16_NOREXRegClass, 
-	};
-
-	// GR32_AD Register Class super-classes...
-	public static final TargetRegisterClass[] GR32_ADSuperclasses = {
-		GR32_ADRegClass, GR32_ADRegClass, GR32_ADRegClass, GR32_ADRegClass, 
-	};
-
-	// RST Register Class super-classes...
-	public static final TargetRegisterClass[] RSTSuperclasses = {
-		
-	};
-
-	public final static TargetRegisterClass[] registerClasses = {
-		GR16RegClass,
-		GR32RegClass,
-		GR64RegClass,
-		GR8_ABCD_LRegClass,
-		GR8_ABCD_HRegClass,
-		GR64_NOSPRegClass,
-		GR32_ABCDRegClass,
-		CCRRegClass,
-		GR64_ABCDRegClass,
-		RFP80RegClass,
-		GR32_NOREXRegClass,
-		RFP64RegClass,
-		VR256RegClass,
-		FR32RegClass,
-		FR64RegClass,
-		VR128RegClass,
-		GR64_NOREXRegClass,
-		GR8_NOREXRegClass,
-		RFP32RegClass,
-		GR32_NOSPRegClass,
-		GR16_ABCDRegClass,
-		VR64RegClass,
-		GR8RegClass,
-		GR64_NOREX_NOSPRegClass,
-		GR16_NOREXRegClass,
-		GR32_ADRegClass,
-		RSTRegClass,
-	};
-
-
-
-	// Number of hash collisions: 11
-	static int[] SubregHashTable = {
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R15D, R15W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R13, R13B,
-		NoRegister, NoRegister, 
-		RDX, EDX,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R10D, R10B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		ECX, CL,
-		NoRegister, NoRegister, 
-		R10W, R10B,
-		NoRegister, NoRegister, 
-		R8, R8D,
-		NoRegister, NoRegister, 
-		RDI, DIL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		ESI, SI,
-		NoRegister, NoRegister, 
-		R14D, R14W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R13, R13D,
-		RIP, EIP,
-		R8D, R8B,
-		R8W, R8B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R11D, R11W,
-		R8, R8W,
-		RCX, CL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		ESP, SP,
-		NoRegister, NoRegister, 
-		R10, R10D,
-		NoRegister, NoRegister, 
-		RSI, SI,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R15, R15W,
-		RSI, ESI,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		SI, SIL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		ECX, CX,
-		R12D, R12B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R9, R9B,
-		DX, DH,
-		NoRegister, NoRegister, 
-		R12W, R12B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R10, R10B,
-		RSP, SP,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R15W, R15B,
-		NoRegister, NoRegister,
-		R15D, R15B
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R14, R14W,
-		ESI, SIL,
-		NoRegister, NoRegister, 
-		R8D, R8W,
-		RSP, ESP,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EDX, DH,
-		RCX, CX,
-		NoRegister, NoRegister, 
-		R9, R9D,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R11, R11W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		AX, AH,
-		R15, R15D,
-		NoRegister, NoRegister, 
-		RSI, SIL,
-		NoRegister, NoRegister, 
-		R9D, R9B,
-		R9W, R9B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		SP, SPL,
-		R10D, R10W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EDI, DI,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R9, R9W,
-		DX, DL,
-		RDX, DH,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		BP, BPL,
-		NoRegister, NoRegister, 
-		R12, R12B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		AX, AL,
-		ESP, SPL,
-		NoRegister, NoRegister, 
-		EAX, AH,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R15, R15B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EDX, DL,
-		NoRegister, NoRegister, 
-		RDI, DI,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R12, R12D,
-		EBP, BPL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EAX, AL,
-		RSP, SPL,
-		R9D, R9W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RAX, AH,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R11W, R11B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R11D, R11B,
-		NoRegister, NoRegister, 
-		RDX, DL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RAX, EAX,
-		R10, R10W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RBP, BPL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EAX, AX,
-		BX, BH,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RAX, AL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EDX, DX,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R13D, R13W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RBP, EBP,
-		NoRegister, NoRegister, 
-		R11, R11D,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		BX, BL,
-		EBX, BH,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RAX, AX,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RDX, DX,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RBX, EBX,
-		R11, R11B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EBX, BL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RBX, BH,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R14D, R14B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R14W, R14B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R13, R13W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EBP, BP,
-		NoRegister, NoRegister,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RBX, BL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R12D, R12W,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R14, R14D,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EBX, BX,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		CX, CH,
-		NoRegister, NoRegister, 
-		RBP, BP,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		EIP, IP,
-		NoRegister, NoRegister, 
-		R13W, R13B
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R13D, R13B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RCX, ECX,
-		R14, R14B,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		ECX, CH,
-		NoRegister, NoRegister, 
-		RBX, BX,
-		DI, DIL,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		RIP, IP,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		R12, R12W,
-		NoRegister, NoRegister, 
-		RDI, EDI,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		CX, CL,
-		NoRegister, NoRegister, 
-		EDI, DIL,
-		R8, R8B,
-		RCX, CH,
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-		NoRegister, NoRegister, 
-	};
-	static int SubregHashTableSize = 512;
-
-
-	// Number of hash collisions: 13
-	static int[] SuperregHashTable = {
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SPL, ESP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15B, R15W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SI, ESI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R9B, R9, 
-		ESP, RSP, 
-		R9W, R9, 
-		R9D, R9, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R14B, R14W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SP, ESP, 
-		NoRegister,  NoRegister,
-		CH, CX, 
-		NoRegister,  NoRegister,
-		CL, CX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11B, R11W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15W, R15D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15B, R15D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R8B, R8D, 
-		NoRegister,  NoRegister,
-		R8W, R8D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R8B, R8W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DIL, DI, 
-		NoRegister,  NoRegister,
-		R12B, R12D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12W, R12D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10B, R10W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		AH, EAX, 
-		AL, EAX, 
-		AX, EAX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BPL, EBP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		AH, RAX, 
-		AL, RAX, 
-		AX, RAX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R9B, R9D, 
-		NoRegister,  NoRegister,
-		R9W, R9D, 
-		BPL, RBP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11W, R11D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11B, R11D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BP, EBP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		AH, AX, 
-		AL, AX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BP, RBP, 
-		NoRegister,  NoRegister,
-		EAX, RAX, 
-		NoRegister,  NoRegister,
-		R9B, R9W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10D, R10, 
-		R10B, R10, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10W, R10, 
-		DH, DX, 
-		NoRegister,  NoRegister,
-		DL, DX, 
-		BH, EBX, 
-		BL, EBX, 
-		NoRegister,  NoRegister,
-		BX, EBX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BH, RBX, 
-		BL, RBX, 
-		NoRegister,  NoRegister,
-		BX, RBX, 
-		NoRegister,  NoRegister,
-		EBP, RBP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12B, R12, 
-		R12D, R12, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12W, R12, 
-		NoRegister,  NoRegister,
-		R13B, R13W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		CH, RCX, 
-		NoRegister,  NoRegister,
-		CL, RCX, 
-		NoRegister,  NoRegister,
-		BPL, BP, 
-		NoRegister,  NoRegister,
-		CX, RCX, 
-		NoRegister,  NoRegister,
-		R11W, R11, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11D, R11, 
-		R11B, R11, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R14B, R14D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EBX, RBX, 
-		NoRegister,  NoRegister,
-		R14W, R14D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DIL, RDI, 
-		NoRegister,  NoRegister,
-		ECX, RCX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DI, RDI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R14D, R14, 
-		R14B, R14, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		CH, ECX, 
-		NoRegister,  NoRegister,
-		R14W, R14, 
-		NoRegister,  NoRegister,
-		CL, ECX, 
-		NoRegister,  NoRegister,
-		CX, ECX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BH, BX, 
-		BL, BX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EDI, RDI, 
-		DH, RDX, 
-		NoRegister,  NoRegister,
-		DL, RDX, 
-		NoRegister,  NoRegister,
-		DX, RDX, 
-		R12B, R12W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13W, R13, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13B, R13, 
-		R13D, R13, 
-		DIL, EDI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DI, EDI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SIL, RSI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EDX, RDX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		IP, RIP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15W, R15, 
-		NoRegister,  NoRegister,
-		R15D, R15, 
-		R15B, R15, 
-		DH, EDX, 
-		NoRegister,  NoRegister,
-		DL, EDX, 
-		NoRegister,  NoRegister,
-		DX, EDX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SPL, RSP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EIP, RIP, 
-		SIL, SI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13W, R13D, 
-		SI, RSI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SIL, ESI, 
-		NoRegister,  NoRegister,
-		R13B, R13D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		IP, EIP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10B, R10D, 
-		NoRegister,  NoRegister,
-		R8B, R8, 
-		R8D, R8, 
-		R10W, R10D, 
-		ESI, RSI, 
-		R8W, R8, 
-		SPL, SP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SP, RSP, 
-		NoRegister,  NoRegister
-	};
-	static int SuperregHashTableSize = 512;
-
-
-	// Number of hash collisions: 49
-	static int AliasesHashTable[] = {
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SPL, ESP, 
-		NoRegister,  NoRegister,
-		R15D, R15W, 
-		R15B, R15W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13, R13B, 
-		NoRegister,  NoRegister,
-		RDX, EDX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SI, ESI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R9B, R9, 
-		R8, R8D, 
-		R9W, R9, 
-		R9D, R9, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		ESI, SI, 
-		NoRegister,  NoRegister,
-		R14D, R14W, 
-		R14B, R14W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13, R13D, 
-		RIP, EIP, 
-		R8D, R8B, 
-		R8W, R8B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SP, ESP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R8, R8W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		ESP, SP, 
-		NoRegister,  NoRegister,
-		RSI, SI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15W, R15D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15B, R15D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15, R15W, 
-		RSI, ESI, 
-		R8B, R8D, 
-		NoRegister,  NoRegister,
-		R8W, R8D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SI, SIL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R9, R9B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		RSP, SP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15W, R15B, 
-		NoRegister,  NoRegister,
-		R15D, R15B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R14, R14W, 
-		ESI, SIL, 
-		R8B, R8W, 
-		R8D, R8W, 
-		RSP, ESP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R9, R9D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		AX, AH, 
-		R15, R15D, 
-		NoRegister,  NoRegister,
-		RSI, SIL, 
-		NoRegister,  NoRegister,
-		R9D, R9B, 
-		R9W, R9B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SP, SPL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R9, R9W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BP, BPL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		AH, RAX, 
-		AL, RAX, 
-		AX, RAX, 
-		AX, AL, 
-		ESP, SPL, 
-		NoRegister,  NoRegister,
-		EAX, AH, 
-		R9B, R9D, 
-		NoRegister,  NoRegister,
-		R9W, R9D, 
-		BPL, RBP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R15, R15B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EBP, BPL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		AH, AX, 
-		AL, AX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BP, RBP, 
-		EAX, AL, 
-		EAX, RAX, 
-		R9D, R9W, 
-		R9B, R9W, 
-		NoRegister,  NoRegister,
-		RAX, AH, 
-		NoRegister,  NoRegister,
-		RSP, SPL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		RBP, BPL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BH, RBX, 
-		BL, RBX, 
-		NoRegister,  NoRegister,
-		BX, RBX, 
-		BX, BH, 
-		EAX, AX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		RAX, AL, 
-		EBP, RBP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BX, BL, 
-		EBX, BH, 
-		CH, RCX, 
-		NoRegister,  NoRegister,
-		BPL, BP, 
-		NoRegister,  NoRegister,
-		CX, RCX, 
-		NoRegister,  NoRegister,
-		CL, RCX, 
-		NoRegister,  NoRegister,
-		RAX, AX, 
-		NoRegister,  NoRegister,
-		EBX, RBX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DIL, RDI, 
-		NoRegister,  NoRegister,
-		EBX, BL, 
-		NoRegister,  NoRegister,
-		ECX, RCX, 
-		DI, RDI, 
-		NoRegister,  NoRegister,
-		RBX, BH, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BH, BX, 
-		BL, BX, 
-		NoRegister,  NoRegister,
-		EBP, BP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EDI, RDI, 
-		DH, RDX, 
-		RBX, BL, 
-		DL, RDX, 
-		NoRegister,  NoRegister,
-		DX, RDX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SIL, RSI, 
-		EBX, BX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		CX, CH, 
-		NoRegister,  NoRegister,
-		EDX, RDX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		RBP, BP, 
-		NoRegister,  NoRegister,
-		IP, RIP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SPL, RSP, 
-		NoRegister,  NoRegister,
-		ECX, CH, 
-		NoRegister,  NoRegister,
-		EIP, RIP, 
-		DI, DIL, 
-		RBX, BX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SI, RSI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10B, R10D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		CX, CL, 
-		R10W, R10D, 
-		EDI, DIL, 
-		NoRegister,  NoRegister,
-		ESI, RSI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		RCX, CH, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SP, RSP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10D, R10B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		ECX, CL, 
-		NoRegister,  NoRegister,
-		R10W, R10B, 
-		NoRegister,  NoRegister,
-		ESP, RSP, 
-		NoRegister,  NoRegister,
-		RDI, DIL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		CH, CX, 
-		NoRegister,  NoRegister,
-		CL, CX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11D, R11W, 
-		R11B, R11W, 
-		RCX, CL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10, R10D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		ECX, CX, 
-		R12D, R12B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DX, DH, 
-		NoRegister,  NoRegister,
-		R12W, R12B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10, R10B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DIL, DI, 
-		NoRegister,  NoRegister,
-		R12B, R12D, 
-		NoRegister,  NoRegister,
-		EDX, DH, 
-		RCX, CX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12W, R12D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11, R11W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10D, R10W, 
-		R10B, R10W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EDI, DI, 
-		AH, EAX, 
-		AL, EAX, 
-		AX, EAX, 
-		RDX, DH, 
-		DX, DL, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		BPL, EBP, 
-		NoRegister,  NoRegister,
-		R12, R12B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11W, R11D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EDX, DL, 
-		NoRegister,  NoRegister,
-		R11B, R11D, 
-		NoRegister,  NoRegister,
-		RDI, DI, 
-		BP, EBP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12, R12D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R10D, R10, 
-		R10B, R10, 
-		NoRegister,  NoRegister,
-		R11W, R11B, 
-		NoRegister,  NoRegister,
-		R10W, R10, 
-		DH, DX, 
-		R11D, R11B, 
-		DL, DX, 
-		BH, EBX, 
-		BL, EBX, 
-		RDX, DL, 
-		BX, EBX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		RAX, EAX, 
-		R10, R10W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12B, R12, 
-		R12D, R12, 
-		NoRegister,  NoRegister,
-		EDX, DX, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12W, R12, 
-		NoRegister,  NoRegister,
-		R13B, R13W, 
-		R13D, R13W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		RBP, EBP, 
-		NoRegister,  NoRegister,
-		R11, R11D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11W, R11, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R11D, R11, 
-		R11B, R11, 
-		NoRegister,  NoRegister,
-		RDX, DX, 
-		NoRegister,  NoRegister,
-		R14B, R14D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R14W, R14D, 
-		NoRegister,  NoRegister,
-		RBX, EBX, 
-		R11, R11B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R14D, R14, 
-		R14D, R14B, 
-		NoRegister,  NoRegister,
-		R14B, R14, 
-		CH, ECX, 
-		NoRegister,  NoRegister,
-		R14W, R14, 
-		R14W, R14B, 
-		CL, ECX, 
-		NoRegister,  NoRegister,
-		CX, ECX, 
-		NoRegister,  NoRegister,
-		R13, R13W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12B, R12W, 
-		R12D, R12W, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13W, R13, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13B, R13, 
-		R13D, R13, 
-		DIL, EDI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		DI, EDI, 
-		R14, R14D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		EIP, IP, 
-		NoRegister,  NoRegister,
-		R13W, R13B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13D, R13B, 
-		NoRegister,  NoRegister,
-		R15W, R15, 
-		R15B, R15, 
-		R15D, R15, 
-		RCX, ECX, 
-		DH, EDX, 
-		NoRegister,  NoRegister,
-		DL, EDX, 
-		NoRegister,  NoRegister,
-		DX, EDX, 
-		NoRegister,  NoRegister,
-		R14, R14B, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SIL, SI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R13W, R13D, 
-		RIP, IP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		SIL, ESI, 
-		NoRegister,  NoRegister,
-		R13B, R13D, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R12, R12W, 
-		NoRegister,  NoRegister,
-		RDI, EDI, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		IP, EIP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		R8B, R8, 
-		R8D, R8, 
-		R8W, R8, 
-		NoRegister,  NoRegister,
-		R8, R8B, 
-		SPL, SP, 
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-		NoRegister,  NoRegister,
-	};
-
-	static int AliasesHashTableSize = 1024;
-
-
-	// Register Alias Sets...
-	static int[] Empty_AliasSet = { };
-	static int[] ST2_AliasSet = { };
-	static int[] R8W_AliasSet = { R8, R8B, R8D, };
-	static int[] BX_AliasSet = { BH, BL, EBX, RBX, };
-	static int[] R14_AliasSet = { R14B, R14D, R14W, };
-	static int[] R10D_AliasSet = { R10, R10B, R10W, };
-	static int[] AL_AliasSet = { AX, EAX, RAX, };
-	static int[] XMM10_AliasSet = { };
-	static int[] CX_AliasSet = { CH, CL, ECX, RCX, };
-	static int[] YMM1_AliasSet = { };
-	static int[] XMM12_AliasSet = { };
-	static int[] ESI_AliasSet = { RSI, SI, SIL, };
-	static int[] R15D_AliasSet = { R15, R15B, R15W, };
-	static int[] CS_AliasSet = { };
-	static int[] R12_AliasSet = { R12B, R12D, R12W, };
-	static int[] XMM9_AliasSet = { };
-	static int[] ST0_AliasSet = { };
-	static int[] DL_AliasSet = { DX, EDX, RDX, };
-	static int[] YMM8_AliasSet = { };
-	static int[] AX_AliasSet = { AH, AL, EAX, RAX, };
-	static int[] R11_AliasSet = { R11B, R11D, R11W, };
-	static int[] R11B_AliasSet = { R11, R11D, R11W, };
-	static int[] YMM3_AliasSet = { };
-	static int[] R15B_AliasSet = { R15, R15D, R15W, };
-	static int[] YMM14_AliasSet = { };
-	static int[] EDX_AliasSet = { DH, DL, DX, RDX, };
-	static int[] FP4_AliasSet = { };
-	static int[] XMM4_AliasSet = { };
-	static int[] DX_AliasSet = { DH, DL, EDX, RDX, };
-	static int[] SPL_AliasSet = { ESP, RSP, SP, };
-	static int[] YMM5_AliasSet = { };
-	static int[] FS_AliasSet = { };
-	static int[] XMM7_AliasSet = { };
-	static int[] RCX_AliasSet = { CH, CL, CX, ECX, };
-	static int[] SP_AliasSet = { ESP, RSP, SPL, };
-	static int[] EDI_AliasSet = { DI, DIL, RDI, };
-	static int[] R10_AliasSet = { R10B, R10D, R10W, };
-	static int[] ST3_AliasSet = { };
-	static int[] YMM11_AliasSet = { };
-	static int[] MM7_AliasSet = { };
-	static int[] XMM1_AliasSet = { };
-	static int[] MM5_AliasSet = { };
-	static int[] MM4_AliasSet = { };
-	static int[] R15W_AliasSet = { R15, R15B, R15D, };
-	static int[] BP_AliasSet = { BPL, EBP, RBP, };
-	static int[] DI_AliasSet = { DIL, EDI, RDI, };
-	static int[] AH_AliasSet = { AX, EAX, RAX, };
-	static int[] R8D_AliasSet = { R8, R8B, R8W, };
-	static int[] R8B_AliasSet = { R8, R8D, R8W, };
-	static int[] R13B_AliasSet = { R13, R13D, R13W, };
-	static int[] XMM15_AliasSet = { };
-	static int[] YMM9_AliasSet = { };
-	static int[] XMM3_AliasSet = { };
-	static int[] FP0_AliasSet = { };
-	static int[] XMM13_AliasSet = { };
-	static int[] XMM0_AliasSet = { };
-	static int[] MM2_AliasSet = { };
-	static int[] CL_AliasSet = { CX, ECX, RCX, };
-	static int[] ESP_AliasSet = { RSP, SP, SPL, };
-	static int[] ST5_AliasSet = { };
-	static int[] BL_AliasSet = { BX, EBX, RBX, };
-	static int[] R14D_AliasSet = { R14, R14B, R14W, };
-	static int[] ES_AliasSet = { };
-	static int[] XMM8_AliasSet = { };
-	static int[] R12W_AliasSet = { R12, R12B, R12D, };
-	static int[] R14W_AliasSet = { R14, R14B, R14D, };
-	static int[] SI_AliasSet = { ESI, RSI, SIL, };
-	static int[] GS_AliasSet = { };
-	static int[] RSI_AliasSet = { ESI, SI, SIL, };
-	static int[] SS_AliasSet = { };
-	static int[] R10B_AliasSet = { R10, R10D, R10W, };
-	static int[] XMM2_AliasSet = { };
-	static int[] XMM11_AliasSet = { };
-	static int[] ST4_AliasSet = { };
-	static int[] RSP_AliasSet = { ESP, SP, SPL, };
-	static int[] YMM12_AliasSet = { };
-	static int[] YMM0_AliasSet = { };
-	static int[] RBP_AliasSet = { BP, BPL, EBP, };
-	static int[] YMM6_AliasSet = { };
-	static int[] ECX_AliasSet = { CH, CL, CX, RCX, };
-	static int[] R14B_AliasSet = { R14, R14D, R14W, };
-	static int[] DIL_AliasSet = { DI, EDI, RDI, };
-	static int[] FP2_AliasSet = { };
-	static int[] BPL_AliasSet = { BP, EBP, RBP, };
-	static int[] FP3_AliasSet = { };
-	static int[] R15_AliasSet = { R15B, R15D, R15W, };
-	static int[] RIP_AliasSet = { EIP, IP, };
-	static int[] ST7_AliasSet = { };
-	static int[] RBX_AliasSet = { BH, BL, BX, EBX, };
-	static int[] MM6_AliasSet = { };
-	static int[] YMM13_AliasSet = { };
-	static int[] R8_AliasSet = { R8B, R8D, R8W, };
-	static int[] MM1_AliasSet = { };
-	static int[] MM0_AliasSet = { };
-	static int[] EFLAGS_AliasSet = { };
-	static int[] FP1_AliasSet = { };
-	static int[] R9W_AliasSet = { R9, R9B, R9D, };
-	static int[] RAX_AliasSet = { AH, AL, AX, EAX, };
-	static int[] R11W_AliasSet = { R11, R11B, R11D, };
-	static int[] ST6_AliasSet = { };
-	static int[] MM3_AliasSet = { };
-	static int[] YMM10_AliasSet = { };
-	static int[] EAX_AliasSet = { AH, AL, AX, RAX, };
-	static int[] R11D_AliasSet = { R11, R11B, R11W, };
-	static int[] FP6_AliasSet = { };
-	static int[] R12D_AliasSet = { R12, R12B, R12W, };
-	static int[] R13D_AliasSet = { R13, R13B, R13W, };
-	static int[] R12B_AliasSet = { R12, R12D, R12W, };
-	static int[] R13_AliasSet = { R13B, R13D, R13W, };
-	static int[] R9D_AliasSet = { R9, R9B, R9W, };
-	static int[] SIL_AliasSet = { ESI, RSI, SI, };
-	static int[] DS_AliasSet = { };
-	static int[] YMM15_AliasSet = { };
-	static int[] R9B_AliasSet = { R9, R9D, R9W, };
-	static int[] R10W_AliasSet = { R10, R10B, R10D, };
-	static int[] YMM2_AliasSet = { };
-	static int[] IP_AliasSet = { EIP, RIP, };
-	static int[] EBX_AliasSet = { BH, BL, BX, RBX, };
-	static int[] RDX_AliasSet = { DH, DL, DX, EDX, };
-	static int[] EIP_AliasSet = { IP, RIP, };
-	static int[] XMM6_AliasSet = { };
-	static int[] XMM5_AliasSet = { };
-	static int[] EBP_AliasSet = { BP, BPL, RBP, };
-	static int[] YMM7_AliasSet = { };
-	static int[] ST1_AliasSet = { };
-	static int[] XMM14_AliasSet = { };
-	static int[] DH_AliasSet = { DX, EDX, RDX, };
-	static int[] R13W_AliasSet = { R13, R13B, R13D, };
-	static int[] CH_AliasSet = { CX, ECX, RCX, };
-	static int[] FP5_AliasSet = { };
-	static int[] R9_AliasSet = { R9B, R9D, R9W, };
-	static int[] RDI_AliasSet = { DI, DIL, EDI, };
-	static int[] BH_AliasSet = { BX, EBX, RBX, };
-	static int[] YMM4_AliasSet = { };
-
-
-	// Register Sub-registers Sets...
-	static int[] Empty_SubRegsSet = {};
-	static int[] ST2_SubRegsSet = { };
-	static int[] R8W_SubRegsSet = { R8B, };
-	static int[] BX_SubRegsSet = { BH, BL, };
-	static int[] R14_SubRegsSet = { R14D, R14W, R14B, };
-	static int[] R10D_SubRegsSet = { R10W, R10B, };
-	static int[] AL_SubRegsSet = { };
-	static int[] XMM10_SubRegsSet = { };
-	static int[] CX_SubRegsSet = { CH, CL, };
-	static int[] YMM1_SubRegsSet = { };
-	static int[] XMM12_SubRegsSet = { };
-	static int[] ESI_SubRegsSet = { SI, SIL, };
-	static int[] R15D_SubRegsSet = { R15W, R15B, };
-	static int[] CS_SubRegsSet = { };
-	static int[] XMM9_SubRegsSet = { };
-	static int[] R12_SubRegsSet = { R12D, R12W, R12B, };
-	static int[] ST0_SubRegsSet = { };
-	static int[] DL_SubRegsSet = { };
-	static int[] YMM8_SubRegsSet = { };
-	static int[] AX_SubRegsSet = { AH, AL, };
-	static int[] R11_SubRegsSet = { R11D, R11W, R11B, };
-	static int[] R11B_SubRegsSet = { };
-	static int[] YMM3_SubRegsSet = { };
-	static int[] R15B_SubRegsSet = { };
-	static int[] YMM14_SubRegsSet = { };
-	static int[] EDX_SubRegsSet = { DX, DH, DL, };
-	static int[] FP4_SubRegsSet = { };
-	static int[] XMM4_SubRegsSet = { };
-	static int[] SPL_SubRegsSet = { };
-	static int[] DX_SubRegsSet = { DH, DL, };
-	static int[] YMM5_SubRegsSet = { };
-	static int[] FS_SubRegsSet = { };
-	static int[] XMM7_SubRegsSet = { };
-	static int[] RCX_SubRegsSet = { ECX, CX, CH, CL, };
-	static int[] SP_SubRegsSet = { SPL, };
-	static int[] ST3_SubRegsSet = { };
-	static int[] EDI_SubRegsSet = { DI, DIL, };
-	static int[] R10_SubRegsSet = { R10D, R10W, R10B, };
-	static int[] YMM11_SubRegsSet = { };
-	static int[] MM7_SubRegsSet = { };
-	static int[] XMM1_SubRegsSet = { };
-	static int[] MM5_SubRegsSet = { };
-	static int[] MM4_SubRegsSet = { };
-	static int[] R15W_SubRegsSet = { R15B, };
-	static int[] BP_SubRegsSet = { BPL, };
-	static int[] DI_SubRegsSet = { DIL, };
-	static int[] AH_SubRegsSet = { };
-	static int[] R8B_SubRegsSet = { };
-	static int[] R8D_SubRegsSet = { R8W, R8B, };
-	static int[] R13B_SubRegsSet = { };
-	static int[] XMM15_SubRegsSet = { };
-	static int[] YMM9_SubRegsSet = { };
-	static int[] XMM3_SubRegsSet = { };
-	static int[] FP0_SubRegsSet = { };
-	static int[] XMM13_SubRegsSet = { };
-	static int[] XMM0_SubRegsSet = { };
-	static int[] MM2_SubRegsSet = { };
-	static int[] CL_SubRegsSet = { };
-	static int[] ST5_SubRegsSet = { };
-	static int[] ESP_SubRegsSet = { SP, SPL, };
-	static int[] BL_SubRegsSet = { };
-	static int[] R14D_SubRegsSet = { R14W, R14B, };
-	static int[] ES_SubRegsSet = { };
-	static int[] XMM8_SubRegsSet = { };
-	static int[] R12W_SubRegsSet = { R12B, };
-	static int[] R14W_SubRegsSet = { R14B, };
-	static int[] GS_SubRegsSet = { };
-	static int[] SI_SubRegsSet = { SIL, };
-	static int[] RSI_SubRegsSet = { ESI, SI, SIL, };
-	static int[] SS_SubRegsSet = { };
-	static int[] R10B_SubRegsSet = { };
-	static int[] XMM2_SubRegsSet = { };
-	static int[] XMM11_SubRegsSet = { };
-	static int[] ST4_SubRegsSet = { };
-	static int[] YMM12_SubRegsSet = { };
-	static int[] RSP_SubRegsSet = { ESP, SP, SPL, };
-	static int[] YMM0_SubRegsSet = { };
-	static int[] RBP_SubRegsSet = { EBP, BP, BPL, };
-	static int[] YMM6_SubRegsSet = { };
-	static int[] ECX_SubRegsSet = { CX, CH, CL, };
-	static int[] R14B_SubRegsSet = { };
-	static int[] DIL_SubRegsSet = { };
-	static int[] FP2_SubRegsSet = { };
-	static int[] BPL_SubRegsSet = { };
-	static int[] FP3_SubRegsSet = { };
-	static int[] R15_SubRegsSet = { R15D, R15W, R15B, };
-	static int[] ST7_SubRegsSet = { };
-	static int[] RIP_SubRegsSet = { EIP, IP, };
-	static int[] RBX_SubRegsSet = { EBX, BX, BH, BL, };
-	static int[] MM6_SubRegsSet = { };
-	static int[] YMM13_SubRegsSet = { };
-	static int[] R8_SubRegsSet = { R8D, R8W, R8B, };
-	static int[] MM1_SubRegsSet = { };
-	static int[] MM0_SubRegsSet = { };
-	static int[] EFLAGS_SubRegsSet = { };
-	static int[] FP1_SubRegsSet = { };
-	static int[] R9W_SubRegsSet = { R9B, };
-	static int[] RAX_SubRegsSet = { EAX, AX, AH, AL, };
-	static int[] ST6_SubRegsSet = { };
-	static int[] R11W_SubRegsSet = { R11B, };
-	static int[] MM3_SubRegsSet = { };
-	static int[] YMM10_SubRegsSet = { };
-	static int[] EAX_SubRegsSet = { AX, AH, AL, };
-	static int[] R11D_SubRegsSet = { R11W, R11B, };
-	static int[] FP6_SubRegsSet = { };
-	static int[] R12D_SubRegsSet = { R12W, R12B, };
-	static int[] R13D_SubRegsSet = { R13W, R13B, };
-	static int[] R12B_SubRegsSet = { };
-	static int[] R13_SubRegsSet = { R13D, R13W, R13B, };
-	static int[] SIL_SubRegsSet = { };
-	static int[] DS_SubRegsSet = { };
-	static int[] R9D_SubRegsSet = { R9W, R9B, };
-	static int[] YMM15_SubRegsSet = { };
-	static int[] R9B_SubRegsSet = { };
-	static int[] R10W_SubRegsSet = { R10B, };
-	static int[] YMM2_SubRegsSet = { };
-	static int[] IP_SubRegsSet = { };
-	static int[] EBX_SubRegsSet = { BX, BH, BL, };
-	static int[] RDX_SubRegsSet = { EDX, DX, DH, DL, };
-	static int[] EIP_SubRegsSet = { IP, };
-	static int[] XMM6_SubRegsSet = { };
-	static int[] XMM5_SubRegsSet = { };
-	static int[] EBP_SubRegsSet = { BP, BPL, };
-	static int[] YMM7_SubRegsSet = { };
-	static int[] ST1_SubRegsSet = { };
-	static int[] XMM14_SubRegsSet = { };
-	static int[] DH_SubRegsSet = { };
-	static int[] R13W_SubRegsSet = { R13B, };
-	static int[] CH_SubRegsSet = { };
-	static int[] FP5_SubRegsSet = { };
-	static int[] R9_SubRegsSet = { R9D, R9W, R9B, };
-	static int[] RDI_SubRegsSet = { EDI, DI, DIL, };
-	static int[] BH_SubRegsSet = { };
-	static int[] YMM4_SubRegsSet = { };
-
-
-	// Register Super-registers Sets...
-    static int[] Empty_SuperRegsSet = { 0 };
-	static int[] ST2_SuperRegsSet = { };
-	static int[] R8W_SuperRegsSet = { R8, R8D, };
-	static int[] BX_SuperRegsSet = { RBX, EBX, };
-	static int[] R14_SuperRegsSet = { };
-	static int[] AL_SuperRegsSet = { RAX, EAX, AX, };
-	static int[] R10D_SuperRegsSet = { R10, };
-	static int[] XMM10_SuperRegsSet = { };
-	static int[] CX_SuperRegsSet = { RCX, ECX, };
-	static int[] YMM1_SuperRegsSet = { };
-	static int[] XMM12_SuperRegsSet = { };
-	static int[] ESI_SuperRegsSet = { RSI, };
-	static int[] R15D_SuperRegsSet = { R15, };
-	static int[] CS_SuperRegsSet = { };
-	static int[] XMM9_SuperRegsSet = { };
-	static int[] R12_SuperRegsSet = { };
-	static int[] ST0_SuperRegsSet = { };
-	static int[] DL_SuperRegsSet = { RDX, EDX, DX, };
-	static int[] YMM8_SuperRegsSet = { };
-	static int[] AX_SuperRegsSet = { RAX, EAX, };
-	static int[] R11_SuperRegsSet = { };
-	static int[] R11B_SuperRegsSet = { R11, R11D, R11W, };
-	static int[] YMM3_SuperRegsSet = { };
-	static int[] R15B_SuperRegsSet = { R15, R15D, R15W, };
-	static int[] YMM14_SuperRegsSet = { };
-	static int[] EDX_SuperRegsSet = { RDX, };
-	static int[] FP4_SuperRegsSet = { };
-	static int[] XMM4_SuperRegsSet = { };
-	static int[] SPL_SuperRegsSet = { RSP, ESP, SP, };
-	static int[] DX_SuperRegsSet = { RDX, EDX, };
-	static int[] YMM5_SuperRegsSet = { };
-	static int[] FS_SuperRegsSet = { };
-	static int[] XMM7_SuperRegsSet = { };
-	static int[] RCX_SuperRegsSet = { };
-	static int[] SP_SuperRegsSet = { RSP, ESP, };
-	static int[] EDI_SuperRegsSet = { RDI, };
-	static int[] ST3_SuperRegsSet = { };
-	static int[] R10_SuperRegsSet = { };
-	static int[] YMM11_SuperRegsSet = { };
-	static int[] MM7_SuperRegsSet = { };
-	static int[] XMM1_SuperRegsSet = { };
-	static int[] MM5_SuperRegsSet = { };
-	static int[] MM4_SuperRegsSet = { };
-	static int[] R15W_SuperRegsSet = { R15, R15D, };
-	static int[] BP_SuperRegsSet = { RBP, EBP, };
-	static int[] DI_SuperRegsSet = { RDI, EDI, };
-	static int[] AH_SuperRegsSet = { RAX, EAX, AX, };
-	static int[] R8D_SuperRegsSet = { R8, };
-	static int[] R8B_SuperRegsSet = { R8, R8D, R8W, };
-	static int[] R13B_SuperRegsSet = { R13, R13D, R13W, };
-	static int[] XMM15_SuperRegsSet = { };
-	static int[] YMM9_SuperRegsSet = { };
-	static int[] XMM3_SuperRegsSet = { };
-	static int[] FP0_SuperRegsSet = { };
-	static int[] XMM13_SuperRegsSet = { };
-	static int[] XMM0_SuperRegsSet = { };
-	static int[] MM2_SuperRegsSet = { };
-	static int[] CL_SuperRegsSet = { RCX, ECX, CX, };
-	static int[] ESP_SuperRegsSet = { RSP, };
-	static int[] ST5_SuperRegsSet = { };
-	static int[] BL_SuperRegsSet = { RBX, EBX, BX, };
-	static int[] R14D_SuperRegsSet = { R14, };
-	static int[] ES_SuperRegsSet = { };
-	static int[] XMM8_SuperRegsSet = { };
-	static int[] R12W_SuperRegsSet = { R12, R12D, };
-	static int[] R14W_SuperRegsSet = { R14, R14D, };
-	static int[] SI_SuperRegsSet = { RSI, ESI, };
-	static int[] GS_SuperRegsSet = { };
-	static int[] RSI_SuperRegsSet = { };
-	static int[] SS_SuperRegsSet = { };
-	static int[] R10B_SuperRegsSet = { R10, R10D, R10W, };
-	static int[] XMM2_SuperRegsSet = { };
-	static int[] XMM11_SuperRegsSet = { };
-	static int[] ST4_SuperRegsSet = { };
-	static int[] YMM12_SuperRegsSet = { };
-	static int[] RSP_SuperRegsSet = { };
-	static int[] YMM0_SuperRegsSet = { };
-	static int[] RBP_SuperRegsSet = { };
-	static int[] YMM6_SuperRegsSet = { };
-	static int[] ECX_SuperRegsSet = { RCX, };
-	static int[] R14B_SuperRegsSet = { R14, R14D, R14W, };
-	static int[] DIL_SuperRegsSet = { RDI, EDI, DI, };
-	static int[] FP2_SuperRegsSet = { };
-	static int[] BPL_SuperRegsSet = { RBP, EBP, BP, };
-	static int[] FP3_SuperRegsSet = { };
-	static int[] R15_SuperRegsSet = { };
-	static int[] ST7_SuperRegsSet = { };
-	static int[] RIP_SuperRegsSet = { };
-	static int[] RBX_SuperRegsSet = { };
-	static int[] MM6_SuperRegsSet = { };
-	static int[] YMM13_SuperRegsSet = { };
-	static int[] R8_SuperRegsSet = { };
-	static int[] MM1_SuperRegsSet = { };
-	static int[] MM0_SuperRegsSet = { };
-	static int[] EFLAGS_SuperRegsSet = { };
-	static int[] FP1_SuperRegsSet = { };
-	static int[] R9W_SuperRegsSet = { R9, R9D, };
-	static int[] RAX_SuperRegsSet = { };
-	static int[] R11W_SuperRegsSet = { R11, R11D, };
-	static int[] ST6_SuperRegsSet = { };
-	static int[] MM3_SuperRegsSet = { };
-	static int[] YMM10_SuperRegsSet = { };
-	static int[] EAX_SuperRegsSet = { RAX, };
-	static int[] R11D_SuperRegsSet = { R11, };
-	static int[] FP6_SuperRegsSet = { };
-	static int[] R12D_SuperRegsSet = { R12, };
-	static int[] R13D_SuperRegsSet = { R13, };
-	static int[] R12B_SuperRegsSet = { R12, R12D, R12W, };
-	static int[] R13_SuperRegsSet = { };
-	static int[] R9D_SuperRegsSet = { R9, };
-	static int[] SIL_SuperRegsSet = { RSI, ESI, SI, };
-	static int[] DS_SuperRegsSet = { };
-	static int[] YMM15_SuperRegsSet = { };
-	static int[] R9B_SuperRegsSet = { R9, R9D, R9W, };
-	static int[] R10W_SuperRegsSet = { R10, R10D, };
-	static int[] YMM2_SuperRegsSet = { };
-	static int[] IP_SuperRegsSet = { RIP, EIP, };
-	static int[] EBX_SuperRegsSet = { RBX, };
-	static int[] RDX_SuperRegsSet = { };
-	static int[] EIP_SuperRegsSet = { RIP, };
-	static int[] XMM6_SuperRegsSet = { };
-	static int[] XMM5_SuperRegsSet = { };
-	static int[] EBP_SuperRegsSet = { RBP, };
-	static int[] YMM7_SuperRegsSet = { };
-	static int[] ST1_SuperRegsSet = { };
-	static int[] XMM14_SuperRegsSet = { };
-	static int[] DH_SuperRegsSet = { RDX, EDX, DX, };
-	static int[] R13W_SuperRegsSet = { R13, R13D, };
-	static int[] CH_SuperRegsSet = { RCX, ECX, CX, };
-	static int[] FP5_SuperRegsSet = { };
-	static int[] R9_SuperRegsSet = { };
-	static int[] RDI_SuperRegsSet = { };
-	static int[] BH_SuperRegsSet = { RBX, EBX, BX, };
-	static int[] YMM4_SuperRegsSet = { };
-
-	public static final TargetRegisterDesc[] registerDescriptors = {// Descriptor
-		new TargetRegisterDesc("NOREG", "NOREG", null, null, null),
-		new TargetRegisterDesc("sil", "SIL", SIL_AliasSet, SIL_SubRegsSet, SIL_SuperRegsSet),
-		new TargetRegisterDesc("flags", "EFLAGS", EFLAGS_AliasSet, EFLAGS_SubRegsSet, EFLAGS_SuperRegsSet),
-		new TargetRegisterDesc("spl", "SPL", SPL_AliasSet, SPL_SubRegsSet, SPL_SuperRegsSet),
-		new TargetRegisterDesc("bpl", "BPL", BPL_AliasSet, BPL_SubRegsSet, BPL_SuperRegsSet),
-		new TargetRegisterDesc("st(0)", "ST0", ST0_AliasSet, ST0_SubRegsSet, ST0_SuperRegsSet),
-		new TargetRegisterDesc("st(2)", "ST2", ST2_AliasSet, ST2_SubRegsSet, ST2_SuperRegsSet),
-		new TargetRegisterDesc("st(1)", "ST1", ST1_AliasSet, ST1_SubRegsSet, ST1_SuperRegsSet),
-		new TargetRegisterDesc("st(4)", "ST4", ST4_AliasSet, ST4_SubRegsSet, ST4_SuperRegsSet),
-		new TargetRegisterDesc("st(3)", "ST3", ST3_AliasSet, ST3_SubRegsSet, ST3_SuperRegsSet),
-		new TargetRegisterDesc("st(6)", "ST6", ST6_AliasSet, ST6_SubRegsSet, ST6_SuperRegsSet),
-		new TargetRegisterDesc("st(5)", "ST5", ST5_AliasSet, ST5_SubRegsSet, ST5_SuperRegsSet),
-		new TargetRegisterDesc("st(7)", "ST7", ST7_AliasSet, ST7_SubRegsSet, ST7_SuperRegsSet),
-		new TargetRegisterDesc("r10d", "R10D", R10D_AliasSet, R10D_SubRegsSet, R10D_SuperRegsSet),
-		new TargetRegisterDesc("r10b", "R10B", R10B_AliasSet, R10B_SubRegsSet, R10B_SuperRegsSet),
-		new TargetRegisterDesc("r11w", "R11W", R11W_AliasSet, R11W_SubRegsSet, R11W_SuperRegsSet),
-		new TargetRegisterDesc("r12b", "R12B", R12B_AliasSet, R12B_SubRegsSet, R12B_SuperRegsSet),
-		new TargetRegisterDesc("r12d", "R12D", R12D_AliasSet, R12D_SubRegsSet, R12D_SuperRegsSet),
-		new TargetRegisterDesc("r10w", "R10W", R10W_AliasSet, R10W_SubRegsSet, R10W_SuperRegsSet),
-		new TargetRegisterDesc("r11d", "R11D", R11D_AliasSet, R11D_SubRegsSet, R11D_SuperRegsSet),
-		new TargetRegisterDesc("r11b", "R11B", R11B_AliasSet, R11B_SubRegsSet, R11B_SuperRegsSet),
-		new TargetRegisterDesc("r13w", "R13W", R13W_AliasSet, R13W_SubRegsSet, R13W_SuperRegsSet),
-		new TargetRegisterDesc("r14d", "R14D", R14D_AliasSet, R14D_SubRegsSet, R14D_SuperRegsSet),
-		new TargetRegisterDesc("r14b", "R14B", R14B_AliasSet, R14B_SubRegsSet, R14B_SuperRegsSet),
-		new TargetRegisterDesc("r12w", "R12W", R12W_AliasSet, R12W_SubRegsSet, R12W_SuperRegsSet),
-		new TargetRegisterDesc("r13b", "R13B", R13B_AliasSet, R13B_SubRegsSet, R13B_SuperRegsSet),
-		new TargetRegisterDesc("r13d", "R13D", R13D_AliasSet, R13D_SubRegsSet, R13D_SuperRegsSet),
-		new TargetRegisterDesc("r15w", "R15W", R15W_AliasSet, R15W_SubRegsSet, R15W_SuperRegsSet),
-		new TargetRegisterDesc("r14w", "R14W", R14W_AliasSet, R14W_SubRegsSet, R14W_SuperRegsSet),
-		new TargetRegisterDesc("r15d", "R15D", R15D_AliasSet, R15D_SubRegsSet, R15D_SuperRegsSet),
-		new TargetRegisterDesc("r15b", "R15B", R15B_AliasSet, R15B_SubRegsSet, R15B_SuperRegsSet),
-		new TargetRegisterDesc("ah", "AH", AH_AliasSet, AH_SubRegsSet, AH_SuperRegsSet),
-		new TargetRegisterDesc("al", "AL", AL_AliasSet, AL_SubRegsSet, AL_SuperRegsSet),
-		new TargetRegisterDesc("ax", "AX", AX_AliasSet, AX_SubRegsSet, AX_SuperRegsSet),
-		new TargetRegisterDesc("bh", "BH", BH_AliasSet, BH_SubRegsSet, BH_SuperRegsSet),
-		new TargetRegisterDesc("bl", "BL", BL_AliasSet, BL_SubRegsSet, BL_SuperRegsSet),
-		new TargetRegisterDesc("bp", "BP", BP_AliasSet, BP_SubRegsSet, BP_SuperRegsSet),
-		new TargetRegisterDesc("bx", "BX", BX_AliasSet, BX_SubRegsSet, BX_SuperRegsSet),
-		new TargetRegisterDesc("ch", "CH", CH_AliasSet, CH_SubRegsSet, CH_SuperRegsSet),
-		new TargetRegisterDesc("dil", "DIL", DIL_AliasSet, DIL_SubRegsSet, DIL_SuperRegsSet),
-		new TargetRegisterDesc("cl", "CL", CL_AliasSet, CL_SubRegsSet, CL_SuperRegsSet),
-		new TargetRegisterDesc("cs", "CS", CS_AliasSet, CS_SubRegsSet, CS_SuperRegsSet),
-		new TargetRegisterDesc("cx", "CX", CX_AliasSet, CX_SubRegsSet, CX_SuperRegsSet),
-		new TargetRegisterDesc("dh", "DH", DH_AliasSet, DH_SubRegsSet, DH_SuperRegsSet),
-		new TargetRegisterDesc("di", "DI", DI_AliasSet, DI_SubRegsSet, DI_SuperRegsSet),
-		new TargetRegisterDesc("dl", "DL", DL_AliasSet, DL_SubRegsSet, DL_SuperRegsSet),
-		new TargetRegisterDesc("ds", "DS", DS_AliasSet, DS_SubRegsSet, DS_SuperRegsSet),
-		new TargetRegisterDesc("dx", "DX", DX_AliasSet, DX_SubRegsSet, DX_SuperRegsSet),
-		new TargetRegisterDesc("es", "ES", ES_AliasSet, ES_SubRegsSet, ES_SuperRegsSet),
-		new TargetRegisterDesc("fs", "FS", FS_AliasSet, FS_SubRegsSet, FS_SuperRegsSet),
-		new TargetRegisterDesc("gs", "GS", GS_AliasSet, GS_SubRegsSet, GS_SuperRegsSet),
-		new TargetRegisterDesc("ip", "IP", IP_AliasSet, IP_SubRegsSet, IP_SuperRegsSet),
-		new TargetRegisterDesc("r8", "R8", R8_AliasSet, R8_SubRegsSet, R8_SuperRegsSet),
-		new TargetRegisterDesc("r9", "R9", R9_AliasSet, R9_SubRegsSet, R9_SuperRegsSet),
-		new TargetRegisterDesc("si", "SI", SI_AliasSet, SI_SubRegsSet, SI_SuperRegsSet),
-		new TargetRegisterDesc("sp", "SP", SP_AliasSet, SP_SubRegsSet, SP_SuperRegsSet),
-		new TargetRegisterDesc("ss", "SS", SS_AliasSet, SS_SubRegsSet, SS_SuperRegsSet),
-		new TargetRegisterDesc("mm1", "MM1", MM1_AliasSet, MM1_SubRegsSet, MM1_SuperRegsSet),
-		new TargetRegisterDesc("mm0", "MM0", MM0_AliasSet, MM0_SubRegsSet, MM0_SuperRegsSet),
-		new TargetRegisterDesc("mm3", "MM3", MM3_AliasSet, MM3_SubRegsSet, MM3_SuperRegsSet),
-		new TargetRegisterDesc("mm2", "MM2", MM2_AliasSet, MM2_SubRegsSet, MM2_SuperRegsSet),
-		new TargetRegisterDesc("mm5", "MM5", MM5_AliasSet, MM5_SubRegsSet, MM5_SuperRegsSet),
-		new TargetRegisterDesc("mm4", "MM4", MM4_AliasSet, MM4_SubRegsSet, MM4_SuperRegsSet),
-		new TargetRegisterDesc("mm7", "MM7", MM7_AliasSet, MM7_SubRegsSet, MM7_SuperRegsSet),
-		new TargetRegisterDesc("mm6", "MM6", MM6_AliasSet, MM6_SubRegsSet, MM6_SuperRegsSet),
-		new TargetRegisterDesc("xmm1", "XMM1", XMM1_AliasSet, XMM1_SubRegsSet, XMM1_SuperRegsSet),
-		new TargetRegisterDesc("xmm0", "XMM0", XMM0_AliasSet, XMM0_SubRegsSet, XMM0_SuperRegsSet),
-		new TargetRegisterDesc("xmm3", "XMM3", XMM3_AliasSet, XMM3_SubRegsSet, XMM3_SuperRegsSet),
-		new TargetRegisterDesc("xmm2", "XMM2", XMM2_AliasSet, XMM2_SubRegsSet, XMM2_SuperRegsSet),
-		new TargetRegisterDesc("xmm5", "XMM5", XMM5_AliasSet, XMM5_SubRegsSet, XMM5_SuperRegsSet),
-		new TargetRegisterDesc("xmm4", "XMM4", XMM4_AliasSet, XMM4_SubRegsSet, XMM4_SuperRegsSet),
-		new TargetRegisterDesc("xmm7", "XMM7", XMM7_AliasSet, XMM7_SubRegsSet, XMM7_SuperRegsSet),
-		new TargetRegisterDesc("xmm6", "XMM6", XMM6_AliasSet, XMM6_SubRegsSet, XMM6_SuperRegsSet),
-		new TargetRegisterDesc("eax", "EAX", EAX_AliasSet, EAX_SubRegsSet, EAX_SuperRegsSet),
-		new TargetRegisterDesc("ebp", "EBP", EBP_AliasSet, EBP_SubRegsSet, EBP_SuperRegsSet),
-		new TargetRegisterDesc("ebx", "EBX", EBX_AliasSet, EBX_SubRegsSet, EBX_SuperRegsSet),
-		new TargetRegisterDesc("xmm9", "XMM9", XMM9_AliasSet, XMM9_SubRegsSet, XMM9_SuperRegsSet),
-		new TargetRegisterDesc("xmm8", "XMM8", XMM8_AliasSet, XMM8_SubRegsSet, XMM8_SuperRegsSet),
-		new TargetRegisterDesc("ecx", "ECX", ECX_AliasSet, ECX_SubRegsSet, ECX_SuperRegsSet),
-		new TargetRegisterDesc("edi", "EDI", EDI_AliasSet, EDI_SubRegsSet, EDI_SuperRegsSet),
-		new TargetRegisterDesc("edx", "EDX", EDX_AliasSet, EDX_SubRegsSet, EDX_SuperRegsSet),
-		new TargetRegisterDesc("eip", "EIP", EIP_AliasSet, EIP_SubRegsSet, EIP_SuperRegsSet),
-		new TargetRegisterDesc("esi", "ESI", ESI_AliasSet, ESI_SubRegsSet, ESI_SuperRegsSet),
-		new TargetRegisterDesc("esp", "ESP", ESP_AliasSet, ESP_SubRegsSet, ESP_SuperRegsSet),
-		new TargetRegisterDesc("fp1", "FP1", FP1_AliasSet, FP1_SubRegsSet, FP1_SuperRegsSet),
-		new TargetRegisterDesc("fp0", "FP0", FP0_AliasSet, FP0_SubRegsSet, FP0_SuperRegsSet),
-		new TargetRegisterDesc("fp3", "FP3", FP3_AliasSet, FP3_SubRegsSet, FP3_SuperRegsSet),
-		new TargetRegisterDesc("fp2", "FP2", FP2_AliasSet, FP2_SubRegsSet, FP2_SuperRegsSet),
-		new TargetRegisterDesc("fp5", "FP5", FP5_AliasSet, FP5_SubRegsSet, FP5_SuperRegsSet),
-		new TargetRegisterDesc("fp4", "FP4", FP4_AliasSet, FP4_SubRegsSet, FP4_SuperRegsSet),
-		new TargetRegisterDesc("fp6", "FP6", FP6_AliasSet, FP6_SubRegsSet, FP6_SuperRegsSet),
-		new TargetRegisterDesc("ymm12", "YMM12", YMM12_AliasSet, YMM12_SubRegsSet, YMM12_SuperRegsSet),
-		new TargetRegisterDesc("ymm13", "YMM13", YMM13_AliasSet, YMM13_SubRegsSet, YMM13_SuperRegsSet),
-		new TargetRegisterDesc("ymm10", "YMM10", YMM10_AliasSet, YMM10_SubRegsSet, YMM10_SuperRegsSet),
-		new TargetRegisterDesc("ymm11", "YMM11", YMM11_AliasSet, YMM11_SubRegsSet, YMM11_SuperRegsSet),
-		new TargetRegisterDesc("ymm14", "YMM14", YMM14_AliasSet, YMM14_SubRegsSet, YMM14_SuperRegsSet),
-		new TargetRegisterDesc("ymm15", "YMM15", YMM15_AliasSet, YMM15_SubRegsSet, YMM15_SuperRegsSet),
-		new TargetRegisterDesc("xmm15", "XMM15", XMM15_AliasSet, XMM15_SubRegsSet, XMM15_SuperRegsSet),
-		new TargetRegisterDesc("xmm11", "XMM11", XMM11_AliasSet, XMM11_SubRegsSet, XMM11_SuperRegsSet),
-		new TargetRegisterDesc("xmm12", "XMM12", XMM12_AliasSet, XMM12_SubRegsSet, XMM12_SuperRegsSet),
-		new TargetRegisterDesc("xmm13", "XMM13", XMM13_AliasSet, XMM13_SubRegsSet, XMM13_SuperRegsSet),
-		new TargetRegisterDesc("xmm14", "XMM14", XMM14_AliasSet, XMM14_SubRegsSet, XMM14_SuperRegsSet),
-		new TargetRegisterDesc("xmm10", "XMM10", XMM10_AliasSet, XMM10_SubRegsSet, XMM10_SuperRegsSet),
-		new TargetRegisterDesc("r10", "R10", R10_AliasSet, R10_SubRegsSet, R10_SuperRegsSet),
-		new TargetRegisterDesc("r12", "R12", R12_AliasSet, R12_SubRegsSet, R12_SuperRegsSet),
-		new TargetRegisterDesc("r11", "R11", R11_AliasSet, R11_SubRegsSet, R11_SuperRegsSet),
-		new TargetRegisterDesc("r14", "R14", R14_AliasSet, R14_SubRegsSet, R14_SuperRegsSet),
-		new TargetRegisterDesc("r13", "R13", R13_AliasSet, R13_SubRegsSet, R13_SuperRegsSet),
-		new TargetRegisterDesc("r15", "R15", R15_AliasSet, R15_SubRegsSet, R15_SuperRegsSet),
-		new TargetRegisterDesc("r8b", "R8B", R8B_AliasSet, R8B_SubRegsSet, R8B_SuperRegsSet),
-		new TargetRegisterDesc("r8d", "R8D", R8D_AliasSet, R8D_SubRegsSet, R8D_SuperRegsSet),
-		new TargetRegisterDesc("r8w", "R8W", R8W_AliasSet, R8W_SubRegsSet, R8W_SuperRegsSet),
-		new TargetRegisterDesc("r9b", "R9B", R9B_AliasSet, R9B_SubRegsSet, R9B_SuperRegsSet),
-		new TargetRegisterDesc("r9d", "R9D", R9D_AliasSet, R9D_SubRegsSet, R9D_SuperRegsSet),
-		new TargetRegisterDesc("r9w", "R9W", R9W_AliasSet, R9W_SubRegsSet, R9W_SuperRegsSet),
-		new TargetRegisterDesc("rax", "RAX", RAX_AliasSet, RAX_SubRegsSet, RAX_SuperRegsSet),
-		new TargetRegisterDesc("rbp", "RBP", RBP_AliasSet, RBP_SubRegsSet, RBP_SuperRegsSet),
-		new TargetRegisterDesc("rbx", "RBX", RBX_AliasSet, RBX_SubRegsSet, RBX_SuperRegsSet),
-		new TargetRegisterDesc("rcx", "RCX", RCX_AliasSet, RCX_SubRegsSet, RCX_SuperRegsSet),
-		new TargetRegisterDesc("rdi", "RDI", RDI_AliasSet, RDI_SubRegsSet, RDI_SuperRegsSet),
-		new TargetRegisterDesc("rdx", "RDX", RDX_AliasSet, RDX_SubRegsSet, RDX_SuperRegsSet),
-		new TargetRegisterDesc("rip", "RIP", RIP_AliasSet, RIP_SubRegsSet, RIP_SuperRegsSet),
-		new TargetRegisterDesc("rsi", "RSI", RSI_AliasSet, RSI_SubRegsSet, RSI_SuperRegsSet),
-		new TargetRegisterDesc("rsp", "RSP", RSP_AliasSet, RSP_SubRegsSet, RSP_SuperRegsSet),
-		new TargetRegisterDesc("ymm9", "YMM9", YMM9_AliasSet, YMM9_SubRegsSet, YMM9_SuperRegsSet),
-		new TargetRegisterDesc("ymm2", "YMM2", YMM2_AliasSet, YMM2_SubRegsSet, YMM2_SuperRegsSet),
-		new TargetRegisterDesc("ymm1", "YMM1", YMM1_AliasSet, YMM1_SubRegsSet, YMM1_SuperRegsSet),
-		new TargetRegisterDesc("ymm4", "YMM4", YMM4_AliasSet, YMM4_SubRegsSet, YMM4_SuperRegsSet),
-		new TargetRegisterDesc("ymm3", "YMM3", YMM3_AliasSet, YMM3_SubRegsSet, YMM3_SuperRegsSet),
-		new TargetRegisterDesc("ymm6", "YMM6", YMM6_AliasSet, YMM6_SubRegsSet, YMM6_SuperRegsSet),
-		new TargetRegisterDesc("ymm5", "YMM5", YMM5_AliasSet, YMM5_SubRegsSet, YMM5_SuperRegsSet),
-		new TargetRegisterDesc("ymm8", "YMM8", YMM8_AliasSet, YMM8_SubRegsSet, YMM8_SuperRegsSet),
-		new TargetRegisterDesc("ymm7", "YMM7", YMM7_AliasSet, YMM7_SubRegsSet, YMM7_SuperRegsSet),
-		new TargetRegisterDesc("ymm0", "YMM0", YMM0_AliasSet, YMM0_SubRegsSet, YMM0_SuperRegsSet),
-	};
-
-	public int getSubRegs(int regNo, int index)
-	{
-	switch(regNo)
-		{
-			default: return 0;
-			case R14W:
-			 switch (index) {
-				default: return 0;
-					case 1: return R14B;
-			}
-
-			case R8W:
-			 switch (index) {
-			default: return 0;
-				case 1: return R8B;
-			}
-			case BX:
-			 switch (index) {
-			default: return 0;
-				case 1: return BL;
-				case 2: return BH;
-			}
-			case SI:
-			 switch (index) {
-			default: return 0;
-				case 1: return SIL;
-			}
-			case RSI:
-			 switch (index) {
-			default: return 0;
-				case 3: return SI;
-				case 4: return ESI;
-				case 1: return SIL;
-			}
-			case R14:
-			 switch (index) {
-			default: return 0;
-				case 3: return R14W;
-				case 4: return R14D;
-				case 1: return R14B;
-			}
-			case R10D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R10B;
-				case 3: return R10W;
-			}
-			case CX:
-			 switch (index) {
-			default: return 0;
-				case 1: return CL;
-				case 2: return CH;
-			};
-			 break;
-			case YMM1:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM1;
-			};
-			 break;
-			case ESI:
-			 switch (index) {
-			default: return 0;
-				case 1: return SIL;
-				case 3: return SI;
-			};
-			 break;
-			case RSP:
-			 switch (index) {
-			default: return 0;
-				case 3: return SP;
-				case 4: return ESP;
-				case 1: return SPL;
-			};
-			 break;
-			case YMM12:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM12;
-			};
-			 break;
-			case YMM0:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM0;
-			};
-			 break;
-			case R15D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R15B;
-				case 3: return R15W;
-			};
-			 break;
-			case RBP:
-			 switch (index) {
-			default: return 0;
-				case 3: return BP;
-				case 4: return EBP;
-				case 1: return BPL;
-			};
-			 break;
-			case YMM6:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM6;
-			};
-			 break;
-			case ECX:
-			 switch (index) {
-			default: return 0;
-				case 1: return CL;
-				case 2: return CH;
-				case 3: return CX;
-			};
-			 break;
-			case R12:
-			 switch (index) {
-			default: return 0;
-				case 3: return R12W;
-				case 4: return R12D;
-				case 1: return R12B;
-			};
-			 break;
-			case R15:
-			 switch (index) {
-			default: return 0;
-				case 3: return R15W;
-				case 4: return R15D;
-				case 1: return R15B;
-			};
-			 break;
-			case RBX:
-			 switch (index) {
-			default: return 0;
-				case 2: return BH;
-				case 3: return BX;
-				case 4: return EBX;
-				case 1: return BL;
-			};
-			 break;
-			case YMM13:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM13;
-			};
-			 break;
-			case R8:
-			 switch (index) {
-			default: return 0;
-				case 3: return R8W;
-				case 4: return R8D;
-				case 1: return R8B;
-			};
-			 break;
-			case YMM8:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM8;
-			};
-			 break;
-			case AX:
-			 switch (index) {
-			default: return 0;
-				case 1: return AL;
-				case 2: return AH;
-			};
-			 break;
-			case R11:
-			 switch (index) {
-			default: return 0;
-				case 3: return R11W;
-				case 4: return R11D;
-				case 1: return R11B;
-			};
-			 break;
-			case R9W:
-			 switch (index) {
-			default: return 0;
-				case 1: return R9B;
-			};
-			 break;
-			case RAX:
-			 switch (index) {
-			default: return 0;
-				case 2: return AH;
-				case 3: return AX;
-				case 4: return EAX;
-				case 1: return AL;
-			};
-			 break;
-			case YMM3:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM3;
-			};
-			 break;
-			case R11W:
-			 switch (index) {
-			default: return 0;
-				case 1: return R11B;
-			};
-			 break;
-			case YMM10:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM10;
-			};
-			 break;
-			case YMM14:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM14;
-			};
-			 break;
-			case EAX:
-			 switch (index) {
-			default: return 0;
-				case 1: return AL;
-				case 2: return AH;
-				case 3: return AX;
-			};
-			 break;
-			case EDX:
-			 switch (index) {
-			default: return 0;
-				case 1: return DL;
-				case 2: return DH;
-				case 3: return DX;
-			};
-			 break;
-			case R11D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R11B;
-				case 3: return R11W;
-			};
-			 break;
-			case DX:
-			 switch (index) {
-			default: return 0;
-				case 1: return DL;
-				case 2: return DH;
-			};
-			 break;
-			case R12D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R12B;
-				case 3: return R12W;
-			};
-			 break;
-			case R13D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R13B;
-				case 3: return R13W;
-			};
-			 break;
-			case YMM5:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM5;
-			};
-			 break;
-			case R13:
-			 switch (index) {
-			default: return 0;
-				case 3: return R13W;
-				case 4: return R13D;
-				case 1: return R13B;
-			};
-			 break;
-			case R9D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R9B;
-				case 3: return R9W;
-			};
-			 break;
-			case RCX:
-			 switch (index) {
-			default: return 0;
-				case 2: return CH;
-				case 3: return CX;
-				case 4: return ECX;
-				case 1: return CL;
-			};
-			 break;
-			case YMM15:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM15;
-			};
-			 break;
-			case SP:
-			 switch (index) {
-			default: return 0;
-				case 1: return SPL;
-			};
-			 break;
-			case EDI:
-			 switch (index) {
-			default: return 0;
-				case 1: return DIL;
-				case 3: return DI;
-			};
-			 break;
-			case R10:
-			 switch (index) {
-			default: return 0;
-				case 3: return R10W;
-				case 4: return R10D;
-				case 1: return R10B;
-			};
-			 break;
-			case YMM11:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM11;
-			};
-			 break;
-			case R10W:
-			 switch (index) {
-			default: return 0;
-				case 1: return R10B;
-			};
-			 break;
-			case YMM2:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM2;
-			};
-			 break;
-			case EBX:
-			 switch (index) {
-			default: return 0;
-				case 1: return BL;
-				case 2: return BH;
-				case 3: return BX;
-			};
-			 break;
-			case RDX:
-			 switch (index) {
-			default: return 0;
-				case 2: return DH;
-				case 3: return DX;
-				case 4: return EDX;
-				case 1: return DL;
-			};
-			 break;
-			case BP:
-			 switch (index) {
-			default: return 0;
-				case 1: return BPL;
-			};
-			 break;
-			case DI:
-			 switch (index) {
-			default: return 0;
-				case 1: return DIL;
-			};
-			 break;
-			case R15W:
-			 switch (index) {
-			default: return 0;
-				case 1: return R15B;
-			};
-			 break;
-			case R8D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R8B;
-				case 3: return R8W;
-			};
-			 break;
-			case EBP:
-			 switch (index) {
-			default: return 0;
-				case 1: return BPL;
-				case 3: return BP;
-			};
-			 break;
-			case YMM7:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM7;
-			};
-			 break;
-			case YMM9:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM9;
-			};
-			 break;
-			case ESP:
-			 switch (index) {
-			default: return 0;
-				case 1: return SPL;
-				case 3: return SP;
-			};
-			 break;
-			case R13W:
-			 switch (index) {
-			default: return 0;
-				case 1: return R13B;
-			};
-			 break;
-			case R9:
-			 switch (index) {
-			default: return 0;
-				case 3: return R9W;
-				case 4: return R9D;
-				case 1: return R9B;
-			};
-			 break;
-			case RDI:
-			 switch (index) {
-			default: return 0;
-				case 3: return DI;
-				case 4: return EDI;
-				case 1: return DIL;
-			};
-			 break;
-			case R14D:
-			 switch (index) {
-			default: return 0;
-				case 1: return R14B;
-				case 3: return R14W;
-			};
-			 break;
-			case YMM4:
-			 switch (index) {
-			default: return 0;
-				case 1: return XMM4;
-			};
-			 break;
-			case R12W:
-			 switch (index) {
-			default: return 0;
-				case 1: return R12B;
-			};
-			 break;
-		};
-		return 0;
-	}
-
-	public X86GenRegisterInfo(int callFrameSetupOpCode, int callFrameDestroyOpCode)
-	{
-		super(registerDescriptors, registerClasses,
-				callFrameSetupOpCode, callFrameDestroyOpCode,
-				SubregHashTable, SuperregHashTable,
-				AliasesHashTable);
-	}
-
+    // GR32VTs Register Class Value Type...
+    public static final EVT[] GR32VTs = { new EVT(new MVT(MVT.i32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR64VTs Register Class Value Type...
+    public static final EVT[] GR64VTs = { new EVT(new MVT(MVT.i64)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR8_ABCD_LVTs Register Class Value Type...
+    public static final EVT[] GR8_ABCD_LVTs = { new EVT(new MVT(MVT.i8)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR8_ABCD_HVTs Register Class Value Type...
+    public static final EVT[] GR8_ABCD_HVTs = { new EVT(new MVT(MVT.i8)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR64_NOSPVTs Register Class Value Type...
+    public static final EVT[] GR64_NOSPVTs = { new EVT(new MVT(MVT.i64)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR32_ABCDVTs Register Class Value Type...
+    public static final EVT[] GR32_ABCDVTs = { new EVT(new MVT(MVT.i32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // CCRVTs Register Class Value Type...
+    public static final EVT[] CCRVTs = { new EVT(new MVT(MVT.i32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR64_ABCDVTs Register Class Value Type...
+    public static final EVT[] GR64_ABCDVTs = { new EVT(new MVT(MVT.i64)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // RFP80VTs Register Class Value Type...
+    public static final EVT[] RFP80VTs = { new EVT(new MVT(MVT.f80)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR32_NOREXVTs Register Class Value Type...
+    public static final EVT[] GR32_NOREXVTs = { new EVT(new MVT(MVT.i32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // RFP64VTs Register Class Value Type...
+    public static final EVT[] RFP64VTs = { new EVT(new MVT(MVT.f64)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // VR256VTs Register Class Value Type...
+    public static final EVT[] VR256VTs = { new EVT(new MVT(MVT.v8i32)),
+            new EVT(new MVT(MVT.v4i64)), new EVT(new MVT(MVT.v8f32)),
+            new EVT(new MVT(MVT.v4f64)), new EVT(new MVT(MVT.Other)) };
+
+    // FR32VTs Register Class Value Type...
+    public static final EVT[] FR32VTs = { new EVT(new MVT(MVT.f32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // FR64VTs Register Class Value Type...
+    public static final EVT[] FR64VTs = { new EVT(new MVT(MVT.f64)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // VR128VTs Register Class Value Type...
+    public static final EVT[] VR128VTs = { new EVT(new MVT(MVT.v16i8)),
+            new EVT(new MVT(MVT.v8i16)), new EVT(new MVT(MVT.v4i32)),
+            new EVT(new MVT(MVT.v2i64)), new EVT(new MVT(MVT.v4f32)),
+            new EVT(new MVT(MVT.v2f64)), new EVT(new MVT(MVT.Other)) };
+
+    // GR64_NOREXVTs Register Class Value Type...
+    public static final EVT[] GR64_NOREXVTs = { new EVT(new MVT(MVT.i64)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR8_NOREXVTs Register Class Value Type...
+    public static final EVT[] GR8_NOREXVTs = { new EVT(new MVT(MVT.i8)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // RFP32VTs Register Class Value Type...
+    public static final EVT[] RFP32VTs = { new EVT(new MVT(MVT.f32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR32_NOSPVTs Register Class Value Type...
+    public static final EVT[] GR32_NOSPVTs = { new EVT(new MVT(MVT.i32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR16_ABCDVTs Register Class Value Type...
+    public static final EVT[] GR16_ABCDVTs = { new EVT(new MVT(MVT.i16)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // VR64VTs Register Class Value Type...
+    public static final EVT[] VR64VTs = { new EVT(new MVT(MVT.v8i8)),
+            new EVT(new MVT(MVT.v4i16)), new EVT(new MVT(MVT.v2i32)),
+            new EVT(new MVT(MVT.v1i64)), new EVT(new MVT(MVT.v2f32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR8VTs Register Class Value Type...
+    public static final EVT[] GR8VTs = { new EVT(new MVT(MVT.i8)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR64_NOREX_NOSPVTs Register Class Value Type...
+    public static final EVT[] GR64_NOREX_NOSPVTs = { new EVT(new MVT(MVT.i64)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR16_NOREXVTs Register Class Value Type...
+    public static final EVT[] GR16_NOREXVTs = { new EVT(new MVT(MVT.i16)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // GR32_ADVTs Register Class Value Type...
+    public static final EVT[] GR32_ADVTs = { new EVT(new MVT(MVT.i32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // RSTVTs Register Class Value Type...
+    public static final EVT[] RSTVTs = { new EVT(new MVT(MVT.f80)),
+            new EVT(new MVT(MVT.f64)), new EVT(new MVT(MVT.f32)),
+            new EVT(new MVT(MVT.Other)) };
+
+    // Defines the Register Class ID.
+    public static final int GR16RegClassID = 1;
+    public static final int GR32RegClassID = 2;
+    public static final int GR64RegClassID = 3;
+    public static final int GR8_ABCD_LRegClassID = 4;
+    public static final int GR8_ABCD_HRegClassID = 5;
+    public static final int GR64_NOSPRegClassID = 6;
+    public static final int GR32_ABCDRegClassID = 7;
+    public static final int CCRRegClassID = 8;
+    public static final int GR64_ABCDRegClassID = 9;
+    public static final int RFP80RegClassID = 10;
+    public static final int GR32_NOREXRegClassID = 11;
+    public static final int RFP64RegClassID = 12;
+    public static final int VR256RegClassID = 13;
+    public static final int FR32RegClassID = 14;
+    public static final int FR64RegClassID = 15;
+    public static final int VR128RegClassID = 16;
+    public static final int GR64_NOREXRegClassID = 17;
+    public static final int GR8_NOREXRegClassID = 18;
+    public static final int RFP32RegClassID = 19;
+    public static final int GR32_NOSPRegClassID = 20;
+    public static final int GR16_ABCDRegClassID = 21;
+    public static final int VR64RegClassID = 22;
+    public static final int GR8RegClassID = 23;
+    public static final int GR64_NOREX_NOSPRegClassID = 24;
+    public static final int GR16_NOREXRegClassID = 25;
+    public static final int GR32_ADRegClassID = 26;
+    public static final int RSTRegClassID = 27;
+
+    // Register Class declaration
+    public final static GR16Class GR16RegisterClass = GR16Class.getInstance();
+    public final static GR32Class GR32RegisterClass = GR32Class.getInstance();
+    public final static GR64Class GR64RegisterClass = GR64Class.getInstance();
+    public final static GR8_ABCD_LClass GR8_ABCD_LRegisterClass = GR8_ABCD_LClass
+            .getInstance();
+    public final static GR8_ABCD_HClass GR8_ABCD_HRegisterClass = GR8_ABCD_HClass
+            .getInstance();
+    public final static GR64_NOSPClass GR64_NOSPRegisterClass = GR64_NOSPClass
+            .getInstance();
+    public final static GR32_ABCDClass GR32_ABCDRegisterClass = GR32_ABCDClass
+            .getInstance();
+    public final static CCRClass CCRRegisterClass = CCRClass.getInstance();
+    public final static GR64_ABCDClass GR64_ABCDRegisterClass = GR64_ABCDClass
+            .getInstance();
+    public final static RFP80Class RFP80RegisterClass = RFP80Class
+            .getInstance();
+    public final static GR32_NOREXClass GR32_NOREXRegisterClass = GR32_NOREXClass
+            .getInstance();
+    public final static RFP64Class RFP64RegisterClass = RFP64Class
+            .getInstance();
+    public final static VR256Class VR256RegisterClass = VR256Class
+            .getInstance();
+    public final static FR32Class FR32RegisterClass = FR32Class.getInstance();
+    public final static FR64Class FR64RegisterClass = FR64Class.getInstance();
+    public final static VR128Class VR128RegisterClass = VR128Class
+            .getInstance();
+    public final static GR64_NOREXClass GR64_NOREXRegisterClass = GR64_NOREXClass
+            .getInstance();
+    public final static GR8_NOREXClass GR8_NOREXRegisterClass = GR8_NOREXClass
+            .getInstance();
+    public final static RFP32Class RFP32RegisterClass = RFP32Class
+            .getInstance();
+    public final static GR32_NOSPClass GR32_NOSPRegisterClass = GR32_NOSPClass
+            .getInstance();
+    public final static GR16_ABCDClass GR16_ABCDRegisterClass = GR16_ABCDClass
+            .getInstance();
+    public final static VR64Class VR64RegisterClass = VR64Class.getInstance();
+    public final static GR8Class GR8RegisterClass = GR8Class.getInstance();
+    public final static GR64_NOREX_NOSPClass GR64_NOREX_NOSPRegisterClass = GR64_NOREX_NOSPClass
+            .getInstance();
+    public final static GR16_NOREXClass GR16_NOREXRegisterClass = GR16_NOREXClass
+            .getInstance();
+    public final static GR32_ADClass GR32_ADRegisterClass = GR32_ADClass
+            .getInstance();
+    public final static RSTClass RSTRegisterClass = RSTClass.getInstance();
+
+    public final static class GR16Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR16Class instance = new GR16Class();
+
+        public static GR16Class getInstance()
+        {
+            return instance;
+        }
+
+        private GR16Class()
+        {
+            super(GR16RegClassID, "GR16", GR16VTs, GR16Subclasses,
+                    GR16Superclasses, GR16SubRegClasses, GR16SuperRegClasses, 2,
+                    2, 1, GR16);
+        }
+
+        private final int[] X86_GR16_AO_64 = { AX, CX, DX, SI, DI, R8W, R9W,
+                R10W, R11W, BX, R14W, R15W, R12W, R13W, BP };
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+
+            int[] res;
+            int begin = 0, end;
+            if (subtarget.is64Bit())
+            {
+                res = X86_GR16_AO_64;
+            }
+            else
+            {
+                res = getRegs();
+            }
+
+            if (subtarget.is64Bit())
+            {
+                // Does the function dedicate RBP to being a frame ptr?
+                if (ri.hasFP(mf))
+                    // If so, don't allocate SP or BP.
+                    end = X86_GR16_AO_64.length - 1;
+                else
+                    // If not, just don't allocate SP.
+                    end = X86_GR16_AO_64.length;
+            }
+            else
+            {
+                // Does the function dedicate EBP to being a frame ptr?
+                if (ri.hasFP(mf))
+                    // If so, don't allocate SP or BP.
+                    end = begin + 6;
+                else
+                    // If not, just don't allocate SP.
+                    end = begin + 7;
+            }
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR32Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR32Class instance = new GR32Class();
+
+        public static GR32Class getInstance()
+        {
+            return instance;
+        }
+
+        private GR32Class()
+        {
+            super(GR32RegClassID, "GR32", GR32VTs, GR32Subclasses,
+                    GR32Superclasses, GR32SubRegClasses, GR32SuperRegClasses, 4,
+                    4, 1, GR32);
+        }
+
+        private final int[] X86_GR32_AO_64 = { EAX, ECX, EDX, ESI, EDI, R8D,
+                R9D, R10D, R11D, EBX, R14D, R15D, R12D, R13D, EBP };
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+
+            int[] res;
+            int begin = 0, end;
+            if (subtarget.is64Bit())
+            {
+                res = X86_GR32_AO_64;
+            }
+            else
+            {
+                res = getRegs();
+            }
+
+            if (subtarget.is64Bit())
+            {
+                // Does the function dedicate RBP to being a frame ptr?
+                if (ri.hasFP(mf))
+                    // If so, don't allocate ESP or EBP.
+                    end = X86_GR32_AO_64.length - 1;
+                else
+                    // If not, just don't allocate SP.
+                    end = X86_GR32_AO_64.length;
+            }
+            else
+            {
+                // Does the function dedicate EBP to being a frame ptr?
+                if (ri.hasFP(mf))
+                    // If so, don't allocate ESP or EBP.
+                    end = begin + 6;
+                else
+                    // If not, just don't allocate ESP.
+                    end = begin + 7;
+            }
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR64Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR64Class instance = new GR64Class();
+
+        public static GR64Class getInstance()
+        {
+            return instance;
+        }
+
+        private GR64Class()
+        {
+            super(GR64RegClassID, "GR64", GR64VTs, GR64Subclasses,
+                    GR64Superclasses, GR64SubRegClasses, GR64SuperRegClasses, 8,
+                    8, 1, GR64);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+            if (!subtarget.is64Bit())
+                end = begin;    // None of these are allocatable in 32-bit.
+            else if (ri
+                    .hasFP(mf))  // Does the function dedicate RBP to being a frame ptr?
+                end = res.length - 3;   // If so, don't allocate RIP, RSP or RBP
+            else
+                end = res.length
+                        - 2;   // If not, just don't allocate RIP or RSP
+
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR8_ABCD_LClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR8_ABCD_LClass instance = new GR8_ABCD_LClass();
+
+        public static GR8_ABCD_LClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR8_ABCD_LClass()
+        {
+            super(GR8_ABCD_LRegClassID, "GR8_ABCD_L", GR8_ABCD_LVTs,
+                    GR8_ABCD_LSubclasses, GR8_ABCD_LSuperclasses,
+                    GR8_ABCD_LSubRegClasses, GR8_ABCD_LSuperRegClasses, 1, 1, 1,
+                    GR8_ABCD_L);
+        }
+
+    }
+
+    public final static class GR8_ABCD_HClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR8_ABCD_HClass instance = new GR8_ABCD_HClass();
+
+        public static GR8_ABCD_HClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR8_ABCD_HClass()
+        {
+            super(GR8_ABCD_HRegClassID, "GR8_ABCD_H", GR8_ABCD_HVTs,
+                    GR8_ABCD_HSubclasses, GR8_ABCD_HSuperclasses,
+                    GR8_ABCD_HSubRegClasses, GR8_ABCD_HSuperRegClasses, 1, 1, 1,
+                    GR8_ABCD_H);
+        }
+
+    }
+
+    public final static class GR64_NOSPClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR64_NOSPClass instance = new GR64_NOSPClass();
+
+        public static GR64_NOSPClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR64_NOSPClass()
+        {
+            super(GR64_NOSPRegClassID, "GR64_NOSP", GR64_NOSPVTs,
+                    GR64_NOSPSubclasses, GR64_NOSPSuperclasses,
+                    GR64_NOSPSubRegClasses, GR64_NOSPSuperRegClasses, 8, 8, 1,
+                    GR64_NOSP);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+            if (!subtarget.is64Bit())
+                end = begin;
+            if (ri.hasFP(mf))
+                end = res.length - 1;
+            else
+                end = res.length;
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR32_ABCDClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR32_ABCDClass instance = new GR32_ABCDClass();
+
+        public static GR32_ABCDClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR32_ABCDClass()
+        {
+            super(GR32_ABCDRegClassID, "GR32_ABCD", GR32_ABCDVTs,
+                    GR32_ABCDSubclasses, GR32_ABCDSuperclasses,
+                    GR32_ABCDSubRegClasses, GR32_ABCDSuperRegClasses, 4, 4, 1,
+                    GR32_ABCD);
+        }
+
+    }
+
+    public final static class CCRClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static CCRClass instance = new CCRClass();
+
+        public static CCRClass getInstance()
+        {
+            return instance;
+        }
+
+        private CCRClass()
+        {
+            super(CCRRegClassID, "CCR", CCRVTs, CCRSubclasses, CCRSuperclasses,
+                    CCRSubRegClasses, CCRSuperRegClasses, 4, 4, -1, CCR);
+        }
+
+    }
+
+    public final static class GR64_ABCDClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR64_ABCDClass instance = new GR64_ABCDClass();
+
+        public static GR64_ABCDClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR64_ABCDClass()
+        {
+            super(GR64_ABCDRegClassID, "GR64_ABCD", GR64_ABCDVTs,
+                    GR64_ABCDSubclasses, GR64_ABCDSuperclasses,
+                    GR64_ABCDSubRegClasses, GR64_ABCDSuperRegClasses, 8, 8, 1,
+                    GR64_ABCD);
+        }
+
+    }
+
+    public final static class RFP80Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static RFP80Class instance = new RFP80Class();
+
+        public static RFP80Class getInstance()
+        {
+            return instance;
+        }
+
+        private RFP80Class()
+        {
+            super(RFP80RegClassID, "RFP80", RFP80VTs, RFP80Subclasses,
+                    RFP80Superclasses, RFP80SubRegClasses, RFP80SuperRegClasses,
+                    10, 4, 1, RFP80);
+        }
+
+    }
+
+    public final static class GR32_NOREXClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR32_NOREXClass instance = new GR32_NOREXClass();
+
+        public static GR32_NOREXClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR32_NOREXClass()
+        {
+            super(GR32_NOREXRegClassID, "GR32_NOREX", GR32_NOREXVTs,
+                    GR32_NOREXSubclasses, GR32_NOREXSuperclasses,
+                    GR32_NOREXSubRegClasses, GR32_NOREXSuperRegClasses, 4, 4, 1,
+                    GR32_NOREX);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+
+            // Does the function dedicate RBP / EBP to being a frame ptr?
+            if (ri.hasFP(mf))
+                // If so, don't allocate ESP or EBP.
+                end = res.length - 2;
+            else
+                // If not, just don't allocate ESP.
+                end = res.length - 1;
+
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class RFP64Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static RFP64Class instance = new RFP64Class();
+
+        public static RFP64Class getInstance()
+        {
+            return instance;
+        }
+
+        private RFP64Class()
+        {
+            super(RFP64RegClassID, "RFP64", RFP64VTs, RFP64Subclasses,
+                    RFP64Superclasses, RFP64SubRegClasses, RFP64SuperRegClasses,
+                    8, 4, 1, RFP64);
+        }
+
+    }
+
+    public final static class VR256Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static VR256Class instance = new VR256Class();
+
+        public static VR256Class getInstance()
+        {
+            return instance;
+        }
+
+        private VR256Class()
+        {
+            super(VR256RegClassID, "VR256", VR256VTs, VR256Subclasses,
+                    VR256Superclasses, VR256SubRegClasses, VR256SuperRegClasses,
+                    32, 32, 1, VR256);
+        }
+
+    }
+
+    public final static class FR32Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static FR32Class instance = new FR32Class();
+
+        public static FR32Class getInstance()
+        {
+            return instance;
+        }
+
+        private FR32Class()
+        {
+            super(FR32RegClassID, "FR32", FR32VTs, FR32Subclasses,
+                    FR32Superclasses, FR32SubRegClasses, FR32SuperRegClasses, 4,
+                    4, 1, FR32);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+            if (!subtarget.is64Bit())
+                end = res.length
+                        - 8; // Only XMM0 to XMM7 are available in 32-bit mode.
+            else
+                end = res.length;
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class FR64Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static FR64Class instance = new FR64Class();
+
+        public static FR64Class getInstance()
+        {
+            return instance;
+        }
+
+        private FR64Class()
+        {
+            super(FR64RegClassID, "FR64", FR64VTs, FR64Subclasses,
+                    FR64Superclasses, FR64SubRegClasses, FR64SuperRegClasses, 8,
+                    8, 1, FR64);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+            if (!subtarget.is64Bit())
+                end = res.length
+                        - 8; // Only XMM0 to XMM7 are available in 32-bit mode.
+            else
+                end = res.length;
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class VR128Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static VR128Class instance = new VR128Class();
+
+        public static VR128Class getInstance()
+        {
+            return instance;
+        }
+
+        private VR128Class()
+        {
+            super(VR128RegClassID, "VR128", VR128VTs, VR128Subclasses,
+                    VR128Superclasses, VR128SubRegClasses, VR128SuperRegClasses,
+                    16, 16, 1, VR128);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+            if (!subtarget.is64Bit())
+                end = res.length
+                        - 8; // Only XMM0 to XMM7 are available in 32-bit mode.
+            else
+                end = res.length;
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR64_NOREXClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR64_NOREXClass instance = new GR64_NOREXClass();
+
+        public static GR64_NOREXClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR64_NOREXClass()
+        {
+            super(GR64_NOREXRegClassID, "GR64_NOREX", GR64_NOREXVTs,
+                    GR64_NOREXSubclasses, GR64_NOREXSuperclasses,
+                    GR64_NOREXSubRegClasses, GR64_NOREXSuperRegClasses, 8, 8, 1,
+                    GR64_NOREX);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+
+            // Does the function dedicate RBP / EBP to being a frame ptr?
+            if (ri.hasFP(mf))
+                // If so, don't allocate RSP or RBP.
+                end = res.length - 2;
+            else
+                // If not, just don't allocate RSP.
+                end = res.length - 1;
+
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR8_NOREXClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR8_NOREXClass instance = new GR8_NOREXClass();
+
+        public static GR8_NOREXClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR8_NOREXClass()
+        {
+            super(GR8_NOREXRegClassID, "GR8_NOREX", GR8_NOREXVTs,
+                    GR8_NOREXSubclasses, GR8_NOREXSuperclasses,
+                    GR8_NOREXSubRegClasses, GR8_NOREXSuperRegClasses, 1, 1, 1,
+                    GR8_NOREX);
+        }
+
+        private final int[] X86_GR8_NOREX_AO_64 = { AL, CL, DL, SIL, DIL, BL,
+                BPL };
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res;
+            int begin = 0, end;
+
+            if (subtarget.is64Bit())
+                res = X86_GR8_NOREX_AO_64;
+            else
+                res = getRegs();
+
+            // Does the function dedicate RBP / EBP to being a frame ptr?
+            if (!subtarget.is64Bit())
+                // In 32-mode, none of the 8-bit registers aliases EBP or ESP.
+                end = begin + 8;
+            else if (ri.hasFP(mf))
+                // If so, don't allocate SPL or BPL.
+                end = X86_GR8_NOREX_AO_64.length - 1;
+            else
+                // If not, just don't allocate SPL.
+                end = X86_GR8_NOREX_AO_64.length;
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class RFP32Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static RFP32Class instance = new RFP32Class();
+
+        public static RFP32Class getInstance()
+        {
+            return instance;
+        }
+
+        private RFP32Class()
+        {
+            super(RFP32RegClassID, "RFP32", RFP32VTs, RFP32Subclasses,
+                    RFP32Superclasses, RFP32SubRegClasses, RFP32SuperRegClasses,
+                    4, 4, 1, RFP32);
+        }
+
+    }
+
+    public final static class GR32_NOSPClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR32_NOSPClass instance = new GR32_NOSPClass();
+
+        public static GR32_NOSPClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR32_NOSPClass()
+        {
+            super(GR32_NOSPRegClassID, "GR32_NOSP", GR32_NOSPVTs,
+                    GR32_NOSPSubclasses, GR32_NOSPSuperclasses,
+                    GR32_NOSPSubRegClasses, GR32_NOSPSuperRegClasses, 4, 4, 1,
+                    GR32_NOSP);
+        }
+
+        private final int[] X86_GR32_NOSP_AO_64 = { EAX, ECX, EDX, ESI, EDI,
+                R8D, R9D, R10D, R11D, EBX, R14D, R15D, R12D, R13D, EBP };
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res;
+            int begin = 0, end;
+            if (subtarget.is64Bit())
+            {
+                res = X86_GR32_NOSP_AO_64;
+                begin = 0;
+            }
+            else
+            {
+                res = getRegs();
+                begin = 0;
+            }
+
+            if (subtarget.is64Bit())
+            {
+                // Does the function dedicate RBP to being a frame ptr?
+                if (ri.hasFP(mf))
+                    // If so, don't allocate EBP.
+                    end = X86_GR32_NOSP_AO_64.length - 1;
+                else
+                    // If not, any reg in this class is ok.
+                    end = X86_GR32_NOSP_AO_64.length;
+            }
+            else
+            {
+                // Does the function dedicate EBP to being a frame ptr?
+                if (ri.hasFP(mf))
+                    // If so, don't allocate EBP.
+                    end = begin + 6;
+                else
+                    // If not, any reg in this class is ok.
+                    end = begin + 7;
+            }
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR16_ABCDClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR16_ABCDClass instance = new GR16_ABCDClass();
+
+        public static GR16_ABCDClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR16_ABCDClass()
+        {
+            super(GR16_ABCDRegClassID, "GR16_ABCD", GR16_ABCDVTs,
+                    GR16_ABCDSubclasses, GR16_ABCDSuperclasses,
+                    GR16_ABCDSubRegClasses, GR16_ABCDSuperRegClasses, 2, 2, 1,
+                    GR16_ABCD);
+        }
+
+    }
+
+    public final static class VR64Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static VR64Class instance = new VR64Class();
+
+        public static VR64Class getInstance()
+        {
+            return instance;
+        }
+
+        private VR64Class()
+        {
+            super(VR64RegClassID, "VR64", VR64VTs, VR64Subclasses,
+                    VR64Superclasses, VR64SubRegClasses, VR64SuperRegClasses, 8,
+                    8, 1, VR64);
+        }
+
+    }
+
+    public final static class GR8Class extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR8Class instance = new GR8Class();
+
+        public static GR8Class getInstance()
+        {
+            return instance;
+        }
+
+        private GR8Class()
+        {
+            super(GR8RegClassID, "GR8", GR8VTs, GR8Subclasses, GR8Superclasses,
+                    GR8SubRegClasses, GR8SuperRegClasses, 1, 1, 1, GR8);
+        }
+
+        private final int[] X86_GR8_AO_64 = { AL, CL, DL, SIL, DIL, R8B, R9B,
+                R10B, R11B, BL, R14B, R15B, R12B, R13B, BPL };
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+
+            int[] res;
+            int begin, end;
+            if (subtarget.is64Bit())
+            {
+                res = X86_GR8_AO_64;
+                begin = 0;
+                // If not, just don't allocate SPL.
+                end = X86_GR8_AO_64.length;
+            }
+            else if (ri.hasFP(mf))
+            {
+                res = X86_GR8_AO_64;
+                begin = 0;
+                // If so, don't allocate SPL or BPL.
+                end = X86_GR8_AO_64.length - 1;
+            }
+            else
+            {
+                res = getRegs();
+                begin = 0;
+                // In 32-mode, none of the 8-bit registers aliases EBP or ESP.
+                end = 0 + 8;
+            }
+
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR64_NOREX_NOSPClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR64_NOREX_NOSPClass instance = new GR64_NOREX_NOSPClass();
+
+        public static GR64_NOREX_NOSPClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR64_NOREX_NOSPClass()
+        {
+            super(GR64_NOREX_NOSPRegClassID, "GR64_NOREX_NOSP",
+                    GR64_NOREX_NOSPVTs, GR64_NOREX_NOSPSubclasses,
+                    GR64_NOREX_NOSPSuperclasses, GR64_NOREX_NOSPSubRegClasses,
+                    GR64_NOREX_NOSPSuperRegClasses, 8, 8, 1, GR64_NOREX_NOSP);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+            // Does the function dedicate RBP to being a frame ptr?
+            if (ri.hasFP(mf))
+                // If so, don't allocate RBP.
+                end = res.length - 1;
+            else
+                // If not, any reg in this class is ok.
+                end = res.length;
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR16_NOREXClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR16_NOREXClass instance = new GR16_NOREXClass();
+
+        public static GR16_NOREXClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR16_NOREXClass()
+        {
+            super(GR16_NOREXRegClassID, "GR16_NOREX", GR16_NOREXVTs,
+                    GR16_NOREXSubclasses, GR16_NOREXSuperclasses,
+                    GR16_NOREXSubRegClasses, GR16_NOREXSuperRegClasses, 2, 2, 1,
+                    GR16_NOREX);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            TargetMachine tm = mf.getTarget();
+            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            TargetRegisterInfo ri = tm.getRegisterInfo();
+            int[] res = getRegs();
+            int begin = 0, end;
+
+            // Does the function dedicate RBP / EBP to being a frame ptr?
+            if (ri.hasFP(mf))
+                // If so, don't allocate SP or BP.
+                end = res.length - 2;
+            else
+                // If not, just don't allocate SP.
+                end = res.length - 1;
+
+            int[] temp = new int[end - begin];
+            System.arraycopy(res, begin, temp, 0, end - begin);
+            return temp;
+        }
+
+    }
+
+    public final static class GR32_ADClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static GR32_ADClass instance = new GR32_ADClass();
+
+        public static GR32_ADClass getInstance()
+        {
+            return instance;
+        }
+
+        private GR32_ADClass()
+        {
+            super(GR32_ADRegClassID, "GR32_AD", GR32_ADVTs, GR32_ADSubclasses,
+                    GR32_ADSuperclasses, GR32_ADSubRegClasses,
+                    GR32_ADSuperRegClasses, 4, 4, 1, GR32_AD);
+        }
+
+    }
+
+    public final static class RSTClass extends TargetRegisterClass
+    {
+        // Only allow one instance for this class.
+
+        private static RSTClass instance = new RSTClass();
+
+        public static RSTClass getInstance()
+        {
+            return instance;
+        }
+
+        private RSTClass()
+        {
+            super(RSTRegClassID, "RST", RSTVTs, RSTSubclasses, RSTSuperclasses,
+                    RSTSubRegClasses, RSTSuperRegClasses, 10, 4, 1, RST);
+        }
+
+        @Override public int[] getAllocableRegs(MachineFunction mf)
+        {
+            return new int[0];
+        }
+
+    }
+
+    // GR16 Sub-register Classes...
+    public static final TargetRegisterClass[] GR16SubRegClasses = {
+            GR8RegisterClass, GR8RegisterClass, };
+
+    // GR32 Sub-register Classes...
+    public static final TargetRegisterClass[] GR32SubRegClasses = {
+            GR8RegisterClass, GR8RegisterClass, GR16RegisterClass, };
+
+    // GR64 Sub-register Classes...
+    public static final TargetRegisterClass[] GR64SubRegClasses = {
+            GR8RegisterClass, GR8RegisterClass, GR16RegisterClass,
+            GR32RegisterClass, };
+
+    // GR8_ABCD_L Sub-register Classes...
+    public static final TargetRegisterClass[] GR8_ABCD_LSubRegClasses = {
+
+    };
+
+    // GR8_ABCD_H Sub-register Classes...
+    public static final TargetRegisterClass[] GR8_ABCD_HSubRegClasses = {
+
+    };
+
+    // GR64_NOSP Sub-register Classes...
+    public static final TargetRegisterClass[] GR64_NOSPSubRegClasses = {
+            GR8RegisterClass, GR8RegisterClass, GR16RegisterClass,
+            GR32_NOSPRegisterClass, };
+
+    // GR32_ABCD Sub-register Classes...
+    public static final TargetRegisterClass[] GR32_ABCDSubRegClasses = {
+            GR8_ABCD_LRegisterClass, GR8_ABCD_HRegisterClass,
+            GR16_ABCDRegisterClass, };
+
+    // CCR Sub-register Classes...
+    public static final TargetRegisterClass[] CCRSubRegClasses = {
+
+    };
+
+    // GR64_ABCD Sub-register Classes...
+    public static final TargetRegisterClass[] GR64_ABCDSubRegClasses = {
+            GR8_ABCD_LRegisterClass, GR8_ABCD_HRegisterClass,
+            GR16_ABCDRegisterClass, GR32_ABCDRegisterClass, };
+
+    // RFP80 Sub-register Classes...
+    public static final TargetRegisterClass[] RFP80SubRegClasses = {
+
+    };
+
+    // GR32_NOREX Sub-register Classes...
+    public static final TargetRegisterClass[] GR32_NOREXSubRegClasses = {
+            GR8_NOREXRegisterClass, GR8_NOREXRegisterClass,
+            GR16_NOREXRegisterClass, };
+
+    // RFP64 Sub-register Classes...
+    public static final TargetRegisterClass[] RFP64SubRegClasses = {
+
+    };
+
+    // VR256 Sub-register Classes...
+    public static final TargetRegisterClass[] VR256SubRegClasses = {
+
+    };
+
+    // FR32 Sub-register Classes...
+    public static final TargetRegisterClass[] FR32SubRegClasses = {
+
+    };
+
+    // FR64 Sub-register Classes...
+    public static final TargetRegisterClass[] FR64SubRegClasses = {
+
+    };
+
+    // VR128 Sub-register Classes...
+    public static final TargetRegisterClass[] VR128SubRegClasses = {
+
+    };
+
+    // GR64_NOREX Sub-register Classes...
+    public static final TargetRegisterClass[] GR64_NOREXSubRegClasses = {
+            GR8_NOREXRegisterClass, GR8_NOREXRegisterClass,
+            GR16_NOREXRegisterClass, GR32_NOREXRegisterClass, };
+
+    // GR8_NOREX Sub-register Classes...
+    public static final TargetRegisterClass[] GR8_NOREXSubRegClasses = {
+
+    };
+
+    // RFP32 Sub-register Classes...
+    public static final TargetRegisterClass[] RFP32SubRegClasses = {
+
+    };
+
+    // GR32_NOSP Sub-register Classes...
+    public static final TargetRegisterClass[] GR32_NOSPSubRegClasses = {
+            GR8RegisterClass, GR8RegisterClass, GR16RegisterClass, };
+
+    // GR16_ABCD Sub-register Classes...
+    public static final TargetRegisterClass[] GR16_ABCDSubRegClasses = {
+            GR8_ABCD_LRegisterClass, GR8_ABCD_HRegisterClass, };
+
+    // VR64 Sub-register Classes...
+    public static final TargetRegisterClass[] VR64SubRegClasses = {
+
+    };
+
+    // GR8 Sub-register Classes...
+    public static final TargetRegisterClass[] GR8SubRegClasses = {
+
+    };
+
+    // GR64_NOREX_NOSP Sub-register Classes...
+    public static final TargetRegisterClass[] GR64_NOREX_NOSPSubRegClasses = {
+            GR8_NOREXRegisterClass, GR8_NOREXRegisterClass,
+            GR16_NOREXRegisterClass, GR32_NOREXRegisterClass, };
+
+    // GR16_NOREX Sub-register Classes...
+    public static final TargetRegisterClass[] GR16_NOREXSubRegClasses = {
+            GR8_NOREXRegisterClass, GR8_NOREXRegisterClass, };
+
+    // GR32_AD Sub-register Classes...
+    public static final TargetRegisterClass[] GR32_ADSubRegClasses = {
+            GR8_ABCD_LRegisterClass, GR8_ABCD_HRegisterClass,
+            GR16_ABCDRegisterClass, };
+
+    // RST Sub-register Classes...
+    public static final TargetRegisterClass[] RSTSubRegClasses = {
+
+    };
+
+    // GR16 Super-register Classes...
+    public static final TargetRegisterClass[] GR16SuperRegClasses = {
+            GR32_NOSPRegisterClass, GR64_NOSPRegisterClass, GR64RegisterClass,
+            GR32RegisterClass, };
+
+    // GR32 Super-register Classes...
+    public static final TargetRegisterClass[] GR32SuperRegClasses = {
+            GR64RegisterClass, };
+
+    // GR64 Super-register Classes...
+    public static final TargetRegisterClass[] GR64SuperRegClasses = {
+
+    };
+
+    // GR8_ABCD_L Super-register Classes...
+    public static final TargetRegisterClass[] GR8_ABCD_LSuperRegClasses = {
+            GR16_ABCDRegisterClass, GR64_ABCDRegisterClass,
+            GR32_ABCDRegisterClass, GR32_ADRegisterClass, };
+
+    // GR8_ABCD_H Super-register Classes...
+    public static final TargetRegisterClass[] GR8_ABCD_HSuperRegClasses = {
+            GR16_ABCDRegisterClass, GR64_ABCDRegisterClass,
+            GR32_ABCDRegisterClass, GR32_ADRegisterClass, };
+
+    // GR64_NOSP Super-register Classes...
+    public static final TargetRegisterClass[] GR64_NOSPSuperRegClasses = {
+
+    };
+
+    // GR32_ABCD Super-register Classes...
+    public static final TargetRegisterClass[] GR32_ABCDSuperRegClasses = {
+            GR64_ABCDRegisterClass, };
+
+    // CCR Super-register Classes...
+    public static final TargetRegisterClass[] CCRSuperRegClasses = {
+
+    };
+
+    // GR64_ABCD Super-register Classes...
+    public static final TargetRegisterClass[] GR64_ABCDSuperRegClasses = {
+
+    };
+
+    // RFP80 Super-register Classes...
+    public static final TargetRegisterClass[] RFP80SuperRegClasses = {
+
+    };
+
+    // GR32_NOREX Super-register Classes...
+    public static final TargetRegisterClass[] GR32_NOREXSuperRegClasses = {
+            GR64_NOREXRegisterClass, GR64_NOREX_NOSPRegisterClass, };
+
+    // RFP64 Super-register Classes...
+    public static final TargetRegisterClass[] RFP64SuperRegClasses = {
+
+    };
+
+    // VR256 Super-register Classes...
+    public static final TargetRegisterClass[] VR256SuperRegClasses = {
+
+    };
+
+    // FR32 Super-register Classes...
+    public static final TargetRegisterClass[] FR32SuperRegClasses = {
+
+    };
+
+    // FR64 Super-register Classes...
+    public static final TargetRegisterClass[] FR64SuperRegClasses = {
+
+    };
+
+    // VR128 Super-register Classes...
+    public static final TargetRegisterClass[] VR128SuperRegClasses = {
+
+    };
+
+    // GR64_NOREX Super-register Classes...
+    public static final TargetRegisterClass[] GR64_NOREXSuperRegClasses = {
+
+    };
+
+    // GR8_NOREX Super-register Classes...
+    public static final TargetRegisterClass[] GR8_NOREXSuperRegClasses = {
+            GR64_NOREXRegisterClass, GR32_NOREXRegisterClass,
+            GR16_NOREXRegisterClass, GR64_NOREX_NOSPRegisterClass, };
+
+    // RFP32 Super-register Classes...
+    public static final TargetRegisterClass[] RFP32SuperRegClasses = {
+
+    };
+
+    // GR32_NOSP Super-register Classes...
+    public static final TargetRegisterClass[] GR32_NOSPSuperRegClasses = {
+            GR64_NOSPRegisterClass, };
+
+    // GR16_ABCD Super-register Classes...
+    public static final TargetRegisterClass[] GR16_ABCDSuperRegClasses = {
+            GR64_ABCDRegisterClass, GR32_ABCDRegisterClass,
+            GR32_ADRegisterClass, };
+
+    // VR64 Super-register Classes...
+    public static final TargetRegisterClass[] VR64SuperRegClasses = {
+
+    };
+
+    // GR8 Super-register Classes...
+    public static final TargetRegisterClass[] GR8SuperRegClasses = {
+            GR32_NOSPRegisterClass, GR64_NOSPRegisterClass, GR64RegisterClass,
+            GR32RegisterClass, GR16RegisterClass, };
+
+    // GR64_NOREX_NOSP Super-register Classes...
+    public static final TargetRegisterClass[] GR64_NOREX_NOSPSuperRegClasses = {
+
+    };
+
+    // GR16_NOREX Super-register Classes...
+    public static final TargetRegisterClass[] GR16_NOREXSuperRegClasses = {
+            GR64_NOREXRegisterClass, GR32_NOREXRegisterClass,
+            GR64_NOREX_NOSPRegisterClass, };
+
+    // GR32_AD Super-register Classes...
+    public static final TargetRegisterClass[] GR32_ADSuperRegClasses = {
+
+    };
+
+    // RST Super-register Classes...
+    public static final TargetRegisterClass[] RSTSuperRegClasses = {
+
+    };
+    // GR16 Register Class sub-classes...
+    public static final TargetRegisterClass[] GR16Subclasses = {
+            GR16_ABCDRegisterClass, GR16_NOREXRegisterClass, };
+    // GR32 Register Class sub-classes...
+    public static final TargetRegisterClass[] GR32Subclasses = {
+            GR32_ABCDRegisterClass, GR32_NOREXRegisterClass,
+            GR32_NOSPRegisterClass, GR32_ADRegisterClass, };
+    // GR64 Register Class sub-classes...
+    public static final TargetRegisterClass[] GR64Subclasses = {
+            GR64_NOSPRegisterClass, GR64_ABCDRegisterClass,
+            GR64_NOREXRegisterClass, GR64_NOREX_NOSPRegisterClass, };
+    // GR8_ABCD_L Register Class sub-classes...
+    public static final TargetRegisterClass[] GR8_ABCD_LSubclasses = {
+
+    };
+    // GR8_ABCD_H Register Class sub-classes...
+    public static final TargetRegisterClass[] GR8_ABCD_HSubclasses = {
+
+    };
+    // GR64_NOSP Register Class sub-classes...
+    public static final TargetRegisterClass[] GR64_NOSPSubclasses = {
+            GR64_ABCDRegisterClass, GR64_NOREX_NOSPRegisterClass, };
+    // GR32_ABCD Register Class sub-classes...
+    public static final TargetRegisterClass[] GR32_ABCDSubclasses = {
+            GR32_ADRegisterClass, };
+    // CCR Register Class sub-classes...
+    public static final TargetRegisterClass[] CCRSubclasses = {
+
+    };
+    // GR64_ABCD Register Class sub-classes...
+    public static final TargetRegisterClass[] GR64_ABCDSubclasses = {
+
+    };
+    // RFP80 Register Class sub-classes...
+    public static final TargetRegisterClass[] RFP80Subclasses = {
+
+    };
+    // GR32_NOREX Register Class sub-classes...
+    public static final TargetRegisterClass[] GR32_NOREXSubclasses = {
+            GR32_ABCDRegisterClass, GR32_ADRegisterClass, };
+    // RFP64 Register Class sub-classes...
+    public static final TargetRegisterClass[] RFP64Subclasses = {
+            RFP80RegisterClass, };
+    // VR256 Register Class sub-classes...
+    public static final TargetRegisterClass[] VR256Subclasses = {
+
+    };
+    // FR32 Register Class sub-classes...
+    public static final TargetRegisterClass[] FR32Subclasses = {
+            FR64RegisterClass, VR128RegisterClass, };
+    // FR64 Register Class sub-classes...
+    public static final TargetRegisterClass[] FR64Subclasses = {
+            VR128RegisterClass, };
+    // VR128 Register Class sub-classes...
+    public static final TargetRegisterClass[] VR128Subclasses = {
+
+    };
+    // GR64_NOREX Register Class sub-classes...
+    public static final TargetRegisterClass[] GR64_NOREXSubclasses = {
+            GR64_ABCDRegisterClass, GR64_NOREX_NOSPRegisterClass, };
+    // GR8_NOREX Register Class sub-classes...
+    public static final TargetRegisterClass[] GR8_NOREXSubclasses = {
+            GR8_ABCD_LRegisterClass, GR8_ABCD_HRegisterClass, };
+    // RFP32 Register Class sub-classes...
+    public static final TargetRegisterClass[] RFP32Subclasses = {
+            RFP80RegisterClass, RFP64RegisterClass, };
+    // GR32_NOSP Register Class sub-classes...
+    public static final TargetRegisterClass[] GR32_NOSPSubclasses = {
+            GR32_ABCDRegisterClass, GR32_ADRegisterClass, };
+    // GR16_ABCD Register Class sub-classes...
+    public static final TargetRegisterClass[] GR16_ABCDSubclasses = {
+
+    };
+    // VR64 Register Class sub-classes...
+    public static final TargetRegisterClass[] VR64Subclasses = {
+
+    };
+    // GR8 Register Class sub-classes...
+    public static final TargetRegisterClass[] GR8Subclasses = {
+            GR8_ABCD_LRegisterClass, GR8_ABCD_HRegisterClass,
+            GR8_NOREXRegisterClass, };
+    // GR64_NOREX_NOSP Register Class sub-classes...
+    public static final TargetRegisterClass[] GR64_NOREX_NOSPSubclasses = {
+            GR64_ABCDRegisterClass, };
+    // GR16_NOREX Register Class sub-classes...
+    public static final TargetRegisterClass[] GR16_NOREXSubclasses = {
+            GR16_ABCDRegisterClass, };
+    // GR32_AD Register Class sub-classes...
+    public static final TargetRegisterClass[] GR32_ADSubclasses = {
+
+    };
+    // RST Register Class sub-classes...
+    public static final TargetRegisterClass[] RSTSubclasses = {
+
+    };
+    // GR16 Register Class super-classes...
+    public static final TargetRegisterClass[] GR16Superclasses = {
+
+    };
+
+    // GR32 Register Class super-classes...
+    public static final TargetRegisterClass[] GR32Superclasses = {
+
+    };
+
+    // GR64 Register Class super-classes...
+    public static final TargetRegisterClass[] GR64Superclasses = {
+
+    };
+
+    // GR8_ABCD_L Register Class super-classes...
+    public static final TargetRegisterClass[] GR8_ABCD_LSuperclasses = {
+            GR8_ABCD_LRegisterClass, GR8_ABCD_LRegisterClass, };
+
+    // GR8_ABCD_H Register Class super-classes...
+    public static final TargetRegisterClass[] GR8_ABCD_HSuperclasses = {
+            GR8_ABCD_HRegisterClass, GR8_ABCD_HRegisterClass, };
+
+    // GR64_NOSP Register Class super-classes...
+    public static final TargetRegisterClass[] GR64_NOSPSuperclasses = {
+            GR64_NOSPRegisterClass, };
+
+    // GR32_ABCD Register Class super-classes...
+    public static final TargetRegisterClass[] GR32_ABCDSuperclasses = {
+            GR32_ABCDRegisterClass, GR32_ABCDRegisterClass,
+            GR32_ABCDRegisterClass, };
+
+    // CCR Register Class super-classes...
+    public static final TargetRegisterClass[] CCRSuperclasses = {
+
+    };
+
+    // GR64_ABCD Register Class super-classes...
+    public static final TargetRegisterClass[] GR64_ABCDSuperclasses = {
+            GR64_ABCDRegisterClass, GR64_ABCDRegisterClass,
+            GR64_ABCDRegisterClass, GR64_ABCDRegisterClass, };
+
+    // RFP80 Register Class super-classes...
+    public static final TargetRegisterClass[] RFP80Superclasses = {
+            RFP80RegisterClass, RFP80RegisterClass, };
+
+    // GR32_NOREX Register Class super-classes...
+    public static final TargetRegisterClass[] GR32_NOREXSuperclasses = {
+            GR32_NOREXRegisterClass, };
+
+    // RFP64 Register Class super-classes...
+    public static final TargetRegisterClass[] RFP64Superclasses = {
+            RFP64RegisterClass, };
+
+    // VR256 Register Class super-classes...
+    public static final TargetRegisterClass[] VR256Superclasses = {
+
+    };
+
+    // FR32 Register Class super-classes...
+    public static final TargetRegisterClass[] FR32Superclasses = {
+
+    };
+
+    // FR64 Register Class super-classes...
+    public static final TargetRegisterClass[] FR64Superclasses = {
+            FR64RegisterClass, };
+
+    // VR128 Register Class super-classes...
+    public static final TargetRegisterClass[] VR128Superclasses = {
+            VR128RegisterClass, VR128RegisterClass, };
+
+    // GR64_NOREX Register Class super-classes...
+    public static final TargetRegisterClass[] GR64_NOREXSuperclasses = {
+            GR64_NOREXRegisterClass, };
+
+    // GR8_NOREX Register Class super-classes...
+    public static final TargetRegisterClass[] GR8_NOREXSuperclasses = {
+            GR8_NOREXRegisterClass, };
+
+    // RFP32 Register Class super-classes...
+    public static final TargetRegisterClass[] RFP32Superclasses = {
+
+    };
+
+    // GR32_NOSP Register Class super-classes...
+    public static final TargetRegisterClass[] GR32_NOSPSuperclasses = {
+            GR32_NOSPRegisterClass, };
+
+    // GR16_ABCD Register Class super-classes...
+    public static final TargetRegisterClass[] GR16_ABCDSuperclasses = {
+            GR16_ABCDRegisterClass, GR16_ABCDRegisterClass, };
+
+    // VR64 Register Class super-classes...
+    public static final TargetRegisterClass[] VR64Superclasses = {
+
+    };
+
+    // GR8 Register Class super-classes...
+    public static final TargetRegisterClass[] GR8Superclasses = {
+
+    };
+
+    // GR64_NOREX_NOSP Register Class super-classes...
+    public static final TargetRegisterClass[] GR64_NOREX_NOSPSuperclasses = {
+            GR64_NOREX_NOSPRegisterClass, GR64_NOREX_NOSPRegisterClass,
+            GR64_NOREX_NOSPRegisterClass, };
+
+    // GR16_NOREX Register Class super-classes...
+    public static final TargetRegisterClass[] GR16_NOREXSuperclasses = {
+            GR16_NOREXRegisterClass, };
+
+    // GR32_AD Register Class super-classes...
+    public static final TargetRegisterClass[] GR32_ADSuperclasses = {
+            GR32_ADRegisterClass, GR32_ADRegisterClass, GR32_ADRegisterClass,
+            GR32_ADRegisterClass, };
+
+    // RST Register Class super-classes...
+    public static final TargetRegisterClass[] RSTSuperclasses = {
+
+    };
+
+    public final static TargetRegisterClass[] registerClasses = {
+            GR16RegisterClass, GR32RegisterClass, GR64RegisterClass,
+            GR8_ABCD_LRegisterClass, GR8_ABCD_HRegisterClass,
+            GR64_NOSPRegisterClass, GR32_ABCDRegisterClass, CCRRegisterClass,
+            GR64_ABCDRegisterClass, RFP80RegisterClass, GR32_NOREXRegisterClass,
+            RFP64RegisterClass, VR256RegisterClass, FR32RegisterClass,
+            FR64RegisterClass, VR128RegisterClass, GR64_NOREXRegisterClass,
+            GR8_NOREXRegisterClass, RFP32RegisterClass, GR32_NOSPRegisterClass,
+            GR16_ABCDRegisterClass, VR64RegisterClass, GR8RegisterClass,
+            GR64_NOREX_NOSPRegisterClass, GR16_NOREXRegisterClass,
+            GR32_ADRegisterClass, RSTRegisterClass, };
+
+    // Number of hash collisions: 11
+    public static final int[] SubregHashTable = { NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R15D, R15W, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R13, R13B, NoRegister,
+            NoRegister, RDX, EDX, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R10D, R10B, NoRegister,
+            NoRegister, NoRegister, NoRegister, ECX, CL, NoRegister, NoRegister,
+            R10W, R10B, NoRegister, NoRegister, R8, R8D, NoRegister, NoRegister,
+            RDI, DIL, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, ESI, SI, NoRegister, NoRegister, R14D, R14W,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R13,
+            R13D, RIP, EIP, R8D, R8B, R8W, R8B, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R11D, R11W, R8, R8W,
+            RCX, CL, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, ESP, SP,
+            NoRegister, NoRegister, R10, R10D, NoRegister, NoRegister, RSI, SI,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R15, R15W, RSI, ESI, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, SI, SIL, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, ECX, CX, R12D, R12B, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R9, R9B, DX, DH,
+            NoRegister, NoRegister, R12W, R12B, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R10, R10B, RSP, SP, NoRegister, NoRegister, NoRegister,
+            NoRegister, R15W, R15B, NoRegister, NoRegister, R15D, R15B,
+            NoRegister, NoRegister, NoRegister, NoRegister, R14, R14W, ESI, SIL,
+            NoRegister, NoRegister, R8D, R8W, RSP, ESP, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, EDX, DH, RCX, CX, NoRegister, NoRegister,
+            R9, R9D, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R11, R11W, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, AX, AH, R15, R15D, NoRegister,
+            NoRegister, RSI, SIL, NoRegister, NoRegister, R9D, R9B, R9W, R9B,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, SP, SPL, R10D, R10W, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, EDI, DI, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R9, R9W, DX, DL,
+            RDX, DH, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, BP, BPL, NoRegister, NoRegister, R12, R12B,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, AX, AL, ESP, SPL, NoRegister, NoRegister,
+            EAX, AH, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R15, R15B, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, EDX, DL, NoRegister, NoRegister,
+            RDI, DI, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R12, R12D, EBP, BPL, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, EAX, AL, RSP, SPL,
+            R9D, R9W, NoRegister, NoRegister, NoRegister, NoRegister, RAX, AH,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R11W, R11B, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R11D,
+            R11B, NoRegister, NoRegister, RDX, DL, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, RAX,
+            EAX, R10, R10W, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, RBP, BPL, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, EAX, AX, BX, BH,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, RAX, AL, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, EDX, DX,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R13D, R13W,
+            NoRegister, NoRegister, NoRegister, NoRegister, RBP, EBP,
+            NoRegister, NoRegister, R11, R11D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, BX, BL,
+            EBX, BH, NoRegister, NoRegister, NoRegister, NoRegister, RAX, AX,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, RDX, DX,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, RBX, EBX, R11, R11B, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, EBX, BL, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, RBX, BH, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R14D, R14B, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R14W, R14B, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R13, R13W, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, EBP, BP, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, RBX, BL, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R12D, R12W,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R14, R14D, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, EBX, BX, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, CX, CH, NoRegister, NoRegister, RBP, BP,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, EIP, IP,
+            NoRegister, NoRegister, R13W, R13B, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R13D, R13B, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, RCX,
+            ECX, R14, R14B, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, ECX, CH, NoRegister,
+            NoRegister, RBX, BX, DI, DIL, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, RIP, IP, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R12, R12W, NoRegister, NoRegister, RDI, EDI,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, CX, CL,
+            NoRegister, NoRegister, EDI, DIL, R8, R8B, RCX, CH, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, };
+    public static final int SubregHashTableSize = 512;
+
+    // Number of hash collisions: 13
+    public final static int[] SuperregHashTable = { NoRegister, NoRegister,
+            NoRegister, NoRegister, SPL, ESP, NoRegister, NoRegister,
+            NoRegister, NoRegister, R15B, R15W, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, SI, ESI, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R9B, R9, ESP, RSP,
+            R9W, R9, R9D, R9, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R14B, R14W, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, SP, ESP,
+            NoRegister, NoRegister, CH, CX, NoRegister, NoRegister, CL, CX,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R11B, R11W, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R15W, R15D, NoRegister,
+            NoRegister, NoRegister, NoRegister, R15B, R15D, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R8B,
+            R8D, NoRegister, NoRegister, R8W, R8D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R8B, R8W, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, DIL, DI, NoRegister, NoRegister, R12B, R12D,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R12W, R12D,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R10B, R10W, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, AH, EAX, AL, EAX,
+            AX, EAX, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, BPL, EBP,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, AH, RAX, AL, RAX,
+            AX, RAX, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R9B, R9D, NoRegister,
+            NoRegister, R9W, R9D, BPL, RBP, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R11W, R11D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R11B, R11D, NoRegister, NoRegister, NoRegister,
+            NoRegister, BP, EBP, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, AH, AX, AL, AX, NoRegister, NoRegister,
+            NoRegister, NoRegister, BP, RBP, NoRegister, NoRegister, EAX, RAX,
+            NoRegister, NoRegister, R9B, R9W, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R10D, R10, R10B,
+            R10, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R10W, R10, DH, DX, NoRegister, NoRegister, DL, DX, BH,
+            EBX, BL, EBX, NoRegister, NoRegister, BX, EBX, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, BH, RBX, BL, RBX, NoRegister, NoRegister,
+            BX, RBX, NoRegister, NoRegister, EBP, RBP, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R12B, R12, R12D, R12, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R12W, R12, NoRegister, NoRegister, R13B, R13W,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, CH, RCX, NoRegister,
+            NoRegister, CL, RCX, NoRegister, NoRegister, BPL, BP, NoRegister,
+            NoRegister, CX, RCX, NoRegister, NoRegister, R11W, R11, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R11D,
+            R11, R11B, R11, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R14B, R14D, NoRegister, NoRegister,
+            NoRegister, NoRegister, EBX, RBX, NoRegister, NoRegister, R14W,
+            R14D, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, DIL,
+            RDI, NoRegister, NoRegister, ECX, RCX, NoRegister, NoRegister,
+            NoRegister, NoRegister, DI, RDI, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R14D, R14, R14B, R14,
+            NoRegister, NoRegister, NoRegister, NoRegister, CH, ECX, NoRegister,
+            NoRegister, R14W, R14, NoRegister, NoRegister, CL, ECX, NoRegister,
+            NoRegister, CX, ECX, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, BH, BX, BL, BX, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, EDI, RDI, DH, RDX, NoRegister,
+            NoRegister, DL, RDX, NoRegister, NoRegister, DX, RDX, R12B, R12W,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R13W, R13, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R13B, R13, R13D, R13, DIL, EDI,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, DI, EDI, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, SIL,
+            RSI, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, EDX, RDX, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, IP, RIP, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R15W,
+            R15, NoRegister, NoRegister, R15D, R15, R15B, R15, DH, EDX,
+            NoRegister, NoRegister, DL, EDX, NoRegister, NoRegister, DX, EDX,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, SPL,
+            RSP, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, EIP, RIP, SIL, SI, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R13W, R13D, SI, RSI, NoRegister, NoRegister, NoRegister,
+            NoRegister, SIL, ESI, NoRegister, NoRegister, R13B, R13D,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, IP, EIP,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R10B, R10D, NoRegister, NoRegister, R8B, R8,
+            R8D, R8, R10W, R10D, ESI, RSI, R8W, R8, SPL, SP, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, SP, RSP, NoRegister,
+            NoRegister };
+    public static final int SuperregHashTableSize = 512;
+
+    // Number of hash collisions: 49
+    public final static int AliasesHashTable[] = { NoRegister, NoRegister,
+            NoRegister, NoRegister, SPL, ESP, NoRegister, NoRegister, R15D,
+            R15W, R15B, R15W, NoRegister, NoRegister, NoRegister, NoRegister,
+            R13, R13B, NoRegister, NoRegister, RDX, EDX, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, SI, ESI, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R9B, R9, R8, R8D,
+            R9W, R9, R9D, R9, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, ESI, SI, NoRegister, NoRegister, R14D, R14W,
+            R14B, R14W, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R13, R13D, RIP, EIP,
+            R8D, R8B, R8W, R8B, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, SP, ESP, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R8, R8W, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, ESP, SP, NoRegister,
+            NoRegister, RSI, SI, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R15W, R15D, NoRegister, NoRegister,
+            NoRegister, NoRegister, R15B, R15D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R15, R15W, RSI, ESI,
+            R8B, R8D, NoRegister, NoRegister, R8W, R8D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, SI, SIL, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R9, R9B, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, RSP, SP, NoRegister, NoRegister,
+            NoRegister, NoRegister, R15W, R15B, NoRegister, NoRegister, R15D,
+            R15B, NoRegister, NoRegister, NoRegister, NoRegister, R14, R14W,
+            ESI, SIL, R8B, R8W, R8D, R8W, RSP, ESP, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R9, R9D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, AX, AH, R15, R15D, NoRegister, NoRegister,
+            RSI, SIL, NoRegister, NoRegister, R9D, R9B, R9W, R9B, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, SP, SPL,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R9, R9W, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, BP, BPL, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, AH, RAX, AL, RAX, AX, RAX, AX, AL, ESP, SPL,
+            NoRegister, NoRegister, EAX, AH, R9B, R9D, NoRegister, NoRegister,
+            R9W, R9D, BPL, RBP, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R15, R15B, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, EBP, BPL, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, AH, AX, AL, AX, NoRegister,
+            NoRegister, NoRegister, NoRegister, BP, RBP, EAX, AL, EAX, RAX, R9D,
+            R9W, R9B, R9W, NoRegister, NoRegister, RAX, AH, NoRegister,
+            NoRegister, RSP, SPL, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, RBP, BPL, NoRegister,
+            NoRegister, NoRegister, NoRegister, BH, RBX, BL, RBX, NoRegister,
+            NoRegister, BX, RBX, BX, BH, EAX, AX, NoRegister, NoRegister,
+            NoRegister, NoRegister, RAX, AL, EBP, RBP, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, BX, BL,
+            EBX, BH, CH, RCX, NoRegister, NoRegister, BPL, BP, NoRegister,
+            NoRegister, CX, RCX, NoRegister, NoRegister, CL, RCX, NoRegister,
+            NoRegister, RAX, AX, NoRegister, NoRegister, EBX, RBX, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, DIL, RDI,
+            NoRegister, NoRegister, EBX, BL, NoRegister, NoRegister, ECX, RCX,
+            DI, RDI, NoRegister, NoRegister, RBX, BH, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, BH, BX, BL, BX, NoRegister,
+            NoRegister, EBP, BP, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, EDI, RDI, DH, RDX, RBX, BL, DL, RDX,
+            NoRegister, NoRegister, DX, RDX, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, SIL, RSI, EBX, BX, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, CX, CH, NoRegister, NoRegister,
+            EDX, RDX, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, RBP, BP, NoRegister, NoRegister, IP, RIP,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, SPL,
+            RSP, NoRegister, NoRegister, ECX, CH, NoRegister, NoRegister, EIP,
+            RIP, DI, DIL, RBX, BX, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, SI, RSI, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R10B,
+            R10D, NoRegister, NoRegister, NoRegister, NoRegister, CX, CL, R10W,
+            R10D, EDI, DIL, NoRegister, NoRegister, ESI, RSI, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, RCX, CH,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, SP, RSP, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R10D, R10B, NoRegister, NoRegister, NoRegister,
+            NoRegister, ECX, CL, NoRegister, NoRegister, R10W, R10B, NoRegister,
+            NoRegister, ESP, RSP, NoRegister, NoRegister, RDI, DIL, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, CH, CX, NoRegister, NoRegister,
+            CL, CX, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R11D, R11W, R11B, R11W, RCX, CL, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R10, R10D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, ECX, CX, R12D, R12B,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, DX, DH, NoRegister, NoRegister,
+            R12W, R12B, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R10, R10B,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, DIL, DI, NoRegister, NoRegister, R12B, R12D,
+            NoRegister, NoRegister, EDX, DH, RCX, CX, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R12W, R12D, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R11, R11W,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R10D, R10W, R10B, R10W, NoRegister, NoRegister,
+            NoRegister, NoRegister, EDI, DI, AH, EAX, AL, EAX, AX, EAX, RDX, DH,
+            DX, DL, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, BPL,
+            EBP, NoRegister, NoRegister, R12, R12B, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R11W,
+            R11D, NoRegister, NoRegister, NoRegister, NoRegister, EDX, DL,
+            NoRegister, NoRegister, R11B, R11D, NoRegister, NoRegister, RDI, DI,
+            BP, EBP, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, R12, R12D, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R10D, R10, R10B,
+            R10, NoRegister, NoRegister, R11W, R11B, NoRegister, NoRegister,
+            R10W, R10, DH, DX, R11D, R11B, DL, DX, BH, EBX, BL, EBX, RDX, DL,
+            BX, EBX, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, RAX, EAX, R10, R10W, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R12B, R12, R12D, R12, NoRegister, NoRegister, EDX, DX,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R12W, R12, NoRegister,
+            NoRegister, R13B, R13W, R13D, R13W, NoRegister, NoRegister,
+            NoRegister, NoRegister, RBP, EBP, NoRegister, NoRegister, R11, R11D,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R11W, R11, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R11D,
+            R11, R11B, R11, NoRegister, NoRegister, RDX, DX, NoRegister,
+            NoRegister, R14B, R14D, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, R14W,
+            R14D, NoRegister, NoRegister, RBX, EBX, R11, R11B, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R14D, R14, R14D, R14B, NoRegister, NoRegister, R14B,
+            R14, CH, ECX, NoRegister, NoRegister, R14W, R14, R14W, R14B, CL,
+            ECX, NoRegister, NoRegister, CX, ECX, NoRegister, NoRegister, R13,
+            R13W, NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, R12B, R12W, R12D, R12W,
+            NoRegister, NoRegister, NoRegister, NoRegister, R13W, R13,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R13B, R13, R13D, R13, DIL, EDI, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, DI, EDI, R14, R14D, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, EIP, IP, NoRegister, NoRegister,
+            R13W, R13B, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R13D, R13B,
+            NoRegister, NoRegister, R15W, R15, R15B, R15, R15D, R15, RCX, ECX,
+            DH, EDX, NoRegister, NoRegister, DL, EDX, NoRegister, NoRegister,
+            DX, EDX, NoRegister, NoRegister, R14, R14B, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, SIL, SI,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, R13W, R13D, RIP, IP,
+            NoRegister, NoRegister, NoRegister, NoRegister, SIL, ESI,
+            NoRegister, NoRegister, R13B, R13D, NoRegister, NoRegister,
+            NoRegister, NoRegister, R12, R12W, NoRegister, NoRegister, RDI, EDI,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister, IP, EIP,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, R8B, R8, R8D, R8, R8W, R8, NoRegister, NoRegister, R8,
+            R8B, SPL, SP, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, NoRegister,
+            NoRegister, NoRegister, NoRegister, NoRegister, };
+    public final static int AliasesHashTableSize = 1024;
+
+    // Register Alias Sets...
+    public static final int[] Empty_AliasSet = {};
+    public static final int[] FP3_AliasSet = {};
+    public static final int[] MM5_AliasSet = {};
+    public static final int[] YMM8_AliasSet = {};
+    public static final int[] MM7_AliasSet = {};
+    public static final int[] R15B_AliasSet = { R15, R15D, R15W, };
+    public static final int[] CX_AliasSet = { CH, CL, ECX, RCX, };
+    public static final int[] RCX_AliasSet = { CH, CL, CX, ECX, };
+    public static final int[] YMM7_AliasSet = {};
+    public static final int[] XMM4_AliasSet = {};
+    public static final int[] R13W_AliasSet = { R13, R13B, R13D, };
+    public static final int[] RSI_AliasSet = { ESI, SI, SIL, };
+    public static final int[] MM1_AliasSet = {};
+    public static final int[] YMM5_AliasSet = {};
+    public static final int[] YMM10_AliasSet = {};
+    public static final int[] YMM9_AliasSet = {};
+    public static final int[] R14B_AliasSet = { R14, R14D, R14W, };
+    public static final int[] R13D_AliasSet = { R13, R13B, R13W, };
+    public static final int[] XMM10_AliasSet = {};
+    public static final int[] SI_AliasSet = { ESI, RSI, SIL, };
+    public static final int[] ST5_AliasSet = {};
+    public static final int[] MM0_AliasSet = {};
+    public static final int[] DS_AliasSet = {};
+    public static final int[] MM4_AliasSet = {};
+    public static final int[] R13B_AliasSet = { R13, R13D, R13W, };
+    public static final int[] AH_AliasSet = { AX, EAX, RAX, };
+    public static final int[] RAX_AliasSet = { AH, AL, AX, EAX, };
+    public static final int[] DH_AliasSet = { DX, EDX, RDX, };
+    public static final int[] EBX_AliasSet = { BH, BL, BX, RBX, };
+    public static final int[] BPL_AliasSet = { BP, EBP, RBP, };
+    public static final int[] R14W_AliasSet = { R14, R14B, R14D, };
+    public static final int[] MM2_AliasSet = {};
+    public static final int[] R10D_AliasSet = { R10, R10B, R10W, };
+    public static final int[] IP_AliasSet = { EIP, RIP, };
+    public static final int[] R14_AliasSet = { R14B, R14D, R14W, };
+    public static final int[] FP0_AliasSet = {};
+    public static final int[] YMM4_AliasSet = {};
+    public static final int[] XMM14_AliasSet = {};
+    public static final int[] YMM13_AliasSet = {};
+    public static final int[] R15D_AliasSet = { R15, R15B, R15W, };
+    public static final int[] ST4_AliasSet = {};
+    public static final int[] FP4_AliasSet = {};
+    public static final int[] EDX_AliasSet = { DH, DL, DX, RDX, };
+    public static final int[] XMM5_AliasSet = {};
+    public static final int[] AL_AliasSet = { AX, EAX, RAX, };
+    public static final int[] R9B_AliasSet = { R9, R9D, R9W, };
+    public static final int[] FS_AliasSet = {};
+    public static final int[] ESP_AliasSet = { RSP, SP, SPL, };
+    public static final int[] RSP_AliasSet = { ESP, SP, SPL, };
+    public static final int[] RBP_AliasSet = { BP, BPL, EBP, };
+    public static final int[] XMM3_AliasSet = {};
+    public static final int[] BX_AliasSet = { BH, BL, EBX, RBX, };
+    public static final int[] CL_AliasSet = { CX, ECX, RCX, };
+    public static final int[] CS_AliasSet = {};
+    public static final int[] FP1_AliasSet = {};
+    public static final int[] R9_AliasSet = { R9B, R9D, R9W, };
+    public static final int[] ST0_AliasSet = {};
+    public static final int[] R9D_AliasSet = { R9, R9B, R9W, };
+    public static final int[] RDI_AliasSet = { DI, DIL, EDI, };
+    public static final int[] R12_AliasSet = { R12B, R12D, R12W, };
+    public static final int[] DX_AliasSet = { DH, DL, EDX, RDX, };
+    public static final int[] R8B_AliasSet = { R8, R8D, R8W, };
+    public static final int[] R10B_AliasSet = { R10, R10D, R10W, };
+    public static final int[] FP6_AliasSet = {};
+    public static final int[] SPL_AliasSet = { ESP, RSP, SP, };
+    public static final int[] ST3_AliasSet = {};
+    public static final int[] MM3_AliasSet = {};
+    public static final int[] DI_AliasSet = { DIL, EDI, RDI, };
+    public static final int[] XMM6_AliasSet = {};
+    public static final int[] YMM12_AliasSet = {};
+    public static final int[] R12D_AliasSet = { R12, R12B, R12W, };
+    public static final int[] XMM15_AliasSet = {};
+    public static final int[] R12B_AliasSet = { R12, R12D, R12W, };
+    public static final int[] XMM8_AliasSet = {};
+    public static final int[] ST2_AliasSet = {};
+    public static final int[] YMM14_AliasSet = {};
+    public static final int[] XMM1_AliasSet = {};
+    public static final int[] YMM6_AliasSet = {};
+    public static final int[] BL_AliasSet = { BX, EBX, RBX, };
+    public static final int[] R8D_AliasSet = { R8, R8B, R8W, };
+    public static final int[] RDX_AliasSet = { DH, DL, DX, EDX, };
+    public static final int[] SS_AliasSet = {};
+    public static final int[] XMM11_AliasSet = {};
+    public static final int[] FP5_AliasSet = {};
+    public static final int[] R11B_AliasSet = { R11, R11D, R11W, };
+    public static final int[] DIL_AliasSet = { DI, EDI, RDI, };
+    public static final int[] ESI_AliasSet = { RSI, SI, SIL, };
+    public static final int[] YMM0_AliasSet = {};
+    public static final int[] ST7_AliasSet = {};
+    public static final int[] SIL_AliasSet = { ESI, RSI, SI, };
+    public static final int[] CH_AliasSet = { CX, ECX, RCX, };
+    public static final int[] R10W_AliasSet = { R10, R10B, R10D, };
+    public static final int[] R11_AliasSet = { R11B, R11D, R11W, };
+    public static final int[] R11W_AliasSet = { R11, R11B, R11D, };
+    public static final int[] RBX_AliasSet = { BH, BL, BX, EBX, };
+    public static final int[] AX_AliasSet = { AH, AL, EAX, RAX, };
+    public static final int[] YMM2_AliasSet = {};
+    public static final int[] RIP_AliasSet = { EIP, IP, };
+    public static final int[] EDI_AliasSet = { DI, DIL, RDI, };
+    public static final int[] R15_AliasSet = { R15B, R15D, R15W, };
+    public static final int[] R9W_AliasSet = { R9, R9B, R9D, };
+    public static final int[] ST1_AliasSet = {};
+    public static final int[] MM6_AliasSet = {};
+    public static final int[] ST6_AliasSet = {};
+    public static final int[] GS_AliasSet = {};
+    public static final int[] R13_AliasSet = { R13B, R13D, R13W, };
+    public static final int[] YMM1_AliasSet = {};
+    public static final int[] ECX_AliasSet = { CH, CL, CX, RCX, };
+    public static final int[] XMM7_AliasSet = {};
+    public static final int[] R12W_AliasSet = { R12, R12B, R12D, };
+    public static final int[] YMM3_AliasSet = {};
+    public static final int[] BH_AliasSet = { BX, EBX, RBX, };
+    public static final int[] R10_AliasSet = { R10B, R10D, R10W, };
+    public static final int[] YMM11_AliasSet = {};
+    public static final int[] EBP_AliasSet = { BP, BPL, RBP, };
+    public static final int[] EIP_AliasSet = { IP, RIP, };
+    public static final int[] DL_AliasSet = { DX, EDX, RDX, };
+    public static final int[] EAX_AliasSet = { AH, AL, AX, RAX, };
+    public static final int[] YMM15_AliasSet = {};
+    public static final int[] XMM12_AliasSet = {};
+    public static final int[] XMM13_AliasSet = {};
+    public static final int[] XMM2_AliasSet = {};
+    public static final int[] R14D_AliasSet = { R14, R14B, R14W, };
+    public static final int[] R11D_AliasSet = { R11, R11B, R11W, };
+    public static final int[] XMM0_AliasSet = {};
+    public static final int[] XMM9_AliasSet = {};
+    public static final int[] FP2_AliasSet = {};
+    public static final int[] R8_AliasSet = { R8B, R8D, R8W, };
+    public static final int[] SP_AliasSet = { ESP, RSP, SPL, };
+    public static final int[] BP_AliasSet = { BPL, EBP, RBP, };
+    public static final int[] ES_AliasSet = {};
+    public static final int[] R15W_AliasSet = { R15, R15B, R15D, };
+    public static final int[] R8W_AliasSet = { R8, R8B, R8D, };
+    public static final int[] EFLAGS_AliasSet = {};
+
+    // Register Sub-registers Sets...
+    public static final int[] Empty_SubRegsSet = {};
+    public static final int[] FP3_SubRegsSet = {};
+    public static final int[] MM5_SubRegsSet = {};
+    public static final int[] YMM8_SubRegsSet = {};
+    public static final int[] MM7_SubRegsSet = {};
+    public static final int[] R15B_SubRegsSet = {};
+    public static final int[] CX_SubRegsSet = { CH, CL, };
+    public static final int[] RCX_SubRegsSet = { ECX, CX, CH, CL, };
+    public static final int[] YMM7_SubRegsSet = {};
+    public static final int[] XMM4_SubRegsSet = {};
+    public static final int[] R13W_SubRegsSet = { R13B, };
+    public static final int[] RSI_SubRegsSet = { ESI, SI, SIL, };
+    public static final int[] MM1_SubRegsSet = {};
+    public static final int[] YMM5_SubRegsSet = {};
+    public static final int[] YMM10_SubRegsSet = {};
+    public static final int[] YMM9_SubRegsSet = {};
+    public static final int[] R14B_SubRegsSet = {};
+    public static final int[] R13D_SubRegsSet = { R13W, R13B, };
+    public static final int[] XMM10_SubRegsSet = {};
+    public static final int[] SI_SubRegsSet = { SIL, };
+    public static final int[] ST5_SubRegsSet = {};
+    public static final int[] MM0_SubRegsSet = {};
+    public static final int[] DS_SubRegsSet = {};
+    public static final int[] MM4_SubRegsSet = {};
+    public static final int[] R13B_SubRegsSet = {};
+    public static final int[] AH_SubRegsSet = {};
+    public static final int[] RAX_SubRegsSet = { EAX, AX, AH, AL, };
+    public static final int[] DH_SubRegsSet = {};
+    public static final int[] EBX_SubRegsSet = { BX, BH, BL, };
+    public static final int[] BPL_SubRegsSet = {};
+    public static final int[] R14W_SubRegsSet = { R14B, };
+    public static final int[] MM2_SubRegsSet = {};
+    public static final int[] R10D_SubRegsSet = { R10W, R10B, };
+    public static final int[] IP_SubRegsSet = {};
+    public static final int[] R14_SubRegsSet = { R14D, R14W, R14B, };
+    public static final int[] FP0_SubRegsSet = {};
+    public static final int[] YMM4_SubRegsSet = {};
+    public static final int[] XMM14_SubRegsSet = {};
+    public static final int[] YMM13_SubRegsSet = {};
+    public static final int[] R15D_SubRegsSet = { R15W, R15B, };
+    public static final int[] ST4_SubRegsSet = {};
+    public static final int[] FP4_SubRegsSet = {};
+    public static final int[] XMM5_SubRegsSet = {};
+    public static final int[] EDX_SubRegsSet = { DX, DH, DL, };
+    public static final int[] AL_SubRegsSet = {};
+    public static final int[] FS_SubRegsSet = {};
+    public static final int[] R9B_SubRegsSet = {};
+    public static final int[] ESP_SubRegsSet = { SP, SPL, };
+    public static final int[] RSP_SubRegsSet = { ESP, SP, SPL, };
+    public static final int[] RBP_SubRegsSet = { EBP, BP, BPL, };
+    public static final int[] XMM3_SubRegsSet = {};
+    public static final int[] BX_SubRegsSet = { BH, BL, };
+    public static final int[] CL_SubRegsSet = {};
+    public static final int[] CS_SubRegsSet = {};
+    public static final int[] FP1_SubRegsSet = {};
+    public static final int[] R9_SubRegsSet = { R9D, R9W, R9B, };
+    public static final int[] ST0_SubRegsSet = {};
+    public static final int[] R9D_SubRegsSet = { R9W, R9B, };
+    public static final int[] RDI_SubRegsSet = { EDI, DI, DIL, };
+    public static final int[] R12_SubRegsSet = { R12D, R12W, R12B, };
+    public static final int[] DX_SubRegsSet = { DH, DL, };
+    public static final int[] R8B_SubRegsSet = {};
+    public static final int[] R10B_SubRegsSet = {};
+    public static final int[] FP6_SubRegsSet = {};
+    public static final int[] SPL_SubRegsSet = {};
+    public static final int[] ST3_SubRegsSet = {};
+    public static final int[] MM3_SubRegsSet = {};
+    public static final int[] DI_SubRegsSet = { DIL, };
+    public static final int[] XMM6_SubRegsSet = {};
+    public static final int[] YMM12_SubRegsSet = {};
+    public static final int[] R12D_SubRegsSet = { R12W, R12B, };
+    public static final int[] XMM15_SubRegsSet = {};
+    public static final int[] R12B_SubRegsSet = {};
+    public static final int[] XMM8_SubRegsSet = {};
+    public static final int[] ST2_SubRegsSet = {};
+    public static final int[] YMM14_SubRegsSet = {};
+    public static final int[] XMM1_SubRegsSet = {};
+    public static final int[] YMM6_SubRegsSet = {};
+    public static final int[] BL_SubRegsSet = {};
+    public static final int[] R8D_SubRegsSet = { R8W, R8B, };
+    public static final int[] RDX_SubRegsSet = { EDX, DX, DH, DL, };
+    public static final int[] SS_SubRegsSet = {};
+    public static final int[] XMM11_SubRegsSet = {};
+    public static final int[] FP5_SubRegsSet = {};
+    public static final int[] R11B_SubRegsSet = {};
+    public static final int[] DIL_SubRegsSet = {};
+    public static final int[] ESI_SubRegsSet = { SI, SIL, };
+    public static final int[] YMM0_SubRegsSet = {};
+    public static final int[] ST7_SubRegsSet = {};
+    public static final int[] SIL_SubRegsSet = {};
+    public static final int[] CH_SubRegsSet = {};
+    public static final int[] R10W_SubRegsSet = { R10B, };
+    public static final int[] R11_SubRegsSet = { R11D, R11W, R11B, };
+    public static final int[] R11W_SubRegsSet = { R11B, };
+    public static final int[] RBX_SubRegsSet = { EBX, BX, BH, BL, };
+    public static final int[] AX_SubRegsSet = { AH, AL, };
+    public static final int[] YMM2_SubRegsSet = {};
+    public static final int[] RIP_SubRegsSet = { EIP, IP, };
+    public static final int[] EDI_SubRegsSet = { DI, DIL, };
+    public static final int[] R15_SubRegsSet = { R15D, R15W, R15B, };
+    public static final int[] R9W_SubRegsSet = { R9B, };
+    public static final int[] ST1_SubRegsSet = {};
+    public static final int[] MM6_SubRegsSet = {};
+    public static final int[] ST6_SubRegsSet = {};
+    public static final int[] GS_SubRegsSet = {};
+    public static final int[] R13_SubRegsSet = { R13D, R13W, R13B, };
+    public static final int[] YMM1_SubRegsSet = {};
+    public static final int[] ECX_SubRegsSet = { CX, CH, CL, };
+    public static final int[] XMM7_SubRegsSet = {};
+    public static final int[] R12W_SubRegsSet = { R12B, };
+    public static final int[] YMM3_SubRegsSet = {};
+    public static final int[] BH_SubRegsSet = {};
+    public static final int[] YMM11_SubRegsSet = {};
+    public static final int[] R10_SubRegsSet = { R10D, R10W, R10B, };
+    public static final int[] EBP_SubRegsSet = { BP, BPL, };
+    public static final int[] EIP_SubRegsSet = { IP, };
+    public static final int[] DL_SubRegsSet = {};
+    public static final int[] EAX_SubRegsSet = { AX, AH, AL, };
+    public static final int[] YMM15_SubRegsSet = {};
+    public static final int[] XMM12_SubRegsSet = {};
+    public static final int[] XMM13_SubRegsSet = {};
+    public static final int[] XMM2_SubRegsSet = {};
+    public static final int[] R14D_SubRegsSet = { R14W, R14B, };
+    public static final int[] R11D_SubRegsSet = { R11W, R11B, };
+    public static final int[] XMM0_SubRegsSet = {};
+    public static final int[] XMM9_SubRegsSet = {};
+    public static final int[] FP2_SubRegsSet = {};
+    public static final int[] R8_SubRegsSet = { R8D, R8W, R8B, };
+    public static final int[] SP_SubRegsSet = { SPL, };
+    public static final int[] BP_SubRegsSet = { BPL, };
+    public static final int[] ES_SubRegsSet = {};
+    public static final int[] R15W_SubRegsSet = { R15B, };
+    public static final int[] EFLAGS_SubRegsSet = {};
+    public static final int[] R8W_SubRegsSet = { R8B, };
+
+    // Register Super-registers Sets...
+    public static final int[] Empty_SuperRegsSet = { 0 };
+    public static final int[] FP3_SuperRegsSet = {};
+    public static final int[] MM5_SuperRegsSet = {};
+    public static final int[] YMM8_SuperRegsSet = {};
+    public static final int[] MM7_SuperRegsSet = {};
+    public static final int[] R15B_SuperRegsSet = { R15, R15D, R15W, };
+    public static final int[] CX_SuperRegsSet = { RCX, ECX, };
+    public static final int[] RCX_SuperRegsSet = {};
+    public static final int[] YMM7_SuperRegsSet = {};
+    public static final int[] XMM4_SuperRegsSet = {};
+    public static final int[] R13W_SuperRegsSet = { R13, R13D, };
+    public static final int[] RSI_SuperRegsSet = {};
+    public static final int[] MM1_SuperRegsSet = {};
+    public static final int[] YMM5_SuperRegsSet = {};
+    public static final int[] YMM10_SuperRegsSet = {};
+    public static final int[] YMM9_SuperRegsSet = {};
+    public static final int[] R14B_SuperRegsSet = { R14, R14D, R14W, };
+    public static final int[] R13D_SuperRegsSet = { R13, };
+    public static final int[] XMM10_SuperRegsSet = {};
+    public static final int[] SI_SuperRegsSet = { RSI, ESI, };
+    public static final int[] ST5_SuperRegsSet = {};
+    public static final int[] MM0_SuperRegsSet = {};
+    public static final int[] DS_SuperRegsSet = {};
+    public static final int[] MM4_SuperRegsSet = {};
+    public static final int[] R13B_SuperRegsSet = { R13, R13D, R13W, };
+    public static final int[] AH_SuperRegsSet = { RAX, EAX, AX, };
+    public static final int[] RAX_SuperRegsSet = {};
+    public static final int[] DH_SuperRegsSet = { RDX, EDX, DX, };
+    public static final int[] EBX_SuperRegsSet = { RBX, };
+    public static final int[] BPL_SuperRegsSet = { RBP, EBP, BP, };
+    public static final int[] R14W_SuperRegsSet = { R14, R14D, };
+    public static final int[] MM2_SuperRegsSet = {};
+    public static final int[] R10D_SuperRegsSet = { R10, };
+    public static final int[] IP_SuperRegsSet = { RIP, EIP, };
+    public static final int[] R14_SuperRegsSet = {};
+    public static final int[] FP0_SuperRegsSet = {};
+    public static final int[] YMM4_SuperRegsSet = {};
+    public static final int[] XMM14_SuperRegsSet = {};
+    public static final int[] YMM13_SuperRegsSet = {};
+    public static final int[] R15D_SuperRegsSet = { R15, };
+    public static final int[] ST4_SuperRegsSet = {};
+    public static final int[] FP4_SuperRegsSet = {};
+    public static final int[] EDX_SuperRegsSet = { RDX, };
+    public static final int[] XMM5_SuperRegsSet = {};
+    public static final int[] AL_SuperRegsSet = { RAX, EAX, AX, };
+    public static final int[] R9B_SuperRegsSet = { R9, R9D, R9W, };
+    public static final int[] FS_SuperRegsSet = {};
+    public static final int[] ESP_SuperRegsSet = { RSP, };
+    public static final int[] RSP_SuperRegsSet = {};
+    public static final int[] RBP_SuperRegsSet = {};
+    public static final int[] XMM3_SuperRegsSet = {};
+    public static final int[] CL_SuperRegsSet = { RCX, ECX, CX, };
+    public static final int[] BX_SuperRegsSet = { RBX, EBX, };
+    public static final int[] CS_SuperRegsSet = {};
+    public static final int[] FP1_SuperRegsSet = {};
+    public static final int[] R9_SuperRegsSet = {};
+    public static final int[] ST0_SuperRegsSet = {};
+    public static final int[] R9D_SuperRegsSet = { R9, };
+    public static final int[] RDI_SuperRegsSet = {};
+    public static final int[] R12_SuperRegsSet = {};
+    public static final int[] DX_SuperRegsSet = { RDX, EDX, };
+    public static final int[] R8B_SuperRegsSet = { R8, R8D, R8W, };
+    public static final int[] R10B_SuperRegsSet = { R10, R10D, R10W, };
+    public static final int[] FP6_SuperRegsSet = {};
+    public static final int[] SPL_SuperRegsSet = { RSP, ESP, SP, };
+    public static final int[] ST3_SuperRegsSet = {};
+    public static final int[] MM3_SuperRegsSet = {};
+    public static final int[] DI_SuperRegsSet = { RDI, EDI, };
+    public static final int[] XMM6_SuperRegsSet = {};
+    public static final int[] YMM12_SuperRegsSet = {};
+    public static final int[] R12D_SuperRegsSet = { R12, };
+    public static final int[] XMM15_SuperRegsSet = {};
+    public static final int[] R12B_SuperRegsSet = { R12, R12D, R12W, };
+    public static final int[] XMM8_SuperRegsSet = {};
+    public static final int[] ST2_SuperRegsSet = {};
+    public static final int[] YMM14_SuperRegsSet = {};
+    public static final int[] XMM1_SuperRegsSet = {};
+    public static final int[] YMM6_SuperRegsSet = {};
+    public static final int[] BL_SuperRegsSet = { RBX, EBX, BX, };
+    public static final int[] R8D_SuperRegsSet = { R8, };
+    public static final int[] RDX_SuperRegsSet = {};
+    public static final int[] SS_SuperRegsSet = {};
+    public static final int[] XMM11_SuperRegsSet = {};
+    public static final int[] FP5_SuperRegsSet = {};
+    public static final int[] R11B_SuperRegsSet = { R11, R11D, R11W, };
+    public static final int[] DIL_SuperRegsSet = { RDI, EDI, DI, };
+    public static final int[] ESI_SuperRegsSet = { RSI, };
+    public static final int[] YMM0_SuperRegsSet = {};
+    public static final int[] ST7_SuperRegsSet = {};
+    public static final int[] SIL_SuperRegsSet = { RSI, ESI, SI, };
+    public static final int[] CH_SuperRegsSet = { RCX, ECX, CX, };
+    public static final int[] R10W_SuperRegsSet = { R10, R10D, };
+    public static final int[] R11_SuperRegsSet = {};
+    public static final int[] R11W_SuperRegsSet = { R11, R11D, };
+    public static final int[] RBX_SuperRegsSet = {};
+    public static final int[] AX_SuperRegsSet = { RAX, EAX, };
+    public static final int[] YMM2_SuperRegsSet = {};
+    public static final int[] RIP_SuperRegsSet = {};
+    public static final int[] EDI_SuperRegsSet = { RDI, };
+    public static final int[] R15_SuperRegsSet = {};
+    public static final int[] R9W_SuperRegsSet = { R9, R9D, };
+    public static final int[] ST1_SuperRegsSet = {};
+    public static final int[] MM6_SuperRegsSet = {};
+    public static final int[] ST6_SuperRegsSet = {};
+    public static final int[] GS_SuperRegsSet = {};
+    public static final int[] R13_SuperRegsSet = {};
+    public static final int[] YMM1_SuperRegsSet = {};
+    public static final int[] ECX_SuperRegsSet = { RCX, };
+    public static final int[] XMM7_SuperRegsSet = {};
+    public static final int[] R12W_SuperRegsSet = { R12, R12D, };
+    public static final int[] YMM3_SuperRegsSet = {};
+    public static final int[] BH_SuperRegsSet = { RBX, EBX, BX, };
+    public static final int[] YMM11_SuperRegsSet = {};
+    public static final int[] R10_SuperRegsSet = {};
+    public static final int[] EBP_SuperRegsSet = { RBP, };
+    public static final int[] EIP_SuperRegsSet = { RIP, };
+    public static final int[] DL_SuperRegsSet = { RDX, EDX, DX, };
+    public static final int[] EAX_SuperRegsSet = { RAX, };
+    public static final int[] YMM15_SuperRegsSet = {};
+    public static final int[] XMM12_SuperRegsSet = {};
+    public static final int[] XMM13_SuperRegsSet = {};
+    public static final int[] XMM2_SuperRegsSet = {};
+    public static final int[] R14D_SuperRegsSet = { R14, };
+    public static final int[] R11D_SuperRegsSet = { R11, };
+    public static final int[] XMM0_SuperRegsSet = {};
+    public static final int[] XMM9_SuperRegsSet = {};
+    public static final int[] FP2_SuperRegsSet = {};
+    public static final int[] R8_SuperRegsSet = {};
+    public static final int[] SP_SuperRegsSet = { RSP, ESP, };
+    public static final int[] BP_SuperRegsSet = { RBP, EBP, };
+    public static final int[] ES_SuperRegsSet = {};
+    public static final int[] R15W_SuperRegsSet = { R15, R15D, };
+    public static final int[] R8W_SuperRegsSet = { R8, R8D, };
+    public static final int[] EFLAGS_SuperRegsSet = {};
+
+    public static final TargetRegisterDesc[] registerDescriptors = {
+            // Descriptor
+            new TargetRegisterDesc("NOREG", "NOREG", null, null, null),
+            new TargetRegisterDesc("sil", "SIL", SIL_AliasSet, SIL_SubRegsSet,
+                    SIL_SuperRegsSet),
+            new TargetRegisterDesc("flags", "EFLAGS", EFLAGS_AliasSet,
+                    EFLAGS_SubRegsSet, EFLAGS_SuperRegsSet),
+            new TargetRegisterDesc("spl", "SPL", SPL_AliasSet, SPL_SubRegsSet,
+                    SPL_SuperRegsSet),
+            new TargetRegisterDesc("bpl", "BPL", BPL_AliasSet, BPL_SubRegsSet,
+                    BPL_SuperRegsSet),
+            new TargetRegisterDesc("st(0)", "ST0", ST0_AliasSet, ST0_SubRegsSet,
+                    ST0_SuperRegsSet),
+            new TargetRegisterDesc("st(2)", "ST2", ST2_AliasSet, ST2_SubRegsSet,
+                    ST2_SuperRegsSet),
+            new TargetRegisterDesc("st(1)", "ST1", ST1_AliasSet, ST1_SubRegsSet,
+                    ST1_SuperRegsSet),
+            new TargetRegisterDesc("st(4)", "ST4", ST4_AliasSet, ST4_SubRegsSet,
+                    ST4_SuperRegsSet),
+            new TargetRegisterDesc("st(3)", "ST3", ST3_AliasSet, ST3_SubRegsSet,
+                    ST3_SuperRegsSet),
+            new TargetRegisterDesc("st(6)", "ST6", ST6_AliasSet, ST6_SubRegsSet,
+                    ST6_SuperRegsSet),
+            new TargetRegisterDesc("st(5)", "ST5", ST5_AliasSet, ST5_SubRegsSet,
+                    ST5_SuperRegsSet),
+            new TargetRegisterDesc("st(7)", "ST7", ST7_AliasSet, ST7_SubRegsSet,
+                    ST7_SuperRegsSet),
+            new TargetRegisterDesc("r10d", "R10D", R10D_AliasSet,
+                    R10D_SubRegsSet, R10D_SuperRegsSet),
+            new TargetRegisterDesc("r10b", "R10B", R10B_AliasSet,
+                    R10B_SubRegsSet, R10B_SuperRegsSet),
+            new TargetRegisterDesc("r11w", "R11W", R11W_AliasSet,
+                    R11W_SubRegsSet, R11W_SuperRegsSet),
+            new TargetRegisterDesc("r12b", "R12B", R12B_AliasSet,
+                    R12B_SubRegsSet, R12B_SuperRegsSet),
+            new TargetRegisterDesc("r12d", "R12D", R12D_AliasSet,
+                    R12D_SubRegsSet, R12D_SuperRegsSet),
+            new TargetRegisterDesc("r10w", "R10W", R10W_AliasSet,
+                    R10W_SubRegsSet, R10W_SuperRegsSet),
+            new TargetRegisterDesc("r11d", "R11D", R11D_AliasSet,
+                    R11D_SubRegsSet, R11D_SuperRegsSet),
+            new TargetRegisterDesc("r11b", "R11B", R11B_AliasSet,
+                    R11B_SubRegsSet, R11B_SuperRegsSet),
+            new TargetRegisterDesc("r13w", "R13W", R13W_AliasSet,
+                    R13W_SubRegsSet, R13W_SuperRegsSet),
+            new TargetRegisterDesc("r14d", "R14D", R14D_AliasSet,
+                    R14D_SubRegsSet, R14D_SuperRegsSet),
+            new TargetRegisterDesc("r14b", "R14B", R14B_AliasSet,
+                    R14B_SubRegsSet, R14B_SuperRegsSet),
+            new TargetRegisterDesc("r12w", "R12W", R12W_AliasSet,
+                    R12W_SubRegsSet, R12W_SuperRegsSet),
+            new TargetRegisterDesc("r13b", "R13B", R13B_AliasSet,
+                    R13B_SubRegsSet, R13B_SuperRegsSet),
+            new TargetRegisterDesc("r13d", "R13D", R13D_AliasSet,
+                    R13D_SubRegsSet, R13D_SuperRegsSet),
+            new TargetRegisterDesc("r15w", "R15W", R15W_AliasSet,
+                    R15W_SubRegsSet, R15W_SuperRegsSet),
+            new TargetRegisterDesc("r14w", "R14W", R14W_AliasSet,
+                    R14W_SubRegsSet, R14W_SuperRegsSet),
+            new TargetRegisterDesc("r15d", "R15D", R15D_AliasSet,
+                    R15D_SubRegsSet, R15D_SuperRegsSet),
+            new TargetRegisterDesc("r15b", "R15B", R15B_AliasSet,
+                    R15B_SubRegsSet, R15B_SuperRegsSet),
+            new TargetRegisterDesc("ah", "AH", AH_AliasSet, AH_SubRegsSet,
+                    AH_SuperRegsSet),
+            new TargetRegisterDesc("al", "AL", AL_AliasSet, AL_SubRegsSet,
+                    AL_SuperRegsSet),
+            new TargetRegisterDesc("ax", "AX", AX_AliasSet, AX_SubRegsSet,
+                    AX_SuperRegsSet),
+            new TargetRegisterDesc("bh", "BH", BH_AliasSet, BH_SubRegsSet,
+                    BH_SuperRegsSet),
+            new TargetRegisterDesc("bl", "BL", BL_AliasSet, BL_SubRegsSet,
+                    BL_SuperRegsSet),
+            new TargetRegisterDesc("bp", "BP", BP_AliasSet, BP_SubRegsSet,
+                    BP_SuperRegsSet),
+            new TargetRegisterDesc("bx", "BX", BX_AliasSet, BX_SubRegsSet,
+                    BX_SuperRegsSet),
+            new TargetRegisterDesc("ch", "CH", CH_AliasSet, CH_SubRegsSet,
+                    CH_SuperRegsSet),
+            new TargetRegisterDesc("dil", "DIL", DIL_AliasSet, DIL_SubRegsSet,
+                    DIL_SuperRegsSet),
+            new TargetRegisterDesc("cl", "CL", CL_AliasSet, CL_SubRegsSet,
+                    CL_SuperRegsSet),
+            new TargetRegisterDesc("cs", "CS", CS_AliasSet, CS_SubRegsSet,
+                    CS_SuperRegsSet),
+            new TargetRegisterDesc("cx", "CX", CX_AliasSet, CX_SubRegsSet,
+                    CX_SuperRegsSet),
+            new TargetRegisterDesc("dh", "DH", DH_AliasSet, DH_SubRegsSet,
+                    DH_SuperRegsSet),
+            new TargetRegisterDesc("di", "DI", DI_AliasSet, DI_SubRegsSet,
+                    DI_SuperRegsSet),
+            new TargetRegisterDesc("dl", "DL", DL_AliasSet, DL_SubRegsSet,
+                    DL_SuperRegsSet),
+            new TargetRegisterDesc("ds", "DS", DS_AliasSet, DS_SubRegsSet,
+                    DS_SuperRegsSet),
+            new TargetRegisterDesc("dx", "DX", DX_AliasSet, DX_SubRegsSet,
+                    DX_SuperRegsSet),
+            new TargetRegisterDesc("es", "ES", ES_AliasSet, ES_SubRegsSet,
+                    ES_SuperRegsSet),
+            new TargetRegisterDesc("fs", "FS", FS_AliasSet, FS_SubRegsSet,
+                    FS_SuperRegsSet),
+            new TargetRegisterDesc("gs", "GS", GS_AliasSet, GS_SubRegsSet,
+                    GS_SuperRegsSet),
+            new TargetRegisterDesc("ip", "IP", IP_AliasSet, IP_SubRegsSet,
+                    IP_SuperRegsSet),
+            new TargetRegisterDesc("r8", "R8", R8_AliasSet, R8_SubRegsSet,
+                    R8_SuperRegsSet),
+            new TargetRegisterDesc("r9", "R9", R9_AliasSet, R9_SubRegsSet,
+                    R9_SuperRegsSet),
+            new TargetRegisterDesc("si", "SI", SI_AliasSet, SI_SubRegsSet,
+                    SI_SuperRegsSet),
+            new TargetRegisterDesc("sp", "SP", SP_AliasSet, SP_SubRegsSet,
+                    SP_SuperRegsSet),
+            new TargetRegisterDesc("ss", "SS", SS_AliasSet, SS_SubRegsSet,
+                    SS_SuperRegsSet),
+            new TargetRegisterDesc("mm1", "MM1", MM1_AliasSet, MM1_SubRegsSet,
+                    MM1_SuperRegsSet),
+            new TargetRegisterDesc("mm0", "MM0", MM0_AliasSet, MM0_SubRegsSet,
+                    MM0_SuperRegsSet),
+            new TargetRegisterDesc("mm3", "MM3", MM3_AliasSet, MM3_SubRegsSet,
+                    MM3_SuperRegsSet),
+            new TargetRegisterDesc("mm2", "MM2", MM2_AliasSet, MM2_SubRegsSet,
+                    MM2_SuperRegsSet),
+            new TargetRegisterDesc("mm5", "MM5", MM5_AliasSet, MM5_SubRegsSet,
+                    MM5_SuperRegsSet),
+            new TargetRegisterDesc("mm4", "MM4", MM4_AliasSet, MM4_SubRegsSet,
+                    MM4_SuperRegsSet),
+            new TargetRegisterDesc("mm7", "MM7", MM7_AliasSet, MM7_SubRegsSet,
+                    MM7_SuperRegsSet),
+            new TargetRegisterDesc("mm6", "MM6", MM6_AliasSet, MM6_SubRegsSet,
+                    MM6_SuperRegsSet),
+            new TargetRegisterDesc("xmm1", "XMM1", XMM1_AliasSet,
+                    XMM1_SubRegsSet, XMM1_SuperRegsSet),
+            new TargetRegisterDesc("xmm0", "XMM0", XMM0_AliasSet,
+                    XMM0_SubRegsSet, XMM0_SuperRegsSet),
+            new TargetRegisterDesc("xmm3", "XMM3", XMM3_AliasSet,
+                    XMM3_SubRegsSet, XMM3_SuperRegsSet),
+            new TargetRegisterDesc("xmm2", "XMM2", XMM2_AliasSet,
+                    XMM2_SubRegsSet, XMM2_SuperRegsSet),
+            new TargetRegisterDesc("xmm5", "XMM5", XMM5_AliasSet,
+                    XMM5_SubRegsSet, XMM5_SuperRegsSet),
+            new TargetRegisterDesc("xmm4", "XMM4", XMM4_AliasSet,
+                    XMM4_SubRegsSet, XMM4_SuperRegsSet),
+            new TargetRegisterDesc("xmm7", "XMM7", XMM7_AliasSet,
+                    XMM7_SubRegsSet, XMM7_SuperRegsSet),
+            new TargetRegisterDesc("xmm6", "XMM6", XMM6_AliasSet,
+                    XMM6_SubRegsSet, XMM6_SuperRegsSet),
+            new TargetRegisterDesc("eax", "EAX", EAX_AliasSet, EAX_SubRegsSet,
+                    EAX_SuperRegsSet),
+            new TargetRegisterDesc("ebp", "EBP", EBP_AliasSet, EBP_SubRegsSet,
+                    EBP_SuperRegsSet),
+            new TargetRegisterDesc("ebx", "EBX", EBX_AliasSet, EBX_SubRegsSet,
+                    EBX_SuperRegsSet),
+            new TargetRegisterDesc("xmm9", "XMM9", XMM9_AliasSet,
+                    XMM9_SubRegsSet, XMM9_SuperRegsSet),
+            new TargetRegisterDesc("xmm8", "XMM8", XMM8_AliasSet,
+                    XMM8_SubRegsSet, XMM8_SuperRegsSet),
+            new TargetRegisterDesc("ecx", "ECX", ECX_AliasSet, ECX_SubRegsSet,
+                    ECX_SuperRegsSet),
+            new TargetRegisterDesc("edi", "EDI", EDI_AliasSet, EDI_SubRegsSet,
+                    EDI_SuperRegsSet),
+            new TargetRegisterDesc("edx", "EDX", EDX_AliasSet, EDX_SubRegsSet,
+                    EDX_SuperRegsSet),
+            new TargetRegisterDesc("eip", "EIP", EIP_AliasSet, EIP_SubRegsSet,
+                    EIP_SuperRegsSet),
+            new TargetRegisterDesc("esi", "ESI", ESI_AliasSet, ESI_SubRegsSet,
+                    ESI_SuperRegsSet),
+            new TargetRegisterDesc("esp", "ESP", ESP_AliasSet, ESP_SubRegsSet,
+                    ESP_SuperRegsSet),
+            new TargetRegisterDesc("fp1", "FP1", FP1_AliasSet, FP1_SubRegsSet,
+                    FP1_SuperRegsSet),
+            new TargetRegisterDesc("fp0", "FP0", FP0_AliasSet, FP0_SubRegsSet,
+                    FP0_SuperRegsSet),
+            new TargetRegisterDesc("fp3", "FP3", FP3_AliasSet, FP3_SubRegsSet,
+                    FP3_SuperRegsSet),
+            new TargetRegisterDesc("fp2", "FP2", FP2_AliasSet, FP2_SubRegsSet,
+                    FP2_SuperRegsSet),
+            new TargetRegisterDesc("fp5", "FP5", FP5_AliasSet, FP5_SubRegsSet,
+                    FP5_SuperRegsSet),
+            new TargetRegisterDesc("fp4", "FP4", FP4_AliasSet, FP4_SubRegsSet,
+                    FP4_SuperRegsSet),
+            new TargetRegisterDesc("fp6", "FP6", FP6_AliasSet, FP6_SubRegsSet,
+                    FP6_SuperRegsSet),
+            new TargetRegisterDesc("ymm12", "YMM12", YMM12_AliasSet,
+                    YMM12_SubRegsSet, YMM12_SuperRegsSet),
+            new TargetRegisterDesc("ymm13", "YMM13", YMM13_AliasSet,
+                    YMM13_SubRegsSet, YMM13_SuperRegsSet),
+            new TargetRegisterDesc("ymm10", "YMM10", YMM10_AliasSet,
+                    YMM10_SubRegsSet, YMM10_SuperRegsSet),
+            new TargetRegisterDesc("ymm11", "YMM11", YMM11_AliasSet,
+                    YMM11_SubRegsSet, YMM11_SuperRegsSet),
+            new TargetRegisterDesc("ymm14", "YMM14", YMM14_AliasSet,
+                    YMM14_SubRegsSet, YMM14_SuperRegsSet),
+            new TargetRegisterDesc("ymm15", "YMM15", YMM15_AliasSet,
+                    YMM15_SubRegsSet, YMM15_SuperRegsSet),
+            new TargetRegisterDesc("xmm15", "XMM15", XMM15_AliasSet,
+                    XMM15_SubRegsSet, XMM15_SuperRegsSet),
+            new TargetRegisterDesc("xmm11", "XMM11", XMM11_AliasSet,
+                    XMM11_SubRegsSet, XMM11_SuperRegsSet),
+            new TargetRegisterDesc("xmm12", "XMM12", XMM12_AliasSet,
+                    XMM12_SubRegsSet, XMM12_SuperRegsSet),
+            new TargetRegisterDesc("xmm13", "XMM13", XMM13_AliasSet,
+                    XMM13_SubRegsSet, XMM13_SuperRegsSet),
+            new TargetRegisterDesc("xmm14", "XMM14", XMM14_AliasSet,
+                    XMM14_SubRegsSet, XMM14_SuperRegsSet),
+            new TargetRegisterDesc("xmm10", "XMM10", XMM10_AliasSet,
+                    XMM10_SubRegsSet, XMM10_SuperRegsSet),
+            new TargetRegisterDesc("r10", "R10", R10_AliasSet, R10_SubRegsSet,
+                    R10_SuperRegsSet),
+            new TargetRegisterDesc("r12", "R12", R12_AliasSet, R12_SubRegsSet,
+                    R12_SuperRegsSet),
+            new TargetRegisterDesc("r11", "R11", R11_AliasSet, R11_SubRegsSet,
+                    R11_SuperRegsSet),
+            new TargetRegisterDesc("r14", "R14", R14_AliasSet, R14_SubRegsSet,
+                    R14_SuperRegsSet),
+            new TargetRegisterDesc("r13", "R13", R13_AliasSet, R13_SubRegsSet,
+                    R13_SuperRegsSet),
+            new TargetRegisterDesc("r15", "R15", R15_AliasSet, R15_SubRegsSet,
+                    R15_SuperRegsSet),
+            new TargetRegisterDesc("r8b", "R8B", R8B_AliasSet, R8B_SubRegsSet,
+                    R8B_SuperRegsSet),
+            new TargetRegisterDesc("r8d", "R8D", R8D_AliasSet, R8D_SubRegsSet,
+                    R8D_SuperRegsSet),
+            new TargetRegisterDesc("r8w", "R8W", R8W_AliasSet, R8W_SubRegsSet,
+                    R8W_SuperRegsSet),
+            new TargetRegisterDesc("r9b", "R9B", R9B_AliasSet, R9B_SubRegsSet,
+                    R9B_SuperRegsSet),
+            new TargetRegisterDesc("r9d", "R9D", R9D_AliasSet, R9D_SubRegsSet,
+                    R9D_SuperRegsSet),
+            new TargetRegisterDesc("r9w", "R9W", R9W_AliasSet, R9W_SubRegsSet,
+                    R9W_SuperRegsSet),
+            new TargetRegisterDesc("rax", "RAX", RAX_AliasSet, RAX_SubRegsSet,
+                    RAX_SuperRegsSet),
+            new TargetRegisterDesc("rbp", "RBP", RBP_AliasSet, RBP_SubRegsSet,
+                    RBP_SuperRegsSet),
+            new TargetRegisterDesc("rbx", "RBX", RBX_AliasSet, RBX_SubRegsSet,
+                    RBX_SuperRegsSet),
+            new TargetRegisterDesc("rcx", "RCX", RCX_AliasSet, RCX_SubRegsSet,
+                    RCX_SuperRegsSet),
+            new TargetRegisterDesc("rdi", "RDI", RDI_AliasSet, RDI_SubRegsSet,
+                    RDI_SuperRegsSet),
+            new TargetRegisterDesc("rdx", "RDX", RDX_AliasSet, RDX_SubRegsSet,
+                    RDX_SuperRegsSet),
+            new TargetRegisterDesc("rip", "RIP", RIP_AliasSet, RIP_SubRegsSet,
+                    RIP_SuperRegsSet),
+            new TargetRegisterDesc("rsi", "RSI", RSI_AliasSet, RSI_SubRegsSet,
+                    RSI_SuperRegsSet),
+            new TargetRegisterDesc("rsp", "RSP", RSP_AliasSet, RSP_SubRegsSet,
+                    RSP_SuperRegsSet),
+            new TargetRegisterDesc("ymm9", "YMM9", YMM9_AliasSet,
+                    YMM9_SubRegsSet, YMM9_SuperRegsSet),
+            new TargetRegisterDesc("ymm2", "YMM2", YMM2_AliasSet,
+                    YMM2_SubRegsSet, YMM2_SuperRegsSet),
+            new TargetRegisterDesc("ymm1", "YMM1", YMM1_AliasSet,
+                    YMM1_SubRegsSet, YMM1_SuperRegsSet),
+            new TargetRegisterDesc("ymm4", "YMM4", YMM4_AliasSet,
+                    YMM4_SubRegsSet, YMM4_SuperRegsSet),
+            new TargetRegisterDesc("ymm3", "YMM3", YMM3_AliasSet,
+                    YMM3_SubRegsSet, YMM3_SuperRegsSet),
+            new TargetRegisterDesc("ymm6", "YMM6", YMM6_AliasSet,
+                    YMM6_SubRegsSet, YMM6_SuperRegsSet),
+            new TargetRegisterDesc("ymm5", "YMM5", YMM5_AliasSet,
+                    YMM5_SubRegsSet, YMM5_SuperRegsSet),
+            new TargetRegisterDesc("ymm8", "YMM8", YMM8_AliasSet,
+                    YMM8_SubRegsSet, YMM8_SuperRegsSet),
+            new TargetRegisterDesc("ymm7", "YMM7", YMM7_AliasSet,
+                    YMM7_SubRegsSet, YMM7_SuperRegsSet),
+            new TargetRegisterDesc("ymm0", "YMM0", YMM0_AliasSet,
+                    YMM0_SubRegsSet, YMM0_SuperRegsSet), };
+
+    public int getSubRegs(int regNo, int index)
+    {
+        switch (regNo)
+        {
+            default:
+                return 0;
+            case YMM8:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM8;
+                }
+
+            case YMM14:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM14;
+                }
+
+            case YMM6:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM6;
+                }
+
+            case R8D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R8B;
+                    case 3:
+                        return R8W;
+                }
+
+            case CX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return CL;
+                    case 2:
+                        return CH;
+                }
+
+            case RCX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 2:
+                        return CH;
+                    case 3:
+                        return CX;
+                    case 4:
+                        return ECX;
+                    case 1:
+                        return CL;
+                }
+
+            case RDX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 2:
+                        return DH;
+                    case 3:
+                        return DX;
+                    case 4:
+                        return EDX;
+                    case 1:
+                        return DL;
+                }
+
+            case YMM7:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM7;
+                }
+
+            case R13W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R13B;
+                }
+
+            case RSI:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return SI;
+                    case 4:
+                        return ESI;
+                    case 1:
+                        return SIL;
+                }
+
+            case ESI:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return SIL;
+                    case 3:
+                        return SI;
+                }
+
+            case YMM0:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM0;
+                }
+
+            case YMM5:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM5;
+                }
+
+            case YMM9:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM9;
+                }
+
+            case YMM10:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM10;
+                }
+
+            case R10W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R10B;
+                }
+
+            case R13D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R13B;
+                    case 3:
+                        return R13W;
+                }
+
+            case R11:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R11W;
+                    case 4:
+                        return R11D;
+                    case 1:
+                        return R11B;
+                }
+
+            case R11W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R11B;
+                }
+
+            case RBX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 2:
+                        return BH;
+                    case 3:
+                        return BX;
+                    case 4:
+                        return EBX;
+                    case 1:
+                        return BL;
+                }
+
+            case AX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return AL;
+                    case 2:
+                        return AH;
+                }
+
+            case YMM2:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM2;
+                }
+
+            case SI:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return SIL;
+                }
+
+            case EDI:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return DIL;
+                    case 3:
+                        return DI;
+                }
+
+            case R15:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R15W;
+                    case 4:
+                        return R15D;
+                    case 1:
+                        return R15B;
+                }
+
+            case R9W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R9B;
+                }
+
+            case RAX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 2:
+                        return AH;
+                    case 3:
+                        return AX;
+                    case 4:
+                        return EAX;
+                    case 1:
+                        return AL;
+                }
+
+            case R13:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R13W;
+                    case 4:
+                        return R13D;
+                    case 1:
+                        return R13B;
+                }
+
+            case YMM1:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM1;
+                }
+
+            case ECX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return CL;
+                    case 2:
+                        return CH;
+                    case 3:
+                        return CX;
+                }
+
+            case EBX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return BL;
+                    case 2:
+                        return BH;
+                    case 3:
+                        return BX;
+                }
+
+            case R14W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R14B;
+                }
+
+            case R12W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R12B;
+                }
+
+            case R10D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R10B;
+                    case 3:
+                        return R10W;
+                }
+
+            case R14:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R14W;
+                    case 4:
+                        return R14D;
+                    case 1:
+                        return R14B;
+                }
+
+            case YMM3:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM3;
+                }
+
+            case YMM4:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM4;
+                }
+
+            case R10:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R10W;
+                    case 4:
+                        return R10D;
+                    case 1:
+                        return R10B;
+                }
+
+            case YMM11:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM11;
+                }
+
+            case YMM13:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM13;
+                }
+
+            case R15D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R15B;
+                    case 3:
+                        return R15W;
+                }
+
+            case EBP:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return BPL;
+                    case 3:
+                        return BP;
+                }
+
+            case EDX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return DL;
+                    case 2:
+                        return DH;
+                    case 3:
+                        return DX;
+                }
+
+            case EAX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return AL;
+                    case 2:
+                        return AH;
+                    case 3:
+                        return AX;
+                }
+
+            case YMM15:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM15;
+                }
+
+            case ESP:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return SPL;
+                    case 3:
+                        return SP;
+                }
+
+            case RSP:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return SP;
+                    case 4:
+                        return ESP;
+                    case 1:
+                        return SPL;
+                }
+
+            case RBP:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return BP;
+                    case 4:
+                        return EBP;
+                    case 1:
+                        return BPL;
+                }
+
+            case BX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return BL;
+                    case 2:
+                        return BH;
+                }
+
+            case R14D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R14B;
+                    case 3:
+                        return R14W;
+                }
+
+            case R11D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R11B;
+                    case 3:
+                        return R11W;
+                }
+
+            case R9:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R9W;
+                    case 4:
+                        return R9D;
+                    case 1:
+                        return R9B;
+                }
+
+            case R9D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R9B;
+                    case 3:
+                        return R9W;
+                }
+
+            case RDI:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return DI;
+                    case 4:
+                        return EDI;
+                    case 1:
+                        return DIL;
+                }
+
+            case R8:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R8W;
+                    case 4:
+                        return R8D;
+                    case 1:
+                        return R8B;
+                }
+
+            case R12:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 3:
+                        return R12W;
+                    case 4:
+                        return R12D;
+                    case 1:
+                        return R12B;
+                }
+
+            case DX:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return DL;
+                    case 2:
+                        return DH;
+                }
+
+            case SP:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return SPL;
+                }
+
+            case BP:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return BPL;
+                }
+
+            case R15W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R15B;
+                }
+
+            case DI:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return DIL;
+                }
+
+            case YMM12:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return XMM12;
+                }
+
+            case R8W:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R8B;
+                }
+
+            case R12D:
+                switch (index)
+                {
+                    default:
+                        return 0;
+                    case 1:
+                        return R12B;
+                    case 3:
+                        return R12W;
+                }
+        }
+    }
+
+    public X86GenRegisterInfo(
+            int callFrameSetupOpCode,
+            int callFrameDestroyOpCode)
+    {
+        super(registerDescriptors, registerClasses, callFrameSetupOpCode,
+                callFrameDestroyOpCode, SubregHashTable, SuperregHashTable,
+                AliasesHashTable);
+    }
 }

@@ -30,10 +30,10 @@ public final class PNE extends MachineFunctionPass
 	public boolean runOnMachineFunction(MachineFunction mf)
 	{
 		boolean changed = false;
-		instInfo = mf.getTargetMachine().getInstrInfo();
+		instInfo = mf.getTarget().getInstrInfo();
 		this.mf = mf;
 		mri = mf.getMachineRegisterInfo();
-		regInfo = mf.getTargetMachine().getRegisterInfo();
+		regInfo = mf.getTarget().getRegisterInfo();
 
 		for (MachineBasicBlock mbb : mf.getBasicBlocks())
 		{

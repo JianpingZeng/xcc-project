@@ -193,10 +193,10 @@ public final class LiveVariable extends MachineFunctionPass
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         this.mf = mf;
-        regInfo = mf.getTargetMachine().getRegisterInfo();
+        regInfo = mf.getTarget().getRegisterInfo();
         machineRegInfo = mf.getMachineRegisterInfo();
         allocatablePhyRegs = regInfo.getAllocatableSet(mf);
-        TargetInstrInfo instInfo = mf.getTargetMachine().getInstrInfo();
+        TargetInstrInfo instInfo = mf.getTarget().getInstrInfo();
         registerDeaded = new HashMap<>();
         registerKilled = new HashMap<>();
 

@@ -54,7 +54,7 @@ public class MachineFunction
 
 	public Function getFunction() {return fn;}
 
-	public TargetMachine getTargetMachine() {return target;}
+	public TargetMachine getTarget() {return target;}
 
 	public MachineBasicBlock getEntryBlock() {return mbbNumber.get(0);}
 

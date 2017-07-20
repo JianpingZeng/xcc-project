@@ -554,7 +554,7 @@ public abstract class TargetRegisterInfo
 
 	public int getFrameIndexOffset(MachineFunction mf, int fi)
 	{
-		TargetFrameInfo tfi = mf.getTargetMachine().getFrameInfo();
+		TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
 		MachineFrameInfo mfi = mf.getFrameInfo();
 		return mfi.getObjectOffset(fi) + mfi.getStackSize() -
 				tfi.getLocalAreaOffset() + mfi.getOffsetAdjustment();

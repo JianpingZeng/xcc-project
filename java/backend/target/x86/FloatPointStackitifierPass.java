@@ -467,7 +467,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
     {
         stackTop = -1;
         boolean changed = false;
-        tm = mf.getTargetMachine();
+        tm = mf.getTarget();
 
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
             changed |= processMachineBasicBlock(mbb);
