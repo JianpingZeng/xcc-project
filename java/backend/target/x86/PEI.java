@@ -62,7 +62,7 @@ public class PEI extends MachineFunctionPass
 
         // ALlow target machine to make final modification to the function
         // before the frame layout is finalized.
-        mf.getTargetMachine().getRegisterInfo().processFunctionBeforeFrameFinalized(mf);
+        mf.getTarget().getRegisterInfo().processFunctionBeforeFrameFinalized(mf);
 
         // Calculate actual frame offsets for all of the stack object.
         calculateFrameObjectOffsets(mf);
@@ -85,8 +85,8 @@ public class PEI extends MachineFunctionPass
      */
     private void saveCalleeSavedRegisters(MachineFunction mf)
     {
-        TargetRegisterInfo regInfo = mf.getTargetMachine().getRegisterInfo();
-        TargetFrameInfo frameInfo = mf.getTargetMachine().getFrameInfo();
+        TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
+        TargetFrameInfo frameInfo = mf.getTarget().getFrameInfo();
 
         int[] calleeSavedRegs = regInfo.getCalleeRegisters();
         int frameSetupOpcode = regInfo.getCallFrameSetupOpcode();
@@ -190,7 +190,7 @@ public class PEI extends MachineFunctionPass
         }
 
         // emit code for storing data from stack slot to register in each exit block.
-        TargetInstrInfo instrInfo = mf.getTargetMachine().getInstrInfo();
+        TargetInstrInfo instrInfo = mf.getTarget().getInstrInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             // if the last instruction is return, add an epilogue.
@@ -216,7 +216,7 @@ public class PEI extends MachineFunctionPass
      */
     private void calculateFrameObjectOffsets(MachineFunction mf)
     {
-        TargetFrameInfo tfi = mf.getTargetMachine().getFrameInfo();
+        TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
         boolean stackGrowDown = tfi.getStackGrowDirection() == StackGrowDown;
 
         assert stackGrowDown :"Only tested on stack down growing machien!";
@@ -250,10 +250,10 @@ public class PEI extends MachineFunctionPass
      */
     private void insertPrologEpilogCode(MachineFunction mf)
     {
-        TargetRegisterInfo regInfo = mf.getTargetMachine().getRegisterInfo();
+        TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
         regInfo.emitPrologue(mf);
 
-        TargetInstrInfo instInfo = mf.getTargetMachine().getInstrInfo();
+        TargetInstrInfo instInfo = mf.getTarget().getInstrInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             if (!mbb.isEmpty() && instInfo.isReturn(mbb.getInsts().getLast().getOpCode()))
@@ -271,7 +271,7 @@ public class PEI extends MachineFunctionPass
         if (!mf.getFrameInfo().hasStackObjects())
             return;
 
-        TargetMachine tm = mf.getTargetMachine();
+        TargetMachine tm = mf.getTarget();
         assert tm.getRegisterInfo() != null;
         TargetRegisterInfo regInfo = tm.getRegisterInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())

@@ -180,7 +180,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	public boolean runOnMachineFunction(MachineFunction mf)
 	{
 		this.mf = mf;
-		tm = mf.getTargetMachine();
+		tm = mf.getTarget();
 		regInfo = tm.getRegisterInfo();
 		instrInfo = tm.getInstrInfo();
 

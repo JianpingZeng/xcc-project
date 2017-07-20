@@ -26,33 +26,6 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	public final static int SUBREG_16BIT = 3;
 	public final static int SUBREG_32BIT = 4;
 
-	public static class X86R8RegisterClass extends TargetRegisterClass
-	{
-		public X86R8RegisterClass(int rs, int ra, int[] regs)
-		{
-			super(null, rs, ra, regs);
-		}
-
-        @Override
-        public int[] getAllocableRegs(MachineFunction mf)
-        {
-            return super.getAllocableRegs(mf);
-        }
-	}
-
-	public static class X86R16RegisterClass extends TargetRegisterClass
-	{
-		public X86R16RegisterClass(int rs, int ra, int[] regs)
-		{
-			super(null, rs, ra, regs);
-		}
-
-        @Override
-        public int[] getAllocableRegs(MachineFunction mf)
-        {
-            return super.getAllocableRegs(mf);
-        }
-    }
 
 	private X86TargetMachine tm;
 	private TargetInstrInfo tii;
@@ -117,13 +90,13 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 	public static int getIdx(TargetRegisterClass rc)
 	{
-		if (rc == x86R8RegisterClass)
+		if (rc == GR8RegisterClass)
 			return 0;
-		else if (rc == x86R16RegClass)
+		else if (rc == GR16RegisterClass)
 			return 1;
-		else if (rc == x86R32RegClass)
+		else if (rc == GR32RegisterClass)
 			return 2;
-		else if (rc == x86RFPClass || rc == x86RSTClass)
+		else if (rc == RFP32Class || rc == x86RSTClass)
 			return 3;
 		else
 		{
@@ -199,7 +172,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			long amount = old.getOperand(0).getImm();
 			if (amount != 0)
 			{
-				int align = mf.getTargetMachine().getFrameInfo().getStackAlignment();
+				int align = mf.getTarget().getFrameInfo().getStackAlignment();
 				amount = Util.roundUp(amount, align);
 
 				// stack setup pseudo instrcution.
@@ -360,7 +333,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			numBytes += mfi.getMaxCallFrameSize();
 
 			// round the getNumOfSubLoop to a multiple of the alignment.
-			int align = mf.getTargetMachine().getFrameInfo().getStackAlignment();
+			int align = mf.getTarget().getFrameInfo().getStackAlignment();
 			numBytes = ((numBytes + 4) + align - 1) / align * align - 4;
 
 			// update the frame info to pretend that this is part of stack.

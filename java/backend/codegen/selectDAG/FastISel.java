@@ -247,7 +247,7 @@ public abstract class FastISel
         machineRegInfo = mf.getMachineRegisterInfo();
         mfi = mf.getFrameInfo();
         mcp = mf.getConstantPool();
-        tm = mf.getTargetMachine();
+        tm = mf.getTarget();
         td = tm.getTargetData();
         tii = tm.getInstrInfo();
         tli = tm.getTargetLowering();
