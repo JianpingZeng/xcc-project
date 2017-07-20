@@ -12,6 +12,27 @@ import java.util.ArrayList;
  */
 public class MachineFrameInfo
 {
+    private boolean frameAddressTaken;
+    private int maxAlignment;
+
+    public boolean isFrameAddressTaken()
+    {
+        return frameAddressTaken;
+    }
+
+    public int getMaxAlignment()
+    {
+        return maxAlignment;
+    }
+
+    public boolean isDeadObjectIndex(int objectIdx)
+    {
+        assert objectIdx + numFixedObjects < objects.size():
+                "Invalid Object idx!";
+
+        return objects.get(objectIdx + numFixedObjects).size == ~0;
+    }
+
     /**
      * Represents a single object allocated on the stack when a function is running.
      */

@@ -52,9 +52,7 @@ public class SubtargetEmitter extends TableGenBackend
             if (isBits) os.printf(" = 1 << %d", i);
             else os.printf(" = %d", i);
 
-            if (++i < defList.size()) os.printf(";");
-
-            os.println();
+            os.println(";");
         }
     }
 
@@ -84,7 +82,7 @@ public class SubtargetEmitter extends TableGenBackend
                 continue;
 
             // Emit as { "feature", "description", featureEnum, i1 | i2 | ... | in }
-            os.printf("\t\tnew SubtargetFeatureKV(\"%s\"", commandLineName);
+            os.printf("\t\tnew SubtargetFeatureKV(\"%s\", ", commandLineName);
             os.printf("\"%s\", ", desc);
             os.printf("%s, ", name);
 
@@ -399,7 +397,7 @@ public class SubtargetEmitter extends TableGenBackend
     }
 
     /**
-     * generate cpu asmName to itinerary lookup table.
+     * generate cpu name to itinerary lookup table.
      * @param os
      */
     private void emitProcessorLookup(PrintStream os) throws Exception
@@ -469,7 +467,7 @@ public class SubtargetEmitter extends TableGenBackend
         os.printf("\t/**\n");
         os.printf("\t * Parses features string setting specified subtarget options.\n");
         os.println("\t */");
-        os.println("\tpublic static String parseSubtargetFeatures(String fs, String cpu) {");
+        os.println("\tpublic String parseSubtargetFeatures(String fs, String cpu) {");
         os.println("\t\tSubtargetFeatures features = new SubtargetFeatures(fs);");
         os.println("\t\tfeatures.setCPUIfNone(cpu);");
         os.println("\t\tint bits = features.getBits(subTypeKV,featureKV);");
@@ -488,7 +486,8 @@ public class SubtargetEmitter extends TableGenBackend
             }
             else
             {
-                os.printf("\t\tif ((bits & %s) != 0 && %s < %s)\n", instance, attribute, value);
+                os.printf("\t\tif ((bits & %s) != 0 && %s.compareTo(%s) < 0)\n",
+                        instance, attribute, value);
                 os.printf("\t\t\t%s = %s;\n", attribute, value);
             }
         }
@@ -501,7 +500,7 @@ public class SubtargetEmitter extends TableGenBackend
                     "\t\tInstrItins = instrItineraryData(stages, operandCycles, itinerary);\n");
         }
 
-        os.printf("\t\treturn Features.getCPU();\n\t}\n");
+        os.printf("\t\treturn features.getCPU();\n\t}\n\n");
     }
 
     public SubtargetEmitter(RecordKeeper r)
@@ -523,12 +522,18 @@ public class SubtargetEmitter extends TableGenBackend
         try(PrintStream os = outputFile.equals("-") ? System.out :
             new PrintStream(new FileOutputStream(outputFile)))
         {
+            os.println("package backend.target.x86;\n");
+
             emitSourceFileHeaderComment("Subtarget Enumeration Source Fragment", os);
             String className = target + "GenSubtarget";
 
-            os.printf("import backend.target.SubtargetFeatureKV;\n");
-            os.printf("import backend.target.InstrItinerary;\n\n");
-            os.printf("public final class %s {\n", className);
+            os.printf("import backend.target.SubtargetFeatureKV;\n"
+                    + "import backend.target.SubtargetFeatures;\n" + "\n"
+                    + "import static backend.target.x86.X86Subtarget.X863DNowEnum.*;\n"
+                    + "import static backend.target.x86.X86Subtarget.X86SSEEnum.*;\n\n");
+
+            String superClass = target + "Subtarget";
+            os.printf("public final class %s extends %s {\n", className, superClass);
 
             enumeration(os, "FuncUnit", true);
             os.println();
@@ -543,6 +548,9 @@ public class SubtargetEmitter extends TableGenBackend
             os.println();
             parseFeaturesFunction(os);
 
+            // Emit constructor method.
+            os.printf("\tpublic %s(String tt, String fs, boolean is64Bit)\n", className);
+            os.printf("\t{\n\t\tsuper(tt, fs, is64Bit);\n\t}\n");
             os.print("}");
         }
     }

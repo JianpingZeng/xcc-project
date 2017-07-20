@@ -1,4 +1,4 @@
-package backend.target.x86;
+/*package backend.target.x86;
 
 import backend.codegen.*;
 import backend.codegen.MachineOperand.RegState;
@@ -34,7 +34,7 @@ import static backend.value.Instruction.CmpInst.Predicate.LAST_ICMP_PREDICATE;
  *
  * @author Xlous.zeng
  * @version 0.1
- */
+ *
 public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
 {
     interface TypeClass
@@ -73,22 +73,22 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
 
     /**
      * The current MachineBasicBlock where all generated machineInstr would be filled.
-     */
+     *
     private MachineBasicBlock mbb;
 
     /**
      * Mapping between SSA value and virtual register
      * (it just is a non-negative integer).
-     */
+     *
     private TObjectIntHashMap<Value> regMap;
 
     /**
      * Mapping between HIR basic block and machine basic block.
-     */
+     *
     private HashMap<BasicBlock, MachineBasicBlock> mbbMap;
     /**
      * The index into the first vararg value of variable argument list.
-     */
+     *
     private int varArgsFrameIndex;
 
     private X86SimpleInstSel(TargetMachine machine)
@@ -104,7 +104,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param f The FunctionProto object to be converted to MachineFunction.
      * @return Return {@code true} if the CFG is not changed.
-     */
+     *
     @Override
     public boolean runOnFunction(Function f)
     {
@@ -156,11 +156,10 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param ty
      * @return
-     */
+     *
     private int makeAnotherReg(Type ty)
     {
-        assert tm
-                .getRegisterInfo() instanceof X86RegisterInfo : "Current target doesn't have x86 reg info!";
+        assert tm.getRegisterInfo() instanceof X86RegisterInfo : "Current target doesn't have x86 reg info!";
         X86RegisterInfo mri = (X86RegisterInfo) tm.getRegisterInfo();
         if (ty.getTypeID() == Type.IntegerTyID)
         {
@@ -399,7 +398,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      * @param op1
      * @param operatorClass
      * @param destReg
-     */
+     *
     private void emitSimpleBinaryOperation(int insertPos, Value op0, Value op1,
             int operatorClass, int destReg)
     {
@@ -521,7 +520,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param destReg
      * @param arg
-     */
+     *
     private void promote32(int destReg, ValueRecord arg)
     {
         int[][] extendOp = {
@@ -549,7 +548,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      * @param res
      * @param called
      * @param args
-     */
+     *
     private void doCall(ValueRecord res, MachineInstr called, ArrayList<ValueRecord> args)
     {
         // count how many number of bytes will be pushed onto stack.
@@ -904,7 +903,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param c
      * @param reg
-     */
+     *
     private void copyConstToReg(int idx, Constant c, int reg)
     {
         if (c instanceof ConstantExpr)
@@ -1032,7 +1031,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      * @param mbb
      * @param idx
      * @return
-     */
+     *
     private int getReg(Value val, MachineBasicBlock mbb, int idx)
     {
         int reg;
@@ -1066,7 +1065,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param val
      * @return
-     */
+     *
     private int getReg(Value val)
     {
         return getReg(val, mbb, mbb.size() - 1);
@@ -1154,7 +1153,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      * Insert machine code to generate phis.  This is tricky
      * because we have to generate our sources into the source basic blocks, not
      * the current one.
-     */
+     *
     private void selectPhiNodes()
     {
         TargetInstrInfo targetInstrInfo = tm.getInstrInfo();
@@ -1272,7 +1271,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param inst
      * @return
-     */
+     *
     @Override public Void visitRet(Instruction.ReturnInst inst)
     {
         if (inst.getNumOfOperands() == 0)
@@ -1325,7 +1324,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param bb
      * @return
-     */
+     *
     private static BasicBlock getBlockAfter(BasicBlock bb)
     {
         Iterator<BasicBlock> itr = bb.getParent().getBasicBlockList().iterator();
@@ -1348,7 +1347,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
      *
      * @param bi
      * @return
-     */
+     *
     @Override public Void visitBr(BranchInst bi)
     {
         // Obtains the basic where the branch instr resides.
@@ -2421,7 +2420,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
 	 * Push args on stack and do a procedure call instruction.
 	 * @param ci
 	 * @return
-	 */
+	 *
 	@Override
 	public Void visitCall(CallInst ci)
 	{
@@ -2470,7 +2469,7 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
 	 * single special pass.
 	 * @param inst
 	 * @return
-	 */
+	 *
 	@Override
 	public Void visitPhiNode(PhiNode inst)
 	{
@@ -2488,10 +2487,11 @@ public class X86SimpleInstSel implements InstVisitor<Void>,FunctionPass
 	 * Creates a simple instruction selector for x86 target.
 	 * @param tm
 	 * @return
-	 */
+	 *
 	public static X86SimpleInstSel
 		createX86SimpleInstructionSelector(TargetMachine tm)
 	{
 		return new X86SimpleInstSel(tm);
 	}
 }
+*/

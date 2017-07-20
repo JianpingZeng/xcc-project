@@ -33,7 +33,7 @@ public final class Record implements Cloneable
 {
     /**
      * This is a global, static, and final object for keeping the map from
-     * class or def asmName to its def.
+     * class or def name to its def.
      */
     public static final RecordKeeper records = new RecordKeeper();
 
@@ -226,7 +226,7 @@ public final class Record implements Cloneable
     //
 
     /**
-     * Return the initializer for a value with the specified asmName,
+     * Return the initializer for a value with the specified name,
      * or throw an exception if the field does not exist.
      * @param fieldName
      * @return

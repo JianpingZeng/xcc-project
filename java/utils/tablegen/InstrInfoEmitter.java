@@ -51,13 +51,15 @@ public final class InstrInfoEmitter extends TableGenBackend
         try(PrintStream os = outputFile.equals("-") ? System.out
                 : new PrintStream(new FileOutputStream(outputFile)))
         {
+            os.println("package backend.target.x86;");
+
             emitSourceFileHeaderComment("Target Instruction Descriptors", os);
             CodeGenTarget target = cdp.getTarget();
             Record instrInfo = target.getInstructionSet();
             ArrayList<CodeGenRegisterClass> rc = target.getRegisterClasses();
 
             String targetName = target.getName();
-            String className = targetName + "InstrInfo";
+            String className = targetName + "GenInstrInfo";
 
             TObjectIntHashMap<ArrayList<Record>> emittedLists = new TObjectIntHashMap<>();
             int listNumber = 0;
@@ -65,8 +67,11 @@ public final class InstrInfoEmitter extends TableGenBackend
             int barriersNumber = 0;
             TObjectIntHashMap<Record> barriersMap = new TObjectIntHashMap<>();
 
-
-            os.println("\n\nimport backend.target;\n");
+            os.println("\nimport backend.target.*;\n" + "\n"
+                    + "import static backend.target.TargetOperandInfo.OperandConstraint.*;\n"
+                    + "import static backend.target.TargetOperandInfo.OperandFlags.*;\n"
+                    + "import static backend.target.x86.X86GenRegisterInfo.*;\n"
+                    + "import static backend.target.x86.X86GenRegisterNames.*;\n");
 
             os.printf("public interface %s\n{\n", className);
 
@@ -113,7 +118,7 @@ public final class InstrInfoEmitter extends TableGenBackend
             emitOperandInfo(os, operandInfoIDs);
 
             // Emit allof the TargetInstrDesc records in theire ENUM order.
-            os.printf("\n\tpublic static final TargetInstrDesc[] insts = {\n");
+            os.printf("\n\tTargetInstrDesc[] insts = {\n");
             ArrayList<CodeGenInstruction> numberedInstrs = new ArrayList<>();
             target.getInstructionsByEnumValue(numberedInstrs);
 
@@ -206,25 +211,25 @@ public final class InstrInfoEmitter extends TableGenBackend
         if (uses.isEmpty())
             os.printf("null, ");
         else
-            os.printf("ImplicitList%d, ", emittedLists.get(uses));
+            os.printf("implicitList%d, ", emittedLists.get(uses));
 
         ArrayList<Record> defs = inst.theDef.getValueAsListOfDefs("Defs");
         if (defs.isEmpty())
             os.printf("null, ");
         else
-            os.printf("ImplicitList%d, ", emittedLists.get(defs));
+            os.printf("implicitList%d, ", emittedLists.get(defs));
 
         if (!barriersMap.containsKey(inst.theDef))
             os.printf("null, ");
         else
-            os.printf("Barriers%d, ", barriersMap.get(inst.theDef));
+            os.printf("barriers%d, ", barriersMap.get(inst.theDef));
 
         // Emit the operand info.
         ArrayList<String> operandInfo = getOperandInfo(inst);
         if (operandInfo.isEmpty())
             os.printf("null");
         else
-            os.printf("OperandInfo%d", opInfo.get(operandInfo));
+            os.printf("operandInfo%d", opInfo.get(operandInfo));
 
         os.printf("),\t\t// Inst #%d = %s\n", num, inst.theDef.getName());
     }
@@ -328,7 +333,8 @@ public final class InstrInfoEmitter extends TableGenBackend
 
             operandInfoIDs.put(operandInfo, ++operandListNum);
 
-            os.printf("\n\tpublic static final TargetOperandInfo[] operandInfo = {\n");
+            os.printf("\n\tTargetOperandInfo[] operandInfo%d = {\n",
+                    operandListNum);
             int e = operandInfo.size();
             if (e > 0)
             {
@@ -375,18 +381,18 @@ public final class InstrInfoEmitter extends TableGenBackend
                 else if (opr.isSubClassOf("PointerLikeRegClass"))
                     res.append(opr.getValueAsInt("RegClassKind"));
                 else
-                    res.append("null, ");
+                    res.append("0, ");
 
-                res.append("null");
+                res.append("0");
 
                 if (opr.isSubClassOf("PointerLikeRegClass"))
-                    res.append("|(1 << TOI.LookupPtrRegClass)");
+                    res.append("|(1<<LookupPtrRegClass)");
 
                 if (instr.operandList.get(i).rec.isSubClassOf("PredicateOperand"))
-                    res.append("|(1<<TOI.Predicate)");
+                    res.append("|(1<<Predicate)");
 
                 if (instr.operandList.get(i).rec.isSubClassOf("OptionalDefOperand"))
-                    res.append("|(1<<TOI.OptionalDef)");
+                    res.append("|(1<<OptionalDef)");
 
                 res.append(", ").append(instr.operandList.get(i).constraints.get(j));
                 result.add(res.toString());
@@ -425,7 +431,7 @@ public final class InstrInfoEmitter extends TableGenBackend
 
     private static void printDefList(ArrayList<Record> uses, int num, PrintStream os)
     {
-        os.printf("\tpublic static final int[] implicitList%d = { ", num);
+        os.printf("\tint[] implicitList%d = { ", num);
         int e = uses.size();
         if (e > 0)
         {
@@ -440,14 +446,14 @@ public final class InstrInfoEmitter extends TableGenBackend
 
     private static void printBarriers(ArrayList<Record> barriers, int num, PrintStream os)
     {
-        os.printf("\tpublic static final TargetRegisterClass[] barriers = { ");
+        os.printf("\tTargetRegisterClass[] barriers%d = { ", num);
         int e = barriers.size();
         if (e > 0)
         {
-            os.printf("%sRegClass", barriers.get(0).getName());
+            os.printf("%sRegisterClass", barriers.get(0).getName());
             for(int i = 1; i != e; ++i)
             {
-                os.printf(", %sRegClass", barriers.get(i).getName());
+                os.printf(", %sRegisterClass", barriers.get(i).getName());
             }
         }
         os.printf("};\n");

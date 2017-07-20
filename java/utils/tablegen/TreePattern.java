@@ -226,7 +226,7 @@ public final class TreePattern
                 IntInit ii = (IntInit)arg;
                 newNode = new TreePatternNode(ii);
                 if (!dag.getArgName(0).isEmpty())
-                    error("Constant int argument should not have a asmName!");
+                    error("Constant int argument should not have a name!");
             }
             else if (arg instanceof BitsInit)
             {
@@ -237,7 +237,7 @@ public final class TreePattern
 
                 newNode = new TreePatternNode(ii);
                 if (!dag.getArgName(0).isEmpty())
-                    error("Constant int argument should not have a asmName!");
+                    error("Constant int argument should not have a name!");
             }
             else
             {
@@ -302,7 +302,7 @@ public final class TreePattern
                     if (r.getName().equals("node"))
                     {
                         if (dag.getArgName(i).isEmpty())
-                            error("'node' argument requires a asmName to match with operand list");;
+                            error("'node' argument requires a name to match with operand list");;
 
                             args.add(dag.getArgName(i));
                     }
@@ -313,7 +313,7 @@ public final class TreePattern
                 IntInit ii = (IntInit)arg;
                 TreePatternNode node = new TreePatternNode(ii);
                 if (!dag.getArgName(i).isEmpty())
-                    error("Constant int argument should not have a asmName!");
+                    error("Constant int argument should not have a name!");
 
                 children.add(node);
             }
@@ -326,7 +326,7 @@ public final class TreePattern
 
                 TreePatternNode node = new TreePatternNode(ii);
                 if(!dag.getArgName(i).isEmpty())
-                    error("Constant int argument should not have a asmName!");
+                    error("Constant int argument should not have a name!");
                 children.add(node);
             }
             else

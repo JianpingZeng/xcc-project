@@ -753,7 +753,7 @@ public final class CodeGenDAGPatterns
                     val.getDef().isSubClassOf("PointerLikeRegClass"))
             {
                 if (dest.getName().isEmpty())
-                    pattern.error("set destination must have a asmName!");
+                    pattern.error("set destination must have a name!");
                 if (instResults.containsKey(dest.getName()))
                     pattern.error("cannot set '" + dest.getName() + "' multiple times");
                 instResults.put(dest.getName(), dest);
@@ -997,7 +997,7 @@ public final class CodeGenDAGPatterns
                 OperandInfo op = cgi.operandList.get(j);
                 String opName = op.name;
                 if (opName.isEmpty())
-                    i.error("Operand #" + j + " in operands list has no asmName!");
+                    i.error("Operand #" + j + " in operands list has no name!");
 
                 if (!instInputsCheck.containsKey(opName))
                 {

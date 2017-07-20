@@ -499,7 +499,7 @@ public final class TGLexer
         {
             MemoryBuffer mb2 = curBuf.clone();
             mb2.setBufferStart(tokStart);
-            return returnError(mb2, "Invalid variable asmName");
+            return returnError(mb2, "Invalid variable name");
         }
 
         int varnameStart = curPtr++;

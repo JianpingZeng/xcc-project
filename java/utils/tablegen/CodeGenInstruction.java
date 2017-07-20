@@ -38,7 +38,7 @@ public final class CodeGenInstruction
      */
     Record theDef;
     /**
-     * Contents of the 'asmName' field.
+     * Contents of the 'name' field.
      */
     String name;
     /**
@@ -119,7 +119,7 @@ public final class CodeGenInstruction
         theDef = r;
         asmString = asmStr;
         operandList = new ArrayList<>();
-        //asmName = r.getValueAsString("asmName");
+        //name = r.getValueAsString("name");
 
         isReturn = r.getValueAsBit("isReturn");
         isBranch = r.getValueAsBit("isBranch");
@@ -227,15 +227,15 @@ public final class CodeGenInstruction
                         + "' in instruction '" + r.getName()
                         + "' instruction!");
 
-            // Check that the operand has a asmName and that it's unique.
+            // Check that the operand has a name and that it's unique.
             if (di.getArgName(i).isEmpty())
                 throw new Exception(
                         "In instruction '" + r.getName() + "', operand #" + i
-                                + " has no asmName!");
+                                + " has no name!");
             if (!OperandNames.add(di.getArgName(i)))
                 throw new Exception(
                         "In instruction '" + r.getName() + "', operand #" + i
-                                + " has the same asmName as a previous operand!");
+                                + " has the same name as a previous operand!");
 
             operandList.add(new OperandInfo(rec, di.getArgName(i), PrintMethod,
                     MIOperandNo, numOps, miOpInfo));
@@ -250,7 +250,7 @@ public final class CodeGenInstruction
             if (!operandList.get(1).constraints.get(0).isEmpty())
                 throw new Exception(r.getName() + ": cannot use isTwoAddress property: instruction " +
                         " already has constraint set!");
-            operandList.get(1).constraints.set(0, "((0 << 16) | (1 << TOI.TIED_TO))");
+            operandList.get(1).constraints.set(0, "((0 << 16) | (1 << TIED_TO))");
         }
 
         for (int op = 0, e = operandList.size(); op != e; op++)
@@ -319,7 +319,7 @@ public final class CodeGenInstruction
             throws Exception
     {
         if (op.isEmpty() || op.charAt(0) != '$')
-            throw new Exception(theDef.getName() + ": Illegal operand asmName: '"
+            throw new Exception(theDef.getName() + ": Illegal operand name: '"
                     + op + "'");
 
         String opName = op.substring(1);
@@ -330,7 +330,7 @@ public final class CodeGenInstruction
         {
             subOpName = opName.substring(dotIdx + 1);
             if (subOpName.isEmpty())
-                throw new Exception(theDef.getName() + ": illegal empty suboperand asmName in '" +
+                throw new Exception(theDef.getName() + ": illegal empty suboperand name in '" +
                 op + "'");
             opName = opName.substring(0, dotIdx);
         }
@@ -349,28 +349,28 @@ public final class CodeGenInstruction
         DagInit miOpInfo = operandList.get(opIdx).miOperandInfo;
         if (miOpInfo == null)
         {
-            throw new Exception(theDef.getName() + ": unknown suboperand asmName in '" + op + "'");
+            throw new Exception(theDef.getName() + ": unknown suboperand name in '" + op + "'");
         }
 
         for (int i = 0, e = miOpInfo.getNumArgs(); i != e; i++)
             if (miOpInfo.getArgName(i).equals(subOpName))
                 return Pair.get(opIdx, i);
 
-        throw new Exception(theDef.getName() + ": unknown suboperand asmName in '" +
+        throw new Exception(theDef.getName() + ": unknown suboperand name in '" +
                 op + "'");
     }
 
     /**
      * Return the index of the operand with the specified
-     * non-empty asmName.  If the instruction does not have an operand with the
-     * specified asmName, throw an exception.
+     * non-empty name.  If the instruction does not have an operand with the
+     * specified name, throw an exception.
      * @param name
      * @return
      * @throws Exception
      */
     int getOperandNamed(String name) throws Exception
     {
-        assert !name.isEmpty() : "Cannot search for operand with no asmName!";
+        assert !name.isEmpty() : "Cannot search for operand with no name!";
         for (int i = 0, e = operandList.size(); i != e; ++i)
             if (operandList.get(i).name.equals(name))
                 return i;

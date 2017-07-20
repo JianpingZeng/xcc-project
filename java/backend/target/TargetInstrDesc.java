@@ -69,34 +69,42 @@ public class TargetInstrDesc
      */
     public TargetOperandInfo[] opInfo;
 
-    public TargetInstrDesc(int opcode, String name, int numOprs, int resPos,
-            int flags, int TSFlags, int[] implUses, int[] implDefs)
-    {
-        opCode = opcode;
-        this.name = name;
-        numOperands = numOprs;
-        this.flags = flags;
-        tSFlags = TSFlags;
-        implicitUses = implUses;
-        implicitDefs = implDefs;
-    }
-
     /**
      * The constructor that creats an instance of class {@linkplain TargetInstrDesc}
      * with the specified several parameters.
      *
      * @param opcode   The opcode.
+     * @param numOperands  The number of operands are desired.
+     * @param numDefs The number of operand defined by this instruction.
      * @param name     The instruction memonic.
-     * @param numOprs  The number of operands are desired.
      * @param flags    The flags indicating machine instruction class.
-     * @param TSFlags  The target-specified flags.
+     * @param tSFlags  The target-specified flags.
      * @param implUses The implicitly used register.
      * @param implDefs The implicit registers defined by this instruction.
      */
-    public TargetInstrDesc(int opcode, String name, int numOprs, int flags,
-            int TSFlags, int[] implUses, int[] implDefs)
+    public TargetInstrDesc(int opcode,
+            int numOperands,
+            int numDefs,
+            int schedClass,
+            String name,
+            int flags,
+            int tSFlags,
+            int[] implUses,
+            int[] implDefs,
+            TargetRegisterClass[] rcBarriers,
+            TargetOperandInfo[] opInfo)
     {
-        this(opcode, name, numOprs, -1, flags, TSFlags, implUses, implDefs);
+        opCode = opcode;
+        this.numOperands = numOperands;
+        this.numDefs = numDefs;
+        this.schedClass = schedClass;
+        this.name = name;
+        this.flags = flags;
+        this.tSFlags = tSFlags;
+        implicitUses = implUses;
+        implicitDefs = implDefs;
+        this.rcBarriers = rcBarriers;
+        this.opInfo = opInfo;
     }
 
     public int getOperandConstraint(int opNum, int constraint)
@@ -225,7 +233,7 @@ public class TargetInstrDesc
 
     public boolean isNotDuplicable()
     {
-        return (flags & (1 << TID.NotDuplicate)) != 0;
+        return (flags & (1 << TID.NotDuplicable)) != 0;
     }
 
     public boolean hasDelaySlot()

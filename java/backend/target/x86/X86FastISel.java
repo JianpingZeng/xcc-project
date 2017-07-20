@@ -21,7 +21,6 @@ import backend.codegen.CCValAssign.CCAssignFn;
 import backend.codegen.selectDAG.FastISel;
 import backend.support.CallSite;
 import backend.target.TargetData;
-import backend.target.TargetInstrDesc;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.type.FunctionType;
@@ -42,14 +41,11 @@ import tools.Util;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static backend.codegen.CCValAssign.LocInfo.*;
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.codegen.MachineMemOperand.MOLoad;
-import static backend.codegen.MachineMemOperand.MOStore;
 import static backend.codegen.selectDAG.ISD.NodeType.*;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
-import static backend.target.TargetOptions.performTailCallOpt;
+import static backend.target.TargetOptions.PerformTailCallOpt;
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
 import static backend.target.x86.X86AddressMode.BaseType.RegBase;
 import static backend.target.x86.X86GenInstrNames.*;
@@ -192,7 +188,7 @@ public abstract class X86FastISel extends FastISel
         if (rhs instanceof ConstantInt)
         {
             ConstantInt ciOp1 = (ConstantInt)rhs;
-            int compareImmOpc = x86ChooseCmpImmediateOpcode(vt, ConstantInt rhs);
+            int compareImmOpc = x86ChooseCmpImmediateOpcode(vt, ciOp1);
             if (compareImmOpc != 0)
             {
                 buildMI(mbb, tii.get(compareImmOpc)).
@@ -1141,54 +1137,15 @@ public abstract class X86FastISel extends FastISel
         return false;
     }
 
-    private static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib,
-            int fi)
-    {
-        return addFrameReference(mib, fi, 0);
-    }
-
     private static MachineInstrBuilder addLeaOffset(MachineInstrBuilder mib, int offset)
     {
         return mib.addImm(1).addReg(0).addImm(offset);
     }
 
-    private static MachineInstrBuilder addOffset(MachineInstrBuilder mib, int offset)
-    {
-        return addLeaOffset(mib, offset).addReg(0);
-    }
-
-    /**
-     * This function is used to add a reference to the base of
-     * an abstract object on the stack frame of the current function.  This
-     * reference has base register as the FrameIndex offset until it is resolved.
-     * This allows a constant offset to be specified as well...
-     * @param mib
-     * @param fi
-     * @param offset
-     * @return
-     */
-    private static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib,
-            int fi,
+    public static MachineInstrBuilder addOffset(MachineInstrBuilder mib,
             int offset)
     {
-        MachineInstr mi = mib.getMInstr();
-        MachineFunction mf = mi.getParent().getParent();
-        MachineFrameInfo mfi = mf.getFrameInfo();
-        TargetInstrDesc tii = mi.getDesc();
-        int flags = 0;
-        if (tii.mayLoad())
-        {
-            flags |= MOLoad;
-        }
-        if (tii.mayStore())
-            flags |= MOStore;
-        MachineMemOperand mmo = new MachineMemOperand(
-                null,
-                flags,
-                mfi.getObjectOffset(fi) + offset,
-                mfi.getObjectOffset(fi),
-                mfi.getObjectAlignment(fi));
-        return addOffset(mib.addFrameIndex(fi), offset).addMemOperand(mmo);
+        return addLeaOffset(mib, offset).addReg(0);
     }
 
     private boolean x86SelectCall(Instruction inst)
@@ -1211,7 +1168,7 @@ public abstract class X86FastISel extends FastISel
 
         // On X86, -tailcallopt changes the fastcc ABI. FastISel doesn't
         // handle this for now.
-        if (CC == CallingConv.Fast && performTailCallOpt)
+        if (CC == CallingConv.Fast && PerformTailCallOpt)
             return false;
 
         // Let SDISel handle vararg functions.
@@ -1511,7 +1468,8 @@ public abstract class X86FastISel extends FastISel
                         ST_Fp80m64;
                 int MemSize = ResVT.getSizeInBits() / 8;
                 int FI = mfi.createStackObject(MemSize, MemSize);
-                addFrameReference(buildMI(mbb, DL, tii.get(Opc)), FI)
+                MachineInstrBuilder
+                        .addFrameReference(buildMI(mbb, DL, tii.get(Opc)), FI)
                         .addReg(ResultReg);
                 DstRC = ResVT.equals(new EVT(new MVT(MVT.f32))) ?
                         FR32RegisterClass :
@@ -1520,7 +1478,7 @@ public abstract class X86FastISel extends FastISel
                         MOVSSrm :
                         MOVSDrm;
                 ResultReg = createResultReg(DstRC);
-                addFrameReference(buildMI(mbb, DL, tii.get(Opc), ResultReg),
+                MachineInstrBuilder.addFrameReference(buildMI(mbb, DL, tii.get(Opc), ResultReg),
                         FI);
             }
 

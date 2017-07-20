@@ -2,8 +2,12 @@ package backend.codegen;
 
 import backend.codegen.MachineOperand.RegState;
 import backend.target.TargetInstrDesc;
+import backend.target.x86.X86FastISel;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
+
+import static backend.codegen.MachineMemOperand.MOLoad;
+import static backend.codegen.MachineMemOperand.MOStore;
 
 /**
  * This is a convenient helper class for creating a machine instruction on
@@ -20,6 +24,46 @@ public final class MachineInstrBuilder
 	{
 		mi = instr;
 	}
+
+	public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib,
+			int fi)
+    {
+        return addFrameReference(mib, fi, 0);
+    }
+
+	/**
+     * This function is used to add a reference to the base of
+     * an abstract object on the stack frame of the current function.  This
+     * reference has base register as the FrameIndex offset until it is resolved.
+     * This allows a constant offset to be specified as well...
+     * @param mib
+     * @param fi
+     * @param offset
+     * @return
+     */
+    public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib,
+            int fi,
+            int offset)
+    {
+        MachineInstr mi = mib.getMInstr();
+        MachineFunction mf = mi.getParent().getParent();
+        MachineFrameInfo mfi = mf.getFrameInfo();
+        TargetInstrDesc tii = mi.getDesc();
+        int flags = 0;
+        if (tii.mayLoad())
+        {
+            flags |= MOLoad;
+        }
+        if (tii.mayStore())
+            flags |= MOStore;
+        MachineMemOperand mmo = new MachineMemOperand(
+                null,
+                flags,
+                mfi.getObjectOffset(fi) + offset,
+                mfi.getObjectOffset(fi),
+                mfi.getObjectAlignment(fi));
+        return X86FastISel.addOffset(mib.addFrameIndex(fi), offset).addMemOperand(mmo);
+    }
 
 	public MachineInstr getMInstr()
 	{

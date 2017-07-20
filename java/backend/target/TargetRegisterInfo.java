@@ -134,11 +134,18 @@ public abstract class TargetRegisterInfo
 		return bestRC;
 	}
 
+	/**
+	 * Toggle the bits that represent allocatable
+	 * registers for the specific register class.
+	 * @param mf
+	 * @param rc
+	 * @param r
+	 */
 	public static void getAllocatableSetForRC(MachineFunction mf,
 			TargetRegisterClass rc, BitMap r)
 	{
-		for (int i = rc.allocatableBegin(mf); i != rc.allocatableEnd(mf); i++)
-			r.set(rc.getRegister(i));
+		for (int reg : rc.getAllocableRegs(mf))
+			r.set(rc.getRegister(reg));
 	}
 
 	/**
@@ -279,7 +286,7 @@ public abstract class TargetRegisterInfo
 		return false;
 	}
 
-	public abstract int[] getCalledSavedRegs(MachineFunction mf);
+	public abstract int[] getCalleeSavedRegs(MachineFunction mf);
 
 	public abstract TargetRegisterClass[] getCalleeSavedRegClasses(
 			MachineFunction mf);
