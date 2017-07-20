@@ -22,14 +22,14 @@ package backend.target;
  */
 public class TargetOperandInfo
 {
-    interface OperandFlags
+    public interface OperandFlags
     {
         int LookupPtrRegClass = 0;
         int Predicate = 1;
         int OptionalDef = 2;
     }
 
-    interface OperandConstraint
+    public interface OperandConstraint
     {
         int TIED_TO = 0;
     }
@@ -37,6 +37,13 @@ public class TargetOperandInfo
     public int regClass;
     public int flags;
     public int constraints;
+
+    public TargetOperandInfo(int rc, int flags, int constraints)
+    {
+        regClass = rc;
+        this.flags = flags;
+        this.constraints = constraints;
+    }
 
     public TargetRegisterClass getRegClass(TargetRegisterInfo tri)
     {

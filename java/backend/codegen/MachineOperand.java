@@ -535,6 +535,12 @@ public class MachineOperand
 		return reg.prev != null;
 	}
 
+	public void changeToRegister(int reg,
+			boolean isDef)
+	{
+		changeToRegister(reg, isDef, false, false, false, false);
+	}
+
 	/**
 	 * Replace this operand with a new register operand of
 	 * the specified value.  If an operand is known to be an register already,

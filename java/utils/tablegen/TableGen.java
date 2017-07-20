@@ -81,7 +81,7 @@ public final class TableGen
     private static StringOpt outputFileName = new StringOpt(
             new OptionNameApplicator("o"),
             init("-"),
-            desc("Specify the output file asmName"),
+            desc("Specify the output file name"),
             valueDesc("filename"));
 
     private static ListOpt<String> includeDirs = new ListOpt<>(

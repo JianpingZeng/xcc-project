@@ -557,7 +557,7 @@ public final class FastISelEmitter extends TableGenBackend
                                 os.printf(", ");
 
                             operands.printParameters(os);
-                            os.printf(") {\nswitch (retVT.simpleVT) {\n");
+                            os.printf(") {\nswitch (retVT.simpleTy) {\n");
                             for (Map.Entry<Integer, HashMap<String, InstructionMemo>> ri : rm
                                     .entrySet())
                             {

@@ -89,7 +89,7 @@ public final class RecordKeeper
 
     /**
      * This method returns all concrete definitions that derive from the
-     * specified class asmName.  If a class with the specified asmName does not
+     * specified class name.  If a class with the specified name does not
      * exist, an exception is thrown.
      * @param className
      * @return

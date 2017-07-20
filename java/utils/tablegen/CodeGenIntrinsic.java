@@ -38,11 +38,11 @@ public final class CodeGenIntrinsic
      */
     Record theDef;
     /**
-     * The asmName of the LLVM function "llvm.bswap.i32"
+     * The name of the LLVM function "llvm.bswap.i32"
      */
     String name;
     /**
-     * The asmName of the enum "bswap_i32".
+     * The name of the enum "bswap_i32".
      */
     String enumName;
 

@@ -308,7 +308,7 @@ public final class TGParser
     /**
      * This is the entry point to parsing a single file.
      *
-     * @filename The input file asmName.
+     * @filename The input file name.
      * @debug The flag to indicating whether enable debug.
      */
     static boolean parseFile(String filename, List<String> includeDirs,
@@ -696,7 +696,7 @@ public final class TGParser
                         return null;
                     }
                     result = new Init.FieldInit(result, lexer.getCurStrVal());
-                    lexer.lex();    // Eat the field asmName.
+                    lexer.lex();    // Eat the field name.
                     break;
                 }
             }
@@ -784,7 +784,7 @@ public final class TGParser
                 Record klass = records.getClass(name);
                 if (klass == null)
                 {
-                    error(nameLoc, "Expected a class asmName, got '" + name +"'");
+                    error(nameLoc, "Expected a class name, got '" + name +"'");
                     return null;
                 }
 
@@ -1000,7 +1000,7 @@ public final class TGParser
                 {
                     if (lexer.lex() != TGLexer.TokKind.VarName)
                     {
-                        tokError("expected variable asmName in dag operator");
+                        tokError("expected variable name in dag operator");
                         return null;
                     }
                     operatorName = lexer.getCurStrVal();
@@ -1067,7 +1067,7 @@ public final class TGParser
             {
                 if (lexer.lex() != TGLexer.TokKind.VarName)
                 {
-                    tokError("expected variable asmName in dag literal");
+                    tokError("expected variable name in dag literal");
                     return new ArrayList<>();
                 }
                 varName = lexer.getCurStrVal();
@@ -1470,7 +1470,7 @@ public final class TGParser
 
         if (lexer.getCode() != TGLexer.TokKind.less)
         {
-            tokError("expected type asmName for operator");
+            tokError("expected type name for operator");
             return null;
         }
 
@@ -1479,13 +1479,13 @@ public final class TGParser
         type = parseType();
         if (type == null)
         {
-            tokError("expected type asmName for operator");
+            tokError("expected type name for operator");
             return null;
         }
 
         if (lexer.getCode() != TGLexer.TokKind.greater)
         {
-            tokError("expected type asmName for operator");
+            tokError("expected type name for operator");
             return null;
         }
 
@@ -1639,7 +1639,7 @@ public final class TGParser
     {
         if (lexer.getCode() != TGLexer.TokKind.Id)
         {
-            tokError("expected asmName for ClassID");
+            tokError("expected name for ClassID");
             return null;
         }
 
@@ -1812,8 +1812,8 @@ public final class TGParser
     }
 
     /**
-     * If an object asmName is specified, return it.  Otherwise,
-     * return an anonymous asmName.
+     * If an object name is specified, return it.  Otherwise,
+     * return an anonymous name.
      *   ObjectName ::= ID
      *   ObjectName ::=
      * @return
@@ -1966,7 +1966,7 @@ public final class TGParser
 
         if (lexer.getCode() != TGLexer.TokKind.Id)
         {
-            return tokError("expected class asmName after 'class'");
+            return tokError("expected class name after 'class'");
         }
 
         Record curRec = records.getClass(lexer.getCurStrVal());
@@ -1984,7 +1984,7 @@ public final class TGParser
             records.addClass(curRec);
         }
 
-        // eat the asmName.
+        // eat the name.
         lexer.lex();
 
         if (lexer.getCode() == TGLexer.TokKind.less)
@@ -2115,7 +2115,7 @@ public final class TGParser
     {
         if (lexer.getCode() != TGLexer.TokKind.Id)
         {
-            tokError("expected multiclass asmName");
+            tokError("expected multiclass name");
             return null;
         }
 
@@ -2364,7 +2364,7 @@ public final class TGParser
         lexer.lex();
 
         if (lexer.getCode() != TGLexer.TokKind.Id)
-            return tokError("expected identifier after multiclass for asmName");
+            return tokError("expected identifier after multiclass for name");
 
         String name = lexer.getCurStrVal();
         if (multiClasses.containsKey(name))
@@ -2644,7 +2644,7 @@ public final class TGParser
     {
         if (lexer.getCode() != TGLexer.TokKind.Id)
         {
-            tokError("expected asmName for ClassID");
+            tokError("expected name for ClassID");
             return null;
         }
 

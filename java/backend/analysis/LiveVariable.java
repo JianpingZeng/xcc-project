@@ -26,6 +26,7 @@ import backend.transform.scalars.UnreachableMachineBlockElim;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.BitMap;
 
 import java.util.*;
 
@@ -161,7 +162,7 @@ public final class LiveVariable extends MachineFunctionPass
     /**
      * The set of allocatable physical register in the target machine.
      */
-    private TIntArrayList allocatablePhyRegs;
+    private BitMap allocatablePhyRegs;
 
     private MachineFunction mf;
     private TargetRegisterInfo regInfo;
@@ -246,11 +247,11 @@ public final class LiveVariable extends MachineFunctionPass
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    if (mo.opIsUse() && mo.getReg() != 0 && mo.isReg())
+                    if (mo.isUse() && mo.getReg() != 0 && mo.isReg())
                     {
                         int reg = mo.getReg();
                         if (machineRegInfo.isPhysicalReg(reg)
-                                && allocatablePhyRegs.contains(reg))
+                                && allocatablePhyRegs.get(reg))
                         {
                             handlePhyRegUse(reg, inst);
                         }
@@ -275,10 +276,10 @@ public final class LiveVariable extends MachineFunctionPass
                 {
                     MachineOperand mo = inst.getOperand(i);
                     int reg = mo.getReg();
-                    if (mo.opIsDef() && mo.isReg() && mo.getReg() != 0)
+                    if (mo.isDef() && mo.isReg() && mo.getReg() != 0)
                     {
                         if (machineRegInfo.isPhysicalReg(reg)
-                                && allocatablePhyRegs.contains(reg))
+                                && allocatablePhyRegs.get(reg))
                             handlePhyRegDef(reg, inst);
                         else if (machineRegInfo.isVirtualReg(reg))
                             handleVirRegDef(reg, inst);

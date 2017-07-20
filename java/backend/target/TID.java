@@ -35,7 +35,7 @@ public interface TID
     int Branch = 6;
     int IndirectBranch = 7;
     int Predicable = 8;
-    int NotDuplicate = 9;
+    int NotDuplicable = 9;
     int DelaySlot = 10;
     int FoldableAsLoad = 11;
     int MayLoad = 12;

@@ -22,5 +22,7 @@ package backend.target;
  */
 public class TargetOptions
 {
-    public static boolean performTailCallOpt;
+    public static boolean PerformTailCallOpt;
+    public static boolean NoFramePointerElim;
+    public static boolean RealignStack;
 }

@@ -697,10 +697,10 @@ public final class TreePatternNode implements Cloneable
     /**
      * Return true if this node is recursively
      * isomorphic to the specified node.  For this comparison, the node's
-     * entire state is considered. The assigned asmName is ignored, since
+     * entire state is considered. The assigned name is ignored, since
      * nodes with differing names are considered isomorphic. However, if
-     * the assigned asmName is present in the dependent variable set, then
-     * the assigned asmName is considered significant and the node is
+     * the assigned name is present in the dependent variable set, then
+     * the assigned name is considered significant and the node is
      * isomorphic if the names match.
      * @param node
      * @param depVars
