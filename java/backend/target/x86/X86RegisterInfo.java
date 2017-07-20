@@ -2,9 +2,9 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterDesc;
 import backend.target.TargetRegisterClass;
 import backend.type.Type;
+import tools.BitMap;
 import tools.Util;
 
 import static backend.target.x86.X86GenInstrNames.*;
@@ -26,21 +26,18 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	public final static int SUBREG_16BIT = 3;
 	public final static int SUBREG_32BIT = 4;
 
-	// Now that we have all of the pieces, define the top-level register classes.
-	// The order specified in the register list is implicitly defined to be the
-	// register allocation order.
-	private static int[] X86R8 = {AL, CL, DL, BL, AH, CH, DH, BH};
-	private static int[] X86R16 = {AX, CX, DX, BX, SI, DI, BP, SP};
-	private static int[] X86R32 = {EAX, ECX, EDX, EBX, ESI, EDI, EBP, ESP};
-	private static int[] X86RFP = {FP0, FP1, FP2, FP3, FP4, FP5, FP6};
-	private static int[] X86RST = {ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7};
-
 	public static class X86R8RegisterClass extends TargetRegisterClass
 	{
 		public X86R8RegisterClass(int rs, int ra, int[] regs)
 		{
 			super(null, rs, ra, regs);
 		}
+
+        @Override
+        public int[] getAllocableRegs(MachineFunction mf)
+        {
+            return super.getAllocableRegs(mf);
+        }
 	}
 
 	public static class X86R16RegisterClass extends TargetRegisterClass
@@ -50,17 +47,12 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			super(null, rs, ra, regs);
 		}
 
-		@Override
-		public int allocatableEnd(MachineFunction mf)
-		{
-			// If so, don't allocate SP or BP.
-			if (hasFP(mf))
-				return super.allocatableEnd(mf) - 2;
-			else
-				// If not, just don't allocate SP.
-				return super.allocatableEnd(mf) - 1;
-		}
-	}
+        @Override
+        public int[] getAllocableRegs(MachineFunction mf)
+        {
+            return super.getAllocableRegs(mf);
+        }
+    }
 
 	private X86TargetMachine tm;
 	private TargetInstrInfo tii;
@@ -125,7 +117,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 	public static int getIdx(TargetRegisterClass rc)
 	{
-		if (rc == x86R8RegClass)
+		if (rc == x86R8RegisterClass)
 			return 0;
 		else if (rc == x86R16RegClass)
 			return 1;
@@ -140,8 +132,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		}
 	}
 
-	@Override
-	public int[] getCalleeRegisters(){return calleeSavedRegs;}
+
+	public int[] getCalleeRegisters() {return calleeSavedRegs;}
 
 	public TargetRegisterClass[] getCalleeSavedRegClasses()
 	{
@@ -152,7 +144,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	public int storeRegToStackSlot(MachineBasicBlock mbb, int mbbi, int srcReg,
 			int FrameIndex, TargetRegisterClass rc)
 	{
-		int opcode[] = {MOVrm8, MOVrm16, MOVrm32, FSTPr64};
+		int opcode[] = {MOV8rm, MOV16rm, MOV32rm, FSTP64r};
 		MachineInstr instr = addFrameReference(buildMI(opcode[getIdx(rc)], 5),
 				FrameIndex, 0).addReg(srcReg, Use).getMInstr();
 		mbb.insert(mbbi, instr);
@@ -275,7 +267,38 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		mi.setMachineOperandConst(i+3, MO_SignExtendedImmed, offset);
 	}
 
-	/**
+    @Override
+    public void eliminateFrameIndex(MachineFunction mf, MachineBasicBlock mbb,
+            int ii, RegScavenger rs)
+    {
+
+    }
+
+    @Override
+    public int[] getCalledSavedRegs(MachineFunction mf)
+    {
+        return new int[0];
+    }
+
+    @Override
+    public TargetRegisterClass[] getCalleeSavedRegClasses(MachineFunction mf)
+    {
+        return new TargetRegisterClass[0];
+    }
+
+    @Override
+    public BitMap getReservedRegs(MachineFunction mf)
+    {
+        return null;
+    }
+
+    @Override
+    public int getSubReg(int regNo, int index)
+    {
+        return 0;
+    }
+
+    /**
 	 * Return true if the specified function should have a dedicatedd stack pointer
 	 * register. This is true if function has variable sized objects or if frame
 	 * pointer elimination is disabled.
@@ -284,7 +307,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	 * @param mf
 	 * @return
 	 */
-	public static boolean hasFP(MachineFunction mf)
+	public boolean hasFP(MachineFunction mf)
 	{
 		return mf.getFrameInfo().hasVarSizedObjects();
 	}
@@ -395,7 +418,17 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		}
 	}
 
-	/**
+    @Override public int getFrameRegister(MachineFunction mf)
+    {
+        return 0;
+    }
+
+    @Override public int getRARegister()
+    {
+        return 0;
+    }
+
+    /**
 	 * Obtains the register class is enough to hold the specified data of typed
 	 * {@code ty}.
 	 * @param ty
@@ -406,11 +439,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		switch (ty.getTypeID())
 		{
 			case Type.IntegerTyID:
-			case Type.IntegerTyID:
 				return x86R8RegClass;
-			case Type.IntegerTyID:
 				return x86R16RegClass;
-			case Type.IntegerTyID:
 			case Type.PointerTyID:
 				return x86R32RegClass;
 			case Type.IntegerTyID:

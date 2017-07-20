@@ -91,6 +91,17 @@ public abstract class TargetRegisterClass
     }
 
     /**
+     * Returns all of register in current target machine, and contains unavailable
+     * register. If want to obtain all available registers, just consulting by
+     * {@linkplain #getAllocableRegs(MachineFunction)}.
+     * @return
+     */
+    public int[] getRegs()
+    {
+        return regs;
+    }
+
+    /**
      * Return the getNumOfSubLoop of the register in bytes, which is also the getNumOfSubLoop
      * of a stack slot allocated to hold a spilled copy of this register.
      *
@@ -118,25 +129,15 @@ public abstract class TargetRegisterClass
     }
 
     /**
-     * Obtains the begin index of the allocatable registers group.
-     *
-     * @return
+     * Obtains the allocatable registers of type array.
+     * Default, returned array is as same as registers array contained in this
+     * TargetRegisterClass. But it is may be altered for concrete sub class. e.g.
+     * GR32RegisterClass have more register (R8D, R9D etc) in 64bit subtarget.
+     * @return  An array of allocatable registers for specified sub-target.
      */
-    public int allocatableBegin(MachineFunction mf)
+    public int[] getAllocableRegs(MachineFunction mf)
     {
-        return 0;
-    }
-
-    /**
-     * Obtains the index of machine register behind of the last allocatable
-     * register. So the allocatable register is qualified with range
-     * from [begin, end).
-     *
-     * @return
-     */
-    public int allocatableEnd(MachineFunction mf)
-    {
-        return regs.length;
+        return regs;
     }
 
     /**
