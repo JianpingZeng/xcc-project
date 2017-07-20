@@ -619,7 +619,7 @@ public abstract class X86FastISel extends FastISel
             return false;
 
         vt = x.get();
-        int resultReg = createResultReg(GR8RegClass);
+        int resultReg = createResultReg(GR8RegisterClass);
         int setCCOpc;
         boolean swapArgs;       // false-> compare op0, op1,  true -> compare op1, op0.
         switch (ci.getPredicate())
@@ -629,8 +629,8 @@ public abstract class X86FastISel extends FastISel
                 if (!x86FastEmitCompare(ci.operand(0), ci.operand(1), vt))
                     return false;
 
-                int ereg = createResultReg(GR8RegClass);
-                int npreg = createResultReg(GR8RegClass);
+                int ereg = createResultReg(GR8RegisterClass);
+                int npreg = createResultReg(GR8RegisterClass);
                 buildMI(mbb, tii.get(SETEr), ereg);
                 buildMI(mbb, tii.get(SETNPr), npreg);
                 buildMI(mbb, tii.get(AND8rr), resultReg).addReg(npreg).addReg(ereg);
@@ -642,8 +642,8 @@ public abstract class X86FastISel extends FastISel
                 if (!x86FastEmitCompare(ci.operand(0), ci.operand(1), vt))
                     return false;
 
-                int ereg = createResultReg(GR8RegClass);
-                int npreg = createResultReg(GR8RegClass);
+                int ereg = createResultReg(GR8RegisterClass);
+                int npreg = createResultReg(GR8RegisterClass);
                 buildMI(mbb, tii.get(SETNEr), ereg);
                 buildMI(mbb, tii.get(SETPr), npreg);
                 buildMI(mbb, tii.get(OR8rr), resultReg).addReg(npreg).addReg(ereg);
@@ -825,7 +825,7 @@ public abstract class X86FastISel extends FastISel
         if (inst.getType().equals(Type.Int8Ty)) 
         {
             creg = CL;
-            rc = GR8RegClass;
+            rc = GR8RegisterClass;
             switch (inst.getOpcode()) 
             {
                 case LShr: opReg = SHR8rCL; opImm = SHR8ri; break;
@@ -837,7 +837,7 @@ public abstract class X86FastISel extends FastISel
         else if (inst.getType().equals(Type.Int16Ty)) 
         {
             creg = CX;
-            rc = GR16RegClass;
+            rc = GR16RegisterClass;
             switch (inst.getOpcode()) 
             {
                 case LShr: opReg = SHR16rCL; opImm = SHR16ri; break;
@@ -849,7 +849,7 @@ public abstract class X86FastISel extends FastISel
         else if (inst.getType().equals(Type.Int32Ty))
         {
             creg = ECX;
-            rc = GR32RegClass;
+            rc = GR32RegisterClass;
             switch (inst.getOpcode())
             {
                 case LShr: opReg = SHR32rCL; opImm = SHR32ri; break;
@@ -861,7 +861,7 @@ public abstract class X86FastISel extends FastISel
         else if (inst.getType().equals(Type.Int64Ty))
         {
             creg = RCX;
-            rc = GR64RegClass;
+            rc = GR64RegisterClass;
             switch (inst.getOpcode())
             {
                 case LShr: opReg = SHR64rCL; opImm = SHR64ri; break;
@@ -929,15 +929,15 @@ public abstract class X86FastISel extends FastISel
         {
             case MVT.i16:
                 opc = CMOVE16rr;
-                rc = GR16RegClass;
+                rc = GR16RegisterClass;
                 break;
             case MVT.i32:
                 opc = CMOVE32rr;
-                rc = GR32RegClass;
+                rc = GR32RegisterClass;
                 break;
             case MVT.i64:
                 opc = CMOVE64rr;
-                rc = GR64RegClass;
+                rc = GR64RegisterClass;
                 break;
             default:
                 return false;
@@ -987,8 +987,8 @@ public abstract class X86FastISel extends FastISel
 
         boolean srcIs16Bit = srcVT.equals(new EVT(new MVT(MVT.i16)));
         int copyOpc = srcIs16Bit ? MOV16rr : MOV32rr;
-        TargetRegisterClass copyRC = srcIs16Bit ? GR16_ABCDRegClass :
-                GR32_ABCDRegClass;
+        TargetRegisterClass copyRC = srcIs16Bit ? GR16_ABCDRegisterClass :
+                GR32_ABCDRegisterClass;
         int copyReg = createResultReg(copyRC);
         buildMI(mbb, tii.get(copyOpc), copyReg).addReg(op0Reg);
 
@@ -1617,41 +1617,41 @@ public abstract class X86FastISel extends FastISel
             default: return 0;
             case MVT.i8:
                 opc = MOV8rm;
-                rc = GR8RegClass;
+                rc = GR8RegisterClass;
                 break;
             case MVT.i16:
                 opc = MOV16rm;
-                rc = GR16RegClass;
+                rc = GR16RegisterClass;
                 break;
             case MVT.i32:
                 opc = MOV32rm;
-                rc = GR32RegClass;
+                rc = GR32RegisterClass;
                 break;
             case MVT.i64:
                 // Must be in x86-64 mode.
                 opc = MOV64rm;
-                rc = GR64RegClass;
+                rc = GR64RegisterClass;
                 break;
             case MVT.f32:
                 if (subtarget.hasSSE1())
                 {
                     opc = MOVSSrm;
-                    rc = FR32RegClass;
+                    rc = FR32RegisterClass;
                 }
                 else
                 {
                     opc = LD_Fp32m;
-                    rc = RFP32RegClass;
+                    rc = RFP32RegisterClass;
                 }
                 break;
             case MVT.f64:
                 if (subtarget.hasSSE2())
                 {
                     opc = MOVSDrm;
-                    rc = FR64RegClass;
+                    rc = FR64RegisterClass;
                 } else {
                     opc = LD_Fp64m;
-                    rc = RFP64RegClass;
+                    rc = RFP64RegisterClass;
                 }
                 break;
             case MVT.f80:

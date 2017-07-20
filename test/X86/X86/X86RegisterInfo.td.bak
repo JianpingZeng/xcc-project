@@ -280,11 +280,11 @@ def GR8 : RegisterClass<"X86", [i8],  8,
             BL,   R14B, R15B, R12B, R13B, BPL
         };
 
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
 
             int[] res;
@@ -330,11 +330,11 @@ def GR16 : RegisterClass<"X86", [i16], 16,
             BX, R14W, R15W,  R12W, R13W, BP
         };
 
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
 
             int[] res;
@@ -387,11 +387,11 @@ def GR32 : RegisterClass<"X86", [i32], 32,
             EBX, R14D, R15D, R12D, R13D, EBP
         };
 
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
 
             int[] res;
@@ -440,11 +440,11 @@ def GR64 : RegisterClass<"X86", [i64], 64,
                           RBX, R14, R15, R12, R13, RBP, RSP, RIP]> {
   let SubRegClassList = [GR8, GR8, GR16, GR32];
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
@@ -496,11 +496,11 @@ def GR8_NOREX : RegisterClass<"X86", [i8], 8,
             AL, CL, DL, SIL, DIL, BL, BPL
         };
 
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res;
             int begin = 0, end;
@@ -521,7 +521,7 @@ def GR8_NOREX : RegisterClass<"X86", [i8], 8,
                 // If not, just don't allocate SPL.
                 end = X86_GR8_NOREX_AO_64.length;
             int[] temp = new int[end - begin];
-            System.arraycopy(res, begin, temp, 0, end - begin);
+            System.arraycopy(res, begin, temp, end - begin);
             return temp;
         }
     }];
@@ -530,11 +530,11 @@ def GR16_NOREX : RegisterClass<"X86", [i16], 16,
                                [AX, CX, DX, SI, DI, BX, BP, SP]> {
   let SubRegClassList = [GR8_NOREX, GR8_NOREX];
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
@@ -548,7 +548,7 @@ def GR16_NOREX : RegisterClass<"X86", [i16], 16,
                 end = res.length - 1;
 
             int[] temp = new int[end - begin];
-            System.arraycopy(res, begin, temp, 0, end - begin);
+            System.arraycopy(res, begin, temp, end - begin);
             return temp;
         }
     }];
@@ -558,11 +558,11 @@ def GR32_NOREX : RegisterClass<"X86", [i32], 32,
                                [EAX, ECX, EDX, ESI, EDI, EBX, EBP, ESP]> {
   let SubRegClassList = [GR8_NOREX, GR8_NOREX, GR16_NOREX];
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
@@ -576,7 +576,7 @@ def GR32_NOREX : RegisterClass<"X86", [i32], 32,
                 end = res.length - 1;
 
             int[] temp = new int[end - begin];
-            System.arraycopy(res, begin, temp, 0, end - begin);
+            System.arraycopy(res, begin, temp, end - begin);
             return temp;
         }
   }];
@@ -586,11 +586,11 @@ def GR64_NOREX : RegisterClass<"X86", [i64], 64,
                                [RAX, RCX, RDX, RSI, RDI, RBX, RBP, RSP]> {
   let SubRegClassList = [GR8_NOREX, GR8_NOREX, GR16_NOREX, GR32_NOREX];
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
@@ -604,7 +604,7 @@ def GR64_NOREX : RegisterClass<"X86", [i64], 64,
                 end = res.length - 1;
 
             int[] temp = new int[end - begin];
-            System.arraycopy(res, begin, temp, 0, end - begin);
+            System.arraycopy(res, begin, temp, end - begin);
             return temp;
         }
     }];
@@ -623,11 +623,11 @@ def GR32_NOSP : RegisterClass<"X86", [i32], 32,
             EBX, R14D, R15D, R12D, R13D, EBP
         };
 
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res;
             int begin = 0, end;
@@ -664,7 +664,7 @@ def GR32_NOSP : RegisterClass<"X86", [i32], 32,
             }
             int[] temp = new int[end - begin];
             System.arraycopy(res, begin, temp, 0, end - begin);
-            return temp;
+            return tmep;
         }
     }];
 }
@@ -675,11 +675,11 @@ def GR64_NOSP : RegisterClass<"X86", [i64], 64,
                                RBX, R14, R15, R12, R13, RBP]> {
   let SubRegClassList = [GR8, GR8, GR16, GR32_NOSP];
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
@@ -701,18 +701,18 @@ def GR64_NOREX_NOSP : RegisterClass<"X86", [i64], 64,
                                     [RAX, RCX, RDX, RSI, RDI, RBX, RBP]> {
   let SubRegClassList = [GR8_NOREX, GR8_NOREX, GR16_NOREX, GR32_NOREX];
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
             // Does the function dedicate RBP to being a frame ptr?
-            if (ri.hasFP(mf))
+            if (RI->hasFP(MF))
                 // If so, don't allocate RBP.
-                end = res.length - 1;
+                end - res.length - 1;
             else
                 // If not, any reg in this class is ok.
                 end = res.length;
@@ -734,11 +734,11 @@ def FR32 : RegisterClass<"X86", [f32], 32,
                           XMM8, XMM9, XMM10, XMM11,
                           XMM12, XMM13, XMM14, XMM15]> {
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
@@ -758,11 +758,11 @@ def FR64 : RegisterClass<"X86", [f64], 64,
                           XMM8, XMM9, XMM10, XMM11,
                           XMM12, XMM13, XMM14, XMM15]> {
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
@@ -794,7 +794,7 @@ def RFP80 : RegisterClass<"X86",[f80], 32, [FP0, FP1, FP2, FP3, FP4, FP5, FP6]>;
 def RST : RegisterClass<"X86", [f80, f64, f32], 32,
                         [ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7]> {
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             return new int[0];
@@ -810,11 +810,11 @@ def VR128 : RegisterClass<"X86", [v16i8, v8i16, v4i32, v2i64, v4f32, v2f64],128,
                            XMM8, XMM9, XMM10, XMM11,
                            XMM12, XMM13, XMM14, XMM15]> {
   let MethodBodies = [{
-        @Override
+        @override
         public int[] getAllocableRegs(MachineFunction mf)
         {
             TargetMachine tm = mf.getTarget();
-            X86Subtarget subtarget = (X86Subtarget) tm.getSubtarget();
+            X86Subtarget subtarget = tm.getSubtarget();
             TargetRegisterInfo ri = tm.getRegisterInfo();
             int[] res = getRegs();
             int begin = 0, end;
