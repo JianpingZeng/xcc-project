@@ -52,7 +52,7 @@ public abstract class FastISel
 
     protected MachineFunction mf;
     protected MachineModuleInfo mmi;
-    protected MachineRegisterInfo machineRegInfo;
+    protected MachineRegisterInfo mri;
     protected MachineFrameInfo mfi;
     protected MachineConstantPool mcp;
     protected TargetMachine tm;
@@ -244,7 +244,7 @@ public abstract class FastISel
         staticAllocMap = am;
         this.mf = mf;
         this.mmi = mmi;
-        machineRegInfo = mf.getMachineRegisterInfo();
+        mri = mf.getMachineRegisterInfo();
         mfi = mf.getFrameInfo();
         mcp = mf.getConstantPool();
         tm = mf.getTarget();
@@ -255,7 +255,7 @@ public abstract class FastISel
 
     public int createResultReg(TargetRegisterClass rc)
     {
-        return machineRegInfo.createVirtualRegister(rc);
+        return mri.createVirtualRegister(rc);
     }
 
     /**
@@ -535,7 +535,7 @@ public abstract class FastISel
             int op0,
             int idx)
     {
-        TargetRegisterClass rc = machineRegInfo.getRegClass(op0);
+        TargetRegisterClass rc = mri.getRegClass(op0);
 
         int resultReg = createResultReg(tli.getRegClassFor(new EVT(retVT)));
         TargetInstrDesc ii = tii.get(TargetInstrInfo.EXTRACT_SUBREG);
@@ -596,7 +596,7 @@ public abstract class FastISel
         else if (valueMap.get(val) != reg)
         {
             int assignedReg = valueMap.get(val);
-            TargetRegisterClass rc = machineRegInfo.getRegClass(reg);
+            TargetRegisterClass rc = mri.getRegClass(reg);
 
             tii.copyRegToReg(mbb, mbb.size(), assignedReg, reg, rc, rc);
             return assignedReg;
