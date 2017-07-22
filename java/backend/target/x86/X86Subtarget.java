@@ -207,7 +207,7 @@ public class X86Subtarget extends TargetSubtarget
         return x86SSELevel.ordinal() >= SSE3.ordinal();
     }
 
-    public boolean hasSS41()
+    public boolean hasSSE41()
     {
         return x86SSELevel.ordinal() >= SSE41.ordinal();
     }
