@@ -291,7 +291,7 @@ public class PEI extends MachineFunctionPass
      * Also eliminating abstract frame index with actual stack slot reference.
      * @return
      */
-    public static FunctionPass createX86PrologEpilogEmitter()
+    public static FunctionPass createPrologEpilogEmitter()
     {
         return new PEI();
     }
