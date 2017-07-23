@@ -300,7 +300,7 @@ public final class SDNodeInfo
                 case SDTCisVTSmallerThanOp:
                 {
                     if (!nodeToApply.isLeaf() || !(nodeToApply.getLeafValue() instanceof Init.DefInit)
-                        || ((Init.DefInit)nodeToApply.getLeafValue()).getDef().isSubClassOf("ValueType"))
+                        || !((Init.DefInit)nodeToApply.getLeafValue()).getDef().isSubClassOf("ValueType"))
                     {
                         pattern.error(node.getOperator().getName() + " expects a VT operand!");;
                     }

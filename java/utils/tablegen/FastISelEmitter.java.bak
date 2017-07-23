@@ -24,7 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.TreeMap;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -75,8 +75,7 @@ public final class FastISelEmitter extends TableGenBackend
                     + "import gnu.trove.map.hash.TObjectIntHashMap;\n" + "\n"
                     + "import java.util.HashMap;\n" + "\n"
                     + "import static backend.target.x86.X86GenInstrNames.*;\n"
-                    + "import static backend.target.x86.X86GenRegisterInfo.*;\n"
-                    + "import static backend.target.x86.X86GenRegisterNames.AL;");
+                    + "import static backend.target.x86.X86GenRegisterInfo.*;");
             os.println();
             os.printf("public final class %s extends X86FastISel {\n\n", className);
 
@@ -114,7 +113,7 @@ public final class FastISelEmitter extends TableGenBackend
      * This class holds a description of a list of operand
      * types. It has utility methods for emitting text based on the operands.
      */
-    public static class OperandsSignature implements Comparable<OperandsSignature>
+    public static class OperandsSignature
     {
         public ArrayList<String> operands = new ArrayList<>();
 
@@ -139,12 +138,7 @@ public final class FastISelEmitter extends TableGenBackend
         @Override
         public int hashCode()
         {
-            // FIXME 调试的时候在collectPatterns出现的Duplicate Pattern Assert错误是
-            // 由该函数计算HashCode时的重复性带来的。
-            // 此前的计算方式为： operands.hashCode() << 11 + operands.size();
-            // operands.size() << 11 + operands.hashCode();
-            // 两者都不行。
-            return operands.hashCode();
+            return operands.hashCode() << 11 + operands.size();
         }
 
         /**
@@ -247,7 +241,7 @@ public final class FastISelEmitter extends TableGenBackend
                 else if (operands.get(i).equals("i"))
                     os.printf("long imm%d", i);
                 else if(operands.get(i).equals("f"))
-                    os.printf("ConstantFP f%d", i);
+                    os.printf("ConstantFP *f%d", i);
                 else
                 {
                     assert false:"Unknown operand kind";
@@ -335,47 +329,23 @@ public final class FastISelEmitter extends TableGenBackend
         {
             operands.forEach(os::print);
         }
-
-        @Override
-        public int compareTo(OperandsSignature o)
-        {
-            int i = 0, j = 0;
-            int sz1 = operands.size(), sz2 = o.operands.size();
-            for (; i != sz1 && j != sz2; j++, i++)
-            {
-                int cmpRes = operands.get(i).compareTo(o.operands.get(j));
-                if (cmpRes < 0) return -1;
-                if (cmpRes > 0) return 1;
-            }
-
-            if (i == sz1 && j == sz2)
-                return 0;
-            
-            return sz1 < sz2 ? -1 : 1;
-        }
     }
 
     public static class FastISelMap
     {
-        private TreeMap<OperandsSignature, TreeMap<String, TreeMap<Integer, TreeMap<Integer, TreeMap<String, InstructionMemo>>>>> simplePatterns;
+        private HashMap<OperandsSignature, HashMap<String, HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>>>> simplePatterns;
 
         public FastISelMap()
         {
-            simplePatterns = new TreeMap<>();
+            simplePatterns = new HashMap<>();
         }
 
         public void collectPatterns(CodeGenDAGPatterns cgp) throws Exception
         {
             CodeGenTarget target = cgp.getTarget();
 
-            int sz = cgp.getPatternsToMatch().size();
-            //System.err.println(sz+"\n\n\n\n\n\n");
-
-            for (int idx = 0; idx  < sz; idx ++)
+            for (PatternToMatch pat : cgp.getPatternsToMatch())
             {
-                PatternToMatch pat = cgp.getPatternsToMatch().get(idx);
-                //pat.dump();
-                //System.err.println();
                 TreePatternNode dest = pat.getDstPattern();
                 if (dest.isLeaf()) continue;
 
@@ -446,27 +416,13 @@ public final class FastISelEmitter extends TableGenBackend
                 if (!operands.initialize(instPatNode, target, vt))
                     continue;
 
-                /*
-                if(operands.operands.size() ==1 && operands.operands.get(0).equals("i"))
-                {
-                    /**
-                     44
-                     45
-                     46
-                     580
-                     771
-                     *
-                    System.err.println(idx + ", hascode=" + operands.hashCode());
-                }*/
-
                 ArrayList<String> physRegInputs = new ArrayList<>();
                 if (!instPatNode.isLeaf() &&
                         (instPatNode.getOperator().getName().equals("imm") ||
-                                instPatNode.getOperator().getName().equals("fpimmm")))
+                        instPatNode.getOperator().getName().equals("fpimmm")))
                 {
                     physRegInputs.add("");
                 }
-
                 else if (!instPatNode.isLeaf())
                 {
                     for (int i = 0, e = instPatNode.getNumChildren(); i != e; i++)
@@ -502,6 +458,8 @@ public final class FastISelEmitter extends TableGenBackend
 
                 // Get the predicate that guards this pattern.
                 String predicateCheck = pat.getPredicateCheck();
+                if (predicateCheck.isEmpty())
+                    pat.dump();
 
                 // Ok, we found a pattern that we can handle. Remember it.
                 InstructionMemo memo = new InstructionMemo();
@@ -511,50 +469,19 @@ public final class FastISelEmitter extends TableGenBackend
                 memo.physRegs = physRegInputs;
 
                 if (!simplePatterns.containsKey(operands))
-                    simplePatterns.put(operands, new TreeMap<>());
+                    simplePatterns.put(operands, new HashMap<>());
                 if (!simplePatterns.get(operands).containsKey(opcodeName))
-                    simplePatterns.get(operands).put(opcodeName, new TreeMap<>());
+                    simplePatterns.get(operands).put(opcodeName, new HashMap<>());
                 if (!simplePatterns.get(operands).get(opcodeName).containsKey(vt))
-                    simplePatterns.get(operands).get(opcodeName).put(vt, new TreeMap<>());
+                    simplePatterns.get(operands).get(opcodeName).put(vt, new HashMap<>());
                 if (!simplePatterns.get(operands).get(opcodeName).get(vt).containsKey(retVT))
-                    simplePatterns.get(operands).get(opcodeName).get(vt).put(retVT, new TreeMap<>());
+                    simplePatterns.get(operands).get(opcodeName).get(vt).put(retVT, new HashMap<>());
 
-                /*
-                if (idx == 771)
-                {
-                    for (OperandsSignature os : simplePatterns.keySet())
-                    {
-                        System.err.println(os.operands);
-                        System.err.println("\t");
-                        for (String opname : simplePatterns.get(os).keySet())
-                        {
-                            System.err.println("\t"+opname);
-                        }
-                    }
-                }
-                */
                 // 错误原因是predicateCheck为空字符串.
                 //System.out.println(predicateCheck + predicateCheck.length());
-                //if (simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck))
-                /*{
-                    System.err.println(operands);
-                    System.err.println(opcodeName);
-                    System.err.println(MVT.getEnumName(vt));
-                    System.err.println(MVT.getEnumName(retVT));
-                    System.err.println(predicateCheck);
-                    System.err.println();
 
-                    System.err.println(idx);
-                    pat.dump();
-                    System.err.println(operands.operands);
-                    System.err.println(opcodeName);
-                    System.err.println(MVT.getEnumName(vt));
-                    System.err.println(MVT.getEnumName(retVT));
-                    System.err.println(predicateCheck);
-                }*/
-
-                //assert !simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck)
-                //        : "Duplicate pattern!";
+                assert !simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).containsKey(predicateCheck)
+                        : "Duplicate pattern!";
                 simplePatterns.get(operands).get(opcodeName).get(vt).get(retVT).put(predicateCheck, memo);
             }
         }
@@ -566,27 +493,26 @@ public final class FastISelEmitter extends TableGenBackend
         {
             // Now emit code for all the patterns that we collected.
             // int idx = 0;
-
-            for (Map.Entry<OperandsSignature, TreeMap<String, TreeMap<Integer, TreeMap<Integer, TreeMap<String, InstructionMemo>>>>>
+            for (Map.Entry<OperandsSignature, HashMap<String, HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>>>>
                     pair : simplePatterns.entrySet())
             {
                 OperandsSignature operands = pair.getKey();
-                TreeMap<String, TreeMap<Integer, TreeMap<Integer, TreeMap<String, InstructionMemo>>>> otm = pair.getValue();
+                HashMap<String, HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>>> otm = pair.getValue();
 
                 // os.println("// " + (idx++));
-                for (Map.Entry<String, TreeMap<Integer, TreeMap<Integer, TreeMap<String, InstructionMemo>>>> pair2 : otm.entrySet())
+                for (Map.Entry<String, HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>>> pair2 : otm.entrySet())
                 {
                     String opcode = pair2.getKey();
-                    TreeMap<Integer, TreeMap<Integer, TreeMap<String, InstructionMemo>>> tm = pair2.getValue();
+                    HashMap<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>> tm = pair2.getValue();
 
                     os.printf("// FastEmit functions for %s.\n", opcode);
                     os.println();
 
                     // Emit one function for each opcode,type pair.
-                    for (Map.Entry<Integer, TreeMap<Integer, TreeMap<String, InstructionMemo>>> pair3 : tm.entrySet())
+                    for (Map.Entry<Integer, HashMap<Integer, HashMap<String, InstructionMemo>>> pair3 : tm.entrySet())
                     {
                         int vt = pair3.getKey();
-                        TreeMap<Integer, TreeMap<String, InstructionMemo>> rm = pair3.getValue();
+                        HashMap<Integer, HashMap<String, InstructionMemo>> rm = pair3.getValue();
                         if (rm.size() != 1)
                         {
                             rm.forEach((key, pm) ->
@@ -628,8 +554,7 @@ public final class FastISelEmitter extends TableGenBackend
                                         {
                                             os.printf(
                                                     "\ttii.copyRegToReg(mbb, mbb.size(), %s, "
-                                                            + " op%d, tm.getRegisterInfo()."
-                                                            + "\n\t\t\tgetPhysicalRegisterRegClass(%s), "
+                                                            + " op%d, tm.getRegisterInfo().getPhysicalRegisterRegClass(%s), "
                                                             + "mri.getRegClass(op%d));\n",
                                                     memo.physRegs.get(i), i,
                                                     memo.physRegs.get(i), i);
@@ -680,8 +605,8 @@ public final class FastISelEmitter extends TableGenBackend
                                 os.printf(", ");
 
                             operands.printParameters(os);
-                            os.printf(") {\nswitch (retVT.simpleVT) {\n");
-                            for (Map.Entry<Integer, TreeMap<String, InstructionMemo>> ri : rm
+                            os.printf(") {\nswitch (retVT.simpleTy) {\n");
+                            for (Map.Entry<Integer, HashMap<String, InstructionMemo>> ri : rm
                                     .entrySet())
                             {
                                 int retVT = ri.getKey();
@@ -714,7 +639,7 @@ public final class FastISelEmitter extends TableGenBackend
                             os.printf("\tif(retVT.simpleVT != %s)\n\t\treturn 0;\n",
                                     MVT.getName(rm.entrySet().iterator().next().getKey()));
 
-                            TreeMap<String, InstructionMemo> pm = rm.entrySet().iterator().next().getValue();
+                            HashMap<String, InstructionMemo> pm = rm.entrySet().iterator().next().getValue();
                             boolean hasPred = false;
 
                             for(Map.Entry<String, InstructionMemo> pi: pm.entrySet())
@@ -762,7 +687,7 @@ public final class FastISelEmitter extends TableGenBackend
                                 }
                                 else
                                 {
-                                    os.printf("extractsubreg(retVT, op0, %d);", memo.subRegNo);
+                                    os.printf("extractsubreg(retVT, op0, %d);\n)", memo.subRegNo);
                                 }
 
                                 if (hasPred)
@@ -809,8 +734,6 @@ public final class FastISelEmitter extends TableGenBackend
 
                 os.printf("//Top level FastEmit function.\n");
                 os.println();
-
-                // FIXME hashMap没法将所有的operands合并
 
                 // Emit one function for the operand signature that demultiplexes based
                 // on opcode and type.

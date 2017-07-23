@@ -58,12 +58,12 @@ public final class CodeGenDAGPatterns
         }
     };
 
-    private HashMap<Record, SDNodeInfo> sdnodes;
-    private HashMap<Record, Pair<Record, String>> sdNodeXForms;
-    private HashMap<Record, ComplexPattern> complexPatterns;
-    private HashMap<Record, TreePattern> patternFragments;
-    private HashMap<Record, DAGDefaultOperand> defaultOperands;
-    private HashMap<Record, DAGInstruction> instructions;
+    private TreeMap<Record, SDNodeInfo> sdnodes;
+    private TreeMap<Record, Pair<Record, String>> sdNodeXForms;
+    private TreeMap<Record, ComplexPattern> complexPatterns;
+    private TreeMap<Record, TreePattern> patternFragments;
+    private TreeMap<Record, DAGDefaultOperand> defaultOperands;
+    private TreeMap<Record, DAGInstruction> instructions;
 
     private Record intrinsicVoidSDNode;
     private Record intrinsicWChainSDNode;
@@ -76,12 +76,12 @@ public final class CodeGenDAGPatterns
     {
         this.records = records;
         target = new CodeGenTarget();
-        defaultOperands = new HashMap<>();
-        patternFragments = new HashMap<>();
-        complexPatterns = new HashMap<>();
-        sdNodeXForms = new HashMap<>();
-        sdnodes = new HashMap<>();
-        instructions = new HashMap<>();
+        defaultOperands = new TreeMap<>(RecordCmp);
+        patternFragments = new TreeMap<>(RecordCmp);
+        complexPatterns = new TreeMap<>(RecordCmp);
+        sdNodeXForms = new TreeMap<>(RecordCmp);
+        sdnodes = new TreeMap<>(RecordCmp);
+        instructions = new TreeMap<>(RecordCmp);
         patternsToMatch = new ArrayList<>();
 
         intrinsics = loadIntrinsics(records, false);
@@ -93,11 +93,15 @@ public final class CodeGenDAGPatterns
         parsePatternFragments();
         parseDefaultOperands();
         parseInstructions();
+        // FIXME (Already fixed 2017.7.23) LLVM-tblgen has 1715 instructions after parseInstructions.
+        //System.err.println(patternsToMatch.size());
         parsePatterns();
 
         // For example, commutative patterns can match multiple ways.Add them
         // to patternToMatch as well.
         generateVariants();
+        // FIXME LLVM-tblgen has 2605 patterns after generateVariants.
+        // System.err.println(patternsToMatch.size());
 
         // For example, we can detect loads, stores, and side effects in many
         // cases by examining an instruction's pattern.
@@ -172,6 +176,14 @@ public final class CodeGenDAGPatterns
         if (TableGen.DEBUG)
             System.out.println("Generating instruction variants.");
 
+        // Loop over all of the patterns we've collected, checking to see if we can
+        // generate variants of the instruction, through the exploitation of
+        // identities.  This permits the target to provide aggressive matching without
+        // the .td file having to contain tons of variants of instructions.
+        //
+        // Note that this loop adds new patterns to the PatternsToMatch list, but we
+        // intentionally do not reconsider these.  Any variants of added patterns have
+        // already been added.
         for (int i = 0, e = patternsToMatch.size();i != e; i++)
         {
             PatternToMatch match = patternsToMatch.get(i);
@@ -249,7 +261,8 @@ public final class CodeGenDAGPatterns
      */
     private static void generateVariantsOf(TreePatternNode node,
             ArrayList<TreePatternNode> outVariants,
-            CodeGenDAGPatterns cdp, HashSet<String> depVars)
+            CodeGenDAGPatterns cdp,
+            HashSet<String> depVars)
     {
         if (node.isLeaf())
         {
@@ -259,13 +272,18 @@ public final class CodeGenDAGPatterns
 
         SDNodeInfo nodeInfo = cdp.getSDNodeInfo(node.getOperator());
 
+        // If this node is associative, re-associate.
         if (nodeInfo.hasProperty(SDNPAssociative))
         {
+            // Re-associate by pulling together all of the linked operators
             ArrayList<TreePatternNode> maximalChildren = new ArrayList<>();
             gatherChildrenOfAssociativeOpcode(node, maximalChildren);
 
+            // Only handle child sizes of 3.  Otherwise we'll end up trying too many
+            // permutations.
             if (maximalChildren.size() == 3)
             {
+                // Find the variants of all of our maximal children.
                 ArrayList<TreePatternNode> avariants = new ArrayList<>(),
                 bvariants = new ArrayList<>(),
                 cvariants = new ArrayList<>();
@@ -288,11 +306,11 @@ public final class CodeGenDAGPatterns
                 combineChildVariants(node, avariants, bvariants, abvariants, cdp, depVars);
                 combineChildVariants(node, bvariants, avariants, bavariants, cdp, depVars);
                 combineChildVariants(node, avariants, cvariants, acVariants, cdp, depVars);
-                combineChildVariants(node, cvariants, avariants, acVariants, cdp, depVars);
+                combineChildVariants(node, cvariants, avariants, caVariants, cdp, depVars);
                 combineChildVariants(node, bvariants, cvariants, bcVariants, cdp, depVars);
                 combineChildVariants(node, cvariants, bvariants, cbVariants, cdp, depVars);
 
-
+                // Combine those into the result: (x op x) op x
                 combineChildVariants(node, abvariants, cvariants, outVariants, cdp, depVars);
                 combineChildVariants(node, bavariants, cvariants, outVariants, cdp, depVars);
                 combineChildVariants(node, acVariants, bvariants, outVariants, cdp, depVars);
@@ -300,6 +318,7 @@ public final class CodeGenDAGPatterns
                 combineChildVariants(node, bcVariants, avariants, outVariants, cdp, depVars);
                 combineChildVariants(node, cbVariants, avariants, outVariants, cdp, depVars);
 
+                // Combine those into the result: x op (x op x)
                 combineChildVariants(node, cvariants, abvariants, outVariants, cdp, depVars);
                 combineChildVariants(node, cvariants, bavariants, outVariants, cdp, depVars);
                 combineChildVariants(node, bvariants, acVariants, outVariants, cdp, depVars);
@@ -310,6 +329,7 @@ public final class CodeGenDAGPatterns
             }
         }
 
+        // Compute permutations of all children.
         ArrayList<ArrayList<TreePatternNode>> childVariants = new ArrayList<>(node.getNumChildren());
         for (int i = 0, e = node.getNumChildren(); i != e; i++)
         {
@@ -472,12 +492,12 @@ public final class CodeGenDAGPatterns
             return;
         }
 
-        if (node.getChild(0).isLeaf() || node.getChild(0).getOperator() != operator)
+        if (node.getChild(0).isLeaf() || !node.getChild(0).getOperator().equals(operator))
             children.add(node.getChild(0));
         else
             gatherChildrenOfAssociativeOpcode(node.getChild(0), children);
 
-        if (node.getChild(1).isLeaf() || node.getChild(1).getOperator() != operator)
+        if (node.getChild(1).isLeaf() || !node.getChild(1).getOperator().equals(operator))
             children.add(node.getChild(1));
         else
             gatherChildrenOfAssociativeOpcode(node.getChild(1), children);
@@ -624,8 +644,8 @@ public final class CodeGenDAGPatterns
             if (!inferredAllResultTypes)
                 pattern.error("Could not infer all types in pattern result!");
 
-            HashMap<String, TreePatternNode> instInputs = new HashMap<>();
-            HashMap<String, TreePatternNode> instResults = new HashMap<>();
+            TreeMap<String, TreePatternNode> instInputs = new TreeMap<>();
+            TreeMap<String, TreePatternNode> instResults = new TreeMap<>();
             ArrayList<Record> instImpInputs = new ArrayList<>();
             ArrayList<Record> instImpResults = new ArrayList<>();
             for (int j = 0, ee = pattern.getNumTrees(); j != ee; ++j)
@@ -684,8 +704,8 @@ public final class CodeGenDAGPatterns
      */
     private void findPatternInputsAndOutputs(TreePattern pattern,
             TreePatternNode tree,
-            HashMap<String, TreePatternNode> instInputs,
-            HashMap<String, TreePatternNode> instResults,
+            TreeMap<String, TreePatternNode> instInputs,
+            TreeMap<String, TreePatternNode> instResults,
             ArrayList<Record> instImpInputs, ArrayList<Record> instImpResults)
             throws Exception
     {
@@ -782,8 +802,9 @@ public final class CodeGenDAGPatterns
      * @param instImpInputs
      * @return
      */
-    private boolean handleUse(TreePattern pattern, TreePatternNode tree,
-            HashMap<String, TreePatternNode> instInputs,
+    private static boolean handleUse(TreePattern pattern,
+            TreePatternNode tree,
+            TreeMap<String, TreePatternNode> instInputs,
             ArrayList<Record> instImpInputs) throws Exception
     {
         if (tree.getName().isEmpty())
@@ -844,6 +865,7 @@ public final class CodeGenDAGPatterns
     private void parseInstructions() throws Exception
     {
         ArrayList<Record> instrs = records.getAllDerivedDefinition("Instruction");
+        // DONE !!! FIXME the number of instrs is correct.
 
         for (int idx = 0; idx < instrs.size(); idx++)
         {
@@ -852,8 +874,11 @@ public final class CodeGenDAGPatterns
             ListInit li = null;
 
             if(instr.getValueInit("Pattern") instanceof ListInit)
-                li = (ListInit)instr.getValueInit("Pattern");
+                li = instr.getValueAsListInit("Pattern");
 
+            // If there is no pattern, only collect minimal information about the
+            // instruction for its operand list.  We have to assume that there is one
+            // result, as we have no detailed info.
             if (li == null || li.getSize() == 0)
             {
                 ArrayList<Record> results = new ArrayList<>();
@@ -863,15 +888,19 @@ public final class CodeGenDAGPatterns
 
                 if (!instrInfo.operandList.isEmpty())
                 {
+                    // These produce no results
                     if (instrInfo.numDefs == 0)
                     {
                         instrInfo.operandList.forEach(op->operands.add(op.rec));
                     }
                     else
                     {
+                        // Assume the first operand is the result.
                         results.add(instrInfo.operandList.get(0).rec);
 
-                        instrInfo.operandList.forEach(op->operands.add(op.rec));
+                        // The rest are inputs.
+                        for (int i = 1, e = instrInfo.operandList.size(); i != e; i++)
+                            operands.add(instrInfo.operandList.get(i).rec);
                     }
                 }
 
@@ -881,7 +910,7 @@ public final class CodeGenDAGPatterns
                 instructions.put(instr, new DAGInstruction(null, results, operands,
                         impResults, impOperands));
 
-                continue;
+                continue;   // no pattern.
             }
 
             // Parse the instruction.
@@ -919,17 +948,18 @@ public final class CodeGenDAGPatterns
 
             // InstInputs - Keep track of all of the inputs of the instruction, along
             // with the record they are declared as.
-            HashMap<String, TreePatternNode> instInputs = new HashMap<>();
+            TreeMap<String, TreePatternNode> instInputs = new TreeMap<>();
 
             // InstResults - Keep track of all the virtual registers that are 'set'
             // in the instruction, including what reg class they are.
-            HashMap<String, TreePatternNode> instResults = new HashMap<>();
+            TreeMap<String, TreePatternNode> instResults = new TreeMap<>();
 
             ArrayList<Record> instImpInputs = new ArrayList<>();
             ArrayList<Record> instImpResults = new ArrayList<>();
 
             // Verify that the top-level forms in the instruction are of void type, and
             // fill in the InstResults map.
+            // FIXME  [(set VR128:$dst, (v4f32 (shufp:$src3 VR128:$src1, VR128:$src2)))]
             for (int j = 0, e = i.getNumTrees(); j != e; ++j)
             {
                 TreePatternNode pat = i.getTree(j);
@@ -988,7 +1018,7 @@ public final class CodeGenDAGPatterns
 
             // Loop over the inputs next.  Make a copy of InstInputs so we can destroy
             // the copy while we're checking the inputs.
-            HashMap<String, TreePatternNode> instInputsCheck = new HashMap<>(instInputs);
+            TreeMap<String, TreePatternNode> instInputsCheck = new TreeMap<>(instInputs);
 
             ArrayList<TreePatternNode> resultNodeOperands = new ArrayList<>();
             ArrayList<Record> operands = new ArrayList<>();
@@ -1077,12 +1107,19 @@ public final class CodeGenDAGPatterns
                 i.dump();
         }
 
+        //System.err.println("The number of Record:" + instructions.size());
+        //System.err.println("The number of Patterns to match before parseInstruction:" + patternsToMatch.size());
         for(Map.Entry<Record, DAGInstruction> pair : instructions.entrySet())
         {
             DAGInstruction theInst = pair.getValue();
             TreePattern pat = theInst.getPattern();
-            if (pat == null) continue;
-
+            if (pat == null)
+            {
+                // FIXME (DONE!!!) to many pattern be skipped. 2017.7.21
+                //  Skip 965.  actucally, the number should be 344
+                //System.err.println(pair.getKey().getName());
+                continue;
+            }
             TreePatternNode pattern = pat.getTree(0);
             TreePatternNode srcPattern;
             if (pattern.getOperator().getName().equals("set"))
@@ -1096,10 +1133,13 @@ public final class CodeGenDAGPatterns
 
             Record instr = pair.getKey();
             TreePatternNode dstPattern = theInst.getResultPattern();
-            patternsToMatch.add(new PatternToMatch(instr.getValueAsListInit("Predicates"),
+            patternsToMatch.
+                    add(new PatternToMatch(instr.getValueAsListInit("Predicates"),
                     srcPattern, dstPattern, theInst.getImpResults(),
                     (int)instr.getValueAsInt("AddedComplexity")));
         }
+
+        //System.err.println("The number of Patterns to match after parseInstruction:" + patternsToMatch.size());
     }
 
     private void parseDefaultOperands() throws Exception
@@ -1337,7 +1377,7 @@ public final class CodeGenDAGPatterns
         return sdNodeXForms.get(r);
     }
 
-    public HashMap<Record, Pair<Record, String>> getSdNodeXForms()
+    public TreeMap<Record, Pair<Record, String>> getSdNodeXForms()
     {
         return sdNodeXForms;
     }
@@ -1403,7 +1443,7 @@ public final class CodeGenDAGPatterns
         return patternFragments.get(r);
     }
 
-    public HashMap<Record, TreePattern> getPatternFragments()
+    public TreeMap<Record, TreePattern> getPatternFragments()
     {
         return patternFragments;
     }

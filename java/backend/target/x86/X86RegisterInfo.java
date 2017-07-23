@@ -832,7 +832,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				amount = Util.roundUp(amount, align);
 
 				// stack setup pseudo instrcution.
-				if (old.getOpCode() == getCallFrameSetupOpcode())
+				if (old.getOpcode() == getCallFrameSetupOpcode())
 				{
 					newOne = buildMI(tii.get(is64Bit ? SUB64ri32 : SUB32ri), stackPtr).
 							addReg(stackPtr).
@@ -840,7 +840,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				}
 				else
 				{
-					assert old.getOpCode() == getCallFrameDestroyOpcode();
+					assert old.getOpcode() == getCallFrameDestroyOpcode();
 
 					long calleeAmt = old.getOperand(1).getImm();
 					amount -= calleeAmt;
@@ -865,7 +865,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				}
 			}
 		}
-		else if (old.getOpCode() == getCallFrameDestroyOpcode())
+		else if (old.getOpcode() == getCallFrameDestroyOpcode())
 		{
 			// If we are performing frame pointer elimination and if the callee pops
 			// something off the stack pointer, add it back.  We do this until we have
@@ -1083,7 +1083,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		// get the position where epilogue code will inserts after.
 		int mbbi = mbb.size()-1;
 		MachineInstr mi;
-		assert mbb.getInstAt(mbbi).getOpCode() == RET
+		assert mbb.getInstAt(mbbi).getOpcode() == RET
 				:"Can only insert epilogue code into returning blocks";
 
 		if (hasFP(mf))

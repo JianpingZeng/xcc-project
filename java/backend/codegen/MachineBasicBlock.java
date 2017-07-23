@@ -194,7 +194,7 @@ public class MachineBasicBlock
 		TargetInstrInfo instInfo = parent.getTarget().getInstrInfo();
 		int i = size() - 1;
 		for (; i >=0 &&
-				instInfo.isTerminatorInstr(getInstAt(i).getOpCode());
+				instInfo.isTerminatorInstr(getInstAt(i).getOpcode());
 		     i--);
 		return i;
 	}

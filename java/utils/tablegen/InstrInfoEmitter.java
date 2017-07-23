@@ -118,7 +118,7 @@ public final class InstrInfoEmitter extends TableGenBackend
             emitOperandInfo(os, operandInfoIDs);
 
             // Emit allof the TargetInstrDesc records in theire ENUM order.
-            os.printf("\n\tTargetInstrDesc[] insts = {\n");
+            os.printf("\n\tTargetInstrDesc[] X86Insts = {\n");
             ArrayList<CodeGenInstruction> numberedInstrs = new ArrayList<>();
             target.getInstructionsByEnumValue(numberedInstrs);
 

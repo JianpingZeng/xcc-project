@@ -115,7 +115,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 
 			HashMap<Integer, Integer> virToPhyRegMap = new HashMap<>();
 
-			int opcode = mi.getOpCode();
+			int opcode = mi.getOpcode();
 			TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
 			for (int useReg : desc.implicitUses)
 				regUsed.set(useReg);

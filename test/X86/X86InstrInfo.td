@@ -261,23 +261,23 @@ def tls32addr : ComplexPattern<i32, 4, "SelectTLSADDRAddr",
 
 //===----------------------------------------------------------------------===//
 // X86 Instruction Predicate Definitions.
-def HasMMX       : Predicate<"Subtarget->hasMMX()">;
-def HasSSE1      : Predicate<"Subtarget->hasSSE1()">;
-def HasSSE2      : Predicate<"Subtarget->hasSSE2()">;
-def HasSSE3      : Predicate<"Subtarget->hasSSE3()">;
-def HasSSSE3     : Predicate<"Subtarget->hasSSSE3()">;
-def HasSSE41     : Predicate<"Subtarget->hasSSE41()">;
-def HasSSE42     : Predicate<"Subtarget->hasSSE42()">;
-def HasSSE4A     : Predicate<"Subtarget->hasSSE4A()">;
-def HasAVX       : Predicate<"Subtarget->hasAVX()">;
-def HasFMA3      : Predicate<"Subtarget->hasFMA3()">;
-def HasFMA4      : Predicate<"Subtarget->hasFMA4()">;
-def FPStackf32   : Predicate<"!Subtarget->hasSSE1()">;
-def FPStackf64   : Predicate<"!Subtarget->hasSSE2()">;
-def In32BitMode  : Predicate<"!Subtarget->is64Bit()">;
-def In64BitMode  : Predicate<"Subtarget->is64Bit()">;
-def IsWin64      : Predicate<"Subtarget->isTargetWin64()">;
-def NotWin64     : Predicate<"!Subtarget->isTargetWin64()">;
+def HasMMX       : Predicate<"subtarget.hasMMX()">;
+def HasSSE1      : Predicate<"subtarget.hasSSE1()">;
+def HasSSE2      : Predicate<"subtarget.hasSSE2()">;
+def HasSSE3      : Predicate<"subtarget.hasSSE3()">;
+def HasSSSE3     : Predicate<"subtarget.hasSSE3()">;
+def HasSSE41     : Predicate<"subtarget.hasSSE41()">;
+def HasSSE42     : Predicate<"subtarget.hasSSE42()">;
+def HasSSE4A     : Predicate<"subtarget.hasSSE4A()">;
+def HasAVX       : Predicate<"subtarget.hasAVX()">;
+def HasFMA3      : Predicate<"subtarget.hasFMA3()">;
+def HasFMA4      : Predicate<"subtarget.hasFMA4()">;
+def FPStackf32   : Predicate<"!subtarget.hasSSE1()">;
+def FPStackf64   : Predicate<"!subtarget.hasSSE2()">;
+def In32BitMode  : Predicate<"!subtarget.is64Bit()">;
+def In64BitMode  : Predicate<"subtarget.is64Bit()">;
+def IsWin64      : Predicate<"subtarget.isTargetWin64()">;
+def NotWin64     : Predicate<"!subtarget.isTargetWin64()">;
 def SmallCode    : Predicate<"TM.getCodeModel() == CodeModel::Small">;
 def KernelCode   : Predicate<"TM.getCodeModel() == CodeModel::Kernel">;
 def FarData      : Predicate<"TM.getCodeModel() != CodeModel::Small &&"
@@ -286,8 +286,8 @@ def NearData     : Predicate<"TM.getCodeModel() == CodeModel::Small ||"
                              "TM.getCodeModel() == CodeModel::Kernel">;
 def IsStatic     : Predicate<"TM.getRelocationModel() == Reloc::Static">;
 def OptForSpeed  : Predicate<"!OptForSize">;
-def FastBTMem    : Predicate<"!Subtarget->isBTMemSlow()">;
-def CallImmAddr  : Predicate<"Subtarget->IsLegalToCallImmediateAddr(TM)">;
+def FastBTMem    : Predicate<"!subtarget.isBTMemSlow()">;
+def CallImmAddr  : Predicate<"subtarget.IsLegalToCallImmediateAddr(TM)">;
 
 //===----------------------------------------------------------------------===//
 // X86 Instruction Format Definitions.

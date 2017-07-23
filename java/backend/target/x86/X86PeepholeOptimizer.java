@@ -62,7 +62,7 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
     {
         MachineInstr curMI = mbb.getInstAt(idx);
         MachineInstr next = idx == mbb.size() - 1? null: mbb.getInstAt(idx+1);
-        switch (curMI.getOpCode())
+        switch (curMI.getOpcode())
         {
             case X86InstrNames.MOVrr8:
             case X86InstrNames.MOVrr16:
@@ -97,7 +97,7 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                     if (val == (byte)val)
                     {
                         int opcode;
-                        switch (curMI.getOpCode())
+                        switch (curMI.getOpcode())
                         {
                             default: assert false:"Unknown opcode value!";
                             case X86InstrNames.ADDri16: opcode = X86InstrNames.ADDri16b;break;
@@ -127,7 +127,7 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
             case X86InstrNames.BSWAPr32:
             {
                 // Change bswap EAX, bswap EAX into nothing.
-                if (next.getOpCode() == X86InstrNames.BSWAPr32
+                if (next.getOpcode() == X86InstrNames.BSWAPr32
                         && curMI.getOperand(0).getReg() ==
                         next.getOperand(0).getReg())
                 {

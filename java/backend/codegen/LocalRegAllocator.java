@@ -374,7 +374,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 		{
 			MachineInstr mi = mbb.getInstAt(i);
 
-			int opcode = mi.getOpCode();
+			int opcode = mi.getOpcode();
 			TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
 
 			// loop over all implicit used register, to mark it as recently used,
@@ -466,7 +466,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 		// find a position of the first non-terminator instruction where
 		// some instrs will were inserts after when needed.
 		int itr = mbb.size();
-		while(itr!=0 && instrInfo.isTerminatorInstr(mbb.getInstAt(itr-1).getOpCode()))
+		while(itr!=0 && instrInfo.isTerminatorInstr(mbb.getInstAt(itr-1).getOpcode()))
 			--itr;
 
 		// Spill all physical register holding virtual register.

@@ -197,11 +197,11 @@ public final class Record implements Cloneable
             os.print(">");
         }
 
-        os.print("{");
+        os.print(" {");
         ArrayList<Record> sc = r.getSuperClasses();
         if (!sc.isEmpty())
         {
-            os.print("\t//");
+            os.print("  //");
             for (int i = 0, e = sc.size(); i< e; i++)
                 os.printf(" %s", sc.get(i).getName());
         }
@@ -211,12 +211,18 @@ public final class Record implements Cloneable
         for (int i = 0, e = vals.size(); i < e; i++)
         {
             if (vals.get(i).getPrefix() != 0 && !r.isTemplateArg(vals.get(i).getName()))
+            {
+                os.printf("  ");
                 vals.get(i).print(os, true);
+            }
         }
         for (int i = 0, e = vals.size(); i < e; i++)
         {
             if (vals.get(i).getPrefix() == 0 && !r.isTemplateArg(vals.get(i).getName()))
+            {
+                os.printf("  ");
                 vals.get(i).print(os);
+            }
         }
         os.println("}");
     }

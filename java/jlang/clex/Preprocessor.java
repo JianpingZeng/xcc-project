@@ -824,7 +824,7 @@ public final class Preprocessor
 
     /**
      * Convert a numeric token into an int value, emitting
-     * Diagnostic DiagID if it is invalid, and returning the value in val.
+     * Diagnostic DiagID if it is invalid, and returning the value in value.
      * @param digitTok
      * @param lineNo
      * @param diagID

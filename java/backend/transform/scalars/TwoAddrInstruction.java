@@ -37,7 +37,7 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 			for (int i = 0; i < mbb.size(); i++)
 			{
 				MachineInstr mi = mbb.getInstAt(i);
-				if (!instInfo.isTwoAddrInstr(mi.getOpCode()))
+				if (!instInfo.isTwoAddrInstr(mi.getOpcode()))
 					continue;
 
 				int regA = mi.getOperand(0).getReg();
@@ -52,7 +52,7 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 					/* TODO handle commutable operator.
 					if (!la.killRegister(mi, regB))
 					{
-						TargetInstrDesc desc = instInfo.get(mi.getOpCode());
+						TargetInstrDesc desc = instInfo.get(mi.getOpcode());
 						if (desc.tSFlags & X86InstrInfo.M_COMMUTABLE)
 						assert mi.getOperandValToReplace(2).isReg()
 								&& mi.getOperandValToReplace(2).getReg() != 0:

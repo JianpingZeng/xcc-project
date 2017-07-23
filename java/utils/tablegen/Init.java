@@ -313,7 +313,7 @@ public abstract class Init
             for (int i = 0, e = getNumBits(); i < e; i++)
             {
                 if (i != 0) os.print(", ");
-                Init bit = getBit(i);
+                Init bit = getBit(e-i-1);
                 if (bit != null)
                     bit.print(os);
                 else
@@ -550,7 +550,7 @@ public abstract class Init
         @Override
         public void print(PrintStream os)
         {
-            os.printf("%s", value);
+            os.printf("\"%s\"", value);
         }
 
         @Override
@@ -649,6 +649,12 @@ public abstract class Init
                     curElt = curElt.resolveReferences(r, rval);
                     changed |= !init.equals(curElt);
                 }while (!init.equals(curElt));
+
+                // Add resovled Init into resolved list and constructed as a member
+                // of new ListInit object to be returned.
+                // FIXME Previously, there is no resolved.add(init)  that
+                // FIXME causes pattern list of PMOVSXWQrr record is empty. 2017.7.21 (done!!!)
+                resolved.add(init);
             }
             if (changed)
                 return new ListInit(resolved, getType());
@@ -1366,10 +1372,11 @@ public abstract class Init
         public Init resolveReferences(Record r, RecordVal rval)
         {
             ArrayList<Init> newArgs = new ArrayList<>();
-            args.forEach(e->newArgs.add(e.resolveReferences(r, rval)));
+            for (Init i : args)
+                newArgs.add(i.resolveReferences(r, rval));
 
             Init op = val.resolveReferences(r, rval);
-            if (args != newArgs || op != val)
+            if (!args.equals(newArgs) || !op.equals(val))
                 return new DagInit(op, "", newArgs, argNames);
             return this;
         }
@@ -1379,6 +1386,9 @@ public abstract class Init
         {
             os.print("(");
             val.print(os);
+            if (!varName.isEmpty())
+                os.printf(":%s", varName);
+
             if (!args.isEmpty())
             {
                 os.print(" ");

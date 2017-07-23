@@ -343,7 +343,7 @@ public final class AliasSetTracker
      */
     public void deleteValue(Value val)
     {
-        // notify the alias analysis module this val is removed.
+        // notify the alias analysis module this value is removed.
         aa.deleteValue(val);
 
         CallSite cs = CallInst.get(val);

@@ -87,7 +87,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                             itr.hasNext(); )
                     {
                         MachineInstr mi = itr.next();
-                        if (mi.getOpCode() != TargetInstrInfo.PHI)
+                        if (mi.getOpcode() != TargetInstrInfo.PHI)
                             break;
 
                         for (int j = mi.getNumOperands() - 1; j >= 2; j-=2)
@@ -120,7 +120,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
             for (int j = 0; j <  mbb.size(); )
             {
                 MachineInstr phi = mbb.getInstAt(j);
-                if (phi.getOpCode() != TargetInstrInfo.PHI)
+                if (phi.getOpcode() != TargetInstrInfo.PHI)
                     continue;
                 for (int k = phi.getNumOperands() - 1; k >= 2; k-=2)
                 {

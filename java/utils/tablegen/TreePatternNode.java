@@ -374,7 +374,7 @@ public final class TreePatternNode implements Cloneable
         {
             boolean madeChanged = false;
             madeChanged |= getChild(0).applyTypeConstraints(tp, notRegisters);
-            madeChanged |= getChild(0).applyTypeConstraints(tp, notRegisters);
+            madeChanged |= getChild(1).applyTypeConstraints(tp, notRegisters);
             madeChanged |= updateNodeType(getChild(1).getTypeNum(0), tp);
             return madeChanged;
         }
@@ -517,7 +517,7 @@ public final class TreePatternNode implements Cloneable
         }
         else
         {
-            System.out.println(getOperator());
+            //System.out.println(getOperator());
             assert getOperator().isSubClassOf("SDNodeXForm"):"Unknown node type!";
 
             if (getNumChildren() != 1)
@@ -526,7 +526,7 @@ public final class TreePatternNode implements Cloneable
                             "' requires one operand!");
             }
 
-            if (!hasTypeSet() || getChild(0).hasTypeSet())
+            if (!hasTypeSet() || !getChild(0).hasTypeSet())
             {
                 boolean madeChanged = updateNodeType(getChild(0).getExtTypes(), tp);
                 madeChanged |= getChild(0).updateNodeType(getExtTypes(), tp);

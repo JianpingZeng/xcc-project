@@ -5,8 +5,6 @@ import backend.value.Function;
 
 import java.util.ArrayList;
 
-import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -139,24 +137,5 @@ public class MachineFunction
 
 		assert blockNo <= mbbNumber.size():"Mismatch!";
 		mbbNumber.ensureCapacity(blockNo);
-	}
-
-	/**
-	 * Replaces all of usage of oldReg with newReg in this machine function.
-	 * @param oldReg
-	 * @param newReg
-	 */
-	public void replaceRegWith(int oldReg, int newReg)
-	{
-		assert oldReg != newReg :"It is not needed to replace the same reg";
-		MachineOperand defined = null;
-		if (oldReg < FirstVirtualRegister)
-			defined = phyRegDefUseList[oldReg];
-		else
-			defined = machineRegisterInfo.getDefMO(oldReg);
-		for (MachineOperand user : defined.getDefUseList())
-		{
-			user.setReg(newReg);
-		}
 	}
 }

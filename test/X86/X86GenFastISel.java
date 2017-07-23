@@ -1,3 +1,4 @@
+package backend.target.x86;
 /**
  * TableGen created file.
  * <p>
@@ -6,3985 +7,3302 @@
  * Powered by Xlous zeng
  * </p>
  */
-import backend.target.x86.X86FastISel;
+import backend.codegen.MVT;
+import backend.codegen.MachineBasicBlock;
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineModuleInfo;
+import backend.codegen.selectDAG.ISD;
+import backend.value.BasicBlock;
+import backend.value.Instruction;
+import backend.value.Value;
+import gnu.trove.map.hash.TObjectIntHashMap;
+
+import java.util.HashMap;
+
+import static backend.target.x86.X86GenInstrNames.*;
+import static backend.target.x86.X86GenRegisterInfo.*;
+import static backend.target.x86.X86GenRegisterNames.AL;
 
 public final class X86GenFastISel extends X86FastISel {
 
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(ADC32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ADDE_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_ADDE_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FAND.
-int fastEmit_X86ISD_FAND_MVT_f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(FsANDPSrr, FR32RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FAND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_FAND_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FAND: return fastEmit_X86ISD_FAND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(IMUL16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_MUL_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BT.
-int fastEmit_X86ISD_BT_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(BT64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_BT_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_X86ISD_BT_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.BT: return fastEmit_X86ISD_BT_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUB.
-int fastEmit_ISD_SUB_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(SUB16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUB_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_SUB_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUB: return fastEmit_ISD_SUB_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(CMP64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_X86ISD_CMP_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(OR16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_OR_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(XOR64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_XOR_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(UCOMISSrr, FR32RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_CMP_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ROTL.
-int fastEmit_ISD_ROTL_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(ROL8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ROTL_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ROTL_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ROTL: return fastEmit_ISD_ROTL_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BSR.
-int fastEmit_X86ISD_BSR_MVT_i16_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_r(BSR16rr, GR16RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_BSR_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_X86ISD_BSR_MVT_i16_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.BSR: return fastEmit_X86ISD_BSR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(OR8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_OR_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_OR_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FXOR.
-int fastEmit_X86ISD_FXOR_MVT_f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(FsXORPSrr, FR32RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FXOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_FXOR_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FXOR: return fastEmit_X86ISD_FXOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(ADD32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_ADD_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ZERO_EXTEND.
-int fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_r(MOVZX32rr8, GR32RegisterClass, op0);
-}
-
-int fastEmit_ISD_ZERO_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.ZERO_EXTEND: return fastEmit_ISD_ZERO_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::FP_ROUND.
-int fastEmit_ISD_FP_ROUND_MVT_f64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(CVTSD2SSrr, FR32RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_FP_ROUND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_ISD_FP_ROUND_MVT_f64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.FP_ROUND: return fastEmit_ISD_FP_ROUND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
+public X86GenFastISel(MachineFunction mf, MachineModuleInfo mmi,
+            TObjectIntHashMap<Value> vm,
+            HashMap<BasicBlock, MachineBasicBlock> bm,
+            TObjectIntHashMap<Instruction.AllocaInst> am)
+    {
+        super(mf, mmi, vm, bm, am);
+    }
 // FastEmit functions for ISD::Constant.
-int fastEmit_ISD_Constant_MVT_i16_i(MVT retVT, long imm0) {
+
+public int fastEmit_ISD_Constant_MVT_i8_i(MVT retVT, long imm0) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_i(MOV8ri, GR8RegisterClass, imm0);
+}
+
+public int fastEmit_ISD_Constant_MVT_i16_i(MVT retVT, long imm0) {
 	if(retVT.simpleVT != MVT.i16)
 		return 0;
 	return fastEmitInst_i(MOV16ri, GR16RegisterClass, imm0);
 }
 
-int fastEmit_ISD_Constant_i(MVT vt, MVT retVT, long imm0) {
+public int fastEmit_ISD_Constant_MVT_i32_i(MVT retVT, long imm0) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_i(MOV32ri, GR32RegisterClass, imm0);
+}
+
+public int fastEmit_ISD_Constant_MVT_i64_i(MVT retVT, long imm0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_i(MOV64ri64i32, GR64RegisterClass, imm0);
+}
+
+public int fastEmit_ISD_Constant_i(MVT vt, MVT retVT, long imm0) {
 	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_Constant_MVT_i8_i(retVT, imm0);
 	case MVT.i16: return fastEmit_ISD_Constant_MVT_i16_i(retVT, imm0);
+	case MVT.i32: return fastEmit_ISD_Constant_MVT_i32_i(retVT, imm0);
+	case MVT.i64: return fastEmit_ISD_Constant_MVT_i64_i(retVT, imm0);
 	default: return 0;
 	}
 }
 
 //Top level FastEmit function.
-int fastEmit_i(MVT vt, MVT retVT, int opcode, long imm0) {
+
+public int fastEmit_i(MVT vt, MVT retVT, int opcode, long imm0) {
 	switch (opcode) {
 	case ISD.Constant: return fastEmit_ISD_Constant_i(vt, retVT, imm0);
 	default: return 0;
 	}
 }
 
-// FastEmit functions for ISD::SRA.
-int fastEmit_ISD_SRA_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(SAR8ri, GR8RegisterClass, op0, imm1);
-}
+// FastEmit functions for ISD::ANY_EXTEND.
 
-int fastEmit_ISD_SRA_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SRA_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SRA: return fastEmit_ISD_SRA_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(CMP16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_X86ISD_CMP_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(AND32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_AND_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_AND_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SIGN_EXTEND.
-int fastEmit_ISD_SIGN_EXTEND_MVT_i16_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_r(MOVSX32rr16, GR32RegisterClass, op0);
-}
-
-int fastEmit_ISD_SIGN_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_SIGN_EXTEND_MVT_i16_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SIGN_EXTEND: return fastEmit_ISD_SIGN_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ZERO_EXTEND.
-int fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_r(MOVZX16rr8, GR16RegisterClass, op0);
-}
-
-int fastEmit_ISD_ZERO_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.ZERO_EXTEND: return fastEmit_ISD_ZERO_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::UCOMI.
-int fastEmit_X86ISD_UCOMI_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(Int_UCOMISDrr, VR128RegisterClass, op0, op1);
+public int fastEmit_ISD_ANY_EXTEND_MVT_i8_MVT_i16_r(int op0) {
+	if ((!subtarget.is64Bit())) {
+			return fastEmitInst_r(MOVZX16rr8, GR16RegisterClass, op0);
 	}
 	return 0;
 }
 
-int fastEmit_X86ISD_UCOMI_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2f64: return fastEmit_X86ISD_UCOMI_MVT_v2f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.UCOMI: return fastEmit_X86ISD_UCOMI_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(XOR32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_XOR_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_XOR_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SIGN_EXTEND.
-int fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_r(MOVSX64rr8, GR64RegisterClass, op0);
-}
-
-int fastEmit_ISD_SIGN_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SIGN_EXTEND: return fastEmit_ISD_SIGN_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(ADD32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ADD_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_ADD_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(XOR32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_XOR_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SIGN_EXTEND.
-int fastEmit_ISD_SIGN_EXTEND_MVT_i16_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_r(MOVSX64rr16, GR64RegisterClass, op0);
-}
-
-int fastEmit_ISD_SIGN_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_SIGN_EXTEND_MVT_i16_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SIGN_EXTEND: return fastEmit_ISD_SIGN_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::FP_TO_SINT.
-int fastEmit_ISD_FP_TO_SINT_MVT_f32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_r(CVTTSS2SIrr, GR32RegisterClass, op0);
+public int fastEmit_ISD_ANY_EXTEND_MVT_i8_MVT_i32_r(int op0) {
+	if ((!subtarget.is64Bit())) {
+			return fastEmitInst_r(MOVZX32rr8, GR32RegisterClass, op0);
 	}
 	return 0;
 }
 
-int fastEmit_ISD_FP_TO_SINT_r(MVT vt, MVT retVT, int op0) {
+public int fastEmit_ISD_ANY_EXTEND_MVT_i8_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i16: return fastEmit_ISD_ANY_EXTEND_MVT_i8_MVT_i16_r(op0);
+	case MVT.i32: return fastEmit_ISD_ANY_EXTEND_MVT_i8_MVT_i32_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_ANY_EXTEND_r(MVT vt, MVT retVT, int op0) {
 	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_ISD_FP_TO_SINT_MVT_f32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.FP_TO_SINT: return fastEmit_ISD_FP_TO_SINT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUBE.
-int fastEmit_ISD_SUBE_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(SBB16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUBE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_SUBE_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUBE: return fastEmit_ISD_SUBE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUBE.
-int fastEmit_ISD_SUBE_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(SBB32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_SUBE_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SUBE_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SUBE: return fastEmit_ISD_SUBE_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(ADD16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ADD_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(XOR32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_XOR_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::EH_RETURN.
-int fastEmit_X86ISD_EH_RETURN_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_r(EH_RETURN, GR32RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_EH_RETURN_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_X86ISD_EH_RETURN_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.EH_RETURN: return fastEmit_X86ISD_EH_RETURN_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(XOR8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_XOR_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(ADC16ri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ADDE_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ADDE_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::VZEXT_MOVL.
-int fastEmit_X86ISD_VZEXT_MOVL_MVT_v2i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(MOVZPQILo2PQIrr, VR128RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_VZEXT_MOVL_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.v2i64: return fastEmit_X86ISD_VZEXT_MOVL_MVT_v2i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.VZEXT_MOVL: return fastEmit_X86ISD_VZEXT_MOVL_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((!Subtarget->hasSSE1())){
-		return fastEmitInst_rr(UCOM_FpIr32, RFP32RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_CMP_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUB.
-int fastEmit_ISD_SUB_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(SUB32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUB_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SUB_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUB: return fastEmit_ISD_SUB_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SIGN_EXTEND.
-int fastEmit_ISD_SIGN_EXTEND_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_r(MOVSX64rr32, GR64RegisterClass, op0);
-}
-
-int fastEmit_ISD_SIGN_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SIGN_EXTEND_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SIGN_EXTEND: return fastEmit_ISD_SIGN_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUBE.
-int fastEmit_ISD_SUBE_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(SBB8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_SUBE_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SUBE_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SUBE: return fastEmit_ISD_SUBE_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(ADC16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ADDE_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(ADD8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ADD_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ADD_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(AND64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_AND_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUB.
-int fastEmit_ISD_SUB_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(SUB32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_SUB_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SUB_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SUB: return fastEmit_ISD_SUB_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_ri(CMP8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_X86ISD_CMP_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_X86ISD_CMP_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(XOR16ri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_XOR_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_XOR_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FAND.
-int fastEmit_X86ISD_FAND_MVT_f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(FsANDPDrr, FR64RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FAND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_FAND_MVT_f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FAND: return fastEmit_X86ISD_FAND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(IMUL64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_MUL_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::BSWAP.
-int fastEmit_ISD_BSWAP_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_r(BSWAP32r, GR32RegisterClass, op0);
-}
-
-int fastEmit_ISD_BSWAP_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_BSWAP_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BSWAP: return fastEmit_ISD_BSWAP_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(ADC16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ADDE_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(ADC64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_ADDE_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUBE.
-int fastEmit_ISD_SUBE_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(SBB32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUBE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SUBE_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUBE: return fastEmit_ISD_SUBE_rr(vt, retVT, op0op1);
+	case MVT.i8: return fastEmit_ISD_ANY_EXTEND_MVT_i8_r(retVT, op0);
 	default: return 0;
 	}
 }
 
 // FastEmit functions for ISD::BIT_CONVERT.
-int fastEmit_ISD_BIT_CONVERT_MVT_f64_r(MVT retVT, int op0) {
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(MOVDI2SSrr, FR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_f64_r(int op0) {
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(MOV64toSDrr, FR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v8i8_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64to64rr, VR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v4i16_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64to64rr, VR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v2i32_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64to64rr, VR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v1i64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64to64rr, VR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v2f32_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64to64rr, VR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_i64_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.f64: return fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_f64_r(op0);
+	case MVT.v8i8: return fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v8i8_r(op0);
+	case MVT.v4i16: return fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v4i16_r(op0);
+	case MVT.v2i32: return fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v2i32_r(op0);
+	case MVT.v1i64: return fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v1i64_r(op0);
+	case MVT.v2f32: return fastEmit_ISD_BIT_CONVERT_MVT_i64_MVT_v2f32_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(MOVSS2DIrr, GR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_f64_r(MVT retVT, int op0) {
 	if(retVT.simpleVT != MVT.i64)
 		return 0;
-	if ((Subtarget->hasSSE2())){
+	if ((subtarget.hasSSE2())){
 		return fastEmitInst_r(MOVSDto64rr, GR64RegisterClass, op0);
 	}
 	return 0;
 }
 
-int fastEmit_ISD_BIT_CONVERT_r(MVT vt, MVT retVT, int op0) {
+public int fastEmit_ISD_BIT_CONVERT_MVT_v8i8_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64from64rr, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v8i8_MVT_f64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVQ2FR64rr, FR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v8i8_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i64: return fastEmit_ISD_BIT_CONVERT_MVT_v8i8_MVT_i64_r(op0);
+	case MVT.f64: return fastEmit_ISD_BIT_CONVERT_MVT_v8i8_MVT_f64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v4i16_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64from64rr, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v4i16_MVT_f64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVQ2FR64rr, FR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v4i16_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i64: return fastEmit_ISD_BIT_CONVERT_MVT_v4i16_MVT_i64_r(op0);
+	case MVT.f64: return fastEmit_ISD_BIT_CONVERT_MVT_v4i16_MVT_f64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v2i32_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64from64rr, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v2i32_MVT_f64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVQ2FR64rr, FR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v2i32_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i64: return fastEmit_ISD_BIT_CONVERT_MVT_v2i32_MVT_i64_r(op0);
+	case MVT.f64: return fastEmit_ISD_BIT_CONVERT_MVT_v2i32_MVT_f64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v1i64_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVD64from64rr, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v1i64_MVT_f64_r(int op0) {
+		return fastEmitInst_r(MMX_MOVQ2FR64rr, FR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v1i64_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i64: return fastEmit_ISD_BIT_CONVERT_MVT_v1i64_MVT_i64_r(op0);
+	case MVT.f64: return fastEmit_ISD_BIT_CONVERT_MVT_v1i64_MVT_f64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_BIT_CONVERT_MVT_v2f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_r(MMX_MOVD64from64rr, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BIT_CONVERT_r(MVT vt, MVT retVT, int op0) {
 	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_BIT_CONVERT_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_ISD_BIT_CONVERT_MVT_i64_r(retVT, op0);
+	case MVT.f32: return fastEmit_ISD_BIT_CONVERT_MVT_f32_r(retVT, op0);
 	case MVT.f64: return fastEmit_ISD_BIT_CONVERT_MVT_f64_r(retVT, op0);
+	case MVT.v8i8: return fastEmit_ISD_BIT_CONVERT_MVT_v8i8_r(retVT, op0);
+	case MVT.v4i16: return fastEmit_ISD_BIT_CONVERT_MVT_v4i16_r(retVT, op0);
+	case MVT.v2i32: return fastEmit_ISD_BIT_CONVERT_MVT_v2i32_r(retVT, op0);
+	case MVT.v1i64: return fastEmit_ISD_BIT_CONVERT_MVT_v1i64_r(retVT, op0);
+	case MVT.v2f32: return fastEmit_ISD_BIT_CONVERT_MVT_v2f32_r(retVT, op0);
 	default: return 0;
 	}
 }
 
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BIT_CONVERT: return fastEmit_ISD_BIT_CONVERT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
+// FastEmit functions for ISD::BRIND.
 
-// FastEmit functions for X86ISD::EH_RETURN.
-int fastEmit_X86ISD_EH_RETURN_MVT_i64_r(MVT retVT, int op0) {
+public int fastEmit_ISD_BRIND_MVT_i32_r(MVT retVT, int op0) {
 	if(retVT.simpleVT != MVT.isVoid)
 		return 0;
-	return fastEmitInst_r(EH_RETURN64, GR64RegisterClass, op0);
+	return fastEmitInst_r(JMP32r, GR32RegisterClass, op0);
 }
 
-int fastEmit_X86ISD_EH_RETURN_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_X86ISD_EH_RETURN_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.EH_RETURN: return fastEmit_X86ISD_EH_RETURN_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SCALAR_TO_VECTOR.
-int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.v2f64)
+public int fastEmit_ISD_BRIND_MVT_i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.isVoid)
 		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(MOVSD2PDrr, VR128RegisterClass, op0);
-	}
-	return 0;
+	return fastEmitInst_r(JMP64r, GR64RegisterClass, op0);
 }
 
-int fastEmit_ISD_SCALAR_TO_VECTOR_r(MVT vt, MVT retVT, int op0) {
+public int fastEmit_ISD_BRIND_r(MVT vt, MVT retVT, int op0) {
 	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SCALAR_TO_VECTOR: return fastEmit_ISD_SCALAR_TO_VECTOR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(AND8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_AND_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_AND_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_ri(vt, retVT, op0imm1);
+	case MVT.i32: return fastEmit_ISD_BRIND_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_ISD_BRIND_MVT_i64_r(retVT, op0);
 	default: return 0;
 	}
 }
 
 // FastEmit functions for ISD::BSWAP.
-int fastEmit_ISD_BSWAP_MVT_i64_r(MVT retVT, int op0) {
+
+public int fastEmit_ISD_BSWAP_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_r(BSWAP32r, GR32RegisterClass, op0);
+}
+
+public int fastEmit_ISD_BSWAP_MVT_i64_r(MVT retVT, int op0) {
 	if(retVT.simpleVT != MVT.i64)
 		return 0;
 	return fastEmitInst_r(BSWAP64r, GR64RegisterClass, op0);
 }
 
-int fastEmit_ISD_BSWAP_r(MVT vt, MVT retVT, int op0) {
+public int fastEmit_ISD_BSWAP_r(MVT vt, MVT retVT, int op0) {
 	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_BSWAP_MVT_i32_r(retVT, op0);
 	case MVT.i64: return fastEmit_ISD_BSWAP_MVT_i64_r(retVT, op0);
 	default: return 0;
 	}
 }
 
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BSWAP: return fastEmit_ISD_BSWAP_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
+// FastEmit functions for ISD::FABS.
 
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(ADD64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_ADD_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FAND.
-int fastEmit_X86ISD_FAND_MVT_f32_rr(MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_FABS_MVT_f32_r(MVT retVT, int op0) {
 	if(retVT.simpleVT != MVT.f32)
 		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(FsANDPSrr, FR32RegisterClass, op0, op1);
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_r(ABS_Fp32, RFP32RegisterClass, op0);
 	}
 	return 0;
 }
 
-int fastEmit_X86ISD_FAND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_FAND_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FAND: return fastEmit_X86ISD_FAND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
+public int fastEmit_ISD_FABS_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f64)
 		return 0;
-	return fastEmitInst_rr(IMUL32rr, GR32RegisterClass, op0, op1);
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_r(ABS_Fp64, RFP64RegisterClass, op0);
+	}
+	return 0;
 }
 
-int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_FABS_MVT_f80_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_r(ABS_Fp80, RFP80RegisterClass, op0);
+}
+
+public int fastEmit_ISD_FABS_r(MVT vt, MVT retVT, int op0) {
 	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_MUL_MVT_i32_rr(retVT, op0op1);
+	case MVT.f32: return fastEmit_ISD_FABS_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_FABS_MVT_f64_r(retVT, op0);
+	case MVT.f80: return fastEmit_ISD_FABS_MVT_f80_r(retVT, op0);
 	default: return 0;
 	}
 }
 
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0op1);
+// FastEmit functions for ISD::FCOS.
+
+public int fastEmit_ISD_FCOS_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_r(COS_Fp32, RFP32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FCOS_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_r(COS_Fp64, RFP64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FCOS_MVT_f80_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_r(COS_Fp80, RFP80RegisterClass, op0);
+}
+
+public int fastEmit_ISD_FCOS_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FCOS_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_FCOS_MVT_f64_r(retVT, op0);
+	case MVT.f80: return fastEmit_ISD_FCOS_MVT_f80_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FNEG.
+
+public int fastEmit_ISD_FNEG_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_r(CHS_Fp32, RFP32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FNEG_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_r(CHS_Fp64, RFP64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FNEG_MVT_f80_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_r(CHS_Fp80, RFP80RegisterClass, op0);
+}
+
+public int fastEmit_ISD_FNEG_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FNEG_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_FNEG_MVT_f64_r(retVT, op0);
+	case MVT.f80: return fastEmit_ISD_FNEG_MVT_f80_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FP_EXTEND.
+
+public int fastEmit_ISD_FP_EXTEND_MVT_f32_MVT_f64_r(int op0) {
+	if ((!subtarget.hasSSE1())) {
+			return fastEmitInst_r(MOV_Fp3264, RFP64RegisterClass, op0);
+	}
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(CVTSS2SDrr, FR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_EXTEND_MVT_f32_MVT_f80_r(int op0) {
+	if ((!subtarget.hasSSE1())) {
+			return fastEmitInst_r(MOV_Fp3280, RFP80RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_EXTEND_MVT_f32_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.f64: return fastEmit_ISD_FP_EXTEND_MVT_f32_MVT_f64_r(op0);
+	case MVT.f80: return fastEmit_ISD_FP_EXTEND_MVT_f32_MVT_f80_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_FP_EXTEND_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_r(MOV_Fp6480, RFP80RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_EXTEND_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FP_EXTEND_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_FP_EXTEND_MVT_f64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FP_ROUND.
+
+public int fastEmit_ISD_FP_ROUND_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_r(MOV_Fp6432, RFP32RegisterClass, op0);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(CVTSD2SSrr, FR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_ROUND_MVT_f80_MVT_f32_r(int op0) {
+	if ((!subtarget.hasSSE1())) {
+			return fastEmitInst_r(MOV_Fp8032, RFP32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_ROUND_MVT_f80_MVT_f64_r(int op0) {
+	if ((!subtarget.hasSSE2())) {
+			return fastEmitInst_r(MOV_Fp8064, RFP64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_ROUND_MVT_f80_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FP_ROUND_MVT_f80_MVT_f32_r(op0);
+	case MVT.f64: return fastEmit_ISD_FP_ROUND_MVT_f80_MVT_f64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_FP_ROUND_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f64: return fastEmit_ISD_FP_ROUND_MVT_f64_r(retVT, op0);
+	case MVT.f80: return fastEmit_ISD_FP_ROUND_MVT_f80_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FP_TO_SINT.
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_f32_MVT_i32_r(int op0) {
+	if ((subtarget.hasSSE1())) {
+			return fastEmitInst_r(CVTTSS2SIrr, GR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_f32_MVT_i64_r(int op0) {
+	if ((subtarget.hasSSE1())) {
+			return fastEmitInst_r(CVTTSS2SI64rr, GR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_f32_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_FP_TO_SINT_MVT_f32_MVT_i32_r(op0);
+	case MVT.i64: return fastEmit_ISD_FP_TO_SINT_MVT_f32_MVT_i64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_f64_MVT_i32_r(int op0) {
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(CVTTSD2SIrr, GR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_f64_MVT_i64_r(int op0) {
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(CVTTSD2SI64rr, GR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_f64_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_FP_TO_SINT_MVT_f64_MVT_i32_r(op0);
+	case MVT.i64: return fastEmit_ISD_FP_TO_SINT_MVT_f64_MVT_i64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_v4f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v4i32)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(Int_CVTTPS2DQrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_TO_SINT_MVT_v2f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v2i32)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(Int_CVTTPD2PIrr, VR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FP_TO_SINT_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FP_TO_SINT_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_FP_TO_SINT_MVT_f64_r(retVT, op0);
+	case MVT.v4f32: return fastEmit_ISD_FP_TO_SINT_MVT_v4f32_r(retVT, op0);
+	case MVT.v2f64: return fastEmit_ISD_FP_TO_SINT_MVT_v2f64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FSIN.
+
+public int fastEmit_ISD_FSIN_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_r(SIN_Fp32, RFP32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSIN_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_r(SIN_Fp64, RFP64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSIN_MVT_f80_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_r(SIN_Fp80, RFP80RegisterClass, op0);
+}
+
+public int fastEmit_ISD_FSIN_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FSIN_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_FSIN_MVT_f64_r(retVT, op0);
+	case MVT.f80: return fastEmit_ISD_FSIN_MVT_f80_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FSQRT.
+
+public int fastEmit_ISD_FSQRT_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_r(SQRT_Fp32, RFP32RegisterClass, op0);
+	}
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_r(SQRTSSr, FR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSQRT_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_r(SQRT_Fp64, RFP64RegisterClass, op0);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(SQRTSDr, FR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSQRT_MVT_f80_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_r(SQRT_Fp80, RFP80RegisterClass, op0);
+}
+
+public int fastEmit_ISD_FSQRT_MVT_v4f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_r(SQRTPSr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSQRT_MVT_v2f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(SQRTPDr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSQRT_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FSQRT_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_FSQRT_MVT_f64_r(retVT, op0);
+	case MVT.f80: return fastEmit_ISD_FSQRT_MVT_f80_r(retVT, op0);
+	case MVT.v4f32: return fastEmit_ISD_FSQRT_MVT_v4f32_r(retVT, op0);
+	case MVT.v2f64: return fastEmit_ISD_FSQRT_MVT_v2f64_r(retVT, op0);
 	default: return 0;
 	}
 }
 
 // FastEmit functions for ISD::SCALAR_TO_VECTOR.
-int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(MOV64toPQIrr, VR128RegisterClass, op0);
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_MVT_v2i32_r(int op0) {
+	if ((subtarget.hasMMX())) {
+			return fastEmitInst_r(MMX_MOVD64rr, VR64RegisterClass, op0);
 	}
 	return 0;
 }
 
-int fastEmit_ISD_SCALAR_TO_VECTOR_r(MVT vt, MVT retVT, int op0) {
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_MVT_v4i32_r(int op0) {
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(MOVDI2PDIrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.v2i32: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_MVT_v2i32_r(op0);
+	case MVT.v4i32: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_MVT_v4i32_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_MVT_v1i64_r(int op0) {
+	if ((subtarget.hasMMX())) {
+			return fastEmitInst_r(MMX_MOVD64rrv164, VR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_MVT_v2i64_r(int op0) {
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(MOV64toPQIrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.v1i64: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_MVT_v1i64_r(op0);
+	case MVT.v2i64: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_MVT_v2i64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_r(MOVSS2PSrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(MOVSD2PDrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SCALAR_TO_VECTOR_r(MVT vt, MVT retVT, int op0) {
 	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_r(retVT, op0);
 	case MVT.i64: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_r(retVT, op0);
+	case MVT.f32: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f32_r(retVT, op0);
+	case MVT.f64: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f64_r(retVT, op0);
 	default: return 0;
 	}
 }
 
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SCALAR_TO_VECTOR: return fastEmit_ISD_SCALAR_TO_VECTOR_r(vt, retVT, op0);
+// FastEmit functions for ISD::SIGN_EXTEND.
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i8_MVT_i16_r(int op0) {
+		return fastEmitInst_r(MOVSX16rr8, GR16RegisterClass, op0);
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i8_MVT_i32_r(int op0) {
+		return fastEmitInst_r(MOVSX32rr8, GR32RegisterClass, op0);
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i8_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MOVSX64rr8, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i16: return fastEmit_ISD_SIGN_EXTEND_MVT_i8_MVT_i16_r(op0);
+	case MVT.i32: return fastEmit_ISD_SIGN_EXTEND_MVT_i8_MVT_i32_r(op0);
+	case MVT.i64: return fastEmit_ISD_SIGN_EXTEND_MVT_i8_MVT_i64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i16_MVT_i32_r(int op0) {
+		return fastEmitInst_r(MOVSX32rr16, GR32RegisterClass, op0);
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i16_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MOVSX64rr16, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i16_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_SIGN_EXTEND_MVT_i16_MVT_i32_r(op0);
+	case MVT.i64: return fastEmit_ISD_SIGN_EXTEND_MVT_i16_MVT_i64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_r(MOVSX64rr32, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_SIGN_EXTEND_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(retVT, op0);
+	case MVT.i16: return fastEmit_ISD_SIGN_EXTEND_MVT_i16_r(retVT, op0);
+	case MVT.i32: return fastEmit_ISD_SIGN_EXTEND_MVT_i32_r(retVT, op0);
 	default: return 0;
 	}
 }
 
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+// FastEmit functions for ISD::SINT_TO_FP.
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_i32_MVT_f32_r(int op0) {
+	if ((subtarget.hasSSE1())) {
+			return fastEmitInst_r(CVTSI2SSrr, FR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_i32_MVT_f64_r(int op0) {
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(CVTSI2SDrr, FR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_i32_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_SINT_TO_FP_MVT_i32_MVT_f32_r(op0);
+	case MVT.f64: return fastEmit_ISD_SINT_TO_FP_MVT_i32_MVT_f64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_i64_MVT_f32_r(int op0) {
+	if ((subtarget.hasSSE1())) {
+			return fastEmitInst_r(CVTSI2SS64rr, FR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_i64_MVT_f64_r(int op0) {
+	if ((subtarget.hasSSE2())) {
+			return fastEmitInst_r(CVTSI2SD64rr, FR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_i64_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_SINT_TO_FP_MVT_i64_MVT_f32_r(op0);
+	case MVT.f64: return fastEmit_ISD_SINT_TO_FP_MVT_i64_MVT_f64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_v2i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(Int_CVTPI2PDrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SINT_TO_FP_MVT_v4i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(Int_CVTDQ2PSrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SINT_TO_FP_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_SINT_TO_FP_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_ISD_SINT_TO_FP_MVT_i64_r(retVT, op0);
+	case MVT.v2i32: return fastEmit_ISD_SINT_TO_FP_MVT_v2i32_r(retVT, op0);
+	case MVT.v4i32: return fastEmit_ISD_SINT_TO_FP_MVT_v4i32_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::TRUNCATE.
+
+public int fastEmit_ISD_TRUNCATE_MVT_i16_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	if ((subtarget.is64Bit())){
+		return fastEmitInst_extractsubreg(retVT, op0, 1);	}
+	return 0;
+}
+
+public int fastEmit_ISD_TRUNCATE_MVT_i32_MVT_i8_r(int op0) {
+	if ((subtarget.is64Bit())) {
+			return fastEmitInst_extractsubreg(MVT.i8, op0, 1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_TRUNCATE_MVT_i32_MVT_i16_r(int op0) {
+		return fastEmitInst_extractsubreg(MVT.i16, op0, 3);
+}
+
+public int fastEmit_ISD_TRUNCATE_MVT_i32_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_TRUNCATE_MVT_i32_MVT_i8_r(op0);
+	case MVT.i16: return fastEmit_ISD_TRUNCATE_MVT_i32_MVT_i16_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_TRUNCATE_MVT_i64_MVT_i8_r(int op0) {
+		return fastEmitInst_extractsubreg(MVT.i8, op0, 1);
+}
+
+public int fastEmit_ISD_TRUNCATE_MVT_i64_MVT_i16_r(int op0) {
+		return fastEmitInst_extractsubreg(MVT.i16, op0, 3);
+}
+
+public int fastEmit_ISD_TRUNCATE_MVT_i64_MVT_i32_r(int op0) {
+		return fastEmitInst_extractsubreg(MVT.i32, op0, 4);
+}
+
+public int fastEmit_ISD_TRUNCATE_MVT_i64_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_TRUNCATE_MVT_i64_MVT_i8_r(op0);
+	case MVT.i16: return fastEmit_ISD_TRUNCATE_MVT_i64_MVT_i16_r(op0);
+	case MVT.i32: return fastEmit_ISD_TRUNCATE_MVT_i64_MVT_i32_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_TRUNCATE_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i16: return fastEmit_ISD_TRUNCATE_MVT_i16_r(retVT, op0);
+	case MVT.i32: return fastEmit_ISD_TRUNCATE_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_ISD_TRUNCATE_MVT_i64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ZERO_EXTEND.
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i8_MVT_i16_r(int op0) {
+		return fastEmitInst_r(MOVZX16rr8, GR16RegisterClass, op0);
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i8_MVT_i32_r(int op0) {
+		return fastEmitInst_r(MOVZX32rr8, GR32RegisterClass, op0);
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i8_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MOVZX64rr8, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i16: return fastEmit_ISD_ZERO_EXTEND_MVT_i8_MVT_i16_r(op0);
+	case MVT.i32: return fastEmit_ISD_ZERO_EXTEND_MVT_i8_MVT_i32_r(op0);
+	case MVT.i64: return fastEmit_ISD_ZERO_EXTEND_MVT_i8_MVT_i64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i16_MVT_i32_r(int op0) {
+		return fastEmitInst_r(MOVZX32rr16, GR32RegisterClass, op0);
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i16_MVT_i64_r(int op0) {
+		return fastEmitInst_r(MOVZX64rr16, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i16_r(MVT retVT, int op0) {
+switch (retVT.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_ZERO_EXTEND_MVT_i16_MVT_i32_r(op0);
+	case MVT.i64: return fastEmit_ISD_ZERO_EXTEND_MVT_i16_MVT_i64_r(op0);
+	default: return 0;
+}
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_r(MOVZX64rr32, GR64RegisterClass, op0);
+}
+
+public int fastEmit_ISD_ZERO_EXTEND_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(retVT, op0);
+	case MVT.i16: return fastEmit_ISD_ZERO_EXTEND_MVT_i16_r(retVT, op0);
+	case MVT.i32: return fastEmit_ISD_ZERO_EXTEND_MVT_i32_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::BSF.
+
+public int fastEmit_X86ISD_BSF_MVT_i16_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_r(BSF16rr, GR16RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_BSF_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_r(BSF32rr, GR32RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_BSF_MVT_i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_r(BSF64rr, GR64RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_BSF_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i16: return fastEmit_X86ISD_BSF_MVT_i16_r(retVT, op0);
+	case MVT.i32: return fastEmit_X86ISD_BSF_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_X86ISD_BSF_MVT_i64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::BSR.
+
+public int fastEmit_X86ISD_BSR_MVT_i16_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_r(BSR16rr, GR16RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_BSR_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_r(BSR32rr, GR32RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_BSR_MVT_i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_r(BSR64rr, GR64RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_BSR_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i16: return fastEmit_X86ISD_BSR_MVT_i16_r(retVT, op0);
+	case MVT.i32: return fastEmit_X86ISD_BSR_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_X86ISD_BSR_MVT_i64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::CALL.
+
+public int fastEmit_X86ISD_CALL_MVT_i32_r(MVT retVT, int op0) {
 	if(retVT.simpleVT != MVT.isVoid)
 		return 0;
-	return fastEmitInst_ri(CMP16ri, GR16RegisterClass, op0, imm1);
+	return fastEmitInst_r(CALL32r, GR32RegisterClass, op0);
 }
 
-int fastEmit_X86ISD_CMP_ri(MVT vt, MVT retVT, int op0, long imm1) {
+public int fastEmit_X86ISD_CALL_MVT_i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((!subtarget.isTargetWin64())){
+		return fastEmitInst_r(CALL64r, GR64RegisterClass, op0);
+	}
+	if ((subtarget.isTargetWin64())){
+		return fastEmitInst_r(WINCALL64r, GR64RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_CALL_r(MVT vt, MVT retVT, int op0) {
 	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_X86ISD_CMP_MVT_i16_ri(retVT, op0imm1);
+	case MVT.i32: return fastEmit_X86ISD_CALL_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_X86ISD_CALL_MVT_i64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::DEC.
+
+public int fastEmit_X86ISD_DEC_MVT_i8_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_r(DEC8r, GR8RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_DEC_MVT_i16_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	if ((!subtarget.is64Bit())){
+		return fastEmitInst_r(DEC16r, GR16RegisterClass, op0);
+	}
+	if ((subtarget.is64Bit())){
+		return fastEmitInst_r(DEC64_16r, GR16RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_DEC_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	if ((!subtarget.is64Bit())){
+		return fastEmitInst_r(DEC32r, GR32RegisterClass, op0);
+	}
+	if ((subtarget.is64Bit())){
+		return fastEmitInst_r(DEC64_32r, GR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_DEC_MVT_i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_r(DEC64r, GR64RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_DEC_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_DEC_MVT_i8_r(retVT, op0);
+	case MVT.i16: return fastEmit_X86ISD_DEC_MVT_i16_r(retVT, op0);
+	case MVT.i32: return fastEmit_X86ISD_DEC_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_X86ISD_DEC_MVT_i64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::EH_RETURN.
+
+public int fastEmit_X86ISD_EH_RETURN_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_r(EH_RETURN, GR32RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_EH_RETURN_MVT_i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_r(EH_RETURN64, GR64RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_EH_RETURN_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_X86ISD_EH_RETURN_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_X86ISD_EH_RETURN_MVT_i64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::FRCP.
+
+public int fastEmit_X86ISD_FRCP_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_r(RCPSSr, FR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FRCP_MVT_v4f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_r(RCPPSr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FRCP_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_X86ISD_FRCP_MVT_f32_r(retVT, op0);
+	case MVT.v4f32: return fastEmit_X86ISD_FRCP_MVT_v4f32_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::FRSQRT.
+
+public int fastEmit_X86ISD_FRSQRT_MVT_f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_r(RSQRTSSr, FR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FRSQRT_MVT_v4f32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_r(RSQRTPSr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FRSQRT_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_X86ISD_FRSQRT_MVT_f32_r(retVT, op0);
+	case MVT.v4f32: return fastEmit_X86ISD_FRSQRT_MVT_v4f32_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::INC.
+
+public int fastEmit_X86ISD_INC_MVT_i8_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_r(INC8r, GR8RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_INC_MVT_i16_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	if ((!subtarget.is64Bit())){
+		return fastEmitInst_r(INC16r, GR16RegisterClass, op0);
+	}
+	if ((subtarget.is64Bit())){
+		return fastEmitInst_r(INC64_16r, GR16RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_INC_MVT_i32_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	if ((!subtarget.is64Bit())){
+		return fastEmitInst_r(INC32r, GR32RegisterClass, op0);
+	}
+	if ((subtarget.is64Bit())){
+		return fastEmitInst_r(INC64_32r, GR32RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_INC_MVT_i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_r(INC64r, GR64RegisterClass, op0);
+}
+
+public int fastEmit_X86ISD_INC_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_INC_MVT_i8_r(retVT, op0);
+	case MVT.i16: return fastEmit_X86ISD_INC_MVT_i16_r(retVT, op0);
+	case MVT.i32: return fastEmit_X86ISD_INC_MVT_i32_r(retVT, op0);
+	case MVT.i64: return fastEmit_X86ISD_INC_MVT_i64_r(retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::VZEXT_MOVL.
+
+public int fastEmit_X86ISD_VZEXT_MOVL_MVT_v2i64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(MOVZPQILo2PQIrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_VZEXT_MOVL_MVT_v2f64_r(MVT retVT, int op0) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_r(MOVZPQILo2PQIrr, VR128RegisterClass, op0);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_VZEXT_MOVL_r(MVT vt, MVT retVT, int op0) {
+	switch (vt.simpleVT) {
+	case MVT.v2i64: return fastEmit_X86ISD_VZEXT_MOVL_MVT_v2i64_r(retVT, op0);
+	case MVT.v2f64: return fastEmit_X86ISD_VZEXT_MOVL_MVT_v2f64_r(retVT, op0);
 	default: return 0;
 	}
 }
 
 //Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
+
+public int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
 	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_ri(vt, retVT, op0imm1);
+	case ISD.ANY_EXTEND: return fastEmit_ISD_ANY_EXTEND_r(vt, retVT, op0);
+	case ISD.BIT_CONVERT: return fastEmit_ISD_BIT_CONVERT_r(vt, retVT, op0);
+	case ISD.BRIND: return fastEmit_ISD_BRIND_r(vt, retVT, op0);
+	case ISD.BSWAP: return fastEmit_ISD_BSWAP_r(vt, retVT, op0);
+	case ISD.FABS: return fastEmit_ISD_FABS_r(vt, retVT, op0);
+	case ISD.FCOS: return fastEmit_ISD_FCOS_r(vt, retVT, op0);
+	case ISD.FNEG: return fastEmit_ISD_FNEG_r(vt, retVT, op0);
+	case ISD.FP_EXTEND: return fastEmit_ISD_FP_EXTEND_r(vt, retVT, op0);
+	case ISD.FP_ROUND: return fastEmit_ISD_FP_ROUND_r(vt, retVT, op0);
+	case ISD.FP_TO_SINT: return fastEmit_ISD_FP_TO_SINT_r(vt, retVT, op0);
+	case ISD.FSIN: return fastEmit_ISD_FSIN_r(vt, retVT, op0);
+	case ISD.FSQRT: return fastEmit_ISD_FSQRT_r(vt, retVT, op0);
+	case ISD.SCALAR_TO_VECTOR: return fastEmit_ISD_SCALAR_TO_VECTOR_r(vt, retVT, op0);
+	case ISD.SIGN_EXTEND: return fastEmit_ISD_SIGN_EXTEND_r(vt, retVT, op0);
+	case ISD.SINT_TO_FP: return fastEmit_ISD_SINT_TO_FP_r(vt, retVT, op0);
+	case ISD.TRUNCATE: return fastEmit_ISD_TRUNCATE_r(vt, retVT, op0);
+	case ISD.ZERO_EXTEND: return fastEmit_ISD_ZERO_EXTEND_r(vt, retVT, op0);
+	case X86ISD.BSF: return fastEmit_X86ISD_BSF_r(vt, retVT, op0);
+	case X86ISD.BSR: return fastEmit_X86ISD_BSR_r(vt, retVT, op0);
+	case X86ISD.CALL: return fastEmit_X86ISD_CALL_r(vt, retVT, op0);
+	case X86ISD.DEC: return fastEmit_X86ISD_DEC_r(vt, retVT, op0);
+	case X86ISD.EH_RETURN: return fastEmit_X86ISD_EH_RETURN_r(vt, retVT, op0);
+	case X86ISD.FRCP: return fastEmit_X86ISD_FRCP_r(vt, retVT, op0);
+	case X86ISD.FRSQRT: return fastEmit_X86ISD_FRSQRT_r(vt, retVT, op0);
+	case X86ISD.INC: return fastEmit_X86ISD_INC_r(vt, retVT, op0);
+	case X86ISD.VZEXT_MOVL: return fastEmit_X86ISD_VZEXT_MOVL_r(vt, retVT, op0);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ADD.
+
+public int fastEmit_ISD_ADD_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(ADD8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ADD_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(ADD16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ADD_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(ADD32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ADD_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_ADD_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_ISD_ADD_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_ADD_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ADDC.
+
+public int fastEmit_ISD_ADDC_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(ADD32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ADDC_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_ADDC_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ADDE.
+
+public int fastEmit_ISD_ADDE_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(ADC8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ADDE_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(ADC16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ADDE_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(ADC32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ADDE_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_ADDE_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_ISD_ADDE_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_ADDE_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::AND.
+
+public int fastEmit_ISD_AND_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(AND8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_AND_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(AND16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_AND_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(AND32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_AND_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_AND_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_ISD_AND_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_AND_MVT_i32_ri(retVT, op0, imm1);
 	default: return 0;
 	}
 }
 
 // FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i8_rr(MVT retVT, int op0, int op1) {
+
+public int fastEmit_ISD_MUL_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(IMUL16rri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_MUL_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(IMUL32rri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_MUL_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i16: return fastEmit_ISD_MUL_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_MUL_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::OR.
+
+public int fastEmit_ISD_OR_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(OR8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_OR_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(OR16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_OR_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(OR32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_OR_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_OR_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_ISD_OR_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_OR_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ROTL.
+
+public int fastEmit_ISD_ROTL_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(ROL8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ROTL_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_ROTL_MVT_i8_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ROTR.
+
+public int fastEmit_ISD_ROTR_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(ROR8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_ROTR_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_ROTR_MVT_i8_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SHL.
+
+public int fastEmit_ISD_SHL_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(SHL8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SHL_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SHL_MVT_i8_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SRA.
+
+public int fastEmit_ISD_SRA_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(SAR8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SRA_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SRA_MVT_i8_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SRL.
+
+public int fastEmit_ISD_SRL_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(SHR8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SRL_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SRL_MVT_i8_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SUB.
+
+public int fastEmit_ISD_SUB_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(SUB8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUB_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(SUB16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUB_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(SUB32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUB_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SUB_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_ISD_SUB_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_SUB_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SUBC.
+
+public int fastEmit_ISD_SUBC_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(SUB32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUBC_MVT_i64_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_ri(SUB64ri32, GR64RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUBC_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_SUBC_MVT_i32_ri(retVT, op0, imm1);
+	case MVT.i64: return fastEmit_ISD_SUBC_MVT_i64_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SUBE.
+
+public int fastEmit_ISD_SUBE_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(SBB8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUBE_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(SBB16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUBE_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(SBB32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_SUBE_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SUBE_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_ISD_SUBE_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_SUBE_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::XOR.
+
+public int fastEmit_ISD_XOR_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(XOR8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_XOR_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(XOR16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_XOR_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(XOR32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_ISD_XOR_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_XOR_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_ISD_XOR_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_ISD_XOR_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::ADD.
+
+public int fastEmit_X86ISD_ADD_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(ADD8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_ADD_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(ADD16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_ADD_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(ADD32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_ADD_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_ADD_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_X86ISD_ADD_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_X86ISD_ADD_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::CMP.
+
+public int fastEmit_X86ISD_CMP_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_ri(CMP8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_CMP_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_ri(CMP16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_CMP_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_ri(CMP32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_CMP_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_CMP_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_X86ISD_CMP_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_X86ISD_CMP_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::SMUL.
+
+public int fastEmit_X86ISD_SMUL_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(IMUL16rri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_SMUL_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(IMUL32rri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_SMUL_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i16: return fastEmit_X86ISD_SMUL_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_X86ISD_SMUL_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::SUB.
+
+public int fastEmit_X86ISD_SUB_MVT_i8_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_ri(SUB8ri, GR8RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_SUB_MVT_i16_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_ri(SUB16ri, GR16RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_SUB_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_ri(SUB32ri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_SUB_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_SUB_MVT_i8_ri(retVT, op0, imm1);
+	case MVT.i16: return fastEmit_X86ISD_SUB_MVT_i16_ri(retVT, op0, imm1);
+	case MVT.i32: return fastEmit_X86ISD_SUB_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::TC_RETURN.
+
+public int fastEmit_X86ISD_TC_RETURN_MVT_i32_ri(MVT retVT, int op0, long imm1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_ri(TCRETURNri, GR32RegisterClass, op0, imm1);
+}
+
+public int fastEmit_X86ISD_TC_RETURN_ri(MVT vt, MVT retVT, int op0, long imm1) {
+	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_X86ISD_TC_RETURN_MVT_i32_ri(retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+//Top level FastEmit function.
+
+public int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
+	switch (opcode) {
+	case ISD.ADD: return fastEmit_ISD_ADD_ri(vt, retVT, op0, imm1);
+	case ISD.ADDC: return fastEmit_ISD_ADDC_ri(vt, retVT, op0, imm1);
+	case ISD.ADDE: return fastEmit_ISD_ADDE_ri(vt, retVT, op0, imm1);
+	case ISD.AND: return fastEmit_ISD_AND_ri(vt, retVT, op0, imm1);
+	case ISD.MUL: return fastEmit_ISD_MUL_ri(vt, retVT, op0, imm1);
+	case ISD.OR: return fastEmit_ISD_OR_ri(vt, retVT, op0, imm1);
+	case ISD.ROTL: return fastEmit_ISD_ROTL_ri(vt, retVT, op0, imm1);
+	case ISD.ROTR: return fastEmit_ISD_ROTR_ri(vt, retVT, op0, imm1);
+	case ISD.SHL: return fastEmit_ISD_SHL_ri(vt, retVT, op0, imm1);
+	case ISD.SRA: return fastEmit_ISD_SRA_ri(vt, retVT, op0, imm1);
+	case ISD.SRL: return fastEmit_ISD_SRL_ri(vt, retVT, op0, imm1);
+	case ISD.SUB: return fastEmit_ISD_SUB_ri(vt, retVT, op0, imm1);
+	case ISD.SUBC: return fastEmit_ISD_SUBC_ri(vt, retVT, op0, imm1);
+	case ISD.SUBE: return fastEmit_ISD_SUBE_ri(vt, retVT, op0, imm1);
+	case ISD.XOR: return fastEmit_ISD_XOR_ri(vt, retVT, op0, imm1);
+	case X86ISD.ADD: return fastEmit_X86ISD_ADD_ri(vt, retVT, op0, imm1);
+	case X86ISD.CMP: return fastEmit_X86ISD_CMP_ri(vt, retVT, op0, imm1);
+	case X86ISD.SMUL: return fastEmit_X86ISD_SMUL_ri(vt, retVT, op0, imm1);
+	case X86ISD.SUB: return fastEmit_X86ISD_SUB_ri(vt, retVT, op0, imm1);
+	case X86ISD.TC_RETURN: return fastEmit_X86ISD_TC_RETURN_ri(vt, retVT, op0, imm1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ADD.
+
+public int fastEmit_ISD_ADD_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(ADD8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADD_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(ADD16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADD_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(ADD32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADD_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(ADD64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADD_MVT_v8i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i8)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PADDBrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_MVT_v16i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v16i8)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PADDBrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_MVT_v4i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i16)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PADDWrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_MVT_v8i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i16)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PADDWrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_MVT_v2i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i32)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PADDDrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_MVT_v4i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i32)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PADDDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_MVT_v1i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v1i64)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PADDQrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PADDQrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_ADD_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_ADD_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_ADD_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_ADD_MVT_i64_rr(retVT, op0, op1);
+	case MVT.v8i8: return fastEmit_ISD_ADD_MVT_v8i8_rr(retVT, op0, op1);
+	case MVT.v16i8: return fastEmit_ISD_ADD_MVT_v16i8_rr(retVT, op0, op1);
+	case MVT.v4i16: return fastEmit_ISD_ADD_MVT_v4i16_rr(retVT, op0, op1);
+	case MVT.v8i16: return fastEmit_ISD_ADD_MVT_v8i16_rr(retVT, op0, op1);
+	case MVT.v2i32: return fastEmit_ISD_ADD_MVT_v2i32_rr(retVT, op0, op1);
+	case MVT.v4i32: return fastEmit_ISD_ADD_MVT_v4i32_rr(retVT, op0, op1);
+	case MVT.v1i64: return fastEmit_ISD_ADD_MVT_v1i64_rr(retVT, op0, op1);
+	case MVT.v2i64: return fastEmit_ISD_ADD_MVT_v2i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ADDC.
+
+public int fastEmit_ISD_ADDC_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(ADD32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADDC_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(ADD64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADDC_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_ADDC_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_ADDC_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::ADDE.
+
+public int fastEmit_ISD_ADDE_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(ADC8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADDE_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(ADC16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADDE_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(ADC32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADDE_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(ADC64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_ADDE_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_ADDE_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_ADDE_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_ADDE_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::AND.
+
+public int fastEmit_ISD_AND_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(AND8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_AND_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(AND16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_AND_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(AND32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_AND_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(AND64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_AND_MVT_v1i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v1i64)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PANDrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_AND_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(ANDPSrr, VR128RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PANDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_AND_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_AND_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_AND_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_AND_MVT_i64_rr(retVT, op0, op1);
+	case MVT.v1i64: return fastEmit_ISD_AND_MVT_v1i64_rr(retVT, op0, op1);
+	case MVT.v2i64: return fastEmit_ISD_AND_MVT_v2i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FADD.
+
+public int fastEmit_ISD_FADD_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_rr(ADD_Fp32, RFP32RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(ADDSSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FADD_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_rr(ADD_Fp64, RFP64RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(ADDSDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FADD_MVT_f80_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_rr(ADD_Fp80, RFP80RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_FADD_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(ADDPSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FADD_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(ADDPDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FADD_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FADD_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_ISD_FADD_MVT_f64_rr(retVT, op0, op1);
+	case MVT.f80: return fastEmit_ISD_FADD_MVT_f80_rr(retVT, op0, op1);
+	case MVT.v4f32: return fastEmit_ISD_FADD_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_ISD_FADD_MVT_v2f64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FDIV.
+
+public int fastEmit_ISD_FDIV_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_rr(DIV_Fp32, RFP32RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(DIVSSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FDIV_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_rr(DIV_Fp64, RFP64RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(DIVSDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FDIV_MVT_f80_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_rr(DIV_Fp80, RFP80RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_FDIV_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(DIVPSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FDIV_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(DIVPDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FDIV_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FDIV_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_ISD_FDIV_MVT_f64_rr(retVT, op0, op1);
+	case MVT.f80: return fastEmit_ISD_FDIV_MVT_f80_rr(retVT, op0, op1);
+	case MVT.v4f32: return fastEmit_ISD_FDIV_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_ISD_FDIV_MVT_v2f64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FMUL.
+
+public int fastEmit_ISD_FMUL_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_rr(MUL_Fp32, RFP32RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(MULSSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FMUL_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_rr(MUL_Fp64, RFP64RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(MULSDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FMUL_MVT_f80_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_rr(MUL_Fp80, RFP80RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_FMUL_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(MULPSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FMUL_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(MULPDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FMUL_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FMUL_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_ISD_FMUL_MVT_f64_rr(retVT, op0, op1);
+	case MVT.f80: return fastEmit_ISD_FMUL_MVT_f80_rr(retVT, op0, op1);
+	case MVT.v4f32: return fastEmit_ISD_FMUL_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_ISD_FMUL_MVT_v2f64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::FSUB.
+
+public int fastEmit_ISD_FSUB_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_rr(SUB_Fp32, RFP32RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(SUBSSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSUB_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_rr(SUB_Fp64, RFP64RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(SUBSDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSUB_MVT_f80_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f80)
+		return 0;
+	return fastEmitInst_rr(SUB_Fp80, RFP80RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_FSUB_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(SUBPSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSUB_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(SUBPDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_FSUB_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_ISD_FSUB_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_ISD_FSUB_MVT_f64_rr(retVT, op0, op1);
+	case MVT.f80: return fastEmit_ISD_FSUB_MVT_f80_rr(retVT, op0, op1);
+	case MVT.v4f32: return fastEmit_ISD_FSUB_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_ISD_FSUB_MVT_v2f64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::MUL.
+
+public int fastEmit_ISD_MUL_MVT_i8_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i8)
 		return 0;
 	tii.copyRegToReg(mbb, mbb.size(), AL,  op0, tm.getRegisterInfo().getPhysicalRegisterRegClass(AL), mri.getRegClass(op0));
 	return fastEmitInst_r(MUL8r, GR8RegisterClass, op1);
 }
 
-int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_MUL_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(ADD8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ADD_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BSF.
-int fastEmit_X86ISD_BSF_MVT_i16_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_r(BSF16rr, GR16RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_BSF_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_X86ISD_BSF_MVT_i16_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.BSF: return fastEmit_X86ISD_BSF_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::Constant.
-int fastEmit_ISD_Constant_MVT_i64_i(MVT retVT, long imm0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_i(MOV64ri, GR64RegisterClass, imm0);
-}
-
-int fastEmit_ISD_Constant_i(MVT vt, MVT retVT, long imm0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_Constant_MVT_i64_i(retVT, imm0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_i(MVT vt, MVT retVT, int opcode, long imm0) {
-	switch (opcode) {
-	case ISD.Constant: return fastEmit_ISD_Constant_i(vt, retVT, imm0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SINT_TO_FP.
-int fastEmit_ISD_SINT_TO_FP_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(CVTSI2SD64rr, FR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_SINT_TO_FP_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_SINT_TO_FP_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SINT_TO_FP: return fastEmit_ISD_SINT_TO_FP_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(OR16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_OR_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::Constant.
-int fastEmit_ISD_Constant_MVT_i64_i(MVT retVT, long imm0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_i(MOV64ri64i32, GR64RegisterClass, imm0);
-}
-
-int fastEmit_ISD_Constant_i(MVT vt, MVT retVT, long imm0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_Constant_MVT_i64_i(retVT, imm0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_i(MVT vt, MVT retVT, int opcode, long imm0) {
-	switch (opcode) {
-	case ISD.Constant: return fastEmit_ISD_Constant_i(vt, retVT, imm0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::PTEST.
-int fastEmit_X86ISD_PTEST_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->hasSSE41())){
-		return fastEmitInst_rr(PTESTrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_PTEST_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v4f32: return fastEmit_X86ISD_PTEST_MVT_v4f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.PTEST: return fastEmit_X86ISD_PTEST_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(IMUL32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_MUL_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BSF.
-int fastEmit_X86ISD_BSF_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_r(BSF64rr, GR64RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_BSF_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_X86ISD_BSF_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.BSF: return fastEmit_X86ISD_BSF_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUB.
-int fastEmit_ISD_SUB_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(SUB8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUB_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SUB_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUB: return fastEmit_ISD_SUB_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(XOR64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_XOR_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(XORPSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2i64: return fastEmit_ISD_XOR_MVT_v2i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(OR64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_OR_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(ADC8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ADDE_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FXOR.
-int fastEmit_X86ISD_FXOR_MVT_f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(FsXORPSrr, FR32RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FXOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_FXOR_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FXOR: return fastEmit_X86ISD_FXOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(OR32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_OR_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SINT_TO_FP.
-int fastEmit_ISD_SINT_TO_FP_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_r(CVTSI2SS64rr, FR32RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_SINT_TO_FP_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_SINT_TO_FP_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SINT_TO_FP: return fastEmit_ISD_SINT_TO_FP_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUBE.
-int fastEmit_ISD_SUBE_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(SBB64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUBE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_SUBE_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUBE: return fastEmit_ISD_SUBE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ZERO_EXTEND.
-int fastEmit_ISD_ZERO_EXTEND_MVT_i16_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_r(MOVZX32rr16, GR32RegisterClass, op0);
-}
-
-int fastEmit_ISD_ZERO_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ZERO_EXTEND_MVT_i16_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.ZERO_EXTEND: return fastEmit_ISD_ZERO_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SCALAR_TO_VECTOR.
-int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.v4i32)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(MOVDI2PDIrr, VR128RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_SCALAR_TO_VECTOR_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SCALAR_TO_VECTOR: return fastEmit_ISD_SCALAR_TO_VECTOR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BSF.
-int fastEmit_X86ISD_BSF_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_r(BSF32rr, GR32RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_BSF_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_X86ISD_BSF_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.BSF: return fastEmit_X86ISD_BSF_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::FP_TO_SINT.
-int fastEmit_ISD_FP_TO_SINT_MVT_f64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(CVTTSD2SIrr, GR32RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_FP_TO_SINT_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_ISD_FP_TO_SINT_MVT_f64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.FP_TO_SINT: return fastEmit_ISD_FP_TO_SINT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(OR8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_OR_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ROTR.
-int fastEmit_ISD_ROTR_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(ROR8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ROTR_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ROTR_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ROTR: return fastEmit_ISD_ROTR_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ZERO_EXTEND.
-int fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_r(MOVZX64rr8, GR64RegisterClass, op0);
-}
-
-int fastEmit_ISD_ZERO_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ZERO_EXTEND_MVT_i8_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.ZERO_EXTEND: return fastEmit_ISD_ZERO_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SINT_TO_FP.
-int fastEmit_ISD_SINT_TO_FP_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(CVTSI2SDrr, FR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_SINT_TO_FP_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SINT_TO_FP_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SINT_TO_FP: return fastEmit_ISD_SINT_TO_FP_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUBE.
-int fastEmit_ISD_SUBE_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(SBB8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUBE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SUBE_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUBE: return fastEmit_ISD_SUBE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(CMP8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_X86ISD_CMP_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SHL.
-int fastEmit_ISD_SHL_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(SHL8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_SHL_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SHL_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SHL: return fastEmit_ISD_SHL_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(CMP32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_X86ISD_CMP_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::BRIND.
-int fastEmit_ISD_BRIND_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_r(JMP32r, GR32RegisterClass, op0);
-}
-
-int fastEmit_ISD_BRIND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_BRIND_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BRIND: return fastEmit_ISD_BRIND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BSR.
-int fastEmit_X86ISD_BSR_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_r(BSR32rr, GR32RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_BSR_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_X86ISD_BSR_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.BSR: return fastEmit_X86ISD_BSR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(AND16ri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_AND_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_AND_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FOR.
-int fastEmit_X86ISD_FOR_MVT_f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(FsORPDrr, FR64RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_FOR_MVT_f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FOR: return fastEmit_X86ISD_FOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SCALAR_TO_VECTOR.
-int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.v2i32)
-		return 0;
-	if ((Subtarget->hasMMX())){
-		return fastEmitInst_r(MMX_MOVD64rr, VR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_SCALAR_TO_VECTOR_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SCALAR_TO_VECTOR: return fastEmit_ISD_SCALAR_TO_VECTOR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(ANDPSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2i64: return fastEmit_ISD_AND_MVT_v2i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(XOR8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_XOR_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_XOR_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::COMI.
-int fastEmit_X86ISD_COMI_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(Int_COMISSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_COMI_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v4f32: return fastEmit_X86ISD_COMI_MVT_v4f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.COMI: return fastEmit_X86ISD_COMI_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(ADC64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_ADDE_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::BIT_CONVERT.
-int fastEmit_ISD_BIT_CONVERT_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(MOV64toSDrr, FR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_BIT_CONVERT_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_BIT_CONVERT_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BIT_CONVERT: return fastEmit_ISD_BIT_CONVERT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::Constant.
-int fastEmit_ISD_Constant_MVT_i32_i(MVT retVT, long imm0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_i(MOV32ri, GR32RegisterClass, imm0);
-}
-
-int fastEmit_ISD_Constant_i(MVT vt, MVT retVT, long imm0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_Constant_MVT_i32_i(retVT, imm0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_i(MVT vt, MVT retVT, int opcode, long imm0) {
-	switch (opcode) {
-	case ISD.Constant: return fastEmit_ISD_Constant_i(vt, retVT, imm0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(XOR8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_XOR_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_f80_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(UCOM_FpIr80, RFP80RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f80: return fastEmit_X86ISD_CMP_MVT_f80_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SIGN_EXTEND.
-int fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_r(MOVSX32rr8, GR32RegisterClass, op0);
-}
-
-int fastEmit_ISD_SIGN_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SIGN_EXTEND: return fastEmit_ISD_SIGN_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FOR.
-int fastEmit_X86ISD_FOR_MVT_f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(FsORPSrr, FR32RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_FOR_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FOR: return fastEmit_X86ISD_FOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(ORPSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2i64: return fastEmit_ISD_OR_MVT_v2i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(ADD16ri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ADD_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ADD_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::FP_TO_SINT.
-int fastEmit_ISD_FP_TO_SINT_MVT_f64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(CVTTSD2SI64rr, GR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_FP_TO_SINT_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_ISD_FP_TO_SINT_MVT_f64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.FP_TO_SINT: return fastEmit_ISD_FP_TO_SINT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CALL.
-int fastEmit_X86ISD_CALL_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_r(CALL32r, GR32RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_CALL_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_X86ISD_CALL_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.CALL: return fastEmit_X86ISD_CALL_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BT.
-int fastEmit_X86ISD_BT_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(BT32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_BT_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_X86ISD_BT_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.BT: return fastEmit_X86ISD_BT_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(ADD8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ADD_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(IMUL16rri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_MUL_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_MUL_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(UCOMISDrr, FR64RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_CMP_MVT_f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::BIT_CONVERT.
-int fastEmit_ISD_BIT_CONVERT_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(MOVDI2SSrr, FR32RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_BIT_CONVERT_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_BIT_CONVERT_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BIT_CONVERT: return fastEmit_ISD_BIT_CONVERT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(XOR16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_XOR_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::BIT_CONVERT.
-int fastEmit_ISD_BIT_CONVERT_MVT_f32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(MOVSS2DIrr, GR32RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_BIT_CONVERT_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_ISD_BIT_CONVERT_MVT_f32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BIT_CONVERT: return fastEmit_ISD_BIT_CONVERT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(ADD16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ADD_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(ADC32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_ADDE_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(ORPSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2i64: return fastEmit_ISD_OR_MVT_v2i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(OR32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_OR_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_OR_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::COMI.
-int fastEmit_X86ISD_COMI_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(Int_COMISDrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_COMI_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2f64: return fastEmit_X86ISD_COMI_MVT_v2f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.COMI: return fastEmit_X86ISD_COMI_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FOR.
-int fastEmit_X86ISD_FOR_MVT_f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(FsORPSrr, FR32RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_X86ISD_FOR_MVT_f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FOR: return fastEmit_X86ISD_FOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FXOR.
-int fastEmit_X86ISD_FXOR_MVT_f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(FsXORPDrr, FR64RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FXOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_FXOR_MVT_f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FXOR: return fastEmit_X86ISD_FXOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FOR.
-int fastEmit_X86ISD_FOR_MVT_f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(FsORPDrr, FR64RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_FOR_MVT_f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FOR: return fastEmit_X86ISD_FOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BT.
-int fastEmit_X86ISD_BT_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_rr(BT16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_X86ISD_BT_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_X86ISD_BT_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.BT: return fastEmit_X86ISD_BT_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUBE.
-int fastEmit_ISD_SUBE_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(SBB16ri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_SUBE_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_SUBE_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SUBE: return fastEmit_ISD_SUBE_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::FXOR.
-int fastEmit_X86ISD_FXOR_MVT_f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_rr(FsXORPDrr, FR64RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_FXOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_FXOR_MVT_f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FXOR: return fastEmit_X86ISD_FXOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::FP_TO_SINT.
-int fastEmit_ISD_FP_TO_SINT_MVT_f32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_r(CVTTSS2SI64rr, GR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_FP_TO_SINT_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_ISD_FP_TO_SINT_MVT_f32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.FP_TO_SINT: return fastEmit_ISD_FP_TO_SINT_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(AND32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_AND_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(AND64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_AND_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUB.
-int fastEmit_ISD_SUB_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(SUB16ri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_SUB_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_SUB_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SUB: return fastEmit_ISD_SUB_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CALL.
-int fastEmit_X86ISD_CALL_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((!Subtarget->isTargetWin64())){
-		return fastEmitInst_r(CALL64r, GR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_CALL_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_X86ISD_CALL_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.CALL: return fastEmit_X86ISD_CALL_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(AND16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_AND_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(AND32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_AND_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(ANDPSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2i64: return fastEmit_ISD_AND_MVT_v2i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(AND8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_AND_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i16_rr(MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_MUL_MVT_i16_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i16)
 		return 0;
 	return fastEmitInst_rr(IMUL16rr, GR16RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_MUL_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::BRIND.
-int fastEmit_ISD_BRIND_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	return fastEmitInst_r(JMP64r, GR64RegisterClass, op0);
-}
-
-int fastEmit_ISD_BRIND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_BRIND_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.BRIND: return fastEmit_ISD_BRIND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::BSR.
-int fastEmit_X86ISD_BSR_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_r(BSR64rr, GR64RegisterClass, op0);
-}
-
-int fastEmit_X86ISD_BSR_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_X86ISD_BSR_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.BSR: return fastEmit_X86ISD_BSR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i32_rr(MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_MUL_MVT_i32_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i32)
 		return 0;
-	return fastEmitInst_rr(ADD32rr, GR32RegisterClass, op0, op1);
+	return fastEmitInst_rr(IMUL32rr, GR32RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_ADD_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SCALAR_TO_VECTOR.
-int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.v1i64)
-		return 0;
-	if ((Subtarget->hasMMX())){
-		return fastEmitInst_r(MMX_MOVD64rrv164, VR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_SCALAR_TO_VECTOR_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SCALAR_TO_VECTOR: return fastEmit_ISD_SCALAR_TO_VECTOR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ZERO_EXTEND.
-int fastEmit_ISD_ZERO_EXTEND_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_r(MOVZX64rr32, GR64RegisterClass, op0);
-}
-
-int fastEmit_ISD_ZERO_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_ZERO_EXTEND_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.ZERO_EXTEND: return fastEmit_ISD_ZERO_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i16_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_ri(OR16ri, GR16RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_OR_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_OR_MVT_i16_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.v2i64)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(XORPSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v2i64: return fastEmit_ISD_XOR_MVT_v2i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::UCOMI.
-int fastEmit_X86ISD_UCOMI_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_rr(Int_UCOMISSrr, VR128RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_UCOMI_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.v4f32: return fastEmit_X86ISD_UCOMI_MVT_v4f32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.UCOMI: return fastEmit_X86ISD_UCOMI_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CALL.
-int fastEmit_X86ISD_CALL_MVT_i64_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((Subtarget->isTargetWin64())){
-		return fastEmitInst_r(WINCALL64r, GR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_CALL_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_X86ISD_CALL_MVT_i64_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case X86ISD.CALL: return fastEmit_X86ISD_CALL_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i32_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_rr(ADC32rr, GR32RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_ADDE_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i64_rr(MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_MUL_MVT_i64_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i64)
 		return 0;
 	return fastEmitInst_rr(IMUL64rr, GR64RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_MUL_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.isVoid)
+public int fastEmit_ISD_MUL_MVT_v4i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i16)
 		return 0;
-	return fastEmitInst_ri(CMP32ri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_X86ISD_CMP_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_X86ISD_CMP_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SCALAR_TO_VECTOR.
-int fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.v4f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_r(MOVSS2PSrr, VR128RegisterClass, op0);
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PMULLWrr, VR64RegisterClass, op0, op1);
 	}
 	return 0;
 }
 
-int fastEmit_ISD_SCALAR_TO_VECTOR_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_ISD_SCALAR_TO_VECTOR_MVT_f32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SCALAR_TO_VECTOR: return fastEmit_ISD_SCALAR_TO_VECTOR_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADD.
-int fastEmit_ISD_ADD_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
+public int fastEmit_ISD_MUL_MVT_v8i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i16)
 		return 0;
-	return fastEmitInst_rr(ADD64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_ADD_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PMULLWrr, VR128RegisterClass, op0, op1);
 	}
+	return 0;
 }
 
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0op1);
+public int fastEmit_ISD_MUL_MVT_v4i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i32)
+		return 0;
+	if ((subtarget.hasSSE41())){
+		return fastEmitInst_rr(PMULLDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_MUL_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_MUL_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_MUL_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_MUL_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_MUL_MVT_i64_rr(retVT, op0, op1);
+	case MVT.v4i16: return fastEmit_ISD_MUL_MVT_v4i16_rr(retVT, op0, op1);
+	case MVT.v8i16: return fastEmit_ISD_MUL_MVT_v8i16_rr(retVT, op0, op1);
+	case MVT.v4i32: return fastEmit_ISD_MUL_MVT_v4i32_rr(retVT, op0, op1);
 	default: return 0;
 	}
 }
 
 // FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i8_rr(MVT retVT, int op0, int op1) {
+
+public int fastEmit_ISD_OR_MVT_i8_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i8)
 		return 0;
 	return fastEmitInst_rr(OR8rr, GR8RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_OR_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::Constant.
-int fastEmit_ISD_Constant_MVT_i8_i(MVT retVT, long imm0) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_i(MOV8ri, GR8RegisterClass, imm0);
-}
-
-int fastEmit_ISD_Constant_i(MVT vt, MVT retVT, long imm0) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_Constant_MVT_i8_i(retVT, imm0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_i(MVT vt, MVT retVT, int opcode, long imm0) {
-	switch (opcode) {
-	case ISD.Constant: return fastEmit_ISD_Constant_i(vt, retVT, imm0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUB.
-int fastEmit_ISD_SUB_MVT_i64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i64)
-		return 0;
-	return fastEmitInst_rr(SUB64rr, GR64RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_SUB_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_SUB_MVT_i64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.SUB: return fastEmit_ISD_SUB_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SUB.
-int fastEmit_ISD_SUB_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(SUB8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_SUB_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SUB_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SUB: return fastEmit_ISD_SUB_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(ADC8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_ADDE_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ADDE_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SINT_TO_FP.
-int fastEmit_ISD_SINT_TO_FP_MVT_i32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f32)
-		return 0;
-	if ((Subtarget->hasSSE1())){
-		return fastEmitInst_r(CVTSI2SSrr, FR32RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_SINT_TO_FP_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_SINT_TO_FP_MVT_i32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.SINT_TO_FP: return fastEmit_ISD_SINT_TO_FP_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i8_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_rr(AND8rr, GR8RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_AND_MVT_i8_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::XOR.
-int fastEmit_ISD_XOR_MVT_i16_rr(MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_OR_MVT_i16_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i16)
 		return 0;
-	return fastEmitInst_rr(XOR16rr, GR16RegisterClass, op0, op1);
+	return fastEmitInst_rr(OR16rr, GR16RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_XOR_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::AND.
-int fastEmit_ISD_AND_MVT_i16_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.i16)
-		return 0;
-	return fastEmitInst_rr(AND16rr, GR16RegisterClass, op0, op1);
-}
-
-int fastEmit_ISD_AND_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_AND_MVT_i16_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::MUL.
-int fastEmit_ISD_MUL_MVT_i32_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i32)
-		return 0;
-	return fastEmitInst_ri(IMUL32rri, GR32RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_MUL_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_MUL_MVT_i32_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.MUL: return fastEmit_ISD_MUL_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::FP_EXTEND.
-int fastEmit_ISD_FP_EXTEND_MVT_f32_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.f64)
-		return 0;
-	if ((Subtarget->hasSSE2())){
-		return fastEmitInst_r(CVTSS2SDrr, FR64RegisterClass, op0);
-	}
-	return 0;
-}
-
-int fastEmit_ISD_FP_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.f32: return fastEmit_ISD_FP_EXTEND_MVT_f32_r(retVT, op0);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.FP_EXTEND: return fastEmit_ISD_FP_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i32_rr(MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_OR_MVT_i32_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i32)
 		return 0;
 	return fastEmitInst_rr(OR32rr, GR32RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.i32: return fastEmit_ISD_OR_MVT_i32_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::ADDE.
-int fastEmit_ISD_ADDE_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
-		return 0;
-	return fastEmitInst_ri(ADC8ri, GR8RegisterClass, op0, imm1);
-}
-
-int fastEmit_ISD_ADDE_ri(MVT vt, MVT retVT, int op0, long imm1) {
-	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_ADDE_MVT_i8_ri(retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.ADDE: return fastEmit_ISD_ADDE_ri(vt, retVT, op0imm1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for X86ISD::CMP.
-int fastEmit_X86ISD_CMP_MVT_f64_rr(MVT retVT, int op0, int op1) {
-	if(retVT.simpleVT != MVT.isVoid)
-		return 0;
-	if ((!Subtarget->hasSSE2())){
-		return fastEmitInst_rr(UCOM_FpIr64, RFP64RegisterClass, op0, op1);
-	}
-	return 0;
-}
-
-int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
-	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_CMP_MVT_f64_rr(retVT, op0op1);
-	default: return 0;
-	}
-}
-
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::OR.
-int fastEmit_ISD_OR_MVT_i64_rr(MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_OR_MVT_i64_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i64)
 		return 0;
 	return fastEmitInst_rr(OR64rr, GR64RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
+public int fastEmit_ISD_OR_MVT_v1i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v1i64)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PORrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_OR_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(ORPSrr, VR128RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PORrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_OR_rr(MVT vt, MVT retVT, int op0, int op1) {
 	switch (vt.simpleVT) {
-	case MVT.i64: return fastEmit_ISD_OR_MVT_i64_rr(retVT, op0op1);
+	case MVT.i8: return fastEmit_ISD_OR_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_OR_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_OR_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_OR_MVT_i64_rr(retVT, op0, op1);
+	case MVT.v1i64: return fastEmit_ISD_OR_MVT_v1i64_rr(retVT, op0, op1);
+	case MVT.v2i64: return fastEmit_ISD_OR_MVT_v2i64_rr(retVT, op0, op1);
 	default: return 0;
 	}
 }
 
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0op1);
+// FastEmit functions for ISD::SUB.
+
+public int fastEmit_ISD_SUB_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(SUB8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUB_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(SUB16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUB_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(SUB32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUB_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(SUB64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUB_MVT_v8i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i8)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PSUBBrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_MVT_v16i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v16i8)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PSUBBrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_MVT_v4i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i16)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PSUBWrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_MVT_v8i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i16)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PSUBWrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_MVT_v2i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i32)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PSUBDrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_MVT_v4i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i32)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PSUBDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_MVT_v1i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v1i64)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PSUBQrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PSUBQrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_SUB_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SUB_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_SUB_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_SUB_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_SUB_MVT_i64_rr(retVT, op0, op1);
+	case MVT.v8i8: return fastEmit_ISD_SUB_MVT_v8i8_rr(retVT, op0, op1);
+	case MVT.v16i8: return fastEmit_ISD_SUB_MVT_v16i8_rr(retVT, op0, op1);
+	case MVT.v4i16: return fastEmit_ISD_SUB_MVT_v4i16_rr(retVT, op0, op1);
+	case MVT.v8i16: return fastEmit_ISD_SUB_MVT_v8i16_rr(retVT, op0, op1);
+	case MVT.v2i32: return fastEmit_ISD_SUB_MVT_v2i32_rr(retVT, op0, op1);
+	case MVT.v4i32: return fastEmit_ISD_SUB_MVT_v4i32_rr(retVT, op0, op1);
+	case MVT.v1i64: return fastEmit_ISD_SUB_MVT_v1i64_rr(retVT, op0, op1);
+	case MVT.v2i64: return fastEmit_ISD_SUB_MVT_v2i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SUBC.
+
+public int fastEmit_ISD_SUBC_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(SUB32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUBC_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(SUB64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUBC_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i32: return fastEmit_ISD_SUBC_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_SUBC_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::SUBE.
+
+public int fastEmit_ISD_SUBE_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(SBB8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUBE_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(SBB16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUBE_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(SBB32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUBE_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(SBB64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_SUBE_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_SUBE_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_SUBE_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_SUBE_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_SUBE_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for ISD::XOR.
+
+public int fastEmit_ISD_XOR_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(XOR8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_XOR_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(XOR16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_XOR_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(XOR32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_XOR_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(XOR64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_ISD_XOR_MVT_v1i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v1i64)
+		return 0;
+	if ((subtarget.hasMMX())){
+		return fastEmitInst_rr(MMX_PXORrr, VR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_XOR_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(XORPSrr, VR128RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(PXORrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_ISD_XOR_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_ISD_XOR_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_ISD_XOR_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_ISD_XOR_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_ISD_XOR_MVT_i64_rr(retVT, op0, op1);
+	case MVT.v1i64: return fastEmit_ISD_XOR_MVT_v1i64_rr(retVT, op0, op1);
+	case MVT.v2i64: return fastEmit_ISD_XOR_MVT_v2i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::ADD.
+
+public int fastEmit_X86ISD_ADD_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(ADD8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_ADD_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(ADD16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_ADD_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(ADD32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_ADD_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(ADD64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_ADD_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_ADD_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_X86ISD_ADD_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_X86ISD_ADD_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_X86ISD_ADD_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::BT.
+
+public int fastEmit_X86ISD_BT_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(BT16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_BT_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(BT32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_BT_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(BT64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_BT_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i16: return fastEmit_X86ISD_BT_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_X86ISD_BT_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_X86ISD_BT_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::CMP.
+
+public int fastEmit_X86ISD_CMP_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(CMP8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_CMP_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(CMP16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_CMP_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(CMP32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_CMP_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(CMP64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_CMP_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((!subtarget.hasSSE1())){
+		return fastEmitInst_rr(UCOM_FpIr32, RFP32RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(UCOMISSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_CMP_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((!subtarget.hasSSE2())){
+		return fastEmitInst_rr(UCOM_FpIr64, RFP64RegisterClass, op0, op1);
+	}
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(UCOMISDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_CMP_MVT_f80_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	return fastEmitInst_rr(UCOM_FpIr80, RFP80RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_CMP_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_CMP_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_X86ISD_CMP_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_X86ISD_CMP_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_X86ISD_CMP_MVT_i64_rr(retVT, op0, op1);
+	case MVT.f32: return fastEmit_X86ISD_CMP_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_X86ISD_CMP_MVT_f64_rr(retVT, op0, op1);
+	case MVT.f80: return fastEmit_X86ISD_CMP_MVT_f80_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::COMI.
+
+public int fastEmit_X86ISD_COMI_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(Int_COMISSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_COMI_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(Int_COMISDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_COMI_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v4f32: return fastEmit_X86ISD_COMI_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_X86ISD_COMI_MVT_v2f64_rr(retVT, op0, op1);
 	default: return 0;
 	}
 }
 
 // FastEmit functions for X86ISD::FAND.
-int fastEmit_X86ISD_FAND_MVT_f64_rr(MVT retVT, int op0, int op1) {
+
+public int fastEmit_X86ISD_FAND_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(FsANDPSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FAND_MVT_f64_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.f64)
 		return 0;
-	if ((Subtarget->hasSSE2())){
+	if ((subtarget.hasSSE2())){
 		return fastEmitInst_rr(FsANDPDrr, FR64RegisterClass, op0, op1);
 	}
 	return 0;
 }
 
-int fastEmit_X86ISD_FAND_rr(MVT vt, MVT retVT, int op0, int op1) {
+public int fastEmit_X86ISD_FAND_rr(MVT vt, MVT retVT, int op0, int op1) {
 	switch (vt.simpleVT) {
-	case MVT.f64: return fastEmit_X86ISD_FAND_MVT_f64_rr(retVT, op0op1);
+	case MVT.f32: return fastEmit_X86ISD_FAND_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_X86ISD_FAND_MVT_f64_rr(retVT, op0, op1);
 	default: return 0;
 	}
 }
 
-//Top level FastEmit function.
-int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
-	switch (opcode) {
-	case X86ISD.FAND: return fastEmit_X86ISD_FAND_rr(vt, retVT, op0op1);
-	default: return 0;
-	}
-}
+// FastEmit functions for X86ISD::FMAX.
 
-// FastEmit functions for ISD::ZERO_EXTEND.
-int fastEmit_ISD_ZERO_EXTEND_MVT_i16_r(MVT retVT, int op0) {
-	if(retVT.simpleVT != MVT.i64)
+public int fastEmit_X86ISD_FMAX_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
 		return 0;
-	return fastEmitInst_r(MOVZX64rr16, GR64RegisterClass, op0);
-}
-
-int fastEmit_ISD_ZERO_EXTEND_r(MVT vt, MVT retVT, int op0) {
-	switch (vt.simpleVT) {
-	case MVT.i16: return fastEmit_ISD_ZERO_EXTEND_MVT_i16_r(retVT, op0);
-	default: return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(MAXSSrr, FR32RegisterClass, op0, op1);
 	}
+	return 0;
 }
 
-//Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
-	switch (opcode) {
-	case ISD.ZERO_EXTEND: return fastEmit_ISD_ZERO_EXTEND_r(vt, retVT, op0);
-	default: return 0;
-	}
-}
-
-// FastEmit functions for ISD::SRL.
-int fastEmit_ISD_SRL_MVT_i8_ri(MVT retVT, int op0, long imm1) {
-	if(retVT.simpleVT != MVT.i8)
+public int fastEmit_X86ISD_FMAX_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
 		return 0;
-	return fastEmitInst_ri(SHR8ri, GR8RegisterClass, op0, imm1);
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(MAXSDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
 }
 
-int fastEmit_ISD_SRL_ri(MVT vt, MVT retVT, int op0, long imm1) {
+public int fastEmit_X86ISD_FMAX_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(MAXPSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FMAX_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(MAXPDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FMAX_rr(MVT vt, MVT retVT, int op0, int op1) {
 	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SRL_MVT_i8_ri(retVT, op0imm1);
+	case MVT.f32: return fastEmit_X86ISD_FMAX_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_X86ISD_FMAX_MVT_f64_rr(retVT, op0, op1);
+	case MVT.v4f32: return fastEmit_X86ISD_FMAX_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_X86ISD_FMAX_MVT_v2f64_rr(retVT, op0, op1);
 	default: return 0;
 	}
 }
 
-//Top level FastEmit function.
-int fastEmit_ri(MVT vt, MVT retVT, int opcode, int op0, long imm1) {
-	switch (opcode) {
-	case ISD.SRL: return fastEmit_ISD_SRL_ri(vt, retVT, op0imm1);
+// FastEmit functions for X86ISD::FMIN.
+
+public int fastEmit_X86ISD_FMIN_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(MINSSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FMIN_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(MINSDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FMIN_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(MINPSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FMIN_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(MINPDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FMIN_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_X86ISD_FMIN_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_X86ISD_FMIN_MVT_f64_rr(retVT, op0, op1);
+	case MVT.v4f32: return fastEmit_X86ISD_FMIN_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_X86ISD_FMIN_MVT_v2f64_rr(retVT, op0, op1);
 	default: return 0;
 	}
 }
 
-// FastEmit functions for ISD::SIGN_EXTEND.
-int fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(MVT retVT, int op0) {
+// FastEmit functions for X86ISD::FOR.
+
+public int fastEmit_X86ISD_FOR_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(FsORPSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FOR_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(FsORPDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FOR_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_X86ISD_FOR_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_X86ISD_FOR_MVT_f64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::FXOR.
+
+public int fastEmit_X86ISD_FXOR_MVT_f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f32)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(FsXORPSrr, FR32RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FXOR_MVT_f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.f64)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(FsXORPDrr, FR64RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_FXOR_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.f32: return fastEmit_X86ISD_FXOR_MVT_f32_rr(retVT, op0, op1);
+	case MVT.f64: return fastEmit_X86ISD_FXOR_MVT_f64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPEQB.
+
+public int fastEmit_X86ISD_PCMPEQB_MVT_v8i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i8)
+		return 0;
+	return fastEmitInst_rr(MMX_PCMPEQBrr, VR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPEQB_MVT_v16i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v16i8)
+		return 0;
+	return fastEmitInst_rr(PCMPEQBrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPEQB_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v8i8: return fastEmit_X86ISD_PCMPEQB_MVT_v8i8_rr(retVT, op0, op1);
+	case MVT.v16i8: return fastEmit_X86ISD_PCMPEQB_MVT_v16i8_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPEQD.
+
+public int fastEmit_X86ISD_PCMPEQD_MVT_v2i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i32)
+		return 0;
+	return fastEmitInst_rr(MMX_PCMPEQDrr, VR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPEQD_MVT_v4i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i32)
+		return 0;
+	return fastEmitInst_rr(PCMPEQDrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPEQD_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v2i32: return fastEmit_X86ISD_PCMPEQD_MVT_v2i32_rr(retVT, op0, op1);
+	case MVT.v4i32: return fastEmit_X86ISD_PCMPEQD_MVT_v4i32_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPEQQ.
+
+public int fastEmit_X86ISD_PCMPEQQ_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	return fastEmitInst_rr(PCMPEQQrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPEQQ_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v2i64: return fastEmit_X86ISD_PCMPEQQ_MVT_v2i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPEQW.
+
+public int fastEmit_X86ISD_PCMPEQW_MVT_v4i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i16)
+		return 0;
+	return fastEmitInst_rr(MMX_PCMPEQWrr, VR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPEQW_MVT_v8i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i16)
+		return 0;
+	return fastEmitInst_rr(PCMPEQWrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPEQW_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v4i16: return fastEmit_X86ISD_PCMPEQW_MVT_v4i16_rr(retVT, op0, op1);
+	case MVT.v8i16: return fastEmit_X86ISD_PCMPEQW_MVT_v8i16_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPGTB.
+
+public int fastEmit_X86ISD_PCMPGTB_MVT_v8i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i8)
+		return 0;
+	return fastEmitInst_rr(MMX_PCMPGTBrr, VR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPGTB_MVT_v16i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v16i8)
+		return 0;
+	return fastEmitInst_rr(PCMPGTBrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPGTB_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v8i8: return fastEmit_X86ISD_PCMPGTB_MVT_v8i8_rr(retVT, op0, op1);
+	case MVT.v16i8: return fastEmit_X86ISD_PCMPGTB_MVT_v16i8_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPGTD.
+
+public int fastEmit_X86ISD_PCMPGTD_MVT_v2i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i32)
+		return 0;
+	return fastEmitInst_rr(MMX_PCMPGTDrr, VR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPGTD_MVT_v4i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i32)
+		return 0;
+	return fastEmitInst_rr(PCMPGTDrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPGTD_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v2i32: return fastEmit_X86ISD_PCMPGTD_MVT_v2i32_rr(retVT, op0, op1);
+	case MVT.v4i32: return fastEmit_X86ISD_PCMPGTD_MVT_v4i32_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPGTQ.
+
+public int fastEmit_X86ISD_PCMPGTQ_MVT_v2i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v2i64)
+		return 0;
+	return fastEmitInst_rr(PCMPGTQrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPGTQ_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v2i64: return fastEmit_X86ISD_PCMPGTQ_MVT_v2i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PCMPGTW.
+
+public int fastEmit_X86ISD_PCMPGTW_MVT_v4i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v4i16)
+		return 0;
+	return fastEmitInst_rr(MMX_PCMPGTWrr, VR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPGTW_MVT_v8i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v8i16)
+		return 0;
+	return fastEmitInst_rr(PCMPGTWrr, VR128RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_PCMPGTW_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v4i16: return fastEmit_X86ISD_PCMPGTW_MVT_v4i16_rr(retVT, op0, op1);
+	case MVT.v8i16: return fastEmit_X86ISD_PCMPGTW_MVT_v8i16_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PSHUFB.
+
+public int fastEmit_X86ISD_PSHUFB_MVT_v16i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.v16i8)
+		return 0;
+	if ((subtarget.hasSSE3())){
+		return fastEmitInst_rr(PSHUFBrr128, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_PSHUFB_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v16i8: return fastEmit_X86ISD_PSHUFB_MVT_v16i8_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::PTEST.
+
+public int fastEmit_X86ISD_PTEST_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((subtarget.hasSSE41())){
+		return fastEmitInst_rr(PTESTrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_PTEST_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v4f32: return fastEmit_X86ISD_PTEST_MVT_v4f32_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::SMUL.
+
+public int fastEmit_X86ISD_SMUL_MVT_i16_rr(MVT retVT, int op0, int op1) {
 	if(retVT.simpleVT != MVT.i16)
 		return 0;
-	return fastEmitInst_r(MOVSX16rr8, GR16RegisterClass, op0);
+	return fastEmitInst_rr(IMUL16rr, GR16RegisterClass, op0, op1);
 }
 
-int fastEmit_ISD_SIGN_EXTEND_r(MVT vt, MVT retVT, int op0) {
+public int fastEmit_X86ISD_SMUL_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(IMUL32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_SMUL_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(IMUL64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_SMUL_rr(MVT vt, MVT retVT, int op0, int op1) {
 	switch (vt.simpleVT) {
-	case MVT.i8: return fastEmit_ISD_SIGN_EXTEND_MVT_i8_r(retVT, op0);
+	case MVT.i16: return fastEmit_X86ISD_SMUL_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_X86ISD_SMUL_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_X86ISD_SMUL_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::SUB.
+
+public int fastEmit_X86ISD_SUB_MVT_i8_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i8)
+		return 0;
+	return fastEmitInst_rr(SUB8rr, GR8RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_SUB_MVT_i16_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i16)
+		return 0;
+	return fastEmitInst_rr(SUB16rr, GR16RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_SUB_MVT_i32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i32)
+		return 0;
+	return fastEmitInst_rr(SUB32rr, GR32RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_SUB_MVT_i64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.i64)
+		return 0;
+	return fastEmitInst_rr(SUB64rr, GR64RegisterClass, op0, op1);
+}
+
+public int fastEmit_X86ISD_SUB_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.i8: return fastEmit_X86ISD_SUB_MVT_i8_rr(retVT, op0, op1);
+	case MVT.i16: return fastEmit_X86ISD_SUB_MVT_i16_rr(retVT, op0, op1);
+	case MVT.i32: return fastEmit_X86ISD_SUB_MVT_i32_rr(retVT, op0, op1);
+	case MVT.i64: return fastEmit_X86ISD_SUB_MVT_i64_rr(retVT, op0, op1);
+	default: return 0;
+	}
+}
+
+// FastEmit functions for X86ISD::UCOMI.
+
+public int fastEmit_X86ISD_UCOMI_MVT_v4f32_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((subtarget.hasSSE1())){
+		return fastEmitInst_rr(Int_UCOMISSrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_UCOMI_MVT_v2f64_rr(MVT retVT, int op0, int op1) {
+	if(retVT.simpleVT != MVT.isVoid)
+		return 0;
+	if ((subtarget.hasSSE2())){
+		return fastEmitInst_rr(Int_UCOMISDrr, VR128RegisterClass, op0, op1);
+	}
+	return 0;
+}
+
+public int fastEmit_X86ISD_UCOMI_rr(MVT vt, MVT retVT, int op0, int op1) {
+	switch (vt.simpleVT) {
+	case MVT.v4f32: return fastEmit_X86ISD_UCOMI_MVT_v4f32_rr(retVT, op0, op1);
+	case MVT.v2f64: return fastEmit_X86ISD_UCOMI_MVT_v2f64_rr(retVT, op0, op1);
 	default: return 0;
 	}
 }
 
 //Top level FastEmit function.
-int fastEmit_r(MVT vt, MVT retVT, int opcode, int op0) {
+
+public int fastEmit_rr(MVT vt, MVT retVT, int opcode, int op0, int op1) {
 	switch (opcode) {
-	case ISD.SIGN_EXTEND: return fastEmit_ISD_SIGN_EXTEND_r(vt, retVT, op0);
+	case ISD.ADD: return fastEmit_ISD_ADD_rr(vt, retVT, op0, op1);
+	case ISD.ADDC: return fastEmit_ISD_ADDC_rr(vt, retVT, op0, op1);
+	case ISD.ADDE: return fastEmit_ISD_ADDE_rr(vt, retVT, op0, op1);
+	case ISD.AND: return fastEmit_ISD_AND_rr(vt, retVT, op0, op1);
+	case ISD.FADD: return fastEmit_ISD_FADD_rr(vt, retVT, op0, op1);
+	case ISD.FDIV: return fastEmit_ISD_FDIV_rr(vt, retVT, op0, op1);
+	case ISD.FMUL: return fastEmit_ISD_FMUL_rr(vt, retVT, op0, op1);
+	case ISD.FSUB: return fastEmit_ISD_FSUB_rr(vt, retVT, op0, op1);
+	case ISD.MUL: return fastEmit_ISD_MUL_rr(vt, retVT, op0, op1);
+	case ISD.OR: return fastEmit_ISD_OR_rr(vt, retVT, op0, op1);
+	case ISD.SUB: return fastEmit_ISD_SUB_rr(vt, retVT, op0, op1);
+	case ISD.SUBC: return fastEmit_ISD_SUBC_rr(vt, retVT, op0, op1);
+	case ISD.SUBE: return fastEmit_ISD_SUBE_rr(vt, retVT, op0, op1);
+	case ISD.XOR: return fastEmit_ISD_XOR_rr(vt, retVT, op0, op1);
+	case X86ISD.ADD: return fastEmit_X86ISD_ADD_rr(vt, retVT, op0, op1);
+	case X86ISD.BT: return fastEmit_X86ISD_BT_rr(vt, retVT, op0, op1);
+	case X86ISD.CMP: return fastEmit_X86ISD_CMP_rr(vt, retVT, op0, op1);
+	case X86ISD.COMI: return fastEmit_X86ISD_COMI_rr(vt, retVT, op0, op1);
+	case X86ISD.FAND: return fastEmit_X86ISD_FAND_rr(vt, retVT, op0, op1);
+	case X86ISD.FMAX: return fastEmit_X86ISD_FMAX_rr(vt, retVT, op0, op1);
+	case X86ISD.FMIN: return fastEmit_X86ISD_FMIN_rr(vt, retVT, op0, op1);
+	case X86ISD.FOR: return fastEmit_X86ISD_FOR_rr(vt, retVT, op0, op1);
+	case X86ISD.FXOR: return fastEmit_X86ISD_FXOR_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPEQB: return fastEmit_X86ISD_PCMPEQB_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPEQD: return fastEmit_X86ISD_PCMPEQD_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPEQQ: return fastEmit_X86ISD_PCMPEQQ_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPEQW: return fastEmit_X86ISD_PCMPEQW_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPGTB: return fastEmit_X86ISD_PCMPGTB_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPGTD: return fastEmit_X86ISD_PCMPGTD_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPGTQ: return fastEmit_X86ISD_PCMPGTQ_rr(vt, retVT, op0, op1);
+	case X86ISD.PCMPGTW: return fastEmit_X86ISD_PCMPGTW_rr(vt, retVT, op0, op1);
+	case X86ISD.PSHUFB: return fastEmit_X86ISD_PSHUFB_rr(vt, retVT, op0, op1);
+	case X86ISD.PTEST: return fastEmit_X86ISD_PTEST_rr(vt, retVT, op0, op1);
+	case X86ISD.SMUL: return fastEmit_X86ISD_SMUL_rr(vt, retVT, op0, op1);
+	case X86ISD.SUB: return fastEmit_X86ISD_SUB_rr(vt, retVT, op0, op1);
+	case X86ISD.UCOMI: return fastEmit_X86ISD_UCOMI_rr(vt, retVT, op0, op1);
 	default: return 0;
 	}
 }

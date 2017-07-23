@@ -30,7 +30,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MachineInstr
+public class MachineInstr implements Cloneable
 {
 	private TargetInstrDesc tid;
 
@@ -163,7 +163,7 @@ public class MachineInstr
 				parent.getParent().getMachineRegisterInfo();
 	}
 
-	public int getOpCode()
+	public int getOpcode()
 	{
 		return tid.opCode;
 	}
@@ -196,7 +196,7 @@ public class MachineInstr
 
 	public boolean isIdenticalTo(MachineInstr other)
 	{
-		if (other.getOpCode() != getOpCode() || other.getNumOperands() != getNumOperands())
+		if (other.getOpcode() != getOpcode() || other.getNumOperands() != getNumOperands())
 			return false;
 
 		for (int i = 0, e = getNumOperands(); i != e; i++)
@@ -214,14 +214,14 @@ public class MachineInstr
 
 	public boolean isLabel()
 	{
-		int op = getOpCode();
+		int op = getOpcode();
 		return op == TargetInstrInfo.DBG_LABEL || op == TargetInstrInfo.EH_LABEL
 				|| op == TargetInstrInfo.GC_LABEL;
 	}
 
 	public boolean isDebugLabel()
 	{
-		return getOpCode() == TargetInstrInfo.DBG_LABEL;
+		return getOpcode() == TargetInstrInfo.DBG_LABEL;
 	}
 
 	public boolean readsRegister(int reg, TargetRegisterInfo tri)
@@ -281,21 +281,31 @@ public class MachineInstr
 		// TODO: 17-7-16
 	}
 
+    boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo)
+    {
+        return addRegisterKilled(IncomingReg, RegInfo, false);
+    }
+
 	/// addRegisterKilled - We have determined MI kills a register. Look for the
 	/// operand that uses it and mark it as IsKill. If AddIfNotFound is true,
 	/// add a implicit operand if it's not found. Returns true if the operand
 	/// exists / is added.
 	boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo,
-			boolean AddIfNotFound =false)
+			boolean AddIfNotFound)
 	{
 	}
+
+    boolean addRegisterDead(int IncomingReg, TargetRegisterInfo RegInfo)
+    {
+        return addRegisterDead(IncomingReg, RegInfo, false);
+    }
 
 	/// addRegisterDead - We have determined MI defined a register without a use.
 	/// Look for the operand that defines it and mark it as IsDead. If
 	/// AddIfNotFound is true, add a implicit operand if it's not found. Returns
 	/// true if the operand exists / is added.
 	boolean addRegisterDead(int IncomingReg, TargetRegisterInfo RegInfo,
-			boolean AddIfNotFound =false)
+			boolean AddIfNotFound)
 	{
 	}
 
@@ -368,5 +378,29 @@ public class MachineInstr
 	public void addMemOperand(MachineMemOperand mmo)
 	{
 		memOperands.add(mmo);
+	}
+
+	public int getIndexOf(MachineOperand op)
+	{
+		return operands.indexOf(op);
+	}
+
+	@Override
+	public MachineInstr clone()
+	{
+		MachineInstr res = new MachineInstr(tid);
+		res.numImplicitOps = 0;
+		res.parent = null;
+
+		// Add operands
+		for (int i = 0; i != getNumOperands(); i++)
+			res.addOperand(getOperand(i));
+
+		res.numImplicitOps = numImplicitOps;
+
+		// Add memory operands.
+		for (MachineMemOperand mmo : memOperands)
+			res.addMemOperand(mmo);
+		return res;
 	}
 }
