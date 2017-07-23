@@ -55,11 +55,6 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         this.optLevel = optLevel;
     }
 
-    public int makeReg(EVT vt)
-    {
-
-    }
-
     public TargetLowering getTargetLowering() {return tli;}
 
     @Override

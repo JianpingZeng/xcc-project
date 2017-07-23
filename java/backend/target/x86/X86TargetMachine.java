@@ -1,25 +1,20 @@
 package backend.target.x86;
 
+import backend.pass.PassManagerBase;
 import backend.target.*;
 import backend.value.Module;
-import backend.pass.PassManagerBase;
 
 import java.io.OutputStream;
 
-import static backend.codegen.LocalRegAllocator.createLocalRegAllocator;
-import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.x86.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
-import static backend.target.x86.PEI.createX86PrologEpilogEmitter;
-import static backend.target.x86.X86PeepholeOptimizer.createX86PeepholeOptimizer;
-import static backend.target.x86.X86SimpleInstSel.createX86SimpleInstructionSelector;
-import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
+import static backend.target.x86.X86DAGtoDAGISel.createX86ISelDag;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class X86TargetMachine extends TargetMachine
+public class X86TargetMachine extends LLVMTargetMachine
 {
 	/**
 	 * All x86 instruction information can be accessed by this.
@@ -30,19 +25,24 @@ public class X86TargetMachine extends TargetMachine
 	 * function calling.
 	 */
 	private TargetFrameInfo frameInfo;
+	private X86Subtarget subtarget;
+	private TargetData dataLayout;
+	private X86TargetLowering tli;
+	private RelocModel defRelocModel;
 
-	public X86TargetMachine(Module module)
+	public X86TargetMachine(Target t, String triple,
+			String fs, boolean is64Bit)
 	{
-		super("X86", true, 4, 4, 4, 4, 4, 4, 2, 1);
+		super(t, triple);
 		frameInfo = new TargetFrameInfo(StackGrowDown, 8, 4);
-		instrInfo = new X86InstrInfo();
+		// TODO: 17-7-23
 	}
 
 	@Override
 	public X86Subtarget getSubtarget()
 	{
 		// TODO: 17-7-16
-		return null;
+		return subtarget;
 	}
 
 	/**
@@ -53,7 +53,8 @@ public class X86TargetMachine extends TargetMachine
      */
     public static TargetMachine allocateIA32TargetMachine(Module module)
     {
-        return new X86TargetMachine(module);
+        // return new X86TargetMachine(module);
+        return null;
     }
 
     @Override
@@ -68,56 +69,29 @@ public class X86TargetMachine extends TargetMachine
 	@Override
 	public X86TargetLowering getTargetLowering()
 	{
-		// TODO: 17-7-16
-		return null;
+		return tli;
 	}
 
-	/**
-	 * Add passes to the specified pass manager to get assembly language code
-	 * emitted.  Typically this will involve several steps of code generation.
-	 * This method should return true if assembly emission is not supported.
-	 * <p>
-	 * Note that: this method would be overriden by concrete subclass for
-	 * different backend.target, like IA32, Sparc.
-	 *
-	 * @param pm
-	 * @param fast
-	 * @param asmOutStream
-	 * @param genFileType
-	 * @param optLevel
-	 * @return
-	 */
 	@Override
-	public boolean addPassesToEmitFile(PassManagerBase pm,
-			boolean fast, OutputStream asmOutStream,
-			CodeGenFileType genFileType, CodeGenOpt optLevel)
+	public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
 	{
-		// lowers switch instr into chained branch instr.
-		pm.add(createLowerSwitchPass());
+		pm.add(createX86ISelDag(this, level));
+		return false;
+	}
 
-		// FIXME: The code generator does not properly handle functions with
-		// unreachable basic blocks.
-
-		//pm.add(createCFGSimplifyPass());
-
-		pm.add(createX86SimpleInstructionSelector(this));
-
-		// TODO: A SSA destruction pass is needed to transform SSA-based MC out of SSA.
-
-		// Perform register allocation to convert to a concrete x86 representation
-		if (fast)
-			pm.add(createSimpleRegAllocator());
-		else
-			pm.add(createLocalRegAllocator());
+	@Override
+	public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level)
+	{
 		// converts virtual register in X86 FP inst into floating point stack slot.
 		pm.add(createX86FloatingPointStackitifierPass());
+		return true;
+	}
 
-		// Insert prolog/epilog code.  Eliminate abstract frame index references.
-		pm.add(createX86PrologEpilogEmitter());
-
-		pm.add(createX86PeepholeOptimizer());
-
-		pm.add(X86ATTAsmPrinter.createX86AsmCodeEmitter(asmOutStream, this));
+	@Override
+	public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
+			boolean verbose, OutputStream os)
+	{
+		pm.add(X86ATTAsmPrinter.createX86AsmCodeEmitter(os, this));
 		return false;
 	}
 }

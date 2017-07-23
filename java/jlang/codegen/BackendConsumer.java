@@ -29,12 +29,14 @@ import jlang.support.LangOptions;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
+import tools.OutParamWrapper;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.function.Function;
 
-import static backend.target.TargetMachine.CodeGenFileType.AsmFile;
+import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
 import static jlang.support.BackendAction.*;
 
@@ -69,7 +71,7 @@ public class BackendConsumer implements ASTConsumer
     private CodeGenerator gen;
     private OutputStream asmOutStream;
     private TargetData theTargetData;
-    private TargetMachine theTargetMachine;
+    private TargetMachine tm;
     private ASTContext context;
 
     private FunctionPassManager perFunctionPasses;
@@ -91,8 +93,8 @@ public class BackendConsumer implements ASTConsumer
         compileOptions = opts;
         gen = CodeGeneratorImpl.createLLVMCodeGen(diags, moduleName, compileOptions);
         asmOutStream = os;
-        theTargetMachine = targetMachineAllocator.apply(theModule);
-        theTargetData = theTargetMachine.getTargetData();
+        tm = targetMachineAllocator.apply(theModule);
+        theTargetData = tm.getTargetData();
     }
 
     public static ASTConsumer createBackendConsumer(
@@ -192,10 +194,10 @@ public class BackendConsumer implements ASTConsumer
 
         // creates some necessary pass for code generation and optimization.
         createPass();
-        StringBuilder error = new StringBuilder();
+        OutParamWrapper<String> error = new OutParamWrapper<>();
         if (!addEmitPasses(error))
         {
-            System.err.println("UNKNOWN: " + error.toString());
+            System.err.println("UNKNOWN: " + error.get());
             System.exit(-1);
         }
 
@@ -290,7 +292,7 @@ public class BackendConsumer implements ASTConsumer
                 inliningPass);
     }
 
-    private boolean addEmitPasses(StringBuilder buffer)
+    private boolean addEmitPasses(OutParamWrapper<String> error)
     {
         if (action == Backend_EmitNothing)
             return true;
@@ -308,26 +310,32 @@ public class BackendConsumer implements ASTConsumer
                 case 3: optLevel = Aggressive;break;
             }
 
-            if (theTargetMachine.addPassesToEmitFile(pm, fast,
-                    asmOutStream, AsmFile, optLevel))
+            switch (tm.addPassesToEmitFile(pm, asmOutStream, AssemblyFile, optLevel))
             {
-                buffer.append("Unable to interface with backend.target machine!\n");
+                default:
+                case Error:
+                    error.set("Unable to interface with target machine!\n");
+                    return false;
+                case AsmFile:
+                    break;
+            }
+            if (tm.addPassesToEmitFileFinish(getCodeGenPasses(), null, optLevel))
+            {
+                error.set("Unable to interface with target machine!\n");
                 return false;
             }
-
-            // TODO add passes to emit .s file. 2017.3.26 by xlous.zeng
             return true;
         }
         else if (action == Backend_EmitIr)
         {
             getPerModulePasses().add(new PrintModulePass(asmOutStream));
-            buffer.append("Unsupport to emit hir code currently!");
+            error.set("Unsupport to emit LLVM IR yet!");
             return false;
         }
         else
         {
             assert action == Backend_EmitObj;
-            buffer.append("Unsupport to emit object file currently!");
+            error.set("Unsupport to emit object file yet!");
             return false;
         }
     }

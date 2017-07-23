@@ -1,5 +1,6 @@
 package backend.target;
 
+import backend.codegen.MachineCodeEmitter;
 import backend.pass.PassManagerBase;
 
 import java.io.OutputStream;
@@ -30,7 +31,7 @@ public abstract class TargetMachine
      */
     public enum CodeGenFileType
     {
-        Error, None, AsmFile, ELfFile, MachOFile, DynamicLibrary
+        AssemblyFile, ObjectFile, DynamicLibrary
     }
 
     public enum CodeModel
@@ -63,23 +64,19 @@ public abstract class TargetMachine
 
 	private RelocModel relocModel;
 
+	protected Target theTarget;
 	/**
 	 * Can only called by subclass.
 	 */
-	protected TargetMachine(String name,
-			boolean littleEndian,
-			int ptrSize, int ptrAlign,
-			int doubleAlign, int floatAlign,
-			int longAlign, int intAlign,
-			int shortAlign, int byteAlign)
-	{
-		this.name = name;
-	}
+	protected TargetMachine(Target target)
+    {
+        theTarget = target;
+    }
 
-	protected TargetMachine(String name)
-	{
-		this(name, false, 8, 8, 8, 4, 8, 4, 2, 1);
-	}
+    public Target getTarget()
+    {
+        return theTarget;
+    }
 
 	public CodeModel getCodeModel()
 	{
@@ -116,23 +113,46 @@ public abstract class TargetMachine
 	}
 
 	/**
-     * Add passes to the specified pass manager to get assembly language code
-     * emitted.  Typically this will involve several steps of code generation.
+     * Add passes to the specified pass manager to get the specified file emitted.
+	 * Typically this will involve several steps of code generation.
      * This method should return true if assembly emission is not supported.
-     *
+     * <p>
+	 * This method should return FileModel::Error if emission of this file type
+	 * is not supported.
+	 * </p>
+	 * <p>
      * Note that: this method would be overriden by concrete subclass for
      * different backend.target, like IA32, Sparc.
+	 * </p>
      * @param pm
-     * @param fast
      * @param asmOutStream
      * @param genFileType
      * @param optLevel
      * @return
      */
-    public abstract boolean addPassesToEmitFile(
+    public FileModel addPassesToEmitFile(
     		PassManagerBase pm,
-            boolean fast,
             OutputStream asmOutStream,
             CodeGenFileType genFileType,
-            CodeGenOpt optLevel);
+            CodeGenOpt optLevel)
+    {
+    	return FileModel.None;
+    }
+
+	/**
+	 * if the passes to emit the specified file had to be split up (e.g., to add
+	 * an object writer pass), this method can be used to finish up adding passes
+	 * to emit the file, if necessary.
+	 * @param pm
+	 * @param mce
+	 * @param opt
+	 * @return
+	 */
+	public boolean addPassesToEmitFileFinish(
+    		PassManagerBase pm,
+		    MachineCodeEmitter mce,
+		    CodeGenOpt opt)
+    {
+    	return true;
+    }
 }
