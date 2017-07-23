@@ -72,7 +72,7 @@ public class X86Subtarget extends TargetSubtarget
     /**
      * Which PIC style to use
      */
-    private PICStyle picStyle;
+    protected PICStyle picStyle;
 
     /**
      * MMX, SSE1, SSE2, SSE3, SSSE3, SSE41, SSE42, or
@@ -118,29 +118,29 @@ public class X86Subtarget extends TargetSubtarget
      * Nonzero if this is a darwin platform: the numeric
      * version of the platform, e.g. 8 = 10.4 (Tiger), 9 = 10.5 (Leopard), etc.
      */
-    private char darwinVers;
+    protected char darwinVers;
 
     /**
      * true if this is a "linux" platform.
      */
-    private boolean isLinux;
+    protected boolean isLinux;
 
     /**
      * The minimum alignment known to hold of the stack frame on
      * entry to the function and which must be maintained by every function.
      */
-    private int stackAlignemnt;
+    protected int stackAlignemnt;
 
     /**
      * Max. memset / memcpy size that is turned into rep/movs, rep/stos ops.
      */
-    private int maxInlineSizeThreshold;
+    protected int maxInlineSizeThreshold;
 
     /**
      * True if the processor supports 64-bit instructions and
      * pointer size is 64 bit.
      */
-    private boolean is64Bit;
+    protected boolean is64Bit;
 
     public enum TargetType
     {

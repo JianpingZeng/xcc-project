@@ -140,7 +140,7 @@ public abstract class TargetInstrInfo
 	public abstract void reMaterialize(MachineBasicBlock mbb,
 			int insertPos,
 			int destReg,
-			int srcReg,
+			int subIdx,
 			MachineInstr origin);
 
 	public boolean isInvariantLoad(MachineInstr mi)

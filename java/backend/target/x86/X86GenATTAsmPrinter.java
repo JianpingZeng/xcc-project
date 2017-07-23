@@ -2092,12 +2092,12 @@ public final class X86GenATTAsmPrinter extends X86ATTAsmPrinter{
 	public boolean printInstruction(MachineInstr mi)
 	{
 		// emit the opcode for the instruction.
-		String asmStr = opStrs[mi.getOpCode()];
+		String asmStr = opStrs[mi.getOpcode()];
 		if (asmStr != null)
 
 			os.print(asmStr);
 
-		switch (mi.getOpCode())
+		switch (mi.getOpcode())
 		{
 			default: return false;
 			case INLINEASM: printInlineAsm(mi); break;

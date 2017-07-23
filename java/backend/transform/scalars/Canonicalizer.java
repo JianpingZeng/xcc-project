@@ -104,54 +104,54 @@ public class Canonicalizer implements InstVisitor
 	 *
 	public void visitConvert(CastInst inst)
 	{
-		Value val = inst.operand(0);
-		if (val.isConstant())
+		Value value = inst.operand(0);
+		if (value.isConstant())
 		{
 			// folds conversions between two constant
 			switch (inst.getOpcode())
 			{
 				case Trunc:
-					setLongConstant(val.asLIRConstant().asInt());
+					setLongConstant(value.asLIRConstant().asInt());
 					return;
 				case ZExt:
-					setFloatConstant((float) val.asLIRConstant().asInt());
+					setFloatConstant((float) value.asLIRConstant().asInt());
 					return;
 				case FPToUI:
-					setIntConstant((int) val.asLIRConstant().asLong());
+					setIntConstant((int) value.asLIRConstant().asLong());
 					return;
 				case FPToSI:
-					setFloatConstant((float) val.asLIRConstant().asLong());
+					setFloatConstant((float) value.asLIRConstant().asLong());
 					return;
 				case UIToFP:
-                    setDoubleConstant(val.asLIRConstant().asDouble());
+                    setDoubleConstant(value.asLIRConstant().asDouble());
 					return;
 				case FPExt:
-					setDoubleConstant((double) val.asLIRConstant().asFloat());
+					setDoubleConstant((double) value.asLIRConstant().asFloat());
 					return;
 				case SIToFP:
-					setIntConstant((int) val.asLIRConstant().asFloat());
+					setIntConstant((int) value.asLIRConstant().asFloat());
 					return;
 				case FPTrunc:
-					setLongConstant((long) val.asLIRConstant().asFloat());
+					setLongConstant((long) value.asLIRConstant().asFloat());
 					return;
 				case BitCast:
-					setFloatConstant((float) val.asLIRConstant().asDouble());
+					setFloatConstant((float) value.asLIRConstant().asDouble());
 					return;
 				case PtrToInt:
-					setIntConstant((int) val.asLIRConstant().asDouble());
+					setIntConstant((int) value.asLIRConstant().asDouble());
 					return;
 				case IntToPtr:
-					setLongConstant((long) val.asLIRConstant().asDouble());
+					setLongConstant((long) value.asLIRConstant().asDouble());
 					return;
 			}
 			// finished
 		}
 		LIRKind kind = LIRKind.Illegal;
-		// chained converts instruction like this (V)((T)val), where ((T)val) is
-		// represented as val.
-		if (val instanceof CastInst)
+		// chained converts instruction like this (V)((T)value), where ((T)value) is
+		// represented as value.
+		if (value instanceof CastInst)
 		{
-			CastInst c = (CastInst) val;
+			CastInst c = (CastInst) value;
 			// where T is kind.
 			switch (c.getOpcode())
 			{
@@ -173,28 +173,28 @@ public class Canonicalizer implements InstVisitor
 					case I2B:
 						if (kind == LIRKind.Byte)
 						{
-							setCanonical(val);
+							setCanonical(value);
 						}
 						break;
 					case I2S:
 						if (kind == LIRKind.Byte || kind == LIRKind.Short)
 						{
-							setCanonical(val);
+							setCanonical(value);
 						}
 						break;
 					case I2C:
 						if (kind == LIRKind.Char)
 						{
-							setCanonical(val);
+							setCanonical(value);
 						}
 						break;
 				}
 			}
-			//(V)(x op2 y), where (x op2 y) is represented as val.
-			if (val instanceof Op2)
+			//(V)(x op2 y), where (x op2 y) is represented as value.
+			if (value instanceof Op2)
 			{
 				// check if the operation was IAND with a constant; it may have narrowed the value already
-				Op2 op = (Op2) val;
+				Op2 op = (Op2) value;
 				// constant should be on right hand side if there is one
 				if (op.getOpcode() == Operator.IAnd && op.y.isConstant())
 				{
@@ -217,36 +217,36 @@ public class Canonicalizer implements InstVisitor
 					if (safebits != 0 && (mask & ~safebits) == 0)
 					{
 						// the mask already cleared all the upper bits necessary.
-						setCanonical(val);
+						setCanonical(value);
 					}
 				}
 			}
 		}
 	}
 
-	private Value setCanonical(Value val)
+	private Value setCanonical(Value value)
 	{
-		return result = val;
+		return result = value;
 	}
 
-	private Value setIntConstant(int val)
+	private Value setIntConstant(int value)
 	{
-		return result = Constant.forInt(val);
+		return result = Constant.forInt(value);
 	}
 
-	private Value setLongConstant(long val)
+	private Value setLongConstant(long value)
 	{
-		return result = Constant.forLong(val);
+		return result = Constant.forLong(value);
 	}
 
-	private Value setFloatConstant(float val)
+	private Value setFloatConstant(float value)
 	{
-		return result = Constant.forFloat(val);
+		return result = Constant.forFloat(value);
 	}
 
-	private Value setDoubleConstant(Double val)
+	private Value setDoubleConstant(Double value)
 	{
-		return result = Constant.forDouble(val);
+		return result = Constant.forDouble(value);
 	}
 
 	/**
@@ -594,45 +594,45 @@ public class Canonicalizer implements InstVisitor
 			{
 				case Int:
 				{
-					Integer val = foldIntOp2(opcode, x.asLIRConstant().asInt(),
+					Integer value = foldIntOp2(opcode, x.asLIRConstant().asInt(),
 							y.asLIRConstant().asInt());
-					if (val != null)
+					if (value != null)
 					{
-						setIntConstant(val);
+						setIntConstant(value);
 						return;
 					}
 					break;
 				}
 				case Long:
 				{
-					Long val = foldLongOp2(opcode, x.asLIRConstant().asLong(),
+					Long value = foldLongOp2(opcode, x.asLIRConstant().asLong(),
 							y.asLIRConstant().asLong());
-					if (val != null)
+					if (value != null)
 					{
-						setLongConstant(val);
+						setLongConstant(value);
 						return;
 					}
 					break;
 				}
 				case Float:
 				{
-					Float val = foldFloatOp2(opcode, x.asLIRConstant().asFloat(),
+					Float value = foldFloatOp2(opcode, x.asLIRConstant().asFloat(),
 							y.asLIRConstant().asFloat());
-					if (val != null)
+					if (value != null)
 					{
-						setFloatConstant(val);
+						setFloatConstant(value);
 						return;
 					}
 					break;
 				}
 				case Double:
 				{
-					Double val = foldDoubleOp2(opcode,
+					Double value = foldDoubleOp2(opcode,
 							x.asLIRConstant().asDouble(),
 							y.asLIRConstant().asDouble());
-					if (val != null)
+					if (value != null)
 					{
-						setDoubleConstant(val);
+						setDoubleConstant(value);
 						return;
 					}
 					break;
@@ -934,21 +934,21 @@ public class Canonicalizer implements InstVisitor
 				}
 				case Float:
 				{
-					Integer val = foldFloatCompare(cond,
+					Integer value = foldFloatCompare(cond,
 							x.asLIRConstant().asFloat(), y.asLIRConstant().asFloat());
-					assert val
+					assert value
 							!= null : "invalid operation in float comparison";
-					setIntConstant(val);
+					setIntConstant(value);
 					break;
 				}
 				case Double:
 				{
-					Integer val = foldDoubleCompare(cond,
+					Integer value = foldDoubleCompare(cond,
 							x.asLIRConstant().asDouble(),
 							y.asLIRConstant().asDouble());
-					assert val
+					assert value
 							!= null : "invalid operation in float comparison";
-					setIntConstant(val);
+					setIntConstant(value);
 					break;
 				}
 			}
@@ -960,9 +960,9 @@ public class Canonicalizer implements InstVisitor
 	 * Go through the value {@code Value}. Usually, this method is not used
 	 * instead of calling to the visitor to it's subclass, like {@code Constant}.
 	 *
-	 * @param val The instance of {@code Value} to be visited.
+	 * @param value The instance of {@code Value} to be visited.
 	 *
-	public void visitValue(Value val)
+	public void visitValue(Value value)
 	{
 		Util.shouldNotReachHere();
 	}

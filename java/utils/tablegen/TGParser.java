@@ -799,7 +799,7 @@ public final class TGParser
 
                 lexer.lex();
 
-                Record newRec = new Record("anonymous.val" + (anonCounter++), nameLoc);
+                Record newRec = new Record("anonymous.value" + (anonCounter++), nameLoc);
                 SubClassReference scRef = new SubClassReference();
                 scRef.rec = klass;
                 scRef.loc = nameLoc;

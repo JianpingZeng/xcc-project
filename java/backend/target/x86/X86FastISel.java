@@ -19,6 +19,7 @@ package backend.target.x86;
 import backend.codegen.*;
 import backend.codegen.CCValAssign.CCAssignFn;
 import backend.codegen.selectDAG.FastISel;
+import backend.codegen.selectDAG.ISD;
 import backend.support.CallSite;
 import backend.target.TargetData;
 import backend.target.TargetInstrInfo;
@@ -42,7 +43,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.codegen.selectDAG.ISD.NodeType.*;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.PerformTailCallOpt;
@@ -210,11 +210,71 @@ public abstract class X86FastISel extends FastISel
         return true;
     }
 
+    /**
+     * Emit a machine instruction to load a value of type VT.
+     * The address is either pre-computed, i.e. Ptr, or a GlobalAddress, i.e. GV.
+     * Return true and the result register by reference if it is possible.
+     * @param vt
+     * @param am
+     * @param resultReg
+     * @return
+     */
     private boolean x86FastEmitLoad(EVT vt,
             X86AddressMode am,
-            OutParamWrapper<Integer> RR)
+            OutParamWrapper<Integer> resultReg)
     {
-
+        int opc = 0;
+        TargetRegisterClass rc = null;
+        switch (vt.getSimpleVT().simpleVT)
+        {
+            default: return false;
+            case MVT.i8:
+                opc = MOV8rm;
+                rc = GR8RegisterClass;
+                break;
+            case MVT.i16:
+                opc = MOV16rm;
+                rc = GR16RegisterClass;
+                break;
+            case MVT.i32:
+                opc = MOV32rm;
+                rc = GR32RegisterClass;
+                break;
+            case MVT.i64:
+                opc = MOV64rm;
+                rc = GR64RegisterClass;
+                break;
+            case MVT.f32:
+                if (subtarget.hasSSE1())
+                {
+                    opc = MOVSSrm;
+                    rc = FR32RegisterClass;
+                }
+                else
+                {
+                    opc = LD_Fp32m;
+                    rc = RFP32RegisterClass;
+                }
+                break;
+            case MVT.f64:
+                if (subtarget.hasSSE2())
+                {
+                    opc = MOVSDrm;
+                    rc = FR64RegisterClass;
+                }
+                else
+                {
+                    opc = LD_Fp64m;
+                    rc = RFP64RegisterClass;
+                }
+                break;
+            case MVT.f80:
+                // NO f80 supported yet.
+                return false;
+        }
+        resultReg.set(createResultReg(rc));
+        addFullAddress(buildMI(mbb, tii.get(opc), resultReg.get()), am);
+        return true;
     }
 
     private boolean x86FastEmitStore(EVT vt, Value val, X86AddressMode am)
@@ -291,10 +351,31 @@ public abstract class X86FastISel extends FastISel
         return true;
     }
 
-    boolean X86FastEmitExtend(int opc, EVT DstVT, int Src, EVT SrcVT,
-            OutParamWrapper<Integer> ResultReg)
+    /**
+     * Emit a machine instruction to extend a value src of
+     * type srcVT to type dstVT using the specified extension opcode Opc (e.g.
+     * ISD::SIGN_EXTEND).
+     * @param opc
+     * @param dstVT
+     * @param src
+     * @param srcVT
+     * @param resultReg
+     * @return
+     */
+    boolean X86FastEmitExtend(int opc,
+            EVT dstVT,
+            int src,
+            EVT srcVT,
+            OutParamWrapper<Integer> resultReg)
     {
-
+        int rr = fastEmit_r(srcVT.getSimpleVT(), dstVT.getSimpleVT(), opc, src);
+        if (rr != 0)
+        {
+            resultReg.set(rr);
+            return true;
+        }
+        else
+            return false;
     }
 
     /**
@@ -580,10 +661,10 @@ public abstract class X86FastISel extends FastISel
             return false;
 
         int resultReg = 0;
-        OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
-        if (x86FastEmitLoad(vt, am, x))
+        OutParamWrapper<Integer> xi = new OutParamWrapper<>(0);
+        if (x86FastEmitLoad(vt, am, xi))
         {
-            resultReg = x.get();
+            resultReg = xi.get();
             updateValueMap(inst, resultReg);
             return true;
         }
@@ -873,7 +954,7 @@ public abstract class X86FastISel extends FastISel
 
         EVT vt = tli.getValueType(inst.getType(), true);
         OutParamWrapper<EVT> x = new OutParamWrapper<>(vt);
-        if (vt.equals(new EVT(new MVT(MVT.Other))) || !isTypeLegal(inst.getType(), x))
+        if (vt.equals(new EVT(MVT.Other)) || !isTypeLegal(inst.getType(), x))
             return false;
 
         vt = x.get();
@@ -914,7 +995,7 @@ public abstract class X86FastISel extends FastISel
     {
         EVT vt = tli.getValueType(inst.getType(), true);
         OutParamWrapper<EVT> x = new OutParamWrapper<>(vt);
-        if (vt.equals(new EVT(new MVT(MVT.Other))) || !isTypeLegal(inst.getType(), x))
+        if (vt.equals(new EVT(MVT.Other)) || !isTypeLegal(inst.getType(), x))
             return false;
 
         vt = x.get();
@@ -967,13 +1048,13 @@ public abstract class X86FastISel extends FastISel
         EVT dstVT = tli.getValueType(inst.getType());
 
         // This code only handles truncation to byte right now.
-        if (!dstVT.equals(new EVT(new MVT(MVT.i8))) &&
-                !dstVT.equals(new EVT(new MVT(MVT.i1))))
+        if (!dstVT.equals(new EVT(MVT.i8)) &&
+                !dstVT.equals(new EVT(MVT.i1)))
             // All other cases should be handled by the tblgen generated code.
             return false;
 
-        if (!srcVT.equals(new EVT(new MVT(MVT.i16))) &&
-                !srcVT.equals(new EVT(new MVT(MVT.i32))))
+        if (!srcVT.equals(new EVT(MVT.i16)) &&
+                !srcVT.equals(new EVT(MVT.i32)))
             // All other cases should be handled by the tblgen generated code.
             return false;
 
@@ -981,7 +1062,7 @@ public abstract class X86FastISel extends FastISel
         if (op0Reg == 0)
             return false;
 
-        boolean srcIs16Bit = srcVT.equals(new EVT(new MVT(MVT.i16)));
+        boolean srcIs16Bit = srcVT.equals(new EVT(MVT.i16));
         int copyOpc = srcIs16Bit ? MOV16rr : MOV32rr;
         TargetRegisterClass copyRC = srcIs16Bit ? GR16_ABCDRegisterClass :
                 GR32_ABCDRegisterClass;
@@ -1182,7 +1263,7 @@ public abstract class X86FastISel extends FastISel
         EVT retVT;
         OutParamWrapper<EVT> x = new OutParamWrapper<>();
         if (retTy.equals(Type.VoidTy))
-            retVT = new EVT(new MVT(MVT.isVoid));
+            retVT = new EVT(MVT.isVoid);
         else if (!isTypeLegal(retTy, x, true))
             return false;
 
@@ -1209,9 +1290,9 @@ public abstract class X86FastISel extends FastISel
 
         // Allow calls which produce i1 results.
         boolean AndToI1 = false;
-        if (retVT.equals(new EVT(new MVT(MVT.i1))))
+        if (retVT.equals(new EVT(MVT.i1)))
         {
-            retVT = new EVT(new MVT(MVT.i8));
+            retVT = new EVT(MVT.i8);
             AndToI1 = true;
         }
 
@@ -1287,7 +1368,7 @@ public abstract class X86FastISel extends FastISel
                 case SExt:
                 {
                     OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(Arg);
-                    boolean Emitted = X86FastEmitExtend(SIGN_EXTEND,
+                    boolean Emitted = X86FastEmitExtend(ISD.SIGN_EXTEND,
                             VA.getLocVT(), Arg, ArgVT, xx);
                     Arg = xx.get();
                     assert Emitted : "Failed to emit a sext!";
@@ -1298,7 +1379,7 @@ public abstract class X86FastISel extends FastISel
                 case ZExt:
                 {
                     OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(Arg);
-                    boolean Emitted = X86FastEmitExtend(ZERO_EXTEND,
+                    boolean Emitted = X86FastEmitExtend(ISD.ZERO_EXTEND,
                             VA.getLocVT(), Arg, ArgVT, xx);
                     Arg = xx.get();
                     assert Emitted : "Failed to emit a zext!";
@@ -1309,13 +1390,13 @@ public abstract class X86FastISel extends FastISel
                 case AExt:
                 {
                     OutParamWrapper<Integer> xx = new OutParamWrapper<Integer>(Arg);
-                    boolean Emitted = X86FastEmitExtend(ANY_EXTEND,
+                    boolean Emitted = X86FastEmitExtend(ISD.ANY_EXTEND,
                             VA.getLocVT(), Arg, ArgVT, xx);
                     if (!Emitted)
-                        Emitted = X86FastEmitExtend(ZERO_EXTEND, VA.getLocVT(),
+                        Emitted = X86FastEmitExtend(ISD.ZERO_EXTEND, VA.getLocVT(),
                                 Arg, ArgVT, xx);
                     if (!Emitted)
-                        Emitted = X86FastEmitExtend(SIGN_EXTEND, VA.getLocVT(),
+                        Emitted = X86FastEmitExtend(ISD.SIGN_EXTEND, VA.getLocVT(),
                                 Arg, ArgVT, xx);
 
                     Arg = xx.get();
@@ -1327,7 +1408,7 @@ public abstract class X86FastISel extends FastISel
                 case BCvt:
                 {
                     int BC = fastEmit_r(ArgVT.getSimpleVT(),
-                            VA.getLocVT().getSimpleVT(), BIT_CONVERT, Arg);
+                            VA.getLocVT().getSimpleVT(), ISD.BIT_CONVERT, Arg);
                     assert BC != 0 : "Failed to emit a bitcast!";
                     Arg = BC;
                     ArgVT = VA.getLocVT();
@@ -1431,7 +1512,7 @@ public abstract class X86FastISel extends FastISel
         if (retVT.getSimpleVT().simpleVT != MVT.isVoid)
         {
             ArrayList<CCValAssign> RVLocs = new ArrayList<>();
-            CCState CCInfo = new CCState(CC, false, tm, RVLocs);
+            CCInfo = new CCState(CC, false, tm, RVLocs);
             CCInfo.AnalyzeCallResult(retVT, RetCC_X86);
 
             // Copy all of the result registers out of their specified physreg.
@@ -1447,7 +1528,7 @@ public abstract class X86FastISel extends FastISel
                     || RVLocs.get(0).getLocReg() == ST1)
                     && isScalarFPTypeInSSEReg(RVLocs.get(0).getValVT()))
             {
-                CopyVT = new EVT(new MVT(MVT.f80));
+                CopyVT = new EVT(MVT.f80);
                 SrcRC = RSTRegisterClass;
                 DstRC = RFP80RegisterClass;
             }
@@ -1463,7 +1544,7 @@ public abstract class X86FastISel extends FastISel
                 // register. This is accomplished by storing the F80 value in memory and
                 // then loading it back. Ewww...
                 EVT ResVT = RVLocs.get(0).getValVT();
-                int Opc = ResVT.equals(new EVT(new MVT(MVT.f32))) ?
+                int Opc = ResVT.equals(new EVT(MVT.f32)) ?
                         ST_Fp80m32 :
                         ST_Fp80m64;
                 int MemSize = ResVT.getSizeInBits() / 8;
@@ -1471,10 +1552,10 @@ public abstract class X86FastISel extends FastISel
                 MachineInstrBuilder
                         .addFrameReference(buildMI(mbb, DL, tii.get(Opc)), FI)
                         .addReg(ResultReg);
-                DstRC = ResVT.equals(new EVT(new MVT(MVT.f32))) ?
+                DstRC = ResVT.equals(new EVT(MVT.f32)) ?
                         FR32RegisterClass :
                         FR64RegisterClass;
-                Opc = ResVT.equals(new EVT(new MVT(MVT.f32))) ?
+                Opc = ResVT.equals(new EVT(MVT.f32)) ?
                         MOVSSrm :
                         MOVSDrm;
                 ResultReg = createResultReg(DstRC);
@@ -1691,8 +1772,8 @@ public abstract class X86FastISel extends FastISel
     /// computed in an SSE register, not on the X87 floating point stack.
     public boolean isScalarFPTypeInSSEReg(EVT vt)
     {
-        return (vt.equals(new EVT(new MVT(MVT.f64))) && x86ScalarSSEf64) || // f64 is when SSE2
-                (vt.equals(new EVT(new MVT(MVT.f32))) && x86ScalarSSEf32);   // f32 is when SSE1
+        return (vt.equals(new EVT(MVT.f64)) && x86ScalarSSEf64) || // f64 is when SSE2
+                (vt.equals(new EVT(MVT.f32)) && x86ScalarSSEf32);   // f32 is when SSE1
 
     }
 
@@ -1707,19 +1788,19 @@ public abstract class X86FastISel extends FastISel
             boolean allowI1)
     {
         vt.set(tli.getValueType(ty, true));
-        if (vt.get().equals(new EVT(new MVT(MVT.Other))) || !vt.get().isSimple())
+        if (vt.get().equals(new EVT(MVT.Other)) || !vt.get().isSimple())
             return false;
 
-        if (vt.get().equals(new EVT(new MVT(MVT.f64))) && !x86ScalarSSEf64)
+        if (vt.get().equals(new EVT(MVT.f64)) && !x86ScalarSSEf64)
             return false;
 
-        if (vt.get().equals(new EVT(new MVT(MVT.f32))) && !x86ScalarSSEf32)
+        if (vt.get().equals(new EVT(MVT.f32)) && !x86ScalarSSEf32)
             return false;
 
         // Currently, f80 is not supported.
-        if (vt.get().equals(new EVT(new MVT(MVT.f80))))
+        if (vt.get().equals(new EVT(MVT.f80)))
             return false;
 
-        return (allowI1 && vt.equals(new EVT(new MVT(MVT.i1))) || tli.isTypeLegal(vt.get()));
+        return (allowI1 && vt.get().equals(new EVT(MVT.i1))) || tli.isTypeLegal(vt.get());
     }
 }

@@ -230,9 +230,9 @@ public final class LiveVariable extends MachineFunctionPass
 
                 // process all the operands.
                 int numOperands = inst.getNumOperands();
-                if (inst.getOpCode() == TargetInstrInfo.PHI)
+                if (inst.getOpcode() == TargetInstrInfo.PHI)
                     numOperands = 1;
-                TargetInstrDesc instDesc = instInfo.get(inst.getOpCode());
+                TargetInstrDesc instDesc = instInfo.get(inst.getOpcode());
 
                 // process all implicit uses reg.
                 if (instDesc.implicitUses != null)
@@ -308,7 +308,7 @@ public final class LiveVariable extends MachineFunctionPass
 
             // Finally, if the last instruction in the block is a return,
             // make sure it as using all of the live out values in the fucntion.
-            if (!mbb.isEmpty() && instInfo.isReturn(mbb.getInsts().getLast().getOpCode()))
+            if (!mbb.isEmpty() && instInfo.isReturn(mbb.getInsts().getLast().getOpcode()))
             {
                 MachineInstr ret = mbb.getInsts().getLast();
                 // TODO live out of function, 2016.12.3.
@@ -545,7 +545,7 @@ public final class LiveVariable extends MachineFunctionPass
         {
             MachineInstr mi;
             for (int i = 0, e = mbb.size(); i < e &&
-                    ( mi = mbb.getInstAt(i)).getOpCode() == TargetInstrInfo.PHI; i++)
+                    ( mi = mbb.getInstAt(i)).getOpcode() == TargetInstrInfo.PHI; i++)
             {
                 for (int j = 1, sz = mi.getNumOperands(); j < sz; j++)
                     phiVarInfo[mi.getOperand(j+1).getMBB().getNumber()].

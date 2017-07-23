@@ -161,6 +161,11 @@ public abstract class Option<T>
         setFlag(mf.value, MiscMask.value);
     }
 
+    public void setOptionHiddenFlag(OptionHidden hidden)
+    {
+        setFlag(hidden.value, OptionHidden.HiddenMask.value);
+    }
+
     public void setPosition(int pos)
     {
         this.position = pos;

@@ -34,6 +34,24 @@ public class MachineFrameInfo
     }
 
     /**
+     *  Returns true if the specified index corresponds to a
+     * fixed stack object.
+     * @param idx
+     * @return
+     */
+    public boolean isFixedObjectIndex(int idx)
+    {
+        return idx < 0 && (idx >= -numFixedObjects);
+    }
+
+    public boolean isImmutableObjectIndex(int objectIdx)
+    {
+        assert (objectIdx + numFixedObjects) < objects.size() :
+                "Invalid object idx!";
+        return objects.get(objectIdx + numFixedObjects).isImmutable;
+    }
+
+    /**
      * Represents a single object allocated on the stack when a function is running.
      */
     public static class StackObject
@@ -42,23 +60,31 @@ public class MachineFrameInfo
          * The getNumOfSubLoop of this object on the stack.
          * 0 means variable object.
          */
-        int size;
+        public int size;
         /**
          * The required alignment of this stack object.
          */
-        int alignment;
+        public int alignment;
+
+        public boolean isImmutable;
         /**
          * The offset of this object from the stack pointer on
          * entry to the function, this field has no meaning for variable
          * object.
          */
-        int spOffset;
+        public int spOffset;
 
-        public StackObject(int sz, int align, int offset)
+        public StackObject(int sz, int align, int offset, boolean im)
         {
             size = sz;
             alignment = align;
             spOffset = offset;
+            isImmutable = im;
+        }
+
+        public StackObject(int sz, int align, int offset)
+        {
+            this(sz, align, offset, false);
         }
     }
 

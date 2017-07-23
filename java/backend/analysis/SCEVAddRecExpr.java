@@ -135,7 +135,7 @@ public class SCEVAddRecExpr extends SCEV
 	}
 
     /**
-     * Computes the val * (val - 1) * ... (val - numSteps+1)
+     * Computes the value * (value - 1) * ... (value - numSteps+1)
      * @param val
      * @param numSteps
      * @return

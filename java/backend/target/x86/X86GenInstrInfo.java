@@ -1298,7 +1298,7 @@ public interface X86GenInstrInfo
             new TargetOperandInfo(GR64RegClassID, 0, 0)
     };
 
-    TargetInstrDesc[] insts = {
+    TargetInstrDesc[] X86Insts = {
             new TargetInstrDesc(0, 0, 0, 0, "PHI", 0|(1<<TID.Variadic), 0, null, null, null, null),		// Inst #0 = PHI
             new TargetInstrDesc(1, 0, 0, 0, "INLINEASM", 0|(1<<TID.Variadic), 0, null, null, null, null),		// Inst #1 = INLINEASM
             new TargetInstrDesc(2, 7, 1, 0, "CMOVS64rm", 0, 0|(6)|(1 << 8)|(1<<12)|(72 << 24), null, null, null, operandInfo2),		// Inst #2 = CMOVS64rm

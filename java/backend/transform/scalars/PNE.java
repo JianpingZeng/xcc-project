@@ -50,7 +50,7 @@ public final class PNE extends MachineFunctionPass
 	 */
 	private boolean eliminatePHINodes(MachineBasicBlock mbb)
 	{
-		if (mbb.isEmpty() || instInfo.isDummyPhiInstr(mbb.getInstAt(0).getOpCode()))
+		if (mbb.isEmpty() || instInfo.isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
 			return false;
 
 		// a arrays whose each element represents the uses count of the specified
@@ -65,7 +65,7 @@ public final class PNE extends MachineFunctionPass
 				for (int i = 0, sz = succ.size(); i < sz; i++)
 				{
 					MachineInstr mi = succ.getInstAt(i);
-					if (!instInfo.isDummyPhiInstr(mi.getOpCode()))
+					if (!instInfo.isDummyPhiInstr(mi.getOpcode()))
 						break;
 					for (int j = 1, e = mi.getNumOperands(); j<e; j += 2)
 					{
@@ -78,9 +78,9 @@ public final class PNE extends MachineFunctionPass
 		// find the first non-phi instruction.
 		int firstInstAfterPhi = 0;
 		for (; firstInstAfterPhi < mbb.size() && instInfo.isDummyPhiInstr(mbb.
-				getInstAt(firstInstAfterPhi).getOpCode()); firstInstAfterPhi++);
+				getInstAt(firstInstAfterPhi).getOpcode()); firstInstAfterPhi++);
 
-		for (; instInfo.isDummyPhiInstr(mbb.getInstAt(0).getOpCode()); )
+		for (; instInfo.isDummyPhiInstr(mbb.getInstAt(0).getOpcode()); )
 			lowerPhiNode(mbb, firstInstAfterPhi, vregPHIUsesCount);
 		return true;
 	}

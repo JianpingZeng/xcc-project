@@ -175,7 +175,7 @@ public final class CodeGenTarget
     }
 
     /**
-     * Return all of the insts defined by the target, ordered by their
+     * Return all of the X86Insts defined by the target, ordered by their
      * enum value.
      * @param numberedInstructions
      */
@@ -192,7 +192,7 @@ public final class CodeGenTarget
 
         CodeGenInstruction inlineAsm = insts.get("INLINEASM");
 
-        // Print out the rest of the insts set.
+        // Print out the rest of the X86Insts set.
         numberedInstructions.add(phi);
         numberedInstructions.add(inlineAsm);
         insts.entrySet().forEach(entry->

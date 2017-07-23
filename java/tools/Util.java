@@ -185,7 +185,7 @@ public class Util
 	}
 
 	/**
-	 * Computes the number of one bit about given val of jlang.type long when isUnsigned
+	 * Computes the number of one bit about given value of jlang.type long when isUnsigned
      * determines if it is a unsigned.
 	 * @param val
 	 * @param isUnsigned

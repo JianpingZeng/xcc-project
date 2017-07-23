@@ -276,17 +276,17 @@ public final class LowerSwitch implements FunctionPass
             // make the range comp.
             if (((ConstantInt)leaf.low).isMinValue(true/*isSigned*/))
             {
-                // val >=low && val<= high ----> val<=high.
+                // value >=low && value<= high ----> value<=high.
                 cmp = new ICmpInst(Predicate.ICMP_SLE, val, leaf.high, "switchLeaf");
             }
             if (((ConstantInt)leaf.low).isZero())
             {
-                // val >=0 && val<= high ----> val<=high(unsigned).
+                // value >=0 && value<= high ----> value<=high(unsigned).
                 cmp = new ICmpInst(Predicate.ICMP_ULE, val, leaf.high, "switchLeaf");
             }
             else
             {
-                // emit val - Lo <= high-Lo (unsigned).
+                // emit value - Lo <= high-Lo (unsigned).
                 Constant negLo = ConstantExpr.getNeg(leaf.low);
                 Instruction add = Op2.createAdd(val, negLo, val.getName() +".off",
                         newLeaf);

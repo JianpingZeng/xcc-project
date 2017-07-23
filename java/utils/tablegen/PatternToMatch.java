@@ -100,4 +100,20 @@ public final class PatternToMatch
         }
         return predicateCheck.toString();
     }
+
+    public void dump()
+    {
+        System.err.println("=============================");
+        System.err.println("Predicate:");
+        for (int i = 0, e = predicates.getSize(); i < e; i++)
+            predicates.getElement(i).dump();
+
+        System.err.println("srcPattern:");
+        srcPattern.dump();
+        System.err.println("\ndstPattern:");
+        dstPattern.dump();
+        System.err.println("\ndstRegs:");
+        dstRegs.forEach(System.err::println);
+        System.err.println("\naddComplexity: " + addedComplexity);
+    }
 }

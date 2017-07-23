@@ -112,8 +112,8 @@ public class PEI extends MachineFunctionPass
             for (int i = 0; i < mbb.size(); i++)
             {
                 MachineInstr mi = mbb.getInstAt(i);
-                if (mi.getOpCode() == frameSetupOpcode
-                        || mi.getOpCode() == frameDestroyOpcode)
+                if (mi.getOpcode() == frameSetupOpcode
+                        || mi.getOpcode() == frameDestroyOpcode)
                 {
                     // eliminates frame setup/destroy pseudo instruction with
                     // concrete inst supported in the specified target.
@@ -194,7 +194,7 @@ public class PEI extends MachineFunctionPass
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             // if the last instruction is return, add an epilogue.
-            if (!mbb.isEmpty() && instrInfo.isReturn(mbb.getInsts().getLast().getOpCode()))
+            if (!mbb.isEmpty() && instrInfo.isReturn(mbb.getInsts().getLast().getOpcode()))
             {
                 insertPos = mbb.size() - 1;
                 for (int i = 0, e = regsToSaved.size(); i < e; i++)
@@ -256,7 +256,7 @@ public class PEI extends MachineFunctionPass
         TargetInstrInfo instInfo = mf.getTarget().getInstrInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
-            if (!mbb.isEmpty() && instInfo.isReturn(mbb.getInsts().getLast().getOpCode()))
+            if (!mbb.isEmpty() && instInfo.isReturn(mbb.getInsts().getLast().getOpcode()))
                 regInfo.emitEpilogue(mf, mbb);
         }
     }

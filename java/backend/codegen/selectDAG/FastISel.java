@@ -97,41 +97,41 @@ public abstract class FastISel
         switch (opcode)
         {
             case Add:
-                return selectBinaryOp(u, ISD.NodeType.ADD);
+                return selectBinaryOp(u, ISD.ADD);
             case FAdd:
-                return selectBinaryOp(u, ISD.NodeType.FADD);
+                return selectBinaryOp(u, ISD.FADD);
             case Sub:
-                return selectBinaryOp(u, ISD.NodeType.SUB);
+                return selectBinaryOp(u, ISD.SUB);
             case FSub:
-                return selectBinaryOp(u, ISD.NodeType.FSUB);
+                return selectBinaryOp(u, ISD.FSUB);
             case Mul:
-                return selectBinaryOp(u, ISD.NodeType.MUL);
+                return selectBinaryOp(u, ISD.MUL);
             case FMul:
-                return selectBinaryOp(u, ISD.NodeType.FMUL);
+                return selectBinaryOp(u, ISD.FMUL);
             case SDiv:
-                return selectBinaryOp(u, ISD.NodeType.SDIV);
+                return selectBinaryOp(u, ISD.SDIV);
             case UDiv:
-                return selectBinaryOp(u, ISD.NodeType.UDIV);
+                return selectBinaryOp(u, ISD.UDIV);
             case FDiv:
-                return selectBinaryOp(u, ISD.NodeType.FDIV);
+                return selectBinaryOp(u, ISD.FDIV);
             case SRem:
-                return selectBinaryOp(u, ISD.NodeType.SREM);
+                return selectBinaryOp(u, ISD.SREM);
             case URem:
-                return selectBinaryOp(u, ISD.NodeType.UREM);
+                return selectBinaryOp(u, ISD.UREM);
             case FRem:
-                return selectBinaryOp(u, ISD.NodeType.FREM);
+                return selectBinaryOp(u, ISD.FREM);
             case Shl:
-                return selectBinaryOp(u, ISD.NodeType.SHL);
+                return selectBinaryOp(u, ISD.SHL);
             case LShr:
-                return selectBinaryOp(u, ISD.NodeType.SRL);
+                return selectBinaryOp(u, ISD.SRL);
             case AShr:
-                return selectBinaryOp(u, ISD.NodeType.SRA);
+                return selectBinaryOp(u, ISD.SRA);
             case And:
-                return selectBinaryOp(u, ISD.NodeType.AND);
+                return selectBinaryOp(u, ISD.AND);
             case Or:
-                return selectBinaryOp(u, ISD.NodeType.OR);
+                return selectBinaryOp(u, ISD.OR);
             case Xor:
-                return selectBinaryOp(u, ISD.NodeType.XOR);
+                return selectBinaryOp(u, ISD.XOR);
 
             case GetElementPtr:
                 return selectGetElementPtr(u);
@@ -171,15 +171,15 @@ public abstract class FastISel
                 return selectBitCast(u);
 
             case FPToSI:
-                return selectCast(u, ISD.NodeType.FP_TO_SINT);
+                return selectCast(u, ISD.FP_TO_SINT);
             case ZExt:
-                return selectCast(u, ISD.NodeType.ZERO_EXTEND);
+                return selectCast(u, ISD.ZERO_EXTEND);
             case SExt:
-                return selectCast(u, ISD.NodeType.SIGN_EXTEND);
+                return selectCast(u, ISD.SIGN_EXTEND);
             case Trunc:
-                return selectCast(u, ISD.NodeType.TRUNCATE);
+                return selectCast(u, ISD.TRUNCATE);
             case SIToFP:
-                return selectCast(u, ISD.NodeType.SINT_TO_FP);
+                return selectCast(u, ISD.SINT_TO_FP);
 
             case IntToPtr: // Deliberate fall-through.
             case PtrToInt:
@@ -187,9 +187,9 @@ public abstract class FastISel
                 EVT SrcVT = tli.getValueType(u.operand(0).getType());
                 EVT DstVT = tli.getValueType(u.getType());
                 if (DstVT.bitsGT(SrcVT))
-                    return selectCast(u, ISD.NodeType.ZERO_EXTEND);
+                    return selectCast(u, ISD.ZERO_EXTEND);
                 if (DstVT.bitsLT(SrcVT))
-                    return selectCast(u, ISD.NodeType.TRUNCATE);
+                    return selectCast(u, ISD.TRUNCATE);
                 int Reg = getRegForValue(u.operand(0));
                 if (Reg == 0) return false;
                 updateValueMap(u, Reg);
@@ -227,9 +227,9 @@ public abstract class FastISel
         MVT ptrVT = tli.getPointerTy();
         EVT idxVT = EVT.getEVT(idx.getType(), false);
         if (idxVT.bitsLT(new EVT(ptrVT)))
-            idxReg = fastEmit_r(idxVT.getSimpleVT(), ptrVT, ISD.NodeType.SIGN_EXTEND, idxReg);
+            idxReg = fastEmit_r(idxVT.getSimpleVT(), ptrVT, ISD.SIGN_EXTEND, idxReg);
         else if (idxVT.bitsGT(new EVT(ptrVT)))
-            idxReg = fastEmit_r(idxVT.getSimpleVT(), ptrVT, ISD.NodeType.TRUNCATE, idxReg);
+            idxReg = fastEmit_r(idxVT.getSimpleVT(), ptrVT, ISD.TRUNCATE, idxReg);
         return idxReg;
     }
 
@@ -314,7 +314,7 @@ public abstract class FastISel
         int resultReg = fastEmit_ri(vt, vt, opcode, op0, imm);
         if (resultReg != 0)
             return resultReg;
-        int materialReg = fastEmit_i(immType, immType, ISD.NodeType.Constant, imm);
+        int materialReg = fastEmit_i(immType, immType, ISD.Constant, imm);
         if (materialReg == 0)
             return 0;
 
@@ -339,7 +339,7 @@ public abstract class FastISel
         if (resultReg != 0)
             return resultReg;
 
-        int materialReg = fastEmit_f(immType, immType, ISD.NodeType.ConstantFP, fpImm);
+        int materialReg = fastEmit_f(immType, immType, ISD.ConstantFP, fpImm);
         if (materialReg == 0)
         {
             APFloat flt = fpImm.getValueAPF();
@@ -356,11 +356,11 @@ public abstract class FastISel
             APInt intVal = new APInt((int) intBitWidth, 2, x);
 
             int integerReg = fastEmit_i(intVT.getSimpleVT(), intVT.getSimpleVT(),
-                    ISD.NodeType.Constant, intVal.getZExtValue());
+                    ISD.Constant, intVal.getZExtValue());
             if (integerReg == 0)
                 return 0;
 
-            materialReg = fastEmit_r(intVT.getSimpleVT(), vt, ISD.NodeType.SINT_TO_FP,
+            materialReg = fastEmit_r(intVT.getSimpleVT(), vt, ISD.SINT_TO_FP,
                     integerReg);
 
             if (materialReg == 0)
@@ -531,6 +531,13 @@ public abstract class FastISel
         return resultReg;
     }
 
+    public int fastEmitInst_extractsubreg(int retVT,
+            int op0,
+            int idx)
+    {
+        return fastEmitInst_extractsubreg(new MVT(retVT), op0, idx);
+    }
+
     public int fastEmitInst_extractsubreg(MVT retVT,
             int op0,
             int idx)
@@ -564,7 +571,7 @@ public abstract class FastISel
      */
     public int fastEmitZExtFromI1(MVT vt, int op)
     {
-        return fastEmit_ri(vt, vt, ISD.NodeType.AND, op, 1);
+        return fastEmit_ri(vt, vt, ISD.AND, op, 1);
     }
 
     public void fastEmitBranch(MachineBasicBlock msucc)
@@ -635,9 +642,9 @@ public abstract class FastISel
         if (!tli.isTypeLegal(vt))
         {
             if (vt.equals(new EVT(new MVT(MVT.i1))) &&
-                    (opcode == ISD.NodeType.AND ||
-                    opcode == ISD.NodeType.OR ||
-                    opcode == ISD.NodeType.XOR))
+                    (opcode == ISD.AND ||
+                    opcode == ISD.OR ||
+                    opcode == ISD.XOR))
             {
                 vt = tli.getTypeForTransformTo(vt);
             }
@@ -723,7 +730,7 @@ public abstract class FastISel
                     // baseAddr = baseAddr + offset.
                     long offset = td.getStructLayout(sty).getElementOffset(field);
 
-                    baseAddr = fastEmit_ri_(vt, ISD.NodeType.ADD, baseAddr, offset, vt);
+                    baseAddr = fastEmit_ri_(vt, ISD.ADD, baseAddr, offset, vt);
                     if (baseAddr == 0)
                         return false;
                 }
@@ -744,7 +751,7 @@ public abstract class FastISel
                     long off = td.getTypeAllocSize(ty) * ((ConstantInt)ci).getSExtValue();
 
                     // baseAddr = baseAddr + sizeOfElt * idx.
-                    baseAddr = fastEmit_ri_(vt, ISD.NodeType.ADD, baseAddr, off, vt);
+                    baseAddr = fastEmit_ri_(vt, ISD.ADD, baseAddr, off, vt);
                     if (baseAddr == 0)
                         // Failure.
                         return false;
@@ -760,11 +767,11 @@ public abstract class FastISel
                 if (eltSize != 1)
                 {
                     // If eltSize != 0, emit multiple instructon.
-                    idxN = fastEmit_ri_(vt, ISD.NodeType.MUL, idxN, eltSize, vt);
+                    idxN = fastEmit_ri_(vt, ISD.MUL, idxN, eltSize, vt);
                     if (idxN == 0)
                         return false;
                 }
-                baseAddr = fastEmit_rr(vt, vt, ISD.NodeType.ADD, baseAddr, idxN);
+                baseAddr = fastEmit_rr(vt, vt, ISD.ADD, baseAddr, idxN);
                 if (baseAddr == 0)
                     return false;
             }
@@ -831,7 +838,7 @@ public abstract class FastISel
         if (resultReg == 0)
         {
             resultReg = fastEmit_r(srcVT.getSimpleVT(), dstVT.getSimpleVT(),
-                    ISD.NodeType.BIT_CONVERT, op0);
+                    ISD.BIT_CONVERT, op0);
         }
 
         if (resultReg == 0)
@@ -852,13 +859,13 @@ public abstract class FastISel
 
         if (!tli.isTypeLegal(dstVT))
         {
-            if (!dstVT.equals(new EVT(new MVT(MVT.i1))) || opcode != ISD.NodeType.TRUNCATE)
+            if (!dstVT.equals(new EVT(new MVT(MVT.i1))) || opcode != ISD.TRUNCATE)
                 return false;
         }
 
         if (!tli.isTypeLegal(srcVT))
         {
-            if (!srcVT.equals(new EVT(new MVT(MVT.i1))) || opcode != ISD.NodeType.ZERO_EXTEND)
+            if (!srcVT.equals(new EVT(new MVT(MVT.i1))) || opcode != ISD.ZERO_EXTEND)
                 return false;
         }
 

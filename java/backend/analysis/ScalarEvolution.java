@@ -637,7 +637,7 @@ public final class ScalarEvolution implements FunctionPass
     }
 
 	/**
-	 * This is a convenience function which does getSCEVAtScope(getSCEV(val), loop).
+	 * This is a convenience function which does getSCEVAtScope(getSCEV(value), loop).
      * @param val
      * @param loop
      * @return
@@ -851,7 +851,7 @@ public final class ScalarEvolution implements FunctionPass
     }
 
     /***
-     * Returns a SCEV corresponding to -val = -1 * val.
+     * Returns a SCEV corresponding to -value = -1 * value.
      * @return
      */
     public static SCEV getNegativeSCEV(SCEV val)
