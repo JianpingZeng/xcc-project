@@ -15,7 +15,7 @@ import java.io.OutputStream;
  */
 public abstract class TargetMachine
 {
-	/**
+    /**
      * Code generation optimization level.
      */
     public enum CodeGenOpt
@@ -65,7 +65,10 @@ public abstract class TargetMachine
 	private RelocModel relocModel;
 
 	protected Target theTarget;
-	/**
+
+    protected TargetAsmInfo asmInfo;
+
+    /**
 	 * Can only called by subclass.
 	 */
 	protected TargetMachine(Target target)
@@ -76,6 +79,11 @@ public abstract class TargetMachine
     public Target getTarget()
     {
         return theTarget;
+    }
+
+    public TargetAsmInfo getTargetAsmInfo()
+    {
+        return asmInfo;
     }
 
 	public CodeModel getCodeModel()

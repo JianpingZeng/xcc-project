@@ -16,6 +16,7 @@ package jlang.driver;
  * permissions and limitations under the License.
  */
 
+import backend.target.x86.X86TargetInfo;
 import backend.target.x86.X86TargetMachine;
 import backend.value.Module;
 import backend.target.TargetMachine;
@@ -797,6 +798,10 @@ public class Jlang implements DiagnosticFrontendKindsTag
 	 */
 	public int compile(String[] args) throws Exception
     {
+        // Initialize Target machine
+        X86TargetInfo.InitializeX86TargetInfo();
+        X86TargetInfo.LLVMInitiliazeX86Target();
+
 	    // Parse the command line argument.
         CL.parseCommandLineOptions(args);
         if (Verbose.value)

@@ -1,6 +1,7 @@
 package backend.target.x86;
 
 import backend.codegen.MachineInstr;
+import backend.target.TargetMachine;
 
 import java.io.OutputStream;
 
@@ -2083,7 +2084,7 @@ public final class X86GenATTAsmPrinter extends X86ATTAsmPrinter{
 			"cmovo\t",				// CMOVO64rr
 	};
 
-	public X86GenATTAsmPrinter(OutputStream os, X86TargetMachine tm)
+	public X86GenATTAsmPrinter(OutputStream os, TargetMachine tm)
 	{
 		super(os, tm);
 	}
