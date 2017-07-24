@@ -19,6 +19,7 @@ package backend.target;
 import backend.codegen.AsmPrinter;
 import jlang.system.Triple;
 import jlang.system.Triple.ArchType;
+import tools.OutParamWrapper;
 
 import java.io.OutputStream;
 
@@ -196,6 +197,47 @@ public class Target
                 boolean hasJIT)
         {
             registerTarget(t, name, shortDesc, new GetTripleMatchQuality(archType), hasJIT);
+        }
+
+        public static Target lookupTarget(String triple,
+                OutParamWrapper<String> error)
+        {
+            if (firstTarget == null)
+            {
+                error.set("Unable to find target for this triple (no targets are registered)");
+                return null;
+            }
+
+            Target best = null, equallyBest = null;
+            int bestQuality = 0;
+            for (Target itr = firstTarget; itr != null; itr = itr.next)
+            {
+                int qual = itr.tripleMatchQualityFn.apply(triple);
+                if (best == null || qual > bestQuality)
+                {
+                    best = itr;
+                    equallyBest = null;
+                    bestQuality = qual;
+                }
+                else if (qual == bestQuality)
+                {
+                    equallyBest = itr;
+                }
+            }
+
+            if (best == null)
+            {
+                error.set("No available targets are compatible with this triple");
+                return null;
+            }
+
+            if (equallyBest != null)
+            {
+                error.set("Cannot choose between targets \"" +
+                        best.name  + "\" and \"" + equallyBest.name + "\"");
+                return null;
+            }
+            return best;
         }
 
         public static class GetTripleMatchQuality implements TripleMatcher

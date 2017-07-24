@@ -51,18 +51,9 @@ public abstract class TargetMachine
 		DynamicNoPIC
 	}
 
-	/**
-	 * The backend.target getIdentifier.
-	 */
-	private String name;
-	/**
-	 * Calculate type getNumOfSubLoop and alignment.
-	 */
-	private TargetData dataLayout;
+	protected CodeModel codeModel;
 
-	private CodeModel codeModel;
-
-	private RelocModel relocModel;
+	protected RelocModel relocModel;
 
 	protected Target theTarget;
 
@@ -91,12 +82,20 @@ public abstract class TargetMachine
 		return codeModel;
 	}
 
+	public void setCodeModel(CodeModel model)
+	{
+		codeModel = model;
+	}
+
 	public RelocModel getRelocationModel()
 	{
 		return relocModel;
 	}
 
-	public String getName() {return name;}
+	public void setRelocationModel(RelocModel model)
+	{
+		relocModel = model;
+	}
 
 	// Interface to the major aspects of target machine information:
 	// 1.Instruction opcode and operand information.
@@ -110,8 +109,6 @@ public abstract class TargetMachine
 	public abstract TargetRegisterInfo getRegisterInfo();
 
 	public abstract TargetFrameInfo getFrameInfo();
-
-	public TargetData getTargetData() {return dataLayout;}
 
 	public abstract TargetLowering getTargetLowering();
 
