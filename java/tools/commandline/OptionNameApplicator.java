@@ -37,4 +37,9 @@ public final class OptionNameApplicator implements Modifier
     {
         opt.setOptionName(str);
     }
+
+    public static OptionNameApplicator optionName(String name)
+    {
+        return new OptionNameApplicator(name);
+    }
 }

@@ -18,6 +18,11 @@ package backend.target.x86;
 
 import backend.target.TargetAsmInfo;
 import jlang.system.Triple;
+import tools.commandline.*;
+
+import static backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy.ATT;
+import static backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy.Intel;
+import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
  * @author Xlous.zeng
@@ -25,8 +30,60 @@ import jlang.system.Triple;
  */
 public class X86ELFTargetAsmInfo extends TargetAsmInfo
 {
+    public enum AsmWriterFlavorTy
+    {
+        ATT,
+        Intel
+    }
+
+    /**
+     * A command line option to control what assembly dialect would be emitedd.
+     */
+    public static final Opt<AsmWriterFlavorTy> AsmWriterFlavor =
+            new Opt<AsmWriterFlavorTy>(new Parser<>(),
+                    optionName("x86-asm-syntax"),
+                    Initializer.init(ATT),
+                    new ValueClass<>(
+                            new ValueClass.Entry<>(ATT, "att", "Emit AT&T-style assembly"),
+                            new ValueClass.Entry<>(Intel, "intel", "Emit Intel-style assembly"))
+                    );
+
+    private static String[] x86_asm_table = {
+            "{si}", "S",
+            "{di}", "D",
+            "{ax}", "a",
+            "{cx}", "c",
+            "{memory}", "memory",
+            "{flags}", "",
+            "{dirflag}", "",
+            "{fpsr}", "",
+            "{cc}", "cc",
+    };
+
+
     public X86ELFTargetAsmInfo(Triple theTriple)
     {
-        super();
+        AsmTransCBE = x86_asm_table;
+        AssemblerDialect = AsmWriterFlavor.value;
+
+        PrivateGlobalPrefix = ".L";
+        WeakRefDirective = "\t.weak\t";
+        SetDirective = "\t.set\t";
+        PCSymbol = ".";
+
+        // Set up DWARF directives
+        HasLEB128 = true;  // Target asm supports leb128 directives (little-endian)
+
+        // Debug Information
+        AbsoluteDebugSectionOffsets = true;
+        SupportsDebugInformation = true;
+
+        // Exceptions handling
+        // ExceptionsType = ExceptionHandling::Dwarf;
+        AbsoluteEHSectionOffsets = false;
+
+        // On Linux we must declare when we can use a non-executable stack.
+        if (theTriple.getOS() == Triple.OSType.Linux)
+            NonexecutableStackDirective = "\t.section\t.note.GNU-stack,\"\",@progbits";
     }
 }

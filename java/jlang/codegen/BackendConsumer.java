@@ -16,6 +16,8 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.target.SubtargetFeatures;
+import backend.target.Target;
 import backend.value.BasicBlock;
 import backend.value.Module;
 import backend.pass.*;
@@ -71,7 +73,7 @@ public class BackendConsumer implements ASTConsumer
     private CodeGenerator gen;
     private OutputStream asmOutStream;
     private TargetData theTargetData;
-    private TargetMachine tm;
+    //private TargetMachine tm;
     private ASTContext context;
 
     private FunctionPassManager perFunctionPasses;
@@ -93,8 +95,7 @@ public class BackendConsumer implements ASTConsumer
         compileOptions = opts;
         gen = CodeGeneratorImpl.createLLVMCodeGen(diags, moduleName, compileOptions);
         asmOutStream = os;
-        tm = targetMachineAllocator.apply(theModule);
-        theTargetData = tm.getTargetData();
+        //tm = targetMachineAllocator.apply(theModule);
     }
 
     public static ASTConsumer createBackendConsumer(
@@ -309,6 +310,28 @@ public class BackendConsumer implements ASTConsumer
                 case 1: optLevel = None;break;
                 case 3: optLevel = Aggressive;break;
             }
+
+            String triple = theModule.getTargetTriple();
+            Target theTarget = Target.TargetRegistry.lookupTarget(triple, error);
+            if (theTarget == null)
+            {
+                error.set("Unable to get target machine: " + error.get());
+                return false;
+            }
+
+            String featureStr = "";
+            if (!compileOptions.CPU.isEmpty() || !compileOptions.features.isEmpty())
+            {
+                SubtargetFeatures features = new SubtargetFeatures();
+                features.setCPU(compileOptions.CPU);
+                for (String str : compileOptions.features)
+                {
+                    features.addFeature(str);
+                }
+                featureStr = features.getString();
+            }
+
+            TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
 
             switch (tm.addPassesToEmitFile(pm, asmOutStream, AssemblyFile, optLevel))
             {

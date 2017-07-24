@@ -25,15 +25,21 @@ import java.util.ArrayList;
  */
 public class SubtargetFeatures
 {
-    ArrayList<String> Features;    // Subtarget features as a vector
+    ArrayList<String> features;    // Subtarget features as a vector
 
-    public SubtargetFeatures(String Initial)
+    public SubtargetFeatures()
     {
+        this("");
+    }
+    public SubtargetFeatures(String initial)
+    {
+        split(features, initial);
     }
 
-    /// Features string accessors.
+    /// features string accessors.
     public String getString()
     {
+        return join(features);
     }
 
     public void setString(String Initial)
@@ -55,7 +61,7 @@ public class SubtargetFeatures
     {
     }
 
-    /// Adding Features.
+    /// Adding features.
     public void AddFeature(String String)
     {
         AddFeature(String, true);
@@ -89,5 +95,32 @@ public class SubtargetFeatures
     public void dump()
     {
         print(System.err);
+    }
+
+    public void addFeature(String string)
+    {
+        addFeature(string, true);
+    }
+
+    public void addFeature(String string, boolean isEnabled)
+    {
+        if (!string.isEmpty())
+            features.add(prependFlag(string.toLowerCase(), isEnabled));
+    }
+
+    private static String prependFlag(String feature, boolean isEnabled)
+    {
+        if (hasFlag(feature))
+            return feature;
+        return (isEnabled ? "+": "-") + feature;
+    }
+
+    private static boolean hasFlag(String feature)
+    {
+        assert !feature.isEmpty() :"Empty string";
+
+        char ch = feature.charAt(0);
+        // Check if first character is '+' or '-' flag
+        return ch == '+' || ch == '-';
     }
 }
