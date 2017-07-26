@@ -1,12 +1,19 @@
 package backend.codegen;
 
-import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrDesc;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
+import backend.value.Value;
+import tools.OutParamWrapper;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.LinkedList;
+
+import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+import static backend.target.x86.X86GenInstrNames.INLINEASM;
 
 /**
  * Representation of each machine instruction.
@@ -244,41 +251,195 @@ public class MachineInstr implements Cloneable
 		return findRegisterDefOperandIdx(reg, true, tri) != -1;
 	}
 
-	public int findRegisterUseOperandIdx(int reg, boolean isKill,
+	/**
+	 * Returns the MachineOperand that is a use of
+	 * the specific register or -1 if it is not found. It further tightening
+	 * the search criteria to a use that kills the register if isKill is true.
+	 * @param reg
+	 * @param isKill
+	 * @param tri
+	 * @return
+	 */
+	public int findRegisterUseOperandIdx(int reg,
+            boolean isKill,
 			TargetRegisterInfo tri)
 	{
+	    for (int i = 0, e = getNumOperands(); i != e; i++)
+        {
+            MachineOperand mo = getOperand(i);
+            if (!mo.isUse() || !mo.isReg())
+                continue;
+
+            int moreg = mo.getReg();
+            if (moreg == 0)
+                continue;
+            if (moreg == reg || (tri != null && isPhysicalRegister(moreg))
+                    && isPhysicalRegister(reg))
+            {
+                if (!isKill || mo.isKill())
+                    return i;
+            }
+        }
+        return -1;
 	}
 
-	public int findRegisterDefOperandIdx(int reg, boolean isKill,
+    /**
+     * Returns the MachineOperand that is a def of the specific register or -1
+     * if it is not found. It further tightening
+     * the search criteria to a use that kills the register if isDead is true.
+     * @param reg
+     * @param isDead
+     * @param tri
+     * @return
+     */
+	public int findRegisterDefOperandIdx(
+	        int reg,
+            boolean isDead,
 			TargetRegisterInfo tri)
 	{
+        for (int i = 0, e = getNumOperands(); i != e; i++)
+        {
+            MachineOperand mo = getOperand(i);
+            if (!mo.isDef() || !mo.isReg())
+                continue;
+
+            int moreg = mo.getReg();
+            if (moreg == 0)
+                continue;
+            if (moreg == reg || (tri != null && isPhysicalRegister(moreg))
+                    && isPhysicalRegister(reg))
+            {
+                if (!isDead || mo.isDead())
+                    return i;
+            }
+        }
+        return -1;
 	}
 
-	public MachineOperand findRegisterDefOperand(int reg, boolean isDead,
-			TargetRegisterInfo tri)
-	{
-	}
-
+    /**
+     * Find the index of the first operand in the
+     * operand list that is used to represent the predicate. It returns -1 if
+     * none is found.
+     * @return
+     */
 	public int findFirstPredOperandIdx()
 	{
+        TargetInstrDesc tid = getDesc();
+        if (tid.isPredicable())
+        {
+            for (int i = 0, e = getNumOperands(); i != e; i++)
+                if (tid.opInfo[i].isPredicate())
+                    return i;
+        }
+        return -1;
 	}
 
-	public boolean isRegTiedToUseOperand(int defOpIdx, int[] useOpIdx)
+    /**
+     * Given the index of a register def operand,
+     * check if the register def is tied to a source operand, due to either
+     * two-address elimination or inline assembly constraints. Returns the
+     * first tied use operand index by reference is useOpIdx is not null.
+     * @param defOpIdx
+     * @param useOpIdx
+     * @return
+     */
+	public boolean isRegTiedToUseOperand(int defOpIdx, OutParamWrapper<Integer> useOpIdx)
 	{
-	}
+        if (getOpcode() == INLINEASM)
+        {
+            assert false : "Unsupported inline asm!";
+            return false;
+        }
 
-	public boolean isRegTiedToDefOperand(int useOpIdx, int[] defOpIdx)
+        assert getOperand(defOpIdx).isDef() : "defOpIdx is not a def!";
+        TargetInstrDesc TID = getDesc();
+        for (int i = 0, e = TID.getNumOperands(); i != e; ++i)
+        {
+            MachineOperand MO = getOperand(i);
+            if (MO.isReg() && MO.isUse()
+                    && TID.getOperandConstraint(i, TIED_TO) == (int) defOpIdx)
+            {
+                if (useOpIdx != null)
+                    useOpIdx.set(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isRegTiedToDefOperand(int useOpIdx)
+    {
+        return isRegTiedToDefOperand(useOpIdx, null);
+    }
+    /**
+     * Return true if the operand of the specified index
+     * is a register use and it is tied to an def operand. It also returns the def
+     * operand index by reference.
+     * @param useOpIdx
+     * @param defOpIdx
+     * @return
+     */
+	public boolean isRegTiedToDefOperand(int useOpIdx, OutParamWrapper<Integer> defOpIdx)
 	{
-	}
+        if (getOpcode() == INLINEASM)
+        {
+            assert false : "Unsupported inline asm!";
+            return false;
+        }
 
+        TargetInstrDesc TID = getDesc();
+        if (useOpIdx >= TID.getNumOperands())
+            return false;
+        MachineOperand MO = getOperand(useOpIdx);
+        if (!MO.isReg() || !MO.isUse())
+            return false;
+        int DefIdx = TID.getOperandConstraint(useOpIdx, TIED_TO);
+        if (DefIdx == -1)
+            return false;
+        if (defOpIdx != null)
+            defOpIdx.set(DefIdx);
+        return true;
+    }
+
+    /**
+     * Copies kill / dead operand properties from MI.
+     * @param mi
+     */
 	public void copyKillDeadInfo(MachineInstr mi)
 	{
-		// TODO: 17-7-16
+		for (int i = 0, e = mi.getNumOperands(); i != e; i++)
+        {
+            MachineOperand mo = mi.getOperand(i);
+            if (!mo.isReg() || (!mo.isKill() && !mo.isDead()))
+                continue;
+            for (int j = 0, ee = getNumOperands(); j != ee; j++)
+            {
+                MachineOperand mop = getOperand(j);
+                if (!mop.isIdenticalTo(mo))
+                    continue;
+                if (mo.isKill())
+                    mop.setIsKill(true);
+                else
+                    mo.setIsDead(true);
+                break;
+            }
+        }
 	}
 
+    /**
+     * Copies predicate operand(s) from MI.
+     * @param mi
+     */
 	public void copyPredicates(MachineInstr mi)
 	{
-		// TODO: 17-7-16
+		TargetInstrDesc tid = getDesc();
+		if (!tid.isPredicable())
+		    return;
+		for (int i =0; i < getNumOperands(); i++)
+        {
+            if (tid.opInfo[i].isPredicate())
+                addOperand(mi.getOperand(i));
+        }
 	}
 
     boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo)
@@ -290,9 +451,69 @@ public class MachineInstr implements Cloneable
 	/// operand that uses it and mark it as IsKill. If AddIfNotFound is true,
 	/// add a implicit operand if it's not found. Returns true if the operand
 	/// exists / is added.
-	boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo,
+	public boolean addRegisterKilled(int IncomingReg, TargetRegisterInfo RegInfo,
 			boolean AddIfNotFound)
 	{
+        boolean isPhysReg = isPhysicalRegister(IncomingReg);
+        int[] alias = RegInfo.getAliasSet(IncomingReg);
+        boolean hasAliases = isPhysReg && alias != null && alias.length >= 0;
+        boolean Found = false;
+        LinkedList<Integer> DeadOps = new LinkedList<>();
+        for (int i = 0, e = getNumOperands(); i != e; ++i) {
+            MachineOperand MO = getOperand(i);
+            if (!MO.isReg() || !MO.isUse() || MO.isUndef())
+                continue;
+            int Reg = MO.getReg();
+            if (Reg == 0)
+                continue;
+
+            if (Reg == IncomingReg) {
+                if (!Found) {
+                    if (MO.isKill())
+                        // The register is already marked kill.
+                        return true;
+                    if (isPhysReg && isRegTiedToDefOperand(i))
+                        // Two-address uses of physregs must not be marked kill.
+                        return true;
+                    MO.setIsKill(true);
+                    Found = true;
+                }
+            } else if (hasAliases && MO.isKill() &&
+                    isPhysicalRegister(Reg)) {
+                // A super-register kill already exists.
+                if (RegInfo.isSuperRegister(IncomingReg, Reg))
+                    return true;
+                if (RegInfo.isSubRegister(IncomingReg, Reg))
+                    DeadOps.add(i);
+            }
+        }
+
+        // Trim unneeded kill operands.
+        while (!DeadOps.isEmpty())
+        {
+            int OpIdx = DeadOps.removeLast();
+            if (getOperand(OpIdx).isImplicit())
+                removeOperand(OpIdx);
+            else
+                getOperand(OpIdx).setIsKill(false);
+        }
+
+        // If not found, this means an alias of one of the operands is killed. Add a
+        // new implicit operand if required.
+        if (!Found && AddIfNotFound)
+        {
+            addOperand(MachineOperand.createReg(
+                    IncomingReg,
+                    false /*IsDef*/,
+                    true  /*IsImp*/,
+                    true  /*IsKill*/,
+                    false,
+                    false,
+                    false,
+                    0));
+            return true;
+        }
+        return Found;
 	}
 
     boolean addRegisterDead(int IncomingReg, TargetRegisterInfo RegInfo)
@@ -302,35 +523,202 @@ public class MachineInstr implements Cloneable
 
 	/// addRegisterDead - We have determined MI defined a register without a use.
 	/// Look for the operand that defines it and mark it as IsDead. If
-	/// AddIfNotFound is true, add a implicit operand if it's not found. Returns
+	/// addIfNotFound is true, add a implicit operand if it's not found. Returns
 	/// true if the operand exists / is added.
-	boolean addRegisterDead(int IncomingReg, TargetRegisterInfo RegInfo,
-			boolean AddIfNotFound)
+	public boolean addRegisterDead(
+	        int incomingReg,
+            TargetRegisterInfo regInfo,
+			boolean addIfNotFound)
 	{
+	    boolean isPhyReg = isPhysicalRegister(incomingReg);
+	    int[] alias = regInfo.getAliasSet(incomingReg);
+	    boolean hasAlias = isPhyReg && alias != null && alias.length > 0;
+	    boolean found = false;
+
+        LinkedList<Integer> deadOps = new LinkedList<>();
+        for (int i = 0, e = getNumOperands(); i != e; i++)
+        {
+            MachineOperand mo = getOperand(i);
+            if (!mo.isReg() || !mo.isDef())
+                continue;
+            int reg = mo.getReg();
+            if (reg == 0)
+                continue;
+
+            if (reg == incomingReg)
+            {
+                if (!found)
+                {
+                    if (mo.isDead())
+                        return true;
+                    mo.setIsDead(true);
+                    found = true;
+                }
+            }
+            else if (hasAlias && mo.isDead() &&
+                    isPhysicalRegister(reg))
+            {
+                if(regInfo.isSubRegister(incomingReg, reg))
+                {
+                    return true;
+                }
+                if (regInfo.getSubRegisters(incomingReg) != null &&
+                        regInfo.getSuperRegisters(reg) != null &&
+                        regInfo.isSubRegister(incomingReg, reg))
+                {
+                    deadOps.add(i);
+                }
+            }
+        }
+
+        while (!deadOps.isEmpty())
+        {
+            int opIdx = deadOps.removeLast();
+            if (getOperand(opIdx).isImplicit())
+                removeOperand(opIdx);
+            else
+                getOperand(opIdx).setIsDead(false);
+        }
+
+        if (found || !addIfNotFound)
+            return found;
+
+        addOperand(MachineOperand.createReg(incomingReg,
+                true  /*IsDef*/,
+                true  /*IsImp*/,
+                false /*IsKill*/,
+                true  /*IsDead*/,
+                false, false, 0));
+        return true;
 	}
 
 	/// isSafeToMove - Return true if it is safe to move this instruction. If
 	/// SawStore is set to true, it means that there is a store (or call) between
 	/// the instruction's location and its intended destination.
-	boolean isSafeToMove(TargetInstrInfo TII, boolean SawStore)
+	public boolean isSafeToMove(TargetInstrInfo tii,
+            OutParamWrapper<Boolean> sawStore)
 	{
+	    if (tid.mayStore() || tid.isCall())
+        {
+            sawStore.set(true);
+            return false;
+        }
+
+        if (tid.isTerminator() || tid.hasUnmodeledSideEffects())
+            return false;
+
+	    if (tid.mayLoad() && !tii.isInvariantLoad(this))
+	        return !sawStore.get() && !hasVolatileMemoryRef();
+
+	    return true;
 	}
 
 	/// isSafeToReMat - Return true if it's safe to rematerialize the specified
 	/// instruction which defined the specified register instead of copying it.
-	boolean isSafeToReMat(TargetInstrInfo TII, int DstReg)
+	public boolean isSafeToReMat(TargetInstrInfo tii, int dstReg)
 	{
+	    OutParamWrapper<Boolean> sawStore = new OutParamWrapper<>(false);
+
+	    if (!getDesc().isRematerializable() ||
+                !tii.isTriviallyReMaterializable(this) ||
+                !isSafeToMove(tii, sawStore))
+        {
+            return false;
+        }
+
+        for (int i = 0, e = getNumOperands(); i != e; i++)
+        {
+            MachineOperand mo = getOperand(i);
+            if (!mo.isReg())
+                continue;
+
+            if (mo.isUse())
+                return false;
+            else if (!mo.isDead() && mo.getReg() != dstReg)
+                return false;
+        }
+        return true;
 	}
 
-	/// hasVolatileMemoryRef - Return true if this instruction may have a
-	/// volatile memory reference, or if the information describing the
-	/// memory reference is not available. Return false if it is known to
-	/// have no volatile memory references.
-	boolean hasVolatileMemoryRef()
-	{}
+    /**
+     * Return true if this instruction may have a
+     * volatile memory reference, or if the information describing the
+     * memory reference is not available. Return false if it is known to
+     * have no volatile memory references.
+     * @return
+     */
+	public boolean hasVolatileMemoryRef()
+	{
+	    if (!tid.mayStore() &&
+                !tid.mayLoad() &&
+                !tid.isCall() &&
+                !tid.hasUnmodeledSideEffects())
+	        return false;
+
+	    if (memOperands.isEmpty())
+	        return true;
+
+	    for (MachineMemOperand mmo : memOperands)
+        {
+            if (mmo.isVolatile())
+                return true;
+        }
+        return false;
+    }
 
 	public void print(PrintStream os, TargetMachine tm)
-	{}
+	{
+	    int startOp = 0;
+	    if (getNumOperands()!= 0 && getOperand(0).isReg() &&
+                getOperand(0).isDef())
+        {
+            getOperand(0).print(os, tm);
+            os.print(" = ");
+            ++startOp;
+        }
+
+        os.printf(getDesc().getName());
+
+	    for (int i = startOp, e = getNumOperands(); i != e; i++)
+        {
+            if (i != startOp)
+                os.print(",");
+            os.print(" ");
+            getOperand(i).print(os, tm);
+        }
+
+        if (!memOperands.isEmpty())
+        {
+            for (MachineMemOperand mmo : memOperands)
+            {
+                Value v = mmo.getValue();
+
+                assert mmo.isLoad() || mmo.isStore() :"SV has to be a load, store or both";
+
+                if (mmo.isVolatile())
+                    os.print("Volatile ");
+                if (mmo.isLoad())
+                    os.printf("LD");
+                if (mmo.isStore())
+                    os.printf("ST");
+
+                os.printf("(%d,%d) [", mmo.getSize(), mmo.getAlignment());
+                if (v == null)
+                {
+                    os.print("<unknown>");
+                }
+                else if (!v.getName().isEmpty())
+                {
+                    os.print(v.getName());
+                }
+                else
+                    v.print(os);
+
+                os.printf(" + %d]", mmo.getOffset());
+            }
+        }
+        os.println();
+    }
 
 	public void dump()
 	{
@@ -349,7 +737,11 @@ public class MachineInstr implements Cloneable
 	 */
 	private void removeRegOperandsFromUseList()
 	{
-		// TODO: 17-7-16
+        for (int i = 0, e = operands.size(); i != e; i++)
+        {
+            if (operands.get(i).isReg())
+                operands.get(i).removeRegOperandFromRegInfo();
+        }
 	}
 
 	/**
@@ -360,7 +752,11 @@ public class MachineInstr implements Cloneable
 	 */
 	private void addRegOperandsToUseLists(MachineRegisterInfo regInfo)
 	{
-		// TODO: 17-7-16
+		for (int i = 0, e = operands.size(); i != e; i++)
+        {
+            if (operands.get(i).isReg())
+                operands.get(i).addRegOperandToRegInfo(regInfo);
+        }
 	}
 
 	public MachineBasicBlock getParent()

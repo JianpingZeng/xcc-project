@@ -3,7 +3,6 @@ package backend.codegen;
 import backend.target.TargetMachine;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
-import jdk.nashorn.internal.runtime.regexp.joni.constants.OPCode;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -47,7 +46,7 @@ import static backend.codegen.MachineOperand.MachineOperandType.*;
 
 public class MachineOperand
 {
-	public interface RegState
+    public interface RegState
 	{
 		int Define = 0x2;             /// This machine operand is only written by the instruction
 		int Implicit = 0x4;
@@ -411,7 +410,7 @@ public class MachineOperand
 		this.mbb = mbb;
 	}
 
-	public void setImmedVal(long imm)
+	public void setImm(long imm)
 	{
 		assert isImm(): "Wrong MachineOperand accessor";
 		immedVal = imm;
@@ -624,7 +623,7 @@ public class MachineOperand
 	public static MachineOperand createImm(long val)
 	{
 		MachineOperand op = new MachineOperand(MO_Immediate);
-		op.setImmedVal(val);
+		op.setImm(val);
 		return op;
 	}
 

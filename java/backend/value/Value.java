@@ -4,6 +4,7 @@ import backend.utils.InstVisitor;
 import backend.utils.SuccIterator;
 import backend.type.Type;
 
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -196,6 +197,12 @@ public class Value implements Cloneable
 	public String getName(){return name;}
 
 	public boolean hasName() {return name != null && !name.isEmpty();}
+
+	public void print(PrintStream os)
+	{
+		// TODO: 17-7-27
+	}
+
     /**
      * 'undef' values are things that do not have specified contents.
      * These are used for a variety of purposes, including global variable

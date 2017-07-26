@@ -121,6 +121,12 @@ public class X86TargetMachine extends LLVMTargetMachine
 		return subtarget;
 	}
 
+	@Override
+	public TargetData getTargetData()
+	{
+		return dataLayout;
+	}
+
 	/**
      * Allocates and returns a subclass of {@linkplain TargetMachine} that
      * implements the IA32 machine.
