@@ -72,6 +72,12 @@ public abstract class TargetMachine
         return theTarget;
     }
 
+	public TargetData getTargetData()
+	{
+		// FIXME overrideed needed by concrete subclass, fox example, x86 machine.
+		return null;
+	}
+
     public TargetAsmInfo getTargetAsmInfo()
     {
         return asmInfo;

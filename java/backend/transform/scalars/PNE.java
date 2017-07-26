@@ -180,9 +180,9 @@ public final class PNE extends MachineFunctionPass
 					case 1:
 					{
 						MachineBasicBlock succ = opSuccBlocks.get(0);
-						for (int j = 0, e = srcRegVarInfo.lastUsedInst.size(); j<e; j++)
+						for (int j = 0, e = srcRegVarInfo.kills.size(); j<e; j++)
 						{
-							if (srcRegVarInfo.lastUsedInst.get(j).getParent() == succ)
+							if (srcRegVarInfo.kills.get(j).getParent() == succ)
 							{
 								valueIsLive = true;
 								break;
@@ -194,9 +194,9 @@ public final class PNE extends MachineFunctionPass
 					{
 						MachineBasicBlock succ1 = opSuccBlocks.get(0);
 						MachineBasicBlock succ2 = opSuccBlocks.get(1);
-						for (int j = 0, e = srcRegVarInfo.lastUsedInst.size(); j<e; j++)
+						for (int j = 0, e = srcRegVarInfo.kills.size(); j<e; j++)
 						{
-							MachineBasicBlock parent = srcRegVarInfo.lastUsedInst.get(j).getParent();
+							MachineBasicBlock parent = srcRegVarInfo.kills.get(j).getParent();
 							if (parent == succ1 || parent == succ2)
 							{
 								valueIsLive = true;
@@ -207,9 +207,9 @@ public final class PNE extends MachineFunctionPass
 					}
 					default:
 					{
-						for (int j = 0, e = srcRegVarInfo.lastUsedInst.size(); j < e; j++)
+						for (int j = 0, e = srcRegVarInfo.kills.size(); j < e; j++)
 						{
-							MachineBasicBlock parent = srcRegVarInfo.lastUsedInst.get(j).getParent();
+							MachineBasicBlock parent = srcRegVarInfo.kills.get(j).getParent();
 							if (opSuccBlocks.contains(parent))
 							{
 								valueIsLive = true;

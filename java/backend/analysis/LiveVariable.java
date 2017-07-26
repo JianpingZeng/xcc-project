@@ -93,25 +93,25 @@ public final class LiveVariable extends MachineFunctionPass
          * The list of MachineInstr which are the last using of this virtual
          * register in their machine basic block.
          */
-        public ArrayList<MachineInstr> lastUsedInst;
+        public ArrayList<MachineInstr> kills;
 
         public VarInfo()
         {
             aliveBlocks = new TIntArrayList();
             numUses = 0;
-            lastUsedInst = new ArrayList<>();
+            kills = new ArrayList<>();
         }
 
         /**
          * Remove the usage corresponding to {@code mi}. Return true if
-         * the {@code mi} contained in {@linkplain #lastUsedInst} otherwise
+         * the {@code mi} contained in {@linkplain #kills} otherwise
          * return false.
          * @param mi
          * @return
          */
         public boolean removeLastUse(MachineInstr mi)
         {
-            return lastUsedInst.remove(mi);
+            return kills.remove(mi);
         }
     }
 
@@ -308,7 +308,8 @@ public final class LiveVariable extends MachineFunctionPass
 
             // Finally, if the last instruction in the block is a return,
             // make sure it as using all of the live out values in the fucntion.
-            if (!mbb.isEmpty() && instInfo.isReturn(mbb.getInsts().getLast().getOpcode()))
+            TargetInstrDesc tid = mbb.getInsts().getLast().getDesc();
+            if (!mbb.isEmpty() && tid.isReturn())
             {
                 MachineInstr ret = mbb.getInsts().getLast();
                 // TODO live out of function, 2016.12.3.
@@ -327,9 +328,9 @@ public final class LiveVariable extends MachineFunctionPass
 
         for (int i = 0, sz = virRegInfo.size(); i < sz; i++)
         {
-            for (int j = 0, sz2 = virRegInfo.get(i).lastUsedInst.size(); j != sz2; j++)
+            for (int j = 0, sz2 = virRegInfo.get(i).kills.size(); j != sz2; j++)
             {
-                MachineInstr mi = virRegInfo.get(i).lastUsedInst.get(j);
+                MachineInstr mi = virRegInfo.get(i).kills.get(j);
                 if (mi == machineRegInfo.getDefMI(i + FirstVirtualRegister))
                 {
                     // this instruction defines this virtual register and use it,
@@ -377,11 +378,11 @@ public final class LiveVariable extends MachineFunctionPass
         MachineBasicBlock mbb = mi.getParent();
         MachineBasicBlock defBB = machineRegInfo.getDefMI(virReg).getParent();
 
-        for (int i = 0; i < varInfo.lastUsedInst.size();)
+        for (int i = 0; i < varInfo.kills.size();)
         {
-            if (varInfo.lastUsedInst.get(i).getParent() == mbb)
+            if (varInfo.kills.get(i).getParent() == mbb)
             {
-                varInfo.lastUsedInst.remove(i);
+                varInfo.kills.remove(i);
                 return;
             }
             i++;
@@ -389,7 +390,7 @@ public final class LiveVariable extends MachineFunctionPass
 
         assert mbb != defBB :"should have ";
 
-        varInfo.lastUsedInst.add(mi);
+        varInfo.kills.add(mi);
         // Update all dominating blocks to mark them known live.
         markVirRegAliveInBlock(varInfo, defBB, mbb);
     }
@@ -423,7 +424,7 @@ public final class LiveVariable extends MachineFunctionPass
         VarInfo varInfo = getVarInfo(virReg);
         // if the varInfo is not alive in any block, default to dead.
         if (varInfo.aliveBlocks.isEmpty())
-            varInfo.lastUsedInst.add(mi);
+            varInfo.kills.add(mi);
     }
 
     /**
@@ -500,11 +501,11 @@ public final class LiveVariable extends MachineFunctionPass
         // check to see if this block is one of the lastUsed blocks.
         // if so, remove it, because there is only one last use instr in
         // the same block.
-        for (int i = 0; i < varInfo.lastUsedInst.size();)
+        for (int i = 0; i < varInfo.kills.size();)
         {
-            if (varInfo.lastUsedInst.get(i).getParent() == mbb)
+            if (varInfo.kills.get(i).getParent() == mbb)
             {
-                varInfo.lastUsedInst.remove(i);
+                varInfo.kills.remove(i);
                 break;
             }
             i++;
@@ -628,7 +629,7 @@ public final class LiveVariable extends MachineFunctionPass
                 break;
             }
         }
-        getVarInfo(incomingReg).lastUsedInst.add(mi);
+        getVarInfo(incomingReg).kills.add(mi);
     }
 
     /**
@@ -698,7 +699,7 @@ public final class LiveVariable extends MachineFunctionPass
                 break;
             }
         }
-        getVarInfo(reg).lastUsedInst.add(mi);
+        getVarInfo(reg).kills.add(mi);
     }
 
     /**
@@ -743,5 +744,19 @@ public final class LiveVariable extends MachineFunctionPass
             }
             registerDeaded.remove(mi);
         }
+    }
+
+    public void replaceKillInstruction(int reg, MachineInstr oldMI,
+            MachineInstr newMI)
+    {
+        VarInfo vi = getVarInfo(reg);
+
+        vi.kills.replaceAll(machineInstr ->
+        {
+            if (machineInstr == oldMI)
+                return newMI;
+            else
+                return oldMI;
+        });
     }
 }

@@ -2,12 +2,15 @@ package backend.codegen;
 
 import backend.codegen.MachineOperand.RegState;
 import backend.target.TargetInstrDesc;
-import backend.target.x86.X86FastISel;
+import backend.target.x86.X86AddressMode;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
 
 import static backend.codegen.MachineMemOperand.MOLoad;
 import static backend.codegen.MachineMemOperand.MOStore;
+import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
+import static backend.target.x86.X86AddressMode.BaseType.RegBase;
+import static backend.target.x86.X86II.*;
 
 /**
  * This is a convenient helper class for creating a machine instruction on
@@ -62,10 +65,126 @@ public final class MachineInstrBuilder
                 mfi.getObjectOffset(fi) + offset,
                 mfi.getObjectOffset(fi),
                 mfi.getObjectAlignment(fi));
-        return X86FastISel.addOffset(mib.addFrameIndex(fi), offset).addMemOperand(mmo);
+        return addOffset(mib.addFrameIndex(fi), offset).addMemOperand(mmo);
     }
 
-	public MachineInstr getMInstr()
+    public static MachineInstrBuilder addFullAddress(MachineInstrBuilder mib,
+            X86AddressMode am)
+    {
+        return addLeaAddress(mib, am).addReg(0);
+    }
+
+    public static MachineInstrBuilder addLeaAddress(MachineInstrBuilder mib,
+            X86AddressMode am)
+    {
+        assert am.scale == 1 || am.scale == 2 || am.scale == 4 || am.scale == 8;
+
+        if (am.baseType == RegBase)
+            mib.addReg(am.base.getBase());
+        else if (am.baseType == FrameIndexBase)
+            mib.addFrameIndex(am.base.getBase());
+        else
+            assert false;
+
+        mib.addImm(am.scale).addReg(am.indexReg);
+        if (am.gv != null)
+            return mib.addGlobalAddress(am.gv, am.disp, am.gvOpFlags);
+        else
+            return mib.addImm(am.disp);
+    }
+
+    public static boolean isGlobalStubReference(int targetFlag)
+    {
+        switch (targetFlag)
+        {
+            case MO_DLLIMPORT: // dllimport stub.
+            case MO_GOTPCREL:  // rip-relative GOT reference.
+            case MO_GOT:       // normal GOT reference.
+            case MO_DARWIN_NONLAZY_PIC_BASE:        // Normal $non_lazy_ptr ref.
+            case MO_DARWIN_NONLAZY:                 // Normal $non_lazy_ptr ref.
+            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE: // Hidden $non_lazy_ptr ref.
+            case MO_DARWIN_HIDDEN_NONLAZY:          // Hidden $non_lazy_ptr ref.
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static boolean isGlobalRelativeToPICBase(int flags)
+    {
+        switch(flags)
+        {
+            case MO_GOTOFF:
+            case MO_GOT:
+            case MO_PIC_BASE_OFFSET:
+            case MO_DARWIN_NONLAZY_PIC_BASE:
+            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static MachineInstrBuilder addLeaOffset(MachineInstrBuilder mib, long offset)
+    {
+        return mib.addImm(1).addReg(0).addImm(offset);
+    }
+
+    public static MachineInstrBuilder addOffset(MachineInstrBuilder mib,
+            long offset)
+    {
+        return addLeaOffset(mib, offset).addReg(0);
+    }
+
+    public static MachineInstrBuilder addRegOffset(
+            MachineInstrBuilder mib,
+            int reg, boolean isKill, long offset)
+    {
+        return addOffset(mib.addReg(reg, getKillRegState(isKill)), offset);
+    }
+
+    public static MachineInstrBuilder addLeaRegOffset(
+            MachineInstrBuilder mib,
+            int reg, boolean isKill, long offset)
+    {
+        return addLeaOffset(mib.addReg(reg, getKillRegState(isKill)), offset);
+    }
+
+    public static MachineInstrBuilder addRegReg(
+            MachineInstrBuilder mib,
+            int reg1,
+            boolean isKill1,
+            int reg2,
+            boolean isKill2)
+    {
+        return mib.addReg(reg1, getKillRegState(isKill1))
+                .addImm(1)
+                .addReg(reg2, getKillRegState(isKill2))
+                .addImm(0);
+    }
+
+    /**
+     * This function is used to add a reference to the
+     * base of a constant value spilled to the per-function constant pool.  The
+     * reference uses the abstract ConstantPoolIndex which is retained until
+     * either machine code emission or assembly output. In PIC mode on x86-32,
+     * the GlobalBaseReg parameter can be used to make this a
+     * GlobalBaseReg-relative reference.
+     * @param mib
+     * @param cpi
+     * @param globalBaseReg
+     * @param opFlags
+     * @return
+     */
+    public static MachineInstrBuilder addConstantPoolReference(
+            MachineInstrBuilder mib, int cpi, int globalBaseReg, int opFlags)
+    {
+        return mib.addReg(globalBaseReg).addImm(1).addReg(0).
+                addConstantPoolIndex(cpi, 0, opFlags).
+                addReg(0);
+    }
+
+    public MachineInstr getMInstr()
 	{
 		return mi;
 	}
@@ -210,5 +329,30 @@ public final class MachineInstrBuilder
 	{
 		mi.addMemOperand(mmo);
 		return this;
+	}
+
+	public static int getDefRegState(boolean b)
+	{
+		return b ? RegState.Define : 0;
+	}
+
+	public static int getImplRegState(boolean b)
+	{
+		return b ? RegState.Implicit : 0;
+	}
+
+	public static int getKillRegState(boolean b)
+	{
+		return b ? RegState.Kill : 0;
+	}
+
+	public static int getDeadRegState(boolean b)
+    {
+        return b ? RegState.Dead : 0;
+    }
+
+	public static int getUndefRegState(boolean b)
+	{
+		return b ? RegState.Undef : 0;
 	}
 }

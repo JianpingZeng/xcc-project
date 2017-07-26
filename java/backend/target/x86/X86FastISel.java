@@ -47,7 +47,6 @@ import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.PerformTailCallOpt;
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
-import static backend.target.x86.X86AddressMode.BaseType.RegBase;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
@@ -273,7 +272,8 @@ public abstract class X86FastISel extends FastISel
                 return false;
         }
         resultReg.set(createResultReg(rc));
-        addFullAddress(buildMI(mbb, tii.get(opc), resultReg.get()), am);
+        MachineInstrBuilder
+                .addFullAddress(buildMI(mbb, tii.get(opc), resultReg.get()), am);
         return true;
     }
 
@@ -308,7 +308,8 @@ public abstract class X86FastISel extends FastISel
             }
             if (opc != 0)
             {
-                addFullAddress(buildMI(mbb, tii.get(opc)), am).addImm(ci.getSExtValue());
+                MachineInstrBuilder
+                        .addFullAddress(buildMI(mbb, tii.get(opc)), am).addImm(ci.getSExtValue());
                 return true;
             }
         }
@@ -347,7 +348,7 @@ public abstract class X86FastISel extends FastISel
                 opc = subtarget.hasSSE2() ? MOVSDmr : ST_FP64m;
                 break;
         }
-        addFullAddress(buildMI(mbb, tii.get(opc)), am).addReg(val);
+        MachineInstrBuilder.addFullAddress(buildMI(mbb, tii.get(opc)), am).addReg(val);
         return true;
     }
 
@@ -514,12 +515,12 @@ public abstract class X86FastISel extends FastISel
             // Allow the subtarget to classify the global.
             int gvFlags = subtarget.classifyGlobalReference(gv, tm);
 
-            if (isGlobalRelativeToPICBase(gvFlags))
+            if (MachineInstrBuilder.isGlobalRelativeToPICBase(gvFlags))
             {
                 am.base.setBase(getInstrInfo().getGlobalBaseReg(mf));
             }
 
-            if (!isGlobalStubReference(gvFlags))
+            if (!MachineInstrBuilder.isGlobalStubReference(gvFlags))
             {
                 if (subtarget.isPICStyleRIPRel())
                 {
@@ -562,7 +563,8 @@ public abstract class X86FastISel extends FastISel
                 }
 
                 loadReg = createResultReg(rc);
-                addFullAddress(buildMI(mbb, tii.get(opc), loadReg), stubAM);
+                MachineInstrBuilder
+                        .addFullAddress(buildMI(mbb, tii.get(opc), loadReg), stubAM);
 
                 // Prevent loading GV stub multiple times in same mbb.
                 localValueMap.put(val, loadReg);
@@ -589,63 +591,6 @@ public abstract class X86FastISel extends FastISel
         }
 
         return false;
-    }
-
-    private static MachineInstrBuilder addFullAddress(MachineInstrBuilder mib,
-            X86AddressMode am)
-    {
-        return addLeaAddress(mib, am).addReg(0);
-    }
-
-    private static MachineInstrBuilder addLeaAddress(MachineInstrBuilder mib,
-            X86AddressMode am)
-    {
-        assert am.scale == 1 || am.scale == 2 || am.scale == 4 || am.scale == 8;
-
-        if (am.baseType == RegBase)
-            mib.addReg(am.base.getBase());
-        else if (am.baseType == FrameIndexBase)
-            mib.addFrameIndex(am.base.getBase());
-        else
-            assert false;
-
-        mib.addImm(am.scale).addReg(am.indexReg);
-        if (am.gv != null)
-            return mib.addGlobalAddress(am.gv, am.disp, am.gvOpFlags);
-        else
-            return mib.addImm(am.disp);
-    }
-
-    private static boolean isGlobalStubReference(int targetFlag)
-    {
-        switch (targetFlag)
-        {
-            case MO_DLLIMPORT: // dllimport stub.
-            case MO_GOTPCREL:  // rip-relative GOT reference.
-            case MO_GOT:       // normal GOT reference.
-            case MO_DARWIN_NONLAZY_PIC_BASE:        // Normal $non_lazy_ptr ref.
-            case MO_DARWIN_NONLAZY:                 // Normal $non_lazy_ptr ref.
-            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE: // Hidden $non_lazy_ptr ref.
-            case MO_DARWIN_HIDDEN_NONLAZY:          // Hidden $non_lazy_ptr ref.
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static boolean isGlobalRelativeToPICBase(int flags)
-    {
-        switch(flags)
-        {
-            case MO_GOTOFF:
-            case MO_GOT:
-            case MO_PIC_BASE_OFFSET:
-            case MO_DARWIN_NONLAZY_PIC_BASE:
-            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE:
-                return true;
-            default:
-                return false;
-        }
     }
 
     private boolean x86SelectLoad(Instruction inst)
@@ -1218,17 +1163,6 @@ public abstract class X86FastISel extends FastISel
         return false;
     }
 
-    private static MachineInstrBuilder addLeaOffset(MachineInstrBuilder mib, int offset)
-    {
-        return mib.addImm(1).addReg(0).addImm(offset);
-    }
-
-    public static MachineInstrBuilder addOffset(MachineInstrBuilder mib,
-            int offset)
-    {
-        return addLeaOffset(mib, offset).addReg(0);
-    }
-
     private boolean x86SelectCall(Instruction inst)
     {
         CallInst ci = (CallInst)inst;
@@ -1618,30 +1552,6 @@ public abstract class X86FastISel extends FastISel
         return (X86TargetMachine)tm;
     }
 
-    /**
-     * This function is used to add a reference to the
-     * base of a constant value spilled to the per-function constant pool.  The
-     * reference uses the abstract ConstantPoolIndex which is retained until
-     * either machine code emission or assembly output. In PIC mode on x86-32,
-     * the GlobalBaseReg parameter can be used to make this a
-     * GlobalBaseReg-relative reference.
-     * @param mib
-     * @param cpi
-     * @param globalBaseReg
-     * @param opFlags
-     * @return
-     */
-    private static MachineInstrBuilder addConstantPoolReference(
-            MachineInstrBuilder mib,
-            int cpi,
-            int globalBaseReg,
-            int opFlags)
-    {
-        return mib.addReg(globalBaseReg).addImm(1).addReg(0).
-                addConstantPoolIndex(cpi, 0, opFlags).
-                addReg(0);
-    }
-
     public int TargetMaterializeConstant(Constant c)
     {
         OutParamWrapper<EVT> x = new OutParamWrapper<>();
@@ -1708,7 +1618,8 @@ public abstract class X86FastISel extends FastISel
                 else
                     opc = LEA64r;
                 int resultReg = createResultReg(rc);
-                addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
+                MachineInstrBuilder
+                        .addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
                 return resultReg;
             }
             return 0;
@@ -1740,7 +1651,8 @@ public abstract class X86FastISel extends FastISel
 
         int mcpOffset = mcp.getConstantPoolIndex(c, align);
         int resultReg = createResultReg(rc);
-        addConstantPoolReference(buildMI(mbb, tii.get(opc), resultReg),
+        MachineInstrBuilder
+                .addConstantPoolReference(buildMI(mbb, tii.get(opc), resultReg),
                 mcpOffset, picBase, opFlag);
         return resultReg;
     }
@@ -1764,7 +1676,8 @@ public abstract class X86FastISel extends FastISel
         int opc = subtarget.is64Bit() ? LEA64r : LEA32r;
         TargetRegisterClass rc = tli.getRegClassFor(new EVT(tli.getPointerTy()));
         int resultReg = createResultReg(rc);
-        addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
+        MachineInstrBuilder
+                .addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
         return resultReg;
     }
 
