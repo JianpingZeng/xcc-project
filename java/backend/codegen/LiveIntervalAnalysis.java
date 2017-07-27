@@ -25,18 +25,21 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import backend.transform.scalars.PhiElimination;
 import backend.transform.scalars.TwoAddrInstruction;
+import backend.value.Module;
 import tools.BitMap;
 import tools.OutParamWrapper;
 
+import java.io.PrintStream;
 import java.util.TreeMap;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LiveIntervals extends MachineFunctionPass
+public class LiveIntervalAnalysis extends MachineFunctionPass
 {
     public static IntStatistic numIntervals =
             new IntStatistic("liveIntervals", "Number of original intervals");
@@ -69,8 +72,9 @@ public class LiveIntervals extends MachineFunctionPass
     private TargetRegisterInfo tri;
     private BitMap allocatableRegs;
     private TargetInstrInfo tii;
+    private MachineRegisterInfo mri;
 
-    public LiveIntervals()
+    public LiveIntervalAnalysis()
     {
         idx2MI = new TreeMap<>();
         mi2Idx = new TreeMap<>();
@@ -112,6 +116,7 @@ public class LiveIntervals extends MachineFunctionPass
         tri = tm.getRegisterInfo();
         tii = tm.getInstrInfo();
         allocatableRegs = tri.getAllocatableSet(mf);
+        mri = mf.getMachineRegisterInfo();
 
         // Step#1: Handle live-in regs of mf.
         // Step#2: Numbering each MachineInstr in each MachineBasicBlock.
@@ -133,6 +138,11 @@ public class LiveIntervals extends MachineFunctionPass
         // Step#4: Compute live interval.
         computeLiveIntervals();
         return false;
+    }
+
+    public TreeMap<Integer, LiveInterval> getReg2LiveInterval()
+    {
+        return reg2LiveInterval;
     }
 
     private LiveInterval createLiveInterval(int reg)
@@ -365,15 +375,111 @@ public class LiveIntervals extends MachineFunctionPass
                 destReg.set(0);
             }
 
-            // todo handlePhysicalRegisterDef();
+            handlePhysicalRegisterDef(mbb, index,
+                    getOrCreateInterval(reg),
+                    srcReg.get(), destReg.get(),
+                    false);
+            for (int alias : tri.getAliasSet(reg))
+            {
+                handlePhysicalRegisterDef(mbb, index, getOrCreateInterval(alias),
+                        srcReg.get(), destReg.get(), false);
+            }
         }
+    }
+
+    private MachineInstr getInstructionFromIndex(int idx)
+    {
+        assert idx2MI.containsKey(idx);
+        return idx2MI.get(idx);
+    }
+
+    private void handlePhysicalRegisterDef(
+            MachineBasicBlock mbb,
+            int index,
+            LiveInterval interval,
+            int srcReg,
+            int destReg,
+            boolean isLiveIn)
+    {
+        MachineInstr mi = mbb.getInstAt(index);
+       int baseIndex = getInstructionIndex(mi);
+       int start = getDefIndex(baseIndex);
+       int end = start;
+
+        exit:
+        {
+            // If it is not used after definition, it is considered dead at
+            // the instruction defining it. Hence its interval is:
+            // [defSlot(def), defSlot(def)+1)
+            if (lv.registerDefIsDeaded(mi, interval.register))
+            {
+                end = getDefIndex(start) + 1;
+                break exit;
+            }
+
+            // If it is not dead on definition, it must be killed by a
+            // subsequent instruction. Hence its interval is:
+            // [defSlot(def), useSlot(kill)+1)
+            while (++index != mbb.size())
+            {
+                baseIndex += InstrSlots.NUM;
+                if (lv.killRegister(mbb.getInstAt(index), interval.register))
+                {
+                    end = getUseIndex(baseIndex) + 1;
+                    break exit;
+                }
+            }
+
+            assert isLiveIn :"phyreg was not killed in defining block!";
+            end = getDefIndex(start) + 1;
+        }
+
+        assert start < end :"did not find end of intervals";
+
+        // Finally, if this is defining a new range for the physical register, and if
+        // that physreg is just a copy from a vreg, and if THAT vreg was a copy from
+        // the physreg, then the new fragment has the same value as the one copied
+        // into the vreg.
+        if (interval.register == destReg
+                && !interval.isEmpty()
+                && isVirtualRegister(srcReg))
+        {
+            // Get the live interval for the vreg, see if it is defined by a copy.
+            LiveInterval srcInterval = getOrCreateInterval(srcReg);
+
+            if (srcInterval.containsOneValue())
+            {
+                assert !srcInterval.isEmpty() :"Can't contain a value and be empty";
+
+                int startIdx = srcInterval.getRange(0).start;
+                MachineInstr srcDefMI = getInstructionFromIndex(startIdx);
+
+                OutParamWrapper<Integer> vregSrcSrc = new OutParamWrapper<>();
+                OutParamWrapper<Integer> vregSrcDest = new OutParamWrapper<>();
+                if (tii.isMoveInstr(srcDefMI, vregSrcSrc, vregSrcDest, null, null)
+                        && srcReg == vregSrcDest.get()
+                        && destReg == vregSrcSrc.get())
+                {
+                    LiveRange range = interval.getLiveRangeContaining(startIdx-1);
+                    if (range != null)
+                    {
+                        LiveRange lr = new LiveRange(startIdx, end, range.valId);
+                        interval.addRange(lr);
+                        return;
+                    }
+                }
+            }
+        }
+
+        LiveRange lr = new LiveRange(start, end, interval.getNextValue());
+        interval.addRange(lr);
     }
 
     private void computeLiveIntervals()
     {
         // Process each def operand for each machine instr, including implicitly
         // definition and explicitly definition.
-        // Just walk instruction from begin to end since advantage caused by
+        // Just walk instruction from start to end since advantage caused by
         // MachineInstr's SSA property, definition dominates all uses.
         // So avoiding iterative dataflow analysis to compute local liveIn and
         // liveOuts.
@@ -398,6 +504,27 @@ public class LiveIntervals extends MachineFunctionPass
                     if (mo.isReg() && mo.getReg() != 0 && mo.isDef())
                         handleRegisterDef(mbb, i, mo.getReg());
                 }
+            }
+        }
+    }
+
+    public void print(PrintStream os, Module m)
+    {
+        os.printf("****************intervals*****************\n");
+        for (LiveInterval interval : reg2LiveInterval.values())
+        {
+            interval.print(os, tri);
+            os.println();
+        }
+
+        os.printf("****************machineinstrs**************\n");
+        for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        {
+            os.printf(mbb.getBasicBlock().getName());
+            for (MachineInstr mi : mbb.getInsts())
+            {
+                os.printf("%d\t", getInstructionIndex(mi));
+                mi.print(os, null);
             }
         }
     }
