@@ -78,7 +78,7 @@ public class RegScavenger
     ScavengedRC = null;
     }
 
-    /// enterBasicBlock - Start tracking liveness from the begin of the specific
+    /// enterBasicBlock - Start tracking liveness from the start of the specific
     /// basic block.
     void enterBasicBlock(MachineBasicBlock mbb) {}
 

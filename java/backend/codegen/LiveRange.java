@@ -16,19 +16,47 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import java.io.PrintStream;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LiveRange
+public class LiveRange implements Comparable<LiveRange>
 {
-    int begin;
+    int start;
     int end;
     int valId;
     public LiveRange(int defIdx, int killIdx, int valID)
     {
-        begin = defIdx;
+        start = defIdx;
         end = killIdx;
         valId = valID;
+    }
+
+    @Override
+    public int compareTo(LiveRange o)
+    {
+        if (start == o.start && end == o.end)
+            return 0;
+        if (start < o.start || (start == o.start && end < o.end))
+            return -1;
+        return 1;
+    }
+
+    public boolean contains(int idx)
+    {
+        return start <= idx && idx <= end;
+    }
+
+    public void print(PrintStream os)
+    {
+        os.printf("[%d,%d:%d)", start, end, valId);
+    }
+
+    public void dump()
+    {
+        print(System.err);
+        System.err.println();
     }
 }
