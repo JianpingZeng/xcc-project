@@ -14,7 +14,7 @@ import java.util.HashSet;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class PNE extends MachineFunctionPass
+public final class PhiElimination extends MachineFunctionPass
 {
 	private TargetInstrInfo instInfo;
 	private MachineFunction mf;
@@ -255,7 +255,7 @@ public final class PNE extends MachineFunctionPass
 		{
 			MachineOperand mo = mi.getOperand(i);
 			if (mo.isReg() && mo.getReg() != 0
-					&& mo.getReg() == reg && mo.opIsUse())
+					&& mo.getReg() == reg && mo.isUse())
 				return true;
 		}
 		return false;

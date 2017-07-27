@@ -799,4 +799,15 @@ public class MachineInstr implements Cloneable
 			res.addMemOperand(mmo);
 		return res;
 	}
+
+	public boolean hasOneMemOperand()
+	{
+		return !memOperands.isEmpty();
+	}
+
+	public MachineMemOperand getMemOperand(int index)
+	{
+		assert index >= 0 && index < memOperands.size();
+		return memOperands.get(index);
+	}
 }

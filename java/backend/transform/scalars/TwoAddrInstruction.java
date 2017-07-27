@@ -101,7 +101,7 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 	{
 		au.addRequired(LiveVariable.class);
 		au.addPreserved(LiveVariable.class);
-		au.addRequired(PNE.class);
+		au.addRequired(PhiElimination.class);
 		super.getAnalysisUsage(au);
 	}
 }

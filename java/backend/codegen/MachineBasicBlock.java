@@ -1,7 +1,7 @@
 package backend.codegen;
 
 import backend.value.BasicBlock;
-import backend.target.TargetInstrInfo;
+import gnu.trove.list.array.TIntArrayList;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -16,6 +16,7 @@ public class MachineBasicBlock
 	private LinkedList<MachineInstr> insts;
 	private MachineBasicBlock prev, next;
 	private final BasicBlock bb;
+	private TIntArrayList liveIns;
 
 	/**
 	 * Indicates the number of this machine block in the machine function.
@@ -34,6 +35,7 @@ public class MachineBasicBlock
 		number = -1;
 		predecessors = new ArrayList<>();
 		successors = new ArrayList<>();
+		liveIns = new TIntArrayList();
 	}
 
 	public BasicBlock getBasicBlock() { return bb; }
@@ -191,11 +193,8 @@ public class MachineBasicBlock
 
 	public int getFirstTerminator()
 	{
-		TargetInstrInfo instInfo = parent.getTarget().getInstrInfo();
 		int i = size() - 1;
-		for (; i >=0 &&
-				instInfo.isTerminatorInstr(getInstAt(i).getOpcode());
-		     i--);
+		for (; i >=0 && getInstAt(i).getDesc().isTerminator(); i--);
 		return i;
 	}
 
@@ -208,4 +207,25 @@ public class MachineBasicBlock
 	{
 		return mbb.next == mbb;
 	}
+
+	public void removeInstrAt(int indexToDel)
+	{
+		assert indexToDel >= 0 && indexToDel < size();
+		insts.remove(indexToDel);
+	}
+
+	public void addLiveIn(int reg)
+	{
+		liveIns.add(reg);
+	}
+
+    public MachineInstr getLastInst()
+    {
+        return insts.getLast();
+    }
+
+    public MachineInstr getFirstInst()
+    {
+        return insts.getFirst();
+    }
 }

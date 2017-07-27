@@ -16,6 +16,8 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.CCValAssign.CCAssignFn;
+import backend.codegen.CCValAssign.LocInfo;
 import backend.support.CallingConv;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
@@ -25,157 +27,212 @@ import java.util.ArrayList;
 
 /**
  * This class holds information needed while lowering arguments and
- × return values.  It captures which registers are already assigned and which
- × stack slots are used.  It provides accessors to allocate these values.
+ * × return values.  It captures which registers are already assigned and which
+ * × stack slots are used.  It provides accessors to allocate these values.
+ *
  * @author Xlous.zeng
  * @version 0.1
  */
 public class CCState
 {
-    CallingConv CallingConv;
-    boolean IsVarArg;
-   TargetMachine tm;
-   TargetRegisterInfo TRI;
-    ArrayList<CCValAssign> Locs;
+    private CallingConv callingConv;
+    private boolean isVarArg;
+    private TargetMachine tm;
+    private TargetRegisterInfo tri;
+    private ArrayList<CCValAssign> locs;
 
-    int StackOffset;
-    TIntArrayList UsedRegs;
+    private int stackOffset;
+    private TIntArrayList usedRegs;
 
-    public CCState(backend.support.CallingConv CC, boolean isVarArg, TargetMachine tm,
+    public CCState(backend.support.CallingConv cc,
+            boolean isVarArg,
+            TargetMachine tm,
             ArrayList<CCValAssign> locs)
-    {}
-
-    public void addLoc( CCValAssign V) {
-        Locs.add(V);
+    {
+        callingConv = cc;
+        this.isVarArg = isVarArg;
+        this.tm = tm;
+        tri = tm.getRegisterInfo();
+        this.locs = locs;
+        stackOffset = 0;
+        usedRegs = new TIntArrayList();
+        for (int capacity = (tri.getNumRegs() + 31) / 32;
+             capacity != 0; --capacity)
+            usedRegs.add(0);
     }
-    
-   public TargetMachine getTarget()  { return tm; }
-    public CallingConv getCallingConv()  { return CallingConv; }
-    public boolean isVarArg()  { return IsVarArg; }
 
-    public int getNextStackOffset()  { return StackOffset; }
+    public void addLoc(CCValAssign V)
+    {
+        locs.add(V);
+    }
+
+    public TargetMachine getTarget()
+    {
+        return tm;
+    }
+
+    public CallingConv getCallingConv()
+    {
+        return callingConv;
+    }
+
+    public boolean isVarArg()
+    {
+        return isVarArg;
+    }
+
+    public int getNextStackOffset()
+    {
+        return stackOffset;
+    }
 
     /// isAllocated - Return true if the specified register (or an alias) is
     /// allocated.
-    public boolean isAllocated(int Reg)
+    public boolean isAllocated(int reg)
     {
-        return UsedRegs[Reg/32]  (1 << (Reg31));
+        return (usedRegs.get(reg / 32) & (1 << (reg & 31))) != 0;
     }
 
-    /// AnalyzeFormalArguments - Analyze an array of argument values,
+    /// analyzeFormalArguments - Analyze an array of argument values,
     /// incorporating info about the formals into this state.
-    public void AnalyzeFormalArguments( SmallVectorImpl<ISD::InputArg> Ins,
-            CCAssignFn Fn)
-    {}
+    public void analyzeFormalArguments(ArrayList<InputArg> ins, CCAssignFn fn)
+    {
+    }
 
-    /// AnalyzeReturn - Analyze the returned values of a return,
+    /// analyzeReturn - Analyze the returned values of a return,
     /// incorporating info about the result values into this state.
-    public void AnalyzeReturn( SmallVectorImpl<ISD::OutputArg> Outs,
-            CCAssignFn Fn)
-    {}
+    public void analyzeReturn(ArrayList<OutputArg> outs, CCAssignFn fn)
+    {
+    }
 
-    /// AnalyzeCallOperands - Analyze the outgoing arguments to a call,
+    /// analyzeCallOperands - Analyze the outgoing arguments to a call,
     /// incorporating info about the passed values into this state.
-    public void AnalyzeCallOperands( SmallVectorImpl<ISD::OutputArg> Outs,
-            CCAssignFn Fn)
-    {}
+    public void analyzeCallOperands(
+            ArrayList<OutputArg> outs,
+            CCAssignFn fn)
+    {
+    }
 
-    /// AnalyzeCallOperands - Same as above except it takes vectors of types
+    /// analyzeCallOperands - Same as above except it takes vectors of types
     /// and argument flags.
-    public void AnalyzeCallOperands(SmallVectorImpl<EVT> ArgVTs,
-            SmallVectorImpl<ISD::ArgFlagsTy> Flags,
-            CCAssignFn Fn)
-    {}
+    public void analyzeCallOperands(
+            ArrayList<EVT> argVTs,
+            ArrayList<ArgFlagsTy> flags,
+            CCAssignFn fn)
+    {
+    }
 
-    /// AnalyzeCallResult - Analyze the return values of a call,
+    /// analyzeCallResult - Analyze the return values of a call,
     /// incorporating info about the passed values into this state.
-    public void AnalyzeCallResult( SmallVectorImpl<ISD::InputArg> Ins,
-            CCAssignFn Fn)
-    {}
+    public void analyzeCallResult(ArrayList<InputArg> ins, CCAssignFn fn)
+    {
+    }
 
-    /// AnalyzeCallResult - Same as above except it's specialized for calls which
+    /// analyzeCallResult - Same as above except it's specialized for calls which
     /// produce a single value.
-    public void AnalyzeCallResult(EVT VT, CCAssignFn Fn)
-    {}
+    public void analyzeCallResult(EVT vt, CCAssignFn fn)
+    {
+    }
 
     /// getFirstUnallocated - Return the first unallocated register in the set, or
     /// NumRegs if they are all allocated.
-    public int getFirstUnallocated( int *Regs, int NumRegs)
+    public int getFirstUnallocated(int[] regs)
     {
-        for (int i = 0; i != NumRegs; ++i)
-            if (!isAllocated(Regs[i]))
+        for (int i = 0; i != regs.length; ++i)
+            if (!isAllocated(regs[i]))
                 return i;
-        return NumRegs;
+        return -1;
     }
 
-    /// AllocateReg - Attempt to allocate one register.  If it is not available,
+    /// allocateReg - Attempt to allocate one register.  If it is not available,
     /// return zero.  Otherwise, return the register, marking it and any aliases
     /// as allocated.
-    public int AllocateReg(int Reg)
+    public int allocateReg(int reg)
     {
-        if (isAllocated(Reg)) return 0;
-        MarkAllocated(Reg);
-        return Reg;
+        if (isAllocated(reg))
+            return 0;
+        markAllocated(reg);
+        return reg;
     }
 
-    /// Version of AllocateReg with extra register to be shadowed.
-    public int AllocateReg(int Reg, int ShadowReg)
+    /// Version of allocateReg with extra register to be shadowed.
+    public int allocateReg(int reg, int shadowReg)
     {
-        if (isAllocated(Reg)) return 0;
-        MarkAllocated(Reg);
-        MarkAllocated(ShadowReg);
-        return Reg;
+        if (isAllocated(reg))
+            return 0;
+        markAllocated(reg);
+        markAllocated(shadowReg);
+        return reg;
     }
 
-    /// AllocateReg - Attempt to allocate one of the specified registers.  If none
+    /// allocateReg - Attempt to allocate one of the specified registers.  If none
     /// are available, return zero.  Otherwise, return the first one available,
     /// marking it and any aliases as allocated.
-    public int AllocateReg( int *Regs, int NumRegs) {
-        int FirstUnalloc = getFirstUnallocated(Regs, NumRegs);
-        if (FirstUnalloc == NumRegs)
-            return 0;    // Didn't find the reg.
-
-        // Mark the register and any aliases as allocated.
-        int Reg = Regs[FirstUnalloc];
-        MarkAllocated(Reg);
-        return Reg;
-    }
-
-    /// Version of AllocateReg with list of registers to be shadowed.
-    public int AllocateReg( int *Regs,  int *ShadowRegs,
-            int NumRegs) {
-        int FirstUnalloc = getFirstUnallocated(Regs, NumRegs);
-        if (FirstUnalloc == NumRegs)
-            return 0;    // Didn't find the reg.
-
-        // Mark the register and any aliases as allocated.
-        int Reg = Regs[FirstUnalloc], ShadowReg = ShadowRegs[FirstUnalloc];
-        MarkAllocated(Reg);
-        MarkAllocated(ShadowReg);
-        return Reg;
-    }
-
-    /// AllocateStack - Allocate a chunk of stack space with the specified size
-    /// and alignment.
-    public int AllocateStack(int Size, int Align)
+    public int allocateReg(int[] regs)
     {
-        assert(Align && ((Align-1)  Align) == 0); // Align is power of 2.
-        StackOffset = ((StackOffset + Align-1)  ~(Align-1));
-        int Result = StackOffset;
-        StackOffset += Size;
+        int FirstUnalloc = getFirstUnallocated(regs);
+        if (FirstUnalloc < 0)
+            return 0;    // Didn't find the reg.
+
+        // Mark the register and any aliases as allocated.
+        int Reg = regs[FirstUnalloc];
+        markAllocated(Reg);
+        return Reg;
+    }
+
+    /// Version of allocateReg with list of registers to be shadowed.
+    public int allocateReg(int[] regs, int[] shadowRegs)
+    {
+        int FirstUnalloc = getFirstUnallocated(regs);
+        if (FirstUnalloc < 0)
+            return 0;    // Didn't find the reg.
+
+        // Mark the register and any aliases as allocated.
+        int Reg = regs[FirstUnalloc], ShadowReg = shadowRegs[FirstUnalloc];
+        markAllocated(Reg);
+        markAllocated(ShadowReg);
+        return Reg;
+    }
+
+    /// allocateStack - Allocate a chunk of stack space with the specified size
+    /// and alignment.
+    public int allocateStack(int size, int align)
+    {
+        assert (align != 0 && ((align - 1) & align) == 0); // align is power of 2.
+        stackOffset = ((stackOffset + align - 1) & ~(align - 1));
+        int Result = stackOffset;
+        stackOffset += size;
         return Result;
     }
 
-    // HandleByVal - Allocate a stack slot large enough to pass an argument by
-    // value. The size and alignment information of the argument is encoded in its
-    // parameter attribute.
-    public void HandleByVal(int ValNo, EVT ValVT,
-            EVT LocVT, CCValAssign::LocInfo LocInfo,
-            int MinSize, int MinAlign, ISD::ArgFlagsTy ArgFlags)
-    {}
+    /**
+     * Allocate a stack slot large enough to pass an argument by
+     * value. The size and alignment information of the argument is encoded in its
+     * parameter attribute.
+     * @param valNo
+     * @param valVT
+     * @param locVT
+     * @param locInfo
+     * @param minSize
+     * @param minAlign
+     * @param argFlags
+     */
+    public void handleByVal(int valNo, EVT valVT, EVT locVT, LocInfo locInfo,
+            int minSize, int minAlign, ArgFlagsTy argFlags)
+    {
+        int align = argFlags.getByValAlign();
+        int size = argFlags.getByValSize();
+        if (minSize > size)
+            size = minSize;
+        if (minAlign > align)
+            align = minAlign;
 
+        int offset = allocateStack(size, align);
+        addLoc(CCValAssign.getMem(valNo, valVT, offset, locVT, locInfo));
+    }
 
-    /// MarkAllocated - Mark a register and all of its aliases as allocated.
-    private void MarkAllocated(int Reg)
-    {}
+    /// markAllocated - Mark a register and all of its aliases as allocated.
+    private void markAllocated(int reg)
+    {
+    }
 }

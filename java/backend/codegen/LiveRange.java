@@ -1,7 +1,7 @@
 package backend.codegen;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,18 @@ package backend.codegen;
  */
 
 /**
- * This class can be derived from and used by targets to
- * hold private target-specific information for each MachineFunction.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MachineFunctionInfo
+public class LiveRange
 {
+    int begin;
+    int end;
+    int valId;
+    public LiveRange(int defIdx, int killIdx, int valID)
+    {
+        begin = defIdx;
+        end = killIdx;
+        valId = valID;
+    }
 }

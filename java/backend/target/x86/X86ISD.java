@@ -121,7 +121,7 @@ public class X86ISD
     public static final int REP_STOS = RET_FLAG + 1;
     /// REP_MOVS - Repeat move, corresponds to X86::REP_MOVSx.
     public static final int REP_MOVS = REP_STOS + 1;
-    /// GlobalBaseReg - On Darwin, this node represents the result of the popl
+    /// globalBaseReg - On Darwin, this node represents the result of the popl
     /// at function entry, used for PIC code.
     public static final int GlobalBaseReg = REP_MOVS + 1;
     /// Wrapper - A wrapper node for TargetConstantPool,

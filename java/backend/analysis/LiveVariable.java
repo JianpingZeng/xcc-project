@@ -75,6 +75,9 @@ public final class LiveVariable extends MachineFunctionPass
      */
     public static class VarInfo
     {
+        //todo add a DefInst. 2017.7.27
+        public MachineInstr defInst;
+
         /**
          * Set of blocks where the virtual register associated with this VarInfo
          * is live throughout.
