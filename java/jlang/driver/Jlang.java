@@ -16,6 +16,7 @@ package jlang.driver;
  * permissions and limitations under the License.
  */
 
+import backend.support.ErrorHandling;
 import backend.target.TargetMachine;
 import backend.target.x86.X86TargetInfo;
 import backend.value.Module;
@@ -793,6 +794,18 @@ public class Jlang implements DiagnosticFrontendKindsTag
         return false;
     }
 
+    /***
+     * Defines a Error handler for LLVM backend.
+     */
+    private ErrorHandling.LLVMErrorHandler errorHandler = new ErrorHandling.LLVMErrorHandler()
+    {
+        @Override
+        public void apply(Diagnostic diag, String msg)
+        {
+            diag.report(new FullSourceLoc(), err_fe_error_backend).addTaggedVal(msg);
+        }
+    };
+
 	/**
 	 * Programmatic interface for main function.
 	 * 
@@ -836,6 +849,10 @@ public class Jlang implements DiagnosticFrontendKindsTag
                 !NoColorDiagnostic.value);
 
         Diagnostic diag = new Diagnostic(diagClient);
+
+        // Install LLVM error handler, so that any LLVM backend diagnostics
+        // go through our error handler.
+        ErrorHandling.installLLVMErrorHandler(errorHandler, diag);
 
         // Get information about the target being compiled for.
         String triple = createTargetTriple();

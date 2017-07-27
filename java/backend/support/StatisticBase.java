@@ -1,7 +1,7 @@
-package backend.codegen;
+package backend.support;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,29 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import java.io.PrintStream;
+
 /**
- * This class can be derived from and used by targets to
- * hold private target-specific information for each MachineFunction.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MachineFunctionInfo
+public abstract class StatisticBase
 {
+    private String name;
+    private String desc;
+
+    /**
+     * Keeps what number of statistic were created.
+     */
+    public static int numStats;
+    public StatisticBase(String name, String desc)
+    {
+        this.name = name;
+        this.desc = desc;
+        ++numStats;
+    }
+
+    public abstract void printValue(PrintStream os);
+
+    public abstract boolean hasSomeValue();
 }

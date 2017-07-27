@@ -6,7 +6,7 @@ import backend.target.TargetInstrDesc;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
-import backend.transform.scalars.PNE;
+import backend.transform.scalars.PhiElimination;
 import backend.transform.scalars.TwoAddrInstruction;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
@@ -524,7 +524,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		au.addRequired(PNE.class);
+		au.addRequired(PhiElimination.class);
 		au.addRequired(TwoAddrInstruction.class);
 		super.getAnalysisUsage(au);
 	}

@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import backend.transform.scalars.PNE;
+import backend.transform.scalars.PhiElimination;
 import backend.transform.scalars.TwoAddrInstruction;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
@@ -204,7 +204,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		au.addRequired(PNE.class);
+		au.addRequired(PhiElimination.class);
 		au.addRequired(TwoAddrInstruction.class);
 		super.getAnalysisUsage(au);
 	}

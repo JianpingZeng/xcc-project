@@ -169,4 +169,12 @@ public abstract class TargetRegisterClass
 
         return false;
     }
+
+    public boolean hasSubClass(TargetRegisterClass subRC)
+    {
+        for (TargetRegisterClass rc : subClasses)
+            if (rc.equals(subRC))
+                return true;
+        return false;
+    }
 }

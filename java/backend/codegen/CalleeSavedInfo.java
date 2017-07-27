@@ -50,7 +50,7 @@ public class CalleeSavedInfo
         return reg;
     }
 
-    public TargetRegisterClass getRegClass()
+    public TargetRegisterClass getRegisterClass()
     {
         return regClass;
     }

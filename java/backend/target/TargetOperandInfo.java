@@ -45,7 +45,7 @@ public class TargetOperandInfo
         this.constraints = constraints;
     }
 
-    public TargetRegisterClass getRegClass(TargetRegisterInfo tri)
+    public TargetRegisterClass getRegisterClass(TargetRegisterInfo tri)
     {
         if (isLookupPtrRegClass())
             return tri.getPointerRegClass(regClass);

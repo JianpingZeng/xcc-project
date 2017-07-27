@@ -36,6 +36,12 @@ public class MachineFunction
 	 */
 	private MachineOperand[] phyRegDefUseList;
 
+	/**
+	 * Used to keep track of target-specific per-machine function information for
+	 * the target implementation.
+	 */
+	MachineFunctionInfo mfInfo;
+
 	public MachineFunction(Function fn, TargetMachine tm)
 	{
 		this.fn = fn;
@@ -138,4 +144,9 @@ public class MachineFunction
 		assert blockNo <= mbbNumber.size():"Mismatch!";
 		mbbNumber.ensureCapacity(blockNo);
 	}
+
+	public MachineFunctionInfo getInfo()
+    {
+        return mfInfo;
+    }
 }
