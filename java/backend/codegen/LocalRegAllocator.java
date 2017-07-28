@@ -443,7 +443,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 					if (tm.getInstrInfo().isTwoAddrInstr(opcode) && j == 0)
 					{
 						// a = b + c --> b(a) += c;
-						assert  mi.getOperand(1).isReg()
+						assert  mi.getOperand(1).isRegister()
 								&& mi.getOperand(1).getReg() != 0
 								&& mi.getOperand(1).opIsUse()
 								:"Two address instruction invalid!";

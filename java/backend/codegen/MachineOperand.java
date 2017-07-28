@@ -203,7 +203,7 @@ public class MachineOperand
 	}
 
 
-	public boolean isReg()
+	public boolean isRegister()
 	{
 		return opKind == MO_Register;
 	}
@@ -250,114 +250,138 @@ public class MachineOperand
 
 	public int getReg()
 	{
-		assert isReg():"This is not a register operand!";
+		assert isRegister():"This is not a register operand!";
 		return reg.regNo;
 	}
 
 	public int getSubReg()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return subReg;
 	}
 
 	public boolean isUse()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return !isDef;
 	}
 
 	public boolean isDef()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return isDef;
 	}
 
 	public boolean isImplicit()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return isImp;
 	}
 
 	public boolean isDead()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return isDead;
 	}
 
 	public boolean isKill()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return isKill;
 	}
 
 	public boolean isUndef()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return isUndef;
 	}
 
 	public boolean isEarlyClobber()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return isEarlyClobber;
 	}
 
 	public MachineOperand getNextOperandForReg()
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		return reg.next;
 	}
 
 	public void setReg(int reg)
 	{
-		// TODO: 17-7-16
+		if (getReg() == reg)
+			return;
+
+		// Otherwise, we have to change the register.  If this operand is embedded
+		// into a machine function, we need to update the old and new register's
+		// use/def lists.
+		MachineInstr mi = getParent();
+		if (mi != null)
+		{
+			MachineBasicBlock mbb = mi.getParent();
+			if (mbb != null)
+			{
+				MachineFunction mf = mbb.getParent();
+				if (mf != null)
+				{
+					removeRegOperandFromRegInfo();
+					this.reg.regNo = reg;
+					addRegOperandToRegInfo(mf.getMachineRegisterInfo());
+					return;
+				}
+			}
+		}
+
+		// Otherwise, just change the register, no problem.  :)
+		this.reg.regNo = reg;
 	}
 
 	public void setSubreg(int subreg)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		this.subReg = subreg;
 	}
 
 	public void setIsUse(boolean val)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		isDef = !val;
 	}
 
 	public void setIsDef(boolean val)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		isDef = val;
 	}
 
 	public void setImplicit(boolean val)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		isImp = val;
 	}
 
 	public void setIsKill(boolean val)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		isKill = val;
 	}
 
 	public void setIsDead(boolean val)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		isDead = val;
 	}
 
 	public void setIsUndef(boolean val)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		isUndef = val;
 	}
 
 	public void setIsEarlyClobber(boolean val)
 	{
-		assert isReg():"Wrong MachineOperand accessor";
+		assert isRegister():"Wrong MachineOperand accessor";
 		isEarlyClobber = val;
 	}
 
@@ -506,7 +530,7 @@ public class MachineOperand
 	 */
 	public void changeToImmediate(long immVal)
 	{
-		if (isReg() && getParent() != null && getParent().getParent() != null
+		if (isRegister() && getParent() != null && getParent().getParent() != null
 				&& getParent().getParent().getParent() != null)
 			removeRegOperandFromRegInfo();
 		opKind = MO_Immediate;
@@ -530,7 +554,7 @@ public class MachineOperand
 
 	public boolean isOnRegUseList()
 	{
-		assert isReg();
+		assert isRegister();
 		return reg.prev != null;
 	}
 
@@ -558,7 +582,7 @@ public class MachineOperand
 			boolean isDead,
 			boolean isUndef)
 	{
-		if(isReg())
+		if(isRegister())
 		{
 			assert !isEarlyClobber;
 			setReg(reg);
@@ -594,7 +618,7 @@ public class MachineOperand
 	 */
 	public void addRegOperandToRegInfo(MachineRegisterInfo regInfo)
 	{
-		assert isReg():"Can only add reg operand to use lists";
+		assert isRegister():"Can only add reg operand to use lists";
 		// FIXME 2017.7.16
 		if (regInfo == null)
 		{

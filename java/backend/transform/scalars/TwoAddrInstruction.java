@@ -54,7 +54,7 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 					{
 						TargetInstrDesc desc = instInfo.get(mi.getOpcode());
 						if (desc.tSFlags & X86InstrInfo.M_COMMUTABLE)
-						assert mi.getOperandValToReplace(2).isReg()
+						assert mi.getOperandValToReplace(2).isRegister()
 								&& mi.getOperandValToReplace(2).getReg() != 0:
 								"Two addr instruction must be a register.";
 						if (instInfo.)
@@ -76,7 +76,7 @@ public final class TwoAddrInstruction extends MachineFunctionPass
 					// replace all occurrences of regB with regA.
 					for (int j = 1; j < mi.getNumOperands(); j++)
 					{
-						if (mi.getOperand(j).isReg() &&
+						if (mi.getOperand(j).isRegister() &&
 								mi.getOperand(j).getReg() == regB)
 							mi.setMachineOperandReg(j, regA);
 					}

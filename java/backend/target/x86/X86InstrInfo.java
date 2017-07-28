@@ -468,9 +468,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             case MOVPS2SSrr:
             case MOVPD2SDrr:
             case MMX_MOVQ64rr:
-                assert mi.getNumOperands() >= 2 && mi.getOperand(0).isReg()
+                assert mi.getNumOperands() >= 2 && mi.getOperand(0).isRegister()
                         && mi.getOperand(1)
-                        .isReg() : "invalid register-register move instruction";
+                        .isRegister() : "invalid register-register move instruction";
                 srcReg.set(mi.getOperand(1).getReg());
                 destReg.set(mi.getOperand(0).getReg());
                 srcSubIdx.set(mi.getOperand(1).getSubReg());
@@ -500,7 +500,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             case MMX_MOVQ64rm:
             {
                 if (mi.getOperand(1).isFrameIndex() && mi.getOperand(2).isImm()
-                        && mi.getOperand(3).isReg() && mi.getOperand(4).isImm()
+                        && mi.getOperand(3).isRegister() && mi.getOperand(4).isImm()
                         && mi.getOperand(2).getImm() == 1
                         && mi.getOperand(3).getReg() == 0
                         && mi.getOperand(4).getImm() == 0)
@@ -537,7 +537,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             case MMX_MOVNTQmr:
             {
                 if (mi.getOperand(0).isFrameIndex() && mi.getOperand(1).isImm()
-                        && mi.getOperand(2).isReg() && mi.getOperand(3).isImm()
+                        && mi.getOperand(2).isRegister() && mi.getOperand(3).isImm()
                         && mi.getOperand(1).getImm() == 1
                         && mi.getOperand(2).getReg() == 0
                         && mi.getOperand(3).getImm() == 0)
@@ -639,7 +639,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             case MMX_MOVQ64rm:
             {
                 // Loads from ant pools are trivially rematerializable.
-                if (mi.getOperand(1).isReg() && mi.getOperand(2).isImm() && mi.getOperand(3).isReg() &&
+                if (mi.getOperand(1).isRegister() && mi.getOperand(2).isImm() && mi.getOperand(3).isRegister() &&
                         mi.getOperand(3).getReg() == 0
                         && canRematLoadWithDispOperand(mi.getOperand(4), tm))
                 {
@@ -670,11 +670,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             case LEA32r:
             case LEA64r:
             {
-                if (mi.getOperand(2).isImm() && mi.getOperand(3).isReg()
-                        && mi.getOperand(3).getReg() == 0 && !mi.getOperand(4).isReg())
+                if (mi.getOperand(2).isImm() && mi.getOperand(3).isRegister()
+                        && mi.getOperand(3).getReg() == 0 && !mi.getOperand(4).isRegister())
                 {
                     // lea fi#, lea GV, etc. are all rematerializable.
-                    if (!mi.getOperand(1).isReg())
+                    if (!mi.getOperand(1).isRegister())
                         return true;
                     int baseReg = mi.getOperand(1).getReg();
                     if (baseReg == 0)
@@ -714,7 +714,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             for (int j = 0, e = mi.getNumOperands(); j < e; j++)
             {
                 MachineOperand mo = mi.getOperand(j);
-                if (!mo.isReg())
+                if (!mo.isRegister())
                     continue;
                 if (mo.getReg() == EFLAGS)
                 {
@@ -847,7 +847,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         for (int i = 0, e = mi.getNumOperands(); i != e; i++)
         {
             MachineOperand mo = mi.getOperand(i);
-            if (mo.isReg() && mo.isDef() && mo.getReg() == EFLAGS && !mo.isDead())
+            if (mo.isRegister() && mo.isDef() && mo.getReg() == EFLAGS && !mo.isDead())
                 return true;
         }
         return false;
@@ -2210,7 +2210,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             MachineOperand MO = MI.getOperand(i);
             if (i == OpNo)
             {
-                assert MO.isReg() : "Expected to fold into reg operand!";
+                assert MO.isRegister() : "Expected to fold into reg operand!";
                 int NumAddrOps = MOs.size();
                 for (int j = 0; j != NumAddrOps; ++j)
                     MIB.addOperand(MOs.get(j));
@@ -2252,8 +2252,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         // Folding a memory location into the two-address part of a two-address
         // instruction is different than folding it other places.  It requires
         // replacing the *two* registers with the memory location.
-        if (isTwoAddr && NumOps >= 2 && i < 2 && MI.getOperand(0).isReg() && MI
-                .getOperand(1).isReg() && MI.getOperand(0).getReg() == MI
+        if (isTwoAddr && NumOps >= 2 && i < 2 && MI.getOperand(0).isRegister() && MI
+                .getOperand(1).isRegister() && MI.getOperand(0).getReg() == MI
                 .getOperand(1).getReg())
         {
             OpcodeTablePtr = regOp2MemOpTable2Addr;
@@ -2543,7 +2543,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             MachineOperand Op = MI.getOperand(i);
             if (i >= index && i < index + x86AddrNumOperands)
                 AddrOps.add(Op);
-            else if (Op.isReg() && Op.isImplicit())
+            else if (Op.isRegister() && Op.isImplicit())
                 ImpOps.add(Op);
             else if (i < index)
                 BeforeOps.add(Op);
@@ -2561,7 +2561,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                 for (int i = 1; i != 1 + x86AddrNumOperands; ++i)
                 {
                     MachineOperand MO = NewMIs.get(0).getOperand(i);
-                    if (MO.isReg())
+                    if (MO.isRegister())
                         MO.setIsKill(false);
                 }
             }
@@ -2723,7 +2723,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     /// e.g. r8, xmm8, etc.
     public static boolean isX86_64ExtendedReg(MachineOperand MO)
     {
-        if (!MO.isReg())
+        if (!MO.isRegister())
             return false;
         switch (MO.getReg())
         {
@@ -2799,7 +2799,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             for (int e = NumOps; i != e; ++i)
             {
                 MachineOperand MO = MI.getOperand(i);
-                if (MO.isReg())
+                if (MO.isRegister())
                 {
                     int Reg = MO.getReg();
                     if (isX86_64NonExtLowByteReg(Reg))
@@ -2835,7 +2835,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     for (; i != NumOps; ++i)
                     {
                         MachineOperand MO = MI.getOperand(i);
-                        if (MO.isReg())
+                        if (MO.isRegister())
                         {
                             if (isX86_64ExtendedReg(MO))
                                 REX |= 1 << Bit;
@@ -2864,7 +2864,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     for (; i != e; ++i)
                     {
                         MachineOperand MO = MI.getOperand(i);
-                        if (MO.isReg())
+                        if (MO.isRegister())
                         {
                             if (isX86_64ExtendedReg(MO))
                                 REX |= 1 << Bit;

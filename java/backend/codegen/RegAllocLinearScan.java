@@ -49,17 +49,12 @@ public class RegAllocLinearScan extends MachineFunctionPass
     private LinkedList<LiveInterval> handled = new LinkedList<>();
 
     private LiveIntervalAnalysis li;
-
-    /**
-     * A records the uses of number for each physical register.
-     * Note that, it just cares about physical register rather
-     * than virtual register.
-     */
-    private int[] physRegUsed;
+    private PhysRegTracker prt;
     private TargetRegisterInfo tri;
     private VirtRegMap vrm;
     private MachineFunction mf;
     private float[] spillWeights;
+    private Spiller spiller;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -84,7 +79,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
             if (TargetRegisterInfo.isPhysicalRegister(interval.register))
             {
                 fixed.add(interval);
-                physRegUsed[interval.register]++;
+                prt.addRegUse(interval.register);
             }
             else
             {
@@ -107,14 +102,15 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 {
                     active.remove(i);
                     --i;
-                    physRegUsed[li.register]--;
+                    prt.delRegUse(li.register);
                 }
                 else if (!li.isLiveAt(cur.beginNumber()))
                 {
                     active.remove(i);
                     --i;
                     inactive.add(li);
-                    physRegUsed[li.register]--;
+                    
+                    prt.delRegUse(li.register);
                 }
             }
 
@@ -131,14 +127,14 @@ public class RegAllocLinearScan extends MachineFunctionPass
                     inactive.remove(i);
                     --i;
                     active.add(li);
-                    physRegUsed[li.register]--;
+                    prt.addRegUse(li.register);
                 }
             }
 
             // if this register is fixed we are done
             if (TargetRegisterInfo.isPhysicalRegister(cur.register))
             {
-                physRegUsed[cur.register]++;
+                prt.addRegUse(cur.register);
                 active.add(cur);
                 handled.add(cur);
             }
@@ -182,7 +178,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 if (isVirtualRegister(reg))
                     reg = vrm.getPhys(reg);
                 updateSpillWeights(reg, li.weight);
-                physRegUsed[reg]++;
+                prt.addRegUse(reg);
             }
         }
 
@@ -194,7 +190,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
             {
                 int reg = li.register;
                 updateSpillWeights(reg, li.weight);
-                physRegUsed[reg]++;
+                prt.addRegUse(reg);
             }
         }
 
@@ -205,7 +201,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         if (phyReg != 0)
         {
             vrm.assignVirt2Phys(cur.register, phyReg);
-            physRegUsed[cur.register]++;
+            prt.addRegUse(cur.register);
             active.add(cur);
             handled.add(cur);
             return;
@@ -341,7 +337,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 int reg = interval.register;
                 if(isPhysicalRegister(reg))
                 {
-                    physRegUsed[reg]--;
+                    prt.delRegUse(reg);
                     unhandled.add(interval);
                 }
                 else
@@ -349,7 +345,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                     if (!spilled.contains(reg))
                         unhandled.add(interval);
 
-                    physRegUsed[vrm.getPhys(reg)]--;
+                    prt.delRegUse(vrm.getPhys(reg));
                     vrm.clearVirt(reg);
                 }
             }
@@ -359,7 +355,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 int reg = interval.register;
                 if(isPhysicalRegister(reg))
                 {
-                    physRegUsed[reg]--;
+                    prt.delRegUse(reg);
                     unhandled.add(interval);
                 }
                 else
@@ -367,7 +363,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                     if (!spilled.contains(reg))
                         unhandled.add(interval);
 
-                    // FIXME physRegUsed[vrm.getPhys(reg)]--; why?
+                    // FIXME prt.delRegUse(vrm.getPhys(reg)); why?
                     vrm.clearVirt(reg);
                 }
             }
@@ -392,9 +388,9 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 int reg = interval.register;
                 System.err.printf("\t\t\tundo register: %s\n", li.getRegisterName(reg));
                 if (isPhysicalRegister(reg))
-                    physRegUsed[reg]++;
+                    prt.addRegUse(reg);
                 else
-                    physRegUsed[vrm.getPhys(reg)]++;
+                    prt.addRegUse(vrm.getPhys(reg));
             }
         }
 
@@ -408,7 +404,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         TargetRegisterClass rc = tri.getRegClass(cur.register);
         for (int reg : rc.getAllocableRegs(mf))
         {
-            if (physRegUsed[reg] == 0)
+            if (prt.isRegAvail(reg))
                 return reg;
         }
         return 0;
@@ -419,15 +415,24 @@ public class RegAllocLinearScan extends MachineFunctionPass
     {
         this.mf = mf;
         li = getAnalysisToUpDate(LiveIntervalAnalysis.class);
-        physRegUsed = new int[tri.getNumRegs()];
+        tri = mf.getTarget().getRegisterInfo();
+        prt = new PhysRegTracker(tri);
 
         // Step#1: Initialize interval set.
         initIntervalSet();
 
         vrm = new VirtRegMap(mf);
+
         // Step#2:
         linearScan();
-        return false;
+
+        if (spiller == null)
+            spiller = Spiller.createSpiller();
+
+        // Step#3: Inserts load code for loading data from memory before use, or
+        // store data to memory after define it.
+        spiller.runOnMachineFunction(mf, vrm);
+        return true;
     }
 
     public static RegAllocLinearScan createLinearScanRegAllocator()

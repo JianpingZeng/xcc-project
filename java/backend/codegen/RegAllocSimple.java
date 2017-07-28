@@ -142,7 +142,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 							if (instrInfo.isTwoAddrInstr(opcode) && i == 0)
 							{
 								// This maps a = b + c into b+= c, and save b into a.
-								assert mi.getOperand(1).isReg()
+								assert mi.getOperand(1).isRegister()
 										&& mi.getOperand(1).getReg()!=0
 										&& mi.getOperand(1).opIsUse()
 										:"Two address instruction invalid!";
