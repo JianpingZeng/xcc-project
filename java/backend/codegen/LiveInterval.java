@@ -107,7 +107,7 @@ public class LiveInterval implements Comparable<LiveInterval>
         return idxToRange;
     }
 
-    public boolean expireAt(int index)
+    public boolean expiredAt(int index)
     {
         return index >= endNumber();
     }
@@ -159,8 +159,9 @@ public class LiveInterval implements Comparable<LiveInterval>
     public boolean joinable(LiveInterval other, int copyIdx)
     {}
 
-    public boolean getOverlappingRanges(LiveInterval other,
-            int cppyIdx,
+    public boolean getOverlappingRanges(
+            LiveInterval other,
+            int copyIdx,
             ArrayList<LiveRange> ranges)
     {
 
