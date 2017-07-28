@@ -254,7 +254,7 @@ public final class PhiElimination extends MachineFunctionPass
 		for (int i = 0, sz = mi.getNumOperands(); i < sz; i++)
 		{
 			MachineOperand mo = mi.getOperand(i);
-			if (mo.isReg() && mo.getReg() != 0
+			if (mo.isRegister() && mo.getReg() != 0
 					&& mo.getReg() == reg && mo.isUse())
 				return true;
 		}

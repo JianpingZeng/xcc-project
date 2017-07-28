@@ -291,7 +291,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             // If it is the result of 2-addr instruction elimination, the first
             // operand must be register and it is def-use.
             MachineInstr mi = mbb.getInstAt(index);
-            if (mi.getOperand(0).isReg()
+            if (mi.getOperand(0).isRegister()
                     && mi.getOperand(0).getReg() == li.register
                     && mi.getOperand(0).isDef()
                     && mi.getOperand(0).isUse())
@@ -502,7 +502,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 for (int j = 0, sz = mi.getNumOperands(); j < sz; ++j)
                 {
                     MachineOperand mo = mi.getOperand(j);
-                    if (mo.isReg() && mo.getReg() != 0 && mo.isDef())
+                    if (mo.isRegister() && mo.getReg() != 0 && mo.isDef())
                         handleRegisterDef(mbb, i, mo.getReg());
                 }
             }

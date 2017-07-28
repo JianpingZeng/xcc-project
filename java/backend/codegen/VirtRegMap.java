@@ -29,6 +29,7 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  */
 public class VirtRegMap
 {
+
     public interface ModRef
     {
         int isRef = 1;
@@ -76,5 +77,17 @@ public class VirtRegMap
     public void clearVirt(int virtReg)
     {
         v2pMap.remove(virtReg);
+    }
+
+    public boolean hasStackSlot(int virtReg)
+    {
+        assert isVirtualRegister(virtReg) :"Should be virtual register";
+        return v2StackSlotMap.containsKey(virtReg);
+    }
+
+    public int getStackSlot(int virtReg)
+    {
+        assert isVirtualRegister(virtReg) :"Should be virtual register";
+        return v2StackSlotMap.get(virtReg);
     }
 }

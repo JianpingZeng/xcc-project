@@ -136,7 +136,7 @@ public class MachineInstr implements Cloneable
 		int size = operands.size();
 		if (opNo == size - 1)
 		{
-			if (operands.get(size - 1).isReg() && operands.get(size - 1).isOnRegUseList())
+			if (operands.get(size - 1).isRegister() && operands.get(size - 1).isOnRegUseList())
 				operands.get(size - 1).removeRegOperandFromRegInfo();
 
 			operands.remove(size - 1);
@@ -148,7 +148,7 @@ public class MachineInstr implements Cloneable
 		{
 			for (int i = opNo, e = operands.size(); i != e; i++)
 			{
-				if (operands.get(i).isReg())
+				if (operands.get(i).isRegister())
 					operands.get(i).removeRegOperandFromRegInfo();
 			}
 		}
@@ -158,7 +158,7 @@ public class MachineInstr implements Cloneable
 		{
 			for (int i = opNo, e = operands.size(); i != e; i++)
 			{
-				if (operands.get(i).isReg())
+				if (operands.get(i).isRegister())
 					operands.get(i).addRegOperandToRegInfo(regInfo);
 			}
 		}
@@ -195,7 +195,7 @@ public class MachineInstr implements Cloneable
 		for (int i = numOperands, e = getNumOperands(); i != e; i++)
 		{
 			MachineOperand mo = getOperand(i);
-			if (!mo.isReg() || !mo.isImplicit())
+			if (!mo.isRegister() || !mo.isImplicit())
 				numOperands++;
 		}
 		return numOperands;
@@ -267,7 +267,7 @@ public class MachineInstr implements Cloneable
 	    for (int i = 0, e = getNumOperands(); i != e; i++)
         {
             MachineOperand mo = getOperand(i);
-            if (!mo.isUse() || !mo.isReg())
+            if (!mo.isUse() || !mo.isRegister())
                 continue;
 
             int moreg = mo.getReg();
@@ -300,7 +300,7 @@ public class MachineInstr implements Cloneable
         for (int i = 0, e = getNumOperands(); i != e; i++)
         {
             MachineOperand mo = getOperand(i);
-            if (!mo.isDef() || !mo.isReg())
+            if (!mo.isDef() || !mo.isRegister())
                 continue;
 
             int moreg = mo.getReg();
@@ -356,7 +356,7 @@ public class MachineInstr implements Cloneable
         for (int i = 0, e = TID.getNumOperands(); i != e; ++i)
         {
             MachineOperand MO = getOperand(i);
-            if (MO.isReg() && MO.isUse()
+            if (MO.isRegister() && MO.isUse()
                     && TID.getOperandConstraint(i, TIED_TO) == (int) defOpIdx)
             {
                 if (useOpIdx != null)
@@ -391,7 +391,7 @@ public class MachineInstr implements Cloneable
         if (useOpIdx >= TID.getNumOperands())
             return false;
         MachineOperand MO = getOperand(useOpIdx);
-        if (!MO.isReg() || !MO.isUse())
+        if (!MO.isRegister() || !MO.isUse())
             return false;
         int DefIdx = TID.getOperandConstraint(useOpIdx, TIED_TO);
         if (DefIdx == -1)
@@ -410,7 +410,7 @@ public class MachineInstr implements Cloneable
 		for (int i = 0, e = mi.getNumOperands(); i != e; i++)
         {
             MachineOperand mo = mi.getOperand(i);
-            if (!mo.isReg() || (!mo.isKill() && !mo.isDead()))
+            if (!mo.isRegister() || (!mo.isKill() && !mo.isDead()))
                 continue;
             for (int j = 0, ee = getNumOperands(); j != ee; j++)
             {
@@ -461,7 +461,7 @@ public class MachineInstr implements Cloneable
         LinkedList<Integer> DeadOps = new LinkedList<>();
         for (int i = 0, e = getNumOperands(); i != e; ++i) {
             MachineOperand MO = getOperand(i);
-            if (!MO.isReg() || !MO.isUse() || MO.isUndef())
+            if (!MO.isRegister() || !MO.isUse() || MO.isUndef())
                 continue;
             int Reg = MO.getReg();
             if (Reg == 0)
@@ -539,7 +539,7 @@ public class MachineInstr implements Cloneable
         for (int i = 0, e = getNumOperands(); i != e; i++)
         {
             MachineOperand mo = getOperand(i);
-            if (!mo.isReg() || !mo.isDef())
+            if (!mo.isRegister() || !mo.isDef())
                 continue;
             int reg = mo.getReg();
             if (reg == 0)
@@ -629,7 +629,7 @@ public class MachineInstr implements Cloneable
         for (int i = 0, e = getNumOperands(); i != e; i++)
         {
             MachineOperand mo = getOperand(i);
-            if (!mo.isReg())
+            if (!mo.isRegister())
                 continue;
 
             if (mo.isUse())
@@ -669,7 +669,7 @@ public class MachineInstr implements Cloneable
 	public void print(PrintStream os, TargetMachine tm)
 	{
 	    int startOp = 0;
-	    if (getNumOperands()!= 0 && getOperand(0).isReg() &&
+	    if (getNumOperands()!= 0 && getOperand(0).isRegister() &&
                 getOperand(0).isDef())
         {
             getOperand(0).print(os, tm);
@@ -739,7 +739,7 @@ public class MachineInstr implements Cloneable
 	{
         for (int i = 0, e = operands.size(); i != e; i++)
         {
-            if (operands.get(i).isReg())
+            if (operands.get(i).isRegister())
                 operands.get(i).removeRegOperandFromRegInfo();
         }
 	}
@@ -754,7 +754,7 @@ public class MachineInstr implements Cloneable
 	{
 		for (int i = 0, e = operands.size(); i != e; i++)
         {
-            if (operands.get(i).isReg())
+            if (operands.get(i).isRegister())
                 operands.get(i).addRegOperandToRegInfo(regInfo);
         }
 	}
@@ -809,5 +809,13 @@ public class MachineInstr implements Cloneable
 	{
 		assert index >= 0 && index < memOperands.size();
 		return memOperands.get(index);
+	}
+
+	public void setMachineOperandReg(int idx, int physReg)
+	{
+		assert idx >= 0 && idx < getNumOperands();
+		assert isPhysicalRegister(physReg);
+		assert getOperand(idx).isRegister();
+		getOperand(idx).setReg(physReg);
 	}
 }

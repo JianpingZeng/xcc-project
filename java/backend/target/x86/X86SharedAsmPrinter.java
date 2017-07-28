@@ -51,9 +51,9 @@ public abstract class X86SharedAsmPrinter extends AsmPrinter
     {
         if (mi.getOperand(opNo).isFrameIndex()) return true;
         return mi.getNumOperands() >= opNo + 4 &&
-                mi.getOperand(opNo).isReg()
+                mi.getOperand(opNo).isRegister()
                 && isScale(mi.getOperand(opNo + 1))
-                && mi.getOperand(opNo + 2).isReg()
+                && mi.getOperand(opNo + 2).isRegister()
                 && (mi.getOperand(opNo + 3).isImm()
         || mi.getOperand(opNo + 3).isGlobalAddress()
         || mi.getOperand(opNo + 3).isConstantPoolIndex());

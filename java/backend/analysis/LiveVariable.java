@@ -250,7 +250,7 @@ public final class LiveVariable extends MachineFunctionPass
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    if (mo.isUse() && mo.getReg() != 0 && mo.isReg())
+                    if (mo.isUse() && mo.getReg() != 0 && mo.isRegister())
                     {
                         int reg = mo.getReg();
                         if (machineRegInfo.isPhysicalReg(reg)
@@ -279,7 +279,7 @@ public final class LiveVariable extends MachineFunctionPass
                 {
                     MachineOperand mo = inst.getOperand(i);
                     int reg = mo.getReg();
-                    if (mo.isDef() && mo.isReg() && mo.getReg() != 0)
+                    if (mo.isDef() && mo.isRegister() && mo.getReg() != 0)
                     {
                         if (machineRegInfo.isPhysicalReg(reg)
                                 && allocatablePhyRegs.get(reg))
