@@ -19,11 +19,14 @@ package backend.codegen;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
-import gnu.trove.map.hash.TIntFloatHashMap;
+import gnu.trove.set.hash.TIntHashSet;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
 
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
@@ -43,11 +46,20 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
     private ArrayList<LiveInterval> active = new ArrayList<>();
     private ArrayList<LiveInterval> inactive = new ArrayList<>();
-    private ArrayList<LiveInterval> handled = new ArrayList<>();
+    private LinkedList<LiveInterval> handled = new LinkedList<>();
 
     private LiveIntervalAnalysis li;
+
+    /**
+     * A records the uses of number for each physical register.
+     * Note that, it just cares about physical register rather
+     * than virtual register.
+     */
     private int[] physRegUsed;
     private TargetRegisterInfo tri;
+    private VirtRegMap vrm;
+    private MachineFunction mf;
+    private float[] spillWeights;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -91,7 +103,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
             for (int i = 0; i < active.size(); i++)
             {
                 LiveInterval li = active.get(i);
-                if (li.expireAt(cur.beginNumber()))
+                if (li.expiredAt(cur.beginNumber()))
                 {
                     active.remove(i);
                     --i;
@@ -109,7 +121,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
             for (int i = 0; i < inactive.size(); i++)
             {
                 LiveInterval li = inactive.get(i);
-                if (li.expireAt(cur.beginNumber()))
+                if (li.expiredAt(cur.beginNumber()))
                 {
                     inactive.remove(i);
                     --i;
@@ -146,8 +158,6 @@ public class RegAllocLinearScan extends MachineFunctionPass
         for (int alias : tri.getAliasSet(reg))
             spillWeights[alias] += weight;
     }
-
-    private float[] spillWeights;
 
     private void assignRegOrStackSlot(LiveInterval cur)
     {
@@ -249,6 +259,148 @@ public class RegAllocLinearScan extends MachineFunctionPass
         unhandled.add(cur);
 
 
+        ArrayList<LiveInterval> added = new ArrayList<>();
+        assert isPhysicalRegister(minReg) :"didn't choose a register to spill?";
+
+        boolean[] toSpill = new boolean[tri.getNumRegs()];
+        toSpill[minReg] = true;
+
+        for (int alias : tri.getAliasSet(minReg))
+            toSpill[alias] = true;
+
+        int earliestStart = cur.beginNumber();
+
+        // set of spilled vregs(used later to rollback properly).
+        TIntHashSet spilled = new TIntHashSet();
+
+        // spill live intervals of virtual regs mapped to the physical
+        // register we want to clear (and its aliases). we only spill
+        // those that overlap with the current interval as the rest do not
+        // affect its allocation. we also keep track of the earliest start
+        // of all spilled live intervals since this will mark our rollback
+        // point
+        for (LiveInterval interval : active)
+        {
+            int reg = interval.register;
+            if (isVirtualRegister(reg) && toSpill[vrm.getPhys(reg)]
+                    && cur.overlaps(interval))
+            {
+                System.err.print("\t\t\tspilling(a): ");
+                interval.print(System.err, tri);
+                System.err.println();
+                earliestStart = Math.min(earliestStart, interval.beginNumber());
+                int slot = vrm.assignVirt2StackSlot(reg);
+                ArrayList<LiveInterval> newIS = li.addIntervalsForSpills(interval, vrm, slot);
+                added.addAll(newIS);
+                spilled.add(reg);
+            }
+        }
+
+        for (LiveInterval interval : inactive)
+        {
+            int reg = interval.register;
+            if (isVirtualRegister(reg) && toSpill[vrm.getPhys(reg)]
+                    && cur.overlaps(interval))
+            {
+                System.err.print("\t\t\tspilling(a): ");
+                interval.print(System.err, tri);
+                System.err.println();
+                earliestStart = Math.min(earliestStart, interval.beginNumber());
+                int slot = vrm.assignVirt2StackSlot(reg);
+                ArrayList<LiveInterval> newIS = li.addIntervalsForSpills(interval, vrm, slot);
+                added.addAll(newIS);
+                spilled.add(reg);
+            }
+        }
+
+        // Starting to rollback.
+        System.err.printf("\t\trolling back to: %d\n", earliestStart);
+
+        /**
+         * Scan handled in reverse order up to the earliest start of a spilled live
+         * interval and undo each one, restore the state of unhandled.
+         */
+        while (!handled.isEmpty())
+        {
+            LiveInterval interval = handled.getLast();
+
+            // If the begining number of interval is less than
+            // earliest start, just break out.
+            if (interval.beginNumber() < earliestStart)
+                break;
+
+            // Remove it from the handled list.
+            handled.removeLast();
+            int idx = -1;
+            // when undoing a live interval allocation we must know if it
+            // is active or inactive to properly update the PhysRegTracker
+            // and the virtRegMap
+            if ((idx = active.indexOf(interval)) != -1)
+            {
+                active.remove(idx);
+                int reg = interval.register;
+                if(isPhysicalRegister(reg))
+                {
+                    physRegUsed[reg]--;
+                    unhandled.add(interval);
+                }
+                else
+                {
+                    if (!spilled.contains(reg))
+                        unhandled.add(interval);
+
+                    physRegUsed[vrm.getPhys(reg)]--;
+                    vrm.clearVirt(reg);
+                }
+            }
+            else if ((idx = inactive.indexOf(interval)) != -1)
+            {
+                inactive.remove(idx);
+                int reg = interval.register;
+                if(isPhysicalRegister(reg))
+                {
+                    physRegUsed[reg]--;
+                    unhandled.add(interval);
+                }
+                else
+                {
+                    if (!spilled.contains(reg))
+                        unhandled.add(interval);
+
+                    // FIXME physRegUsed[vrm.getPhys(reg)]--; why?
+                    vrm.clearVirt(reg);
+                }
+            }
+            else
+            {
+                int reg = interval.register;
+                if (isVirtualRegister(reg))
+                    vrm.clearVirt(reg);
+
+                unhandled.add(interval);
+            }
+        }
+
+        for (Iterator<LiveInterval> itr = handled.iterator();
+                itr.hasNext();)
+        {
+            LiveInterval interval = itr.next();
+            if (!interval.expiredAt(earliestStart) &&
+                    interval.expiredAt(cur.beginNumber()))
+            {
+                active.add(interval);
+                int reg = interval.register;
+                System.err.printf("\t\t\tundo register: %s\n", li.getRegisterName(reg));
+                if (isPhysicalRegister(reg))
+                    physRegUsed[reg]++;
+                else
+                    physRegUsed[vrm.getPhys(reg)]++;
+            }
+        }
+
+        // Add all of live intervals that are caused by
+        // spilling code.
+        unhandled.addAll(added);
     }
 
     private int getFreePhysReg(LiveInterval cur)
@@ -262,8 +414,6 @@ public class RegAllocLinearScan extends MachineFunctionPass
         return 0;
     }
 
-    private VirtRegMap vrm;
-    private MachineFunction mf;
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
@@ -278,5 +428,10 @@ public class RegAllocLinearScan extends MachineFunctionPass
         // Step#2:
         linearScan();
         return false;
+    }
+
+    public static RegAllocLinearScan createLinearScanRegAllocator()
+    {
+        return new RegAllocLinearScan();
     }
 }

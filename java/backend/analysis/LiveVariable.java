@@ -356,8 +356,8 @@ public final class LiveVariable extends MachineFunctionPass
         // sort the all register killed or deaded by walking through registerDeaded
         // registerKilled in the order of increasing the register number.
         // in order to perform binary search for efficiency.
-        registerDeaded.entrySet().forEach(pair -> pair.getValue().sort());
-        registerKilled.entrySet().forEach(pair -> pair.getValue().sort());
+        registerDeaded.forEach((key1, value1) -> value1.sort());
+        registerKilled.forEach((key, value) -> value.sort());
 
         return false;
     }

@@ -68,4 +68,13 @@ public class VirtRegMap
         v2StackSlotMap.put(virtReg, fi);
         return fi;
     }
+
+    /**
+     * Unlink the virtual register from map v2pMap.
+     * @param virtReg
+     */
+    public void clearVirt(int virtReg)
+    {
+        v2pMap.remove(virtReg);
+    }
 }

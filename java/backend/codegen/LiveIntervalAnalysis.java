@@ -30,6 +30,7 @@ import tools.BitMap;
 import tools.OutParamWrapper;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.TreeMap;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
@@ -506,6 +507,14 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 }
             }
         }
+    }
+    public ArrayList<LiveInterval> addIntervalsForSpills(
+            LiveInterval interval,
+            VirtRegMap vrm,
+            int slot)
+    {
+        // TODO: 2017/7/28
+        return null;
     }
 
     public void print(PrintStream os, Module m)

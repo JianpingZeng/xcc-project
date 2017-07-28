@@ -22,7 +22,7 @@ import backend.pass.PassManagerBase;
 
 import java.io.OutputStream;
 
-import static backend.codegen.LocalRegAllocator.createLocalRegAllocator;
+import static backend.codegen.RegAllocLinearScan.createLinearScanRegAllocator;
 import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
 import static backend.target.x86.PEI.createPrologEpilogEmitter;
 import static backend.target.x86.X86PeepholeOptimizer.createX86PeepholeOptimizer;
@@ -75,7 +75,7 @@ public abstract class LLVMTargetMachine extends TargetMachine
         if (level == CodeGenOpt.None)
             pm.add(createSimpleRegAllocator());
         else
-            pm.add(createLocalRegAllocator());
+            pm.add(createLinearScanRegAllocator());
 
         if (addPostRegAlloc(pm, level))
             return true;
