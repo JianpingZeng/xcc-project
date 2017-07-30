@@ -261,4 +261,9 @@ public final class LoopInfo
 			bbMap.remove(block);
 		}
 	}
+
+	public boolean isEmpty()
+	{
+		return bbMap.isEmpty();
+	}
 }

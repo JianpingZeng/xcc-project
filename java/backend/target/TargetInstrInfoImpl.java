@@ -32,7 +32,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class TargetInstrInfoImpl extends TargetInstrInfo
+public abstract class TargetInstrInfoImpl extends TargetInstrInfo
 {
     protected TargetInstrInfoImpl(TargetInstrDesc[] desc)
     {

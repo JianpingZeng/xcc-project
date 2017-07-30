@@ -19,6 +19,9 @@ package backend.codegen;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
+import utils.tablegen.SetMultiMap;
+
+import java.util.Set;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
@@ -29,7 +32,6 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  */
 public class VirtRegMap
 {
-
     public interface ModRef
     {
         int isRef = 1;
@@ -40,12 +42,14 @@ public class VirtRegMap
     private MachineFunction mf;
     private TIntIntHashMap v2pMap;
     private TIntIntHashMap v2StackSlotMap;
+    private SetMultiMap<MachineInstr, Integer> mi2vMap;
 
     public VirtRegMap(MachineFunction mf)
     {
         this.mf = mf;
         v2pMap = new TIntIntHashMap();
         v2StackSlotMap = new TIntIntHashMap();
+        mi2vMap = new SetMultiMap<>();
     }
 
     public int getPhys(int virReg)
@@ -56,8 +60,7 @@ public class VirtRegMap
 
     public void assignVirt2Phys(int virtReg, int phyReg)
     {
-        assert isVirtualRegister(virtReg)
-                && isPhysicalRegister(phyReg);
+        assert isVirtualRegister(virtReg) && isPhysicalRegister(phyReg);
         v2pMap.put(virtReg, phyReg);
     }
 
@@ -70,8 +73,16 @@ public class VirtRegMap
         return fi;
     }
 
+    public void assignVirt2StackSlot(int virtReg, int slot)
+    {
+        assert isVirtualRegister(virtReg);
+        assert !v2StackSlotMap.containsKey(virtReg);
+        v2StackSlotMap.put(virtReg, slot);
+    }
+
     /**
      * Unlink the virtual register from map v2pMap.
+     *
      * @param virtReg
      */
     public void clearVirt(int virtReg)
@@ -81,13 +92,33 @@ public class VirtRegMap
 
     public boolean hasStackSlot(int virtReg)
     {
-        assert isVirtualRegister(virtReg) :"Should be virtual register";
+        assert isVirtualRegister(virtReg) : "Should be virtual register";
         return v2StackSlotMap.containsKey(virtReg);
     }
 
     public int getStackSlot(int virtReg)
     {
-        assert isVirtualRegister(virtReg) :"Should be virtual register";
+        assert isVirtualRegister(virtReg) : "Should be virtual register";
         return v2StackSlotMap.get(virtReg);
+    }
+
+    public void virtFolded(int virtReg, MachineInstr oldMI, MachineInstr newMI)
+    {
+        // move previous memory references folded to new instruction
+        assert mi2vMap.containsKey(oldMI);
+        Set<Integer> regs = mi2vMap.get(oldMI);
+        assert regs != null;
+        regs.forEach(reg -> mi2vMap.remove(oldMI, reg));
+
+        regs.forEach(reg ->
+        {
+            mi2vMap.put(newMI, reg);
+        });
+        mi2vMap.put(newMI, virtReg);
+    }
+
+    public Set<Integer> getFoldedVirts(MachineInstr mi)
+    {
+        return mi2vMap.containsKey(mi) ? mi2vMap.get(mi) : null;
     }
 }

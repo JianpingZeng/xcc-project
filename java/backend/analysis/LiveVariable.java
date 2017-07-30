@@ -762,4 +762,9 @@ public final class LiveVariable extends MachineFunctionPass
                 return oldMI;
         });
     }
+
+    public BitMap getAllocatablePhyRegs()
+    {
+        return allocatablePhyRegs;
+    }
 }

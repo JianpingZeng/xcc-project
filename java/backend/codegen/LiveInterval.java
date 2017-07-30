@@ -17,6 +17,7 @@ package backend.codegen;
  */
 
 import backend.target.TargetRegisterInfo;
+import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -44,15 +45,45 @@ public class LiveInterval implements Comparable<LiveInterval>
         return ranges.isEmpty();
     }
 
+    /**
+     * Add the specified LiveRange to this interval, merging
+     * intervals as appropriate.
+     * @param range
+     */
     public void addRange(LiveRange range)
     {
-        // todo insert in the order.
-        ranges.add(range);
+        addRangeFrom(range, 0);
     }
 
     public void removeRange(int begin, int end)
     {
-        // TODO: 17-7-27
+        int idx = upperBound(ranges, 0, begin);
+        assert idx != -1 :"Range is not in interval";
+        --idx;
+
+        assert ranges.get(idx).contains(begin)
+                && ranges.get(idx).contains(end-1)
+                : "Range is not entirely in interval!";
+
+        if (ranges.get(idx).start == begin)
+        {
+            if (ranges.get(idx).end == end)
+                ranges.remove(idx);
+            else
+                ranges.get(idx).start = end;
+            return;
+        }
+
+        if (ranges.get(idx).end == end)
+        {
+            ranges.get(idx).end = begin;
+            return;
+        }
+
+        int oldEnd = ranges.get(idx).end;
+        ranges.get(idx).end = begin;
+
+        ranges.add(idx+1, new LiveRange(end, oldEnd, ranges.get(idx).valId));
     }
 
     public int getNextValue()
@@ -124,7 +155,7 @@ public class LiveInterval implements Comparable<LiveInterval>
      */
     public boolean isLiveAt(int index)
     {
-        int found = upperBound(ranges, index);
+        int found = upperBound(ranges,0, index);
 
         if (found == 0)
             return false;
@@ -133,20 +164,26 @@ public class LiveInterval implements Comparable<LiveInterval>
         return ranges.get(found).contains(index);
     }
 
-    private static int upperBound(ArrayList<LiveRange> ranges, int key)
+    private static int upperBound(ArrayList<LiveRange> ranges, int start, int end, int key)
     {
         int idx = 0;
-        for (LiveRange r : ranges)
+        for (int i = start; i != end; i++)
         {
+            LiveRange r = ranges.get(i);
             if (!(r.start < key))
                 return idx;
         }
         return -1;
     }
 
+    private static int upperBound(ArrayList<LiveRange> ranges, int start, int key)
+    {
+        return upperBound(ranges, start, ranges.size(), key);
+    }
+
     public LiveRange getLiveRangeContaining(int idx)
     {
-        int found = upperBound(ranges, idx);
+        int found = upperBound(ranges,0, idx);
         if (found > 0)
         {
             LiveRange lr = ranges.get(found - 1);
@@ -157,42 +194,393 @@ public class LiveInterval implements Comparable<LiveInterval>
     }
 
     public boolean joinable(LiveInterval other, int copyIdx)
-    {}
+    {
+        LiveRange sourceLR = other.getLiveRangeContaining(copyIdx);
+        LiveRange destLR = getLiveRangeContaining(copyIdx);
+        assert sourceLR != null && destLR != null:"Not joining due to copy?";
+        int otherValIdx = sourceLR.valId;
+        int thisValIdx = destLR.valId;
 
-    public boolean getOverlappingRanges(
+        int i = 0, ie = ranges.size(), j = 0, je = other.ranges.size();
+
+        if (ranges.get(i).start < other.ranges.get(j).start)
+        {
+            i = upperBound(ranges, i, ie, other.ranges.get(j).start);
+            if (i != -1) --i;
+        }
+        else if (other.ranges.get(j).start < ranges.get(i).start)
+        {
+            j = upperBound(other.ranges, j, je, ranges.get(i).start);
+            if (j != -1)
+                --j;
+        }
+
+        while (i != ie && j != je)
+        {
+            if (ranges.get(i).start == other.ranges.get(j).start)
+            {
+                if (ranges.get(i).valId != thisValIdx
+                        || other.ranges.get(j).valId != otherValIdx)
+                {
+                    return false;
+                }
+            }
+            else if (ranges.get(i).start < other.ranges.get(j).start)
+            {
+                if (ranges.get(i).end > other.ranges.get(j).start)
+                {
+                    if (ranges.get(i).valId != thisValIdx
+                            || other.ranges.get(j).valId != otherValIdx)
+                    {
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                if (other.ranges.get(j).end > ranges.get(i).start)
+                {
+                    if (ranges.get(i).valId != thisValIdx
+                            || other.ranges.get(j).valId != otherValIdx)
+                        return false;
+                }
+            }
+            if (ranges.get(i).end < other.ranges.get(j).end)
+                ++i;
+            else
+                ++j;
+        }
+        return true;
+    }
+
+    public void getOverlapingRanges(
             LiveInterval other,
             int copyIdx,
             ArrayList<LiveRange> ranges)
     {
+        LiveRange sourceLR = other.getLiveRangeContaining(copyIdx);
+        LiveRange destLR = getLiveRangeContaining(copyIdx);
+        assert sourceLR != null && destLR != null:"Not joining due to copy?";
+        int otherValIdx = sourceLR.valId;
+        int thisValIdx = destLR.valId;
 
+        int i = 0, ie = ranges.size(), j = 0, je = other.ranges.size();
+
+        if (ranges.get(i).start < other.ranges.get(j).start)
+        {
+            i = upperBound(ranges, i, ie, other.ranges.get(j).start);
+            if (i != -1) --i;
+        }
+        else if (other.ranges.get(j).start < ranges.get(i).start)
+        {
+            j = upperBound(other.ranges, j, je, ranges.get(i).start);
+            if (j != -1)
+                --j;
+        }
+
+        while (i != ie && j != je)
+        {
+            if (ranges.get(i).start == other.ranges.get(j).start)
+            {
+                if (ranges.get(i).valId != thisValIdx
+                        || other.ranges.get(j).valId != otherValIdx)
+                {
+                    ranges.add(ranges.get(i));
+                }
+            }
+            else if (ranges.get(i).start < other.ranges.get(j).start)
+            {
+                if (ranges.get(i).end > other.ranges.get(j).start)
+                {
+                    if (ranges.get(i).valId != thisValIdx
+                            || other.ranges.get(j).valId != otherValIdx)
+                    {
+                        ranges.add(ranges.get(i));
+                    }
+                }
+            }
+            else
+            {
+                if (other.ranges.get(j).end > ranges.get(i).start)
+                {
+                    if (ranges.get(i).valId != thisValIdx
+                            || other.ranges.get(j).valId != otherValIdx)
+                        ranges.add(ranges.get(i));
+                }
+            }
+
+            if (ranges.get(i).end < other.ranges.get(j).end)
+                ++i;
+            else
+                ++j;
+        }
     }
 
+    /**
+     * An example for overlaps():
+     *
+     * 0: A = ...
+     * 4: B = ...
+     * 8: C = A + B ;; last use of A
+     *
+     * The live intervals should look like:
+     *
+     * A = [3, 11)
+     * B = [7, x)
+     * C = [11, y)
+     *
+     * A->overlaps(C) should return false since we want to be able to join
+     * A and C.
+     * @param other
+     * @return
+     */
     public boolean overlaps(LiveInterval other)
     {
+        int i = 0, ie = ranges.size();
+        int j = 0, je = other.ranges.size();
 
+        if (ranges.get(i).start < other.ranges.get(j).start)
+        {
+            i = upperBound(ranges, i, ie, other.ranges.get(j).start);
+            if (i != -1) --i;
+        }
+        else if (other.ranges.get(j).start < ranges.get(i).start)
+        {
+            j = upperBound(other.ranges, j, je, ranges.get(i).start);
+            if (j != -1) --j;
+        }
+        else
+            return true;
+
+        while (i != ie && j != je)
+        {
+            if (ranges.get(i).start == other.ranges.get(j).start)
+                return true;
+
+            if (ranges.get(i).start > other.ranges.get(j).start)
+            {
+                int temp = i;
+                i = j;
+                j = temp;
+
+                temp = ie;
+                ie = je;
+                je = temp;
+                ArrayList<LiveRange> t = ranges;
+                ranges = other.ranges;
+                other.ranges = t;
+            }
+            assert ranges.get(i).start < other.ranges.get(j).start;
+
+            if (ranges.get(i).end > other.ranges.get(j).start)
+                return true;
+            ++i;
+        }
+
+        return false;
     }
 
-    public boolean overlapsFrom(LiveInterval other, int idxToRange)
-    {}
-
-    private void addRangeFrom(LiveRange lr, int idxToRange)
+    public boolean overlapsFrom(LiveInterval other, int startPos)
     {
-        // TODO: 17-7-27
+        int i = 0, ie = ranges.size();
+        int j = startPos, je = other.ranges.size();
+
+        assert (other.ranges.get(startPos).start <= ranges.get(i).start
+                || startPos == 0) && (startPos != other.ranges.size());
+
+        if (ranges.get(i).start < other.ranges.get(j).start)
+        {
+            i = upperBound(ranges, i, ie, other.ranges.get(j).start);
+            if (i != -1) --i;
+        }
+        else if (other.ranges.get(j).start < ranges.get(i).start)
+        {
+            ++startPos;
+            if (startPos != other.ranges.size() &&
+                    other.ranges.get(startPos).start <= ranges.get(i).start)
+            {
+                assert startPos < other.ranges.size() && i < ranges.size();
+                j = upperBound(other.ranges, j, je, ranges.get(i).start);
+                if (j != -1) --j;
+            }
+        }
+        else
+            return true;
+
+        if (j == je)
+            return false;
+
+        while (i != ie)
+        {
+            if (ranges.get(i).start > other.ranges.get(j).start)
+            {
+                int temp = i;
+                i = j;
+                j = temp;
+
+                temp = ie;
+                ie = je;
+                je = temp;
+                ArrayList<LiveRange> t = ranges;
+                ranges = other.ranges;
+                other.ranges = t;
+            }
+
+            if (ranges.get(i).end > other.ranges.get(j).start)
+                return true;
+            ++i;
+        }
+
+        return false;
+    }
+
+    private int addRangeFrom(LiveRange lr, int idxToRange)
+    {
+        int start = lr.start, end = lr.end;
+        int idx = upperBound(ranges, idxToRange, start);
+
+        if (idx != 0)
+        {
+            int prior = idx-1;
+            if (lr.valId == ranges.get(prior).valId)
+            {
+                if (ranges.get(prior).start <= start && ranges.get(prior).end >= start)
+                {
+                    extendIntervalEndTo(prior, end);
+                    return prior;
+                }
+            }
+            else
+            {
+                assert ranges.get(prior).end <= start:
+                        "Can not overlap two LiveRanges with differing valID";
+            }
+        }
+
+        // Otherwise, if this range ends in the middle of, or right next to, another
+        // interval, merge it into that interval.
+        if (idx != -1)
+        {
+            if (lr.valId == ranges.get(idx).valId)
+            {
+                if (ranges.get(idx).start <= end)
+                {
+                    idx = extendIntervalStartTo(idx, start);
+
+                    if (end > ranges.get(idx).end)
+                        extendIntervalEndTo(idx, end);
+                    return idx;
+                }
+            }
+            else
+            {
+                assert ranges.get(idx).start >= end:
+                        "Cannot overlap two LiveRanges with differing valID";
+            }
+        }
+        // Otherwise, this is just a new range that doesn't interact with anything.
+        // Insert it.
+        ranges.add(idx, lr);
+        return idx;
     }
 
     public void join(LiveInterval other, int copyIdx)
     {
-        // TODO: 17-7-27
+        LiveRange sourceLR = other.getLiveRangeContaining(copyIdx);
+        LiveRange destLR = getLiveRangeContaining(copyIdx);
+        assert sourceLR != null && destLR != null:"Not joining due to copy?";
+        int mergedSrcValIdx = sourceLR.valId;
+        int mergedDstValIdx = destLR.valId;
+
+        if (other.ranges.size() < ranges.size())
+        {
+            int t = mergedSrcValIdx;
+            mergedSrcValIdx = mergedDstValIdx;
+            mergedDstValIdx = t;
+
+            t = numValues;
+            numValues = other.numValues;
+            other.numValues = t;
+
+            ArrayList<LiveRange> list = ranges;
+            ranges = other.ranges;
+            other.ranges = list;
+        }
+
+        int insertPos = 0;
+        TIntIntHashMap dst2SrcIdxMap = new TIntIntHashMap();
+        for (LiveRange  r : other.ranges)
+        {
+            if (r.valId == mergedSrcValIdx)
+                r.valId = mergedDstValIdx;
+            else
+            {
+                int nv = 0;
+                if (!dst2SrcIdxMap.containsKey(r.valId))
+                    nv = getNextValue();
+                dst2SrcIdxMap.put(r.valId, nv);
+                r.valId = nv;
+            }
+
+            insertPos = addRangeFrom(r, insertPos);
+        }
+        weight += other.weight;
     }
 
     private void extendIntervalEndTo(int idxToRange, int newEnd)
     {
-        // TODO: 17-7-27
+        assert idxToRange != ranges.size():"Not a valid interval!";
+
+        int valId = ranges.get(idxToRange).valId;
+
+        int mergeTo = idxToRange + 1;
+        for (; mergeTo != ranges.size() && newEnd >= ranges.get(mergeTo).end; ++mergeTo)
+        {
+            assert ranges.get(mergeTo).valId == valId
+                    : "Cannot merge with differing values!";
+        }
+
+        ranges.get(idxToRange).end = Math.max(newEnd, ranges.get(mergeTo-1).end);
+
+        for (int i = idxToRange+1; i != mergeTo; i++)
+            ranges.remove(i);
     }
 
-    private void extendIntervalStartTo(int idxToRange, int newEnd)
+    private int extendIntervalStartTo(int idxToRange, int newStart)
     {
-        // TODO: 17-7-27
+        assert idxToRange != ranges.size():"Not a valid interval!";
+        int valId = ranges.get(idxToRange).valId;
+
+        int mergeTo = idxToRange;
+        do
+        {
+            if (mergeTo == 0)
+            {
+                ranges.get(idxToRange).start = newStart;
+                for (int i = mergeTo; i != idxToRange; ++i)
+                    ranges.remove(i);
+                return idxToRange;
+            }
+            assert ranges.get(mergeTo).valId == valId;
+            --mergeTo;
+        }while (newStart <= ranges.get(mergeTo).start);
+
+        if (ranges.get(mergeTo).end >= newStart && ranges.get(mergeTo).valId == valId)
+        {
+            ranges.get(mergeTo).end = ranges.get(idxToRange).end;
+        }
+        else
+        {
+            // Otherwise, extend the interval right after.
+            ++mergeTo;
+            ranges.get(mergeTo).start = newStart;
+            ranges.get(mergeTo).end = ranges.get(idxToRange).end;
+        }
+
+        for (int i = mergeTo +1; i != idxToRange + 1; i++)
+            ranges.remove(i);
+
+        return mergeTo;
     }
 
     public void print(PrintStream os, TargetRegisterInfo tri)
@@ -238,5 +626,29 @@ public class LiveInterval implements Comparable<LiveInterval>
     public boolean equals(Object obj)
     {
         return super.equals(obj);
+    }
+
+    public void swap(LiveInterval other)
+    {
+        int t = register;
+        register = other.register;
+        other.register = t;
+
+        float w = weight;
+        weight = other.weight;
+        other.weight = w;
+
+        ArrayList<LiveRange> temp = new ArrayList<>();
+        temp.addAll(ranges);
+        ranges.clear();
+
+        ranges.addAll(other.ranges);
+
+        other.ranges.clear();
+        other.ranges.addAll(temp);
+
+        int num = numValues;
+        numValues = other.numValues;
+        other.numValues = num;
     }
 }
