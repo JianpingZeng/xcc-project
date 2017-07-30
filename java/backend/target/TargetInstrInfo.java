@@ -335,6 +335,16 @@ public abstract class TargetInstrInfo
 		return false;
 	}
 
+    public MachineInstr foldMemoryOperand(MachineFunction MF,
+            MachineInstr MI,
+            int ops,
+            int FrameIndex)
+    {
+        TIntArrayList list = new TIntArrayList();
+        list.add(ops);
+        return foldMemoryOperand(MF, MI, list, FrameIndex);
+    }
+
 	/// foldMemoryOperand - Attempt to fold a load or store of the specified stack
 	/// slot into the specified machine instruction for the specified operand(s).
 	/// If this is possible, a new instruction is returned with the specified
@@ -362,6 +372,12 @@ public abstract class TargetInstrInfo
 		MachineInstr MI,
 		TIntArrayList Ops,
 		int FrameIndex)  
+	{
+		return null;
+	}
+
+	protected MachineInstr foldMemoryOperandImpl(MachineFunction MF,
+			MachineInstr MI, int i, ArrayList<MachineOperand> MOs, int Align)
 	{
 		return null;
 	}

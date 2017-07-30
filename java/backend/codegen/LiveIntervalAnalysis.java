@@ -22,19 +22,26 @@ import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
+import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.transform.scalars.PhiElimination;
 import backend.transform.scalars.TwoAddrInstruction;
 import backend.value.Module;
+import gnu.trove.map.hash.TIntIntHashMap;
+import gnu.trove.procedure.TIntIntProcedure;
 import tools.BitMap;
 import tools.OutParamWrapper;
+import tools.Pair;
+import tools.commandline.BooleanOpt;
+import tools.commandline.Initializer;
+import tools.commandline.OptionNameApplicator;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.TreeMap;
+import java.util.*;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
+import static tools.commandline.Desc.desc;
 
 /**
  * @author Xlous.zeng
@@ -44,6 +51,23 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 {
     public static IntStatistic numIntervals =
             new IntStatistic("liveIntervals", "Number of original intervals");
+
+    public static IntStatistic numIntervalsAfter =
+            new IntStatistic("liveIntervals", "Number of intervals after coalescing");
+
+    public static IntStatistic numJoins =
+            new IntStatistic("liveIntervals", "Number of intervals joins performed");
+
+    public static IntStatistic numPeep =
+            new IntStatistic("liveIntervals", "Number of identit moves eliminated after coalescing");
+
+    public static IntStatistic numFolded =
+            new IntStatistic("liveIntervals", "Number of loads/stores folded into instructions");
+
+    public static BooleanOpt EnableJoining = new BooleanOpt(
+            OptionNameApplicator.optionName("join-liveintervals"),
+            desc("Join compatible live interval"),
+            Initializer.init(true));
 
     public interface InstrSlots
     {
@@ -74,6 +98,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private BitMap allocatableRegs;
     private TargetInstrInfo tii;
     private MachineRegisterInfo mri;
+    private TIntIntHashMap r2rMap = new TIntIntHashMap();
 
     public LiveIntervalAnalysis()
     {
@@ -138,7 +163,290 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
         // Step#4: Compute live interval.
         computeLiveIntervals();
+
+        numIntervals.add(getNumIntervals());
+
+        System.err.printf("*********** Intervals *************\n");
+        for (LiveInterval interval : reg2LiveInterval.values())
+        {
+            interval.print(System.err, tri);
+        }
+
+        // If acquired by command line argument, join intervals.
+        if (EnableJoining.value)
+            joinIntervals();
+
+        numIntervalsAfter.add(getNumIntervals());
+
+        // perform a final pass over the instructions and compute spill
+        // weights, coalesce virtual registers and remove identity moves
+        LoopInfo loopInfo = getAnalysisToUpDate(LoopInfo.class);
+        TargetInstrInfo tii = tm.getInstrInfo();
+
+        for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        {
+            int loopDepth = loopInfo.getLoopDepth(mbb.getBasicBlock());
+
+            for (Iterator<MachineInstr> itr = mbb.getInsts().iterator(); itr.hasNext(); )
+            {
+                MachineInstr mi = itr.next();
+                OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
+                OutParamWrapper<Integer> dstReg = new OutParamWrapper<>();
+                int regRep;
+
+                // If the move will be an identify move delete it.
+                if (tii.isMoveInstr(mi, srcReg, dstReg, null, null)
+                        && (regRep = rep(srcReg.get())) == rep(dstReg.get()))
+                {
+                    // Remove from def list.
+                    // LiveInterval interval = getOrCreateInterval(regRep);
+                    if (mi2Idx.containsKey(mi))
+                    {
+                        idx2MI.put(mi2Idx.get(mi)/InstrSlots.NUM, null);
+                        mi2Idx.remove(mi);
+                    }
+                    itr.remove();
+                    numPeep.inc();
+                }
+                else
+                {
+                    for (int i = 0, e = mi.getNumOperands(); i < e; i++)
+                    {
+                        MachineOperand mo = mi.getOperand(i);
+                        if (mo.isRegister() && mo.getReg() != 0 && isVirtualRegister(mo.getReg()))
+                        {
+                            // Replace register with representative register.
+                            int reg = rep(mo.getReg());
+                            mi.setMachineOperandReg(i, reg);
+
+                            LiveInterval interval = getInterval(reg);
+                            interval.weight += ((mo.isUse() ? 1:0) + (mo.isDef()?1:0)) + Math.pow(10, loopDepth);
+                        }
+                    }
+
+                }
+            }
+        }
+
+        System.err.printf("************ Intervals *************\n");
+        reg2LiveInterval.values().forEach(System.err::println);
+
+        System.err.printf("************ MachineInstrs *************\n");
+        for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        {
+            System.err.println(mbb.getBasicBlock().getName() + ":");
+            for (MachineInstr mi : mbb.getInsts())
+            {
+                System.err.printf("%d\t", getInstructionIndex(mi));
+                mi.print(System.err, tm);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns the representative of this register.
+     * @param reg
+     * @return
+     */
+    private int rep(int reg)
+    {
+        if (r2rMap.containsKey(reg))
+            return r2rMap.get(reg);
+
+        return reg;
+    }
+
+    private void joinIntervals()
+    {
+        System.err.printf("************ Joining Intervals *************\n");
+
+        LoopInfo loopInfo = getAnalysisToUpDate(LoopInfo.class);
+        if (loopInfo.isEmpty())
+        {
+            // If there are no loops in the function, join intervals in function
+            // order.
+            for (MachineBasicBlock mbb : mf.getBasicBlocks())
+                joinIntervalsInMachineBB(mbb);
+        }
+        else
+        {
+            // Otherwise, join intervals in inner loops before other intervals.
+            // Unfortunately we can't just iterate over loop hierarchy here because
+            // there may be more MBB's than BB's.  Collect MBB's for sorting.
+            ArrayList<Pair<Integer, MachineBasicBlock>> mbbs = new ArrayList<>();
+            mf.getBasicBlocks().forEach(mbb->
+            {
+                mbbs.add(Pair.get(loopInfo.getLoopDepth(mbb.getBasicBlock()), mbb));
+            });
+
+            // Sort mbb by loop depth.
+            mbbs.sort((lhs, rhs) ->
+            {
+                if (lhs.first > rhs.first)
+                    return -1;
+                if (lhs.first.equals(rhs.first)
+                        && lhs.second.getNumber() < rhs.second.getNumber())
+                    return -1;
+                return 1;
+            });
+
+            // Finally, joi intervals in loop nest order.
+            for (Pair<Integer, MachineBasicBlock> pair : mbbs)
+            {
+                joinIntervalsInMachineBB(pair.second);
+            }
+        }
+
+        System.err.printf("**** Register mapping ***\n");
+        r2rMap.forEachEntry(new TIntIntProcedure()
+        {
+            @Override
+            public boolean execute(int i, int i1)
+            {
+                System.err.printf(" reg %d -> reg %d\n", i, i1);
+                return false;
+            }
+        });
+    }
+
+    private void joinIntervalsInMachineBB(MachineBasicBlock mbb)
+    {
+        System.err.printf("%s:\n", mbb.getBasicBlock().getName());
+        TargetInstrInfo tii = tm.getInstrInfo();
+
+        for (MachineInstr mi : mbb.getInsts())
+        {
+            System.err.printf("%d\t", getInstructionIndex(mi));
+            mi.print(System.err, tm);
+
+            // we only join virtual registers with allocatable
+            // physical registers since we do not have liveness information
+            // on not allocatable physical registers
+            OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
+            OutParamWrapper<Integer> dstReg = new OutParamWrapper<>(0);
+            if (tii.isMoveInstr(mi, srcReg, dstReg, null, null)
+                    && (isVirtualRegister(srcReg.get())
+                    || lv.getAllocatablePhyRegs().get(srcReg.get()))
+                    && (isVirtualRegister(dstReg.get())
+                    || lv.getAllocatablePhyRegs().get(dstReg.get())))
+            {
+                // Get representaive register.
+                int regA = rep(srcReg.get());
+                int regB = rep(dstReg.get());
+
+                if (regA == regB)
+                    continue;
+
+                // If there are both physical register, we can not join them.
+                if (isPhysicalRegister(regA) && isPhysicalRegister(regB))
+                {
+                    continue;
+                }
+
+                // If they are not of the same register class, we cannot join them.
+                if (differingRegisterClasses(regA, regB))
+                {
+                    continue;
+                }
+
+                LiveInterval intervalA = getInterval(regA);
+                LiveInterval intervalB = getInterval(regB);
+                assert intervalA.register == regA && intervalB.register == regB
+                        :"Regiser mapping is horribly borken!";
+
+                System.err.printf("\t\tInspecting ");
+                intervalA.print(System.err, tri);
+                System.err.print(" and ");
+                intervalB.print(System.err, tri);
+                System.err.print(": ");
+
+                // If two intervals contain a single value and are joined by a copy, it
+                // does not matter if the intervals overlap, they can always be joined.
+                boolean triviallyJoinable = intervalA.containsOneValue() &&
+                        intervalB.containsOneValue();
+
+                int midDefIdx = getDefIndex(getInstructionIndex(mi));
+                if (triviallyJoinable || intervalB.joinable(intervalA, midDefIdx)
+                        && !overlapsAliases(intervalA, intervalB))
+                {
+                    intervalB.join(intervalA, midDefIdx);
+
+                    if (!isPhysicalRegister(regA))
+                    {
+                        r2rMap.remove(regA);
+                        r2rMap.put(regA, regB);
+                    }
+                    else
+                    {
+                        r2rMap.put(regB, regA);
+                        intervalB.register = regA;
+                        intervalA.swap(intervalB);
+                        reg2LiveInterval.remove(regB);
+                    }
+                    numJoins.inc();
+                }
+                else
+                {
+                    System.err.println("Interference!");
+                }
+            }
+        }
+    }
+
+    /**
+     *
+     * @param lhs
+     * @param rhs
+     * @return
+     */
+    private boolean overlapsAliases(LiveInterval lhs, LiveInterval rhs)
+    {
+        if (!isPhysicalRegister(lhs.register))
+        {
+            if (!isPhysicalRegister(rhs.register))
+                return false;       // Virtual register never aliased.
+            LiveInterval temp = lhs;
+            lhs = rhs;
+            rhs = temp;
+        }
+
+        assert isPhysicalRegister(lhs.register)
+                : "First interval describe a physical register";
+
+        for (int alias : tri.getAliasSet(lhs.register))
+        {
+            if (rhs.overlaps(getInterval(alias)))
+                return true;
+        }
         return false;
+    }
+
+    /**
+     * Return true if the two specified registers belong to different register
+     * classes.  The registers may be either phys or virt regs.
+     * @param regA
+     * @param regB
+     * @return
+     */
+    private boolean differingRegisterClasses(int regA, int regB)
+    {
+        TargetRegisterClass rc = null;
+        if (isVirtualRegister(regA))
+            rc = mri.getRegClass(regA);
+        else
+            rc = tri.getRegClass(regA);
+
+        // Compare against the rc for the second reg.
+        if (isVirtualRegister(regB))
+            return !rc.equals(mri.getRegClass(regB));
+        else
+            return !rc.equals(tri.getRegClass(regB));
+    }
+
+    private int getNumIntervals()
+    {
+        return reg2LiveInterval.size();
     }
 
     public TreeMap<Integer, LiveInterval> getReg2LiveInterval()
@@ -169,6 +477,11 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         return newInterval;
     }
 
+    private LiveInterval getInterval(int reg)
+    {
+        assert reg2LiveInterval.containsKey(reg);
+        return reg2LiveInterval.get(reg);
+    }
 
     public String getRegisterName(int register)
     {
@@ -513,8 +826,94 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             VirtRegMap vrm,
             int slot)
     {
-        // TODO: 2017/7/28
-        return null;
+        ArrayList<LiveInterval> added = new ArrayList<>();
+
+        assert interval.weight != Float.MAX_VALUE
+                : "attempt to spill already spilled interval";
+
+        System.err.printf("\t\t\tadding interals for spills for interval: ");
+        interval.print(System.err, tri);
+        System.err.println();
+
+        TargetRegisterClass rc = mri.getRegClass(interval.register);
+
+        for (LiveRange lr : interval.ranges)
+        {
+            int index = getBaseIndex(lr.start);
+            int end = getBaseIndex(lr.end -1 ) + InstrSlots.NUM;
+
+            for (; index != end; index += InstrSlots.NUM)
+            {
+                // Skip deleted instructions.
+                while ( index != end && getInstructionFromIndex(index) == null)
+                {
+                    index += InstrSlots.NUM;
+                }
+
+                if (index == end)
+                    break;
+
+                MachineInstr mi = getInstructionFromIndex(index);
+
+                boolean forOperand = false;
+                do
+                {
+                    for (int i = 0, e = mi.getNumOperands(); i != e; i++)
+                    {
+                        MachineOperand mo = mi.getOperand(i);
+                        if (mo.isRegister() && mo.getReg() == interval.register)
+                        {
+                            MachineInstr fmi = tii.foldMemoryOperand(mf, mi, i, slot);
+                            if (fmi != null)
+                            {
+                                lv.instructionChanged(mi, fmi);
+                                vrm.virtFolded(interval.register, mi, fmi);
+                                mi2Idx.remove(mi);
+                                idx2MI.put(index/InstrSlots.NUM, fmi);
+                                mi2Idx.put(fmi, index);
+                                MachineBasicBlock mbb = mi.getParent();
+                                mbb.insert(mbb.remove(mi), fmi);
+                                numFolded.inc();
+                                forOperand = true;
+                            }
+                            else
+                            {
+                                // This is tricky. We need to add information in
+                                // the interval about the spill code so we have to
+                                // use our extra load/store slots.
+                                //
+                                // If we have a use we are going to have a load so
+                                // we start the interval from the load slot
+                                // onwards. Otherwise we start from the def slot.
+                                int start = (mo.isUse() ? getLoadIndex(index) : getDefIndex(index));
+
+                                // If we have a def we are going to have a store
+                                // right after it so we end the interval after the
+                                // use of the next instruction. Otherwise we end
+                                // after the use of this instruction.
+                                int stop = 1 + (mo.isDef() ? getStoreIndex(index) : getUseIndex(index));
+
+                                int nReg = mri.createVirtualRegister(rc);
+                                mi.setMachineOperandReg(i, nReg);
+                                vrm.assignVirt2StackSlot(nReg, slot);
+                                LiveInterval ni = getOrCreateInterval(nReg);
+                                assert ni.isEmpty();
+
+                                ni.weight = Float.MAX_VALUE;
+                                LiveRange r = new LiveRange(start, end, ni.getNextValue());
+                                ni.addRange(r);
+                                added.add(ni);
+
+                                // Update viriable.
+                                lv.addVirtualRegisterKilled(nReg, mi);
+                            }
+                        }
+                    }
+                }while (forOperand);
+            }
+        }
+
+        return added;
     }
 
     public void print(PrintStream os, Module m)

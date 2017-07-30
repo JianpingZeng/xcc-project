@@ -198,9 +198,17 @@ public class MachineBasicBlock
 		return i;
 	}
 
-	public void remove(MachineInstr miToDelete)
+	/**
+	 * Remove the specified MachineInstr and remove the index to the position where
+	 * it located.
+	 * @param miToDelete
+	 * @return
+	 */
+	public int remove(MachineInstr miToDelete)
 	{
+		int index = insts.indexOf(miToDelete);
 		insts.remove(miToDelete);
+		return index;
 	}
 
 	public boolean isLayoutSuccessor(MachineBasicBlock mbb)

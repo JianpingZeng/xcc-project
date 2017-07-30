@@ -2239,7 +2239,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         return MIB.addImm(0).getMInstr();
     }
 
-    public MachineInstr foldMemoryOperandImpl(MachineFunction MF,
+    @Override
+    protected MachineInstr foldMemoryOperandImpl(MachineFunction MF,
             MachineInstr MI, int i, ArrayList<MachineOperand> MOs, int Align)
     {
         TIntObjectHashMap<Pair<Integer, Integer>> OpcodeTablePtr = null;
