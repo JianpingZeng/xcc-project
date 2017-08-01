@@ -41,6 +41,7 @@ public class MachineFunction
 	 * the target implementation.
 	 */
 	MachineFunctionInfo mfInfo;
+	private int alignment;
 
 	public MachineFunction(Function fn, TargetMachine tm)
 	{
@@ -149,4 +150,14 @@ public class MachineFunction
     {
         return mfInfo;
     }
+
+	public int getAlignment()
+	{
+		return alignment;
+	}
+
+	public void setAlignment(int align)
+	{
+		alignment = align;
+	}
 }

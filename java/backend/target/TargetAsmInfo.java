@@ -148,6 +148,26 @@ public class TargetAsmInfo
     protected String Data32bitsDirective;      // Defaults to "\t.long\t"
     protected String Data64bitsDirective;      // Defaults to "\t.quad\t"
 
+    /**
+     * If this is true (the default) then the asmprinter
+     * emits ".align N" directives, where N is the number of bytes to align to.
+     * Otherwise, it emits ".align log2(N)", e.g. 3 to align to an 8 byte
+     * boundary.
+     * Default to true.
+     */
+    protected boolean alignIsInByte;
+    /**
+     * Default to "\t.section\t".
+     */
+    protected String switchToSectionDirective;
+    /**
+     * This is the section that we SwitchToSection right
+     * before emitting the constant pool for a function.
+     *
+     * Default to "\t.section .rodata\n".
+     */
+    protected String constantPoolSection;
+
     /// getDataASDirective - Return the directive that should be used to emit
     /// data of the specified size to the specified numeric address space.
     protected String getDataASDirective(int Size, int AS)
@@ -735,5 +755,20 @@ public class TargetAsmInfo
     public String[] getAsmCBE()
     {
         return AsmTransCBE;
+    }
+
+    public boolean isAlignIsInByte()
+    {
+        return alignIsInByte;
+    }
+
+    public String getSwitchToSectionDirective()
+    {
+        return switchToSectionDirective;
+    }
+
+    public String getConstantPoolSectionDirective()
+    {
+        return constantPoolSection;
     }
 }

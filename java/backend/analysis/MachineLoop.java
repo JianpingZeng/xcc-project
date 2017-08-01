@@ -270,4 +270,9 @@ public final class MachineLoop extends LoopBase<MachineBasicBlock, MachineLoop>
     {
         print(System.err, 0);
     }
+
+    public boolean isEmpty()
+    {
+        return subLoops.isEmpty();
+    }
 }

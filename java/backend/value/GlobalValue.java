@@ -181,7 +181,7 @@ public abstract class GlobalValue extends Constant
     /**
      * An enumeration for the kinds of visibility of global values.
      */
-    enum VisibilityTypes
+    public enum VisibilityTypes
     {
         DefaultVisibility,  ///< The GV is visible
         HiddenVisibility,       ///< The GV is hidden
@@ -193,5 +193,16 @@ public abstract class GlobalValue extends Constant
     public boolean hasDefaultVisibility()
     {
         return visibility == VisibilityTypes.DefaultVisibility;
+    }
+
+
+    public VisibilityTypes getVisibility()
+    {
+        return visibility;
+    }
+
+    public void setVisibility(VisibilityTypes v)
+    {
+        visibility = v;
     }
 }

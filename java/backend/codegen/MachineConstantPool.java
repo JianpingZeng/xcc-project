@@ -3,6 +3,7 @@ package backend.codegen;
 import backend.target.TargetData;
 import backend.value.Constant;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
@@ -12,7 +13,7 @@ import java.util.ArrayList;
  */
 public final class MachineConstantPool
 {
-    private ArrayList<MachineConstantPoolEntry> constantPool;
+    private ArrayList<MachineConstantPoolEntry> constants;
     private TargetData td;
     private int poolAlignment;
 
@@ -21,35 +22,82 @@ public final class MachineConstantPool
         this.td = td;
         poolAlignment = 1;
     }
+
     /**
      * Creates a new entry in constant pool and returns it's index
      * or a existing one if there is existing.
+     *
      * @param c
      * @return
      */
     public int getConstantPoolIndex(Constant c, int align)
     {
-        assert align != 0 :"Alignment must be specified.";
+        assert align != 0 : "Alignment must be specified.";
         if (align > poolAlignment)
             poolAlignment = align;
 
-        for (int i = 0, e = constantPool.size(); i<e; i++)
+        for (int i = 0, e = constants.size(); i < e; i++)
         {
-            MachineConstantPoolEntry cc = constantPool.get(i);
-            if (cc == c && (cc.getAlignment()
-                    &))
+            MachineConstantPoolEntry cc = constants.get(i);
+            if (cc.val.equals(c) && (cc.getAlignment() & (align-1))==0)
                 return i;
-        }
-        constantPool.add(c);
-        return constantPool.size()-1;
+        } constants.add(new MachineConstantPoolEntry(c, align));
+        return constants.size() - 1;
     }
 
-    public ArrayList<Constant> getConstantPool() {return constantPool;}
+    /**
+     * Creates a new entry in constant pool and returns it's index
+     * or a existing one if there is existing.
+     *
+     * @param val
+     * @return
+     */
+    public int getConstantPoolIndex(MachineConstantPoolValue val, int align)
+    {
+        assert align != 0 : "Alignment must be specified.";
+        if (align > poolAlignment)
+            poolAlignment = align;
+
+        int idx = val.getExistingMachineCPValue(this, align);
+        if (idx != -1)
+            return idx;
+
+        constants.add(new MachineConstantPoolEntry(val, align));
+        return constants.size() - 1;
+    }
+
+    public ArrayList<MachineConstantPoolEntry> getConstants()
+    {
+        return constants;
+    }
 
     public int getContantPoolAlignment()
     {
         return poolAlignment;
     }
 
-    public boolean isEmpty() {return constantPool.isEmpty();}
+    public boolean isEmpty()
+    {
+        return constants.isEmpty();
+    }
+
+    public void dump()
+    {
+        print(System.err);
+    }
+
+    public void print(PrintStream os)
+    {
+        for (int i = 0, e = constants.size(); i < e; i++)
+        {
+            os.printf("  <cp#%d> is", i);
+            if (constants.get(i).isMachineConstantPoolEntry())
+                constants.get(i).getValueAsCPV().print(os);
+            else
+            {
+                constants.get(i).getValueAsConstant().print(os);
+            }
+            os.printf(" , alignment=%d\n", constants.get(i).getAlignment());
+        }
+    }
 }

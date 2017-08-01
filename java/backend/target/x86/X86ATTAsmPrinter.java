@@ -1,7 +1,7 @@
 package backend.target.x86;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,89 +17,135 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
+import backend.pass.AnalysisUsage;
+import backend.support.CallingConv;
+import backend.support.IntStatistic;
+import backend.target.TargetAsmInfo;
 import backend.target.TargetRegisterInfo;
 import backend.value.Function;
+import backend.value.GlobalValue;
+import backend.value.GlobalValue.VisibilityTypes;
+import backend.value.Module;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
+import tools.commandline.BooleanOpt;
+import tools.commandline.OptionHidden;
+import tools.commandline.OptionHiddenApplicator;
+import tools.commandline.OptionNameApplicator;
 
 import java.io.OutputStream;
+import java.util.HashMap;
+
+import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
+public abstract class X86ATTAsmPrinter extends AsmPrinter
 {
-    private TObjectIntHashMap<MachineBasicBlock> mbbNumber;
+    public static final BooleanOpt NewAsmPrinter =
+            new BooleanOpt(optionName("experimental-asm-printer"),
+                    new OptionHiddenApplicator(OptionHidden.Hidden));
     /**
      * A statistic for indicating the numbeer of emitted machine
      * instruction by this asm printer.
      */
-    private int emittedInsts;
+    public static final IntStatistic EmittedInsts =
+            new IntStatistic("EmittedInstrs", "Number of machine instrs printed");
 
-    public X86ATTAsmPrinter(OutputStream os, X86TargetMachine tm)
+    private TObjectIntHashMap<MachineBasicBlock> mbbNumber;
+    private X86Subtarget subtarget;
+    private HashMap<Function, X86MachineFunctionInfo> functionInfoMap;
+
+    public X86ATTAsmPrinter(OutputStream os,
+            X86TargetMachine tm,
+            TargetAsmInfo tai,
+            boolean v)
     {
-        super(os, tm);
+        super(os, tm, tai, v);
         mbbNumber = new TObjectIntHashMap<>();
+        subtarget = tm.getSubtarget();
+        functionInfoMap = new HashMap<>();
     }
 
     @Override
     public String getPassName()
     {
-        return "X86 AT&T assembly code printer";
+        return "X86 AT&T style assembly printer";
     }
 
-    public void printi8Mem(MachineInstr mi, int opNo)
-    {
-        printMemReference(mi, opNo);
-    }
-
-    public void printi16Mem(MachineInstr mi, int opNo)
-    {
-        printMemReference(mi, opNo);
-    }
-
-    public void printi32Mem(MachineInstr mi, int opNo)
-    {
-        printMemReference(mi, opNo);
-    }
-
-    public void printi64Mem(MachineInstr mi, int opNo)
-    {
-        printMemReference(mi, opNo);
-    }
-
-    public void printf32Mem(MachineInstr mi, int opNo)
-    {
-        printMemReference(mi, opNo);
-    }
-
-    public void printf64Mem(MachineInstr mi, int opNo)
-    {
-        printMemReference(mi, opNo);
-    }
-
-    public void printf128Mem(MachineInstr mi, int opNo)
-    {
-        printMemReference(mi, opNo);
-    }
-
-    /**
-     * This method is called used for print assembly code for each
-     * machine instruction in {@code mf}.
-     * @param mf
-     * @return
-     */
     @Override
-    public boolean runOnMachineFunction(MachineFunction mf)
+    public void getAnalysisUsage(AnalysisUsage au)
     {
-        setupMachineFunction(mf);
-        os.print("\n\n");
+        if (subtarget.isTargetDarwin() ||
+                subtarget.isTargetELF() ||
+                subtarget.isTargetCygMing())
+        {
+            au.addRequired(MachineModuleInfo.class);
+        }
+        // TODO dwarf writer.
+        super.getAnalysisUsage(au);
+    }
 
-        // print out constants referenced by the function.
-        emitConstantPool(mf.getConstantPool());
+    @Override
+    public boolean doFinalization(Module m)
+    {
+        // TODO: 17-7-31
+        return false;
+    }
 
-        // print out labels for the function.
+    public void printi8mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printi16mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printi32mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printi64mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printf32mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printf64mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printf128mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void print_pcrel_imm(MachineInstr mi, int opNo)
+    {
+        // TODO: 17-7-31
+    }
+
+    public void printi128mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    private void emitFunctionHeader(MachineFunction mf)
+    {
+        int fnAlign = mf.getAlignment();
         Function f = mf.getFunction();
+
+        // todo if (subtarget.isTargetCygMing())
         switch (f.getLinkage())
         {
             case InteralLinkage:
@@ -115,32 +161,103 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
                 assert false:"Unknown linkage type!";
                 break;
         }
+
+        printVisibility(curFnName, f.getVisibility());
+        if (subtarget.isTargetELF())
+        {
+            os.printf("\t.type\t%s,@function\n", curFnName);
+        }
+        else if (subtarget.isTargetCygMing())
+        {
+            // TODO: 17-7-31  Handle targeting to cygwin and mingw.
+        }
+
+        os.printf("%s:", curFnName);
+        if (verboseAsm)
+        {
+            os.print(Util.fixedLengthString(tai.getCommentColumn(), ' '));
+            os.printf("%s ", tai.getCommentString());
+            writeAsOperand(os, f, false, f.getParent());
+        }
+
+        os.println();
+    }
+
+    /**
+     * This method is called used for print assembly code for each
+     * machine instruction in {@code mf}.
+     * @param mf
+     * @return
+     */
+    @Override
+    public boolean runOnMachineFunction(MachineFunction mf)
+    {
+        setupMachineFunction(mf);
+        os.print("\n\n");
+
+        // print out labels for the function.
+        Function f = mf.getFunction();
+        CallingConv cc = f.getCallingConv();
+
+        // Populate function information map.  Actually, We don't want to populate
+        // non-stdcall or non-fastcall functions' information right now.
+        if (cc == CallingConv.X86_StdCall || cc == CallingConv.X86_FastCall)
+            functionInfoMap.put(f, (X86MachineFunctionInfo) mf.getInfo());
+
+        // Print out constants referenced by the function.
+        emitConstantPool(mf.getConstantPool());
+
+        // print the 'header' of function.
+        emitFunctionHeader(mf);
         os.println(curFnName+":");
 
         int number = 0;
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
             mbbNumber.put(mbb, number++);
 
+        boolean hasAnyRealCode = false;
         // print out the code for each by walking through all basic block.
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
-            // print the label for the basic block.
-            os.print(privateGlobalPrefix + "BB" + mbbNumber.get(mbb) + ":\t");
-            os.println(commentString + " " + mbb.getBasicBlock().getName());
+            // Print a label for the basic block.
+            if (!verboseAsm && (mbb.predIsEmpty() || mbb.isOnlyReachableByFallThrough()))
+            {
+                // This is an entry block or a block that's only reachable via a
+                // fallthrough edge. In non-VerboseAsm mode, don't print the label.
+            }
+            else
+            {
+                // print the label for the basic block.
+                printBasicBlockLabel(mbb, true, true, verboseAsm);
+                os.println();
+            }
 
             for (MachineInstr mi : mbb.getInsts())
             {
                 // Print the assembly for the instruction.
-                os.print("\t");
+                if (!mi.isLabel())
+                    hasAnyRealCode = true;
                 printMachineInstruction(mi);
             }
         }
 
-        if (hasDotTypeDotSizeDirective)
+        if (subtarget.isTargetDarwin() && !hasAnyRealCode)
+        {
+            os.printf("\tnop\n");
+        }
+
+        if (tai.hasDotTypeDotSizeDirective())
             os.println("\t.getNumOfSubLoop " + curFnName + ", .-" + curFnName);
+
+        // todo emitJumpTableInfo(mf.);
 
         // we didn't change anything.
         return false;
+    }
+
+    public void printOperand(MachineInstr mi, int opNo)
+    {
+        printOperand(mi, opNo, null);
     }
 
     /**
@@ -171,7 +288,7 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
             case MO_MachineBasicBlock:
             {
                 MachineBasicBlock mbb = mo.getMBB();
-                os.print(privateGlobalPrefix);
+                os.print(tai.getPrivateGlobalPrefix());
                 os.print("BB");
                 os.print(mangler.getValueName(mbb.getBasicBlock().getParent()));
                 os.print("_");
@@ -195,7 +312,7 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
                 boolean isCallOp = modifier != null && !modifier.equals("call");
                 if (!isCallOp)
                     os.print("$");
-                os.printf("%s%s", globalPrefix, mo.getSymbolName());
+                os.printf("%s%s", tai.getGlobalPrefix(), mo.getSymbolName());
                 return;
             }
             default:
@@ -257,17 +374,22 @@ public abstract class X86ATTAsmPrinter extends X86SharedAsmPrinter
      */
     private void printMachineInstruction(MachineInstr mi)
     {
-        emittedInsts++;
-
-        // Call the autogenerated instruction printer routines.
-        printInstruction(mi);
+        EmittedInsts.inc();
+        if (!NewAsmPrinter.value)
+        {
+            // Call the autogenerated instruction printer routines.
+            printInstruction(mi);
+        }
     }
 
     protected abstract boolean printInstruction(MachineInstr mi);
 
     public static X86ATTAsmPrinter createX86AsmCodeEmitter(
-            OutputStream os, X86TargetMachine tm)
+            OutputStream os,
+            X86TargetMachine tm,
+            TargetAsmInfo tai,
+            boolean verbose)
     {
-        return new X86GenATTAsmPrinter(os, tm);
+        return new X86GenATTAsmPrinter(os, tm, tai, verbose);
     }
 }
