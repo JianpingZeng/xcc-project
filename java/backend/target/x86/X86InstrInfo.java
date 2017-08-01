@@ -2417,7 +2417,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             Util.shouldNotReachHere("vector type is not supported!");
         /*
         // Create a v4i32 ant-pool entry.
-        MachineConstantPool MCP = MF.getConstantPool();
+        MachineConstantPool MCP = MF.getConstants();
      VectorType Ty =
                 VectorType::get(Type::getInt32Ty(MF.getFunction().getContext()), 4);
         Constant *C = LoadMI.getOpcode() == V_SET0 ?

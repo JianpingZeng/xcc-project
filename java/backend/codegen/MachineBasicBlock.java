@@ -27,8 +27,9 @@ public class MachineBasicBlock
 	private ArrayList<MachineBasicBlock> successors;
 
 	private MachineFunction parent;
+    private int alignment;
 
-	public MachineBasicBlock(final BasicBlock bb)
+    public MachineBasicBlock(final BasicBlock bb)
 	{
 		insts = new LinkedList<>();
 		this.bb = bb;
@@ -235,5 +236,44 @@ public class MachineBasicBlock
     public MachineInstr getFirstInst()
     {
         return insts.getFirst();
+    }
+
+	/**
+	 * Return true if this basic block has
+	 * exactly one predecessor and the control transfer mechanism between
+	 * the predecessor and this block is a fall-through.
+	 * @return
+	 */
+	public boolean isOnlyReachableByFallThrough()
+	{
+	    if (predIsEmpty())
+	        return false;
+
+	    // If there is not exactly one predecessor, it can not be a fall through.
+	    if (getNumPredecessors() != 1)
+	        return false;
+
+	    // The predecessor has to be immediately before this block.
+	    MachineBasicBlock pred = getPred(0);
+	    if (!pred.isLayoutSuccessor(this))
+	        return false;
+
+	    // If the block is completely empty, then it definitely does fall through.
+        if (pred.isEmpty())
+            return true;
+
+        // Otherwise, check the last instruction.
+        MachineInstr lastInst = pred.getLastInst();
+        return !lastInst.getDesc().isBarrier();
+	}
+
+    public int getAlignment()
+    {
+        return alignment;
+    }
+
+    public void setAlignment(int align)
+    {
+        alignment = align;
     }
 }

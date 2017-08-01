@@ -1,6 +1,7 @@
 package backend.value;
 
 import backend.codegen.MachineFunction;
+import backend.support.CallingConv;
 import backend.type.FunctionType;
 import backend.type.Type;
 
@@ -26,7 +27,8 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
     private LinkedList<BasicBlock> basicBlockList;
 
 	private MachineFunction mf;
-	
+	private CallingConv cc;
+
 	public Function(FunctionType ty, LinkageType linkage,
             String name, Module parentModule)
     {
@@ -153,5 +155,10 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	{
 		assert index >= 0 && index < getNumOfArgs();
 		return argumentList.get(index);
+	}
+
+	public CallingConv getCallingConv()
+	{
+		return cc;
 	}
 }
