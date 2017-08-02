@@ -20,8 +20,6 @@ import backend.type.Type;
 import jlang.support.APFloat;
 import jlang.support.APSInt;
 
-import java.math.APFloat;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -70,7 +68,7 @@ public class ConstantFP extends Constant
 
     public double getValue()
     {
-        return val
+        return val.convertToDouble();
     }
 
     public APFloat getValueAPF()
