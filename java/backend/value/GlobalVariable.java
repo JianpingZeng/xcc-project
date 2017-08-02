@@ -96,4 +96,10 @@ public class GlobalVariable extends GlobalValue
     {
         return threadLocal;
     }
+
+    public Constant getInitializer()
+    {
+        assert hasInitializer();
+        return (Constant) operand(0);
+    }
 }

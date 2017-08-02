@@ -72,4 +72,20 @@ public abstract class Constant extends User
         }
         return null;
     }
+
+    @Override
+    public Constant operand(int index)
+    {
+        return (Constant) super.operand(index);
+    }
+
+    public boolean containsRelocations()
+    {
+        if (this instanceof GlobalValue)
+            return true;
+        for (int i = 0, e = getNumOfOperands(); i < e; i++)
+            if (operand(i).containsRelocations())
+                return true;
+        return false;
+    }
 }

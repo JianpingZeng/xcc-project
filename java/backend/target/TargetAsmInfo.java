@@ -17,6 +17,15 @@ package backend.target;
  */
 
 import backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy;
+import backend.type.ArrayType;
+import backend.type.Type;
+import backend.value.*;
+
+import java.util.TreeMap;
+
+import static backend.target.SectionKind.isBSS;
+import static backend.target.SectionKind.isReadOnly;
+import static backend.target.TargetOptions.NoZerosInBSS;
 
 /**
  * @author Xlous.zeng
@@ -24,6 +33,48 @@ import backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy;
  */
 public class TargetAsmInfo
 {
+    /// TextSection - Section directive for standard text.
+    ///
+    protected Section TextSection;           // Defaults to ".text".
+
+    /// DataSection - Section directive for standard data.
+    ///
+    protected Section DataSection;           // Defaults to ".data".
+
+    /// BSSSection - Section directive for uninitialized data.  Null if this
+    /// target doesn't support a BSS section.
+    ///
+    protected String BSSSection;               // Default to ".bss".
+    protected Section BSSSection_;
+
+    /// ReadOnlySection - This is the directive that is emitted to switch to a
+    /// read-only section for constant data (e.g. data declared const,
+    /// jump tables).
+    protected Section ReadOnlySection;       // Defaults to NULL
+
+    /// SmallDataSection - This is the directive that is emitted to switch to a
+    /// small data section.
+    ///
+    protected Section SmallDataSection;      // Defaults to NULL
+
+    /// SmallBSSSection - This is the directive that is emitted to switch to a
+    /// small bss section.
+    ///
+    protected Section SmallBSSSection;       // Defaults to NULL
+
+    /// SmallRODataSection - This is the directive that is emitted to switch to
+    /// a small read-only data section.
+    ///
+    protected Section SmallRODataSection;    // Defaults to NULL
+
+    /// TLSDataSection - Section directive for Thread Local data.
+    ///
+    protected Section TLSDataSection;        // Defaults to ".tdata".
+
+    /// TLSBSSSection - Section directive for Thread Local uninitialized data.
+    /// Null if this target doesn't support a BSS section.
+    ///
+    protected Section TLSBSSSection;         // Defaults to ".tbss".
     //===------------------------------------------------------------------===//
     // Properties to be set by the target writer, used to configure asm printer.
     //
@@ -167,6 +218,14 @@ public class TargetAsmInfo
      * Default to "\t.section .rodata\n".
      */
     protected String constantPoolSection;
+
+    protected String textSectionStartSuffix;
+
+    protected String dataSectionStartSuffix;
+
+    protected String sectionEndDirectiveSuffix;
+
+    private TreeMap<String, Section> sections = new TreeMap<>();
 
     /// getDataASDirective - Return the directive that should be used to emit
     /// data of the specified size to the specified numeric address space.
@@ -432,7 +491,7 @@ public class TargetAsmInfo
     //
     public String getData8bitsDirective(int AS)
     {
-        return AS == 0 ? Data8bitsDirective : getDataASDirective(8, AS);
+        return AS != 0? Data8bitsDirective : getDataASDirective(8, AS);
     }
 
     public String getData16bitsDirective()
@@ -442,7 +501,7 @@ public class TargetAsmInfo
 
     public String getData16bitsDirective(int AS)
     {
-        return AS == 0 ? Data16bitsDirective : getDataASDirective(16, AS);
+        return AS != 0? Data16bitsDirective : getDataASDirective(16, AS);
     }
 
     public String getData32bitsDirective()
@@ -452,7 +511,7 @@ public class TargetAsmInfo
 
     public String getData32bitsDirective(int AS)
     {
-        return AS == 0 ? Data32bitsDirective : getDataASDirective(32, AS);
+        return AS != 0? Data32bitsDirective : getDataASDirective(32, AS);
     }
 
     public String getData64bitsDirective()
@@ -462,7 +521,7 @@ public class TargetAsmInfo
 
     public String getData64bitsDirective(int AS)
     {
-        return AS == 0 ? Data64bitsDirective : getDataASDirective(64, AS);
+        return AS != 0? Data64bitsDirective : getDataASDirective(64, AS);
     }
 
     public boolean usesSunStyleELFSectionSwitchSyntax()
@@ -770,5 +829,230 @@ public class TargetAsmInfo
     public String getConstantPoolSectionDirective()
     {
         return constantPoolSection;
+    }
+
+    public Section getSectionForGlobal(GlobalValue gv)
+    {
+        Section s = null;
+        if (gv.hasSection())
+        {
+            int flags = sectionFlagsForGlobal(gv, gv.getSection());
+            s = getNamedSection(gv.getSection(), flags);
+        }
+        else
+        {
+            // Use default section depending on the 'type' of global
+            s = selectSectionForGlobal(gv);
+        }
+
+        return s;
+    }
+
+    private Section getNamedSection(String name, int flags)
+    {
+        if (sections.containsKey(name))
+            return sections.get(name);
+
+        Section s = new Section(name, flags | SectionFlags.Named);
+        sections.put(name, s);
+        return s;
+    }
+
+    public int sectionFlagsForGlobal(GlobalValue gv, String name)
+    {
+        int flags = SectionFlags.None;
+        if (gv != null)
+        {
+            SectionKind kind = sectionKindForGlobal(gv);
+            switch (kind)
+            {
+                case Text:
+                    flags |= SectionFlags.Code;
+                    break;
+                case ThreadData:
+                case ThreadBSS:
+                    flags |= SectionFlags.TLS;
+                    // FALLS THROUGH
+                case Data:
+                case BSS:
+                    flags |= SectionFlags.Writeable;
+                    break;
+                case ROData:
+                case RODataMergeStr:
+                case RODataMergeConst:
+                    // No additional flags here
+                    break;
+                case SmallData:
+                case SmallBSS:
+                    flags |= SectionFlags.Writeable;
+                    // FALLS THROUGH
+                case SmallROData:
+                    flags |= SectionFlags.Small;
+                    break;
+                default:
+                    assert false: "Unexpected section kind!";
+            }
+        }
+
+        if (name != null && !name.isEmpty())
+        {
+            flags |= SectionFlags.Named;
+
+            // Some lame default implementation based on some magic section names.
+            if (name.regionMatches(0, ".gnu.linkonce.b.", 0, 16) ||
+                    name.regionMatches(0, ".llvm.linkonce.b.", 0, 17)||
+                    name.regionMatches(0, ".gnu.linkonce.sb.", 0, 17)||
+                    name.regionMatches(0, ".llvm.linkonce.sb.", 0, 18))
+                flags |= SectionFlags.BSS;
+            else if (name.equals(".tdata")||
+                    name.regionMatches(0, ".tdata.", 0, 7)||
+                    name.regionMatches(0, ".gnu.linkonce.td.", 0, 17)||
+                    name.regionMatches(0, ".llvm.linkonce.td.", 0, 18))
+                flags |= SectionFlags.TLS;
+            else if (name.equals(".tbss")||
+                    name.regionMatches(0, ".tbss.", 0, 6)||
+                    name.regionMatches(0, ".gnu.linkonce.tb.", 0, 17)||
+                    name.regionMatches(0, ".llvm.linkonce.tb.", 0, 18))
+                flags |= SectionFlags.BSS | SectionFlags.TLS;
+        }
+        return flags;
+    }
+
+    public Section selectSectionForGlobal(GlobalValue gv)
+    {
+        SectionKind kind = sectionKindForGlobal(gv);
+        if (kind == SectionKind.Text)
+            return getTextSection();
+        else if (isBSS(kind) && getBSSSection_() != null)
+        {
+            return getBSSSection_();
+        }
+        else if (getReadOnlySection() != null && isReadOnly(kind))
+            return getReadOnlySection();
+
+        return getDataSection();
+    }
+
+    public Section getBSSSection_()
+    {
+        return BSSSection_;
+    }
+
+    public Section getDataSection()
+    {
+        return DataSection;
+    }
+
+    public Section getTextSection()
+    {
+        return TextSection;
+    }
+
+    public String getBSSSection()
+    {
+        return BSSSection;
+    }
+
+    public Section getSmallBSSSection()
+    {
+        return SmallBSSSection;
+    }
+
+    public Section getSmallDataSection()
+    {
+        return SmallDataSection;
+    }
+
+    public Section getReadOnlySection()
+    {
+        return ReadOnlySection;
+    }
+
+    public Section getSmallRODataSection()
+    {
+        return SmallRODataSection;
+    }
+
+    public Section getTLSBSSSection()
+    {
+        return TLSBSSSection;
+    }
+
+    public Section getTLSDataSection()
+    {
+        return TLSDataSection;
+    }
+
+    public SectionKind sectionKindForGlobal(GlobalValue gv)
+    {
+        if (gv instanceof Function)
+            return SectionKind.Text;
+
+        GlobalVariable gvar = gv instanceof GlobalVariable ?(GlobalVariable)gv:null;
+        assert gvar != null;
+        boolean isThreadLocal = gvar.isThreadLocal();
+
+        if (isSuitableForBSS(gvar))
+        {
+            return isThreadLocal ? SectionKind.ThreadBSS : SectionKind.BSS;
+        }
+        else if (gvar.isConstant() && !isThreadLocal)
+        {
+            Constant c = gvar.getInitializer();
+            if (c.containsRelocations())
+                return SectionKind.ROData;
+            else
+            {
+                if (isConstantString(c))
+                    return SectionKind.RODataMergeStr;
+                else
+                    return SectionKind.RODataMergeConst;
+            }
+        }
+        return isThreadLocal ? SectionKind.ThreadData : SectionKind.Data;
+    }
+
+    private static boolean isConstantString(Constant c)
+    {
+        ConstantArray cva = c instanceof ConstantArray ? (ConstantArray)c : null;
+        if (cva != null && cva.isString())
+            return true;
+
+        // Another possibility: [1 x i8] zeroinitializer
+        if (c instanceof ConstantAggregateZero)
+        {
+            ArrayType at = c.getType() instanceof ArrayType ? (ArrayType)c.getType() : null;
+            if (at != null)
+            {
+                return at.getElementType().equals(Type.Int8Ty) &&
+                        at.getNumElements() == 1;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isSuitableForBSS(GlobalVariable gvar)
+    {
+        if (!gvar.hasInitializer())
+            return true;
+
+        Constant c = gvar.getInitializer();
+        return c.isNullValue() && !gvar.isConstant() && !NoZerosInBSS;
+    }
+
+    public String getSectionEndDirectiveSuffix()
+    {
+        return sectionEndDirectiveSuffix;
+    }
+
+    public String getSectionFlags(int flags)
+    {
+        // TODO: 17-8-2
+        return "";
+    }
+
+    public String getDataSectionStartSuffix()
+    {
+        return dataSectionStartSuffix;
     }
 }
