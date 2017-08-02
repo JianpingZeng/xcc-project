@@ -607,4 +607,9 @@ public class TargetData implements ImmutablePass
 	{
 		return getAlignment(type, false);
 	}
+
+	public long getTypePaddedSize(Type ty)
+	{
+		return roundUpAlignment(getTypeStoreSize(ty), getABITypeAlignment(ty));
+	}
 }

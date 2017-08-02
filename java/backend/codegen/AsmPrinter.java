@@ -23,10 +23,7 @@ import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.NameMangler;
 import backend.support.TypePrinting;
-import backend.target.TargetAsmInfo;
-import backend.target.TargetData;
-import backend.target.TargetMachine;
-import backend.target.TargetRegisterInfo;
+import backend.target.*;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Value.UndefValue;
@@ -56,6 +53,10 @@ public abstract class AsmPrinter extends MachineFunctionPass
      * The current section asmName where we are emitting to.
      */
     private String currentSection;
+
+    private Section currentSection_;
+
+    private boolean isInTextSection;
     /**
      * This provides a unique ID for the compiling machine function in the
      * current translation unit.
@@ -130,6 +131,32 @@ public abstract class AsmPrinter extends MachineFunctionPass
         if (verboseAsm)
             au.addRequired(MachineLoopInfo.class);
         super.getAnalysisUsage(au);
+    }
+
+    public static boolean isScale(MachineOperand mo)
+    {
+        long imm;
+        return mo.isImm() && (
+                ((imm = mo.getImm()) & (imm - 1)) == 0)
+                && imm >= 1 && imm <= 8;
+    }
+
+    /**
+     * Memory operand is like this: baseReg + scale*indexReg+ disp.
+     * @param mi
+     * @param opNo
+     * @return
+     */
+    public static boolean isMem(MachineInstr mi, int opNo)
+    {
+        if (mi.getOperand(opNo).isFrameIndex()) return true;
+        return mi.getNumOperands() >= opNo + 4 &&
+                mi.getOperand(opNo).isRegister()
+                && isScale(mi.getOperand(opNo + 1))
+                && mi.getOperand(opNo + 2).isRegister()
+                && (mi.getOperand(opNo + 3).isImm()
+                || mi.getOperand(opNo + 3).isGlobalAddress()
+                || mi.getOperand(opNo + 3).isConstantPoolIndex());
     }
 
     /**
@@ -515,7 +542,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         return (int)val;
     }
 
-    private boolean isprint(int c)
+    public static boolean isprint(int c)
     {
         // TODO
         return true;
@@ -588,6 +615,34 @@ public abstract class AsmPrinter extends MachineFunctionPass
     protected void printInlineAsm(MachineInstr mi)
     {
         Util.shouldNotReachHere("Target can not support inline asm");
+    }
+
+    public void switchSection(Section ns)
+    {
+        String newSection = ns.getName();
+
+        if (currentSection.equals(newSection))
+            return;
+
+        if (tai.getSectionEndDirectiveSuffix() != null && !currentSection.isEmpty())
+        {
+            os.printf("%s%s\n", currentSection, tai.getSectionEndDirectiveSuffix());
+        }
+
+        currentSection = newSection;
+        currentSection_ = ns;
+
+        if (!currentSection.isEmpty())
+        {
+            os.printf("%s%s%s", tai.getSwitchToSectionDirective(),
+                    currentSection,
+                    tai.getSectionFlags(ns.getFlags()));
+        }
+        else
+            os.print(currentSection);
+        os.println(tai.getDataSectionStartSuffix());
+
+        isInTextSection = (ns.getFlags() & SectionFlags.Code) != 0;
     }
 
     public void switchSection(String newSection, GlobalValue gv)
@@ -847,5 +902,25 @@ public abstract class AsmPrinter extends MachineFunctionPass
 
             printChildLoopComment(os, childLoop, tai, functionNumber);
         }
+    }
+
+    public boolean emitSpecialLLVMGlobal(GlobalVariable gv)
+    {
+        if (gv.getName().equals("llvm.used"))
+        {
+            if (tai.getUsedDirective() != null)
+                emitLLVMUsedList(gv.getInitializer());
+            return true;
+        }
+
+        if (gv.getSection().equals("llvm.metadata"))
+            return true;
+
+        return false;
+    }
+
+    private void emitLLVMUsedList(Constant list)
+    {
+        assert false:"Should not reaching here!"; // TODO: 17-8-2
     }
 }

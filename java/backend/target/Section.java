@@ -20,10 +20,39 @@ package backend.target;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class TargetOptions
+public class Section
 {
-    public static boolean PerformTailCallOpt;
-    public static boolean NoFramePointerElim;
-    public static boolean RealignStack;
-    public static boolean NoZerosInBSS;
+    private String name;
+    private int flags;
+
+    public Section(String name)
+    {
+        this(name, SectionFlags.Invalid);
+    }
+
+    public Section(String name, int flags)
+    {
+        this.name = name;
+        this.flags = flags;
+    }
+
+    public boolean isNamed()
+    {
+        return (flags & SectionFlags.Named) != 0;
+    }
+
+    public int getEntitySize()
+    {
+        return (flags >> 24) & 0XFF;
+    }
+
+    public String getName()
+    {
+        return name;
+    }
+
+    public int getFlags()
+    {
+        return flags;
+    }
 }

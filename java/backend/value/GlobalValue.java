@@ -115,7 +115,10 @@ public abstract class GlobalValue extends Constant
     @Override
     public PointerType getType() { return (PointerType) super.getType();}
 
-    public boolean hasSection() {return section != null;}
+    public boolean hasSection()
+    {
+        return section != null && !section.isEmpty();
+    }
 
     public String getSection() {return section;}
 
@@ -195,6 +198,10 @@ public abstract class GlobalValue extends Constant
         return visibility == VisibilityTypes.DefaultVisibility;
     }
 
+    public boolean hasHiddenVisibility()
+    {
+        return visibility == VisibilityTypes.HiddenVisibility;
+    }
 
     public VisibilityTypes getVisibility()
     {
