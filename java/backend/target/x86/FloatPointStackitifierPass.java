@@ -16,11 +16,8 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.*;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetMachine;
-
-import static backend.codegen.MachineInstrBuilder.buildMI;
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineFunctionPass;
 
 /**
  * This file defines a pass named of <emp>FloatPointStackitifierPass</emp>,
@@ -31,8 +28,10 @@ import static backend.codegen.MachineInstrBuilder.buildMI;
  * @author Xlous.zeng
  * @version 0.1
  */
+
 public class FloatPointStackitifierPass extends MachineFunctionPass
 {
+    /*
     private static class TableEntry implements Comparable<TableEntry>
     {
         int from;
@@ -107,15 +106,15 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
     private TargetMachine tm;
     /**
      * keeps track of mapping ST(x) (phyReg) to FP<n>(virReg) .
-     */
+     *
     private int[] stack;
     /**
      * Mappings from FP(n) to ST(x).
-     */
+     *
     private int[] virReg2PhyRegMap;
     /**
      * The current top of float stack.
-     */
+     *
     private int stackTop;
 
     @Override
@@ -133,7 +132,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
     /***
      * Put the specified register FP<n> into the fp stack.
      * @param reg
-     */
+     *
     private void pushReg(int reg)
     {
         assert reg < 8:"Register number out of range!";
@@ -145,7 +144,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
      * Handle zero arg FP Inst which uses implicit ST(0) and a immediate number,
      * like FLD0, FLD1.
      * @param mi
-     */
+     *
     private void handleZeroArgFPInst(MachineInstr mi)
     {
         int destReg = getFPReg(mi.getOperand(0));
@@ -171,7 +170,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
      * @param regNo virtual floating point register to be assigned with ST(i).
      * @param asReg Push it onto the top of stack.
      * @param insertPos
-     */
+     *
     private int duplicateToTop(int regNo, int asReg, int insertPos)
     {
         int stReg = getSTReg(regNo);
@@ -185,7 +184,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
     /**
      * Return the X86::FP<n> register in register ST(i).
      * @return
-     */
+     *
     private int getStackEntry(int sti)
     {
         assert sti <= stackTop :" access out of range!";
@@ -203,7 +202,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
      * @param virReg
      * @param insertPos
      * @return
-     */
+     *
     private int moveToTop(int virReg, int insertPos)
     {
         if (!isAtTop(virReg))
@@ -233,7 +232,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
      * Like fst ST(0), <mem>.
      * @param mi
      * @param idx
-     */
+     *
     private int handleOneArgFPInst(MachineInstr mi, int idx)
     {
         assert mi.getNumOperands() == 5:"Can only handle fst ST(0) <mem> instr";
@@ -373,7 +372,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
      * @param mi
      * @param idx
      * @return
-     */
+     *
     private int handleSpecialFPInst(MachineInstr mi, int idx)
     {
         int oldIdx = idx;
@@ -409,7 +408,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
      * contained in it.
      * @param mbb
      * @return
-     */
+     *
     private boolean processMachineBasicBlock(MachineBasicBlock mbb)
     {
         this.mbb = mbb;
@@ -461,7 +460,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
      *
      * @param mf
      * @return
-     */
+     *
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
@@ -478,7 +477,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
     {
         stack = new int[8];
         virReg2PhyRegMap = new int[8];
-    }
+    }*/
 
     /**
      * This method is a static factory method used for creating an instance of
@@ -489,5 +488,15 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
         createX86FloatingPointStackitifierPass()
     {
         return new FloatPointStackitifierPass();
+    }
+
+    @Override public String getPassName()
+    {
+        return null;
+    }
+
+    @Override public boolean runOnMachineFunction(MachineFunction mf)
+    {
+        return false;
     }
 }

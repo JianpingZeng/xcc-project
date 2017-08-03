@@ -51,6 +51,14 @@ public class MachineLocation
         Offset = O;
     }
 
+    public MachineLocation(MachineLocation other)
+    {
+        super();
+        IsRegister = other.IsRegister;
+        Register = other.Register;
+        Offset = other.Offset;
+    }
+
     // Accessors
     public boolean isReg()
     {

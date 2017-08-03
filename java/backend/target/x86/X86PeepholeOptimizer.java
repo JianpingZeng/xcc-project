@@ -21,8 +21,10 @@ import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
 import backend.codegen.MachineInstr;
 import backend.pass.RegisterPass;
+import backend.target.TargetInstrInfo;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.target.x86.X86GenInstrNames.*;
 
 /**
  * @author Xlous.zeng
@@ -47,6 +49,7 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         boolean changed = false;
+        tii = mf.getTarget().getInstrInfo();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             for (int i = 0; i < mbb.size(); )
@@ -57,16 +60,19 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
         }
         return changed;
     }
+
     private boolean res = false;
+    private TargetInstrInfo tii;
+
     private int optimizeInst(MachineBasicBlock mbb, int idx)
     {
         MachineInstr curMI = mbb.getInstAt(idx);
         MachineInstr next = idx == mbb.size() - 1? null: mbb.getInstAt(idx+1);
         switch (curMI.getOpcode())
         {
-            case X86InstrNames.MOVrr8:
-            case X86InstrNames.MOVrr16:
-            case X86InstrNames.MOVrr32:
+            case MOV8rr:
+            case MOV16rr:
+            case MOV32rr:
                 // destroy X=X copy.
                 if (curMI.getOperand(0).getReg()
                         == curMI.getOperand(1).getReg())
@@ -77,18 +83,18 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                 }
                 res = false;
                 return idx+1;
-            case X86InstrNames.ADDri16:
-            case X86InstrNames.ADDri32:
-            case X86InstrNames.SUBri16:
-            case X86InstrNames.SUBri32:
-            case X86InstrNames.IMULri16:
-            case X86InstrNames.IMULri32:
-            case X86InstrNames.ANDri16:
-            case X86InstrNames.ANDri32:
-            case X86InstrNames.ORri16:
-            case X86InstrNames.ORri32:
-            case X86InstrNames.XORri16:
-            case X86InstrNames.XORri32:
+            case ADD16ri:
+            case ADD32ri:
+            case SUB16ri:
+            case SUB32ri:
+            case IMUL16rri:
+            case IMUL32rri:
+            case AND16ri:
+            case AND32ri:
+            case OR16ri:
+            case OR32ri:
+            case XOR16ri:
+            case XOR32ri:
                 assert curMI.getNumOperands() == 3:"There should have 3 opernds!";
                 if (curMI.getOperand(2).isImm())
                 {
@@ -100,34 +106,35 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                         switch (curMI.getOpcode())
                         {
                             default: assert false:"Unknown opcode value!";
-                            case X86InstrNames.ADDri16: opcode = X86InstrNames.ADDri16b;break;
-                            case X86InstrNames.ADDri32: opcode = X86InstrNames.ADDri32b; break;
-                            case X86InstrNames.SUBri16: opcode = X86InstrNames.SUBri16b; break;
-                            case X86InstrNames.SUBri32: opcode = X86InstrNames.SUBri32b; break;
-                            case X86InstrNames.IMULri16: opcode = X86InstrNames.IMULri16b; break;
-                            case X86InstrNames.IMULri32: opcode = X86InstrNames.IMULri32b; break;
-                            case X86InstrNames.ANDri16: opcode = X86InstrNames.ANDri16; break;
-                            case X86InstrNames.ANDri32: opcode = X86InstrNames.ANDri32b; break;
-                            case X86InstrNames.ORri16: opcode = X86InstrNames.ORri16b; break;
-                            case X86InstrNames.ORri32: opcode = X86InstrNames.ORri32b; break;
-                            case X86InstrNames.XORri16: opcode = X86InstrNames.XORri16b; break;
-                            case X86InstrNames.XORri32:opcode = X86InstrNames.XORri32b; break;
+                            case ADD16ri: opcode = ADD16ri8;break;
+                            case ADD32ri: opcode = ADD32ri8; break;
+                            case SUB16ri: opcode = SUB16ri8; break;
+                            case SUB32ri: opcode = SUB32ri8; break;
+                            case IMUL16rri: opcode = IMUL16rri8; break;
+                            case IMUL32rri: opcode = IMUL32rri8; break;
+                            case AND16ri: opcode = AND16ri8; break;
+                            case AND32ri: opcode = AND32ri8; break;
+                            case OR16ri: opcode = OR16ri8; break;
+                            case OR32ri: opcode = OR32ri8; break;
+                            case XOR16ri: opcode = XOR32ri8; break;
+                            case XOR32ri:opcode = XOR32ri8; break;
                         }
 
                         int r0 = curMI.getOperand(0).getReg();
                         int r1 = curMI.getOperand(1).getReg();
-                        mbb.replace(idx, buildMI(opcode, 2, r0).addReg(r1).
-                                addZImm((byte)val).getMInstr());
+                        mbb.replace(idx, buildMI(tii.get(opcode), r0)
+                                .addReg(r1)
+                                .addImm(val).getMInstr());
                         res = true;
                         return idx + 1;
                     }
                 }
                 res = false;
                 return idx+1;
-            case X86InstrNames.BSWAPr32:
+            case BSWAP32r:
             {
                 // Change bswap EAX, bswap EAX into nothing.
-                if (next.getOpcode() == X86InstrNames.BSWAPr32
+                if (next.getOpcode() == BSWAP32r
                         && curMI.getOperand(0).getReg() ==
                         next.getOperand(0).getReg())
                 {

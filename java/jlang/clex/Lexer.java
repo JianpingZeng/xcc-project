@@ -103,7 +103,7 @@ public class Lexer extends PreprocessorLexer
 
         MemoryBuffer inputFile = pp.getSourceManager().getBuffer(fid);
 
-        char[] arr = inputFile.getBuffer().array();
+        char[] arr = inputFile.getBuffer();
         initLexer(arr, 0, arr.length);
 
         setCommentRetentionState(pp.getCommentRetentionState());
@@ -142,7 +142,7 @@ public class Lexer extends PreprocessorLexer
         fileLoc = sourceMgr.getLocForStartOfFile(fid);
         langOpts = opts;
         MemoryBuffer buf = sourceMgr.getBuffer(fid);
-        char[] arr = buf.getBuffer().array();
+        char[] arr = buf.getBuffer();
         initLexer(arr, 0, arr.length);
 
         lexingRawMode = true;

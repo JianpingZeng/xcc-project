@@ -110,7 +110,7 @@ public class FullSourceLoc extends SourceLocation
     public char[] getBufferData()
     {
         assert isValid();
-        return getBuffer().getBuffer().array();
+        return getBuffer().getBuffer();
     }
 
     public Pair<FileID, Integer> getDecomposedLoc()
