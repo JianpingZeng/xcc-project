@@ -32,7 +32,7 @@ public class RegScavenger
    TargetInstrInfo TII;
     MachineRegisterInfo MRI;
     MachineBasicBlock MBB;
-    MachineBasicBlock::iterator MBBI;
+    int MBBI;
     int NumPhysRegs;
 
     /// Tracking - True if RegScavenger is currently tracking the liveness of
@@ -87,19 +87,21 @@ public class RegScavenger
     void initRegState(){}
 
     /// forward - Move the internal MBB iterator and update register states.
-    void forward() {}
+    void forward() {
+     // TODO: 17-8-3
+    }
 
     /// forward - Move the internal MBB iterator and update register states until
     /// it has processed the specific iterator.
-    void forward(MachineBasicBlock::iterator I)
+    void forward(int I)
     {
-        if (!Tracking && MBB->begin() != I) forward();
+        if (!Tracking && I != 0) forward();
         while (MBBI != I) forward();
     }
 
     /// skipTo - Move the internal MBB iterator but do not update register states.
     ///
-    void skipTo(MachineBasicBlock::iterator I) { MBBI = I; }
+    void skipTo(int I) { MBBI = I; }
 
     /// getRegsUsed - return all registers currently in use in used.
     void getRegsUsed(BitSet used, boolean includeReserved)
@@ -107,7 +109,11 @@ public class RegScavenger
 
     /// FindUnusedReg - Find a unused register of the specified register class.
     /// Return 0 if none is found.
-    int FindUnusedReg( TargetRegisterClass RegClass) {}
+    int FindUnusedReg( TargetRegisterClass RegClass)
+    {
+     // TODO: 17-8-3
+     return 0;
+    }
 
     /// setScavengingFrameIndex / getScavengingFrameIndex - accessor and setter of
     /// ScavengingFrameIndex.
@@ -119,53 +125,58 @@ public class RegScavenger
     /// adjustment due to call frame, it's passed along to eliminateFrameIndex().
     /// Returns the scavenged register.
     int scavengeRegister( TargetRegisterClass RegClass,
-            MachineBasicBlock::iterator I, int SPAdj)
-    {}
+            int I, int SPAdj)
+    {
+     // TODO: 17-8-3
+     return 0;
+    }
 
     int scavengeRegister( TargetRegisterClass RegClass, int SPAdj)
     {
         return scavengeRegister(RegClass, MBBI, SPAdj);
     }
 
-    private:
+    private
     /// isReserved - Returns true if a register is reserved. It is never "unused".
     boolean isReserved(int Reg)  { return ReservedRegs.get(Reg); }
 
     /// isUsed / isUsed - Test if a register is currently being used.
     ///
-    boolean isUsed(int Reg)    { return !RegsAvailable.get(Reg); }
-    boolean isUnused(int Reg)  { return RegsAvailable.get(Reg); }
+    private boolean isUsed(int Reg)    { return !RegsAvailable.get(Reg); }
+ private boolean isUnused(int Reg)  { return RegsAvailable.get(Reg); }
 
     /// isAliasUsed - Is Reg or an alias currently in use?
-    boolean isAliasUsed(int Reg)
+    private boolean isAliasUsed(int Reg)
     {
-
+     // TODO: 17-8-3
+     return false;
     }
 
     /// setUsed / setUnused - Mark the state of one or a number of registers.
     ///
-    void setUsed(int Reg){}
-    void setUsed(BitSet Regs)
+    private void setUsed(int Reg){}
+ private void setUsed(BitSet Regs)
     {
         RegsAvailable.andNot(Regs);
     }
 
-    void setUnused(BitSet Regs)
+ private void setUnused(BitSet Regs)
     {
         RegsAvailable.or(Regs);
     }
 
     /// Add Reg and all its sub-registers to BV.
-    void addRegWithSubRegs(BitSet BV, int Reg){}
+    private void addRegWithSubRegs(BitSet BV, int Reg){}
 
     /// Add Reg and its aliases to BV.
-    void addRegWithAliases(BitSet BV, int Reg){}
+    private void addRegWithAliases(BitSet BV, int Reg){}
 
-    int findSurvivorReg(MachineBasicBlock::iterator MI,
+ private int findSurvivorReg(int MI,
             BitSet Candidates,
             int InstrLimit,
-            MachineBasicBlock::iterator &UseMI)
+            int UseMI)
     {
-
+     // TODO: 17-8-3
+     return 0;
     }
 }

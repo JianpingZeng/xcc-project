@@ -77,7 +77,7 @@ public class ScratchBuffer
         MemoryBuffer buf = MemoryBuffer.getNewMemBuffer(requestedLen, "<scratch space>");;
         FileID fid = sourceMgr.createFileIDForMemBuffer(buf);
         bufferStartLoc = sourceMgr.getLocForStartOfFile(fid);
-        buffer = buf.getBuffer().array();
+        buffer = buf.getBuffer();
         byteUsed = 1;
         buffer[0] = '\0';  // Star out with a \0 for cleanliness.
     }

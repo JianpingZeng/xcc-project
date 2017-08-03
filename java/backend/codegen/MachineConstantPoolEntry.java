@@ -18,7 +18,6 @@ package backend.codegen;
 
 import backend.type.Type;
 import backend.value.Constant;
-import com.sun.org.apache.bcel.internal.generic.RET;
 
 /**
  * @author Xlous.zeng
@@ -52,10 +51,16 @@ public class MachineConstantPoolEntry
 
 
     public Type getType()
-    {}
+    {
+        // TODO: 17-8-3
+        return null;
+    }
 
     public int getRelocationInfo()
-    {}
+    {
+        // TODO: 17-8-3
+        return 0;
+    }
 
     public int getAlignment()
     {

@@ -22,7 +22,6 @@ import jlang.clex.StrData;
 import jlang.support.*;
 import tools.Pair;
 
-import java.nio.CharBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -298,12 +297,12 @@ public class SourceManager
         Pair<FileID, Integer> locInfo = getDecomposedLiteralLoc(loc);
 
         return new StrData(getSLocEntry(locInfo.first).getFile().getContentCache().
-                getBuffer().getBuffer().array(), locInfo.second);
+                getBuffer().getBuffer(), locInfo.second);
     }
 
     public int getColumnNumber(FileID fid, int filePos)
     {
-        char[] buf = getBuffer(fid).getBuffer().array();
+        char[] buf = getBuffer(fid).getBuffer();
 
         int lineStart = filePos;
         while (lineStart != 0 && buf[lineStart] != '\n' && buf[lineStart]!= '\r')
@@ -337,7 +336,7 @@ public class SourceManager
     public static void computeLineNumbers(ContentCache file)
     {
         MemoryBuffer buffer = file.getBuffer();
-        CharBuffer cb = buffer.getBuffer();
+        char[] cb = buffer.getBuffer();
         TIntArrayList lineOffsets = new TIntArrayList();
 
         lineOffsets.add(0);
@@ -346,18 +345,18 @@ public class SourceManager
         while (true)
         {
             int i = 0;
-            while (cb.charAt(i) != '\n' && cb.charAt(i) != '\r' && cb.charAt(i) != '\0')
+            while (cb[i] != '\n' && cb[i] != '\r' && cb[i] != '\0')
             {
                 ++i;
             }
 
             offs += i;
 
-            if (cb.charAt(i) == '\n' || cb.charAt(i) == '\r')
+            if (cb[i] == '\n' || cb[i] == '\r')
             {
                 // If this is \n\r or \r\n, skip both characters.
-                if ((cb.charAt(1+1) =='\n' || cb.charAt(i+1) == '\r')
-                        && cb.charAt(i) != cb.charAt(i+1))
+                if ((cb[i+1] =='\n' || cb[i+1] == '\r')
+                        && cb[i] != cb[i+1])
                 {
                     ++offs;
                     ++i;
@@ -369,7 +368,7 @@ public class SourceManager
             else
             {
                 // Otherwise, this is a null.  If end of file, exit.
-                if (i == cb.length()) break;
+                if (i == cb.length) break;
 
                 // Otherwise, skip the null.
                 ++offs;
@@ -658,11 +657,11 @@ public class SourceManager
 
         int filePos = content.sourceLineCache.get(line - 1);
         int end = content.getBuffer().length();
-        CharBuffer buf = content.getBuffer().getBuffer();
+        char[] buf = content.getBuffer().getBuffer();
         int i = filePos;
 
         // Check that the given column is valid.
-        while (i < end - 1 && i < col-1 && buf.charAt(i) != '\n' && buf.charAt(i) != '\r')
+        while (i < end - 1 && i < col-1 && buf[i] != '\n' && buf[i] != '\r')
             ++i;
 
         if (i < col-1)
@@ -996,6 +995,6 @@ public class SourceManager
 
     public char[] getBufferData(FileID fileID)
     {
-        return getBuffer(fileID).getBuffer().array();
+        return getBuffer(fileID).getBuffer();
     }
 }

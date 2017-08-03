@@ -38,8 +38,8 @@ public class MachineMove
     public MachineMove(int ID, MachineLocation D, MachineLocation S)
     {
         LabelID = ID;
-        Destination(D);
-        Source(S);
+        Destination = new MachineLocation(D);
+        Source = new MachineLocation(S);
     }
 
     // Accessors
