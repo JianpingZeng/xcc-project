@@ -19,7 +19,7 @@ package backend.codegen;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
-import utils.tablegen.SetMultiMap;
+import tools.SetMultiMap;
 
 import java.util.Set;
 
