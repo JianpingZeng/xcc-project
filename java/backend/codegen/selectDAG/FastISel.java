@@ -60,7 +60,7 @@ public abstract class FastISel
     protected TargetInstrInfo tii;
     protected TargetLowering tli;
 
-    public void setNewBlock(MachineBasicBlock mbb)
+    public void startNewBlock(MachineBasicBlock mbb)
     {
         setCUrrentBlock(mbb);
         localValueMap.clear();

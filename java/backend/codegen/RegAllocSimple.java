@@ -14,6 +14,8 @@ import tools.BitMap;
 
 import java.util.HashMap;
 
+import static backend.target.TargetRegisterInfo.isVirtualRegister;
+
 /**
  * This pass performs a pass of very simple register allocation, reloading operand
  * from stack slot into physical register and spill it into memory back.
@@ -128,7 +130,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 			{
 				MachineOperand op = mi.getOperand(i);
 				// just handle virtual register.
-				if (op.isVirtualRegister())
+				if (op.isRegister() && op.getReg() != 0 && isVirtualRegister(op.getReg()))
 				{
 					int virtualReg = op.getReg();
 
@@ -137,14 +139,14 @@ public final class RegAllocSimple extends MachineFunctionPass
 					int phyReg = virToPhyRegMap.get(virtualReg);
 					if (phyReg == 0)
 					{
-						if (op.opIsDef())
+						if (op.isDef())
 						{
-							if (instrInfo.isTwoAddrInstr(opcode) && i == 0)
+							if (instrInfo.get(opcode).isConvertibleTo3Addr() && i == 0)
 							{
 								// This maps a = b + c into b+= c, and save b into a.
 								assert mi.getOperand(1).isRegister()
 										&& mi.getOperand(1).getReg()!=0
-										&& mi.getOperand(1).opIsUse()
+										&& mi.getOperand(1).isUse()
 										:"Two address instruction invalid!";
 
 								phyReg = mi.getOperand(1).getReg();

@@ -203,6 +203,14 @@ public class Value implements Cloneable
 		// TODO: 17-7-27
 	}
 
+	/**
+	 * Support for debugging, callable in GDB: this.dump().
+	 */
+	public void dump()
+	{
+		// TODO: 17-8-4
+	}
+
     /**
      * 'undef' values are things that do not have specified contents.
      * These are used for a variety of purposes, including global variable

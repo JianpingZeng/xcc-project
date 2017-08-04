@@ -1,4 +1,4 @@
-package utils.tablegen;
+package tools;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous

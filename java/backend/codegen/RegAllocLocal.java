@@ -16,6 +16,8 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * This pass performs a pass of performing local register allocation on Machine
@@ -23,7 +25,7 @@ import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LocalRegAllocator extends MachineFunctionPass
+public class RegAllocLocal extends MachineFunctionPass
 {
 	private MachineFunction mf;
 	private TargetMachine tm;
@@ -52,7 +54,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 	private int numSpilled;
 	private int numReloaded;
 
-	public LocalRegAllocator()
+	public RegAllocLocal()
 	{
 		stackSlotForVirReg = new TIntIntHashMap();
 		virToPhyRegMap = new HashMap<>();
@@ -385,7 +387,9 @@ public class LocalRegAllocator extends MachineFunctionPass
 			// loop over all operands, assign physical register for it.
 			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
 			{
-				if (mi.getOperand(j).opIsUse() && mi.getOperand(j).isVirtualRegister())
+				if (mi.getOperand(j).isUse() &&
+						mi.getOperand(j).isRegister() &&
+						isVirtualRegister(mi.getOperand(j).getReg()))
 				{
 					int virtReg = mi.getOperand(j).getReg();
 					int phyReg = reloadVirReg(mbb, i, virtReg);
@@ -399,8 +403,9 @@ public class LocalRegAllocator extends MachineFunctionPass
 			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
 			{
 				MachineOperand op = mi.getOperand(j);
-				if ((op.opIsDef())
-						&& op.isPhysicalRegister())
+				if ((op.isDef() && op.getReg() != 0 &&
+                        op.isRegister() &&
+                        isPhysicalRegister(op.getReg())))
 				{
 					int reg = op.getReg();
 					spillPhyReg(mbb, i, reg, true);
@@ -425,8 +430,9 @@ public class LocalRegAllocator extends MachineFunctionPass
 			for (int j = mi.getNumOperands() - 1; j >= 0; j--)
 			{
 				MachineOperand op = mi.getOperand(j);
-				if ((op.opIsDef())
-						&& op.isVirtualRegister())
+                if ((op.isDef() && op.getReg() != 0 &&
+                        op.isRegister() &&
+                        isVirtualRegister(op.getReg())))
 				{
 					int destVirReg = mi.getOperand(j).getReg();
 					int destPhyReg = 0;
@@ -439,13 +445,13 @@ public class LocalRegAllocator extends MachineFunctionPass
 						virToPhyRegMap.remove(destVirReg);
 						removePhyReg(phyReg);
 					}
-
-					if (tm.getInstrInfo().isTwoAddrInstr(opcode) && j == 0)
+                    TargetInstrDesc tid = instrInfo.get(opcode);
+					if (tid.isConvertibleTo3Addr() && j == 0)
 					{
 						// a = b + c --> b(a) += c;
 						assert  mi.getOperand(1).isRegister()
 								&& mi.getOperand(1).getReg() != 0
-								&& mi.getOperand(1).opIsUse()
+								&& mi.getOperand(1).isUse()
 								:"Two address instruction invalid!";
 
 						destPhyReg = mi.getOperand(1).getReg();
@@ -466,7 +472,7 @@ public class LocalRegAllocator extends MachineFunctionPass
 		// find a position of the first non-terminator instruction where
 		// some instrs will were inserts after when needed.
 		int itr = mbb.size();
-		while(itr!=0 && instrInfo.isTerminatorInstr(mbb.getInstAt(itr-1).getOpcode()))
+		while(itr!=0 && instrInfo.get(mbb.getInstAt(itr-1).getOpcode()).isTerminator())
 			--itr;
 
 		// Spill all physical register holding virtual register.
@@ -506,7 +512,6 @@ public class LocalRegAllocator extends MachineFunctionPass
 		tm = mf.getTarget();
 		regInfo = tm.getRegisterInfo();
 		instrInfo = tm.getInstrInfo();
-
 		for (MachineBasicBlock mbb : mf.getBasicBlocks())
 			allocateBasicBlock(mbb);
 
@@ -529,9 +534,9 @@ public class LocalRegAllocator extends MachineFunctionPass
 		super.getAnalysisUsage(au);
 	}
 
-	public static LocalRegAllocator createLocalRegAllocator()
+	public static RegAllocLocal createLocalRegAllocator()
 	{
-		return new LocalRegAllocator();
+		return new RegAllocLocal();
 	}
 }
 
