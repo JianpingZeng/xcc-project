@@ -118,7 +118,7 @@ public abstract class TargetRegisterClass
      *
      * @return
      */
-    public int getRegAlign()
+    public int getAlignment()
     {
         return regAlign;
     }

@@ -255,6 +255,11 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         printMemReference(mi, opNo);
     }
 
+    public void printf80mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
     public void printf128mem(MachineInstr mi, int opNo)
     {
         printMemReference(mi, opNo);
@@ -273,6 +278,21 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     public void printlea64_32mem(MachineInstr mi, int opNo)
     {
         printMemReference(mi, opNo, "subreg64");
+    }
+
+    public void printPICLabel(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printlea64mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
+    }
+
+    public void printlea32mem(MachineInstr mi, int opNo)
+    {
+        printMemReference(mi, opNo);
     }
 
     private void emitFunctionHeader(MachineFunction mf)

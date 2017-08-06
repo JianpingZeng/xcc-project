@@ -25,7 +25,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.transform.scalars.PhiElimination;
-import backend.transform.scalars.TwoAddrInstruction;
+import backend.transform.scalars.TwoAddrInstructionPass;
 import backend.value.Module;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.procedure.TIntIntProcedure;
@@ -117,7 +117,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         au.addRequired(PhiElimination.class);
         // Converts the RISC-like MachineInstr to two addr instruction in some
         // target, for example, X86.
-        au.addRequired(TwoAddrInstruction.class);
+        au.addRequired(TwoAddrInstructionPass.class);
         // Obtains the loop information used for assigning a spilling weight to
         // each live interval. The more nested, the more weight.
         au.addRequired(LoopInfo.class);

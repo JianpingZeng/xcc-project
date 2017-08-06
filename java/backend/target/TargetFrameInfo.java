@@ -1,5 +1,7 @@
 package backend.target;
 
+import tools.Pair;
+
 /**
  * This class defines an interface used for obtaining stack frame layout
  * information about the specified target machine.
@@ -44,5 +46,24 @@ public class TargetFrameInfo
 	 * @param growUp
 	 * @param align
 	 */
-	public void adjustAlignment(int unalignOffset, boolean growUp, int align){}
+	public void adjustAlignment(int unalignOffset, boolean growUp, int align)
+	{
+
+	}
+
+	/**
+	 * This method returns a pointer to an array of pairs, that contains an entry
+	 * for each callee saved register that must be spilled to a particular stack
+	 * location if it is spilled.
+	 *
+	 * Each entry in this array contains a &lt;register, offset&gt; pair, indicating
+	 * the fixed offset from the incoming stack pointer that each register
+	 * should be spilled at. If a register is not listed here, the code generator
+	 * is allowed to spill it anywhere it choose.
+	 * @return
+	 */
+	public Pair<Integer, Integer>[] getCalleeSavedSpillSlots()
+	{
+		return null;
+	}
 }

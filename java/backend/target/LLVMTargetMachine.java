@@ -24,7 +24,7 @@ import java.io.OutputStream;
 
 import static backend.codegen.RegAllocLinearScan.createLinearScanRegAllocator;
 import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
-import static backend.target.x86.PEI.createPrologEpilogEmitter;
+import static backend.target.x86.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.target.x86.X86PeepholeOptimizer.createX86PeepholeOptimizer;
 import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
 import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBlockEliminationPass;

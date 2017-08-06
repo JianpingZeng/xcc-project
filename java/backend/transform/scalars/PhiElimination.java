@@ -4,11 +4,13 @@ import backend.analysis.LiveVariable;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
-import backend.target.TargetRegisterInfo;
 import backend.target.TargetRegisterClass;
+import backend.target.TargetRegisterInfo;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+
+import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * @author Xlous.zeng
@@ -50,7 +52,7 @@ public final class PhiElimination extends MachineFunctionPass
 	 */
 	private boolean eliminatePHINodes(MachineBasicBlock mbb)
 	{
-		if (mbb.isEmpty() || instInfo.isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
+		if (mbb.isEmpty() || !isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
 			return false;
 
 		// a arrays whose each element represents the uses count of the specified
@@ -65,11 +67,13 @@ public final class PhiElimination extends MachineFunctionPass
 				for (int i = 0, sz = succ.size(); i < sz; i++)
 				{
 					MachineInstr mi = succ.getInstAt(i);
-					if (!instInfo.isDummyPhiInstr(mi.getOpcode()))
+					if (!isDummyPhiInstr(mi.getOpcode()))
 						break;
 					for (int j = 1, e = mi.getNumOperands(); j<e; j += 2)
 					{
-						vregPHIUsesCount[mi.getOperand(j).getReg()]++;
+                        MachineOperand mo = mi.getOperand(j);
+					    if (mo.isRegister() && mo.getReg() != 0 && isVirtualRegister(mo.getReg()))
+						    vregPHIUsesCount[mo.getReg()]++;
 					}
 				}
 			}
@@ -77,12 +81,18 @@ public final class PhiElimination extends MachineFunctionPass
 
 		// find the first non-phi instruction.
 		int firstInstAfterPhi = 0;
-		for (; firstInstAfterPhi < mbb.size() && instInfo.isDummyPhiInstr(mbb.
-				getInstAt(firstInstAfterPhi).getOpcode()); firstInstAfterPhi++);
+		for (; firstInstAfterPhi < mbb.size() && isDummyPhiInstr(
+				mbb.getInstAt(firstInstAfterPhi).getOpcode());
+		     firstInstAfterPhi++);
 
-		for (; instInfo.isDummyPhiInstr(mbb.getInstAt(0).getOpcode()); )
+		for (; isDummyPhiInstr(mbb.getInstAt(0).getOpcode()); )
 			lowerPhiNode(mbb, firstInstAfterPhi, vregPHIUsesCount);
 		return true;
+	}
+
+	private static boolean isDummyPhiInstr(int opcode)
+	{
+		return opcode == TargetInstrInfo.PHI;
 	}
 
 	/**
@@ -137,6 +147,7 @@ public final class PhiElimination extends MachineFunctionPass
 			MachineBasicBlock opBB = phiMI.getOperand(i).getMBB();
 
 			// avoids duplicate copy insertion.
+            // One insertion of each PHI for same predecessor basic block.
 			if (!mbbInsertedInto.add(opBB))
 				continue;
 

@@ -22,7 +22,7 @@ import tools.Util;
 
 import java.util.*;
 
-import static backend.support.DepthFirstOrder.dfTravesal;
+import static backend.support.DepthFirstOrder.dfTraversal;
 
 /**
  * This class implements a pass on FunctionProto to perform global value numbering, and
@@ -1347,7 +1347,7 @@ public final class GVNPRE implements FunctionPass
         while (newStuff)
         {
             newStuff = false;
-            for (DomTreeNodeBase<BasicBlock> node : dfTravesal(dt.getRootNode()))
+            for (DomTreeNodeBase<BasicBlock> node : dfTraversal(dt.getRootNode()))
             {
                 BasicBlock bb = node.getBlock();
 
@@ -1395,7 +1395,7 @@ public final class GVNPRE implements FunctionPass
 
         DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
 
-        for (DomTreeNodeBase<BasicBlock> node : dfTravesal(dt.getRootNode()))
+        for (DomTreeNodeBase<BasicBlock> node : dfTraversal(dt.getRootNode()))
         {
             BasicBlock bb = node.getBlock();
 

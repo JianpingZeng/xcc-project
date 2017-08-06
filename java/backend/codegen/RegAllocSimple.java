@@ -1,7 +1,7 @@
 package backend.codegen;
 
 import backend.transform.scalars.PhiElimination;
-import backend.transform.scalars.TwoAddrInstruction;
+import backend.transform.scalars.TwoAddrInstructionPass;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrDesc;
@@ -207,7 +207,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		au.addRequired(PhiElimination.class);
-		au.addRequired(TwoAddrInstruction.class);
+		au.addRequired(TwoAddrInstructionPass.class);
 		super.getAnalysisUsage(au);
 	}
 

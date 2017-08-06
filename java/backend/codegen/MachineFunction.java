@@ -48,7 +48,7 @@ public class MachineFunction
 		this.fn = fn;
 		target = tm;
 		mbbNumber = new ArrayList<>();
-		frameInfo = new MachineFrameInfo();
+		frameInfo = new MachineFrameInfo(tm.getFrameInfo());
 		machineRegisterInfo = new MachineRegisterInfo();
 		constantPool = new MachineConstantPool(tm.getTargetData());
 		phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
@@ -159,5 +159,10 @@ public class MachineFunction
 	public void setAlignment(int align)
 	{
 		alignment = align;
+	}
+
+	public int size()
+	{
+		return getBasicBlocks().size();
 	}
 }

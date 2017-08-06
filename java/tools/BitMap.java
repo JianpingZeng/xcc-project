@@ -5,7 +5,7 @@ import java.util.BitSet;
 /**
  * @author Xlous.zeng
  */
-public final class BitMap extends BitSet
+public final class BitMap extends BitSet implements Cloneable
 {
 	public BitMap()
 	{
@@ -60,6 +60,18 @@ public final class BitMap extends BitSet
 			boolean tmp = get(i);
 			set(i, tmp & (!other.get(i)));
 		}
+	}
+
+	@Override
+	public BitMap clone()
+	{
+		return (BitMap)super.clone();
+	}
+
+	public boolean contains(BitMap rhs)
+	{
+		// TODO: 17-8-6
+		return false;
 	}
 }
 
