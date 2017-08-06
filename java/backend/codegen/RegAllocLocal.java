@@ -7,7 +7,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.transform.scalars.PhiElimination;
-import backend.transform.scalars.TwoAddrInstruction;
+import backend.transform.scalars.TwoAddrInstructionPass;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 
@@ -530,7 +530,7 @@ public class RegAllocLocal extends MachineFunctionPass
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		au.addRequired(PhiElimination.class);
-		au.addRequired(TwoAddrInstruction.class);
+		au.addRequired(TwoAddrInstructionPass.class);
 		super.getAnalysisUsage(au);
 	}
 

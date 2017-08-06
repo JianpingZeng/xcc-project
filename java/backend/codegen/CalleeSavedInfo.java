@@ -60,7 +60,7 @@ public class CalleeSavedInfo
         return frameIdx;
     }
 
-    void setFrameIdx(int FI)
+    public void setFrameIdx(int FI)
     {
         frameIdx = FI;
     }

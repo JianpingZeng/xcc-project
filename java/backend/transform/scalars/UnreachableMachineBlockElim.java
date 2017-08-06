@@ -79,7 +79,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                 if (mdt != null && mdt.getNode(mbb) != null)
                     mdt.eraseNode(mbb);
 
-                for (int i = 0; i < mbb.getNumSuccessors(); i++)
+                for (int i = 0; i < mbb.getNumSuccessors(); )
                 {
                     MachineBasicBlock succ = mbb.getSucc(i);
 
@@ -124,6 +124,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                     continue;
                 for (int k = phi.getNumOperands() - 1; k >= 2; k-=2)
                 {
+                    // Removes some phi entries that is not from predecessor.
                     if (!pred.contains(phi.getOperand(k).getMBB()))
                     {
                         phi.removeOperand(k);
@@ -137,13 +138,17 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
                     int input = phi.getOperand(1).getReg();
                     int output = phi.getOperand(0).getReg();
                     int phiPos = j;
+
                     // advance to next inst.
-                    j++;
+                    // Note that, when removing some element in ArrayList, all
+                    // of elements after the deleted one shifted left.
+                    // So, the next one is located at phiPos.
+                    j = phiPos;
 
                     // remove this phi inst.
                     mbb.erase(phiPos);
                     if (input != output)
-                        mf.replaceRegWith(output, input);
+                        mf.getMachineRegisterInfo().replaceRegWith(output, input);
                     continue;
                 }
                 j++;

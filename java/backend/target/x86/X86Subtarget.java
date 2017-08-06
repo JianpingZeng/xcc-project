@@ -166,6 +166,8 @@ public class X86Subtarget extends TargetSubtarget
 
     public String parseSubtargetFeatures(StringBuilder fs, StringBuilder cpu)
     {
+        // TODO: 17-8-5
+        return null;
     }
 
     public void autoDetectSubtargetFeatures()
@@ -347,13 +349,17 @@ public class X86Subtarget extends TargetSubtarget
     public int classifyGlobalReference(GlobalValue GV,
                                         TargetMachine tm)
     {
-
+        // TODO: 17-8-5
+        return 0;
     }
 
     /// IsLegalToCallImmediateAddr - Return true if the subtarget allows calls
     /// to immediate address.
     public boolean isLegalToCallImmediateAddr(TargetMachine tm)
-    {}
+    {
+        // TODO: 17-8-5
+        return false;
+    }
 
     /// This function returns the asmName of a function which has an interface
     /// like the non-standard bzero function, if such a function exists on
@@ -361,7 +367,10 @@ public class X86Subtarget extends TargetSubtarget
     /// memset with zero passed as the second argument. Otherwise it
     /// returns null.
     public String getBZeroEntry()
-    {}
+    {
+        // TODO: 17-8-5
+        return null;
+    }
 
     /// getSpecialAddressLatency - For targets where it is beneficial to
     /// backschedule instructions that compute addresses, return a value
@@ -369,6 +378,7 @@ public class X86Subtarget extends TargetSubtarget
     /// should be attempted.
     public int getSpecialAddressLatency()
     {
-
+        // TODO: 17-8-5
+        return 0;
     }
 }

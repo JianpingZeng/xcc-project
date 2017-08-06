@@ -126,7 +126,10 @@ public final class DepthFirstOrder
                     curr.getSuccessors() : curr.getPredecessors();
 
             if (!list.isEmpty())
+            {
+                Collections.reverse(list);
                 list.forEach(worklist::addLast);
+            }
         }
     }
 
@@ -150,7 +153,7 @@ public final class DepthFirstOrder
         }
     }
 
-    public static LinkedList<DomTreeNodeBase<BasicBlock>> dfTravesal(
+    public static LinkedList<DomTreeNodeBase<BasicBlock>> dfTraversal(
             DomTreeNodeBase<BasicBlock> entryNode)
     {
         LinkedList<DomTreeNodeBase<BasicBlock>> ret = new LinkedList<>();
@@ -170,5 +173,19 @@ public final class DepthFirstOrder
             temps.forEach(stack::push);
         }
         return ret;
+    }
+
+    public static LinkedList<MachineBasicBlock> dfTraversal(MachineBasicBlock entry)
+    {
+        LinkedHashSet<MachineBasicBlock> res = new LinkedHashSet<>();
+        reversePostOrder(entry, res, true);
+        return new LinkedList<>(res);
+    }
+
+    public static LinkedList<BasicBlock> dfTraversal(BasicBlock entry)
+    {
+        LinkedHashSet<BasicBlock> res = new LinkedHashSet<>();
+        reversePostOrder(entry, res, true);
+        return new LinkedList<>(res);
     }
 }

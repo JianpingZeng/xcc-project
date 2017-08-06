@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.target.TargetData;
+import backend.target.TargetFrameInfo;
 import backend.target.TargetRegisterClass;
 import backend.type.Type;
 
@@ -12,45 +13,6 @@ import java.util.ArrayList;
  */
 public class MachineFrameInfo
 {
-    private boolean frameAddressTaken;
-    private int maxAlignment;
-
-    public boolean isFrameAddressTaken()
-    {
-        return frameAddressTaken;
-    }
-
-    public int getMaxAlignment()
-    {
-        return maxAlignment;
-    }
-
-    public boolean isDeadObjectIndex(int objectIdx)
-    {
-        assert objectIdx + numFixedObjects < objects.size():
-                "Invalid Object idx!";
-
-        return objects.get(objectIdx + numFixedObjects).size == ~0;
-    }
-
-    /**
-     *  Returns true if the specified index corresponds to a
-     * fixed stack object.
-     * @param idx
-     * @return
-     */
-    public boolean isFixedObjectIndex(int idx)
-    {
-        return idx < 0 && (idx >= -numFixedObjects);
-    }
-
-    public boolean isImmutableObjectIndex(int objectIdx)
-    {
-        assert (objectIdx + numFixedObjects) < objects.size() :
-                "Invalid object idx!";
-        return objects.get(objectIdx + numFixedObjects).isImmutable;
-    }
-
     /**
      * Represents a single object allocated on the stack when a function is running.
      */
@@ -122,18 +84,70 @@ public class MachineFrameInfo
      * elimination.  If is only valid during and after prolog/epilog code
      * insertion.
      */
-    private int maxCallFrameSize;
+    private long maxCallFrameSize;
 
     private int offsetAdjustment;
 
-    public MachineFrameInfo()
+    private boolean frameAddressTaken;
+
+    private int maxAlignment;
+
+    private ArrayList<CalleeSavedInfo> csInfo;
+
+    private boolean csIValid;
+
+    private TargetFrameInfo tfi;
+
+    public MachineFrameInfo(TargetFrameInfo tfi)
     {
+        this.tfi = tfi;
         objects = new ArrayList<>();
         numFixedObjects = 0;
         stackSize = 0;
         hasVarSizedObjects = false;
         hasCalls = false;
         maxCallFrameSize = 0;
+    }
+
+    public boolean isFrameAddressTaken()
+    {
+        return frameAddressTaken;
+    }
+
+    public int getMaxAlignment()
+    {
+        return maxAlignment;
+    }
+
+    public boolean isDeadObjectIndex(int objectIdx)
+    {
+        assert objectIdx + numFixedObjects < objects.size():
+                "Invalid Object idx!";
+
+        return objects.get(objectIdx + numFixedObjects).size == ~0;
+    }
+
+    /**
+     *  Returns true if the specified index corresponds to a
+     * fixed stack object.
+     * @param idx
+     * @return
+     */
+    public boolean isFixedObjectIndex(int idx)
+    {
+        return idx < 0 && (idx >= -numFixedObjects);
+    }
+
+    public boolean isImmutableObjectIndex(int objectIdx)
+    {
+        assert (objectIdx + numFixedObjects) < objects.size() :
+                "Invalid object idx!";
+        return objects.get(objectIdx + numFixedObjects).isImmutable;
+    }
+
+    public ArrayList<CalleeSavedInfo> getCalleeSavedInfo()
+    {
+        return csInfo;
     }
 
     public boolean hasStackObjects()
@@ -242,12 +256,12 @@ public class MachineFrameInfo
      * CallFrameSetup/Destroy pseudo instructions are used by the target, and
      * then only during or after prolog/epilog code insertion.
      */
-    public int getMaxCallFrameSize()
+    public long getMaxCallFrameSize()
     {
         return maxCallFrameSize;
     }
 
-    public void setMaxCallFrameSize(int S)
+    public void setMaxCallFrameSize(long S)
     {
         maxCallFrameSize = S;
     }
@@ -290,7 +304,7 @@ public class MachineFrameInfo
 
     public int createStackObject(TargetRegisterClass RC)
     {
-        return createStackObject(RC.getRegSize(), RC.getRegAlign());
+        return createStackObject(RC.getRegSize(), RC.getAlignment());
     }
 
     /**
@@ -314,5 +328,14 @@ public class MachineFrameInfo
     public void setOffsetAdjustment(int offset)
     {
         offsetAdjustment = offset;
+    }
+
+    public void setCalleeSavedInfo(ArrayList<CalleeSavedInfo> csInfo)
+    {
+        this.csInfo = csInfo;
+    }
+    public void setCalleeSavedInfoValid(boolean b)
+    {
+        csIValid = b;
     }
 }

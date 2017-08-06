@@ -28,8 +28,8 @@ import java.util.BitSet;
  */
 public class RegScavenger
 {
-      TargetRegisterInfo TRI;
-   TargetInstrInfo TII;
+    TargetRegisterInfo TRI;
+    TargetInstrInfo TII;
     MachineRegisterInfo MRI;
     MachineBasicBlock MBB;
     int MBBI;
@@ -49,11 +49,11 @@ public class RegScavenger
 
     /// ScavengedRC - Register class of the scavenged register.
     ///
-   TargetRegisterClass ScavengedRC;
+    TargetRegisterClass ScavengedRC;
 
     /// ScavengeRestore - Instruction that restores the scavenged register from
     /// stack.
-   MachineInstr ScavengeRestore;
+    MachineInstr ScavengeRestore;
 
     /// CalleeSavedrRegs - A bitvector of callee saved registers for the target.
     ///
@@ -68,115 +68,146 @@ public class RegScavenger
     /// available, unset means the register is currently being used.
     BitSet RegsAvailable;
 
-    RegScavenger()
+    public RegScavenger()
     {
-    MBB = null;
-    NumPhysRegs = 0;
-    Tracking = false;
-    ScavengingFrameIndex = -1;
-    ScavengedReg = (0);
-    ScavengedRC = null;
+        MBB = null;
+        NumPhysRegs = 0;
+        Tracking = false;
+        ScavengingFrameIndex = -1;
+        ScavengedReg = (0);
+        ScavengedRC = null;
     }
 
     /// enterBasicBlock - Start tracking liveness from the start of the specific
     /// basic block.
-    void enterBasicBlock(MachineBasicBlock mbb) {}
+    public void enterBasicBlock(MachineBasicBlock mbb)
+    {
+    }
 
     /// initRegState - allow resetting register state info for multiple
     /// passes over/within the same function.
-    void initRegState(){}
+    public void initRegState()
+    {
+    }
 
     /// forward - Move the internal MBB iterator and update register states.
-    void forward() {
-     // TODO: 17-8-3
+    public void forward()
+    {
+        // TODO: 17-8-3
     }
 
     /// forward - Move the internal MBB iterator and update register states until
     /// it has processed the specific iterator.
-    void forward(int I)
+    public void forward(int I)
     {
-        if (!Tracking && I != 0) forward();
-        while (MBBI != I) forward();
+        if (!Tracking && I != 0)
+            forward();
+        while (MBBI != I)
+            forward();
     }
 
     /// skipTo - Move the internal MBB iterator but do not update register states.
     ///
-    void skipTo(int I) { MBBI = I; }
+    public void skipTo(int I)
+    {
+        MBBI = I;
+    }
 
     /// getRegsUsed - return all registers currently in use in used.
-    void getRegsUsed(BitSet used, boolean includeReserved)
-    {}
+    public void getRegsUsed(BitSet used, boolean includeReserved)
+    {
+    }
 
     /// FindUnusedReg - Find a unused register of the specified register class.
     /// Return 0 if none is found.
-    int FindUnusedReg( TargetRegisterClass RegClass)
+    public int FindUnusedReg(TargetRegisterClass RegClass)
     {
-     // TODO: 17-8-3
-     return 0;
+        // TODO: 17-8-3
+        return 0;
     }
 
     /// setScavengingFrameIndex / getScavengingFrameIndex - accessor and setter of
     /// ScavengingFrameIndex.
-    void setScavengingFrameIndex(int FI) { ScavengingFrameIndex = FI; }
-    int getScavengingFrameIndex()  { return ScavengingFrameIndex; }
+    public void setScavengingFrameIndex(int FI)
+    {
+        ScavengingFrameIndex = FI;
+    }
+
+    public int getScavengingFrameIndex()
+    {
+        return ScavengingFrameIndex;
+    }
 
     /// scavengeRegister - Make a register of the specific register class
     /// available and do the appropriate bookkeeping. SPAdj is the stack
     /// adjustment due to call frame, it's passed along to eliminateFrameIndex().
     /// Returns the scavenged register.
-    int scavengeRegister( TargetRegisterClass RegClass,
-            int I, int SPAdj)
+    public int scavengeRegister(TargetRegisterClass RegClass, int I, int SPAdj)
     {
-     // TODO: 17-8-3
-     return 0;
+        // TODO: 17-8-3
+        return 0;
     }
 
-    int scavengeRegister( TargetRegisterClass RegClass, int SPAdj)
+    public int scavengeRegister(TargetRegisterClass RegClass, int SPAdj)
     {
         return scavengeRegister(RegClass, MBBI, SPAdj);
     }
 
-    private
     /// isReserved - Returns true if a register is reserved. It is never "unused".
-    boolean isReserved(int Reg)  { return ReservedRegs.get(Reg); }
+    private boolean isReserved(int Reg)
+    {
+        return ReservedRegs.get(Reg);
+    }
 
     /// isUsed / isUsed - Test if a register is currently being used.
     ///
-    private boolean isUsed(int Reg)    { return !RegsAvailable.get(Reg); }
- private boolean isUnused(int Reg)  { return RegsAvailable.get(Reg); }
+    private boolean isUsed(int Reg)
+    {
+        return !RegsAvailable.get(Reg);
+    }
+
+    private boolean isUnused(int Reg)
+    {
+        return RegsAvailable.get(Reg);
+    }
 
     /// isAliasUsed - Is Reg or an alias currently in use?
     private boolean isAliasUsed(int Reg)
     {
-     // TODO: 17-8-3
-     return false;
+        // TODO: 17-8-3
+        return false;
     }
 
     /// setUsed / setUnused - Mark the state of one or a number of registers.
     ///
-    private void setUsed(int Reg){}
- private void setUsed(BitSet Regs)
+    private void setUsed(int Reg)
+    {
+    }
+
+    private void setUsed(BitSet Regs)
     {
         RegsAvailable.andNot(Regs);
     }
 
- private void setUnused(BitSet Regs)
+    private void setUnused(BitSet Regs)
     {
         RegsAvailable.or(Regs);
     }
 
     /// Add Reg and all its sub-registers to BV.
-    private void addRegWithSubRegs(BitSet BV, int Reg){}
+    private void addRegWithSubRegs(BitSet BV, int Reg)
+    {
+    }
 
     /// Add Reg and its aliases to BV.
-    private void addRegWithAliases(BitSet BV, int Reg){}
+    private void addRegWithAliases(BitSet BV, int Reg)
+    {
+    }
 
- private int findSurvivorReg(int MI,
-            BitSet Candidates,
-            int InstrLimit,
+    private int findSurvivorReg(int MI, BitSet Candidates, int InstrLimit,
             int UseMI)
     {
-     // TODO: 17-8-3
-     return 0;
+        // TODO: 17-8-3
+        return 0;
     }
 }

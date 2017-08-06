@@ -313,4 +313,82 @@ public final class MachineRegisterInfo
             itr.next();
         }
     }
+
+    /**
+     * Return true if the specified register is used in this function. This only
+     * works after register allocation.
+     * @param reg
+     * @return
+     */
+    public boolean isPhysRegUsed(int reg)
+    {
+        return usedPhysRegs.get(reg);
+    }
+
+    /**
+     * Mark the specified register used in this function. This should only be
+     * called during and after register allocation.
+     * @param reg
+     */
+    public void setPhysRegUsed(int reg)
+    {
+        // FIXME: 17-8-5  This method is not called by Register Allocator.
+        usedPhysRegs.set(reg);
+    }
+
+    /**
+     * Mark the specified register unused in this function.
+     * This should only be called during and after register allocation.
+     * @param reg
+     */
+    public void setPhysRegUnused(int reg)
+    {
+        // FIXME: 17-8-5  This method is not called by Register Allocator.
+        usedPhysRegs.clear(reg);
+    }
+
+    public void addLiveIn(int reg)
+    {
+        addLiveIn(reg, 0);
+    }
+
+    public void addLiveIn(int reg, int vreg)
+    {
+        liveIns.add(Pair.get(reg, vreg));
+    }
+
+    public void addLiveOut(int reg)
+    {
+        liveOuts.add(reg);
+    }
+
+    public boolean isLiveInEmpty()
+    {
+        return liveIns.isEmpty();
+    }
+
+    public ArrayList<Pair<Integer, Integer>> getLiveIns()
+    {
+        return liveIns;
+    }
+
+    public boolean isLiveOutEmpty()
+    {
+        return liveOuts.isEmpty();
+    }
+
+    public TIntArrayList getLiveOuts()
+    {
+        return liveOuts;
+    }
+
+    public boolean isLiveIn(int reg)
+    {
+        for (Pair<Integer, Integer> itr : liveIns)
+        {
+            if (itr.first == reg || itr.second == reg)
+                return true;
+        }
+        return false;
+    }
 }
