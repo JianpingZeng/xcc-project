@@ -290,7 +290,13 @@ public final class MachineRegisterInfo
      */
     public MachineInstr getVRegDef(int reg)
     {
-        // TODO: 17-7-23
+        DefUseChainIterator itr = getDefIterator(reg);
+        while (itr.hasNext())
+        {
+            if (itr.getOpearnd().getReg() == reg)
+                return itr.getMachineInstr();
+            itr.next();
+        }
         return null;
     }
 

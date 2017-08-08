@@ -40,8 +40,11 @@ public abstract class TargetInstrInfoImpl extends TargetInstrInfo
     }
 
     @Override
-    public void reMaterialize(MachineBasicBlock mbb, int insertPos, int destReg,
-            int subIdx, MachineInstr origin)
+    public void reMaterialize(MachineBasicBlock mbb,
+            int insertPos,
+            int destReg,
+            int subIdx,
+            MachineInstr origin)
     {
 
     }

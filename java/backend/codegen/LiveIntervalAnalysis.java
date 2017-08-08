@@ -16,7 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.LiveVariable;
+import backend.analysis.LiveVariables;
 import backend.analysis.LoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
@@ -91,7 +91,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private TreeMap<Integer, LiveInterval> reg2LiveInterval;
     private TreeMap<LiveInterval, Integer> liveInterval2Reg;
 
-    private LiveVariable lv;
+    private LiveVariables lv;
     private MachineFunction mf;
     private TargetMachine tm;
     private TargetRegisterInfo tri;
@@ -112,7 +112,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         // Compute dead set and kill set for each machine instr.
-        au.addRequired(LiveVariable.class);
+        au.addRequired(LiveVariables.class);
         // Eliminate phi node.
         au.addRequired(PhiElimination.class);
         // Converts the RISC-like MachineInstr to two addr instruction in some
@@ -137,7 +137,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         System.err.printf("***********Function: %s\n", mf.getFunction().getName());
 
         this.mf = mf;
-        lv = getAnalysisToUpDate(LiveVariable.class);
+        lv = getAnalysisToUpDate(LiveVariables.class);
         tm = mf.getTarget();
         tri = tm.getRegisterInfo();
         tii = tm.getInstrInfo();
@@ -535,7 +535,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             LiveInterval li)
     {
         System.err.printf("\t\tregister: %s\n", getRegisterName(li.register));
-        LiveVariable.VarInfo vi = lv.getVarInfo(li.register);
+        LiveVariables.VarInfo vi = lv.getVarInfo(li.register);
 
         // Virtual registers may be defined multiple times (due to phi
         // elimination and 2-addr elimination).  Much of what we do only has to be
