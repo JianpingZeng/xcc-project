@@ -34,7 +34,7 @@ public class MachineFrameInfo
          * entry to the function, this field has no meaning for variable
          * object.
          */
-        public int spOffset;
+        public long spOffset;
 
         public StackObject(int sz, int align, int offset, boolean im)
         {
@@ -119,6 +119,11 @@ public class MachineFrameInfo
         return maxAlignment;
     }
 
+    public void setMaxAlignment(int maxAlignment)
+    {
+        this.maxAlignment = maxAlignment;
+    }
+
     public boolean isDeadObjectIndex(int objectIdx)
     {
         assert objectIdx + numFixedObjects < objects.size():
@@ -200,7 +205,7 @@ public class MachineFrameInfo
      * getObjectOffset - Return the assigned stack offset of the specified object
      * from the incoming stack pointer.
      */
-    public int getObjectOffset(int objectIdx)
+    public long getObjectOffset(int objectIdx)
     {
         assert objectIdx + numFixedObjects < objects
                 .size() : "Invalid Object Idx!";
@@ -211,7 +216,7 @@ public class MachineFrameInfo
      * setObjectOffset - Set the stack frame offset of the specified object.  The
      * offset is relative to the stack pointer on entry to the function.
      */
-    public void setObjectOffset(int objectIdx, int SPOffset)
+    public void setObjectOffset(int objectIdx, long SPOffset)
     {
         assert objectIdx + numFixedObjects < objects
                 .size() : "Invalid Object Idx!";

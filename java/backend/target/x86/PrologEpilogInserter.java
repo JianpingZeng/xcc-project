@@ -28,16 +28,13 @@ import backend.target.*;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Pair;
-import tools.Util;
 import tools.commandline.*;
 
 import java.util.*;
 
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
-import static backend.target.x86.PrologEpilogInserter.ShrinkWrapDebugLevel.BasicInfo;
-import static backend.target.x86.PrologEpilogInserter.ShrinkWrapDebugLevel.Details;
-import static backend.target.x86.PrologEpilogInserter.ShrinkWrapDebugLevel.Iterations;
+import static backend.target.x86.PrologEpilogInserter.ShrinkWrapDebugLevel.*;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
@@ -1459,6 +1456,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
      */
     private void calculateFrameObjectOffsets(MachineFunction mf)
     {
+        /*
         TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
         boolean stackGrowDown = tfi.getStackGrowDirection() == StackGrowDown;
 
@@ -1485,6 +1483,156 @@ public class PrologEpilogInserter extends MachineFunctionPass
 
         // set the final getNumOfSubLoop of the current function stack frame.
         mfi.setStackSize(offset-tfi.getLocalAreaOffset());
+        */
+        TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+        boolean stackGrowDown = tfi.getStackGrowDirection() == StackGrowDown;
+
+        MachineFrameInfo mfi = mf.getFrameInfo();
+        int maxAlign = mfi.getMaxAlignment();
+
+        long offset = tfi.getLocalAreaOffset();
+        if (stackGrowDown)
+            offset = -offset;
+        assert offset >= 0 :"Local area offset should be in direction of stack growth";
+
+        for (int i = mfi.getObjectIndexBegin(); i != 0; ++i)
+        {
+            long fixedOffset;
+            if (stackGrowDown)
+            {
+                fixedOffset = -mfi.getObjectOffset(i);
+            }
+            else
+            {
+                fixedOffset = mfi.getObjectOffset(i) + mfi.getObjectSize(i);
+            }
+            if (fixedOffset > offset)
+                offset = fixedOffset;
+        }
+
+        if (stackGrowDown)
+        {
+            for (int i = minCSFrameIndex; i <= maxCSFrameIndex; i++)
+            {
+                offset += mfi.getObjectSize(i);
+
+                int align = mfi.getObjectAlignment(i);
+                maxAlign = Math.max(maxAlign, align);
+                offset = (offset + align-1)/align * align;
+
+                mfi.setObjectOffset(i, -offset);
+            }
+        }
+        else
+        {
+            int maxCSFI = maxCSFrameIndex, minCSFI = minCSFrameIndex;
+            for (int i = maxCSFI; i >= minCSFI; i--)
+            {
+                int align = mfi.getObjectAlignment(i);
+
+                maxAlign = Math.max(maxAlign, align);
+                offset = (offset + align-1)/align * align;
+                mfi.setObjectOffset(i, offset);
+                offset += mfi.getObjectSize(i);
+            }
+        }
+
+        TargetRegisterInfo regInfo = mf.getTarget().getRegisterInfo();
+        if (rs != null && regInfo.hasFP(mf))
+        {
+            int sfi = rs.getScavengingFrameIndex();
+            if (sfi >= 0)
+            {
+                OutParamWrapper<Long> t1 = new OutParamWrapper<>(offset);
+                OutParamWrapper<Integer> t2 = new OutParamWrapper<>(maxAlign);
+                adjustStackOffset(mfi, sfi, stackGrowDown, t1, t2);
+                offset = t1.get();
+                maxAlign = t2.get();
+            }
+        }
+
+        //todo if (mfi.getStackProtectorIndex()>0) for StackProtector.
+
+        for (int i = 0, e = mfi.getObjectIndexEnd(); i != e; i++)
+        {
+            if (i >= minCSFrameIndex && i <= maxCSFrameIndex)
+                continue;
+
+            if (rs != null && i == rs.getScavengingFrameIndex())
+                continue;
+            if (mfi.isDeadObjectIndex(i))
+                continue;
+            //todo if (mfi.getStackProtectorIndex() == i) continue;
+
+            OutParamWrapper<Long> t1 = new OutParamWrapper<>(offset);
+            OutParamWrapper<Integer> t2 = new OutParamWrapper<>(maxAlign);
+            adjustStackOffset(mfi, i, stackGrowDown, t1, t2);
+            offset = t1.get();
+            maxAlign = t2.get();
+        }
+
+        if (rs != null && !regInfo.hasFP(mf))
+        {
+            int sfi = rs.getScavengingFrameIndex();
+            if (sfi >= 0)
+            {
+                OutParamWrapper<Long> t1 = new OutParamWrapper<>(offset);
+                OutParamWrapper<Integer> t2 = new OutParamWrapper<>(maxAlign);
+                adjustStackOffset(mfi, sfi, stackGrowDown, t1, t2);
+                offset = t1.get();
+                maxAlign = t2.get();
+            }
+        }
+
+        if (!regInfo.targetHandlessStackFrameRounding() &&
+                (mfi.hasCalls() || mfi.hasVarSizedObjects() ||
+                        (regInfo.needsStackRealignment(mf) &&
+                        mfi.getObjectIndexEnd() != 0)))
+        {
+            if (regInfo.hasReservedCallFrame(mf))
+                offset += mfi.getMaxCallFrameSize();
+
+            int alignMask = Math.max(tfi.getStackAlignment(), maxAlign) - 1;
+            offset = (offset + alignMask) & ~alignMask;
+        }
+
+        mfi.setStackSize((int) (offset + tfi.getLocalAreaOffset()));
+
+        mfi.setMaxAlignment(maxAlign);
+    }
+
+    /**
+     * Helpful function used to adjust the stack frame offset.
+     * @param mfi
+     * @param frameIdx
+     * @param stackGrowDown
+     * @param offset
+     * @param maxAlign
+     */
+    private static void adjustStackOffset(MachineFrameInfo mfi, int frameIdx,
+            boolean stackGrowDown,
+            OutParamWrapper<Long> offset,
+            OutParamWrapper<Integer> maxAlign)
+    {
+        if (stackGrowDown)
+            offset.set(offset.get() + mfi.getObjectSize(frameIdx));
+
+        int align = mfi.getObjectAlignment(frameIdx);
+
+        // If the alignment of this object is greater than that of the stack, then
+        // increase the stack alignment to match.
+        maxAlign.set(Math.max(maxAlign.get(), align));
+
+        // Adjust to alignment boundary.
+        long t = (offset.get() + align - 1) / align * align;
+        offset.set(t);
+        if (stackGrowDown)
+            mfi.setObjectOffset(frameIdx, -offset.get());
+        else
+        {
+            mfi.setObjectOffset(frameIdx, offset.get());
+            offset.set(offset.get() + mfi.getObjectSize(frameIdx));
+        }
     }
 
     /**
