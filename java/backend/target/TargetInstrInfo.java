@@ -1,6 +1,6 @@
 package backend.target;
 
-import backend.analysis.LiveVariable;
+import backend.analysis.LiveVariables;
 import backend.codegen.*;
 import gnu.trove.list.array.TIntArrayList;
 import tools.OutParamWrapper;
@@ -158,16 +158,15 @@ public abstract class TargetInstrInfo
 	 *
 	 * This method returns a null pointer if the transformation cannot be
 	 * performed, otherwise it returns the last new instruction.
-	 * @param mf
-	 * @param idxOfBB
 	 * @param mbb
 	 * @param idxOfInst
 	 * @param lv
 	 * @return
 	 */
-	public MachineInstr convertToThreeAddress(MachineFunction mf, int idxOfBB,
-			MachineBasicBlock mbb, int idxOfInst,
-			LiveVariable lv)
+	public MachineInstr convertToThreeAddress(
+			MachineBasicBlock mbb,
+            int idxOfInst,
+			LiveVariables lv)
 	{
 		return null;
 	}

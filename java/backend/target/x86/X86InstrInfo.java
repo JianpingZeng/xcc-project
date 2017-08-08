@@ -1,6 +1,6 @@
 package backend.target.x86;
 
-import backend.analysis.LiveVariable;
+import backend.analysis.LiveVariables;
 import backend.codegen.*;
 import backend.codegen.MachineOperand.RegState;
 import backend.target.*;
@@ -872,8 +872,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl
      * @param lv
      * @return
      */
-    public MachineInstr convertToThreeAddress(MachineBasicBlock mbb,
-            int insertPos, LiveVariable lv)
+    public MachineInstr convertToThreeAddress(
+            MachineBasicBlock mbb,
+            int insertPos,
+            LiveVariables lv)
     {
         MachineInstr mi = mbb.getInstAt(insertPos);
         MachineFunction mf = mi.getParent().getParent();

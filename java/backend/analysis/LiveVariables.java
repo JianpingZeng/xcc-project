@@ -36,7 +36,7 @@ import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class LiveVariable extends MachineFunctionPass
+public final class LiveVariables extends MachineFunctionPass
 {
     /**
      * This class canpsulates some live information about virtual register.
@@ -171,7 +171,7 @@ public final class LiveVariable extends MachineFunctionPass
     private TargetRegisterInfo regInfo;
     private MachineRegisterInfo machineRegInfo;
 
-    public LiveVariable()
+    public LiveVariables()
     {
         virRegInfo = new ArrayList<>();
         distanceMap = new TObjectIntHashMap<>();

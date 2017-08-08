@@ -236,6 +236,11 @@ public class MachineInstr implements Cloneable
 		return findRegisterUseOperandIdx(reg, false, tri) != -1;
 	}
 
+	public boolean killsRegister(int reg)
+	{
+		return killsRegister(reg, null);
+	}
+
 	public boolean killsRegister(int reg, TargetRegisterInfo tri)
 	{
 		return findRegisterUseOperandIdx(reg, true, tri) != -1;
@@ -281,6 +286,13 @@ public class MachineInstr implements Cloneable
             }
         }
         return -1;
+	}
+
+	public MachineOperand findRegisterUseOperand(int reg, boolean isKill, TargetRegisterInfo tri)
+	{
+		int idx = findRegisterUseOperandIdx(reg, isKill, tri);
+		return idx == -1 ? null : getOperand(idx);
+
 	}
 
     /**
@@ -817,5 +829,10 @@ public class MachineInstr implements Cloneable
 		assert isPhysicalRegister(physReg);
 		assert getOperand(idx).isRegister();
 		getOperand(idx).setReg(physReg);
+	}
+
+	public int index()
+	{
+		return getParent().getInsts().indexOf(this);
 	}
 }

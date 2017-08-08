@@ -1,6 +1,6 @@
 package backend.transform.scalars;
 
-import backend.analysis.LiveVariable;
+import backend.analysis.LiveVariables;
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
@@ -117,7 +117,7 @@ public final class PhiElimination extends MachineFunctionPass
 		// creates a register to register copy instruction at the position where
 		// indexed by firstInstAfter.
 		regInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, rc);
-		LiveVariable la = getAnalysisToUpDate(LiveVariable.class);
+		LiveVariables la = getAnalysisToUpDate(LiveVariables.class);
 		if (la != null)
 		{
 			MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
@@ -161,7 +161,7 @@ public final class PhiElimination extends MachineFunctionPass
 			idx++; // make sure the idx always points to the first terminator inst.
 			if (la == null) continue;
 
-			LiveVariable.VarInfo srcRegVarInfo = la.getVarInfo(srcReg);
+			LiveVariables.VarInfo srcRegVarInfo = la.getVarInfo(srcReg);
 
 			boolean valueIsLive = vregPHIUsesCount[srcReg] != 0;
 
@@ -280,7 +280,7 @@ public final class PhiElimination extends MachineFunctionPass
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		au.addPreserved(LiveVariable.class);
+		au.addPreserved(LiveVariables.class);
 		super.getAnalysisUsage(au);
 	}
 }

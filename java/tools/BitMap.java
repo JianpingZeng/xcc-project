@@ -73,5 +73,31 @@ public final class BitMap extends BitSet implements Cloneable
 		// TODO: 17-8-6
 		return false;
 	}
+
+	/**
+	 * Find index to the first set bit. -1 if none of the bits are set.
+	 * @return
+	 */
+	public int findFirst()
+	{
+		for (int i = 0, e = length(); i != e; i++)
+			if (get(i))
+				return i;
+		return -1;
+	}
+
+	/**
+	 * Returns the index of the next set bit following the
+	 * "prev" bit. Returns -1 if the next set bit is not found.
+	 * @param prev
+	 * @return
+	 */
+	public int findNext(int prev)
+	{
+		for (int i = prev, e = length(); i != e; i++)
+			if (get(i))
+				return i;
+		return -1;
+	}
 }
 
