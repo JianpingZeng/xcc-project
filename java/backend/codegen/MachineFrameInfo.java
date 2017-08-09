@@ -205,11 +205,11 @@ public class MachineFrameInfo
      * getObjectOffset - Return the assigned stack offset of the specified object
      * from the incoming stack pointer.
      */
-    public long getObjectOffset(int objectIdx)
+    public int getObjectOffset(int objectIdx)
     {
         assert objectIdx + numFixedObjects < objects
                 .size() : "Invalid Object Idx!";
-        return objects.get(objectIdx + numFixedObjects).spOffset;
+        return (int) objects.get(objectIdx + numFixedObjects).spOffset;
     }
 
     /**

@@ -17,7 +17,7 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
-import backend.codegen.CCValAssign.CCAssignFn;
+import backend.codegen.CCAssignFn;
 import backend.codegen.selectDAG.FastISel;
 import backend.codegen.selectDAG.ISD;
 import backend.support.CallSite;
@@ -47,6 +47,7 @@ import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.PerformTailCallOpt;
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
+import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
@@ -1447,7 +1448,7 @@ public abstract class X86FastISel extends FastISel
         {
             ArrayList<CCValAssign> RVLocs = new ArrayList<>();
             CCInfo = new CCState(CC, false, tm, RVLocs);
-            CCInfo.AnalyzeCallResult(retVT, RetCC_X86);
+            CCInfo.analyzeCallResult(retVT, RetCC_X86);
 
             // Copy all of the result registers out of their specified physreg.
             assert RVLocs.size() == 1 : "Can't handle multi-value calls!";
@@ -1529,7 +1530,7 @@ public abstract class X86FastISel extends FastISel
         if (subtarget.is64Bit())
         {
             if (subtarget.isTargetWin64())
-                return CC_X86_Win54_C;
+                return CC_X86_Win64_C;
             else
                 return CC_X86_64_C;
         }

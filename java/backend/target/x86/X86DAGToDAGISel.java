@@ -44,4 +44,9 @@ public class X86DAGToDAGISel extends SelectionDAGISel
     {
         return "X86 DAG->DAG Instruction Selection";
     }
+
+    public static X86DAGToDAGISel createX86ISelDag(X86TargetMachine tm, CodeGenOpt level)
+    {
+        return new X86DAGToDAGISel(tm, level);
+    }
 }
