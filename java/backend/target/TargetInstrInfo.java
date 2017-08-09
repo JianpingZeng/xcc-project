@@ -171,7 +171,7 @@ public abstract class TargetInstrInfo
 		return null;
 	}
 
-	public  MachineInstr commuteInstruction(MachineInstr mi)
+	public MachineInstr commuteInstruction(MachineInstr mi)
 	{
 		return commuteInstruction(mi, false);
 	}
