@@ -212,6 +212,12 @@ public class MachineBasicBlock
 		return index;
 	}
 
+	public void remove(int indexToDel)
+	{
+		assert indexToDel>=0&& indexToDel < size();
+		insts.remove(indexToDel);
+	}
+
 	public boolean isLayoutSuccessor(MachineBasicBlock mbb)
 	{
 		return mbb.next == mbb;

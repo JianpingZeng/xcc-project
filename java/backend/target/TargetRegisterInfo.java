@@ -563,8 +563,8 @@ public abstract class TargetRegisterInfo
 	{
 		TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
 		MachineFrameInfo mfi = mf.getFrameInfo();
-		return mfi.getObjectOffset(fi) + mfi.getStackSize() -
-				tfi.getLocalAreaOffset() + mfi.getOffsetAdjustment();
+		return (int) (mfi.getObjectOffset(fi) + mfi.getStackSize() -
+                        tfi.getLocalAreaOffset() + mfi.getOffsetAdjustment());
 	}
 
 	/**

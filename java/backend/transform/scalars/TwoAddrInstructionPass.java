@@ -8,7 +8,7 @@ import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.target.*;
-import gnu.trove.map.hash.TObjectIntHashMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
 import tools.OutParamWrapper;
@@ -64,7 +64,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
     @Override
     public String getPassName()
     {
-        return "Two addr instruction pass";
+        return "Two address instruction pass";
     }
 
     @Override
@@ -86,17 +86,18 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
 
         // Keep track the distance of a MI from the start of the
         // current basic block.
-        TObjectIntHashMap<MachineInstr> distanceMap = new TObjectIntHashMap<>();
+        TIntIntHashMap distanceMap = new TIntIntHashMap();
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
-            for (int i = 0, e = mbb.size(); i < e; i++)
+            distanceMap.clear();
+            for (int mi = 0, e = mbb.size(); mi < e; )
             {
-                MachineInstr mi = mbb.getInstAt(i);
-                MachineInstr nmi = i < e ? mbb.getInstAt(i + 1) : null;
-                TargetInstrDesc tid = mi.getDesc();
+                //MachineInstr mi = mbb.getInstAt(i);
+                int nmi = mi+1;
+                TargetInstrDesc tid = mbb.getInstAt(mi).getDesc();
                 boolean firstTied = true;
 
-                distanceMap.put(mi, i + 1);
+                distanceMap.put(mi, mi + 1);
                 for (int si = 1, sz = tid.getNumOperands(); si != sz; ++si)
                 {
                     int ti = tid.getOperandConstraint(si, TIED_TO);
@@ -107,43 +108,49 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                     {
                         NumTwoAddressInsts.inc();
                         System.err.print("\t");
-                        mi.print(System.err, tm);
+                        mbb.getInstAt(mi).print(System.err, tm);
                     }
 
                     firstTied = false;
 
-                    assert mi.getOperand(si).isRegister()
-                            && mi.getOperand(si).getReg() != 0 && mi.getOperand(si)
+                    assert mbb.getInstAt(mi).getOperand(si).isRegister()
+                            && mbb.getInstAt(mi).getOperand(si).getReg() != 0
+                            && mbb.getInstAt(mi).getOperand(si)
                             .isUse() : "two address instruction invalid";
 
                     // If the two operands are the same we just remove the use
                     // and mark the def as def&use, otherwise we have to insert a copy.
-                    if (mi.getOperand(ti).getReg() != mi.getOperand(si).getReg())
+                    if (mbb.getInstAt(mi).getOperand(ti).getReg() !=
+                            mbb.getInstAt(mi).getOperand(si).getReg())
                     {
                         // Rewrite:
                         //     a = b op c
                         // to:
                         //     a = b
                         //     a = a op c
-                        int regA = mi.getOperand(ti).getReg();
-                        int regB = mi.getOperand(si).getReg();
-                        int regASubIdx = mi.getOperand(ti).getSubReg();
+                        int regA = mbb.getInstAt(mi).getOperand(ti).getReg();
+                        int regB = mbb.getInstAt(mi).getOperand(si).getReg();
+                        int regASubIdx = mbb.getInstAt(mi).getOperand(ti).getSubReg();
 
                         assert isVirtualRegister(regA) && isVirtualRegister(
                                 regB) : "cannot update physical register live information";
 
                         InstructionRearranged:
                         {
-                            if (!mi.killsRegister(regB))
+                            if (!mbb.getInstAt(mi).killsRegister(regB))
                             {
-                                if (tid.isCommutable() && mi.getNumOperands() >= 3)
+                                if (tid.isCommutable() && mbb.getInstAt(mi).getNumOperands() >= 3)
                                 {
-                                    assert mi.getOperand(3 - si).isRegister() : "Not a proper commutative instruction";
-                                    int regC = mi.getOperand(3 - si).getReg();
-                                    if (mi.killsRegister(regC))
+                                    assert mbb.getInstAt(mi).getOperand(3 - si).isRegister()
+                                            : "Not a proper commutative instruction";
+                                    int regC = mbb.getInstAt(mi).getOperand(3 - si).getReg();
+                                    if (mbb.getInstAt(mi).killsRegister(regC))
                                     {
-                                        if (commuteInstruction(mi, mbb, regC, i,
-                                                distanceMap))
+                                        OutParamWrapper<Integer> arg = new OutParamWrapper<>(mi);
+                                        boolean res = commuteInstruction(arg, mbb, regC, mi,
+                                                distanceMap);
+                                        mi = arg.get();
+                                        if (res)
                                         {
                                             NumCommuted.inc();
                                             regB = regC;
@@ -164,11 +171,11 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                     }
 
                                     MachineInstr newMI = tii
-                                            .convertToThreeAddress(mbb, i, lv);
+                                            .convertToThreeAddress(mbb, mi, lv);
                                     if (newMI != null)
                                     {
                                         System.err.print("2addr: CONVERTING 2-ADDR: ");
-                                        mi.print(System.err, null);
+                                        mbb.getInstAt(mi).print(System.err, null);
                                         System.err.print("2addr:            3-ADDR: ");
                                         newMI.print(System.err, null);
                                         boolean sunk = false;
@@ -184,9 +191,9 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
 
                                         if (!sunk)
                                         {
-                                            distanceMap.put(newMI, i + 1);
-                                            mi = newMI;
-                                            nmi = next(mi);
+                                            distanceMap.put(newMI.index(), mi + 1);
+                                            mi = newMI.index();
+                                            nmi = mi+1;
                                         }
 
                                         NumConvertedTo3Addr.inc();
@@ -195,14 +202,17 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                 }
                             }
 
-                            if (tid.isCommutable() && mi.getNumOperands() >= 3)
+                            if (tid.isCommutable() && mbb.getInstAt(mi).getNumOperands() >= 3)
                             {
-                                int regC = mi.getOperand(3 - si).getReg();
-                                if (isProfitableToCommute(regB, regC, mi, mbb,
-                                        i + 1, distanceMap))
+                                int regC = mbb.getInstAt(mi).getOperand(3 - si).getReg();
+                                if (isProfitableToCommute(regB, regC, mbb.getInstAt(mi), mbb,
+                                        mi + 1, distanceMap))
                                 {
-                                    if (commuteInstruction(mi, mbb, regC, i + 1,
-                                            distanceMap))
+                                    OutParamWrapper<Integer> arg = new OutParamWrapper<>(mi);
+                                    boolean res = commuteInstruction(arg, mbb, regC, mi + 1,
+                                            distanceMap);
+                                    mi = arg.get();
+                                    if (res)
                                     {
                                         NumAggrCommuted.inc();
                                         NumCommuted.inc();
@@ -217,49 +227,50 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
 
                         if (defMI != null && defMI.getDesc().isAsCheapAsAMove()
                                 && defMI.isSafeToReMat(tii, regB)
-                                && isProfitableToReMat(regB, rc, mi, defMI, mbb,
-                                i + 1, distanceMap))
+                                && isProfitableToReMat(regB, rc, mbb.getInstAt(mi), defMI, mbb,
+                                mi + 1, distanceMap))
                         {
                             System.err.printf("2addr: Rematting: ");
                             defMI.print(System.err, null);
                             System.err.print("\n");
-                            tii.reMaterialize(mbb, i, regA, regASubIdx, defMI);
+                            tii.reMaterialize(mbb, mi, regA, regASubIdx, defMI);
                             reMatRegs.set(regB);
                             NumReMats.inc();
                         }
                         else
                         {
-                            tii.copyRegToReg(mbb, i, regA, regB, rc, rc);
+                            tii.copyRegToReg(mbb, mi, regA, regB, rc, rc);
                         }
 
-                        int prevMI = prior(mi);
-                        distanceMap.put(mbb.getInstAt(prevMI), i+1);
-                        distanceMap.put(mi, i+1);
+                        int prevMI = mi-1;
+                        distanceMap.put(prevMI, mi+1);
+                        distanceMap.put(mi, mi+1);
 
                         if (lv != null)
                         {
-                            if (lv.removeVirtualRegisterKilled(regB, mi))
+                            if (lv.removeVirtualRegisterKilled(regB, mbb.getInstAt(mi)))
                                 lv.addVirtualRegisterKilled(regB, mbb.getInstAt(prevMI));
-                            if (lv.removeVirtualRegisterDead(regB, mi))
+                            if (lv.removeVirtualRegisterDead(regB, mbb.getInstAt(mi)))
                                 lv.addVirtualRegisterDead(regB, mbb.getInstAt(prevMI));
                         }
 
                         System.err.print("\t\tprepend:\t");
                         mbb.getInstAt(prevMI).print(System.err, null);
 
-                        for (int j = 0, numOps = mi.getNumOperands(); j != numOps; j++)
+                        for (int j = 0, numOps = mbb.getInstAt(mi).getNumOperands(); j != numOps; j++)
                         {
-                            if (mi.getOperand(j).isRegister() && mi.getOperand(j).getReg() == regB)
-                                mi.getOperand(j).setReg(regA);
+                            if (mbb.getInstAt(mi).getOperand(j).isRegister() &&
+                                    mbb.getInstAt(mi).getOperand(j).getReg() == regB)
+                                mbb.getInstAt(mi).getOperand(j).setReg(regA);
                         }
                     }
 
-                    assert mi.getOperand(ti).isDef() && mi.getOperand(si).isUse();
-                    mi.getOperand(ti).setReg(mi.getOperand(si).getReg());
+                    assert mbb.getInstAt(mi).getOperand(ti).isDef() && mbb.getInstAt(mi).getOperand(si).isUse();
+                    mbb.getInstAt(mi).getOperand(ti).setReg(mbb.getInstAt(mi).getOperand(si).getReg());
                     madeChange = true;
 
                     System.err.print("\t\trewrite to:\t");
-                    mi.print(System.err, null);
+                    mbb.getInstAt(mi).print(System.err, null);
                 }
 
                 mi = nmi;
@@ -296,7 +307,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
             MachineBasicBlock mbb,
             MachineInstr mi,
             int savedReg,
-            MachineInstr oldMI)
+            int oldMI)
     {
         OutParamWrapper<Boolean> x = new OutParamWrapper<>(true);
         if (!mi.isSafeToMove(tii, x))
@@ -345,7 +356,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
         killPos++;
 
         int numVisited = 0;
-        for (int i = oldMI.index()+1; i != killPos; i++)
+        for (int i = oldMI+1; i != killPos; i++)
         {
             MachineInstr otherMI = mbb.getInstAt(i);
             if (numVisited > 30)
@@ -388,28 +399,28 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
     }
 
     private boolean commuteInstruction(
-            OutParamWrapper<MachineInstr> mi,
+            OutParamWrapper<Integer> mi,
             MachineBasicBlock mbb,
             int regC,
             int dist,
-            TObjectIntHashMap<MachineInstr> distanceMap)
+            TIntIntHashMap distanceMap)
     {
-        MachineInstr newMI = tii.commuteInstruction(mi.get());
+        MachineInstr newMI = tii.commuteInstruction(mbb.getInstAt(mi.get()));
 
         if (newMI== null)
         {
             return false;
         }
 
-        if (!newMI.equals(mi))
+        if (!newMI.equals(mbb.getInstAt(mi.get())))
         {
             if (lv != null)
-                lv.replaceKillInstruction(regC, mi.get(), newMI);
+                lv.replaceKillInstruction(regC, mbb.getInstAt(mi.get()), newMI);
 
-            mbb.insert(mi.get().index(), newMI);
+            mbb.insert(mi.get(), newMI);
             mbb.remove(mi.get());
-            mi.set(newMI);
-            distanceMap.put(newMI, dist);
+            mi.set(newMI.index());
+            distanceMap.put(newMI.index(), dist);
         }
 
         return true;
@@ -431,7 +442,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
             MachineInstr mi,
             MachineBasicBlock mbb,
             int dist,
-            TObjectIntHashMap<MachineInstr> distanceMap)
+            TIntIntHashMap distanceMap)
     {
         // Determine if it's profitable to commute this two address instruction. In
         // general, we want no uses between this instruction and the definition of
@@ -470,7 +481,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
     private boolean notUseAfterLastDef(int reg,
             MachineBasicBlock mbb,
             int dist,
-            TObjectIntHashMap<MachineInstr> distanceMap,
+            TIntIntHashMap distanceMap,
             OutParamWrapper<Integer> lastDef)
     {
         lastDef.set(0);
@@ -481,13 +492,13 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
             MachineInstr mi = itr.getMachineInstr();
             if (!mi.getParent().equals(mbb))
                 continue;
-            if (!distanceMap.containsKey(mi))
+            if (!distanceMap.containsKey(mi.index()))
                 continue;
 
-            if (mo.isUse() && distanceMap.get(mi) < lastUse)
-                lastUse = distanceMap.get(mi);
-            if (mo.isDef() && distanceMap.get(mi) > lastDef.get())
-                lastDef.set(distanceMap.get(mi));
+            if (mo.isUse() && distanceMap.get(mi.index()) < lastUse)
+                lastUse = distanceMap.get(mi.index());
+            if (mo.isDef() && distanceMap.get(mi.index()) > lastDef.get())
+                lastDef.set(distanceMap.get(mi.index()));
             itr.next();
         }
         return (!(lastUse > lastDef.get() && lastUse < dist));
@@ -495,10 +506,11 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
 
     private boolean isProfitableToReMat(int reg,
             TargetRegisterClass rc,
-            MachineInstr mi, MachineInstr defMI,
+            MachineInstr mi,
+            MachineInstr defMI,
             MachineBasicBlock mbb,
             int loc,
-            TObjectIntHashMap<MachineInstr> distanceMap)
+            TIntIntHashMap distanceMap)
     {
         boolean otherUse = false;
         for (DefUseChainIterator itr = mri.getUseIterator(reg); itr.hasNext(); )
@@ -508,7 +520,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
             MachineBasicBlock useBB = useMI.getParent();
             if (useBB.equals(mbb))
             {
-                if (distanceMap.containsKey(useMI) && distanceMap.get(useMI) == loc)
+                int idx = useMI.index();
+                if (distanceMap.containsKey(idx) && distanceMap.get(idx) == loc)
                 {
                     otherUse = true;
                     if (isTwoAddrUse(useMI, reg))
