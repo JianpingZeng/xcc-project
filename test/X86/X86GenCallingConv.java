@@ -1,3 +1,11 @@
+package backend.target.x86;
+
+import backend.codegen.*;
+import backend.codegen.CCValAssign.LocInfo;
+import backend.support.CallingConv;
+
+import static backend.target.x86.X86GenRegisterNames.*;
+
 /**
  * TableGen created file.
  * <p>
@@ -6,758 +14,814 @@
  * Powered by Xlous zeng
  * </p>
  */
-public class X86GenCallingConv
-{
-    public static bool CC_X86_Win64_C(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-        if (locVT == MVT.i8 || locVT == MVT.i16)
-        {
-            locVT = MVT.i32;
-            if (argFlags.isSExt())
-                locInfo = CCValueAssign.SExt;
-            else if (argFlags.isZExt())
-                locInfo = CCValAssign.ZExt;
-            else
-                locInfo = CCValAssign.AExt;
-        }
+public class X86GenCallingConv {
 
-        if (ArgFlags.isNest())
-        {
-            int[] regList = { , R10 }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
+	public static CCAssignFn CC_X86_Win64_C = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
 
-        if (locVT == MVT.v16i8 || locVT == MVT.v8i16 || locVT == MVT.v4i32
-                || locVT == MVT.v2i64 || locVT == MVT.v4f32
-                || locVT == MVT.v2f64)
-        {
-            locVT = MVT.i64;
-            locInfo = CCValAssign.Indirect;
-        }
+  if (locVT.equals(new EVT(MVT.i8)) ||
+    locVT.equals(new EVT(MVT.i16))) {
+    locVT = new EVT(MVT.i32);
+    if (argFlags.isSExt())
+        locInfo = LocInfo.SExt;
+    else if (argFlags.isZExt())
+        locInfo = LocInfo.ZExt;
+    else
+        locInfo = LocInfo.AExt;
+  }
 
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v1i64 || locVT == MVT.v2f32)
-        {
-            locVT = MVT.i64;
-            locInfo = CCValAssign.BCvt;
-        }
-
-        if (locVT == MVT.i32)
-        {
-            int[] regList1 = { ECX, EDX, R8D, R9D };
-            int[] regList2 = { XMM0, XMM1, XMM2, XMM3 };
-            int reg = state.allocateReg(regList1, regList2, 4);
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.i64)
-        {
-            int[] regList3 = { RCX, RDX, R8, R9 };
-            int[] regList4 = { XMM0, XMM1, XMM2, XMM3 };
-            int reg = state.allocateReg(regList3, regList4, 4);
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.f32 || locVT == MVT.f64 || locVT == MVT.v16i8
-                || locVT == MVT.v8i16 || locVT == MVT.v4i32
-                || locVT == MVT.v2i64 || locVT == MVT.v4f32
-                || locVT == MVT.v2f64)
-        {
-            int[] regList5 = { XMM0, XMM1, XMM2, XMM3 };
-            int[] regList6 = { RCX, RDX, R8, R9 };
-            int reg = state.allocateReg(regList5, regList6, 4);
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.i32 || locVT == MVT.i64 || locVT == MVT.f32
-                || locVT == MVT.f64)
-        {
-            int offset7 = state.allocateStack(8, 8, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset7, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.f80)
-        {
-            int offset8 = state.allocateStack(state.getTarget().getTargetData()
-                            .getTypeAllocSize(locVT.getTypeForEVT(state.getContext())),
-                    state.getTarget().getTargetData().getABITypeAlignment(
-                            locVT.getTypeForEVT(state.getContext()));
-
-            state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset8, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v1i64)
-        {
-            int offset9 = state.allocateStack(8, 8, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset9, locVT, locInfo));
-            return false;
-        }
-
-        return true;    // CC didn't match.
+  if (argFlags.isNest()) {
+int reg = state.allocateReg(R10);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool RetCC_X86_Win64_C(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
+  if (locVT.equals(new EVT(MVT.v16i8)) ||
+    locVT.equals(new EVT(MVT.v8i16)) ||
+    locVT.equals(new EVT(MVT.v4i32)) ||
+    locVT.equals(new EVT(MVT.v2i64)) ||
+    locVT.equals(new EVT(MVT.v4f32)) ||
+    locVT.equals(new EVT(MVT.v2f64))) {
+    locVT = new EVT(MVT.i64);
+    locInfo = LocInfo.Indirect;
+  }
 
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v1i64)
-        {
-            locVT = MVT.i64;
-            locInfo = CCValAssign.BCvt;
-        }
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v1i64)) ||
+    locVT.equals(new EVT(MVT.v2f32))) {
+    locVT = new EVT(MVT.i64);
+    locInfo = LocInfo.BCvt;
+  }
 
-        if (locVT == MVT.f32)
-        {
-            int[] regList = { , XMM0 }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.f64)
-        {
-            int[] regList = { , XMM0 }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (!RetCC_X86_64_C(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.i32))) {
+    int[] regList1 = {
+    	ECX, EDX, R8D, R9D
+    };
+    int[] regList2 = {
+    	XMM0, XMM1, XMM2, XMM3
+    };
+    int reg = state.allocateReg(regList1, regList2);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool CC_X86_32_FastCC(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-
-        if (ArgFlags.isByVal())
-        {
-            state.handleByVal(valNo, valVT, locVT, locInfo, 4, 4, argFlags);
-            return false;
-        }
-
-        if (locVT == MVT.i8 || locVT == MVT.i16)
-        {
-            locVT = MVT.i32;
-            if (argFlags.isSExt())
-                locInfo = CCValueAssign.SExt;
-            else if (argFlags.isZExt())
-                locInfo = CCValAssign.ZExt;
-            else
-                locInfo = CCValAssign.AExt;
-        }
-
-        if (ArgFlags.isNest())
-        {
-            int[] regList = { , EAX }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.i32)
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (!State.isVarArg())
-        {
-            if (locVT == MVT.f32 || locVT == MVT.f64)
-            {
-                if (State.getTarget().getSubtarget < X86Subtarget > ()
-                        .hasSSE2())
-                {
-                    state.addLoc(CCValAssign
-                            .getReg(valNo, valVT, reg, locVT, locInfo));
-                    return false;
-                }
-            }
-        }
-
-        if (locVT == MVT.f64)
-        {
-            int offset1 = state.allocateStack(8, 8, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset1, locVT, locInfo));
-            return false;
-        }
-
-        if (!CC_X86_32_Common(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.i64))) {
+    int[] regList3 = {
+    	RCX, RDX, R8, R9
+    };
+    int[] regList4 = {
+    	XMM0, XMM1, XMM2, XMM3
+    };
+    int reg = state.allocateReg(regList3, regList4);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool CC_X86_32_FastCall(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-
-        if (locVT == MVT.i8 || locVT == MVT.i16)
-        {
-            locVT = MVT.i32;
-            if (argFlags.isSExt())
-                locInfo = CCValueAssign.SExt;
-            else if (argFlags.isZExt())
-                locInfo = CCValAssign.ZExt;
-            else
-                locInfo = CCValAssign.AExt;
-        }
-
-        if (ArgFlags.isNest())
-        {
-            int[] regList = { , EAX }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.i32)
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (!CC_X86_32_Common(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.f32)) ||
+    locVT.equals(new EVT(MVT.f64)) ||
+    locVT.equals(new EVT(MVT.v16i8)) ||
+    locVT.equals(new EVT(MVT.v8i16)) ||
+    locVT.equals(new EVT(MVT.v4i32)) ||
+    locVT.equals(new EVT(MVT.v2i64)) ||
+    locVT.equals(new EVT(MVT.v4f32)) ||
+    locVT.equals(new EVT(MVT.v2f64))) {
+    int[] regList5 = {
+    	XMM0, XMM1, XMM2, XMM3
+    };
+    int[] regList6 = {
+    	RCX, RDX, R8, R9
+    };
+    int reg = state.allocateReg(regList5, regList6);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool RetCC_X86_32_Fast(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
+  if (locVT.equals(new EVT(MVT.i32)) ||
+    locVT.equals(new EVT(MVT.i64)) ||
+    locVT.equals(new EVT(MVT.f32)) ||
+    locVT.equals(new EVT(MVT.f64))) {
+    int offset7 = state.allocateStack(8, 8);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset7, locVT, locInfo));
+    return false;
+  }
 
-        if (locVT == MVT.f32)
-        {
-            if (State.getTarget().getSubtarget < X86Subtarget > ().hasSSE2())
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
+  if (locVT.equals(new EVT(MVT.f80))) {
+    int offset8 = state.allocateStack(
+    	(int)state.getTarget().getTargetData().getTypeAllocSize(locVT.getTypeForEVT()), 
+    	state.getTarget().getTargetData().getABITypeAlignment(locVT.getTypeForEVT())
+);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset8, locVT, locInfo));
+    return false;
+  }
 
-        if (locVT == MVT.f64)
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v1i64))) {
+    int offset9 = state.allocateStack(8, 8);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset9, locVT, locInfo));
+    return false;
+  }
 
-        {
-            if (State.getTarget().getSubtarget < X86Subtarget > ().hasSSE2())
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
+	return true;	// CC didn't match.
+	};
 
-        if (!RetCC_X86Common(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
 
-        return true;    // CC didn't match.
+	public static CCAssignFn RetCC_X86_Win64_C = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v1i64))) {
+    locVT = new EVT(MVT.i64);
+    locInfo = LocInfo.BCvt;
+  }
+
+  if (locVT.equals(new EVT(MVT.f32))) {
+int reg = state.allocateReg(XMM0);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool RetCC_X86_32(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-
-        if (State.getCallingConv() == CallingConv::Fast)
-        {
-            if (!RetCC_X86_32_Fast(valNo, valVT, locVT, locInfo, argFlags,
-                    state))
-                return false;
-        }
-
-        if (!RetCC_X86_32_C(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.f64))) {
+int reg = state.allocateReg(XMM0);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool RetCC_X86_64(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
+  if (!RetCC_X86_64_C.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
 
-        if (State.getTarget().getSubtarget < X86Subtarget > ().isTargetWin64())
-        {
-            if (!RetCC_X86_Win64_C(valNo, valVT, locVT, locInfo, argFlags,
-                    state))
-                return false;
-        }
+	return true;	// CC didn't match.
+	};
 
-        if (!RetCC_X86_64_C(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
 
-        return true;    // CC didn't match.
+	public static CCAssignFn CC_X86_32_FastCC = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (argFlags.isByVal()) {
+    state.handleByVal(valNo, valVT, locVT, locInfo, 4, 4, argFlags);
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.i8)) ||
+    locVT.equals(new EVT(MVT.i16))) {
+    locVT = new EVT(MVT.i32);
+    if (argFlags.isSExt())
+        locInfo = LocInfo.SExt;
+    else if (argFlags.isZExt())
+        locInfo = LocInfo.ZExt;
+    else
+        locInfo = LocInfo.AExt;
+  }
+
+  if (argFlags.isNest()) {
+int reg = state.allocateReg(EAX);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool CC_X86_64_C(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-
-        if (ArgFlags.isByVal())
-        {
-            state.handleByVal(valNo, valVT, locVT, locInfo, 8, 8, argFlags);
-            return false;
-        }
-
-        if (locVT == MVT.i8 || locVT == MVT.i16)
-        {
-            locVT = MVT.i32;
-            if (argFlags.isSExt())
-                locInfo = CCValueAssign.SExt;
-            else if (argFlags.isZExt())
-                locInfo = CCValAssign.ZExt;
-            else
-                locInfo = CCValAssign.AExt;
-        }
-
-        if (ArgFlags.isNest())
-        {
-            int[] regList = { , R10 }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.v1i64)
-        {
-            if (State.getTarget().getSubtarget < X86Subtarget > ()
-                    .isTargetDarwin())
-            {
-                locVT = MVT.i64;
-                locInfo = CCValAssign.BCvt;
-            }
-        }
-
-        if (locVT == MVT.i32)
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.i64)
-
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v2f32)
-        {
-            if (State.getTarget().getSubtarget < X86Subtarget > ()
-                    .isTargetDarwin())
-            {
-                if (State.getTarget().getSubtarget < X86Subtarget > ()
-                        .hasSSE2())
-                {
-                    locVT = MVT.v2i64;
-                    if (argFlags.isSExt())
-                        locInfo = CCValueAssign.SExt;
-                    else if (argFlags.isZExt())
-                        locInfo = CCValAssign.ZExt;
-                    else
-                        locInfo = CCValAssign.AExt;
-                }
-            }
-        }
-
-        if (locVT == MVT.f32 || locVT == MVT.f64 || locVT == MVT.v16i8
-                || locVT == MVT.v8i16 || locVT == MVT.v4i32
-                || locVT == MVT.v2i64 || locVT == MVT.v4f32
-                || locVT == MVT.v2f64)
-        {
-            if (State.getTarget().getSubtarget < X86Subtarget > ().hasSSE1())
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.i32 || locVT == MVT.i64 || locVT == MVT.f32
-                || locVT == MVT.f64)
-
-        {
-            int offset1 = state.allocateStack(8, 8, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset1, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.f80)
-
-        {
-            int offset2 = state.allocateStack(state.getTarget().getTargetData()
-                            .getTypeAllocSize(locVT.getTypeForEVT(state.getContext())),
-                    state.getTarget().getTargetData().getABITypeAlignment(
-                            locVT.getTypeForEVT(state.getContext()));
-
-            state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset2, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.v16i8 || locVT == MVT.v8i16 || locVT == MVT.v4i32
-                || locVT == MVT.v2i64 || locVT == MVT.v4f32
-                || locVT == MVT.v2f64)
-
-        {
-            int offset3 = state.allocateStack(16, 16, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset3, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v1i64 || locVT == MVT.v2f32)
-
-        {
-            int offset4 = state.allocateStack(8, 8, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset4, locVT, locInfo));
-            return false;
-        }
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.i32))) {
+    int[] regList1 = {
+    ECX, EDX
+    };
+    int reg = state.allocateReg(regList1);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool RetCC_X86_32_C(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-
-        if (ArgFlags.isInReg())
-        {
-            if (State.getTarget().getSubtarget < X86Subtarget > ().hasSSE2())
-            {
-                if (locVT == MVT.f32 || locVT == MVT.f64)
-                {
-                    state.addLoc(CCValAssign
-                            .getReg(valNo, valVT, reg, locVT, locInfo));
-                    return false;
-                }
-            }
+  if (!state.isVarArg()) {
+    if (locVT.equals(new EVT(MVT.f32)) ||
+        locVT.equals(new EVT(MVT.f64))) {
+      if (((X86TargetMachine)state.getTarget()).getSubtarget().hasSSE2()) {
+        int[] regList2 = {
+        XMM0, XMM1, XMM2
+        };
+        int reg = state.allocateReg(regList2);
+        if (reg != 0) {
+        	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+        	return false;
         }
-
-        if (locVT == MVT.f32 || locVT == MVT.f64)
-
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (!RetCC_X86Common(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
-
-        return true;    // CC didn't match.
+      }
     }
+  }
 
-    public static bool RetCC_X86Common(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
+  if (locVT.equals(new EVT(MVT.f64))) {
+    int offset3 = state.allocateStack(8, 8);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset3, locVT, locInfo));
+    return false;
+  }
 
-        if (locVT == MVT.i8)
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
+  if (!CC_X86_32_Common.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
 
-        if (locVT == MVT.i16)
+	return true;	// CC didn't match.
+	};
 
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
 
-        if (locVT == MVT.i32)
+	public static CCAssignFn CC_X86_32_FastCall = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
 
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
+  if (locVT.equals(new EVT(MVT.i8)) ||
+    locVT.equals(new EVT(MVT.i16))) {
+    locVT = new EVT(MVT.i32);
+    if (argFlags.isSExt())
+        locInfo = LocInfo.SExt;
+    else if (argFlags.isZExt())
+        locInfo = LocInfo.ZExt;
+    else
+        locInfo = LocInfo.AExt;
+  }
 
-        if (locVT == MVT.i64)
-
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.v16i8 || locVT == MVT.v8i16 || locVT == MVT.v4i32
-                || locVT == MVT.v2i64 || locVT == MVT.v4f32
-                || locVT == MVT.v2f64)
-
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v1i64 || locVT == MVT.v2f32)
-
-        {
-            int[] regList = { , MM0 }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.f80)
-
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        return true;    // CC didn't match.
+  if (argFlags.isNest()) {
+int reg = state.allocateReg(EAX);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool CC_X86_32_C(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-
-        if (locVT == MVT.i8 || locVT == MVT.i16)
-        {
-            locVT = MVT.i32;
-            if (argFlags.isSExt())
-                locInfo = CCValueAssign.SExt;
-            else if (argFlags.isZExt())
-                locInfo = CCValAssign.ZExt;
-            else
-                locInfo = CCValAssign.AExt;
-        }
-
-        if (ArgFlags.isNest())
-        {
-            int[] regList = { , ECX }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (!State.isVarArg())
-        {
-            if (ArgFlags.isInReg())
-            {
-                if (locVT == MVT.i32)
-                {
-                    state.addLoc(CCValAssign
-                            .getReg(valNo, valVT, reg, locVT, locInfo));
-                    return false;
-                }
-            }
-        }
-
-        if (!CC_X86_32_Common(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.i32))) {
+    int[] regList1 = {
+    ECX, EDX
+    };
+    int reg = state.allocateReg(regList1);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
 
-    public static bool RetCC_X86_64_C(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
+  if (!CC_X86_32_Common.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
 
-        if (locVT == MVT.f32)
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
+	return true;	// CC didn't match.
+	};
 
-        if (locVT == MVT.f64)
 
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
+	public static CCAssignFn RetCC_X86_32_Fast = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
 
-        if (locVT == MVT.v1i64)
-        {
-            int[] regList = { , RAX }; int reg = state.allocateReg(regList0, 1))
-            ;
-            if (reg != 0)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v2f32)
-        {
-            state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-            return false;
-        }
-
-        if (!
-
-                RetCC_X86Common(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.f32))) {
+    if (((X86TargetMachine)state.getTarget()).getSubtarget().hasSSE2()) {
+      int[] regList1 = {
+      XMM0, XMM1, XMM2
+      };
+      int reg = state.allocateReg(regList1);
+      if (reg != 0) {
+      	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+      	return false;
+      }
     }
+  }
 
-    public static bool CC_X86_32_Common(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
-
-        if (ArgFlags.isByVal())
-        {
-            state.handleByVal(valNo, valVT, locVT, locInfo, 4, 4, argFlags);
-            return false;
-        }
-
-        if (!State.isVarArg())
-        {
-            if (ArgFlags.isInReg())
-            {
-                if (locVT == MVT.f32 || locVT == MVT.f64)
-                {
-                    if (State.getTarget().getSubtarget < X86Subtarget > ()
-                            .hasSSE2())
-                    {
-                        state.addLoc(CCValAssign
-                                .getReg(valNo, valVT, reg, locVT, locInfo));
-                        return false;
-                    }
-                }
-            }
-        }
-
-        if (!State.isVarArg())
-
-        {
-            if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                    || locVT == MVT.v2f32)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.i32 || locVT == MVT.f32)
-        {
-            int offset1 = state.allocateStack(4, 4, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset1, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.f64)
-        {
-            int offset2 = state.allocateStack(8, 4, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset2, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.f80)
-        {
-            int offset3 = state.allocateStack(state.getTarget().getTargetData()
-                            .getTypeAllocSize(locVT.getTypeForEVT(state.getContext())),
-                    4, state.addLoc(CCValAssign
-                            .getMem(valNo, valVT, offset3, locVT, locInfo));
-            return false;
-        }
-
-        if (!State.isVarArg())
-        {
-            if (locVT == MVT.v16i8 || locVT == MVT.v8i16 || locVT == MVT.v4i32
-                    || locVT == MVT.v2i64 || locVT == MVT.v4f32
-                    || locVT == MVT.v2f64)
-            {
-                state.addLoc(
-                        CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
-                return false;
-            }
-        }
-
-        if (locVT == MVT.v16i8 || locVT == MVT.v8i16 || locVT == MVT.v4i32
-                || locVT == MVT.v2i64 || locVT == MVT.v4f32
-                || locVT == MVT.v2f64)
-        {
-            int offset4 = state.allocateStack(16, 16, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset4, locVT, locInfo));
-            return false;
-        }
-
-        if (locVT == MVT.v8i8 || locVT == MVT.v4i16 || locVT == MVT.v2i32
-                || locVT == MVT.v1i64)
-        {
-            int offset5 = state.allocateStack(8, 4, state.addLoc(
-                    CCValAssign.getMem(valNo, valVT, offset5, locVT, locInfo));
-            return false;
-        }
-
-        return true;    // CC didn't match.
+  if (locVT.equals(new EVT(MVT.f64))) {
+    if (((X86TargetMachine)state.getTarget()).getSubtarget().hasSSE2()) {
+      int[] regList2 = {
+      XMM0, XMM1, XMM2
+      };
+      int reg = state.allocateReg(regList2);
+      if (reg != 0) {
+      	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+      	return false;
+      }
     }
+  }
 
-    public static bool RetCC_X86(int valNo, EVT valVT, EVT locVT,
-            CCValAssign.LocInfo locInfo, ArgFlagsTy argFlags, CCState state)
-    {
+  if (!RetCC_X86Common.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
 
-        if (State.getTarget().getSubtarget < X86Subtarget > ().is64Bit())
-        {
-            if (!RetCC_X86_64(valNo, valVT, locVT, locInfo, argFlags, state))
-                return false;
-        }
+	return true;	// CC didn't match.
+	};
 
-        if (!RetCC_X86_32(valNo, valVT, locVT, locInfo, argFlags, state))
-            return false;
 
-        return true;    // CC didn't match.
+	public static CCAssignFn RetCC_X86_32 = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (state.getCallingConv() == CallingConv.Fast) {
+    if (!RetCC_X86_32_Fast.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+    	return false;
+  }
+
+  if (!RetCC_X86_32_C.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn RetCC_X86_64 = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (((X86TargetMachine)state.getTarget()).getSubtarget().isTargetWin64()) {
+    if (!RetCC_X86_Win64_C.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+    	return false;
+  }
+
+  if (!RetCC_X86_64_C.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn CC_X86_64_C = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (argFlags.isByVal()) {
+    state.handleByVal(valNo, valVT, locVT, locInfo, 8, 8, argFlags);
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.i8)) ||
+    locVT.equals(new EVT(MVT.i16))) {
+    locVT = new EVT(MVT.i32);
+    if (argFlags.isSExt())
+        locInfo = LocInfo.SExt;
+    else if (argFlags.isZExt())
+        locInfo = LocInfo.ZExt;
+    else
+        locInfo = LocInfo.AExt;
+  }
+
+  if (argFlags.isNest()) {
+int reg = state.allocateReg(R10);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
     }
+  }
+
+  if (locVT.equals(new EVT(MVT.v1i64))) {
+    if (((X86TargetMachine)state.getTarget()).getSubtarget().isTargetDarwin()) {
+      locVT = new EVT(MVT.i64);
+      locInfo = LocInfo.BCvt;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.i32))) {
+    int[] regList1 = {
+    EDI, ESI, EDX, ECX, R8D, R9D
+    };
+    int reg = state.allocateReg(regList1);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.i64))) {
+    int[] regList2 = {
+    RDI, RSI, RDX, RCX, R8, R9
+    };
+    int reg = state.allocateReg(regList2);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v2f32))) {
+    if (((X86TargetMachine)state.getTarget()).getSubtarget().isTargetDarwin()) {
+      if (((X86TargetMachine)state.getTarget()).getSubtarget().hasSSE2()) {
+        locVT = new EVT(MVT.v2i64);
+        if (argFlags.isSExt())
+                locInfo = LocInfo.SExt;
+        else if (argFlags.isZExt())
+                locInfo = LocInfo.ZExt;
+        else
+                locInfo = LocInfo.AExt;
+      }
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.f32)) ||
+    locVT.equals(new EVT(MVT.f64)) ||
+    locVT.equals(new EVT(MVT.v16i8)) ||
+    locVT.equals(new EVT(MVT.v8i16)) ||
+    locVT.equals(new EVT(MVT.v4i32)) ||
+    locVT.equals(new EVT(MVT.v2i64)) ||
+    locVT.equals(new EVT(MVT.v4f32)) ||
+    locVT.equals(new EVT(MVT.v2f64))) {
+    if (((X86TargetMachine)state.getTarget()).getSubtarget().hasSSE1()) {
+      int[] regList3 = {
+      XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7
+      };
+      int reg = state.allocateReg(regList3);
+      if (reg != 0) {
+      	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+      	return false;
+      }
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.i32)) ||
+    locVT.equals(new EVT(MVT.i64)) ||
+    locVT.equals(new EVT(MVT.f32)) ||
+    locVT.equals(new EVT(MVT.f64))) {
+    int offset4 = state.allocateStack(8, 8);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset4, locVT, locInfo));
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.f80))) {
+    int offset5 = state.allocateStack(
+    	(int)state.getTarget().getTargetData().getTypeAllocSize(locVT.getTypeForEVT()), 
+    	state.getTarget().getTargetData().getABITypeAlignment(locVT.getTypeForEVT())
+);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset5, locVT, locInfo));
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.v16i8)) ||
+    locVT.equals(new EVT(MVT.v8i16)) ||
+    locVT.equals(new EVT(MVT.v4i32)) ||
+    locVT.equals(new EVT(MVT.v2i64)) ||
+    locVT.equals(new EVT(MVT.v4f32)) ||
+    locVT.equals(new EVT(MVT.v2f64))) {
+    int offset6 = state.allocateStack(16, 16);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset6, locVT, locInfo));
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v1i64)) ||
+    locVT.equals(new EVT(MVT.v2f32))) {
+    int offset7 = state.allocateStack(8, 8);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset7, locVT, locInfo));
+    return false;
+  }
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn RetCC_X86_32_C = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (argFlags.isInReg()) {
+    if (((X86TargetMachine)state.getTarget()).getSubtarget().hasSSE2()) {
+      if (locVT.equals(new EVT(MVT.f32)) ||
+            locVT.equals(new EVT(MVT.f64))) {
+        int[] regList1 = {
+        XMM0, XMM1, XMM2
+        };
+        int reg = state.allocateReg(regList1);
+        if (reg != 0) {
+        	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+        	return false;
+        }
+      }
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.f32)) ||
+    locVT.equals(new EVT(MVT.f64))) {
+    int[] regList2 = {
+    ST0, ST1
+    };
+    int reg = state.allocateReg(regList2);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (!RetCC_X86Common.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn RetCC_X86Common = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (locVT.equals(new EVT(MVT.i8))) {
+    int[] regList1 = {
+    AL, DL
+    };
+    int reg = state.allocateReg(regList1);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.i16))) {
+    int[] regList2 = {
+    AX, DX
+    };
+    int reg = state.allocateReg(regList2);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.i32))) {
+    int[] regList3 = {
+    EAX, EDX
+    };
+    int reg = state.allocateReg(regList3);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.i64))) {
+    int[] regList4 = {
+    RAX, RDX
+    };
+    int reg = state.allocateReg(regList4);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.v16i8)) ||
+    locVT.equals(new EVT(MVT.v8i16)) ||
+    locVT.equals(new EVT(MVT.v4i32)) ||
+    locVT.equals(new EVT(MVT.v2i64)) ||
+    locVT.equals(new EVT(MVT.v4f32)) ||
+    locVT.equals(new EVT(MVT.v2f64))) {
+    int[] regList5 = {
+    XMM0, XMM1, XMM2, XMM3
+    };
+    int reg = state.allocateReg(regList5);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v1i64)) ||
+    locVT.equals(new EVT(MVT.v2f32))) {
+int reg = state.allocateReg(MM0);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.f80))) {
+    int[] regList6 = {
+    ST0, ST1
+    };
+    int reg = state.allocateReg(regList6);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn CC_X86_32_C = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (locVT.equals(new EVT(MVT.i8)) ||
+    locVT.equals(new EVT(MVT.i16))) {
+    locVT = new EVT(MVT.i32);
+    if (argFlags.isSExt())
+        locInfo = LocInfo.SExt;
+    else if (argFlags.isZExt())
+        locInfo = LocInfo.ZExt;
+    else
+        locInfo = LocInfo.AExt;
+  }
+
+  if (argFlags.isNest()) {
+int reg = state.allocateReg(ECX);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (!state.isVarArg()) {
+    if (argFlags.isInReg()) {
+      if (locVT.equals(new EVT(MVT.i32))) {
+        int[] regList1 = {
+        EAX, EDX, ECX
+        };
+        int reg = state.allocateReg(regList1);
+        if (reg != 0) {
+        	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+        	return false;
+        }
+      }
+    }
+  }
+
+  if (!CC_X86_32_Common.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn RetCC_X86_64_C = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (locVT.equals(new EVT(MVT.f32))) {
+    int[] regList1 = {
+    XMM0, XMM1
+    };
+    int reg = state.allocateReg(regList1);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.f64))) {
+    int[] regList2 = {
+    XMM0, XMM1
+    };
+    int reg = state.allocateReg(regList2);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.v1i64))) {
+int reg = state.allocateReg(RAX);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v2f32))) {
+    int[] regList3 = {
+    XMM0, XMM1
+    };
+    int reg = state.allocateReg(regList3);
+    if (reg != 0) {
+    	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+    	return false;
+    }
+  }
+
+  if (!RetCC_X86Common.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn CC_X86_32_Common = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (argFlags.isByVal()) {
+    state.handleByVal(valNo, valVT, locVT, locInfo, 4, 4, argFlags);
+    return false;
+  }
+
+  if (!state.isVarArg()) {
+    if (argFlags.isInReg()) {
+      if (locVT.equals(new EVT(MVT.f32)) ||
+            locVT.equals(new EVT(MVT.f64))) {
+        if (((X86TargetMachine)state.getTarget()).getSubtarget().hasSSE2()) {
+          int[] regList1 = {
+          XMM0, XMM1, XMM2
+          };
+          int reg = state.allocateReg(regList1);
+          if (reg != 0) {
+          	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+          	return false;
+          }
+        }
+      }
+    }
+  }
+
+  if (!state.isVarArg()) {
+    if (locVT.equals(new EVT(MVT.v8i8)) ||
+        locVT.equals(new EVT(MVT.v4i16)) ||
+        locVT.equals(new EVT(MVT.v2i32)) ||
+        locVT.equals(new EVT(MVT.v2f32))) {
+      int[] regList2 = {
+      MM0, MM1, MM2
+      };
+      int reg = state.allocateReg(regList2);
+      if (reg != 0) {
+      	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+      	return false;
+      }
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.i32)) ||
+    locVT.equals(new EVT(MVT.f32))) {
+    int offset3 = state.allocateStack(4, 4);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset3, locVT, locInfo));
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.f64))) {
+    int offset4 = state.allocateStack(8, 4);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset4, locVT, locInfo));
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.f80))) {
+    int offset5 = state.allocateStack(
+    	(int)state.getTarget().getTargetData().getTypeAllocSize(locVT.getTypeForEVT()), 4);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset5, locVT, locInfo));
+    return false;
+  }
+
+  if (!state.isVarArg()) {
+    if (locVT.equals(new EVT(MVT.v16i8)) ||
+        locVT.equals(new EVT(MVT.v8i16)) ||
+        locVT.equals(new EVT(MVT.v4i32)) ||
+        locVT.equals(new EVT(MVT.v2i64)) ||
+        locVT.equals(new EVT(MVT.v4f32)) ||
+        locVT.equals(new EVT(MVT.v2f64))) {
+      int[] regList6 = {
+      XMM0, XMM1, XMM2, XMM3
+      };
+      int reg = state.allocateReg(regList6);
+      if (reg != 0) {
+      	state.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));
+      	return false;
+      }
+    }
+  }
+
+  if (locVT.equals(new EVT(MVT.v16i8)) ||
+    locVT.equals(new EVT(MVT.v8i16)) ||
+    locVT.equals(new EVT(MVT.v4i32)) ||
+    locVT.equals(new EVT(MVT.v2i64)) ||
+    locVT.equals(new EVT(MVT.v4f32)) ||
+    locVT.equals(new EVT(MVT.v2f64))) {
+    int offset7 = state.allocateStack(16, 16);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset7, locVT, locInfo));
+    return false;
+  }
+
+  if (locVT.equals(new EVT(MVT.v8i8)) ||
+    locVT.equals(new EVT(MVT.v4i16)) ||
+    locVT.equals(new EVT(MVT.v2i32)) ||
+    locVT.equals(new EVT(MVT.v1i64))) {
+    int offset8 = state.allocateStack(8, 4);
+        state.addLoc(CCValAssign.getMem(valNo, valVT, offset8, locVT, locInfo));
+    return false;
+  }
+
+	return true;	// CC didn't match.
+	};
+
+
+	public static CCAssignFn RetCC_X86 = (valNo, valVT, locVT, locInfo, argFlags, state) ->
+	{
+
+  if (((X86TargetMachine)state.getTarget()).getSubtarget().is64Bit()) {
+    if (!RetCC_X86_64.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+    	return false;
+  }
+
+  if (!RetCC_X86_32.apply(valNo, valVT, locVT, locInfo, argFlags, state))
+  	return false;
+
+	return true;	// CC didn't match.
+	};
+
 }
-

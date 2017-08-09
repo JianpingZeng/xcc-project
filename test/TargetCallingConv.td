@@ -39,31 +39,31 @@ class CCIf<string predicate, CCAction A> : CCPredicateAction<A> {
 
 /// CCIfByVal - If the current argument has ByVal parameter attribute, apply
 /// Action A.
-class CCIfByVal<CCAction A> : CCIf<"ArgFlags.isByVal()", A> {
+class CCIfByVal<CCAction A> : CCIf<"argFlags.isByVal()", A> {
 }
 
 /// CCIfCC - Match of the current calling convention is 'CC'.
 class CCIfCC<string CC, CCAction A>
-  : CCIf<!strconcat("State.getCallingConv() == ", CC), A> {}
+  : CCIf<!strconcat("state.getCallingConv() == ", CC), A> {}
 
 /// CCIfInReg - If this argument is marked with the 'inreg' attribute, apply
 /// the specified action.
-class CCIfInReg<CCAction A> : CCIf<"ArgFlags.isInReg()", A> {}
+class CCIfInReg<CCAction A> : CCIf<"argFlags.isInReg()", A> {}
 
 /// CCIfNest - If this argument is marked with the 'nest' attribute, apply
 /// the specified action.
-class CCIfNest<CCAction A> : CCIf<"ArgFlags.isNest()", A> {}
+class CCIfNest<CCAction A> : CCIf<"argFlags.isNest()", A> {}
 
 /// CCIfSplit - If this argument is marked with the 'split' attribute, apply
 /// the specified action.
-class CCIfSplit<CCAction A> : CCIf<"ArgFlags.isSplit()", A> {}
+class CCIfSplit<CCAction A> : CCIf<"argFlags.isSplit()", A> {}
 
 /// CCIfSRet - If this argument is marked with the 'sret' attribute, apply
 /// the specified action.
-class CCIfSRet<CCAction A> : CCIf<"ArgFlags.isSRet()", A> {}
+class CCIfSRet<CCAction A> : CCIf<"argFlags.isSRet()", A> {}
 
 /// CCIfNotVarArg - If the current function is not vararg - apply the action
-class CCIfNotVarArg<CCAction A> : CCIf<"!State.isVarArg()", A> {}
+class CCIfNotVarArg<CCAction A> : CCIf<"!state.isVarArg()", A> {}
 
 /// CCAssignToReg - This action matches if there is a register in the specified
 /// list that is still available.  If so, it assigns the value to the first

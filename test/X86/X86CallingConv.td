@@ -14,7 +14,7 @@
 
 /// CCIfSubtarget - Match if the current subtarget has a feature F.
 class CCIfSubtarget<string F, CCAction A>
- : CCIf<!strconcat("State.getTarget().getSubtarget<X86Subtarget>().", F), A>;
+ : CCIf<!strconcat("((X86TargetMachine)state.getTarget()).getSubtarget().", F), A>;
 
 //===----------------------------------------------------------------------===//
 // Return Value Calling Conventions
@@ -103,7 +103,7 @@ def RetCC_X86_Win64_C : CallingConv<[
 // This is the root return-value convention for the X86-32 backend.
 def RetCC_X86_32 : CallingConv<[
   // If FastCC, use RetCC_X86_32_Fast.
-  CCIfCC<"CallingConv::Fast", CCDelegateTo<RetCC_X86_32_Fast>>,
+  CCIfCC<"CallingConv.Fast", CCDelegateTo<RetCC_X86_32_Fast>>,
   // Otherwise, use RetCC_X86_32_C.
   CCDelegateTo<RetCC_X86_32_C>
 ]>;
