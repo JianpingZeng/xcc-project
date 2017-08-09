@@ -52,6 +52,12 @@ public class CallingConvEmitter extends TableGenBackend
                 System.out :
                 new PrintStream(new FileOutputStream(outputFile)))
         {
+            os.println("package backend.target.x86;\n");
+            os.println("import backend.codegen.*;\n"
+                    + "import backend.codegen.CCValAssign.LocInfo;\n"
+                    + "import backend.support.CallingConv;\n" + "\n"
+                    + "import static backend.target.x86.X86GenRegisterNames.*;\n");
+
             emitSourceFileHeaderComment("Calling convetion Implementation Fragment", os);
 
             ArrayList<Record> ccs = records.getAllDerivedDefinition("CallingConv");
@@ -72,11 +78,8 @@ public class CallingConvEmitter extends TableGenBackend
     {
         ListInit ccActions = cc.getValueAsListInit("Actions");
         counter = 0;
-        os.printf("\n\tpublic static bool %s(int valNo, EVT valVT,\n", cc.getName());
-        os.printf(Util.fixedLengthString(cc.getName().length() + 13, ' '));
-        os.printf("EVT locVT, CCValAssign.LocInfo locInfo,\n");
-        os.printf(Util.fixedLengthString(cc.getName().length() + 13, ' '));
-        os.printf("ArgFlagsTy argFlags, CCState state){\n");
+        os.printf("\n\tpublic static CCAssignFn %s = (valNo, valVT, locVT, locInfo, argFlags, state) ->\n", cc.getName());
+        os.printf("\t{\n");
 
         // Emit all of the actions, in order.
         for (int i = 0, e = ccActions.getSize(); i != e; i++)
@@ -85,7 +88,7 @@ public class CallingConvEmitter extends TableGenBackend
             emitAction(ccActions.getElementAsRecord(i), 2, os);
         }
         os.printf("\n\treturn true;\t// CC didn't match.\n");
-        os.println("}\n");
+        os.println("\t};\n");
     }
 
     private void emitAction(Record action, int indent, PrintStream os)
@@ -103,7 +106,7 @@ public class CallingConvEmitter extends TableGenBackend
                 {
                     Record vt = vts.getElementAsRecord(i);
                     if (i != 0) os.printf(" ||\n%s%s", indentStr, indentStr);
-                    os.printf("locVT == %s", MVT.getEnumName(getValueType(vt)));
+                    os.printf("locVT.equals(new EVT(%s))", MVT.getEnumName(getValueType(vt)));
                 }
             }
             else if (action.isSubClassOf("CCIf"))
@@ -123,7 +126,7 @@ public class CallingConvEmitter extends TableGenBackend
             if (action.isSubClassOf("CCDelegateTo"))
             {
                 Record cc = action.getValueAsDef("CC");
-                os.printf("%sif (!%s(valNo, valVT, locVT, locInfo, argFlags, state))\n",
+                os.printf("%sif (!%s.apply(valNo, valVT, locVT, locInfo, argFlags, state))\n",
                         indentStr, cc.getName());
                 os.printf("%s\treturn false;\n", indentStr);
             }
@@ -132,8 +135,15 @@ public class CallingConvEmitter extends TableGenBackend
                 ListInit regList = action.getValueAsListInit("RegList");
                 if (regList.getSize() == 1)
                 {
-                    os.printf("%sint[] regList = {\n", indentStr);
-                    os.printf(indentStr + ", ");
+                    os.printf("int reg = state.allocateReg(%s);\n",
+                            regList.getElementAsRecord(0).getName());
+
+                    os.printf("%sif (reg != 0) {\n", indentStr);
+                }
+                else
+                {
+                    os.printf("%sint[] regList%d = {\n", indentStr, ++counter);
+                    os.printf(indentStr);
                     for (int i = 0, e = regList.getSize(); i != e; i++)
                     {
                         if (i != 0) os.printf(", ");
@@ -141,8 +151,8 @@ public class CallingConvEmitter extends TableGenBackend
                     }
                     os.println();
                     os.printf("%s};\n", indentStr);
-                    os.printf("%sint reg = state.allocateReg(regList%d, %d));\n",
-                            indentStr, counter, regList.getSize());
+                    os.printf("%sint reg = state.allocateReg(regList%d);\n",
+                            indentStr, counter);
                     os.printf("%sif (reg != 0) {\n", indentStr);
                 }
                 os.printf("%s\tstate.addLoc(CCValAssign.getReg(valNo, valVT, reg, locVT, locInfo));\n", indentStr);
@@ -193,8 +203,8 @@ public class CallingConvEmitter extends TableGenBackend
                     os.println();
                     os.printf("%s};\n", indentStr);
 
-                    os.printf("%sint reg = state.allocateReg(regList%d, regList%d, %d);\n",
-                            indentStr, regListNumber, shadowRegListNumber, regList.getSize());
+                    os.printf("%sint reg = state.allocateReg(regList%d, regList%d);\n",
+                            indentStr, regListNumber, shadowRegListNumber);
                     os.printf("%sif (reg != 0) {\n", indentStr);
                 }
 
@@ -212,17 +222,17 @@ public class CallingConvEmitter extends TableGenBackend
                 if (size != 0)
                     os.printf("%d, ", size);
                 else
-                    os.printf("\n%s\tstate.getTarget().getTargetData()" +
-                            ".getTypeAllocSize(locVT.getTypeForEVT(state.getContext())), ",
+                    os.printf("\n%s\t(int)state.getTarget().getTargetData()" +
+                            ".getTypeAllocSize(locVT.getTypeForEVT()), ",
                             indentStr);
 
                 if (align != 0)
-                    os.printf("%d, ", align);
+                    os.printf("%d", align);
                 else
                     os.printf("\n%s\tstate.getTarget().getTargetData()" +
-                                    ".getABITypeAlignment(locVT.getTypeForEVT(state.getContext()));\n",
+                                    ".getABITypeAlignment(locVT.getTypeForEVT())\n",
                             indentStr);
-                os.println();
+                os.printf(");\n%s", indentStr);
                 os.print(indentStr);
                 os.printf("state.addLoc(CCValAssign.getMem(valNo, valVT, offset%d, locVT, locInfo));\n", counter);
                 os.print(indentStr);
@@ -231,25 +241,25 @@ public class CallingConvEmitter extends TableGenBackend
             else if (action.isSubClassOf("CCPromoteToType"))
             {
                 Record destTy = action.getValueAsDef("DestTy");
-                os.printf("%slocVT = %s;\n", indentStr, MVT.getEnumName(getValueType(destTy)));
+                os.printf("%slocVT = new EVT(%s);\n", indentStr, MVT.getEnumName(getValueType(destTy)));
                 os.printf("%sif (argFlags.isSExt())\n", indentStr);
-                os.printf("%s%slocInfo = CCValueAssign.SExt;\n", indentStr, indentStr);
+                os.printf("%s%slocInfo = LocInfo.SExt;\n", indentStr, indentStr);
                 os.printf("%selse if (argFlags.isZExt())\n", indentStr);
-                os.printf("%s%slocInfo = CCValAssign.ZExt;\n", indentStr, indentStr);
+                os.printf("%s%slocInfo = LocInfo.ZExt;\n", indentStr, indentStr);
                 os.printf("%selse\n", indentStr);
-                os.printf("%s%slocInfo = CCValAssign.AExt;\n", indentStr, indentStr);
+                os.printf("%s%slocInfo = LocInfo.AExt;\n", indentStr, indentStr);
             }
             else if (action.isSubClassOf("CCBitConvertToType"))
             {
                 Record destTy = action.getValueAsDef("DestTy");
-                os.printf("%slocVT = %s;\n", indentStr, MVT.getEnumName(getValueType(destTy)));
-                os.printf("%slocInfo = CCValAssign.BCvt;\n", indentStr);
+                os.printf("%slocVT = new EVT(%s);\n", indentStr, MVT.getEnumName(getValueType(destTy)));
+                os.printf("%slocInfo = LocInfo.BCvt;\n", indentStr);
             }
             else if (action.isSubClassOf("CCPassIndirect"))
             {
                 Record destTy = action.getValueAsDef("DestTy");
-                os.printf("%slocVT = %s;\n", indentStr, MVT.getEnumName(getValueType(destTy)));
-                os.printf("%slocInfo = CCValAssign.Indirect;\n", indentStr);
+                os.printf("%slocVT = new EVT(%s);\n", indentStr, MVT.getEnumName(getValueType(destTy)));
+                os.printf("%slocInfo = LocInfo.Indirect;\n", indentStr);
             }
             else if (action.isSubClassOf("CCPassByVal"))
             {

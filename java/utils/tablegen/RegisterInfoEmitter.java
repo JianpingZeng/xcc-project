@@ -20,7 +20,6 @@ import backend.codegen.MVT;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.hash.TIntHashSet;
 import tools.Pair;
-import tools.SetMultiMap;
 import tools.Util;
 
 import java.io.PrintStream;
