@@ -1,5 +1,6 @@
 package backend.target.x86;
 
+import backend.codegen.MachineCodeEmitter;
 import backend.pass.PassManagerBase;
 import backend.target.*;
 import backend.value.Module;
@@ -10,7 +11,7 @@ import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
 import static backend.target.x86.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
-import static backend.target.x86.X86DAGtoDAGISel.createX86ISelDag;
+import static backend.target.x86.X86DAGToDAGISel.createX86ISelDag;
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
 /**
@@ -191,5 +192,12 @@ public class X86TargetMachine extends LLVMTargetMachine
 	{
 		pm.add(X86ATTAsmPrinter.createX86AsmCodeEmitter(os, this, getTargetAsmInfo(), verbose));
 		return false;
+	}
+
+	@Override
+	public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
+			MachineCodeEmitter mce)
+	{
+		return super.addSimpleCodeEmitter(pm, level, mce);
 	}
 }

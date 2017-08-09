@@ -16,19 +16,19 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.CCValAssign.CCAssignFn;
 import backend.codegen.CCValAssign.LocInfo;
 import backend.support.CallingConv;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
+import tools.Util;
 
 import java.util.ArrayList;
 
 /**
  * This class holds information needed while lowering arguments and
- * × return values.  It captures which registers are already assigned and which
- * × stack slots are used.  It provides accessors to allocate these values.
+ * return values.  It captures which registers are already assigned and which
+ * stack slots are used.  It provides accessors to allocate these values.
  *
  * @author Xlous.zeng
  * @version 0.1
@@ -97,12 +97,32 @@ public class CCState
     /// incorporating info about the formals into this state.
     public void analyzeFormalArguments(ArrayList<InputArg> ins, CCAssignFn fn)
     {
+        int idx = 0;
+        for(InputArg arg : ins)
+        {
+            ArgFlagsTy argFlags = arg.flags;
+            EVT argVT = arg.vt;
+            if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
+            {
+                Util.shouldNotReachHere();
+            }
+        }
     }
 
     /// analyzeReturn - Analyze the returned values of a return,
     /// incorporating info about the result values into this state.
     public void analyzeReturn(ArrayList<OutputArg> outs, CCAssignFn fn)
     {
+        int idx = 0;
+        for(OutputArg arg : outs)
+        {
+            ArgFlagsTy argFlags = arg.flags;
+            EVT argVT = arg.vt;
+            if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
+            {
+                Util.shouldNotReachHere();
+            }
+        }
     }
 
     /// analyzeCallOperands - Analyze the outgoing arguments to a call,
@@ -111,6 +131,16 @@ public class CCState
             ArrayList<OutputArg> outs,
             CCAssignFn fn)
     {
+        int idx = 0;
+        for(OutputArg arg : outs)
+        {
+            ArgFlagsTy argFlags = arg.flags;
+            EVT argVT = arg.vt;
+            if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
+            {
+                Util.shouldNotReachHere();
+            }
+        }
     }
 
     /// analyzeCallOperands - Same as above except it takes vectors of types
@@ -120,18 +150,42 @@ public class CCState
             ArrayList<ArgFlagsTy> flags,
             CCAssignFn fn)
     {
+        for(int idx = 0; idx < argVTs.size(); idx++)
+        {
+
+            ArgFlagsTy argFlags = flags.get(idx);
+            EVT argVT = argVTs.get(idx);
+            if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
+            {
+                Util.shouldNotReachHere();
+            }
+        }
     }
 
     /// analyzeCallResult - Analyze the return values of a call,
     /// incorporating info about the passed values into this state.
     public void analyzeCallResult(ArrayList<InputArg> ins, CCAssignFn fn)
     {
+        int idx = 0;
+        for(InputArg arg : ins)
+        {
+            ArgFlagsTy argFlags = arg.flags;
+            EVT argVT = arg.vt;
+            if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
+            {
+                Util.shouldNotReachHere();
+            }
+        }
     }
 
     /// analyzeCallResult - Same as above except it's specialized for calls which
     /// produce a single value.
     public void analyzeCallResult(EVT vt, CCAssignFn fn)
     {
+        if (fn.apply(0, vt, vt, LocInfo.Full, new ArgFlagsTy(), this))
+        {
+            Util.shouldNotReachHere();
+        }
     }
 
     /// getFirstUnallocated - Return the first unallocated register in the set, or
@@ -234,5 +288,12 @@ public class CCState
     /// markAllocated - Mark a register and all of its aliases as allocated.
     private void markAllocated(int reg)
     {
+        usedRegs.set(reg/32, usedRegs.get(reg/32) | (1<<reg&31));
+        int[] aliases = tri.getAliasSet(reg);
+        if (aliases != null)
+        {
+            for (int alias : aliases)
+                usedRegs.set(alias/32, usedRegs.get(alias/32) | (1<<alias&31));
+        }
     }
 }
