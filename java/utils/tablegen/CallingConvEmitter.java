@@ -17,12 +17,15 @@ package utils.tablegen;
  */
 
 import backend.codegen.MVT;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Util;
 import utils.tablegen.Init.ListInit;
 
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 
 import static utils.tablegen.CodeGenTarget.getValueType;
 
@@ -32,6 +35,19 @@ import static utils.tablegen.CodeGenTarget.getValueType;
  */
 public class CallingConvEmitter extends TableGenBackend
 {
+    private static class TopSortNode
+    {
+        String name;
+        HashSet<TopSortNode> ins;
+        HashSet<TopSortNode> outs;
+        public TopSortNode(String name)
+        {
+            this.name = name;
+            ins = new HashSet<>();
+            outs = new HashSet<>();
+        }
+
+    }
     private RecordKeeper records;
     private int counter;
 
@@ -65,20 +81,147 @@ public class CallingConvEmitter extends TableGenBackend
             String className = target.getName() + "GenCallingConv";
             os.printf("public class %s {\n", className);
 
-            // Emit each calling convention description in full.
+            HashMap<String, Record> recNameToRec = new HashMap<>();
             for (Record cc : ccs)
             {
-                emitCallingConv(cc, os);
+                recNameToRec.put(cc.getName(), cc);
+            }
+            ArrayList<String> dependency = topologicalSortOfAction(ccs);
+
+            // Emit each calling convention description in full.
+            for (String dept : dependency)
+            {
+                assert recNameToRec.containsKey(dept) :"No cc action have name " + dept;
+                emitCallingConv(recNameToRec.get(dept), os);
             }
             os.println("}");
         }
+    }
+
+    private HashMap<String, TopSortNode> nameToNodeMap = new HashMap<>();
+
+    private TopSortNode getOrCreate(String name)
+    {
+        if (nameToNodeMap.containsKey(name))
+            return nameToNodeMap.get(name);
+        TopSortNode node = new TopSortNode(name);
+        nameToNodeMap.put(name, node);
+        return node;
+    }
+
+    private TObjectIntHashMap<String> map = new TObjectIntHashMap<>();
+    int cnt = 1;
+
+    private int get(String name)
+    {
+        if (map.containsKey(name))
+            return map.get(name);
+        map.put(name, cnt++);
+        return cnt-1;
+    }
+
+    private void createTopGraph(Record cc, Record action) throws Exception
+    {
+        TopSortNode node = getOrCreate(cc.getName());
+        if (action.isSubClassOf("CCPredicateAction"))
+        {
+            createTopGraph(cc, action.getValueAsDef("SubAction"));
+        }
+        else
+        {
+            if (action.isSubClassOf("CCDelegateTo"))
+            {
+                // pretend its dependency action to the dependency set.
+                Record r = action.getValueAsDef("CC");
+                TopSortNode t = getOrCreate(r.getName());
+                t.outs.add(node);
+                node.ins.add(t);
+            }
+            else if (action.isSubClassOf("CCCustom"))
+            {
+                String actName = action.getValueAsString("FuncName");
+                TopSortNode t = getOrCreate(actName);
+                t.outs.add(node);
+                node.ins.add(t);
+            }
+        }
+    }
+
+    private ArrayList<String> topologicalSortOfAction(ArrayList<Record> ccs)
+            throws Exception
+    {
+        for (Record cc : ccs)
+        {
+            ListInit ccActions = cc.getValueAsListInit("Actions");
+            for (int i = 0, e = ccActions.getSize(); i != e; i++)
+            {
+                Record action = ccActions.getElementAsRecord(i);
+                createTopGraph(cc, action);
+            }
+        }
+
+        ArrayList<String> res = new ArrayList<>();
+        while (!nameToNodeMap.isEmpty())
+        {
+            TopSortNode root = findRoot(nameToNodeMap);
+            nameToNodeMap.remove(root.name);
+            if (TableGen.DEBUG)
+            {
+                if (root.outs.isEmpty())
+                {
+                    System.out.printf("%d\n", get(root.name));
+                }
+                else
+                {
+                    for (TopSortNode out : root.outs)
+                    {
+                        out.ins.remove(root);
+                        System.out.printf("%d->%d\n", get(root.name), get(out.name));
+                    }
+                }
+            }
+            else
+            {
+                for (TopSortNode out : root.outs)
+                {
+                    out.ins.remove(root);
+                }
+            }
+
+            res.add(root.name);
+        }
+        if (TableGen.DEBUG)
+        {
+            System.out.println("\n\nTopological result");
+            res.forEach(name -> System.out.println(get(name)));
+
+            System.out.println();
+            res.forEach(name ->
+            {
+                System.out.println(name + " " + get(name));
+            });
+        }
+        return res;
+    }
+
+    private TopSortNode findRoot(HashMap<String, TopSortNode> nameToNodeMap)
+    {
+        // Find the root node.
+        for (TopSortNode node : nameToNodeMap.values())
+        {
+            if (node.ins.isEmpty())
+                return node;
+        }
+        assert false :"No root node for topological sort";
+        return null;
     }
 
     private void emitCallingConv(Record cc, PrintStream os) throws Exception
     {
         ListInit ccActions = cc.getValueAsListInit("Actions");
         counter = 0;
-        os.printf("\n\tpublic static CCAssignFn %s = (valNo, valVT, locVT, locInfo, argFlags, state) ->\n", cc.getName());
+        os.printf("\n\tpublic static CCAssignFn %s = (valNo, valVT, locVT, "
+                + "locInfo, argFlags, state) ->\n", cc.getName());
         os.printf("\t{\n");
 
         // Emit all of the actions, in order.
@@ -271,7 +414,7 @@ public class CallingConvEmitter extends TableGenBackend
             }
             else if (action.isSubClassOf("CCCustom"))
             {
-                os.printf("%sif (%s(valNo, valVT, locVT, locInfo, argFlags, state))\n",
+                os.printf("%sif (%s.apply(valNo, valVT, locVT, locInfo, argFlags, state))\n",
                         indentStr, action.getValueAsString("FuncName"));
                 os.printf("%s%sreturn false;\n", indentStr, indentStr);
             }
