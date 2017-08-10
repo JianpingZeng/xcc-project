@@ -2,11 +2,8 @@ package backend.target.x86;
 
 import backend.codegen.MachineInstr;
 import backend.target.TargetAsmInfo;
-import backend.target.TargetMachine;
 
 import java.io.OutputStream;
-
-import static backend.target.x86.X86GenInstrNames.*;
 
 /**
  * TableGen created file.
@@ -2097,10 +2094,10 @@ public final class X86GenATTAsmPrinter extends X86ATTAsmPrinter{
 	@Override
 	public boolean printInstruction(MachineInstr mi)
 	{
+		/*
 		// emit the opcode for the instruction.
 		String asmStr = opStrs[mi.getOpcode()];
 		if (asmStr != null)
-
 			os.print(asmStr);
 
 		switch (mi.getOpcode())
@@ -17995,6 +17992,7 @@ public final class X86GenATTAsmPrinter extends X86ATTAsmPrinter{
 				os.print("\n");
 				break;
 			}// end of switch.
+			*/
 		return true;
 	}// end of printInstruction.
 }// end of interface.
