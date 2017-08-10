@@ -152,10 +152,9 @@ public class CCState
     {
         for(int idx = 0; idx < argVTs.size(); idx++)
         {
-
             ArgFlagsTy argFlags = flags.get(idx);
             EVT argVT = argVTs.get(idx);
-            if (fn.apply(idx++, argVT, argVT, LocInfo.Full, argFlags, this))
+            if (fn.apply(idx, argVT, argVT, LocInfo.Full, argFlags, this))
             {
                 Util.shouldNotReachHere();
             }
