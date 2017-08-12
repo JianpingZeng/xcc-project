@@ -8,11 +8,8 @@ import java.util.LinkedList;
 /**
  * <p>This defines a class which implements constant propgation
  * and constant folding as subtask.
- * <p>This file is a member of <a href={@docRoot/opt}>Machine Indepedence
- * Optimization</a>.
- *
+ * <p>This file is a member of Machine Indepedence Optimization</p>.
  * @author Xlous.zeng
- * @see Canonicalizer
  * @see DCE
  * @see GVNPRE
  * @see CFGSimplifyPass

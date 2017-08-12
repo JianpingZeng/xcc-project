@@ -71,7 +71,7 @@ public class ParserBool extends Parser<Boolean>
     }
 
     /**
-     * Do not print =<value> at all.
+     * Do not print value at all.
      * @return
      */
     @Override
