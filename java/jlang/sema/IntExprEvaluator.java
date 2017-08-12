@@ -16,6 +16,8 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import backend.support.APFloat;
+import backend.support.APFloat.CmpResult;
 import jlang.ast.Tree.*;
 import backend.support.APInt;
 import backend.support.APSInt;
@@ -27,8 +29,6 @@ import jlang.type.PointerType;
 import jlang.type.QualType;
 import tools.OutParamWrapper;
 import tools.Util;
-
-import java.math.BigDecimal;
 
 /**
  * This class represents a implementation of evaluating whether the value of constant
@@ -75,7 +75,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         assert e.getType().isIntegralOrEnumerationType()
                 :"Invalid evaluation result.";
-        result.set(new APValue(ASTContext.makeIntValue(value, e.getType())));
+        result.set(new APValue(context.makeIntValue(value, e.getType())));
         return true;
     }
     @Override
@@ -262,8 +262,8 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
 
         if (lhsTy.isRealType() && rhsTy.isRealType())
         {
-            OutParamWrapper<BigDecimal> rhs = new OutParamWrapper<>(new BigDecimal(0.0));
-            OutParamWrapper<BigDecimal> lhs = new OutParamWrapper<>(new BigDecimal(0.0));
+            OutParamWrapper<APFloat> rhs = new OutParamWrapper<>(new APFloat(0.0));
+            OutParamWrapper<APFloat> lhs = new OutParamWrapper<>(new APFloat(0.0));
 
             if (!evaluateFloat(expr.getRHS(), rhs, context))
                 return false;
@@ -271,30 +271,43 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             if (!evaluateFloat(expr.getLHS(), lhs, context))
                 return false;
 
-            int compResult = lhs.get().compareTo(rhs.get());
+            CmpResult compResult = lhs.get().compare(rhs.get());
+
             switch (expr.getOpcode())
             {
                 default:
                     Util.shouldNotReachHere("Invalid binary operator!");
                     break;
                 case BO_LT:
-                    success(compResult<0?1:0, expr);
+                    success(compResult == CmpResult.cmpLessThan?1:0, expr);
                     break;
                 case BO_GT:
-                    success(compResult>0?1:0, expr);
+                    success(compResult == CmpResult.cmpGreaterThan ?1:0, expr);
                     break;
                 case BO_LE:
-                    success(compResult<=0?1:0, expr);
+                {
+                    boolean res = compResult == CmpResult.cmpLessThan
+                            || compResult == CmpResult.cmpEqual;
+                    success(res ? 1 : 0, expr);
                     break;
+                }
                 case BO_GE:
-                    success(compResult>=0?1:0, expr);
+                {
+                    boolean res = compResult == CmpResult.cmpGreaterThan
+                            || compResult == CmpResult.cmpEqual;
+                    success(res ? 1 : 0, expr);
                     break;
+                }
                 case BO_EQ:
-                    success(compResult==0?1:0, expr);
+                {
+                    success(compResult == CmpResult.cmpEqual ? 1 : 0, expr);
                     break;
+                }
                 case BO_NE:
-                    success(compResult!=0?1:0, expr);
+                {
+                    success(compResult == CmpResult.cmpEqual ? 0:1, expr);
                     break;
+                }
             }
         }
 
@@ -602,8 +615,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                     return true;
                 }
 
-                APSInt asInt = ASTContext
-                        .makeIntValue(lv.get().getLValueOffset(), srcType);
+                APSInt asInt = context.makeIntValue(lv.get().getLValueOffset(), srcType);
                 return success(handleIntToIntCast(destType, srcType, asInt, context), expr);
             }
 
@@ -613,7 +625,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             }
             case CK_FloatingToIntegral:
             {
-                OutParamWrapper<BigDecimal> f = new OutParamWrapper<>();
+                OutParamWrapper<APFloat> f = new OutParamWrapper<>();
                 if (!evaluateFloat(subExpr, f, context))
                     return false;
 
@@ -635,14 +647,14 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
         return result;
     }
 
-    private static APSInt handleFloatToIntCast(QualType destType, QualType srcType, BigDecimal val, ASTContext ctx)
+    private static APSInt handleFloatToIntCast(QualType destType, QualType srcType, APFloat val, ASTContext ctx)
     {
         int destWidth = ctx.getIntWidth(destType);
 
         // Determine whether we are converting to unsigned or signed.
         boolean destIsSigned = ctx.isSignedIntegerOrEnumerationType(destType);
 
-        APSInt result = new APSInt(val.intValue(), !destIsSigned);
+        APSInt result = new APSInt(val.bitcastToAPInt(), !destIsSigned);
         if (destIsSigned)
             result.sextOrTrunc(destWidth);
         else

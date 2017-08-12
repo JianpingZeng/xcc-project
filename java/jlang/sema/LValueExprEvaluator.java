@@ -125,11 +125,12 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
 
         APSInt index = new APSInt();
         OutParamWrapper<APSInt> x = new OutParamWrapper<>(index);
-        if (!evaluateInteger(expr.getIdx(), x))
+        if (!evaluateInteger(expr.getIdx(), x, context))
             return false;
 
         index = x.get();
-        long elementSize = expr.getType().getTypeSizeInBytes();
+        // FIXME, obtain the type size of given type in bytes.
+        long elementSize = context.getTypeSize(expr.getType());
         result.get().offset += index.getSExtValue() * elementSize;
         return true;
     }

@@ -216,7 +216,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
         // So as to assignment to work correctly, the value on the right
         // side must has the type compatible with type of right side.
 
-        assert QualType.hasSameUnqualifiedType(expr.getLHS().getType(),
+        assert cgf.getContext().hasSameUnqualifiedType(expr.getLHS().getType(),
                 expr.getRHS().getType())
                 :"Invalid assignment";
 
@@ -283,7 +283,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
                 QualType t1 = expr.getType();
                 QualType t2 = expr.getInitAt(0).getType();
 
-                if (QualType.hasSameUnqualifiedType(t1, t2))
+                if (cgf.getContext().hasSameUnqualifiedType(t1, t2))
                 {
                     emitAggLoadOfLValue(expr.getInitAt(0));
                     return null;
@@ -291,8 +291,8 @@ public class AggExprEmitter extends StmtVisitor<Void>
             }
 
             long numArrayElts = atType.getNumElements();
-            QualType eltType = expr.getType().getPromotedIntegerType();
-            eltType = eltType.getAsArrayType().getElemType();
+            QualType eltType = cgf.getContext().getPromotedIntegerType(expr.getType());
+            eltType = cgf.getContext().getAsArrayType(eltType).getElemType();
 
             int cvrQualifiers = eltType.getCVRQualifiers();
 
@@ -316,7 +316,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
         // the disadvantage is that the generated code is more difficult for
         // the optimizer, especially with bitfields.
         int numInitElements = expr.getNumInits();
-        Decl.RecordDecl rd = expr.getType().<RecordType>getAs().getDecl();
+        Decl.RecordDecl rd = cgf.getContext().<RecordType>getAs(expr.getType()).getDecl();
         int curInitVal = 0;
 
         if (expr.getType().isUnionType())

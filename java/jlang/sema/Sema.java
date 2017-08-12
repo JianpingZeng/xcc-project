@@ -178,13 +178,13 @@ public final class Sema implements DiagnosticParseTag,
         return new PartialDiagnostic(diagID);
     }
 
-    private SemaDiagnosticBuilder diag(SourceLocation loc, int diagID)
+    public SemaDiagnosticBuilder diag(SourceLocation loc, int diagID)
     {
         Diagnostic.DiagnosticBuilder db = pp.diag(loc, diagID);
         return new SemaDiagnosticBuilder(db, this, diagID);
     }
 
-    private SemaDiagnosticBuilder diag(SourceLocation loc, PartialDiagnostic pdiag)
+    public SemaDiagnosticBuilder diag(SourceLocation loc, PartialDiagnostic pdiag)
     {
         int diagID = pdiag.getDiagID();
         SemaDiagnosticBuilder builder = new SemaDiagnosticBuilder(

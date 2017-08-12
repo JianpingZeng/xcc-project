@@ -63,7 +63,6 @@ public class HIRModuleGenerator
 {
 	private List<GlobalVariable> vars;
 	private List<Function> functions;
-    private TargetData theTargetData;
     private Function memCpyFn;
     private Function memMoveFn;
     private Function memSetFn;
@@ -705,7 +704,7 @@ public class HIRModuleGenerator
     public Function getMemCpyFn()
     {
         if (memCpyFn != null) return memCpyFn;
-        backend.type.Type intPtr = theTargetData.getIntPtrType();
+        backend.type.Type intPtr = td.getIntPtrType();
         ArrayList<backend.type.Type> types = new ArrayList<>();
         types.add(intPtr);
         return (memCpyFn = getIntrinsic(Intrinsic.ID.memcpy, types));
@@ -714,7 +713,7 @@ public class HIRModuleGenerator
     public Function getMemMoveFn()
     {
         if (memMoveFn != null) return memMoveFn;
-        backend.type.Type intPtr = theTargetData.getIntPtrType();
+        backend.type.Type intPtr = td.getIntPtrType();
         ArrayList<backend.type.Type> types = new ArrayList<>();
         types.add(intPtr);
         return (memMoveFn = getIntrinsic(Intrinsic.ID.memmove, types));
@@ -723,7 +722,7 @@ public class HIRModuleGenerator
     public Function getMemSetFn()
     {
         if (memSetFn != null) return memSetFn;
-        backend.type.Type intPtr = theTargetData.getIntPtrType();
+        backend.type.Type intPtr = td.getIntPtrType();
         ArrayList<backend.type.Type> types = new ArrayList<>();
         types.add(intPtr);
         return (memSetFn = getIntrinsic(Intrinsic.ID.memset, types));
@@ -731,7 +730,7 @@ public class HIRModuleGenerator
 
     public TargetData getTargetData()
     {
-        return theTargetData;
+        return td;
     }
 
 	/**

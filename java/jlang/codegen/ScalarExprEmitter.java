@@ -16,8 +16,8 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.value.BasicBlock;
 import backend.hir.HIRBuilder;
+import backend.support.APFloat;
 import backend.type.FunctionType;
 import backend.type.IntegerType;
 import backend.type.PointerType;
@@ -32,12 +32,10 @@ import jlang.ast.Tree.BinaryExpr;
 import jlang.ast.Tree.CompoundAssignExpr;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.UnaryExpr;
-import jlang.sema.ASTContext;
 import jlang.sema.BinaryOperatorKind;
 import jlang.sema.Decl;
 import jlang.type.QualType;
 
-import java.math.BigDecimal;
 import java.util.Iterator;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
@@ -130,8 +128,8 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
      */
     public Value emitScalarConversion(Value v, QualType srcTy, QualType destTy)
     {
-        srcTy = QualType.getCanonicalType(srcTy);
-        destTy = QualType.getCanonicalType(destTy);
+        srcTy = cgf.getContext().getCanonicalType(srcTy);
+        destTy = cgf.getContext().getCanonicalType(destTy);
 
         if (srcTy == destTy)
             return v;
@@ -173,7 +171,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         if (v.getType() instanceof PointerType)
         {
             // must be an ptr -> int cast.
-            assert dstTy instanceof PointerType:"Not ptr->int.";
+            assert dstTy instanceof IntegerType:"Not ptr->int.";
             return builder.createPtrToInt(v, dstTy, "conv");
         }
 
@@ -266,7 +264,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     {
         if (info.lhs.getType().isFloatingPointType())
             return builder.createFDiv(info.lhs, info.rhs, "div");
-        else if (info.ty.isSignedType())
+        else if (info.ty.isSignedIntegerType())
             return builder.createSDiv(info.lhs, info.rhs, "div");
         else
             return builder.createUDiv(info.lhs, info.rhs, "div");
@@ -275,7 +273,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     private Value emitRem(BinOpInfo info)
     {
         // Rem in C can't be a floating point type: C99 6.5.5p2.
-        if (info.ty.isSignedType())
+        if (info.ty.isSignedIntegerType())
             return builder.createSRem(info.lhs, info.rhs, "rem");
         else
             return builder.createURem(info.lhs, info.rhs, "rem");
@@ -291,13 +289,13 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 return builder.createFAdd(info.lhs, info.rhs, "add");
 
             // Signed integer overflow is undefined behavior.
-            // if (info.ty.isSignedType())
+            // if (info.ty.isSignedIntegerType())
             // TODO return builder.createNSWAdd(info.lhs, info.rhs, "add");
             return builder.createAdd(info.lhs, info.rhs, "add");
         }
 
-        if (info.ty.isPointerType() &&
-                info.ty.<jlang.type.PointerType>getAs().isVariableArrayType())
+        if (info.ty.isPointerType() && 
+                info.ty.getAsPointerType().isVariableArrayType())
         {
             // The amount of the addition needs to account for the VLA getNumOfSubLoop
             cgf.errorUnsupported(info.expr, "VLA pointer addition");;
@@ -305,7 +303,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
 
         Value ptr, idx;
         Expr idxExpr;
-        jlang.type.PointerType pt = info.expr.getLHS().getType().<jlang.type.PointerType>getAs();
+        jlang.type.PointerType pt = info.expr.getLHS().getType().getAsPointerType();
         if (pt != null)
         {
             ptr = info.lhs;
@@ -314,7 +312,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
         else
         {
-            pt = info.expr.getRHS().getType().<jlang.type.PointerType>getAs();
+            pt = info.expr.getRHS().getType().getAsPointerType();
             assert pt != null:"Invalid add expr";
             ptr = info.rhs;
             idx = info.lhs;
@@ -327,7 +325,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             // Zero or sign extend the pointer value based on whether the index is
             // signed or not.
             Type idxType = IntegerType.get(cgf.pointerWidth);
-            if (idxExpr.getType().isSignedType())
+            if (idxExpr.getType().isSignedIntegerType())
                 idx = builder.createSExt(idx, idxType, "idx.sext");
             else
                 idx = builder.createZExt(idx, idxType, "idx.zext");
@@ -340,7 +338,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // type is i8*, but this is future proof.
         if (eltType.isVoidType() || eltType.isFunctionType())
         {
-            Type i8Ty = PointerType.get(Type.Int8Ty);
+            Type i8Ty = PointerType.get(Type.Int8Ty, eltType.getAddressSpace());
             Value casted = builder.createBitCast(ptr, i8Ty, "bitcast");
             Value res = builder.createGEP(casted, idx, "add.ptr");
             return builder.createBitCast(res, ptr.getType(), "bitcast");
@@ -361,7 +359,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
 
         QualType lhsType = info.expr.getLHS().getType();
-        QualType lhsEltType = lhsType.getPointee();
+        QualType lhsEltType = lhsType.getPointeeType();
 
         QualType rhsType = info.expr.getRHS().getType();
         // reaching here, the type of lhs is pointer type.
@@ -376,7 +374,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 // zero or signe extend the pointer value based whether the
                 // index is signed or not.
                 Type idxType = IntegerType.get(cgf.pointerWidth);
-                if (rhsType.isSignedType())
+                if (rhsType.isSignedIntegerType())
                     idx = builder.createSExt(idx, idxType, "idx.sext");
                 else
                     idx = builder.createZExt(idx, idxType, "idx.zext");
@@ -388,7 +386,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             // void* type is i8*, but this is future proof.
             if (lhsEltType.isVoidType() || lhsEltType.isFunctionType())
             {
-                Type i8Ty = PointerType.get(Type.Int8Ty);
+                Type i8Ty = PointerType.get(Type.Int8Ty, lhsEltType.getAddressSpace());
                 Value lhsCasted = builder.createBitCast(info.lhs, i8Ty, "sub.ptr.bitcast");
                 Value res = builder.createGEP(lhsCasted, idx, "sub.ptr");
                 return builder.createBitCast(res, info.lhs.getType(), "bitcast");
@@ -408,7 +406,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             }
             else
             {
-                eleSize = lhsEltType.getTypeSize() / 8;
+                eleSize = cgf.getContext().getTypeSize(lhsEltType)/8;
             }
 
             Type resultType = convertType(info.ty);
@@ -445,7 +443,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             rhs = builder.createIntCast(rhs, info.lhs.getType(), false, "shr.prom");
         // Note that: it is needed to distinguish between arithmetic shift right
         // and logical shift right.
-        if (info.ty.isSignedType())
+        if (info.ty.isSignedIntegerType())
             return builder.createAShr(info.lhs, rhs, "ashr");
         return builder.createLShr(info.lhs, rhs, "lshr");
     }
@@ -710,7 +708,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             {
                 result = builder.createFCmp(fCmpOpc, lhs, rhs, "fcmp");
             }
-            else if (lhsTy.isSignedType())
+            else if (lhsTy.isSignedIntegerType())
             {
                 result = builder.createICmp(sICmpOpc, lhs, rhs, "scmp");
             }
@@ -722,7 +720,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
 
         return emitScalarConversion(result,
-                ASTContext.BoolTy,
+                cgf.getContext().BoolTy,
                 expr.getType());
     }
 
@@ -1021,7 +1019,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         Value inVal = cgf.emitLoadOfLValue(lv, valTy).getScalarVal();
 
         int amountVal = isInc? 1: -1;
-        if (valTy.isPointerType() && valTy.<jlang.type.PointerType>getAs().isVariableArrayType())
+        if (valTy.isPointerType() && valTy.getAsPointerType().isVariableArrayType())
         {
             cgf.errorUnsupported(expr, "VLA pointer in dec/inc");
         }
@@ -1034,12 +1032,12 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             Constant inc = ConstantInt.get(Type.Int32Ty, amountVal);
             if (!(pt.getElementType() instanceof FunctionType))
             {
-                QualType ptee = valTy.getPointee();
+                QualType ptee = valTy.getPointeeType();
                 nextVal = builder.createGEP(inVal, inc, "ptrincdec");
             }
             else
             {
-                Type i8Ty = PointerType.get(Type.Int8Ty);
+                Type i8Ty = PointerType.get(Type.Int8Ty, ((PointerType) inVal.getType()).getAddressSpace());
                 nextVal = builder.createBitCast(inVal, i8Ty, "tmp");
                 nextVal = builder.createGEP(nextVal, inc, "ptrincdec");;
                 nextVal = builder.createBitCast(nextVal, inVal.getType(), "");
@@ -1059,7 +1057,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             nextVal = backend.value.ConstantInt.get(inVal.getType(), amountVal);
 
             // Signed integer overflow is undefined behavior.
-            //if (valTy.isSignedType())
+            //if (valTy.isSignedIntegerType())
                 //nextVal = builder.createNSWAdd(inVal, nextVal, isInc?"inc":"dec");
             //else
                 nextVal = builder.createAdd(inVal, nextVal, isInc?"inc":"dece");
@@ -1069,7 +1067,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             // Add the inc/dec to the real part.
             assert (inVal.getType() == Type.FloatTy || inVal.getType() == Type.DoubleTy);
 
-            nextVal = ConstantFP.get(BigDecimal.valueOf(amountVal));
+            nextVal = ConstantFP.get(new APFloat(amountVal));
             nextVal = builder.createFAdd(inVal, nextVal, isInc?"inc":"dec");
         }
 
