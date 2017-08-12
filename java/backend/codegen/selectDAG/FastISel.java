@@ -25,15 +25,15 @@ import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import jlang.support.APFloat;
-import jlang.support.APInt;
+import backend.support.APFloat;
+import backend.support.APInt;
 import tools.OutParamWrapper;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static jlang.support.APFloat.RoundingMode.rmTowardZero;
+import static backend.support.APFloat.RoundingMode.rmTowardZero;
 
 /**
  * This is a fast-path instruction selection class that

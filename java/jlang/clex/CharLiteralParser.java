@@ -17,7 +17,7 @@ package jlang.clex;
  */
 
 import jlang.support.SourceLocation;
-import jlang.support.APInt;
+import backend.support.APInt;
 import tools.OutParamWrapper;
 
 import static jlang.clex.LiteralSupport.processCharEscape;

@@ -17,8 +17,8 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree.*;
-import jlang.support.APInt;
-import jlang.support.APSInt;
+import backend.support.APInt;
+import backend.support.APSInt;
 import jlang.support.SourceLocation;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;

@@ -17,8 +17,8 @@ package backend.target;
  */
 
 import backend.codegen.AsmPrinter;
-import jlang.system.Triple;
-import jlang.system.Triple.ArchType;
+import backend.support.Triple;
+import backend.support.Triple.ArchType;
 import tools.OutParamWrapper;
 
 import java.io.OutputStream;

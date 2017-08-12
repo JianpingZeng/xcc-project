@@ -73,7 +73,7 @@ public final class InstrInfoEmitter extends TableGenBackend
                     + "import static backend.target.x86.X86GenRegisterInfo.*;\n"
                     + "import static backend.target.x86.X86GenRegisterNames.*;\n");
 
-            os.printf("public interface %s\n{\n", className);
+            os.printf("public class %s\n{\n", className);
 
             // Emit all of the instruction's implicit uses and defs.
             for (Map.Entry<String, CodeGenInstruction> pair : target.getInstructions().entrySet())
@@ -117,18 +117,42 @@ public final class InstrInfoEmitter extends TableGenBackend
             // Emit all of the operand info records.
             emitOperandInfo(os, operandInfoIDs);
 
-            // Emit allof the TargetInstrDesc records in theire ENUM order.
-            os.printf("\n\tTargetInstrDesc[] X86Insts = {\n");
+
             ArrayList<CodeGenInstruction> numberedInstrs = new ArrayList<>();
             target.getInstructionsByEnumValue(numberedInstrs);
 
-            // 351, 2
-            for (int i = 0, e = numberedInstrs.size(); i != e; ++i)
+            // Emit allof the TargetInstrDesc records in theire ENUM order.
+            os.println("\n\t// // Since the java code limit to 65535, the initializer of X86Insts must be divided.");
+            os.printf("\tpublic final static TargetInstrDesc[] X86Insts = new TargetInstrDesc[%d];\n", numberedInstrs.size());
+            final int NUM = 500;
+            int bucketNum = numberedInstrs.size() / NUM * NUM;
+            int num = 0;
+            int x = 0;
+            for (; num < bucketNum; num += NUM)
             {
-                //System.err.printf("%d %s\n", i, numberedInstrs.get(i).theDef.getName());
-                emitRecord(numberedInstrs.get(i), i, instrInfo, emittedLists, barriersMap, operandInfoIDs, os);
+                os.printf("\tstatic void initX86Insts%d()\n\t{\n", x++);
+                for (int i = num, e = num + NUM; i != e; ++i)
+                {
+                    emitRecord(numberedInstrs.get(i), i, instrInfo, emittedLists, barriersMap, operandInfoIDs, os);
+                }
+                os.printf("\t}\n");
             }
-            os.printf("\t};\n");
+
+            int remainded = numberedInstrs.size() % NUM;
+            if (remainded != 0)
+            {
+                os.printf("\tstatic void initX86Insts%d()\n\t{\n", x);
+                for (int i = num; i < num + remainded; i++)
+                {
+                    emitRecord(numberedInstrs.get(i), i, instrInfo, emittedLists, barriersMap, operandInfoIDs, os);
+                }
+                os.printf("\t}\n");
+            }
+
+            os.printf("\tstatic \n\t{\n");
+            for (int i = 0; i <= x; i++)
+                os.printf("\t\tinitX86Insts%d();\n", i);
+            os.printf("\t}\n");
 
             os.printf("}\n");
         }
@@ -158,7 +182,8 @@ public final class InstrInfoEmitter extends TableGenBackend
                     + (int)inst.operandList.get(sz - 1).miNumOperands;
         }
 
-        os.printf("\t\tnew TargetInstrDesc(%d, %d, %d, %d, \"%s\", 0",
+        os.printf("\t\tX86Insts[%d] = new TargetInstrDesc(%d, %d, %d, %d, \"%s\", 0",
+                num,
                 num, minOperands, inst.numDefs,
                 getItinClassNumber(inst.theDef),
                 inst.theDef.getName());
@@ -231,7 +256,7 @@ public final class InstrInfoEmitter extends TableGenBackend
         else
             os.printf("operandInfo%d", opInfo.get(operandInfo));
 
-        os.printf("),\t\t// Inst #%d = %s\n", num, inst.theDef.getName());
+        os.printf(");\t\t// Inst #%d = %s\n", num, inst.theDef.getName());
     }
 
     private void emitShiftedValue(Record r, Init.StringInit val,
@@ -333,7 +358,7 @@ public final class InstrInfoEmitter extends TableGenBackend
 
             operandInfoIDs.put(operandInfo, ++operandListNum);
 
-            os.printf("\n\tTargetOperandInfo[] operandInfo%d = {\n",
+            os.printf("\n\tpublic static final TargetOperandInfo[] operandInfo%d = {\n",
                     operandListNum);
             int e = operandInfo.size();
             if (e > 0)
@@ -431,7 +456,7 @@ public final class InstrInfoEmitter extends TableGenBackend
 
     private static void printDefList(ArrayList<Record> uses, int num, PrintStream os)
     {
-        os.printf("\tint[] implicitList%d = { ", num);
+        os.printf("\tpublic static final int[] implicitList%d = { ", num);
         int e = uses.size();
         if (e > 0)
         {
@@ -446,7 +471,7 @@ public final class InstrInfoEmitter extends TableGenBackend
 
     private static void printBarriers(ArrayList<Record> barriers, int num, PrintStream os)
     {
-        os.printf("\tTargetRegisterClass[] barriers%d = { ", num);
+        os.printf("\tpublic static final TargetRegisterClass[] barriers%d = { ", num);
         int e = barriers.size();
         if (e > 0)
         {

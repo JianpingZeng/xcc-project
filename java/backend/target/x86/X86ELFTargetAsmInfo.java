@@ -17,7 +17,7 @@ package backend.target.x86;
  */
 
 import backend.target.TargetAsmInfo;
-import jlang.system.Triple;
+import backend.support.Triple;
 import tools.commandline.*;
 
 import static backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy.ATT;

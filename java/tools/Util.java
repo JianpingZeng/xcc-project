@@ -71,6 +71,16 @@ public class Util
 		return 63 - Long.numberOfLeadingZeros(val);
 	}
 
+	public static int log2Ceil(int val)
+	{
+		return 32 - countLeadingZeros32(val - 1);
+	}
+
+	public static int log2Ceil(long val)
+	{
+		return 64 - countLeadingZeros64(val - 1);
+	}
+
 	public static boolean isPowerOf2(long val)
 	{
 		return val != 0 && (val & val -1) == 0;

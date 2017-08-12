@@ -1,4 +1,4 @@
-package jlang.system;
+package backend.support;
 /*
  * Extremely C language Compiler.
  * Copyright (c) 2015-2017, Xlous Zeng.
@@ -18,7 +18,7 @@ package jlang.system;
 
 import java.util.Objects;
 
-import static jlang.system.Triple.ArchType.*;
+import static backend.support.Triple.ArchType.*;
 
 /**
  * Triple - Helper class for working with target triples.

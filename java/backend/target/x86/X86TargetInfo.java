@@ -18,7 +18,7 @@ package backend.target.x86;
 
 import backend.target.Target;
 import backend.target.Target.TargetRegistry;
-import jlang.system.Triple;
+import backend.support.Triple;
 
 /**
  * @author Xlous.zeng

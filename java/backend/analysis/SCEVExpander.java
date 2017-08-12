@@ -8,7 +8,7 @@ import backend.value.*;
 import backend.value.Instruction.CastInst;
 import backend.value.Instruction.Op2;
 import backend.value.Instruction.PhiNode;
-import jlang.support.APInt;
+import backend.support.APInt;
 import tools.Pair;
 
 import java.util.ArrayList;
