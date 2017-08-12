@@ -33,12 +33,12 @@ public final class InitHeaderSearch
     public enum IncludeDirGroup
     {
         /**
-         * < `#include ""` paths. Thing `gcc -iquote`.
+         * `#include ""` paths. Thing `gcc -iquote`.
          */
         Quoted,
 
         /**
-         * < Paths for both `#include ""` and `#include <>`. (`-I`)
+         * < Paths for both `#include ""` and `#include &lt;&gt;`. (`-I`)
          */
         Angled,
 

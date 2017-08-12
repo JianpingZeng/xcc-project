@@ -372,7 +372,7 @@ public abstract class TargetInfo
 
     /**
      * Return the user string for the specified integer type enum.
-     * For example, SignedShort -> "short".
+     * For example, SignedShort -&gt; "short".
      *
      * @param t
      * @return

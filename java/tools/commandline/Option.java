@@ -28,7 +28,7 @@ import static tools.commandline.ValueExpected.ValueMask;
  *
  * @author Xlous.zeng
  * @version 0.1
- * @ T indicates the type of value attached to this option if available.
+ * indicates the type of value attached to this option if available.
  */
 public abstract class Option<T>
 {

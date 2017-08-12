@@ -103,7 +103,7 @@ public class Util
 
 	/**
 	 * Rounds the input getNumOfSubLoop up to the most least getNumOfSubLoop of pow of align,  which
-	 * not less than {@@code getNumOfSubLoop}.
+	 * not less than {@code getNumOfSubLoop}.
 	 * @param size
 	 * @param align
 	 * @return
@@ -116,7 +116,7 @@ public class Util
 	}
 	/**
 	 * Rounds the input getNumOfSubLoop up to the most least getNumOfSubLoop of pow of align,  which
-	 * not less than {@@code getNumOfSubLoop}.
+	 * not less than {@code getNumOfSubLoop}.
 	 * @param size
 	 * @param align
 	 * @return
@@ -215,7 +215,7 @@ public class Util
     /**
      * Checks if the first long number is less than second in unsigned comparison.
      *  <table border="1">
-     *      <caption>"Truth table" for an unsigned comparison x < y using signed arithmetic</caption>
+     *      <caption>"Truth table" for an unsigned comparison x &lt; y using signed arithmetic</caption>
      *      <tr>
      *          <td></td>
      *          <th colspan="2">Top bit of x</th>

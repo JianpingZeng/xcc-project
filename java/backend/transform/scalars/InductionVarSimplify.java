@@ -32,7 +32,7 @@ import static backend.transform.scalars.ConstantFolder.constantFoldBinaryInstruc
  * <pre>
  * we take a sample for instance as following.
  * int a[100];
- * for (int i = 0; i < 100; i++)
+ * for (int i = 0; i &lt; 100; i++)
  * {
  *   a[i] = 198 - i*2;
  * }
@@ -40,7 +40,7 @@ import static backend.transform.scalars.ConstantFolder.constantFoldBinaryInstruc
  * It can be replaced by the following code:
  * 
  * int a[100], t1 = 200;
- * for (int i = 0; i < 100; i++)
+ * for (int i = 0; i &lt; 100; i++)
  * {
  *   t1 -= 2;
  *   a[i] = t1;
@@ -52,7 +52,6 @@ import static backend.transform.scalars.ConstantFolder.constantFoldBinaryInstruc
  */
 public final class InductionVarSimplify implements LoopPass
 {
-
 	private static class IVRecord
 	{
 		/**

@@ -30,14 +30,12 @@ import static backend.transform.scalars.PromoteMemToReg.promoteMemToReg;
  * so that the all backend.transform operated upon memory access are excluded.
  * </p>
  * 
- * <p>This pass expected to run after {@linkplain LoopInversion Loop Inversion}
+ * <p>This pass expected to run after Loop Inversion
  * and {@linkplain LoopInfo pass}.
  * performed.
  * </p>
  * 
- * <p>This file is a member of <a href={@docRoot/opt}>Machine Independence
- * Optimization</a>
- * </p>.
+ * <p>This file is a member of Machine Independence Optimization</p>.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -113,7 +111,7 @@ public final class LICM implements LoopPass
     }
 
     /**
-     * This transformation requires natural loop information & requires that
+     * This transformation requires natural loop information and requires that
      * loop preheaders be inserted into the CFG.
      * @return
      */
