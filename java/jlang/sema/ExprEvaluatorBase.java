@@ -18,7 +18,7 @@ package jlang.sema;
 
 import jlang.ast.*;
 import jlang.ast.Tree.*;
-import jlang.support.APSInt;
+import backend.support.APSInt;
 import tools.OutParamWrapper;
 import tools.Util;
 import java.math.BigDecimal;

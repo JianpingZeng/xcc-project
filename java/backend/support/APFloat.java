@@ -1,4 +1,4 @@
-package jlang.support;
+package backend.support;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous zeng
@@ -21,10 +21,10 @@ import tools.Util;
 
 import java.util.Arrays;
 
-import static jlang.support.APFloat.CmpResult.*;
-import static jlang.support.APFloat.FltCategory.*;
-import static jlang.support.APFloat.OpStatus.*;
-import static jlang.support.APFloat.RoundingMode.*;
+import static backend.support.APFloat.CmpResult.*;
+import static backend.support.APFloat.FltCategory.*;
+import static backend.support.APFloat.OpStatus.*;
+import static backend.support.APFloat.RoundingMode.*;
 
 /**
  * This class provides an arbitrary precision floating point values and some
@@ -308,7 +308,7 @@ public class APFloat implements Cloneable
         {
             LostFraction LostFraction = multiplySignificand(rhs, null);
             status = normalize(rm, LostFraction);
-            if (LostFraction != jlang.support.LostFraction.lfExactlyZero)
+            if (LostFraction != backend.support.LostFraction.lfExactlyZero)
                 status = status | opInexact;
         }
         return status;
@@ -325,7 +325,7 @@ public class APFloat implements Cloneable
         {
             LostFraction LostFraction = divideSignificand(divident);
             fs = normalize(rm, LostFraction);
-            if (LostFraction != jlang.support.LostFraction.lfExactlyZero)
+            if (LostFraction != backend.support.LostFraction.lfExactlyZero)
                 fs |= opInexact;
         }
         return fs;
@@ -435,7 +435,7 @@ public class APFloat implements Cloneable
             LostFraction LostFraction = multiplySignificand(rhs, rhs2);
 
             fs = normalize(rm, LostFraction);
-            if (LostFraction != jlang.support.LostFraction.lfExactlyZero)
+            if (LostFraction != backend.support.LostFraction.lfExactlyZero)
                 fs |= opInexact;
 
             if (category == fcZero && sign != rhs2.sign)
@@ -492,7 +492,7 @@ public class APFloat implements Cloneable
 
         assertArithmeticOK(toSem);
         assertArithmeticOK(semantics);
-        LostFraction = jlang.support.LostFraction.lfExactlyZero;
+        LostFraction = backend.support.LostFraction.lfExactlyZero;
         newPartCount = partCountForBits(toSem.precision + 1);
         oldPartCount = partCount();
 
@@ -1017,7 +1017,7 @@ public class APFloat implements Cloneable
             if (bits == 0)
             {
                 reverse = compareAbsoluteValue(tempRhs) == cmpLessThan;
-                LostFraction = jlang.support.LostFraction.lfExactlyZero;
+                LostFraction = backend.support.LostFraction.lfExactlyZero;
             }
             else if (bits > 0)
             {
@@ -1034,19 +1034,19 @@ public class APFloat implements Cloneable
 
             if (reverse)
             {
-                carry = tempRhs.subtractSignificand(this, LostFraction != jlang.support.LostFraction.lfExactlyZero?1:0);
+                carry = tempRhs.subtractSignificand(this, LostFraction != backend.support.LostFraction.lfExactlyZero?1:0);
                 copySignificand(tempRhs);
                 sign = !sign;
             }
             else
             {
-                carry = subtractSignificand(tempRhs, LostFraction!= jlang.support.LostFraction.lfExactlyZero?1:0);
+                carry = subtractSignificand(tempRhs, LostFraction!= backend.support.LostFraction.lfExactlyZero?1:0);
             }
 
-            if (LostFraction == jlang.support.LostFraction.lfLessThanHalf)
-                LostFraction = jlang.support.LostFraction.lfMoreThanHalf;
-            else if (LostFraction == jlang.support.LostFraction.lfMoreThanHalf)
-                LostFraction = jlang.support.LostFraction.lfLessThanHalf;
+            if (LostFraction == backend.support.LostFraction.lfLessThanHalf)
+                LostFraction = backend.support.LostFraction.lfMoreThanHalf;
+            else if (LostFraction == backend.support.LostFraction.lfMoreThanHalf)
+                LostFraction = backend.support.LostFraction.lfLessThanHalf;
 
             assert carry == 0;
         }
@@ -1098,7 +1098,7 @@ public class APFloat implements Cloneable
                 rhs.significandParts(), partCounts,
                 partCounts);
 
-        LostFraction = jlang.support.LostFraction.lfExactlyZero;
+        LostFraction = backend.support.LostFraction.lfExactlyZero;
         omsb = APInt.tcMSB(fullSignificand, newPartCount) + 1;
         exponent += rhs.exponent;
         if (addend != null)
@@ -1246,13 +1246,13 @@ public class APFloat implements Cloneable
         int cmp = APInt.tcCompare(dividend, divisor, partsCounts);
 
         if (cmp > 0)
-            LostFraction = jlang.support.LostFraction.lfMoreThanHalf;
+            LostFraction = backend.support.LostFraction.lfMoreThanHalf;
         else if (cmp == 0)
-            LostFraction = jlang.support.LostFraction.lfExactlyHalf;
+            LostFraction = backend.support.LostFraction.lfExactlyHalf;
         else if (APInt.tcIsZero(dividend, partsCounts))
-            LostFraction = jlang.support.LostFraction.lfExactlyZero;
+            LostFraction = backend.support.LostFraction.lfExactlyZero;
         else
-            LostFraction = jlang.support.LostFraction.lfLessThanHalf;
+            LostFraction = backend.support.LostFraction.lfLessThanHalf;
 
         return LostFraction;
     }
@@ -1674,7 +1674,7 @@ public class APFloat implements Cloneable
 
             if (exponentChange < 0)
             {
-                assert LostFraction == jlang.support.LostFraction.lfExactlyZero;
+                assert LostFraction == backend.support.LostFraction.lfExactlyZero;
 
                 shiftSignificandLeft(-exponentChange);
 
@@ -1693,7 +1693,7 @@ public class APFloat implements Cloneable
             }
         }
 
-        if (LostFraction == jlang.support.LostFraction.lfExactlyZero)
+        if (LostFraction == backend.support.LostFraction.lfExactlyZero)
         {
             if (omsb == 0)
                 category = fcZero;
@@ -1747,7 +1747,7 @@ public class APFloat implements Cloneable
             LostFraction = addOrSubtractSignificand(rhs, subtract);
             fs = normalize(rm, LostFraction);
 
-            assert category != fcZero || LostFraction == jlang.support.LostFraction.lfExactlyZero;
+            assert category != fcZero || LostFraction == backend.support.LostFraction.lfExactlyZero;
         }
 
         if (category == fcZero)
@@ -1811,7 +1811,7 @@ public class APFloat implements Cloneable
     {
         assert category == fcNormal || category == fcZero;
 
-        assert LostFraction != jlang.support.LostFraction.lfExactlyZero;
+        assert LostFraction != backend.support.LostFraction.lfExactlyZero;
 
         switch (rm)
         {
@@ -1819,12 +1819,12 @@ public class APFloat implements Cloneable
                 Util.shouldNotReachHere();
                 return false;
             case rmNearestTiesToAway:
-                return LostFraction == jlang.support.LostFraction.lfExactlyHalf || LostFraction ==  jlang.support.LostFraction.lfMoreThanHalf;
+                return LostFraction == backend.support.LostFraction.lfExactlyHalf || LostFraction ==  backend.support.LostFraction.lfMoreThanHalf;
             case rmNearestTiesToEven:
-                if (LostFraction == jlang.support.LostFraction.lfMoreThanHalf)
+                if (LostFraction == backend.support.LostFraction.lfMoreThanHalf)
                     return true;
 
-                if (LostFraction == jlang.support.LostFraction.lfExactlyHalf && category != fcZero)
+                if (LostFraction == backend.support.LostFraction.lfExactlyHalf && category != fcZero)
                     return APInt.tcExtractBit(significandParts(), bit);
 
                 return false;
@@ -2048,7 +2048,7 @@ public class APFloat implements Cloneable
 
     private int convertFromHexadecimalString(String str, RoundingMode rm)
     {
-        LostFraction LostFraction = jlang.support.LostFraction.lfExactlyZero;
+        LostFraction LostFraction = backend.support.LostFraction.lfExactlyZero;
         long[] significand;
         int bitPos, partsCount;
         int dot, firstSignificantDigit;

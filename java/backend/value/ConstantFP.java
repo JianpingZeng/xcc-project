@@ -17,8 +17,8 @@ package backend.value;
  */
 
 import backend.type.Type;
-import jlang.support.APFloat;
-import jlang.support.APSInt;
+import backend.support.APFloat;
+import backend.support.APSInt;
 
 /**
  * @author Xlous.zeng

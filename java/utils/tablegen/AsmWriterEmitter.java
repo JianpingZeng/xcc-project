@@ -16,7 +16,10 @@ package utils.tablegen;
  * permissions and limitations under the License.
  */
 
+import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
+import tools.TextUtils;
 import tools.Util;
 
 import java.io.FileOutputStream;
@@ -47,6 +50,26 @@ public final class AsmWriterEmitter extends TableGenBackend
 
     static class AsmWriterOperand
     {
+        public String getCode()
+        {
+            if (opTy == isLiteralTextOperand)
+            {
+                if (str.length() == 1)
+                    return "os.print('" + str + "');";
+                return "os.print(\"" + str + "\");";
+            }
+
+            if (opTy == isLiteralStatementOperand)
+                return str;
+
+            String result = str + "(mi";
+            if (miOpNo != ~0)
+                result += ", " + miOpNo;
+            if (!miModifier.isEmpty())
+                result += ", \"" + miModifier + '"';
+            return result + "); ";
+        }
+
         enum OperandType
         {
             isLiteralTextOperand,
@@ -390,6 +413,9 @@ public final class AsmWriterEmitter extends TableGenBackend
         }
     }
 
+    private ArrayList<CodeGenInstruction> numberedInstructions;
+    private HashMap<CodeGenInstruction, AsmWriterInst> cgiMapToawi;
+
     /**
      * Outputs AsmWriter code, return true on failure.
      * @throws Exception
@@ -397,10 +423,18 @@ public final class AsmWriterEmitter extends TableGenBackend
     @Override
     public void run(String outputFile) throws Exception
     {
+        numberedInstructions = new ArrayList<>();
+        cgiMapToawi = new HashMap<>();
+
         if (outputFile.equals("-"))
             os = System.out;
         else
             os = new PrintStream(new FileOutputStream(outputFile));
+
+        os.println("package backend.target.x86;\n\n" + "\n"
+                + "import backend.codegen.MachineInstr;\n"
+                + "import backend.target.TargetAsmInfo;\n\n"
+                + "import java.io.OutputStream;");
 
         emitSourceFileHeaderComment("Assembly Writer Source Fragment", os);
         CodeGenTarget target = new CodeGenTarget();
@@ -433,75 +467,455 @@ public final class AsmWriterEmitter extends TableGenBackend
                 instructions.add(new AsmWriterInst(inst, asmWriter));
         }
 
-        // If all of the instructions start with a constant string (a very very common
-        // occurrence), emit all of the constant strings as a big table lookup instead
-        // of requiring a switch for them.
-        boolean allStartWithString = true;
+        target.getInstructionsByEnumValue(numberedInstructions);
 
-        for (AsmWriterInst inst : instructions)
+        // Compute the CodeGenInstruction -> AsmWriterInst mapping.  Note that not
+        // all machine instructions are necessarily being printed, so there may be
+        // target instructions not in this map.
+        instructions.forEach(inst-> cgiMapToawi.put(inst.cgi, inst));
+
+        // Build an aggregate string, and build a table of offsets into it.
+        TObjectIntHashMap<String> stringOffset = new TObjectIntHashMap<>();
+        StringBuilder aggregateString = new StringBuilder();
+
+        /// OpcodeInfo - This encodes the index of the string to use for the first
+        /// chunk of the output as well as indices used for operand printing.
+        ArrayList<Pair<Long, Integer>> opcodeInfo = new ArrayList<>();
+
+        int maxStringIdx = 0;
+        for (CodeGenInstruction inst : numberedInstructions)
         {
-            if (inst.operands.isEmpty() || inst.operands.get(0).opTy
-                    != isLiteralTextOperand)
+            AsmWriterInst awi = cgiMapToawi.get(inst);
+            long idx;
+            int len;
+            if (!cgiMapToawi.containsKey(inst))
             {
-                allStartWithString = false;
+                cgiMapToawi.put(inst, null);
+                idx = 0;
+                len = 0;
+            }
+            else if (awi.operands.get(0).opTy != isLiteralTextOperand
+                    || awi.operands.get(0).str.isEmpty())
+            {
+                idx = 1;
+                len = 0;
+            }
+            else
+            {
+                String str = awi.operands.get(0).str;
+                int entry = stringOffset.get(str);
+                if (!stringOffset.containsKey(str))
+                {
+                    maxStringIdx = aggregateString.length();
+                    stringOffset.put(str, maxStringIdx);
+                    entry = maxStringIdx;
+                    aggregateString.append(str);
+                }
+                len = str.length();
+                idx = entry;
+
+                awi.operands.remove(0);
+            }
+            opcodeInfo.add(Pair.get(idx, len));
+        }
+
+        int asmStrBits = Util.log2Ceil(maxStringIdx+1);
+
+        int bitsLeft = 64 - asmStrBits;
+
+        ArrayList<ArrayList<String>> tableDrivenOperandPrinters = new ArrayList<>();
+        boolean isFirst = true;
+        while (true)
+        {
+            ArrayList<String> uniqueOperandCommands = new ArrayList<>();
+
+            // For the first operand check, add a default value for instructions with
+            // just opcode strings to use.
+            if (isFirst)
+            {
+                uniqueOperandCommands.add("\t\t\t\treturn true;\n");
+                isFirst = false;
+            }
+
+            TIntArrayList instIdxs = new TIntArrayList();
+            TIntArrayList numInstOpsHandled = new TIntArrayList();
+            findUniqueOperandCommands(uniqueOperandCommands, instIdxs, numInstOpsHandled);
+
+            if (uniqueOperandCommands.isEmpty())
                 break;
+
+            int numBits = Util.log2Ceil(uniqueOperandCommands.size());
+            if (bitsLeft <= numBits)
+            {
+                System.err.printf("Not enough bits to densely encode %d more bits\n",
+                        numBits);
+                break;
+            }
+
+            bitsLeft -= numBits;
+            for (int i = 0, e = instIdxs.size(); i != e; i++)
+            {
+                if (instIdxs.get(i) != ~0)
+                {
+                    opcodeInfo.get(i).first = opcodeInfo.get(i).first |
+                            instIdxs.get(i) << (bitsLeft + asmStrBits);
+                }
+            }
+
+            for (int j = 0, sz = numberedInstructions.size(); j != sz; j++)
+            {
+                AsmWriterInst inst = getAsmWriterInstByID(j);
+                if (inst != null)
+                {
+                    if (!inst.operands.isEmpty())
+                    {
+                        int numOps = numInstOpsHandled.get(instIdxs.get(j));
+                        assert numOps <= inst.operands.size() : "Can't remove this many ops!";
+                        for (int t = 0; t != numOps; t++)
+                        {
+                            inst.operands.remove(t);
+                            t--;
+                            numOps--;
+                        }
+                    }
+                }
+            }
+
+            // Remember the handlers for this set of operands.
+            tableDrivenOperandPrinters.add(uniqueOperandCommands);
+        }
+
+        os.printf("\tpublic static final long[][] opInfo = {\n");
+        for (int i = 0, e = numberedInstructions.size(); i != e; i++)
+        {
+            os.printf("\t{%d, %d},\t// %s\n",
+                    opcodeInfo.get(i).first,
+                    opcodeInfo.get(i).second,
+                    numberedInstructions.get(i).theDef.getName());
+        }
+        os.print("\t};\n");
+
+        // Emit the string itself.
+        os.printf("\tpublic static final String asmStrs = \n    \"");
+        int charsPrinted = 0;
+        //escapeString(aggregateString);
+        for (int i = 0, e = aggregateString.length(); i != e; i++)
+        {
+            if (charsPrinted > 70)
+            {
+                os.print("\"\n\t\t\t+ \"");
+                charsPrinted = 0;
+            }
+            os.print(aggregateString.charAt(i));
+            ++charsPrinted;
+
+            if (aggregateString.charAt(i) == '\\')
+            {
+                assert i + 1 < aggregateString.length() :"Incomplete escape sequence!";
+                if (Character.isDigit(aggregateString.charAt(i+1)))
+                {
+                    assert Character.isDigit(aggregateString.charAt(i + 2))
+                            && Character.isDigit(aggregateString.charAt(i + 3))
+                            : "Expected 3 digit octal escape!";
+                    os.print(aggregateString.charAt(++i));
+                    os.print(aggregateString.charAt(++i));
+                    os.print(aggregateString.charAt(++i));
+                    charsPrinted += 3;
+                }
+                else
+                {
+                    os.print(aggregateString.charAt(++i));
+                    ++charsPrinted;
+                }
             }
         }
 
-        ArrayList<CodeGenInstruction> numberedInstructions = new ArrayList<>();
+        os.print("\";\n\n");
 
-        target.getInstructionsByEnumValue(numberedInstructions);
+        os.print("\t@Override\n\tpublic boolean printInstruction(MachineInstr mi) \n\t{\n");
 
-        if (allStartWithString)
+        os.print("\t\t// Emit the opcode for the instruction.\n\n"
+                + "\t\tlong bits = opInfo[mi.getOpcode()][0];\n"
+                + "\t\tassert bits != 0 : \"Cannot print this instruction\";\n\n");
+        int asmStrBitsMask = ( 2 << asmStrBits) - 1;
+        os.printf("\t\tint asmStrIdx = (int)bits&%d, len = (int)opInfo[mi.getOpcode()][1];\n",
+                asmStrBitsMask);
+        os.printf("\t\tos.print(asmStrs.substring(asmStrIdx, len));\n\n");
+
+        os.print("\t\tint number = 0;\n");
+
+        bitsLeft = 64 - asmStrBits;
+        for (int i = 0, e = tableDrivenOperandPrinters.size(); i != e; i++)
         {
-            // Compute the CodeGenInstruction -> AsmWriterInst mapping.  Note that not
-            // all machine instructions are necessarily being printed, so there may be
-            // target instructions not in this map.
-            HashMap<CodeGenInstruction, AsmWriterInst> cgiMapToawi = new HashMap<>();
-            instructions.forEach(inst-> cgiMapToawi.put(inst.cgi, inst));
+            ArrayList<String> commands = tableDrivenOperandPrinters.get(i);
 
-            // emit a table of constant strings.
-            os.print("\tpublic static final String[] opStrs = {\n");
-            numberedInstructions.forEach(cgi->
+            int numBits = Util.log2Ceil(commands.size());
+            assert numBits <= bitsLeft:"consistency error";
+
+            bitsLeft -= numBits;
+
+            os.printf("\n\t\t// Fragment %d encoded into %d bit for %d unique commands.\n",
+                    i, numBits, commands.size());
+
+            if (commands.size() == 2)
             {
-                if (!cgiMapToawi.containsKey(cgi))
-                    os.print("\t\t\tnull,\t\t\t\t// ");
-                else
-                {
-                    AsmWriterInst awi = cgiMapToawi.get(cgi);
-                    os.printf("\t\t\t\"%s\",\t\t\t\t// ", awi.operands.get(0).str);
-                }
-                os.println(cgi.theDef.getName());
-            });
+                os.printf("\t\tnumber = (int)((bits >> %d) & %d);\n",
+                        bitsLeft+asmStrBits,
+                        (1<<numBits)-1);
 
-            os.print("\t};\n\n");
+                os.printf("\t\tif (number != 0)\n\t\t{\n%s", commands.get(1));
+                os.printf("\t\t}\n\t\telse\n\t\t{\n%s\t\t}", commands.get(0));
+            }
+            else
+            {
+                os.printf("\t\tnumber = (int)((bits >> %d) & %d);\n",
+                        bitsLeft+asmStrBits,
+                        (1<<numBits)-1);
+                os.printf("\t\tswitch(number) \n\t\t{\n");
+                os.printf("\t\t\tdefault:\t// unreachable.\n");
+
+                // Print out all the cases.
+                for(int j = 0, sz = commands.size(); j < sz; j++)
+                {
+                    os.printf("\t\t\tcase %d:\n", j);
+                    os.print(commands.get(j));
+                    if (!commands.get(j).trim().endsWith("return true;"))
+                        os.print("\t\t\t\tbreak;\n");
+                }
+                os.print("\t\t}\n\n");
+            }
         }
 
-        os.print("\t@Override\n\tpublic boolean printInstruction(MachineOperation mi) \n\t{\n");
+        // Okay, delete instructions with no operand info left.
+        for (int i = 0, e = instructions.size(); i != e; i++)
+        {
+            AsmWriterInst inst = instructions.get(i);
+            if (inst.operands.isEmpty())
+            {
+                instructions.remove(i);
+                --i;
+                --e;
+            }
+        }
 
-        os.println("\t\t// emit the opcode for the instruction.");
-        os.println("\t\tString asmStr = opStrs[mi.getOpcode()]");
-        os.println("\t\tif (asmStr != null)\n");
-        os.print("\t\t\tos.print(asmStr);\n\n");
-
-        // Because this is a vector we want to emit from the end.  Reverse all of the
+        // Because this is a vector, we want to emit from the end.  Reverse all of the
         // elements in the vector.
         Collections.reverse(instructions);
 
-        os.print("\t\tswitch (mi.getOpcode()) \n{\n");
-        os.print("\t\t\tdefault: return false;\n");
-        os.print("\t\t\tcase INLINEASM: printInlineAsm(mi); break;\n");
+        if (!instructions.isEmpty())
+        {
+            os.print("\t\t\tswitch(mi.getOpcode()) {\n");
+            while (!instructions.isEmpty())
+            {
+                emitInstructions(instructions, os);
+            }
+            os.print("\t\t\t}\n");
+            os.print("\t\treturn true;\n");
+        }
+        os.print("\t}\n");
 
-        while (!instructions.isEmpty())
-            emitInstructions(instructions, os);
+        // Emit constructor.
+        os.println("\n\tpublic X86GenATTAsmPrinter(OutputStream os, \n"
+                + "\t\t\tX86TargetMachine tm,\n"
+                + "\t\t\tTargetAsmInfo tai, \n"
+                + "\t\t\tboolean verbose)\n"
+                + "\t{\n"
+                + "\t\tsuper(os, tm, tai, verbose);\n\t}");
 
-        os.print("\t\t\t}// end of switch.\n");
-        os.print("\t\treturn true;\n");
-        os.print("\t}// end of printInstruction.\n");
-        os.print("}// end of interface.\n");
+        os.println("}");
 
         // Close the print stream.
         os.close();
+    }
+
+    private static void escapeString(StringBuilder str)
+    {
+        for (int i = 0; i != str.length(); i++)
+        {
+            if (str.charAt(i) == '\\')
+            {
+                ++i;
+                str.insert(i, '\\');
+            }
+            else if (str.charAt(i) == '\t')
+            {
+                str.setCharAt(i++, '\\');
+                str.insert(i, 't');
+            }
+            else if (str.charAt(i) == '"')
+            {
+                str.insert(i++, '\\');
+            }
+            else if (str.charAt(i) == '\n')
+            {
+                str.setCharAt(i++, '\\');
+                str.insert(i, 'n');
+            }
+            else if (!TextUtils.isPrintable(str.charAt(i)))
+            {
+                // Always expand to a 3-digit octal escape.
+                char ch = str.charAt(i);
+                str.setCharAt(i++, '\\');
+                str.insert(i++, '0' + ((ch / 64) & 7));
+                str.insert(i++, '0' + ((ch / 8) & 7));
+                str.insert(i, '0' + (ch & 7));
+            }
+        }
+    }
+
+    private AsmWriterInst getAsmWriterInstByID(int id)
+    {
+        assert id < numberedInstructions.size();
+        CodeGenInstruction inst = numberedInstructions.get(id);
+        assert cgiMapToawi.containsKey(inst):"Didn't find inst!";
+        return cgiMapToawi.get(inst);
+    }
+
+    /**
+     * <pre>
+     * This method used for grouping some instructions into one set according to
+     * the rule that the kind of first operand is same, for example, the first
+     * operand are integral, so the action fo the first operand of all above
+     * instructions are same.
+     * </pre>
+     * <p>
+     * Note that, this method called once, the first operand will be removed
+     * from instruction operand list. So the first operand should be the second
+     * one when next time called to this method.
+     * </p>
+     * @param uniqueOperandCommands Each element of it represents the action
+     *                              to be performed for printed out asm file in
+     *                              corresponding case stmt.
+     * @param instIdxs
+     * @param instOpsUsed
+     */
+    private void findUniqueOperandCommands(
+            ArrayList<String> uniqueOperandCommands,
+            TIntArrayList instIdxs,
+            TIntArrayList instOpsUsed)
+    {
+        instIdxs.fill(0, numberedInstructions.size(), ~0);
+
+        // The size of instrsForCase is as same as uniqueOperandCommands.
+        // Each element in instrsForCase indicates all instructions that
+        // should be grouped into one be printed at one case stmt, because
+        // the i'th operrand of their is same of kind, e.g. all is printOperand(),
+        // or printi8mem() etc.
+        ArrayList<String> instrsForCase = new ArrayList<>();
+        for (int i = uniqueOperandCommands.size(); i >0; i--)
+        {
+            instrsForCase.add("");
+            instOpsUsed.add(0);
+        }
+
+        for (int i = 0, e = numberedInstructions.size(); i != e; i++)
+        {
+            AsmWriterInst inst = getAsmWriterInstByID(i);
+            if (inst == null)       // PHI, INLINEASM, DBG_LABEL, etc.
+                continue;
+
+            String command;
+            // Once calling to findUniqueOperandCommand, the first operand will
+            // be removed from operands list.
+            if (inst.operands.isEmpty())
+                continue;
+
+            command = "\t\t\t\t" + inst.operands.get(0).getCode() + "\n";
+            if (inst.operands.size() == 1)
+                command += "\t\t\t\treturn true;\n";
+
+            boolean foundIt = false;
+            for (int idx = 0, sz = uniqueOperandCommands.size(); idx != sz; ++idx)
+            {
+                if (uniqueOperandCommands.get(idx).equals(command))
+                {
+                    instIdxs.set(i, idx);
+                    instrsForCase.set(idx, instrsForCase.get(idx)
+                            + ", "
+                            + inst.cgi.theDef.getName());
+                    foundIt = true;
+                    break;
+                }
+            }
+
+            if (!foundIt)
+            {
+                instIdxs.set(i, uniqueOperandCommands.size());
+                uniqueOperandCommands.add(command);
+                instrsForCase.add(inst.cgi.theDef.getName());
+
+                instOpsUsed.add(1);
+            }
+        }
+
+        for (int commandIdx = 0, e = uniqueOperandCommands.size(); commandIdx != e; commandIdx++)
+        {
+            for (int op = 1; ; ++op)
+            {
+                int nit = instIdxs.indexOf(commandIdx);
+                if (nit < 0)
+                    break;
+                AsmWriterInst firstInst = getAsmWriterInstByID(nit);
+                if (firstInst == null || firstInst.operands.size() == op)
+                {
+                    break;
+                }
+
+                boolean allSame = true;
+
+                int maxSize = firstInst.operands.size();
+
+                for (nit = instIdxs.indexOf(nit+1, commandIdx);
+                        nit != -1;
+                        nit = instIdxs.indexOf(nit+1, commandIdx))
+                {
+                    AsmWriterInst otherInst = getAsmWriterInstByID(nit);
+
+                    if (otherInst != null && otherInst.operands.size() > firstInst.operands.size())
+                        maxSize = Math.max(maxSize, otherInst.operands.size());
+
+                    if (otherInst== null || otherInst.operands.size() == op ||
+                            !otherInst.operands.get(op).equals(firstInst.operands.get(op)))
+                    {
+                        allSame = false;
+                        break;
+                    }
+                }
+
+                if (!allSame)
+                    break;
+
+                String command = "\t\t\t\t" + firstInst.operands.get(op).getCode() + "\n";
+                if (firstInst.operands.size() == op +1 &&
+                        firstInst.operands.size() == maxSize)
+                {
+                    command += "\t\t\t\treturn true;\n";
+                }
+
+                uniqueOperandCommands.set(commandIdx, uniqueOperandCommands.get(commandIdx)+command);
+                instOpsUsed.set(commandIdx, instOpsUsed.get(commandIdx)+1);
+            }
+        }
+
+        for (int i = 0, e = instrsForCase.size(); i != e; i++)
+        {
+            String insts = instrsForCase.get(i);
+            if (insts.length() > 70)
+            {
+                // Truncate the string sequence consists of name of asm instructions
+                // to 70 when its length exceed 70.
+                insts = insts.substring(0, 70);
+                insts += "...";
+            }
+
+            if (!insts.isEmpty())
+            {
+                // Prepend '//' to the asm instruction string for printed out
+                // as comment.
+                uniqueOperandCommands.set(i, "\t\t\t\t// " + insts
+                        + "\n" + uniqueOperandCommands.get(i));
+            }
+        }
     }
 
     /**

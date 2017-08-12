@@ -19,8 +19,8 @@ package jlang.driver;
 import jlang.basic.*;
 import jlang.clex.Preprocessor;
 import jlang.diag.Diagnostic;
-import jlang.support.APFloat;
-import jlang.support.FltSemantics;
+import backend.support.APFloat;
+import backend.support.FltSemantics;
 import jlang.support.LangOptions;
 import jlang.support.PreprocessorInitOptions;
 

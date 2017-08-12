@@ -1,5 +1,8 @@
 package jlang.ast;
 
+import backend.support.APFloat;
+import backend.support.APInt;
+import backend.support.APSInt;
 import backend.value.BasicBlock;
 import jlang.support.*;
 import jlang.clex.IdentifierInfo;

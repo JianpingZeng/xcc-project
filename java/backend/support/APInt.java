@@ -1,4 +1,4 @@
-package jlang.support;
+package backend.support;
 /*
  * Xlous C language CompilerInstance
  * Copyright (c) 2015-2016, Xlous

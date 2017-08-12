@@ -17,14 +17,14 @@ package jlang.clex;
  */
 
 import jlang.support.SourceLocation;
-import jlang.support.APFloat;
-import jlang.support.APInt;
-import jlang.support.FltSemantics;
+import backend.support.APFloat;
+import backend.support.APInt;
+import backend.support.FltSemantics;
 import tools.OutParamWrapper;
 
-import static jlang.support.APFloat.FltCategory.fcZero;
-import static jlang.support.APFloat.OpStatus.opOK;
-import static jlang.support.APFloat.RoundingMode.rmNearestTiesToEven;
+import static backend.support.APFloat.FltCategory.fcZero;
+import static backend.support.APFloat.OpStatus.opOK;
+import static backend.support.APFloat.RoundingMode.rmNearestTiesToEven;
 import static jlang.clex.LiteralSupport.hexDigitValue;
 import static jlang.diag.DiagnosticLexKindsTag.*;
 

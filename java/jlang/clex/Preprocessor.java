@@ -23,7 +23,7 @@ import jlang.clex.Preprocessor.DefinedTracker.TrackerState;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
 import jlang.diag.FullSourceLoc;
-import jlang.support.APSInt;
+import backend.support.APSInt;
 import jlang.support.*;
 import tools.OutParamWrapper;
 import tools.Pair;

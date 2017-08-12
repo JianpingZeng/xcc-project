@@ -26,7 +26,7 @@ import backend.value.Function;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Value;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import jlang.support.APInt;
+import backend.support.APInt;
 
 import java.util.ArrayList;
 import java.util.HashMap;
