@@ -34,7 +34,6 @@ public class CodeGeneratorImpl implements CodeGenerator
         return m;
     }
 
-
     @Override
     public void initialize(ASTContext context)
     {

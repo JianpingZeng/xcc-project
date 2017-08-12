@@ -16,9 +16,9 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import backend.support.APFloat;
 import jlang.ast.Tree;
 import tools.OutParamWrapper;
-import java.math.BigDecimal;
 
 /**
  * @author Xlous.zeng
@@ -26,8 +26,8 @@ import java.math.BigDecimal;
  */
 public class FloatExprEvaluator extends ExprEvaluatorBase<Boolean>
 {
-    private OutParamWrapper<BigDecimal> result;
-    public FloatExprEvaluator(OutParamWrapper<BigDecimal> result, ASTContext ctx)
+    private OutParamWrapper<APFloat> result;
+    public FloatExprEvaluator(OutParamWrapper<APFloat> result, ASTContext ctx)
     {
         super(ctx);
         this.result = result;

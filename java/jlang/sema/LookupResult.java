@@ -22,6 +22,7 @@ package jlang.sema;
  * @version 0.1
  */
 
+import jlang.sema.Sema.LookupNameKind;
 import jlang.support.SourceLocation;
 
 import java.util.ArrayList;
@@ -47,19 +48,48 @@ public class LookupResult
 
         Ambiguous,
     }
+
+    /**
+     * A name specified to be found.
+     */
     private String foundName;
+
+    /**
+     * The location of found name used here for issuing well diagnose message.
+     */
     private SourceLocation nameLoc;
+
+    /**
+     * The kind of lookup result.
+     */
     private LookupResultKind resultKind;
+    /**
+     * The sema action instance.
+     */
     private Sema semaRef;
-    private Sema.LookupNameKind lookupKind;
+
+    /**
+     * The kind of lookup to be performed.
+     * For details, see {@linkplain LookupNameKind}.
+     */
+    private LookupNameKind lookupKind;
+
+    /**
+     * All found declaration candidate with respect to the specified name.
+     */
     private ArrayList<Decl.NamedDecl> decls;
 
     /**
      * Indicates the getIdentifier space which this getIdentifier in.
      * There are four cases:
-     * 1. Ordinary getIdentifier; 2.Tag getIdentifier; 3.Member getIdentifier; 4.Label getIdentifier.
+     * <ol>
+     *     <li>Ordinary Identifier;</li>
+     *     <li>Tag Identifier;</li>
+     *     <li>Member Identifier;</li>
+     *     <li>Label Identifier;</li>
+     * </ol>
      */
-    private IdentifierNamespace IDNS;
+    private IdentifierNamespace idns;
 
     public Decl.NamedDecl getFoundDecl()
     {
@@ -106,7 +136,7 @@ public class LookupResult
         return foundName;
     }
 
-    public Sema.LookupNameKind getLookupKind()
+    public LookupNameKind getLookupKind()
     {
         return lookupKind;
     }
@@ -117,17 +147,17 @@ public class LookupResult
      */
     public IdentifierNamespace getIdentifierNamespace()
     {
-        return IDNS;
+        return idns;
     }
 
     public boolean isInIdentifierNamespace(IdentifierNamespace ns)
     {
-        return IDNS == ns;
+        return idns == ns;
     }
 
     public boolean hasTagIdentifierNamespace()
     {
-        return isTagIdentifierNamespace(IDNS);
+        return isTagIdentifierNamespace(idns);
     }
 
     public static boolean isTagIdentifierNamespace(IdentifierNamespace ns)
@@ -161,18 +191,16 @@ public class LookupResult
         if (n == 1)
         {
             assert resultKind == Found;
-            return;
         }
         else
         {
-            semaRef.parser.syntaxError(nameLoc, "Resolve getIdentifier %s failed", foundName);
-            return;
+            resultKind = Ambiguous;
         }
     }
 
     LookupResult(Sema semaRef, String name,
             SourceLocation nameLoc,
-            Sema.LookupNameKind lookupNameKind)
+            LookupNameKind lookupNameKind)
     {
         resultKind = NotFound;
         foundName = name;

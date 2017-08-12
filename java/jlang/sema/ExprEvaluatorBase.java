@@ -16,12 +16,12 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import jlang.ast.*;
-import jlang.ast.Tree.*;
+import backend.support.APFloat;
 import backend.support.APSInt;
+import jlang.ast.Tree;
+import jlang.ast.Tree.*;
 import tools.OutParamWrapper;
 import tools.Util;
-import java.math.BigDecimal;
 
 /**
  * @author Xlous.zeng
@@ -98,7 +98,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         }
         else if (e.getType().isRealType())
         {
-            OutParamWrapper<BigDecimal> floatResult = new OutParamWrapper<>();
+            OutParamWrapper<APFloat> floatResult = new OutParamWrapper<>();
             if (!evaluateFloat(e, floatResult, context))
                 return false;
             boolResult.set(floatResult.get().equals(0));
@@ -151,7 +151,9 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         return new IntExprEvaluator(result, ctx).visit(expr);
     }
 
-    public static boolean evaluateFloat(Expr e, OutParamWrapper<BigDecimal> result, ASTContext ctx)
+    public static boolean evaluateFloat(Expr e, 
+            OutParamWrapper<APFloat> result, 
+            ASTContext ctx)
     {
         assert e.getType().isRealType();
         return new FloatExprEvaluator(result, ctx).visit(e);
@@ -250,8 +252,8 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         }
         else if (e.getType().isRealType())
         {
-            BigDecimal f = BigDecimal.ZERO;
-            OutParamWrapper<BigDecimal> x = new OutParamWrapper<>(f);
+            APFloat f = new APFloat(0.0);
+            OutParamWrapper<APFloat> x = new OutParamWrapper<>(f);
             if (!evaluateFloat(e, x, context))
                 return false;
 

@@ -1,7 +1,7 @@
 package jlang.sema;
 /*
- * Xlous C language CompilerInstance
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,13 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import jlang.ast.Tree;
+import backend.support.APFloat;
 import backend.support.APSInt;
+import jlang.ast.Tree;
 
-import java.math.BigDecimal;
 import static jlang.sema.APValue.ValueKind.*;
+import static jlang.sema.APValue.ValueKind.Float;
+import static jlang.sema.APValue.ValueKind.LValue;
 
 /**
  * This class implements a functionality of [Uninitialized], [APSInt], [APFloat]
@@ -39,32 +41,35 @@ public class APValue
         ComplexFloat,
         LValue,
     }
+    
     private ValueKind kind;
 
-    static class ComplexAPSInt
+    public static class ComplexAPSInt
     {
         APSInt real, imag;
-        ComplexAPSInt()
+        public ComplexAPSInt()
         {
             real = new APSInt(1);
             imag = new APSInt(1);
         }
-        ComplexAPSInt(APSInt r, APSInt i)
+        
+        public ComplexAPSInt(APSInt r, APSInt i)
         {
             real = r;
             imag = i;
         }
     }
 
-    static class ComplexAPFloat
+    public static class ComplexAPFloat
     {
-        BigDecimal real, imag;
+        public APFloat real, imag;
         ComplexAPFloat()
         {
-            real = BigDecimal.ZERO;
-            imag = BigDecimal.ZERO;
+            real = new APFloat(0.0);
+            imag = new APFloat(0.0);
         }
-        ComplexAPFloat(BigDecimal r, BigDecimal i)
+        
+        public ComplexAPFloat(APFloat r, APFloat i)
         {
             real = r;
             imag = i;
@@ -87,23 +92,26 @@ public class APValue
         kind = Uninitialized;
     }
 
-    public APValue(final APSInt i)
+    public APValue(APSInt i)
     {
         init(Int, i);
     }
-    public APValue(final BigDecimal f)
+    public APValue(APFloat f)
     {
         init(Float, f);
     }
-    public APValue(final APSInt r, final APSInt i)
+    
+    public APValue(APSInt r, APSInt i)
     {
         init(ComplexInt, new ComplexAPSInt(r, i));
     }
-    public APValue(final BigDecimal r, final BigDecimal i)
+    
+    public APValue(APFloat r, APFloat i)
     {
         init(ComplexFloat, new ComplexAPFloat(r, i));
     }
-    public APValue(final Tree.Expr base, final long offset)
+    
+    public APValue(Tree.Expr base, long offset)
     {
         LV lv = new LV();
         lv.base = base;
@@ -135,10 +143,10 @@ public class APValue
         return ((APSInt) data);
     }
 
-    public BigDecimal getFloat()
+    public APFloat getFloat()
     {
         assert isFloat():"Invalid accessor";
-        return ((BigDecimal)data);
+        return ((APFloat)data);
     }
 
     public APSInt getComplexIntReal()
@@ -153,13 +161,13 @@ public class APValue
         return ((ComplexAPSInt)data).imag;
     }
 
-    public BigDecimal getComplexFloatReal()
+    public APFloat getComplexFloatReal()
     {
         assert isComplexFloat():"Invalid accessor";
         return ((ComplexAPFloat)data).real;
     }
 
-    public BigDecimal getComplexFloatImag()
+    public APFloat getComplexFloatImag()
     {
         assert isComplexFloat():"Invalid accessor";
         return ((ComplexAPFloat)data).imag;
@@ -183,7 +191,7 @@ public class APValue
         data = i;
     }
 
-    public void setFloat(BigDecimal f)
+    public void setFloat(APFloat f)
     {
         assert isFloat():"Invalid accessor.";
         data = f;
@@ -196,7 +204,7 @@ public class APValue
         ((ComplexAPSInt)data).imag = i;
     }
 
-    public void setComplexFloat(BigDecimal r, BigDecimal i)
+    public void setComplexFloat(APFloat r, APFloat i)
     {
         assert isComplexFloat():"Invalid accessor";
         ((ComplexAPFloat)data).imag = i;
