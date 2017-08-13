@@ -1,78 +1,186 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project name="XCC" default="compile" basedir=".">
+    <property file="build.properties" />
+
+    <patternset id="excluded.from.module.xcc">
+        <exclude name="backend/target/x86/**"/>
+    </patternset>
+
+    <patternset id="excluded.from.compilation.xcc">
+        <exclude name="backend/target/x86/**"/>
+    </patternset>
+
+    <!-- =================================================================== -->
+    <!-- Initialization target                                               -->
+    <!-- =================================================================== -->
     <target name="init">
-        <property file="${user.home}/.ant-global.properties" />
-        <property file="build.properties" />
+        <echo message="Java version: ${java.version}"/>
+        <tstamp/>
+
+        <mkdir dir="${output.dir}"/>
+        <mkdir dir="${output.classes}"/>
+        <mkdir dir="${output.gen_tlegen_srcs}"/>
+        <mkdir dir="${output.javadocs}"/>
+        <mkdir dir="${output.libs}"/>
+        <copy todir="${output.libs}">
+            <fileset dir="${libs}"/>
+        </copy>
     </target>
 
-    <target name="generate_tblgen" depends="init">
-        <javacc target="${tgparser.jj.file}" javacchome="${javacc.dir}" />
-    </target>
-
-    <target name="generate_tg_backend" depends="generate_tblgen">
-        <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
-            <arg value="-gen-reg-names -o X86GenRegisterNames.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86Register.td"/>
-            <classpath>
-                <pathelement path="${build.classes.dir}"/>
-            </classpath>
-        </java>
-            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
-            <arg value="-gen-reg-info -o X86GenRegisterInfo.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86Register.td"/>
-            <classpath>
-                <pathelement path="${build.classes.dir}"/>
-            </classpath>
-        </java>
-            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
-            <arg value="-gen-instr-names -o X86GenInstrNames.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86InstrInfo.td"/>
-            <classpath>
-                <pathelement path="${build.classes.dir}"/>
-            </classpath>
-        </java>
-            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
-            <arg value="-gen-instr-info -o X86GenInstrInfo.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td ${src.dir}/java/backend/target/x86/X86InstrInfo.td"/>
-            <classpath>
-                <pathelement path="${build.classes.dir}"/>
-            </classpath>
-        </java>
-            <java classname="utils.tablegen.TableGen" dir="${build.tgparser.dir}" fork="true">
-            <arg value="-gen-asm-print -o X86GenATTAsmPrinter.java -I${src.dir}/java/backend/target ${src.dir}/java/backend/target/Target.td ${src.dir}/java/backend/target/X86.td"/>
-            <classpath>
-                <pathelement path="${build.classes.dir}"/>
-            </classpath>
-        </java>
-    </target>
-
-    <target name="compile" depends="generate_tg_backend">
-        <mkdir dir="${build.dir}" />
-        <mkdir dir="${build.classes.dir}" />
-        <javac destdir="${build.classes.dir}" srcdir="${src.dir}"
-               debug="true" optimize="true">
-            <compilerarg value="-Xlint:unchecked" />
-            <include name="java/**/*.java" />
+    <target name="build_tblgen" depends="init"
+            description="compile sources files except that target specific files">
+        <javac destdir="${output.classes}"
+                classpath="${output.libs}/${trove_name}"
+                debug="${debug}"
+                target="1.8">
+            <patternset refid="excluded.from.compilation.xcc"/>
+            <src path="${src}"/>
         </javac>
-        <jar jarfile="${build.jar}" basedir="${build.classes.dir}" />
     </target>
 
-    <target name="recompile" depends="clean, compile" />
 
-    <target name="clean" depends="init, clean-build">
-        <delete file="${build.jar}" />
+    <!-- =================================================================== -->
+    <!-- Generating target-specific sources from td file                     -->
+    <!-- =================================================================== -->
+    <target name="generate_target_specific_files" depends="build_tblgen"
+            description="Generates target specific sources from td file">
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-asm-printer"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenATTAsmPrinter.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
+
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-register-info"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenRegisterInfo.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
+
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-register-names"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenRegisterNames.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
+
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-instr-info"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenInstrInfo.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
+
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-fast-isel"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenFastISel.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
+
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-instr-names"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenInstrNames.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
+
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-subtarget"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenSubtarget.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
+
+        <java classname="utils.tablegen.TableGen" dir="${output.classes}" fork="true">
+            <arg value="${basedir}/${td_files}/X86/X86.td"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}"/>
+            <arg value="-I"/>
+            <arg value="${basedir}/${td_files}/X86"/>
+            <arg value="-gen-callingconv"/>
+            <arg value="-o"/>
+            <arg value="${basedir}/${output.gen_tlegen_srcs}/X86GenCallingConv.java"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </java>
     </target>
 
-    <target name="clean-build" depends="init">
-        <delete dir="${build.dir}" />
-        <delete file="${build.tgparser.dir}/TGParser.java" />
-        <delete file="${build.tgparser.dir}/TGParserConstants.java" />
-        <delete file="${build.tgparser.dir}/TGParserTokenManager.java" />
-        <delete file="${build.tgparser.dir}/ParseException.java" />
-        <delete file="${build.tgparser.dir}/Token.java" />
-        <delete file="${build.tgparser.dir}/TokenMgrError.java" />
-        <delete file="${build.tgparser.dir}/SimpleCharStream.java" />
-    </target>
+    <path id="xcc.module.sourcepath">
+        <dirset dir="${basedir}">
+            <include name="${basedir}/out/gen_tblgen_srcs/backend/target/x86/"/>
+            <include name="${basedir}/java/backend/target/x86/"/>
+        </dirset>
+    </path>
 
-    <target name="dist">
-        <antcall target="clean" />
-        <antcall target="compile" />
-        <antcall target="clean-build" />
+    <target name="compile" depends="generate_target_specific_files">
+        <javac destdir="${output.classes}"
+               debug="${debug}"
+               target="1.8">
+            <src path="${target_dir_exclude}:${output.gen_tlegen_srcs}"/>
+            <classpath>
+                <pathelement path="${output.classes}"/>
+                <path path="${output.libs}/${trove_name}"/>
+            </classpath>
+        </javac>
     </target>
 </project>

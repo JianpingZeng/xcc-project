@@ -16,12 +16,16 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
-import backend.target.TargetAsmInfo;
+import backend.codegen.AsmWriterFlavorTy;
 import backend.support.Triple;
-import tools.commandline.*;
+import backend.target.TargetAsmInfo;
+import tools.commandline.Initializer;
+import tools.commandline.Opt;
+import tools.commandline.Parser;
+import tools.commandline.ValueClass;
 
-import static backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy.ATT;
-import static backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy.Intel;
+import static backend.codegen.AsmWriterFlavorTy.ATT;
+import static backend.codegen.AsmWriterFlavorTy.Intel;
 import static tools.commandline.OptionNameApplicator.optionName;
 
 /**

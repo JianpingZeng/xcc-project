@@ -28,6 +28,7 @@ import static backend.target.x86.CondCode.*;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
+import static backend.target.x86.X86II.*;
 import static backend.target.x86.X86RegisterInfo.SUBREG_16BIT;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
@@ -605,8 +606,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     {
         switch (targetFlags)
         {
-            case X86II.MO_DLLIMPORT:     // dllimport stub.
-            case X86II.MO_GOTPCREL:  // rip-relative GOT reference.
+            case MO_DLLIMPORT:     // dllimport stub.
+            case MO_GOTPCREL:  // rip-relative GOT reference.
             case X86II.MO_GOT:       // normal GOT reference.
             case X86II.MO_DARWIN_NONLAZY_PIC_BASE:        // Normal $non_lazy_ptr ref.
             case X86II.MO_DARWIN_NONLAZY:                 // Normal $non_lazy_ptr ref.
