@@ -16,7 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-import backend.target.x86.X86ELFTargetAsmInfo.AsmWriterFlavorTy;
+import backend.codegen.AsmWriterFlavorTy;
 import backend.type.ArrayType;
 import backend.type.Type;
 import backend.value.*;

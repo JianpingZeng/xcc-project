@@ -2,15 +2,11 @@ package backend.codegen;
 
 import backend.codegen.MachineOperand.RegState;
 import backend.target.TargetInstrDesc;
-import backend.target.x86.X86AddressMode;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
 
 import static backend.codegen.MachineMemOperand.MOLoad;
 import static backend.codegen.MachineMemOperand.MOStore;
-import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
-import static backend.target.x86.X86AddressMode.BaseType.RegBase;
-import static backend.target.x86.X86II.*;
 
 /**
  * This is a convenient helper class for creating a machine instruction on
@@ -68,64 +64,7 @@ public final class MachineInstrBuilder
         return addOffset(mib.addFrameIndex(fi), offset).addMemOperand(mmo);
     }
 
-    public static MachineInstrBuilder addFullAddress(MachineInstrBuilder mib,
-            X86AddressMode am)
-    {
-        return addLeaAddress(mib, am).addReg(0);
-    }
-
-    public static MachineInstrBuilder addLeaAddress(MachineInstrBuilder mib,
-            X86AddressMode am)
-    {
-        assert am.scale == 1 || am.scale == 2 || am.scale == 4 || am.scale == 8;
-
-        if (am.baseType == RegBase)
-            mib.addReg(am.base.getBase());
-        else if (am.baseType == FrameIndexBase)
-            mib.addFrameIndex(am.base.getBase());
-        else
-            assert false;
-
-        mib.addImm(am.scale).addReg(am.indexReg);
-        if (am.gv != null)
-            return mib.addGlobalAddress(am.gv, am.disp, am.gvOpFlags);
-        else
-            return mib.addImm(am.disp);
-    }
-
-    public static boolean isGlobalStubReference(int targetFlag)
-    {
-        switch (targetFlag)
-        {
-            case MO_DLLIMPORT: // dllimport stub.
-            case MO_GOTPCREL:  // rip-relative GOT reference.
-            case MO_GOT:       // normal GOT reference.
-            case MO_DARWIN_NONLAZY_PIC_BASE:        // Normal $non_lazy_ptr ref.
-            case MO_DARWIN_NONLAZY:                 // Normal $non_lazy_ptr ref.
-            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE: // Hidden $non_lazy_ptr ref.
-            case MO_DARWIN_HIDDEN_NONLAZY:          // Hidden $non_lazy_ptr ref.
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    public static boolean isGlobalRelativeToPICBase(int flags)
-    {
-        switch(flags)
-        {
-            case MO_GOTOFF:
-            case MO_GOT:
-            case MO_PIC_BASE_OFFSET:
-            case MO_DARWIN_NONLAZY_PIC_BASE:
-            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE:
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private static MachineInstrBuilder addLeaOffset(MachineInstrBuilder mib, long offset)
+	private static MachineInstrBuilder addLeaOffset(MachineInstrBuilder mib, long offset)
     {
         return mib.addImm(1).addReg(0).addImm(offset);
     }

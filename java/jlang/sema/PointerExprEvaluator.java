@@ -18,7 +18,7 @@ package jlang.sema;
 
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
-import backend.support.APSInt;
+import tools.APSInt;
 import jlang.type.PointerType;
 import jlang.type.QualType;
 import tools.OutParamWrapper;

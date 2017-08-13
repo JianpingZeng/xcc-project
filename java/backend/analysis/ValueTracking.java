@@ -2,7 +2,7 @@ package backend.analysis;
 
 import backend.target.TargetData;
 import backend.value.Value;
-import backend.support.APInt;
+import tools.APInt;
 
 /**
  * @author Xlous.zeng

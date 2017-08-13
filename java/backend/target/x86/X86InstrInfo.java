@@ -1124,7 +1124,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                             int Opc = miOpc == SHL64ri ? LEA64r
                                     : (miOpc == SHL32ri
                                     ? (is64Bit ? LEA64_32r : LEA32r) : LEA16r);
-                            newMI = addFullAddress(buildMI(get(Opc))
+                            newMI = X86InstrBuilder.addFullAddress(buildMI(get(Opc))
                                     .addReg(dest, Define | getDeadRegState(isDead)), am)
                                     .getMInstr();
                             if (isKill)
@@ -3528,4 +3528,35 @@ public class X86InstrInfo extends TargetInstrInfoImpl
 		return getBaseOpcodeFor(get(opcode));
 	}
 
+    public static boolean isGlobalStubReference(int targetFlag)
+    {
+        switch (targetFlag)
+        {
+            case MO_DLLIMPORT: // dllimport stub.
+            case MO_GOTPCREL:  // rip-relative GOT reference.
+            case MO_GOT:       // normal GOT reference.
+            case MO_DARWIN_NONLAZY_PIC_BASE:        // Normal $non_lazy_ptr ref.
+            case MO_DARWIN_NONLAZY:                 // Normal $non_lazy_ptr ref.
+            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE: // Hidden $non_lazy_ptr ref.
+            case MO_DARWIN_HIDDEN_NONLAZY:          // Hidden $non_lazy_ptr ref.
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static boolean isGlobalRelativeToPICBase(int flags)
+    {
+        switch(flags)
+        {
+            case MO_GOTOFF:
+            case MO_GOT:
+            case MO_PIC_BASE_OFFSET:
+            case MO_DARWIN_NONLAZY_PIC_BASE:
+            case MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE:
+                return true;
+            default:
+                return false;
+        }
+    }
 }

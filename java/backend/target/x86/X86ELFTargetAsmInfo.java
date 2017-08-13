@@ -30,12 +30,6 @@ import static tools.commandline.OptionNameApplicator.optionName;
  */
 public class X86ELFTargetAsmInfo extends TargetAsmInfo
 {
-    public enum AsmWriterFlavorTy
-    {
-        ATT,
-        Intel
-    }
-
     /**
      * A command line option to control what assembly dialect would be emitedd.
      */

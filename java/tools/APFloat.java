@@ -1,13 +1,12 @@
-package backend.support;
 /*
  * Extremely C language Compiler
- * Copyright (c) 2015-2017, Xlous zeng
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,15 +15,14 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import tools.OutParamWrapper;
-import tools.Util;
+package tools;
 
 import java.util.Arrays;
 
-import static backend.support.APFloat.CmpResult.*;
-import static backend.support.APFloat.FltCategory.*;
-import static backend.support.APFloat.OpStatus.*;
-import static backend.support.APFloat.RoundingMode.*;
+import static tools.APFloat.CmpResult.*;
+import static tools.APFloat.FltCategory.*;
+import static tools.APFloat.OpStatus.*;
+import static tools.APFloat.RoundingMode.*;
 
 /**
  * This class provides an arbitrary precision floating point values and some
@@ -308,7 +306,7 @@ public class APFloat implements Cloneable
         {
             LostFraction LostFraction = multiplySignificand(rhs, null);
             status = normalize(rm, LostFraction);
-            if (LostFraction != backend.support.LostFraction.lfExactlyZero)
+            if (LostFraction != tools.LostFraction.lfExactlyZero)
                 status = status | opInexact;
         }
         return status;
@@ -325,7 +323,7 @@ public class APFloat implements Cloneable
         {
             LostFraction LostFraction = divideSignificand(divident);
             fs = normalize(rm, LostFraction);
-            if (LostFraction != backend.support.LostFraction.lfExactlyZero)
+            if (LostFraction != tools.LostFraction.lfExactlyZero)
                 fs |= opInexact;
         }
         return fs;
@@ -435,7 +433,7 @@ public class APFloat implements Cloneable
             LostFraction LostFraction = multiplySignificand(rhs, rhs2);
 
             fs = normalize(rm, LostFraction);
-            if (LostFraction != backend.support.LostFraction.lfExactlyZero)
+            if (LostFraction != tools.LostFraction.lfExactlyZero)
                 fs |= opInexact;
 
             if (category == fcZero && sign != rhs2.sign)
@@ -492,7 +490,7 @@ public class APFloat implements Cloneable
 
         assertArithmeticOK(toSem);
         assertArithmeticOK(semantics);
-        LostFraction = backend.support.LostFraction.lfExactlyZero;
+        LostFraction = tools.LostFraction.lfExactlyZero;
         newPartCount = partCountForBits(toSem.precision + 1);
         oldPartCount = partCount();
 
@@ -1017,7 +1015,7 @@ public class APFloat implements Cloneable
             if (bits == 0)
             {
                 reverse = compareAbsoluteValue(tempRhs) == cmpLessThan;
-                LostFraction = backend.support.LostFraction.lfExactlyZero;
+                LostFraction = tools.LostFraction.lfExactlyZero;
             }
             else if (bits > 0)
             {
@@ -1034,19 +1032,19 @@ public class APFloat implements Cloneable
 
             if (reverse)
             {
-                carry = tempRhs.subtractSignificand(this, LostFraction != backend.support.LostFraction.lfExactlyZero?1:0);
+                carry = tempRhs.subtractSignificand(this, LostFraction != tools.LostFraction.lfExactlyZero?1:0);
                 copySignificand(tempRhs);
                 sign = !sign;
             }
             else
             {
-                carry = subtractSignificand(tempRhs, LostFraction!= backend.support.LostFraction.lfExactlyZero?1:0);
+                carry = subtractSignificand(tempRhs, LostFraction!= tools.LostFraction.lfExactlyZero?1:0);
             }
 
-            if (LostFraction == backend.support.LostFraction.lfLessThanHalf)
-                LostFraction = backend.support.LostFraction.lfMoreThanHalf;
-            else if (LostFraction == backend.support.LostFraction.lfMoreThanHalf)
-                LostFraction = backend.support.LostFraction.lfLessThanHalf;
+            if (LostFraction == tools.LostFraction.lfLessThanHalf)
+                LostFraction = tools.LostFraction.lfMoreThanHalf;
+            else if (LostFraction == tools.LostFraction.lfMoreThanHalf)
+                LostFraction = tools.LostFraction.lfLessThanHalf;
 
             assert carry == 0;
         }
@@ -1098,7 +1096,7 @@ public class APFloat implements Cloneable
                 rhs.significandParts(), partCounts,
                 partCounts);
 
-        LostFraction = backend.support.LostFraction.lfExactlyZero;
+        LostFraction = tools.LostFraction.lfExactlyZero;
         omsb = APInt.tcMSB(fullSignificand, newPartCount) + 1;
         exponent += rhs.exponent;
         if (addend != null)
@@ -1246,13 +1244,13 @@ public class APFloat implements Cloneable
         int cmp = APInt.tcCompare(dividend, divisor, partsCounts);
 
         if (cmp > 0)
-            LostFraction = backend.support.LostFraction.lfMoreThanHalf;
+            LostFraction = tools.LostFraction.lfMoreThanHalf;
         else if (cmp == 0)
-            LostFraction = backend.support.LostFraction.lfExactlyHalf;
+            LostFraction = tools.LostFraction.lfExactlyHalf;
         else if (APInt.tcIsZero(dividend, partsCounts))
-            LostFraction = backend.support.LostFraction.lfExactlyZero;
+            LostFraction = tools.LostFraction.lfExactlyZero;
         else
-            LostFraction = backend.support.LostFraction.lfLessThanHalf;
+            LostFraction = tools.LostFraction.lfLessThanHalf;
 
         return LostFraction;
     }
@@ -1674,7 +1672,7 @@ public class APFloat implements Cloneable
 
             if (exponentChange < 0)
             {
-                assert LostFraction == backend.support.LostFraction.lfExactlyZero;
+                assert LostFraction == tools.LostFraction.lfExactlyZero;
 
                 shiftSignificandLeft(-exponentChange);
 
@@ -1693,7 +1691,7 @@ public class APFloat implements Cloneable
             }
         }
 
-        if (LostFraction == backend.support.LostFraction.lfExactlyZero)
+        if (LostFraction == tools.LostFraction.lfExactlyZero)
         {
             if (omsb == 0)
                 category = fcZero;
@@ -1747,7 +1745,7 @@ public class APFloat implements Cloneable
             LostFraction = addOrSubtractSignificand(rhs, subtract);
             fs = normalize(rm, LostFraction);
 
-            assert category != fcZero || LostFraction == backend.support.LostFraction.lfExactlyZero;
+            assert category != fcZero || LostFraction == tools.LostFraction.lfExactlyZero;
         }
 
         if (category == fcZero)
@@ -1811,7 +1809,7 @@ public class APFloat implements Cloneable
     {
         assert category == fcNormal || category == fcZero;
 
-        assert LostFraction != backend.support.LostFraction.lfExactlyZero;
+        assert LostFraction != tools.LostFraction.lfExactlyZero;
 
         switch (rm)
         {
@@ -1819,12 +1817,12 @@ public class APFloat implements Cloneable
                 Util.shouldNotReachHere();
                 return false;
             case rmNearestTiesToAway:
-                return LostFraction == backend.support.LostFraction.lfExactlyHalf || LostFraction ==  backend.support.LostFraction.lfMoreThanHalf;
+                return LostFraction == tools.LostFraction.lfExactlyHalf || LostFraction ==  tools.LostFraction.lfMoreThanHalf;
             case rmNearestTiesToEven:
-                if (LostFraction == backend.support.LostFraction.lfMoreThanHalf)
+                if (LostFraction == tools.LostFraction.lfMoreThanHalf)
                     return true;
 
-                if (LostFraction == backend.support.LostFraction.lfExactlyHalf && category != fcZero)
+                if (LostFraction == tools.LostFraction.lfExactlyHalf && category != fcZero)
                     return APInt.tcExtractBit(significandParts(), bit);
 
                 return false;
@@ -2048,7 +2046,7 @@ public class APFloat implements Cloneable
 
     private int convertFromHexadecimalString(String str, RoundingMode rm)
     {
-        LostFraction LostFraction = backend.support.LostFraction.lfExactlyZero;
+        LostFraction LostFraction = tools.LostFraction.lfExactlyZero;
         long[] significand;
         int bitPos, partsCount;
         int dot, firstSignificantDigit;

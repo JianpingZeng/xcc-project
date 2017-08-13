@@ -16,8 +16,8 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import backend.support.APFloat;
-import backend.support.APSInt;
+import tools.APFloat;
+import tools.APSInt;
 import jlang.ast.Tree;
 
 import static jlang.sema.APValue.ValueKind.*;

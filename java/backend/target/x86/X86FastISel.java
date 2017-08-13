@@ -273,7 +273,7 @@ public abstract class X86FastISel extends FastISel
                 return false;
         }
         resultReg.set(createResultReg(rc));
-        MachineInstrBuilder
+        X86InstrBuilder
                 .addFullAddress(buildMI(mbb, tii.get(opc), resultReg.get()), am);
         return true;
     }
@@ -309,7 +309,7 @@ public abstract class X86FastISel extends FastISel
             }
             if (opc != 0)
             {
-                MachineInstrBuilder
+                X86InstrBuilder
                         .addFullAddress(buildMI(mbb, tii.get(opc)), am).addImm(ci.getSExtValue());
                 return true;
             }
@@ -349,7 +349,7 @@ public abstract class X86FastISel extends FastISel
                 opc = subtarget.hasSSE2() ? MOVSDmr : ST_FP64m;
                 break;
         }
-        MachineInstrBuilder.addFullAddress(buildMI(mbb, tii.get(opc)), am).addReg(val);
+        X86InstrBuilder.addFullAddress(buildMI(mbb, tii.get(opc)), am).addReg(val);
         return true;
     }
 
@@ -564,7 +564,7 @@ public abstract class X86FastISel extends FastISel
                 }
 
                 loadReg = createResultReg(rc);
-                MachineInstrBuilder
+                X86InstrBuilder
                         .addFullAddress(buildMI(mbb, tii.get(opc), loadReg), stubAM);
 
                 // Prevent loading GV stub multiple times in same mbb.
@@ -1619,7 +1619,7 @@ public abstract class X86FastISel extends FastISel
                 else
                     opc = LEA64r;
                 int resultReg = createResultReg(rc);
-                MachineInstrBuilder
+                X86InstrBuilder
                         .addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
                 return resultReg;
             }
@@ -1677,7 +1677,7 @@ public abstract class X86FastISel extends FastISel
         int opc = subtarget.is64Bit() ? LEA64r : LEA32r;
         TargetRegisterClass rc = tli.getRegClassFor(new EVT(tli.getPointerTy()));
         int resultReg = createResultReg(rc);
-        MachineInstrBuilder
+        X86InstrBuilder
                 .addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
         return resultReg;
     }

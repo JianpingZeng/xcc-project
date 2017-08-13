@@ -26,7 +26,7 @@ import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.LabelStmt;
 import jlang.ast.Tree.StringLiteral;
-import backend.support.APSInt;
+import tools.APSInt;
 import jlang.support.Linkage;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;

@@ -16,11 +16,11 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import backend.support.APFloat;
-import backend.support.APFloat.CmpResult;
+import tools.APFloat;
+import tools.APFloat.CmpResult;
 import jlang.ast.Tree.*;
-import backend.support.APInt;
-import backend.support.APSInt;
+import tools.APInt;
+import tools.APSInt;
 import jlang.support.SourceLocation;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;

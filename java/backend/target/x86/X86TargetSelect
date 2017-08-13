@@ -1,0 +1,22 @@
+package backend.target.x86;
+
+import backend.target.TargetSelect;
+import jlang.basic.TargetInfo;
+
+public class X86TargetSelect extends TargetSelect
+{
+    private X86TargetSelect()
+    {
+        super();
+    }
+
+    public void InitializeTargetInfo()
+    {
+        X86TargetInfo.InitializeX86TargetInfo();
+    }
+
+    public void LLVMInitializeTarget()
+    {
+        X86TargetInfo.LLVMInitiliazeX86Target();
+    }
+}

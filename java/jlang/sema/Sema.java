@@ -1,9 +1,9 @@
 package jlang.sema;
 
-import backend.support.APFloat;
-import backend.support.APInt;
-import backend.support.APSInt;
-import backend.support.FltSemantics;
+import tools.APFloat;
+import tools.APInt;
+import tools.APSInt;
+import tools.FltSemantics;
 import jlang.ast.ASTConsumer;
 import jlang.ast.CastKind;
 import jlang.ast.Tree;

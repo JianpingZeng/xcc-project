@@ -16,7 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
-import backend.support.APInt;
+import tools.APInt;
 import tools.Util;
 
 import java.util.HashMap;

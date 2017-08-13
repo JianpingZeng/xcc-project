@@ -1,13 +1,12 @@
-package backend.target.x86;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +15,11 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
+package backend.codegen;
+
 import backend.analysis.MachineDomTreeInfo;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
-import backend.codegen.*;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
@@ -32,9 +32,9 @@ import tools.commandline.*;
 
 import java.util.*;
 
+import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel.*;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
-import static backend.target.x86.PrologEpilogInserter.ShrinkWrapDebugLevel.*;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;

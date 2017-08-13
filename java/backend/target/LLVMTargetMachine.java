@@ -22,10 +22,9 @@ import backend.pass.PassManagerBase;
 
 import java.io.OutputStream;
 
+import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.codegen.RegAllocLinearScan.createLinearScanRegAllocator;
 import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
-import static backend.target.x86.PrologEpilogInserter.createPrologEpilogEmitter;
-import static backend.target.x86.X86PeepholeOptimizer.createX86PeepholeOptimizer;
 import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
 import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBlockEliminationPass;
 
@@ -81,7 +80,7 @@ public abstract class LLVMTargetMachine extends TargetMachine
             return true;
 
         pm.add(createPrologEpilogEmitter());
-        pm.add(createX86PeepholeOptimizer());
+        //pm.add(createX86PeepholeOptimizer());
 
         return false;
     }

@@ -4,7 +4,7 @@ import backend.value.BasicBlock;
 import backend.type.Type;
 import backend.value.ConstantInt;
 import backend.value.Loop;
-import backend.support.APInt;
+import tools.APInt;
 
 import java.io.PrintStream;
 import java.util.HashMap;
