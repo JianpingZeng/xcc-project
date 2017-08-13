@@ -117,6 +117,7 @@ class PreprocessorFactory
     private void initializePredefinedMacros(StringBuilder buf)
     {
         defineBuiltinMacro(buf, "__xcc__=1"); // XCC version.
+        defineBuiltinMacro(buf, "__llvm__=1"); // LLVM backend.
         if (opts.asmPreprocessor)
             defineBuiltinMacro(buf, "__ASSEMBLER__=1");
 

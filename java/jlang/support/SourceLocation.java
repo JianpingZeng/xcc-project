@@ -71,9 +71,9 @@ public class SourceLocation implements Comparable<SourceLocation>
 
     public static SourceLocation getMacroLoc(int id)
     {
-        assert (id & macroBit) == 1 : "Ran out of source location";
+        assert (id & macroBit) == 0 : "Ran out of source location";
         SourceLocation l =  new SourceLocation();
-        l.id = id;
+        l.id = id + macroBit;
         return l;
     }
 

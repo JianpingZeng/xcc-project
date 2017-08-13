@@ -32,9 +32,6 @@ public abstract class SLocEntry
     }
 
     public abstract FileInfo getFile();
-    {
-        assert isFile() :"Not a file entry";
-    }
 
     public abstract InstantiationInfo getInstantiation();
 
@@ -71,14 +68,17 @@ public abstract class SLocEntry
             return false;
         }
 
-        @Override public FileInfo getFile()
+        @Override
+        public FileInfo getFile()
         {
             assert isFile() :"Not in a file entry";
             return file;
         }
 
-        @Override public InstantiationInfo getInstantiation()
+        @Override
+        public InstantiationInfo getInstantiation()
         {
+            assert false:"Should not reaching here";
             return null;
         }
     }
@@ -87,18 +87,26 @@ public abstract class SLocEntry
     {
         private InstantiationInfo instantiationInfo;
 
+        public InstantiationSLocEntry()
+        {
+            super();
+        }
+
         @Override
         public boolean isInstantiation()
         {
             return true;
         }
 
-        @Override public FileInfo getFile()
+        @Override
+        public FileInfo getFile()
         {
+            assert false:"Should not reaching here";
             return null;
         }
 
-        @Override public InstantiationInfo getInstantiation()
+        @Override
+        public InstantiationInfo getInstantiation()
         {
             return instantiationInfo;
         }

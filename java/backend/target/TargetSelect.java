@@ -35,10 +35,18 @@ public class TargetSelect
         try
         {
             String targetName = "X86";
-            Class<?> klass = Class.forName(targetName + "TargetSelect");
+            String className = "";
+            if (targetName.equals("X86"))
+            {
+                className += "backend.target." +
+                        targetName.toLowerCase() +
+                        "." + targetName;
+            }
+            className += "TargetSelect";
+            Class<?> klass = Class.forName(className);
             ts = (TargetSelect) klass.newInstance();
         }
-        catch (ClassNotFoundException | IllegalAccessException | InstantiationException e)
+        catch (IllegalAccessException | InstantiationException | ClassNotFoundException e)
         {
             e.printStackTrace();
         }

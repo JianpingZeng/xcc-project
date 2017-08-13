@@ -1,11 +1,10 @@
 package backend.target.x86;
 
 import backend.target.TargetSelect;
-import jlang.basic.TargetInfo;
 
 public class X86TargetSelect extends TargetSelect
 {
-    private X86TargetSelect()
+    public X86TargetSelect()
     {
         super();
     }

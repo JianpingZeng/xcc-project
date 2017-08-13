@@ -29,6 +29,7 @@ public class FileID implements Comparable<FileID>
     public FileID()
     {
         super();
+        id = 0;
     }
 
     public FileID(int id)

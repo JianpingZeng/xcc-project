@@ -16,6 +16,9 @@ package jlang.system;
  * permissions and limitations under the License.
  */
 
+import tools.OSInfo;
+import tools.Pair;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -24,18 +27,15 @@ public class Process
 {
     public static int getStandardErrColumns()
     {
-        String os = System.getProperty("os.asmName").toLowerCase();
-        switch (os)
+        if (OSInfo.isLinux())
         {
-            case "linux":
-            {
-                String val = System.getenv("COLUMNS");
-                if (val != null)
-                    return Integer.parseInt(val);
-                return 143;
-            }
-            default:return 80;
+            String val = System.getenv("COLUMNS");
+            if (val != null)
+                return Integer.parseInt(val);
+            return 143;
         }
+        else
+            return 90;
     }
 
     public static boolean isDigit(char ch)
@@ -43,15 +43,37 @@ public class Process
         return ch >= '0' && ch <= '9';
     }
 
+    /**
+     * Split into two substrings around the first occurence of a
+     * separator character.
+     *
+     * If {@code separator} is in the string, then the result is a pair (LHS, RHS)
+     * such that (this == LHS + Separator + RHS) is true and RHS is
+     * maximal. If eparator is not in the string, then the result is a
+     * pair (LHS, RHS) where (this == LHS) and (RHS == "").
+     *
+     * @param str   The string to splited.
+     * @param separator - The character to split on.
+     * @return  The split substrings.
+     */
+    private static Pair<String, String> split(String str, String separator)
+    {
+        int pos = str.indexOf(separator);
+        if (pos != -1)
+            return Pair.get(str.substring(0, pos), str.substring(pos+separator.length()));
+        else
+            return Pair.get(str, "");
+    }
+
     public static String getHostTriple()
     {
-        String hostTripleString = "i686-linux-gnu";
-        String[] archSplit = hostTripleString.split("-");
-        String arch = archSplit[0];
+        String hostTripleString = "i686-unknown-linux-gnu";
+        Pair<String, String> archSplit = split(hostTripleString, "-");
+        String arch = archSplit.first;
 
         String triple = arch;
         triple += "-";
-        triple += archSplit[1];
+        triple += archSplit.second;
         char[] temp = triple.toCharArray();
 
         if (temp[0] == 'i' && isDigit(temp[1]) && temp[2] == '8' && temp[3] == '6')
