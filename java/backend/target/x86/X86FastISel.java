@@ -52,6 +52,8 @@ import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
 import static backend.target.x86.X86II.*;
+import static backend.target.x86.X86InstrInfo.isGlobalRelativeToPICBase;
+import static backend.target.x86.X86InstrInfo.isGlobalStubReference;
 import static backend.target.x86.X86RegisterInfo.SUBREG_8BIT;
 import static backend.support.CallingConv.Fast;
 import static backend.support.CallingConv.X86_FastCall;
@@ -516,12 +518,12 @@ public abstract class X86FastISel extends FastISel
             // Allow the subtarget to classify the global.
             int gvFlags = subtarget.classifyGlobalReference(gv, tm);
 
-            if (MachineInstrBuilder.isGlobalRelativeToPICBase(gvFlags))
+            if (isGlobalRelativeToPICBase(gvFlags))
             {
                 am.base.setBase(getInstrInfo().getGlobalBaseReg(mf));
             }
 
-            if (!MachineInstrBuilder.isGlobalStubReference(gvFlags))
+            if (!isGlobalStubReference(gvFlags))
             {
                 if (subtarget.isPICStyleRIPRel())
                 {

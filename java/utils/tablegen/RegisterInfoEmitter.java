@@ -61,6 +61,7 @@ public final class RegisterInfoEmitter extends TableGenBackend
                 throw new Exception(
                         "No 'Register' subclasses defined in td file!");
 
+            os.println("package backend.target.x86;\n");
             emitSourceFileHeaderComment("Target Register Enum Values", os);
 
             int initValue = 0;

@@ -35,14 +35,14 @@ public final class TableGen
 {
     /**
      * This enum contains all kind of action that user wnat to perform, includes
-     * GenRegisterNames, GenRegisterDesc, GenInstrNames, GenInstrDesc.
+     * GenRegisterNames, GenRegisterInfo, GenInstrNames, GenInstrInfo.
      */
     enum ActionType
     {
         GenRegisterNames,
-        GenRegisterDesc,
+        GenRegisterInfo,
         GenInstrNames,
-        GenInstrDesc,
+        GenInstrInfo,
         GenCallingConv,
         GenAsmPrinter,
         PrintRecords,
@@ -58,11 +58,11 @@ public final class TableGen
             new ValueClass<>(
                     new ValueClass.Entry<>(GenRegisterNames, "gen-register-names",
                             "Generates register names"),
-                    new ValueClass.Entry<>(GenRegisterDesc, "gen-register-desc",
+                    new ValueClass.Entry<>(GenRegisterInfo, "gen-register-info",
                             "Generates register description file"),
                     new ValueClass.Entry<>(GenInstrNames, "gen-instr-names",
                             "Generates instruction names"),
-                    new ValueClass.Entry<>(GenInstrDesc, "gen-instr-desc",
+                    new ValueClass.Entry<>(GenInstrInfo, "gen-instr-info",
                             "Generates instruction descriptions"),
                     new ValueClass.Entry<>(GenCallingConv, "gen-callingconv",
                             "Generate calling convention descriptions"),
@@ -121,13 +121,13 @@ public final class TableGen
                 case GenRegisterNames:
                     new RegisterInfoEmitter(records).runEnums(outputFile);
                     break;
-                case GenRegisterDesc:
+                case GenRegisterInfo:
                     new RegisterInfoEmitter(records).run(outputFile);
                     break;
                 case GenInstrNames:
                     new InstrInfoEmitter(records).runEnums(outputFile);
                     break;
-                case GenInstrDesc:
+                case GenInstrInfo:
                     new InstrInfoEmitter(records).run(outputFile);
                     break;
                 case GenCallingConv:

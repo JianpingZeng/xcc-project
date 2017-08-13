@@ -521,8 +521,9 @@ public final class InstrInfoEmitter extends TableGenBackend
 
             ArrayList<CodeGenInstruction> numberedInstrs = new ArrayList<>();
             target.getInstructionsByEnumValue(numberedInstrs);;
-            String className = target.getName() + "InstrNames";
+            String className = target.getName() + "GenInstrNames";
 
+            os.println("package backend.target.x86;\n");
             os.printf("public interface %s\n{\n", className);
 
             for (int i = 0, e = numberedInstrs.size(); i != e; i++)
