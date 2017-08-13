@@ -1,0 +1,15 @@
+ANT=ant
+VERSION=0.1
+BINVERSION=0.1
+CPP=clang++
+
+
+tablgen: jar
+	${CPP} c++/*.cpp -o out/bin/tablgen
+jar:
+	${ANT} jar	
+compile:
+	${ANT} compile
+	
+clean:
+	$(ANT) clean 

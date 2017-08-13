@@ -22,6 +22,7 @@
         <mkdir dir="${output.gen_tlegen_srcs}"/>
         <mkdir dir="${output.javadocs}"/>
         <mkdir dir="${output.libs}"/>
+        <mkdir dir="${output.bin}"/>
         <copy todir="${output.libs}">
             <fileset dir="${libs}"/>
         </copy>
@@ -182,5 +183,55 @@
                 <path path="${output.libs}/${trove_name}"/>
             </classpath>
         </javac>
+    </target>
+
+
+    <!-- =============================================================== -->
+    <!-- Build the main jar.                                             -->
+    <!-- =============================================================== -->
+    <target name="jar" depends="compile" description="jar the compiled classes">
+        <jar destfile="${output.libs}/${xcc.name}-${version}.jar">
+            <fileset dir="${xcc_jar}/">
+                <!--<exclude name="utils/tablegen/**"/>-->
+            </fileset>
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Implementation-Title" value="${xcc.name}"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+                <attribute name="Sealed" value="false"/>
+                <attribute name="Main-Class" value="xcc.Main">
+                </attribute>
+            </manifest>
+        </jar>
+        <!--
+        <jar destfile="${output.libs}/${tblgen.name}-${version}.jar">
+            <fileset dir="${tblgen_jar}/">
+            </fileset>
+            <manifest>
+                <attribute name="Built-By" value="${user.name}"/>
+                <attribute name="Implementation-Title" value="${tblgen.name}"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+                <attribute name="Sealed" value="false"/>
+                <attribute name="Main-Class" value="utils.tablegen.TableGen">
+                </attribute>
+            </manifest>
+        </jar>
+        -->
+    </target>
+
+
+    <!-- =============================================================== -->
+    <!-- Clean all output                                                -->
+    <!-- =============================================================== -->
+    <target name="clean" depends="init" description="remove temporary directories">
+        <delete dir="${output.dir}"/>
+    </target>
+
+    <!-- =============================================================== -->
+    <!-- The main target for building a release. This will perform a     -->
+    <!-- "clean" followed by a "dist".                                   -->
+    <!-- =============================================================== -->
+    <target name="release">
+
     </target>
 </project>
