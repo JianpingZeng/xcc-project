@@ -4,7 +4,7 @@ import jlang.ast.Tree.Expr;
 import jlang.support.PrintingPolicy;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
-import backend.support.APInt;
+import tools.APInt;
 
 /**
  * ConstantArrayType - C99 6.7.5.2 - Array Declarators.

@@ -3,7 +3,7 @@ package backend.analysis;
 import backend.value.*;
 import backend.value.Operator;
 import backend.type.Type;
-import backend.support.APInt;
+import tools.APInt;
 import tools.Pair;
 
 import java.io.PrintStream;

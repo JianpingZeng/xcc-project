@@ -16,7 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import backend.support.APFloat;
+import tools.APFloat;
 import jlang.ast.Tree;
 import tools.OutParamWrapper;
 

@@ -18,7 +18,7 @@ package jlang.driver;
 
 import backend.support.ErrorHandling;
 import backend.target.TargetMachine;
-import backend.target.x86.X86TargetInfo;
+import backend.target.TargetSelect;
 import backend.value.Module;
 import jlang.ast.ASTConsumer;
 import jlang.basic.HeaderSearch;
@@ -814,8 +814,9 @@ public class Jlang implements DiagnosticFrontendKindsTag
 	public int compile(String[] args) throws Exception
     {
         // Initialize Target machine
-        X86TargetInfo.InitializeX86TargetInfo();
-        X86TargetInfo.LLVMInitiliazeX86Target();
+        TargetSelect ts = TargetSelect.create();
+        ts.InitializeTargetInfo();
+        ts.LLVMInitializeTarget();
 
 	    // Parse the command line argument.
         CL.parseCommandLineOptions(args);

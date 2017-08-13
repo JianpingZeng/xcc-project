@@ -13,7 +13,7 @@ import java.util.LinkedList;
 
 import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
-import static backend.target.x86.X86GenInstrNames.INLINEASM;
+import static backend.target.TargetInstrInfo.INLINEASM;
 
 /**
  * Representation of each machine instruction.

@@ -17,7 +17,7 @@ package jlang.codegen;
  */
 
 import backend.hir.HIRBuilder;
-import backend.support.APFloat;
+import tools.APFloat;
 import backend.type.FunctionType;
 import backend.type.IntegerType;
 import backend.type.PointerType;

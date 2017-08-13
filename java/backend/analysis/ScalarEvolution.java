@@ -27,7 +27,7 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
-import backend.support.APInt;
+import tools.APInt;
 import tools.Util;
 
 import java.util.*;

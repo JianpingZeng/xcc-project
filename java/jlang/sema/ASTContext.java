@@ -16,9 +16,9 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import backend.support.APInt;
-import backend.support.APSInt;
-import backend.support.FltSemantics;
+import tools.APInt;
+import tools.APSInt;
+import tools.FltSemantics;
 import jlang.ast.Tree.Expr;
 import jlang.basic.*;
 import jlang.basic.TargetInfo.IntType;

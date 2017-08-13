@@ -19,7 +19,7 @@ package jlang.sema;
 import jlang.ast.Tree;
 import jlang.sema.Decl.FieldDecl;
 import jlang.sema.Decl.RecordDecl;
-import backend.support.APSInt;
+import tools.APSInt;
 import jlang.type.PointerType;
 import jlang.type.QualType;
 import jlang.type.RecordType;

@@ -20,7 +20,7 @@ import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.utils.InstVisitor;
-import backend.support.APInt;
+import tools.APInt;
 
 /**
  * The {@code Constant} instruction represents a constants such as an integer

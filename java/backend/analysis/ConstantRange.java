@@ -1,6 +1,6 @@
 package backend.analysis;
 
-import backend.support.APInt;
+import tools.APInt;
 
 import java.io.PrintStream;
 
