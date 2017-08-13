@@ -43,6 +43,9 @@ public class LineTableInfo
 
     public LineTableInfo()
     {
+        filenameIDs = new TObjectIntHashMap<>();
+        filenamesByID = new ArrayList<>();
+        lineEntries = new TIntObjectHashMap<>();
     }
 
     public void clear()

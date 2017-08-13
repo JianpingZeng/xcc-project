@@ -181,7 +181,10 @@ public abstract class TargetInfo
     public TargetInfo(String triple)
     {
         this.triple = triple;
+        TLSSupported = true;
         pointerWidth = pointerAlign = 32;
+        charWidth = charAlign = 8;
+        shortWidth = shortAlign = 16;
         intWidth = intAlign = 32;
         longWidth = longAlign = 32;
         longlongWidth = longlongAlign = 64;

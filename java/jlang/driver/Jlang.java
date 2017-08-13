@@ -43,10 +43,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
@@ -76,18 +73,21 @@ public class Jlang implements DiagnosticFrontendKindsTag
 {
     public static BooleanOpt Verbose = new BooleanOpt(
             new OptionNameApplicator("v"),
-            desc("Enable verbose output"));
+            desc("Enable verbose output"),
+            init(false));
 
     public static StringOpt OutputFile =
             new StringOpt(new OptionNameApplicator("o"),
             valueDesc("path"),
-            desc("Specify the output file"));
+            desc("Specify the output file"),
+            init(""));
 
     public static Opt<ProgramAction> ProgAction
              = new Opt<ProgramAction>(new Parser<>(),
             desc("Choose output type:"),
             new NumOccurrencesApplicator(NumOccurrences.ZeroOrMore),
-            init(ParseSyntaxOnly), new ValueClass<>(
+            init(ParseSyntaxOnly),
+            new ValueClass<>(
                 new ValueClass.Entry<>(PrintPreprocessedInput, "E",
                     "Run preprocessor, emit preprocessed file"),
                 new ValueClass.Entry<>(ParseSyntaxOnly, "fsyntax-only",
@@ -102,39 +102,47 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
     public static BooleanOpt NoShowColumn =
             new BooleanOpt(new OptionNameApplicator("fno-show-column"),
-            desc("Do not include column number on diagnostics"));
+            desc("Do not include column number on diagnostics"),
+            init(false));
 
     public static BooleanOpt NoShowLocation =
             new BooleanOpt(new OptionNameApplicator("f-no-show-source-location"),
-            desc("Do not include source location information with diagnostics"));;
+            desc("Do not include source location information with diagnostics"),
+            init(false));;
 
     public static BooleanOpt NoCaretDiagnostics =
             new BooleanOpt(new OptionNameApplicator("fno-caret-diagnostics"),
-                    desc("Do not include source line and caret with diagnostics"));
+            desc("Do not include source line and caret with diagnostics"),
+            init(false));
 
     public static BooleanOpt NoDiagnosticsFixIt =
             new BooleanOpt(new OptionNameApplicator("fno-diagnostics-fixit-info"),
-                    desc("Do not include fixit information in diagnostics"));;
+            desc("Do not include fixit information in diagnostics"),
+            init(false));;
 
     public static BooleanOpt PrintSourceRangeInfo =
             new BooleanOpt(new OptionNameApplicator("fdiagnostics-print-source-range-info"),
-            desc("Print source range spans in numeric form"));
+            desc("Print source range spans in numeric form"),
+            init(false));
 
     public static BooleanOpt PrintDiagnosticOption =
             new BooleanOpt(new OptionNameApplicator("fdiagnostics-show-option"),
-            desc("Print diagnostic asmName with mappable diagnostics"));
+            desc("Print diagnostic asmName with mappable diagnostics"),
+            init(false));
 
     public static IntOpt MessageLength =
             new IntOpt(new OptionNameApplicator("fmessage-length"),
             desc("Format message diagnostics so that they fit " +
                     "within N columns or fewer, when possible."),
-            valueDesc("N"));
+            valueDesc("N"),
+            init(80));
 
     public static BooleanOpt NoColorDiagnostic =
             new BooleanOpt(new OptionNameApplicator("fno-color-diagnostics"),
             desc("Don't use colors when showing diagnostics " +
                     "(automatically turned off if output is not a " +
-                    "terminal)."));
+                    "terminal)."),
+            init(false));
 
     public static Opt<LangKind> BaseLang =
             new Opt<LangKind>(new Parser<>(),
@@ -161,36 +169,37 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
     public static Opt<LangStds> LangStd =
             new Opt<LangStds>(new Parser<>(),
-                    new OptionNameApplicator("std"),
-                    desc("Language standard to compile for"),
-                    init(Lang_unpsecified),
-                    new ValueClass<>(
-                        new ValueClass.Entry<>(Lang_c89, "c89","ISO C 1990"),
-                        new ValueClass.Entry<>(Lang_c99, "c99","ISO C 1999"),
-                        new ValueClass.Entry<>(Lang_c11, "c11", "ISO C 2011"),
-                        new ValueClass.Entry<>(Lang_gnu89, "gnu89",
-                                "ISO C 1990 with GNU extensions"),
-                        new ValueClass.Entry<>(Lang_gnu99, "gnu99",
-                                "ISO C 1999 with GNU extensions (default for C)")));
+            new OptionNameApplicator("std"),
+            desc("Language standard to compile for"),
+            init(Lang_unpsecified),
+            new ValueClass<>(
+                new ValueClass.Entry<>(Lang_c89, "c89","ISO C 1990"),
+                new ValueClass.Entry<>(Lang_c99, "c99","ISO C 1999"),
+                new ValueClass.Entry<>(Lang_c11, "c11", "ISO C 2011"),
+                new ValueClass.Entry<>(Lang_gnu89, "gnu89",
+                        "ISO C 1990 with GNU extensions"),
+                new ValueClass.Entry<>(Lang_gnu99, "gnu99",
+                        "ISO C 1999 with GNU extensions (default for C)")));
 
-    public static BooleanOpt Trigraphs =
-            new BooleanOpt(
-                    new OptionNameApplicator("trigraphs"),
-                    desc("Process trigraph sequences"));
+    public static BooleanOpt Trigraphs = new BooleanOpt(
+            new OptionNameApplicator("trigraphs"),
+            desc("Process trigraph sequences"),
+            init(false));
 
-    public static BooleanOpt DollarsInIdents =
-            new BooleanOpt(
-                    new OptionNameApplicator("fdollars-in-identifiers"),
-                    desc("Allow '$' in identifiers"));
+    public static BooleanOpt DollarsInIdents = new BooleanOpt(
+            new OptionNameApplicator("fdollars-in-identifiers"),
+            desc("Allow '$' in identifiers"),
+            init(false));
 
-    public static BooleanOpt OptSize =
-            new BooleanOpt(
-                    new OptionNameApplicator("Os"),
-                    desc("Optimize for size"));
+    public static BooleanOpt OptSize = new BooleanOpt(
+            new OptionNameApplicator("Os"),
+            desc("Optimize for size"),
+            init(false));
 
     public static StringOpt MainFileName =
             new StringOpt(new OptionNameApplicator("main-file-asmName"),
-                    desc("Main file asmName to use for debug info"));
+            desc("Main file asmName to use for debug info"),
+            init(""));
 
     public static class OptLevelParser extends ParserUInt
     {
@@ -214,7 +223,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
     public static StringOpt TargetTriple = new StringOpt(
             new OptionNameApplicator("triple"),
-            desc("Specify target triple (e.g. x86_64-unknown-linux-gnu)"));
+            desc("Specify target triple (e.g. x86_64-unknown-linux-gnu)"),
+            init(""));
 
     //===----------------------------------------------------------------------===//
     // Preprocessor Initialization
@@ -240,11 +250,11 @@ public class Jlang implements DiagnosticFrontendKindsTag
             desc("Include file before parsing"));
 
     public static ListOpt<String> I_dirs = new ListOpt<String>(
-        new ParserString(),
-        new OptionNameApplicator("I"),
-        desc("Add directory to include search path"),
-        valueDesc("directory"),
-        new FormattingFlagsApplicator(FormattingFlags.Prefix));
+            new ParserString(),
+            new OptionNameApplicator("I"),
+            desc("Add directory to include search path"),
+            valueDesc("directory"),
+            new FormattingFlagsApplicator(FormattingFlags.Prefix));
 
     public static ListOpt<String> Iquote_dirs = new ListOpt<String>(
             new ParserString(),
@@ -262,11 +272,13 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
     public static BooleanOpt GenerateDebugInfo = new BooleanOpt(
             new OptionNameApplicator("g"),
-            desc("Generate source level debug information"));
+            desc("Generate source level debug information"),
+            init(false));
 
     public StringOpt TargetCPU = new StringOpt(
             new OptionNameApplicator("mcpu"),
-            desc("Target a specific cpu type (-mcpu=help for details)"));
+            desc("Target a specific cpu type (-mcpu=help for details)"),
+            init(""));
 
     public ListOpt<String> TargetFeatures = new ListOpt<String>(
             new ParserString(),
@@ -284,13 +296,14 @@ public class Jlang implements DiagnosticFrontendKindsTag
         new OptionNameApplicator("isysroot"),
             valueDesc("dir"),
             init("/"),
-            desc("Set the system root directory (usually /)")
-    );
+            desc("Set the system root directory (usually /)"),
+            init(""));
 
     public static BooleanOpt nostdinc = new BooleanOpt(
             new OptionNameApplicator("nostdinc"),
-            desc("Disable standard #include directories")
-    );
+            desc("Disable standard #include directories"),
+            init(false));
+
     /**
      * Result codes.
      */
@@ -740,8 +753,9 @@ public class Jlang implements DiagnosticFrontendKindsTag
         if (TargetFeatures.isEmpty())
             return;
 
-        for (String name : TargetFeatures)
+        for (int i = 0, e = TargetFeatures.size(); i != e; i++)
         {
+            String name = TargetFeatures.get(i);
             char firstCh = name.charAt(0);
             if (firstCh != '-' && firstCh != '+')
             {

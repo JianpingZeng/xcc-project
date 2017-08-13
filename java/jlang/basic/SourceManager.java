@@ -77,11 +77,26 @@ public class SourceManager
     private FileID lastLFIDForBeforeTUCheck;
     private FileID lastRFIDForBeforeTUCheck;
     private boolean lastResForBeforeTUCheck;
-    
 
     public SourceManager()
     {
+        fileInfo = new HashMap<>();
+        memBufferInfo = new ArrayList<>();
+        slocEntryTable = new ArrayList<>();
+        nextOffset = 0;
+        slocEntryLoaded = new ArrayList<>();
+        lastFileIDLookup = new FileID();
+        lineTable = new LineTableInfo();
+        lastLineNoFileIDQuery = new FileID();
+        lastLineNoContentCache = new ContentCache();
+        lastLineNoFilePos = 0;
+        lastLineNoResult = 0;
+        mainFileID = new FileID();
+        lastLFIDForBeforeTUCheck = new FileID();
+        lastRFIDForBeforeTUCheck = new FileID();
+        lastResForBeforeTUCheck = false;
 
+        clearIDTables();
     }
 
     public void clearIDTables()
@@ -104,7 +119,7 @@ public class SourceManager
             SourceLocation SpellingLoc,
             SourceLocation ILocStart,
             SourceLocation ILocEnd,
-            int TokLength,
+            int tokLength,
             int preallocationID,
             int offset)
     {
@@ -112,18 +127,22 @@ public class SourceManager
 
         if (preallocationID != 0)
         {
-            assert preallocationID < slocEntryLoaded.size();
-            assert slocEntryTable.get(preallocationID) == null;
-            assert offset != 0;
+            assert preallocationID < slocEntryLoaded.size():"Preallocated ID out of range";
+            assert slocEntryTable.get(preallocationID) == null :
+                    "Source location entry already loaded";
+            assert offset != 0 :"Preallocated source location cannot have zero offset";
+
             slocEntryTable.set(preallocationID, SLocEntry.get(offset, ii));
             slocEntryLoaded.set(preallocationID, true);
             return SourceLocation.getMacroLoc(offset);
         }
 
         slocEntryTable.add(SLocEntry.get(nextOffset, ii));
-        assert nextOffset + TokLength + 1 >nextOffset;
-        nextOffset += TokLength + 1;
-        return SourceLocation.getMacroLoc(nextOffset - (TokLength + 1));
+        assert nextOffset + tokLength + 1 >nextOffset :
+                " Ran out of source locations!";
+
+        nextOffset += tokLength + 1;
+        return SourceLocation.getMacroLoc(nextOffset - (tokLength + 1));
     }
 
     public FileID getMainFileID()
