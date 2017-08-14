@@ -70,10 +70,9 @@ public class Lexer extends PreprocessorLexer
         this.buffer = buffer;
         this.bufferPtr = curPos;
         bufferEnd = endPos;
-        assert buffer[buffer.length-1] == '\0':
-                "We assume that the input buffer has a null character at the end" +
-        " to simplify lexing!";
-
+        //assert buffer[buffer.length-1] == '\0':
+        //        "We assume that the input buffer has a null character at the end" +
+        //" to simplify lexing!";
         isPragmaLexer = false;
 
         // Star of the file is a start of line.

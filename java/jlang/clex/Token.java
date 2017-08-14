@@ -8,7 +8,7 @@ import static jlang.clex.Token.TokenFlags.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class Token
+public class Token implements Cloneable
 {
     private SourceLocation loc;
     /**
@@ -152,5 +152,19 @@ public class Token
     public int getLength()
     {
         return length;
+    }
+
+    public Token clone()
+    {
+        Token res = new Token();
+        res.loc = loc;
+        res.data = data == null ? null :
+                        (isLiteral() ?
+                        getLiteralData().clone() :
+                        getIdentifierInfo().clone());
+        res.kind = kind;
+        res.flags = flags;
+        res.length = length;
+        return res;
     }
 }

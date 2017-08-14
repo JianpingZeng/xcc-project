@@ -250,7 +250,7 @@ public abstract class Type implements TypeClass
     public boolean isCharType()
     {
         return canonicalType.getType() instanceof BuiltinType
-                && (tc == Char || tc == UnsignedChar);
+                && (tc == SChar || tc == UChar);
     }
 
     public boolean isIntegralType()
@@ -591,7 +591,7 @@ public abstract class Type implements TypeClass
     public boolean isPromotableIntegerType()
     {
         BuiltinType bt = getAsBuiltinType();
-        if (bt != null && tc >= Bool && tc <= UnsignedShort)
+        if (bt != null && tc >= Bool && tc <= UShort)
         {
             return true;
         }
@@ -606,7 +606,7 @@ public abstract class Type implements TypeClass
      */
     public boolean isSignedIntegerType()
     {
-        if (isBuiltinType() && tc >= TypeClass.Char && tc <= LongLong)
+        if (isBuiltinType() && tc >= TypeClass.SChar && tc <= LongLong)
             return true;
         EnumType et = getAsEnumType();
         if (et != null)

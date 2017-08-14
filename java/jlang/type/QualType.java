@@ -98,14 +98,15 @@ public final class QualType implements Cloneable
         this(null, 0);
     }
 
-    public QualType(final Type t)
+    public QualType(Type t)
     {
         this(t, 0);
     }
 
-    public QualType(final Type t, int quals)
+    public QualType(Type t, int quals)
     {
         type = t;
+        qualsFlag = new Qualifier();
         qualsFlag.addCVQualifier(quals);
     }
 

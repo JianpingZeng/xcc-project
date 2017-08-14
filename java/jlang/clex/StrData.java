@@ -20,7 +20,7 @@ package jlang.clex;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class StrData
+public class StrData implements Cloneable
 {
     /**
      * The entire char buffer.
@@ -36,5 +36,12 @@ public class StrData
     {
         this.buffer = buffer;
         this.offset = offset;
+    }
+
+    public StrData clone()
+    {
+        char[] arr = new char[buffer.length];
+        System.arraycopy(buffer, 0, arr, 0, arr.length);
+        return new StrData(arr, offset);
     }
 }

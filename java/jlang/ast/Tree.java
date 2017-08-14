@@ -1383,8 +1383,8 @@ public abstract class Tree
         {
             if (type.isBuiltinType())
             {
-                return type.getTypeClass() >= TypeClass.Char
-                        && type.getTypeClass() <= TypeClass.LongInteger;
+                return type.getTypeClass() >= TypeClass.SChar
+                        && type.getTypeClass() <= TypeClass.Long;
             }
 
             if (type.isEnumeralType())

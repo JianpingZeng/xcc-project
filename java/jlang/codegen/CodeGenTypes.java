@@ -360,15 +360,15 @@ public class CodeGenTypes
                 return backend.type.IntegerType.get(8);
             case Bool:
                 return Type.Int1Ty;
-            case UnsignedChar:
-            case UnsignedShort:
-            case UnsignedInt:
-            case UnsignedLong:
-            case UnsignedLongLong:
-            case Char:
+            case UChar:
+            case UShort:
+            case UInt:
+            case ULong:
+            case ULongLong:
+            case SChar:
             case Short:
             case Int:
-            case LongInteger:
+            case Long:
             case LongLong:
                 return backend.type.IntegerType.get((int) context.getTypeSize(t));
             case Float:

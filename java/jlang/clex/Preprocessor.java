@@ -121,8 +121,8 @@ public final class Preprocessor
 
     /**
      * This is the current top of the stack that we're lexing from if
-     * * not expanding a macro and we are lexing directly from source code.
-     * *  Only one of curLexer, or curTokenLexer will be non-null.
+     * not expanding a macro and we are lexing directly from source code.
+     *  Only one of curLexer, or curTokenLexer will be non-null.
      */
     private Lexer curLexer;
 
@@ -161,7 +161,7 @@ public final class Preprocessor
 
         StrData tokStart = sourceMgr.getCharacterData(tok.getLocation());
         if (!tok.needsCleaning())
-            return String.valueOf(Arrays.copyOfRange(tokStart.buffer, tokStart.offset, tok.getLength()));
+            return String.valueOf(Arrays.copyOfRange(tokStart.buffer, tokStart.offset, tok.getLength() + tokStart.offset));
 
         StringBuilder result = new StringBuilder();
         for (int i = tokStart.offset, e = tok.getLength() + tokStart.offset; i < e; )
@@ -616,8 +616,8 @@ public final class Preprocessor
     public void addCommentHandler(CommentHandler handler)
     {
         assert handler != null : "NULL comment handler!";
-        assert commentHandlers
-                .contains(handler) : "Comment handler already exist";
+        assert !commentHandlers.contains(handler)
+                : "Comment handler already exist";
         commentHandlers.add(handler);
     }
 
@@ -648,9 +648,10 @@ public final class Preprocessor
         StringBuilder buffer = new StringBuilder();
         buffer.append(predefines);
 
+        // Generate memory buffer for built-in predefined macroes.
         MemoryBuffer sb = MemoryBuffer
                 .getMemBuffer(buffer.toString(), "<built-in>");
-        assert sb != null : "Cannot fail to create predefined source buffer";
+        //assert sb != null : "Cannot fail to create predefined source buffer";
         FileID fid = sourceMgr.createFileIDForMemBuffer(sb);
         assert !fid.isInvalid() : "Could not create FileID for predefines?";
 
@@ -978,11 +979,12 @@ public final class Preprocessor
 
     /**
      * Handle a GNU line marker directive, whose syntax is
-     /// one of the following forms:
-     ///
-     ///     # 42
-     ///     # 42 "file" ('1' | '2')?
-     ///     # 42 "file" ('1' | '2')? '3' '4'?
+     * one of the following forms:
+     * <pre>
+     *     # 42
+     *     # 42 "file" ('1' | '2')?
+     *     # 42 "file" ('1' | '2')? '3' '4'?
+     * </pre>
      * @param digitTok
      */
     private void handleDigitDirective(Token digitTok)
@@ -1095,8 +1097,8 @@ public final class Preprocessor
 
     static class DefinedTracker
     {
-        /// Each time a Value is evaluated, it returns information about whether the
-        /// parsed value is of the form defined(X), !defined(X) or is something else.
+        // Each time a Value is evaluated, it returns information about whether the
+        // parsed value is of the form defined(X), !defined(X) or is something else.
         enum TrackerState
         {
             DefinedMacro,
@@ -2214,15 +2216,15 @@ public final class Preprocessor
 
     /**
      * Handle cases where the #include asmName is expanded
-     /// from a macro as multiple tokens, which need to be glued together.  This
-     /// occurs for code like:
-     ///    #define FOO <a/b.h>
-     ///    #include FOO
-     /// because in this case, "<a/b.h>" is returned as 7 tokens, not one.
-     ///
-     /// This code concatenates and consumes tokens up to the '>' token.  It returns
-     /// false if the > was found, otherwise it returns true if it finds and consumes
-     /// the EOM marker.
+     * from a macro as multiple tokens, which need to be glued together.  This
+     * occurs for code like:
+     *    #define FOO <a/b.h>
+     *    #include FOO
+     * because in this case, "<a/b.h>" is returned as 7 tokens, not one.
+     *
+     * This code concatenates and consumes tokens up to the '>' token.  It returns
+     * false if the > was found, otherwise it returns true if it finds and consumes
+     * the EOM marker.
      * @param filenameBuffer
      * @param pp
      * @return
@@ -2851,7 +2853,7 @@ public final class Preprocessor
         boolean ReadAnyTokensBeforeDirective = curLexer.miOpt.hasReadAnyTokens();
 
         // Save the '#' token in case we need to return it later.
-        Token savedHash = result;
+        Token savedHash = result.clone();
 
         // Read the next token, the directive flavor.  This isn't expanded due to
         // C99 6.10.3p8.
@@ -3585,8 +3587,8 @@ public final class Preprocessor
 
         // A object for residing actual arguments.
         // If this is a function-like macro expansion, this contains,
-        /// for each macro argument, the list of tokens that were provided to the
-        /// invocation.
+        // for each macro argument, the list of tokens that were provided to the
+        // invocation.
         MacroArgs args = null;
 
         // Remember where the end of the instantiation occurred.  For an object-like
