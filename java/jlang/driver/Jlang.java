@@ -21,6 +21,7 @@ import backend.target.TargetMachine;
 import backend.target.TargetSelect;
 import backend.value.Module;
 import jlang.ast.ASTConsumer;
+import jlang.ast.PrettyASTConsumer;
 import jlang.basic.HeaderSearch;
 import jlang.basic.InitHeaderSearch;
 import jlang.basic.SourceManager;
@@ -51,7 +52,7 @@ import static jlang.basic.InitHeaderSearch.IncludeDirGroup.System;
 import static jlang.codegen.BackendConsumer.createBackendConsumer;
 import static jlang.driver.Jlang.LangStds.*;
 import static jlang.support.BackendAction.Backend_EmitAssembly;
-import static jlang.support.BackendAction.Backend_EmitIr;
+import static jlang.support.BackendAction.Backend_EmitIR;
 import static jlang.support.CompileOptions.InliningMethod.NormalInlining;
 import static jlang.support.CompileOptions.InliningMethod.OnlyAlwaysInlining;
 import static jlang.support.LangKind.*;
@@ -452,6 +453,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
         {
             default:
             case ParseSyntaxOnly:
+                consumer = new PrettyASTConsumer();
+                break;
             case ASTDump:
                 assert false : "Unsupported currently.";
                 return;
@@ -461,7 +464,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
                 BackendAction act;
                 if (progAction == EmitLLVM)
                 {
-                    act = Backend_EmitIr;
+                    act = Backend_EmitIR;
                     os = computeOutFile(infile, "ll", outpath);
                 }
                 else

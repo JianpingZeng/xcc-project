@@ -1,13 +1,12 @@
-package jlang.support;
 /*
- * Extremely C language Compiler.
+ * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,14 +15,26 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
+package jlang.ast;
+
+import jlang.sema.ASTContext;
+import jlang.sema.Decl;
+
+import java.util.ArrayList;
+
 /**
+ * A empty action consumer for AST.
  * @author Xlous.zeng
  * @version 0.1
  */
-public enum BackendAction
+public class PrettyASTConsumer implements ASTConsumer
 {
-    Backend_EmitNothing,
-    Backend_EmitAssembly, Backend_EmitIR,
-    Backend_EmitObj,
-}
+    @Override
+    public void initialize(ASTContext ctx) {}
 
+    @Override
+    public void handleTopLevelDecls(ArrayList<Decl> decls) {}
+
+    @Override
+    public void handleTranslationUnit() {}
+}

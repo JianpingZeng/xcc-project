@@ -349,7 +349,7 @@ public class BackendConsumer implements ASTConsumer
             }
             return true;
         }
-        else if (action == Backend_EmitIr)
+        else if (action == Backend_EmitIR)
         {
             getPerModulePasses().add(new PrintModulePass(asmOutStream));
             error.set("Unsupport to emit LLVM IR yet!");
