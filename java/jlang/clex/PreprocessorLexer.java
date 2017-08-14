@@ -85,6 +85,7 @@ public abstract class PreprocessorLexer
         parsingFilename = false;
         parsingPreprocessorDirective = false;
         lexingRawMode = false;
+        miOpt = new MultipleIncludeOpt();
         conditionalStack = new Stack<>();
     }
 

@@ -5,6 +5,7 @@ import jlang.ast.Tree.CompoundStmt;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.InitListExpr;
 import jlang.ast.Tree.Stmt;
+import jlang.clex.CommentHandler.DefaultCommentHandler;
 import jlang.support.LangOptions;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.FieldDeclarator;
@@ -52,7 +53,10 @@ import static jlang.sema.Sema.TagUseKind.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, DiagnosticCommonKindsTag
+public class Parser implements Tag,
+        DiagnosticParseTag,
+        DiagnosticSemaTag,
+        DiagnosticCommonKindsTag
 {
     private static class FieldCallBack
     {
@@ -112,7 +116,6 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
                 this.self = null;
         }
 
-
         void exit()
         {
             if (self != null)
@@ -141,6 +144,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         Scope oldScope = getCurScope();
         action.setCurScope(oldScope.getParent());
     }
+
     /**
      * Semantic action.
      */
@@ -160,6 +164,8 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     private Token tok;
 
+    private Scope curScope;
+
     public Diagnostic getDiags()
     {
         return diags;
@@ -170,12 +176,20 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
         return pp;
     }
 
-    private void init(Preprocessor pp, Sema action)
+    /**
+     * Initialize the parser.
+     */
+    public void initialize()
     {
-        this.pp = pp;
-        this.diags = pp.getDiagnostics();
-        this.action = action;
+        // Prime the lexer look-ahead.
         consumeToken();
+
+        assert getCurScope() == null:"A scope is already active?";
+        enterScope(ScopeFlags.DeclScope.value);
+        action.actOnTranslationUnitScope(getCurScope());
+
+        if (tok.is(eof) && !getLangOption().gnuMode)
+            diag(tok, ext_empty_source_file);       // Empty source file is gnu extension
     }
 
     /**
@@ -183,7 +197,15 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
      */
     public Parser(Preprocessor pp, Sema action)
     {
-        init(pp, action);
+        this.pp = pp;
+        this.action = action;
+        diags = pp.getDiagnostics();
+        tok = new Token();
+        tok.setKind(eof);
+        pp.addCommentHandler(new DefaultCommentHandler(action));
+
+        // Add #pragma handlers.
+        // todo add PragmaHandler. 2017.8.14
     }
 
     LangOptions getLangOption()
@@ -2454,7 +2476,7 @@ public class Parser implements Tag, DiagnosticParseTag, DiagnosticSemaTag, Diagn
 
     private Scope getCurScope()
     {
-        return action.getCurScope();
+        return curScope;
     }
 
     /**

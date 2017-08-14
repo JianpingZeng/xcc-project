@@ -560,6 +560,11 @@ public final class Sema implements DiagnosticParseTag,
         }
     }
 
+    private void pushOnScopeChains(NamedDecl newDecl, Scope scope)
+    {
+        pushOnScopeChains(newDecl, scope, true);
+    }
+
     /**
      * Add this decl to the scope
      *
@@ -567,7 +572,8 @@ public final class Sema implements DiagnosticParseTag,
      * @param scope
      * @param addToScope
      */
-    private void pushOnScopeChains(NamedDecl newDecl, Scope scope,
+    private void pushOnScopeChains(NamedDecl newDecl,
+            Scope scope,
             boolean addToScope)
     {
         // move up the scope chain until we find the nearest enclosing
@@ -1533,6 +1539,19 @@ public final class Sema implements DiagnosticParseTag,
     {
         translateUnitScope = scope;
         pushDeclContext(scope, context.getTranslateUnitDecl());
+
+        if (pp.getTargetInfo().getPointerWidth(0) >= 64)
+        {
+            pushOnScopeChains(new TypeDefDecl(curContext,
+                    context.identifierTable.get("__int128_t"),
+                    new SourceLocation(),
+                    context.Int128Ty), translateUnitScope);
+
+            pushOnScopeChains(new TypeDefDecl(curContext,
+                    context.identifierTable.get("__uint128_t"),
+                    new SourceLocation(),
+                    context.UnsignedInt128Ty), translateUnitScope);
+        }
     }
 
     public Decl actOnFunctionDef(Scope fnBodyScope, Declarator declarator)
@@ -5909,8 +5928,8 @@ public final class Sema implements DiagnosticParseTag,
             return exprError();
         }
 
-        if (context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.UnsignedChar)
-                || context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.Char))
+        if (context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.UChar)
+                || context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.SChar))
         {
             diag(lParenLoc, warn_subscript_is_char)
                     .addSourceRange(idxExpr.getSourceRange())

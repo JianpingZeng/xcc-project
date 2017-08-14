@@ -162,7 +162,7 @@ public class Canonicalizer implements InstVisitor
 					kind = LIRKind.Short;
 					break;
 				case I2C:
-					kind = LIRKind.Char;
+					kind = LIRKind.SChar;
 					break;
 			}
 
@@ -183,7 +183,7 @@ public class Canonicalizer implements InstVisitor
 						}
 						break;
 					case I2C:
-						if (kind == LIRKind.Char)
+						if (kind == LIRKind.SChar)
 						{
 							setCanonical(value);
 						}

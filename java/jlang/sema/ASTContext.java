@@ -37,30 +37,7 @@ import java.util.TreeSet;
 
 import static jlang.sema.ASTContext.FloatingRank.*;
 import static jlang.type.ArrayType.ArraySizeModifier.Normal;
-import static jlang.type.TypeClass.Bool;
-import static jlang.type.TypeClass.Char;
-import static jlang.type.TypeClass.ConstantArray;
-import static jlang.type.TypeClass.Double;
-import static jlang.type.TypeClass.Enum;
-import static jlang.type.TypeClass.Float;
-import static jlang.type.TypeClass.FunctionProto;
-import static jlang.type.TypeClass.IncompleteArray;
-import static jlang.type.TypeClass.Int;
-import static jlang.type.TypeClass.LongDouble;
-import static jlang.type.TypeClass.LongInteger;
-import static jlang.type.TypeClass.LongLong;
-import static jlang.type.TypeClass.Pointer;
-import static jlang.type.TypeClass.Short;
-import static jlang.type.TypeClass.Struct;
-import static jlang.type.TypeClass.TypeDef;
-import static jlang.type.TypeClass.Union;
-import static jlang.type.TypeClass.UnsignedChar;
-import static jlang.type.TypeClass.UnsignedInt;
-import static jlang.type.TypeClass.UnsignedLong;
-import static jlang.type.TypeClass.UnsignedLongLong;
-import static jlang.type.TypeClass.UnsignedShort;
-import static jlang.type.TypeClass.VariableArray;
-import static jlang.type.TypeClass.Void;
+import static jlang.type.TypeClass.*;
 
 /**
  * @author Xlous.zeng
@@ -104,6 +81,8 @@ public final class ASTContext
 	public final QualType UnsignedLongTy;
 	public final QualType LongLongTy;
 	public final QualType UnsignedLongLongTy;
+	public final QualType Int128Ty;
+	public final QualType UnsignedInt128Ty;
 	public final QualType FloatTy;
 	public final QualType DoubleTy;
     public final QualType LongDoubleTy;
@@ -124,18 +103,20 @@ public final class ASTContext
 
         VoidTy = initBuiltinType(Void);
         BoolTy = initBuiltinType(Bool);
-        CharTy = initBuiltinType(Char);
-        SignedCharTy = initBuiltinType(Char);
+        CharTy = initBuiltinType(SChar);
+        SignedCharTy = initBuiltinType(SChar);
         ShortTy = initBuiltinType(Short);
         IntTy = initBuiltinType(Int);
-        LongTy = initBuiltinType(LongInteger);
+        LongTy = initBuiltinType(Long);
         LongLongTy = initBuiltinType(LongLong);
 
-        UnsignedCharTy = initBuiltinType(UnsignedChar);
-        UnsignedShortTy = initBuiltinType(UnsignedShort);
-        UnsignedIntTy = initBuiltinType(UnsignedInt);
-        UnsignedLongTy = initBuiltinType(UnsignedLong);
-        UnsignedLongLongTy = initBuiltinType(UnsignedLongLong);
+        UnsignedCharTy = initBuiltinType(UChar);
+        UnsignedShortTy = initBuiltinType(UShort);
+        UnsignedIntTy = initBuiltinType(UInt);
+        UnsignedLongTy = initBuiltinType(ULong);
+        UnsignedLongLongTy = initBuiltinType(ULongLong);
+        Int128Ty = initBuiltinType(Int128);
+        UnsignedInt128Ty = initBuiltinType(UInt128);
 
         FloatTy = initBuiltinType(Float);
         DoubleTy = initBuiltinType(Double);
@@ -627,13 +608,13 @@ public final class ASTContext
 			case TypeClass.Union:
 			case TypeClass.Enum:
 
-			case UnsignedChar:
-			case UnsignedShort:
-			case UnsignedInt:
-			case UnsignedLong:
-			case Char:
+			case UChar:
+			case UShort:
+			case UInt:
+			case ULong:
+			case SChar:
 			case Short:
-			case LongInteger:
+			case Long:
 			case Float:
 				return new QualType();
 		}
@@ -693,10 +674,10 @@ public final class ASTContext
 			switch (type.getTypeClass())
 			{
 				case TypeClass.Bool:
-				case TypeClass.Char:
-				case TypeClass.UnsignedChar:
+				case TypeClass.SChar:
+				case TypeClass.UChar:
 				case TypeClass.Short:
-				case TypeClass.UnsignedShort:
+				case TypeClass.UShort:
 					return true;
 				default:
 					return false;
@@ -713,7 +694,7 @@ public final class ASTContext
 				return false;
 
 			return qt.getType().getTypeClass() == TypeClass.Int
-					|| qt.getType().getTypeClass() == TypeClass.UnsignedInt;
+					|| qt.getType().getTypeClass() == TypeClass.UInt;
 		}
 		return false;
 	}
@@ -870,8 +851,8 @@ public final class ASTContext
 	{
 		if (type.isBuiltinType())
 		{
-			return type.getTypeClass() >= TypeClass.Char
-					&& type.getTypeClass() <= TypeClass.LongInteger;
+			return type.getTypeClass() >= TypeClass.SChar
+					&& type.getTypeClass() <= TypeClass.Long;
 		}
 		if (type.isEnumeralType())
 		{
@@ -887,7 +868,7 @@ public final class ASTContext
 		if (type.isBuiltinType())
 		{
 			return type.getTypeClass() >= TypeClass.Bool
-					&& type.getTypeClass() <= TypeClass.UnsignedLong;
+					&& type.getTypeClass() <= TypeClass.ULong;
 		}
 		if (type.isEnumeralType())
 		{
@@ -1147,20 +1128,20 @@ public final class ASTContext
 			default: Util.shouldNotReachHere("getIntegerRank(): not a built-in integer");
 			case TypeClass.Bool:
 				return 1 + (getIntWidth(BoolTy) << 3);
-			case TypeClass.Char:
-			case TypeClass.UnsignedChar:
+			case TypeClass.SChar:
+			case TypeClass.UChar:
 				return 2 + (getIntWidth(CharTy) << 3);
 			case TypeClass.Short:
-			case TypeClass.UnsignedShort:
+			case TypeClass.UShort:
 				return 3 + (getIntWidth(ShortTy) << 3);
 			case TypeClass.Int:
-			case TypeClass.UnsignedInt:
+			case TypeClass.UInt:
 				return 4 + (getIntWidth(IntTy) << 3);
-			case TypeClass.LongInteger:
-			case TypeClass.UnsignedLong:
+			case TypeClass.Long:
+			case TypeClass.ULong:
 				return 5 + (getIntWidth(LongTy) << 3);
 			case TypeClass.LongLong:
-			case TypeClass.UnsignedLongLong:
+			case TypeClass.ULongLong:
 				return 6 + (getIntWidth(LongLongTy) << 3);
 		}
 	}
@@ -1222,13 +1203,13 @@ public final class ASTContext
 		assert type.isBuiltinType() : "Unexpected signed integer type";
 		switch (type.getTypeClass()) 
 		{
-			case TypeClass.Char:
+			case TypeClass.SChar:
 				return UnsignedCharTy;
 			case TypeClass.Short:
 				return UnsignedShortTy;
 			case TypeClass.Int:
 				return UnsignedIntTy;
-			case TypeClass.LongInteger:
+			case TypeClass.Long:
 				return UnsignedLongTy;
 			case TypeClass.LongLong:
 				return UnsignedLongLongTy;

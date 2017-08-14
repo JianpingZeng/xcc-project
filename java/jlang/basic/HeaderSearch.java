@@ -302,7 +302,11 @@ public final class HeaderSearch
 
     private HeaderFileInfo getFileInfo(Path entry)
     {
-        return fileInfo.getOrDefault(entry, null);
+        if (fileInfo.containsKey(entry))
+            return fileInfo.get(entry);
+        HeaderFileInfo info = new HeaderFileInfo();
+        fileInfo.put(entry, info);
+        return info;
     }
 
     public void setFileControllingMacro(Path fileEntry, IdentifierInfo controllingMacro)

@@ -371,6 +371,9 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
         jlang.cparser.Parser parser = new jlang.cparser.Parser(pp, sema);
         pp.enterMainFile();
+
+        // Initialize the parser.
+        parser.initialize();
         consumer.initialize(ctx);
 
         ArrayList<Decl> declsGroup = new ArrayList<>(16);

@@ -27,7 +27,7 @@ import tools.Pair;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class IdentifierInfo
+public class IdentifierInfo implements Cloneable
 {
     private TokenKind tokenID;
     /**
@@ -172,5 +172,18 @@ public class IdentifierInfo
     public boolean isStr(String str)
     {
         return getLength() == str.length() && str.equals(getName());
+    }
+
+    @Override
+    public IdentifierInfo clone()
+    {
+        IdentifierInfo ii = new IdentifierInfo();
+        ii.tokenID = tokenID;
+        ii.hasMacro = hasMacro;
+        ii.isExtension = isExtension;
+        ii.isPoisoned = isPoisoned;
+        ii.needsHandleIdentifier = needsHandleIdentifier;
+        ii.entry = entry.clone();
+        return ii;
     }
 }
