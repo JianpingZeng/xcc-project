@@ -478,7 +478,7 @@ public final class InductionVarSimplify implements LoopPass
         				r2.div.replaceAllUsesWith(tj);
         				
         				/** remove the jth instruction from the basic block containing it.*/
-        				((Instruction) r2.div).eraseFromBasicBlock();
+        				((Instruction) r2.div).eraseFromParent();
         				
         				/** 
         				 * append tj to the class of induction variables based on i

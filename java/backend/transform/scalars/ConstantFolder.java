@@ -17,6 +17,10 @@ package backend.transform.scalars;
  */
 
 import backend.value.BasicBlock;
+import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.ICmpInst;
+import backend.value.Instruction.SwitchInst;
+import backend.value.Instruction.TerminatorInst;
 import backend.value.Operator;
 import backend.type.Type;
 import backend.value.*;
@@ -33,8 +37,128 @@ import java.util.ArrayList;
  */
 public final class ConstantFolder
 {
+    /**
+     * If a terminator instruction is predicated on a constant value, convert
+     * it to an unconditional branch to constant destination.
+     * @param bb
+     * @return  Return true when folding successfully, otherwise return false.
+     */
     public static boolean constantFoldTerminator(BasicBlock bb)
     {
+        TerminatorInst ti = bb.getTerminator();
+        if (ti == null)
+            return false;
+
+        if (ti instanceof BranchInst)
+        {
+            BranchInst bi = (BranchInst)ti;
+            // If this is a conditional branch, we folds the target of
+            // this branch to the constant destination.
+            if (bi.isUnconditional())
+                return false;
+
+            BasicBlock dest1 = bi.getSuccessor(0);
+            BasicBlock dest2 = bi.getSuccessor(1);
+
+            if (bi.getCondition() instanceof ConstantInt)
+            {
+                ConstantInt ci = (ConstantInt) bi.getCondition();
+                BasicBlock destination = ci.getZExtValue() != 0 ? dest1 : dest2;
+                BasicBlock oldDest = ci.getZExtValue() != 0 ? dest2 : dest1;
+
+                assert bi.getParent() != null :
+                        "Terminator not inserted into basic block";
+                oldDest.removePredecessor(bi.getParent());
+
+                // Set the unconditional destination, and change the inst to be
+                // an unconditional branch.
+                bi.setUnconditionalDest(destination);
+                return true;
+            }
+            else if (dest1.equals(dest2))
+            {
+                // This branch matches something like this:
+                //     br bool %cond, label %dest1, label %dest1
+                // and changes it into:  br label %dest1
+                assert bi.getParent() != null;
+                dest1.removePredecessor(bi.getParent());
+                bi.setUnconditionalDest(dest1);
+            }
+        }
+        else if (ti instanceof SwitchInst)
+        {
+            SwitchInst si = (SwitchInst)ti;
+            if (si.getCondition() instanceof ConstantInt)
+            {
+                ConstantInt ci = (ConstantInt)si.getCondition();
+                BasicBlock theOnlyDest = si.getSuccessor(0);    // The default dest.
+                BasicBlock defaultDest = theOnlyDest;
+                assert theOnlyDest.equals(si.getDefaultBlock())
+                        : "Default destination is not successor #0?";
+
+                for (int i = 1, e = si.getNumOfSuccessors(); i != e; i++)
+                {
+                    if (si.getSuccessorValue(i).equals(ci))
+                    {
+                        theOnlyDest = si.getSuccessor(i);
+                        break;
+                    }
+
+                    // Check to see if this branch is going to the same as default
+                    // destination. If so, elimiate the default block.
+                    if (si.getSuccessor(i).equals(defaultDest))
+                    {
+                        defaultDest.removePredecessor(si.getParent());
+                        si.removeCase(i);
+                        --i;
+                        --e;
+                        continue;
+                    }
+
+                    if (!si.getSuccessor(i).equals(theOnlyDest))
+                        theOnlyDest = null;
+                }
+
+                if (ci != null && theOnlyDest == null)
+                {
+                    theOnlyDest = defaultDest;
+                }
+
+                if (theOnlyDest != null)
+                {
+                    // Create a new branch instruction inserted after switchInst.
+                    new BranchInst(theOnlyDest, si);
+                    BasicBlock curBB = si.getParent();
+
+                    // Remove entries from PHI nodes which we no longer branch to.
+                    for (int i = 0, e = si.getNumOfSuccessors(); i != e; i++)
+                    {
+                        BasicBlock succ = si.getSuccessor(i);
+                        if (succ.equals(theOnlyDest))
+                            theOnlyDest = null;
+                        else
+                            succ.removePredecessor(curBB);
+                    }
+
+                    // Remove the switchInst from its basic block.
+                    si.eraseFromParent();
+                    return true;
+                }
+                else if (si.getNumOfSuccessors() == 2)
+                {
+                    // Otherwise, we can fold this switch into a conditional branch
+                    // instruction if it has only one non-default destination.
+                    Value cond = new ICmpInst(Predicate.ICMP_EQ,
+                            si.getCondition(), si.getSuccessorValue(1),
+                            "cond", si);
+                    new BranchInst(si.getSuccessor(1), si.getSuccessor(0), cond, si);
+
+                    // Delete the old switch.
+                    si.eraseFromParent();
+                    return true;
+                }
+            }
+        }
         return false;
     }
 

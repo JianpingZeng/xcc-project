@@ -137,12 +137,12 @@ public class DCE implements FunctionPass
 
 						BranchInst go = new BranchInst(nearestDom, "gotoInst");
 						inst.insertBefore(go);
-						inst.eraseFromBasicBlock();
+						inst.eraseFromParent();
 					}
 					// the function invocation instruction is handled specially
 					// for conservative and safe.
 					else if (!(inst instanceof Instruction.CallInst))
-						inst.eraseFromBasicBlock();
+						inst.eraseFromParent();
 				}
 			}
 		}

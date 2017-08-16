@@ -54,7 +54,7 @@ public final class ConstantPropagation implements FunctionPass
 					// constant folding and strength reduction
 					inst.replaceAllUsesWith(val);
 					worklist.removeFirst();
-					inst.eraseFromBasicBlock();
+					inst.eraseFromParent();
 
 					// marks the changed flag
 					changed = true;

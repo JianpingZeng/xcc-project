@@ -240,7 +240,7 @@ public final class PromoteMemToReg
 			if (ai.usesList.isEmpty())
 			{
 				// if there no usesList of the alloca, just delete it
-				ai.eraseFromBasicBlock();
+				ai.eraseFromParent();
 
 				// remove the alloca out from alloca instructions list
 				// because it is processed finished.
@@ -265,11 +265,11 @@ public final class PromoteMemToReg
                 rewriteSingleStoreAlloca(ai, info, lbi);
 				if (info.usingBlocks.isEmpty())
 				{
-				    info.onlyStore.eraseFromBasicBlock();
+				    info.onlyStore.eraseFromParent();
 				    lbi.deleteValue(info.onlyStore);
 
 				    if (ast != null) ast.deleteValue(ai);
-				    ai.eraseFromBasicBlock();
+				    ai.eraseFromParent();
 				    lbi.deleteValue(ai);
 
 					// the alloca instruction has been processed, remove it.
@@ -292,12 +292,12 @@ public final class PromoteMemToReg
                     while (!ai.isUseEmpty())
                     {
                         StoreInst si = (StoreInst)(ai.usesList.removeLast().getUser());
-                        si.eraseFromBasicBlock();
+                        si.eraseFromParent();
                         lbi.deleteValue(si);
                     }
 
                     if (ast != null) ast.deleteValue(ai);
-                    ai.eraseFromBasicBlock();
+                    ai.eraseFromParent();
                     lbi.deleteValue(ai);
 
                     // the alloca instruction has been processed, remove it.
@@ -367,7 +367,7 @@ public final class PromoteMemToReg
 			// tree. Just delete the users now.
 			if (!ai.usesList.isEmpty())
 				ai.replaceAllUsesWith(UndefValue.get(ai.getType()));
-			ai.eraseFromBasicBlock();
+			ai.eraseFromParent();
 		}
 
 		// Loop over all of the PHI nodes and see if there are any that we can
@@ -398,7 +398,7 @@ public final class PromoteMemToReg
                             ast.remove(phiNode);
 
                         phiNode.replaceAllUsesWith(val);
-                        phiNode.eraseFromBasicBlock();
+                        phiNode.eraseFromParent();
                         itr.remove();
                         eliminatedAPHI = true;
                     }
@@ -561,7 +561,7 @@ public final class PromoteMemToReg
 					// anything using the load now usesList the current value.
 					li.replaceAllUsesWith(value);
 
-					li.eraseFromBasicBlock();
+					li.eraseFromParent();
 					if (ast != null && li.getType() instanceof PointerType)
 					    ast.deleteValue(li);
 				}
@@ -580,7 +580,7 @@ public final class PromoteMemToReg
 					// what value were we writing?
 					incomgingValues.set(index, si.operand(0));
 
-					si.eraseFromBasicBlock();
+					si.eraseFromParent();
 				}
 			}
 
@@ -650,7 +650,7 @@ public final class PromoteMemToReg
                     inst.replaceAllUsesWith(UndefValue.get(li.getType()));
                     if (ast != null && (li.getType() instanceof PointerType))
                         ast.deleteValue(li);
-                    li.eraseFromBasicBlock();
+                    li.eraseFromParent();
                     lbi.deleteValue(li);
                 }
             }
@@ -682,7 +682,7 @@ public final class PromoteMemToReg
                 ast.deleteValue(li);
 
 			// now, this load instruction is not useful
-			li.eraseFromBasicBlock();
+			li.eraseFromParent();
 			lbi.deleteValue(li);
 		}
 	}
@@ -943,7 +943,7 @@ public final class PromoteMemToReg
 			    ast.deleteValue(li);
 
 			// remote it from it's basic block
-			li.eraseFromBasicBlock();
+			li.eraseFromParent();
 			lbi.deleteValue(li);
 		}// end of go through usesList
 	}

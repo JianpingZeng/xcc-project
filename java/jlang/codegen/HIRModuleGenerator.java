@@ -515,7 +515,7 @@ public class HIRModuleGenerator
             newCI.setCallingConv(ci.getCallingConv());
             if(!ci.isUseEmpty())
                 ci.replaceAllUsesWith(newCI);
-            ci.eraseFromBasicBlock();
+            ci.eraseFromParent();
         }
     }
 

@@ -65,7 +65,7 @@ public final class LoopInversion implements LoopPass
 		for (int i = 0; i < header.size() - 1; i++)
 		{
 			Instruction inst = header.getInstAt(i);
-			inst.eraseFromBasicBlock();
+			inst.eraseFromParent();
 			newHeader.appendInst(inst);
 		}
 		

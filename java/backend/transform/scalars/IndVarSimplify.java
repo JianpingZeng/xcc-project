@@ -178,7 +178,7 @@ public final class IndVarSimplify implements LoopPass
             {
                 if (se.getTypeSizeBits(oldCanIV.getType())
                         > se.getTypeSizeBits(largestType))
-                    oldCanIV.eraseFromBasicBlock();
+                    oldCanIV.eraseFromParent();
                 else
                     oldCanIV = null;
             }
@@ -552,7 +552,7 @@ public final class IndVarSimplify implements LoopPass
                     newPN.setName(pn.getName());
                     newPN.insertBefore(pn);
                     pn.replaceAllUsesWith(newPN);
-                    pn.eraseFromBasicBlock();
+                    pn.eraseFromParent();
                 }
             }
         }
@@ -592,7 +592,7 @@ public final class IndVarSimplify implements LoopPass
                         deadInsts.add(op);
                 }
             }
-            inst.eraseFromBasicBlock();
+            inst.eraseFromParent();
         }
     }
 

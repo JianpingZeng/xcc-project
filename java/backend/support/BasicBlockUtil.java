@@ -145,7 +145,7 @@ public final class BasicBlockUtil
                         || dt.dominates((Instruction)v, pn))
                 {
                     pn.replaceAllUsesWith(v);
-                    pn.eraseFromBasicBlock();
+                    pn.eraseFromParent();
                 }
             }
         }

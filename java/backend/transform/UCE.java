@@ -88,7 +88,7 @@ public final class UCE extends FunctionPass
                         Instruction.Goto go = new Instruction.Goto(
                                 branch.trueTarget, "GotoStmt");
                         branch.insertBefore(go);
-                        branch.eraseFromBasicBlock();
+                        branch.eraseFromParent();
                     }
                 }
                 else
@@ -142,7 +142,7 @@ public final class UCE extends FunctionPass
                             .getLastInst()) instanceof Instruction.ConditionalBranchInst)
                     {
                         go.insertBefore(lastInst);
-                        go.eraseFromBasicBlock();
+                        go.eraseFromParent();
                     }
                 }
             }

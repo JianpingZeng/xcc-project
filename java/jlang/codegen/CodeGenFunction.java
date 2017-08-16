@@ -853,7 +853,7 @@ public final class CodeGenFunction
 			return;
 
 		bb.replaceAllUsesWith(inst.getSuccessor(0));
-		inst.eraseFromBasicBlock();
+		inst.eraseFromParent();
 		bb.eraseFromParent();
 	}
 
@@ -1630,7 +1630,7 @@ public final class CodeGenFunction
 		// Remove the AllocaInstrPtr instruction, which is just a conversience for use.
 		Instruction ptr = allocaInstPtr;
 		allocaInstPtr = null;
-		ptr.eraseFromBasicBlock();
+		ptr.eraseFromParent();
 	}
 
 	private void emitReturnBlock()
@@ -1665,7 +1665,7 @@ public final class CodeGenFunction
 			{
 				// Reset the insertion point and delete the branch.
 				builder.setInsertPoint(bi.getParent());
-				bi.eraseFromBasicBlock();
+				bi.eraseFromParent();
 				returnBlock = null;
 			}
 		}

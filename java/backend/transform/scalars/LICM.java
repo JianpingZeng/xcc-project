@@ -318,11 +318,11 @@ public final class LICM implements LoopPass
                 curAST.deleteValue(inst);
                 if (!inst.isUseEmpty())
                     inst.replaceAllUsesWith(UndefValue.get(inst.getType()));
-                inst.eraseFromBasicBlock();
+                inst.eraseFromParent();
             }
             else
             {
-                inst.eraseFromBasicBlock();
+                inst.eraseFromParent();
 
                 int idx = exitBlocks.get(0).getFirstNonPhi();
                 exitBlocks.get(0).insertBefore(inst, idx);
@@ -334,7 +334,7 @@ public final class LICM implements LoopPass
             curAST.deleteValue(inst);
             if (!inst.isUseEmpty())
                 inst.replaceAllUsesWith(UndefValue.get(inst.getType()));
-            inst.eraseFromBasicBlock();
+            inst.eraseFromParent();
         }
         else
         {
@@ -407,7 +407,7 @@ public final class LICM implements LoopPass
                         Instruction newInst;
                         if (insertedBlocks.size() == 1)
                         {
-                            inst.eraseFromBasicBlock();
+                            inst.eraseFromParent();
                             exitBB.insertBefore(inst, insertPos);
                             newInst = inst;
                         }
@@ -430,7 +430,7 @@ public final class LICM implements LoopPass
             if (insertedBlocks.isEmpty())
             {
                 curAST.deleteValue(inst);
-                inst.eraseFromBasicBlock();
+                inst.eraseFromParent();
             }
 
             // Finally, promote the fine value to SSA form.
@@ -511,7 +511,7 @@ public final class LICM implements LoopPass
 
     private void hoist(Instruction inst)
     {
-        inst.eraseFromBasicBlock();
+        inst.eraseFromParent();
 
         int idx = preheaderBB.getInstList().indexOf(preheaderBB.getTerminator());
         preheaderBB.insertBefore(inst, idx);
