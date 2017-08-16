@@ -43,14 +43,17 @@ public class StringLiteralParser
         this.pp = pp;
         maxTokenLength = stringToks[0].getLength();
         sizeBound = stringToks[0].getLength() - 2;  // -2 for "".
+        resultBuf = new StringBuilder();
+        anyWide = false;
         hadError = false;
+        pascal = false;
 
         // Implement Translation Phase #6: concatenation of string literals
         /// (C99 5.1.1.2p1).  The common case is only one string fragment.
         for (int i = 1; i < stringToks.length; i++)
         {
             Token tok = stringToks[i];
-            sizeBound += tok.getLength() - 2;
+            sizeBound += tok.getLength() - 2;   // -2 for "".
 
             if (tok.getLength() > maxTokenLength)
                 maxTokenLength = tok.getLength();
@@ -58,8 +61,6 @@ public class StringLiteralParser
 
         // Include the space for null terminator.
         ++sizeBound;
-
-        pascal = false;
 
         for (int i = 0, e = stringToks.length; i < e; i++)
         {
@@ -69,7 +70,7 @@ public class StringLiteralParser
             assert buf.charAt(0) == '"':"Expected quote, lexer broken?";
 
             int j = 1;
-            while (j < buf.length())
+            while (j < buf.length() -1 /*skip the end quote*/)
             {
                 if (buf.charAt(j) != '\\')
                 {
@@ -77,7 +78,7 @@ public class StringLiteralParser
                     do
                     {
                         ++j;
-                    }while (j < buf.length() && buf.charAt(j) != '\\');
+                    }while (j < buf.length() - 1 && buf.charAt(j) != '\\');
 
                     // Copy the character span over.
                     while (k < j)

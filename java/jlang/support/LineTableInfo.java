@@ -104,7 +104,14 @@ public class LineTableInfo
     {
         assert filenameID != -1 : "Unspecified filename should use other accessor";
 
-        ArrayList<LineEntry> entries = lineEntries.get(fid);
+        ArrayList<LineEntry> entries;
+        if (!lineEntries.containsKey(fid))
+        {
+            entries = new ArrayList<>();
+            lineEntries.put(fid, entries);
+        }
+        else
+            entries = lineEntries.get(fid);
 
         assert entries.isEmpty() || entries.get(entries.size() - 1).fileOffset
                 < offset : "Adding line entries out of order!";

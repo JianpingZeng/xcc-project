@@ -81,6 +81,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
     {
         this.os = os;
         lastWarningLoc = SourceLocation.NOPOS;
+        lastLoc = new FullSourceLoc();
         this.lastCaretDiagnosticWasNote = false;
         this.showColumn = showColumn;
         this.caretDiagnostics = caretDiagnostics;
@@ -200,19 +201,19 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             caretLine.setCharAt(i, '~');
     }
 
-    public void emitCaretDiganostic(
+    public void emitCaretDiagnostic(
             SourceLocation loc,
             SourceRange[] ranges,
             SourceManager sgr,
             FixItHint[] hints,
             int columns)
     {
-        assert !loc.isValid() : "must have a valid location";
+        assert loc.isValid() : "must have a valid location";
 
         if (!loc.isFileID())
         {
             SourceLocation oneLevelUp = sgr.getImmediateInstantiationRange(loc).getBegin();
-            emitCaretDiganostic(oneLevelUp, ranges, sgr, null, columns);
+            emitCaretDiagnostic(oneLevelUp, ranges, sgr, null, columns);
 
             loc = sgr.getImmediateLiteralLoc(loc);
 
@@ -241,7 +242,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             }
             os.println("note: instantiated from:");
 
-            emitCaretDiganostic(loc, ranges, sgr, hints, columns);
+            emitCaretDiagnostic(loc, ranges, sgr, hints, columns);
             return;
         }
 
@@ -400,9 +401,9 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         }
 
         // skip the tailing spaces.
-        for (; caretEnd != caretStart; -- caretEnd)
+        for (; caretEnd != caretStart; --caretEnd)
         {
-            if (!Character.isSpaceChar(caretLine.charAt(caretEnd)))
+            if (!Character.isSpaceChar(caretLine.charAt(caretEnd - 1)))
                 break;
         }
 
@@ -654,6 +655,9 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
                 lastCaretDiagnosticWasNote = diagLevel == Diagnostic.Level.Note;
 
                 SourceRange[] ranges = new SourceRange[20];
+                for (int i = 0, e = ranges.length; i != e; i++)
+                    ranges[i] = new SourceRange();
+
                 int numRanges = info.getNumRanges();
                 assert numRanges < 20 : "Out of space";
                 for (int i = 0; i < numRanges; i++)
@@ -670,7 +674,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
                     }
                 }
 
-                emitCaretDiganostic(lastLoc, ranges, lastLoc.getSourceMgr(),
+                emitCaretDiagnostic(lastLoc, ranges, lastLoc.getSourceMgr(),
                         info.getFixItHints(), messageLength);
             }
         }

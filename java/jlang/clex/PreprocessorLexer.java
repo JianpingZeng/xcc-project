@@ -91,8 +91,12 @@ public abstract class PreprocessorLexer
 
     protected PreprocessorLexer()
     {
-        super();
+        pp = null;
+        parsingPreprocessorDirective = false;
+        parsingFilename = false;
+        lexingRawMode = false;
         conditionalStack = new Stack<>();
+        miOpt = new MultipleIncludeOpt();
     }
 
     protected abstract void indirectLex(Token result);

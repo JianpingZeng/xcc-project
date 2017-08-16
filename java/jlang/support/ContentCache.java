@@ -81,6 +81,6 @@ public class ContentCache
     {
         this.fileEntry = entry;
         firstFID = new FileID();
-        sourceLineCache = new TIntArrayList();
+        //sourceLineCache = new TIntArrayList();
     }
 }

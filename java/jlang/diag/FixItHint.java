@@ -29,6 +29,13 @@ public class FixItHint
 	public String codeToInsert;
 	public SourceRange removeRange;
 
+	public FixItHint()
+	{
+		insertionLoc = new SourceLocation();
+		codeToInsert = "";
+		removeRange = new SourceRange();
+	}
+
 	/**
 	 * Create a code modification hint that inserts the given
 	 * code string at a specific location.
