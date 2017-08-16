@@ -219,6 +219,21 @@
         -->
     </target>
 
+    <!-- =============================================================== -->
+    <!-- Create the javadocs.                                            -->
+    <!-- =============================================================== -->
+    <target name="javadoc" depends="compile" description="generates java documents">
+        <javadoc destdir="${output.javadocs}"
+            maxmemory="256m"
+            windowtitle="${fullname} ${version}"
+            doctitle="${fullname} ${version}">
+            <sourcepath>
+                <path location="${src}"/>
+                <path location="${output.gen_tlegen_srcs}"/>
+            </sourcepath>
+        </javadoc>
+    </target>
+
 
     <!-- =============================================================== -->
     <!-- Clean all output                                                -->
