@@ -120,6 +120,7 @@ public class Lexer extends PreprocessorLexer
     public Lexer(SourceLocation fileLoc, LangOptions opts,
             char[] buffer, int bufferStartPos, int bufferEnd)
     {
+        super();
         this.fileLoc = fileLoc;
         this.langOpts = opts;
         initLexer(buffer, bufferStartPos, bufferEnd);

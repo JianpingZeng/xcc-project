@@ -361,41 +361,50 @@ public class SourceManager
         lineOffsets.add(0);
 
         int offs = 0;
+        int start = 0, end = cb.length;
         while (true)
         {
-            int i = 0;
-            while (cb[i] != '\n' && cb[i] != '\r' && cb[i] != '\0')
+            int nextBuf = start;
+            while (nextBuf != end && cb[nextBuf] != '\n'
+                    && cb[nextBuf] != '\r' && cb[nextBuf] != '\0')
             {
-                ++i;
+                ++nextBuf;
             }
 
-            offs += i;
+            if (nextBuf == end)
+                break;
 
-            if (cb[i] == '\n' || cb[i] == '\r')
+            offs += nextBuf - start;
+            start = nextBuf;
+
+            if (cb[start] == '\n' || cb[start] == '\r')
             {
                 // If this is \n\r or \r\n, skip both characters.
-                if ((cb[i+1] =='\n' || cb[i+1] == '\r')
-                        && cb[i] != cb[i+1])
+                if ((cb[start+1] =='\n' || cb[start+1] == '\r')
+                        && cb[start] != cb[start+1])
                 {
                     ++offs;
-                    ++i;
+                    ++start;
                 }
                 ++offs;
-                ++i;
+                ++start;
                 lineOffsets.add(offs);
             }
             else
             {
                 // Otherwise, this is a null.  If end of file, exit.
-                if (i == cb.length) break;
+                if (start == end)
+                    break;
 
                 // Otherwise, skip the null.
                 ++offs;
-                ++i;
+                ++start;
             }
         }
 
-        file.sourceLineCache = new TIntArrayList(lineOffsets);
+        // Copy the offsets into the FileInfo structure.
+        file.sourceLineCache = new TIntArrayList();
+        file.sourceLineCache.addAll(lineOffsets);
     }
 
     public int getLineNumber(FileID fid, int filePos)

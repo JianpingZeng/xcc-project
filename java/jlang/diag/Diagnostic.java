@@ -276,7 +276,7 @@ public final class Diagnostic
 	private SourceRange[] diagRanges = new SourceRange[10];
 	public static final int maxFixItHints = 3;
 
-	private FixItHint[] fixItHints = new FixItHint[maxFixItHints];
+	private FixItHint[] fixItHints;
 
 	private ArgToStringFunctor argToStringFtr;
 
@@ -298,9 +298,13 @@ public final class Diagnostic
         lastDiagLevel = Level.Ignored;
 
         diagMappingsStack = new LinkedList<>();
-        TIntArrayList blankDiags = new TIntArrayList(DIAG_UPPER_LIMIT/2);
+        TIntArrayList blankDiags = new TIntArrayList();
+        blankDiags.fill(0, DIAG_UPPER_LIMIT/2, 0);
         diagMappingsStack.addLast(blankDiags);
         argToStringFtr = DummyArgToStringFunctor;
+        fixItHints = new FixItHint[maxFixItHints];
+        for (int i = 0; i != fixItHints.length; i++)
+            fixItHints[i] = new FixItHint();
 	}
 
 	enum SuppressKind
@@ -534,7 +538,7 @@ public final class Diagnostic
     public static String getDescription(int diagID)
     {
         if (isDiagnosticLexKinds(diagID))
-            return DiagnosticLexKinds.values()[diagID - DiagnosticCommonKindsBegin].text;
+            return DiagnosticLexKinds.values()[diagID - DiagnosticLexKindsBegin].text;
         else if (isDiagnosticParseKinds(diagID))
             return DiagnosticParseKinds.values()[diagID - DiagnosticParseKindsBegin].text;
         else if (isDiagnoticSemaKinds(diagID))
@@ -878,7 +882,8 @@ public final class Diagnostic
     private Mapping getDiagnosticMappingInfo(int diag)
     {
         TIntArrayList currentMappings = diagMappingsStack.getLast();
-        return Mapping.values()[(currentMappings.get(diag/2) >> (((diag & 1)*4) & 15))];
+        int idx = (currentMappings.get(diag/2) >> (((diag & 1)*4) & 15));
+        return Mapping.values()[idx];
     }
 
     private void setDiagnosticMappingInternal(
