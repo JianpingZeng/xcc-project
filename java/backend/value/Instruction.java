@@ -86,7 +86,7 @@ public abstract class Instruction extends User
     /**
      * Erases this instruction from it's parent basic block.
      */
-    public void eraseFromBasicBlock()
+    public void eraseFromParent()
     {
         assert (this.bb == null)
                 : "The basic block where the instruction reside to be erased!";
@@ -237,7 +237,7 @@ public abstract class Instruction extends User
     {
         int idx = insertPos.getParent().indexOf(insertPos);
         insertPos.getParent().insertBefore(this, idx);
-        this.eraseFromBasicBlock();
+        this.eraseFromParent();
     }
 
     public boolean isTerminator()
@@ -2034,6 +2034,19 @@ public abstract class Instruction extends User
             assert isConditional() : "can not swap successor of uncondition branch";
             Util.swap(operand(0), operand(1));
         }
+
+        /**
+         * Change the current branch to an unconditional branch targetting the
+         * specified block.
+         * @param dest
+         */
+        public void setUnconditionalDest(BasicBlock dest)
+        {
+            ArrayList<Use> list = new ArrayList<>();
+            list.set(0, getOperand(0));
+            operandList = list;
+            setOperand(0, dest);
+        }
     }
 
     /**
@@ -2560,7 +2573,7 @@ public abstract class Instruction extends User
             if (getNumOfOperands()==0 && deletePhiIfEmpty)
             {
                 replaceAllUsesWith(Constant.getNullValue(getType()));
-                eraseFromBasicBlock();
+                eraseFromParent();
             }
             return old;
         }

@@ -140,7 +140,7 @@ public final class LoopSimplify implements FunctionPass
 				if ((v = phiNode.hasConstantValue()) != null)
 				{
 					phiNode.replaceAllUsesWith(v);
-					phiNode.eraseFromBasicBlock();
+					phiNode.eraseFromParent();
 				}
 			}
 			else
@@ -609,7 +609,7 @@ public final class LoopSimplify implements FunctionPass
 					pn.replaceAllUsesWith(val);
 					//if (aliasAnalysis != null) //TODO
 						//aliasAnalysis.deleteValue(pn);
-					pn.eraseFromBasicBlock();
+					pn.eraseFromParent();
 					continue;
 				}
 

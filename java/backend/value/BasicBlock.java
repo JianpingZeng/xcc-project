@@ -527,7 +527,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 					if (val != pn)
 					{
 						pn.replaceAllUsesWith(val);
-						pn.eraseFromBasicBlock();
+						pn.eraseFromParent();
 					}
 				}
 			}

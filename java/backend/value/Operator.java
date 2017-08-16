@@ -15,11 +15,11 @@ public enum Operator
 	Ret("ret", 0, 0),
 	Br("br", Ret.index + 1, 0),
 	Switch("switch", Br.index + 1, 0),
-
+	Unreachable("unreachable", Switch.index + 1, 0),
 	// binary operator
 
 	// add
-	Add("add", Switch.index + 1, COMMUTATIVE | ASSOCIATIVE),
+	Add("add", Unreachable.index + 1, COMMUTATIVE | ASSOCIATIVE),
     FAdd("fadd", Add.index + 1, COMMUTATIVE | ASSOCIATIVE),
 
 	// subtractive

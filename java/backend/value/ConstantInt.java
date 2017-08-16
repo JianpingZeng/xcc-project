@@ -160,4 +160,10 @@ public class ConstantInt extends Constant
     public boolean isAllOnesValue(){return val.isAllOnesValue();}
 
     public APInt getValue() {return val;}
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        return super.equals(obj);
+    }
 }

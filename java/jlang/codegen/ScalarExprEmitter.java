@@ -107,7 +107,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 // Note that there can be more uses, for example if this
                 // is the result of an assignment.
                 if (zi.isUseEmpty())
-                    zi.eraseFromBasicBlock();;
+                    zi.eraseFromParent();;
 
                 return result;
             }

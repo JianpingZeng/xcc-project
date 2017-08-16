@@ -1433,7 +1433,7 @@ public final class GVNPRE implements FunctionPass
 
         for (Instruction del : erase)
         {
-            del.eraseFromBasicBlock();
+            del.eraseFromParent();
             changed = true;
         }
 
