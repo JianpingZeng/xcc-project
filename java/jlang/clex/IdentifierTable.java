@@ -17,6 +17,7 @@ package jlang.clex;
  */
 
 import jlang.support.LangOptions;
+import tools.Pair;
 
 import java.util.HashMap;
 
@@ -80,6 +81,8 @@ public class IdentifierTable
         ii = new IdentifierInfo();
         hashtable.put(name, ii);
 
+        // Make sure getName() knows how to find the IdentifierInfo contents.
+        ii.setEntry(Pair.get(name, ii));
         return ii;
     }
 

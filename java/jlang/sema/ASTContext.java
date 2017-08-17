@@ -59,7 +59,6 @@ public final class ASTContext
      * This is lazily created.  This is intentionally not serialized.
      */
     private TreeSet<IncompleteArrayType> IncompleteArrayTypes = new TreeSet<>();
-    private DeclContext translateUnitDecl;
     private SourceManager sourceMgr;
     private TranslationUnitDecl tuDel;
 
@@ -148,7 +147,227 @@ public final class ASTContext
         return null;
     }
 
-    /**
+	public QualType getPointerType(QualType ty)
+	{
+		// TODO: 17-5-13
+		return null;
+	}
+
+	/**
+	 * Returns a reference to the type for a variable array of the specified
+	 * element type.
+	 * @param elemTy
+	 * @param numElts
+	 * @return
+	 */
+	public QualType getVariableArrayType(
+			QualType elemTy,
+			Expr numElts,
+			ArraySizeModifier asm,
+			int eltTypeQuals,
+			SourceRange brackets)
+	{
+		VariableArrayType vat = new VariableArrayType(elemTy,
+				numElts, asm, eltTypeQuals, brackets);
+		types.add(vat);
+		return new QualType(vat);
+	}
+
+	/**
+	 * Return a reference to the type for
+	 * an array of the specified element type.
+	 * @param eltTy
+	 * @param arraySizeIn
+	 * @param arraySizeExpr
+	 * @param asm
+	 * @param eltTypeQuals
+	 * @param brackets
+	 * @return
+	 */
+	public QualType getConstantArrayWithExprType(
+			QualType eltTy,
+			APInt arraySizeIn,
+			Expr arraySizeExpr,
+			ArraySizeModifier asm,
+			int eltTypeQuals,
+			SourceRange brackets)
+	{
+		APInt arrSize = new APInt(arraySizeIn);
+		arrSize.zextOrTrunc(target.getPointerWidth(0));
+		ConstantArrayWithExprType arr = new ConstantArrayWithExprType(eltTy,
+				arrSize, arraySizeExpr, asm, eltTypeQuals,brackets);
+		types.add(arr);
+		return new QualType(arr);
+	}
+
+	/**
+	 * Return a reference to the type for an array of the specified element type.
+	 * @param eltTy
+	 * @param arraySizeIn
+	 * @param asm
+	 * @param eltTypeQuals
+	 * @return
+	 */
+	public QualType getConstantArrayWithoutExprType(
+			QualType eltTy,
+			APInt arraySizeIn,
+			ArraySizeModifier asm,
+			int eltTypeQuals)
+	{
+		APInt arrSize = new APInt(arraySizeIn);
+		arrSize.zextOrTrunc(target.getPointerWidth(0));
+
+		ConstantArrayWithoutExprType arr = new ConstantArrayWithoutExprType(
+				eltTy, arraySizeIn, asm, eltTypeQuals);
+		types.add(arr);
+		// TODO: 17-5-13
+		return new QualType(arr);
+	}
+
+	public ConstantArrayType getConstantArrayType(
+			QualType elemTy,
+			final APInt arraySize)
+	{
+		assert elemTy.isIncompleteType()||elemTy.isConstantSizeType()
+				:"Constant array of VLAs is illegal";
+
+		APInt size = new APInt(arraySize);
+		size = size.zextOrTrunc(32);
+		ConstantArrayType New = null;
+		return New;
+
+		// TODO: 17-5-13
+	}
+
+	public QualType getIncompleteArrayType(
+			QualType elemTy,
+			ArraySizeModifier sm,
+			int eltTypeQuals)
+	{
+		// TODO: 17-5-13
+		return null;
+	}
+
+	/**
+	 * Return a normal function type with a typed argument
+	 * list.
+	 * @param isVariadic Indicates whether the argument list includes '...'.
+	 * @return
+	 */
+	public QualType getFunctionType(
+			QualType resultTy,
+			ArrayList<QualType> argTys,
+			boolean isVariadic,
+			int typeQuals)
+	{
+		// TODO: 17-5-13
+		return null;
+	}
+
+	/**
+	 * Return a K&R style C function type like 'int()'.
+	 * @param resultTy
+	 * @return
+	 */
+	public QualType getFunctionNoProtoType(QualType resultTy)
+	{
+		// TODO: 17-5-13
+		return null;
+	}
+
+	/**
+	 * Returns the probably qualified result of specified array decaying into pointer
+	 * jlang.type.
+	 *
+	 * @param ty
+	 * @return
+	 */
+	public QualType getArrayDecayedType(QualType ty)
+	{
+		final ArrayType arrayType = getAsArrayType(ty);
+		assert arrayType != null : "Not an array jlang.type!";
+
+		QualType ptrTy = getPointerType(arrayType.getElemType());
+
+		// int x[restrict 4]-> int *restrict;
+		// TODO unhandle jlang.type qualifier in array getNumOfSubLoop expression.
+		return ptrTy;
+	}
+
+	/**
+	 * Return the unique reference to the type for the specified
+	 * TagDecl (struct/union/enum) decl.
+	 * @param decl
+	 * @return
+	 */
+	public QualType getTagDeclType(TagDecl decl)
+	{
+		assert decl != null;
+		return getTypeDeclType(decl, null);
+	}
+
+	/**
+	 * Return the unique reference to the type for the
+	 * specified typename decl.
+	 * @param decl
+	 * @return
+	 */
+	public QualType getTypedefType(TypeDefDecl decl)
+	{
+		if (decl.getTypeForDecl() != null)
+			return new QualType(decl.getTypeForDecl());
+
+		QualType cannonical = decl.getUnderlyingType();
+		decl.setTypeForDecl(new TypedefType(TypeClass.TypeDef, decl, cannonical));
+		types.add(decl.getTypeForDecl());
+		// TODO: 17-5-13
+		return new QualType(decl.getTypeForDecl());
+	}
+
+	/**
+	 * Return the unique reference to the type for the
+	 * specified type declaration.
+	 * @param decl
+	 * @param prevDecl
+	 * @return
+	 */
+	public QualType getTypeDeclType(TypeDecl decl, TypeDecl prevDecl)
+	{
+		assert decl != null:"Passed null for decl param";
+		if (decl.getTypeForDecl() != null)
+			return new QualType(decl.getTypeForDecl());
+
+		if (decl instanceof TypeDefDecl)
+		{
+			TypeDefDecl typedef = (TypeDefDecl)decl;
+			return getTypedefType(typedef);
+		}
+		if (decl instanceof RecordDecl)
+		{
+			RecordDecl record = (RecordDecl)decl;
+			if (prevDecl != null)
+				decl.setTypeForDecl(prevDecl.getTypeForDecl());
+			else
+				decl.setTypeForDecl(new RecordType(record));
+		}
+		else if (decl instanceof EnumDecl)
+		{
+			EnumDecl enumDecl = (EnumDecl)decl;
+			if (prevDecl != null)
+				decl.setTypeForDecl(prevDecl.getTypeForDecl());
+			else
+				decl.setTypeForDecl(new EnumType(enumDecl));
+		}
+		else
+		{
+			assert false:"TypeDecl without a type?";
+		}
+		if (prevDecl == null)
+			types.add(decl.getTypeForDecl());
+		return new QualType(decl.getTypeForDecl());
+	}
+
+	/**
      * Returns the reference to the jlang.type for an array of the specified element jlang.type.
      * @param elemTy
      * @param size
@@ -161,12 +380,6 @@ public final class ASTContext
 
         ConstantArrayType New = new ConstantArrayType(elemTy, size, asm, tq);
         return new QualType(New, 0);
-    }
-
-    public QualType getPointerType(QualType ty)
-	{
-        // TODO: 17-5-13
-        return null;
     }
 
 	public QualType getQualifiedType(QualType t, QualType.Qualifier qs)
@@ -230,224 +443,11 @@ public final class ASTContext
                 .getType();
 	}
 
-    /**
-     * Returns a reference to the type for a variable array of the specified
-     * element type.
-     * @param elemTy
-     * @param numElts
-     * @return
-     */
-	public QualType getVariableArrayType(
-	        QualType elemTy,
-            Expr numElts,
-            ArraySizeModifier asm,
-            int eltTypeQuals,
-            SourceRange brackets)
-	{
-		VariableArrayType vat = new VariableArrayType(elemTy,
-                numElts, asm, eltTypeQuals, brackets);
-		types.add(vat);
-		return new QualType(vat);
-	}
-
-    /**
-     * Return a reference to the type for
-     * an array of the specified element type.
-     * @param eltTy
-     * @param arraySizeIn
-     * @param arraySizeExpr
-     * @param asm
-     * @param eltTypeQuals
-     * @param brackets
-     * @return
-     */
-	public QualType getConstantArrayWithExprType(
-	        QualType eltTy,
-            APInt arraySizeIn,
-            Expr arraySizeExpr,
-            ArraySizeModifier asm,
-            int eltTypeQuals,
-            SourceRange brackets)
-    {
-        APInt arrSize = new APInt(arraySizeIn);
-        arrSize.zextOrTrunc(target.getPointerWidth(0));
-        ConstantArrayWithExprType arr = new ConstantArrayWithExprType(eltTy,
-                arrSize, arraySizeExpr, asm, eltTypeQuals,brackets);
-        types.add(arr);
-        return new QualType(arr);
-    }
-
-    /**
-     * Return a reference to the type for an array of the specified element type.
-     * @param eltTy
-     * @param arraySizeIn
-     * @param asm
-     * @param eltTypeQuals
-     * @return
-     */
-    public QualType getConstantArrayWithoutExprType(
-            QualType eltTy,
-            APInt arraySizeIn,
-            ArraySizeModifier asm,
-            int eltTypeQuals)
-    {
-        APInt arrSize = new APInt(arraySizeIn);
-        arrSize.zextOrTrunc(target.getPointerWidth(0));
-
-        ConstantArrayWithoutExprType arr = new ConstantArrayWithoutExprType(
-                eltTy, arraySizeIn, asm, eltTypeQuals);
-        types.add(arr);
-        // TODO: 17-5-13
-        return new QualType(arr);
-    }
-
-	public ConstantArrayType getConstantArrayType(
-	        QualType elemTy,
-            final APInt arraySize)
-	{
-		assert elemTy.isIncompleteType()||elemTy.isConstantSizeType()
-				:"Constant array of VLAs is illegal";
-
-		APInt size = new APInt(arraySize);
-		size = size.zextOrTrunc(32);
-		ConstantArrayType New = null;
-		return New;
-
-        // TODO: 17-5-13
-    }
-
-	public QualType getIncompleteArrayType(
-			QualType elemTy,
-			ArraySizeModifier sm,
-            int eltTypeQuals)
-	{
-        // TODO: 17-5-13
-        return null;
-	}
-
-    /**
-     * Return a normal function type with a typed argument
-     * list.
-     * @param isVariadic Indicates whether the argument list includes '...'.
-     * @return
-     */
-	public QualType getFunctionType(
-	        QualType resultTy,
-            ArrayList<QualType> argTys,
-            boolean isVariadic,
-            int typeQuals)
-    {
-        // TODO: 17-5-13
-        return null;
-    }
-
-    /**
-     * Return a K&R style C function type like 'int()'.
-     * @param resultTy
-     * @return
-     */
-    public QualType getFunctionNoProtoType(QualType resultTy)
-    {
-        // TODO: 17-5-13
-        return null;
-    }
-
-	/**
-	 * Returns the probably qualified result of specified array decaying into pointer
-	 * jlang.type.
-	 *
-	 * @param ty
-	 * @return
-	 */
-	public QualType getArrayDecayedType(QualType ty)
-	{
-	    final ArrayType arrayType = getAsArrayType(ty);
-	    assert arrayType != null : "Not an array jlang.type!";
-
-	    QualType ptrTy = getPointerType(arrayType.getElemType());
-
-	    // int x[restrict 4]-> int *restrict;
-	    // TODO unhandle jlang.type qualifier in array getNumOfSubLoop expression.
-	    return ptrTy;
-	}
-
 	public LangOptions getLangOptions()
 	{
 		return langOptions;
 	}
 
-	/**
-	 * Return the unique reference to the type for the specified
-	 * TagDecl (struct/union/enum) decl.
-	 * @param decl
-	 * @return
-	 */
-	public QualType getTagDeclType(TagDecl decl)
-	{
-		assert decl != null;
-		return getTypeDeclType(decl, null);
-	}
-
-	/**
-	 * Return the unique reference to the type for the
-	 * specified typename decl.
-	 * @param decl
-	 * @return
-	 */
-	public QualType getTypedefType(TypeDefDecl decl)
-	{
-		if (decl.getTypeForDecl() != null)
-			return new QualType(decl.getTypeForDecl());
-
-		QualType cannonical = decl.getUnderlyingType();
-		decl.setTypeForDecl(new TypedefType(TypeClass.TypeDef, decl, cannonical));
-		types.add(decl.getTypeForDecl());
-        // TODO: 17-5-13
-        return new QualType(decl.getTypeForDecl());
-	}
-
-	/**
-	 * Return the unique reference to the type for the
-	 * specified type declaration.
-	 * @param decl
-	 * @param prevDecl
-	 * @return
-	 */
-	public QualType getTypeDeclType(TypeDecl decl, TypeDecl prevDecl)
-	{
-		assert decl != null:"Passed null for decl param";
-		if (decl.getTypeForDecl() != null)
-			return new QualType(decl.getTypeForDecl());
-
-		if (decl instanceof TypeDefDecl)
-		{
-			TypeDefDecl typedef = (TypeDefDecl)decl;
-			return getTypedefType(typedef);
-		}
-		if (decl instanceof RecordDecl)
-		{
-			RecordDecl record = (RecordDecl)decl;
-			if (prevDecl != null)
-				decl.setTypeForDecl(prevDecl.getTypeForDecl());
-			else
-				decl.setTypeForDecl(new RecordType(record));
-		}
-		else if (decl instanceof EnumDecl)
-		{
-			EnumDecl enumDecl = (EnumDecl)decl;
-			if (prevDecl != null)
-				decl.setTypeForDecl(prevDecl.getTypeForDecl());
-			else
-				decl.setTypeForDecl(new EnumType(enumDecl));
-		}
-		else
-		{
-			assert false:"TypeDecl without a type?";
-		}
-		if (prevDecl == null)
-			types.add(decl.getTypeForDecl());
-		return new QualType(decl.getTypeForDecl());
-	}
 
 	/**
 	 * Indicates if this type can be wrapped with other jlang.type.
@@ -622,9 +622,9 @@ public final class ASTContext
 	}
 
 
-	public DeclContext getTranslateUnitDecl()
+	public TranslationUnitDecl getTranslateUnitDecl()
 	{
-		return translateUnitDecl;
+		return tuDel;
 	}
 
 	public int getTypeAlign(QualType type)

@@ -219,8 +219,7 @@ public final class Preprocessor
         IdentifierInfo ii;
         if (startPos != 0 && !identifier.needsCleaning())
         {
-            ii = getIdentifierInfo(String.valueOf(buf, startPos,
-                    identifier.getName().length()));
+            ii = getIdentifierInfo(String.valueOf(buf, startPos, identifier.getLength()));
         }
         else
         {
@@ -369,6 +368,7 @@ public final class Preprocessor
     {
         this.diags = diag;
         langInfo = langOptions;
+        this.target = target;
         headerInfo = headerSearch;
         this.sourceMgr = sourceMgr;
         identifiers = new IdentifierTable(langOptions, iilookup);
@@ -378,6 +378,28 @@ public final class Preprocessor
         scrachBuf = new ScratchBuffer(sourceMgr);
         cachedTokens = new ArrayList<>();
         backtrackPositions = new TIntArrayList();
+
+        counterValue = 0;   // __COUNTER__ starts at 0.
+        NumDirectives = NumDefined = NumUndefined = NumPragma = 0;
+        NumIf = NumElse = NumEndif = 0;
+        numEnteredSourceFiles = 0;
+        NumMacroExpanded = 0;
+        NumFnMacroExpanded = 0;
+        NumBuiltinMacroExpanded = 0;
+        NumFastMacroExpanded = 0;
+        NumTokenPaste = 0;
+        NumFastTokenPaste = 0;
+        MaxIncludeStackDepth = 0;
+        NumSkipped = 0;
+
+        // Default to discarding comments.
+        keepComments = false;
+        keepMacroComments = false;
+
+        // Macro expansion is enabled.
+        disableMacroExpansion = false;
+        inMacroArgs = false;
+
 
         (Ident__VA_ARGS__ = getIdentifierInfo("__VA_ARGS__")).setIsPoisoned(true);
 
@@ -555,7 +577,7 @@ public final class Preprocessor
 
     static boolean isFileLexer(Lexer l)
     {
-        return l != null ? l.isPragmaLexer() : false;
+        return l != null && !l.isPragmaLexer();
     }
 
     public boolean isFileLexer()
@@ -2549,7 +2571,7 @@ public final class Preprocessor
         if (macroNameTok.is(eom))
             return;
 
-        Token lastTok = macroNameTok;
+        Token lastTok = macroNameTok.clone();
 
         if (curLexer != null)
             curLexer.setCommentRetentionState(keepComments);
@@ -2615,7 +2637,7 @@ public final class Preprocessor
 
         if (!tok.is(eom))
         {
-            lastTok = tok;
+            lastTok = tok.clone();
         }
 
         // Read the rest of the macro body.
@@ -2624,8 +2646,8 @@ public final class Preprocessor
             // Object-like macros are very simple, just read their body.
             while (tok.isNot(eom))
             {
-                lastTok = tok;
-                mi.addTokenBody(tok);
+                lastTok = tok.clone();
+                mi.addTokenBody(lastTok);
                 lexUnexpandedToken(tok);
             }
         }
@@ -2636,7 +2658,7 @@ public final class Preprocessor
             // parameters in function-like macro expansions.
             while (tok.isNot(eom))
             {
-                lastTok = tok;
+                lastTok = tok.clone();
                 if (tok.isNot(hash))
                 {
                     mi.addTokenBody(tok);
@@ -2673,7 +2695,7 @@ public final class Preprocessor
                 // Things look ok, add the '#' and param asmName tokens to the macro.
                 mi.addTokenBody(lastTok);
                 mi.addTokenBody(tok);
-                lastTok = tok;
+                lastTok = tok.clone();
 
                 // Get the next token of the macro.
                 lexUnexpandedToken(tok);
@@ -3716,10 +3738,11 @@ public final class Preprocessor
         if (isFileLexer())
             return includeMacroStack.isEmpty();
 
+        // If there are any stacked lexers, we're in a #include.
         assert isFileLexer(includeMacroStack.get(0))
                 :"Top level include stack isn't our primary lexer?";
-        for (IncludeStackInfo info : includeMacroStack)
-            if (isFileLexer(info))
+        for (int i = 1, e = includeMacroStack.size(); i != e; i++)
+            if (isFileLexer(includeMacroStack.get(i)))
                 return false;
 
         return true;

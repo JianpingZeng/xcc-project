@@ -1,13 +1,10 @@
 package jlang.sema;
 
-import tools.APFloat;
-import tools.APInt;
-import tools.APSInt;
-import tools.FltSemantics;
 import jlang.ast.ASTConsumer;
 import jlang.ast.CastKind;
 import jlang.ast.Tree;
 import jlang.ast.Tree.*;
+import jlang.basic.SourceManager;
 import jlang.clex.*;
 import jlang.clex.TokenKind;
 import jlang.cparser.*;
@@ -19,13 +16,13 @@ import jlang.cparser.DeclSpec.SCS;
 import jlang.cparser.DeclSpec.TST;
 import jlang.diag.*;
 import jlang.sema.Decl.*;
-import jlang.support.*;
+import jlang.support.LangOptions;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
 import jlang.type.*;
 import jlang.type.ArrayType.ArraySizeModifier;
 import jlang.type.ArrayType.VariableArrayType;
-import tools.OutParamWrapper;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
 import java.util.*;
 
@@ -34,7 +31,6 @@ import static jlang.ast.Tree.ExprObjectKind.OK_BitField;
 import static jlang.ast.Tree.ExprObjectKind.OK_Ordinary;
 import static jlang.ast.Tree.ExprValueKind.EVK_LValue;
 import static jlang.ast.Tree.ExprValueKind.EVK_RValue;
-import static jlang.support.Linkage.NoLinkage;
 import static jlang.clex.TokenKind.*;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Declarator.TheContext.FunctionProtoTypeContext;
@@ -43,10 +39,10 @@ import static jlang.cparser.Parser.stmtError;
 import static jlang.sema.BinaryOperatorKind.BO_Div;
 import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
-import static jlang.sema.Scope.ScopeFlags.CompilationUnitScope;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
 import static jlang.sema.Sema.LookupNameKind.*;
 import static jlang.sema.UnaryOperatorKind.*;
+import static jlang.support.Linkage.NoLinkage;
 
 /**
  * This file defines the {@linkplain Sema} class, which performs semantic
@@ -152,6 +148,10 @@ public final class Sema implements DiagnosticParseTag,
     private Stack<FunctionScopeInfo> functionScopes;
     private ASTConsumer consumer;
     private ASTContext context;
+    private Diagnostic diags;
+    private SourceManager sourceMgr;
+    private HashMap<String, LabelStmt> functionLabelMap;
+    private Stack<SwitchStmt> functionSwitchStack;
 
     public Sema(Preprocessor pp, ASTContext ctx, ASTConsumer consumer)
     {
@@ -159,12 +159,10 @@ public final class Sema implements DiagnosticParseTag,
         this.pp = pp;
         context = ctx;
         this.consumer = consumer;
-        initialize();
-    }
-
-    private void initialize()
-    {
-        curScope = new Scope(null, CompilationUnitScope.value);
+        diags = pp.getDiagnostics();
+        sourceMgr = pp.getSourceManager();
+        functionLabelMap = new HashMap<>();
+        functionSwitchStack = new Stack<>();
         functionScopes = new Stack<>();
     }
 
@@ -6897,7 +6895,7 @@ public final class Sema implements DiagnosticParseTag,
      * @return
      */
     private NamedDecl implicitDefineFunction(SourceLocation nameLoc,
-            String name, Scope s)
+            IdentifierInfo name, Scope s)
     {
         // Before we produce a declaration for an implicitly defined
         // function, see whether there was a locally-scoped declaration of
@@ -6971,9 +6969,9 @@ public final class Sema implements DiagnosticParseTag,
         {
             // Otherwise, this could be an implicitly declared function reference (legal
             // in C90, extension in C99
-            if (hasTrailingLParen && name != null)
+            if (hasTrailingLParen && id != null)
             {
-                NamedDecl d = implicitDefineFunction(nameLoc, name, s);
+                NamedDecl d = implicitDefineFunction(nameLoc, id, s);
                 if (d != null)
                     res.addDecl(d);
             }
@@ -7005,14 +7003,10 @@ public final class Sema implements DiagnosticParseTag,
         // TODO: 2017/3/28
     }
 
-    private HashMap<String, LabelStmt> functionLabelMap = new HashMap<>();
-
     private HashMap<String, LabelStmt> getLabelMap()
     {
         return functionLabelMap;
     }
-
-    private Stack<SwitchStmt> functionSwitchStack = new Stack<>();
 
     private Stack<SwitchStmt> getSwtichBlock()
     {

@@ -72,34 +72,34 @@ public enum TokenKind
     
 
     // storage class specifier
-    Static("static", Tag.STATIC),
-    Register("register", Tag.REGISTER),
-    Extern("extern", Tag.EXTERN),
-    Typedef("typedef", Tag.TYPEDEF),
-    Auto("auto", Tag.AUTO),
+    Static("static", Tag.STATIC, KEYALL),
+    Register("register", Tag.REGISTER, KEYALL),
+    Extern("extern", Tag.EXTERN, KEYALL),
+    Typedef("typedef", Tag.TYPEDEF, KEYALL),
+    Auto("auto", Tag.AUTO, KEYALL),
 
     // qualifier
-    Const("const", Tag.CONST),
-    Volatile("volatile", Tag.VOLATILE),
-    Restrict("restrict", Tag.RESTRICT),
+    Const("const", Tag.CONST, KEYALL),
+    Volatile("volatile", Tag.VOLATILE, KEYALL),
+    Restrict("restrict", Tag.RESTRICT, KEYALL),
 
     // function-specifier
     Inline("inline", Tag.INLINE, KEYC99|KEYGNU),
 
     // statement
-    Break("break", Tag.BREAK),
-    Case("case", Tag.CASE),
-    Continue("continue", Tag.CONTINUE),
-    Default("default", Tag.DEFAULT),
-    Do("do", Tag.DO),
-    Else("else", Tag.ELSE),
-    For("for", Tag.FOR),
-    Goto("goto", Tag.GOTO),
-    If("if", Tag.IF),
-    Return("return", Tag.RETURN),
-    Sizeof("sizeof", Tag.SIZEOF),
-    Switch("switch", Tag.SWITCH),
-    While("while", Tag.WHILE),
+    Break("break", Tag.BREAK, KEYALL),
+    Case("case", Tag.CASE, KEYALL),
+    Continue("continue", Tag.CONTINUE, KEYALL),
+    Default("default", Tag.DEFAULT, KEYALL),
+    Do("do", Tag.DO, KEYALL),
+    Else("else", Tag.ELSE, KEYALL),
+    For("for", Tag.FOR, KEYALL),
+    Goto("goto", Tag.GOTO, KEYALL),
+    If("if", Tag.IF, KEYALL),
+    Return("return", Tag.RETURN, KEYALL),
+    Sizeof("sizeof", Tag.SIZEOF, KEYALL),
+    Switch("switch", Tag.SWITCH, KEYALL),
+    While("while", Tag.WHILE, KEYALL),
 
     // C99 6.4.6: Punctuators.
     l_paren("(", Tag.LPAREN),
