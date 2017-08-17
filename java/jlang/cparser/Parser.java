@@ -126,11 +126,18 @@ public class Parser implements Tag,
         }
     }
 
+    /**
+     * Start a new scope.
+     * @param scopeFlags
+     */
     private void enterScope(int scopeFlags)
     {
         action.setCurScope(new Scope(getCurScope(), scopeFlags));
     }
 
+    /**
+     * Pop a scope off the scope stack.
+     */
     private void exitScope()
     {
         assert getCurScope() != null : "Scope imbalance.";
@@ -163,8 +170,6 @@ public class Parser implements Tag,
     private SourceLocation prevTokLocation;
 
     private Token tok;
-
-    private Scope curScope;
 
     public Diagnostic getDiags()
     {
@@ -2196,7 +2201,7 @@ public class Parser implements Tag,
         {
             SourceLocation loc = tok.getLocation();
             boolean isInvalid = false;
-            String prevSpec = null;
+            String prevSpec = "";
             int diagID = -1;
 
             switch (tok.getKind())
@@ -2277,8 +2282,8 @@ public class Parser implements Tag,
                     break;
                 case Char:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_char, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2476,7 +2481,7 @@ public class Parser implements Tag,
 
     private Scope getCurScope()
     {
-        return curScope;
+        return action.getCurScope();
     }
 
     /**
@@ -3150,7 +3155,7 @@ public class Parser implements Tag,
              declarator, they could start a parenthesized declarator or a
              parameter list.
              */
-            String id = tok.getIdentifierInfo().getName();
+            IdentifierInfo id = tok.getIdentifierInfo();
             assert id != null : "Not an identifier?";
             declarator.setIdentifier(id, tok.getLocation());
             consumeToken();

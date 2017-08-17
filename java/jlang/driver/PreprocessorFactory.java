@@ -16,15 +16,16 @@ package jlang.driver;
  * permissions and limitations under the License.
  */
 
-import jlang.basic.*;
+import jlang.basic.HeaderSearch;
+import jlang.basic.SourceManager;
+import jlang.basic.TargetInfo;
 import jlang.clex.Preprocessor;
 import jlang.diag.Diagnostic;
-import tools.APFloat;
-import tools.FltSemantics;
 import jlang.support.LangOptions;
 import jlang.support.PreprocessorInitOptions;
+import tools.APFloat;
+import tools.FltSemantics;
 
-import java.io.File;
 import java.math.BigInteger;
 
 /**
@@ -108,7 +109,7 @@ class PreprocessorFactory
         });
 
         // Append a line terminator into predefinedBuffer.
-        predefinedBuffer.append(File.separator);
+        predefinedBuffer.append('\n');
         pp.setPredefines(predefinedBuffer.toString());
         // Once we are reaching this, done!
         return false;
@@ -333,7 +334,7 @@ class PreprocessorFactory
             // Push "macroname 1".
             buf.append(m).append(" ").append("1");
         }
-        buf.append(File.separator);
+        buf.append('\n');
     }
 
     /**
@@ -345,6 +346,6 @@ class PreprocessorFactory
      */
     private void undefineBuiltinMacro(StringBuilder buf, String name)
     {
-        buf.append("#undef ").append(name).append(File.separator);
+        buf.append("#undef ").append(name).append('\n');
     }
 }

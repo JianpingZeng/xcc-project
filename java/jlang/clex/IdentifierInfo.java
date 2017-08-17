@@ -186,4 +186,9 @@ public class IdentifierInfo implements Cloneable
         ii.entry = entry.clone();
         return ii;
     }
+
+    public void setEntry(Pair<String, IdentifierInfo> pair)
+    {
+        entry = pair;
+    }
 }

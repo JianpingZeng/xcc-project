@@ -49,7 +49,7 @@ public class Declarator
     }
 
     private DeclSpec ds;
-    private IdentifierInfo name;
+    private IdentifierInfo identifier;
     private SourceLocation identifierLoc;
     private SourceRange range;
 
@@ -93,7 +93,7 @@ public class Declarator
 
     public DeclSpec getDeclSpec() { return ds; }
 
-    public IdentifierInfo getIdentifier() { return name; }
+    public IdentifierInfo getIdentifier() { return identifier; }
 
     public TheContext getContext() { return context; }
 
@@ -185,10 +185,17 @@ public class Declarator
             range.setEnd(sr.getEnd());
     }
 
-    public void setIdentifier(String id,
-            SourceLocation IdLoc)
+    public void setIdentifier(
+            IdentifierInfo id,
+            SourceLocation loc)
     {
-        this.identifierLoc =IdLoc;
+        identifier = id;
+        identifierLoc =loc;
+        if (id != null)
+            kind = DeclarationKind.DK_Normal;
+        else
+            kind = DeclarationKind.DK_Abstract;
+        setRangeEnd(loc);
     }
 
     public void setInvalidType(boolean val)
@@ -216,7 +223,7 @@ public class Declarator
 
     public void setIdentifierLoc(IdentifierInfo id, SourceLocation loc)
     {
-        name = id;
+        identifier = id;
         identifierLoc = loc;
         if (id != null)
             kind = DeclarationKind.DK_Normal;
@@ -279,7 +286,7 @@ public class Declarator
 
     public void clear()
     {
-        name = null;
+        identifier = null;
         range = ds.getSourceRange();
         declTypeInfos.clear();
     }
@@ -292,7 +299,7 @@ public class Declarator
     public boolean isPastIdentifier()
     {
         // getIdentifier is valid.
-        return name != null;
+        return identifier != null;
     }
 
     /**

@@ -94,6 +94,7 @@ public final class MacroInfo
     public MacroInfo(SourceLocation defloc)
     {
         isUsed = true;
+        replacementTokens = new ArrayList<>();
     }
 
     public SourceLocation getDefinitionLoc()
