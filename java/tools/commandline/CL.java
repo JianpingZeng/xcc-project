@@ -16,20 +16,26 @@ package tools.commandline;
  * permissions and limitations under the License.
  */
 
+import backend.target.Target;
+import backend.target.Target.TargetRegistry;
 import tools.OutParamWrapper;
 import tools.Pair;
+import tools.Util;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
+import static java.lang.System.out;
+import static java.util.stream.Collectors.toList;
+import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.*;
-import static tools.commandline.MiscFlags.CommaSeparated;
-import static tools.commandline.MiscFlags.PositionalEatsArgs;
-import static tools.commandline.MiscFlags.Sink;
+import static tools.commandline.MiscFlags.*;
 import static tools.commandline.NumOccurrences.*;
+import static tools.commandline.OptionHidden.Hidden;
+import static tools.commandline.OptionHidden.ReallyHidden;
+import static tools.commandline.OptionNameApplicator.optionName;
+import static tools.commandline.ValueExpected.ValueDisallowed;
 import static tools.commandline.ValueExpected.ValueRequired;
 
 /**
@@ -38,6 +44,15 @@ import static tools.commandline.ValueExpected.ValueRequired;
  */
 public final class CL
 {
+    /**
+     * The overview about the main program.
+     */
+    public static String ProgramOverview = null;
+    /**
+     * The name of main program.
+     */
+    public static String ProgramName = "<premain>";
+
     /**
      * This is the head of single linked list which chained all of registered option.
      */
@@ -675,4 +690,189 @@ public final class CL
         return O.getNumOccurrencesFlag() == ZeroOrMore
                 || O.getNumOccurrencesFlag() == OneOrMore;
     }
+
+    /**
+     * --help and --help-hidden option implementation.
+     */
+    public static class HelpPrinter extends LocationClass<Boolean>
+    {
+        private int maxArgLen;
+        private boolean showHidden;
+        private Option emptyArg;
+
+        /**
+         * Predicates to be used to filtere down arg list.
+         * @param optPair
+         * @return
+         */
+        private static Predicate<Pair<String, Option>> isHidden = optPair ->
+        {
+            OptionHidden oh = optPair.second.getOptionHiddenFlag();
+            return oh != null && oh.value >= Hidden.value;
+        };
+
+        public static Predicate<Pair<String, Option>> isReallyHidden = optPair -> {
+            OptionHidden oh = optPair.second.getOptionHiddenFlag();
+            return oh != null && oh.value >= ReallyHidden.value;
+        };
+
+        public HelpPrinter(boolean showHidden)
+        {
+            this.showHidden = showHidden;
+            emptyArg = null;
+        }
+
+        @Override
+        public void setLocation(Boolean location)
+        {
+            if (!location)
+                return;
+
+            // Get all the options.
+            ArrayList<Option> positionalOpts = new ArrayList<>();
+            ArrayList<Option> sinkOpts = new ArrayList<>();
+            HashMap<String, Option> optionsMap = new HashMap<>();
+
+            // Process all registered options.
+            getOptionInfo(positionalOpts, sinkOpts, optionsMap);
+
+            // Copy all element in optionsMap to temps for sorting them.
+            ArrayList<Pair<String, Option>> temps = new ArrayList<>();
+            optionsMap.forEach((key, value)-> temps.add(Pair.get(key, value)));
+
+            // Filter option with showHidden flag.
+            List<Pair<String, Option>> opts = temps.stream().filter(stringOptionPair ->
+            {
+                return !(showHidden ? isReallyHidden : isHidden).test(stringOptionPair);
+            }).collect(toList());
+
+            // Eliminate duplicate entries in table.
+            HashSet<Option> optionSet = new HashSet<>();
+            opts.removeIf(strOpt -> !optionSet.add(strOpt.second));
+
+            if (ProgramOverview == null)
+                out.println("OVERVIEW: Extremely C Compiler");
+
+            out.printf("Usage: %s [options]", ProgramName);
+            // Print out the positional options.
+
+            Option caOpt = null;
+            if (!positionalOpts.isEmpty() &&
+                    positionalOpts.get(0).getNumOccurrencesFlag() == ConsumeAfter)
+            {
+                caOpt = positionalOpts.get(0);
+            }
+
+            for (int i = (caOpt != null ?1:0), e = positionalOpts.size(); i != e; i++)
+            {
+                Option opt = positionalOpts.get(i);
+                if (opt.optionName != null)
+                    out.printf(" --%s", opt.optionName);
+                out.printf(" %s", opt.helpStr);
+            }
+
+            // Print out the consume after option into console if it exists.
+            if (caOpt != null)
+                out.printf(" %s", caOpt.helpStr);
+
+            out.println('\n');
+
+            // Compute the maximum argument length.
+            maxArgLen = 0;
+            for (int i = 0, e = opts.size(); i != e; i++)
+            {
+                maxArgLen = Math.max(opts.get(i).second.getOptionWidth(), maxArgLen);
+            }
+
+            out.println("OPTIONS:");
+
+            // Print out each options into console.
+            opts.forEach(opt->opt.second.printOptionInfo(maxArgLen));
+
+            // Halt the program since help information was printed out.
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Define two {@linkplain HelpPrinter} instances that are used to print out
+     * help message out console, help-hidden.
+     */
+    public static HelpPrinter NormalPrinter = new HelpPrinter(false);
+    public static HelpPrinter HiddenPrinter = new HelpPrinter(true);
+
+    public static LocationOpt<Boolean> HOp =
+            new LocationOpt<Boolean>(
+                    new ParserBool(),
+                    optionName("help"),
+                    desc("Display available options (--help-hidden for more)"),
+                    new LocationClassApplicator<Boolean>(NormalPrinter),
+                    new ValueExpectedApplicator(ValueDisallowed));
+
+    public static LocationOpt<Boolean> HHOp =
+            new LocationOpt<Boolean>(
+                    new ParserBool(),
+                    optionName("help-hidden"),
+                    desc("Display all available options"),
+                    new LocationClassApplicator<>(HiddenPrinter),
+                    new ValueExpectedApplicator(ValueDisallowed));
+
+    /**
+     * Printer for printing out version information about xcc compiler.
+     */
+    public static class VersionPrinter extends LocationClass<Boolean>
+    {
+        public void print()
+        {
+            out.println("Extremely C compiler");
+            out.println("  xcc version 0.1");
+
+            ArrayList<Pair<String, Target>> targets = new ArrayList<>();
+            int width = 0;
+            for (Iterator<Target> itr = TargetRegistry.iterator(); itr.hasNext(); )
+            {
+                Target t = itr.next();
+                targets.add(Pair.get(t.getName(), t));
+                width = Math.max(width, t.getName().length());
+            }
+
+            // Sort the targets in the order of target name.
+            targets.sort(Comparator.comparing(o -> o.first));
+
+            out.println("  Registered Targets:");
+            for (Pair<String, Target> pair : targets)
+            {
+                Target t = pair.second;
+                out.printf("    %s%s - %s\n", t.getName(),
+                        Util.fixedLengthString(width - t.getName().length(), ' '),
+                        t.getShortDescription());
+            }
+            if (targets.isEmpty())
+                out.println("    (none)");
+        }
+
+        @Override
+        public void setLocation(Boolean optionWasSpecified)
+        {
+            if (optionWasSpecified)
+            {
+                print();
+                System.exit(1);
+            }
+        }
+    }
+
+    /**
+     * Define the --version option that printts out the xcc version for the tol.
+     */
+    public static VersionPrinter VersionPrinterInstance =
+            new VersionPrinter();
+
+    public static final LocationOpt<Boolean> VerOp =
+            new LocationOpt<Boolean>(
+                    new ParserBool(),
+                    new OptionNameApplicator("version"),
+                    desc("Display the version of this program"),
+                    new LocationClassApplicator<>(VersionPrinterInstance),
+                    new ValueExpectedApplicator(ValueDisallowed));
 }

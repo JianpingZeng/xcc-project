@@ -350,6 +350,8 @@ public class Util
 
 	public static String fixedLengthString(int repeatNum, char unit)
 	{
+		if (repeatNum <= 0)
+			return "";
 		return String.format("%1$" + repeatNum + "s", unit);
 	}
 
