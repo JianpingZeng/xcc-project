@@ -22,6 +22,7 @@ import backend.support.Triple.ArchType;
 import tools.OutParamWrapper;
 
 import java.io.OutputStream;
+import java.util.Iterator;
 
 /**
  * Wrapper for Target specific information.
@@ -132,6 +133,16 @@ public class Target
         return asmPrinterCtor.create(os, tm, asmInfo, verbose);
     }
 
+    public String getName()
+    {
+        return name;
+    }
+
+    public String getShortDescription()
+    {
+        return shortDesc;
+    }
+
     /**
      * A interface to define what is the best quality matcher to select a best
      * suitable target for specified triple string.
@@ -148,6 +159,12 @@ public class Target
      */
     public static class TargetRegistry
     {
+        /**
+         * A refernce to current walked target.
+         * This used to walk through the target registered chain.
+         */
+        private static Target currentTarget = null;
+
         public static void registerTargetMachine(Target target, TargetMachineCtor ctor)
         {
             if (target.targetMachineCtor != null)
@@ -238,6 +255,39 @@ public class Target
                 return null;
             }
             return best;
+        }
+
+        public static Iterator<Target> iterator()
+        {
+            return new TargetIterator(firstTarget);
+        }
+
+        /**
+         * A Iterator to walk through all of registered target.
+         */
+        public static class TargetIterator implements Iterator<Target>
+        {
+            private Target cur;
+            public TargetIterator(Target t)
+            {
+                cur = t;
+                assert cur != null;
+            }
+
+            @Override
+            public boolean hasNext()
+            {
+                return cur != null;
+            }
+
+            @Override
+            public Target next()
+            {
+                assert hasNext();
+                Target temp = cur;
+                cur = cur.next;
+                return temp;
+            }
         }
 
         public static class GetTripleMatchQuality implements TripleMatcher

@@ -22,6 +22,7 @@ import static tools.commandline.FormattingFlags.FormattingMask;
 import static tools.commandline.FormattingFlags.NormalFormatting;
 import static tools.commandline.MiscFlags.MiscMask;
 import static tools.commandline.NumOccurrences.OccurrencesMask;
+import static tools.commandline.OptionHidden.HiddenMask;
 import static tools.commandline.ValueExpected.ValueMask;
 
 /**
@@ -110,6 +111,12 @@ public abstract class Option<T>
         return FormattingFlags.getFromValue(ff);
     }
 
+    public OptionHidden getOptionHiddenFlag()
+    {
+        int oh = flags & HiddenMask.value;
+        return OptionHidden.getFromValue(oh);
+    }
+
     public int getPosition()
     {
         return position;
@@ -163,7 +170,7 @@ public abstract class Option<T>
 
     public void setOptionHiddenFlag(OptionHidden hidden)
     {
-        setFlag(hidden.value, OptionHidden.HiddenMask.value);
+        setFlag(hidden.value, HiddenMask.value);
     }
 
     public void setPosition(int pos)
