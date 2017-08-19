@@ -59,7 +59,7 @@ public final class TableGen
                     new ValueClass.Entry<>(GenRegisterNames, "gen-register-names",
                             "Generates register names"),
                     new ValueClass.Entry<>(GenRegisterInfo, "gen-register-info",
-                            "Generates register description file"),
+                            "Generates register text file"),
                     new ValueClass.Entry<>(GenInstrNames, "gen-instr-names",
                             "Generates instruction names"),
                     new ValueClass.Entry<>(GenInstrInfo, "gen-instr-info",

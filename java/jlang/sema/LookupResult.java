@@ -93,7 +93,17 @@ public class LookupResult
 
     public Decl.NamedDecl getFoundDecl()
     {
-        return decls.get(0);
+        switch (getResultKind())
+        {
+            case NotFound:
+                 break;
+            case Found:
+                return decls.get(0);
+            case Ambiguous:
+                assert false:"Name lookup returned an ambiguity that could not be handled";
+                break;
+        }
+        return null;
     }
 
     public boolean isEmpty()

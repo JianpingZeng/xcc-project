@@ -32,7 +32,7 @@ public class LineTableInfo
     /// filenameIDs - This map is used to assign unique IDs to filenames in
     /// #line directives.  This allows us to unique the filenames that
     /// frequently reoccur and reference them with indices.  filenameIDs holds
-    /// the mapping from string -> ID, and filenamesByID holds the mapping of ID
+    /// the diagMapping from string -> ID, and filenamesByID holds the diagMapping of ID
     /// to string.
     TObjectIntHashMap<String> filenameIDs;
     ArrayList<Pair<String, Integer>> filenamesByID;

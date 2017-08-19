@@ -25,6 +25,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
 
+import static jlang.diag.Diagnostic.ArgumentKind.ak_c_string;
+import static jlang.diag.Diagnostic.ArgumentKind.ak_std_string;
 import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Error;
 import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Ignore;
 
@@ -34,7 +36,10 @@ import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Ignore;
  */
 public final class Diagnostic
 {
-    public static final int DiagnosticCommonKindsBegin = 0;
+    public static final int DIAG_START_DRIVER = 300;
+    public static final int DiagnosticFrontendBegin = DIAG_START_DRIVER + 100;
+    public static final int DiagnosticFrontendEnd = DiagnosticFrontendBegin + 100;
+    public static final int DiagnosticCommonKindsBegin = DiagnosticFrontendEnd;
     public static final int DiagnosticCommonKindsEnd = DiagnosticCommonKindsBegin + 120;
     public static final int DiagnosticLexKindsBegin = DiagnosticCommonKindsEnd;
     public static final int DiagnosticLexKindsEnd = DiagnosticLexKindsBegin + 300;
@@ -79,13 +84,21 @@ public final class Diagnostic
     private static final StaticDiagInfoRec[] staticDiagInfos;
     static
     {
+        int frontendLen = DiagnosticFrontendKinds.values().length;
         int commonLen = DiagnosticCommonKinds.values().length;
         int lexLen = DiagnosticLexKinds.values().length;
         int parseLen = DiagnosticParseKinds.values().length;
         int semaLen = DiagnosticSemaKinds.values().length;
 
-        staticDiagInfos = new StaticDiagInfoRec[commonLen + lexLen + parseLen + semaLen];
+        staticDiagInfos = new StaticDiagInfoRec[frontendLen + commonLen + lexLen + parseLen + semaLen];
         int idx = 0;
+        for (DiagnosticFrontendKinds kinds : DiagnosticFrontendKinds.values())
+        {
+            staticDiagInfos[idx++] = new StaticDiagInfoRec(kinds.diagID,
+                    kinds.diagMapping, kinds.diagClass,
+                    kinds.sfinae, kinds.text, kinds.optionGroup);
+        }
+
         for (DiagnosticCommonKinds kinds : DiagnosticCommonKinds.values())
         {
             staticDiagInfos[idx++] = new StaticDiagInfoRec(kinds.diagID,
@@ -249,9 +262,9 @@ public final class Diagnostic
 
     /**
      * Mapping information for diagnostics.  Mapping info is
-     * packed into four bits per diagnostic.  The low three bits are the mapping
+     * packed into four bits per diagnostic.  The low three bits are the diagMapping
      * (an instance of diag::Mapping), or zero if unset.  The high bit is set
-     * when the mapping was established as a user mapping.  If the high bit is
+     * when the diagMapping was established as a user diagMapping.  If the high bit is
      * clear, then the low bits are set to the default value, and should be
      * mapped with -pedantic, -Werror, etc.
      */
@@ -446,7 +459,8 @@ public final class Diagnostic
 
 	public String getArgStdStr(int index)
 	{
-	    assert getDiagArgKind(index) == ArgumentKind.ak_std_string
+        ArgumentKind ak = getDiagArgKind(index);
+	    assert ak == ak_std_string || ak == ak_c_string
                 : "Invalid argument accessor!";
 		return (String) diagArgumentsVal[index];
 	}
@@ -474,7 +488,7 @@ public final class Diagnostic
 
     public Object getRawArg(int index)
     {
-        assert getDiagArgKind(index) != ArgumentKind.ak_std_string
+        assert getDiagArgKind(index) != ak_std_string
                 :"invalid argument accessor!";
         return diagArgumentsVal[index];
     }
@@ -531,12 +545,14 @@ public final class Diagnostic
     }
 
     /**
-     * Given a diagnostic ID, return a description of the issue.
+     * Given a diagnostic ID, return a text of the issue.
      * @param diagID
      * @return
      */
     public static String getDescription(int diagID)
     {
+        if (isDiagnosticFrontendKinds(diagID))
+            return DiagnosticFrontendKinds.values()[diagID - DiagnosticFrontendBegin].text;
         if (isDiagnosticLexKinds(diagID))
             return DiagnosticLexKinds.values()[diagID - DiagnosticLexKindsBegin].text;
         else if (isDiagnosticParseKinds(diagID))
@@ -661,7 +677,7 @@ public final class Diagnostic
         // to error.  Errors can only be mapped to fatal.
         Diagnostic.Level result = Level.Fatal;
 
-        // Get the mapping information, if unset, compute it lazily.
+        // Get the diagMapping information, if unset, compute it lazily.
         Mapping mappingInfo = getDiagnosticMappingInfo(diagID);
         if (mappingInfo.ordinal() == 0)
         {
@@ -671,9 +687,9 @@ public final class Diagnostic
 
         switch (Mapping.values()[mappingInfo.ordinal() & 7]) 
         {
-            default: assert false : "Unknown mapping!";
+            default: assert false : "Unknown diagMapping!";
             case MAP_IGNORE:
-                // Ignore this, unless this is an extension diagnostic and we're mapping
+                // Ignore this, unless this is an extension diagnostic and we're diagMapping
                 // them onto warnings or errors.
                 if (!isBuiltinExtensionDiag(diagID) ||  // Not an extension
                         extBehavior == Ext_Ignore ||        // Extensions ignored anyway
@@ -872,8 +888,13 @@ public final class Diagnostic
                 && diagID < DiagnosticCommonKindsEnd;
     }
 
+    public static boolean isDiagnosticFrontendKinds(int diagID)
+    {
+        return diagID >= DiagnosticFrontendBegin
+                && diagID < DiagnosticFrontendEnd;
+    }
     /**
-     * Return the mapping info currently set for the
+     * Return the diagMapping info currently set for the
      * specified builtin diagnostic.  This returns the high bit encoding, or zero
      * if the field is completely uninitialized.
      * @param diag
@@ -950,7 +971,7 @@ public final class Diagnostic
 			assert numArgs < maxArguments :"Too many arguments to diagnostics";
 			if (diagObj != null)
 			{
-				diagObj.diagArgumentsKind[numArgs] = ArgumentKind.ak_c_string;
+				diagObj.diagArgumentsKind[numArgs] = ak_c_string;
 				diagObj.diagArgumentsVal[numArgs++] = str;
 			}
 			return this;
@@ -979,7 +1000,7 @@ public final class Diagnostic
 
 		public DiagnosticBuilder addTaggedVal(String identifier)
 		{
-			return addTaggedVal(identifier, ArgumentKind.ak_identifier);
+			return addTaggedVal(identifier, ak_c_string);
 		}
 
 		public DiagnosticBuilder addTaggedVal(QualType type)

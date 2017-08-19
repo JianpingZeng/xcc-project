@@ -78,8 +78,8 @@ public enum  DiagnosticFrontendKinds implements DiagnosticFrontendKindsTag
 
     public final int diagID;
     public final Diagnostic.DiagnosticClass diagClass;
-    public final Diagnostic.Mapping mapping;
-    public final String description;
+    public final Diagnostic.Mapping diagMapping;
+    public final String text;
     public final boolean sfinae;
     public final String optionGroup;
 
@@ -92,8 +92,8 @@ public enum  DiagnosticFrontendKinds implements DiagnosticFrontendKindsTag
     {
         this.diagID = diagID;
         this.diagClass = diagClass;
-        this.mapping = mapping;
-        this.description = description;
+        this.diagMapping = mapping;
+        this.text = description;
         this.sfinae = sfinae;
         this.optionGroup = optionGroup;
     }

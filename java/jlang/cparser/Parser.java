@@ -2057,6 +2057,7 @@ public class Parser implements Tag,
         ArrayList<Decl> res = parseSimpleDeclaration(stmts, dc, false);
         if (nextTokenIsNot(semi))
         {
+            // FIXME, 此处应该删除，但是报错的逻辑出现错误. 2017.8.20
             diag(tok.getLocation(), err_expected_semi_after).emit();
             skipUntil(semi, true);
         }

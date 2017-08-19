@@ -70,7 +70,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
      */
     protected PrintWriter os;
     /**
-     * The target machine description.
+     * The target machine text.
      */
     protected TargetMachine tm;
 

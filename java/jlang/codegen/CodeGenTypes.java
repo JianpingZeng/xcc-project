@@ -115,7 +115,7 @@ public class CodeGenTypes
     private HIRModuleGenerator builder;
 
     /**
-     * This is a cache mapping jlang type to backend type.
+     * This is a cache diagMapping jlang type to backend type.
      */
     private HashMap<jlang.type.Type, backend.type.Type> typeCaches;
 

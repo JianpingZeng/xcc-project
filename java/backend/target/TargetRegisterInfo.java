@@ -69,7 +69,7 @@ public abstract class TargetRegisterInfo
 		phyRegClasses = new TargetRegisterClass[desc.length];
 
 		// loop over all register classes, handle each register class
-		// and keep track of mapping from register to it's register class.
+		// and keep track of diagMapping from register to it's register class.
 		for (int i = 0, e = regClasses.length; i < e; i++)
 		{
 			for (int j = 0, ee = regClasses[i].getRegSize(); j < ee; j++)

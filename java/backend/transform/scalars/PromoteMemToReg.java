@@ -321,7 +321,7 @@ public final class PromoteMemToReg
 			if (ast != null)
 			    pointerAllocaValues.set(allocaNum, info.allocaPointerVar);
 
-			// Keeps the reverse mapping of the 'Allocas' array for the rename pass.
+			// Keeps the reverse diagMapping of the 'Allocas' array for the rename pass.
 			allocaLookup.put(allocas.get(allocaNum), allocaNum);
 
 			// Using standard SSA construction algorithm to promoting the alloca.

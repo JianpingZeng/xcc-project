@@ -22,7 +22,7 @@ public class MachineFunction
 	 */
 	private MachineFrameInfo frameInfo;
 	/**
-	 * Keeping track of mapping from SSA values to registers.
+	 * Keeping track of diagMapping from SSA values to registers.
 	 */
 	private MachineRegisterInfo machineRegisterInfo;
 	/**

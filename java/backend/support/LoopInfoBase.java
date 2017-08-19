@@ -104,7 +104,7 @@ public interface LoopInfoBase<BlockT, LoopT>
 
     /**
      * Removes the block from all data structures, including all of the loop
-     * objects containing it and mapping from Block to loop..
+     * objects containing it and diagMapping from Block to loop..
      * @param block
      */
     void removeBlock(BlockT block);

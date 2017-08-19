@@ -79,7 +79,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     }
 
     /**
-     * A mapping from instruction number to itself.
+     * A diagMapping from instruction number to itself.
      */
     private TreeMap<Integer, MachineInstr> idx2MI;
 
@@ -353,7 +353,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 LiveInterval intervalA = getInterval(regA);
                 LiveInterval intervalB = getInterval(regB);
                 assert intervalA.register == regA && intervalB.register == regB
-                        :"Regiser mapping is horribly borken!";
+                        :"Regiser diagMapping is horribly borken!";
 
                 System.err.printf("\t\tInspecting ");
                 intervalA.print(System.err, tri);

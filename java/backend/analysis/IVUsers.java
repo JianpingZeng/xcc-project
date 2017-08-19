@@ -49,7 +49,7 @@ public final class IVUsers implements Printable, LoopPass
 	 */
 	public ArrayList<IVUsersOfOneStride> ivUsers;
 	/**
-	 * A mapping from strides to the uses in {@linkplain #ivUsers}.
+	 * A diagMapping from strides to the uses in {@linkplain #ivUsers}.
 	 */
 	public HashMap<SCEV, IVUsersOfOneStride> ivUsesByStride;
 

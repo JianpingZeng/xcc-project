@@ -791,7 +791,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
             if (sourceMgr.getMainFileID().isInvalid())
             {
                 pp.getDiagnostics().report(new FullSourceLoc(), err_fe_error_reading)
-                        .addTaggedVal(inFile);
+                        .addTaggedVal(inFile).emit();
                 return true;
             }
         }

@@ -17,7 +17,7 @@ package tools.commandline;
  */
 
 /**
- * This class implement the interface {@linkplain Modifier} to update description
+ * This class implement the interface {@linkplain Modifier} to update text
  * text of the given {@code opt} for printing out human readibility information
  * when user type "-help" from console.
  * @author Xlous.zeng
