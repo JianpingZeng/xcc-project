@@ -6,7 +6,7 @@ import jlang.support.PrintingPolicy;
  * @author xlous.zeng
  * @version 0.1
  */
-public final class PointerType extends Type
+public final class PointerType extends Type implements FoldingSetNode
 {
     /**
      * The basic jlang.type of this pointer jlang.type.
@@ -32,5 +32,32 @@ public final class PointerType extends Type
         if (pointeeType.getType() instanceof ArrayType)
             inner = '(' + inner + ')';
         return pointeeType.getAsStringInternal(inner, policy);
+    }
+
+    @Override
+    public void profile(FoldingSetNodeID id)
+    {
+        id.addInteger(pointeeType.hashCode());
+    }
+
+    @Override
+    public int hashCode()
+    {
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        profile(id);
+        return id.computeHash();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+        PointerType pt = (PointerType)obj;
+        return pt.hashCode() == hashCode();
     }
 }

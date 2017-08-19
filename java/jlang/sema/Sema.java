@@ -5395,7 +5395,7 @@ public final class Sema implements DiagnosticParseTag,
 
         QualType strTy = context.CharTy;
 
-        strTy = context.getConstantType(strTy,
+        strTy = context.getConstantArrayType(strTy,
                 new APInt(32, literal.getNumStringChars() +1),
                 ArraySizeModifier.Normal, 0);
 

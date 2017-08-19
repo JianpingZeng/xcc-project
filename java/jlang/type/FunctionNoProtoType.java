@@ -24,7 +24,7 @@ import jlang.support.PrintingPolicy;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class FunctionNoProtoType extends FunctionType
+public final class FunctionNoProtoType extends FunctionType implements FoldingSetNode
 {
     public FunctionNoProtoType(QualType returnType, QualType canonical)
     {
@@ -53,5 +53,42 @@ public final class FunctionNoProtoType extends FunctionType
         if (getNoReturnAttr())
             inner += "__attribute__((noreturn))";
         return getResultType().getAsStringInternal(inner, policy);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        profile(id);
+        return id.computeHash();
+    }
+
+    @Override
+    public void profile(FoldingSetNodeID id)
+    {
+        id.addInteger(getNoReturnAttr()?1:0);
+        id.addInteger(getResultType().hashCode());
+    }
+
+    public static void profile(
+            FoldingSetNodeID id,
+            QualType resultTy,
+            boolean noReturn)
+    {
+        id.addBoolean(noReturn);
+        id.addInteger(resultTy.hashCode());
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+        FunctionNoProtoType ft = (FunctionNoProtoType)obj;
+        return ft.hashCode() == hashCode();
     }
 }

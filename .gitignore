@@ -7,7 +7,7 @@ xcc.imi
 document
 [O|o]ut
 classes
-*~
+*~  #Ignores all Linux temporary file.
 
 
 

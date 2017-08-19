@@ -16,28 +16,52 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import tools.APInt;
-import tools.APSInt;
-import tools.FltSemantics;
 import jlang.ast.Tree.Expr;
-import jlang.basic.*;
+import jlang.basic.SourceManager;
+import jlang.basic.TargetInfo;
 import jlang.basic.TargetInfo.IntType;
 import jlang.clex.IdentifierTable;
 import jlang.diag.FullSourceLoc;
 import jlang.sema.Decl.*;
-import jlang.support.*;
+import jlang.support.LangOptions;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
 import jlang.type.*;
 import jlang.type.ArrayType.*;
-import tools.Pair;
-import tools.Util;
+import tools.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.TreeSet;
+import java.util.TreeMap;
 
 import static jlang.sema.ASTContext.FloatingRank.*;
 import static jlang.type.ArrayType.ArraySizeModifier.Normal;
-import static jlang.type.TypeClass.*;
+import static jlang.type.TypeClass.Bool;
+import static jlang.type.TypeClass.ConstantArray;
+import static jlang.type.TypeClass.Double;
+import static jlang.type.TypeClass.Enum;
+import static jlang.type.TypeClass.Float;
+import static jlang.type.TypeClass.FunctionProto;
+import static jlang.type.TypeClass.IncompleteArray;
+import static jlang.type.TypeClass.Int;
+import static jlang.type.TypeClass.Int128;
+import static jlang.type.TypeClass.Long;
+import static jlang.type.TypeClass.LongDouble;
+import static jlang.type.TypeClass.LongLong;
+import static jlang.type.TypeClass.Pointer;
+import static jlang.type.TypeClass.SChar;
+import static jlang.type.TypeClass.Short;
+import static jlang.type.TypeClass.Struct;
+import static jlang.type.TypeClass.TypeDef;
+import static jlang.type.TypeClass.UChar;
+import static jlang.type.TypeClass.UInt;
+import static jlang.type.TypeClass.UInt128;
+import static jlang.type.TypeClass.ULong;
+import static jlang.type.TypeClass.ULongLong;
+import static jlang.type.TypeClass.UShort;
+import static jlang.type.TypeClass.Union;
+import static jlang.type.TypeClass.VariableArray;
+import static jlang.type.TypeClass.Void;
 
 /**
  * @author Xlous.zeng
@@ -46,19 +70,22 @@ import static jlang.type.TypeClass.*;
 public final class ASTContext
 {
     private ArrayList<Type> types = new ArrayList<>();
-    private TreeSet<ComplexType> complexTypes = new TreeSet<>();
-    private TreeSet<PointerType> pointerTypes = new TreeSet<>();
-    private TreeSet<ConstantArrayType> constantArrayTypes = new TreeSet<>();
-    private TreeSet<IncompleteArrayType> incompleteArrayTypes = new TreeSet<>();
-    private TreeSet<VariableArrayType> variableArrayTypes = new TreeSet<>();
-    private TreeSet<FunctionNoProtoType> functionNoProtoTypes = new TreeSet<>();
-    private TreeSet<FunctionProtoType> functionProtoTypes = new TreeSet<>();
+    private TreeMap<Integer, ComplexType> complexTypes = new TreeMap<>();
+    private TreeMap<Integer, PointerType> pointerTypes = new TreeMap<>();
+    private TreeMap<Integer, ConstantArrayType> constantArrayTypes = new TreeMap<>();
+    private TreeMap<Integer, IncompleteArrayType> incompleteArrayTypes = new TreeMap<>();
+    private ArrayList<VariableArrayType> variableArrayTypes = new ArrayList<>();
+    private TreeMap<Integer, FunctionNoProtoType> functionNoProtoTypes = new TreeMap<>();
+    private TreeMap<Integer, FunctionProtoType> functionProtoTypes = new TreeMap<>();
+
+	/**
+	 * A cache mapping from RecordDecls to ASTRecordLayouts.
+	 * This is lazily created.  This is intentionally not serialized.
+	 */
+	private TreeMap<Integer, IncompleteArrayType> IncompleteArrayTypes = new TreeMap<>();
+
     private HashMap<RecordDecl, ASTRecordLayout> astRecordLayoutMap = new HashMap<>();
-    /**
-     * A cache mapping from RecordDecls to ASTRecordLayouts.
-     * This is lazily created.  This is intentionally not serialized.
-     */
-    private TreeSet<IncompleteArrayType> IncompleteArrayTypes = new TreeSet<>();
+
     private SourceManager sourceMgr;
     private TranslationUnitDecl tuDel;
 
@@ -141,41 +168,81 @@ public final class ASTContext
         return res;
     }
 
-    public QualType getComplexType(QualType eltType)
+    public QualType getComplexType(QualType ty)
     {
-        // TODO: 17-5-13
-        return null;
+        int id = ty.hashCode();
+        if (complexTypes.containsKey(id))
+            return new QualType(complexTypes.get(id));
+
+        // If the pointee type isn't canonical, this won't be a canonical type either,
+        // so fill in the canonical type field.
+        QualType canonical = new QualType();
+        if (!ty.isCanonical())
+        {
+            canonical = getPointerType(getCanonicalType(ty));
+        }
+        ComplexType newTy = new ComplexType(ty, canonical);
+        types.add(newTy);
+        complexTypes.put(id, newTy);
+        return new QualType(newTy);
     }
 
 	public QualType getPointerType(QualType ty)
 	{
-		// TODO: 17-5-13
-		return null;
+		int id = ty.hashCode();
+		if (pointerTypes.containsKey(id))
+		    return new QualType(pointerTypes.get(id));
+
+        // If the pointee type isn't canonical, this won't be a canonical type either,
+        // so fill in the canonical type field.
+        QualType canonical = new QualType();
+        if (!ty.isCanonical())
+        {
+            canonical = getPointerType(getCanonicalType(ty));
+        }
+        PointerType newPtr = new PointerType(ty, canonical);
+        types.add(newPtr);
+        pointerTypes.put(id, newPtr);
+        return new QualType(newPtr);
 	}
 
-	/**
-	 * Returns a reference to the type for a variable array of the specified
-	 * element type.
-	 * @param elemTy
-	 * @param numElts
-	 * @return
-	 */
-	public QualType getVariableArrayType(
-			QualType elemTy,
-			Expr numElts,
-			ArraySizeModifier asm,
-			int eltTypeQuals,
-			SourceRange brackets)
-	{
-		VariableArrayType vat = new VariableArrayType(elemTy,
-				numElts, asm, eltTypeQuals, brackets);
-		types.add(vat);
-		return new QualType(vat);
-	}
+	public QualType getConstantArrayType(
+	        QualType eltTy,
+            APInt arraySizeIn,
+            ArraySizeModifier asm,
+            int eltTypeQuals)
+    {
+        assert eltTy.isConstantSizeType() && !eltTy.isIncompleteType():
+                "Constant array of VLAs is illegal";
+
+        // Convert the array size into a canonical width matching the pointer size for
+        // the target.
+        APInt arrSize = new APInt(arraySizeIn);
+        arrSize.zextOrTrunc(target.getPointerWidth(eltTy.getAddressSpace()));
+
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        ConstantArrayType.profile(id, eltTy, arrSize, asm, eltTypeQuals);
+
+        int hash = id.computeHash();
+        if (constantArrayTypes.containsKey(hash))
+            return new QualType(constantArrayTypes.get(hash));
+
+        QualType canonical = new QualType();
+        if (!eltTy.isCanonical())
+        {
+            canonical = getConstantArrayType(getCanonicalType(eltTy), arrSize,
+                    asm, eltTypeQuals);
+        }
+
+        ConstantArrayType cat = new ConstantArrayType(eltTy, canonical,
+                arrSize, asm, eltTypeQuals);
+        constantArrayTypes.put(hash, cat);
+        types.add(cat);
+        return new QualType(cat);
+    }
 
 	/**
-	 * Return a reference to the type for
-	 * an array of the specified element type.
+	 * Return a reference to the type for an array of the specified element type.
 	 * @param eltTy
 	 * @param arraySizeIn
 	 * @param arraySizeExpr
@@ -192,10 +259,15 @@ public final class ASTContext
 			int eltTypeQuals,
 			SourceRange brackets)
 	{
-		APInt arrSize = new APInt(arraySizeIn);
-		arrSize.zextOrTrunc(target.getPointerWidth(0));
+        APInt arrSize = new APInt(arraySizeIn);
+        // Truncate or extending the array size to fit target machine.
+        arrSize.zextOrTrunc(target.getPointerWidth(eltTy.getAddressSpace()));
+        QualType can = getConstantArrayType(getCanonicalType(eltTy), arrSize,
+                asm, eltTypeQuals);
+
 		ConstantArrayWithExprType arr = new ConstantArrayWithExprType(eltTy,
-				arrSize, arraySizeExpr, asm, eltTypeQuals,brackets);
+                can, arrSize, arraySizeExpr, asm, eltTypeQuals,brackets);
+
 		types.add(arr);
 		return new QualType(arr);
 	}
@@ -215,42 +287,66 @@ public final class ASTContext
 			int eltTypeQuals)
 	{
 		APInt arrSize = new APInt(arraySizeIn);
-		arrSize.zextOrTrunc(target.getPointerWidth(0));
+
+        // Truncate or extending the array size to fit target machine.
+		arrSize.zextOrTrunc(target.getPointerWidth(eltTy.getAddressSpace()));
+
+		QualType can = getConstantArrayType(getCanonicalType(eltTy),
+                arraySizeIn, asm, eltTypeQuals);
 
 		ConstantArrayWithoutExprType arr = new ConstantArrayWithoutExprType(
-				eltTy, arraySizeIn, asm, eltTypeQuals);
+				eltTy, can, arraySizeIn, asm, eltTypeQuals);
 		types.add(arr);
-		// TODO: 17-5-13
 		return new QualType(arr);
 	}
 
-	public ConstantArrayType getConstantArrayType(
-			QualType elemTy,
-			final APInt arraySize)
-	{
-		assert elemTy.isIncompleteType()||elemTy.isConstantSizeType()
-				:"Constant array of VLAs is illegal";
-
-		APInt size = new APInt(arraySize);
-		size = size.zextOrTrunc(32);
-		ConstantArrayType New = null;
-		return New;
-
-		// TODO: 17-5-13
-	}
+    /**
+     * Returns a reference to the type for a variable array of the specified
+     * element type.
+     * @param elemTy
+     * @param numElts
+     * @return
+     */
+    public QualType getVariableArrayType(
+            QualType elemTy,
+            Expr numElts,
+            ArraySizeModifier asm,
+            int eltTypeQuals,
+            SourceRange brackets)
+    {
+        VariableArrayType vat = new VariableArrayType(elemTy, new QualType(),
+                numElts, asm, eltTypeQuals, brackets);
+        variableArrayTypes.add(vat);
+        types.add(vat);
+        return new QualType(vat);
+    }
 
 	public QualType getIncompleteArrayType(
-			QualType elemTy,
+			QualType eltTy,
 			ArraySizeModifier sm,
 			int eltTypeQuals)
 	{
-		// TODO: 17-5-13
-		return null;
+        int id = eltTy.hashCode();
+        if (incompleteArrayTypes.containsKey(id))
+            return new QualType(incompleteArrayTypes.get(id));
+
+        // If the pointee type isn't canonical, this won't be a canonical type either,
+        // so fill in the canonical type field.
+        QualType canonical = new QualType();
+        if (!eltTy.isCanonical())
+        {
+            canonical = getPointerType(getCanonicalType(eltTy));
+        }
+        IncompleteArrayType newIP = new IncompleteArrayType(eltTy, canonical,
+                sm, eltTypeQuals);
+
+        types.add(newIP);
+        incompleteArrayTypes.put(id, newIP);
+        return new QualType(newIP);
 	}
 
 	/**
-	 * Return a normal function type with a typed argument
-	 * list.
+	 * Return a normal function type with a typed argument list.
 	 * @param isVariadic Indicates whether the argument list includes '...'.
 	 * @return
 	 */
@@ -258,40 +354,113 @@ public final class ASTContext
 			QualType resultTy,
 			ArrayList<QualType> argTys,
 			boolean isVariadic,
-			int typeQuals)
+			int typeQuals,
+            boolean noReturn)
 	{
-		// TODO: 17-5-13
-		return null;
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        FunctionProtoType.profile(id, resultTy, argTys, isVariadic, noReturn);
+        int hash = id.computeHash();
+        if (functionProtoTypes.containsKey(hash))
+            return new QualType(functionProtoTypes.get(hash));
+
+        boolean isCanonical = resultTy.isCanonical();
+        for (int i = 0,e = argTys.size(); i != e && isCanonical; i++)
+            if (!argTys.get(i).isCanonical())
+                isCanonical = false;
+
+        QualType can = new QualType();
+        if (!isCanonical)
+        {
+            ArrayList<QualType> canonicalArgs = new ArrayList<>();
+            for (QualType arg : argTys)
+                canonicalArgs.add(getCanonicalType(arg));
+
+            can = getFunctionType(getCanonicalType(resultTy), canonicalArgs,
+                    isVariadic, typeQuals, noReturn);
+        }
+
+        FunctionProtoType ftp = new FunctionProtoType(resultTy, argTys, isVariadic,
+                can, noReturn);
+        types.add(ftp);
+        functionProtoTypes.put(hash, ftp);
+		return new QualType(ftp);
 	}
+
+    /**
+     * The variant of {@linkplain #getFunctionType(QualType, ArrayList, boolean, int, boolean)}
+     * with noReturn default to {@code false}.
+     * @param resultTy
+     * @param argTys
+     * @param isVariadic
+     * @param typeQuals
+     * @return
+     */
+    public QualType getFunctionType(
+            QualType resultTy,
+            ArrayList<QualType> argTys,
+            boolean isVariadic,
+            int typeQuals)
+    {
+        return getFunctionType(resultTy, argTys, isVariadic, typeQuals, false);
+    }
 
 	/**
 	 * Return a K&R style C function type like 'int()'.
 	 * @param resultTy
 	 * @return
 	 */
-	public QualType getFunctionNoProtoType(QualType resultTy)
+	public QualType getFunctionNoProtoType(QualType resultTy, boolean noReturn)
 	{
-		// TODO: 17-5-13
-		return null;
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        FunctionNoProtoType.profile(id, resultTy, noReturn);
+        int hash = id.computeHash();
+        if (functionNoProtoTypes.containsKey(hash))
+            return new QualType(functionNoProtoTypes.get(hash));
+
+        QualType can = new QualType();
+        if (!resultTy.isCanonical())
+        {
+            can = getFunctionNoProtoType(getCanonicalType(resultTy), noReturn);
+        }
+
+        FunctionNoProtoType ftp = new FunctionNoProtoType(resultTy, can, noReturn);
+        types.add(ftp);
+        functionNoProtoTypes.put(hash, ftp);
+        return new QualType(ftp);
 	}
 
+    /**
+     * The variant of {@linkplain #getFunctionNoProtoType(QualType, boolean)}
+     * with noReturn default to {@code false}.
+     * @param resultTy
+     * @return
+     */
+    public QualType getFunctionNoProtoType(QualType resultTy)
+    {
+        return getFunctionNoProtoType(resultTy, false);
+    }
+
 	/**
-	 * Returns the probably qualified result of specified array decaying into pointer
-	 * jlang.type.
-	 *
+	 * Return the properly qualified result of decaying the
+     * specified array type to a pointer.  This operation is non-trivial when
+     * handling typedefs etc.  The canonical type of "T" must be an array type,
+     * this returns a pointer to a properly qualified element of the array.
 	 * @param ty
 	 * @return
 	 */
 	public QualType getArrayDecayedType(QualType ty)
 	{
-		final ArrayType arrayType = getAsArrayType(ty);
+        // Get the element type with 'getAsArrayType' so that we don't lose any
+        // typedefs in the element type of the array.  This also handles propagation
+        // of type qualifiers from the array type into the element type if present
+        // (C99 6.7.3p8).
+		ArrayType arrayType = getAsArrayType(ty);
 		assert arrayType != null : "Not an array jlang.type!";
 
 		QualType ptrTy = getPointerType(arrayType.getElemType());
 
 		// int x[restrict 4]-> int *restrict;
-		// TODO unhandle jlang.type qualifier in array getNumOfSubLoop expression.
-		return ptrTy;
+        return ptrTy.getQualifiedType(arrayType.getIndexTypeQuals());
 	}
 
 	/**
@@ -320,7 +489,6 @@ public final class ASTContext
 		QualType cannonical = decl.getUnderlyingType();
 		decl.setTypeForDecl(new TypedefType(TypeClass.TypeDef, decl, cannonical));
 		types.add(decl.getTypeForDecl());
-		// TODO: 17-5-13
 		return new QualType(decl.getTypeForDecl());
 	}
 
@@ -367,21 +535,6 @@ public final class ASTContext
 		return new QualType(decl.getTypeForDecl());
 	}
 
-	/**
-     * Returns the reference to the jlang.type for an array of the specified element jlang.type.
-     * @param elemTy
-     * @param size
-     * @return
-     */
-    public QualType getConstantType(QualType elemTy, APInt size, ArraySizeModifier asm, int tq)
-    {
-        assert elemTy.isIncompleteType()
-                || elemTy.isConstantSizeType():"Constant arrays of VLAs is illegal!";
-
-        ConstantArrayType New = new ConstantArrayType(elemTy, size, asm, tq);
-        return new QualType(New, 0);
-    }
-
 	public QualType getQualifiedType(QualType t, QualType.Qualifier qs)
 	{
 	    return new QualType(t.getType(), qs.mask);
@@ -427,7 +580,8 @@ public final class ASTContext
 		if (aty instanceof ConstantArrayType)
 		{
 			ConstantArrayType cat = (ConstantArrayType)aty;
-			return getConstantArrayType(newElemTy, cat.getSize());
+			return (ArrayType) getConstantArrayType(newElemTy, cat.getSize(),
+                    cat.getSizeModifier(), cat.getIndexTypeQuals()).getType();
 		}
 
 		if (aty instanceof IncompleteArrayType)
@@ -570,10 +724,12 @@ public final class ASTContext
 					return rhs;
 
 				if (lcat != null)
-					return new QualType(getConstantArrayType(resultType, lcat.getSize()));
+					return getConstantArrayType(resultType, lcat.getSize(),
+                            lcat.getSizeModifier(), lcat.getIndexTypeQuals());
 
 				if (rcat != null)
-					return new QualType(getConstantArrayType(resultType, rcat.getSize()));
+					return getConstantArrayType(resultType, rcat.getSize(),
+                            rcat.getSizeModifier(), rcat.getIndexTypeQuals());
 
 				VariableArrayType lvat = getAsVariableArrayType(lhs);
 				VariableArrayType rvat = getAsVariableArrayType(rhs);
@@ -1023,7 +1179,8 @@ public final class ASTContext
 		if (at instanceof ConstantArrayType)
 		{
 			ConstantArrayType cat = (ConstantArrayType )at;
-			return new QualType(getConstantArrayType(newEltTy, cat.getSize()));
+			return getConstantArrayType(newEltTy, cat.getSize(),
+                    cat.getSizeModifier(), cat.getIndexTypeQuals());
 		}
 
 		if (at instanceof IncompleteArrayType)

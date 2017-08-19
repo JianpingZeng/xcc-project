@@ -6,7 +6,7 @@ import jlang.support.PrintingPolicy;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class ComplexType extends Type
+public final class ComplexType extends Type implements FoldingSetNode
 {
     private QualType elementType;
 
@@ -31,5 +31,32 @@ public final class ComplexType extends Type
     public String getAsStringInternal(String inner, PrintingPolicy policy)
     {
         return "_Complex" + elementType.getAsStringInternal(inner, policy);
+    }
+
+    @Override
+    public void profile(FoldingSetNodeID id)
+    {
+        id.addInteger(elementType.hashCode());
+    }
+
+    @Override
+    public int hashCode()
+    {
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        profile(id);
+        return id.computeHash();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (obj == this)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+        ComplexType ty = (ComplexType)obj;
+        return ty.hashCode() == hashCode();
     }
 }

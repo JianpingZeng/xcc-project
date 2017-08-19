@@ -48,10 +48,11 @@ public interface TypeClass
     int Union = Struct + 1;
     int Enum = Union + 1;
     int TypeDef = Enum + 1;
+    int TypeOfExpr = TypeDef + 1;
     /**
      * The tc of the missing jlang.type.
      */
-    int None = TypeDef + 1;
+    int None = TypeOfExpr + 1;
 
     int Label = None + 1;
     
