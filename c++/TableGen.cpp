@@ -43,8 +43,9 @@ static JNIEnv* createVM(char* cmdPath)
 
 	string path(dir, end);
 	path += "/lib";
-	path = "-Djava.class.path=" + path;
-	options[0].optionString = (char *)path.c_str();
+	string cp = path + "/trove-3.0.3-jar:" + path + "/xcc-0.1.jar:.";
+	cp = "-Djava.class.path=" + cp;
+	options[0].optionString = (char *)cp.c_str();
 	args.options = options;
 	args.ignoreUnrecognized = JNI_FALSE;
 
