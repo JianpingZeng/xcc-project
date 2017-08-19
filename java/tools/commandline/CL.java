@@ -787,7 +787,11 @@ public final class CL
             out.println("OPTIONS:");
 
             // Print out each options into console.
-            opts.forEach(opt->opt.second.printOptionInfo(maxArgLen));
+            for (int i = 0, e = opts.size(); i != e; i++)
+            {
+                opts.get(i).second.printOptionInfo(maxArgLen);
+            }
+            //opts.forEach(opt->opt.second.printOptionInfo(maxArgLen));
 
             // Halt the program since help information was printed out.
             System.exit(1);

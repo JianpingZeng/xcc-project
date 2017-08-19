@@ -17,9 +17,11 @@ package tools.commandline;
  */
 
 import tools.OutParamWrapper;
+import tools.Util;
 
 import java.util.ArrayList;
 
+import static java.lang.System.out;
 import static tools.commandline.ValueExpected.ValueRequired;
 
 /**
@@ -34,6 +36,12 @@ public interface ParserInterface<T>
             String optName, String arg,
             OutParamWrapper<T> val);
 
+    int getNumOptions();
+
+    String getOption(int index);
+
+    String getDescription(int index);
+
     default String getValueStr(Option<?> opt, String defaultMsg)
     {
         if (opt.value == null)
@@ -47,11 +55,30 @@ public interface ParserInterface<T>
      */
     default int getOptionWidth(Option<?> opt)
     {
-        int len = opt.optionName.length();
-        String valName = getValueName();
-        if (valName != null)
-            len += getValueStr(opt, valName).length();
-        return len + 6;
+        if (opt.hasOptionName())
+        {
+            int size = opt.optionName.length() + 6;
+            if (opt.valueStr != null && !opt.valueStr.isEmpty())
+                size += opt.valueStr.length() + 6;
+
+            for (int i = 0, e = getNumOptions(); i != e; i++)
+            {
+                size = Math.max(size, getOption(i).length() + 8);
+            }
+            return size;
+        }
+        else
+        {
+            int basesize = 0;
+            if (opt.valueStr != null && !opt.valueStr.isEmpty())
+                basesize += opt.valueStr.length() + 6;
+
+            for (int i = 0, e = getNumOptions(); i != e; i++)
+            {
+                basesize = Math.max(basesize, getOption(i).length() + 8);
+            }
+            return basesize;
+        }
     }
 
     /**
@@ -61,15 +88,41 @@ public interface ParserInterface<T>
      */
     default void printOptionInfo(Option<?> opt, int globalWidth)
     {
-        System.out.printf("  -%s", opt.optionName);
+        if (opt.hasOptionName())
+        {
+            int l = opt.optionName.length();
+            out.printf("  -%s", opt.optionName);
+            int valStrLen = 0;
+            if (opt.valueStr != null && !opt.valueStr.isEmpty())
+            {
+                out.printf("=<%s>", opt.valueStr);
+                valStrLen = opt.valueStr.length()+3;
+            }
 
-        String valueName = getValueName();
-        if (valueName != null)
-            System.out.printf("=<%s>", getValueStr(opt, valueName));
+            out.printf("%s - %s\n",
+                    Util.fixedLengthString(globalWidth-l-valStrLen-6, ' '),
+                    opt.helpStr);
+            for (int i = 0, e = getNumOptions(); i != e; i++)
+            {
+                int numSpaces = globalWidth - getOption(i).length() - 8;
+                out.printf("    =%s%s -  %s\n", getOption(i),
+                        Util.fixedLengthString(numSpaces, ' '),
+                        getDescription(i));
+            }
+        }
+        else
+        {
+            if (opt.helpStr!= null && !opt.helpStr.isEmpty())
+                out.printf("  %s\n", opt.helpStr);
 
-        System.out.printf("%s - %s\n",
-                String.format("%1$" + (globalWidth - getOptionWidth(opt)) + "s", ' '),
-                opt.helpStr);
+            for (int i = 0, e = getNumOptions(); i != e; i++)
+            {
+                int numSpaces = globalWidth - getOption(i).length() - 8;
+                out.printf("    -%s%s - %s\n", getOption(i),
+                        Util.fixedLengthString(numSpaces, ' '),
+                        getDescription(i));
+            }
+        }
     }
 
     <T> void initialize(Option<T> opt);

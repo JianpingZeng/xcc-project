@@ -83,15 +83,7 @@ public class ListOpt<T> extends Option<T> implements List<T>
     @Override
     public void printOptionInfo(int globalWidth)
     {
-        System.out.printf("  -%s", optionName);
-        String temp =values.toString();
-        int len = temp.length();
-
-        String valueName = isEmpty() ? getValueStr() == null ? parser.getValueName()
-                : getValueStr() : temp.substring(1, len-1);
-        System.out.printf("=<%s>", valueName);
-        System.out.printf("%s - %s\n",
-                String.format("%1$" + (globalWidth - getOptionWidth()) + "s", ' '), helpStr);
+        parser.printOptionInfo(this, globalWidth);
     }
 
     @Override
