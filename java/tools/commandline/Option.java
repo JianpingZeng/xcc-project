@@ -68,7 +68,7 @@ public abstract class Option<T>
      */
     public String optionName;
     /**
-     * The description text for this option which would be printed out when user
+     * The text text for this option which would be printed out when user
      * type "-help" argument from command line.
      */
     public String helpStr;

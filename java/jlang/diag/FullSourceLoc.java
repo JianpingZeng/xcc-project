@@ -126,8 +126,8 @@ public class FullSourceLoc extends SourceLocation
         if (obj.getClass() != getClass())
             return false;
         FullSourceLoc loc = (FullSourceLoc)obj;
-        return getRawEncoding() == loc.getRawEncoding()
-                && sourceMgr.equals(loc.sourceMgr);
+        return getRawEncoding() == loc.getRawEncoding() &&
+                (sourceMgr == loc.sourceMgr || sourceMgr.equals(loc.sourceMgr));
     }
 
     @Override

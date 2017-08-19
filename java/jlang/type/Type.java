@@ -145,7 +145,7 @@ public abstract class Type implements TypeClass
 
         // A pointer can point to a variably modified type.
         if (this instanceof PointerType)
-            return ((PointerType)this).getPointeeType().isVariablyModifiedType();
+            return getPointeeType().isVariablyModifiedType();
 
         // A function can return a variably modified type
         // This one isn't completely obvious, but it follows from the
@@ -169,7 +169,14 @@ public abstract class Type implements TypeClass
             return ((ArrayType)this).getElemType().getType();
 
         if (!(canonicalType.getType() instanceof ArrayType))
-            return ((ArrayType)canonicalType.getType()).getElemType().getType();
+        {
+            Type t = canonicalType.getUnQualifiedType().getType();
+            if (t instanceof ArrayType)
+            {
+                return ((ArrayType)t).getElemType().getType();
+            }
+            return null;
+        }
 
         // If this is a typedef for an array type, strip the typedef off without
         // losing all typedef information.
@@ -439,10 +446,15 @@ public abstract class Type implements TypeClass
         if (this instanceof FunctionType)
             return (FunctionType) this;
 
+        if (!(canonicalType.getType() instanceof FunctionType))
+        {
+            if (canonicalType.getUnQualifiedType().getType() instanceof FunctionType)
+                return canonicalType.getUnQualifiedType().getAsFunctionType();
+            return null;
+        }
+
         QualType ty = getDesugaredType();
-        if (ty.getType().canonicalType.getType() instanceof BuiltinType)
-            return (FunctionType) ty.getType().canonicalType.getType();
-        return null;
+        return (FunctionType)ty.getType();
     }
 
     public FunctionNoProtoType getAsFunctionNoProtoType()

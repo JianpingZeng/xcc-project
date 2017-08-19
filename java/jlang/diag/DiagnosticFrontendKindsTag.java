@@ -16,61 +16,63 @@ package jlang.diag;
  * permissions and limitations under the License.
  */
 
+import static jlang.diag.Diagnostic.DiagnosticFrontendBegin;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
 public interface DiagnosticFrontendKindsTag
 {
-    public static final int err_fe_error_backend = 0;
-    public static final int err_fe_error_reading = 1;
-    public static final int err_fe_error_reading_stdin = 2;
-    public static final int err_fe_unknown_triple = 3;
-    public static final int err_not_a_pch_file = 4;
-    public static final int err_relocatable_without_without_isysroot = 5;
-    public static final int note_fixit_applied = 6;
-    public static final int note_fixit_failed = 7;
-    public static final int note_fixit_in_macro = 8;
-    public static final int note_fixit_unfixed_error = 9;
-    public static final int note_pch_macro_defined_as = 10;
-    public static final int note_using_macro_def_from_pch = 11;
-    public static final int warn_cmdline_conflicting_macro_def = 12;
-    public static final int warn_cmdline_missing_macro_defs = 13;
-    public static final int warn_fixit_no_changes = 14;
-    public static final int warn_macro_name_used_in_pch = 15;
-    public static final int warn_pch_access_control = 16;
-    public static final int warn_pch_altivec = 17;
-    public static final int warn_pch_blocks = 17;
-    public static final int warn_pch_builtins = 19;
-    public static final int warn_pch_c99 = 20;
-    public static final int warn_pch_char_signed = 21;
-    public static final int warn_pch_compiler_options_mismatch = 22;
-    public static final int warn_pch_cplusplus = 23;
-    public static final int warn_pch_cplusplus0x = 24;
-    public static final int warn_pch_exceptions = 25;
-    public static final int warn_pch_extensions = 26;
-    public static final int warn_pch_freestanding = 27;
-    public static final int warn_pch_gc_mode = 28;
-    public static final int warn_pch_gnu_extensions = 29;
-    public static final int warn_pch_gnu_inline = 30;
-    public static final int warn_pch_heinous_extensions = 31;
-    public static final int warn_pch_lax_vector_conversions = 32;
-    public static final int warn_pch_math_errno = 33;
-    public static final int warn_pch_microsoft_extensions = 34;
-    public static final int warn_pch_no_inline = 35;
-    public static final int warn_pch_nonfragile_abi = 36;
-    public static final int warn_pch_objc_runtime = 37;
-    public static final int warn_pch_objective_c = 38;
-    public static final int warn_pch_objective_c2 = 39;
-    public static final int warn_pch_opencl = 40;
-    public static final int warn_pch_optimize = 41;
-    public static final int warn_pch_optimize_size = 42;
-    public static final int warn_pch_overflow_checking = 43;
-    public static final int warn_pch_pic_level = 44;
-    public static final int warn_pch_static = 45;
-    public static final int warn_pch_target_triple = 46;
-    public static final int warn_pch_thread_safe_statics = 47;
-    public static final int warn_pch_version_too_new = 48;
-    public static final int warn_pch_version_too_old = 49;
-    public static final int warn_unknown_warning_option = 50;
+    public static final int err_fe_error_backend = DiagnosticFrontendBegin;
+    public static final int err_fe_error_reading = err_fe_error_backend + 1;
+    public static final int err_fe_error_reading_stdin = err_fe_error_reading + 1;
+    public static final int err_fe_unknown_triple = err_fe_error_reading_stdin + 1;
+    public static final int err_not_a_pch_file = err_fe_unknown_triple + 1;
+    public static final int err_relocatable_without_without_isysroot = err_not_a_pch_file + 1;
+    public static final int note_fixit_applied = err_relocatable_without_without_isysroot + 1;
+    public static final int note_fixit_failed = note_fixit_applied + 1;
+    public static final int note_fixit_in_macro = note_fixit_failed + 1;
+    public static final int note_fixit_unfixed_error = note_fixit_in_macro + 1;
+    public static final int note_pch_macro_defined_as = note_fixit_unfixed_error + 1;
+    public static final int note_using_macro_def_from_pch = note_pch_macro_defined_as + 1;
+    public static final int warn_cmdline_conflicting_macro_def = note_using_macro_def_from_pch + 1;
+    public static final int warn_cmdline_missing_macro_defs = warn_cmdline_conflicting_macro_def + 1;
+    public static final int warn_fixit_no_changes = warn_cmdline_missing_macro_defs + 1;
+    public static final int warn_macro_name_used_in_pch = warn_fixit_no_changes + 1;
+    public static final int warn_pch_access_control = warn_macro_name_used_in_pch + 1;
+    public static final int warn_pch_altivec = warn_pch_access_control + 1;
+    public static final int warn_pch_blocks = warn_pch_altivec + 1;
+    public static final int warn_pch_builtins = warn_pch_blocks + 1;
+    public static final int warn_pch_c99 = warn_pch_builtins + 1;
+    public static final int warn_pch_char_signed = warn_pch_c99 + 1;
+    public static final int warn_pch_compiler_options_mismatch = warn_pch_char_signed + 1;
+    public static final int warn_pch_cplusplus = warn_pch_compiler_options_mismatch + 1;
+    public static final int warn_pch_cplusplus0x = warn_pch_cplusplus + 1;
+    public static final int warn_pch_exceptions = warn_pch_cplusplus0x + 1;
+    public static final int warn_pch_extensions = warn_pch_exceptions + 1;
+    public static final int warn_pch_freestanding = warn_pch_extensions + 1;
+    public static final int warn_pch_gc_mode = warn_pch_freestanding + 1;
+    public static final int warn_pch_gnu_extensions = warn_pch_gc_mode + 1;
+    public static final int warn_pch_gnu_inline = warn_pch_gnu_extensions + 1;
+    public static final int warn_pch_heinous_extensions = warn_pch_gnu_inline + 1;
+    public static final int warn_pch_lax_vector_conversions = warn_pch_heinous_extensions + 1;
+    public static final int warn_pch_math_errno = warn_pch_lax_vector_conversions + 1;
+    public static final int warn_pch_microsoft_extensions = warn_pch_math_errno + 1;
+    public static final int warn_pch_no_inline = warn_pch_microsoft_extensions + 1;
+    public static final int warn_pch_nonfragile_abi = warn_pch_no_inline + 1;
+    public static final int warn_pch_objc_runtime = warn_pch_nonfragile_abi + 1;
+    public static final int warn_pch_objective_c = warn_pch_objc_runtime + 1;
+    public static final int warn_pch_objective_c2 = warn_pch_objective_c + 1;
+    public static final int warn_pch_opencl = warn_pch_objective_c2 + 1;
+    public static final int warn_pch_optimize = warn_pch_opencl + 1;
+    public static final int warn_pch_optimize_size = warn_pch_optimize + 1;
+    public static final int warn_pch_overflow_checking = warn_pch_optimize_size + 1;
+    public static final int warn_pch_pic_level = warn_pch_overflow_checking + 1;
+    public static final int warn_pch_static = warn_pch_pic_level + 1;
+    public static final int warn_pch_target_triple = warn_pch_static + 1;
+    public static final int warn_pch_thread_safe_statics = warn_pch_target_triple + 1;
+    public static final int warn_pch_version_too_new = warn_pch_thread_safe_statics + 1;
+    public static final int warn_pch_version_too_old = warn_pch_version_too_new + 1;
+    public static final int warn_unknown_warning_option = warn_pch_version_too_old;
 }

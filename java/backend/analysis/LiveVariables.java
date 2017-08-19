@@ -119,7 +119,7 @@ public final class LiveVariables extends MachineFunctionPass
     }
 
     /**
-     * This list is mapping from the virtual register number to variable information.
+     * This list is diagMapping from the virtual register number to variable information.
      * {@linkplain TargetRegisterInfo#FirstVirtualRegister} is subtracted from
      * virtual register numbe before indexing into this list.
      *

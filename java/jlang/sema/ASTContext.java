@@ -79,7 +79,7 @@ public final class ASTContext
     private TreeMap<Integer, FunctionProtoType> functionProtoTypes = new TreeMap<>();
 
 	/**
-	 * A cache mapping from RecordDecls to ASTRecordLayouts.
+	 * A cache diagMapping from RecordDecls to ASTRecordLayouts.
 	 * This is lazily created.  This is intentionally not serialized.
 	 */
 	private TreeMap<Integer, IncompleteArrayType> IncompleteArrayTypes = new TreeMap<>();

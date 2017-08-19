@@ -617,7 +617,7 @@ public class Lexer extends PreprocessorLexer
 
     /**
      * If lexing out of a 'mapped buffer', where we pretend the
-     * lexer buffer was all instantiated at a single point, perform the mapping.
+     * lexer buffer was all instantiated at a single point, perform the diagMapping.
      * This is currently only used for _Pragma implementation, so it is the slow
      * path of the hot getSourceLocation method.  Do not allow it to be inlined.
      *
@@ -1601,11 +1601,11 @@ public class Lexer extends PreprocessorLexer
             case '\0':
             {
                 // Null.
-                if (curPos - 1 == buffer.length)
+                if (curPos == buffer.length)
                 {
                     Preprocessor ppcache = pp;
                     // Retreat back into the file.
-                    if (lexEndOfFile(result, curPos - 1))
+                    if (lexEndOfFile(result, curPos - 2))
                         return;   // Got a token to return.
                     assert ppcache!= null:"Raw buffer::LexEndOfFile should return a token";
                     ppcache.lex(result);

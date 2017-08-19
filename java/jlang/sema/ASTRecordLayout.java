@@ -99,7 +99,7 @@ public final class ASTRecordLayout
     }
 
     /**
-     * A cache mapping from already parsed RecordDecl to its corresponding
+     * A cache diagMapping from already parsed RecordDecl to its corresponding
      * ASTRecordLayout.
      */
     private static HashMap<RecordDecl, ASTRecordLayout> recordLayouts

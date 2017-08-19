@@ -39,7 +39,7 @@ public class CustomDiagInfo
     }
 
     /**
-     * Return the description of the specified custom diagnostic.
+     * Return the text of the specified custom diagnostic.
      * @param diagID
      * @return
      */

@@ -103,7 +103,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
     private MachineBasicBlock mbb;
     private TargetMachine tm;
     /**
-     * keeps track of mapping ST(x) (phyReg) to FP<n>(virReg) .
+     * keeps track of diagMapping ST(x) (phyReg) to FP<n>(virReg) .
      *
     private int[] stack;
     /**

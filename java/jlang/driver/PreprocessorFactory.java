@@ -110,6 +110,9 @@ class PreprocessorFactory
 
         // Append a line terminator into predefinedBuffer.
         predefinedBuffer.append('\n');
+
+        // Append a '\0' to indicate end of file.
+        predefinedBuffer.append('\0');
         pp.setPredefines(predefinedBuffer.toString());
         // Once we are reaching this, done!
         return false;

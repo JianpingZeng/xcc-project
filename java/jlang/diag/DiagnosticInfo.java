@@ -103,7 +103,7 @@ public final class DiagnosticInfo
             if (diagStr.charAt(i) != '%')
             {
                 // Append non-%0 substrings to Str if we have one.
-                int strEnd = diagStr.indexOf('$');
+                int strEnd = diagStr.indexOf('%', i);
                 if (strEnd < 0)
                     strEnd = e;
                 outStr.append(diagStr.substring(i, strEnd));
@@ -112,7 +112,7 @@ public final class DiagnosticInfo
             }
             else if (diagStr.charAt(i + 1) == '%')
             {
-                outStr.append('$');  // %% -> %.
+                outStr.append('%');  // %% -> %.
                 i += 2;
                 continue;
             }
