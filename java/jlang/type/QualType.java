@@ -14,33 +14,13 @@ import static jlang.type.ArrayType.VariableArrayType.appendTypeQualList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class QualType implements Cloneable
+public final class QualType implements Cloneable, FoldingSetNode
 {
     public static final int CONST_QUALIFIER = 0x1;
     public static final int VOLATILE_QUALIFIER = 0x2;
     public static final int RESTRICT_QUALIFIER = 0x4;
     private static final int MASK =
             CONST_QUALIFIER | VOLATILE_QUALIFIER | RESTRICT_QUALIFIER;
-
-    public int getAddressSpace()
-    {
-        QualType ct = getType().getCanonicalTypeInternal();
-        if (ct.isArrayType())
-            return ((ArrayType)ct.getType()).getElemType().getAddressSpace();
-        if (ct.isRecordType())
-            return ((RecordType)ct.getType()).getAddressSpace();
-        return 0;
-    }
-
-    public boolean isConstant(ASTContext ctx)
-    {
-        if (isConstQualifed())
-            return true;
-        if (getType().isArrayType())
-            return ctx.getAsArrayType(this).getElemType().isConstant(ctx);
-
-        return false;
-    }
 
     public static class Qualifier
     {
@@ -233,18 +213,6 @@ public final class QualType implements Cloneable
         QualType ty = clone();
         ty.qualsFlag.removeCVQualified(MASK);
         return ty;
-    }
-
-    @Override
-    public boolean equals(Object t1)
-    {
-        if (t1 == null) return false;
-        if (t1 == this) return true;
-        if (!(t1 instanceof QualType))
-            return false;
-
-        QualType temp = (QualType)t1;
-        return temp.type.equals(type);
     }
 
     public boolean isCForbiddenLVaue()
@@ -639,9 +607,52 @@ public final class QualType implements Cloneable
         return type.getTypeClass();
     }
 
+
+    public int getAddressSpace()
+    {
+        QualType ct = getType().getCanonicalTypeInternal();
+        if (ct.isArrayType())
+            return ((ArrayType)ct.getType()).getElemType().getAddressSpace();
+        if (ct.isRecordType())
+            return ((RecordType)ct.getType()).getAddressSpace();
+        return 0;
+    }
+
+    public boolean isConstant(ASTContext ctx)
+    {
+        if (isConstQualifed())
+            return true;
+        if (getType().isArrayType())
+            return ctx.getAsArrayType(this).getElemType().isConstant(ctx);
+
+        return false;
+    }
+
+    @Override
+    public void profile(FoldingSetNodeID id)
+    {
+        id.addInteger(getCVRQualifiers());
+        id.addInteger(type.hashCode());
+    }
+
     @Override
     public int hashCode()
     {
-        return getCVRQualifiers() << 11 + type.hashCode();
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        profile(id);
+        return id.computeHash();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+        QualType ty = (QualType)obj;
+        return ty.hashCode() == hashCode();
     }
 }

@@ -12,7 +12,7 @@ import tools.APInt;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class ArrayType extends Type
+public abstract class ArrayType extends Type implements FoldingSetNode
 {
     /**
      * Capture whether this is a normal array (e.g. int X[10]),
@@ -42,9 +42,14 @@ public abstract class ArrayType extends Type
      * Constructor with one parameter which represents the kind of jlang.type
      * for reason of comparison convenient.
      */
-    public ArrayType(int tc, QualType elemTy, ArraySizeModifier sm, int tq)
+    public ArrayType(
+            int tc,
+            QualType elemTy,
+            QualType can,
+            ArraySizeModifier sm,
+            int tq)
     {
-        super(tc);
+        super(tc, can);
         elemType = elemTy;
         sizeModifier = sm;
         indexTypeQuals = tq;
@@ -65,7 +70,6 @@ public abstract class ArrayType extends Type
         return indexTypeQuals;
     }
 
-
     /**
      * This class represents the canonical version of C arrays with a specified
      * constant getTypeSize or not.  For example, the canonical jlang.type for 'int A[4 + 4*100]'
@@ -73,7 +77,7 @@ public abstract class ArrayType extends Type
      * 404, or or 'int A[]' has an IncompleteArrayType where the element jlang.type is
      * 'int' and the getTypeSize is unspecified.
      */
-    public static class ConstantArrayType extends jlang.type.ArrayType
+    public static class ConstantArrayType extends jlang.type.ArrayType implements FoldingSetNode
     {
         private APInt size;
 
@@ -83,9 +87,14 @@ public abstract class ArrayType extends Type
          *
          * @param elemTy
          */
-        public ConstantArrayType(QualType elemTy, APInt length, ArraySizeModifier asm, int tq)
+        public ConstantArrayType(
+                QualType elemTy,
+                QualType can,
+                APInt length,
+                ArraySizeModifier asm,
+                int tq)
         {
-            super(ConstantArray, elemTy, asm, tq);
+            super(ConstantArray, elemTy, can, asm, tq);
             //assert getSize.ult(0) : "The getSize for array must greater than zero!";
             size = length;
         }
@@ -103,6 +112,49 @@ public abstract class ArrayType extends Type
             inner += ']';
             return getElemType().getAsStringInternal(inner, policy);
         }
+
+        @Override
+        public void profile(FoldingSetNodeID id)
+        {
+            id.addInteger(getElemType().hashCode());
+            id.addInteger(getSize().getZExtValue());
+            id.addInteger(getSizeModifier().ordinal());
+            id.addInteger(getIndexTypeQuals());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            FoldingSetNodeID id = new FoldingSetNodeID();
+            profile(id);
+            return id.computeHash();
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null)
+                return false;
+            if (this == obj)
+                return true;
+            if (getClass() != obj.getClass())
+                return false;
+
+            ConstantArrayType ft = (ConstantArrayType)obj;
+            return ft.hashCode() == hashCode();
+        }
+
+        public static void profile(FoldingSetNodeID id,
+                QualType eltTy,
+                APInt arySize,
+                ArraySizeModifier asm,
+                int eltTypeQuals)
+        {
+            id.addInteger(eltTy.hashCode());
+            id.addInteger(arySize.getZExtValue());
+            id.addInteger(asm.ordinal());
+            id.addInteger(eltTypeQuals);
+        }
     }
 
     /**
@@ -118,13 +170,14 @@ public abstract class ArrayType extends Type
 
         public ConstantArrayWithExprType(
                 QualType elemTy,
+                QualType can,
                 APInt length,
                 Expr numElts,
                 ArraySizeModifier asm,
                 int tq,
                 SourceRange brackets)
         {
-            super(elemTy, length, asm, tq);
+            super(elemTy, can, length, asm, tq);
             sizeExpr = numElts;
             this.brackets = brackets;
         }
@@ -154,6 +207,12 @@ public abstract class ArrayType extends Type
         {
             return super.getAsStringInternal(inner, policy);
         }
+
+        @Override
+        public void profile(FoldingSetNodeID id)
+        {
+            assert false:"Cannot unique ConstantArrayWithExprTypes";
+        }
     }
 
     /**
@@ -168,11 +227,12 @@ public abstract class ArrayType extends Type
     {
         public ConstantArrayWithoutExprType(
                 QualType elemTy,
+                QualType can,
                 APInt length,
                 ArraySizeModifier asm,
                 int tq)
         {
-            super(elemTy, length, asm, tq);
+            super(elemTy, can, length, asm, tq);
         }
 
         @Override
@@ -184,6 +244,12 @@ public abstract class ArrayType extends Type
                 return getElemType().getAsStringInternal(inner, policy);
             }
             return super.getAsStringInternal(inner, policy);
+        }
+
+        @Override
+        public void profile(FoldingSetNodeID id)
+        {
+            assert false:"Cannot unique ConstantArrayWithoutExprTypes";
         }
     }
 
@@ -223,12 +289,13 @@ public abstract class ArrayType extends Type
          */
         public VariableArrayType(
                 QualType elemTy,
+                QualType can,
                 Expr sizeExpr,
                 ArraySizeModifier asm,
                 int tq,
                 SourceRange brackets)
         {
-            super(VariableArray, elemTy, asm, tq);
+            super(VariableArray, elemTy, can, asm, tq);
             this.sizeExpr = sizeExpr;
             this.brackets = brackets;
         }
@@ -291,6 +358,12 @@ public abstract class ArrayType extends Type
             inner += ']';
             return getElemType().getAsStringInternal(inner, policy);
         }
+
+        @Override
+        public void profile(FoldingSetNodeID id)
+        {
+            assert false:"Cannot unique VaraibleArrayTypes.";
+        }
     }
 
     /**
@@ -306,9 +379,9 @@ public abstract class ArrayType extends Type
          *
          * @param elementType
          */
-        public IncompleteArrayType(QualType elementType, ArraySizeModifier asm, int tq)
+        public IncompleteArrayType(QualType elementType, QualType can, ArraySizeModifier asm, int tq)
         {
-            super(IncompleteArray, elementType, asm, tq);
+            super(IncompleteArray, elementType, can, asm, tq);
         }
 
         @Override
@@ -316,6 +389,35 @@ public abstract class ArrayType extends Type
         {
             inner += "[]";
             return getElemType().getAsStringInternal(inner, policy);
+        }
+
+        @Override
+        public void profile(FoldingSetNodeID id)
+        {
+            id.addInteger(getElemType().hashCode());
+            id.addInteger(getSizeModifier().ordinal());
+            id.addInteger(getIndexTypeQuals());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            FoldingSetNodeID id = new FoldingSetNodeID();
+            profile(id);
+            return id.computeHash();
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null)
+                return false;
+            if (this == obj)
+                return true;
+            if (getClass() != obj.getClass())
+                return false;
+            IncompleteArrayType ca = (IncompleteArrayType)obj;
+            return ca.hashCode() == hashCode();
         }
     }
 }

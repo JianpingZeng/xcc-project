@@ -26,7 +26,7 @@ import java.util.ArrayList;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class FunctionProtoType extends FunctionType
+public final class FunctionProtoType extends FunctionType implements FoldingSetNode
 {
     private boolean isVariadic;
     private QualType[] argInfo;
@@ -39,8 +39,12 @@ public final class FunctionProtoType extends FunctionType
      *                   function body.
      * @param isVarArgs  indicates if it is variable parameter list.
      */
-    public FunctionProtoType(QualType returnType, ArrayList<QualType> paramTypes,
-            boolean isVarArgs, QualType canonical, boolean noReturn)
+    public FunctionProtoType(
+            QualType returnType,
+            ArrayList<QualType> paramTypes,
+            boolean isVarArgs,
+            QualType canonical,
+            boolean noReturn)
     {
         super(FunctionProto, returnType, canonical, noReturn);
         isVariadic = isVarArgs;
@@ -95,5 +99,50 @@ public final class FunctionProtoType extends FunctionType
         if (getNoReturnAttr())
             inner += "__attribute__((noreturn))";
         return getResultType().getAsStringInternal(inner, policy);
+    }
+
+    @Override
+    public void profile(FoldingSetNodeID id)
+    {
+        id.addInteger(getResultType().hashCode());
+        for (int i = 0, e = getNumArgs(); i != e; i++)
+            id.addInteger(getArgType(i).hashCode());
+        id.addInteger(isVariadic?1:0);
+        id.addInteger(getNoReturnAttr()?1:0);
+    }
+
+    public static void profile(FoldingSetNodeID id,
+            QualType resultTy,
+            ArrayList<QualType> argTys,
+            boolean isVariadic,
+            boolean noReturn)
+    {
+        id.addInteger(resultTy.hashCode());
+        for (QualType argTy : argTys)
+            id.addInteger(argTy.hashCode());
+        id.addInteger(isVariadic?1:0);
+        id.addInteger(noReturn?1:0);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        profile(id);
+        return id.computeHash();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+
+        FunctionProtoType ft = (FunctionProtoType)obj;
+        return ft.hashCode() == hashCode();
     }
 }
