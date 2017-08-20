@@ -23,7 +23,7 @@ package jlang;
 
 /**
  * I implements this project in term of {@linkplain http://clang.llvm.org/ Clang},
- * so it is named of {@code Jlang} to acknowledge LLVM and Clang open source
+ * so it is named of {@code JlangCC} to acknowledge LLVM and Clang open source
  * project.
  * </p>
  * This package defines a collection of classes were served as performing

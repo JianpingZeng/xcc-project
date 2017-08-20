@@ -1,16 +1,18 @@
 package xcc;
 
-public class Main
+import jlang.driver.JlangCC;
+
+public class Jlang
 {
-    public Main()
+    public Jlang()
     {
         super();
     }
     static
     {
-        ClassLoader loader = Main.class.getClassLoader();
+        ClassLoader loader = Jlang.class.getClassLoader();
         if (loader != null)
-            loader.setPackageAssertionStatus(jlang.driver.Jlang.NAME, true);
+            loader.setPackageAssertionStatus(JlangCC.NAME, true);
     }
 
     /**
@@ -28,7 +30,7 @@ public class Main
       */
     public static int compile(String[] args)
     {
-		jlang.driver.Jlang compiler = new jlang.driver.Jlang();
+		JlangCC compiler = new JlangCC();
         try
         {
             return compiler.compile(args);

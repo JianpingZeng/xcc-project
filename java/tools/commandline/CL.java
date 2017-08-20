@@ -22,6 +22,7 @@ import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
 
+import java.io.File;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -68,7 +69,25 @@ public final class CL
         optionListChanged = true;
     }
 
+    /**
+     * A entry to {@linkplain #parseCommandLineOptions(String[], String)} with
+     * empty overview string.
+     * @param args
+     * @throws Exception
+     */
     public static void parseCommandLineOptions(String[] args) throws Exception
+    {
+        parseCommandLineOptions(args, "");
+    }
+
+    /**
+     * Before Calling this method, must make sure that the first argument
+     * is the name of executable file calling this Java Main Program (It usually
+     * be a C/C++ native program name).
+     * @param args
+     * @throws Exception
+     */
+    public static void parseCommandLineOptions(String[] args, String overview) throws Exception
     {
         ArrayList<Option> positionalOpts = new ArrayList<>();
         ArrayList<Option> sinkOpts = new ArrayList<>();
@@ -80,6 +99,20 @@ public final class CL
         assert !(optionsMap.isEmpty() && positionalOpts
                 .isEmpty()) : "No options specified";
 
+        // Copy the program name into ProgName, making sure not to overflow it.
+        if (args[0].equals("launcher"))
+        {
+            // Note that:
+            // Set the first argument as 'launcher' to inform the CL.parseCommandLineOptions
+            // we calling it by native launcher.
+            ProgramName = new File(args[1]).getName();
+            ProgramOverview = overview;
+
+            // Avoiding the first argument that represents program name.
+            String[] temp = new String[args.length - 2];
+            System.arraycopy(args, 2, temp, 0, temp.length);
+            args = temp;
+        }
         boolean ErrorParsing = false;
 
         // Check out the positional arguments to collect information about them.
