@@ -51,7 +51,7 @@ import java.util.function.Function;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.System;
 import static jlang.codegen.BackendConsumer.createBackendConsumer;
-import static jlang.driver.Jlang.LangStds.*;
+import static jlang.driver.JlangCC.LangStds.*;
 import static jlang.support.BackendAction.Backend_EmitAssembly;
 import static jlang.support.BackendAction.Backend_EmitIR;
 import static jlang.support.CompileOptions.InliningMethod.NormalInlining;
@@ -72,7 +72,7 @@ import static tools.commandline.ValueDesc.valueDesc;
  * @author xlous.zeng
  *
  */
-public class Jlang implements DiagnosticFrontendKindsTag
+public class JlangCC implements DiagnosticFrontendKindsTag
 {
     public static BooleanOpt Verbose = new BooleanOpt(
             new OptionNameApplicator("v"),
@@ -201,7 +201,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
     public static StringOpt MainFileName =
             new StringOpt(new OptionNameApplicator("main-file-asmName"),
-            desc("Main file asmName to use for debug info"),
+            desc("JlangCC file asmName to use for debug info"),
             init(""));
 
     public static class OptLevelParser extends ParserUInt
@@ -1053,8 +1053,6 @@ public class Jlang implements DiagnosticFrontendKindsTag
     //===----------------------------------------------------------------------===//
     private boolean initializeSourceManager(Preprocessor pp, String inFile)
     {
-        /// FIXME 需要为每一个读入的文件在最后添加一个'\0'表示文件结束，同样简化EOF的判断.
-        /// 2017.8.20
         SourceManager sourceMgr = pp.getSourceManager();
         if(!Objects.equals(inFile, "-"))
         {
@@ -1115,7 +1113,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
         ts.LLVMInitializeTarget();
 
 	    // Parse the command line argument.
-        CL.parseCommandLineOptions(args);
+        CL.parseCommandLineOptions(args, "Extremely C Compiler: https://github.com/JianpingZeng/xcc");
         if (Verbose.value)
         {
             java.lang.System.err.println(NAME +  "version " + VERSION + "on X86 machine");

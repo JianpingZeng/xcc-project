@@ -199,7 +199,7 @@
                 <attribute name="Implementation-Title" value="${xcc.name}"/>
                 <attribute name="Implementation-Version" value="${version}"/>
                 <attribute name="Sealed" value="false"/>
-                <attribute name="Main-Class" value="xcc.Main">
+                <attribute name="Main-Class" value="xcc.Jlang">
                 </attribute>
             </manifest>
         </jar>
@@ -212,7 +212,7 @@
                 <attribute name="Implementation-Title" value="${tblgen.name}"/>
                 <attribute name="Implementation-Version" value="${version}"/>
                 <attribute name="Sealed" value="false"/>
-                <attribute name="Main-Class" value="utils.tablegen.TableGen">
+                <attribute name="JlangCC-Class" value="utils.tablegen.TableGen">
                 </attribute>
             </manifest>
         </jar>

@@ -24,7 +24,7 @@ import jlang.support.SourceLocation;
 
 import java.io.PrintStream;
 
-import static jlang.driver.Jlang.printMacroDefinition;
+import static jlang.driver.JlangCC.printMacroDefinition;
 import static tools.TextUtils.isPrintable;
 
 /**

@@ -71,15 +71,15 @@ class PreprocessorFactory
             PreprocessorInitOptions initOpts)
     {
         // Add macro from command line.
-        if (!Jlang.D_Macros.isEmpty())
+        if (!JlangCC.D_Macros.isEmpty())
         {
-            for (String m : Jlang.D_Macros)
+            for (String m : JlangCC.D_Macros)
                 initOpts.addMacroDef(m);
         }
 
-        if (!Jlang.U_macros.isEmpty())
+        if (!JlangCC.U_macros.isEmpty())
         {
-            for (String u : Jlang.U_macros)
+            for (String u : JlangCC.U_macros)
                 initOpts.addMacroUndef(u);
         }
     }
