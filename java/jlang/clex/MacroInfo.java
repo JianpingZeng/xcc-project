@@ -312,4 +312,10 @@ public final class MacroInfo
     {
         return argumentList.length;
     }
+
+    public IdentifierInfo getArgAt(int idx)
+    {
+        assert idx >= 0 && idx < argumentList.length;
+        return argumentList[idx];
+    }
 }

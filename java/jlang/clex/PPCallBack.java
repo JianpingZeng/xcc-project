@@ -46,17 +46,25 @@ public interface PPCallBack
      * @param reason
      * @param kind
      */
-    void fileChanged(SourceLocation loc,
+    default void fileChanged(SourceLocation loc,
             FileChangeReason reason,
-            CharacteristicKind kind);
+            CharacteristicKind kind)
+    {}
 
-    void pragmaComment(SourceLocation loc, IdentifierInfo kind, String str);
+    default void ident(SourceLocation loc, String str)
+    {}
 
-    void macroExpands(Token id, MacroInfo mi);
+    default void pragmaComment(SourceLocation loc, IdentifierInfo kind, String str)
+    {}
 
-    void macroDefined(IdentifierInfo ii, MacroInfo mi);
+    default void macroExpands(Token id, MacroInfo mi)
+    {}
 
-    void macroUndefined(IdentifierInfo ii, MacroInfo mi);
+    default void macroDefined(IdentifierInfo ii, MacroInfo mi)
+    {}
+
+    default void macroUndefined(IdentifierInfo ii, MacroInfo mi)
+    {}
 
 
     class PPChainedCallBack implements PPCallBack
@@ -85,19 +93,22 @@ public interface PPCallBack
             second.pragmaComment(loc, kind, str);
         }
 
-        @Override public void macroExpands(Token id, MacroInfo mi)
+        @Override
+        public void macroExpands(Token id, MacroInfo mi)
         {
             first.macroExpands(id, mi);
             second.macroExpands(id, mi);
         }
 
-        @Override public void macroDefined(IdentifierInfo ii, MacroInfo mi)
+        @Override
+        public void macroDefined(IdentifierInfo ii, MacroInfo mi)
         {
             first.macroDefined(ii, mi);
             second.macroDefined(ii, mi);
         }
 
-        @Override public void macroUndefined(IdentifierInfo ii, MacroInfo mi)
+        @Override
+        public void macroUndefined(IdentifierInfo ii, MacroInfo mi)
         {
             first.macroUndefined(ii, mi);
             second.macroUndefined(ii, mi);

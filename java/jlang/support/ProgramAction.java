@@ -12,11 +12,6 @@ public enum ProgramAction
 	OutputFile,
 
     /**
-     * Specify whether just make preprocessing.
-     */
-    PrintPreprocessedInput,
-
-    /**
      * Specify whether just the compilation process be enabled.
      */
     CompilationOnly,
@@ -37,4 +32,16 @@ public enum ProgramAction
 	 * Parse AST and dump them.
 	 */
 	ASTDump,
+
+    /**
+     * Just lex as fast as we can, no output.
+     */
+    RunPreprocessorOnly,
+
+    /**
+     * -E mode.
+     */
+    PrintPreprocessedInput,
+
+    DumpTokens,
 }

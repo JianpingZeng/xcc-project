@@ -52,7 +52,7 @@ public class IdentifierInfo implements Cloneable
 
     public IdentifierInfo()
     {
-        tokenID = TokenKind.Identifier;
+        tokenID = TokenKind.identifier;
     }
 
     public String getName()

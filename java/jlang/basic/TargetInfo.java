@@ -135,7 +135,7 @@ public abstract class TargetInfo
     private static void defineStd(StringBuilder buf, String macroName,
             LangOptions langOpts)
     {
-        assert macroName.charAt(0) != '_' : "Identifier should be in user space";
+        assert macroName.charAt(0) != '_' : "identifier should be in user space";
         // If we are in gnu mode (e.g. -std=gnu99 but not -std=c99)
         // define the raw identifier in the user's namespace.
         if (langOpts.gnuMode)

@@ -249,11 +249,11 @@ public class TokenLexer
 
             Token result = new Token();
 
-            if (tok.is(Identifier) && rhs.is(Identifier))
+            if (tok.is(identifier) && rhs.is(identifier))
             {
                 pp.incrementPasteCounter(true);
                 result.startToken();
-                result.setKind(Identifier);
+                result.setKind(identifier);
                 result.setLocation(resultTokLoc);
                 result.setLength(lhsLen + rhsLen);
             }
@@ -303,7 +303,7 @@ public class TokenLexer
             tok = result;
         } while (!isAtEnd() && tokens[curToken].is(hashhash));
 
-        if (tok.is(Identifier))
+        if (tok.is(identifier))
         {
             IdentifierInfo ii = pp.lookupIdentifierInfo(tok, scratchBuf, resultTokenStrDataPos);
             tok.setIdentifierInfo(ii);

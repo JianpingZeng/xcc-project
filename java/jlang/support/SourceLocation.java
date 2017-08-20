@@ -16,6 +16,10 @@ package jlang.support;
  * permissions and limitations under the License.
  */
 
+import jlang.basic.SourceManager;
+
+import java.io.PrintStream;
+
 /**
  * This is a carefully crafted 32-bit identifier that encodes
  * a full include stack, line and column number information for a position in
@@ -119,5 +123,31 @@ public class SourceLocation implements Comparable<SourceLocation>
     public int compareTo(SourceLocation o)
     {
         return id - o.id;
+    }
+
+    public void dump(SourceManager sourceMgr)
+    {
+        print(System.err, sourceMgr);
+    }
+
+    public void print(PrintStream os, SourceManager sgr)
+    {
+        if (!isValid())
+        {
+            os.print("<invalid loc>");
+            return;
+        }
+
+        if (isFileID())
+        {
+            PresumedLoc ploc = sgr.getPresumedLoc(this);
+            os.printf("%s:%d:%d", ploc.getFilename(), ploc.getLine(), ploc.getColumn());
+            return;
+        }
+
+        sgr.getInstantiationLoc(this).print(os, sgr);
+        os.print(" <Spelling=");
+        sgr.getLiteralLoc(this).print(os, sgr);
+        os.print(">");
     }
 }

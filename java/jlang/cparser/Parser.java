@@ -525,7 +525,7 @@ public class Parser implements Tag,
         switch (tok.getKind())
         {
             // C99 6.8.1 labeled-statement
-            case Identifier:
+            case identifier:
             {
                 if (nextTokenIs(colon))
                 {
@@ -611,7 +611,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseLabeledStatement()
     {
-        assert nextTokenIs(Identifier) && tok.getIdentifierInfo() != null
+        assert nextTokenIs(identifier) && tok.getIdentifierInfo() != null
                 : "Not a valid identifier";
         Token identTok = tok;  // Save the identifier token.
         consumeToken(); // Eat the identifier.
@@ -1648,8 +1648,7 @@ public class Parser implements Tag,
      * @return
      */
     private ArrayList<Decl> parseSimpleDeclaration(ArrayList<Stmt> stmts,
-            TheContext context,
-                    boolean requiredSemi)
+            TheContext context, boolean requiredSemi)
     {
         // Parse the common declaration-specifiers piece.
         DeclSpec ds = new DeclSpec();
@@ -1659,7 +1658,7 @@ public class Parser implements Tag,
         // declaration-specifiers init-declarator-list[opt] ';'
         if (nextTokenIs(semi))
         {
-            if (requiredSemi) consumeToken();
+            consumeToken();
             Decl decl = action.parsedFreeStandingDeclSpec(getCurScope(), ds);
 
             // TODO ds.complete(decl);
@@ -1965,7 +1964,7 @@ public class Parser implements Tag,
 
         // 'goto label'.
         ActionResult<Stmt> res = null;
-        if (nextTokenIs(Identifier))
+        if (nextTokenIs(identifier))
         {
             LabelDecl ld = action.lookupOrCreateLabel(tok.getIdentifierInfo(),
                     tok.getLocation());
@@ -2042,8 +2041,20 @@ public class Parser implements Tag,
     }
 
     /**
-     * This function used for parsing declaration, and returns a list which contains
-     * each Decl.
+     * Parse a full 'declaration', which consists of declaration-specifiers,
+     * some number of declarators, and a semicolon. 'Context' should be a
+     * Declarator::TheContext value.  This returns the location of the
+     * semicolon in declEnd.
+     *
+     *       declaration: [C99 6.7]
+     *         block-declaration ->
+     *           simple-declaration
+     *           others                   [FIXME]
+     * [C++]   template-declaration
+     * [C++]   namespace-definition
+     * [C++]   using-directive
+     * [C++]   using-declaration
+     * [C++0x] static_assert-declaration
      * @param stmts
      * @param dc
      * @param declEnd
@@ -2053,20 +2064,7 @@ public class Parser implements Tag,
             TheContext dc, OutParamWrapper<SourceLocation> declEnd)
     {
         assert declEnd != null;
-
-        ArrayList<Decl> res = parseSimpleDeclaration(stmts, dc, false);
-        if (nextTokenIsNot(semi))
-        {
-            // FIXME, 此处应该删除，但是报错的逻辑出现错误. 2017.8.20
-            diag(tok.getLocation(), err_expected_semi_after).emit();
-            skipUntil(semi, true);
-        }
-        else
-        {
-            // eat a ';'.
-            declEnd.set(consumeToken());
-        }
-        return res;
+        return parseSimpleDeclaration(stmts, dc, false);
     }
 
     /**
@@ -2207,14 +2205,14 @@ public class Parser implements Tag,
 
             switch (tok.getKind())
             {
-                case Identifier:
+                case identifier:
                 {
-                    // This identifier can only be a typedef getIdentifier if we haven't
+                    // This identifier can only be a typedef identifier if we haven't
                     // already seen a type-specifier.
                     if (declSpecs.hasTypeSpecifier())
                         break out;
 
-                    // So, the current token is a typedef getIdentifier or error.
+                    // So, the current token is a typedef identifier or error.
                     QualType type = action.getTypeByName(
                             tok.getIdentifierInfo(),
                             tok.getLocation(),
@@ -2226,8 +2224,8 @@ public class Parser implements Tag,
                             break out;
                     }
 
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
 
                     isInvalid = declSpecs.setTypeSpecType(TST_typename, loc,
                             wrapper1, wrapper2, type);
@@ -2292,8 +2290,8 @@ public class Parser implements Tag,
                 }
                 case Int:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_int, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2301,8 +2299,8 @@ public class Parser implements Tag,
                 }
                 case Float:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_float, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2310,8 +2308,8 @@ public class Parser implements Tag,
                 }
                 case Double:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_double, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2319,16 +2317,17 @@ public class Parser implements Tag,
                 }
                 case Void:
                 {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_void, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
                     break;
                 }
-                case Bool:       {
-                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>();
-                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>();
+                case Bool:
+                {
+                    OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
+                    OutParamWrapper<Integer> wrapper2 = new OutParamWrapper<>(diagID);
                     isInvalid = declSpecs.setTypeSpecType(TST_bool, loc, wrapper1, wrapper2);
                     prevSpec = wrapper1.get();
                     diagID = wrapper2.get();
@@ -2389,7 +2388,7 @@ public class Parser implements Tag,
      */
     private boolean parseImplicitInt(DeclSpec ds)
     {
-        assert nextTokenIs(Identifier) : "should have identifier.";
+        assert nextTokenIs(identifier) : "should have identifier.";
         SourceLocation loc = consumeToken();
 
         // IfStmt we see an identifier that is not a type getIdentifier, we normally would
@@ -2499,7 +2498,7 @@ public class Parser implements Tag,
     private void parseEnumSpecifier(SourceLocation startLoc, DeclSpec ds)
     {
         // Must have either 'enum asmName' or 'enum {...}'.
-        if (!tokenIs(tok, Identifier) && !tokenIs(tok, l_brace))
+        if (!tokenIs(tok, identifier) && !tokenIs(tok, l_brace))
         {
             diag(tok, err_expected_ident_lbrace).emit();
             // skip the rest of this declarator, up until a ',' or ';' encounter.
@@ -2509,7 +2508,7 @@ public class Parser implements Tag,
 
         IdentifierInfo name = null;
         SourceLocation nameLoc = SourceLocation.NOPOS;
-        if (tokenIs(tok, Identifier))
+        if (tokenIs(tok, identifier))
         {
             name = tok.getIdentifierInfo();
             nameLoc = tok.getLocation();
@@ -2603,7 +2602,7 @@ public class Parser implements Tag,
         ArrayList<Decl> enumConstantDecls = new ArrayList<>(32);
         Decl lastEnumConstDecl = null;
         // Parse the enumerator-list.
-        while(tokenIs(tok, Identifier))
+        while(tokenIs(tok, identifier))
         {
             IdentifierInfo name = tok.getIdentifierInfo();
             SourceLocation identLoc = consumeToken();
@@ -2640,7 +2639,7 @@ public class Parser implements Tag,
                 break;
             SourceLocation commaLoc = consumeToken();
 
-            if (nextTokenIsNot(Identifier) && !getLangOption().c99)
+            if (nextTokenIsNot(identifier) && !getLangOption().c99)
             {
                 // we missing a ',' between enumerators
                 diag(commaLoc, ext_enumerator_list_comma)
@@ -2702,7 +2701,7 @@ public class Parser implements Tag,
         // Parse the (optional) class asmName
         IdentifierInfo name = null;
         SourceLocation nameLoc = SourceLocation.NOPOS;
-        if (nextTokenIs(Identifier))
+        if (nextTokenIs(identifier))
         {
             name = tok.getIdentifierInfo();
             nameLoc = consumeToken();
@@ -2791,7 +2790,7 @@ public class Parser implements Tag,
                     // struct foo {...} *         P;
                 case star:
                     // struct foo {...} V         ;
-                case Identifier:
+                case identifier:
                     //(struct foo {...} )         {4}
                 case r_paren:
                     // struct foo {...} (         x);
@@ -3146,7 +3145,7 @@ public class Parser implements Tag,
      */
     private void parseDirectDeclarator(Declarator declarator)
     {
-        if (nextTokenIs(Identifier) && declarator.mayHaveIdentifier())
+        if (nextTokenIs(identifier) && declarator.mayHaveIdentifier())
         {
             /**
              The direct declarator must start with an identifier (possibly
@@ -3207,7 +3206,7 @@ public class Parser implements Tag,
         switch (tok.getKind())
         {
             default:return false;
-            case Identifier:
+            case identifier:
                 return isDeclarationSpecifier();
             case Typedef:
             case Extern:
@@ -3428,7 +3427,7 @@ public class Parser implements Tag,
 
     private boolean isFunctionDeclaratorIdentifierList()
     {
-        return nextTokenIs(Identifier) && (tokenIs(peekAheadToken(), comma)
+        return nextTokenIs(identifier) && (tokenIs(peekAheadToken(), comma)
                 || tokenIs(peekAheadToken(), r_paren));
     }
 
@@ -3470,7 +3469,7 @@ public class Parser implements Tag,
 
             // if the next token is not a identifier,
             // report the error and skip it until ')'.
-            if (nextTokenIsNot(Identifier))
+            if (nextTokenIsNot(identifier))
             {
                 diag(tok, err_expected_ident).emit();
                 skipUntil(r_paren, true);
@@ -3979,7 +3978,7 @@ public class Parser implements Tag,
                 res = action.actOnNumericConstant(nextTok);
                 consumeToken();
                 break;
-            case Identifier:
+            case identifier:
             {
                 IdentifierInfo id = tok.getIdentifierInfo();
                 SourceLocation loc = consumeToken();
@@ -4112,7 +4111,7 @@ public class Parser implements Tag,
         {
             switch (tok.getKind())
             {
-                case Identifier:
+                case identifier:
                     // fall through; this is a primary expression.
                 default:
                     return lhs;
