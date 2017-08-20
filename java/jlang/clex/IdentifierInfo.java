@@ -191,4 +191,17 @@ public class IdentifierInfo implements Cloneable
     {
         entry = pair;
     }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+        IdentifierInfo ii = (IdentifierInfo)obj;
+        return ii.getName().equals(getName());
+    }
 }

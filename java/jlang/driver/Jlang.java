@@ -568,7 +568,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
         PrintPPOutputPPCallbacks callbacks = new PrintPPOutputPPCallbacks(
                 pp, os, disableLineMarkers, dumpDefines);
-        //  todo pp.addPragmaHandler(null, new UnknownPragmaHandler); 2017.8.20
+        pp.addPragmaHandler(null, new UnknownPragmaHandler("#pragma", callbacks));
+        pp.addPragmaHandler("GCC", new UnknownPragmaHandler("#pragma GCC", callbacks));
 
         // After we have configured the preprocessor, enter the main file.
         pp.enterMainSourceFile();
@@ -1052,6 +1053,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
     //===----------------------------------------------------------------------===//
     private boolean initializeSourceManager(Preprocessor pp, String inFile)
     {
+        /// FIXME 需要为每一个读入的文件在最后添加一个'\0'表示文件结束，同样简化EOF的判断.
+        /// 2017.8.20
         SourceManager sourceMgr = pp.getSourceManager();
         if(!Objects.equals(inFile, "-"))
         {

@@ -162,7 +162,8 @@ public final class Preprocessor
 
         StrData tokStart = sourceMgr.getCharacterData(tok.getLocation());
         if (!tok.needsCleaning())
-            return String.valueOf(Arrays.copyOfRange(tokStart.buffer, tokStart.offset, tok.getLength() + tokStart.offset));
+            return String.valueOf(Arrays.copyOfRange(tokStart.buffer,
+                    tokStart.offset, tok.getLength() + tokStart.offset));
 
         StringBuilder result = new StringBuilder();
         for (int i = tokStart.offset, e = tok.getLength() + tokStart.offset; i < e; )
@@ -506,7 +507,7 @@ public final class Preprocessor
     * If 'Namespace' is non-null, then it is a token required to exist on the
     * pragma line before the pragma string starts, e.g. "STDC" or "GCC".
     */
-    private void addPragmaHandler(String namespace, PragmaHandler handler)
+    public void addPragmaHandler(String namespace, PragmaHandler handler)
     {
         PragmaNameSpace insertNS = pragmaHandlers;
         if (namespace != null)
@@ -3815,7 +3816,7 @@ public final class Preprocessor
      * expansion of identifier tokens.
      * @param result
      */
-    private void lexUnexpandedToken(Token result)
+    void lexUnexpandedToken(Token result)
     {
         boolean oldVal = disableMacroExpansion;
         disableMacroExpansion = true;
