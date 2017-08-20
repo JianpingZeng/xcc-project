@@ -621,10 +621,10 @@ public class Jlang implements DiagnosticFrontendKindsTag
                         .buffer, offset, offset + len));
                 os.print(str);
             }
-            else if (tok.getLength() > 256)
+            else if (tok.getLength() < 256)
             {
                 String tokStr = pp.getSpelling(tok);
-                os.print(tokStr);
+                os.printf(tokStr);
 
                 if (tok.getKind() == TokenKind.Comment)
                     callbacks.handleNewLinesInToken(tokStr);
