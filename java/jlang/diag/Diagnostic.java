@@ -190,7 +190,7 @@ public final class Diagnostic
 		ak_c_string,        // String 
 		ak_sint,            // int
 		ak_uint,            // int
-		ak_identifier,      // Identifier
+		ak_identifier,      // identifier
 		ak_qualtype,        // QualType
 		ak_declarationname, // DeclarationName
 		ak_nameddecl        // NamedDecl *

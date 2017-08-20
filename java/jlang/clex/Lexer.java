@@ -1322,7 +1322,7 @@ public class Lexer extends PreprocessorLexer
     private void finishIdentifier(Token result, int curPos)
     {
         int idStart = this.bufferPtr;
-        formTokenWithChars(result, curPos, Identifier);
+        formTokenWithChars(result, curPos, identifier);
 
         if (isLexingRawMode()) return;
 

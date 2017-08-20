@@ -38,7 +38,7 @@ public enum TokenKind
     Comment("comment", Tag.COMMENT), // Comment (only in -E -C[C] mode)
 
     // C99 6.4.2: Identifiers.
-    Identifier("identifier", Tag.IDENTIFIER), // abcde123
+    identifier("identifier", Tag.IDENTIFIER), // abcde123
 
     // C99 6.4.4.1: Integer Constants
     // C99 6.4.4.2: Floating Constants

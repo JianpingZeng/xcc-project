@@ -26,7 +26,7 @@ import jlang.basic.HeaderSearch;
 import jlang.basic.InitHeaderSearch;
 import jlang.basic.SourceManager;
 import jlang.basic.TargetInfo;
-import jlang.clex.Preprocessor;
+import jlang.clex.*;
 import jlang.diag.*;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
@@ -35,12 +35,13 @@ import jlang.support.*;
 import jlang.support.LangOptions.VisibilityMode;
 import jlang.system.Process;
 import tools.OutParamWrapper;
+import tools.Pair;
 import tools.commandline.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,6 +62,7 @@ import static tools.commandline.Desc.desc;
 import static tools.commandline.FormattingFlags.Positional;
 import static tools.commandline.Initializer.init;
 import static tools.commandline.MiscFlags.CommaSeparated;
+import static tools.commandline.OptionNameApplicator.optionName;
 import static tools.commandline.ValueDesc.valueDesc;
 
 /**
@@ -305,6 +307,32 @@ public class Jlang implements DiagnosticFrontendKindsTag
             desc("Disable standard #include directories"),
             init(false));
 
+    //===----------------------------------------------------------------------===//
+    // Preprocessing (-E mode) Options
+    //===----------------------------------------------------------------------===//
+    public static final BooleanOpt DisableLineMarker =
+            new BooleanOpt(optionName("P"),
+            desc("Disable linemarker output in -E mode"),
+            init(false));
+    public static final BooleanOpt EnableCommentOutput =
+            new BooleanOpt(optionName("C"),
+            desc("Enable comment output in -E mode"),
+            init(false));
+    public static final BooleanOpt EnableMacroCommentOutput =
+            new BooleanOpt(optionName("CC"),
+            desc("Enable comment output in -E mode, even from macro expansions"),
+            init(false));
+
+    public static final BooleanOpt DumpMacros =
+            new BooleanOpt(optionName("dM"),
+            desc("Print macro definitions in -E mode instead of normal output"),
+            init(false));
+
+    public static final BooleanOpt DumpDefines =
+            new BooleanOpt(optionName("dD"),
+            desc("Print macro definitions in -E mode in addition to normal output"),
+            init(false));
+
     /**
      * Result codes.
      */
@@ -370,7 +398,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
         Sema sema = new Sema(pp, ctx, consumer);
 
         jlang.cparser.Parser parser = new jlang.cparser.Parser(pp, sema);
-        pp.enterMainFile();
+        pp.enterMainSourceFile();
 
         // Initialize the parser.
         parser.initialize();
@@ -386,12 +414,15 @@ public class Jlang implements DiagnosticFrontendKindsTag
         consumer.handleTranslationUnit();
     }
 
-    private OutputStream computeOutFile(String infile,
-            String extension, StringBuilder outPath)
+    private PrintStream computeOutFile(
+            String infile,
+            String extension,
+            boolean binary,
+            StringBuilder outPath)
     {
         boolean usestdout = false;
         String outfile = OutputFile.value;
-        OutputStream os = null;
+        PrintStream os = null;
         String outputFile = "";
         if (outfile == null || outfile.length() <= 0 || infile.equals("-"))
         {
@@ -425,7 +456,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
                 Path path = Files.createFile(Paths.get(outputFile));
                 File file = path.toFile();
                 outPath.append(file.getAbsolutePath());
-                os = new FileOutputStream(file);
+                os = new PrintStream(new FileOutputStream(file));
             }
             catch (IOException e)
             {
@@ -434,6 +465,185 @@ public class Jlang implements DiagnosticFrontendKindsTag
             }
         }
         return os;
+    }
+
+    /**
+     * Print a macro definition in a form that will be properly accepted back
+     * as a definition.
+     * @param ii
+     * @param mi
+     * @param pp
+     * @param os
+     */
+    public static void printMacroDefinition(IdentifierInfo ii, MacroInfo mi,
+            Preprocessor pp, PrintStream os)
+    {
+        os.printf("#define %s", ii.getName());
+
+        if (mi.isFunctionLike())
+        {
+            os.print("(");
+            if (mi.getNumArgs() <= 0);
+            else if (mi.getNumArgs() == 1)
+                os.print(mi.getArgAt(0).getName());
+            else
+            {
+                os.print(mi.getArgAt(0).getName());
+                for (int i = 1, e = mi.getNumArgs(); i != e; i++)
+                    os.printf(",%s", mi.getArgAt(i).getName());
+            }
+
+            if (mi.isVariadic())
+            {
+                if (mi.getNumArgs() != 0)
+                    os.print(",");
+                os.print("...");
+            }
+            os.print(")");
+        }
+
+        // GCC always emits a space, even if the macro body is empty.  However, do not
+        // want to emit two spaces if the first token has a leading space.
+        if (mi.getNumTokens() == 0 || !mi.getReplacementToken(0).hasLeadingSpace())
+            os.print(' ');
+
+        for (Token tok : mi.getReplacementTokens())
+        {
+            if (tok.hasLeadingSpace())
+                os.print(' ');
+
+            String str = pp.getSpelling(tok);
+            os.print(str);
+        }
+    }
+
+    private void printMacros(Preprocessor pp, PrintStream os)
+    {
+        pp.enterMainSourceFile();
+        Token tok = new Token();
+        do
+        {
+            pp.lex(tok);
+        }while (tok.isNot(TokenKind.eof));
+
+        ArrayList<Pair<IdentifierInfo, MacroInfo>> macroInfosByID = new ArrayList<>();
+        pp.getMacros().forEach((key, val)->
+        {
+            macroInfosByID.add(Pair.get(key, val));
+        });
+
+        // Sorts in the order of alphabetic name.
+        macroInfosByID.sort(Comparator.comparing(o -> o.first.getName()));
+        for (Pair<IdentifierInfo, MacroInfo> pair : macroInfosByID)
+        {
+            MacroInfo mi = pair.second;
+            // Ignore computed macros like __LINE__
+            if (mi.isBuiltinMacro()) continue;
+
+            printMacroDefinition(pair.first, mi, pp, os);
+            os.println();
+        }
+    }
+
+    /**
+     * This implements -E mode.
+     * @param pp
+     * @param os
+     * @param enableCommentOutput
+     * @param enableMacroCommentOutput
+     * @param disableLineMarkers
+     * @param dumpDefines
+     */
+    private void printPreprocessedInput(
+            Preprocessor pp,
+            PrintStream os,
+            boolean enableCommentOutput,
+            boolean enableMacroCommentOutput,
+            boolean disableLineMarkers,
+            boolean dumpDefines)
+    {
+        // Inform the preprocessor whether we want it to retain comments or not, due
+        // to -C or -CC.
+        pp.setCommentRetentionState(enableCommentOutput, enableMacroCommentOutput);
+
+        PrintPPOutputPPCallbacks callbacks = new PrintPPOutputPPCallbacks(
+                pp, os, disableLineMarkers, dumpDefines);
+        //  todo pp.addPragmaHandler(null, new UnknownPragmaHandler); 2017.8.20
+
+        // After we have configured the preprocessor, enter the main file.
+        pp.enterMainSourceFile();
+
+        // Consume all of the tokens that come from the predefines buffer.  Those
+        // should not be emitted into the output and are guaranteed to be at the
+        // start.
+        SourceManager sgr = pp.getSourceManager();
+        Token tok = new Token();
+        do
+        {
+            pp.lex(tok);
+        }while (tok.isNot(TokenKind.eof) && tok.getLocation().isFileID()
+                && sgr.getPresumedLoc(tok.getLocation()).getFilename().equals("<built-in>"));
+
+        // Read all the preprocessed tokens, printing them out to the stream.
+        printPreprocessedTokens(pp, tok, callbacks, os);
+        os.println();
+    }
+
+    private static void printPreprocessedTokens(Preprocessor pp, Token tok,
+            PrintPPOutputPPCallbacks callbacks, PrintStream os)
+    {
+        Token prevTok = new Token();
+        while (true)
+        {
+            if (tok.isAtStartOfLine() && callbacks.handleFirstTokenOnLine(tok))
+            {// done.
+            }
+            else if (tok.hasLeadingSpace() ||
+                    // If we haven't emitted a token on this line yet, PrevTok isn't
+                    // useful to look at and no concatenation could happen anyway.
+                ( callbacks.hasEmittedTokensOnThisLine() &&
+                    // Don't print "-" next to "-", it would form "--".
+                callbacks.avoidConcat(prevTok, tok)))
+            {
+                os.print(' ');
+            }
+            IdentifierInfo ii = tok.getIdentifierInfo();
+            if (ii != null)
+            {
+                os.print(ii.getName());
+            }
+            else if (tok.isLiteral() && !tok.needsCleaning() && tok.getLiteralData() != null)
+            {
+                int offset = tok.getLiteralData().offset;
+                int len = tok.getLength();
+                String str = String.valueOf(Arrays.copyOfRange(tok.getLiteralData()
+                        .buffer, offset, offset + len));
+                os.print(str);
+            }
+            else if (tok.getLength() > 256)
+            {
+                String tokStr = pp.getSpelling(tok);
+                os.print(tokStr);
+
+                if (tok.getKind() == TokenKind.Comment)
+                    callbacks.handleNewLinesInToken(tokStr);
+            }
+            else
+            {
+                String s = pp.getSpelling(tok);
+                os.print(s);
+
+                if (tok.getKind() == TokenKind.Comment)
+                    callbacks.handleNewLinesInToken(s);
+            }
+            callbacks.setEmittedTokensOnThisLine();
+
+            if (tok.is(TokenKind.eof))
+                break;
+
+            prevTok = tok.clone();
+            pp.lex(tok);
+        }
     }
 
     /**
@@ -449,18 +659,35 @@ public class Jlang implements DiagnosticFrontendKindsTag
             ProgramAction progAction,
             HashMap<String, Boolean> features)
     {
-        ASTConsumer consumer;
-        OutputStream os;
+        ASTConsumer consumer = null;
+        PrintStream os = null;
         StringBuilder outpath = new StringBuilder();
+        boolean clearSourceMgr = false;
         switch (progAction)
         {
-            default:
+            case RunPreprocessorOnly:
+                break;
             case ParseSyntaxOnly:
                 consumer = new PrettyASTConsumer();
                 break;
             case ASTDump:
                 assert false : "Unsupported currently.";
                 return;
+            case DumpTokens:
+                Token tok = new Token();
+                // Start preprocessing the specified input file.
+                pp.enterMainSourceFile();
+                do
+                {
+                    pp.lex(tok);
+                    pp.dumpToken(tok, true);
+                    java.lang.System.err.println();
+                }while (tok.isNot(TokenKind.eof));
+                clearSourceMgr = true;
+                break;
+            case PrintPreprocessedInput:
+                os = computeOutFile(infile, null, true, outpath);
+                break;
             case EmitLLVM:
             case GenerateAsmCode:
             {
@@ -468,12 +695,12 @@ public class Jlang implements DiagnosticFrontendKindsTag
                 if (progAction == EmitLLVM)
                 {
                     act = Backend_EmitIR;
-                    os = computeOutFile(infile, "ll", outpath);
+                    os = computeOutFile(infile, "ll", true, outpath);
                 }
                 else
                 {
                     act = Backend_EmitAssembly;
-                    os = computeOutFile(infile, "s", outpath);
+                    os = computeOutFile(infile, "s", true, outpath);
                 }
 
                 CompileOptions compOpts = initializeCompileOptions(features);
@@ -483,6 +710,7 @@ public class Jlang implements DiagnosticFrontendKindsTag
                         compOpts,
                         infile, os,
                         targetMachineAllocator);
+                break;
             }
         }
 
@@ -491,8 +719,50 @@ public class Jlang implements DiagnosticFrontendKindsTag
                 pp.getSourceManager(),
                 pp.getTargetInfo(),
                 pp.getIdentifierTable());
+
         // If we have an ASTConsumer, run the parser with it.
-        parseAST(pp, consumer, astCtx);
+        if (consumer != null)
+            parseAST(pp, consumer, astCtx);
+
+        // Just lex as fast as we can, no output.
+        if (progAction == RunPreprocessorOnly)
+        {
+            Token tok = new Token();
+            // Start preprocessing the specified input file.
+            pp.enterMainSourceFile();
+            do
+            {
+                pp.lex(tok);
+            }while (tok.isNot(TokenKind.eof));
+            clearSourceMgr = true;
+        }
+        else if (progAction == PrintPreprocessedInput)
+        {
+            if (DumpMacros.value)
+                printMacros(pp, os);
+            else
+                printPreprocessedInput(pp, os, EnableCommentOutput.value,
+                        EnableMacroCommentOutput.value,
+                        DisableLineMarker.value, DumpDefines.value);
+            clearSourceMgr = true;
+        }
+
+        // For a multi-file compilation, some things are ok with nuking the source
+        // manager tables, other require stable fileid/macroid's across multiple
+        // files.
+        if (clearSourceMgr)
+            pp.getSourceManager().clearIDTables();
+
+        os = null;
+        // Always delete the output stream because we don't want to leak file
+        // handles.
+        if (pp.getDiagnostics().getNumErrors() > 0 && outpath.length() > 0)
+        {
+            // If we had errors, try to erase the output file.
+            File outFile = new File(outpath.toString());
+            if (outFile.exists())
+                outFile.delete();
+        }
     }
 
     private CompileOptions initializeCompileOptions(HashMap<String, Boolean> features)
@@ -801,13 +1071,15 @@ public class Jlang implements DiagnosticFrontendKindsTag
 
             if (sb == null)
             {
-                pp.getDiagnostics().report(new FullSourceLoc(), err_fe_error_reading_stdin);
+                pp.getDiagnostics().report(new FullSourceLoc(),
+                        err_fe_error_reading_stdin).emit();
                 return true;
             }
             sourceMgr.createMainFileIDForMemBuffer(sb);
             if (sourceMgr.getMainFileID().isInvalid())
             {
-                pp.getDiagnostics().report(new FullSourceLoc(), err_fe_error_reading_stdin);
+                pp.getDiagnostics().report(new FullSourceLoc(),
+                        err_fe_error_reading_stdin).emit();
                 return true;
             }
         }
@@ -822,7 +1094,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
         @Override
         public void apply(Diagnostic diag, String msg)
         {
-            diag.report(new FullSourceLoc(), err_fe_error_backend).addTaggedVal(msg);
+            diag.report(new FullSourceLoc(), err_fe_error_backend).
+                    addTaggedVal(msg).emit();
         }
     };
 
@@ -880,7 +1153,8 @@ public class Jlang implements DiagnosticFrontendKindsTag
         TargetInfo target = TargetInfo.createTargetInfo(triple);
         if (target == null)
         {
-            diag.report(new FullSourceLoc(), err_fe_unknown_triple).addTaggedVal(triple);
+            diag.report(new FullSourceLoc(), err_fe_unknown_triple).
+                    addTaggedVal(triple).emit();
             return EXIT_ERROR;
         }
 

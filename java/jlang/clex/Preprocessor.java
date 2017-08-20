@@ -31,6 +31,7 @@ import tools.Pair;
 import java.nio.file.Path;
 import java.util.*;
 
+import static java.lang.System.err;
 import static jlang.support.CharacteristicKind.C_User;
 import static jlang.clex.Token.TokenFlags.*;
 import static jlang.clex.PPCallBack.FileChangeReason.RenameFile;
@@ -212,9 +213,9 @@ public final class Preprocessor
      */
     public IdentifierInfo lookupIdentifierInfo(Token identifier, char[] buf, int startPos)
     {
-        assert identifier.is(Identifier) : "Not an identifier!";
+        assert identifier.is(TokenKind.identifier) : "Not an identifier!";
         assert identifier.getIdentifierInfo()
-                == null : "Identifier already exists!";
+                == null : "identifier already exists!";
 
         IdentifierInfo ii;
         if (startPos != 0 && !identifier.needsCleaning())
@@ -654,7 +655,7 @@ public final class Preprocessor
      * Enter the specified FileID as the main source file,
      * which implicitly adds the builtin defines etc.
      */
-    public void enterMainFile()
+    public void enterMainSourceFile()
     {
         assert numEnteredSourceFiles == 0 : "Cannot reenter the tmain file!";
 
@@ -1980,7 +1981,7 @@ public final class Preprocessor
 
             lexUnexpandedToken(tok);
 
-            if (tok.isNot(Identifier))
+            if (tok.isNot(identifier))
             {
                 curLexer.parsingPreprocessorDirective = false;
                 if (curLexer != null)
@@ -3581,7 +3582,7 @@ public final class Preprocessor
     }
     /**
      * If an identifier token is read that is to be
-     * * expanded as a macro, handle it and return the next token as 'Identifier'.
+     * * expanded as a macro, handle it and return the next token as 'identifier'.
      *
      * @param identifier
      * @param mi
@@ -3862,5 +3863,52 @@ public final class Preprocessor
         // Otherwise, performing the slower path.
         data = sourceMgr.getCharacterData(token.getLocation());
         return data.buffer[data.offset];
+    }
+
+    /**
+     * Print the token to stderr, used for debugging.
+     * @param tok
+     * @param dumpFlags
+     */
+    public void dumpToken(Token tok, boolean dumpFlags)
+    {
+        err.printf("%s '%s'", tok.getName(), getSpelling(tok));
+
+        if (!dumpFlags)
+            return;
+        err.print('\t');
+        if (tok.isAtStartOfLine())
+            err.print(" [StartOfLine]");
+        if (tok.hasLeadingSpace())
+            err.print(" [LeadingSpace]");
+        if (tok.isExpandingDisabled())
+            err.print(" [ExpandDisabled]");
+        if (tok.needsCleaning())
+        {
+            int offset = tok.getLiteralData().offset;
+            String str = String.valueOf(Arrays.copyOfRange(tok.getLiteralData().buffer,
+                    offset, offset + tok.getLength()));
+            err.printf(" [UnClean='%s']", str);
+        }
+
+        err.print("\tLoc=<");
+        dumpLocation(tok.getLocation());
+        err.print(">");
+    }
+
+    public void dumpLocation(SourceLocation loc)
+    {
+        loc.dump(sourceMgr);
+    }
+
+    public void dumpMacro(MacroInfo mi)
+    {
+        err.print("MACRO: ");
+        for (int i = 0, e = mi.getNumTokens(); i!= e; i++)
+        {
+            dumpToken(mi.getReplacementToken(i), false);
+            err.print(" ");
+        }
+        err.println();
     }
 }

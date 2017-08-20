@@ -16,25 +16,24 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.pass.*;
 import backend.target.SubtargetFeatures;
 import backend.target.Target;
-import backend.value.BasicBlock;
-import backend.value.Module;
-import backend.pass.*;
 import backend.target.TargetData;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
+import backend.value.BasicBlock;
+import backend.value.Module;
 import jlang.ast.ASTConsumer;
-import jlang.support.BackendAction;
-import jlang.support.CompileOptions;
-import jlang.support.LangOptions;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
+import jlang.support.BackendAction;
+import jlang.support.CompileOptions;
+import jlang.support.LangOptions;
 import tools.OutParamWrapper;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.function.Function;
 
@@ -71,7 +70,7 @@ public class BackendConsumer implements ASTConsumer
     private LangOptions langOpts;
     private Module theModule;
     private CodeGenerator gen;
-    private OutputStream asmOutStream;
+    private PrintStream asmOutStream;
     private TargetData theTargetData;
     //private TargetMachine tm;
     private ASTContext context;
@@ -86,7 +85,7 @@ public class BackendConsumer implements ASTConsumer
             LangOptions langOpts,
             CompileOptions opts,
             String moduleName,
-            OutputStream os,
+            PrintStream os,
             Function<Module, TargetMachine> targetMachineAllocator)
     {
         action = act;
@@ -104,7 +103,7 @@ public class BackendConsumer implements ASTConsumer
             LangOptions langOpts,
             CompileOptions compOpts,
             String moduleID,
-            OutputStream os,
+            PrintStream os,
             Function<Module, TargetMachine> targetMachine)
     {
         return new BackendConsumer(act, diags, langOpts, compOpts, moduleID, os, targetMachine);
@@ -157,14 +156,7 @@ public class BackendConsumer implements ASTConsumer
         // force to close and flush output stream.
         if (asmOutStream != null)
         {
-            try
-            {
-                asmOutStream.close();
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
+            asmOutStream.close();
         }
     }
 
