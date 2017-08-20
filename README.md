@@ -26,3 +26,21 @@ Continue to fix the drawbacks of the Jlang(our frontend for this project).
 Refines the register allocation, it is possible that we would introduce a
 greedy allocator or LSRA, add a instruction selector based on Burg.
 
+## Usage
+Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
+64 bit OS with OracleJDK/OpenJDK 1.8, GCC 5.4/6.3 or Clang 3.9/4.0 successfully.
+###Prerequisites
+1. 64 bit Ubuntu 14.04 or 16.04 OS.
+2. Install [OracleJDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
+or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
+3. Install any version of GCC supports c++ 11 features or latest version of [Clang](https://apt.llvm.org/).
+
+###Build
+1. Clone this repository into your local directory.
+2. Build this project with following command.
+   ````bash
+    cd xcc && make
+   ````
+3. After finishing step 2, the executable file and jar file would be generated and 
+   resided in directory out/bin, out/lib respectively.
+
