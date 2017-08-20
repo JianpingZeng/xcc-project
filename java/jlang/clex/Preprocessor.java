@@ -800,15 +800,15 @@ public final class Preprocessor
         // actually typed, which is goodness.
         if (curLexer != null)
         {
-            int endPos = curLexer.buffer.length;
+            int endPos = curLexer.buffer.length - 1;
             if (endPos != 0 && (curLexer.buffer[endPos - 1] == '\n'
                     || curLexer.buffer[endPos - 1] == '\r'))
                 --endPos;
 
             // Handle \n\r and \r\n:
             if (endPos != 0 && (curLexer.buffer[endPos - 1] == '\n'
-                    || curLexer.buffer[endPos] == '\r') && (
-                    curLexer.buffer[endPos - 1] != curLexer.buffer[endPos]))
+                    || curLexer.buffer[endPos - 1] == '\r') &&
+                    (curLexer.buffer[endPos - 1] != curLexer.buffer[endPos]))
                 --endPos;
 
             result.startToken();

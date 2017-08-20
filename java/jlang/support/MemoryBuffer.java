@@ -194,7 +194,9 @@ public class MemoryBuffer implements Cloneable
 
         try (BufferedReader reader = Files.newBufferedReader(path))
         {
-            CharBuffer cb = CharBuffer.allocate((int)sz);
+            // Allocate a redundant one space to reside the '\0' which
+            // indicates EOF.
+            CharBuffer cb = CharBuffer.allocate((int)sz + 1);
             int res = reader.read(cb);
             MemoryBuffer mb = new MemoryBuffer(cb.array());
             mb.setFilename(file);
@@ -246,7 +248,9 @@ public class MemoryBuffer implements Cloneable
                 buf = newArray;
             }while (true);
 
-            char[] newBuf = new char[offset];
+            // Allocate a redundant one space to reside the '\0' which
+            // indicates EOF.
+            char[] newBuf = new char[offset+1];
             System.arraycopy(buf, 0, newBuf, 0, offset);
             MemoryBuffer mb = new MemoryBuffer(newBuf);
             mb.setFilename("-");
@@ -319,6 +323,10 @@ public class MemoryBuffer implements Cloneable
 
     public static MemoryBuffer getMemBuffer(String buffer, String name)
     {
-        return new MemoryBufferMem(buffer.toCharArray(), name);
+        // Allocate a redundant one space to reside the '\0' which
+        // indicates EOF.
+        char[] temp = new char[buffer.length() + 1];
+        System.arraycopy(buffer.toCharArray(), 0, temp, 0, temp.length - 1);
+        return new MemoryBufferMem(temp, name);
     }
 }

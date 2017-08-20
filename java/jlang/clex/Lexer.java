@@ -70,9 +70,9 @@ public class Lexer extends PreprocessorLexer
         this.buffer = buffer;
         this.bufferPtr = curPos;
         bufferEnd = endPos;
-        //assert buffer[buffer.length-1] == '\0':
-        //        "We assume that the input buffer has a null character at the end" +
-        //" to simplify lexing!";
+        assert buffer[buffer.length-1] == '\0':
+                "We assume that the input buffer has a null character at the end" +
+                " to simplify lexing!";
         isPragmaLexer = false;
 
         // Star of the file is a start of line.
@@ -161,7 +161,7 @@ public class Lexer extends PreprocessorLexer
 
         l.bufferPtr = strData;
         l.bufferEnd = strData + tokenLen;
-        assert l.buffer[l.bufferEnd] == '\0': "Buffer is not nul terminated!";
+        assert l.buffer[l.bufferEnd] == '\0': "Buffer is not null terminated!";
 
         // Set the SourceLocation with the remapping information.  This ensures that
         // GetMappedTokenLoc will remap the tokens as they are lexed.
@@ -644,7 +644,7 @@ public class Lexer extends PreprocessorLexer
 
     private SourceLocation getSourceLocation(int curPos, int toklen)
     {
-        assert curPos >= 0 && curPos < bufferEnd
+        assert curPos >= 0 && curPos <= bufferEnd
                 : "Location out of range for this buffer!";
 
         int charNo = curPos;
@@ -868,8 +868,8 @@ public class Lexer extends PreprocessorLexer
         // a pedwarn.
         if (curPos != 0 && (buffer[curPos - 1] != '\n' && buffer[curPos - 1] != '\r'))
         {
-            diag(buffer.length, ext_no_newline_eof).addFixItHint(FixItHint
-                    .createInsertion(getSourceLocation(buffer.length, 1), "\n"));
+            diag(bufferEnd, ext_no_newline_eof).addFixItHint(FixItHint
+                    .createInsertion(getSourceLocation(bufferEnd, 1), "\n"));
         }
 
         this.bufferPtr = curPos;
@@ -1053,7 +1053,7 @@ public class Lexer extends PreprocessorLexer
                     }
                 }
             }
-            if (curPos == buffer.length - 1)
+            if (curPos == bufferEnd)
             {
                 ++curPos;
                 break;
@@ -1605,7 +1605,7 @@ public class Lexer extends PreprocessorLexer
                 {
                     Preprocessor ppcache = pp;
                     // Retreat back into the file.
-                    if (lexEndOfFile(result, curPos - 2))
+                    if (lexEndOfFile(result, curPos - 1))
                         return;   // Got a token to return.
                     assert ppcache!= null:"Raw buffer::LexEndOfFile should return a token";
                     ppcache.lex(result);
@@ -1613,7 +1613,7 @@ public class Lexer extends PreprocessorLexer
                 }
 
                 if (!isLexingRawMode())
-                    diag(curPos - 1, null_in_file);
+                    diag(curPos - 1, null_in_file).emit();
                 result.setFlag(LeadingSpace);
                 if (skipWhitespace(result, curPos))
                     return;
