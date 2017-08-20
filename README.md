@@ -29,7 +29,7 @@ greedy allocator or LSRA, add a instruction selector based on Burg.
 ## Usage
 Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
 64 bit OS with OracleJDK/OpenJDK 1.8, GCC 5.4/6.3 or Clang 3.9/4.0 successfully.
-###Prerequisites
+### Prerequisites
 1. 64 bit Ubuntu 14.04 or 16.04 OS.
 2. Install [OracleJDK 1.8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
 or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
