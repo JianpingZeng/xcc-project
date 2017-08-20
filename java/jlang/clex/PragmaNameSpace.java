@@ -46,7 +46,8 @@ public class PragmaNameSpace extends PragmaHandler
         PragmaHandler nullHandler = null;
         for (int i = 0, e = handlers.size(); i < e; i++)
         {
-            if (handlers.get(i).getName().equals(name))
+            if (handlers.get(i).getName() != null &&
+                    handlers.get(i).getName().equals(name))
                 return handlers.get(i);
 
             if (handlers.get(i).getName() == null)
