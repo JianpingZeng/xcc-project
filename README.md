@@ -35,7 +35,7 @@ Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
 or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
 3. Install any version of GCC supports c++ 11 features or latest version of [Clang](https://apt.llvm.org/).
 
-###Build
+### Build
 1. Clone this repository into your local directory.
 2. Build this project with following command.
    ````bash
