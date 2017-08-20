@@ -783,8 +783,8 @@ public final class CL
             HashSet<Option> optionSet = new HashSet<>();
             opts.removeIf(strOpt -> !optionSet.add(strOpt.second));
 
-            if (ProgramOverview == null)
-                out.println("OVERVIEW: Extremely C Compiler");
+            if (!(ProgramOverview == null || ProgramOverview.isEmpty()))
+                out.printf("OVERVIEW: %s\n", ProgramOverview);
 
             out.printf("Usage: %s [options]", ProgramName);
             // Print out the positional options.
