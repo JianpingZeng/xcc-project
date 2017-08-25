@@ -38,10 +38,12 @@ import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
 import static jlang.sema.BinaryOperatorKind.BO_Div;
 import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
+import static jlang.sema.Decl.DefinitionKind.DeclarationOnly;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
 import static jlang.sema.Sema.LookupNameKind.*;
 import static jlang.sema.UnaryOperatorKind.*;
+import static jlang.support.Linkage.ExternalLinkage;
 import static jlang.support.Linkage.NoLinkage;
 
 /**
@@ -153,6 +155,12 @@ public final class Sema implements DiagnosticParseTag,
     private HashMap<String, LabelStmt> functionLabelMap;
     private Stack<SwitchStmt> functionSwitchStack;
 
+    /**
+     * ALl the used, undefined objects with internal linkage in this
+     * translation unit.
+     */
+    private HashMap<NamedDecl, SourceLocation> undefinedInternals;
+
     public Sema(Preprocessor pp, ASTContext ctx, ASTConsumer consumer)
     {
         langOpts = pp.getLangOptions();
@@ -164,6 +172,7 @@ public final class Sema implements DiagnosticParseTag,
         functionLabelMap = new HashMap<>();
         functionSwitchStack = new Stack<>();
         functionScopes = new Stack<>();
+        undefinedInternals = new HashMap<>();
     }
 
     public ASTConsumer getASTConsumer()
@@ -1200,11 +1209,12 @@ public final class Sema implements DiagnosticParseTag,
             newVar.setInvalidDecl(true);
 
         assert (scope.isFunctionProtoTypeScope());
-        assert (scope.getFunctionProtoTypeDepth() >= 1);
+        //assert (scope.getFunctionProtoTypeDepth() >= 1);
 
+        /*
         newVar.setScopeInfo(scope.getFunctionProtoTypeDepth() - 1,
                 scope.getProtoTypeIndex());
-
+         */
         scope.addDecl(newVar);
 
         return newVar;
@@ -1831,7 +1841,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 for (int i = 0; i < fti.numArgs; i++)
                 {
-                    ParamVarDecl param = (ParamVarDecl)arg.param;
+                    ParamVarDecl param = (ParamVarDecl)fti.argInfo.get(i).param;
                     assert param.getDeclContext() != newFD:"Was set before!";
                     param.setDeclContext(newFD);
                     params.add(param);
@@ -4003,7 +4013,7 @@ public final class Sema implements DiagnosticParseTag,
     public FunctionDecl getCurFunctionDecl()
     {
         IDeclContext dc = getFunctionLevelDeclContext();
-        return (FunctionDecl) dc;
+        return dc instanceof FunctionDecl ?(FunctionDecl) dc : null;
     }
 
     public ActionResult<Stmt> actOnReturnStmt(
@@ -6982,7 +6992,7 @@ public final class Sema implements DiagnosticParseTag,
             boolean hasTrailingLParen,
             boolean isAddressOfOperand)
     {
-        assert !isAddressOfOperand && hasTrailingLParen:
+        assert !(isAddressOfOperand && hasTrailingLParen):
                 "cannot be direct & operand and have a trailing lparen";
 
         String name = id.getName();
@@ -7128,19 +7138,179 @@ public final class Sema implements DiagnosticParseTag,
      * Complete semantic analysis for a reference to the given declaration.
      * @return
      */
-    private ActionResult<Expr> buildDeclarationNameExpr(
-            LookupResult res)
+    private ActionResult<Expr> buildDeclarationNameExpr(LookupResult res)
     {
-        return exprError();
+        return buildDeclarationNameExpr(res.getLookupName(),
+                res.getNameLoc(), res.getFoundDecl());
     }
 
-    private boolean checkDeclInExpr(SourceLocation loc, NamedDecl decl)
+    private ActionResult<Expr> buildDeclarationNameExpr(
+            String nameInfo,
+            SourceLocation nameLoc,
+            NamedDecl nd)
     {
-        if (decl instanceof TypedefNameDecl)
+        assert nd != null:"Cannot refer to a NULL declaration";
+
+        if (checkDeclInExpr(this, nameLoc, nd))
+            return exprError();
+
+        // Make sure that we are referencing to a value.
+        if (!(nd instanceof ValueDecl))
         {
-            diag(loc, err_unexpected_typedef_ident)
-                    .addTaggedVal(decl.getDeclName())
-                    .emit();
+            diag(nameLoc, err_ref_non_value).addTaggedVal(nd).emit();
+            diag(nd.getLocation(), note_declared_at).emit();
+            return exprError();
+        }
+
+        ValueDecl vd = (ValueDecl)nd;
+        // Only create DeclRefExpr's for valid Decl's.
+        if (vd.isInvalidDecl())
+            return exprError();
+
+        QualType type = vd.getDeclType();
+        ExprValueKind valueKind = EVK_RValue;
+        switch (nd.getKind())
+        {
+            default:
+            {
+                Util.shouldNotReachHere("invalid value decl kind");
+                return exprError();
+            }
+            case EnumConstant:
+                valueKind = EVK_RValue;
+                break;
+            case FieldDecl:
+                assert false:"building refernce to field in C?";
+                break;
+            case VarDecl:
+                // In C, "extern void blah;" is valid and is an r-value.
+                if (!type.hasQualifiers() && type.isVoidType())
+                {
+                    valueKind = EVK_RValue;
+                    break;
+                }
+                // fall through.
+            case ParamVar:
+                // These always be l-value.
+                valueKind = EVK_LValue;
+                break;
+            case FunctionDecl:
+            {
+                // Functions are r-values in C.
+                valueKind = EVK_RValue;
+                break;
+            }
+        }
+        return buildDeclRefExpr(vd, type, valueKind, new DeclarationNameInfo(nameInfo, nameLoc));
+    }
+
+    /**
+     * Build an expression that references a declaration.
+     * @param decl
+     * @param type
+     * @param valueKind
+     * @param nameInfo
+     * @return
+     */
+    private ActionResult<Expr> buildDeclRefExpr(
+            NamedDecl decl,
+            QualType type,
+            ExprValueKind valueKind,
+            DeclarationNameInfo nameInfo)
+    {
+        markDeclarationReferenced(nameInfo.nameLoc, decl);
+
+        Expr e = new DeclRefExpr(nameInfo.nameInfo, decl,
+                type, OK_Ordinary, valueKind, nameInfo.nameLoc);
+
+        // Just in case we're building an illegal pointer-to-member.
+        FieldDecl fd = decl instanceof FieldDecl ? (FieldDecl)decl : null;
+        if (fd != null && fd.isBitField())
+        {
+            e.setObjectKind(OK_BitField);
+        }
+        return new ActionResult<>(e);
+    }
+
+    /**
+     * Note that the given declaration was referenced in the source doe.
+     *
+     * This function should be invokeded whenever a given declaration is
+     * referenced in the source code, and where that reference occurred.
+     * If this declaration reference means that the declaration is used,
+     * then the declaration will be marked as used.
+     * @param loc   The location where declaration was referenced.
+     * @param decl  The declaration that has been refernced by the source code.
+     */
+    private void markDeclarationReferenced(SourceLocation loc, Decl decl)
+    {
+        assert decl != null :"No declaration?";
+        decl.setReferenced(true);
+
+        if (decl.isUsed())
+            return;
+
+        // Mark a parameter or variable declaration "used"
+        if (decl instanceof ParamVarDecl || (decl instanceof VarDecl &&
+                decl.getDeclContext().isFunction()))
+        {
+            decl.setUsed();
+            return;
+        }
+
+        if (!(decl instanceof VarDecl) && !(decl instanceof FunctionDecl))
+            return;
+        // Only VarDecl or FunctionDecl reaching here.
+        if (decl instanceof FunctionDecl)
+        {
+            FunctionDecl fd = (FunctionDecl)decl;
+
+            // Recursive functions should be marked when used from another function.
+            if (curContext.equals(fd))
+                return;
+
+            // Keep track of used but undefined functions.
+            if (!fd.isPure() && !fd.hasBody() && fd.getLinkage() != ExternalLinkage)
+            {
+                if (!undefinedInternals.containsKey(fd))
+                    undefinedInternals.put(fd, loc);
+            }
+
+            fd.setUsed();
+        }
+        else
+        {
+            // assert decl instanceof VarDecl.
+            VarDecl vd = (VarDecl)decl;
+            // Keep track of used but undefined variables.  We make a hole in
+            // the warning for static const data members with in-line
+            // initializers.
+            if (vd.hasDefinition() == DeclarationOnly
+                    && vd.getLinkage() != ExternalLinkage)
+            {
+                if (!undefinedInternals.containsKey(vd))
+                    undefinedInternals.put(vd, loc);
+            }
+            vd.setUsed();
+        }
+    }
+
+    /**
+     * Diagnoses obvious problems with the use of the given declartion as an
+     * expression. This is only acutally called for lookups that were not
+     * overloaded, and it doesn't promise that the declaration will in fact
+     * be used.
+     * @param s     The sema action.
+     * @param loc   The source location for issuing diagnostic information.
+     * @param d     The named declaration.
+     * @return  Return true when diagnose information emitted. Otherwise
+     * return false.
+     */
+    private static boolean checkDeclInExpr(Sema s, SourceLocation loc, NamedDecl d)
+    {
+        if (d instanceof TypedefNameDecl)
+        {
+            s.diag(loc, err_unexpected_typedef).addString(d.getDeclKindName()).emit();
             return true;
         }
         return false;

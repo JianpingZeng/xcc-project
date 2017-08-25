@@ -834,7 +834,8 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseCompoundStatement(boolean isStmtExpr, int scopeFlags)
     {
-        assert nextTokenIs(l_brace) : "Not a compound statement!";
+        assert tok.is(l_brace) : "Not a compound statement!";
+        consumeBrace();     // Eat the '{'.
 
         // Enter a scope to hold everything within the compound stmt.
         // Compound statements can always hold declarations.
@@ -2113,7 +2114,7 @@ public class Parser implements Tag,
     {
         assert declarator.isFunctionDeclarator() :"Isn't a function declarator";
         // int X() {}
-        return nextTokenIs(r_brace);
+        return nextTokenIs(l_brace);
     }
     /**
      * Determines whether the current token is the part of declaration or
@@ -3398,10 +3399,9 @@ public class Parser implements Tag,
         DeclSpec ds = new DeclSpec();
 
         // enter function-declaration scope,
-        ParseScope protoTypeScope =
-                new ParseScope(this,
-                        ScopeFlags.FunctionProtoTypeScope.value
-                        | ScopeFlags.DeclScope.value);
+        ParseScope protoTypeScope = new ParseScope(this,
+                ScopeFlags.FunctionProtoTypeScope.value
+                | ScopeFlags.DeclScope.value);
         if (nextTokenIsNot(r_paren))
         {
             ellipsisLoc = parseParameterDeclarationClause(declarator, paramInfos);
@@ -3993,7 +3993,7 @@ public class Parser implements Tag,
                 res = action.actOnIdentifierExpr(getCurScope(),
                         loc,
                         id,
-                        nextTokenIs(l_paren),
+                        tok.is(l_paren),
                         isAddressOfOperand);
                 break;
             }

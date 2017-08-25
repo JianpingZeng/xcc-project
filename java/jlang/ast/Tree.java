@@ -1600,6 +1600,11 @@ public abstract class Tree
 		    return ok;
 	    }
 
+	    public void setObjectKind(ExprObjectKind okKind)
+	    {
+		    ok = okKind;
+	    }
+
         /**
          * Return true if this immediate expression should
          * be warned about if the result is unused.  If so, fill in Loc and Ranges
@@ -1730,7 +1735,7 @@ public abstract class Tree
             }
 	    }
 
-        public static class ICEDiag
+	    public static class ICEDiag
 	    {
 		    public int val;
 		    public SourceLocation loc;
@@ -1743,6 +1748,7 @@ public abstract class Tree
 
 		    public ICEDiag() {super();}
 	    }
+
 	    public static ICEDiag noDiag() {return new ICEDiag(); }
 
 	    static ICEDiag checkEvalInICE(Expr e, ASTContext ctx)
@@ -2196,7 +2202,9 @@ public abstract class Tree
          */
         private SourceLocation location;
 
-        public DeclRefExpr(String name, NamedDecl d,
+        public DeclRefExpr(
+        		String name,
+		        NamedDecl d,
                 QualType ty,
 		        ExprObjectKind ok,
                 ExprValueKind valueKind,

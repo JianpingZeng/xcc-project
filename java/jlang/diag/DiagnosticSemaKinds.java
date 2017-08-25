@@ -429,6 +429,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_REFERENCE_TO_LOCAL_VAR_IN_ENCLOSING_FUNCTION(err_reference_to_local_var_in_enclosing_function,CLASS_ERROR, MAP_ERROR, "reference to local variable %0 declared in enclosed function %1"),
 	ERR_REFERENCE_TO_VOID(err_reference_to_void,CLASS_ERROR, MAP_ERROR, "cannot form a reference to 'void'"),
 	ERR_REFERENCE_VAR_REQUIRES_INIT(err_reference_var_requires_init,CLASS_ERROR, MAP_ERROR, "declaration of reference variable %0 requires an initializer"),
+	ERR_REF_NON_VALUE(err_ref_non_value, CLASS_ERROR, MAP_ERROR, "%0 does not refer to a value"),
 	ERR_RET_LOCAL_BLOCK(err_ret_local_block,CLASS_ERROR, MAP_ERROR, "returning block that lives on the local stack"),
 	ERR_RETURN_BLOCK_HAS_EXPR(err_return_block_has_expr,CLASS_ERROR, MAP_ERROR, "void block should not return a value"),
 	ERR_RETURN_IN_BLOCK_EXPRESSION(err_return_in_block_expression,CLASS_ERROR, MAP_ERROR, "return not allowed in block expression literal"),

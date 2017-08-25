@@ -17,6 +17,7 @@ package jlang.diag;
  */
 
 import gnu.trove.list.array.TIntArrayList;
+import jlang.sema.Decl;
 import jlang.support.SourceRange;
 import jlang.clex.IdentifierInfo;
 import jlang.type.QualType;
@@ -26,6 +27,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 
 import static jlang.diag.Diagnostic.ArgumentKind.ak_c_string;
+import static jlang.diag.Diagnostic.ArgumentKind.ak_nameddecl;
 import static jlang.diag.Diagnostic.ArgumentKind.ak_std_string;
 import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Error;
 import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Ignore;
@@ -987,6 +989,11 @@ public final class Diagnostic
 			}
 			return this;
 		}
+
+		public DiagnosticBuilder addTaggedVal(Decl.NamedDecl decl)
+        {
+            return addTaggedVal(decl, ak_nameddecl);
+        }
 
 		public DiagnosticBuilder addTaggedVal(int i)
 		{

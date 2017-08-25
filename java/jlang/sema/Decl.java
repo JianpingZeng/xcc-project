@@ -59,8 +59,20 @@ public abstract class Decl
         SC_register
     }
 
+    /**
+     * Where the declaration declared in the source code.
+     */
     private SourceLocation location;
+
+    /**
+     * Tell if this declaration is invalid or not.
+     */
     private boolean invalidDecl;
+
+    /**
+     * Whether this declaration was "used", meaning that a definition is
+     * required.
+     */
     private boolean isUsed;
 
     /**
@@ -81,6 +93,12 @@ public abstract class Decl
     protected IDeclContext dc;
     
     protected DeclKind dk;
+
+    /**
+     * Indicates whether this declaration is referenced by other expression.
+     * In the other hand, it indicates if this declaration has been used.
+     */
+    protected boolean referenced;
 
     protected Decl(DeclKind kind, IDeclContext dc, SourceLocation location)
     {
@@ -262,6 +280,16 @@ public abstract class Decl
     public ASTContext getASTContext()
     {
         return getTranslationUnitDecl().getASTContext();
+    }
+
+    public void setReferenced(boolean val)
+    {
+        referenced = val;
+    }
+
+    public boolean isReferenced()
+    {
+        return referenced;
     }
 
     /**
@@ -988,6 +1016,21 @@ public abstract class Decl
         {
             return redeclarator.next();
         }
+
+        public DefinitionKind hasDefinition()
+        {
+            DefinitionKind kind = DefinitionKind.DeclarationOnly;
+
+            Decl.VarDecl first = getFirstDeclaration();
+            for (;first.hasNext();)
+            {
+
+                DefinitionKind k = first.next().isThisDeclarationADefinition();
+                if (k.compareTo(kind) > 0)
+                    kind = k;
+            }
+            return kind;
+        }
     }
 
     /**
@@ -1104,6 +1147,7 @@ public abstract class Decl
 
         private Redeclarator<FunctionDecl> redeclarator;
         private DeclContext dc;
+        private boolean isPure;
 
         public FunctionDecl(IdentifierInfo name,
                 DeclContext context,
@@ -1463,6 +1507,16 @@ public abstract class Decl
         public boolean isThisDeclarationADefinition()
         {
             return body != null;
+        }
+
+        public boolean isPure()
+        {
+            return isPure;
+        }
+
+        public void setPure(boolean pure)
+        {
+            isPure = pure;
         }
     }
 
