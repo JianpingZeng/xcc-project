@@ -103,7 +103,7 @@ public final class Scope
      */
     private int protoTypeIndex;
     /**
-     * IfStmt this scope has a parent scope that is a function body, this
+     * If this scope has a parent scope that is a function body, this
      * pointer is non-null and points to it.  This is used for label processing.
      */
     private Scope funcParent;

@@ -428,7 +428,8 @@ public interface DiagnosticSemaTag
 	public static final int err_reference_to_local_var_in_enclosing_function = err_reference_init_drops_quals + 1;
 	public static final int err_reference_to_void = err_reference_to_local_var_in_enclosing_function + 1;
 	public static final int err_reference_var_requires_init = err_reference_to_void + 1;
-	public static final int err_ret_local_block = err_reference_var_requires_init + 1;
+	public static final int err_ref_non_value = err_reference_var_requires_init + 1;
+	public static final int err_ret_local_block = err_ref_non_value + 1;
 	public static final int err_return_block_has_expr = err_ret_local_block + 1;
 	public static final int err_return_in_block_expression = err_return_block_has_expr + 1;
 	public static final int err_return_in_constructor_handler = err_return_in_block_expression + 1;

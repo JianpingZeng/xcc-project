@@ -261,8 +261,7 @@ public class Declarator
     {
         assert index != null;
 
-        for (int size = declTypeInfos.size(), i = 0;
-             i < size; ++i)
+        for (int i = 0, size = declTypeInfos.size(); i < size; ++i)
         {
             switch (declTypeInfos.get(i).kind)
             {
