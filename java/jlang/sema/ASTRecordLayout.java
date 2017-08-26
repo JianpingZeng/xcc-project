@@ -220,7 +220,7 @@ public final class ASTRecordLayout
 				Expr bitWidthExpr = fd.getBitWidth();
 				fieldSize = bitWidthExpr.evaluateAsInt(ctx).getZExtValue();
 
-				Pair<Long, Integer> fieldInfo = ctx.getTypeInfo(fd.getDeclType());
+				Pair<Long, Integer> fieldInfo = ctx.getTypeInfo(fd.getType());
 				long typeSize = fieldInfo.first;
 				fieldAlign = fieldInfo.second;
 
@@ -242,19 +242,19 @@ public final class ASTRecordLayout
 			}
 		    else
 			{
-				if (fd.getDeclType().isIncompleteArrayType())
+				if (fd.getType().isIncompleteArrayType())
 				{
 					// This is a flexible array member; we can't directly
 					// query getTypeInfo about these, so we figure it out here.
 					// Flexible array members don't have any getNumOfSubLoop, but they
 					// have to be aligned appropriately for their element jlang.type.'
 					fieldSize = 0;
-					ArrayType ty = ctx.getAsArrayType(fd.getDeclType());
+					ArrayType ty = ctx.getAsArrayType(fd.getType());
 					fieldAlign = ctx.getTypeAlign(ty.getElemType());
 				}
 				else
 				{
-					Pair<Long, Integer> fieldInfo = ctx.getTypeInfo(fd.getDeclType());
+					Pair<Long, Integer> fieldInfo = ctx.getTypeInfo(fd.getType());
 					fieldSize = fieldInfo.first;
 					fieldAlign = fieldInfo.second;
 				}

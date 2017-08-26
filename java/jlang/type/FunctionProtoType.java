@@ -145,4 +145,9 @@ public final class FunctionProtoType extends FunctionType implements FoldingSetN
         FunctionProtoType ft = (FunctionProtoType)obj;
         return ft.hashCode() == hashCode();
     }
+
+    public int getTypeQuals()
+    {
+        return super.getTypeQuals();
+    }
 }

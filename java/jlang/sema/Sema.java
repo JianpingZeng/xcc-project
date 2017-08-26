@@ -890,7 +890,7 @@ public final class Sema implements DiagnosticParseTag,
         for (int i = 0, e = record.getNumFields(); i < e; i++)
         {
             FieldDecl fd = record.getDeclAt(i);
-            Type fdTy = fd.getDeclType().getType();
+            Type fdTy = fd.getType().getType();
 
             if (!fd.isAnonymousStructOrUnion())
             {
@@ -926,7 +926,7 @@ public final class Sema implements DiagnosticParseTag,
                 if (record != null)
                     record.setHasFlexibleArrayMember(true);
             }
-            else if (requireCompleteType(fd.getLocation(), fd.getDeclType(),
+            else if (requireCompleteType(fd.getLocation(), fd.getType(),
                     err_field_incomplete))
             {
                 // Incomplete type
@@ -946,7 +946,7 @@ public final class Sema implements DiagnosticParseTag,
                         if (i != e - 1)
                             diag(fd.getLocation(), ext_variable_sized_type_in_struct)
                                     .addTaggedVal(fd.getDeclName())
-                                    .addTaggedVal(fd.getDeclType())
+                                    .addTaggedVal(fd.getType())
                                     .emit();
                         else
                         {
@@ -1331,7 +1331,7 @@ public final class Sema implements DiagnosticParseTag,
 
                 if (enumVal.lt(lastEnumConst.getInitValue()))
                     diag(idLoc, warn_enum_value_overflow).emit();
-                eltTy = lastEnumConst.getDeclType();
+                eltTy = lastEnumConst.getType();
             }
             else
             {
@@ -1436,7 +1436,7 @@ public final class Sema implements DiagnosticParseTag,
 
                 // Keep track of whether every enum element has type int (very commmon).
                 if (allElementsInt)
-                    allElementsInt = ecd.getDeclType().equals(context.IntTy);
+                    allElementsInt = ecd.getType().equals(context.IntTy);
             }
         }
         QualType bestType = new QualType();
@@ -1494,7 +1494,7 @@ public final class Sema implements DiagnosticParseTag,
                 // enumerator value fits in an int, type it as an int, otherwise type it the
                 // same as the enumerator decl itself.  This means that in "enum { X = 1U }"
                 // that X has type 'int', not 'unsigned'.
-                if (ecd.getDeclType().equals(context.IntTy))
+                if (ecd.getType().equals(context.IntTy))
                 {
                     APSInt v = ecd.getInitValue();
                     v.setIsUnsigned(true);
@@ -1522,7 +1522,7 @@ public final class Sema implements DiagnosticParseTag,
                     newWidth = intWidth;
                     newSign = true;
                 }
-                else if (ecd.getDeclType().equals(bestType))
+                else if (ecd.getType().equals(bestType))
                 {
                     // Already the right type!
                     continue;
@@ -1547,7 +1547,7 @@ public final class Sema implements DiagnosticParseTag,
                             ecd.getInitExpr().getExprLocation()));
                 }
 
-                ecd.setDeclType(newTy);
+                ecd.setType(newTy);
             }
         }
 
@@ -1735,7 +1735,7 @@ public final class Sema implements DiagnosticParseTag,
         while ((s.getFlags() & Scope.ScopeFlags.DeclScope.value) == 0)
             s = s.getParent();
 
-        NamedDecl New = null;
+        NamedDecl New;
         QualType ty = getTypeForDeclarator(d, null);
 
         LookupResult previous = new LookupResult(this, name.getName(), nameLoc,
@@ -1807,17 +1807,27 @@ public final class Sema implements DiagnosticParseTag,
         StorageClass sc = getFunctionStorageClass(d);
 
         boolean isInline = d.getDeclSpec().isInlineSpecifier();
-        boolean hasPrototype = (d.getNumTypeObjects() != 0
-                && ((FunctionTypeInfo)d.getTypeObject(0).typeInfo).hasProtoType)
-                || (!(ty.getType() instanceof FunctionType) && ty.isFunctionType());
+
+        // Determine whether the function was written with a
+        // prototype. This true when:
+        //   - there is a prototype in the declarator, or
+        //   - the type ty of the function is some kind of typedef or other reference
+        //     to a type name (which eventually refers to a function type).
+        boolean hasPrototype = (d.getNumTypeObjects() != 0 &&
+                d.getFunctionTypeInfo().hasProtoType) ||
+                (!(ty.getType() instanceof FunctionType) && ty.isFunctionProtoType());
 
         FunctionDecl newFD = new FunctionDecl(name, dc, nameLoc,
                 ty, sc, isInline, hasPrototype);
 
-        if (newFD == null) return null;
+        // Set the context as currrent context(Usually it is translation unit in ISO C).
+        newFD.setDeclContext(curContext);
 
-        // Copy the parameter declarations from the declarator D to the function
-        // declaration NewFD, if they are available.
+        // For FunctionProtoType
+        FunctionProtoType ft = null;
+
+        // Copy the parameter declarations from the declarator d to the function
+        // declaration newFD, if they are available.
         ArrayList<ParamVarDecl> params = new ArrayList<>(16);
         if (d.isFunctionDeclarator())
         {
@@ -1831,7 +1841,7 @@ public final class Sema implements DiagnosticParseTag,
             DeclSpec.ParamInfo arg = fti.argInfo.get(0);
             if (fti.numArgs == 1 && !fti.isVariadic && arg.name == null
                     && arg.param != null && arg.param instanceof ParamVarDecl
-                    && ((ParamVarDecl)arg.param).getDeclType().isVoidType())
+                    && ((ParamVarDecl)arg.param).getType().isVoidType())
             {
                 // Empty arg list, don't push any params.
                 ParamVarDecl param = (ParamVarDecl)arg.param;
@@ -1850,17 +1860,450 @@ public final class Sema implements DiagnosticParseTag,
                 }
             }
         }
+        else if ((ft = ty.getAsFunctionProtoType()) != null)
+        {
+            // When we're declaring a function with a typedef, typeof, etc as in the
+            // following example, we'll need to synthesize (unnamed)
+            // parameters for use in the declaration.
+            //
+            // <code>
+            // typedef void fn(int);
+            // fn f;
+            // </code>
+            for (int i = 0, e = ft.getNumArgs(); i != e; i++)
+            {
+                ParamVarDecl param = ParamVarDecl.create(dc,
+                        null,
+                        new SourceLocation(),
+                        ft.getArgType(i),
+                        StorageClass.SC_none);
+                param.setImplicit(true);
+                params.add(param);
+            }
+        }
         else
         {
-            // TODO FunctionPrototype.
+            assert ty.isFunctionNoProtoType() && newFD.getNumParams() == 0
+                    :"Should not need args for typedef of non-prototype fn";
         }
 
         // Finally, we know we have the right number of parameters, install them.
         newFD.setParams(params);
 
+        // If name lookup finds a previous declaration that is not in the
+        // same scope as the new declaration, this may still be an
+        // acceptable redeclaration.
+        if (prevDecl != null && !isDeclInScope(prevDecl, dc, s) &&
+                !(newFD.hasLinkage() && isOutOfScopePreviousDeclaration(
+                        prevDecl, dc, context)))
+        {
+            prevDecl = null;
+        }
+
+        // Perform semantic checking on function declaration.
+        OutParamWrapper<NamedDecl> prev = new OutParamWrapper<>(prevDecl);
+        checkFunctionDeclaration(newFD, prev, redeclaration);
+        prevDecl = prev.get();
+
         // Set this FunctionDecl's range up to the right paren.
         newFD.setRangeEnd(d.getSourceRange().getEnd());
         return newFD;
+    }
+
+    /**
+     * Performs semantic analysis of the new function declaration
+     * newFD. This routine performs all semantic checking that does not
+     * require the actual declarator involved in the declaration, and is
+     * used for the declaration of functions as they are parsed
+     * (called via ActOnDeclarator).
+     * @param newFD
+     * @param prevDecl
+     * @param redecalration
+     */
+    private void checkFunctionDeclaration(
+            FunctionDecl newFD,
+            OutParamWrapper<NamedDecl> prevDecl,
+            OutParamWrapper<Boolean> redecalration)
+    {
+        if (newFD.isInvalidDecl())
+            return;
+        if (newFD.getReturnType().isVariablyModifiedType())
+        {
+            // Functions returning a variably modified type violate C99 6.7.5.2p2
+            // because all functions have linkage.
+            diag(newFD.getLocation(), err_vm_func_decl).emit();
+            newFD.setInvalidDecl(true);
+            return;
+        }
+
+        if (newFD.isMain())
+            checkMain(newFD);
+
+        // C99 6.7.4p6:
+        //   [... ] For a function with external linkage, the following
+        //   restrictions apply: [...] If all of the file scope declarations
+        //   for a function in a translation unit include the inline
+        //   function specifier without extern, then the definition in that
+        //   translation unit is an inline definition. An inline definition
+        //   does not provide an external definition for the function, and
+        //   does not forbid an external definition in another translation
+        //   unit.
+        //
+        // Here we determine whether this function, in isolation, would be a
+        // C99 inline definition. MergeCompatibleFunctionDecls looks at
+        // previous declarations.
+
+        if (newFD.isInlineSpecified() && getLangOptions().c99 &&
+                newFD.getStorageClass() == StorageClass.SC_none &&
+                newFD.getDeclContext().getLookupContext().isTranslationUnit())
+        {
+            newFD.setC99InlineDefinition(true);
+        }
+
+        if (prevDecl.get() != null)
+        {
+            // Determine if newFD is a declaration that requres merging.
+            if (!allowOverloadingOfFunction(prevDecl.get())
+                    || !isOverload(newFD, prevDecl.get()))
+            {
+                redecalration.set(true);
+                Decl oldDecl = prevDecl.get();
+
+                // newFD and oldDecl represent declarations that need to be
+                // merged.
+                if (mergeFunctionDecl(newFD, oldDecl))
+                {
+                    newFD.setInvalidDecl(true);
+                    return;
+                }
+
+                newFD.setPreviousDeclaration((FunctionDecl)oldDecl);
+            }
+        }
+    }
+
+    /**
+     * We just parsed a function 'newFD' from declarator d which has the
+     * same name and scope as a previous declaration 'oldDecl'.
+     * Figure out how to resolve this situation, merging decls or emitting
+     * diagnostics as appropriate.
+     * @param newFD
+     * @param oldDecl
+     * @return
+     */
+    private boolean mergeFunctionDecl(FunctionDecl newFD, Decl oldDecl)
+    {
+        // Verify the old decl was also a function.
+        FunctionDecl old = oldDecl instanceof FunctionDecl ?
+                (FunctionDecl) oldDecl :
+                null;
+        if (old == null)
+        {
+            diag(newFD.getLocation(), err_redefinition_different_kind).
+                    addTaggedVal(newFD.getDeclName()).emit();
+            diag(oldDecl.getLocation(), note_previous_definition).emit();
+            return true;
+        }
+
+        // Determine whether the previous declaration was a definition,
+        // implicit declaration, or a declaration.
+        int prevDiagID;
+        if (old.isThisDeclarationADefinition())
+            prevDiagID = note_previous_definition;
+        else if (old.isImplicit())
+            prevDiagID = note_previous_implicit_declaration;
+        else
+            prevDiagID = note_previous_declaration;
+
+        QualType oldType = context.getCanonicalType(old.getType());
+        QualType newType = context.getCanonicalType(newFD.getType());
+
+        if (newFD.getStorageClass() == StorageClass.SC_static
+                && old.getStorageClass() != StorageClass.SC_static)
+        {
+            diag(newFD.getLocation(), err_static_non_static).
+                    addTaggedVal(newFD).emit();
+            diag(old.getLocation(), prevDiagID);
+            return true;
+        }
+
+        // C: Function types need to be compatible, not identical. This handles
+        // duplicate function decls like "void f(int); void f(enum X);" properly.
+        if (context.typesAreCompatible(oldType, newType))
+        {
+            FunctionType oldFuncType = oldType.getAsFunctionType();
+            FunctionType newFuncType = newType.getAsFunctionType();
+            FunctionProtoType oldProto = null;
+            if (newFuncType instanceof FunctionNoProtoType &&
+                    oldFuncType instanceof FunctionProtoType)
+            {
+                // The old declaration provided a function prototype, but the
+                // new declaration does not. Merge in the prototype.
+                oldProto = (FunctionProtoType) oldFuncType;
+
+                ArrayList<QualType> paramTypes = new ArrayList<>();
+                for (int i = 0, e = oldProto.getNumArgs(); i != e; i++)
+                    paramTypes.add(oldProto.getArgType(i));
+
+                newType = context.getFunctionType(newFuncType.getResultType(),
+                        paramTypes, oldProto.isVariadic(),
+                        oldProto.getTypeQuals());
+
+                newFD.setType(newType);
+
+                // Synthesize a parameter for each argument type.
+                ArrayList<ParamVarDecl> params = new ArrayList<>();
+                for (QualType t : paramTypes)
+                {
+                    ParamVarDecl param = ParamVarDecl
+                            .create(newFD, null, new SourceLocation(), t,
+                                    StorageClass.SC_none);
+                    param.setImplicit(true);
+                    params.add(param);
+                }
+
+                newFD.setParams(params);
+            }
+            return mergeCompatibleFunctionDecls(newFD, old);
+        }
+
+        // GNU C permits a K&R definition to follow a prototype declaration
+        // if the declared types of the parameters in the K&R definition
+        // match the types in the prototype declaration, even when the
+        // promoted types of the parameters from the K&R definition differ
+        // from the types in the prototype. GCC then keeps the types from
+        // the prototype.
+        //
+        // If a variadic prototype is followed by a non-variadic K&R definition,
+        // the K&R definition becomes variadic.  This is sort of an edge case, but
+        // it's legal per the standard depending on how you read C99 6.7.5.3p15 and
+        // C99 6.9.1p8.
+        if (old.hasPrototype() && !newFD.hasPrototype()
+                && newFD.getType().getAsFunctionProtoType() != null
+                && old.getNumParams() == newFD.getNumParams())
+        {
+            ArrayList<QualType> argTypes = new ArrayList<>();
+            ArrayList<GNUCompatibleParamWarning> warns = new ArrayList<>();
+
+            FunctionProtoType oldProto = old.getType().getAsFunctionProtoType();
+            FunctionProtoType newProto = newFD.getType().getAsFunctionProtoType();
+
+            // Determine whether this is the GNU C extension.
+            QualType mergedReturn = context.mergeType(oldProto.getResultType(),
+                    newProto.getResultType());
+
+            boolean looseCompatible = !mergedReturn.isNull();
+            for (int idx = 0, e = old.getNumParams();
+                 looseCompatible && idx != e; idx++)
+            {
+                ParamVarDecl oldParm = old.getParamDecl(idx);
+                ParamVarDecl newParm = newFD.getParamDecl(idx);
+                if (context.typesAreCompatible(oldParm.getType(),
+                        newProto.getArgType(idx)))
+                {
+                    argTypes.add(newParm.getType());
+                }
+                else if (context.typesAreCompatible(oldParm.getType(),
+                        newParm.getType()))
+                {
+                    GNUCompatibleParamWarning warn =
+                            new GNUCompatibleParamWarning(oldParm, newParm, newProto.getArgType(idx));
+                    warns.add(warn);
+                    argTypes.add(newParm.getType());
+                }
+                else
+                    looseCompatible = false;
+            }
+
+            if (looseCompatible)
+            {
+                for (GNUCompatibleParamWarning warn : warns)
+                {
+                    diag(warn.newParam.getLocation(),
+                            ext_param_promoted_not_compatible_with_prototype)
+                            .addTaggedVal(warn.promotedType)
+                            .addTaggedVal(warn.oldParam.getType())
+                            .emit();
+                    diag(warn.oldParam.getLocation(), note_previous_declaration)
+                            .emit();
+                }
+
+                newFD.setType(context.getFunctionType(mergedReturn, argTypes,
+                        oldProto.isVariadic(), 0));
+                return mergeCompatibleFunctionDecls(newFD, old);
+            }
+
+            // Fall through to diagnose conflicting types.
+        }
+
+        diag(newFD.getLocation(), err_conflicting_types).
+                addTaggedVal(newFD.getDeclName()).emit();
+        diag(old.getLocation(), prevDiagID).addTaggedVal(old).
+                addTaggedVal(old.getType()).emit();
+        return true;
+    }
+
+    /**
+     * Completes the merge of two function declarations that are
+     * known to be compatible.
+     *
+     * This routine handles the merging of attributes and other
+     * properties of function declarations form the old declaration to
+     * the new declaration, once we know that New is in fact a
+     * redeclaration of Old.
+     * @param newFD
+     * @param oldFD
+     * @return  Return false.
+     */
+    private boolean mergeCompatibleFunctionDecls(
+            FunctionDecl newFD, FunctionDecl oldFD)
+    {
+        if (oldFD.getStorageClass() != StorageClass.SC_extern)
+            newFD.setStorageClass(oldFD.getStorageClass());
+
+        // Merge 'inline'.
+        if (oldFD.isInlineSpecified())
+            newFD.setInlineSpecified(true);
+
+        if (newFD.isC99InlineDefinition() && !oldFD.isC99InlineDefinition())
+            newFD.setC99InlineDefinition(false);
+        else if (oldFD.isC99InlineDefinition() && newFD.isC99InlineDefinition())
+        {
+            // Mark all preceding definitions as not being C99 inline definitions.
+            for (FunctionDecl prev = oldFD; prev != null;
+                 prev = prev.getPreviousDeclaration())
+            {
+                prev.setC99InlineDefinition(false);
+            }
+        }
+
+        // Merge 'pure' flag.
+        if (oldFD.isPure())
+            newFD.setPure(true);
+
+        return false;
+    }
+
+    private boolean isOverload(FunctionDecl newFD, Decl prevDecl)
+    {
+        return false;
+    }
+
+    /**
+     * Determines if we allow overloading of the function prevDecl with
+     * another declaration.
+     *
+     * This function determines whether overloading is possible. Currently
+     * not allowd, but it would support overloadable attributes (GNU extension)
+     * in the future.
+     * @param prevDecl
+     * @return
+     */
+    private static boolean allowOverloadingOfFunction(Decl prevDecl)
+    {
+        return false;
+    }
+
+    /**
+     * Perform semantic checking on main function.
+     * @param newFD
+     */
+    private void checkMain(FunctionDecl newFD)
+    {
+        // C99 6.7.4p4:  In a hosted environment, the inline function specifier
+        //   shall not appear in a declaration of main.
+        // static main is not an error under C99, but we should warn about it.
+        boolean isInline = newFD.isInlineSpecified();
+        boolean isStatic = newFD.getStorageClass() == StorageClass.SC_static;
+        if (isInline || isStatic)
+        {
+            int diagID = warn_unusual_main_decl;
+            if (isInline)
+                diagID = err_unusual_main_decl;
+            int which = (isStatic ? 1 : 0) + ((isInline ? 1 : 0) << 1) - 1;
+            diag(newFD.getLocation(), diagID).addTaggedVal(which).emit();
+        }
+
+        QualType t = newFD.getType();
+        assert t.isFunctionType() : "Function decl is not of function type?";
+        FunctionType ft = t.getAsFunctionType();
+
+        if (!context.hasSameUnqualifiedType(ft.getResultType(), context.IntTy))
+        {
+            // TODO complte DeclaratorInfo 2017-8-26.
+            diag(newFD.getTypeSpecStartLoc(), err_main_returns_nonint);
+            newFD.setInvalidDecl(true);
+        }
+
+        if (ft instanceof FunctionNoProtoType)
+            return;
+
+        FunctionProtoType ftp = (FunctionProtoType) ft;
+        int nparams = ftp.getNumArgs();
+        assert newFD.getNumParams() == nparams;
+
+        if (nparams > 3)
+        {
+            diag(newFD.getLocation(), err_main_surplus_args)
+                    .addTaggedVal(nparams).emit();
+            newFD.setInvalidDecl(true);
+            nparams = 3;
+        }
+
+        QualType charPP = context.getPointerType(context.getPointerType(
+                context.CharTy));
+        QualType[] expectedTy = {context.IntTy, charPP, charPP};
+
+        for (int i = 0; i < nparams; i++)
+        {
+            QualType at = ftp.getArgType(i);
+            boolean mismatch = true;
+
+            if (context.hasSameUnqualifiedType(at, expectedTy[i]))
+                mismatch = false;
+
+            if (mismatch)
+            {
+                diag(newFD.getLocation(), err_main_arg_wrong)
+                        .addTaggedVal(i)
+                        .addTaggedVal(expectedTy[i])
+                        .emit();
+                newFD.setInvalidDecl(true);
+            }
+        }
+
+        if (nparams == 1 && !newFD.isInvalidDecl())
+            diag(newFD.getLocation(), warn_main_one_arg);
+    }
+
+    /**
+     * Determines whether the given declaration is an out-of-scope
+     * previous declaration.
+     *
+     * This routine should be invoked when name lookup has found a
+     * previous declaration (PrevDecl) that is not in the scope where a
+     * new declaration by the same name is being introduced. If the new
+     * declaration occurs in a local scope, previous declarations with
+     * linkage may still be considered previous declarations (C99
+     * 6.2.2p4-5).
+     * @param prevDecl  The previous declaration found by name.
+     * @param dc    The context in which the new declaration is being decalred.
+     * @param ctx
+     * @return  Return true if prevDecl is an out of scope previous declaration
+     *           for a new declaration with the same name.
+     */
+    private static boolean isOutOfScopePreviousDeclaration(
+            NamedDecl prevDecl,
+            IDeclContext dc,
+            ASTContext ctx)
+    {
+        if (prevDecl == null)
+            return false;
+
+        if (!prevDecl.hasLinkage())
+            return false;
+
+        return true;
     }
 
     /**
@@ -1944,7 +2387,7 @@ public final class Sema implements DiagnosticParseTag,
 
         VarDecl Old = (VarDecl)oldOne;
 
-        QualType mergedTy = context.mergeType(newOne.getDeclType(), Old.getDeclType());
+        QualType mergedTy = context.mergeType(newOne.getType(), Old.getType());
         if (mergedTy.isNull())
         {
             diag(newOne.getLocation(), err_redefinition_different_type)
@@ -1954,7 +2397,7 @@ public final class Sema implements DiagnosticParseTag,
             return;
         }
 
-        newOne.setDeclType(mergedTy);
+        newOne.setType(mergedTy);
 
         // C99 6.2.2p4: Check if we have a static decl followed by a non-static.
         if (newOne.getStorageClass() == StorageClass.SC_static &&
@@ -2021,7 +2464,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         if (newVD.isInvalidDecl())
             return;
-        QualType ty = newVD.getDeclType();
+        QualType ty = newVD.getType();
 
         boolean isVM = ty.isVariablyModifiedType();
         if ((isVM && newVD.hasLinkage()) || (ty.isVariableArrayType()
@@ -2065,7 +2508,7 @@ public final class Sema implements DiagnosticParseTag,
             }
 
             diag(newVD.getLocation(), warn_illegal_constant_array_size).emit();
-            newVD.setDeclType(FixedTy);
+            newVD.setType(FixedTy);
             return;
         }
 
@@ -2378,7 +2821,7 @@ public final class Sema implements DiagnosticParseTag,
         // We cannot directly use result because it can change due to tsemantic analysis.
         QualType sourceTy = result.clone();
 
-        for (int i = 0, e = d.getNumTypeObjects(); i < e; i++)
+        for (int i = d.getNumTypeObjects() - 1; i >= 0; i--)
         {
             DeclaratorChunk declType = d.getTypeObject(i);
             switch (declType.getKind())
@@ -2390,8 +2833,9 @@ public final class Sema implements DiagnosticParseTag,
                 {
                     PointerTypeInfo pti = ((PointerTypeInfo)declType.typeInfo);
                     if (shouldBuildInfo)
-                        sourceTy = context.getPointerType(sourceTy).
-                                getQualifiedType(pti.typeQuals);
+                        sourceTy = context.getPointerType(sourceTy)
+                                .getQualifiedType(pti.typeQuals);
+
                     result = buildPointerType(result, pti.typeQuals, declType.getLocation(), name);
                     break;
                 }
@@ -2401,6 +2845,7 @@ public final class Sema implements DiagnosticParseTag,
                     if (shouldBuildInfo)
                         sourceTy = context.getIncompleteArrayType(sourceTy,
                                 ArraySizeModifier.Normal, ati.typeQuals);
+
                     Expr arraySize = ati.numElts;
                     ArraySizeModifier asm;
                     if (ati.isStar)
@@ -2410,7 +2855,7 @@ public final class Sema implements DiagnosticParseTag,
                     else
                         asm = ArraySizeModifier.Normal;
 
-                    // int X[*] is only allowed on function pramater.
+                    // int X[*] is only allowed on function parameter.
                     if (asm == ArraySizeModifier.Star &&
                             d.getContext() != FunctionProtoTypeContext)
                     {
@@ -2436,7 +2881,7 @@ public final class Sema implements DiagnosticParseTag,
                             if (fti.argInfo.get(j).param instanceof ParamVarDecl)
                             {
                                 ParamVarDecl param = (ParamVarDecl)fti.argInfo.get(j).param;;
-                                argTys.add(param.getDeclType());
+                                argTys.add(param.getType());
                             }
                         }
                         sourceTy = context.getFunctionType(sourceTy, argTys,
@@ -2485,7 +2930,7 @@ public final class Sema implements DiagnosticParseTag,
                         for (DeclSpec.ParamInfo paramInfo : fti.argInfo)
                         {
                             ParamVarDecl param = (ParamVarDecl)paramInfo.param;
-                            QualType argTy = param.getDeclType();
+                            QualType argTy = param.getType();
                             assert !argTy.isNull() :"Couldn't parse type?";
 
                             assert argTy.equals(adjustParameterType(argTy))
@@ -2501,7 +2946,7 @@ public final class Sema implements DiagnosticParseTag,
                                     diag(declType.getLocation(), err_void_only_param)
                                             .emit();
                                     argTy = context.IntTy;
-                                    param.setDeclType(argTy);
+                                    param.setType(argTy);
                                 }
                                 else if (paramInfo.name != null)
                                 {
@@ -2509,7 +2954,7 @@ public final class Sema implements DiagnosticParseTag,
                                     diag(paramInfo.identLoc, err_param_with_void_type)
                                             .emit();
                                     argTy = context.IntTy;
-                                    param.setDeclType(argTy);
+                                    param.setType(argTy);
                                 }
                                 else
                                 {
@@ -2829,7 +3274,7 @@ public final class Sema implements DiagnosticParseTag,
             // function declarator that is part of a function definition of
             // that function shall not have incomplete type.
             if (!var.isInvalidDecl() &&
-                    requireCompleteType(var.getLocation(), var.getDeclType(),
+                    requireCompleteType(var.getLocation(), var.getType(),
                             err_typecheck_decl_incomplete_type))
             {
                 var.setInvalidDecl(true);
@@ -3828,7 +4273,7 @@ public final class Sema implements DiagnosticParseTag,
         if (realDecl instanceof VarDecl)
         {
             VarDecl var = (VarDecl) realDecl;
-            QualType type = var.getDeclType();
+            QualType type = var.getType();
 
             switch (var.isThisDeclarationADefinition())
             {
@@ -4747,8 +5192,16 @@ public final class Sema implements DiagnosticParseTag,
         return result;
     }
 
-    /// \brief Handle integer arithmetic conversions.  Helper function of
-    /// UsualArithmeticConversions()
+    /**
+     * Handle integer arithmetic conversions.  Helper function of
+     * UsualArithmeticConversions()
+     * @param lhs
+     * @param rhs
+     * @param lhsType
+     * @param rhsType
+     * @param isCompAssign
+     * @return
+     */
     private QualType handleIntegerConversion(
             OutParamWrapper<ActionResult<Expr>> lhs,
             OutParamWrapper<ActionResult<Expr>> rhs,
@@ -5765,7 +6218,7 @@ public final class Sema implements DiagnosticParseTag,
                 for (; i < e; i++)
                 {
                     FieldDecl fd = rd.getDeclAt(i);
-                    if (fd.getDeclType().getType().getCanonicalTypeInternal().getUnQualifiedType().
+                    if (fd.getType().getType().getCanonicalTypeInternal().getUnQualifiedType().
                             equals(expr.getType().getType().getCanonicalTypeInternal().getUnQualifiedType()))
                     {
                         diag(range.getBegin(), ext_typecheck_cast_to_union)
@@ -6527,7 +6980,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // Figure out the type of the member; see C99 6.5.2.3p3
-        QualType memberType = field.getDeclType();
+        QualType memberType = field.getType();
         QualType baseType = baseEpxr.getType();
         if (isArrow) baseType = context.<PointerType>getAs(baseType).getPointeeType();
 
@@ -6591,7 +7044,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             VarDecl var = (VarDecl)memberDecl;
             return new ActionResult<>(buildMemberExpr(baseExpr, isArrow,
-                    var, var.getDeclType(), EVK_LValue, memberLoc, OK_Ordinary));
+                    var, var.getType(), EVK_LValue, memberLoc, OK_Ordinary));
         }
 
         assert !(memberDecl instanceof FunctionDecl);
@@ -6600,7 +7053,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             EnumConstantDecl Enum = (EnumConstantDecl)memberDecl;
             return new ActionResult<>(buildMemberExpr(baseExpr, isArrow,
-                    Enum, Enum.getDeclType(), EVK_LValue, memberLoc, OK_Ordinary));
+                    Enum, Enum.getType(), EVK_LValue, memberLoc, OK_Ordinary));
         }
 
         // We found something that we didn't expect. Complain.
@@ -7179,7 +7632,7 @@ public final class Sema implements DiagnosticParseTag,
         if (vd.isInvalidDecl())
             return exprError();
 
-        QualType type = vd.getDeclType();
+        QualType type = vd.getType();
         ExprValueKind valueKind = EVK_RValue;
         switch (nd.getKind())
         {
@@ -7354,7 +7807,7 @@ public final class Sema implements DiagnosticParseTag,
         if (vd == null)
             return;
 
-        QualType ty = vd.getDeclType();
+        QualType ty = vd.getType();
         if (requireCompleteType(vd.getLocation(),
                 context.getBaseElementType(ty),
                 err_typecheck_decl_incomplete_type))
@@ -7406,7 +7859,7 @@ public final class Sema implements DiagnosticParseTag,
         // A definition must end up with a complete type, which means it must be
         // complete with the restriction that an array type might be completed by the
         // initializer; note that later code assumes this restriction.
-        QualType baseDeclType = vd.getDeclType();
+        QualType baseDeclType = vd.getType();
         ArrayType array = context.getAsInompleteArrayType(baseDeclType);
 
         if (array != null)
@@ -7422,7 +7875,7 @@ public final class Sema implements DiagnosticParseTag,
 
         // Get the decls type and save a reference for later, since
         // CheckInitializerTypes may change it.
-        QualType declTy = vd.getDeclType(), savedTy = declTy;
+        QualType declTy = vd.getType(), savedTy = declTy;
         if (vd.isLocalVarDecl())
         {
             if (vd.hasExternalStorage())
@@ -7445,7 +7898,7 @@ public final class Sema implements DiagnosticParseTag,
         else if (vd.isFileVarDecl())
         {
             if (vd.hasExternalStorage() &&
-                    !context.getBaseElementType(vd.getDeclType()).isConstQualifed())
+                    !context.getBaseElementType(vd.getType()).isConstQualifed())
             {
                 diag(vd.getLocation(), warn_extern_init).emit();
             }
@@ -7464,7 +7917,7 @@ public final class Sema implements DiagnosticParseTag,
         // "ary" transitions from a VariableArrayType to a ConstantArrayType.
         if (!vd.isInvalidDecl() && !declTy.equals(savedTy))
         {
-            vd.setDeclType(declTy);
+            vd.setType(declTy);
             init.setType(declTy);
         }
 

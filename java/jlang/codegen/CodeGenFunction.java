@@ -169,7 +169,7 @@ public final class CodeGenFunction
 		ArrayList<Pair<VarDecl, QualType>> functionArgList = new ArrayList<>(16);
 		if (fd.getNumParams() > 0)
 		{
-            FunctionProtoType fproto = fd.getDeclType().getAsFunctionProtoType();
+            FunctionProtoType fproto = fd.getType().getAsFunctionProtoType();
             assert fproto != null :"Function def must have prototype!";
 
 			for (int i = 0, e = fd.getNumParams(); i < e; i++)
@@ -233,7 +233,7 @@ public final class CodeGenFunction
 		args.forEach((pair)->
 		{
 			VarDecl vd = pair.first;
-			QualType ty = vd.getDeclType();
+			QualType ty = vd.getType();
 			if (ty.isVariablyModifiedType())
 				emitVLASize(ty);
 		});
@@ -291,11 +291,11 @@ public final class CodeGenFunction
 						// Load a scalar value from indirect argument.
 						//int align = QualType.getTypeAlignInBytes(ty);
 						v = emitLoadOfScalar(v, false, ty);
-						if (!getContext().isCompatible(ty, arg.getDeclType()))
+						if (!getContext().isCompatible(ty, arg.getType()))
 						{
 							// This must be a promotion, for something like
 							// "void a(x) short x; {..."
-							v = emitScalarConversion(v, ty, arg.getDeclType());
+							v = emitScalarConversion(v, ty, arg.getType());
 						}
 						//if (isPromoted)
 						//	v = emitArgumentDemotion(arg, v);
@@ -318,11 +318,11 @@ public final class CodeGenFunction
 					}
 					else
 					{
-						if (!getContext().isCompatible(ty, arg.getDeclType()))
+						if (!getContext().isCompatible(ty, arg.getType()))
 						{
 							// This must be a promotion, for something like
 							// "void a(x) short x; {..."
-							v = emitScalarConversion(v, ty, arg.getDeclType());
+							v = emitScalarConversion(v, ty, arg.getType());
 						}
 					}
 					emitParamDecl(arg, v);
@@ -350,7 +350,7 @@ public final class CodeGenFunction
 					if (hasAggregateBackendType(ty))
 						emitParamDecl(arg, createTempAlloc(convertTypeForMem(ty)));
 					else
-						emitParamDecl(arg, Value.UndefValue.get(convertType(arg.getDeclType())));
+						emitParamDecl(arg, Value.UndefValue.get(convertType(arg.getType())));
 
 					// Skip increment, no matching parameter.
 					continue;
@@ -364,11 +364,11 @@ public final class CodeGenFunction
                     if (!hasAggregateBackendType(ty))
                     {
                         temp = emitLoadOfScalar(temp, false, ty);
-                        if (!getContext().isCompatible(ty, arg.getDeclType()))
+                        if (!getContext().isCompatible(ty, arg.getType()))
                         {
                             // This must be a promotion, for assumpting like
                             // "void a(x)  short x; {...}"
-                            temp = emitScalarConversion(temp, ty, arg.getDeclType());
+                            temp = emitScalarConversion(temp, ty, arg.getType());
                         }
                     }
                     emitParamDecl(arg, temp);
@@ -436,7 +436,7 @@ public final class CodeGenFunction
         for (int i = 0, e = rd.getNumFields(); i < e; i++)
         {
             FieldDecl fd = rd.getDeclAt(i);
-            QualType ft = fd.getDeclType();
+            QualType ft = fd.getType();
 
             LValue lv = emitLValueForField(addr, fd, false, 0);
             if (hasAggregateBackendType(ft))
@@ -478,7 +478,7 @@ public final class CodeGenFunction
 		assert param instanceof ParamVarDecl
                 : "Invalid argument to emitParamDecl()";
 
-		QualType ty = param.getDeclType();
+		QualType ty = param.getType();
 		Value destPtr = null;
 		if (!ty.isConstantSizeType())
 		{
@@ -1236,7 +1236,7 @@ public final class CodeGenFunction
 	 */
 	public void emitLocalBlockVarDecl(VarDecl vd)
 	{
-		QualType ty = vd.getDeclType();
+		QualType ty = vd.getType();
 		backend.value.Value declPtr;
 		if (ty.isConstantSizeType())
 		{
@@ -1287,7 +1287,7 @@ public final class CodeGenFunction
             if (!hasAggregateBackendType(init.getType()))
 			{
 				Value v = emitScalarExpr(init);
-				emitStoreOfScalar(v, declPtr, vd.getDeclType());
+				emitStoreOfScalar(v, declPtr, vd.getType());
 			}
 			else if (init.getType().isComplexType())
 			{
@@ -1528,12 +1528,12 @@ public final class CodeGenFunction
 		// circular reference.
 		localVarMaps.put(vd, gv);
 
-		if (vd.getDeclType().isVariablyModifiedType())
-			emitVLASize(vd.getDeclType());
+		if (vd.getType().isVariablyModifiedType())
+			emitVLASize(vd.getType());
 
 		if (vd.hasInit())
 		{
-			Constant init = generator.emitConstantExpr(vd.getInit(), vd.getDeclType(), this);
+			Constant init = generator.emitConstantExpr(vd.getInit(), vd.getType(), this);
 
 			// If constant emission failed, then this should be a C++ static
 			// initializer.
@@ -1550,7 +1550,7 @@ public final class CodeGenFunction
 					gv = new GlobalVariable(generator.getModule(),
 							init.getType(), oldGV.isConstant(),
 							LinkageType.InteralLinkage,
-							init, "", null,vd.getDeclType().getAddressSpace());
+							init, "", null,vd.getType().getAddressSpace());
 
 					gv.setName(oldGV.getName());
 					// Replace all uses of the old global with the new global
@@ -1566,15 +1566,15 @@ public final class CodeGenFunction
 			}
 		}
 
-		Type lty = convertTypeForMem(vd.getDeclType());
-		Type ptrTy = PointerType.get(lty, vd.getDeclType().getAddressSpace());
+		Type lty = convertTypeForMem(vd.getType());
+		Type ptrTy = PointerType.get(lty, vd.getType().getAddressSpace());
 		localVarMaps.put(vd, ConstantExpr.getBitCast(gv, ptrTy));
 	}
 
 	private GlobalVariable createStaticBlockVarDecl(VarDecl vd,
 			String separator)
 	{
-		QualType ty = vd.getDeclType();
+		QualType ty = vd.getType();
 		assert ty.isConstantSizeType() : "VLAs cann't be static";
 
 		String contextName = "";
@@ -1588,7 +1588,7 @@ public final class CodeGenFunction
 		return new GlobalVariable(generator.getModule(),
 				lty, ty.isConstant(getContext()),
 				LinkageType.InteralLinkage,
-				generator.emitNullConstant(vd.getDeclType()), name, null, 0);
+				generator.emitNullConstant(vd.getType()), name, null, 0);
 	}
 
 	private void emitGotoStmt(Tree.GotoStmt s)
@@ -2212,7 +2212,7 @@ public final class CodeGenFunction
         for (int i = 0, e = rd.getNumFields(); i < e; i++)
         {
             FieldDecl fd = rd.getDeclAt(i);
-            QualType ft = fd.getDeclType();
+            QualType ft = fd.getType();
 
             LValue lv = emitLValueForField(addr, fd, false, 0);
             if (hasAggregateBackendType(ft))
@@ -2483,7 +2483,7 @@ public final class CodeGenFunction
 		if (isUnion)
 		{
 			Type fieldType = generator.getCodeGenTypes().
-					convertTypeForMem(field.getDeclType());
+					convertTypeForMem(field.getType());
 
 			PointerType baseType = (PointerType)baseValue.getType();
 			v = builder.createBitCast(v, PointerType.getUnqual(fieldType),
@@ -2491,7 +2491,7 @@ public final class CodeGenFunction
 		}
 
 		LValue lv = LValue.makeAddr(v,
-				field.getDeclType().getCVRQualifiers()
+				field.getType().getCVRQualifiers()
 				| cvrQualifiers);
 		return lv;
 	}
@@ -2502,7 +2502,7 @@ public final class CodeGenFunction
 	{
 		CodeGenTypes.BitFieldInfo info = generator.getCodeGenTypes().getBitFieldInfo(field);
 
-		Type fieldType = generator.getCodeGenTypes().convertTypeForMem(field.getDeclType());
+		Type fieldType = generator.getCodeGenTypes().convertTypeForMem(field.getType());
 		PointerType baseType = (PointerType) baseValue.getType();
 		baseValue = builder.createBitCast(baseValue, PointerType.getUnqual(fieldType), "tmp");
 
@@ -2510,8 +2510,8 @@ public final class CodeGenFunction
 		Value v = builder.createGEP(baseValue, idx, "tmp");
 
 		return LValue.makeBitfield(v, info.start, info.size,
-				field.getDeclType().isSignedIntegerType(),
-				field.getDeclType().getCVRQualifiers() | cvrQualifiers);
+				field.getType().isSignedIntegerType(),
+				field.getType().getCVRQualifiers() | cvrQualifiers);
 	}
 
 	public LValue emitCompoundLiteralLValue(CompoundLiteralExpr expr)

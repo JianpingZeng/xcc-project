@@ -333,7 +333,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
             Decl.FieldDecl field = rd.getDeclAt(i);
 
             // We're done once we hit the flexible array member
-            if (field.getDeclType().isIncompleteArrayType())
+            if (field.getType().isIncompleteArrayType())
                 break;
 
             if (field.isUnamaedBitField())
@@ -348,7 +348,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
             else
             {
                 // Store the default null value (0 for int) to field.
-                emitNullInitializationToLValue(fieldLoc, field.getDeclType());
+                emitNullInitializationToLValue(fieldLoc, field.getType());
             }
         }
         return null;

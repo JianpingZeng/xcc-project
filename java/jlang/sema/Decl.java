@@ -619,8 +619,8 @@ public abstract class Decl
             declType = type;
         }
 
-        public QualType getDeclType() { return declType; }
-        public void setDeclType(QualType type) {declType = type; }
+        public QualType getType() { return declType; }
+        public void setType(QualType type) {declType = type; }
     }
 
     /**
@@ -628,6 +628,8 @@ public abstract class Decl
      */
     public static abstract class DeclaratorDecl extends ValueDecl
     {
+        private DeclaratorDecl declInfo;
+
         protected DeclaratorDecl(
                 DeclKind kind,
                 IDeclContext context,
@@ -636,6 +638,11 @@ public abstract class Decl
                 QualType type)
         {
             super(kind, context, name, location, type);
+        }
+
+        public SourceLocation getTypeSpecStartLoc()
+        {
+            return new SourceLocation();
         }
     }
 
@@ -728,8 +735,8 @@ public abstract class Decl
             if (!isImplicit() || getDeclName() != null)
                 return false;
 
-            if (getDeclType().isRecordType())
-                return ((RecordType)getDeclType().getType()).getDecl().isAnonymousStructOrUnion();
+            if (getType().isRecordType())
+                return ((RecordType) getType().getType()).getDecl().isAnonymousStructOrUnion();
 
             return false;
         }
@@ -1148,6 +1155,7 @@ public abstract class Decl
         private Redeclarator<FunctionDecl> redeclarator;
         private DeclContext dc;
         private boolean isPure;
+        private boolean c99InlineDefinition;
 
         public FunctionDecl(IdentifierInfo name,
                 DeclContext context,
@@ -1192,7 +1200,7 @@ public abstract class Decl
 
         public QualType getReturnType()
         {
-            return getDeclType().getType().getAsFunctionType().getResultType();
+            return getType().getType().getAsFunctionType().getResultType();
         }
 
         @Override
@@ -1205,11 +1213,6 @@ public abstract class Decl
         {
             paramInfo = new ParamVarDecl[params.size()];
             params.toArray(paramInfo);
-        }
-
-        public void setRangeEnd(SourceLocation end)
-        {
-            endRangeLoc = end;
         }
 
         public int getNumParams()
@@ -1325,6 +1328,11 @@ public abstract class Decl
         public StorageClass getStorageClass()
         {
             return sc;
+        }
+
+        public void setStorageClass(StorageClass sc)
+        {
+            this.sc = sc;
         }
 
         public boolean isInlineSpecified()
@@ -1517,6 +1525,26 @@ public abstract class Decl
         public void setPure(boolean pure)
         {
             isPure = pure;
+        }
+
+        public void setRangeEnd(SourceLocation locEnd)
+        {
+            endRangeLoc = locEnd;
+        }
+
+        public void setC99InlineDefinition(boolean val)
+        {
+            c99InlineDefinition = val;
+        }
+
+        public boolean isC99InlineDefinition()
+        {
+            return c99InlineDefinition;
+        }
+
+        public boolean hasPrototype()
+        {
+            return hasPrototype;
         }
     }
 

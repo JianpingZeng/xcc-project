@@ -1,13 +1,12 @@
-package jlang.sema;
 /*
- * Extremely C language Compiler.
+ * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +15,29 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+package jlang.sema;
+
 import jlang.type.QualType;
 
 /**
+ * Used in MergeFunctionDecl to keep track of function parameters in
+ * C.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class DeclaratorInfo
+public class GNUCompatibleParamWarning
 {
-    private QualType ty;
+    public Decl.ParamVarDecl oldParam;
+    public Decl.ParamVarDecl newParam;
+    public QualType promotedType;
 
-    public DeclaratorInfo(QualType ty)
+    public GNUCompatibleParamWarning(
+            Decl.ParamVarDecl oldParam,
+            Decl.ParamVarDecl newParam,
+            QualType promotedType)
     {
-        this.ty = ty;
+        this.oldParam = oldParam;
+        this.newParam = newParam;
+        this.promotedType = promotedType;
     }
 }

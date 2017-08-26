@@ -602,7 +602,7 @@ public class CodeGenTypes
         for (int i = 0, e = rd.getDeclCounts(); i < e; i++)
         {
             FieldDecl d = rd.getDeclAt(i);
-            if (!isSafeToConvert(d.getDeclType(), alreadyChecked))
+            if (!isSafeToConvert(d.getType(), alreadyChecked))
                 return false;
         }
 

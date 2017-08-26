@@ -1234,7 +1234,7 @@ public final class ASTContext
 		return new FullSourceLoc(location, sourceMgr);
 	}
 
-    enum FloatingRank
+	enum FloatingRank
 	{
 		FloatRank, DoubleRank, LongDoubleRank
 	}
@@ -1421,7 +1421,7 @@ public final class ASTContext
 		if (field == null)
 			return new QualType();
 
-		QualType t = field.getDeclType();
+		QualType t = field.getType();
 		APSInt bitWidthAP = field.getBitWidth().evaluateAsInt(this);
 		long bitWidth = bitWidthAP.getZExtValue();
 		long intSize = getTypeSize(IntTy);
@@ -1437,5 +1437,19 @@ public final class ASTContext
 		// Types bigger than int are not subject to promotions, and therefore act
 		// like the base type.
 		return new QualType();
+	}
+
+    /**
+     * For two qualified types to be compatible,
+     * both shall have the identically qualified version of a compatible type.
+     * C99 6.2.7p1: Two types have compatible types if their types are the
+     * same. See 6.7.[2,3,5] for additional rules.
+     * @param lhs
+     * @param rhs
+     * @return
+     */
+	public boolean typesAreCompatible(QualType lhs, QualType rhs)
+	{
+		return !mergeType(lhs, rhs).isNull();
 	}
 }

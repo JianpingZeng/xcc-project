@@ -529,7 +529,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
     public boolean isEmpty()
     {
-        return getParsedSpecifiers() != PQ_none;
+        return getParsedSpecifiers() == PQ_none;
     }
 
     private <T> boolean badSpecifier(T newSCS, T prevSCS/*, String prevSpec, */)
