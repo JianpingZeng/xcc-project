@@ -1,11 +1,13 @@
 package jlang.cparser;
 
+import jlang.clex.IdentifierInfo;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
+import jlang.sema.Decl;
+import jlang.sema.UnqualifiedId;
+import jlang.sema.UnqualifiedId.DeclarationKind;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
-import jlang.clex.IdentifierInfo;
-import jlang.sema.Decl;
 import tools.OutParamWrapper;
 
 import java.util.ArrayList;
@@ -35,32 +37,16 @@ public class Declarator
         ForContext,                 //  declaration within the first part of for.
     }
 
-    public enum DeclarationKind
-    {
-        /**
-         * An abstract declarator.
-         */
-        DK_Abstract,
-
-        /**
-         * A normal declarator.
-         */
-        DK_Normal,
-    }
-
     private DeclSpec ds;
-    private IdentifierInfo identifier;
-    private SourceLocation identifierLoc;
+
+    private UnqualifiedId name;
+
     private SourceRange range;
 
     /**
      * Where we are parsing this declarator.
      */
     private TheContext context;
-    /**
-     * What kind of declarator this is .
-     */
-    private DeclarationKind kind;
 
     private boolean invalidType;
     /**
@@ -89,15 +75,22 @@ public class Declarator
         invalidType = ds.getTypeSpecType() == DeclSpec.TST.TST_error;
         functionDefinition = false;
         declTypeInfos = new ArrayList<>(8);
+        name = new UnqualifiedId();
     }
 
     public DeclSpec getDeclSpec() { return ds; }
 
-    public IdentifierInfo getIdentifier() { return identifier; }
+    public IdentifierInfo getIdentifier()
+    {
+        return name.getIdentifier();
+    }
 
     public TheContext getContext() { return context; }
 
-    public DeclarationKind getKind() {return kind;}
+    public DeclarationKind getKind()
+    {
+        return name.getkind();
+    }
 
     public boolean isProtoTypeContext()
     {
@@ -189,13 +182,7 @@ public class Declarator
             IdentifierInfo id,
             SourceLocation loc)
     {
-        identifier = id;
-        identifierLoc =loc;
-        if (id != null)
-            kind = DeclarationKind.DK_Normal;
-        else
-            kind = DeclarationKind.DK_Abstract;
-        setRangeEnd(loc);
+        name.setIdentifier(id, loc);
     }
 
     public void setInvalidType(boolean val)
@@ -218,18 +205,7 @@ public class Declarator
 
     public SourceLocation getIdentifierLoc()
     {
-        return identifierLoc;
-    }
-
-    public void setIdentifierLoc(IdentifierInfo id, SourceLocation loc)
-    {
-        identifier = id;
-        identifierLoc = loc;
-        if (id != null)
-            kind = DeclarationKind.DK_Normal;
-        else
-            kind = DeclarationKind.DK_Abstract;
-        setRangeEnd(loc);
+        return name.getStartLocation();
     }
 
     public boolean isInvalidType()
@@ -238,12 +214,13 @@ public class Declarator
     }
 
     /**
-     * Whether this declarator has a asmName (for normal declarator) or not.
+     * Whether this declarator has a name (for normal declarator) or not (
+     * for abstract declarator).
      * @return
      */
     public boolean hasName()
     {
-        return kind !=DeclarationKind.DK_Abstract;
+        return name.isValid();
     }
 
     public boolean isFunctionDeclarator()
@@ -285,7 +262,7 @@ public class Declarator
 
     public void clear()
     {
-        identifier = null;
+        name.clear();
         range = ds.getSourceRange();
         declTypeInfos.clear();
     }
@@ -297,8 +274,8 @@ public class Declarator
      */
     public boolean isPastIdentifier()
     {
-        // getIdentifier is valid.
-        return identifier != null;
+        // Identifier is valid.
+        return name.isValid();
     }
 
     /**
@@ -318,5 +295,4 @@ public class Declarator
         assert i >= 0 && i < declTypeInfos.size();
         return declTypeInfos.get(i);
     }
-
 }

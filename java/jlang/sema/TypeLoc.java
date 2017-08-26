@@ -1,13 +1,12 @@
-package jlang.sema;
 /*
- * Extremely C language Compiler.
+ * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,18 +15,48 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+package jlang.sema;
+
 import jlang.type.QualType;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class DeclaratorInfo
+public class TypeLoc
 {
-    private QualType ty;
+    protected QualType ty;
+    private Object data;
 
-    public DeclaratorInfo(QualType ty)
+    public TypeLoc(QualType ty, Object data)
     {
         this.ty = ty;
+        this.data = data;
+    }
+
+    public TypeLoc()
+    {
+        ty = new QualType();
+        data = null;
+    }
+
+    public boolean isNull()
+    {
+        return ty.isNull();
+    }
+
+    public QualType getSourceType()
+    {
+        return ty;
+    }
+
+    public TypeSpecLoc getTypeSpecLoc()
+    {
+        return null;
+    }
+
+    public static class TypeSpecLoc extends TypeLoc
+    {
+
     }
 }

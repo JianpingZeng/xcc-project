@@ -140,7 +140,7 @@ public class CGRecordLayoutBuilder
                 types.addFieldInfo(fd, 0);
             }
 
-            backend.type.Type fieldTy = types.convertTypeForMemRecursive(fd.getDeclType());
+            backend.type.Type fieldTy = types.convertTypeForMemRecursive(fd.getType());
             int fieldAlign = types.getTargetData().getABITypeAlignment(fieldTy);
             long fieldSize = types.getTargetData().getTypeAllocSize(fieldTy);
 
@@ -215,7 +215,7 @@ public class CGRecordLayoutBuilder
         assert fieldOffset % 8 == 0 :"FieldOffset is not on a byte boundary!";
         long fieldOffsetInBytes = fieldOffset / 8;
 
-        backend.type.Type ty = types.convertTypeForMemRecursive(d.getDeclType());
+        backend.type.Type ty = types.convertTypeForMemRecursive(d.getType());
         int typeAlignment = getTypeAlignment(ty);
 
         if (typeAlignment > alignment)
@@ -273,7 +273,7 @@ public class CGRecordLayoutBuilder
             assert numBytesToAppend != 0:"No bytes to append!";
         }
 
-        backend.type.Type ty = types.convertTypeForMemRecursive(d.getDeclType());
+        backend.type.Type ty = types.convertTypeForMemRecursive(d.getType());
         long typeSizeInBits = getTypeSizeInBytes(ty) * 8;
         llvmBitFields.add(new LLVMBitFieldInfo(d, (int)(fieldOffset / typeSizeInBits),
                 (int)(fieldOffset % typeSizeInBits),

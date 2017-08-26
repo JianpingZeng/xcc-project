@@ -232,7 +232,7 @@ public class HIRModuleGenerator
     private void emitGlobalVarDefinition(VarDecl vd)
     {
         Constant init = null;
-        QualType astTy = vd.getDeclType();
+        QualType astTy = vd.getType();
 
         if (vd.getInit() == null)
         {
@@ -298,7 +298,7 @@ public class HIRModuleGenerator
 
 	    // if it is safe to mark the global constant, do that.
 	    gv.setConstant(false);
-	    if (vd.getDeclType().isConstant(ctx))
+	    if (vd.getType().isConstant(ctx))
 		    gv.setConstant(true);
 
 	    // set the appropriate linkage type.
@@ -329,7 +329,7 @@ public class HIRModuleGenerator
     public Constant getAddrOfFunction(FunctionDecl fd, Type ty)
     {
         if (ty == null)
-            ty = getCodeGenTypes().convertType(fd.getDeclType());
+            ty = getCodeGenTypes().convertType(fd.getType());
         return getOrCreateFunction(fd.getNameAsString(), ty, fd);
     }
 
@@ -407,7 +407,7 @@ public class HIRModuleGenerator
     public Constant getAddrOfGlobalVar(VarDecl vd, backend.type.Type ty)
     {
         assert vd.hasGlobalStorage() :"Not a global variable";
-        QualType astTy = vd.getDeclType();
+        QualType astTy = vd.getType();
         if (ty == null)
             ty = getCodeGenTypes().convertTypeForMem(astTy);
 
@@ -454,7 +454,7 @@ public class HIRModuleGenerator
 
         if (vd != null)
         {
-            gv.setConstant(vd.getDeclType().isConstant(ctx));
+            gv.setConstant(vd.getType().isConstant(ctx));
         }
         globalDeclMaps.put(mangledName, gv);
         return gv;
@@ -526,9 +526,9 @@ public class HIRModuleGenerator
     private void emitGlobalFunctionDefinition(FunctionDecl fd)
     {
         FunctionType ty = (FunctionType) getCodeGenTypes().
-                convertType(fd.getDeclType());
+                convertType(fd.getType());
 
-        if (fd.getDeclType().isFunctionNoProtoType())
+        if (fd.getType().isFunctionNoProtoType())
         {
             assert ty.isVarArg():"Didnot lower type as expected";
             ArrayList<Type> args = new ArrayList<>();
@@ -557,7 +557,7 @@ public class HIRModuleGenerator
             Function newFn = (Function)getAddrOfFunction(fd, ty);
             newFn.setName(oldFn.getName());
 
-            if (fd.getDeclType().isFunctionNoProtoType())
+            if (fd.getType().isFunctionNoProtoType())
             {
                 replaceUsesOfNonProtoTypeWithRealFuncion(oldFn, newFn);
                 oldFn.removeDeadConstantUsers();

@@ -19,6 +19,13 @@ public abstract class FunctionType extends Type
      */
     private boolean noReturn;
 
+    /**
+     * Used only by FunctionProtoType, put here to pack with the
+     * other bitfields.
+     * The qualifiers are part of FunctionProtoType because...
+     */
+    private int typeQuals;
+
     public FunctionType(int typeClass, QualType returnType, QualType canonical)
     {
         this(typeClass, returnType, canonical, false);
@@ -49,5 +56,10 @@ public abstract class FunctionType extends Type
     public QualType getCallReturnType(ASTContext ctx)
     {
         return ctx.getLValueExprType(getResultType());
+    }
+
+    public int getTypeQuals()
+    {
+        return typeQuals;
     }
 }
