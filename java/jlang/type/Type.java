@@ -215,7 +215,7 @@ public abstract class Type implements TypeClass
     public boolean isIntegerType()
     {
         if (canonicalType.getType() instanceof BuiltinType)
-            return tc >= Bool && tc <= LongLong;
+            return tc >= Bool && tc <= Int128;
         if (canonicalType.getType() instanceof TagType)
         {
             // Incomplete enum types are not treated as integer types.
@@ -257,7 +257,7 @@ public abstract class Type implements TypeClass
     public boolean isCharType()
     {
         return canonicalType.getType() instanceof BuiltinType
-                && (tc == SChar || tc == UChar);
+                && (tc == SChar || tc == Char_U);
     }
 
     public boolean isIntegralType()
@@ -622,7 +622,7 @@ public abstract class Type implements TypeClass
             return true;
         EnumType et = getAsEnumType();
         if (et != null)
-            return et.getDecl().getIntegerType().isSignedIntegerType();;
+            return et.getDecl().getPromotionType().isSignedIntegerType();;
 
         return false;
     }

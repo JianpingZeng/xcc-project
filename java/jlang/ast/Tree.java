@@ -17,6 +17,8 @@ import java.io.StringWriter;
 import java.util.*;
 
 import static jlang.ast.CastKind.CK_Invalid;
+import static jlang.ast.CastKind.CK_LValueToRValue;
+import static jlang.ast.CastKind.CK_NoOp;
 import static jlang.ast.Tree.Expr.IsLvalueResult.*;
 import static jlang.ast.Tree.Expr.IsModifiableLvalueResult.*;
 import static jlang.ast.Tree.ExprObjectKind.OK_Ordinary;
@@ -1315,37 +1317,58 @@ public abstract class Tree
 
         public QualType getType() { return type; }
 
-        /**
-         * Whether this is a promotable bitfield reference according to C99 6.3.1.1p2.
-         * or {@code null} if no promotion occurs.
-         * @return
-         */
-        public QualType isPromotableBitField(ASTContext ctx)
-        {
-            FieldDecl field = getBitField();
-            if (field == null)
-                return new QualType();
-            QualType t = field.getDeclType();
-            APSInt bitWidthAP = field.getBitWidth().evaluateAsInt(ctx);
-            long bitWidth = bitWidthAP.getZExtValue();
-            long intSize = ctx.getTypeSize(ctx.IntTy);
-
-            // GCC extension compatibility: if the bit-field getTypeSize is less than or equal
-            // to the getTypeSize of int, it gets promoted no matter what its jlang.type is.
-            // For instance, unsigned long bf : 4 gets promoted to signed int.
-            if (bitWidth < intSize)
-                return ctx.IntTy;
-            if (bitWidth == intSize)
-                return t.isSignedIntegerType() ? ctx.IntTy : ctx.UnsignedIntTy;
-
-            // Types bigger than int are not subject to promotions, and therefore act
-            // like the base jlang.type.
-            return new QualType();
-        }
-
         public FieldDecl getBitField()
         {
             Expr e = ignoreParens();
+            while (e instanceof ImplicitCastExpr)
+            {
+            	ImplicitCastExpr ice = (ImplicitCastExpr)e;
+            	if (ice.getCastKind() == CK_LValueToRValue ||
+			            (ice.getValueKind() != EVK_RValue && ice.getCastKind()
+					            == CK_NoOp))
+	            {
+	            	e = ice.getSubExpr().ignoreParens();
+	            }
+	            else
+	            	break;
+            }
+
+            if (e instanceof MemberExpr)
+            {
+            	MemberExpr memExpr = (MemberExpr)e;
+            	if (memExpr.getMemberDecl() instanceof FieldDecl)
+	            {
+	            	if (memExpr.getMemberDecl() instanceof FieldDecl)
+		            {
+			            FieldDecl fd = (FieldDecl)memExpr.getMemberDecl();
+			            if (fd.isBitField())
+			            	return fd;
+		            }
+	            }
+            }
+
+            if (e instanceof DeclRefExpr)
+            {
+            	DeclRefExpr ref = (DeclRefExpr)e;
+            	if (ref.getDecl() instanceof FieldDecl)
+	            {
+	            	FieldDecl field = (FieldDecl)ref.getDecl();
+	            	if (field.isBitField())
+	            		return field;
+	            }
+            }
+
+            if (e instanceof BinaryExpr)
+            {
+            	BinaryExpr be = (BinaryExpr)e;
+            	if (be.isAssignmentOp() && be.getLHS() != null)
+	            {
+	            	return be.getLHS().getBitField();
+	            }
+	            if (be.getOpcode() == BO_Comma && be.getRHS() != null)
+	            	return be.getRHS().getBitField();
+            }
+
             return null;
         }
 
@@ -1372,7 +1395,7 @@ public abstract class Tree
         {
             QualType t = new QualType();
             if (type.isEnumeralType())
-                t = type.getAsEnumType().getDecl().getIntegerType();
+                t = type.getAsEnumType().getDecl().getPromotionType();
             if (type.getType().isBooleanType())
                 return 1;
             // for the primitive jlang.type, just use the standard jlang.type getNumOfSubLoop.
@@ -1391,7 +1414,7 @@ public abstract class Tree
             {
                 EnumType et = type.getAsEnumType();
                 if (et.getDecl().isCompleteDefinition())
-                    return et.getDecl().getIntegerType().isSignedIntegerType();
+                    return et.getDecl().getPromotionType().isSignedIntegerType();
             }
             return false;
         }

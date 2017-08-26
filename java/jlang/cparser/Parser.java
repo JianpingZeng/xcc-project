@@ -1,20 +1,17 @@
 package jlang.cparser;
 
 import jlang.ast.Tree;
-import jlang.ast.Tree.CompoundStmt;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.InitListExpr;
 import jlang.ast.Tree.Stmt;
 import jlang.clex.CommentHandler.DefaultCommentHandler;
-import jlang.support.LangOptions;
+import jlang.clex.*;
+import jlang.clex.TokenKind;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.FieldDeclarator;
 import jlang.cparser.DeclSpec.ParamInfo;
 import jlang.cparser.DeclSpec.ParsedSpecifiers;
 import jlang.cparser.Declarator.TheContext;
-import jlang.clex.*;
-import jlang.support.SourceLocation;
-import jlang.support.SourceRange;
 import jlang.diag.*;
 import jlang.sema.Decl;
 import jlang.sema.Decl.LabelDecl;
@@ -22,6 +19,9 @@ import jlang.sema.PrecedenceLevel;
 import jlang.sema.Scope;
 import jlang.sema.Scope.ScopeFlags;
 import jlang.sema.Sema;
+import jlang.support.LangOptions;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
 import jlang.type.QualType;
 import tools.OutParamWrapper;
 
@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import static java.util.Collections.emptyList;
+import static jlang.clex.TokenKind.*;
+import static jlang.clex.TokenKind.Enum;
 import static jlang.cparser.DeclSpec.SCS.SCS_typedef;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.DeclSpec.TSC.TSC_complex;
@@ -38,7 +40,6 @@ import static jlang.cparser.DeclSpec.TST.*;
 import static jlang.cparser.DeclSpec.TSW.TSW_long;
 import static jlang.cparser.DeclSpec.TSW.TSW_short;
 import static jlang.cparser.Parser.ParenParseOption.*;
-import static jlang.clex.TokenKind.*;
 import static jlang.sema.Sema.TagUseKind.*;
 
 /**
@@ -407,13 +408,22 @@ public class Parser implements Tag,
      */
     private Decl parseFunctionDefinition(Declarator declarator)
     {
-        final DeclaratorChunk.FunctionTypeInfo fti =
-                declarator.getFunctionTypeInfo();
+        DeclaratorChunk.FunctionTypeInfo fti = declarator.getFunctionTypeInfo();
 
         // If this is C90 and the declspecs were completely missing, fudge in an
         // implicit int.  We do this here because this is the only place where
         // declaration-specifiers are completely optional in the grammar.
-        // FIXME
+        if (getLangOption().implicitInt && declarator.getDeclSpec().isEmpty())
+        {
+            OutParamWrapper<String> x = new OutParamWrapper<>("");
+            OutParamWrapper<Integer> y = new OutParamWrapper<>(0);
+            declarator.getDeclSpec().setTypeSpecType(TST_int,
+                    declarator.getIdentifierLoc(),
+                    x, y);
+            String prevSpec = x.get();
+            int diagID = y.get();
+            declarator.setRangeStart(declarator.getDeclSpec().getSourceRange().getBegin());
+        }
 
         // If this declaration was formed with a K&R-style identifier list for the
         // arguments, parse declarations for all of the args next.
@@ -434,10 +444,11 @@ public class Parser implements Tag,
                 return null;
         }
 
+        // Enter a scope for the function body.
         ParseScope bodyScope = new ParseScope(this, ScopeFlags.FnScope.value
                 | ScopeFlags.DeclScope.value);
 
-        Decl res = action.actOnFunctionDef(getCurScope(), declarator);
+        Decl res = action.actOnStartOfFunctionDef(getCurScope(), declarator);
 
         return parseFunctionStatementBody(res, bodyScope);
     }
@@ -447,31 +458,13 @@ public class Parser implements Tag,
         assert nextTokenIs(l_brace);
 
         SourceLocation lBraceLoc = tok.getLocation();
-        ActionResult<Stmt> body = parseCompoundStatementBody(lBraceLoc);
+        ActionResult<Stmt> body = parseCompoundStatementBody(false);
 
         if (body.isInvalid())
             body = action.actOnCompoundStmtBody(lBraceLoc, lBraceLoc, emptyList(), false);
 
         bodyScope.exit();
         return action.actOnFinishFunctionBody(funcDecl, body.get());
-    }
-
-    private ActionResult<Stmt> parseCompoundStatementBody(SourceLocation startLoc)
-    {
-        ArrayList<Stmt> stmts = new ArrayList<>();
-        for (; !tokenIs(tok, r_brace) && !tokenIs(tok, eof);)
-        {
-            ActionResult<Stmt> res = parseStatementOrDeclaration(stmts, false);
-            stmts.add(res.get());
-        }
-        if (!tokenIs(tok, r_brace))
-        {
-            diag(tok, err_expected_rbrace).emit();
-            return new ActionResult<>();
-        }
-        SourceLocation rbraceLoc = consumeBrace();
-
-        return new ActionResult<>(new CompoundStmt(stmts, startLoc, rbraceLoc));
     }
 
     /**
@@ -522,6 +515,9 @@ public class Parser implements Tag,
     private ActionResult<Stmt> parseStatementOrDeclaration(ArrayList<Stmt> stmts,
             boolean onlyStatements)
     {
+        String semiError = null;
+        ActionResult<Stmt> res;
+
         switch (tok.getKind())
         {
             // C99 6.8.1 labeled-statement
@@ -531,6 +527,12 @@ public class Parser implements Tag,
                 {
                     // identifier ':' statement
                     return parseLabeledStatement();
+                }
+                else
+                {
+                    // TODO diagnose erroreous using of label name 2017.8.26.
+                    assert false;
+                    new ActionResult<>(null);
                 }
             }
             // fall through
@@ -587,18 +589,41 @@ public class Parser implements Tag,
             case While:
                 return parseWhileStatement();
             case Do:
-                return parseDoStatement();
+                res = parseDoStatement();
+                semiError = "do/while";
+                break;
             case For:
                 return parseForStatement();
             case Goto:
-                return parseGotoStatement();
+                res = parseGotoStatement();
+                semiError = "goot";
+                break;
             case Continue:
-                return parseContinueStatement();
+                res = parseContinueStatement();
+                semiError = "continue";
+                break;
             case Break:
-                return parseBreakStatement();
+                res = parseBreakStatement();
+                semiError = "break";
+                break;
             case Return:
-                return parseReturnStatement();
+                res = parseReturnStatement();
+                semiError = "return";
+                break;
         }
+        // If we reached this code, the statement must end in a ';'.
+        if (tok.is(semi))
+            consumeToken();
+        else if (!res.isInvalid())
+        {
+            // If the result was valid, then we do want to diagnose this.  Use
+            // ExpectAndConsume to emit the diagnostic, even though we know it won't
+            // succeed.
+            expectAndConsume(semi, err_expected_semi_after_stmt, semiError, Unknown);
+            // Skip until we see a }' or ';', but don't eat it.
+            skipUntil(r_brace, true, true);
+        }
+        return res;
     }
 
     /**
@@ -835,19 +860,20 @@ public class Parser implements Tag,
     private ActionResult<Stmt> parseCompoundStatement(boolean isStmtExpr, int scopeFlags)
     {
         assert tok.is(l_brace) : "Not a compound statement!";
-        consumeBrace();     // Eat the '{'.
 
         // Enter a scope to hold everything within the compound stmt.
         // Compound statements can always hold declarations.
         ParseScope compoundScope = new ParseScope(this, scopeFlags);
 
         // parse the statements in the body.
-        return parseCompoundStatementBody(tok.getLocation(), isStmtExpr);
+        return parseCompoundStatementBody(isStmtExpr);
     }
 
-    private ActionResult<Stmt> parseCompoundStatementBody(
-            SourceLocation startLoc, boolean isStmtExpr)
+    private ActionResult<Stmt> parseCompoundStatementBody(boolean isStmtExpr)
     {
+        assert tok.is(l_brace);
+        SourceLocation startLoc = consumeBrace();     // Eat the '{'.
+
         ArrayList<Stmt> stmts = new ArrayList<>();
         while (nextTokenIsNot(r_brace) && nextTokenIsNot(eof))
         {
@@ -3406,6 +3432,10 @@ public class Parser implements Tag,
         {
             ellipsisLoc = parseParameterDeclarationClause(declarator, paramInfos);
         }
+        else if (requireArg)
+        {
+            diag(tok, err_argument_required_after_attribute).emit();
+        }
 
         hasProto = !paramInfos.isEmpty();
 
@@ -3799,7 +3829,7 @@ public class Parser implements Tag,
                 return lhs;
 
             // consume the operator token, then advance the tokens stream.
-            Token opToken = tok;
+            Token opToken = tok.clone();
             consumeToken();
 
             // Special case handling for the ternary (?...:...) operator.

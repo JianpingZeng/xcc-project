@@ -13,7 +13,8 @@ public interface TypeClass
 
     int Void = BuiltinTypeBegin;
     int Bool = Void + 1;        // This is bool and/or _Bool
-    int UChar = Bool + 1;       // This is 'char' for targets where char is unsigned.
+    int Char_U = Bool + 1;      // This is 'char' for targets where char is unsigned.
+    int UChar = Char_U + 1;     // This is explicitly quailfied unsigned char.
     int UShort = UChar + 1;
     int UInt = UShort + 1;
     int ULong = UInt + 1;
@@ -21,7 +22,7 @@ public interface TypeClass
     int UInt128 = ULongLong + 1;      // __int128_t
 
     int Char_S = UInt128 + 1;   // This is 'char' for target where char is signed.
-    int SChar = UInt128 + 1;    // This is explicitly qualified signed char.
+    int SChar = Char_S + 1;    // This is explicitly qualified signed char.
     int Short = SChar + 1;      //
     int Int = Short + 1;
     int Long = Int + 1;

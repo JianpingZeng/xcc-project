@@ -51,7 +51,7 @@ public final class BuiltinType extends Type
             case Void: return "void";
             case Bool: return opts.bool ? "bool" : "_Bool";
             case SChar: return "char";
-            case UChar: return "unsigned char";
+            case Char_U: return "unsigned char";
             case Short: return "short";
             case UShort: return "unsigned short";
             case Int: return "int";

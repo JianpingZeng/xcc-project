@@ -31,7 +31,7 @@ public class ActionResult<T>
 
     public ActionResult(T data)
     {
-        this(data, true);
+        this(data, false);
         assert data != null : "Bad pointer!";
     }
 
