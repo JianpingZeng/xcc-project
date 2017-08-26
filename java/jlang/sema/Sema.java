@@ -530,7 +530,7 @@ public final class Sema implements DiagnosticParseTag,
                 if (enumUnderlying != null)
                 {
                     EnumDecl ed = (EnumDecl)newDecl;
-                    ed.setIntegerType(enumUnderlying);
+                    ed.setPromotionType(enumUnderlying);
                 }
             }
             else
@@ -581,7 +581,8 @@ public final class Sema implements DiagnosticParseTag,
      * @param scope
      * @param addToScope
      */
-    private void pushOnScopeChains(NamedDecl newDecl,
+    private void pushOnScopeChains(
+            NamedDecl newDecl,
             Scope scope,
             boolean addToScope)
     {
@@ -647,9 +648,6 @@ public final class Sema implements DiagnosticParseTag,
                     {
                         result.addDecl(namedDecl);
                     }
-
-                    result.resolveKind();
-                    return true;
                 }
             }
             // move up the scope chain until we find the nearest enclosing
@@ -657,12 +655,13 @@ public final class Sema implements DiagnosticParseTag,
             //while (s.getEntity() != null && s.getEntity().isTransparentContext())
                 s = s.getParent();
         }
+        result.resolveKind();
+        return true;
 
         // TODO LookupBiutin().
         // If we didn't find a use of this identifier, and if the identifier
         // corresponds to a jlang.driver builtin, create the decl object for the
         // builtin now, injecting it into translation unit scope, and return it.
-        return  false;
     }
 
     private Scope getNonFieldDeclScope(Scope s)
@@ -1575,7 +1574,7 @@ public final class Sema implements DiagnosticParseTag,
         }
     }
 
-    public Decl actOnFunctionDef(Scope fnBodyScope, Declarator declarator)
+    public Decl actOnStartOfFunctionDef(Scope fnBodyScope, Declarator declarator)
     {
         assert getCurFunctionDecl() == null : "FunctionProto parsing confused";
         assert declarator.isFunctionDeclarator() : "Not a function declarator";
@@ -2749,11 +2748,19 @@ public final class Sema implements DiagnosticParseTag,
         // The return type of a function definition must be complete
         // (C99 6.9.1p3.
         QualType resultType = fd.getReturnType();
-        if (!resultType.isVoidType() && !fd.isInvalidDecl())
+        if (!resultType.isVoidType() && !fd.isInvalidDecl() &&
             requireCompleteType(fd.getLocation(), resultType,
-                    err_func_def_incomplete_result);
+                    err_func_def_incomplete_result))
+        {
+            fd.setInvalidDecl(true);
+        }
 
-        fd.setInvalidDecl(true);
+        // GNU warning -Wmissing-prototypes:
+        //   Warn if a global function is defined without a previous
+        //   prototype declaration. This warning is issued even if the
+        //   definition itself provides a prototype. The aim is to detect
+        //   global functions that fail to be declared in header files.
+        // TODO 2017.8.25
 
         if (fnBodyScope != null)
             pushDeclContext(fnBodyScope, fd);
@@ -2767,7 +2774,7 @@ public final class Sema implements DiagnosticParseTag,
             ParamVarDecl param = fd.getParamDecl(i);
             param.setOwningFunction(fd);
 
-            if (param.getDeclName() != null && fnBodyScope != null)
+            if (param.getIdentifier() != null && fnBodyScope != null)
                 checkShadow(fnBodyScope, param);
             pushOnScopeChains(param, fnBodyScope, true);
         }
@@ -3192,17 +3199,20 @@ public final class Sema implements DiagnosticParseTag,
         // try to perform integral promotions if the object has a promotable type.
         if (t.getType().isIntegralOrEnumerationType())
         {
-            QualType ty = expr.isPromotableBitField(context);
+            QualType ty = context.isPromotableBitField(expr);
             if (!ty.isNull())
             {
-                expr = implicitCastExprToType(expr, ty, EVK_RValue,
+                expr = implicitCastExprToType(expr,
+                        ty, EVK_RValue,
                         CK_IntegralCast).get();
                 return new ActionResult<>(expr);
             }
-            if (context.isPromotableIntegerType(ty))
+
+            if (context.isPromotableIntegerType(t))
             {
-                QualType qt = context.getPromotedIntegerType(ty);
-                expr = implicitCastExprToType(expr, qt, EVK_RValue,
+                QualType qt = context.getPromotedIntegerType(t);
+                expr = implicitCastExprToType(expr,
+                        qt, EVK_RValue,
                         CK_IntegralCast).get();
                 return new ActionResult<>(expr);
             }
@@ -3222,8 +3232,10 @@ public final class Sema implements DiagnosticParseTag,
      * @return The result expression have be implicitly casted.
      */
     private ActionResult<Expr> implicitCastExprToType(
-            Expr expr, QualType ty,
-            ExprValueKind valueKind, CastKind kind)
+            Expr expr,
+            QualType ty,
+            ExprValueKind valueKind,
+            CastKind kind)
     {
         QualType exprTy = expr.getType();
         if (exprTy.equals(ty))
@@ -4858,7 +4870,7 @@ public final class Sema implements DiagnosticParseTag,
         if (context.isPromotableIntegerType(lhsType))
             lhsType = context.getPromotedIntegerType(lhsType);
 
-        QualType lhsBitfieldPromoteTy = lhs.get().get().isPromotableBitField(context);
+        QualType lhsBitfieldPromoteTy = context.isPromotableBitField(lhs.get().get());
         if (!lhsBitfieldPromoteTy.isNull())
             lhsType = lhsBitfieldPromoteTy;
         if (lhsType != lhsUnpromotedType && !isCompAssign)
@@ -4944,7 +4956,7 @@ public final class Sema implements DiagnosticParseTag,
         checkArrayAccess(pExp, iExp);
         if (compLHSTy != null)
         {
-            QualType lhsTy = lhs.get().get().isPromotableBitField(context);
+            QualType lhsTy = context.isPromotableBitField(lhs.get().get());
             if (lhsTy.isNull())
             {
                 lhsTy = lhs.get().get().getType();
@@ -5970,7 +5982,7 @@ public final class Sema implements DiagnosticParseTag,
             return exprError();
         }
 
-        if (context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.UChar)
+        if (context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.Char_U)
                 || context.isSpecifiedBuiltinType(idxExpr.getType(), TypeClass.SChar))
         {
             diag(lParenLoc, warn_subscript_is_char)

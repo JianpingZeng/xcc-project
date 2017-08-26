@@ -53,7 +53,7 @@ import static jlang.type.TypeClass.SChar;
 import static jlang.type.TypeClass.Short;
 import static jlang.type.TypeClass.Struct;
 import static jlang.type.TypeClass.TypeDef;
-import static jlang.type.TypeClass.UChar;
+import static jlang.type.TypeClass.Char_U;
 import static jlang.type.TypeClass.UInt;
 import static jlang.type.TypeClass.UInt128;
 import static jlang.type.TypeClass.ULong;
@@ -136,7 +136,7 @@ public final class ASTContext
         LongTy = initBuiltinType(Long);
         LongLongTy = initBuiltinType(LongLong);
 
-        UnsignedCharTy = initBuiltinType(UChar);
+        UnsignedCharTy = initBuiltinType(Char_U);
         UnsignedShortTy = initBuiltinType(UShort);
         UnsignedIntTy = initBuiltinType(UInt);
         UnsignedLongTy = initBuiltinType(ULong);
@@ -660,13 +660,13 @@ public final class ASTContext
 			EnumType ety = lhs.getAsEnumType();
 			if (ety != null)
 			{
-				if (ety.getDecl().getIntegerType().equals(rhs.getUnQualifiedType()))
+				if (ety.getDecl().getPromotionType().equals(rhs.getUnQualifiedType()))
 					return rhs;
 			}
 			ety = rhs.getAsEnumType();
 			if (ety != null)
 			{
-				if (ety.getDecl().getIntegerType().equals(lhs.getUnQualifiedType()))
+				if (ety.getDecl().getPromotionType().equals(lhs.getUnQualifiedType()))
 					return rhs;
 			}
 
@@ -764,7 +764,7 @@ public final class ASTContext
 			case TypeClass.Union:
 			case TypeClass.Enum:
 
-			case UChar:
+			case Char_U:
 			case UShort:
 			case UInt:
 			case ULong:
@@ -830,8 +830,10 @@ public final class ASTContext
 			switch (type.getTypeClass())
 			{
 				case TypeClass.Bool:
+                case TypeClass.Char_S:
+                case TypeClass.Char_U:
 				case TypeClass.SChar:
-				case TypeClass.UChar:
+                case TypeClass.UChar:
 				case TypeClass.Short:
 				case TypeClass.UShort:
 					return true;
@@ -845,12 +847,12 @@ public final class ASTContext
 		if (type.isEnumeralType())
 		{
 			EnumType et = type.getAsEnumType();
-			QualType qt = et.getDecl().getIntegerType();
+			QualType qt = et.getDecl().getPromotionType();
 			if (qt.isNull())
 				return false;
 
-			return qt.getType().getTypeClass() == TypeClass.Int
-					|| qt.getType().getTypeClass() == TypeClass.UInt;
+			BuiltinType bt = qt.getAsBuiltinType();
+			return bt.getTypeClass() == Int || bt.getTypeClass() == UInt;
 		}
 		return false;
 	}
@@ -868,7 +870,7 @@ public final class ASTContext
 		assert isPromotableIntegerType(type);
 
 		if (type.getType() instanceof EnumType)
-			return ((EnumType) type.getType()).getDecl().getIntegerType();
+			return ((EnumType) type.getType()).getDecl().getPromotionType();
 		if (type.isSignedIntegerType())
 			return IntTy;
 		long promotableSize = getTypeSize(type);
@@ -1014,7 +1016,7 @@ public final class ASTContext
 		{
 			EnumType et = (EnumType)type.getType();
 			if (et.getDecl().isCompleteDefinition())
-				return et.getDecl().getIntegerType().isSignedIntegerType();
+				return et.getDecl().getPromotionType().isSignedIntegerType();
 		}
 		return false;
 	}
@@ -1030,7 +1032,7 @@ public final class ASTContext
 		{
 			EnumType et = (EnumType)type.getType();
 			if (et.getDecl().isCompleteDefinition())
-				return !et.getDecl().getIntegerType().isSignedIntegerType();
+				return !et.getDecl().getPromotionType().isSignedIntegerType();
 		}
 		return false;
 	}
@@ -1039,7 +1041,7 @@ public final class ASTContext
 	{
 		if (t.isEnumeralType())
 		{
-			t = new QualType(t.getAsEnumType().getDecl().getIntegerType().getType());
+			t = new QualType(t.getAsEnumType().getDecl().getPromotionType().getType());
 		}
 		if (t.isBooleanType())
 			return 1;
@@ -1104,7 +1106,7 @@ public final class ASTContext
 					break;
 				}
 				if (tt instanceof EnumType)
-					return getTypeInfo(((EnumType)tt).getDecl().getIntegerType() );
+					return getTypeInfo(((EnumType)tt).getDecl().getPromotionType() );
 
 				RecordType rt = (RecordType)tt;
 				ASTRecordLayout layout = ASTRecordLayout.getRecordLayout(this, rt.getDecl());
@@ -1277,7 +1279,7 @@ public final class ASTContext
 		if (T instanceof EnumType)
 		{
 			EnumType et = (EnumType)T;
-			T = et.getDecl().getIntegerType().getType();
+			T = et.getDecl().getPromotionType().getType();
 		}
 
 		switch (T.getTypeClass())
@@ -1286,7 +1288,7 @@ public final class ASTContext
 			case TypeClass.Bool:
 				return 1 + (getIntWidth(BoolTy) << 3);
 			case TypeClass.SChar:
-			case TypeClass.UChar:
+			case TypeClass.Char_U:
 				return 2 + (getIntWidth(CharTy) << 3);
 			case TypeClass.Short:
 			case TypeClass.UShort:
@@ -1354,7 +1356,7 @@ public final class ASTContext
 		// For enums, we return the unsigned version of the base type.
 		if (type.isEnumeralType())
 		{
-			type = (this.<EnumType>getAs(type)).getDecl().getIntegerType();
+			type = (this.<EnumType>getAs(type)).getDecl().getPromotionType();
 		}
 		
 		assert type.isBuiltinType() : "Unexpected signed integer type";
@@ -1406,5 +1408,34 @@ public final class ASTContext
 	public ASTRecordLayout getASTRecordLayout(RecordDecl d)
 	{
 		return getASTRecordLayout(d);
+	}
+	/**
+	 * Whether this is a promotable bitfield reference according to C99 6.3.1.1p2.
+	 * or {@code null} if no promotion occurs.
+	 * @return  Return the type this bit-field will promote to, or NULL if no
+	 *           promotion occurs.
+	 */
+	public QualType isPromotableBitField(Expr e)
+	{
+		FieldDecl field = e.getBitField();
+		if (field == null)
+			return new QualType();
+
+		QualType t = field.getDeclType();
+		APSInt bitWidthAP = field.getBitWidth().evaluateAsInt(this);
+		long bitWidth = bitWidthAP.getZExtValue();
+		long intSize = getTypeSize(IntTy);
+
+		// GCC extension compatibility: if the bit-field size is less than or equal
+		// to the size of int, it gets promoted no matter what its type is.
+		// For instance, unsigned long bf : 4 gets promoted to signed int.
+		if (bitWidth < intSize)
+			return IntTy;
+		if (bitWidth == intSize)
+			return t.isSignedIntegerType() ? IntTy : UnsignedIntTy;
+
+		// Types bigger than int are not subject to promotions, and therefore act
+		// like the base type.
+		return new QualType();
 	}
 }

@@ -332,7 +332,7 @@ public class CodeGenTypes
         // If this is enum decl, just treat it as integral type.
         if (td.isEnum())
         {
-            return convertTypeRecursive(((Decl.EnumDecl)td).getIntegerType());
+            return convertTypeRecursive(((Decl.EnumDecl)td).getPromotionType());
         }
 
         OpaqueType placeHolderType = OpaqueType.get();
@@ -360,7 +360,7 @@ public class CodeGenTypes
                 return backend.type.IntegerType.get(8);
             case Bool:
                 return Type.Int1Ty;
-            case UChar:
+            case Char_U:
             case UShort:
             case UInt:
             case ULong:
