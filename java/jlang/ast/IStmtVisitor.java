@@ -34,7 +34,7 @@ import jlang.ast.Tree.*;
 public interface IStmtVisitor<T>
 {
 
-    T visit(Stmt expr);
+    T visit(Tree expr);
 
     T visitStmt(Stmt s);
 

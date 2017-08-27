@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Function;
 
+import static jlang.ast.ASTPrinter.createASTDumper;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.System;
 import static jlang.codegen.BackendConsumer.createBackendConsumer;
@@ -421,7 +422,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             consumer.handleTopLevelDecls(declsGroup);
         }
 
-        consumer.handleTranslationUnit();
+        consumer.handleTranslationUnit(ctx);
     }
 
     private PrintStream computeOutFile(
@@ -682,8 +683,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 consumer = new PrettyASTConsumer();
                 break;
             case ASTDump:
-                assert false : "Unsupported currently.";
-                return;
+                consumer = createASTDumper(null, true);
+                break;
             case DumpTokens:
                 Token tok = new Token();
                 // Start preprocessing the specified input file.

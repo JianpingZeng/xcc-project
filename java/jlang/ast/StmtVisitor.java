@@ -17,7 +17,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 	 * @param s
 	 * @return
 	 */
-	public T visit(Stmt s)
+	public T visit(Tree s)
 	{
 		// If we have a binary s, dispatch to the subcode of the binop.
 		// A smart optimizer will fold this comparison into the switch stmt

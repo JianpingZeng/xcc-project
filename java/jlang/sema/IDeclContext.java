@@ -25,7 +25,7 @@ import java.util.List;
  * @author Xlous.zeng
  * @version 0.1
  */
-interface IDeclContext
+public interface IDeclContext
 {
     DeclKind getKind();
 

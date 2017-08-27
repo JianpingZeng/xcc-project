@@ -109,7 +109,7 @@ public class DeclContext implements IDeclContext
 
     public boolean isRecord()
     {
-        return kind == StructDecl;
+        return kind == RecordDecl;
     }
     /**
      * Determines if this context is file context.
@@ -302,7 +302,7 @@ public class DeclContext implements IDeclContext
         {
             case TranslationUnitDecl:
                 return this;
-            case StructDecl:
+            case RecordDecl:
             case EnumDecl:
             {
                 Type t = ((Decl.TagDecl)decl).getTypeForDecl();

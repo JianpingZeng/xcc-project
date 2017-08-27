@@ -138,7 +138,7 @@ public class HIRModuleGenerator
                 break;
             case TranslationUnitDecl:
             case FieldDecl:
-            case ParamVar:
+            case ParamVarDecl:
             case EnumConstant:
             case LabelDecl:
                 // skip it.

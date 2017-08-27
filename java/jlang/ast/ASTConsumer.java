@@ -49,7 +49,7 @@ public interface ASTConsumer
      * This method is called when the parsing file for entire translation unit
      * was parsed.
      */
-    void handleTranslationUnit();
+    void handleTranslationUnit(ASTContext context);
 
 	/**
      * This callback is invoked each time a TagDecl

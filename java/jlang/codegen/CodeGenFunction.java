@@ -1172,11 +1172,11 @@ public final class CodeGenFunction
 			default:
 				assert false : "Unknown decl type.";
 				break;
-			case ParamVar:
+			case ParamVarDecl:
 				assert false : "ParamDecls should not be handled in emitDecl().";
 				break;
 			case FunctionDecl: // void foo();
-			case StructDecl:   // struct/union X;
+			case RecordDecl:   // struct/union X;
 			case EnumDecl:     // enum X;
 			case EnumConstant: // enum ? {X =?,};
 				// none of those decls required codegen support.

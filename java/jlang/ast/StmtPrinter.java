@@ -17,24 +17,24 @@
 
 package jlang.ast;
 
-import jlang.sema.ASTContext;
-import jlang.sema.Decl;
 
-import java.util.ArrayList;
+import jlang.sema.ASTContext;
+import jlang.support.PrintingPolicy;
+
+import java.io.PrintStream;
 
 /**
- * A empty action consumer for AST.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PrettyASTConsumer implements ASTConsumer
+public class StmtPrinter extends StmtVisitor<Void>
 {
-    @Override
-    public void initialize(ASTContext ctx) {}
+    public StmtPrinter(PrintStream out, ASTContext ctx,
+            PrinterHelper helper, PrintingPolicy policy,
+            int indentation)
+    {
+        // TODO: 17-8-27
+    }
 
-    @Override
-    public void handleTopLevelDecls(ArrayList<Decl> decls) {}
 
-    @Override
-    public void handleTranslationUnit(ASTContext context) {}
 }

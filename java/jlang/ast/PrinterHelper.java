@@ -17,24 +17,13 @@
 
 package jlang.ast;
 
-import jlang.sema.ASTContext;
-import jlang.sema.Decl;
-
-import java.util.ArrayList;
+import java.io.PrintStream;
 
 /**
- * A empty action consumer for AST.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PrettyASTConsumer implements ASTConsumer
+public interface PrinterHelper
 {
-    @Override
-    public void initialize(ASTContext ctx) {}
-
-    @Override
-    public void handleTopLevelDecls(ArrayList<Decl> decls) {}
-
-    @Override
-    public void handleTranslationUnit(ASTContext context) {}
+    boolean handledStmt(Tree.Stmt stmt, PrintStream os);
 }

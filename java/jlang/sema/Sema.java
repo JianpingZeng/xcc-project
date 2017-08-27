@@ -7655,7 +7655,7 @@ public final class Sema implements DiagnosticParseTag,
                     break;
                 }
                 // fall through.
-            case ParamVar:
+            case ParamVarDecl:
                 // These always be l-value.
                 valueKind = EVK_LValue;
                 break;

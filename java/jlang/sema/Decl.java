@@ -22,21 +22,26 @@ package jlang.sema;
  * @version 0.1
  */
 
+import jlang.ast.DeclPrinter;
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.LabelStmt;
 import jlang.ast.Tree.StringLiteral;
-import tools.APSInt;
-import jlang.support.Linkage;
-import jlang.support.SourceLocation;
-import jlang.support.SourceRange;
 import jlang.clex.IdentifierInfo;
 import jlang.cparser.DeclKind;
 import jlang.cparser.Declarator;
+import jlang.support.Linkage;
+import jlang.support.PrintingPolicy;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
 import jlang.type.*;
+import tools.APSInt;
 import tools.OutParamWrapper;
 
-import java.util.*;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import static jlang.cparser.DeclKind.*;
 import static jlang.type.TagKind.*;
@@ -158,7 +163,7 @@ public abstract class Decl
             case VarDecl:
             case TypedefDecl:
                 return IdentifierNamespace.IDNS_Ordinary;
-            case StructDecl:
+            case RecordDecl:
             case EnumDecl:
                 return IdentifierNamespace.IDNS_Tag;
             case LabelDecl:
@@ -291,6 +296,34 @@ public abstract class Decl
     {
         return referenced;
     }
+
+    public void print(PrintStream os)
+    {
+        print(os, 0);
+    }
+
+    public void print(PrintStream os, int indentation)
+    {}
+
+    public void print(PrintStream os, PrintingPolicy policy)
+    {
+        print(os, policy, 0);
+    }
+
+    /**
+     * Print this declaration into the given printing stream with given print
+     * policy.
+     * @param os
+     * @param policy
+     */
+    public void print(PrintStream os, PrintingPolicy policy, int indentation)
+    {
+        DeclPrinter printer = new DeclPrinter(os, getASTContext(), policy, indentation);
+        printer.visit(this);
+    }
+
+    public void dump()
+    {}
 
     /**
      * The top level declaration context.
@@ -1038,6 +1071,25 @@ public abstract class Decl
             }
             return kind;
         }
+
+        public static String getStorageClassSpecifierString(StorageClass sc)
+        {
+            switch (sc)
+            {
+                default:
+                case SC_none:
+                    return "";
+                case SC_auto:
+                    return "auto";
+                case SC_extern:
+                    return "extern";
+                case SC_register:
+                    return "register";
+                case SC_static:
+                    return "static";
+
+            }
+        }
     }
 
     /**
@@ -1065,7 +1117,7 @@ public abstract class Decl
                 QualType type,
                 StorageClass sc)
         {
-            return new ParamVarDecl(ParamVar, context, name, location, type, sc);
+            return new ParamVarDecl(ParamVarDecl, context, name, location, type, sc);
         }
 
         public void setScopeInfo(int depth, int protoTypeIndex)
@@ -1156,6 +1208,7 @@ public abstract class Decl
         private DeclContext dc;
         private boolean isPure;
         private boolean c99InlineDefinition;
+        private boolean hasWrittenPrototype;
 
         public FunctionDecl(IdentifierInfo name,
                 DeclContext context,
@@ -1546,6 +1599,16 @@ public abstract class Decl
         {
             return hasPrototype;
         }
+
+        public boolean hasWrittenPrototype()
+        {
+            return hasWrittenPrototype;
+        }
+
+        public void setHasWrittenPrototype(boolean value)
+        {
+            hasWrittenPrototype = value;
+        }
     }
 
     /**
@@ -1711,6 +1774,10 @@ public abstract class Decl
             this.declContext = curContext;
         }
 
+        /**
+         * True if this is a definition ("struct foo {};"), false if
+         * it is a declaration ("struct foo;").
+         */
         public final boolean isBeingDefined()
         {
             return isBeingDefined;
@@ -2000,7 +2067,7 @@ public abstract class Decl
                 SourceLocation loc,
                 RecordDecl prevDecl)
         {
-            super(StructDecl, tagKind, context, name, loc, prevDecl);
+            super(RecordDecl, tagKind, context, name, loc, prevDecl);
             hasFlexibleArrayMember = false;
             anonymousStructOrUnion = false;
             hasObjectMember = false;
@@ -2195,7 +2262,7 @@ public abstract class Decl
                 SourceLocation location,
                 StringLiteral asmStr)
         {
-            super(DeclKind.FileScopeAsm, dc, location);
+            super(DeclKind.FileScopeAsmDecl, dc, location);
             asmString = asmStr;
         }
 

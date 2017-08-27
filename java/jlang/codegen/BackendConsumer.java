@@ -146,9 +146,9 @@ public class BackendConsumer implements ASTConsumer
      *
      */
     @Override
-    public void handleTranslationUnit()
+    public void handleTranslationUnit(ASTContext context)
     {
-        gen.handleTranslationUnit();
+        gen.handleTranslationUnit(context);
 
         // Emits assembly code or hir code for backend.target.
         emitAssembly();
