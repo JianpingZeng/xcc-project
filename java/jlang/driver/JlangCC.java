@@ -110,7 +110,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
 
     public static BooleanOpt VerifyDiagnostics =
             new BooleanOpt(optionName("verify"),
-                    desc("Verify emitted diagnostics and warnings"));
+                    desc("Verify emitted diagnostics and warnings"),
+                    init(false));
 
     public static BooleanOpt NoShowColumn =
             new BooleanOpt(new OptionNameApplicator("fno-show-column"),
@@ -1237,6 +1238,16 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 continue;
 
             processInputFile(pp, inputFile, progAction, features);
+        }
+
+        if (!NoCaretDiagnostics.value)
+        {
+            int numDiagnostics = diag.getNumDiagnostics();
+            if (numDiagnostics > 0)
+            {
+                java.lang.System.err.printf("%d diagnostic%s generated.\n",
+                        numDiagnostics, numDiagnostics == 1 ? "":"s");
+            }
         }
 
         return EXIT_OK;

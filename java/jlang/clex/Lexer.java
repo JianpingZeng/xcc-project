@@ -70,7 +70,7 @@ public class Lexer extends PreprocessorLexer
         this.buffer = buffer;
         this.bufferPtr = curPos;
         bufferEnd = endPos;
-        assert buffer[buffer.length-1] == '\0':
+        assert buffer[bufferEnd-1] == '\0':
                 "We assume that the input buffer has a null character at the end" +
                 " to simplify lexing!";
         isPragmaLexer = false;
@@ -233,7 +233,7 @@ public class Lexer extends PreprocessorLexer
 
     public boolean isKeepWhiteSpaceMode()
     {
-        return extendedTokenMode > 1;
+        return extendedTokenMode > 0;
     }
 
     public void setKeepWhitespaceMode(boolean val)
@@ -801,7 +801,7 @@ public class Lexer extends PreprocessorLexer
                     break;
                 case '\0':
                     // Found end of file?
-                    if (curPos - 1 != buffer.length)
+                    if (curPos - 1 != bufferEnd)
                     {
                         result += ch;
                         break;
@@ -849,8 +849,8 @@ public class Lexer extends PreprocessorLexer
         if (isLexingRawMode())
         {
             result.startToken();
-            this.bufferPtr = buffer.length;
-            formTokenWithChars(result, buffer.length, TokenKind.eof);
+            this.bufferPtr = bufferEnd;
+            formTokenWithChars(result, bufferEnd, TokenKind.eof);
             return true;
         }
 
@@ -1058,7 +1058,7 @@ public class Lexer extends PreprocessorLexer
                 ++curPos;
                 break;
             }
-        } while (ch != '\r' && ch != '\r');
+        } while (ch != '\n' && ch != '\r');
 
         // Found but did not consume the newline.
         if (pp != null)
@@ -1073,7 +1073,7 @@ public class Lexer extends PreprocessorLexer
 
         // If we are inside a preprocessor directive and we see the end of line,
         // return immediately, so that the lexer can return this as an EOM token.
-        if (parsingPreprocessorDirective || curPos == buffer.length)
+        if (parsingPreprocessorDirective || curPos == bufferEnd)
         {
             this.bufferPtr = curPos;
             return false;
@@ -1170,7 +1170,7 @@ public class Lexer extends PreprocessorLexer
         int size = x.get();
         curPos += size;
 
-        if (ch == 0 && curPos == buffer.length + 1)
+        if (ch == 0 && curPos == bufferEnd + 1)
         {
             if (!isLexingRawMode())
                 diag(this.bufferPtr, err_unterminated_block_comment);
@@ -1195,7 +1195,7 @@ public class Lexer extends PreprocessorLexer
         {
             // Skip over all non-interesting characters until we find end of buffer or a
             // (probably ending) '/' character.
-            if (curPos + 24 < buffer.length)
+            if (curPos + 24 < bufferEnd)
             {
                 while (ch != '/' && (curPos & 0x0f) != 0)
                     ch = buffer[curPos++];
@@ -1206,7 +1206,7 @@ public class Lexer extends PreprocessorLexer
                     // Scan for '/' quickly.  Many block comments are very large.
                     while (buffer[curPos] != '/' && buffer[curPos + 1] != '/'
                             && buffer[curPos + 2] != '/'
-                            && buffer[curPos + 3] != '/' && curPos < buffer.length)
+                            && buffer[curPos + 3] != '/' && curPos < bufferEnd)
                         curPos += 4;
 
                     ch = buffer[curPos++];
@@ -1239,7 +1239,7 @@ public class Lexer extends PreprocessorLexer
                         diag(curPos - 1, warn_nested_block_comment);
                 }
             }
-            else if (ch == 0 && curPos == buffer.length + 1)
+            else if (ch == 0 && curPos == bufferEnd + 1)
             {
                 if (!isLexingRawMode())
                 {
@@ -1431,7 +1431,7 @@ public class Lexer extends PreprocessorLexer
                     ch = getAndAdvanceChar(x, result);
                 }
                 else if (ch == '\n' || ch == '\r' ||
-                        (ch == 0 && x.get() - 1 == buffer.length))
+                        (ch == 0 && x.get() - 1 == bufferEnd))
                 {
                     if (!isLexingRawMode() && !langOpts.asmPreprocessor)
                     {
@@ -1475,7 +1475,7 @@ public class Lexer extends PreprocessorLexer
                 ch = getAndAdvanceChar(x, result);
             }
             else if (ch == '\n' || ch == '\r' ||
-                    (ch == 0 && x.get() -1 == buffer.length))
+                    (ch == 0 && x.get() -1 == bufferEnd))
             {
                 if (!isLexingRawMode() && !langOpts.asmPreprocessor)
                     diag(curPos, err_unterminated_string);
@@ -1518,7 +1518,7 @@ public class Lexer extends PreprocessorLexer
                 ch = getAndAdvanceChar(x, result);
             }
             else if (ch == '\n' || ch == '\r'
-                    || (ch == 0 && buffer[x.get() - 1] == buffer.length))
+                    || (ch == 0 && buffer[x.get() - 1] == bufferEnd))
             {
                 // If the filename is unterminated, then it must just be a lone <
                 // character.  Return this as such.
@@ -1601,7 +1601,7 @@ public class Lexer extends PreprocessorLexer
             case '\0':
             {
                 // Null.
-                if (curPos == buffer.length)
+                if (curPos == bufferEnd)
                 {
                     Preprocessor ppcache = pp;
                     // Retreat back into the file.

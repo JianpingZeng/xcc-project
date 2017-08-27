@@ -136,7 +136,8 @@ public class DiagChecker
                 return;
 
             // If this isn't expected-foo, ignore it.
-            if (!comment.substring(i, expectedStrLen).equals(expectedStr))
+            if ((len - i) < expectedStrLen ||
+                    !comment.substring(i, i + expectedStrLen).equals(expectedStr))
             {
                 ++i;
                 continue;
@@ -279,6 +280,8 @@ public class DiagChecker
             String expected = pair1.second;
 
             Iterator<Pair<SourceLocation, String>> itr2 = right.iterator();
+            boolean notFound = true;
+
             while (itr2.hasNext())
             {
                 Pair<SourceLocation,String> pair2 = itr2.next();
@@ -288,9 +291,12 @@ public class DiagChecker
 
                 String diagStr = pair2.second;
                 if (expected.contains(diagStr) || diagStr.contains(expected))
+                {
+                    notFound = false;
                     break;
+                }
             }
-            if (!itr2.hasNext())
+            if (notFound)
             {
                 // left only.
                 leftOnly.add(pair1);

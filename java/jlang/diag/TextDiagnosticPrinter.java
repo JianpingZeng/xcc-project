@@ -640,10 +640,10 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             }
         }
 
-        os.println(outStr.toString());
+        os.print(outStr.toString());
 
         if(useColors)
-            os.println(ANSI_RESET);
+            os.print(ANSI_RESET);
         if (((!lastLoc.equals(info.getLocation())) || info.getNumRanges() != 0
                 || (lastCaretDiagnosticWasNote
                 && diagLevel != Diagnostic.Level.Note)

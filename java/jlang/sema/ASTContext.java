@@ -93,7 +93,13 @@ public final class ASTContext
 
     public final QualType VoidPtrTy;
 
-	public ASTContext(LangOptions opts, SourceManager sourceMgr,
+    /**
+     * Source ranges for all of the comments in the source file,
+     * sorted in order of appearance in the translation unit.
+     */
+    public ArrayList<SourceRange> comments;
+
+    public ASTContext(LangOptions opts, SourceManager sourceMgr,
 			TargetInfo targetInfo, IdentifierTable identifierTable)
 	{
 		langOptions = opts;
@@ -127,6 +133,7 @@ public final class ASTContext
         LongDoubleComplexTy = getComplexType(LongDoubleTy);
 
         VoidPtrTy = getPointerType(VoidTy);
+        comments = new ArrayList<>();
 	}
 
     public APSInt makeIntValue(long value, QualType type)
