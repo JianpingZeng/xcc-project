@@ -143,7 +143,7 @@ public final class Diagnostic
         int foundIndice = Arrays.binarySearch(staticDiagInfos, rec,
                 Comparator.comparingInt(o -> o.diagID));
         StaticDiagInfoRec foundRec = staticDiagInfos[foundIndice];
-        return foundIndice >= 0 && foundRec.diagID == diagID? foundRec : null;
+        return foundRec.diagID == diagID ? foundRec : null;
     }
 
     // Diagnostic classes.
@@ -1024,12 +1024,10 @@ public final class Diagnostic
 		{
 			assert numRanges < diagObj.diagRanges.length
 					:"Too many arguments to diagnostics";
-			if (diagObj != null)
-			{
-				diagObj.diagRanges[numRanges++] = range;
-			}
-			return this;
+            diagObj.diagRanges[numRanges++] = range;
+            return this;
 		}
+
 		public DiagnosticBuilder addFixItHint(FixItHint hint)
 		{
 			assert numFixItHints < maxFixItHints
