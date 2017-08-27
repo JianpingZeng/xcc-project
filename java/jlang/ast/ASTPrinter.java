@@ -19,16 +19,38 @@ package jlang.ast;
 
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
+import jlang.support.PrintingPolicy;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
- * A empty action consumer for AST.
+ * Pretty printer and dump AST.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PrettyASTConsumer implements ASTConsumer
+public final class ASTPrinter implements ASTConsumer
 {
+    private PrintStream os;
+    private boolean dump;
+
+    public ASTPrinter()
+    {
+        this(null, false);
+    }
+
+    public ASTPrinter(PrintStream out, boolean dump)
+    {
+        os = out != null? out: System.err;
+
+        this.dump = dump;
+    }
+
+    public static ASTPrinter createASTDumper(PrintStream out, boolean dump)
+    {
+        return new ASTPrinter(out, dump);
+    }
+
     @Override
     public void initialize(ASTContext ctx) {}
 
@@ -36,5 +58,10 @@ public class PrettyASTConsumer implements ASTConsumer
     public void handleTopLevelDecls(ArrayList<Decl> decls) {}
 
     @Override
-    public void handleTranslationUnit(ASTContext context) {}
+    public void handleTranslationUnit(ASTContext context)
+    {
+        PrintingPolicy policy = context.printingPolicy;
+        policy.dump = dump;
+        context.getTranslateUnitDecl().print(os, policy);
+    }
 }

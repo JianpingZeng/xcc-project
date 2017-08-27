@@ -1,13 +1,12 @@
-package jlang.sema;
 /*
- * Xlous C language CompilerInstance
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,15 +15,12 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+package jlang.ast;
+
 /**
- * This class is a simple visitor for Stmt.
- * At the same, it can be used for visiting Expr since expr is derived from Stmt.
  * @author Xlous.zeng
  * @version 0.1
- *
- * @Derived The subclass of this {@linkplain StmtVisitor}
- * @RetTy
  */
-public abstract class StmtVisitor<Derived, RetTy>
+public class CFG
 {
 }

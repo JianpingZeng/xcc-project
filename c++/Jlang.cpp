@@ -36,7 +36,11 @@ static JNIEnv* createVM(char* cmdPath)
         char absolute[4086] = {0};
     #endif
     realpath(cmdPath, absolute);
+
+    #ifdef NDEBUG
     cout<<absolute<<endl;
+    #endif
+
     char* dir = dirname(absolute);
 	size_t len = strlen(dir);
 	char *end = dir + len - 1;

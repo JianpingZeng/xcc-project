@@ -52,7 +52,7 @@ public class CodeGeneratorImpl implements CodeGenerator
     }
 
     @Override
-    public void handleTranslationUnit()
+    public void handleTranslationUnit(ASTContext context)
     {
         if (diags.hasErrorOccurred())
         {

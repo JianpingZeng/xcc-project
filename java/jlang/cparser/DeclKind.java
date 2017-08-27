@@ -8,16 +8,16 @@ public enum DeclKind
 {
     TranslationUnitDecl("TranslationUnit"),
     FunctionDecl("Function"),
-    StructDecl("Struct"),
+    RecordDecl("Struct"),
     EnumDecl("Enum"),
     TypedefDecl("Typedef"),
     EnumConstant("EnumConstant"),
     LabelDecl("Label"),
     FieldDecl("Field"),
     VarDecl("Var"),
-    ParamVar("Param"),
+    ParamVarDecl("Param"),
     OriginalParamVar("OriginalParam"),
-    FileScopeAsm("FileScopeAsm");
+    FileScopeAsmDecl("FileScopeAsmDecl");
 
     public String declKindName;
 

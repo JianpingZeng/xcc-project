@@ -17,24 +17,34 @@
 
 package jlang.ast;
 
-import jlang.sema.ASTContext;
-import jlang.sema.Decl;
+import jlang.support.LangOptions;
+import tools.Pair;
 
-import java.util.ArrayList;
+import java.io.PrintStream;
+import java.util.HashMap;
 
 /**
- * A empty action consumer for AST.
  * @author Xlous.zeng
  * @version 0.1
  */
-public class PrettyASTConsumer implements ASTConsumer
+public class StmtPrinterHelper implements PrinterHelper
 {
-    @Override
-    public void initialize(ASTContext ctx) {}
+    private HashMap<Tree.Stmt, Pair<Integer, Integer>> stmtMap;
+    private int currentBlock;
+    private int currentStmt;
+    private LangOptions langOpts;
+
+    public StmtPrinterHelper(CFG cfg, LangOptions opts)
+    {
+        stmtMap = new HashMap<>();
+        currentBlock = 0;
+        currentStmt = 0;
+        langOpts = opts;
+    }
 
     @Override
-    public void handleTopLevelDecls(ArrayList<Decl> decls) {}
-
-    @Override
-    public void handleTranslationUnit(ASTContext context) {}
+    public boolean handledStmt(Tree.Stmt stmt, PrintStream os)
+    {
+        return false;
+    }
 }

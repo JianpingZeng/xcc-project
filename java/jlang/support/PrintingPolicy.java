@@ -24,12 +24,6 @@ package jlang.support;
  */
 public final class PrintingPolicy
 {
-    public PrintingPolicy(LangOptions opts)
-    {
-        indentation = 2;
-        this.opts = opts;
-    }
-
     /**
      * The number of spaces to use to indent each line.
      */
@@ -101,4 +95,21 @@ public final class PrintingPolicy
      /// \endcode
      */
     public boolean constantArraySizeAsWritten;
+
+    public PrintingPolicy(LangOptions opts)
+    {
+        indentation = 2;
+        this.opts = opts;
+    }
+
+    public PrintingPolicy(PrintingPolicy policy)
+    {
+        indentation = policy.indentation;
+        opts = policy.opts;
+        suppressSpecifiers = policy.suppressSpecifiers;
+        suppressTag = policy.suppressTag;
+        suppressTagKind = policy.suppressTagKind;
+        dump = policy.dump;
+        constantArraySizeAsWritten = policy.constantArraySizeAsWritten;
+    }
 }

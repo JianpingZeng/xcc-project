@@ -24,6 +24,7 @@ import jlang.clex.IdentifierTable;
 import jlang.diag.FullSourceLoc;
 import jlang.sema.Decl.*;
 import jlang.support.LangOptions;
+import jlang.support.PrintingPolicy;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
 import jlang.type.*;
@@ -99,6 +100,8 @@ public final class ASTContext
      */
     public ArrayList<SourceRange> comments;
 
+    public PrintingPolicy printingPolicy;
+
     public ASTContext(LangOptions opts, SourceManager sourceMgr,
 			TargetInfo targetInfo, IdentifierTable identifierTable)
 	{
@@ -134,7 +137,18 @@ public final class ASTContext
 
         VoidPtrTy = getPointerType(VoidTy);
         comments = new ArrayList<>();
+        printingPolicy = new PrintingPolicy(langOptions);
 	}
+
+    public SourceManager getSourceManager()
+    {
+        return sourceMgr;
+    }
+
+    public void setSourceManager(SourceManager sourceMgr)
+    {
+        this.sourceMgr = sourceMgr;
+    }
 
     public APSInt makeIntValue(long value, QualType type)
     {

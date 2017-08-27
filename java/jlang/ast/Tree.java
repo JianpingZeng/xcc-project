@@ -1,5 +1,6 @@
 package jlang.ast;
 
+import jlang.basic.SourceManager;
 import tools.APFloat;
 import tools.APInt;
 import tools.APSInt;
@@ -12,6 +13,7 @@ import jlang.type.*;
 import tools.OutParamWrapper;
 import tools.Util;
 
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.*;
@@ -266,6 +268,58 @@ public abstract class Tree
 	 * Visit this tree with a given visitor.
 	 */
 	public abstract void accept(StmtVisitor v);
+
+	public void dumpPretty(ASTContext ctx)
+	{
+		printPretty(System.err, ctx, null, new PrintingPolicy(ctx.getLangOptions()));
+	}
+
+	public void printPretty(PrintStream os, ASTContext ctx,
+			PrinterHelper helper,
+			PrintingPolicy policy)
+	{
+		printPretty(os, ctx, helper, policy, 0);
+	}
+
+	public void printPretty(PrintStream os, ASTContext ctx,
+			PrinterHelper helper,
+			PrintingPolicy policy,
+			int indentation)
+	{
+	    if (policy.dump)
+        {
+            dump(ctx.getSourceManager());
+            return;
+        }
+
+        StmtPrinter printer = new StmtPrinter(os, ctx, helper, policy, indentation);
+	    printer.visit(this);
+    }
+
+    /**
+     * This does a local dump of the specified AST fragment It dumps
+     * the specified node and a few nodes underneath it, but not the whole
+     * subtree. This is useful in a debugger.
+     * @param sourceMgr
+     */
+    public void dump(SourceManager sourceMgr)
+    {
+        StmtDumper dumper = new StmtDumper(sourceMgr, System.err, 4);;
+        dumper.dumpSubTree(this);
+        System.err.println();
+    }
+
+    /**
+     * This does a local dump of the specified AST fragment It dumps
+     * the specified node and a few nodes underneath it, but not the whole
+     * subtree. This is useful in a debugger.
+     */
+    public void dump()
+    {
+        StmtDumper dumper = new StmtDumper(null, System.err, 4);
+        dumper.dumpSubTree(this);
+        System.err.println();
+    }
 
 	/**
 	 * Everything in one source file is kept in a TopLevel structure.
