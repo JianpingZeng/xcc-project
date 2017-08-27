@@ -144,15 +144,16 @@ public final class DiagnosticInfo
                     ++i; // Skip {.
                     argument = i;
 
-                    for (; diagStr.charAt(i) != '}'; ++i);
+                    for (; diagStr.charAt(i) != '}' && i < e; ++i);
 
-                    assert diagStr.charAt(i) != 0 : "Mismatched {}'s in diagnostic string!";
+                    assert i < e: "Mismatched {}'s in diagnostic string!";
                     argumentLen = i - argument;
                     ++i;  // Skip }.
                 }
             }
 
-            assert Character.isDigit(diagStr.charAt(i)) : "Invalid format for argument in diagnostic";
+            assert i < e && Character.isDigit(diagStr.charAt(i)) :
+                    "Invalid format for argument in diagnostic";
             int argNo = diagStr.charAt(i++) - '0';
 
             switch (getArgKind(argNo))

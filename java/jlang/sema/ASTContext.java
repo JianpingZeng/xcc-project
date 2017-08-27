@@ -36,32 +36,7 @@ import java.util.TreeMap;
 
 import static jlang.sema.ASTContext.FloatingRank.*;
 import static jlang.type.ArrayType.ArraySizeModifier.Normal;
-import static jlang.type.TypeClass.Bool;
-import static jlang.type.TypeClass.ConstantArray;
-import static jlang.type.TypeClass.Double;
-import static jlang.type.TypeClass.Enum;
-import static jlang.type.TypeClass.Float;
-import static jlang.type.TypeClass.FunctionProto;
-import static jlang.type.TypeClass.IncompleteArray;
-import static jlang.type.TypeClass.Int;
-import static jlang.type.TypeClass.Int128;
-import static jlang.type.TypeClass.Long;
-import static jlang.type.TypeClass.LongDouble;
-import static jlang.type.TypeClass.LongLong;
-import static jlang.type.TypeClass.Pointer;
-import static jlang.type.TypeClass.SChar;
-import static jlang.type.TypeClass.Short;
-import static jlang.type.TypeClass.Struct;
-import static jlang.type.TypeClass.TypeDef;
-import static jlang.type.TypeClass.Char_U;
-import static jlang.type.TypeClass.UInt;
-import static jlang.type.TypeClass.UInt128;
-import static jlang.type.TypeClass.ULong;
-import static jlang.type.TypeClass.ULongLong;
-import static jlang.type.TypeClass.UShort;
-import static jlang.type.TypeClass.Union;
-import static jlang.type.TypeClass.VariableArray;
-import static jlang.type.TypeClass.Void;
+import static jlang.type.TypeClass.*;
 
 /**
  * @author Xlous.zeng
@@ -1076,6 +1051,8 @@ public final class ASTContext
 				width = 0;
 				align = getTypeAlign(((ArrayType)t).getElemType());
 				break;
+			case ConstantArrayWithExpr:
+			case ConstantArrayWithoutExpr:
 			case ConstantArray:
 			{
 				ConstantArrayType cat = ((ConstantArrayType)t);
@@ -1123,6 +1100,54 @@ public final class ASTContext
 				width = info.first;
 				break;
 			}
+			case Bool:
+				width = target.getBoolWidth();
+				align = target.getBoolAlign();
+				break;
+			case Char_U:
+			case Char_S:
+			case UChar:
+			case SChar:
+				width = target.getCharWidth();
+				align = target.getCharAlign();
+				break;
+			case UShort:
+			case Short:
+				width = target.getShortWidth();
+				align = target.getShortAlign();
+				break;
+			case UInt:
+			case Int:
+				width = target.getIntWidth();
+				align = target.getIntAlign();
+				break;
+			case ULong:
+			case Long:
+				width = target.getLongWidth();
+				align = target.getLongAlign();
+				break;
+			case LongLong:
+			case ULongLong:
+				width = target.getLongLongWidth();
+				align = target.getLonglongAlign();
+				break;
+			case UInt128:
+			case Int128:
+				width = 128;
+				align = 128;
+				break;
+			case Float:
+				width = target.getFloatWidth();
+				align = target.getFloatAlign();
+				break;
+			case Double:
+				width = target.getDoubleWidth();
+				align = target.getDoubleAlign();
+				break;
+			case LongDouble:
+				width = target.getLongDoubleWidth();
+				align = target.getLongDoubleAlign();
+				break;
 		}
 
 		assert Util.isPowerOf2(align):"Alignment must be power of 2!";
