@@ -2292,9 +2292,9 @@ public abstract class Tree
                 SourceLocation loc)
         {
             super(IntegerLiteralClass, type, OK_Ordinary, EVK_RValue, loc);
-            assert type.isIntegerType():"Illegal jlang.type in Integer literal.";
+            assert type.isIntegerType():"Illegal type in Integer literal.";
             assert value.getBitWidth() == ctx.getTypeSize(type)
-                    :"Integer jlang.type is not the correct getNumOfSubLoop for constant.";
+                    :"Integer type is not the correct for constant.";
             val = value;
         }
 
