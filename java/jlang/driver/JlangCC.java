@@ -51,6 +51,7 @@ import java.util.function.Function;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.*;
 import static jlang.basic.InitHeaderSearch.IncludeDirGroup.System;
 import static jlang.codegen.BackendConsumer.createBackendConsumer;
+import static jlang.diag.DiagChecker.checkDiagnostics;
 import static jlang.driver.JlangCC.LangStds.*;
 import static jlang.support.BackendAction.Backend_EmitAssembly;
 import static jlang.support.BackendAction.Backend_EmitIR;
@@ -102,6 +103,14 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 new ValueClass.Entry<>(EmitLLVM, "emit-llvm",
                         "Build ASTs then convert to LLVM, emit .ll file"))
             );
+
+    //===----------------------------------------------------------------------===//
+    // Diagnostic Options
+    //===----------------------------------------------------------------------===//
+
+    public static BooleanOpt VerifyDiagnostics =
+            new BooleanOpt(optionName("verify"),
+                    desc("Verify emitted diagnostics and warnings"));
 
     public static BooleanOpt NoShowColumn =
             new BooleanOpt(new OptionNameApplicator("fno-show-column"),
@@ -748,6 +757,12 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             clearSourceMgr = true;
         }
 
+        if (VerifyDiagnostics.value)
+        {
+            if (checkDiagnostics(pp))
+                java.lang.System.exit(1);
+        }
+
         // For a multi-file compilation, some things are ok with nuking the source
         // manager tables, other require stable fileid/macroid's across multiple
         // files.
@@ -1113,7 +1128,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         ts.LLVMInitializeTarget();
 
 	    // Parse the command line argument.
-        CL.parseCommandLineOptions(args, "Extremely C Compiler: https://github.com/JianpingZeng/xcc");
+        CL.parseCommandLineOptions(args,
+                "Extremely C Compiler: https://github.com/JianpingZeng/xcc");
         if (Verbose.value)
         {
             java.lang.System.err.println(NAME +  "version " + VERSION + "on X86 machine");
@@ -1132,16 +1148,26 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             NoColorDiagnostic.setValue(Process.getStandardErrHasColors());
         }
 
-        DiagnosticClient diagClient = new TextDiagnosticPrinter(
-                java.lang.System.err,
-                !NoShowColumn.value,
-                !NoCaretDiagnostics.value,
-                !NoShowLocation.value,
-                PrintSourceRangeInfo.value,
-                PrintDiagnosticOption.value,
-                !NoDiagnosticsFixIt.value,
-                MessageLength.value,
-                !NoColorDiagnostic.value);
+        // Create the diagnostics client for reporting errores or for implementing
+        // -verify.
+        DiagnosticClient diagClient;
+        if (VerifyDiagnostics.value)
+        {
+            // When checking diagnostics, just add them into buffer.
+            diagClient = new TextDiagnosticBuffer();
+            if (InputFilenames.size() != 1)
+            {
+                java.lang.System.err.println("-verify only works on single input file");
+                return 1;
+            }
+        }
+        else
+        {
+            diagClient = new TextDiagnosticPrinter(java.lang.System.err, !NoShowColumn.value,
+                    !NoCaretDiagnostics.value, !NoShowLocation.value,
+                    PrintSourceRangeInfo.value, PrintDiagnosticOption.value, !NoDiagnosticsFixIt.value,
+                    MessageLength.value, !NoColorDiagnostic.value);
+        }
 
         Diagnostic diag = new Diagnostic(diagClient);
 
