@@ -8001,6 +8001,6 @@ public final class Sema implements DiagnosticParseTag,
 
     public void actOnComment(SourceRange comment)
     {
-        // TODO: 17-6-18 Acting on Comment
+        context.comments.add(comment);
     }
 }

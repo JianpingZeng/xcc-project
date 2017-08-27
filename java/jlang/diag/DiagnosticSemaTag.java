@@ -336,7 +336,7 @@ public interface DiagnosticSemaTag
 	public static final int err_new_incomplete_type = err_new_array_nonconst + 1;
 	public static final int err_new_uninitialized_const = err_new_incomplete_type + 1;
 	public static final int err_no_member = err_new_uninitialized_const + 1;
-	public static final int err_non_static_static = err_new_uninitialized_const + 1;
+	public static final int err_non_static_static = err_no_member + 1;
 	public static final int err_non_thread_thread = err_non_static_static + 1;
 	public static final int err_non_variable_decl_in_for = err_non_thread_thread + 1;
 	public static final int err_non_virtual_pure = err_non_variable_decl_in_for + 1;
@@ -537,7 +537,7 @@ public interface DiagnosticSemaTag
 	public static final int err_typecheck_call_too_few_args_at_least = err_typecheck_call_too_few_args + 1;
 	public static final int err_typecheck_call_too_many_args = err_typecheck_call_too_few_args_at_least + 1;
 	public static final int err_typecheck_call_too_many_args_at_most = err_typecheck_call_too_many_args + 1;
-	public static final int err_typecheck_cast_to_union_no_type = err_typecheck_call_too_many_args + 1;
+	public static final int err_typecheck_cast_to_union_no_type = err_typecheck_call_too_many_args_at_most + 1;
 	public static final int err_typecheck_choose_expr_requires_constant = err_typecheck_cast_to_union_no_type + 1;
 	public static final int err_typecheck_closure_too_many_args = err_typecheck_choose_expr_requires_constant + 1;
 	public static final int err_typecheck_comparison_of_distinct_blocks = err_typecheck_closure_too_many_args + 1;
@@ -568,7 +568,7 @@ public interface DiagnosticSemaTag
 	public static final int err_typecheck_member_reference_ivar = err_typecheck_member_reference_arrow + 1;
 	public static final int err_typecheck_member_reference_struct_union = err_typecheck_member_reference_ivar + 1;
 	public static final int err_typecheck_member_reference_suggestion = err_typecheck_member_reference_struct_union + 1;
-	public static final int err_typecheck_member_reference_type = err_typecheck_member_reference_struct_union + 1;
+	public static final int err_typecheck_member_reference_type = err_typecheck_member_reference_suggestion + 1;
 	public static final int err_typecheck_member_reference_unknown = err_typecheck_member_reference_type + 1;
 	public static final int err_typecheck_negative_array_size = err_typecheck_member_reference_unknown + 1;
 	public static final int err_typecheck_no_member = err_typecheck_negative_array_size + 1;
@@ -859,7 +859,7 @@ public interface DiagnosticSemaTag
 	public static final int warn_missing_case2 = warn_missing_case1 + 1;
 	public static final int warn_missing_case3 = warn_missing_case2 + 1;
 	public static final int warn_missing_cases = warn_missing_case3 + 1;
-	public static final int warn_missing_prototype = warn_missing_case_for_condition + 1;
+	public static final int warn_missing_prototype = warn_missing_cases + 1;
 	public static final int warn_missing_sentinel = warn_missing_prototype + 1;
 	public static final int warn_multiple_method_decl = warn_missing_sentinel + 1;
 	public static final int warn_noreturn_function_has_return_expr = warn_multiple_method_decl + 1;
@@ -912,7 +912,7 @@ public interface DiagnosticSemaTag
 	public static final int warn_setter_getter_impl_required = warn_selfcomparison + 1;
 	public static final int warn_shift_gt_typewidth = warn_setter_getter_impl_required + 1;
 	public static final int warn_shift_negative = warn_shift_gt_typewidth + 1;
-	public static final int warn_standalone_specifier = warn_shift_gt_typewidth + 1;
+	public static final int warn_standalone_specifier = warn_shift_negative + 1;
 	public static final int warn_stringcompare = warn_standalone_specifier + 1;
 	public static final int warn_struct_class_tag_mismatch = warn_stringcompare + 1;
 	public static final int warn_subobject_initializer_overrides = warn_struct_class_tag_mismatch + 1;

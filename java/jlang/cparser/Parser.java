@@ -263,13 +263,18 @@ public class Parser implements Tag,
         assert getCurScope() == null : "Scope imbalance!";
     }
 
+    /**
+     * Parse one top-level declaration, return whatever the
+     * action tells us to.  This returns true if the EOF was encountered.
+     * @param result
+     * @return
+     */
     public boolean parseTopLevel(ArrayList<Decl> result)
     {
         assert result != null;
 
         if (nextTokenIs(eof))
         {
-            diag(tok, ext_empty_source_file).emit();
             action.actOnEndOfTranslationUnit();
             return true;
         }

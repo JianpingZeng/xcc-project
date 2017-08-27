@@ -1,4 +1,7 @@
 package jlang.diag;
+import jlang.diag.Diagnostic.DiagnosticClass;
+import jlang.diag.Diagnostic.Mapping;
+
 import static jlang.diag.Diagnostic.DiagnosticClass.*;
 import static jlang.diag.Diagnostic.Mapping.*;
 
@@ -27,15 +30,15 @@ public enum DiagnosticCommonKinds implements DiagnosticCommonKindsTag
 	WARN_INTEGER_TOO_LARGE_FOR_SIGNED(warn_integer_too_large_for_signed, CLASS_WARNING, MAP_WARNING, "integer constant is so large that it is unsigned");
 
 	public int diagID;
-	public Diagnostic.DiagnosticClass diagClass;
-	public Diagnostic.Mapping diagMapping;
+	public DiagnosticClass diagClass;
+	public Mapping diagMapping;
     public boolean sfinae;
     public String optionGroup;
 	public String text;
 
 	DiagnosticCommonKinds(int diagID,
-			Diagnostic.DiagnosticClass diagClass,
-			Diagnostic.Mapping diagMapping, 
+			DiagnosticClass diagClass,
+			Mapping diagMapping,
 			String text)
 	{
 		this.diagID = diagID;

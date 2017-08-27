@@ -71,6 +71,7 @@ public final class Diagnostic
         {
             this.diagID = diagID;
             this.mapping = mapping;
+            this.diagClass = diagClass;
             this.sfinae = sfinae;
             this.description = description;
             this.optionGroup = optionGroup;
@@ -139,7 +140,7 @@ public final class Diagnostic
     private static StaticDiagInfoRec getDiagInfo(int diagID)
     {
         StaticDiagInfoRec rec = new StaticDiagInfoRec(diagID, null, null, false, null, null);
-        Arrays.sort(staticDiagInfos);
+        Arrays.sort(staticDiagInfos, (o1, o2) -> o1.diagID - o2.diagID);
         int foundIndice = Arrays.binarySearch(staticDiagInfos, rec,
                 Comparator.comparingInt(o -> o.diagID));
         StaticDiagInfoRec foundRec = staticDiagInfos[foundIndice];
@@ -560,7 +561,9 @@ public final class Diagnostic
         else if (isDiagnosticParseKinds(diagID))
             return DiagnosticParseKinds.values()[diagID - DiagnosticParseKindsBegin].text;
         else if (isDiagnoticSemaKinds(diagID))
+        {
             return DiagnosticSemaKinds.values()[diagID - DiagnosticSemaKindsBegin].text;
+        }
         else
         {
             assert isDiagnosticCommonKinds(diagID);
