@@ -1,4 +1,4 @@
-// RUN: %jlang-cc -fsyntax-only %s
+// RUN: jlang-cc -fsyntax-only %s
 typedef struct foo foo;
 
 void blah(int foo) {

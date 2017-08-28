@@ -1,2 +1,2 @@
-//RUN: %jlang-cc -fsyntax-only %s
+//RUN: jlang-cc -fsyntax-only %s
 int *(*(*arr[5])())();

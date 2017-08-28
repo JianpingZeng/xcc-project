@@ -1,4 +1,4 @@
-// RUN: %jlang-cc -fsyntax-only -verify -pedantic -fblocks %s
+// RUN: jlang-cc -fsyntax-only -verify -pedantic -fblocks %s
 
 // PR2241
 float test2241[2] = { 
