@@ -67,7 +67,7 @@ static JNIEnv* createVM(char* cmdPath)
     vm_args.ignoreUnrecognized = false;     // invalid options make the JVM init fail
        //=============== load and initialize Java VM and JNI interface =============
     jint rc = JNI_CreateJavaVM(&jvm, (void**)&env, &vm_args);  // YES !!
-    delete options;    // we then no longer need the initialisation options.
+    delete[] options;    // we then no longer need the initialisation options.
     if (rc != JNI_OK) {
           // TO DO: error processing...
          cin.get();
