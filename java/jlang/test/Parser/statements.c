@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -verify %s -Wno-unreachable-code
+// RUN: %jlang-cc -fsyntax-only -verify %s -Wno-unreachable-code
 
 void test1() {
   { ; {  ;;}} ;;

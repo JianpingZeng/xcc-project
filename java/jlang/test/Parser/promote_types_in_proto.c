@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 %s
+// RUN: %jlang-cc %s
 void functionPromotion(void f(char *const []));
 void arrayPromotion(char * const argv[]);
 

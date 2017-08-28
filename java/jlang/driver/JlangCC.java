@@ -1253,4 +1253,21 @@ public class JlangCC implements DiagnosticFrontendKindsTag
 
         return EXIT_OK;
 	}
+
+    /**
+     * Command line interface.
+     * @param args   The command line parameters.
+     */
+    public static void main(String[] args)
+    {
+        try
+        {
+            java.lang.System.exit(new JlangCC().compile(args));
+        }
+        catch (Exception e)
+        {
+            java.lang.System.err.println("Compilation failure, " + e.getMessage());
+            java.lang.System.exit(1);
+        }
+    }
 }

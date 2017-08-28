@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -ast-print %s
+// RUN: %jlang-cc -ast-print %s
 
 #include <stddef.h>
 

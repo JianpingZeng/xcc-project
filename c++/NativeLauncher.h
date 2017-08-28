@@ -15,13 +15,32 @@
  * permissions and limitations under the License.
  */
 
-#include "NativeLauncher.h"
+#ifndef __NATIVE_LAUNCHAER_H
+#define __NATIVE_LAUNCHAER_H
 
-#define NDEBUG 1
+#include <jni.h>
+#include <string.h>
+#include <libgen.h>
+#include <string>
+#include <iostream>
+#include <limits.h>
+#include <stdlib.h>
 
-int main(int argc, char **argv)
-{
-    std::string cmdPath = getpath();
-    invokeClass((char*)cmdPath.c_str(), "utils/tablegen/TableGen", argc, argv);
-    return 0;
-}
+//#define NDEBUG 1
+/**
+ * Creates a Java Virtual machine.
+ */
+static JNIEnv* createVM(char* cmdPath);
+
+/**
+ * Call the specified main method in the main class, like utils.tablegen.TableGen
+ * with specified commands line arguments.
+ */
+void invokeClass(char* cmdPath, char* mainClassName, int argc, char** argv);
+
+/**
+ * Obtains the absolute path to the native launcher.
+ */
+std::string getpath();
+
+#endif

@@ -1,4 +1,4 @@
-/* RUN: %clang_cc1 %s -ast-print
+/* RUN: %jlang-cc %s -ast-print
  */
 
 void foo() {
