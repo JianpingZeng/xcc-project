@@ -17,11 +17,11 @@
 
 #include "NativeLauncher.h"
 
-#define NDEBUG 1
-
 int main(int argc, char **argv)
 {
     std::string cmdPath = getpath();
-    invokeClass((char*)cmdPath.c_str(), "utils/tablegen/TableGen", argc, argv);
+    invokeClass((char*)cmdPath.c_str(), "jlang/driver/JlangCC", argc, argv);
     return 0;
 }
+
+

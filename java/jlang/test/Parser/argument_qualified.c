@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 %s
+// RUN: %jlang-cc %s
 int abc (const float x) {
   return 1;
 }

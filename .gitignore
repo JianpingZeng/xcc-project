@@ -11,6 +11,8 @@ classes
 #Ignores all Linux temporary file.
 *~
 
+Output/
+
 
 
 
