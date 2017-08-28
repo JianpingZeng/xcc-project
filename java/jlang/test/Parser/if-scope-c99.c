@@ -1,4 +1,4 @@
-// RUN: %jlang-cc -fsyntax-only -verify -std=c99 %s
+// RUN: jlang-cc -fsyntax-only -verify -std=c99 %s
 
 int f (int z)
 { 

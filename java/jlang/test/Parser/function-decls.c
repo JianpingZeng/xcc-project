@@ -1,4 +1,4 @@
-/* RUN: %jlang-cc %s -ast-print
+/* RUN: jlang-cc %s -ast-print
  */
 
 void foo() {

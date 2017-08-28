@@ -1,4 +1,4 @@
-// RUN: %jlang-cc %s -parse-noop
+// RUN: jlang-cc %s -parse-noop
 
 // Test the X can be overloaded inside the struct.
 typedef int X; 

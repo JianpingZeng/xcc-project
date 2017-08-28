@@ -1,4 +1,4 @@
-// RUN: %jlang-cc -verify %s
+// RUN: jlang-cc -verify %s
 
 typedef int Object;
 

@@ -1,4 +1,4 @@
-// RUN: %jlang-cc %s -fsyntax-only -verify -pedantic
+// RUN: jlang-cc %s -fsyntax-only -verify -pedantic
 
 extern int a1[];
 

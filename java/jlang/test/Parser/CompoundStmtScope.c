@@ -1,4 +1,4 @@
-// RUN: %jlang-cc -fsyntax-only -verify %s
+// RUN: jlang-cc -fsyntax-only -verify %s
 
 void foo() {
   {

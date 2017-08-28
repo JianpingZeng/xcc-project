@@ -1,4 +1,4 @@
-// RUN: %jlang-cc -fsyntax-only -verify -pedantic %s
+// RUN: jlang-cc -fsyntax-only -verify -pedantic %s
 _Complex double X;
 void test1(int c) {
   X = 5;

@@ -724,6 +724,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                         targetMachineAllocator);
                 break;
             }
+            case ParseNoop:
+                break;
         }
 
         ASTContext astCtx = new ASTContext(

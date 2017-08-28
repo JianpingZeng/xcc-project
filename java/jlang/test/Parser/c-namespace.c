@@ -1,4 +1,4 @@
-// RUN: %jlang-cc -fsyntax-only %s
+// RUN: jlang-cc -fsyntax-only %s
 void bla1() {
   struct XXX;
   int XXX;

@@ -44,4 +44,9 @@ public enum ProgramAction
     PrintPreprocessedInput,
 
     DumpTokens,
+
+    /**
+     * Parse with noop callbacks.
+     */
+    ParseNoop,
 }
