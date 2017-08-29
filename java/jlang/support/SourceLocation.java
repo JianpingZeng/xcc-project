@@ -150,4 +150,12 @@ public class SourceLocation implements Comparable<SourceLocation>
         sgr.getLiteralLoc(this).print(os, sgr);
         os.print(">");
     }
+
+    @Override
+    public SourceLocation clone()
+    {
+        SourceLocation loc = new SourceLocation();
+        loc.id = id;
+        return loc;
+    }
 }
