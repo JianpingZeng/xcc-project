@@ -2100,11 +2100,11 @@ public abstract class Tree
 	    /**
 	     * C99 6.3.2.1: an lvalue is an expression with an object type or an
 	     * incomplete type other than void. Nonarray expressions that can be lvalues:
-	     *  - asmName, where asmName must be a variable
+	     *  - name, where name must be a variable
 	     *  - e[i]
 	     *  - (e), where e must be an lvalue
-	     *  - e.asmName, where e must be an lvalue
-	     *  - e->asmName
+	     *  - e.name, where e must be an lvalue
+	     *  - e->name
 	     *  - *e, the type of e cannot be a function type
 	     *  - string-constant
 	     *  - (__real__ e) and (__imag__ e) where e is an lvalue  [GNU extension]
@@ -3275,6 +3275,16 @@ public abstract class Tree
 				return new SourceRange(subExpr.getLocStart(), loc);
 			else
 				return new SourceRange(loc, subExpr.getLocEnd());
+		}
+
+		public SourceLocation getOperatorLoc()
+		{
+			return loc;
+		}
+
+		public void setOperatorLoc(SourceLocation opLoc)
+		{
+			loc = opLoc;
 		}
 	}
 

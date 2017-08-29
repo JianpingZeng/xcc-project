@@ -4939,7 +4939,59 @@ public final class Sema implements DiagnosticParseTag,
             QualType compoundType)
     {
         // TODO: 2017/4/9
-        return null;
+        // Verify the assignment operator shall have a modifiable lvalue as its
+        // left operand.
+        if (checkForModifiableLvalue(lhs, loc))
+            return new QualType();
+
+        QualType lhsType = lhs.getType();
+        QualType rhsType = compoundType.isNull() ? rhs.get().get().getType():compoundType;
+
+        AssignConvertType convTy;
+        if (compoundType.isNull())
+        {
+            convTy = checkSingleAssignmentConstraints(lhsType, rhs);
+
+            Expr rhsCheck = rhs.get().get();
+            if (rhsCheck instanceof ImplicitCastExpr)
+            {
+                rhsCheck = (ImplicitCastExpr)rhsCheck;
+            }
+            if (rhsCheck instanceof UnaryExpr)
+            {
+                UnaryExpr ue = (UnaryExpr)rhsCheck;
+                if ((ue.getOpCode() == UO_Plus ||
+                        ue.getOpCode() == UO_Minus) &&
+                        loc.isFileID() && ue.getOperatorLoc().isFileID() &&
+                        loc.getFileLocWithOffset(1) == ue.getOperatorLoc() &&
+                        loc.getFileLocWithOffset(2) != ue.getSubExpr().getLocStart() &&
+                        ue.getSubExpr().getLocStart().isFileID())
+                {
+                    diag(loc, warn_not_compound_assign)
+                            .addTaggedVal(ue.getOpCode() == UO_Plus ? "+":"-")
+                    .addSourceRange(new SourceRange(ue.getOperatorLoc(), ue.getOperatorLoc()));
+                }
+            }
+        }
+        else
+        {
+            // Compound assignment "x+y".
+            convTy = checkAssignmentConstraints(lhsType, rhsType);
+        }
+
+        // C99 6.5.16p3: The type of an assignment expression is the type of the
+        // left operand unless the left operand has qualified type, in which case
+        // it is the unqualified version of the type of the left operand.
+        // C99 6.5.16.1p2: In simple assignment, the value of the right operand
+        // is converted to the type of the assignment expression (above).
+        return lhsType.getUnQualifiedType();
+    }
+
+    private AssignConvertType checkSingleAssignmentConstraints(
+            QualType lhsType,
+            OutParamWrapper<ActionResult<Expr>> rhsExpr)
+    {
+
     }
 
     private QualType checkMultiplyDivideOperands(
@@ -6098,8 +6150,8 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     /**
-     * Verify that E is a modifiable lvalue. If not, emit an error and
-     * return true.  If so, return false.
+     * Verify that e is a modifiable lvalue. If not, emit an error and
+     * return true. If so, return false.
      * @param e
      * @param oploc
      * @return
@@ -6111,10 +6163,10 @@ public final class Sema implements DiagnosticParseTag,
         // and if it is a structure or union, does not have any member (including,
         // recursively, any member or element of all contained aggregates or unions)
         // with a const-qualified type.
-        SourceLocation originLoc = oploc;
+        SourceLocation originLoc = oploc.clone();
         OutParamWrapper<SourceLocation> x = new OutParamWrapper<>(oploc);
         Expr.IsModifiableLvalueResult res = e.isModifiableLvalue(context, x);
-
+        oploc = x.get();
         int diag = 0;
         boolean needType = false;
         switch (res)
