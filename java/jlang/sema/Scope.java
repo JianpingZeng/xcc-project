@@ -287,4 +287,12 @@ public final class Scope
         return (getFlags() & ScopeFlags.ClassScope.value) != 0;
     }
 
+    /**
+     * Determines if this scope is struct/union scope.
+     * @return  Return true if this scope is struct/union, otherwise return false.
+     */
+    public boolean isClassScope()
+    {
+        return (getFlags() & ScopeFlags.ClassScope.value) != 0;
+    }
 }

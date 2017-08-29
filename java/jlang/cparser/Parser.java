@@ -525,19 +525,13 @@ public class Parser implements Tag,
 
         switch (tok.getKind())
         {
-            // C99 6.8.1 labeled-statement
             case identifier:
             {
+                // C99 6.8.1 labeled-statement
                 if (nextTokenIs(colon))
                 {
                     // identifier ':' statement
                     return parseLabeledStatement();
-                }
-                else
-                {
-                    // TODO diagnose erroreous using of label name 2017.8.26.
-                    assert false;
-                    new ActionResult<>(null);
                 }
             }
             // fall through
@@ -2791,8 +2785,8 @@ public class Parser implements Tag,
             return;
         }
 
-        OutParamWrapper<String> w1 = new OutParamWrapper<>();
-        OutParamWrapper<Integer> w2 = new OutParamWrapper<>();
+        OutParamWrapper<String> w1 = new OutParamWrapper<>("");
+        OutParamWrapper<Integer> w2 = new OutParamWrapper<>(0);
         String prevSpec = null;
         int diagID = 0;
         boolean result;
@@ -3851,14 +3845,14 @@ public class Parser implements Tag,
                     if (ternaryMiddle.isInvalid())
                     {
                         lhs = exprError();
-                        ternaryMiddle = null;
+                        ternaryMiddle = exprError();
                     }
                 }
                 else
                 {
                     // Special cas handling of "X ? Y:Z" where Y is empty.
                     //   logical-OR-expression '?' ':' conditional-expression   [GNU]
-                    ternaryMiddle = null;
+                    ternaryMiddle = exprError();
                     diag(tok, ext_gnu_conditional_expr).emit();
                 }
 
@@ -3887,7 +3881,7 @@ public class Parser implements Tag,
             // Remember the precedence of this operator and get the precedence of the
             // operator immediately to the right of the RHS.
             int thisPrec = nextTokPrec;
-            nextTokPrec = getBinOpPrecedence(tok.getKind());
+            nextTokPrec = getBinOpPrecedence(opToken.getKind());
 
             // Assignment and conditional expression are right-associative.
             boolean isRightAssoc = thisPrec == PrecedenceLevel.Conditional
@@ -4201,14 +4195,13 @@ public class Parser implements Tag,
                 {
                     // postfix-expression: p-e '->' id-expression
                     // postfix-expression: p-e '.' id-expression
-                    loc = consumeToken();
+                    consumeToken();
                     IdentifierInfo ii = tok.getIdentifierInfo();
                     SourceLocation opLoc = tok.getLocation();
-                    String name = ii.getName();
                     TokenKind opKind = tok.getKind();
 
                     if (!lhs.isInvalid())
-                        lhs = action.actOnMemberAccessExpr(getCurScope(),lhs.get(), opLoc, opKind, name);
+                        lhs = action.actOnMemberAccessExpr(getCurScope(),lhs.get(), opLoc, opKind, ii);
                     break;
                 }
                 case plusplus:

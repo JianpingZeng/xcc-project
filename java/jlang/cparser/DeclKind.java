@@ -6,18 +6,18 @@ package jlang.cparser;
  */
 public enum DeclKind
 {
-    TranslationUnitDecl("TranslationUnit"),
-    FunctionDecl("Function"),
-    RecordDecl("Struct"),
-    EnumDecl("Enum"),
-    TypedefDecl("Typedef"),
     EnumConstant("EnumConstant"),
-    LabelDecl("Label"),
+    EnumDecl("Enum"),
+    FunctionDecl("Function"),
     FieldDecl("Field"),
-    VarDecl("Var"),
-    ParamVarDecl("Param"),
+    FileScopeAsmDecl("FileScopeAsmDecl"),
+    RecordDecl("Struct"),
+    TranslationUnitDecl("TranslationUnit"),
+    LabelDecl("Label"),
     OriginalParamVar("OriginalParam"),
-    FileScopeAsmDecl("FileScopeAsmDecl");
+    ParamVarDecl("Param"),
+    TypedefDecl("Typedef"),
+    VarDecl("Var");
 
     public String declKindName;
 

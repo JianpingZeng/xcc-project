@@ -2268,7 +2268,7 @@ public abstract class Tree
      */
     public static class DeclRefExpr extends Expr
     {
-        private String name;
+        private IdentifierInfo name;
 
         /**
          * The declaration that we are referencing.
@@ -2280,7 +2280,7 @@ public abstract class Tree
         private SourceLocation location;
 
         public DeclRefExpr(
-        		String name,
+        		IdentifierInfo name,
 		        NamedDecl d,
                 QualType ty,
 		        ExprObjectKind ok,
@@ -2315,12 +2315,12 @@ public abstract class Tree
             this.location = location;
         }
 
-        public String getName()
+        public IdentifierInfo getName()
         {
             return name;
         }
 
-        public void setName(String name)
+        public void setName(IdentifierInfo name)
         {
             this.name = name;
         }

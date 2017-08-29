@@ -140,7 +140,10 @@ public final class Sema implements DiagnosticParseTag,
      */
     public enum LookupNameKind
     {
-        LookupOrdinaryName, LookupTagName, LookupLabelName, LookupMemberName
+        LookupOrdinaryName,
+        LookupTagName,
+        LookupLabelName,
+        LookupMemberName,
     }
 
     private Scope curScope;
@@ -209,7 +212,9 @@ public final class Sema implements DiagnosticParseTag,
      * @param lookupKind
      * @return The result of unqualified asmName lookup.
      */
-    public LookupResult lookupParsedName(Scope s, String name,
+    public LookupResult lookupParsedName(
+            Scope s,
+            IdentifierInfo name,
             LookupNameKind lookupKind)
     {
         return lookupParsedName(s, name, lookupKind, SourceLocation.NOPOS);
@@ -227,8 +232,11 @@ public final class Sema implements DiagnosticParseTag,
      * C library functions (like "malloc") are implicitly declared.
      * @return The result of unqualified asmName lookup.
      */
-    public LookupResult lookupParsedName(Scope s, String name,
-            LookupNameKind lookupKind, SourceLocation loc)
+    public LookupResult lookupParsedName(
+            Scope s,
+            IdentifierInfo name,
+            LookupNameKind lookupKind,
+            SourceLocation loc)
     {
         LookupResult result = new LookupResult(this, name, loc, lookupKind);
         lookupName(result, s, false);
@@ -256,7 +264,7 @@ public final class Sema implements DiagnosticParseTag,
     public QualType getTypeByName(IdentifierInfo identifierInfo,
             SourceLocation nameLoc, Scope curScope)
     {
-        LookupResult res = lookupParsedName(curScope, identifierInfo.getName(),
+        LookupResult res = lookupParsedName(curScope, identifierInfo,
                 LookupOrdinaryName);
 
         NamedDecl ndecl = null;
@@ -353,8 +361,7 @@ public final class Sema implements DiagnosticParseTag,
             enumUnderlying = context.IntTy;
         }
 
-        LookupResult result = new LookupResult(this, name.getName(), nameLoc,
-                LookupTagName);
+        LookupResult result = new LookupResult(this, name, nameLoc, LookupTagName);
         IDeclContext searchDC = curContext;
         IDeclContext dc = curContext;
         NamedDecl prevDecl = null;
@@ -556,6 +563,8 @@ public final class Sema implements DiagnosticParseTag,
                 newDecl.startDefinition();
             if (name != null)
             {
+                // Find a non field scope that encloses this struct/union/enum
+                // declaration.
                 curScope = getNonFieldDeclScope(curScope);
                 pushOnScopeChains(newDecl, curScope, !isForwardReference);
             }
@@ -622,11 +631,9 @@ public final class Sema implements DiagnosticParseTag,
      */
     public boolean lookupName(LookupResult result, Scope s, boolean isLinkageLookup)
     {
-        String name = result.getLookupName();
-        if (name == null || name.isEmpty())
+        IdentifierInfo name = result.getLookupName();
+        if (name == null || name.getName() == null || name.getName().isEmpty())
             return false;
-
-        LookupNameKind nameKind = result.getLookupKind();
 
         IdentifierNamespace idns = result.getIdentifierNamespace();
 
@@ -644,30 +651,57 @@ public final class Sema implements DiagnosticParseTag,
                 if (namedDecl.isSameInIdentifierNameSpace(idns))
                 {
                     // just deal with the decl have same identifier namespace as idns.
-                    if (name.equals(namedDecl.getDeclName().getName()))
+                    if (name.equals(namedDecl.getDeclName()))
                     {
                         result.addDecl(namedDecl);
+
+                        // Find one.
+                        result.resolveKind();
+                        return true;
                     }
                 }
             }
             // move up the scope chain until we find the nearest enclosing
             // non-transparent context.
             //while (s.getEntity() != null && s.getEntity().isTransparentContext())
-                s = s.getParent();
+            s = s.getParent();
         }
-        result.resolveKind();
-        return true;
 
         // TODO LookupBiutin().
         // If we didn't find a use of this identifier, and if the identifier
         // corresponds to a jlang.driver builtin, create the decl object for the
         // builtin now, injecting it into translation unit scope, and return it.
+        return false;
     }
 
+    /**
+     * Retrieves the innermost scope, starting from S, where a non-field would
+     * be declared. This routine copes with the difference between C and C++
+     * scoping rules in structs and unions.
+     * <pre>
+     * struct S6
+     * {
+     *   enum { BAR } e;
+     * };
+     *
+     * void test_S6()
+     * {
+     *   struct S6 a;
+     *   a.e = BAR;
+     * }
+     * </pre>
+     * In C, this routine will return the translation unit scope, since the
+     * enumeration's scope is a transparent context and structures cannot
+     * contain non-field names.
+     * @param s
+     * @return
+     */
     private Scope getNonFieldDeclScope(Scope s)
     {
-        while ((s.getFlags() & DeclScope.value) != 0 || (s.getEntity() != null
-                && s.getEntity().isTransparentContext()))
+        while (s != null && ((s.getFlags() & DeclScope.value) == 0 ||
+                (s.getEntity() != null &&
+                s.getEntity().isTransparentContext()) ||
+                s.isClassScope()))
             s = s.getParent();
         return s;
     }
@@ -697,7 +731,7 @@ public final class Sema implements DiagnosticParseTag,
 
         QualType t = getTypeForDeclarator(declarator, null);
         diagnoseFunctionSpecifiers(declarator);
-        NamedDecl prevDecl = lookupName(scope, ii.getName(), loc, LookupMemberName);
+        NamedDecl prevDecl = lookupName(scope, ii, loc, LookupMemberName);
 
         if (prevDecl != null && !isDeclInScope(prevDecl, record, scope))
             prevDecl = null;
@@ -1170,21 +1204,18 @@ public final class Sema implements DiagnosticParseTag,
         if (ii != null)
         {
             // check redeclaration, e.g. int foo(int x, int x);
-            LookupResult result = new LookupResult(this, ii.getName(),
+            NamedDecl prevDecl = lookupName(scope, ii,
                     paramDecls.getIdentifierLoc(), LookupOrdinaryName);
-            lookupName(result, scope, false);
 
-            if (result.isSingleResult())
+            if (prevDecl != null)
             {
-                NamedDecl preDecl = result.getFoundDecl();
-
                 // checks if redeclaration
-                if (scope.isDeclScope(preDecl))
+                if (scope.isDeclScope(prevDecl))
                 {
                     diag(paramDecls.getIdentifierLoc(), err_param_redefinition)
                             .addTaggedVal(ii);
 
-                    // Recover by removing the asmName.
+                    // Recover by removing the IdentifierInfo.
                     ii = null;
                     paramDecls.setIdentifier(null, paramDecls.getIdentifierLoc());
                     paramDecls.setInvalidType(true);
@@ -1262,10 +1293,16 @@ public final class Sema implements DiagnosticParseTag,
         return decl.getDeclContext();
     }
 
-    private NamedDecl lookupName(Scope s,
-            String name, SourceLocation loc,
+    private NamedDecl lookupName(
+            Scope s,
+            IdentifierInfo name,
+            SourceLocation loc,
             LookupNameKind lookupKind)
     {
+        // If the found name indenitifier info is null, just terminates early.
+        if (name == null)
+            return null;
+
         LookupResult result = new LookupResult(this, name, loc, lookupKind);
         lookupName(result, s, false);
         if (result.getResultKind() != Found)
@@ -1356,7 +1393,7 @@ public final class Sema implements DiagnosticParseTag,
         // The scope passed in may not be a decl scope.  Zip up the scope tree until
         // we find one that is.
         Scope s = getNonFieldDeclScope(scope);
-        NamedDecl prevDecl = lookupName(scope, name.getName(), identLoc,
+        NamedDecl prevDecl = lookupName(scope, name, identLoc,
                 LookupOrdinaryName);
 
         // redefinition diagnostic.
@@ -1738,7 +1775,7 @@ public final class Sema implements DiagnosticParseTag,
         NamedDecl New;
         QualType ty = getTypeForDeclarator(d, null);
 
-        LookupResult previous = new LookupResult(this, name.getName(), nameLoc,
+        LookupResult previous = new LookupResult(this, name, nameLoc,
                 LookupOrdinaryName);
 
         boolean isLinkageLookup = false;
@@ -3291,7 +3328,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private void checkShadow(Scope s, VarDecl d)
     {
-        LookupResult r = new LookupResult(this, d.getDeclName().getName(), d.getLocation(),
+        LookupResult r = new LookupResult(this, d.getDeclName(), d.getLocation(),
                 LookupOrdinaryName);
         lookupName(r, s, false);
         checkShadow(s, d, r);
@@ -3346,7 +3383,7 @@ public final class Sema implements DiagnosticParseTag,
         else
             kind = 0; // local
 
-        String name = r.getLookupName();
+        IdentifierInfo name = r.getLookupName();
 
         // emit warning and note.
         diag(r.getNameLoc(), warn_decl_shadow).
@@ -3371,7 +3408,7 @@ public final class Sema implements DiagnosticParseTag,
             IdentifierInfo name,
             SourceLocation loc)
     {
-        NamedDecl res = lookupName(curScope, name.getName(), loc, LookupLabelName);
+        NamedDecl res = lookupName(curScope, name, loc, LookupLabelName);
         if (res != null && res.getDeclContext() != curContext)
             res = null;
         if (res == null)
@@ -5844,13 +5881,13 @@ public final class Sema implements DiagnosticParseTag,
             case greaterequal:          opc = BinaryOperatorKind.BO_GE; break;
             case greater:            opc = BinaryOperatorKind.BO_GT; break;
             case bangequal:        opc = BinaryOperatorKind.BO_NE; break;
-            case equal:            opc = BinaryOperatorKind.BO_EQ; break;
+            case equal:            opc = BinaryOperatorKind.BO_Assign; break;
             case amp:           opc = BinaryOperatorKind.BO_And; break;
             case caret:         opc = BinaryOperatorKind.BO_Xor; break;
             case bar:           opc = BinaryOperatorKind.BO_Or; break;
             case ampamp:        opc = BinaryOperatorKind.BO_LAnd; break;
             case barbar:        opc = BinaryOperatorKind.BO_LOr;break;
-            case equalequal:          opc = BinaryOperatorKind.BO_Assign; break;
+            case equalequal:          opc = BinaryOperatorKind.BO_EQ; break;
             case starequal:        opc = BinaryOperatorKind.BO_MulAssign;break;
             case slashequal:       opc = BinaryOperatorKind.BO_DivAssign; break;
             case percentequal:     opc = BinaryOperatorKind.BO_RemAssign;break;
@@ -6922,7 +6959,7 @@ public final class Sema implements DiagnosticParseTag,
             Expr base,
             SourceLocation opLoc,
             TokenKind opKind,
-            String name)
+            IdentifierInfo name)
     {
         boolean isArrow = opKind == arrow;
         // This is a postfix expression, so get rid of ParenListExprs.
@@ -7012,7 +7049,7 @@ public final class Sema implements DiagnosticParseTag,
         }
         if (lookupResult.isAmbiguous())
             return exprError();
-        String memberName = lookupResult.getLookupName();
+        IdentifierInfo memberName = lookupResult.getLookupName();
         SourceLocation memberLoc = lookupResult.getNameLoc();
 
         if (lookupResult.isEmpty())
@@ -7102,7 +7139,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         QualType baseType = baseExpr.get().get().getType();
-        String memberName = lookupResult.getLookupName();
+        IdentifierInfo memberName = lookupResult.getLookupName();
         SourceLocation memberLoc = lookupResult.getNameLoc();
 
         // For later type-checking purposes, turn arrow accesses into dot
@@ -7348,7 +7385,7 @@ public final class Sema implements DiagnosticParseTag,
     private boolean diagnoseEmptyLookup(Scope s,
             LookupResult res)
     {
-        String name = res.getLookupName();
+        IdentifierInfo name = res.getLookupName();
 
         int diagnostic = err_undeclared_var_use;
         //int diagnosticSuggest = err_undeclared_var_use_suggest;
@@ -7465,7 +7502,7 @@ public final class Sema implements DiagnosticParseTag,
 
         // Perform the required lookup.
         //LookupResult res = new LookupResult(this, asmName, nameLoc, LookupOrdinaryName);
-        LookupResult res = lookupParsedName(s, name, LookupOrdinaryName, nameLoc);
+        LookupResult res = lookupParsedName(s, id, LookupOrdinaryName, nameLoc);
 
         if (res.isAmbiguous())
         {
@@ -7610,7 +7647,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     private ActionResult<Expr> buildDeclarationNameExpr(
-            String nameInfo,
+            IdentifierInfo nameInfo,
             SourceLocation nameLoc,
             NamedDecl nd)
     {
@@ -7973,7 +8010,7 @@ public final class Sema implements DiagnosticParseTag,
      */
     public TST isTagName(IdentifierInfo identifierInfo, Scope scope)
     {
-        NamedDecl ndecl = lookupName(scope, identifierInfo.getName(),
+        NamedDecl ndecl = lookupName(scope, identifierInfo,
                 SourceLocation.NOPOS, LookupTagName);
         if (ndecl != null)
         {

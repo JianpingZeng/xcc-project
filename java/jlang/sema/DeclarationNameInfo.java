@@ -17,6 +17,7 @@
 
 package jlang.sema;
 
+import jlang.clex.IdentifierInfo;
 import jlang.support.SourceLocation;
 
 /**
@@ -25,10 +26,10 @@ import jlang.support.SourceLocation;
  */
 public class DeclarationNameInfo
 {
-    public String nameInfo;
+    public IdentifierInfo nameInfo;
     public SourceLocation nameLoc;
 
-    public DeclarationNameInfo(String name, SourceLocation loc)
+    public DeclarationNameInfo(IdentifierInfo name, SourceLocation loc)
     {
         nameInfo = name;
         nameLoc = loc;

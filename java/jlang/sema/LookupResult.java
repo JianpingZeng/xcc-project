@@ -22,11 +22,13 @@ package jlang.sema;
  * @version 0.1
  */
 
+import jlang.clex.IdentifierInfo;
 import jlang.sema.Sema.LookupNameKind;
 import jlang.support.SourceLocation;
 
 import java.util.ArrayList;
 
+import static jlang.sema.IdentifierNamespace.*;
 import static jlang.sema.LookupResult.LookupResultKind.Ambiguous;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
 import static jlang.sema.LookupResult.LookupResultKind.NotFound;
@@ -52,7 +54,7 @@ public class LookupResult
     /**
      * A name specified to be found.
      */
-    private String foundName;
+    private IdentifierInfo foundName;
 
     /**
      * The location of found name used here for issuing well diagnose message.
@@ -141,7 +143,7 @@ public class LookupResult
         return resultKind;
     }
 
-    public String getLookupName()
+    public IdentifierInfo getLookupName()
     {
         return foundName;
     }
@@ -208,7 +210,9 @@ public class LookupResult
         }
     }
 
-    LookupResult(Sema semaRef, String name,
+    public LookupResult
+            (Sema semaRef,
+            IdentifierInfo name,
             SourceLocation nameLoc,
             LookupNameKind lookupNameKind)
     {
@@ -216,6 +220,25 @@ public class LookupResult
         foundName = name;
         this.nameLoc = nameLoc;
         this.semaRef = semaRef;
+        lookupKind = lookupNameKind;
+        idns = null;
+
+        switch (lookupKind)
+        {
+            case LookupOrdinaryName:
+                idns = IDNS_Ordinary;
+                break;
+            case LookupTagName:
+                idns = IDNS_Tag;
+                break;
+            case LookupMemberName:
+                idns = IDNS_Member;
+                break;
+            case LookupLabelName:
+                idns = IDNS_Label;
+                break;
+        }
+
         decls = new ArrayList<>(8);
     }
 
