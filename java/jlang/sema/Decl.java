@@ -162,6 +162,8 @@ public abstract class Decl
             case EnumConstant:
             case VarDecl:
             case TypedefDecl:
+            case ParamVarDecl:
+            case OriginalParamVar:
                 return IdentifierNamespace.IDNS_Ordinary;
             case RecordDecl:
             case EnumDecl:
@@ -170,6 +172,8 @@ public abstract class Decl
                 return IdentifierNamespace.IDNS_Label;
             case FieldDecl:
                 return IdentifierNamespace.IDNS_Member;
+
+            case TranslationUnitDecl:
             default:
                 return null;
         }
