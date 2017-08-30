@@ -1,8 +1,8 @@
 package jlang.type;
 
+import jlang.sema.ASTContext;
 import jlang.support.LangOptions;
 import jlang.support.PrintingPolicy;
-import jlang.sema.ASTContext;
 
 import static jlang.type.ArrayType.VariableArrayType.appendTypeQualList;
 
@@ -67,6 +67,17 @@ public final class QualType implements Cloneable, FoldingSetNode
             addCVQualifier(other.mask);
             return this;
         }
+    }
+
+
+    public enum ScalarTypeKind
+    {
+        STK_CPointer,
+        STK_Bool,
+        STK_Integral,
+        STK_Floating,
+        STK_IntegralComplex,
+        STK_FloatingComplex
     }
 
     private Type type;
@@ -654,5 +665,27 @@ public final class QualType implements Cloneable, FoldingSetNode
             return false;
         QualType ty = (QualType)obj;
         return ty.hashCode() == hashCode();
+    }
+
+    /**
+     * Checks if the type qualifiers of this QualType contains type qualifiers of
+     * 'otherType'. For example:
+     * <pre>
+     * 'const volatile int ' contains 'const int', 'volatile int', 'int'.
+     * </pre>
+     * @param otherType
+     * @return
+     */
+    public boolean isAtLeastAsQualifiedAs(QualType otherType)
+    {
+        int quals = getCVRQualifiers();
+        int otherQuals = otherType.getCVRQualifiers();
+
+        return (quals | otherQuals) == quals;
+    }
+
+    public ScalarTypeKind getScalarTypeKind()
+    {
+        return type.getScalarTypeKind();
     }
 }

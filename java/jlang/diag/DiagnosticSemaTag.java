@@ -714,7 +714,8 @@ public interface DiagnosticSemaTag
 	public static final int ext_typecheck_ordered_comparison_of_pointer_integer = ext_typecheck_ordered_comparison_of_function_pointers + 1;
 	public static final int ext_typecheck_zero_array_size = ext_typecheck_ordered_comparison_of_pointer_integer + 1;
 	public static final int ext_typedef_without_a_name = ext_typecheck_zero_array_size + 1;
-	public static final int ext_variable_sized_type_in_struct = ext_typedef_without_a_name + 1;
+	public static final int ext_nested_pointer_qualifier_mismatch = ext_typedef_without_a_name + 1;
+	public static final int ext_variable_sized_type_in_struct = ext_nested_pointer_qualifier_mismatch + 1;
 	public static final int ext_vla = ext_variable_sized_type_in_struct + 1;
 	public static final int note_ambiguous_candidate = ext_vla + 1;
 	public static final int note_ambiguous_member_found = note_ambiguous_candidate + 1;
@@ -846,7 +847,8 @@ public interface DiagnosticSemaTag
 	public static final int warn_incompatible_vectors = warn_incompatible_qualified_id + 1;
 	public static final int warn_incomplete_impl = warn_incompatible_vectors + 1;
 	public static final int warn_increment_bool = warn_incomplete_impl + 1;
-	public static final int warn_initializer_overrides = warn_increment_bool + 1;
+	public static final int warn_indirect_through_null = warn_increment_bool + 1;
+	public static final int warn_initializer_overrides = warn_indirect_through_null + 1;
 	public static final int warn_initializer_string_for_char_array_too_long = warn_initializer_overrides + 1;
 	public static final int warn_inst_method_not_found = warn_initializer_string_for_char_array_too_long + 1;
 	public static final int warn_invalid_asm_cast_lvalue = warn_inst_method_not_found + 1;

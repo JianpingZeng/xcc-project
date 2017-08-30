@@ -65,17 +65,13 @@ enum AssignConvertType
      */
     IncompatiblePointerSign,
 
+    IncompatibleNestedPointerQualifiers,
+
     /**
      * The assignment discards
      * c/v/r qualifiers, which we accept as an extension.
      */
     CompatiblePointerDiscardsQualifiers,
-
-    /**
-     * The assignment is between two vector types that
-     * have the same size, which we accept as an extension.
-     */
-    IncompatibleVectors,
 
     /**
      * We reject this conversion outright, it is invalid to
