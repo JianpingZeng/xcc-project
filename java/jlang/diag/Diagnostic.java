@@ -17,18 +17,16 @@ package jlang.diag;
  */
 
 import gnu.trove.list.array.TIntArrayList;
+import jlang.clex.IdentifierInfo;
 import jlang.sema.Decl;
 import jlang.support.SourceRange;
-import jlang.clex.IdentifierInfo;
 import jlang.type.QualType;
 
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
 
-import static jlang.diag.Diagnostic.ArgumentKind.ak_c_string;
-import static jlang.diag.Diagnostic.ArgumentKind.ak_nameddecl;
-import static jlang.diag.Diagnostic.ArgumentKind.ak_std_string;
+import static jlang.diag.Diagnostic.ArgumentKind.*;
 import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Error;
 import static jlang.diag.Diagnostic.ExtensionHandling.Ext_Ignore;
 
@@ -209,10 +207,82 @@ public final class Diagnostic
     private static ArgToStringFunctor DummyArgToStringFunctor = new ArgToStringFunctor()
     {
         @Override
-        public void apply(ArgumentKind kind, Object val, String modifier,
-                String argument, StringBuilder outStr)
+        public void apply(ArgumentKind kind,
+                Object val,
+                String modifier,
+                String argument,
+                StringBuilder outStr)
         {
             outStr.append("<can't format argument>");
+        }
+    };
+
+    /**
+     * This function interface used for printing the spcecified QualType into
+     * String.
+     */
+	public static ArgToStringFunctor ConvertArgToStringFn = new ArgToStringFunctor()
+    {
+        @Override
+        public void apply(ArgumentKind kind,
+                Object val,
+                String modifier,
+                String argument,
+                StringBuilder outStr)
+        {
+            String str = "";
+            if (kind == ak_qualtype)
+            {
+                assert modifier.isEmpty() && argument.isEmpty() :
+                        "Invalid modifier for QualType argument";
+                assert val instanceof QualType;
+                QualType ty = (QualType)val;
+
+                str = ty.getAsString();
+
+                // If this is a sugared type (like a typedef, typeof, etc), then unwrap one
+                // level of the sugar so that the type is more obvious to the user.
+                QualType desugaredTy = ty.getDesugaredType();
+                desugaredTy.setCVRQualifiers(desugaredTy.getCVRQualifiers() |
+                    ty.getCVRQualifiers());
+
+                if (!ty.equals(desugaredTy))
+                        //!ty.getUnQualifiedType().equals(ctx.getBuil)
+                    // Not va_list.
+                {
+                    str = "'" + str + "' (aka '";
+                    str = desugaredTy.getAsString();
+                    str += "')";
+                    outStr.append(str);
+                    return;
+                }
+            }
+            else if (kind == ak_declarationname)
+            {
+                IdentifierInfo ii = (IdentifierInfo)val;
+                str = ii.getName();
+
+                assert modifier.isEmpty() && argument.isEmpty():
+                        "Invalid modifier for IdentifierInfo argument";
+            }
+            else
+            {
+                assert kind == ak_nameddecl;
+                if (modifier.equals("q") && argument.isEmpty())
+                {
+                    str = ((Decl.NamedDecl)val).getNameAsString();
+                }
+                else
+                {
+                    assert argument.isEmpty() && modifier.isEmpty() :
+                            "Invalid modifier for NamedDecl argument";
+                    str = ((Decl.NamedDecl)val).getNameAsString();
+                }
+            }
+
+            outStr.append("'");
+            outStr.append(str);
+            outStr.append("'");
         }
     };
 
@@ -1057,9 +1127,23 @@ public final class Diagnostic
      * @param argument
      * @param outStr
      */
-    public void convertArgToString(ArgumentKind kind, Object val,
-            String modifier, String argument, StringBuilder outStr)
+    public void convertArgToString(
+            ArgumentKind kind,
+            Object val,
+            String modifier,
+            String argument,
+            StringBuilder outStr)
     {
         argToStringFtr.apply(kind, val, modifier, argument, outStr);
+    }
+
+    /**
+     * Set the function pointer used for formatting the specified various of
+     * argument(like, QualType, String, IdentifierInfo, Decl) into string.
+     * @param functor
+     */
+    public void setArgToStringFtr(ArgToStringFunctor functor)
+    {
+        argToStringFtr = functor;
     }
 }

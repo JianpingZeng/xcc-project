@@ -364,7 +364,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 if (expr.getOpcode() == BinaryOperatorKind.BO_Sub)
                 {
                     QualType type = expr.getLHS().getType();
-                    QualType elemType = context.<PointerType>getAs(type).getPointeeType();
+                    QualType elemType = context.getAs(type, PointerType.class).getPointeeType();
 
                     long elemSize = 1;
                     if (!elemType.isVoidType() && !elemType.isFunctionType())

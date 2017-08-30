@@ -91,7 +91,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
         {
             if (!evaluatePointer(expr.getBase(), result, context))
                 return false;
-            ty = context.<PointerType>getAs(expr.getBase().getType()).getPointeeType();
+            ty = context.getAs(expr.getBase().getType(), PointerType.class).getPointeeType();
         }
         else
         {
@@ -100,7 +100,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
             ty = expr.getBase().getType();
         }
 
-        RecordDecl recordDecl = context.<RecordType>getAs(ty).getDecl();
+        RecordDecl recordDecl = context.getAs(ty, RecordType.class).getDecl();
         ASTRecordLayout recordLayout = ASTRecordLayout.getRecordLayout(context, recordDecl);
 
         if (!(expr.getMemberDecl() instanceof FieldDecl))

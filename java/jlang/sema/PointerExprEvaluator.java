@@ -88,7 +88,7 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
                 : offset.getZExtValue();
 
         // Compute the new offset in the appropriate width.
-        QualType pointeeType = context.<PointerType>getAs(pExpr.getType()).getPointeeType();
+        QualType pointeeType = context.getAs(pExpr.getType(), PointerType.class).getPointeeType();
         long sizeOfPointee;
 
         // Explicitly handle GNU void* and function pointer arithmetic extensions.

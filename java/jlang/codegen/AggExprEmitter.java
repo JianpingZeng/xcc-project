@@ -316,7 +316,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
         // the disadvantage is that the generated code is more difficult for
         // the optimizer, especially with bitfields.
         int numInitElements = expr.getNumInits();
-        Decl.RecordDecl rd = cgf.getContext().<RecordType>getAs(expr.getType()).getDecl();
+        Decl.RecordDecl rd = cgf.getContext().getAs(expr.getType(), RecordType.class).getDecl();
         int curInitVal = 0;
 
         if (expr.getType().isUnionType())
