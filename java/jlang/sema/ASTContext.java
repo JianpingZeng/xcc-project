@@ -976,29 +976,18 @@ public final class ASTContext
 	}
 
 	/**
-	 * A generic method for casting a jlang.type instance to TargetData jlang.type.
+	 * A generic method for casting a QualType instance to jlang.type.Type.
 	 * If casting failed, return null, otherwise, return the instance
-	 * jlang.type required jlang.type.
-	 * @param <T>
+	 * type as required result.
 	 * @return
 	 */
-	public <T extends Type> T getAs(QualType type)
+	public <T extends Type> T getAs(QualType type, Class<T> clazz)
 	{
-		return convertInstanceOfObject(type, type.getClass());
-	}
-
-	public  <T extends Type> T convertInstanceOfObject(
-			QualType o,
-			Class<? extends QualType> clazz)
-	{
-		try
-		{
-			return (T)clazz.cast(o).getType();
-		}
-		catch (ClassCastException e)
-		{
-			return null;
-		}
+	    if (clazz.isAssignableFrom(type.getType().getClass()))
+        {
+            return clazz.cast(type.getType());
+        }
+        return null;
 	}
 
 	public boolean isSignedIntegerOrEnumerationType(QualType type)
@@ -1292,7 +1281,7 @@ public final class ASTContext
 	 */
 	static FloatingRank getFloatingRank(QualType ty, ASTContext ctx)
 	{
-		ComplexType ct = ctx.<ComplexType>getAs(ty);
+		ComplexType ct = ctx.getAs(ty, ComplexType.class);
 		if (ct != null)
 			return getFloatingRank(ct.getElementType(), ctx);
 
@@ -1402,7 +1391,7 @@ public final class ASTContext
 		// For enums, we return the unsigned version of the base type.
 		if (type.isEnumeralType())
 		{
-			type = (this.<EnumType>getAs(type)).getDecl().getPromotionType();
+			type = (getAs(type, EnumType.class)).getDecl().getPromotionType();
 		}
 		
 		assert type.isBuiltinType() : "Unexpected signed integer type";

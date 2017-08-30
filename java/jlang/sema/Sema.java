@@ -177,6 +177,7 @@ public final class Sema implements DiagnosticParseTag,
         functionSwitchStack = new Stack<>();
         functionScopes = new Stack<>();
         undefinedInternals = new HashMap<>();
+        diags.setArgToStringFtr(Diagnostic.ConvertArgToStringFn);
     }
 
     public ASTConsumer getASTConsumer()
@@ -6195,7 +6196,7 @@ public final class Sema implements DiagnosticParseTag,
         if (array != null)
             elemType = array.getElemType();
 
-        final TagType tag = context.<TagType>getAs(elemType);
+        final TagType tag = context.getAs(elemType, TagType.class);
         // Avoids diagnostic invalid decls as incomplete.
         if (tag != null && tag.getDecl().isInvalidDecl())
             return true;
@@ -6588,7 +6589,7 @@ public final class Sema implements DiagnosticParseTag,
         // is an incomplete type or void.  It would be possible to warn about
         // dereferencing a void pointer, but it's completely well-defined, and such a
         // warning is unlikely to catch any mistakes.
-        PointerType pt = context.<PointerType>getAs(opTy);
+        PointerType pt = context.getAs(opTy, PointerType.class);
         if (pt != null)
             result = pt.getPointeeType();
         else
@@ -6707,7 +6708,7 @@ public final class Sema implements DiagnosticParseTag,
                 diag = err_typecheck_lvalue_casts_not_supported;
                 break;
             case MLV_Valid:
-                Util.shouldNotReachHere("did not take early return for MLV_Valid");
+                return false;
             case MLV_InvalidExpression:
                 diag = err_typecheck_expression_not_modifiable_lvalue;
                 break;
@@ -7592,7 +7593,7 @@ public final class Sema implements DiagnosticParseTag,
         // Figure out the type of the member; see C99 6.5.2.3p3
         QualType memberType = field.getType();
         QualType baseType = baseEpxr.getType();
-        if (isArrow) baseType = context.<PointerType>getAs(baseType).getPointeeType();
+        if (isArrow) baseType = context.getAs(baseType, PointerType.class).getPointeeType();
 
         QualType.Qualifier baseQuals = baseType.getQualifiers();
         QualType.Qualifier memberQuals = memberType.getType().getCanonicalTypeInternal().getQualifiers();
@@ -7618,7 +7619,7 @@ public final class Sema implements DiagnosticParseTag,
         if (isArrow)
         {
             assert baseType.isPointerType();
-            baseType = context.<PointerType>getAs(baseType).getPointeeType();
+            baseType = context.getAs(baseType, PointerType.class).getPointeeType();
         }
         if (lookupResult.isAmbiguous())
             return exprError();
@@ -7627,7 +7628,7 @@ public final class Sema implements DiagnosticParseTag,
 
         if (lookupResult.isEmpty())
         {
-            NamedDecl dc = context.<RecordType>getAs(baseType).getDecl();
+            NamedDecl dc = context.getAs(baseType, RecordType.class).getDecl();
             diag(lookupResult.getNameLoc(), err_no_member)
             .addTaggedVal(memberName)
             .addTaggedVal(dc.getDeclName())
@@ -7764,7 +7765,7 @@ public final class Sema implements DiagnosticParseTag,
         //   foo.bar
         if (baseType.isPointerType())
         {
-            PointerType ptr = context.<PointerType>getAs(baseType);
+            PointerType ptr = context.getAs(baseType, PointerType.class);
             if (!isArrow && ptr.getPointeeType().isRecordType())
             {
                 diag(opLoc, err_typecheck_member_reference_suggestion)

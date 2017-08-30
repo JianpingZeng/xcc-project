@@ -2258,8 +2258,11 @@ public abstract class Tree
 		    switch (lvalResult)
 		    {
 			    case LV_Valid:
-			    case LV_NotObjectType: return MLV_NotObjectType;
-			    case LV_IncompleteVoidType: return MLV_IncompleteVoidType;
+			        break;
+			    case LV_NotObjectType:
+			        return MLV_NotObjectType;
+			    case LV_IncompleteVoidType:
+			        return MLV_IncompleteVoidType;
 			    case LV_InvalidExpression:
 				    // If the top level is a C-style cast, and the subexpression is a valid
 				    // lvalue, then this is probably a use of the old-school "cast as lvalue"
@@ -2286,7 +2289,7 @@ public abstract class Tree
 			    return MLV_ArrayType;
 		    if (ct.isIncompleteType())
 			    return MLV_IncompleteType;
-		    RecordType rt = context.<RecordType>getAs(ct);
+		    RecordType rt = context.getAs(ct, RecordType.class);
 		    if (rt != null)
 		    {
 			    if (rt.hasConstFields())
