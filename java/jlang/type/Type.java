@@ -5,6 +5,10 @@ import jlang.support.PrintingPolicy;
 import jlang.type.ArrayType.ConstantArrayType;
 import jlang.type.ArrayType.IncompleteArrayType;
 import jlang.type.ArrayType.VariableArrayType;
+import jlang.type.QualType.ScalarTypeKind;
+import tools.Util;
+
+import static jlang.type.QualType.ScalarTypeKind.*;
 
 /**
  * <p>
@@ -667,5 +671,37 @@ public abstract class Type implements TypeClass
     public boolean isIntegralOrEnumerationType()
     {
         return isIntegerType() || isEnumeralType();
+    }
+
+    public ScalarTypeKind getScalarTypeKind()
+    {
+        assert isScalarType();
+
+        switch (getTypeClass())
+        {
+            case Pointer:
+                return ScalarTypeKind.STK_CPointer;
+            case Bool:
+                return STK_Bool;
+        }
+        if (isIntegerType())
+            return STK_Integral;
+        if (isFloatingType())
+            return STK_Floating;
+        if (isEnumeralType())
+        {
+            assert getAsEnumType().getDecl().isCompleteDefinition();
+            return STK_Integral;
+        }
+        if (isComplexType())
+        {
+            ComplexType ct = getAsComplexType();
+            if (ct.getElementType().isFloatingType())
+                return STK_FloatingComplex;
+            return STK_IntegralComplex;
+        }
+
+        Util.shouldNotReachHere("Unknown scalar type");
+        return null;
     }
 }

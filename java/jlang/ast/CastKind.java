@@ -17,7 +17,7 @@ package jlang.ast;
  */
 
 /**
- * The kind of operator required for jlang.type conversion.
+ * The kind of operator required for type conversion.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -25,18 +25,18 @@ public enum CastKind
 {
     CK_Invalid,
     /// CK_Dependent - A conversion which cannot yet be analyzed because
-    /// either the expression or TargetData jlang.type is dependent.  These are
+    /// either the expression or TargetData type is dependent.  These are
     /// created only for explicit casts; dependent ASTs aren't required
-    /// to even approximately jlang.type-check.
+    /// to even approximately type-check.
     ///   (T*) malloc(sizeof(T))
     CK_Dependent,
 
-    /// CK_BitCast - A conversion which causes a bit pattern of one jlang.type
-    /// to be reinterpreted as a bit pattern of another jlang.type.  Generally
+    /// CK_BitCast - A conversion which causes a bit pattern of one type
+    /// to be reinterpreted as a bit pattern of another type.  Generally
     /// the operands must have equivalent getTypeSize and unrelated types.
     ///
     /// The pointer conversion char* -> int* is a bitcast.  A conversion
-    /// from any pointer jlang.type to a C pointer jlang.type is a bitcast unless
+    /// from any pointer type to a C pointer type is a bitcast unless
     /// it's actually BaseToDerived or DerivedToBase.
     /// specialized casts below.
     ///
@@ -48,7 +48,7 @@ public enum CastKind
     /// conversion is always unqualified.
     CK_LValueToRValue,
 
-    /// CK_NoOp - A conversion which does not affect the jlang.type other than
+    /// CK_NoOp - A conversion which does not affect the type other than
     /// (possibly) adding qualifiers.
     ///   int    -> int
     ///   char** -> const char * const *
@@ -120,13 +120,13 @@ public enum CastKind
     CK_FloatingCast,
 
     /// \brief A conversion of a floating point real to a floating point
-    /// complex of the original jlang.type.  Injects the value as the real
+    /// complex of the original type.  Injects the value as the real
     /// component with a zero imaginary component.
     ///   float -> _Complex float
     CK_FloatingRealToComplex,
 
     /// \brief Converts a floating point complex to floating point real
-    /// of the source's element jlang.type.  Just discards the imaginary
+    /// of the source's element type.  Just discards the imaginary
     /// component.
     ///   _Complex long double -> long double
     CK_FloatingComplexToReal,
@@ -144,13 +144,13 @@ public enum CastKind
     CK_FloatingComplexToIntegralComplex,
 
     /// \brief Converts from an integral real to an integral complex
-    /// whose element jlang.type matches the source.  Injects the value as
+    /// whose element type matches the source.  Injects the value as
     /// the real component with a zero imaginary component.
     ///   long -> _Complex long
     CK_IntegralRealToComplex,
 
     /// \brief Converts an integral complex to an integral real of the
-    /// source's element jlang.type by discarding the imaginary component.
+    /// source's element type by discarding the imaginary component.
     ///   _Complex short -> short
     CK_IntegralComplexToReal,
 

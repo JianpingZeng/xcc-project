@@ -1812,7 +1812,46 @@ public abstract class Tree
             }
 	    }
 
-	    public static class ICEDiag
+	    /**
+	     * C99 6.3.2.3p3. Determines if this expression is null pointer constant.
+	     * @return  Return true if this is either an
+	     * integer constant expression with the value zero, or if this is one that is
+	     * cast to void*.
+	     */
+	    public boolean isNullPointerConstant(ASTContext context)
+	    {
+			if (this instanceof ExplicitCastExpr)
+			{
+				ExplicitCastExpr ee = (ExplicitCastExpr)this;
+				// The case of (void*)0;
+				QualType ty = ee.getType();
+				if (ty.isPointerType() && ty.getPointeeType().isVoidType() &&
+						ty.getPointeeType().getCVRQualifiers() == 0)
+				{
+					return ee.getSubExpr().isNullPointerConstant(context);
+				}
+			}
+			if (this instanceof ImplicitCastExpr)
+            {
+                ImplicitCastExpr ice = (ImplicitCastExpr)this;
+                return ice.getSubExpr().isNullPointerConstant(context);
+            }
+            if (this instanceof ParenExpr)
+            {
+                return ((ParenExpr)this).getSubExpr().isNullPointerConstant(context);
+            }
+
+	    	// The type of expression must be integral.
+	    	if (!getType().isIntegerType())
+	    		return false;
+
+            // If we have an integer constant expression, we need to *evaluate* it and
+            // test for the value 0.
+            OutParamWrapper<APSInt> x = new OutParamWrapper<>(new APSInt());
+            return isIntegerConstantExpr(x, context) && x.get().eq(0);
+	    }
+
+        public static class ICEDiag
 	    {
 		    public int val;
 		    public SourceLocation loc;

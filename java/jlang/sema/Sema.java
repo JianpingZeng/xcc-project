@@ -6,7 +6,6 @@ import jlang.ast.Tree;
 import jlang.ast.Tree.*;
 import jlang.basic.SourceManager;
 import jlang.clex.*;
-import jlang.clex.TokenKind;
 import jlang.cparser.*;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.ArrayTypeInfo;
@@ -22,6 +21,7 @@ import jlang.support.SourceRange;
 import jlang.type.*;
 import jlang.type.ArrayType.ArraySizeModifier;
 import jlang.type.ArrayType.VariableArrayType;
+import jlang.type.QualType.ScalarTypeKind;
 import tools.*;
 
 import java.util.*;
@@ -36,6 +36,7 @@ import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Declarator.TheContext.FunctionProtoTypeContext;
 import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
+import static jlang.sema.AssignConvertType.*;
 import static jlang.sema.BinaryOperatorKind.BO_Div;
 import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
 import static jlang.sema.Decl.DefinitionKind.DeclarationOnly;
@@ -4938,7 +4939,6 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation loc,
             QualType compoundType)
     {
-        // TODO: 2017/4/9
         // Verify the assignment operator shall have a modifiable lvalue as its
         // left operand.
         if (checkForModifiableLvalue(lhs, loc))
@@ -4955,7 +4955,8 @@ public final class Sema implements DiagnosticParseTag,
             Expr rhsCheck = rhs.get().get();
             if (rhsCheck instanceof ImplicitCastExpr)
             {
-                rhsCheck = (ImplicitCastExpr)rhsCheck;
+                // Nothing to do.
+                // rhsCheck = (ImplicitCastExpr)rhsCheck;
             }
             if (rhsCheck instanceof UnaryExpr)
             {
@@ -4976,8 +4977,16 @@ public final class Sema implements DiagnosticParseTag,
         else
         {
             // Compound assignment "x+y".
-            convTy = checkAssignmentConstraints(lhsType, rhsType);
+            OutParamWrapper<CastKind> castKind = new OutParamWrapper<>(CK_Invalid);
+            convTy = checkAssignmentConstraints(lhsType, rhs, castKind);
         }
+
+        if (diagnoseAssignmentResult(convTy, loc, lhsType, rhsType, rhs.get().get(),
+                AssignAction.AA_Assign))
+            return new QualType();
+
+        // Diagnose NULL pointer dereference.
+        checkForNullPointerDereference(this, lhs);
 
         // C99 6.5.16p3: The type of an assignment expression is the type of the
         // left operand unless the left operand has qualified type, in which case
@@ -4987,11 +4996,523 @@ public final class Sema implements DiagnosticParseTag,
         return lhsType.getUnQualifiedType();
     }
 
+    /**
+     * Diagnose about the given expression is dereference to null pointer.
+     * @param s
+     * @param e
+     */
+    private static void checkForNullPointerDereference(Sema s, Expr e)
+    {
+        UnaryExpr ue = e instanceof UnaryExpr? (UnaryExpr)e : null;
+        if (ue != null)
+        {
+            if (ue.getOpCode() == UO_Deref &&
+                    ue.getSubExpr().ignoreParenCasts().isNullPointerConstant(s.context) &&
+                    !ue.getType().isVolatileQualified())
+            {
+                s.diag(ue.getOperatorLoc(), new PartialDiagnostic(warn_indirect_through_null)
+                        .addSourceRange(ue.getSourceRange()));
+            }
+        }
+    }
+
     private AssignConvertType checkSingleAssignmentConstraints(
             QualType lhsType,
             OutParamWrapper<ActionResult<Expr>> rhsExpr)
     {
+        // Check is the left type is pointer type and right expression is
+        // a null pointer constant.
+        if (lhsType.isPointerType() && rhsExpr.get().get().isNullPointerConstant(context))
+        {
+            implicitCastExprToType(rhsExpr.get().get(), lhsType, EVK_RValue, CK_NullToPointer);
+            return AssignConvertType.Compatible;
+        }
 
+        // This check seems unnatural, however it is necessary to ensure the proper
+        // conversion of functions/arrays. If the conversion were done for all
+        // DeclExpr's (created by ActOnIdentifierExpr), it would mess up the unary
+        // expressions that surpress this implicit conversion (&, sizeof).
+        defaultFunctionArrayConversion(rhsExpr.get().get());
+
+        // Perform type checking on usual assignment expression.
+        QualType rhsType = rhsExpr.get().get().getType();
+
+
+        OutParamWrapper<CastKind> x = new OutParamWrapper<>(CK_Invalid);
+        AssignConvertType result = checkAssignmentConstraints(lhsType, rhsExpr, x);
+        CastKind ck = x.get();
+
+        if (result == AssignConvertType.Incompatible && !lhsType.equals(rhsType))
+            rhsExpr.set(implicitCastExprToType(rhsExpr.get().get(), lhsType, EVK_RValue,ck));
+
+        return result;
+    }
+
+    /**
+     * This routine currently has code to accommodate several GCC extensions
+     * when type checking pointers. Here are some objectionable examples that
+     * GCC considers warnings:
+     * <pre>
+     *  int a, *pint;
+     *  short *pshort;
+     *  struct foo *pfoo;
+     *
+     *  pint = pshort;  // warning: assignment from incompatible pointer type
+     *  a = pint;       // warning: assignment makes integer from pointer without a cast
+     *  pint = a;       // warning: assignment makes pointer from integer without a cast
+     *  pint = pfoo;    // warning: assignment from incompatible pointer type
+     * </pre>
+     * As a result, the code for dealing with pointers is more complex than the
+     * C99 spec dictates.
+     *
+     * Sets 'castKind' for any result kind except Incompatible.
+     * @param lhsType   Type of left hand expression of assignment operator.
+     * @param rhsExpr   The right hand expression of assignment operator.
+     * @param castKind  The cast kind for any result kind except for Incompatible.
+     * @return  The  kind of assignment conversion.
+     */
+    private AssignConvertType checkAssignmentConstraints(
+            QualType lhsType,
+            OutParamWrapper<ActionResult<Expr>> rhsExpr,
+            OutParamWrapper<CastKind> castKind)
+    {
+        // Discard type qualifier on this type.
+        lhsType = context.getCanonicalType(lhsType).getUnQualifiedType();
+        QualType rhsType = rhsExpr.get().get().getType();
+        rhsType = context.getCanonicalType(rhsType).getUnQualifiedType();
+
+        // If the left type is equavelent to right one, perform fast checking path.
+        if (lhsType.equals(rhsType))
+        {
+            castKind.set(CK_NoOp);
+            return AssignConvertType.Compatible;
+        }
+
+        // Perform scalar conversion as appropriate.
+        if (lhsType.isArithmeticType() && rhsType.isArithmeticType())
+        {
+            castKind.set(prepareScalarCast(rhsExpr, lhsType));
+            return AssignConvertType.Compatible;
+        }
+
+        // Handle the case when left type is pointer type.
+        if (lhsType.isPointerType())
+        {
+            // int->ptr
+            if (rhsType.isIntegerType())
+            {
+                castKind.set(CK_IntegralToPointer);
+                return AssignConvertType.IntToPointer;
+            }
+
+            // pointer -> pointer.
+            if (rhsType.isPointerType())
+            {
+                castKind.set(CK_BitCast);
+                return checkPointerTypesForAssignment(lhsType, rhsType);
+            }
+        }
+
+        // The left hand is not pointer.
+        // Conversions from pointers that are not covered by the above.
+        if (rhsType.isPointerType())
+        {
+            // Pointer -> _Bool in C99.
+            if (lhsType.isBooleanType())
+            {
+                castKind.set(CK_PointerToBoolean);
+                return Compatible;
+            }
+
+            // Pointer to integral.
+            if (lhsType.isIntegerType())
+            {
+                castKind.set(CK_PointerToIntegral);
+                return PointerToInt;
+            }
+        }
+
+        // struct A -> struct B
+        if (lhsType.getType() instanceof TagType &&
+                rhsType.getType() instanceof TagType)
+        {
+            if (context.typesAreCompatible(lhsType, rhsType))
+            {
+                castKind.set(CK_NoOp);
+                return AssignConvertType.Compatible;
+            }
+        }
+
+        return Incompatible;
+    }
+
+    /**
+     * Used to diagnose assignment functions to represent what is the actually
+     * causing this operation.
+     */
+    enum AssignAction
+    {
+        AA_Assign,
+        AA_Passing,
+        AA_Returning,
+        AA_Converting,
+        AA_Initializing,
+        AA_Sending,
+        AA_Casting
+    }
+
+    private boolean diagnoseAssignmentResult(
+            AssignConvertType convertType,
+            SourceLocation loc,
+            QualType destType,
+            QualType srcType,
+            Expr srcExpr,
+            AssignAction action)
+    {
+        return diagnoseAssignmentResult(convertType, loc, destType,
+                srcType, srcExpr, action, null);
+    }
+
+    private boolean diagnoseAssignmentResult(
+            AssignConvertType convertType,
+            SourceLocation loc,
+            QualType destType,
+            QualType srcType,
+            Expr srcExpr,
+            AssignAction action,
+            OutParamWrapper<Boolean> complained)
+    {
+        if (complained != null)
+            complained.set(false);
+
+        int diagID = -1;
+        boolean isInvalid = false;
+
+        switch (convertType)
+        {
+            case Compatible:
+                return false;
+            case PointerToInt:
+                diagID = ext_typecheck_convert_pointer_int;
+                break;
+            case IntToPointer:
+                diagID = ext_typecheck_convert_int_pointer;
+                break;
+            case FunctionVoidPointer:
+                diagID = ext_typecheck_convert_pointer_void_func;
+                break;
+            case IncompatiblePointer:
+                diagID = ext_typecheck_convert_incompatible_pointer;
+                break;
+            case IncompatiblePointerSign:
+                diagID = ext_typecheck_convert_incompatible_pointer_sign;
+                break;
+            case IncompatibleNestedPointerQualifiers:
+                diagID = ext_nested_pointer_qualifier_mismatch;
+                break;
+            case CompatiblePointerDiscardsQualifiers:
+                diagID = ext_typecheck_convert_discards_qualifiers;
+                break;
+            case Incompatible:
+                diagID = err_typecheck_convert_incompatible;
+                isInvalid = true;
+                break;
+        }
+
+        QualType firstTy, secondTy;
+        // Determine what type will be seen first.
+        switch (action)
+        {
+            case AA_Assign:
+            case AA_Initializing:
+                firstTy = destType;
+                secondTy = srcType;
+                break;
+            default:
+                firstTy = srcType;
+                secondTy = destType;
+                break;
+        }
+
+        PartialDiagnostic diag = new PartialDiagnostic(diagID);
+        diag.addTaggedVal(firstTy).addTaggedVal(secondTy).addTaggedVal(action.ordinal())
+                .addSourceRange(srcExpr.getSourceRange());
+
+        diag(loc, diag).emit();
+
+        if (complained != null)
+            complained.set(true);
+
+        return isInvalid;
+    }
+
+    /**
+     * Determines the CastKind for right expression and destination QualType.
+     * @param srcExpr   The source expression.
+     * @param dstType   The destination QualType that source expr should be converted to.
+     * @return  The kind of CastKind.
+     */
+    private CastKind prepareScalarCast(
+            OutParamWrapper<ActionResult<Expr>> srcExpr,
+            QualType dstType)
+    {
+        QualType srcType = srcExpr.get().get().getType();
+
+        if (context.hasSameUnqualifiedType(dstType, srcType))
+            return CK_NoOp;
+
+        ScalarTypeKind destSTK = dstType.getScalarTypeKind();
+        ScalarTypeKind srcSTK = srcType.getScalarTypeKind();
+        switch (srcSTK)
+        {
+            case STK_CPointer:
+            {
+                switch (destSTK)
+                {
+                    case STK_Bool:
+                        return CK_PointerToBoolean;
+                    case STK_Integral:
+                        return CK_PointerToIntegral;
+                    case STK_CPointer:
+                        return CK_BitCast;
+                    default:
+                        Util.shouldNotReachHere("illegal casting from pointer");
+                }
+                break;
+            }
+            case STK_Bool:
+            case STK_Integral:
+            {
+                // Treat the bool as same as integer.
+                switch (destSTK)
+                {
+                    case STK_Bool:
+                        return CK_IntegralToBoolean;
+                    case STK_Integral:
+                        return CK_IntegralCast;
+                    case STK_CPointer:
+                        if (srcExpr.get().get().isNullPointerConstant(context))
+                            return CK_NullToPointer;
+
+                        return CK_IntegralToPointer;
+                    case STK_Floating:
+                        return CK_IntegralToFloating;
+                    case STK_IntegralComplex:
+                        // Perform implicitly casting from integral to complex.
+                        srcExpr.set(implicitCastExprToType(srcExpr.get().get(),
+                                dstType.getAsComplexType().getElementType(),
+                                EVK_RValue, CK_IntegralCast));
+
+                        return CK_IntegralRealToComplex;
+                    case STK_FloatingComplex:
+                        // Perform implicitly casting from floating point to complex.
+                        srcExpr.set(implicitCastExprToType(srcExpr.get().get(),
+                                dstType.getAsComplexType().getElementType(),
+                                EVK_RValue, CK_IntegralToFloating));
+
+                        return CK_FloatingRealToComplex;
+                    default:
+                        Util.shouldNotReachHere("illegal casting from pointer");
+                }
+                break;
+            }
+            case STK_Floating:
+            {
+                switch (destSTK)
+                {
+                    case STK_Bool:
+                        return CK_FloatingToBoolean;
+                    case STK_Integral:
+                        return CK_FloatingToIntegral;
+                    case STK_Floating:
+                        return CK_FloatingCast;
+                    case STK_IntegralComplex:
+                        // Perform implicitly casting from floating point to complex.
+                        // Step#1: converts floating point to integral number.
+                        // Step#2: converts integral to integral complex.
+                        srcExpr.set(implicitCastExprToType(srcExpr.get().get(),
+                                dstType.getAsComplexType().getElementType(),
+                                EVK_RValue, CK_FloatingToIntegral));
+
+                        return CK_IntegralRealToComplex;
+                    case STK_FloatingComplex:
+                        // Perform implicitly casting from floating point to complex.
+                        // Step#1: converts floating point to floating.
+                        // Step#2: converts integral to floating complex.
+                        srcExpr.set(implicitCastExprToType(srcExpr.get().get(),
+                                dstType.getAsComplexType().getElementType(),
+                                EVK_RValue, CK_FloatingCast));
+
+                        return CK_FloatingRealToComplex;
+                    default:
+                        Util.shouldNotReachHere("illegal casting from pointer");
+                }
+                break;
+            }
+            case STK_IntegralComplex:
+            {
+                switch (destSTK)
+                {
+                    case STK_Bool:
+                        return CK_IntegralComplexToBoolean;
+                    case STK_Integral:
+                        return CK_IntegralComplexToReal;
+                    case STK_Floating:
+                        // Perform implicitly casting from integral complex to floating.
+                        // Step#1: converts integral complex to integer.
+                        // Step#2: converts integral to floating complex.
+                        srcExpr.set(implicitCastExprToType(srcExpr.get().get(),
+                                dstType.getAsComplexType().getElementType(),
+                                EVK_RValue, CK_IntegralComplexToReal));
+
+                        return CK_IntegralToFloating;
+                    case STK_IntegralComplex:
+                        return CK_IntegralComplexCast;
+                    case STK_FloatingComplex:
+                        return CK_IntegralComplexToFloatingComplex;
+                    default:
+                        Util.shouldNotReachHere("illegal casting from pointer");
+                }
+                break;
+            }
+                
+            case STK_FloatingComplex:
+            {
+                switch (destSTK)
+                {
+                    case STK_Bool:
+                        return CK_FloatingComplexToBoolean;
+                    case STK_Integral:
+                        // Perform implicitly casting from integral complex to floating.
+                        // Step#1: converts integral complex to integer.
+                        // Step#2: converts integral to floating complex.
+                        srcExpr.set(implicitCastExprToType(srcExpr.get().get(),
+                                dstType.getAsComplexType().getElementType(),
+                                EVK_RValue, CK_FloatingComplexToReal));
+
+                        return CK_FloatingToIntegral;
+
+                    case STK_Floating:
+                        return CK_FloatingComplexToReal;
+                    case STK_IntegralComplex:
+                        return CK_FloatingComplexToIntegralComplex;
+                    case STK_FloatingComplex:
+                        return CK_FloatingComplexCast;
+                    default:
+                        Util.shouldNotReachHere("illegal casting from pointer");
+                }
+                break;
+            }
+        }
+
+        Util.shouldNotReachHere("Unknown Scalar type");
+        return CK_Invalid;
+    }
+
+    /**
+     * This is a very tricky routine (despite
+     * being closely modeled after the C99 spec:-). The odd characteristic of this
+     * routine is it effectively iqnores the qualifiers on the top level pointee.
+     * This circumvents the usual type rules specified in 6.2.7p1 & 6.7.5.[1-3].
+     * FIXME: add a couple examples in this comment.
+     * @param lhsType
+     * @param rhsType
+     * @return
+     */
+    private AssignConvertType checkPointerTypesForAssignment(
+            QualType lhsType,
+            QualType rhsType)
+    {
+        assert lhsType.isPointerType() && rhsType.isPointerType();
+
+        QualType lhsPointeeType = lhsType.getAsPointerType().getPointeeType();
+        QualType rhsPointeeType = rhsType.getAsPointerType().getPointeeType();
+
+        // The const-qualifiers has been discarded before calling this method.
+        // make sure we operate on the canonical type
+        lhsPointeeType = context.getCanonicalType(lhsPointeeType);
+        rhsPointeeType = context.getCanonicalType(rhsPointeeType);
+
+        AssignConvertType res = AssignConvertType.Compatible;
+
+
+        // C99 6.5.16.1p1: This following citation is common to constraints
+        // 3 & 4 (below). ...and the type *pointed to* by the left has all the
+        // qualifiers of the type *pointed to* by the right;
+        if (lhsPointeeType.isAtLeastAsQualifiedAs(rhsPointeeType))
+            res = CompatiblePointerDiscardsQualifiers;
+
+        // converts right right to pointer to void.
+        if (lhsPointeeType.isVoidType())
+        {
+            if (rhsPointeeType.isIncompleteOrObjectType())
+                return res;
+
+            assert rhsPointeeType.isFunctionType();
+            return AssignConvertType.FunctionVoidPointer;
+        }
+
+        if (rhsPointeeType.isVoidType())
+        {
+            if (lhsPointeeType.isIncompleteOrObjectType())
+                return res;
+
+            assert lhsPointeeType.isFunctionType();
+            return AssignConvertType.FunctionVoidPointer;
+        }
+
+        if (!context.typesAreCompatible(lhsPointeeType, rhsPointeeType))
+        {
+            // Converts the signed char or integeral type into corresponding
+            // unsigned version when both pointee type is not compatible.
+            if (lhsPointeeType.equals(context.CharTy))
+            {
+                lhsPointeeType = context.UnsignedCharTy;
+            }
+            else if (lhsPointeeType.equals(context.IntTy))
+            {
+                lhsPointeeType = context.UnsignedIntTy;
+            }
+
+            if (rhsPointeeType.equals(context.CharTy))
+            {
+                rhsPointeeType = context.UnsignedCharTy;
+            }
+            else if (rhsPointeeType.equals(context.IntTy))
+            {
+                rhsPointeeType = context.UnsignedIntTy;
+            }
+
+            if (lhsPointeeType.equals(rhsPointeeType))
+            {
+                // Types are compatible ignoring the sign. Qualifier incompatibility
+                // takes priority over sign incompatibility because the sign
+                // warning can be disabled.
+                if (res != AssignConvertType.Compatible)
+                    return res;
+
+                return AssignConvertType.IncompatiblePointerSign;
+            }
+
+            if (lhsPointeeType.isPointerType() && rhsPointeeType.isPointerType())
+            {
+                // Multi-level pointer.
+                do
+                {
+                    lhsPointeeType = lhsPointeeType.getAsPointerType().getPointeeType();
+                    rhsPointeeType = rhsPointeeType.getAsPointerType().getPointeeType();
+
+                    lhsPointeeType = context.getCanonicalType(lhsPointeeType);
+                    rhsPointeeType = context.getCanonicalType(rhsPointeeType);
+
+                }while (lhsPointeeType.isPointerType() && rhsPointeeType.isPointerType());
+
+                if (context.hasSameUnqualifiedType(lhsPointeeType, rhsPointeeType))
+                    return AssignConvertType.IncompatibleNestedPointerQualifiers;
+            }
+            return AssignConvertType.IncompatiblePointer;
+        }
+        return res;
     }
 
     private QualType checkMultiplyDivideOperands(

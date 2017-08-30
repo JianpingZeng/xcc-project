@@ -721,6 +721,8 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	EXT_TYPECHECK_ORDERED_COMPARISON_OF_POINTER_INTEGER(ext_typecheck_ordered_comparison_of_pointer_integer, CLASS_NOTE, MAP_WARNING, "ordered comparison between pointer and integer (%0 and %1)"),
 	EXT_TYPECHECK_ZERO_ARRAY_SIZE(ext_typecheck_zero_array_size, CLASS_NOTE, MAP_IGNORE, "zero size arrays are an extension"),
 	EXT_TYPEDEF_WITHOUT_A_NAME(ext_typedef_without_a_name, CLASS_NOTE, MAP_WARNING, "typedef requires a asmName"),
+	EXT_NESTED_POINTER_QUALIFIED_MISMATCH(ext_nested_pointer_qualifier_mismatch, CLASS_EXTENSION, MAP_WARNING, "%select{assigning|passing|returning|converting|initializing|sending|casting}2,"
+			+ " %0 and %1 have different qualifiers in nested pointer types"),
 	EXT_VARIABLE_SIZED_TYPE_IN_STRUCT(ext_variable_sized_type_in_struct, CLASS_NOTE, MAP_WARNING, "field %0 with variable sized type %1 not at the end of a struct or class is a GNU extension"),
 	EXT_VLA(ext_vla, CLASS_NOTE, MAP_IGNORE, "variable length arrays are a C99 feature, accepted as an extension"),
 	NOTE_AMBIGUOUS_CANDIDATE(note_ambiguous_candidate, CLASS_NOTE, MAP_FATAL, "candidate found by asmName lookup is %q0"),
@@ -857,6 +859,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	WARN_INCOMPATIBLE_VECTORS(warn_incompatible_vectors, CLASS_WARNING, MAP_IGNORE, "incompatible vector types %2 %1, expected %0"),
 	WARN_INCOMPLETE_IMPL(warn_incomplete_impl, CLASS_WARNING, MAP_WARNING, "incomplete implementation"),
 	WARN_INCREMENT_BOOL(warn_increment_bool, CLASS_WARNING, MAP_WARNING, "incrementing expression of type bool is deprecated"),
+    WARN_INDIRECT_THROUGH_NULL(warn_indirect_through_null, CLASS_WARNING, MAP_WARNING, "indirection of non-volatile null pointer will be deleted, not trap"),
 	WARN_INITIALIZER_OVERRIDES(warn_initializer_overrides, CLASS_WARNING, MAP_WARNING, "initializer overrides prior initialization of this subobject"),
 	WARN_INITIALIZER_STRING_FOR_CHAR_ARRAY_TOO_LONG(warn_initializer_string_for_char_array_too_long, CLASS_NOTE, MAP_WARNING, "initializer-string for char array is too long"),
 	WARN_INST_METHOD_NOT_FOUND(warn_inst_method_not_found, CLASS_WARNING, MAP_WARNING, "method %objcinstance0 not found (return type defaults to 'id')"),
