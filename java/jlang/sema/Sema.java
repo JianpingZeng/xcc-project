@@ -1877,25 +1877,30 @@ public final class Sema implements DiagnosticParseTag,
             // single void argument.
             // We let through "const void" here because Sema::GetTypeForDeclarator
             // already checks for that case.
-            DeclSpec.ParamInfo arg = fti.argInfo.get(0);
-            if (fti.numArgs == 1 && !fti.isVariadic && arg.name == null
-                    && arg.param != null && arg.param instanceof ParamVarDecl
-                    && ((ParamVarDecl)arg.param).getType().isVoidType())
+            if (fti.argInfo != null)
             {
-                // Empty arg list, don't push any params.
-                ParamVarDecl param = (ParamVarDecl)arg.param;
-            }
-            else if (fti.numArgs > 0 && arg.param != null)
-            {
-                for (int i = 0; i < fti.numArgs; i++)
+                // If there is empty function argument list, just break out.
+                DeclSpec.ParamInfo arg = fti.argInfo.get(0);
+                if (fti.numArgs == 1 && !fti.isVariadic && arg.name == null
+                        && arg.param != null && arg.param instanceof ParamVarDecl
+                        && ((ParamVarDecl) arg.param).getType().isVoidType())
                 {
-                    ParamVarDecl param = (ParamVarDecl)fti.argInfo.get(i).param;
-                    assert param.getDeclContext() != newFD:"Was set before!";
-                    param.setDeclContext(newFD);
-                    params.add(param);
+                    // Empty arg list, don't push any params.
+                    ParamVarDecl param = (ParamVarDecl) arg.param;
+                }
+                else if (fti.numArgs > 0 && arg.param != null)
+                {
+                    for (int i = 0; i < fti.numArgs; i++)
+                    {
+                        ParamVarDecl param = (ParamVarDecl) fti.argInfo.get(i).param;
+                        assert param.getDeclContext()
+                                != newFD : "Was set before!";
+                        param.setDeclContext(newFD);
+                        params.add(param);
 
-                    if (param.isInvalidDecl())
-                        newFD.setInvalidDecl(true);
+                        if (param.isInvalidDecl())
+                            newFD.setInvalidDecl(true);
+                    }
                 }
             }
         }
@@ -5038,7 +5043,6 @@ public final class Sema implements DiagnosticParseTag,
         // Perform type checking on usual assignment expression.
         QualType rhsType = rhsExpr.get().get().getType();
 
-
         OutParamWrapper<CastKind> x = new OutParamWrapper<>(CK_Invalid);
         AssignConvertType result = checkAssignmentConstraints(lhsType, rhsExpr, x);
         CastKind ck = x.get();
@@ -5613,7 +5617,7 @@ public final class Sema implements DiagnosticParseTag,
 
 	/**
      * Converts otherExpr to complex float and promotes complexExpr if
-     * necessary.  Helper function of UsualArithmeticConversions()
+     * necessary. Helper function of UsualArithmeticConversions()
      * @param complexExpr
      * @param otherExpr
      * @param complexType
@@ -8613,5 +8617,107 @@ public final class Sema implements DiagnosticParseTag,
     public void actOnComment(SourceRange comment)
     {
         context.comments.add(comment);
+    }
+
+    private boolean checkSizeOfAlignOfOperand(
+            QualType exprType,
+            SourceLocation opLoc,
+            SourceRange range,
+            boolean isSizeof)
+    {
+        // C99 6.5.3.4p1:
+        if (exprType.isFunctionType())
+        {
+            if (isSizeof)
+                diag(opLoc, ext_sizeof_function_type).addSourceRange(range).emit();
+            return false;
+        }
+
+        // Allow sizeof(void)/alignof(void) as an extension.
+        if (exprType.isVoidType())
+        {
+            diag(opLoc, ext_sizeof_void_type)
+                    .addString((isSizeof ? "sizeof":"__alignof"))
+                    .addSourceRange(range);
+            return false;
+        }
+
+        if (requireCompleteType(opLoc, exprType,
+                pdiag(err_sizeof_incomplete_type)
+                        .addTaggedVal(isSizeof?0:1)
+                        .addSourceRange(range)))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private ActionResult<Expr> createSizeOfAlignOfExpr(
+            QualType type,
+            SourceLocation opLoc,
+            SourceRange range)
+    {
+        if (type == null)
+            return exprError();
+
+        if (checkSizeOfAlignOfOperand(type, opLoc, range, true))
+            return exprError();
+
+        // C99 6.5.3.4p4: the type (an unsigned integer type) is size_t.
+        return new ActionResult<>(new SizeOfAlignOfExpr(type,
+                context.getSizeType(),
+                opLoc, range.getEnd()));
+    }
+
+    /**
+     * Handle the case that 'sizeof (type-name)'. Note that typeof and alignof
+     * as same as sizeof.
+     * @param sizeLoc
+     * @param ty
+     * @param sourceRange
+     * @return
+     */
+    public ActionResult<Expr> actOnSizeofExpr(
+            SourceLocation sizeLoc,
+            QualType ty,
+            SourceRange sourceRange)
+    {
+        if (ty == null)
+            return exprError();
+
+        return createSizeOfAlignOfExpr(ty, sizeLoc, sourceRange);
+    }
+
+    /**
+     * Handle the sizeof 'expression' as an operand.
+     * @param sizeLoc
+     * @param e
+     * @param range
+     * @return
+     */
+    public ActionResult<Expr> actOnSizeofExpr(
+            SourceLocation sizeLoc,
+            Expr e,
+            SourceRange range)
+    {
+        boolean isInvalid = false;
+        if (e.getBitField() != null)
+        {
+            // C99 6.5.3.4p1.
+            diag(sizeLoc, err_sizeof_alignof_bitfield).addTaggedVal(0).emit();
+            isInvalid = true;
+        }
+        else
+        {
+            isInvalid = checkSizeOfAlignOfOperand(e.getType(), sizeLoc,
+                    range,true);
+        }
+
+        if (isInvalid)
+            return exprError();
+
+        return new ActionResult<>(new SizeOfAlignOfExpr(e,
+                context.getSizeType(),
+                sizeLoc, range.getEnd()));
     }
 }

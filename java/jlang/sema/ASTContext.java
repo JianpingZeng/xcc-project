@@ -1269,7 +1269,18 @@ public final class ASTContext
 		return new FullSourceLoc(location, sourceMgr);
 	}
 
-	enum FloatingRank
+	/**
+	 * Return the unique type for "size_t" (C99 7.17), the result
+	 * of the sizeof operator (C99 6.5.3.4p4). The value is target dependent and
+	 * needs to agree with the definition in <stddef.h>.
+	 * @return
+	 */
+	public QualType getSizeType()
+	{
+		return getFromTargetType(target.getSizeType());
+	}
+
+    enum FloatingRank
 	{
 		FloatRank, DoubleRank, LongDoubleRank
 	}

@@ -200,7 +200,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             res.typeInfo.ellipsisLoc = ellipsisLoc;
             res.typeInfo.typeQuals = typeQuals;
             res.typeInfo.argInfo = argInfo;
-            res.typeInfo.numArgs = argInfo.size();
+            res.typeInfo.numArgs = argInfo != null ? argInfo.size(): 0;
             res.typeInfo.returnType = null;
 
             return res;

@@ -1065,6 +1065,7 @@ public class Parser implements Tag,
             if (nextTokenIs(l_brace))
             {
                 exprType.set(CompoundLiteral);
+                assert false:"CompoundLiteralExpr not supported currently";
                 // TODO return parseCompoundLiteralExpression(ty, lParenLoc, rParenLoc);
                 return null;
             }
@@ -3921,8 +3922,7 @@ public class Parser implements Tag,
         }
     }
 
-    private ActionResult<Expr>
-        parseCastExpression(
+    private ActionResult<Expr> parseCastExpression(
             boolean isUnaryExpression,
             boolean isAddressOfOperand,
             boolean isTypeCast,
@@ -4058,7 +4058,7 @@ public class Parser implements Tag,
                 return res;
             }
             case Sizeof:
-                return parseUnaryExpression();
+                return parseSizeofExpression();
             case Char:
             case Bool:
             case Short:
@@ -4081,6 +4081,7 @@ public class Parser implements Tag,
         // These can be followed by postfix-expr pieces.
         return parsePostfixExpressionSuffix(res);
     }
+
     /**
      * Returns true if the next token would start a postfix-expression
      * suffix.
@@ -4092,22 +4093,133 @@ public class Parser implements Tag,
                 || kind == arrow || kind == plusplus || kind == subsub;
     }
 
+    static class ParenExprArg
+    {
+        boolean isCastExpr;
+        QualType castTy;
+        SourceRange castRange;
+
+        ParenExprArg(boolean isCast,
+                QualType castTy,
+                SourceRange castRange)
+        {
+            this.isCastExpr = isCast;
+            this.castTy = castTy;
+            this.castRange = castRange;
+        }
+
+        ParenExprArg()
+        {
+            isCastExpr = false;
+            castTy = null;
+            castRange = new SourceRange();
+        }
+    }
+
     /**
      * Parse a sizeof or alignof expression.
      * <pre>
      * unary-expression:  [C99 6.5.3]
-     *   'sizeof' unary-expression
-     *   'sizeof' '(' type-getIdentifier ')'
+     *         'sizeof' unary-expression
+     *         'sizeof' '(' type-getIdentifier ')'
+     * [GNU]   '__alignof' unary-expression
+     * [GNU]   '__alignof' '(' type-name ')'
      * </pre>
      * @return
      */
-    private ActionResult<Expr> parseUnaryExpression()
+    private ActionResult<Expr> parseSizeofExpression()
     {
         assert nextTokenIs(Sizeof):"Not a sizeof expression!";
-        Token opTok = tok;
-        SourceLocation opLoc = consumeToken(); 
+        Token opTok = tok.clone();
+        SourceLocation opLoc = consumeToken();
 
-        return null;
+        ParenExprArg arg = new ParenExprArg();
+        ActionResult<Expr> operand = parseExprAfterSizeof(opTok, arg);;
+
+        // The sizeof type.
+        if (arg.isCastExpr)
+        {
+            // 'sizeof' '(' type ')'
+            return action.actOnSizeofExpr(opLoc,
+                    arg.castTy,
+                    arg.castRange);
+        }
+
+        // Reaching here, it must be sizeof expression.
+        if (!operand.isInvalid())
+        {
+            operand = action.actOnSizeofExpr(opLoc,
+                    operand.get(),
+                    arg.castRange);
+        }
+
+        return operand;
+    }
+
+    /**
+     * Parse a sizeof or alignof expression.
+     * <pre>
+     * unary-expression: [C99 6.5.3]
+     *       'sizeof' unary-expression
+     *       'sizeof' '(' type-name ')'
+     * [GNU] '__alignof' unary-expression
+     * [GNU] '__alignof' '(' type-name ')'
+     * </pre>
+     * @param tok
+     * @param arg
+     * @return
+     */
+    private ActionResult<Expr> parseExprAfterSizeof(
+            Token tok,
+            ParenExprArg arg)
+    {
+        assert tok.is(TokenKind.Sizeof) :"Not a sizeof/alignof expression!";
+
+        ActionResult<Expr> operand;
+        // If this operand doesn't start with '(',it must be an expression.
+        if (tok.isNot(l_paren))
+        {
+            arg.isCastExpr = false;
+
+            // The GNU typeof and alignof extensions also behave as unevaluated
+            // operands.
+            operand = parseCastExpression(true, false, false, 0);
+        }
+        else
+        {
+            // If it starts with a '(', we know that it is either a parenthesized
+            // type-name, or it is a unary-expression that starts with a compound
+            // literal, or starts with a primary-expression that is a parenthesized
+            // expression.
+            OutParamWrapper<ParenParseOption> exprType =
+                    new OutParamWrapper<>(CastExpr);
+            OutParamWrapper<SourceLocation> lparenLoc =
+                    new OutParamWrapper<>(tok.getLocation());
+            OutParamWrapper<SourceLocation> rParenLoc =
+                    new OutParamWrapper<>(new SourceLocation());
+            OutParamWrapper<QualType> castTy =
+                    new OutParamWrapper<>(arg.castTy);
+            operand = parseParenExpression(exprType, true, false,castTy, rParenLoc);
+
+            arg.castRange = new SourceRange(lparenLoc.get(), rParenLoc.get());
+            arg.castTy = castTy.get();
+
+            // If ParseParenExpression parsed a '(typename)' sequence only, then this is
+            // a type.
+            if (exprType.get() == CastExpr)
+            {
+                arg.isCastExpr = true;
+                return ActionResult.empty();
+            }
+
+            // If this is a parenthesized expression, it is the start of a
+            // unary-expression, but doesn't include any postfix pieces.  Parse these
+            // now if present.
+            operand = parsePostfixExpressionSuffix(operand);
+        }
+        // If we get here, the operand to the typeof/sizeof/alignof was an expresion.
+        arg.isCastExpr = false;
+        return operand;
     }
 
     /**
