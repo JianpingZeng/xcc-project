@@ -62,8 +62,6 @@ struct xyz test8() { return a; }  // a should be be marked invalid, no diag.
 // Verify that implicit int still works.
 static f;      // expected-warning {{type specifier missing, defaults to 'int'}}
 static g = 4;  // expected-warning {{type specifier missing, defaults to 'int'}}
-static h        // expected-warning {{type specifier missing, defaults to 'int'}} 
-      __asm__("foo");
 
 
 struct test9 {
@@ -75,11 +73,6 @@ struct test9 {
 // PR6208
 struct test10 { int a; } static test10x;
 struct test11 { int a; } const test11x;
-
-// PR6216
-void test12() {
-  (void)__builtin_offsetof(struct { char c; int i; }, i);
-}
 
 // rdar://7608537
 struct test13 { int a; } (test13x);

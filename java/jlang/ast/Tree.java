@@ -213,12 +213,7 @@ public abstract class Tree
 
     public static final int StringLiteralClass = CharacterLiteralClass + 1;
 
-	/**
-	 * Error Trees, of jlang.type ErroneousTree.
-	 */
-	public static final int ErroneousStmtClass = StringLiteralClass + 1;
-
-	public static List<Tree> emptyList = new LinkedList<>();
+    public static final int SizeOfAlignOfExprClass = StringLiteralClass + 1;
 
 	/**
 	 * A further classification of the kind of object referenced by an
@@ -3722,14 +3717,100 @@ public abstract class Tree
 	    }
     }
 
-	public static class ErroneousTree extends Tree
+	/**
+	 * [C99 6.5.3.4] - This is for sizeof/alignof, both of
+	 * types and expressions.
+	 */
+	public static class SizeOfAlignOfExpr extends Expr
 	{
+		/**
+		 * True if operand is a type, false if an expression.
+		 */
+		private boolean isType;
+		private Object operand;
 
-		public ErroneousTree()
+		private SourceLocation opLoc;
+		private SourceLocation rParenLoc;
+
+		public SizeOfAlignOfExpr(
+				QualType operand,
+				QualType resultType,
+				SourceLocation opLoc,
+				SourceLocation rp)
 		{
-			super(ErroneousStmtClass);
+			super(SizeOfAlignOfExprClass, resultType, OK_Ordinary, EVK_RValue, opLoc);
+			isType = true;
+			this.operand = operand;
+			this.opLoc = opLoc;
+			rParenLoc = rp;
 		}
 
-		public void accept(StmtVisitor v){}
+		public SizeOfAlignOfExpr(
+				Expr operand,
+				QualType resultType,
+				SourceLocation opLoc,
+				SourceLocation rp)
+		{
+			super(SizeOfAlignOfExprClass, resultType, OK_Ordinary, EVK_RValue, opLoc);
+			isType = false;
+			this.operand = operand;
+			this.opLoc = opLoc;
+			rParenLoc = rp;
+		}
+
+		@Override
+		public void accept(StmtVisitor v)
+		{
+		}
+
+		@Override
+		public SourceRange getSourceRange()
+		{
+			return new SourceRange(opLoc, rParenLoc);
+		}
+
+		public boolean isArgumentType()
+		{
+			return isType;
+		}
+
+		public boolean isArgumentExpr()
+		{
+			return !isArgumentType();
+		}
+
+		public Expr getArgumentExpr()
+		{
+			assert isArgumentExpr():"calling getArgumentExpr on type!";
+			return (Expr)operand;
+		}
+
+		public QualType getArgumentType()
+		{
+			assert isArgumentType():"calling getArgumentType on expr!";
+			return (QualType)operand;
+		}
+
+		public void setArgumentType(QualType ty)
+		{
+			operand = ty;
+			isType = true;
+		}
+
+		public void setArgumentExpr(Expr e)
+		{
+			operand = e;
+			isType = false;
+		}
+
+		public SourceLocation getOperatorLoc()
+		{
+			return opLoc;
+		}
+
+		public SourceLocation getRParenLoc()
+		{
+			return rParenLoc;
+		}
 	}
 }
