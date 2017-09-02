@@ -41,10 +41,10 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
     public static final String ANSI_CYAN = "\u001B[36m";
     public static final String ANSI_WHITE = "\u001B[37m";
 
-    static final String CaretColor = ANSI_GREEN;
-    static final String noteColor = ANSI_BLACK;
+    static final String CaretColor = ANSI_RED;
+    static final String noteColor = ANSI_CYAN;
     static final String fixItColor = ANSI_GREEN;
-    static final String warnColor = ANSI_CYAN;
+    static final String warnColor = ANSI_PURPLE;
     static final String errorColor = ANSI_RED;
     static final String fatalColor = ANSI_RED;
 
@@ -158,6 +158,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         if (endLineNo < lineNo || !sgr.getFileID(end).equals(fid))
             return; // No intersection.
 
+        // Compute the column number of the start.
         int startColNo = 0;
         if (startLineNo == lineNo)
         {
@@ -177,7 +178,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         int endColNo = caretLine.length();
         if (endLineNo == lineNo)
         {
-            endColNo = sgr.getInstantiationLineNumber(end);
+            endColNo = sgr.getInstantiationColumnNumber(end);
             if (endColNo != 0)
             {
                 --endColNo; //Zero based the col #.
@@ -256,7 +257,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         int caretEndColNo = colNo + Lexer.measureTokenLength(loc, sgr, langOpts);
 
         int tokPos = fileOffset;
-        int lineStart = tokPos - colNo + 1;
+        int lineStart = tokPos - colNo;
 
         int lineEnd = tokPos;
         while (strData[lineEnd] != '\n' && strData[lineEnd] != '\r'
@@ -353,7 +354,6 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
 
         // Emit what we have computed.
         os.println(sourceLine.toString());
-
         if (useColors)
             os.println(CaretColor + caretLine.toString() + ANSI_RESET);
 

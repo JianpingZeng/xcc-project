@@ -2042,6 +2042,12 @@ public abstract class Decl
         {
             return dc.getPrimaryContext();
         }
+
+        @Override
+        public String toString()
+        {
+            return getKindName() + (name != null?name.getName():"anon " + super.toString());
+        }
     }
 
     /**
@@ -2147,6 +2153,12 @@ public abstract class Decl
         {
             assert !isCompleteDefinition():"Cannot redefine a record!";
             super.completeDefinition();
+        }
+
+        @Override
+        public String toString()
+        {
+            return name != null ? name.getName() : super.toString();
         }
     }
 
