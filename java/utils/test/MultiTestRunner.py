@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 """
-MultiTestRunner - Harness for running multiple tests in the simple clang style.
+MultiTestRunner - Harness for running multiple tests in the simple jlang style.
 
 TODO
 --
- - Use configuration file for clang specific stuff
+ - Use configuration file for jlang specific stuff
  - Use a timeout / ulimit
  - Detect signaled failures (abort)
  - Better support for finding tests
@@ -242,11 +242,11 @@ def main():
                      help="Number of testing threads",
                      type=int, action="store", 
                      default=None)
-    group.add_option("", "--clang", dest="clang",
-                     help="Program to use as \"clang\"",
+    group.add_option("", "--jlang", dest="jlang",
+                     help="Program to use as \"jlang\"",
                      action="store", default=None)
-    group.add_option("", "--clang-cc", dest="clangcc",
-                     help="Program to use as \"clang-cc\"",
+    group.add_option("", "--jlang-cc", dest="jlangcc",
+                     help="Program to use as \"jlang-cc\"",
                      action="store", default=None)
     group.add_option("", "--path", dest="path",
                      help="Additional paths to add to testing environment",
@@ -312,13 +312,13 @@ def main():
                                                  [os.environ.get('PATH','')])
     cfg.environment['SYSTEMROOT'] = os.environ.get('SYSTEMROOT','')
 
-    if opts.clang is None:
-        opts.clang = TestRunner.inferClang(cfg)
-    if opts.clangcc is None:
-        opts.clangcc = TestRunner.inferClangCC(cfg, opts.clang)
+    if opts.jlang is None:
+        opts.jlang = TestRunner.inferClang(cfg)
+    if opts.jlangcc is None:
+        opts.jlangcc = TestRunner.inferClangCC(cfg, opts.jlang)
 
-    cfg.clang = opts.clang
-    cfg.clangcc = opts.clangcc
+    cfg.jlang = opts.jlang
+    cfg.jlangcc = opts.jlangcc
     cfg.useValgrind = opts.useValgrind
     cfg.useExternalShell = opts.useExternalShell
 

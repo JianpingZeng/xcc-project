@@ -93,16 +93,14 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             new NumOccurrencesApplicator(NumOccurrences.ZeroOrMore),
             init(ParseSyntaxOnly),
             new ValueClass<>(
-                new ValueClass.Entry<>(PrintPreprocessedInput, "E",
-                    "Run preprocessor, emit preprocessed file"),
-                new ValueClass.Entry<>(ParseSyntaxOnly, "fsyntax-only",
-                    "Run parser and perform semantic analysis"),
-                new ValueClass.Entry<>(ASTDump, "ast-dump",
-                        "Build ASTs and then debug dump them"),
-                new ValueClass.Entry<>(GenerateAsmCode, "S",
-                        "Emit native assembly code"),
-                new ValueClass.Entry<>(EmitLLVM, "emit-llvm",
-                        "Build ASTs then convert to LLVM, emit .ll file"))
+                    new ValueClass.Entry<>(RunPreprocessorOnly, "Eonly", "Just run preprocessor, no output (for timings)"),
+                    new ValueClass.Entry<>(PrintPreprocessedInput, "E", "Run preprocessor, emit preprocessed file"),
+                    new ValueClass.Entry<>(DumpTokens, "dump-tokens",  "Run preprocessor, dump internal rep of tokens"),
+                    new ValueClass.Entry<>(ParseNoop, "parse-noop", "Run parser with noop callbacks (for timings)"),
+                    new ValueClass.Entry<>(ParseSyntaxOnly, "fsyntax-only", "Run parser and perform semantic analysis"),
+                    new ValueClass.Entry<>(ASTDump, "ast-dump", "Build ASTs and then debug dump them"),
+                    new ValueClass.Entry<>(EmitAssembly, "S", "Emit native assembly code"),
+                    new ValueClass.Entry<>(EmitLLVM, "emit-llvm", "Build ASTs then convert to LLVM, emit .ll file"))
             );
 
     //===----------------------------------------------------------------------===//

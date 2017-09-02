@@ -22,5 +22,5 @@ class TestingConfig:
         self.useExternalShell = None
 
         # FIXME: These need to move into a substitutions mechanism.
-        self.clang = None
-        self.clangcc = None
+        self.jlang = None
+        self.jlangcc = None

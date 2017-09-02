@@ -49,4 +49,6 @@ public enum ProgramAction
      * Parse with noop callbacks.
      */
     ParseNoop,
+
+    EmitAssembly,
 }
