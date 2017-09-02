@@ -75,11 +75,14 @@ public class DeclContext implements IDeclContext
 
     public void addHiddenDecl(Decl d)
     {
-        declInScope.add(decl);
+        if (!declInScope.contains(d))
+            declInScope.add(d);
     }
 
     public void removeDecl(Decl decl)
     {
+        assert declInScope.contains(decl) :
+                "Can not calling this on element not contained in decls";
         declInScope.remove(decl);
     }
 
@@ -91,7 +94,12 @@ public class DeclContext implements IDeclContext
      */
     public boolean isDeclInContext(Decl decl)
     {
-        return declInScope.contains(decl);
+        for (Decl d : declInScope)
+        {
+            if (d.getDeclKindName().equals(decl.getDeclKindName()))
+                return true;
+        }
+        return false;
     }
 
     public boolean isTransparentContext()

@@ -519,6 +519,11 @@ public final class Diagnostic
         return curDiagLoc;
     }
 
+    public int getCurDiagID()
+    {
+        return curDiagID;
+    }
+
     public int getNumDiagArgs()
 	{
 		return numDiagArgs;
