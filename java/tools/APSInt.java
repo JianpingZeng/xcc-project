@@ -272,9 +272,19 @@ public class APSInt extends APInt
         return new APSInt(super.and(rhs), isUnsigned);
     }
 
+    public APSInt and(long rhs)
+    {
+        return new APSInt(super.and(rhs), isUnsigned);
+    }
+
     public APSInt or(final APSInt rhs)
     {
         assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.or(rhs), isUnsigned);
+    }
+
+    public APSInt or(long rhs)
+    {
         return new APSInt(super.or(rhs), isUnsigned);
     }
 
@@ -284,9 +294,19 @@ public class APSInt extends APInt
         return new APSInt(super.xor(rhs), isUnsigned);
     }
 
+    public APSInt xor(long rhs)
+    {
+        return new APSInt(super.xor(rhs), isUnsigned);
+    }
+
     public APSInt mul(final  APSInt rhs)
     {
         assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.mul(rhs), isUnsigned);
+    }
+
+    public APSInt mul(long rhs)
+    {
         return new APSInt(super.mul(rhs), isUnsigned);
     }
 
@@ -296,9 +316,19 @@ public class APSInt extends APInt
         return new APSInt(super.add(rhs), isUnsigned);
     }
 
+    public APSInt add(long rhs)
+    {
+        return new APSInt(super.add(rhs), isUnsigned);
+    }
+
     public APSInt sub(final APSInt rhs)
     {
         assert (isUnsigned == rhs.isUnsigned):"Signedness mismatch!";
+        return new APSInt(super.sub(rhs), isUnsigned);
+    }
+
+    public APSInt sub(long rhs)
+    {
         return new APSInt(super.sub(rhs), isUnsigned);
     }
 

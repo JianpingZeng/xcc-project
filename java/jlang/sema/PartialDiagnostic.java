@@ -240,6 +240,12 @@ public final class PartialDiagnostic
 		return diagStorage != null;
 	}
 
+	public PartialDiagnostic addTaggedVal(boolean val)
+	{
+		addTaggedVal(val ?1:0, ArgumentKind.ak_sint);
+		return this;
+	}
+
 	public PartialDiagnostic addTaggedVal(int iVal)
 	{
 		addTaggedVal(iVal, ArgumentKind.ak_sint);

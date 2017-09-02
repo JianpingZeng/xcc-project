@@ -231,6 +231,7 @@ public enum DiagnosticParseKinds implements DiagnosticParseTag
 	ERR_OPERATOR_MISSING_TYPE_SPECIFIER(err_operator_missing_type_specifier,
 			CLASS_ERROR, MAP_ERROR, "missing type specifier after 'operator'"),
 	ERR_PARSE_ERROR(err_parse_error, CLASS_ERROR, MAP_ERROR, "parse error"),
+	ERR_PARSER_IMPL_OVERFLOW(err_parser_impl_limit_overflow, CLASS_ERROR, MAP_ERROR, "parser recursion limit reached, program too complex"),
 	ERR_RVALUE_REFERENCE(err_rvalue_reference, CLASS_ERROR, MAP_ERROR,
 			"rvalue references are only allowed in C++0x"),
 	ERR_TEMPLATE_SPEC_SYNTAX_NON_TEMPLATE(err_template_spec_syntax_non_template,

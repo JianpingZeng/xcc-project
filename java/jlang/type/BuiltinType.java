@@ -65,4 +65,10 @@ public final class BuiltinType extends Type
             case LongDouble: return "long double";
         }
     }
+
+    @Override
+    public int hashCode()
+    {
+        return tc;
+    }
 }

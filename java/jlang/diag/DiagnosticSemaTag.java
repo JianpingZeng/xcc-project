@@ -542,7 +542,8 @@ public interface DiagnosticSemaTag
 	public static final int err_typecheck_closure_too_many_args = err_typecheck_choose_expr_requires_constant + 1;
 	public static final int err_typecheck_comparison_of_distinct_blocks = err_typecheck_closure_too_many_args + 1;
 	public static final int err_typecheck_comparison_of_distinct_pointers = err_typecheck_comparison_of_distinct_blocks + 1;
-	public static final int err_typecheck_cond_expect_scalar = err_typecheck_comparison_of_distinct_pointers + 1;
+	public static final int err_typecheck_comparison_of_fptr_to_void = err_typecheck_comparison_of_distinct_pointers + 1;
+	public static final int err_typecheck_cond_expect_scalar = err_typecheck_comparison_of_fptr_to_void + 1;
 	public static final int err_typecheck_cond_incompatible_operands = err_typecheck_cond_expect_scalar + 1;
 	public static final int err_typecheck_convert_incompatible = err_typecheck_cond_incompatible_operands + 1;
 	public static final int err_typecheck_convert_incompatible_block_pointer = err_typecheck_convert_incompatible + 1;
@@ -699,7 +700,8 @@ public interface DiagnosticSemaTag
 	public static final int ext_typecheck_cast_nonscalar = ext_typecheck_base_super + 1;
 	public static final int ext_typecheck_cast_to_union = ext_typecheck_cast_nonscalar + 1;
 	public static final int ext_typecheck_comparison_of_distinct_pointers = ext_typecheck_cast_to_union + 1;
-	public static final int ext_typecheck_comparison_of_pointer_integer = ext_typecheck_comparison_of_distinct_pointers + 1;
+	public static final int ext_typecheck_comparison_of_fptr_to_void = ext_typecheck_comparison_of_distinct_pointers + 1;
+	public static final int ext_typecheck_comparison_of_pointer_integer = ext_typecheck_comparison_of_fptr_to_void + 1;
 	public static final int ext_typecheck_cond_incompatible_operands = ext_typecheck_comparison_of_pointer_integer + 1;
 	public static final int ext_typecheck_cond_one_void = ext_typecheck_cond_incompatible_operands + 1;
 	public static final int ext_typecheck_convert_discards_qualifiers = ext_typecheck_cond_one_void + 1;
@@ -711,7 +713,8 @@ public interface DiagnosticSemaTag
 	public static final int ext_typecheck_decl_incomplete_type = ext_typecheck_convert_pointer_void_func + 1;
 	public static final int ext_typecheck_expression_not_constant_but_accepted = ext_typecheck_decl_incomplete_type + 1;
 	public static final int ext_typecheck_ordered_comparison_of_function_pointers = ext_typecheck_expression_not_constant_but_accepted + 1;
-	public static final int ext_typecheck_ordered_comparison_of_pointer_integer = ext_typecheck_ordered_comparison_of_function_pointers + 1;
+	public static final int ext_typecheck_ordered_comparison_of_pointer_and_zero = ext_typecheck_ordered_comparison_of_function_pointers + 1;
+	public static final int ext_typecheck_ordered_comparison_of_pointer_integer = ext_typecheck_ordered_comparison_of_pointer_and_zero + 1;
 	public static final int ext_typecheck_zero_array_size = ext_typecheck_ordered_comparison_of_pointer_integer + 1;
 	public static final int ext_typedef_without_a_name = ext_typecheck_zero_array_size + 1;
 	public static final int ext_nested_pointer_qualifier_mismatch = ext_typedef_without_a_name + 1;
@@ -821,7 +824,9 @@ public interface DiagnosticSemaTag
 	public static final int warn_conv_to_base_not_used = warn_conflicting_ret_types + 1;
 	public static final int warn_conv_to_self_not_used = warn_conv_to_base_not_used + 1;
 	public static final int warn_conv_to_void_not_used = warn_conv_to_self_not_used + 1;
-	public static final int warn_decl_in_param_list = warn_conv_to_void_not_used + 1;
+	public static final int warn_comparison_always = warn_conv_to_void_not_used + 1;
+	public static final int warn_comparison_of_mixed_enum_types = warn_comparison_always + 1;
+	public static final int warn_decl_in_param_list = warn_comparison_of_mixed_enum_types + 1;
 	public static final int warn_decl_shadow = warn_decl_in_param_list + 1;
 	public static final int warn_delete_incomplete = warn_decl_shadow + 1;
 	public static final int warn_deprecated = warn_delete_incomplete + 1;

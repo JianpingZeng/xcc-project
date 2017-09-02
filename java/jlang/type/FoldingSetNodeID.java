@@ -32,9 +32,31 @@ public class FoldingSetNodeID
         bits.clear();
     }
 
+    /**
+     * Compute a string hash value for this FoldingSetNodeID, used to
+     * lookup the node in the HashMap/HashSet.
+     * @return
+     */
     public int computeHash()
     {
-        return 0;
+        int hash = bits.size();
+        for (int i = 0, e = bits.size(); i != e; i++)
+        {
+            int data = bits.get(i);
+            hash += data & 0xFFFF;
+            int temp = ((data >> 16) << 11) ^ hash;
+            hash = (hash << 16) ^ temp;
+            hash += hash >> 11;
+        }
+
+        // Force "avalanching" of final 127 bits.
+        hash ^= hash << 3;
+        hash += hash >>> 5;
+        hash ^= hash << 4;
+        hash += hash >>> 17;
+        hash ^= hash << 25;
+        hash += hash >>> 6;
+        return hash;
     }
 
     public void addInteger(int val)

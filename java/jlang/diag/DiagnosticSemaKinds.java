@@ -549,6 +549,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_TYPECHECK_CLOSURE_TOO_MANY_ARGS(err_typecheck_closure_too_many_args,CLASS_ERROR, MAP_ERROR, "too many arguments to closure call"),
 	ERR_TYPECHECK_COMPARISON_OF_DISTINCT_BLOCKS(err_typecheck_comparison_of_distinct_blocks,CLASS_ERROR, MAP_ERROR, "comparison of distinct block types (%0 and %1)"),
 	ERR_TYPECHECK_COMPARISON_OF_DISTINCT_POINTERS(err_typecheck_comparison_of_distinct_pointers,CLASS_ERROR, MAP_ERROR, "comparison of distinct pointer types (%0 and %1)"),
+    ERR_TYPECHECK_COMPARISON_FPTR_TO_VOID(err_typecheck_comparison_of_fptr_to_void, CLASS_ERROR, MAP_ERROR, "equality comparison between function pointer and void pointer (%0 and %1)"),
 	ERR_TYPECHECK_COND_EXPECT_SCALAR(err_typecheck_cond_expect_scalar,CLASS_ERROR, MAP_ERROR, "used type %0 where arithmetic or pointer type is required"),
 	ERR_TYPECHECK_COND_INCOMPATIBLE_OPERANDS(err_typecheck_cond_incompatible_operands,CLASS_ERROR, MAP_ERROR, "incompatible operand types (%0 and %1)"),
 	ERR_TYPECHECK_CONVERT_INCOMPATIBLE(err_typecheck_convert_incompatible,CLASS_ERROR, MAP_ERROR, "incompatible type %2 %1, expected %0"),
@@ -706,6 +707,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	EXT_TYPECHECK_CAST_NONSCALAR(ext_typecheck_cast_nonscalar, CLASS_NOTE, MAP_IGNORE, "C99 forbids casting nonscalar type %0 to the same type"),
 	EXT_TYPECHECK_CAST_TO_UNION(ext_typecheck_cast_to_union, CLASS_NOTE, MAP_IGNORE, "C99 forbids casts to union type"),
 	EXT_TYPECHECK_COMPARISON_OF_DISTINCT_POINTERS(ext_typecheck_comparison_of_distinct_pointers, CLASS_NOTE, MAP_WARNING, "comparison of distinct pointer types (%0 and %1)"),
+    EXT_TYPECHECK_COMPARISON_OF_FPTR_TO_VOID(ext_typecheck_comparison_of_fptr_to_void, CLASS_NOTE, MAP_WARNING, "equality comparison between function pointer and void pointer (%0 and %1)"),
 	EXT_TYPECHECK_COMPARISON_OF_POINTER_INTEGER(ext_typecheck_comparison_of_pointer_integer, CLASS_NOTE, MAP_WARNING, "comparison between pointer and integer (%0 and %1)"),
 	EXT_TYPECHECK_COND_INCOMPATIBLE_OPERANDS(ext_typecheck_cond_incompatible_operands, CLASS_NOTE, MAP_WARNING, "incompatible operand types (%0 and %1)"),
 	EXT_TYPECHECK_COND_ONE_VOID(ext_typecheck_cond_one_void, CLASS_NOTE, MAP_IGNORE, "C99 forbids conditional expressions with only one void side"),
@@ -718,6 +720,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	EXT_TYPECHECK_DECL_INCOMPLETE_TYPE(ext_typecheck_decl_incomplete_type, CLASS_NOTE, MAP_WARNING, "tentative definition of variable with internal linkage has incomplete non-array type %0"),
 	EXT_TYPECHECK_EXPRESSION_NOT_CONSTANT_BUT_ACCEPTED(ext_typecheck_expression_not_constant_but_accepted, CLASS_NOTE, MAP_IGNORE, "expression is not a constant, but is accepted as one by GNU extensions"),
 	EXT_TYPECHECK_ORDERED_COMPARISON_OF_FUNCTION_POINTERS(ext_typecheck_ordered_comparison_of_function_pointers, CLASS_NOTE, MAP_WARNING, "ordered comparison of function pointers (%0 and %1)"),
+    EXT_TYPECHECK_ORDERED_COMPARISON_OF_POINTER_AND_ZERO(ext_typecheck_ordered_comparison_of_pointer_and_zero, CLASS_NOTE, MAP_WARNING, "ordered comparison between pointer and zero (%0 and %1) is an extension"),
 	EXT_TYPECHECK_ORDERED_COMPARISON_OF_POINTER_INTEGER(ext_typecheck_ordered_comparison_of_pointer_integer, CLASS_NOTE, MAP_WARNING, "ordered comparison between pointer and integer (%0 and %1)"),
 	EXT_TYPECHECK_ZERO_ARRAY_SIZE(ext_typecheck_zero_array_size, CLASS_NOTE, MAP_IGNORE, "zero size arrays are an extension"),
 	EXT_TYPEDEF_WITHOUT_A_NAME(ext_typedef_without_a_name, CLASS_NOTE, MAP_WARNING, "typedef requires a asmName"),
@@ -829,6 +832,8 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	WARN_CONV_TO_BASE_NOT_USED(warn_conv_to_base_not_used, CLASS_WARNING, MAP_WARNING, "conversion function converting %0 to its base class %1 will never be used"),
 	WARN_CONV_TO_SELF_NOT_USED(warn_conv_to_self_not_used, CLASS_WARNING, MAP_WARNING, "conversion function converting %0 to itself will never be used"),
 	WARN_CONV_TO_VOID_NOT_USED(warn_conv_to_void_not_used, CLASS_WARNING, MAP_WARNING, "conversion function converting %0 to %1 will never be used"),
+	WARN_COMPARISON_ALWAYS(warn_comparison_always, CLASS_WARNING, MAP_WARNING, "%select{self-|array }0comparison always evaluates to %select{false|true|a constant}1"),
+    WARN_COMPARISON_OF_MIXED_ENUM_TYPES(warn_comparison_of_mixed_enum_types, CLASS_WARNING, MAP_WARNING, "comparison of two values with different enumeration types (%0 and %1)"),
 	WARN_DECL_IN_PARAM_LIST(warn_decl_in_param_list, CLASS_WARNING, MAP_WARNING, "declaration of %0 will not be visible outside of this function"),
 	WARN_DECL_SHADOW(warn_decl_shadow, CLASS_WARNING, MAP_WARNING, "declaration shadows a %select{"+
 			"local variable|" +
