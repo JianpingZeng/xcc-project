@@ -35,7 +35,7 @@ public abstract class TagType extends Type
      */
     public boolean isBeingDefined()
     {
-        return decl.isBeingDefined();
+        return decl.isCompleteDefinition();
     }
 
     public void setBeingDefined()

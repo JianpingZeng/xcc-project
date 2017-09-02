@@ -1623,7 +1623,7 @@ public abstract class Decl
         /**
          * This indicates the type object that represents this typeDecl.
          */
-        private Type typeForDecl;
+        protected Type typeForDecl;
 
         protected TypeDecl(
                 DeclKind kind,
@@ -1708,8 +1708,12 @@ public abstract class Decl
          * True if this is a definition ("struct foo {};"), false if
          * it is a declaration ("struct foo;").
          */
+        protected boolean isDefinition;
+
+        /**
+         * True if this is currently being defined but not completed.
+         */
         protected boolean isBeingDefined;
-        protected boolean isCompleteDefinition;
         protected IDeclContext declContext;
         protected TagKind tagKind;
 
@@ -1738,7 +1742,7 @@ public abstract class Decl
                 SourceLocation tkl)
         {
             super(kind, context, name, loc);
-            isBeingDefined = false;
+            isDefinition = false;
             this.tagKind = tagKind;
             tagKkeywordLoc = tkl;
             dc = new DeclContext(kind, this);
@@ -1782,14 +1786,9 @@ public abstract class Decl
          * True if this is a definition ("struct foo {};"), false if
          * it is a declaration ("struct foo;").
          */
-        public final boolean isBeingDefined()
-        {
-            return isBeingDefined;
-        }
-
         public final boolean isCompleteDefinition()
         {
-            return isCompleteDefinition;
+            return isDefinition;
         }
 
         @Override
@@ -1799,16 +1798,18 @@ public abstract class Decl
         }
 
         /**
-         * Sets the flag of {@linkplain this#isBeingDefined} for completing
+         * Sets the flag of {@linkplain this#isDefinition} for completing
          * the definition of this forward declaration.
          */
         public void completeDefinition()
         {
-            if (getTypeForDecl() instanceof TagType)
+            isDefinition = true;
+            isBeingDefined = false;
+            TagType tt = typeForDecl instanceof TagType ? (TagType)typeForDecl:null;
+
+            if (tt != null)
             {
-                TagType tt = (TagType)getTypeForDecl();
                 assert tt.getDecl() == this :"Attempt to redefine a stmtClass definition?";
-                tt.getDecl().completeDefinition();
             }
         }
 
@@ -1860,13 +1861,13 @@ public abstract class Decl
 
         public TagDecl getDefinition()
         {
-            if (isCompleteDefinition)
+            if (isDefinition)
                 return this;
 
             for (Iterator<TagDecl> itr = this; itr.hasNext();)
             {
                 TagDecl td = itr.next();
-                if (td.isCompleteDefinition)
+                if (td.isDefinition)
                     return td;
             }
             return null;
@@ -1885,6 +1886,11 @@ public abstract class Decl
         public void setBeingDefined()
         {
             isBeingDefined = true;
+        }
+
+        public boolean isBeingDefined()
+        {
+            return isBeingDefined;
         }
 
         @Override
@@ -2135,6 +2141,13 @@ public abstract class Decl
             TagDecl td = super.getDefinition();
             return td instanceof RecordDecl ? (RecordDecl)td : null;
         }
+
+        @Override
+        public void completeDefinition()
+        {
+            assert !isCompleteDefinition():"Cannot redefine a record!";
+            super.completeDefinition();
+        }
     }
 
     /**
@@ -2177,7 +2190,7 @@ public abstract class Decl
          */
         public void completeDefinition(QualType newType)
         {
-            assert !isCompleteDefinition():"Cannot refine enums!";
+            assert !isCompleteDefinition():"Cannot redefine enums!";
             promotionType = newType;
             super.completeDefinition();
         }

@@ -37,8 +37,7 @@ import static jlang.cparser.Declarator.TheContext.FunctionProtoTypeContext;
 import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
 import static jlang.sema.AssignConvertType.*;
-import static jlang.sema.BinaryOperatorKind.BO_Div;
-import static jlang.sema.BinaryOperatorKind.BO_DivAssign;
+import static jlang.sema.BinaryOperatorKind.*;
 import static jlang.sema.Decl.DefinitionKind.DeclarationOnly;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
@@ -363,10 +362,14 @@ public final class Sema implements DiagnosticParseTag,
             enumUnderlying = context.IntTy;
         }
 
+        curScope = getNonFieldDeclScope(curScope);
+
         LookupResult result = new LookupResult(this, name, nameLoc, LookupTagName);
+        lookupName(result, curScope, false);
+
         IDeclContext searchDC = curContext;
         IDeclContext dc = curContext;
-        NamedDecl prevDecl = null;
+        NamedDecl prevDecl = result.getFoundDecl();
         boolean invalid = false;
 
         if (name != null)
@@ -1366,7 +1369,7 @@ public final class Sema implements DiagnosticParseTag,
             if (lastEnumConst != null)
             {
                 enumVal = lastEnumConst.getInitValue();
-                enumVal.increase();
+                enumVal = enumVal.add(1);
 
                 if (enumVal.lt(lastEnumConst.getInitValue()))
                     diag(idLoc, warn_enum_value_overflow).emit();
@@ -6392,6 +6395,53 @@ public final class Sema implements DiagnosticParseTag,
         return lhsType;
     }
 
+    /**
+     * If two different enums are compared, raise a warning.
+     * @param s
+     * @param loc
+     * @param lhs
+     */
+    private static void checkEnumComparison(Sema s,
+            SourceLocation loc,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs)
+    {
+        QualType lhsStrippedType = lhs.get().get().ignoreParenCasts().getType();
+        QualType rhsStrippedType = rhs.get().get().ignoreParenCasts().getType();
+
+        EnumType lhsEnumType = lhsStrippedType.getAsEnumType();
+        if (lhsEnumType == null)
+            return;
+
+        EnumType rhsEnumType = rhsStrippedType.getAsEnumType();
+        if (rhsEnumType == null)
+            return;
+
+        // Ignore anonymous enums.
+        if (lhsEnumType.getDecl().getIdentifier() == null ||
+                rhsEnumType.getDecl().getIdentifier() == null)
+            return;
+
+        if (s.context.hasSameUnqualifiedType(lhsStrippedType, rhsStrippedType))
+            return;
+
+        s.diag(loc, warn_comparison_of_mixed_enum_types)
+                .addTaggedVal(lhsStrippedType)
+                .addTaggedVal(rhsStrippedType)
+                .addSourceRange(lhs.get().get().getSourceRange())
+                .addSourceRange(rhs.get().get().getSourceRange())
+                .emit();
+    }
+
+    /**
+     * C99 6.5.8.
+     * @param lhs
+     * @param rhs
+     * @param opLoc
+     * @param opc
+     * @param isRelational
+     * @return
+     */
     private QualType checkComparisonOperands(
             OutParamWrapper<ActionResult<Expr>> lhs,
             OutParamWrapper<ActionResult<Expr>> rhs,
@@ -6400,7 +6450,344 @@ public final class Sema implements DiagnosticParseTag,
             boolean isRelational)
     {
         // TODO: 2017/3/28
-        return null;
+        QualType lhsType = lhs.get().get().getType();
+        QualType rhsType = rhs.get().get().getType();
+
+        Expr lhsStripped = lhs.get().get().ignoreParenCasts();
+        Expr rhsStripped = rhs.get().get().ignoreParenCasts();
+
+        checkEnumComparison(this, opLoc, lhs, rhs);
+
+        if (!lhsType.isFloatingType() &&
+                !lhs.get().get().getLocStart().isMacroID() &&
+                !rhs.get().get().getLocStart().isMacroID())
+        {
+            // For non-floating point types, check for self-comparisons of the form
+            // x == x, x != x, x < x, etc.  These always evaluate to a constant, and
+            // often indicate logic errors in the program.
+
+            DeclRefExpr lhsRef = lhsStripped instanceof DeclRefExpr ?
+                    (DeclRefExpr)lhsStripped : null;
+            DeclRefExpr rhsRef = rhsStripped instanceof DeclRefExpr ?
+                    (DeclRefExpr)rhsStripped : null;
+
+            if (lhsRef != null && rhsRef != null)
+            {
+                if (lhsRef.getDecl().equals(rhsRef.getDecl()))
+                {
+                    diag(opLoc, pdiag(warn_comparison_always)
+                        .addTaggedVal(0)    // self
+                        .addTaggedVal(opc == BO_EQ || opc == BO_LE || opc == BO_GE));
+                }
+                else if (lhsType.isArrayType() && rhsType.isArrayType())
+                {
+                    // what is it always going to eval to?
+                    int always_evals_to;
+                    switch(opc) {
+                        case BO_EQ: // e.g. array1 == array2
+                            always_evals_to = 0; // false
+                            break;
+                        case BO_NE: // e.g. array1 != array2
+                            always_evals_to = 1; // true
+                            break;
+                        default:
+                            // best we can say is 'a constant'
+                            always_evals_to = 2; // e.g. array1 <= array2
+                            break;
+                    }
+                    diag(opLoc, pdiag(warn_comparison_always)
+                            .addTaggedVal(1)    // array
+                            .addTaggedVal(always_evals_to));
+                }
+            }
+
+            if (lhsStripped instanceof CastExpr)
+                lhsStripped = lhsStripped.ignoreParenCasts();
+            if (rhsStripped instanceof CastExpr)
+                rhsStripped = rhsStripped.ignoreParenCasts();
+
+            Expr literalString = null;
+            Expr literalStringStripped = null;
+
+            // Warn about comparisons against a string constant (unless the other
+            // operand is null), the user probably wants strcmp.
+            if (lhsStripped instanceof StringLiteral &&
+                    !rhsStripped.isNullPointerConstant(context))
+            {
+                literalString = lhs.get().get();
+                literalStringStripped = lhsStripped;
+            }
+            else if (rhsStripped instanceof StringLiteral &&
+                    !lhsStripped.isNullPointerConstant(context))
+            {
+                literalString = rhs.get().get();
+                literalStringStripped = rhsStripped;
+            }
+
+            if (literalString != null)
+            {
+                String resultComparison = "";
+                switch (opc)
+                {
+                    case BO_LT: resultComparison = ") < 0"; break;
+                    case BO_GT: resultComparison = ") > 0"; break;
+                    case BO_LE: resultComparison = ") <= 0"; break;
+                    case BO_GE: resultComparison = ") >= 0"; break;
+                    case BO_EQ: resultComparison = ") == 0"; break;
+                    case BO_NE: resultComparison = ") != 0"; break;
+                    default: Util.shouldNotReachHere("Invalid comparison operator");
+                }
+
+                diag(opLoc, pdiag(warn_stringcompare)
+                    .addTaggedVal(false)
+                    .addSourceRange(literalString.getSourceRange()));
+            }
+        }
+
+        // C99 6.5.8p3 / C99 6.5.9p4
+        if (lhs.get().get().getType().isArithmeticType() &&
+                rhs.get().get().getType().isArithmeticType())
+        {
+            usualArithmeticConversions(lhs, rhs, false);
+            if (lhs.get().isInvalid() || rhs.get().isInvalid())
+                return new QualType();
+        }
+        else
+        {
+            lhs.set(usualUnaryConversions(lhs.get().get()));
+            if (lhs.get().isInvalid())
+                return new QualType();
+
+            rhs.set(usualUnaryConversions(rhs.get().get()));
+            if (rhs.get().isInvalid())
+                return new QualType();
+        }
+
+        lhsType = lhs.get().get().getType();
+        rhsType = rhs.get().get().getType();
+
+        // The result of comparisons is 'bool' in C++, 'int' in C.
+        QualType resultTy = context.IntTy;
+
+        if (isRelational)
+        {
+            if (lhsType.isRealType() && rhsType.isRealType())
+                return resultTy;
+        }
+        else
+        {
+            // Check for comparisons of floating point operands using != and ==.
+            if (lhsType.isFloatingType())
+                checkFloatComparison(opLoc, lhs.get().get(), rhs.get().get());
+
+            if (lhsType.isArithmeticType() && rhsType.isArithmeticType())
+                return resultTy;
+        }
+
+        boolean lhsIsNull = lhs.get().get().isNullPointerConstant(context);
+        boolean rhsIsNull = rhs.get().get().isNullPointerConstant(context);
+
+        // All of the following pointer-related warnings are GCC extensions, except
+        // when handling null pointer constants.
+        if (lhsType.isPointerType() && rhsType.isPointerType())
+        {
+            // C99 6.5.8p2
+            QualType lCanPointeeTy = lhsType.getAsPointerType().getPointeeType()
+                    .getType().getCanonicalTypeInternal();
+            QualType rCanPointeeTy = rhsType.getAsPointerType().getPointeeType()
+                    .getType().getCanonicalTypeInternal();
+
+            // C99 6.5.9p2 and C99 6.5.8p2
+            if (context.typesAreCompatible(lCanPointeeTy.getUnQualifiedType(),
+                    rCanPointeeTy.getUnQualifiedType()))
+            {
+                if (isRelational && lCanPointeeTy.isFunctionType())
+                {
+                    diag(opLoc, ext_typecheck_ordered_comparison_of_function_pointers)
+                            .addTaggedVal(lhsType).addTaggedVal(rhsType)
+                            .addSourceRange(lhs.get().get().getSourceRange())
+                            .addSourceRange(rhs.get().get().getSourceRange());
+                }
+            }
+            else if (!isRelational && (lCanPointeeTy.isVoidType() ||
+                    rCanPointeeTy.isVoidType()))
+            {
+                // Valid unless comparison between non-null pointer and function pointer
+                if ((lCanPointeeTy.isFunctionType() || rCanPointeeTy.isFunctionType()) &&
+                        !lhsIsNull && !rhsIsNull)
+                {
+                    diagnoseFunctionPointerToVoidComparison(this, opLoc, lhs, rhs, false);
+                }
+            }
+            else
+            {
+                // Invalid.
+                diagnoseDistinctPointerComparison(this, opLoc, lhs, rhs, false);
+            }
+
+            if (!lCanPointeeTy.equals(rCanPointeeTy))
+            {
+                if (lhsIsNull && !rhsIsNull)
+                    lhs.set(implicitCastExprToType(lhs.get().get(), rhsType, EVK_RValue, CK_BitCast));
+                else
+                    rhs.set(implicitCastExprToType(rhs.get().get(), lhsType, EVK_RValue, CK_BitCast));
+            }
+            return resultTy;
+        }
+
+        if ((lhsType.isPointerType() && rhsType.isIntegerType()) ||
+                (lhsType.isIntegerType() && rhsType.isPointerType()))
+        {
+            int diagID = 0;
+            boolean isError = false;
+
+            if ((lhsIsNull && lhsType.isIntegerType()) ||
+                    (rhsIsNull && rhsType.isIntegerType()))
+            {
+                if (isRelational)
+                    diagID = ext_typecheck_ordered_comparison_of_pointer_and_zero;
+            }
+            else if (isRelational)
+            {
+                diagID = ext_typecheck_ordered_comparison_of_pointer_integer;
+            }
+            else
+            {
+                diagID = ext_typecheck_comparison_of_pointer_integer;
+            }
+
+            if (diagID != 0)
+            {
+                diag(opLoc, diagID)
+                        .addTaggedVal(lhsType)
+                        .addTaggedVal(rhsType)
+                        .addSourceRange(lhs.get().get().getSourceRange())
+                        .addSourceRange(rhs.get().get().getSourceRange());
+                if (isError)
+                    return new QualType();
+            }
+
+            if (lhsType.isIntegerType())
+            {
+                lhs.set(implicitCastExprToType(lhs.get().get(), rhsType,
+                        EVK_RValue,
+                        lhsIsNull ? CK_NullToPointer : CK_IntegralToPointer));
+            }
+            else
+            {
+                rhs.set(implicitCastExprToType(rhs.get().get(), lhsType,
+                        EVK_RValue,
+                        lhsIsNull ? CK_NullToPointer : CK_IntegralToPointer));
+            }
+            return resultTy;
+        }
+
+        return invalidOperands(opLoc, lhs.get().get(), rhs.get().get());
+    }
+
+    //===--- CHECK: Floating-Point comparisons (-Wfloat-equal) ---------------===//
+
+    /**
+     * Check for comparisons of floating point operands using != and ==.
+     * Issue a warning if these are no self-comparisons, as they are not likely
+     * to do what the programmer intended.
+     * @param loc
+     * @param lhs
+     * @param rhs
+     */
+    private void checkFloatComparison(
+            SourceLocation loc,
+            Expr lhs,
+            Expr rhs)
+    {
+        boolean emitWarning = true;
+
+        Expr leftExprSansParen = lhs.ignoreParenCasts();
+        Expr rightExprSansParen = rhs.ignoreParenCasts();
+
+        // Special case: check for x == x (which is OK).
+        // Do not emit warnings for such cases.
+        DeclRefExpr lhsRef = leftExprSansParen instanceof DeclRefExpr
+                ? (DeclRefExpr)leftExprSansParen : null;
+        DeclRefExpr rhsRef = rightExprSansParen instanceof DeclRefExpr
+                ? (DeclRefExpr)rightExprSansParen : null;
+        if (lhsRef != null && rhsRef != null)
+        {
+            if (lhsRef.getDecl().equals(rhsRef.getDecl()))
+                emitWarning = false;
+        }
+
+        // Special case: check for comparisons against literals that can be exactly
+        //  represented by APFloat.  In such cases, do not emit a warning.  This
+        //  is a heuristic: often comparison against such literals are used to
+        //  detect if a value in a variable has not changed.  This clearly can
+        //  lead to false negatives.
+        if (emitWarning)
+        {
+            FloatingLiteral leftFL = leftExprSansParen instanceof FloatingLiteral
+                    ? (FloatingLiteral)leftExprSansParen : null;
+            FloatingLiteral rightFL = rightExprSansParen instanceof FloatingLiteral
+                    ? (FloatingLiteral)rightExprSansParen : null;
+
+            emitWarning = !((leftFL != null && leftFL.isExact()) ||
+                    (rightFL != null)  && rightFL.isExact());
+        }
+
+        if (emitWarning)
+            diag(loc, warn_floatingpoint_eq)
+                    .addSourceRange(lhs.getSourceRange())
+                    .addSourceRange(rhs.getSourceRange());
+    }
+
+    /**
+     * Diagnose bad pointer comparisons.
+     * @param sema
+     * @param opLoc
+     * @param lhs
+     * @param rhs
+     * @param isError
+     */
+    private static void diagnoseDistinctPointerComparison(
+            Sema sema,
+            SourceLocation opLoc,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            boolean isError)
+    {
+        sema.diag(opLoc, isError ?
+                err_typecheck_comparison_of_distinct_pointers :
+                ext_typecheck_comparison_of_distinct_pointers)
+                .addTaggedVal(lhs.get().get().getType())
+                .addTaggedVal(rhs.get().get().getType())
+                .addSourceRange(lhs.get().get().getSourceRange())
+                .addSourceRange(rhs.get().get().getSourceRange());
+    }
+
+    private static void diagnoseFunctionPointerToVoidComparison(
+            Sema sema,
+            SourceLocation opLoc,
+            OutParamWrapper<ActionResult<Expr>> lhs,
+            OutParamWrapper<ActionResult<Expr>> rhs,
+            boolean isError)
+    {
+        sema.diag(opLoc, isError ?
+                err_typecheck_comparison_of_fptr_to_void :
+                ext_typecheck_comparison_of_fptr_to_void)
+                .addTaggedVal(lhs.get().get().getType())
+                .addTaggedVal(rhs.get().get().getType())
+                .addSourceRange(lhs.get().get().getSourceRange())
+                .addSourceRange(rhs.get().get().getSourceRange());
+    }
+
+    private QualType invalidOperands(SourceLocation loc,
+            Expr lhs, Expr rhs)
+    {
+        diag(loc, err_typecheck_invalid_operands)
+                .addTaggedVal(lhs.getType())
+                .addTaggedVal(rhs.getType())
+                .addSourceRange(lhs.getSourceRange())
+                .addSourceRange(rhs.getSourceRange());
+        return new QualType();
     }
 
     private QualType checkBitwiseOperands(
@@ -6773,8 +7160,13 @@ public final class Sema implements DiagnosticParseTag,
         // C99 6.7.6: Type names have no identifier.  This is already validated by
         // the jlang.parser.
         assert d.getIdentifier() == null:"Type must have no identifier!";
-        // TODO
-        return null;
+
+        OutParamWrapper<DeclaratorInfo> x = new OutParamWrapper<>(null);
+        QualType t = getTypeForDeclarator(d, x);
+        if (d.isInvalidType())
+            return new ActionResult<>();
+
+        return new ActionResult<>(t);
     }
 
     public ActionResult<Expr> actOnCastOfParenListExpr(
@@ -6801,27 +7193,28 @@ public final class Sema implements DiagnosticParseTag,
     private boolean checkCastTypes(
             SourceRange range,
             QualType castTy,
-            Expr expr,
+            OutParamWrapper<Expr> expr,
             OutParamWrapper<CastKind> kind)
     {
-        expr = defaultFunctionArrayConversion(expr).get();
+        expr.set(defaultFunctionArrayConversion(expr.get()).get());
 
         // C99 6.5.4p2: the cast type needs to be void or scalar and the expression
         // type needs to be scalar.
         if (castTy.isVoidType())
         {
             // Cast to void allows any expr type.
+            kind.set(CK_ToVoid);
         }
         else if (!castTy.isScalarType())
         {
             if (castTy.getType().getCanonicalTypeInternal().getUnQualifiedType().
-                    equals(expr.getType().getUnQualifiedType().getType().getCanonicalTypeInternal())
+                    equals(expr.get().getType().getUnQualifiedType().getType().getCanonicalTypeInternal())
                     && (castTy.isStructureType() || castTy.isUnionType()))
             {
                 // GCC struct/union extension: allow cast to self.
                 diag(range.getBegin(), ext_typecheck_cast_nonscalar)
                         .addTaggedVal(castTy)
-                        .addSourceRange(expr.getSourceRange())
+                        .addSourceRange(expr.get().getSourceRange())
                         .emit();
                 kind.set(CK_NoOp);
             }
@@ -6834,10 +7227,10 @@ public final class Sema implements DiagnosticParseTag,
                 {
                     FieldDecl fd = rd.getDeclAt(i);
                     if (fd.getType().getType().getCanonicalTypeInternal().getUnQualifiedType().
-                            equals(expr.getType().getType().getCanonicalTypeInternal().getUnQualifiedType()))
+                            equals(expr.get().getType().getType().getCanonicalTypeInternal().getUnQualifiedType()))
                     {
                         diag(range.getBegin(), ext_typecheck_cast_to_union)
-                                .addSourceRange(expr.getSourceRange())
+                                .addSourceRange(expr.get().getSourceRange())
                                 .emit();
                         break;
                     }
@@ -6845,8 +7238,8 @@ public final class Sema implements DiagnosticParseTag,
                 if (i == e)
                 {
                     diag(range.getBegin(), err_typecheck_cast_to_union_no_type)
-                            .addTaggedVal(expr.getType())
-                            .addSourceRange(expr.getSourceRange())
+                            .addTaggedVal(expr.get().getType())
+                            .addSourceRange(expr.get().getSourceRange())
                             .emit();
                     return true;
                 }
@@ -6857,44 +7250,49 @@ public final class Sema implements DiagnosticParseTag,
                 // Reject any other conversions to non-scalar types.
                 diag(range.getBegin(), err_typecheck_cond_expect_scalar)
                     .addTaggedVal(castTy)
-                    .addSourceRange(expr.getSourceRange())
+                    .addSourceRange(expr.get().getSourceRange())
                     .emit();
                 return true;
             }
         }
-        else if (!expr.getType().isScalarType())
+        else if (!expr.get().getType().isScalarType())
         {
-            diag(expr.getLocStart(),err_typecheck_expect_scalar_operand)
-                    .addTaggedVal(expr.getType())
-                    .addSourceRange(expr.getSourceRange())
+            diag(expr.get().getLocStart(),err_typecheck_expect_scalar_operand)
+                    .addTaggedVal(expr.get().getType())
+                    .addSourceRange(expr.get().getSourceRange())
                     .emit();
             return true;
         }
         else if (!castTy.isArithmeticType())
         {
-            QualType castExprType = expr.getType();
+            QualType castExprType = expr.get().getType();
             if (castExprType.isIntegerType() && castExprType.isArithmeticType())
             {
-                diag(expr.getLocStart(),
+                diag(expr.get().getLocStart(),
                         err_cast_pointer_from_non_pointer_int)
                         .addTaggedVal(castExprType)
-                        .addSourceRange(expr.getSourceRange())
+                        .addSourceRange(expr.get().getSourceRange())
                         .emit();
                 return true;
             }
         }
-        else if (!expr.getType().isArithmeticType())
+        else if (!expr.get().getType().isArithmeticType())
         {
             if (!castTy.isIntegerType() && castTy.isArithmeticType())
             {
-                diag(expr.getLocStart(),
+                diag(expr.get().getLocStart(),
                         err_cast_pointer_to_non_pointer_int)
                         .addTaggedVal(castTy)
-                        .addSourceRange(expr.getSourceRange())
+                        .addSourceRange(expr.get().getSourceRange())
                         .emit();
                 return true;
             }
         }
+
+        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(new ActionResult<>(expr.get()));
+
+        kind.set(prepareScalarCast(x, castTy));
+        expr.set(x.get().get());
         return false;
     }
 
@@ -6912,9 +7310,11 @@ public final class Sema implements DiagnosticParseTag,
         if (castExpr instanceof ParenListExpr)
             return actOnCastOfParenListExpr(s, lParenLoc, rParenLoc, castExpr, castTy);
         OutParamWrapper<CastKind> x = new OutParamWrapper<>(kind);
-        if (checkCastTypes(new SourceRange(lParenLoc, rParenLoc), castTy, castExpr, x))
+        OutParamWrapper<Expr> e = new OutParamWrapper<>(castExpr);
+        if (checkCastTypes(new SourceRange(lParenLoc, rParenLoc), castTy, e, x))
             return exprError();
 
+        castExpr = e.get();
         kind = x.get();
         return new ActionResult<>(new ExplicitCastExpr(castTy,
                 castExpr, kind,

@@ -107,7 +107,7 @@ public class DeclPrinter extends DeclVisitor
         {
             out.printf(" %s", decl.getNameAsString());
         }
-        if (decl.isBeingDefined())
+        if (decl.isCompleteDefinition())
         {
             out.print(" {\n");
             visitDeclContext(decl);

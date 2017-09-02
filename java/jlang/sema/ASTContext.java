@@ -166,9 +166,11 @@ public final class ASTContext
 
     public QualType getComplexType(QualType ty)
     {
-        int id = ty.hashCode();
-        if (complexTypes.containsKey(id))
-            return new QualType(complexTypes.get(id));
+	    FoldingSetNodeID id = new FoldingSetNodeID();
+	    ty.profile(id);
+	    int hashcode = id.computeHash();
+        if (complexTypes.containsKey(hashcode))
+            return new QualType(complexTypes.get(hashcode));
 
         // If the pointee type isn't canonical, this won't be a canonical type either,
         // so fill in the canonical type field.
@@ -179,15 +181,18 @@ public final class ASTContext
         }
         ComplexType newTy = new ComplexType(ty, canonical);
         types.add(newTy);
-        complexTypes.put(id, newTy);
+        complexTypes.put(hashcode, newTy);
         return new QualType(newTy);
     }
 
 	public QualType getPointerType(QualType ty)
 	{
-		int id = ty.hashCode();
-		if (pointerTypes.containsKey(id))
-		    return new QualType(pointerTypes.get(id));
+		FoldingSetNodeID id = new FoldingSetNodeID();
+		ty.profile(id);
+		int hashcode = id.computeHash();
+
+		if (pointerTypes.containsKey(hashcode))
+		    return new QualType(pointerTypes.get(hashcode));
 
         // If the pointee type isn't canonical, this won't be a canonical type either,
         // so fill in the canonical type field.
@@ -198,7 +203,7 @@ public final class ASTContext
         }
         PointerType newPtr = new PointerType(ty, canonical);
         types.add(newPtr);
-        pointerTypes.put(id, newPtr);
+        pointerTypes.put(hashcode, newPtr);
         return new QualType(newPtr);
 	}
 

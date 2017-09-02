@@ -170,7 +170,9 @@ public class Parser implements Tag,
 
     private SourceLocation prevTokLocation;
 
-    private Token tok;
+    Token tok;
+
+    DelimiterTracker quantityTracker;
 
     public Diagnostic getDiags()
     {
@@ -209,6 +211,7 @@ public class Parser implements Tag,
         tok = new Token();
         tok.setKind(eof);
         pp.addCommentHandler(new DefaultCommentHandler(action));
+        quantityTracker = new DelimiterTracker();
 
         // Add #pragma handlers.
         // todo add PragmaHandler. 2017.8.14
@@ -915,8 +918,8 @@ public class Parser implements Tag,
         ParseScope ifScope = new ParseScope(this, ScopeFlags.DeclScope.value);
         ActionResult<Expr> condExpr;
         OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>();
-        if (parseParenExpression(x, ifLoc, true))
-            return  stmtError();
+        if (parseParenExprOrCondition(x, ifLoc, true))
+            return stmtError();
 
         condExpr = x.get();
         // C99 6.8.4p3
@@ -978,6 +981,50 @@ public class Parser implements Tag,
             elseStmt = action.actOnNullStmt(elseStmtLoc);
 
         return action.actOnIfStmt(ifLoc, condExpr, thenStmt.get(), elseStmt.get());
+    }
+
+    /**
+     * ParseParenExprOrCondition:
+     * <pre>
+     * [C  ]     '(' expression ')'
+     * </pre>
+     * @param exprResult
+     * @param ifLoc
+     * @param convertToBoolean
+     * @return
+     */
+    private boolean parseParenExprOrCondition(
+            OutParamWrapper<ActionResult<Expr>> exprResult,
+            SourceLocation ifLoc,
+            boolean convertToBoolean)
+    {
+        BalancedDelimiterTracker t = new BalancedDelimiterTracker(this, l_paren);
+        t.consumeOpen();
+
+        exprResult.set(parseExpression());
+
+        // If require, convert to a boolean value.
+        if (!exprResult.get().isInvalid() && convertToBoolean)
+        {
+            exprResult.set(action.actOnBooleanCondition(getCurScope(),
+                    ifLoc, exprResult.get().get()));
+        }
+
+        // If the parser was confused by the condition and we don't have a ')', try to
+        // recover by skipping ahead to a semi and bailing out.  If condexp is
+        // semantically invalid but we have well formed code, keep going.
+        if (exprResult.get().isInvalid() && tok.isNot(r_paren))
+        {
+            skipUntil(semi, true);
+            // Skipping may have stopped if it found the containing ')'.  If so, we can
+            // continue parsing the if statement.
+            if (tok.isNot(r_paren))
+                return true;
+        }
+
+        // Otherwise, the condition is valid or the right parenthesis is present.
+        t.consumeClose();
+        return false;
     }
 
     public static ActionResult<Stmt> stmtError()
@@ -1050,7 +1097,8 @@ public class Parser implements Tag,
         SourceLocation lParenLoc = consumeParen();
         ActionResult<Expr> result = new ActionResult<>(true);
 
-        if (exprType.get().ordinal()>= CompoundLiteral.ordinal() && isDeclarationSpecifier())
+        if (exprType.get().ordinal()>= CompoundLiteral.ordinal()
+                && isDeclarationSpecifier())
         {
             // This is a compound literal expression or cast expression.
             // First of all, parse declarator.
@@ -2635,7 +2683,7 @@ public class Parser implements Tag,
             SourceLocation identLoc = consumeToken();
 
             SourceLocation equalLoc = SourceLocation.NOPOS;
-            ActionResult<Expr> val = null;
+            ActionResult<Expr> val = new ActionResult<>();
             if (nextTokenIs(equal))
             {
                 equalLoc = consumeToken();
@@ -3333,10 +3381,16 @@ public class Parser implements Tag,
             // paren, because we haven't seen the identifier yet.
             isGrouping = true;
         }
-        else
+        else if (nextTokenIs(r_paren) || isDeclarationSpecifier())
         {
             // 'int()' is a function.
-            isGrouping = !(nextTokenIs(r_paren) || isDeclarationSpecifier());
+            // *(int arga, void (*argb)(double Y))
+            // This is a type-name.
+            isGrouping = false;
+        }
+        else
+        {
+            isGrouping = true;
         }
         // If this is a grouping paren, handle:
         // direct-declarator: '(' declarator ')'
@@ -3354,7 +3408,6 @@ public class Parser implements Tag,
         // identifier (and remember where it would have been), then call into
         // ParseFunctionDeclarator to handle of argument list.
         declarator.setIdentifier(null, tok.getLocation());
-        consumeToken();
         parseFunctionDeclarator(lparenLoc, declarator, true);
     }
 
@@ -3882,7 +3935,7 @@ public class Parser implements Tag,
             // Remember the precedence of this operator and get the precedence of the
             // operator immediately to the right of the RHS.
             int thisPrec = nextTokPrec;
-            nextTokPrec = getBinOpPrecedence(opToken.getKind());
+            nextTokPrec = getBinOpPrecedence(tok.getKind());
 
             // Assignment and conditional expression are right-associative.
             boolean isRightAssoc = thisPrec == PrecedenceLevel.Conditional
@@ -3967,6 +4020,7 @@ public class Parser implements Tag,
         {
             case l_paren:
             {
+
                 QualType castTy = null;
                 OutParamWrapper<QualType> out1 = new OutParamWrapper<>();
                 SourceLocation rParenLoc = SourceLocation.NOPOS;
@@ -4165,15 +4219,15 @@ public class Parser implements Tag,
      * [GNU] '__alignof' unary-expression
      * [GNU] '__alignof' '(' type-name ')'
      * </pre>
-     * @param tok
+     * @param opTok
      * @param arg
      * @return
      */
     private ActionResult<Expr> parseExprAfterSizeof(
-            Token tok,
+            Token opTok,
             ParenExprArg arg)
     {
-        assert tok.is(TokenKind.Sizeof) :"Not a sizeof/alignof expression!";
+        assert opTok.is(TokenKind.Sizeof) :"Not a sizeof/alignof expression!";
 
         ActionResult<Expr> operand;
         // If this operand doesn't start with '(',it must be an expression.
@@ -4194,7 +4248,7 @@ public class Parser implements Tag,
             OutParamWrapper<ParenParseOption> exprType =
                     new OutParamWrapper<>(CastExpr);
             OutParamWrapper<SourceLocation> lparenLoc =
-                    new OutParamWrapper<>(tok.getLocation());
+                    new OutParamWrapper<>(opTok.getLocation());
             OutParamWrapper<SourceLocation> rParenLoc =
                     new OutParamWrapper<>(new SourceLocation());
             OutParamWrapper<QualType> castTy =
@@ -4452,7 +4506,7 @@ public class Parser implements Tag,
      * @param kind       
      * @param stopAtSemi 
      */
-    private boolean skipUntil(TokenKind kind, boolean stopAtSemi)
+    public boolean skipUntil(TokenKind kind, boolean stopAtSemi)
     {
         return skipUntil(new TokenKind[] { kind }, stopAtSemi, false);
     }
@@ -4562,7 +4616,7 @@ public class Parser implements Tag,
         return prevTokLocation;
     }
 
-    private SourceLocation consumeAnyToken()
+    public SourceLocation consumeAnyToken()
     {
         if (isTokenParen())
             return consumeParen();
@@ -4636,7 +4690,7 @@ public class Parser implements Tag,
         return expectAndConsume(expectedTok, diagID, "", Unknown);
     }
 
-    private boolean expectAndConsume(TokenKind expectedTok, int diagID,
+    public boolean expectAndConsume(TokenKind expectedTok, int diagID,
             String msg, TokenKind skipToTok)
     {
         if (tok.getKind() == expectedTok)

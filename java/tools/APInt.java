@@ -514,7 +514,7 @@ public class APInt implements Cloneable
     public APInt(int numBits, long val, boolean isSigned)
     {
         bitWidth = numBits;
-        val = 0;
+        this.val = 0;
         assert bitWidth > 0 : "bitwidth too small";
         if (isSingleWord())
             this.val = val;
@@ -1891,6 +1891,11 @@ public class APInt implements Cloneable
         return result.clearUnusedBits();
     }
 
+    public APInt mul(long rhs)
+    {
+        return mul(new APInt(bitWidth, rhs));
+    }
+
     /**
      * Performs &= operation on this APInt value and rhs.
      *
@@ -2692,6 +2697,11 @@ public class APInt implements Cloneable
         return andSlowCase(rhs);
     }
 
+    public APInt and(long rhs)
+    {
+        return and(new APInt(bitWidth, rhs));
+    }
+
     public APInt or(final APInt rhs)
     {
         assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
@@ -2700,12 +2710,22 @@ public class APInt implements Cloneable
         return orSlowCase(rhs);
     }
 
+    public APInt or(long rhs)
+    {
+        return or(new APInt(bitWidth, rhs));
+    }
+
     public APInt xor(final APInt rhs)
     {
         assert bitWidth == rhs.bitWidth:"Bit widths must be the same";
         if (isSingleWord())
             return new APInt(getBitWidth(), val ^ rhs.val);
         return xorSlowCase(rhs);
+    }
+
+    public APInt xor(long rhs)
+    {
+        return xor(new APInt(bitWidth, rhs));
     }
 
 	/**

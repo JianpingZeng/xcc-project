@@ -122,7 +122,8 @@ public interface DiagnosticParseTag
 	public static final int err_objc_unexpected_attr = err_objc_property_requires_field_name + 1;
 	public static final int err_operator_missing_type_specifier = err_objc_unexpected_attr + 1;
 	public static final int err_parse_error = err_operator_missing_type_specifier + 1;
-	public static final int err_rvalue_reference = err_parse_error + 1;
+	public static final int err_parser_impl_limit_overflow = err_parse_error + 1;
+	public static final int err_rvalue_reference = err_parser_impl_limit_overflow + 1;
 	public static final int err_template_spec_syntax_non_template = err_rvalue_reference + 1;
 	public static final int err_two_right_angle_brackets_need_space = err_template_spec_syntax_non_template + 1;
 	public static final int err_typename_invalid_functionspec = err_two_right_angle_brackets_need_space + 1;

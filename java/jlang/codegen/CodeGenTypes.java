@@ -677,7 +677,7 @@ public class CodeGenTypes
         TagType tt = (TagType)ty.getType();
 
         // If it's a tagged type used by-value, but is just a forward decl, we can't
-        // convert it.  Note that getDefinition()==0 is not the same as !isDefinition.
+        // convert it.  Note that getDefinition()==0 is not the same as !isCompleteDefinition.
         if (tt.getDecl() == null)
             return false;
 
