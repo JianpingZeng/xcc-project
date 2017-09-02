@@ -25,7 +25,7 @@ public final class RecordType extends TagType
     @Override
     public String toString()
     {
-        return "struct " + decl.getDeclName();
+        return "struct " + decl.toString();
     }
 
     public Decl.RecordDecl getDecl()

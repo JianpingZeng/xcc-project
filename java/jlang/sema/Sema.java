@@ -314,15 +314,29 @@ public final class Sema implements DiagnosticParseTag,
      * @param name
      * @return  Return true if the new tc kind is acceptable, false otherwise.
      */
-    private boolean isacceptableTagRedeclaration(
+    private boolean isAcceptableTagRedeclaration(
             TagDecl previous,
             TagKind newTag,
             SourceLocation newTagLoc,
             IdentifierInfo name)
     {
-        // TODO: 17-5-10
         TagKind oldTag = previous.getTagKind();
-        return oldTag == newTag;
+        if (oldTag == newTag)
+            return true;
+
+        if (oldTag == TagKind.TTK_struct && newTag == TagKind.TTK_struct)
+        {
+            diag(newTagLoc, warn_struct_class_tag_mismatch)
+                    .addTaggedVal(false)    // is TTK_Class
+                    .addTaggedVal(false)    // isTemplate
+                    .addTaggedVal(name)
+                    .addFixItHint(FixItHint.createReplacement(new SourceRange(newTagLoc),
+                            "struct"))
+                    .emit();
+            diag(previous.getLocation(), note_previous_use);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -365,11 +379,9 @@ public final class Sema implements DiagnosticParseTag,
         curScope = getNonFieldDeclScope(curScope);
 
         LookupResult result = new LookupResult(this, name, nameLoc, LookupTagName);
-        lookupName(result, curScope, false);
-
         IDeclContext searchDC = curContext;
         IDeclContext dc = curContext;
-        NamedDecl prevDecl = result.getFoundDecl();
+        NamedDecl prevDecl = null;
         boolean invalid = false;
 
         if (name != null)
@@ -399,10 +411,14 @@ public final class Sema implements DiagnosticParseTag,
                     searchDC = searchDC.getParent();
             }
         }
+
         // If there is a previous tc definition or forward declaration was found,
         // Handle it.
         if (prevDecl != null)
         {
+            // Check whether the previous declaration is usable.
+            diagnoseUseOfDecl(prevDecl, nameLoc);
+
             if (prevDecl instanceof TagDecl)
             {
                 TagDecl prevTagDecl = (TagDecl)prevDecl;
@@ -413,7 +429,7 @@ public final class Sema implements DiagnosticParseTag,
                 {
                     // Make sure that this wasn't declared as an enum and now used as a
                     // struct or something similar.
-                    if (!isacceptableTagRedeclaration(prevTagDecl, kind, kwLoc, name))
+                    if (!isAcceptableTagRedeclaration(prevTagDecl, kind, kwLoc, name))
                     {
                         boolean safeToContinue = (prevTagDecl.getTagKind() != TagKind.TTK_enum
                         && kind != TagKind.TTK_enum);
@@ -579,6 +595,27 @@ public final class Sema implements DiagnosticParseTag,
             }
             return new ActionResult<>(newDecl);
         }
+    }
+
+    /**
+     * Determine whether the use of this declaration is valid, and
+     * emit any corresponding diagnostics.
+     * <p>
+     * This routine diagnoses various problems with referencing
+     * declarations that can occur when using a declaration. For example,
+     * it might warn if a deprecated or unavailable declaration is being
+     * used, or produce an error (and return true) if a C++0x deleted
+     * function is being used.
+     * </p>
+     * @param decl
+     * @param loc
+     * @return True if there was an error (this declaration cannot be
+     * referenced), false otherwise.
+     */
+    private boolean diagnoseUseOfDecl(NamedDecl decl, SourceLocation loc)
+    {
+        // TODO: 17-9-2
+        return false;
     }
 
     private void pushOnScopeChains(NamedDecl newDecl, Scope scope)
@@ -910,14 +947,14 @@ public final class Sema implements DiagnosticParseTag,
 
     public void actOnFields(Scope curScope,
             SourceLocation recordLoc,
-            Decl tagDecl,
+            Decl enclosingDecl,
             ArrayList<Decl> fieldDecls,
             SourceLocation startLoc,
             SourceLocation endLoc)
     {
-        assert tagDecl != null:"missing record decl";
+        assert enclosingDecl != null:"missing record decl";
 
-        if (tagDecl.isInvalidDecl())
+        if (enclosingDecl.isInvalidDecl())
         {
             return;
         }
@@ -925,10 +962,12 @@ public final class Sema implements DiagnosticParseTag,
         int numNamedMembers = 0;
         ArrayList<FieldDecl> recFields = new ArrayList<>();
 
-        RecordDecl record = (RecordDecl) tagDecl;
-        for (int i = 0, e = record.getNumFields(); i < e; i++)
+        RecordDecl record = enclosingDecl instanceof RecordDecl ?
+                (RecordDecl) enclosingDecl : null;
+
+        for (int i = 0, e = fieldDecls.size(); i < e; i++)
         {
-            FieldDecl fd = record.getDeclAt(i);
+            FieldDecl fd = (FieldDecl) fieldDecls.get(i);
             Type fdTy = fd.getType().getType();
 
             if (!fd.isAnonymousStructOrUnion())
@@ -939,26 +978,39 @@ public final class Sema implements DiagnosticParseTag,
             // If the field is already invalid for some reason, don't emit more
             // diagnostics about it.
             if (fd.isInvalidDecl())
+            {
+                enclosingDecl.setInvalidDecl(true);
                 continue;
+            }
 
+            //   C99 6.7.2.1p2:
+            //   A structure or union shall not contain a member with
+            //   incomplete or function type (hence, a structure shall not
+            //   contain an instance of itself, but may contain a pointer to
+            //   an instance of itself), except that the last member of a
+            //   structure with more than one named member may have incomplete
+            //   array type; such a structure (and any union containing,
+            //   possibly recursively, a member that is such a structure)
+            //   shall not be a member of a structure or an element of an
+            //   array.
             if (fdTy.isFunctionType())
             {
                 diag(fd.getLocation(), err_field_declared_as_function)
                         .addTaggedVal(fd.getDeclName()).emit();
                 fd.setInvalidDecl(true);
-                tagDecl.setInvalidDecl(true);
+                enclosingDecl.setInvalidDecl(true);
                 continue;
             }
             else if (fdTy.isIncompleteArrayType()
                     && i == e - 1
-                    && record != null && record.isStruct())
+                    && record != null && !record.isUnion())
             {
                 if (numNamedMembers < 1)
                 {
                     diag(fd.getLocation(), err_flexible_array_empty_struct)
                             .addTaggedVal(fd.getDeclName()).emit();
                     fd.setInvalidDecl(true);
-                    tagDecl.setInvalidDecl(true);
+                    enclosingDecl.setInvalidDecl(true);
                     continue;
                 }
                 // Okay, we have a legal flexible array member at the end of the struct.
@@ -970,7 +1022,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 // Incomplete type
                 fd.setInvalidDecl(true);
-                tagDecl.setInvalidDecl(true);
+                enclosingDecl.setInvalidDecl(true);
                 continue;
             }
             else if (fdTy.isRecordType())
@@ -979,22 +1031,30 @@ public final class Sema implements DiagnosticParseTag,
                 if (fdtty.getDecl().hasFlexibleArrayNumber())
                 {
                     if (record != null && record.isUnion())
+                    {
                         record.setHasFlexibleArrayMember(true);
+                    }
                     else
                     {
                         if (i != e - 1)
-                            diag(fd.getLocation(), ext_variable_sized_type_in_struct)
+                        {
+                            // If this is a struct/class and this is not the last element, reject
+                            // it.  Note that GCC supports variable sized arrays in the middle of
+                            // structures.
+                            diag(fd.getLocation(),
+                                    ext_variable_sized_type_in_struct)
                                     .addTaggedVal(fd.getDeclName())
-                                    .addTaggedVal(fd.getType())
-                                    .emit();
+                                    .addTaggedVal(fd.getType()).emit();
+                        }
                         else
                         {
+                            // We support flexible arrays at the end of structs in
+                            // other structs as an extension.
                             diag(fd.getLocation(), ext_flexible_array_in_struct)
                                     .addTaggedVal(fd.getDeclName())
                                     .emit();
                             if (record != null)
                                 record.setHasFlexibleArrayMember(true);
-
                         }
                     }
                 }
