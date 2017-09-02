@@ -191,6 +191,7 @@ public final class Sema implements DiagnosticParseTag,
 
     public SemaDiagnosticBuilder diag(SourceLocation loc, int diagID)
     {
+        int id = pp.getDiagnostics().getCurDiagID();
         Diagnostic.DiagnosticBuilder db = pp.diag(loc, diagID);
         return new SemaDiagnosticBuilder(db, this, diagID);
     }
@@ -642,11 +643,10 @@ public final class Sema implements DiagnosticParseTag,
         while (scope.getEntity() != null && scope.getEntity().isTransparentContext())
             scope = scope.getParent();
 
-        // Add scoped declarations into their context, so that they can be
-        // found later. Declarations without a context won't be inserted
+        // Add scoped declarations into their lookup context, so that they
+        // can be found later. Declarations without a context won't be inserted
         // into any context.
-        curContext.addDecl(newDecl);
-
+        curContext.getLookupContext().addDecl(newDecl);
         scope.addDecl(newDecl);
     }
 
@@ -1388,13 +1388,29 @@ public final class Sema implements DiagnosticParseTag,
      */
     private boolean isDeclInScope(NamedDecl decl, IDeclContext context, Scope s)
     {
+        context = context.getLookupContext();
+
         if (context instanceof FunctionDecl)
         {
+            while (s.getEntity() != null && s.getEntity().isTransparentContext())
+                s = s.getParent();
+
             return s.isDeclScope(decl);
         }
         else
         {
-            return context.isDeclInContext(decl);
+            // Note that, it is needed to zip context into a non-transparent
+            // context.
+            // When in C89 mode, the parent scope of first enumerator is function
+            // foo, and second one also does this.
+            // int foo(int z)
+            // {
+            //     if (z > sizeof(enum {a}))       // note, previous definition of 'a' is here.
+            //        return z;
+            //     else
+            //        return sizeof (enum {a});   // redefinition of 'a'
+            // }
+            return decl.getDeclContext().getLookupContext() == context.getPrimaryContext();
         }
     }
 
@@ -1457,19 +1473,23 @@ public final class Sema implements DiagnosticParseTag,
 
         // The scope passed in may not be a decl scope.  Zip up the scope tree until
         // we find one that is.
-        Scope s = getNonFieldDeclScope(scope);
-        NamedDecl prevDecl = lookupName(scope, name, identLoc,
-                LookupOrdinaryName);
+        Scope nonTransparentScope = getNonFieldDeclScope(scope);
+        NamedDecl prevDecl = lookupName(nonTransparentScope, name,
+                identLoc, LookupOrdinaryName);
 
         // redefinition diagnostic.
         if (prevDecl != null)
         {
-            if (!(prevDecl instanceof TagDecl) & isDeclInScope(prevDecl,
-                    curContext, s))
+            // When in C++, we may get a TagDecl with the same name; in this case the
+            // enum constant will 'hide' the tag.
+            assert !(prevDecl instanceof TagDecl):"Can not received TagDecl when in C!";
+
+            if (isDeclInScope(prevDecl, curContext, nonTransparentScope))
             {
                 if (prevDecl instanceof EnumConstantDecl)
                 {
-                    diag(identLoc, err_redefinition_of_enumerator).emit();
+                    diag(identLoc, err_redefinition_of_enumerator)
+                            .addTaggedVal(name).emit();
                 }
                 else
                 {
@@ -1482,10 +1502,8 @@ public final class Sema implements DiagnosticParseTag,
 
         EnumConstantDecl newEnumConstDecl = checkEnumConstant(theEnumDecl,
                 lastEnumConst, identLoc, name, val);
-        if (newEnumConstDecl != null)
-        {
-            pushOnScopeChains(newEnumConstDecl, s, true);
-        }
+
+        pushOnScopeChains(newEnumConstDecl, nonTransparentScope, true);
         return newEnumConstDecl;
     }
 
@@ -6021,7 +6039,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // Now deal with real types, e.g. "float", "double", "long double".
-        if (lhsType.isRealType() || rhsType.isRealType())
+        if (lhsType.isRealFloatingType() || rhsType.isRealFloatingType())
         {
             return handleFloatConversion(lhs, rhs, lhsType, rhsType, isCompAssign);
         }

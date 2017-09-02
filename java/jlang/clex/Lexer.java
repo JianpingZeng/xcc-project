@@ -983,7 +983,7 @@ public class Lexer extends PreprocessorLexer
         // extension warning.
         if (!langOpts.bcplComment && !isLexingRawMode())
         {
-            diag(this.bufferPtr, ext_bcpl_comment);
+            diag(this.bufferPtr, ext_bcpl_comment).emit();
 
             // Mark them enabled so we only emit one warning for this translation
             // unit.
