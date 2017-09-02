@@ -915,7 +915,10 @@ public class Parser implements Tag,
         // C99 6.8.4p3 - In C99, the if statement is a block.  This is not
         // the case for C90.
         // But we take the parser working in the C99 mode for convenience.
-        ParseScope ifScope = new ParseScope(this, ScopeFlags.DeclScope.value);
+
+        boolean isC99 = getLangOption().c99;
+
+        ParseScope ifScope = new ParseScope(this, ScopeFlags.DeclScope.value, isC99);
         ActionResult<Expr> condExpr;
         OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>();
         if (parseParenExprOrCondition(x, ifLoc, true))
@@ -929,7 +932,7 @@ public class Parser implements Tag,
         // the scope for 'then' statement if there is a '{'
         ParseScope InnerScope = new ParseScope(this,
                 ScopeFlags.DeclScope.value,
-                nextTokenIs(l_brace) && getLangOption().c99);
+                tok.isNot(l_brace) && isC99);
 
         SourceLocation thenStmtLoc = tok.getLocation();
         // parse the 'then' statement

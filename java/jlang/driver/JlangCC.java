@@ -188,6 +188,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             init(Lang_unpsecified),
             new ValueClass<>(
                 new ValueClass.Entry<>(Lang_c89, "c89","ISO C 1990"),
+                new ValueClass.Entry<>(Lang_c89, "c90","ISO C 1990"),
                 new ValueClass.Entry<>(Lang_c99, "c99","ISO C 1999"),
                 new ValueClass.Entry<>(Lang_c11, "c11", "ISO C 2011"),
                 new ValueClass.Entry<>(Lang_gnu89, "gnu89",
