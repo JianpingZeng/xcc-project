@@ -1,2 +1,2 @@
-//RUN: jlang-cc -fsyntax-only
+//RUN: jlang-cc -fsyntax-only %s
 int (*ptr)(int x, int);

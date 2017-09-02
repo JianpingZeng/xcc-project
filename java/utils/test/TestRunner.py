@@ -148,7 +148,7 @@ def executeScript(cfg, script, commands, cwd):
         command = ['/bin/sh', script]
         if cfg.useValgrind:
             # FIXME: Running valgrind on sh is overkill. We probably could just
-            # run on clang with no real loss.
+            # run on jlang with no real loss.
             command = ['valgrind', '-q',
                        '--tool=memcheck', '--leak-check=no', '--trace-children=yes',
                        '--error-exitcode=123'] + command
@@ -179,8 +179,8 @@ def runOneTest(cfg, testPath, tmpBase):
     substitutions = [('%s', testPath),
                      ('%S', os.path.dirname(testPath)),
                      ('%t', tmpBase + '.tmp'),
-                     (' clang ', ' ' + cfg.clang + ' '),
-                     (' clang-cc ', ' ' + cfg.clangcc + ' ')]
+                     (' jlang ', ' ' + cfg.jlang + ' '),
+                     (' jlang-cc ', ' ' + cfg.jlangcc + ' ')]
 
     # Collect the test lines from the script.
     scriptLines = []
@@ -277,50 +277,50 @@ def capture(args):
     return out
 
 def inferClang(cfg):
-    # Determine which clang to use.
-    clang = os.getenv('CLANG')
+    # Determine which jlang to use.
+    jlang = os.getenv('JLANG')
     
-    # If the user set clang in the environment, definitely use that and don't
+    # If the user set jlang in the environment, definitely use that and don't
     # try to validate.
-    if clang:
-        return clang
+    if jlang:
+        return jlang
 
     # Otherwise look in the path.
-    clang = Util.which('clang', cfg.environment['PATH'])
+    jlang = Util.which('jlang', cfg.environment['PATH'])
 
-    if not clang:
-        print >>sys.stderr, "error: couldn't find 'clang' program, try setting CLANG in your environment"
+    if not jlang:
+        print >>sys.stderr, "error: couldn't find 'jlang' program, try setting JLANG in your environment"
         sys.exit(1)
         
-    return clang
+    return jlang
 
-def inferClangCC(cfg, clang):
-    clangcc = os.getenv('CLANGCC')
+def inferClangCC(cfg, jlang):
+    jlangcc = os.getenv('JLANGCC')
 
-    # If the user set clang in the environment, definitely use that and don't
+    # If the user set jlang in the environment, definitely use that and don't
     # try to validate.
-    if clangcc:
-        return clangcc
+    if jlangcc:
+        return jlangcc
 
     # Otherwise try adding -cc since we expect to be looking in a build
     # directory.
-    if clang.endswith('.exe'):
-        clangccName = clang[:-4] + '-cc.exe'
+    if jlang.endswith('.exe'):
+        jlangccName = jlang[:-4] + '-cc.exe'
     else:
-        clangccName = clang + '-cc'
-    clangcc = Util.which(clangccName, cfg.environment['PATH'])
-    if not clangcc:
-        # Otherwise ask clang.
-        res = capture([clang, '-print-prog-name=clang-cc'])
+        jlangccName = jlang + '-cc'
+    jlangcc = Util.which(jlangccName, cfg.environment['PATH'])
+    if not jlangcc:
+        # Otherwise ask jlang.
+        res = capture([jlang, '-print-prog-name=jlang-cc'])
         res = res.strip()
         if res and os.path.exists(res):
-            clangcc = res
+            jlangcc = res
     
-    if not clangcc:
-        print >>sys.stderr, "error: couldn't find 'clang-cc' program, try setting CLANGCC in your environment"
+    if not jlangcc:
+        print >>sys.stderr, "error: couldn't find 'jlang-cc' program, try setting JLANGCC in your environment"
         sys.exit(1)
         
-    return clangcc
+    return jlangcc
     
 def getTestOutputBase(dir, testpath):
     """getTestOutputBase(dir, testpath) - Get the full path for temporary files
