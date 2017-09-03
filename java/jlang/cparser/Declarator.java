@@ -29,12 +29,40 @@ public class Declarator
 {
     public enum TheContext
     {
-        FileContext,                // file scope declaraton.
-        FunctionProtoTypeContext, // Within a function prototype.
-        TypeNameContext,           // abstract declarator for types.
-        StructFieldContext,        // struct/union field.
-        BlockContext,               // declaration within a block in a function.
-        ForContext,                 //  declaration within the first part of for.
+        /**
+         * file scope declaraton.
+         */
+        FileContext,
+
+        /**
+         * Within a function prototype, like void (int a){} or K&R void (a) int a; {}.
+         */
+        FunctionProtoTypeContext,
+
+        /**
+         * K&R type definition list for formals.
+         */
+        KNRTypeListContext,
+
+        /**
+         * abstract declarator for types.
+         */
+        TypeNameContext,
+
+        /**
+         * struct/union field.
+         */
+        StructFieldContext,
+
+        /**
+         * declaration within a block in a function.
+         */
+        BlockContext,
+
+        /**
+         * declaration within the first part of for.
+         */
+        ForContext,
     }
 
     private DeclSpec ds;
@@ -154,6 +182,7 @@ public class Declarator
             case BlockContext:
             case ForContext:
             case FunctionProtoTypeContext:
+            case KNRTypeListContext:
                 return true;
 
             case TypeNameContext:

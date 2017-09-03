@@ -101,6 +101,12 @@ public class Token implements Cloneable
         data = new StrData(buffer, offset);
     }
 
+    public void setLiteralData(StrData data)
+    {
+        assert isLiteral(): "Cannot get literal data of non-literal";
+        this.data = data.clone();
+    }
+
     public void setFlag(int flag)
     {
         flags |= flag;
@@ -116,7 +122,7 @@ public class Token implements Cloneable
         return flags;
     }
 
-    public void setFlagValue(int flag, boolean val)
+    public void setFlag(int flag, boolean val)
     {
         if (val)
             setFlag(flag);

@@ -74,15 +74,17 @@ public final class FunctionProtoType extends FunctionType implements FoldingSetN
         if (!inner.isEmpty())
             inner  = "(" + inner + ")";
 
-        inner += "()";
+        inner += "(";
         String temp = "";
         PrintingPolicy pp = new PrintingPolicy(policy.opts);
         pp.suppressSpecifiers = false;
+        StringBuilder innerBuilder = new StringBuilder(inner);
         for (int i = 0, e = getNumArgs(); i < e; i++)
         {
-            if (i != 0) inner += ", ";
-            inner += getArgType(i).getAsStringInternal(temp, pp);
+            if (i != 0) innerBuilder.append(", ");
+            innerBuilder.append(getArgType(i).getAsStringInternal(temp, pp));
         }
+        inner = innerBuilder.toString();
 
         if (isVariadic)
         {

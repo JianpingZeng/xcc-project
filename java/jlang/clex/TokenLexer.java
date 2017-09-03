@@ -174,8 +174,8 @@ public class TokenLexer
 
         if (isFirstToken)
         {
-            result.setFlagValue(StartOfLine, atStartOfLine);
-            result.setFlagValue(LeadingSpace, hasLeadingSpace);
+            result.setFlag(StartOfLine, atStartOfLine);
+            result.setFlag(LeadingSpace, hasLeadingSpace);
         }
 
         // Handle recursive expansion!
@@ -296,8 +296,8 @@ public class TokenLexer
                     result.setKind(Unknown);
             }
 
-            result.setFlagValue(StartOfLine, tok.isAtStartOfLine());
-            result.setFlagValue(LeadingSpace, tok.hasLeadingSpace());
+            result.setFlag(StartOfLine, tok.isAtStartOfLine());
+            result.setFlag(LeadingSpace, tok.hasLeadingSpace());
 
             ++curToken;
             tok = result;
@@ -413,7 +413,7 @@ public class TokenLexer
                     for (int j = 0; j < numToks; j++)
                         resultToks.add(resultArgToks[i]);
 
-                    resultToks.get(firstResult).setFlagValue(LeadingSpace,
+                    resultToks.get(firstResult).setFlag(LeadingSpace,
                             curTok.hasLeadingSpace() || nextTokGetsSpace);
                     nextTokGetsSpace = false;
                 }

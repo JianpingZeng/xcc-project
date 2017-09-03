@@ -16,15 +16,6 @@ int aaaa, ***C, * const D, B(int);
 
 int *A;
 
-struct str;
-
-void test2(int *P, int A) {
-  struct str;
-
-  // Hard case for array decl, not Array[*].
-  int Array[*(int*)P+A];
-}
-
 typedef int atype;
 void test3(x, 
            atype         /* expected-error {{unexpected type name 'atype': expected identifier}} */

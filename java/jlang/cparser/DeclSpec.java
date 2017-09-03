@@ -224,13 +224,13 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
 
     public static class ParamInfo
     {
-        public IdentifierInfo name;
+        public IdentifierInfo ident;
         public SourceLocation identLoc;
         public Decl param;
 
         public ParamInfo(IdentifierInfo ID, SourceLocation identLoc, Decl param)
         {
-            this.name = ID;
+            this.ident = ID;
             this.identLoc = identLoc;
             this.param = param;
         }
