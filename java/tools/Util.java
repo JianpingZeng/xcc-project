@@ -182,18 +182,6 @@ public class Util
 		}
 	}
 
-    /**
-     * Swap the reference of two object.
-     * @param obj1
-     * @param obj2
-     */
-	public static void swap(Object obj1, Object obj2)
-	{
-		Object temp = obj1;
-        obj1 = obj2;
-        obj2 = temp;
-	}
-
 	/**
 	 * Computes the number of one bit about given value of jlang.type long when isUnsigned
      * determines if it is a unsigned.

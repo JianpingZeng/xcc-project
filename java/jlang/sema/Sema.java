@@ -6106,7 +6106,11 @@ public final class Sema implements DiagnosticParseTag,
         // Put any potential pointer into pExpr.
         Expr pExp = lhs.get().get(), iExp = rhs.get().get();
         if (iExp.getType().isPointerType())
-            Util.swap(pExp, iExp);
+        {
+            Expr t = pExp;
+            pExp = iExp;
+            iExp = t;
+        }
 
         if (!pExp.getType().isPointerType() ||
                 !iExp.getType().isIntegerType())
@@ -6114,9 +6118,9 @@ public final class Sema implements DiagnosticParseTag,
 
         if (!checkArithmeticOpPointerOperand(opLoc, pExp))
             return new QualType();
+
         /**
          * TODO check array bounds for pointer arithmetic.
-         *
          */
         checkArrayAccess(pExp, iExp);
         if (compLHSTy != null)
@@ -6181,6 +6185,18 @@ public final class Sema implements DiagnosticParseTag,
 
     }
 
+    /**
+     * Check the validity of an arithmetic pointer operand.
+     * <p>
+     * If the operand has pointer type, this code will check for pointer types
+     * which are invalid in arithmetic operations. These will be diagnosed
+     * appropriately, including whether or not the use is supported as an
+     * extension.
+     * </p>
+     * @param loc
+     * @param operand
+     * @return True when the operand is valid to use (even if as an extension).
+     */
     private boolean checkArithmeticOpPointerOperand(
             SourceLocation loc, Expr operand)
     {
@@ -6240,11 +6256,11 @@ public final class Sema implements DiagnosticParseTag,
         if (op.getType().isPointerType())
         {
             QualType pointeeTy = op.getType().getPointeeType();
-            if (requireCompleteType(loc, pointeeTy,
+            boolean res = requireCompleteType(loc, pointeeTy,
                     pdiag(err_typecheck_arithmetic_incomplete_type).
                             addTaggedVal(pointeeTy).
-                            addSourceRange(op.getSourceRange())));
-                return true;
+                            addSourceRange(op.getSourceRange()));
+            if (res) return true;
         }
         return false;
     }
@@ -6323,7 +6339,7 @@ public final class Sema implements DiagnosticParseTag,
         // TODO: 2017/4/8  
     }
 
-    private void checkArrayAccess(final Expr e)
+    private void checkArrayAccess(Expr e)
     {
         // TODO: 2017/4/8
     }
