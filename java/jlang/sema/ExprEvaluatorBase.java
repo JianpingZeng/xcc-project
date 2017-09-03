@@ -226,7 +226,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
      */
     public static boolean evaluate(Expr.EvalResult result, Expr e, ASTContext context)
     {
-        if (e.getType().isIntegralOrEnumerationType())
+        if (e.getType().isIntegerType())
         {
             OutParamWrapper<APValue> x = new OutParamWrapper<>(result.getValue());
             if (!new IntExprEvaluator(x, context).visit(e))
@@ -237,7 +237,6 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
             {
                 return false;
             }
-
         }
         else if (e.getType().isPointerType())
         {
@@ -250,7 +249,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
                 return false;
             result.val = lv.moveInto();
         }
-        else if (e.getType().isRealType())
+        else if (e.getType().isRealFloatingType())
         {
             APFloat f = new APFloat(0.0);
             OutParamWrapper<APFloat> x = new OutParamWrapper<>(f);
@@ -263,6 +262,7 @@ public abstract class ExprEvaluatorBase<RetTy> extends jlang.ast.StmtVisitor<Ret
         else if (e.getType().isComplexType())
         {
             // TODO
+            assert false:"Complex type is not supported!";
             return false;
         }
         else

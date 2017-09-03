@@ -53,7 +53,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
                 :"Invalid evaluation result.";
         assert si.isSigned() == context.isSignedIntegerOrEnumerationType(e.getType())
                 :"Invalid evaluation result.";
-        assert si.getBitWidth() == e.getIntWidth(context):"Invalid evaluation result.";
+        assert si.getBitWidth() == context.getIntWidth(e.getType()):"Invalid evaluation result.";
 
         result.set(new APValue(si));
         return true;
@@ -63,7 +63,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     {
         assert e.getType().isIntegralOrEnumerationType()
                 :"Invalid evaluation result.";
-        assert i.getBitWidth() == e.getIntWidth(context):"Invalid evaluation result.";
+        assert i.getBitWidth() == context.getIntWidth(e.getType()):"Invalid evaluation result.";
 
         result.set(new APValue(new APSInt(i)));
         result.get().getInt().setIsUnsigned(
