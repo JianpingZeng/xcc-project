@@ -262,7 +262,7 @@ public enum DiagnosticParseKinds implements DiagnosticParseTag
 	ERR_UNEXPECTED_TYPEDEF_IDENT(err_unexpected_typedef_ident, CLASS_ERROR, MAP_ERROR,
 			"unexpected type name %0: expected identifier"),
 	ERR_UNKNOWN_TYPENAME(err_unknown_typename, CLASS_ERROR, MAP_ERROR,
-			"unknown type asmName %0"),
+			"unknown type name %0"),
 	ERR_UNSPECIFIED_VLA_SIZE_WITH_STATIC(err_unspecified_vla_size_with_static,
 			CLASS_ERROR, MAP_ERROR,
 			"'static' may not be used with an unspecified variable length array size"),

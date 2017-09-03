@@ -1635,7 +1635,9 @@ public abstract class Instruction extends User
         public void swapOperands()
         {
             pred = getSwappedPredicate();
-            operandList.get(0).swap(operandList.get(1));
+            Use u = operandList.get(0);
+            operandList.set(0, operandList.get(1));
+            operandList.set(1, u);
         }
     }
 
@@ -1797,7 +1799,9 @@ public abstract class Instruction extends User
         public void swapOperands()
         {
             pred = getSwappedPredicate();
-            operandList.get(0).swap(operandList.get(1));
+            Use u = operandList.get(0);
+            operandList.set(0, operandList.get(1));
+            operandList.set(1, u);
         }
 
 	    /**
@@ -2032,7 +2036,11 @@ public abstract class Instruction extends User
         public void swapSuccessor()
         {
             assert isConditional() : "can not swap successor of uncondition branch";
-            Util.swap(operand(0), operand(1));
+            {
+                Value temp = operand(0);
+                setOperand(0, operand(1));
+                setOperand(1, temp);
+            }
         }
 
         /**

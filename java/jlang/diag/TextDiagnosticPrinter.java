@@ -190,9 +190,10 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
                 endColNo = caretLine.length();
         }
 
-        if (endColNo <= sourceLine.length())
-            while (endColNo-1 != 0 && (sourceLine.charAt(endColNo-1) == ' '
-            || endColNo-1 != 0 && (sourceLine.charAt(endColNo-1) == '\t')))
+        // Pick the last non-whitespace column.
+        if (endColNo < sourceLine.length())
+            while (endColNo != 0 && (sourceLine.charAt(endColNo) == ' '
+                    || (sourceLine.charAt(endColNo) == '\t')))
                 --endColNo;
         else
             endColNo = sourceLine.length();

@@ -18,11 +18,10 @@ package jlang.sema;
 
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
-import tools.APSInt;
 import jlang.type.PointerType;
 import jlang.type.QualType;
+import tools.APSInt;
 import tools.OutParamWrapper;
-import tools.Util;
 
 /**
  * @author Xlous.zeng
@@ -63,13 +62,17 @@ public class PointerExprEvaluator extends ExprEvaluatorBase<Boolean>
                 && expr.getOpcode() != BinaryOperatorKind.BO_Sub)
             return false;
 
-        final Expr pExpr = expr.getLHS();
-        final Expr iExpr = expr.getRHS();
+        Expr pExpr = expr.getLHS();
+        Expr iExpr = expr.getRHS();
 
         // let the expr of jlang.type pointer jlang.type reside at left side
         // (pointer) +- (rhs).
         if (iExpr.getType().isPointerType())
-            Util.swap(pExpr, iExpr);
+        {
+            Expr temp = pExpr;
+            pExpr = iExpr;
+            iExpr = temp;
+        }
 
         // If the pExpr is not pointer jlang.type, return false.
         if (!evaluatePointer(pExpr, result, context))

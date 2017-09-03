@@ -16,9 +16,8 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.value.BasicBlock;
-import backend.support.CallSite;
 import backend.hir.HIRBuilder;
+import backend.support.CallSite;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -27,17 +26,19 @@ import backend.value.GlobalValue.LinkageType;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.TerminatorInst;
 import jlang.ast.Tree;
-import tools.APInt;
-import tools.APSInt;
-import jlang.support.SourceLocation;
 import jlang.basic.TargetInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo;
 import jlang.codegen.CodeGenTypes.CGFunctionInfo.ArgInfo;
-import jlang.sema.*;
+import jlang.sema.ASTContext;
+import jlang.sema.BinaryOperatorKind;
+import jlang.sema.Decl;
 import jlang.sema.Decl.*;
+import jlang.sema.UnaryOperatorKind;
+import jlang.support.SourceLocation;
 import jlang.type.*;
+import tools.APInt;
+import tools.APSInt;
 import tools.Pair;
-import tools.Util;
 
 import java.util.*;
 
@@ -619,9 +620,13 @@ public final class CodeGenFunction
 		if (cond != 0)
 		{
 			// Figure out which block (then or else) is executed.
-			final Stmt executed = s.getThenPart(), skipped = s.getElsePart();
+			Stmt executed = s.getThenPart(), skipped = s.getElsePart();
 			if (cond == -1) // condition is false.
-				Util.swap(executed, skipped);
+			{
+				Stmt temp = executed;
+				executed = skipped;
+				skipped = temp;
+			}
 
 			// if skipped block has no labels within it, just emit code
 			// for executed stmt. This avoids emitting dead code.
