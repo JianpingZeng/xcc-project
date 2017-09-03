@@ -34,6 +34,7 @@ import static jlang.ast.Tree.ExprValueKind.EVK_RValue;
 import static jlang.clex.TokenKind.*;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.Declarator.TheContext.FunctionProtoTypeContext;
+import static jlang.cparser.Declarator.TheContext.KNRTypeListContext;
 import static jlang.cparser.Parser.exprError;
 import static jlang.cparser.Parser.stmtError;
 import static jlang.sema.AssignConvertType.*;
@@ -191,8 +192,7 @@ public final class Sema implements DiagnosticParseTag,
 
     public SemaDiagnosticBuilder diag(SourceLocation loc, int diagID)
     {
-        int id = pp.getDiagnostics().getCurDiagID();
-        Diagnostic.DiagnosticBuilder db = pp.diag(loc, diagID);
+        Diagnostic.DiagnosticBuilder db = diags.report(new FullSourceLoc(loc, sourceMgr), diagID);
         return new SemaDiagnosticBuilder(db, this, diagID);
     }
 
@@ -683,7 +683,7 @@ public final class Sema implements DiagnosticParseTag,
         // matches this identifier that is in the appropriate namespace.
         while ( s != null)
         {
-            // FIXME, 2017.8.19. Use IDResolver to speed name look up.
+            // FIXME, 2017.8.19. Use IDResolver to speed ident look up.
             for (Decl decl : s.getDeclInScope())
             {
                 // skip anonymous or non getIdentifier declaration.
@@ -1364,7 +1364,7 @@ public final class Sema implements DiagnosticParseTag,
             SourceLocation loc,
             LookupNameKind lookupKind)
     {
-        // If the found name indenitifier info is null, just terminates early.
+        // If the found ident indenitifier info is null, just terminates early.
         if (name == null)
             return null;
 
@@ -1480,7 +1480,7 @@ public final class Sema implements DiagnosticParseTag,
         // redefinition diagnostic.
         if (prevDecl != null)
         {
-            // When in C++, we may get a TagDecl with the same name; in this case the
+            // When in C++, we may get a TagDecl with the same ident; in this case the
             // enum constant will 'hide' the tag.
             assert !(prevDecl instanceof TagDecl):"Can not received TagDecl when in C!";
 
@@ -1816,7 +1816,7 @@ public final class Sema implements DiagnosticParseTag,
             mergeTypeDefDecl(newTD, prevDecl);
         }
 
-        // C99 6.7.7p2: If a typedef name specifies a variably modified type
+        // C99 6.7.7p2: If a typedef ident specifies a variably modified type
         // then it shall have block scope.
         QualType t = newTD.getUnderlyingType();
         if (t.isVariablyModifiedType())
@@ -1932,7 +1932,7 @@ public final class Sema implements DiagnosticParseTag,
         // prototype. This true when:
         //   - there is a prototype in the declarator, or
         //   - the type ty of the function is some kind of typedef or other reference
-        //     to a type name (which eventually refers to a function type).
+        //     to a type ident (which eventually refers to a function type).
         boolean hasPrototype = (d.getNumTypeObjects() != 0 &&
                 d.getFunctionTypeInfo().hasProtoType) ||
                 (!(ty.getType() instanceof FunctionType) && ty.isFunctionProtoType());
@@ -1962,7 +1962,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 // If there is empty function argument list, just break out.
                 DeclSpec.ParamInfo arg = fti.argInfo.get(0);
-                if (fti.numArgs == 1 && !fti.isVariadic && arg.name == null
+                if (fti.numArgs == 1 && !fti.isVariadic && arg.ident == null
                         && arg.param != null && arg.param instanceof ParamVarDecl
                         && ((ParamVarDecl) arg.param).getType().isVoidType())
                 {
@@ -2015,7 +2015,7 @@ public final class Sema implements DiagnosticParseTag,
         // Finally, we know we have the right number of parameters, install them.
         newFD.setParams(params);
 
-        // If name lookup finds a previous declaration that is not in the
+        // If ident lookup finds a previous declaration that is not in the
         // same scope as the new declaration, this may still be an
         // acceptable redeclaration.
         if (prevDecl != null && !isDeclInScope(prevDecl, dc, s) &&
@@ -2109,7 +2109,7 @@ public final class Sema implements DiagnosticParseTag,
 
     /**
      * We just parsed a function 'newFD' from declarator d which has the
-     * same name and scope as a previous declaration 'oldDecl'.
+     * same ident and scope as a previous declaration 'oldDecl'.
      * Figure out how to resolve this situation, merging decls or emitting
      * diagnostics as appropriate.
      * @param newFD
@@ -2405,17 +2405,17 @@ public final class Sema implements DiagnosticParseTag,
      * Determines whether the given declaration is an out-of-scope
      * previous declaration.
      *
-     * This routine should be invoked when name lookup has found a
+     * This routine should be invoked when ident lookup has found a
      * previous declaration (PrevDecl) that is not in the scope where a
-     * new declaration by the same name is being introduced. If the new
+     * new declaration by the same ident is being introduced. If the new
      * declaration occurs in a local scope, previous declarations with
      * linkage may still be considered previous declarations (C99
      * 6.2.2p4-5).
-     * @param prevDecl  The previous declaration found by name.
+     * @param prevDecl  The previous declaration found by ident.
      * @param dc    The context in which the new declaration is being decalred.
      * @param ctx
      * @return  Return true if prevDecl is an out of scope previous declaration
-     *           for a new declaration with the same name.
+     *           for a new declaration with the same ident.
      */
     private static boolean isOutOfScopePreviousDeclaration(
             NamedDecl prevDecl,
@@ -2763,9 +2763,17 @@ public final class Sema implements DiagnosticParseTag,
         return sc;
     }
 
+    /**
+     * Convert the specified decl-spec to the appropriate type object.
+     * @param ds    The decalaration specifiers.
+     * @param d     The Decalarator.
+     * @param loc   The location of declarator indentifier or invalid if none.
+     * @return  The type described by the declaration specifiers. This function
+     *           never returns null.
+     */
     private QualType convertDeclSpecToType(DeclSpec ds, Declarator d, SourceLocation loc)
     {
-        QualType result = null;
+        QualType result = new QualType();
 
         switch (ds.getTypeSpecType())
         {
@@ -2785,7 +2793,13 @@ public final class Sema implements DiagnosticParseTag,
                 }
                 break;
             case TST_unspecified:
-                // Unspecified typespec defaults to int in C90.
+                // Unspecified typespec defaults to int in C90.  However, the C90 grammar
+                // [C90 6.5] only allows a decl-spec if there was *some* type-specifier,
+                // type-qualifier, or storage-class-specifier.  If not, emit an extwarn.
+                // Note that the one exception to this is function definitions, which are
+                // allowed to be completely missing a declspec.  This is handled in the
+                // parser already though by it pretending to have seen an 'int' in this
+                // case.
                 if (getLangOptions().implicitInt)
                 {
                     // In C89 mode, we only warn if there is a completely missing declspec
@@ -2804,8 +2818,9 @@ public final class Sema implements DiagnosticParseTag,
                     // "At least one type specifier shall be given in the declaration
                     // specifiers in each declaration, and in the specifier-qualifier list in
                     // each struct declaration and type asmName."
-                    diag(loc, ext_missing_type_specifier).
-                            addSourceRange(ds.getSourceRange());
+                    diag(loc, ext_missing_type_specifier)
+                            .addSourceRange(ds.getSourceRange())
+                            .emit();
                 }
                 // fall through
             case TST_int:
@@ -3021,6 +3036,7 @@ public final class Sema implements DiagnosticParseTag,
                     if (result.isArrayType() || result.isFunctionType())
                     {
                         diag(declType.getLocation(), err_func_returning_array_function)
+                                .addTaggedVal(result)
                                 .emit();
                         result = context.IntTy;
                         d.setInvalidType(true);
@@ -3073,7 +3089,7 @@ public final class Sema implements DiagnosticParseTag,
                                     argTy = context.IntTy;
                                     param.setType(argTy);
                                 }
-                                else if (paramInfo.name != null)
+                                else if (paramInfo.ident != null)
                                 {
                                     // Reject, but continue to parse 'int(void abc)'.
                                     diag(paramInfo.identLoc, err_param_with_void_type)
@@ -9148,7 +9164,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     /**
-     * Handle the case that 'sizeof (type-name)'. Note that typeof and alignof
+     * Handle the case that 'sizeof (type-ident)'. Note that typeof and alignof
      * as same as sizeof.
      * @param sizeLoc
      * @param ty
@@ -9197,5 +9213,46 @@ public final class Sema implements DiagnosticParseTag,
         return new ActionResult<>(new SizeOfAlignOfExpr(e,
                 context.getSizeType(),
                 sizeLoc, range.getEnd()));
+    }
+
+    public void actOnFinishKNRParamDeclarations(
+            Scope s,
+            Declarator d,
+            SourceLocation locAfterDecls)
+    {
+        FunctionTypeInfo fti = d.getFunctionTypeInfo();
+
+        // Verify 6.9.1p6: 'every identifier in the identifier list shall be declared'
+        // for a K&R function.
+        if (!fti.hasProtoType)
+        {
+            for (int i = fti.numArgs - 1; i >= 0; i--)
+            {
+                if (fti.argInfo.get(i).param == null)
+                {
+                    String insertionCode =
+                            "  int " +
+                            fti.argInfo.get(i).ident.getName() +
+                            ";\n";
+                    diag(fti.argInfo.get(i).identLoc, ext_param_not_declared)
+                            .addTaggedVal(fti.argInfo.get(i).ident)
+                            .addFixItHint(FixItHint.createInsertion(locAfterDecls,
+                                    insertionCode))
+                            .emit();
+
+                    // Implicitly declare the argument as type 'int' for lack of a better
+                    // type.
+                    DeclSpec ds = new DeclSpec();
+                    OutParamWrapper<String> prevSpec = new OutParamWrapper<>("");
+                    OutParamWrapper<Integer> diagID = new OutParamWrapper<>(-1);
+                    ds.setTypeSpecType(TST.TST_int, fti.argInfo.get(i).identLoc,
+                            prevSpec, diagID);
+                    Declarator paramDeclarator = new Declarator(ds, KNRTypeListContext);
+                    paramDeclarator.setIdentifier(fti.argInfo.get(i).ident,
+                            fti.argInfo.get(i).identLoc);
+                    fti.argInfo.get(i).param = actOnParamDeclarator(s, paramDeclarator);
+                }
+            }
+        }
     }
 }

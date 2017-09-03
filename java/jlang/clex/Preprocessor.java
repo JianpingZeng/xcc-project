@@ -841,6 +841,30 @@ public final class Preprocessor
      */
     public void lex(Token result)
     {
+        // First, lookup the cached tokens list to see whether there is cached
+        // token, if so, just fetch one from cache instead of calling to lex
+        if (!cachedTokens.isEmpty())
+        {
+            if (cachedLexPos < cachedTokens.size())
+            {
+                Token t = cachedTokens.get(cachedLexPos++);
+                result.setKind(t.getKind());
+                result.setFlag(t.getFlags());
+                result.setLocation(t.getLocation());
+                result.setLength(t.getLength());
+                if (t.isLiteral())
+                    result.setLiteralData(t.getLiteralData());
+                else
+                    result.setIdentifierInfo(t.getIdentifierInfo());
+                return;
+            }
+            else
+            {
+                // In this case, all of cached token were consumed by Lex.
+                cachedTokens.clear();
+                cachedLexPos = 0;
+            }
+        }
         if (curLexer != null)
             curLexer.lex(result);
         else if (curTokenLexer != null)
@@ -3690,8 +3714,8 @@ public final class Preprocessor
 
             ident = mi.getReplacementToken(0);
             // Replace the result token.
-            ident.setFlagValue(StartOfLine, isAtStartOfLine);
-            ident.setFlagValue(LeadingSpace, hasLeadingSpace);
+            ident.setFlag(StartOfLine, isAtStartOfLine);
+            ident.setFlag(LeadingSpace, hasLeadingSpace);
 
             SourceLocation loc = sourceMgr.createInstantiationLoc(ident.getLocation(),
                     instantiationLoc,
@@ -3826,12 +3850,21 @@ public final class Preprocessor
         disableMacroExpansion = oldVal;
     }
 
+    /**
+     * This peeks ahead N tokens and returns that token without
+     * consuming any tokens.  lookAhead(0) returns the next token that would be
+     * returned by {@link #lex(Token)}, lookAhead(1) returns the token after
+     * it, etc.  This returns normal tokens after phase 5.  As such, it is
+     * equivalent to using 'lex', not 'lexUnexpandedToken'.
+     * @param n
+     * @return
+     */
     public Token lookAhead(int n)
     {
         if (cachedLexPos + n < cachedTokens.size())
             return cachedTokens.get(cachedLexPos + n);
         else
-            return peekAhead(n+1);
+            return peekAhead(n + 1);
     }
 
     public Token peekAhead(int n)

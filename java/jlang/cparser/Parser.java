@@ -31,7 +31,9 @@ import java.util.HashSet;
 import static java.util.Collections.emptyList;
 import static jlang.clex.TokenKind.*;
 import static jlang.clex.TokenKind.Enum;
+import static jlang.cparser.DeclSpec.SCS.SCS_register;
 import static jlang.cparser.DeclSpec.SCS.SCS_typedef;
+import static jlang.cparser.DeclSpec.SCS.SCS_unspecified;
 import static jlang.cparser.DeclSpec.TQ.*;
 import static jlang.cparser.DeclSpec.TSC.TSC_complex;
 import static jlang.cparser.DeclSpec.TSS.TSS_signed;
@@ -40,6 +42,8 @@ import static jlang.cparser.DeclSpec.TST.*;
 import static jlang.cparser.DeclSpec.TSW.TSW_long;
 import static jlang.cparser.DeclSpec.TSW.TSW_short;
 import static jlang.cparser.Parser.ParenParseOption.*;
+import static jlang.sema.Scope.ScopeFlags.DeclScope;
+import static jlang.sema.Scope.ScopeFlags.FunctionProtoTypeScope;
 import static jlang.sema.Sema.TagUseKind.*;
 
 /**
@@ -193,7 +197,7 @@ public class Parser implements Tag,
         consumeToken();
 
         assert getCurScope() == null:"A scope is already active?";
-        enterScope(ScopeFlags.DeclScope.value);
+        enterScope(DeclScope.value);
         action.actOnTranslationUnitScope(getCurScope());
 
         if (tok.is(eof) && !getLangOption().gnuMode)
@@ -255,7 +259,7 @@ public class Parser implements Tag,
     public void compilationUnit()
     {
         assert getCurScope() == null;
-        enterScope(ScopeFlags.DeclScope.value);
+        enterScope(DeclScope.value);
         action.actOnTranslationUnitScope(getCurScope());
 
         ArrayList<Decl> result = new ArrayList<>();
@@ -438,7 +442,7 @@ public class Parser implements Tag,
         // int foo(a,b) int a; float b; {}
         if (fti.isKNRPrototype())
         {
-            // TODO parseKNRParamDeclaration(declarator);
+            parseKNRParamDeclarations(declarator);
         }
 
         // We should have an opening brace.
@@ -454,14 +458,136 @@ public class Parser implements Tag,
 
         // Enter a scope for the function body.
         ParseScope bodyScope = new ParseScope(this, ScopeFlags.FnScope.value
-                | ScopeFlags.DeclScope.value);
+                | DeclScope.value);
 
         Decl res = action.actOnStartOfFunctionDef(getCurScope(), declarator);
-
-        return parseFunctionStatementBody(res, bodyScope);
+        Decl decl = parseFunctionStatementBody(res);
+        bodyScope.exit();
+        return decl;
     }
 
-    private Decl parseFunctionStatementBody(Decl funcDecl, ParseScope bodyScope)
+    /**
+     * Parse 'declaration-list[opt]' which provides types for a function with
+     * a K&R-style identifier list for arguments
+     * @param d
+     */
+    private void parseKNRParamDeclarations(Declarator d)
+    {
+        // We know that the top level of this declarator is a function.
+        DeclaratorChunk.FunctionTypeInfo fti = d.getFunctionTypeInfo();
+
+        // Enter function-declaration scope, limiting any decalarators to
+        // the function prototype scope, including parameter declarators.
+        ParseScope prototypeScope = new ParseScope(this,
+                FunctionProtoTypeScope.value | DeclScope.value);
+
+        // Read all the argument declarations.
+        while (isDeclarationSpecifier())
+        {
+            SourceLocation dsStart = tok.getLocation();
+
+            // Parse the common declaration-specifiers piece.
+            DeclSpec ds = new DeclSpec();
+            parseDeclarationSpecifiers(ds);
+
+            // C99 6.9.1p6: 'each declaration in the declaration list shall have at
+            // least one declarator'.
+            // NOTE: GCC just makes this an ext-warn.  It's not clear what it does with
+            // the declarations though.  It's trivial to ignore them, really hard to do
+            // anything else with them.
+            if (tok.is(semi))
+            {
+                diag(dsStart, err_declaration_does_not_declare_param).emit();
+                consumeToken();
+                continue;
+            }
+
+            // C99 6.9.1p6: Declarations shall contain no storage-class specifiers other
+            // than register.
+            if (ds.getStorageClassSpec() != SCS_unspecified
+                    && ds.getStorageClassSpec() != SCS_register)
+            {
+                diag(ds.getStorageClassSpecLoc(),
+                        err_invalid_storage_class_in_func_decl).emit();
+                ds.clearStorageClassSpec();
+            }
+
+            Declarator paramDeclarator = new Declarator(ds,
+                    TheContext.KNRTypeListContext);
+            parseDeclarator(paramDeclarator);
+
+            while (true)
+            {
+                // Ask the actions module to compute the type for this declarator.
+                Decl param = action.actOnParamDeclarator(getCurScope(), paramDeclarator);
+
+                if (param != null && paramDeclarator.getIdentifier() != null)
+                {
+                    // A missing identifier has already been diagnosed.
+                    // So the declarator ident must be existed on reaching here.
+
+                    // Scan the argument list looking for the correct param to apply this
+                    // type.
+                    int i = 0;
+                    for (; i != fti.numArgs ; i++)
+                    {
+                        if (fti.argInfo.get(i).ident.equals(paramDeclarator.getIdentifier()))
+                        {
+                            // Reject redefinitions of parameters.
+                            if (fti.argInfo.get(i).param != null)
+                            {
+                                diag(paramDeclarator.getIdentifierLoc(), err_param_redefinition)
+                                        .addTaggedVal(paramDeclarator.getIdentifier())
+                                        .emit();
+                            }
+                            else
+                            {
+                                fti.argInfo.get(i).param = param;
+                                break;
+                            }
+                        }
+                    }
+
+                    // C99 6.9.1p6: those declarators shall declare only identifiers from
+                    // the identifier list.
+                    if (i == fti.numArgs)
+                    {
+                        diag(paramDeclarator.getIdentifierLoc(), err_no_matching_param)
+                                .addTaggedVal(paramDeclarator.getIdentifier())
+                                .emit();
+                    }
+                }
+
+                // If we don't have a comma, it is either the end of the list
+                // "int a, int b;" or an error, bail out.
+                if (tok.isNot(comma))
+                    break;
+
+                // Consume the comma.
+                consumeToken();
+
+                // Parse the next declarator.
+                paramDeclarator.clear();
+                parseDeclarator(paramDeclarator);
+            }
+
+            if (tok.is(semi))
+                consumeToken();
+            else
+            {
+                diag(tok, err_parse_error);
+                // Skip to end of block or statement.
+                skipUntil(semi, true);
+                if (tok.is(semi))
+                    consumeToken();
+            }
+        }
+        // The actions module must verify that all arguments were declared.
+        action.actOnFinishKNRParamDeclarations(getCurScope(), d, tok.getLocation());
+        prototypeScope.exit();
+    }
+
+    private Decl parseFunctionStatementBody(Decl funcDecl)
     {
         assert nextTokenIs(l_brace);
 
@@ -471,7 +597,6 @@ public class Parser implements Tag,
         if (body.isInvalid())
             body = action.actOnCompoundStmtBody(lBraceLoc, lBraceLoc, emptyList(), false);
 
-        bodyScope.exit();
         return action.actOnFinishFunctionBody(funcDecl, body.get());
     }
 
@@ -840,7 +965,7 @@ public class Parser implements Tag,
 
     private ActionResult<Stmt> parseCompoundStatement()
     {
-        return parseCompoundStatement(false, ScopeFlags.DeclScope.value);
+        return parseCompoundStatement(false, DeclScope.value);
     }
 
     /**
@@ -868,7 +993,9 @@ public class Parser implements Tag,
         ParseScope compoundScope = new ParseScope(this, scopeFlags);
 
         // parse the statements in the body.
-        return parseCompoundStatementBody(isStmtExpr);
+        ActionResult<Stmt> res = parseCompoundStatementBody(isStmtExpr);
+        compoundScope.exit();
+        return res;
     }
 
     private ActionResult<Stmt> parseCompoundStatementBody(boolean isStmtExpr)
@@ -918,7 +1045,7 @@ public class Parser implements Tag,
 
         boolean isC99 = getLangOption().c99;
 
-        ParseScope ifScope = new ParseScope(this, ScopeFlags.DeclScope.value, isC99);
+        ParseScope ifScope = new ParseScope(this, DeclScope.value, isC99);
         ActionResult<Expr> condExpr;
         OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>();
         if (parseParenExprOrCondition(x, ifLoc, true))
@@ -931,7 +1058,7 @@ public class Parser implements Tag,
 
         // the scope for 'then' statement if there is a '{'
         ParseScope InnerScope = new ParseScope(this,
-                ScopeFlags.DeclScope.value,
+                DeclScope.value,
                 tok.isNot(l_brace) && isC99);
 
         SourceLocation thenStmtLoc = tok.getLocation();
@@ -954,7 +1081,7 @@ public class Parser implements Tag,
 
             // the scope for 'else' statement if there is a '{'
             InnerScope = new ParseScope(this,
-                    ScopeFlags.DeclScope.value,
+                    DeclScope.value,
                     nextTokenIs(l_brace) && getLangOption().c99);
 
             elseStmt = parseStatement();
@@ -1366,7 +1493,7 @@ public class Parser implements Tag,
         // implemented in C90. So, just take C99 into consideration for convenience.
         int scopeFlags = ScopeFlags.SwitchScope.value | ScopeFlags.BreakScope.value;
         if (getLangOption().c99)
-            scopeFlags |= ScopeFlags.DeclScope.value | ScopeFlags.ControlScope.value;
+            scopeFlags |= DeclScope.value | ScopeFlags.ControlScope.value;
         ParseScope switchScope = new ParseScope(this, scopeFlags);
 
         // Parse the condition expression.
@@ -1395,7 +1522,7 @@ public class Parser implements Tag,
         // C99 6.8.4p3 - In C99, the body of the switch statement is a scope, even if
         // there is no compound stmt.  C90 does not have this clause.  We only do this
         // if the body isn't a compound statement to avoid push/pop in common cases.
-        ParseScope innerScope = new ParseScope(this, ScopeFlags.DeclScope.value,
+        ParseScope innerScope = new ParseScope(this, DeclScope.value,
                 nextTokenIs(l_brace) & getLangOption().c99);
 
         // read the body statement
@@ -1439,7 +1566,7 @@ public class Parser implements Tag,
             scopeFlags = ScopeFlags.BlockScope.value
                 | ScopeFlags.ContinueScope.value
                 | ScopeFlags.ControlScope.value
-                | ScopeFlags.DeclScope.value;
+                | DeclScope.value;
         else
             scopeFlags = ScopeFlags.BlockScope.value
                     | ScopeFlags.ContinueScope.value;
@@ -1457,7 +1584,7 @@ public class Parser implements Tag,
         // C99 6.8.5p5 - In C99, the body of the if statement is a scope, even if
         // there is no compound stmt.  C90 does not have this clause.  We only do this
         // if the body isn't a compound statement to avoid push/pop in common cases.
-        ParseScope innerScope = new ParseScope(this, ScopeFlags.DeclScope.value,
+        ParseScope innerScope = new ParseScope(this, DeclScope.value,
                 nextTokenIs(l_brace) && getLangOption().c99);
 
         // parse the body of while stmt.
@@ -1491,7 +1618,7 @@ public class Parser implements Tag,
         int scopeFlags = 0;
         if (getLangOption().c99)
             scopeFlags = ScopeFlags.BreakScope.value|
-                ScopeFlags.ContinueScope.value | ScopeFlags.DeclScope.value;
+                ScopeFlags.ContinueScope.value | DeclScope.value;
         else
             scopeFlags |= ScopeFlags.BreakScope.value |
                     ScopeFlags.ContinueScope.value;
@@ -1499,7 +1626,7 @@ public class Parser implements Tag,
         ParseScope doScope = new ParseScope(this, scopeFlags);
 
         ParseScope innerScope = new ParseScope(this,
-                ScopeFlags.DeclScope.value,
+                DeclScope.value,
                 nextTokenIs(l_brace) && getLangOption().c99);
 
         ActionResult<Stmt> body = parseStatement();
@@ -1563,7 +1690,7 @@ public class Parser implements Tag,
         if (getLangOption().c99)
             scopeFlags = ScopeFlags.BreakScope.value
                 | ScopeFlags.ContinueScope.value
-                | ScopeFlags.DeclScope.value
+                | DeclScope.value
                 | ScopeFlags.ControlScope.value;
         else
             scopeFlags = ScopeFlags.BreakScope.value
@@ -1675,7 +1802,7 @@ public class Parser implements Tag,
         // if the body isn't a compound statement to avoid push/pop in common cases.
 
         ParseScope innerScope = new ParseScope(this,
-                ScopeFlags.DeclScope.value,
+                DeclScope.value,
                 nextTokenIs(l_brace));
 
         ActionResult<Stmt> body = parseStatement();
@@ -2191,7 +2318,12 @@ public class Parser implements Tag,
     {
         assert declarator.isFunctionDeclarator() :"Isn't a function declarator";
         // int X() {}
-        return nextTokenIs(l_brace);
+        if (tok.is(l_brace))
+            return true;
+
+        // K&R C function declaration.
+        // void foo(a, b) int a, int b; {}
+        return isDeclarationSpecifier();
     }
     /**
      * Determines whether the current token is the part of declaration or
@@ -2667,7 +2799,7 @@ public class Parser implements Tag,
      */
     private void parseEnumBody(SourceLocation startLoc, Decl enumDecl)
     {
-        ParseScope enumScope = new ParseScope(this, ScopeFlags.DeclScope.value);
+        ParseScope enumScope = new ParseScope(this, DeclScope.value);
         action.actOnTagStartDefinition(getCurScope(), enumDecl);
 
         // eat '{'
@@ -2999,7 +3131,7 @@ public class Parser implements Tag,
 
         ParseScope structScope = new ParseScope(this,
         ScopeFlags.ClassScope.value
-                | ScopeFlags.DeclScope.value);
+                | DeclScope.value);
         action.actOnTagStartDefinition(getCurScope(), tagDecl);
 
         // Empty structs are an extension in C (C99 6.7.2.1p7)
@@ -3388,7 +3520,7 @@ public class Parser implements Tag,
         {
             // 'int()' is a function.
             // *(int arga, void (*argb)(double Y))
-            // This is a type-name.
+            // This is a type-ident.
             isGrouping = false;
         }
         else
@@ -3464,10 +3596,11 @@ public class Parser implements Tag,
 
         // Alternatively, this parameter list may be an identifier list form for a
         // K&R-style function:  void foo(a,b,c)
-
         if (isFunctionDeclaratorIdentifierList())
         {
             // Parses the function declaration of K&R form.
+            // Identifier list.  Note that '(' identifier-list ')' is only allowed for
+            // normal declarators, not for abstract-declarators.
             parseFunctionDeclaratorIdentifierList(lparenLoc, declarator);
             return;
         }
@@ -3482,8 +3615,8 @@ public class Parser implements Tag,
 
         // enter function-declaration scope,
         ParseScope protoTypeScope = new ParseScope(this,
-                ScopeFlags.FunctionProtoTypeScope.value
-                | ScopeFlags.DeclScope.value);
+                FunctionProtoTypeScope.value
+                | DeclScope.value);
         if (nextTokenIsNot(r_paren))
         {
             ellipsisLoc = parseParameterDeclarationClause(declarator, paramInfos);
@@ -4180,7 +4313,7 @@ public class Parser implements Tag,
      *         'sizeof' unary-expression
      *         'sizeof' '(' type-getIdentifier ')'
      * [GNU]   '__alignof' unary-expression
-     * [GNU]   '__alignof' '(' type-name ')'
+     * [GNU]   '__alignof' '(' type-ident ')'
      * </pre>
      * @return
      */
@@ -4218,9 +4351,9 @@ public class Parser implements Tag,
      * <pre>
      * unary-expression: [C99 6.5.3]
      *       'sizeof' unary-expression
-     *       'sizeof' '(' type-name ')'
+     *       'sizeof' '(' type-ident ')'
      * [GNU] '__alignof' unary-expression
-     * [GNU] '__alignof' '(' type-name ')'
+     * [GNU] '__alignof' '(' type-ident ')'
      * </pre>
      * @param opTok
      * @param arg
@@ -4245,7 +4378,7 @@ public class Parser implements Tag,
         else
         {
             // If it starts with a '(', we know that it is either a parenthesized
-            // type-name, or it is a unary-expression that starts with a compound
+            // type-ident, or it is a unary-expression that starts with a compound
             // literal, or starts with a primary-expression that is a parenthesized
             // expression.
             OutParamWrapper<ParenParseOption> exprType =

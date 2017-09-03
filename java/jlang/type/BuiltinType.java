@@ -40,7 +40,7 @@ public final class BuiltinType extends Type
     @Override
     public String getAsStringInternal(String inner, PrintingPolicy policy)
     {
-        return inner + getName(policy.opts);
+        return getName(policy.opts) + " " + inner;
     }
 
     public String getName(LangOptions opts)

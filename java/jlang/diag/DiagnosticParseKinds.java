@@ -260,7 +260,7 @@ public enum DiagnosticParseKinds implements DiagnosticParseTag
 			CLASS_ERROR, MAP_ERROR,
 			"use of template specialization in using directive not allowed"),
 	ERR_UNEXPECTED_TYPEDEF_IDENT(err_unexpected_typedef_ident, CLASS_ERROR, MAP_ERROR,
-			"unexpected type asmName %0: expected identifier"),
+			"unexpected type name %0: expected identifier"),
 	ERR_UNKNOWN_TYPENAME(err_unknown_typename, CLASS_ERROR, MAP_ERROR,
 			"unknown type asmName %0"),
 	ERR_UNSPECIFIED_VLA_SIZE_WITH_STATIC(err_unspecified_vla_size_with_static,
