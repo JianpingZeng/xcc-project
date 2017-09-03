@@ -42,7 +42,7 @@ public class APValue
         LValue,
     }
     
-    private ValueKind kind;
+    private ValueKind kind = Uninitialized;
 
     public static class ComplexAPSInt
     {

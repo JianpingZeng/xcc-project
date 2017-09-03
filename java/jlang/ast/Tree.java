@@ -1440,17 +1440,6 @@ public abstract class Tree
             this.valuekind = valueKind;
         }
 
-        public long getIntWidth(ASTContext ctx)
-        {
-            QualType t = new QualType();
-            if (type.isEnumeralType())
-                t = type.getAsEnumType().getDecl().getPromotionType();
-            if (type.getType().isBooleanType())
-                return 1;
-            // for the primitive jlang.type, just use the standard jlang.type getNumOfSubLoop.
-            return ctx.getTypeSize(t);
-        }
-
         public boolean isSignedIntegerOrEnumeration()
         {
             if (type.isBuiltinType())
@@ -1489,6 +1478,11 @@ public abstract class Tree
         {
             return valuekind == EVK_RValue;
         }
+
+	    public boolean isGLValue()
+	    {
+		    return getValueKind() != EVK_RValue;
+	    }
 
         public ExprValueKind getValueKind()
         {
@@ -1888,6 +1882,7 @@ public abstract class Tree
 				    return checkICE(((ParenExpr) e).getSubExpr(), ctx);
 			    case IntegerLiteralClass:
 			    case CharacterLiteralClass:
+			        return noDiag();
 			    case CallExprClass:
 			    {
 				    CallExpr ce = (CallExpr) e;
