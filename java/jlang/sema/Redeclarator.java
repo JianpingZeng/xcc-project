@@ -65,11 +65,26 @@ public class Redeclarator<T extends Redeclarable<T>> implements Redeclarable<T>
         }
     }
 
+    /**
+     * Points to the next redeclaration in the chain.
+     *
+     * If nextIsPrevious() is true, this is a link to the previous declaration
+     * of this same Decl. If nextIsLatest() is true, this is the first
+     * declaration and Link points to the latest declaration. For example:
+     * <pre>
+     *  #1 int f(int x, int y = 1); // &lt;pointer to #3, true&gt;
+     *  #2 int f(int x = 0, int y); // &lt;pointer to #1, false&gt;
+     *  #3 int f(int x, int y) { return x + y; } // &lt;pointer to #2, false&gt;
+     * </pre>
+     * If there is only one declaration, it is &lt;pointer to self, true&gt;
+     */
     private DeclLink<T> redeclLink;
+    private T thisOne;
 
-    public Redeclarator()
+    public Redeclarator(T prev)
     {
-        redeclLink = new LatestDeclLink<T>((T)this);
+        thisOne = prev;
+        redeclLink = new LatestDeclLink<>(prev);
     }
 
     public T getPreviousDeclaration()
@@ -81,7 +96,7 @@ public class Redeclarator<T extends Redeclarable<T>> implements Redeclarable<T>
 
     public T getFirstDeclaration()
     {
-        Redeclarable d = this;
+        Redeclarable<T> d = thisOne;
         while (d.getPreviousDeclaration() != null)
         {
             d = d.getPreviousDeclaration();
@@ -100,10 +115,10 @@ public class Redeclarator<T extends Redeclarable<T>> implements Redeclarable<T>
         }
         else
         {
-            first = this;
+            first = thisOne;
         }
 
-        ((Redeclarator)first).redeclLink = new LatestDeclLink<T>((T)this);
+        ((Redeclarator)first).redeclLink = new LatestDeclLink<T>(thisOne);
     }
 
     public DeclLink<T> getRedeclLink()
@@ -114,14 +129,14 @@ public class Redeclarator<T extends Redeclarable<T>> implements Redeclarable<T>
     @Override
     public boolean hasNext()
     {
-        T Next = redeclLink.getNext();
-        return Next != this;
+        T next = redeclLink.getNext();
+        return !next.equals(thisOne);
     }
 
     @Override
     public T next()
     {
-        T Next = redeclLink.getNext();
-        return Next != this ? Next : null;
+        T next = redeclLink.getNext();
+        return !next.equals(thisOne) ? next : null;
     }
 }

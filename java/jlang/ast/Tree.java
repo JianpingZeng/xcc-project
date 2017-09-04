@@ -3403,9 +3403,6 @@ public abstract class Tree
 			this.rhs = rhs;
 			opcode = op;
             this.oploc = oploc;
-
-            assert !isCompoundAssignmentOp()
-                    : "Use ArithAssignBinaryOperator for compound assignments";
         }
 
         public BinaryExpr(int kind)
@@ -3430,7 +3427,7 @@ public abstract class Tree
         public Expr getRHS() { return rhs; }
         public void setRHS(Expr e) { rhs = e;}
 
-        public static final String getOpcodeStr(BinaryOperatorKind op)
+        public static String getOpcodeStr(BinaryOperatorKind op)
         {
             if (op.ordinal() >= BO_Mul.ordinal() && op.ordinal()<= BO_Comma.ordinal())
                 return op.toString();

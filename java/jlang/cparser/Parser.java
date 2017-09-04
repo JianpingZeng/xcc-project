@@ -3852,6 +3852,7 @@ public class Parser implements Tag,
             ActionResult<Expr> numOfSize = action.actOnNumericConstant(tok);
 
             // eat the ']'.
+            consumeToken();
             rbracketLoc = matchRHSPunctuation(r_bracket, lbracketLoc);
             if (numOfSize.isInvalid())
                 numOfSize.release();

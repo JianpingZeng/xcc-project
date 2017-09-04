@@ -4966,10 +4966,14 @@ public final class Sema implements DiagnosticParseTag,
                     opc, VK, resultTy, opLoc));
 
         // else it is compound assignment operator.
-        return new ActionResult<>(
-                new CompoundAssignExpr(lhsExpr.get(),
-                        rhsExpr.get(), opc, VK, resultTy, compLHSTy, compResultTy,
-                        opLoc));
+        return new ActionResult<>(new CompoundAssignExpr(
+                lhsExpr.get(),
+                rhsExpr.get(),
+                opc, VK,
+                resultTy,
+                compLHSTy,
+                compResultTy,
+                opLoc));
     }
 
     /**
