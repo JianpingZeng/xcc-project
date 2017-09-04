@@ -926,9 +926,12 @@ public final class ASTContext
 		if (decl.getTypeForDecl() != null)
 			return new QualType(decl.getTypeForDecl());
 
-		TypedefType newType = new TypedefType(TypeClass.TypeDef, decl, null);
-		decl.setTypeForDecl(newType);
-		return new QualType(newType);
+		QualType canonical = getCanonicalType(decl.getUnderlyingType());
+		TypedefType ty = new TypedefType(TypeClass.TypeDef, decl, canonical);
+		decl.setTypeForDecl(ty);
+
+		decl.setTypeForDecl(ty);
+		return new QualType(ty);
 	}
 
 	public static QualType getRecordType(RecordDecl record)

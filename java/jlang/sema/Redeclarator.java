@@ -115,7 +115,7 @@ public class Redeclarator<T extends Redeclarable<T>> implements Redeclarable<T>
         }
         else
         {
-            first = thisOne;
+            first = this;
         }
 
         ((Redeclarator)first).redeclLink = new LatestDeclLink<T>(thisOne);

@@ -656,7 +656,7 @@ public class Parser implements Tag,
             case identifier:
             {
                 // C99 6.8.1 labeled-statement
-                if (nextTokenIs(colon))
+                if (peekAheadToken().is(colon))
                 {
                     // identifier ':' statement
                     return parseLabeledStatement();
@@ -682,7 +682,6 @@ public class Parser implements Tag,
                 // expression[opt] ';'
                 return parseExprStatement();
             }
-
             case Case:
             {
                 // C99 6.8.1: labeled-statement
@@ -3486,6 +3485,17 @@ public class Parser implements Tag,
 
             case Inline:
                 return true;
+
+            case identifier:
+            {
+                // Parse 'typedef name' or 'typename'.
+                // So, the current token is a typedef identifier or error.
+                QualType type = action.getTypeByName(
+                        tok.getIdentifierInfo(),
+                        tok.getLocation(),
+                        getCurScope());
+                return type != null;
+            }
         }
     }
 

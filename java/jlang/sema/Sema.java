@@ -269,16 +269,7 @@ public final class Sema implements DiagnosticParseTag,
         LookupResult res = lookupParsedName(curScope, identifierInfo,
                 LookupOrdinaryName);
 
-        NamedDecl ndecl = null;
-        switch (res.getResultKind())
-        {
-            case NotFound:
-            case Ambiguous:
-                return null;
-            case Found:
-                ndecl = res.getFoundDecl();
-                break;
-        }
+        NamedDecl ndecl = res.getFoundDecl();
 
         if (ndecl != null)
         {
@@ -287,7 +278,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 TypeDecl td = (TypeDecl)ndecl;
                 if (qt.isNull())
-                    qt = new QualType(td.getTypeForDecl());
+                    qt = context.getTypeDeclType(td);
             }
             else
                 return null;
