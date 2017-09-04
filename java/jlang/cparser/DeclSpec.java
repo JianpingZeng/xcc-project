@@ -842,7 +842,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
     }
     public QualType getRepAsType()
     {
-        assert isDeclRep(typeSpecType) :"DeclSpec does not stores a jlang.type";
+        assert isTypeRep(typeSpecType) :"DeclSpec does not stores a jlang.type";
         return typeRep;
     }
 
