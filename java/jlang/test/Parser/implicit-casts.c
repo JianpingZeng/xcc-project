@@ -1,16 +1,11 @@
 // RUN: jlang-cc -fsyntax-only -verify -pedantic %s
-_Complex double X;
+double X;
 void test1(int c) {
   X = 5;
 }
 void test2() {
-  int i;
+  int i = 0;
   double d = i;
-  double _Complex a = 5;
-
-  test1(a);
-  a = 5;
-  d = i;
 }
 int test3() {
   int a[2];

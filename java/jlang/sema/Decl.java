@@ -827,7 +827,7 @@ public abstract class Decl
             wasEvaluated = false;
             evaluatedValue = null;
             isEvaluating = false;
-            redeclarator = new Redeclarator<>();
+            redeclarator = new Redeclarator<>(this);
         }
 
         protected VarDecl getNextRedeclaration()
@@ -1239,7 +1239,7 @@ public abstract class Decl
             endRangeLoc = SourceLocation.NOPOS;
             body = null;
             this.hasPrototype = hasPrototype;
-            redeclarator = new Redeclarator<>();
+            redeclarator = new Redeclarator<>(this);
             dc = new DeclContext(FunctionDecl, this);
         }
 
@@ -1746,7 +1746,7 @@ public abstract class Decl
             this.tagKind = tagKind;
             tagKkeywordLoc = tkl;
             dc = new DeclContext(kind, this);
-            redeclarator = new Redeclarator<>();
+            redeclarator = new Redeclarator<>(this);
             assert kind != DeclKind.EnumDecl || tagKind == TTK_enum :
                     "EnumDecl not matched with TTK_enum";
 
