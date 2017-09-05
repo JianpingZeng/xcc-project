@@ -13,12 +13,9 @@ import jlang.cparser.DeclSpec.ParamInfo;
 import jlang.cparser.DeclSpec.ParsedSpecifiers;
 import jlang.cparser.Declarator.TheContext;
 import jlang.diag.*;
-import jlang.sema.Decl;
+import jlang.sema.*;
 import jlang.sema.Decl.LabelDecl;
-import jlang.sema.PrecedenceLevel;
-import jlang.sema.Scope;
 import jlang.sema.Scope.ScopeFlags;
-import jlang.sema.Sema;
 import jlang.support.LangOptions;
 import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
@@ -1226,7 +1223,19 @@ public class Parser implements Tag,
         SourceLocation lParenLoc = consumeParen();
         ActionResult<Expr> result = new ActionResult<>(true);
 
-        if (exprType.get().ordinal()>= CompoundLiteral.ordinal()
+        if (exprType.get().compareTo(CompoundStmt) >= 0)
+        {
+            diag(tok, ext_gnu_statement_expr).emit();
+            ActionResult<Stmt> stmt = parseCompoundStatement(true, DeclScope.value);
+            exprType.set(CompoundStmt);
+
+            // If the substmt parsed correctly, build the AST node.
+            if (!stmt.isInvalid() && tok.is(r_paren))
+            {
+                result = action.actOnStmtExpr(lParenLoc, stmt, tok.getLocation());
+            }
+        }
+        else if (exprType.get().compareTo(CompoundLiteral) >= 0
                 && isDeclarationSpecifier())
         {
             // This is a compound literal expression or cast expression.
@@ -1242,9 +1251,7 @@ public class Parser implements Tag,
             if (nextTokenIs(l_brace))
             {
                 exprType.set(CompoundLiteral);
-                assert false:"CompoundLiteralExpr not supported currently";
-                // TODO return parseCompoundLiteralExpression(ty, lParenLoc, rParenLoc);
-                return null;
+                return parseCompoundLiteralExpression(ty.get(), lParenLoc, rParenLoc.get());
             }
             else if (exprType.get() == CastExpr)
             {
@@ -1316,6 +1323,35 @@ public class Parser implements Tag,
         else
         matchRHSPunctuation(r_paren, lParenLoc);
         return result;
+    }
+
+    /**
+     * We have parsed the parenthesized type-name and we are at the left brace.
+     * <pre>
+     *       postfix-expression: [C99 6.5.2]
+     *         '(' type-name ')' '{' initializer-list '}'
+     *         '(' type-name ')' '{' initializer-list ',' '}'
+     * </pre>
+     * @param ty
+     * @param lParenLoc
+     * @param rParenLoc
+     * @return
+     */
+    private ActionResult<Expr> parseCompoundLiteralExpression(
+            QualType ty,
+            SourceLocation lParenLoc,
+            SourceLocation rParenLoc)
+    {
+        assert tok.is(l_brace):"The current token should be '{'";
+        if (!getLangOption().c99)
+        {
+            diag(lParenLoc, ext_c99_compound_literal);
+        }
+        ActionResult<Expr> res = parseInitializer();
+        if (!res.isInvalid() && !ty.isNull())
+            return action.actOnCompoundLiteral(lParenLoc, ty, lParenLoc, res);
+
+        return res;
     }
 
     /**
@@ -2026,7 +2062,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Expr> parseInitializer()
     {
-        if (nextTokenIsNot(l_brace))
+        if (tok.isNot(l_brace))
             return parseAssignExpression();
         return parseBraceInitializer();
     }
@@ -2119,17 +2155,24 @@ public class Parser implements Tag,
         SourceLocation lbraceLoc = consumeBrace();
 
         ArrayList<Expr> initExprs = new ArrayList<>();
-        if (nextTokenIs(barbar))
+        if (tok.is(r_brace))
         {
             diag(lbraceLoc, ext_gnu_empty_initializer).emit();
-
             return action.actOnInitList(lbraceLoc, emptyList(), consumeBrace());
         }
 
         boolean initExprOK = true;
         while (true)
         {
-            ActionResult<Expr> init = parseInitializer();
+            // If we know that this cannot be a designation, just parse the nested
+            // initializer directly.
+
+            ActionResult<Expr> init;
+            if (mayBeDesignationStart(tok.getKind(), pp))
+                init = parseInitializerWithPotentialDesignator();
+            else
+                init = parseInitializer();
+
             if (!init.isInvalid())
                 initExprs.add(init.get());
             else
@@ -2149,7 +2192,7 @@ public class Parser implements Tag,
             // Eat the ','.
             consumeToken();
 
-            /// Handle trailing comma.
+            // Handle trailing comma.
             if (nextTokenIs(r_brace))
                 break;
         }
@@ -2157,6 +2200,174 @@ public class Parser implements Tag,
             return action.actOnInitList(lbraceLoc, initExprs, consumeBrace());;
 
         matchRHSPunctuation(r_brace, lbraceLoc);
+        return exprError();
+    }
+
+    /**
+     * Checks if it is possible the next token be a part of designation since C99.
+     * <pre>
+     * designation::=
+     *             designator-list =
+     * designator-list ::=
+     *             designator
+     *             designator designator-list
+     * designator::=
+     *             [constant-expression]
+     *             . identifier
+     * </pre>
+     * @param kind
+     * @param pp
+     * @return
+     */
+    private boolean mayBeDesignationStart(TokenKind kind, Preprocessor pp)
+    {
+        switch (kind)
+        {
+            default:
+                return false;
+            case dot:
+            case l_bracket:
+                return true;
+            case identifier:
+                return pp.lookAhead(0).is(colon);
+        }
+    }
+
+    /**
+     * Parse the 'initializer' production
+     * checking to see if the token stream starts with a designator.
+     * <pre>
+     *       designation:
+     *         designator-list '='
+     * [GNU]   array-designator
+     * [GNU]   identifier ':'
+     *
+     *       designator-list:
+     *         designator
+     *         designator-list designator
+     *
+     *       designator:
+     *         array-designator
+     *         '.' identifier
+     *
+     *       array-designator:
+     *         '[' constant-expression ']'
+     * [GNU]   '[' constant-expression '...' constant-expression ']'
+     * </pre>
+     * @return
+     */
+    private ActionResult<Expr> parseInitializerWithPotentialDesignator()
+    {
+        if (tok.is(identifier))
+        {
+            IdentifierInfo fieldName = tok.getIdentifierInfo();
+
+            String newSyntax = ".";
+            newSyntax += fieldName.getName();
+            newSyntax += " = ";
+
+            SourceLocation nameLoc = consumeToken();
+            assert tok.is(colon):"mayBeDesignationStart not working properly!";
+
+            SourceLocation colonLoc = consumeToken();
+            diag(tok, ext_gnu_old_style_field_designator)
+                    .addFixItHint(FixItHint.createReplacement(new SourceRange(nameLoc, colonLoc),
+                            newSyntax))
+                    .emit();
+
+            Designation d = new Designation();
+            d.addDesignator(Designator.getField(fieldName, new SourceLocation(), nameLoc));
+            return action.actOnDesignatedInitializer(d, colonLoc,
+                    true, parseInitializer());
+        }
+
+        Designation d = new Designation();
+        // Parse each designator in the designator list until we find an initializer.
+        while (tok.is(dot) || tok.is(l_bracket))
+        {
+            if (tok.is(dot))
+            {
+                // designator: '.' identifier
+                SourceLocation dotLoc = consumeToken();
+
+                if (tok.isNot(identifier))
+                {
+                    diag(tok.getLocation(), err_expected_field_designator).emit();
+                    return exprError();
+                }
+
+                IdentifierInfo ii = tok.getIdentifierInfo();
+                d.addDesignator(Designator.getField(ii, dotLoc, tok.getLocation()));
+                consumeToken(); // Consume the identifier.
+                continue;
+            }
+            assert tok.is(l_bracket);
+
+            // designator: '[' constant-expression ']'
+            // designator: '[' constant-expression ... constant-expression']'
+            SourceLocation lBracketLoc = consumeBrace();
+            SourceLocation ellipseLoc;
+            SourceLocation rBracketLoc;
+
+            ActionResult<Expr> start = parseConstantExpression();
+            if (start.isInvalid())
+            {
+                skipUntil(r_bracket, true);
+                return start;
+            }
+
+            ActionResult<Expr> end = null;
+            if (tok.is(ellipsis))
+            {
+                diag(tok, ext_gnu_array_range).emit();
+
+                ellipseLoc = consumeToken();
+                end = parseConstantExpression();
+                if (end.isInvalid())
+                {
+                    skipUntil(r_bracket, true);
+                    return end;
+                }
+
+                rBracketLoc = matchRHSPunctuation(r_bracket, lBracketLoc);
+
+                d.addDesignator(Designator.getArrayRange(start, end,
+                        lBracketLoc, ellipseLoc, rBracketLoc));
+            }
+            else
+            {
+                rBracketLoc = matchRHSPunctuation(r_bracket, lBracketLoc);
+                d.addDesignator(Designator.getArray(start, lBracketLoc, rBracketLoc));
+            }
+        }
+
+        assert !d.isEmpty() :"Designator is emtpy?";
+
+        // Handle a normal designator sequence end, which is an equal.
+        if (tok.is(equal))
+        {
+            SourceLocation equalLoc = consumeToken();
+            return action.actOnDesignatedInitializer(d, equalLoc,
+                    false, parseInitializer());
+        }
+
+        // We read some number of designators and found something that isn't an = or
+        // an initializer.  If we have exactly one array designator, this
+        // is the GNU 'designation: array-designator' extension.  Otherwise, it is a
+        // parse error.
+        if (d.getNumDesignators() == 1 &&
+                (d.getDesignator(0).isArrayDesignator() ||
+                d.getDesignator(0).isArrayRangeDesignator()))
+        {
+            diag(tok, ext_gnu_missing_equal_designator)
+                    .addFixItHint(FixItHint.createInsertion(tok.getLocation(),
+                            "= "))
+                    .emit();
+            return action.actOnDesignatedInitializer(d, tok.getLocation(),
+                    true, parseInitializer());
+        }
+
+        diag(tok, err_expected_equal_designator).emit();
         return exprError();
     }
 
@@ -4139,6 +4350,7 @@ public class Parser implements Tag,
     enum ParenParseOption
     {
         SimpleExpr,      // Only parse '(' expression ')'
+        CompoundStmt,    // Also allow '(' compound-statement ')'
         CompoundLiteral, // Also allow '(' type-getIdentifier ')' '{' ... '}'
         CastExpr         // Also allow '(' type-getIdentifier ')' <anything>
     }
@@ -4167,7 +4379,6 @@ public class Parser implements Tag,
         {
             case l_paren:
             {
-
                 QualType castTy = null;
                 OutParamWrapper<QualType> out1 = new OutParamWrapper<>();
                 SourceLocation rParenLoc = SourceLocation.NOPOS;
