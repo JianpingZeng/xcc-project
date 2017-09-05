@@ -9292,4 +9292,71 @@ public final class Sema implements DiagnosticParseTag,
             }
         }
     }
+
+    /**
+     * Build a GNU extension about CompoundStmt expression. Like
+     * <pre>({int a; ++a;})</pre>.
+     * @param lParenLoc The location of left parethesis.
+     * @param stmt  The compound statement.
+     * @param rParenLoc The source location of right parenthesis.
+     * @return  A parsed AST node.
+     */
+    public ActionResult<Expr> actOnStmtExpr(
+            SourceLocation lParenLoc,
+            ActionResult<Stmt> stmt,
+            SourceLocation rParenLoc)
+    {
+        Stmt subStmt = stmt.get();
+        assert subStmt != null
+                && subStmt instanceof CompoundStmt : "Invalid action invocation!";
+
+        CompoundStmt compound = (CompoundStmt) subStmt;
+        boolean isFileScope = getCurFunctionDecl() == null;
+        if (isFileScope)
+        {
+            diag(lParenLoc, err_stmtexpr_file_scope).emit();
+            return exprError();
+        }
+
+        QualType ty = context.VoidTy;
+
+        // The result of CompoundExpr is the value of last statement in compound
+        // So that result type is type of last expression (if the last one is expr).
+        if (!compound.bodyEmpty())
+        {
+            Stmt[] bodys = compound.getBody();
+            assert bodys != null && bodys.length > 0;
+            Stmt lastStmt = bodys[bodys.length-1];
+            while (lastStmt instanceof LabelStmt)
+            {
+                lastStmt = ((LabelStmt)lastStmt).getSubStmt();
+            }
+
+            if (lastStmt instanceof Expr)
+            {
+                ty = ((Expr)lastStmt).getType();
+            }
+        }
+        return new ActionResult<>(new StmtExpr(compound, ty, lParenLoc, rParenLoc));
+    }
+
+    public ActionResult<Expr> actOnCompoundLiteral(
+            SourceLocation lParenLoc,
+            QualType type,
+            SourceLocation rParenLoc,
+            ActionResult<Expr> initExpr)
+    {
+        // TODO: 17-9-5
+        return exprError();
+    }
+
+    public ActionResult<Expr> actOnDesignatedInitializer(
+            Designation desig,
+            SourceLocation loc,
+            boolean gnuSyntax,
+            ActionResult<Expr> init)
+    {
+        // TODO: 17-9-5
+        return exprError();
+    }
 }

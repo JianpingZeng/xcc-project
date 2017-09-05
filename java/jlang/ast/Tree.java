@@ -215,6 +215,8 @@ public abstract class Tree
 
     public static final int SizeOfAlignOfExprClass = StringLiteralClass + 1;
 
+    public static final int StmtExprClass = SizeOfAlignOfExprClass + 1;
+
 	/**
 	 * A further classification of the kind of object referenced by an
 	 * l-value or x-value.
@@ -3111,8 +3113,8 @@ public abstract class Tree
     {
         /**
          * LParenLoc - If non-null, this is the location of the left paren in a
-         * compound literal like "(int){4}".  This can be null if this is a
-         * synthesized compound expression.
+         * subStmt literal like "(int){4}".  This can be null if this is a
+         * synthesized subStmt expression.
          */
         private SourceLocation lParenLoc;
 
@@ -3519,7 +3521,7 @@ public abstract class Tree
 	}
 
     /**
-     * For compound assignments (e.g. +=), we keep
+     * For subStmt assignments (e.g. +=), we keep
      * track of the jlang.type the operation is performed in.  Due to the semantics of
      * these operators, the operands are promoted, the arithmetic performed, an
      * implicit conversion back to the result jlang.type done, then the assignment takes
@@ -3544,7 +3546,7 @@ public abstract class Tree
             computationResultType = compResultType;
 
             assert isCompoundAssignmentOp():
-                    "Only should be used for compound assignments";
+                    "Only should be used for subStmt assignments";
         }
 
         public CompoundAssignExpr()
@@ -3805,4 +3807,66 @@ public abstract class Tree
 			return rParenLoc;
 		}
 	}
+
+	/**
+	 * This is the GNU Statement Expression extension: ({int X=4; X;}).
+	 * The StmtExpr contains a single CompoundStmt node, which it evaluates and
+	 * takes the value of the last subexpression.
+	 */
+	public static class StmtExpr extends Expr
+	{
+		private SourceLocation lParenLoc, rParenLoc;
+		private Stmt subStmt;
+
+		public StmtExpr(
+		        Stmt compound,
+		        QualType type,
+				SourceLocation lp,
+				SourceLocation rp)
+		{
+			super(StmtExprClass, type, OK_Ordinary, EVK_RValue, lp);
+			this.subStmt = compound;
+		}
+
+		@Override
+		public void accept(StmtVisitor v)
+		{
+		}
+
+		@Override
+		public SourceRange getSourceRange()
+		{
+			return new SourceRange(lParenLoc, rParenLoc);
+		}
+
+        public Stmt getSubStmt()
+        {
+            return subStmt;
+        }
+
+        public void setSubStmt(Stmt subStmt)
+        {
+            this.subStmt = subStmt;
+        }
+
+        public SourceLocation getLParenLoc()
+        {
+            return lParenLoc;
+        }
+
+        public void setlParenLoc(SourceLocation loc)
+        {
+            lParenLoc = loc;
+        }
+
+        public SourceLocation getRParenLoc()
+        {
+            return rParenLoc;
+        }
+
+        public void setrParenLoc(SourceLocation loc)
+        {
+            rParenLoc = loc;
+        }
+    }
 }
