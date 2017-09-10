@@ -170,21 +170,21 @@ public abstract class Type implements TypeClass
     public Type getArrayElementTypeNoTypeQual()
     {
         if (this instanceof ArrayType)
-            return ((ArrayType)this).getElemType().getType();
+            return ((ArrayType)this).getElementType().getType();
 
         if (!(canonicalType.getType() instanceof ArrayType))
         {
             Type t = canonicalType.getUnQualifiedType().getType();
             if (t instanceof ArrayType)
             {
-                return ((ArrayType)t).getElemType().getType();
+                return ((ArrayType)t).getElementType().getType();
             }
             return null;
         }
 
         // If this is a typedef for an array type, strip the typedef off without
         // losing all typedef information.
-        return ((ArrayType)(getDesugaredType().getType())).getElemType().getType();
+        return ((ArrayType)(getDesugaredType().getType())).getElementType().getType();
     }
 
     public QualType getDesugaredType()

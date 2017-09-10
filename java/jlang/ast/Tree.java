@@ -1,26 +1,25 @@
 package jlang.ast;
 
-import jlang.basic.SourceManager;
-import tools.APFloat;
-import tools.APInt;
-import tools.APSInt;
 import backend.value.BasicBlock;
-import jlang.support.*;
+import jlang.basic.SourceManager;
 import jlang.clex.IdentifierInfo;
 import jlang.sema.*;
+import jlang.sema.BinaryOperatorKind;
 import jlang.sema.Decl.*;
+import jlang.support.PrintingPolicy;
+import jlang.support.SourceLocation;
+import jlang.support.SourceRange;
 import jlang.type.*;
-import tools.OutParamWrapper;
-import tools.Util;
+import tools.*;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
-import static jlang.ast.CastKind.CK_Invalid;
-import static jlang.ast.CastKind.CK_LValueToRValue;
-import static jlang.ast.CastKind.CK_NoOp;
+import static jlang.ast.CastKind.*;
 import static jlang.ast.Tree.Expr.IsLvalueResult.*;
 import static jlang.ast.Tree.Expr.IsModifiableLvalueResult.*;
 import static jlang.ast.Tree.ExprObjectKind.OK_Ordinary;
@@ -217,6 +216,10 @@ public abstract class Tree
 
     public static final int StmtExprClass = SizeOfAlignOfExprClass + 1;
 
+    public static final int DesignatedInitExprClass = StmtExprClass + 1;
+
+    public static final int ImplicitValueInitExprClass = DesignatedInitExprClass + 1;
+
 	/**
 	 * A further classification of the kind of object referenced by an
 	 * l-value or x-value.
@@ -237,7 +240,7 @@ public abstract class Tree
 
 	/**
 	 * Constructor. Initialize tree with given tc.
-	 * 
+	 *
 	 * @param stmtClass
 	 */
 	public Tree(int stmtClass)
@@ -320,8 +323,8 @@ public abstract class Tree
 
 	/**
 	 * Everything in one source file is kept in a TopLevel structure.
-	 * 
-	 * @author Xlous.zeng  
+	 *
+	 * @author Xlous.zeng
 	 * @version 0.1
 	 */
 	public static class TopLevel extends Tree
@@ -334,7 +337,7 @@ public abstract class Tree
 
 		/**
 		 * Constructs TopLevel tree node that represents a source file.
-		 * 
+		 *
 		 * @param decls all of definitions in a source file.
 		 * @param sourceFile the getIdentifier of source file.
 		 */
@@ -356,7 +359,7 @@ public abstract class Tree
 		{
 		}
 	}
-	
+
 	public abstract static class Stmt extends Tree
 	{
 		Stmt(int tag)
@@ -378,7 +381,7 @@ public abstract class Tree
 	}
 	/**
      * This is the null statement ";": C99 6.8.3p3.
-	 * @author Xlous.zeng  
+	 * @author Xlous.zeng
 	 * @version 0.1
 	 */
 	public static class NullStmt extends Stmt
@@ -553,7 +556,7 @@ public abstract class Tree
 
 	/**
 	 * Selects through packages or class for future.
-	 */	
+	 */
 	public static class SelectStmt extends Stmt
 	{
 		/**
@@ -592,9 +595,9 @@ public abstract class Tree
 		public Expr cond;
         public SourceLocation doLoc, whileLoc, rParenLoc;
 
-		public DoStmt(Stmt body, Expr cond, 
+		public DoStmt(Stmt body, Expr cond,
 				SourceLocation doLoc,
-                SourceLocation whileLoc, 
+                SourceLocation whileLoc,
 				SourceLocation rParenLoc)
 		{
 			super(DoStmtClass);
@@ -2131,11 +2134,11 @@ public abstract class Tree
 	    /**
 	     * C99 6.3.2.1: an lvalue is an expression with an object type or an
 	     * incomplete type other than void. Nonarray expressions that can be lvalues:
-	     *  - name, where name must be a variable
+	     *  - nameOrField, where nameOrField must be a variable
 	     *  - e[i]
 	     *  - (e), where e must be an lvalue
-	     *  - e.name, where e must be an lvalue
-	     *  - e->name
+	     *  - e.nameOrField, where e must be an lvalue
+	     *  - e->nameOrField
 	     *  - *e, the type of e cannot be a function type
 	     *  - string-constant
 	     *  - (__real__ e) and (__imag__ e) where e is an lvalue  [GNU extension]
@@ -3127,15 +3130,16 @@ public abstract class Tree
         private boolean isFileScope;
 
 
-        public CompoundLiteralExpr(SourceLocation lParenLoc,
+        public CompoundLiteralExpr(
+                SourceLocation lParenLoc,
                 QualType type,
-                ExprValueKind valuekind,
                 Expr init,
                 boolean fileScope)
         {
-            super(CompoundLiteralExprClass, type, OK_Ordinary, valuekind, lParenLoc);
+            super(CompoundLiteralExprClass, type, OK_Ordinary, EVK_RValue, lParenLoc);
             this.lParenLoc = lParenLoc;
             ty = type;
+            this.init = init;
             isFileScope = fileScope;
         }
 
@@ -3674,6 +3678,15 @@ public abstract class Tree
         private SourceLocation lBraceLoc, rBraceLoc;
         private ArrayList<Expr> initExprs;
 
+        /**
+         * Contains the initializer list that describes the syntactic form
+         * written in the source code.
+         */
+        private InitListExpr syntacticForm;
+
+        private FieldDecl unionFieldInit;
+        private boolean hadArrayRangeDesignator;
+
         public InitListExpr(SourceLocation lBraceLoc,
 		        SourceLocation rBraceLoc,
 		        ArrayList<Expr> initList)
@@ -3681,6 +3694,7 @@ public abstract class Tree
             super(InitListExprClass, lBraceLoc);
             this.lBraceLoc = lBraceLoc;
             this.rBraceLoc = rBraceLoc;
+            this.initExprs = initList;
         }
         @Override
         public void accept(StmtVisitor v)
@@ -3693,10 +3707,18 @@ public abstract class Tree
             return initExprs.size();
         }
 
-        public Expr getInitAt(int i)
+        public Expr getInitAt(int index)
         {
-            assert i >= 0 && i < getNumInits();
-            return initExprs.get(i);
+            assert index >= 0 && index < getNumInits()
+                    : "Initializer access out of range!";
+            return initExprs.get(index);
+        }
+
+        public void setInitAt(int index, Expr init)
+        {
+            assert index >= 0 && index < getNumInits()
+                    : "Initializer access out of range!";
+            initExprs.set(index, init);
         }
 
 	    /**
@@ -3705,10 +3727,142 @@ public abstract class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+        public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(lBraceLoc, rBraceLoc);
 	    }
+
+        public void reserveInits(long numElements)
+        {
+            if (initExprs == null)
+                initExprs = new ArrayList<>();
+
+            if (numElements > initExprs.size())
+            {
+                for (long i = numElements - initExprs.size();
+                     numElements > 0; --numElements)
+                {
+                    initExprs.add(null);
+                }
+            }
+        }
+
+        public void resizeInits(long numElts)
+        {
+            if (initExprs == null)
+                initExprs = new ArrayList<>();
+
+            initExprs.clear();
+            for (;numElts >= 0; --numElts)
+            {
+                initExprs.add(null);
+            }
+        }
+
+        public Expr updateInit(int index, Expr init)
+        {
+            if (index >= initExprs.size())
+            {
+                for (int i = index - initExprs.size(); i > 0; i--)
+                    initExprs.add(null);
+
+                initExprs.add(init);
+                return null;
+            }
+
+            Expr prev = initExprs.get(index);
+            initExprs.set(index, init);
+            return prev;
+        }
+
+        public void setSyntacticForm(InitListExpr init)
+        {
+            syntacticForm = init;
+        }
+
+        public InitListExpr getSyntacticForm()
+        {
+            return syntacticForm;
+        }
+
+        public boolean isExplicit()
+        {
+            return lBraceLoc.isValid() && rBraceLoc.isValid();
+        }
+
+        public void setInitializedFieldInUnion(FieldDecl fd)
+        {
+            unionFieldInit = fd;
+        }
+
+        /**
+         * If this initializes a union, specifies which field in the
+         * union to initialize.
+         * </br>
+         * Typically, this field is the first named field within the
+         * union. However, a designated initializer can specify the
+         * initialization of a different field within the union.
+         * @return
+         */
+        public FieldDecl getInitializedFieldInUnion()
+        {
+            return unionFieldInit;
+        }
+
+        public void sawArrayRangeDesignator()
+        {
+            hadArrayRangeDesignator = true;
+        }
+
+        public void setRBraceLoc(SourceLocation loc)
+        {
+            rBraceLoc = loc;
+        }
+
+        public SourceLocation getRBraceLoc()
+        {
+            return rBraceLoc;
+        }
+
+        public SourceLocation getLBraceLoc()
+        {
+            return lBraceLoc;
+        }
+
+        public void setLBraceLoc(SourceLocation loc)
+        {
+            lBraceLoc = loc;
+        }
+    }
+
+    /**
+     * Represents an implicitly-generated value initialization of
+     * an object of a given type.
+     * <p>
+     * Implicit value initializations occur within semantic initializer
+     * list expressions (InitListExpr) as placeholders for subobject
+     * initializations not explicitly specified by the user.
+     * </p>
+     */
+    public static class ImplicitValueInitExpr extends Expr
+    {
+        public ImplicitValueInitExpr(QualType type)
+        {
+            super(ImplicitValueInitExprClass, type,
+                    OK_Ordinary, EVK_RValue, new SourceLocation());
+        }
+
+        @Override
+        public void accept(StmtVisitor v)
+        {
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange();
+        }
     }
 
 	/**
@@ -3867,6 +4021,432 @@ public abstract class Tree
         public void setrParenLoc(SourceLocation loc)
         {
             rParenLoc = loc;
+        }
+    }
+
+	/**
+	 * Represents a C99 designated initializer expression.
+	 * <p>
+	 * A designated initializer expression (C99 6.7.8) contains one or
+	 * more designators (which can be field designators, array
+	 * designators, or GNU array-range designators) followed by an
+	 * expression that initializes the field or element(s) that the
+	 * designators refer to. For example, given:
+	 * </p>
+	 * <pre>
+	 * struct point {
+	 *   double x;
+	 *   double y;
+	 * };
+	 * struct point ptarray[10] = { [2].y = 1.0, [2].x = 2.0, [0].x = 1.0 };
+	 * </pre>
+	 *
+	 * The InitListExpr contains three DesignatedInitExprs, the first of
+	 * which covers <code>[2].y=1.0</code>. This DesignatedInitExprClass will have two
+	 * designators, one array designator for <code>[2]</code> followed by one field
+	 * designator for <code>.y</code>. The initalization expression will be 1.0.
+	 */
+	public static class DesignatedInitExpr extends Expr
+    {
+        public void expandDesignator(int desigIdx,
+                ArrayList<Designator> replacements)
+        {
+            if (replacements.isEmpty())
+                return;
+
+            if (replacements.size() == 1)
+            {
+                designators[desigIdx] = replacements.get(0);
+            }
+
+            Designator[] newDesignators = new Designator[designators.length + replacements.size() - 1];
+            System.arraycopy(designators, 0, newDesignators, 0, designators.length - 1);
+            Designator[] t = new Designator[replacements.size()];
+            replacements.toArray(t);
+            System.arraycopy(t, 0, newDesignators, designators.length, t.length);
+            designators = newDesignators;
+        }
+
+        /**
+	     * A field designator, e.g., ".x".
+	     */
+    	public static class FieldDesignator
+	    {
+		    /**
+		     * Refers to the field that is being initialized. The low bit
+		     * of this field determines whether this is actually a pointer
+		     * to an IdentifierInfo (if 1) or a FieldDecl (if 0). When
+		     * initially constructed, a field designator will store an
+		     * IdentifierInfo*. After semantic analysis has resolved that
+		     * name, the field designator will instead store a FieldDecl.
+		     */
+			Object nameOrField;
+			int dotLoc;
+			int fieldLoc;
+	    }
+
+	    /**
+	     * A array designator, e.g., "[2]".
+	     */
+	    public static class ArrayDesignator
+	    {
+	    	int index;
+	    	int lBracketLoc;
+	    	int rBracketLoc;
+	    }
+
+	    /**
+	     * A GNU extension of array range designator. e.g., "[0 ... 2]".
+	     */
+	    public static class ArrayRangeDesignator
+	    {
+		    int startIdx;
+		    int endIdx;
+		    int lBracketLoc;
+		    int ellipsisLoc;
+		    int rBracketLoc;
+	    }
+
+    	public enum DesignatorKind
+	    {
+	    	FieldDesignator,
+		    ArrayDesignator,
+		    ArrayRangeDesignator
+	    }
+
+    	public static class Designator
+	    {
+            private DesignatorKind kind;
+
+            private Object desig;
+
+		    /**
+		     * Create a field designator and initialize its property according
+		     * several arguments passed into this constructor.
+		     * @param fieldName
+		     * @param dotLoc
+		     * @param fieldLoc
+		     */
+            public Designator(
+            		IdentifierInfo fieldName,
+		            SourceLocation dotLoc,
+		            SourceLocation fieldLoc)
+            {
+				FieldDesignator d = new FieldDesignator();
+				d.dotLoc = dotLoc.getRawEncoding();
+				d.fieldLoc = fieldLoc.getRawEncoding();
+				d.nameOrField = fieldName;
+				desig = d;
+				kind = DesignatorKind.FieldDesignator;
+            }
+
+		    /**
+		     * Creates an array designator with specified arguments.
+		     * @param index
+		     * @param lBracketLoc
+		     * @param rBracketLoc
+		     */
+		    public Designator(int index,
+		            SourceLocation lBracketLoc,
+		            SourceLocation rBracketLoc)
+            {
+            	ArrayDesignator d = new ArrayDesignator();
+            	d.index = index;
+            	d.lBracketLoc = lBracketLoc.getRawEncoding();
+            	d.rBracketLoc = rBracketLoc.getRawEncoding();
+            	desig = d;
+            	kind = DesignatorKind.ArrayDesignator;
+            }
+
+            public Designator(int beginIdx,
+		            SourceLocation lBracketLoc,
+		            SourceLocation ellipsisLoc,
+		            SourceLocation rBracketLoc)
+            {
+            	ArrayRangeDesignator d = new ArrayRangeDesignator();
+            	d.startIdx = beginIdx;
+            	d.endIdx = beginIdx+1;
+            	d.lBracketLoc = lBracketLoc.getRawEncoding();
+            	d.ellipsisLoc = ellipsisLoc.getRawEncoding();
+            	d.rBracketLoc = rBracketLoc.getRawEncoding();
+            	kind = DesignatorKind.ArrayRangeDesignator;
+            }
+
+            public boolean isFieldDesignator()
+            {
+            	return kind == DesignatorKind.FieldDesignator;
+            }
+
+            public boolean isArrayDesignator()
+            {
+            	return kind == DesignatorKind.ArrayDesignator;
+            }
+
+            public boolean isArrayRangeDesignator()
+            {
+            	return kind == DesignatorKind.ArrayRangeDesignator;
+            }
+
+            public IdentifierInfo getFieldName()
+            {
+	            assert isFieldDesignator():"Only valid on a field designator";
+
+            	Object obj = ((FieldDesignator)desig).nameOrField;
+            	if (obj instanceof IdentifierInfo)
+            		return (IdentifierInfo)obj;
+            	else
+            		return getField().getIdentifier();
+            }
+
+            public FieldDecl getField()
+            {
+            	assert isFieldDesignator():"Only valid on a field designator";
+	            Object obj = ((FieldDesignator)desig).nameOrField;
+	            if (obj instanceof FieldDecl)
+		            return (FieldDecl)obj;
+	            else
+		            return null;
+            }
+
+            public void setField(FieldDecl fd)
+            {
+	            assert isFieldDesignator():"Only valid on a field designator";
+	            FieldDesignator d = ((FieldDesignator)desig);
+	            d.nameOrField = fd;
+            }
+
+            public SourceLocation getDotLoc()
+            {
+	            assert isFieldDesignator():"Only valid on a field designator";
+	            FieldDesignator d = ((FieldDesignator)desig);
+	            return SourceLocation.getFromRawEncoding(d.dotLoc);
+            }
+
+            public SourceLocation getFieldLoc()
+            {
+	            assert isFieldDesignator():"Only valid on a field designator";
+	            FieldDesignator d = ((FieldDesignator)desig);
+	            return SourceLocation.getFromRawEncoding(d.fieldLoc);
+            }
+
+		    public SourceLocation getLBracketLoc()
+		    {
+			    assert isArrayDesignator() || isArrayRangeDesignator();
+			    if (isArrayDesignator())
+			    {
+			    	return SourceLocation.getFromRawEncoding(((ArrayDesignator)desig).lBracketLoc);
+			    }
+			    else
+			    {
+				    return SourceLocation.getFromRawEncoding(((ArrayRangeDesignator)desig).lBracketLoc);
+			    }
+		    }
+
+		    public SourceLocation getRBracketLoc()
+		    {
+			    assert isArrayDesignator() || isArrayRangeDesignator();
+			    if (isArrayDesignator())
+			    {
+				    return SourceLocation.getFromRawEncoding(((ArrayDesignator)desig).rBracketLoc);
+			    }
+			    else
+			    {
+				    return SourceLocation.getFromRawEncoding(((ArrayRangeDesignator)desig).rBracketLoc);
+			    }
+		    }
+
+		    public SourceLocation getEllipsisLoc()
+		    {
+			    assert isArrayRangeDesignator();
+			    return SourceLocation.getFromRawEncoding(((ArrayRangeDesignator)desig).ellipsisLoc);
+		    }
+
+		    public int getFirstExprIndex()
+		    {
+		    	assert isArrayDesignator() || isArrayRangeDesignator();
+			    if (isArrayDesignator())
+			    {
+				    return ((ArrayDesignator)desig).index;
+			    }
+			    else
+			    {
+				    return ((ArrayRangeDesignator)desig).startIdx;
+			    }
+		    }
+
+		    public SourceLocation getStartLocation()
+		    {
+		    	if (isFieldDesignator())
+		    		return getDotLoc().isValid() ? getDotLoc() : getFieldLoc();
+		    	else
+		    		return getLBracketLoc();
+		    }
+	    }
+
+	    private Designator[] designators;
+        /**
+         * The initialization expression or array or array range designator.
+         */
+	    private Expr[] subExprs;
+
+	    private SourceLocation equalOrColonLoc;
+
+	    private boolean isGnuSyntax;
+
+		public static DesignatedInitExpr create(
+				ASTContext ctx,
+                ArrayList<Designator> designator,
+				ArrayList<Expr> indexExprs,
+				SourceLocation equalOrColonLoc,
+				boolean gnuStyle,
+				Expr init)
+		{
+			return new DesignatedInitExpr(ctx.VoidTy, designator,
+					indexExprs, equalOrColonLoc, gnuStyle, init);
+		}
+
+	    public DesignatedInitExpr(
+	    		QualType type,
+	    		ArrayList<Designator> designator,
+	    		ArrayList<Expr> indexExprs,
+	    		SourceLocation equalOrColonLoc,
+	    		boolean gnuStyle,
+	    		Expr init)
+	    {
+		    super(DesignatedInitExprClass, type,
+                    OK_Ordinary, EVK_RValue,
+                    designator.get(0).getStartLocation());
+		    designators = new Designator[designator.size()];
+		    subExprs = new Expr[indexExprs.size() + 1];
+		    this.equalOrColonLoc = equalOrColonLoc;
+		    this.isGnuSyntax = gnuStyle;
+
+		    int indexIdx = 0;
+
+		    // The first one in sub expr array is the initializetion expression.
+		    subExprs[indexIdx++] = init;
+		    for (int i = 0, e = designator.size(); i != e; i++)
+            {
+                designators[i] = designator.get(i);
+
+                if (designators[i].isArrayDesignator())
+                {
+                    int idx = designators[i].getFirstExprIndex();
+                    subExprs[indexIdx++] = indexExprs.get(idx);
+                }
+                else if (designators[i].isArrayRangeDesignator())
+                {
+                    int idx = designators[i].getFirstExprIndex();
+                    subExprs[indexIdx++] = indexExprs.get(idx);
+                    subExprs[indexIdx++] = indexExprs.get(idx+1);
+                }
+            }
+            assert indexIdx == subExprs.length
+                    : "Wrong number of index expressions!";
+	    }
+
+	    @Override
+        public void accept(StmtVisitor v)
+	    {
+	    }
+
+	    public Expr getInit()
+        {
+            return subExprs[0];
+        }
+
+        public void setInit(Expr e)
+        {
+            subExprs[0] = e;
+        }
+
+	    @Override
+        public SourceRange getSourceRange()
+	    {
+            SourceLocation startLoc;
+		    Designator firstDesig = designators[0];
+            startLoc = firstDesig.getStartLocation();
+            return new SourceRange(startLoc, getInit().getSourceRange().getEnd());
+	    }
+
+	    public Expr getSubExpr(int idx)
+        {
+            assert idx >= 0 && idx < subExprs.length;
+            return subExprs[idx];
+        }
+
+        public void setSubExpr(int idx, Expr e)
+        {
+            assert idx >= 0 && idx < subExprs.length;
+            subExprs[idx] = e;
+        }
+
+        public int getNumSubExprs()
+        {
+            return subExprs.length;
+        }
+
+        public boolean usesGNUSyntax()
+        {
+            return isGnuSyntax;
+        }
+
+        public void setGnuSyntax(boolean gnuSyntax)
+        {
+            isGnuSyntax = gnuSyntax;
+        }
+
+        public SourceLocation getEqualOrColonLoc()
+        {
+            return equalOrColonLoc;
+        }
+
+        public void setEqualOrColonLoc(SourceLocation loc)
+        {
+            equalOrColonLoc = loc;
+        }
+
+        public Designator[] getDesignators()
+        {
+            return designators;
+        }
+
+        public Designator getDesignator(int idx)
+        {
+            assert idx >= 0 && idx < designators.length;
+            return designators[idx];
+        }
+
+        public void setDesignator(int idx, Designator d)
+        {
+            assert idx >= 0 && idx < designators.length;
+            designators[idx] = d;
+        }
+
+        public int getSize()
+        {
+            return designators.length;
+        }
+
+        public Expr getArrayIndex(Designator d)
+        {
+            if (d.isArrayDesignator())
+                return subExprs[d.getFirstExprIndex()];
+            return null;
+        }
+
+        public Expr getArrayRangeStart(Designator d)
+        {
+            if (d.isArrayRangeDesignator())
+                return subExprs[d.getFirstExprIndex()];
+            return null;
+        }
+
+        public Expr getArrayRangeEnd(Designator d)
+        {
+            if (d.isArrayRangeDesignator())
+                return subExprs[d.getFirstExprIndex()+1];
+            return null;
         }
     }
 }

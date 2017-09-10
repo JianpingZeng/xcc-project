@@ -42,6 +42,7 @@ import static jlang.sema.BinaryOperatorKind.*;
 import static jlang.sema.Decl.DefinitionKind.DeclarationOnly;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
+import static jlang.sema.Sema.AssignAction.AA_Initializing;
 import static jlang.sema.Sema.LookupNameKind.*;
 import static jlang.sema.UnaryOperatorKind.*;
 import static jlang.support.Linkage.ExternalLinkage;
@@ -153,7 +154,7 @@ public final class Sema implements DiagnosticParseTag,
     private Preprocessor pp;
     private Stack<FunctionScopeInfo> functionScopes;
     private ASTConsumer consumer;
-    private ASTContext context;
+    ASTContext context;
     private Diagnostic diags;
     private SourceManager sourceMgr;
     private HashMap<String, LabelStmt> functionLabelMap;
@@ -2454,7 +2455,7 @@ public final class Sema implements DiagnosticParseTag,
             return new QualType();
 
         VariableArrayType vlaTy = context.getAsVariableArrayType(ty);
-        if (vlaTy.getElemType().isVariableArrayType())
+        if (vlaTy.getElementType().isVariableArrayType())
             return new QualType();
 
         Expr.EvalResult result = new Expr.EvalResult();
@@ -2468,7 +2469,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             Expr arySizeExpr = vlaTy.getSizeExpr();
 
-            return context.getConstantArrayWithExprType(vlaTy.getElemType(),
+            return context.getConstantArrayWithExprType(vlaTy.getElementType(),
                     res, arySizeExpr, ArraySizeModifier.Normal, 0,
                     vlaTy.getBrackets());
         }
@@ -4450,7 +4451,7 @@ public final class Sema implements DiagnosticParseTag,
                         final ArrayType.IncompleteArrayType arrayT = context.getAsInompleteArrayType(type);
                         if (arrayT != null)
                         {
-                            if (requireCompleteType(var.getLocation(), arrayT.getElemType(),
+                            if (requireCompleteType(var.getLocation(), arrayT.getElementType(),
                                     err_illegal_decl_array_incomplete_type))
                                 var.setInvalidDecl(true);
                         }
@@ -4701,7 +4702,7 @@ public final class Sema implements DiagnosticParseTag,
         if (srcFrom.isConstantArrayType())
         {
             ArrayType.ConstantArrayType cat = context.getAsConstantArrayType(srcFrom);
-            decayedTy = context.getPointerType(cat.getElemType()).getType();
+            decayedTy = context.getPointerType(cat.getElementType()).getType();
             resTy = new QualType(decayedTy, QualType.CONST_QUALIFIER);
             cast = CastKind.CK_ArrayToPointerDecay;
         }
@@ -5125,7 +5126,7 @@ public final class Sema implements DiagnosticParseTag,
         }
     }
 
-    private AssignConvertType checkSingleAssignmentConstraints(
+    public AssignConvertType checkSingleAssignmentConstraints(
             QualType lhsType,
             OutParamWrapper<ActionResult<Expr>> rhsExpr)
     {
@@ -5269,7 +5270,7 @@ public final class Sema implements DiagnosticParseTag,
         AA_Casting
     }
 
-    private boolean diagnoseAssignmentResult(
+    public boolean diagnoseAssignmentResult(
             AssignConvertType convertType,
             SourceLocation loc,
             QualType destType,
@@ -5281,7 +5282,7 @@ public final class Sema implements DiagnosticParseTag,
                 srcType, srcExpr, action, null);
     }
 
-    private boolean diagnoseAssignmentResult(
+    public boolean diagnoseAssignmentResult(
             AssignConvertType convertType,
             SourceLocation loc,
             QualType destType,
@@ -6319,7 +6320,7 @@ public final class Sema implements DiagnosticParseTag,
         QualType elemType = t;
         ArrayType.ConstantArrayType array = context.getAsConstantArrayType(t);
         if (array != null)
-            elemType = array.getElemType();
+            elemType = array.getElementType();
 
         final TagType tag = context.getAs(elemType, TagType.class);
         // Avoids diagnostic invalid decls as incomplete.
@@ -9010,7 +9011,7 @@ public final class Sema implements DiagnosticParseTag,
 
         if (array != null)
         {
-            baseDeclType = array.getElemType();
+            baseDeclType = array.getElementType();
         }
         if (requireCompleteType(vd.getLocation(), baseDeclType, err_typecheck_decl_incomplete_type))
         {
@@ -9342,12 +9343,179 @@ public final class Sema implements DiagnosticParseTag,
 
     public ActionResult<Expr> actOnCompoundLiteral(
             SourceLocation lParenLoc,
-            QualType type,
+            QualType literalType,
             SourceLocation rParenLoc,
             ActionResult<Expr> initExpr)
     {
-        // TODO: 17-9-5
-        return exprError();
+        Expr literalExpr = initExpr.get();
+
+        if (literalExpr.getType().isArrayType())
+        {
+            if (literalType.isVariableArrayType())
+            {
+                diag(lParenLoc, err_variable_object_no_init)
+                        .addSourceRange(new SourceRange(lParenLoc,
+                                literalExpr.getSourceRange().getEnd()))
+                        .emit();
+                return exprError();
+            }
+        }
+        else if (requireCompleteType(lParenLoc,
+                context.getBaseElementType(literalType),
+                pdiag(err_illegal_decl_array_incomplete_type)
+                        .addSourceRange(new SourceRange(lParenLoc, literalExpr.getSourceRange().getEnd()))))
+        {
+            return exprError();
+        }
+
+        OutParamWrapper<Expr> x = new OutParamWrapper<>(literalExpr);
+        OutParamWrapper<QualType> y = new OutParamWrapper<>(literalType);
+
+        if (checkInitializerTypes(x, y, lParenLoc, new IdentifierInfo(),false))
+            return exprError();
+
+        literalExpr = x.get();
+        literalType = y.get();
+
+        boolean isFileScope = getCurFunctionDecl() == null;
+        if (isFileScope)
+        {
+            if (checkForConstantInitializer(literalExpr, literalType))
+                return exprError();
+        }
+
+        return new ActionResult<>(new CompoundLiteralExpr(lParenLoc, literalType,
+                literalExpr, isFileScope));
+    }
+
+    private boolean checkInitializerTypes(
+            OutParamWrapper<Expr> literalExpr,
+            OutParamWrapper<QualType> literalType,
+            SourceLocation initLoc,
+            IdentifierInfo initEntity,
+            boolean directInit)
+    {
+        // C99 6.7.8p3: The type of the entity to be initialized shall be an
+        // array of unknown size ("[]") or an object type that is not a variable
+        // array type.
+        if (literalType.get().isVariableArrayType())
+        {
+            VariableArrayType vat = context.getAsVariableArrayType(literalType.get());
+            diag(initLoc, err_variable_object_no_init)
+                    .addSourceRange(vat.getSizeExpr().getSourceRange());
+        }
+
+        InitListExpr initList = literalExpr.get() instanceof InitListExpr ?
+                (InitListExpr)literalExpr.get() : null;
+        if (initList == null)
+        {
+            Expr str = isStringInit(literalExpr.get(), literalType.get(), context);
+            if (str != null)
+            {
+                checkStringInit(str, literalType, this);
+                return false;
+            }
+
+            // C99 6.7.8p16
+            if (literalType.get().isArrayType())
+            {
+                diag(literalExpr.get().getLocStart(),
+                        err_array_init_list_required)
+                        .addSourceRange(literalExpr.get().getSourceRange())
+                        .emit();
+                return false;
+            }
+
+            return checkSingleInitializer(literalExpr, literalType.get(), directInit, this);
+        }
+
+        OutParamWrapper<InitListExpr> x = new OutParamWrapper<>(initList);
+        boolean hadError = checkInitList(x, literalType);
+        literalExpr.set(x.get());
+        return hadError;
+    }
+
+    private static Expr isStringInit(Expr init, QualType type, ASTContext ctx)
+    {
+        ArrayType at = ctx.getAsArrayType(type);
+        if (at == null)
+            return null;
+
+        if (!(at instanceof ArrayType.ConstantArrayType)
+                && !(at instanceof ArrayType.IncompleteArrayType))
+            return null;
+
+        init = init.ignoreParens();
+
+        StringLiteral sl = init instanceof StringLiteral ? (StringLiteral)init:null;
+        if (sl == null)
+            return null;
+
+        QualType eltType = ctx.getCanonicalType(at.getElementType());
+
+        // char array can be initialized with a narrow string.
+        // Only allow char x[] = "foo";
+        return eltType.isCharType() ? init : null;
+    }
+
+    private static void checkStringInit(Expr str,
+            OutParamWrapper<QualType> declType,
+            Sema s)
+    {
+        long strLength = s.context.getAsConstantArrayType
+                (str.getType()).getSize().getZExtValue();
+
+        ArrayType at = s.context.getAsArrayType(declType.get());
+        if (at instanceof ArrayType.IncompleteArrayType)
+        {
+            // C99 6.7.8p14. We have an array of character type with unknown size
+            // being initialized to a string literal.
+            ArrayType.IncompleteArrayType it = (ArrayType.IncompleteArrayType)at;
+            APSInt constVal = new APSInt(32);
+            constVal.assign(strLength);
+            declType.set(s.context.getConstantArrayWithoutExprType(it.getElementType(),
+                    constVal, ArraySizeModifier.Normal, 0));
+
+            return;
+        }
+
+        ArrayType.ConstantArrayType cat = s.context.getAsConstantArrayType(declType.get());
+        // C99 6.7.8p14. We have an array of character type with known size.  However,
+        // the size may be smaller or larger than the string we are initializing.
+        if (strLength - 1 > cat.getSize().getZExtValue())
+        {
+            s.diag(str.getLocStart(), warn_initializer_string_for_char_array_too_long)
+                    .addSourceRange(str.getSourceRange()).emit();
+        }
+
+        str.setType(declType.get());
+    }
+
+    private boolean checkSingleInitializer(
+            OutParamWrapper<Expr> init,
+            QualType declType,
+            boolean directInit,
+            Sema s)
+    {
+        QualType initType = init.get().getType();
+
+        OutParamWrapper<ActionResult<Expr>> x =
+                new OutParamWrapper<>(new ActionResult<>(init.get()));
+        AssignConvertType convTy = s.checkSingleAssignmentConstraints(declType, x);
+        init.set(x.get().get());
+        return s.diagnoseAssignmentResult(convTy, init.get().getLocStart(),
+                declType, initType, init.get(), AA_Initializing);
+    }
+
+    private boolean checkInitList(
+            OutParamWrapper<InitListExpr> initList,
+            OutParamWrapper<QualType> declType)
+    {
+        InitListChecker checker = new InitListChecker(this, initList.get(), declType);
+        if (!checker.hadError())
+            initList.set(checker.getFullyStructuredList());
+
+        return true;
     }
 
     public ActionResult<Expr> actOnDesignatedInitializer(
@@ -9356,7 +9524,198 @@ public final class Sema implements DiagnosticParseTag,
             boolean gnuSyntax,
             ActionResult<Expr> init)
     {
-        // TODO: 17-9-5
-        return exprError();
+        boolean invalid = false;
+        ArrayList<DesignatedInitExpr.Designator> designators = new ArrayList<>();
+        ArrayList<Expr> initExpressions = new ArrayList<>();
+
+        for (int idx = 0, e = desig.getNumDesignators(); idx < e; idx++)
+        {
+            Designator d = desig.getDesignator(idx);
+            switch (d.getKind())
+            {
+                case FieldDesignator:
+                    designators.add(new DesignatedInitExpr.Designator(
+                            d.getField(),
+                            d.getDotLoc(),
+                            d.getFieldLoc()));
+                    break;
+                case ArrayDesignator:
+                {
+                    Expr index = d.getArrayIndex().get();
+                    APSInt indexValue = checkArrayDesignatorExpr(this, index);
+                    if (indexValue == null)
+                        invalid = true;
+                    else
+                    {
+                        designators.add(new DesignatedInitExpr.Designator(
+                                initExpressions.size(),
+                                d.getLBracketLoc(),
+                                d.getRBracketLoc()));
+                        initExpressions.add(index);
+                    }
+                    break;
+                }
+                case ArrayRangeDesignator:
+                {
+                    Expr startIndex = d.getArrayRangeStart().get();
+                    Expr endIndex = d.getArrayRangeEnd().get();
+                    APSInt startValue = checkArrayDesignatorExpr(this, startIndex);
+                    APSInt endValue = checkArrayDesignatorExpr(this, endIndex);
+
+                    if (startValue == null || endValue == null)
+                    {
+                        invalid = true;
+                    }
+                    else
+                    {
+                        // Make sure we're comparing values with the same bit width.
+                        if (startValue.getBitWidth() > endValue.getBitWidth())
+                            endValue.extend(startValue.getBitWidth());
+                        else if (startValue.getBitWidth() < endValue.getBitWidth())
+                        {
+                            startValue.extend(endValue.getBitWidth());
+                        }
+
+                        if (endValue.lt(startValue))
+                        {
+                            diag(d.getEllipsisLoc(), err_array_designator_empty_range)
+                                    .addTaggedVal(startValue.toString(10))
+                                    .addTaggedVal(endValue.toString(10))
+                                    .addSourceRange(startIndex.getSourceRange())
+                                    .addSourceRange(endIndex.getSourceRange());
+                            invalid = true;
+                        }
+                        else
+                        {
+                            designators.add(new DesignatedInitExpr.Designator(
+                                    initExpressions.size(),
+                                    d.getLBracketLoc(),
+                                    d.getEllipsisLoc(),
+                                    d.getRBracketLoc()));
+                            initExpressions.add(startIndex);
+                            initExpressions.add(endIndex);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (invalid || init.isInvalid())
+            return exprError();
+
+        DesignatedInitExpr die = DesignatedInitExpr.create(context,
+                designators,
+                initExpressions,
+                loc, gnuSyntax,
+                init.get());
+
+        return new ActionResult<>(die);
+    }
+
+    private static APSInt checkArrayDesignatorExpr(Sema s, Expr index)
+    {
+        SourceLocation loc = index.getSourceRange().getBegin();
+
+        APSInt res = new APSInt();
+        OutParamWrapper<APSInt> x = new OutParamWrapper<>(res);
+
+        // Make sure this is an integer constant expression.
+        if (s.verifyIntegerConstantExpression(index, x))
+            return null;
+        res = x.get();
+        if (res.isSigned() && res.isNegative())
+        {
+            s.diag(loc, err_array_designator_negative)
+                    .addTaggedVal(res.toString(10))
+                    .addSourceRange(index.getSourceRange())
+                    .emit();
+            return null;
+        }
+
+        res.setIsUnsigned(true);
+        return res;
+    }
+
+    public boolean checkValueInitialization(QualType eltType, SourceLocation loc)
+    {
+        ArrayType at = context.getAsArrayType(eltType);
+        if (at != null)
+        {
+            return checkValueInitialization(at.getElementType(), loc);
+        }
+        return false;
+    }
+
+    public boolean performCopyInitialization(
+            OutParamWrapper<Expr> from,
+            QualType toType,
+            AssignAction aa)
+    {
+        QualType fromType = from.get().getType();
+
+        OutParamWrapper<ActionResult<Expr>> x = new OutParamWrapper<>(new ActionResult<>(from.get()));
+        AssignConvertType convTy = checkSingleAssignmentConstraints(toType, x);
+        from.set(x.get().get());
+
+        return diagnoseAssignmentResult(convTy, from.get().getLocStart(),
+                toType, fromType, from.get(), aa);
+    }
+
+    public static Decl getObjectForAnonymousRecordDecl(ASTContext context,
+            RecordDecl record)
+    {
+        assert record.isAnonymousStructOrUnion()
+                : "Record must be an anonymous struct or union!";
+
+        IDeclContext ctx = record.getDeclContext();
+        for (int i = 0,e = ctx.getDeclCounts(); i != e; )
+        {
+            Decl d = ctx.getDeclAt(i);
+            if (d.equals(record))
+            {
+                ++i;
+                assert i != e :"Missing object for anonymous record";
+                assert ((NamedDecl)d).getDeclName() == null
+                        : "Decl should be unamed!";
+                return d;
+            }
+        }
+
+        assert false:"Missing object for anonymous record";
+        return null;
+    }
+
+    public VarDecl buildAnonymousStructUnionMemberPath(FieldDecl field,
+            ArrayList<FieldDecl> path)
+    {
+        assert field.getDeclContext().isRecord() &&
+                ((RecordDecl)(field.getDeclContext())).isAnonymousStructOrUnion()
+                :"Field must be stored inside an anonymous struct or union";
+
+        path.add(field);
+
+        VarDecl baseObjc = null;
+        IDeclContext ctx = field.getDeclContext();
+        do
+        {
+            RecordDecl record = (RecordDecl)ctx;
+            Decl anonObject = getObjectForAnonymousRecordDecl(context, record);
+            if (anonObject instanceof FieldDecl)
+            {
+                path.add((FieldDecl)anonObject);
+            }
+            else
+            {
+                baseObjc = (VarDecl)anonObject;
+                break;
+            }
+
+            ctx = ctx.getParent();
+
+        }while (ctx.isRecord() &&
+            (((RecordDecl)(ctx)).isAnonymousStructOrUnion()));
+
+        return baseObjc;
     }
 }
