@@ -55,7 +55,7 @@ public abstract class ArrayType extends Type implements FoldingSetNode
         indexTypeQuals = tq;
     }
 
-    public QualType getElemType()
+    public QualType getElementType()
     {
         return elemType;
     }
@@ -110,13 +110,13 @@ public abstract class ArrayType extends Type implements FoldingSetNode
             inner += '[';
             inner += getSize().getZExtValue();
             inner += ']';
-            return getElemType().getAsStringInternal(inner, policy);
+            return getElementType().getAsStringInternal(inner, policy);
         }
 
         @Override
         public void profile(FoldingSetNodeID id)
         {
-            id.addInteger(getElemType().hashCode());
+            id.addInteger(getElementType().hashCode());
             id.addInteger(getSize().getZExtValue());
             id.addInteger(getSizeModifier().ordinal());
             id.addInteger(getIndexTypeQuals());
@@ -241,7 +241,7 @@ public abstract class ArrayType extends Type implements FoldingSetNode
             if (policy.constantArraySizeAsWritten)
             {
                 inner += "[]";
-                return getElemType().getAsStringInternal(inner, policy);
+                return getElementType().getAsStringInternal(inner, policy);
             }
             return super.getAsStringInternal(inner, policy);
         }
@@ -356,7 +356,7 @@ public abstract class ArrayType extends Type implements FoldingSetNode
                 inner += sizeExpr.toString();
             }
             inner += ']';
-            return getElemType().getAsStringInternal(inner, policy);
+            return getElementType().getAsStringInternal(inner, policy);
         }
 
         @Override
@@ -388,13 +388,13 @@ public abstract class ArrayType extends Type implements FoldingSetNode
         public String getAsStringInternal(String inner, PrintingPolicy policy)
         {
             inner += "[]";
-            return getElemType().getAsStringInternal(inner, policy);
+            return getElementType().getAsStringInternal(inner, policy);
         }
 
         @Override
         public void profile(FoldingSetNodeID id)
         {
-            id.addInteger(getElemType().hashCode());
+            id.addInteger(getElementType().hashCode());
             id.addInteger(getSizeModifier().ordinal());
             id.addInteger(getIndexTypeQuals());
         }

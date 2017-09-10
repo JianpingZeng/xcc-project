@@ -396,7 +396,7 @@ public class CodeGenTypes
 
                 // VLAs resolve to the innermost element type; this matches
                 // the return of alloca, and there isn't any obviously better choice.
-                return convertTypeForMemRecursive(a.getElemType());
+                return convertTypeForMemRecursive(a.getElementType());
             }
             case IncompleteArray:
             {
@@ -406,7 +406,7 @@ public class CodeGenTypes
 
                 // int X[] -> [0 x int], unless the element type is not sized.  If it is
                 // unsized (e.g. an incomplete struct) just use [0 x i8].
-                Type eltTy = convertTypeForMemRecursive(a.getElemType());
+                Type eltTy = convertTypeForMemRecursive(a.getElementType());
                 if (!eltTy.isSized())
                 {
                     eltTy = Type.Int8Ty;
@@ -416,7 +416,7 @@ public class CodeGenTypes
             case ConstantArray:
             {
                 ArrayType.ConstantArrayType a = (ArrayType.ConstantArrayType)ty;
-                backend.type.Type eltTy = convertTypeForMemRecursive(a.getElemType());
+                backend.type.Type eltTy = convertTypeForMemRecursive(a.getElementType());
 
                 // Lower arrays of undefined struct type to arrays of i8 just to have a
                 // concrete type.
@@ -620,7 +620,7 @@ public class CodeGenTypes
         if (t.getType() instanceof jlang.type.ArrayType)
         {
             jlang.type.ArrayType at = (jlang.type.ArrayType)t.getType();
-            return isSafeToConvert(at.getElemType(), alreadyChecked);
+            return isSafeToConvert(at.getElementType(), alreadyChecked);
         }
 
         // Otherwise, there is no concern about transforming this.  We only care about

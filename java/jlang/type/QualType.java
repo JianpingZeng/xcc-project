@@ -623,7 +623,7 @@ public final class QualType implements Cloneable, FoldingSetNode
     {
         QualType ct = getType().getCanonicalTypeInternal();
         if (ct.isArrayType())
-            return ((ArrayType)ct.getType()).getElemType().getAddressSpace();
+            return ((ArrayType)ct.getType()).getElementType().getAddressSpace();
         if (ct.isRecordType())
             return ((RecordType)ct.getType()).getAddressSpace();
         return 0;
@@ -634,7 +634,7 @@ public final class QualType implements Cloneable, FoldingSetNode
         if (isConstQualifed())
             return true;
         if (getType().isArrayType())
-            return ctx.getAsArrayType(this).getElemType().isConstant(ctx);
+            return ctx.getAsArrayType(this).getElementType().isConstant(ctx);
 
         return false;
     }

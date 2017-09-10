@@ -1321,7 +1321,7 @@ public final class CodeGenFunction
 				Type sizeTy = convertType(vat.getSizeExpr().getType());
 
 				// get the element size.
-				QualType elemTy = vat.getElemType();
+				QualType elemTy = vat.getElementType();
 				Value elemSize;
 				if (elemTy.isVariableArrayType())
 					elemSize = emitVLASize(elemTy);
@@ -1342,7 +1342,7 @@ public final class CodeGenFunction
 		ArrayType at = getContext().getAsArrayType(type);
 		if (at != null)
 		{
-			emitVLASize(at.getElemType());
+			emitVLASize(at.getElementType());
 			return null;
 		}
 

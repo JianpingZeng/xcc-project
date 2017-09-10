@@ -194,4 +194,64 @@ public class Designator
                 return;
         }
     }
+
+    public IdentifierInfo getField()
+    {
+        assert isFieldDesignator():"Invalid accessor";
+        return getFieldInfo().ii;
+    }
+
+    public SourceLocation getDotLoc()
+    {
+        assert isFieldDesignator();
+        return getFieldInfo().dotLoc;
+    }
+
+    public SourceLocation getFieldLoc()
+    {
+        assert isFieldDesignator();
+        return getFieldInfo().nameLoc;
+    }
+
+    public ActionResult<Tree.Expr> getArrayIndex()
+    {
+        assert isArrayDesignator();
+        return getArrayInfo().index;
+    }
+
+    public ActionResult<Tree.Expr> getArrayRangeStart()
+    {
+        assert isArrayRangeDesignator();
+        return getArrayRangeInfo().startIdx;
+    }
+
+    public ActionResult<Tree.Expr> getArrayRangeEnd()
+    {
+        assert isArrayRangeDesignator();
+        return getArrayRangeInfo().endIdx;
+    }
+
+    public SourceLocation getLBracketLoc()
+    {
+        assert isArrayDesignator() || isArrayRangeDesignator();
+        if (isArrayDesignator())
+            return getArrayInfo().lBracketLoc;
+        else
+            return getArrayRangeInfo().lBracketLoc;
+    }
+
+    public SourceLocation getRBracketLoc()
+    {
+        assert isArrayDesignator() || isArrayRangeDesignator();
+        if (isArrayDesignator())
+            return getArrayInfo().rBracketLoc;
+        else
+            return getArrayRangeInfo().rBracketLoc;
+    }
+
+    public SourceLocation getEllipsisLoc()
+    {
+        assert isArrayRangeDesignator();
+        return getArrayRangeInfo().ellipsisLoc;
+    }
 }

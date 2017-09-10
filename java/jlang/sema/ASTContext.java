@@ -458,7 +458,7 @@ public final class ASTContext
 		ArrayType arrayType = getAsArrayType(ty);
 		assert arrayType != null : "Not an array jlang.type!";
 
-		QualType ptrTy = getPointerType(arrayType.getElemType());
+		QualType ptrTy = getPointerType(arrayType.getElementType());
 
 		// int x[restrict 4]-> int *restrict;
         return ptrTy.getQualifiedType(arrayType.getIndexTypeQuals());
@@ -576,7 +576,7 @@ public final class ASTContext
 		ArrayType aty = (ArrayType)type.getType();
 		// Otherwise, we have an array and we have qualifiers on it.
 		// Push qualifiers into the array element type and return a new array jlang.type.
-		QualType newElemTy = getQualifiedType(aty.getElemType(), type.getQualifiers());
+		QualType newElemTy = getQualifiedType(aty.getElementType(), type.getQualifiers());
 
 		if (aty instanceof ConstantArrayType)
 		{
@@ -706,8 +706,8 @@ public final class ASTContext
 				if (lcat != null && rcat != null && rcat.getSize().ne(lcat.getSize()))
 					return new QualType();
 
-				QualType lhsElem = getAsArrayType(lhs).getElemType();
-				QualType rhsElem = getAsArrayType(rhs).getElemType();
+				QualType lhsElem = getAsArrayType(lhs).getElementType();
+				QualType rhsElem = getAsArrayType(rhs).getElementType();
 
 				if (unqualified)
 				{
@@ -967,7 +967,7 @@ public final class ASTContext
 			if (!type.isConstantArrayType())
 				break;
 
-			type = getAsArrayType(type).getElemType();
+			type = getAsArrayType(type).getElementType();
 			qs.addCVQualifier(type.qualsFlag.mask);
 		}
 		return getQualifiedType(type, qs);
@@ -975,7 +975,7 @@ public final class ASTContext
 
 	public QualType getBaseElementType(VariableArrayType vat)
 	{
-		QualType eltType = vat.getElemType();
+		QualType eltType = vat.getElementType();
 		VariableArrayType eltVat = getAsVariableArrayType(eltType);
 		if (eltVat != null)
 			return getBaseElementType(eltVat);
@@ -1067,7 +1067,7 @@ public final class ASTContext
 			case IncompleteArray:
 			case VariableArray:
 				width = 0;
-				align = getTypeAlign(((ArrayType)t).getElemType());
+				align = getTypeAlign(((ArrayType)t).getElementType());
 				break;
 			case ConstantArrayWithExpr:
 			case ConstantArrayWithoutExpr:
@@ -1184,7 +1184,7 @@ public final class ASTContext
 
 		if (type.getType().isArrayType())
 		{
-			return isConstant(getAsArrayType(type).getElemType());
+			return isConstant(getAsArrayType(type).getElementType());
 		}
 		return false;
 	}
@@ -1218,7 +1218,7 @@ public final class ASTContext
 		// Get the canonical version of the element with the extra qualifiers on it.
 		// This can recursively sink qualifiers through multiple levels of arrays.'
 		ArrayType at = (ArrayType)canType.getType();
-		QualType newEltTy = at.getElemType().getWithAdditionalQualifiers(typeQuals);
+		QualType newEltTy = at.getElementType().getWithAdditionalQualifiers(typeQuals);
 		newEltTy = getCanonicalType(newEltTy);
 
 		if (at instanceof ConstantArrayType)

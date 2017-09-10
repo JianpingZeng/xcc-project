@@ -292,7 +292,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
 
             long numArrayElts = atType.getNumElements();
             QualType eltType = cgf.getContext().getPromotedIntegerType(expr.getType());
-            eltType = cgf.getContext().getAsArrayType(eltType).getElemType();
+            eltType = cgf.getContext().getAsArrayType(eltType).getElementType();
 
             int cvrQualifiers = eltType.getCVRQualifiers();
 

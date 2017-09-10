@@ -250,7 +250,7 @@ public final class ASTRecordLayout
 					// have to be aligned appropriately for their element jlang.type.'
 					fieldSize = 0;
 					ArrayType ty = ctx.getAsArrayType(fd.getType());
-					fieldAlign = ctx.getTypeAlign(ty.getElemType());
+					fieldAlign = ctx.getTypeAlign(ty.getElementType());
 				}
 				else
 				{
