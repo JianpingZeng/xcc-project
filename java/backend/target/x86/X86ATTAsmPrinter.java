@@ -313,7 +313,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
                 os.println("\t.global\t" + curFnName);
                 break;
             default:
-                assert false : "Unknown linkage type!";
+                assert false : "Undefined linkage type!";
                 break;
         }
 

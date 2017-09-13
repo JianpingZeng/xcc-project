@@ -871,7 +871,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         boolean noPreprocess = false;
         switch (lk)
         {
-            default:assert false:"Unknown language kind!";
+            default:assert false:"Undefined language kind!";
             case langkind_asm_cpp:
                 langOption.asmPreprocessor = true;
                 // fall through.
@@ -925,7 +925,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         }
         switch (LangStd.value)
         {
-            default:assert false:"Unknown language standard!";
+            default:assert false:"Undefined language standard!";
             case Lang_gnu99:
             case Lang_c99:
                 options.c99 = true;

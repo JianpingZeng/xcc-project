@@ -421,7 +421,7 @@ public class CallingConvEmitter extends TableGenBackend
             else
             {
                 action.dump();
-                throw new Exception("Unknown CCAction!");
+                throw new Exception("Undefined CCAction!");
             }
         }
     }

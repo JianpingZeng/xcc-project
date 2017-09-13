@@ -451,7 +451,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                         os.print(data64BitDirective);
                         break;
                     default:
-                        assert false:"Unknown integral type";
+                        assert false:"Undefined integral type";
                 }
                 break;
             case Type.PointerTyID:

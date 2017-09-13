@@ -87,7 +87,7 @@ public final class SDNodeInfo
                     properties |= 1 << SDNP.SDNPMemOperand;
                     break;
                 default:
-                    System.err.println("Unknown SD Node property '" + prop.getName()
+                    System.err.println("Undefined SD Node property '" + prop.getName()
                             + "' on node '" + r.getName() + "'!");
                     System.exit(1);
             }

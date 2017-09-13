@@ -88,7 +88,7 @@ public final class TernOpInit extends Init.OpInit
     {
         switch (getOpcode())
         {
-            default: assert false: "Unknown binop";
+            default: assert false: "Undefined binop";
             case SUBST:
             {
                 DefInit lhsd;

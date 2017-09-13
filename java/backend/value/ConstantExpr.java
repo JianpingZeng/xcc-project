@@ -24,8 +24,7 @@ import tools.Util;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import static backend.value.Instruction.CmpInst.Predicate.FIRST_ICMP_PREDICATE;
-import static backend.value.Instruction.CmpInst.Predicate.LAST_ICMP_PREDICATE;
+import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
  * @author Xlous.zeng
@@ -316,7 +315,7 @@ public abstract class ConstantExpr extends Constant
     }
 
     public static Constant getICmp(Predicate predicate,
-            ConstantInt lhs, ConstantInt rhs)
+            Constant lhs, Constant rhs)
     {
         assert lhs.getType().equals(rhs.getType());
         assert predicate.ordinal() >= FIRST_ICMP_PREDICATE.ordinal()
@@ -329,6 +328,24 @@ public abstract class ConstantExpr extends Constant
         ops.add(lhs);
         ops.add(rhs);
         ExprMapKeyType key = new ExprMapKeyType(Operator.ICmp, ops, predicate);
+        return getOrCreate(Type.Int1Ty, key);
+    }
+
+    public static Constant getFCmp(Predicate predicate,
+            Constant lhs, Constant rhs)
+    {
+        assert lhs.getType().equals(rhs.getType());
+        assert predicate.compareTo(FIRST_FCMP_PREDICATE)>= 0 &&
+                predicate.compareTo(LAST_FCMP_PREDICATE) >= 0;
+
+        Constant res = ConstantFolder.constantFoldCompareInstruction(predicate, lhs, rhs);
+        if (res != null)
+            return res;
+
+        ArrayList<Constant> ops = new ArrayList<>();
+        ops.add(lhs);
+        ops.add(rhs);
+        ExprMapKeyType key = new ExprMapKeyType(Operator.FCmp, ops, predicate);
         return getOrCreate(Type.Int1Ty, key);
     }
 
@@ -348,6 +365,56 @@ public abstract class ConstantExpr extends Constant
     {
         assert value.getType().isIntegerType();
         return get(Operator.Xor, value, Constant.getAllOnesValue(value.getType()));
+    }
+
+    public static Constant getCompareTy(
+            Predicate predicate,
+            Constant lhs,
+            Constant rhs)
+    {
+        switch (predicate)
+        {
+            case FCMP_FALSE:  /// 0 0 0 0    Always false (always folded)
+            case FCMP_OEQ:  /// 0 0 0 1    True if ordered and equal
+            case FCMP_OGT:  /// 0 0 1 0    True if ordered and greater than
+            case FCMP_OGE:  /// 0 0 1 1    True if ordered and greater than or equal
+            case FCMP_OLT:  /// 0 1 0 0    True if ordered and less than
+            case FCMP_OLE:
+            case FCMP_ONE:
+            case FCMP_ORD:
+            case FCMP_UNO:
+            case FCMP_UEQ:
+            case FCMP_UGT:
+            case FCMP_UGE:
+            case FCMP_ULT:
+            case FCMP_ULE:
+            case FCMP_UNE:
+            case FCMP_TRUE:
+                return getFCmp(predicate, lhs, rhs);
+            case ICMP_EQ:  /// equal
+            case ICMP_NE:  /// not equal
+            case ICMP_UGT:  /// unsigned greater than
+            case ICMP_UGE:  /// unsigned greater or equal
+            case ICMP_ULT:  /// unsigned less than
+            case ICMP_ULE:  /// unsigned less or equal
+            case ICMP_SGT:  /// signed greater than
+            case ICMP_SGE:  /// signed greater or equal
+            case ICMP_SLT:  /// signed less than
+            case ICMP_SLE:
+                return getICmp(predicate, lhs, rhs);
+            default:
+                assert false:"Unknown comparison instruction";
+                return null;
+        }
+    }
+
+    public static Constant getCompare(
+            Predicate predicate,
+            Constant lhs,
+            Constant rhs)
+    {
+        assert lhs.getType().equals(rhs.getType()):"Compare must have same type of operand";
+        return getCompareTy(predicate, lhs, rhs);
     }
 
     static class ExprMapKeyType

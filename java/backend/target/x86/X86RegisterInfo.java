@@ -167,7 +167,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 				return 7;
 
 			default:
-				assert isVirtualRegister(regNo) : "Unknown physical register!";
+				assert isVirtualRegister(regNo) : "Undefined physical register!";
 				Util.shouldNotReachHere("Register allocator hasn't allocated reg correctly yet!");
 				return 0;
 		}
@@ -659,7 +659,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
         }
         else
         {
-            Util.shouldNotReachHere("Unknown regclass");
+            Util.shouldNotReachHere("Undefined regclass");
         }
 
         return opc;

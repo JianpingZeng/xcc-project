@@ -324,7 +324,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
         }
 
         int opcode = lookup(instTable, mi.getOpcode());
-        assert opcode != -1 : "Unknown TwoArgFP pseudo instruction!";
+        assert opcode != -1 : "Undefined TwoArgFP pseudo instruction!";
 
         // nottos - The register which is not on the top of stack...
         int nottos = (tos == op0) ? op1 : op0;
@@ -443,7 +443,7 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
                     i = handleSpecialFPInst(mi, i);
                     break;
                 default:
-                    assert false:"Unknown FP inst!";
+                    assert false:"Undefined FP inst!";
             }
             changed = true;
         }

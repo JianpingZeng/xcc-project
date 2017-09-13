@@ -88,8 +88,8 @@ public abstract class Instruction extends User
      */
     public void eraseFromParent()
     {
-        assert (this.bb == null)
-                : "The basic block where the instruction reside to be erased!";
+        assert bb != null :
+                "The basic block where the instruction reside to be erased!";
         bb.removeInst(this);
     }
 
@@ -261,12 +261,12 @@ public abstract class Instruction extends User
     }
 
     static boolean isTerminator(Operator opcode) {
-    return opcode.ordinal() >= Ret.ordinal() && opcode.ordinal() <= Switch.ordinal();
-}
+        return opcode.ordinal() >= Ret.ordinal() && opcode.ordinal() <= Switch.ordinal();
+    }
 
     static boolean isBinaryOp(Operator opcode) {
-    return opcode.ordinal() >= Add.ordinal() && opcode.ordinal() <= AShr.ordinal();
-}
+        return opcode.ordinal() >= Add.ordinal() && opcode.ordinal() <= AShr.ordinal();
+    }
 
 	/**
      * Determine if the Opcode is one of the shift instructions.
@@ -1333,7 +1333,7 @@ public abstract class Instruction extends User
         {
             switch (pred)
             {
-                default: assert false: ("Unknown cmp predicate!");
+                default: assert false: ("Undefined cmp predicate!");
                 case ICMP_EQ: return ICMP_NE;
                 case ICMP_NE: return ICMP_EQ;
                 case ICMP_UGT: return ICMP_ULE;
@@ -1368,7 +1368,7 @@ public abstract class Instruction extends User
         {
             switch (pred)
             {
-                default: assert false:"Unknown cmp predicate!";
+                default: assert false:"Undefined cmp predicate!";
                 case ICMP_EQ:
                 case ICMP_NE:
                 case FCMP_FALSE: case FCMP_TRUE:
@@ -1724,7 +1724,7 @@ public abstract class Instruction extends User
         {
             switch (pred)
             {
-                default:assert false:"Unknown icmp predicate!";
+                default:assert false:"Undefined icmp predicate!";
                 case ICMP_EQ: case ICMP_NE:
                 case ICMP_SGT: case ICMP_SLT: case ICMP_SGE: case ICMP_SLE:
                 return pred;
@@ -1743,7 +1743,7 @@ public abstract class Instruction extends User
         public static Predicate getUnsignedPredicate(Predicate pred)
         {
             switch (pred) {
-                default: assert false: "Unknown icmp predicate!";
+                default: assert false: "Undefined icmp predicate!";
                 case ICMP_EQ: case ICMP_NE:
                 case ICMP_UGT: case ICMP_ULT: case ICMP_UGE: case ICMP_ULE:
                     return pred;
@@ -1774,7 +1774,7 @@ public abstract class Instruction extends User
             switch (pred)
             {
                 default:
-                    assert false : ("Unknown icmp predicate!");
+                    assert false : ("Undefined icmp predicate!");
                 case ICMP_SGT:
                 case ICMP_SLT:
                 case ICMP_SGE:

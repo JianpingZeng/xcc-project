@@ -1175,7 +1175,7 @@ public final class CodeGenFunction
 		switch (decl.getKind())
 		{
 			default:
-				assert false : "Unknown decl type.";
+				assert false : "Undefined decl type.";
 				break;
 			case ParamVarDecl:
 				assert false : "ParamDecls should not be handled in emitDecl().";
@@ -1226,7 +1226,7 @@ public final class CodeGenFunction
 			case SC_extern:
 				return;
 		}
-		assert false : "Unknown storage class.";
+		assert false : "Undefined storage class.";
 	}
 
 	/**
@@ -1586,7 +1586,7 @@ public final class CodeGenFunction
 		if (curFnDecl != null)
 			contextName = curFnDecl.getNameAsString();
 		else
-			assert false : "Unknown context for block var decl";
+			assert false : "Undefined context for block var decl";
 
 		String name = contextName + separator + vd.getDeclName();
 		Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
@@ -1958,11 +1958,11 @@ public final class CodeGenFunction
 				return get(emitLoadOfScalar(ptr, lv.isVolatileQualified(),
 								exprType));
 
-			assert exprType.isFunctionType() : "Unknown scalar type.";
+			assert exprType.isFunctionType() : "Undefined scalar type.";
 			return get(ptr);
 		}
 
-		assert lv.isBitField() : "Unknown LValue exprType.";
+		assert lv.isBitField() : "Undefined LValue exprType.";
 		return emitLoadOfBitfieldLValue(lv, exprType);
 	}
 
@@ -2369,7 +2369,7 @@ public final class CodeGenFunction
 		switch (expr.getOpCode())
 		{
 			default:
-				assert false:"Unknown unary operator lvalue!";
+				assert false:"Undefined unary operator lvalue!";
 			case UO_Deref:
 			{
 				QualType t = expr.getSubExpr().getType().getPointeeType();

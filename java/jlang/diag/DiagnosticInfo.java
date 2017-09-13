@@ -187,7 +187,7 @@ public final class DiagnosticInfo
                     }
                     else
                     {
-                        assert modifierLen == 0 : "Unknown integer modifier";
+                        assert modifierLen == 0 : "Undefined integer modifier";
                         outStr.append(val);
                     }
                     break;

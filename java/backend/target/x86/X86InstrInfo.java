@@ -898,7 +898,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         {
             case SHUFPSrri:
             {
-                assert mi.getNumOperands() == 4:"Unknown shufps instruction!";
+                assert mi.getNumOperands() == 4:"Undefined shufps instruction!";
                 if (!tm.getSubtarget().hasSSE2())
                     return null;
 
@@ -932,7 +932,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             }
             case SHL32ri:
             {
-                assert mi.getNumOperands() >= 3:"Unknown shufps instruction!";
+                assert mi.getNumOperands() >= 3:"Undefined shufps instruction!";
                 long shAmt = mi.getOperand(2).getImm();
                 if (shAmt == 0 || shAmt >= 4) return null;
 
@@ -948,7 +948,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             }
             case SHL16ri:
             {
-                assert mi.getNumOperands() >= 3:"Unknown shift instruction";
+                assert mi.getNumOperands() >= 3:"Undefined shift instruction";
 
                 long shAmt = mi.getOperand(2).getImm();
                 if (shAmt == 0 || shAmt >= 4)
@@ -1012,7 +1012,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case INC32r:
                     case INC64_32r:
                     {
-                        assert mi.getNumOperands() >= 2:"Unknown inc instruction";
+                        assert mi.getNumOperands() >= 2:"Undefined inc instruction";
                         int opc = miOpc == INC64r ? LEA64r : (is64Bit ? LEA64_32r : LEA32r);
                         newMI = addLeaRegOffset(buildMI(get(opc))
                             .addReg(dest, Define | getDeadRegState(isDead)), src, isKill, 1)
@@ -1024,7 +1024,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     {
                         if (disableLEA16)
                             return null;
-                        assert mi.getNumOperands() >= 2 :"Unknown inc instruction";
+                        assert mi.getNumOperands() >= 2 :"Undefined inc instruction";
                         newMI = addRegOffset(buildMI(get(LEA16r)).
                                 addReg(dest, Define | getDeadRegState(isDead)),
                                 src, isKill, 1)
@@ -1070,7 +1070,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     case ADD16rr: {
                         if (disableLEA16)
                             return null;
-                        assert mi.getNumOperands() >= 3 : "Unknown add instruction!";
+                        assert mi.getNumOperands() >= 3 : "Undefined add instruction!";
                         int Src2 = mi.getOperand(2).getReg();
                         boolean isKill2 = mi.getOperand(2).isKill();
                         newMI = addRegReg(buildMI(get(LEA16r))
@@ -1083,7 +1083,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     }
                     case ADD64ri32:
                     case ADD64ri8:
-                        assert mi.getNumOperands() >= 3 : "Unknown add instruction!";
+                        assert mi.getNumOperands() >= 3 : "Undefined add instruction!";
                         if (mi.getOperand(2).isImm())
                             newMI = addLeaRegOffset(buildMI(get(LEA64r))
                                             .addReg(dest, Define | getDeadRegState(isDead)),
@@ -1092,7 +1092,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                         break;
                     case ADD32ri:
                     case ADD32ri8:
-                        assert mi.getNumOperands() >= 3 : "Unknown add instruction!";
+                        assert mi.getNumOperands() >= 3 : "Undefined add instruction!";
                         if (mi.getOperand(2).isImm()) {
                             int Opc = is64Bit ? LEA64_32r : LEA32r;
                             newMI = addLeaRegOffset(buildMI(get(Opc))
@@ -1929,7 +1929,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
         else
         {
-            Util.shouldNotReachHere("Unknown regclass");
+            Util.shouldNotReachHere("Undefined regclass");
         }
 
         return Opc;
@@ -2061,7 +2061,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
         else
         {
-            Util.shouldNotReachHere("Unknown regclass");
+            Util.shouldNotReachHere("Undefined regclass");
         }
 
         return Opc;
@@ -3194,7 +3194,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         {
             default:
                 Util.shouldNotReachHere(
-                        "Unknown FormMask value in X86 MachineCodeEmitter!");
+                        "Undefined FormMask value in X86 MachineCodeEmitter!");
             case X86II.Pseudo:
                 // Remember the current PC offset, this is the PIC relocation
                 // base address.

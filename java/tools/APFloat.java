@@ -2767,7 +2767,7 @@ public class APFloat implements Cloneable
         }
         else
         {
-            assert category == fcNaN : "Unknown category!";
+            assert category == fcNaN : "Undefined category!";
             myexponent = 0x7fff;
             mysignificand = significandParts()[0];
             mysignificand2 = significandParts()[1];

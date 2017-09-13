@@ -91,7 +91,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         }
 
         assert srcTy.isIntegerType() || srcTy.isPointerType()
-                :"Unknown scalar type to convert";
+                :"Undefined scalar type to convert";
 
         // Because of the type rules of C, we often end up computing a logical value,
         // then zero extending it to int, then wanting it as a logical value again.
@@ -187,7 +187,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 return builder.createUIToFP(v, dstTy, "conv");
         }
 
-        assert v.getType().isFloatingPointType():"Unknown real conversion";
+        assert v.getType().isFloatingPointType():"Undefined real conversion";
         if (dstTy instanceof IntegerType)
         {
             if (dstTy.isSigned())
@@ -196,7 +196,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
                 return builder.createFPToUI(v, dstTy, "conv");
         }
 
-        assert dstTy.isFloatingPointType():"Unknown real conversion";
+        assert dstTy.isFloatingPointType():"Undefined real conversion";
         if (dstTy.getTypeID() < v.getType().getTypeID())
             return builder.createFPTrunc(v, dstTy, "conv");
         else

@@ -36,7 +36,7 @@ public interface InstVisitor<RetTy>
 		switch (inst.getOpcode())
 		{
 			default:
-				assert false : "Unknown instruction type encountered!";
+				assert false : "Undefined instruction type encountered!";
 				System.exit(-1);
 			case Add:
 				return visitAdd((Op2) inst);

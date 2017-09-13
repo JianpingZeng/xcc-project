@@ -1,8 +1,8 @@
 package backend.value;
 
+import backend.type.Type;
 import backend.utils.InstVisitor;
 import backend.utils.SuccIterator;
-import backend.type.Type;
 
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -211,6 +211,12 @@ public class Value implements Cloneable
 		// TODO: 17-8-4
 	}
 
+    @Override
+    public boolean equals(Object obj)
+    {
+        return super.equals(obj);
+    }
+
     /**
      * 'undef' values are things that do not have specified contents.
      * These are used for a variety of purposes, including global variable
@@ -242,7 +248,10 @@ public class Value implements Cloneable
             return undefValueConstants.put(ty, new UndefValue(ty));
 		}
 
-		public UndefValue clone() {return new UndefValue(getType());}
+		public UndefValue clone()
+		{
+			return get(getType());
+		}
 
 		public void accept(InstVisitor visitor){}
 
@@ -251,6 +260,21 @@ public class Value implements Cloneable
 		{
 			return false;
 		}
+
+		@Override
+        public boolean equals(Object obj)
+		{
+		    if (obj == null)
+		        return false;
+		    if (this == obj)
+		        return true;
+
+		    if (getClass() != obj.getClass())
+		        return false;
+
+		    UndefValue o = (UndefValue)obj;
+		    return o == this;
+        }
 	}
 
 	public int valueNumber() {return 0;}
