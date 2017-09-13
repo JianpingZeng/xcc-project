@@ -250,7 +250,7 @@ public final class FastISelEmitter extends TableGenBackend
                     os.printf("ConstantFP f%d", i);
                 else
                 {
-                    assert false:"Unknown operand kind";
+                    assert false:"Undefined operand kind";
                     System.exit(1);
                 }
                 if(i < e - 1)
@@ -283,7 +283,7 @@ public final class FastISelEmitter extends TableGenBackend
                         printedArg = true;
                         break;
                     default:
-                        assert false:"Unknown operand kind";
+                        assert false:"Undefined operand kind";
                         System.exit(1);
                 }
             }
@@ -305,7 +305,7 @@ public final class FastISelEmitter extends TableGenBackend
                         os.printf("f%d", i);
                         break;
                     default:
-                        assert false:"Unknown operand kind";
+                        assert false:"Undefined operand kind";
                         System.exit(1);
                 }
                 if (i < e - 1)

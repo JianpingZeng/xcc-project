@@ -382,7 +382,7 @@ public class EVT
         {
             default:
                 if (handleUnkown) return new EVT(Other);
-                Util.shouldNotReachHere("Unknown type");
+                Util.shouldNotReachHere("Undefined type");
                 return new EVT(isVoid);
             case VoidTyID:
                 return new EVT(isVoid);

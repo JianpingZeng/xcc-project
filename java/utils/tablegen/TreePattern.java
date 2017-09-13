@@ -334,7 +334,7 @@ public final class TreePattern
                 System.err.print('"');
                 arg.dump();
                 System.err.print("\": ");
-                error("Unknown leaf value for tree pattern!");
+                error("Undefined leaf value for tree pattern!");
             }
         }
 

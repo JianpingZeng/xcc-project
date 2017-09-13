@@ -75,4 +75,18 @@ public class ConstantFP extends Constant
     {
         return val;
     }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (obj == this)
+            return true;
+
+        if (getClass() != obj.getClass())
+            return false;
+        ConstantFP o = (ConstantFP)obj;
+        return val.equals(o.val);
+    }
 }

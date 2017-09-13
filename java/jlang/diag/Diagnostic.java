@@ -767,7 +767,7 @@ public final class Diagnostic
 
         switch (Mapping.values()[mappingInfo.ordinal() & 7]) 
         {
-            default: assert false : "Unknown diagMapping!";
+            default: assert false : "Undefined diagMapping!";
             case MAP_IGNORE:
                 // Ignore this, unless this is an extension diagnostic and we're diagMapping
                 // them onto warnings or errors.

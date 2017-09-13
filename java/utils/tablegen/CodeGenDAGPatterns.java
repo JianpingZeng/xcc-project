@@ -936,7 +936,7 @@ public final class CodeGenDAGPatterns
                                                    ~~~~~~~~~~
                                                       ^
                                                       此处和llvm-tblgen中的结果不同
-            In V_SETALLONES: Unknown node flavour used in pattern: immAllOnesV
+            In V_SETALLONES: Undefined node flavour used in pattern: immAllOnesV
 
              llvm-tblgen
              V_SETALLONES: 	(set VR128:$dst, (build_vector:v4i32)<<P:Predicate_immAllOnesV>>)
@@ -1367,7 +1367,7 @@ public final class CodeGenDAGPatterns
 
     public SDNodeInfo getSDNodeInfo(Record r)
     {
-        assert sdnodes.containsKey(r) :"Unknown node!";
+        assert sdnodes.containsKey(r) :"Undefined node!";
         return sdnodes.get(r);
     }
 
@@ -1395,7 +1395,7 @@ public final class CodeGenDAGPatterns
         for (CodeGenIntrinsic cgi : tgtIntrinsics)
             if (cgi.theDef.equals(r)) return cgi;
 
-        assert false:"Unknown intrinsic!";
+        assert false:"Undefined intrinsic!";
         return null;
     }
 
@@ -1426,7 +1426,7 @@ public final class CodeGenDAGPatterns
                 return idx;
             ++idx;
         }
-        assert false:"Unknown intrinsic!";
+        assert false:"Undefined intrinsic!";
         System.exit(1);
         return -1;
     }
@@ -1455,7 +1455,7 @@ public final class CodeGenDAGPatterns
 
     public DAGInstruction getInstruction(Record r)
     {
-        assert instructions.containsKey(r):"Unknown instruction!";
+        assert instructions.containsKey(r):"Undefined instruction!";
         return instructions.get(r);
     }
 

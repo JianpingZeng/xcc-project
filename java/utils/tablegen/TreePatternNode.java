@@ -503,7 +503,7 @@ public final class TreePatternNode implements Cloneable
                 }
                 else
                 {
-                    assert false:"Unknown operand type!";
+                    assert false:"Undefined operand type!";
                     System.exit(0);
                 }
                 madeChanged |= child.applyTypeConstraints(tp, notRegisters);
@@ -518,7 +518,7 @@ public final class TreePatternNode implements Cloneable
         else
         {
             //System.out.println(getOperator());
-            assert getOperator().isSubClassOf("SDNodeXForm"):"Unknown node type!";
+            assert getOperator().isSubClassOf("SDNodeXForm"):"Undefined node type!";
 
             if (getNumChildren() != 1)
             {
@@ -598,7 +598,7 @@ public final class TreePatternNode implements Cloneable
             return unknown;
         }
 
-        tp.error("Unknown node flavour used in pattern: " + r.getName());
+        tp.error("Undefined node flavour used in pattern: " + r.getName());
         return other;
     }
 

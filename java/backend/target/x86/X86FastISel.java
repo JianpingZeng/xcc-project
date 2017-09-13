@@ -1298,7 +1298,7 @@ public abstract class X86FastISel extends FastISel
             switch (VA.getLocInfo())
             {
                 default:
-                    Util.shouldNotReachHere("Unknown loc info!");
+                    Util.shouldNotReachHere("Undefined loc info!");
 
                 case Full:
                     break;

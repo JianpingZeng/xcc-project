@@ -27,7 +27,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 			BinaryExpr binOp = (BinaryExpr)s;
 			switch (binOp.getOpcode())
 			{
-				default:assert false:"Unknown binary operator!";
+				default:assert false:"Undefined binary operator!";
 				case BO_Mul: return visitBinMul(binOp);
 				case BO_Div: return visitBinDiv(binOp);
 				case BO_Rem: return visitBinRem(binOp);
@@ -67,7 +67,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 			UnaryExpr unOp = (UnaryExpr)s;
 			switch (unOp.getOpCode())
 			{
-				default: assert false:"Unknown unary operator!";
+				default: assert false:"Undefined unary operator!";
 				case UO_PostInc: return visitUnaryPostInc(unOp);
 				case UO_PostDec: return visitUnaryPostDec(unOp);
 				case UO_PreInc: return visitUnaryPreInc(unOp);

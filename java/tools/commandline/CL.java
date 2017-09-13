@@ -318,7 +318,7 @@ public final class CL
             {
                 if (sinkOpts.isEmpty())
                 {
-                    System.err.println(": Unknown command line argument '"
+                    System.err.println(": Undefined command line argument '"
                             + args[i] + "'.  Try 'xcc --help'");
                     ErrorParsing = true;
                 }

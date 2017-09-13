@@ -90,7 +90,7 @@ public final class PatternToMatch
                 {
                     if (TableGen.DEBUG)
                         def.dump();
-                    assert false:"Unknown predicate type!";
+                    assert false:"Undefined predicate type!";
                 }
 
                 if(predicateCheck.length() != 0)

@@ -105,7 +105,7 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
                         int opcode;
                         switch (curMI.getOpcode())
                         {
-                            default: assert false:"Unknown opcode value!";
+                            default: assert false:"Undefined opcode value!";
                             case ADD16ri: opcode = ADD16ri8;break;
                             case ADD32ri: opcode = ADD32ri8; break;
                             case SUB16ri: opcode = SUB16ri8; break;

@@ -2721,7 +2721,7 @@ public final class Sema implements DiagnosticParseTag,
         StorageClass sc;
         switch (d.getDeclSpec().getStorageClassSpec())
         {
-            default: assert false :"Unknown storage class!";
+            default: assert false :"Undefined storage class!";
             case SCS_auto:
             case SCS_register:
                 diag(d.getDeclSpec().getStorageClassSpecLoc(), err_typecheck_sclass_func)
@@ -2780,7 +2780,7 @@ public final class Sema implements DiagnosticParseTag,
                 else
                 {
                     assert ds.getTypeSpecSign() == DeclSpec.TSS.TSS_unsigned
-                            :"Unknown TSS value";
+                            :"Undefined TSS value";
                     result = context.UnsignedCharTy;
                 }
                 break;
@@ -2959,7 +2959,7 @@ public final class Sema implements DiagnosticParseTag,
             switch (declType.getKind())
             {
                 default:
-                    assert false:"Unknown decltype!";
+                    assert false:"Undefined decltype!";
                     break;
                 case Pointer:
                 {
@@ -5516,7 +5516,7 @@ public final class Sema implements DiagnosticParseTag,
             }
         }
 
-        Util.shouldNotReachHere("Unknown Scalar type");
+        Util.shouldNotReachHere("Undefined Scalar type");
         return CK_Invalid;
     }
 
@@ -6962,7 +6962,7 @@ public final class Sema implements DiagnosticParseTag,
         switch (tokenKind)
         {
             default:
-                Util.shouldNotReachHere("Unknown binary operator token!");
+                Util.shouldNotReachHere("Undefined binary operator token!");
             case star:          opc = BinaryOperatorKind.BO_Mul;break;
             case slash:         opc = BO_Div; break;
             case percent:       opc = BinaryOperatorKind.BO_Rem; break;
@@ -7048,7 +7048,7 @@ public final class Sema implements DiagnosticParseTag,
         switch (kind)
         {
             default:
-                Util.shouldNotReachHere("Unknown unary operator!");
+                Util.shouldNotReachHere("Undefined unary operator!");
                 return null;
             case plusplus:
                 return UO_PreInc;
@@ -8383,7 +8383,7 @@ public final class Sema implements DiagnosticParseTag,
         switch (kind)
         {
             default:
-                Util.shouldNotReachHere("Unknown unary op!");
+                Util.shouldNotReachHere("Undefined unary op!");
             case plusplus:
                 opc = UO_PostInc;break;
             case subsub:

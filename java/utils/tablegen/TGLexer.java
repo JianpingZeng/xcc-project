@@ -195,7 +195,7 @@ public final class TGLexer
                     }
                     else
                     {
-                        // Unknown character, emit an error.
+                        // Undefined character, emit an error.
                         MemoryBuffer mb2 = curBuf.clone();
                         mb2.setBufferStart(tokStart);
                         return returnError(mb2, "unexpected character");
@@ -315,7 +315,7 @@ public final class TGLexer
             {
                 case EOF:
 
-                    // Unknown character, emit an error.
+                    // Undefined character, emit an error.
                     MemoryBuffer mb2 = curBuf.clone();
                     mb2.setBufferStart(tokStart);
                     printError(mb2, "unterminated comment!");
@@ -681,6 +681,6 @@ public final class TGLexer
         }
         MemoryBuffer mb2 = curBuf.clone();
         mb2.setBufferStart(start - 1);
-        return returnError(mb2, "Unknown operator");
+        return returnError(mb2, "Undefined operator");
     }
 }

@@ -1289,7 +1289,7 @@ public final class Preprocessor
                     return true;
                 }
 
-                assert litParser.isIntegerLiteral():"Unknown ppnumber";
+                assert litParser.isIntegerLiteral():"Undefined ppnumber";
 
                 // long long is C99 feature.
                 if (!pp.getLangOptions().c99 && litParser.isLongLong)
@@ -1578,7 +1578,7 @@ public final class Preprocessor
             boolean overflow = false;
             switch (operator)
             {
-                default: assert false : "Unknown operator token!";
+                default: assert false : "Undefined operator token!";
                 case percent:
                     if (!rhs.val.eq(0))
                         res = lhs.val.rem(rhs.val);
@@ -3568,7 +3568,7 @@ public final class Preprocessor
         }
         else
         {
-            assert false : "Unknown identifier!";
+            assert false : "Undefined identifier!";
         }
     }
 
