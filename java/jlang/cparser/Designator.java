@@ -154,6 +154,7 @@ public class Designator
     {
         Designator d = new Designator();
         d.info = new FieldDesignatorInfo(ii, dotLoc, nameLoc);
+        d.kind = DesignatorKind.FieldDesignator;
         return d;
     }
 
@@ -164,6 +165,7 @@ public class Designator
     {
         Designator d = new Designator();
         d.info = new ArrayDesignatorInfo(index, lBracketLoc, rBracketLoc);
+        d.kind = DesignatorKind.ArrayDesignator;
         return d;
     }
 
@@ -177,6 +179,7 @@ public class Designator
         Designator d = new Designator();
         d.info = new ArrayRangeDesignatorInfo(startIdx,
                 endIdx, lBracketLoc, ellipsisLoc, rBracketLoc);
+        d.kind = DesignatorKind.ArrayRangeDesignator;
         return d;
     }
 

@@ -2305,7 +2305,7 @@ public class Parser implements Tag,
 
             // designator: '[' constant-expression ']'
             // designator: '[' constant-expression ... constant-expression']'
-            SourceLocation lBracketLoc = consumeBrace();
+            SourceLocation lBracketLoc = consumeBracket();
             SourceLocation ellipseLoc;
             SourceLocation rBracketLoc;
 
