@@ -9018,11 +9018,23 @@ public final class Sema implements DiagnosticParseTag,
             decl.setInvalidDecl(true);
             return;
         }
-        // TODO Check redefinition.
+
+        // Check redefinition.
+        OutParamWrapper<VarDecl> def = new OutParamWrapper<>(null);
+        if (vd.getDefinition(def) != null)
+        {
+            diag(vd.getLocation(), err_redefinition)
+                    .addTaggedVal(vd.getDeclName())
+                    .emit();
+            diag(def.get().getLocation(), note_previous_definition)
+                    .emit();
+            vd.setInvalidDecl(true);
+            return;
+        }
 
         // Get the decls type and save a reference for later, since
         // CheckInitializerTypes may change it.
-        QualType declTy = vd.getType(), savedTy = declTy;
+        QualType declTy = vd.getType(), savedTy = declTy.clone();
         if (vd.isLocalVarDecl())
         {
             if (vd.hasExternalStorage())
@@ -9033,12 +9045,23 @@ public final class Sema implements DiagnosticParseTag,
             }
             else if(!vd.isInvalidDecl())
             {
-                // TODO initialization sequence 2016.10.23
+                OutParamWrapper<Expr> x = new OutParamWrapper<>(init);
+                OutParamWrapper<QualType> y = new OutParamWrapper<>(declTy);
+                boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getDeclName(), directDecl);
+                init = x.get();
+                declTy = y.get();
+                if (res)
+                {
+                    vd.setInvalidDecl(true);
+                }
 
                 // C99 6.7.8p4.
-                if (vd.getStorageClass() == StorageClass.SC_static)
+                if (!vd.isInvalidDecl())
                 {
-                    checkForConstantInitializer(init, declTy);
+                    if (vd.getStorageClass() == StorageClass.SC_static)
+                    {
+                        checkForConstantInitializer(init, declTy);
+                    }
                 }
             }
         }
@@ -9051,10 +9074,20 @@ public final class Sema implements DiagnosticParseTag,
             }
             if (!vd.isInvalidDecl())
             {
-                // TODO initialization sequence 2016.10.23
-
-                // C99 6.7.8p4. All file scoped initializers need to be constant.
-                checkForConstantInitializer(init, declTy);
+                OutParamWrapper<Expr> x = new OutParamWrapper<>(init);
+                OutParamWrapper<QualType> y = new OutParamWrapper<>(declTy);
+                boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getDeclName(), directDecl);
+                init = x.get();
+                declTy = y.get();
+                if (res)
+                {
+                    vd.setInvalidDecl(true);
+                }
+                if (!vd.isInvalidDecl())
+                {
+                    // C99 6.7.8p4. All file scoped initializers need to be constant.
+                    checkForConstantInitializer(init, declTy);
+                }
             }
         }
 
@@ -9101,7 +9134,7 @@ public final class Sema implements DiagnosticParseTag,
         // except that the aforementioned are allowed in unevaluated
         // expressions.  Everything else falls under the
         // "may accept other forms of constant expressions" jlang.exception.
-        if (init.isConstantInitializer())
+        if (init.isConstantInitializer(context))
             return false;
         diag(init.getExprLocation(), err_init_element_not_constant)
                 .addSourceRange(init.getSourceRange()).emit();
@@ -9515,7 +9548,7 @@ public final class Sema implements DiagnosticParseTag,
         if (!checker.hadError())
             initList.set(checker.getFullyStructuredList());
 
-        return true;
+        return checker.hadError();
     }
 
     public ActionResult<Expr> actOnDesignatedInitializer(

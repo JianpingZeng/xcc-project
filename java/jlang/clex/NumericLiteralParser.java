@@ -155,6 +155,7 @@ public class NumericLiteralParser
         System.arraycopy(literal, 0, tokenStr, 0, literal.length);
         this.pp = pp;
 
+        NoSuffix:
         if (tokenStr[curPos] == '0')
         {
             // parse radix.
@@ -167,8 +168,10 @@ public class NumericLiteralParser
             // the first digit is non-zero.
             radix = 10;
             curPos = LiteralSupport.skipDigit(tokenStr, curPos);
-            if (curPos == tokenStr.length);
-                // Done
+            if (curPos == tokenStr.length)
+            {
+                break NoSuffix;
+            }
             else if (LiteralSupport.isHexDigit(tokenStr[curPos]) && !(tokenStr[curPos] =='e'
                     || tokenStr[curPos] == 'E'))
             {

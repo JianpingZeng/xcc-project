@@ -76,8 +76,8 @@ public class InitListChecker
      */
     private void fillValueInInitializations(InitListExpr list)
     {
-        assert !list.getType()
-                .equals(sema.context.VoidTy) : "Should not have void type";
+        assert list.getType() != sema.context.VoidTy :
+                "Should not have void type";
 
         SourceLocation loc = list.getSourceRange().getBegin();
         if (list.getSyntacticForm() != null)
@@ -150,10 +150,10 @@ public class InitListChecker
                     hadError = true;
                     return;
                 }
-            }
-            if (i < numInits && !hadError)
-            {
-                list.setInitAt(i, new ImplicitValueInitExpr(eltType));
+                if (i < numInits && !hadError)
+                {
+                    list.setInitAt(i, new ImplicitValueInitExpr(eltType));
+                }
             }
             else if (list.getInitAt(i) instanceof InitListExpr)
             {
@@ -311,7 +311,6 @@ public class InitListChecker
         while (index.get() < initList.getNumInits())
         {
             Expr init = initList.getInitAt(index.get());
-            Decl.FieldDecl fd = structDecl.get().getDeclAt(field);
 
             if (init instanceof DesignatedInitExpr)
             {
@@ -343,6 +342,8 @@ public class InitListChecker
             if (initializedSomething && declType.isUnionType())
                 break;
 
+            Decl.FieldDecl fd = structDecl.get().getDeclAt(field);
+
             // If we are hit the flexible array member at the end , we are done!
             if (fd.getType().isIncompleteArrayType())
             {
@@ -366,11 +367,9 @@ public class InitListChecker
 
             ++field;
         }
-
-        Decl.FieldDecl fd = structDecl.get().getDeclAt(field);
-
-        if (field == fieldEnd || !fd.getType()
-                .isIncompleteArrayType())
+        Decl.FieldDecl fd = null;
+        if (field == fieldEnd || (fd = structDecl.get().getDeclAt(field)) == null
+                || !fd.getType().isIncompleteArrayType())
         {
             return;
         }
@@ -684,7 +683,7 @@ public class InitListChecker
                 if (fd.isUnamaedBitField())
                     continue;
 
-                if (knownField.equals(fd) || fd.getIdentifier().equals(fieldName))
+                if (fd.equals(knownField) || fd.getIdentifier().equals(fieldName))
                 {
                     break;
                 }
@@ -879,12 +878,12 @@ public class InitListChecker
         }
 
         Expr indexExpr = null;
-        APSInt designatedStartIndex, designatedEndIndex;
+        APSInt designatedStartIndex, designatedEndIndex = new APSInt();
         if (d.isArrayDesignator())
         {
             indexExpr = die.getArrayIndex(d);
             designatedStartIndex = indexExpr.evaluateAsInt(sema.context);
-            designatedEndIndex = designatedStartIndex;
+            designatedEndIndex.assign(designatedStartIndex);
         }
         else
         {

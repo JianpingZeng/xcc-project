@@ -722,7 +722,7 @@ public class APInt implements Cloneable
         assert width < bitWidth : "Invalid APInt Truncate request";
         assert width > 0 : " Can't truncate to 0 bits";
 
-        if (width <= APINT_WORD_SIZE)
+        if (width <= APINT_BITS_PER_WORD)
             return new APInt(width, getRawData()[0]);
 
         APInt result = new APInt(new long[getNumWords(width)], width);
