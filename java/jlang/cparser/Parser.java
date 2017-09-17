@@ -4288,7 +4288,7 @@ public class Parser implements Tag,
             ActionResult<Expr> rhs = parseCastExpression(false, false, false, 0);
 
             if (rhs.isInvalid())
-                lhs = exprError();
+                return rhs;
 
             // Remember the precedence of this operator and get the precedence of the
             // operator immediately to the right of the RHS.
@@ -4780,6 +4780,7 @@ public class Parser implements Tag,
             case greatergreater:
                 return PrecedenceLevel.Shift;
             case comma:
+                return PrecedenceLevel.Comma;
             case equal: 
             case starequal:
             case slashequal:

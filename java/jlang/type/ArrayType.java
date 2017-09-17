@@ -211,7 +211,12 @@ public abstract class ArrayType extends Type implements FoldingSetNode
         @Override
         public void profile(FoldingSetNodeID id)
         {
-            assert false:"Cannot unique ConstantArrayWithExprTypes";
+            id.addInteger(getElementType().hashCode());
+            id.addInteger(getSize().getZExtValue());
+            id.addInteger(sizeExpr.hashCode());
+            id.addInteger(getSizeModifier().hashCode());
+            id.addInteger(getIndexTypeQuals());
+            //assert false:"Cannot unique ConstantArrayWithExprTypes";
         }
     }
 
@@ -249,7 +254,11 @@ public abstract class ArrayType extends Type implements FoldingSetNode
         @Override
         public void profile(FoldingSetNodeID id)
         {
-            assert false:"Cannot unique ConstantArrayWithoutExprTypes";
+            id.addInteger(getElementType().hashCode());
+            id.addInteger(getSize().getZExtValue());
+            id.addInteger(getSizeModifier().hashCode());
+            id.addInteger(getIndexTypeQuals());
+            //assert false:"Cannot unique ConstantArrayWithoutExprTypes";
         }
     }
 
@@ -362,7 +371,11 @@ public abstract class ArrayType extends Type implements FoldingSetNode
         @Override
         public void profile(FoldingSetNodeID id)
         {
-            assert false:"Cannot unique VaraibleArrayTypes.";
+            id.addInteger(getElementType().hashCode());
+            id.addInteger(sizeExpr.hashCode());
+            id.addInteger(getSizeModifier().hashCode());
+            id.addInteger(getIndexTypeQuals());
+            //assert false:"Cannot unique VaraibleArrayTypes.";
         }
     }
 

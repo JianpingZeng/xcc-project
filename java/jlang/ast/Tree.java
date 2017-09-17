@@ -1349,7 +1349,7 @@ public abstract class Tree
             super(stmtClass);
             this.valuekind = valuekind;
 	        this.ok = ok;
-            setType(type);
+            this.type = type;
             this.loc = loc;
         }
 
@@ -1537,7 +1537,7 @@ public abstract class Tree
          * which can be evaluated at compile-time as a constant.
          * @return
          */
-        public boolean isConstantInitializer()
+        public boolean isConstantInitializer(ASTContext context)
         {
             switch (stmtClass)
             {
@@ -1550,7 +1550,7 @@ public abstract class Tree
                     // "struct x {int x;} x = (struct x) {};".
                     // FIXME: This accepts other cases it shouldn't!
                     Expr init = ((CompoundLiteralExpr)this).getInitializer();
-                    return init.isConstantInitializer();
+                    return init.isConstantInitializer(context);
                 }
                 case InitListExprClass:
                 {
@@ -1561,17 +1561,15 @@ public abstract class Tree
                     int numInits = expr.getNumInits();
                     for (int i = 0; i < numInits; i++)
                     {
-                        if (!expr.getInitAt(i).isConstantInitializer())
+                        if (!expr.getInitAt(i).isConstantInitializer(context))
                             return false;
                     }
                     return true;
                 }
+                case ImplicitValueInitExprClass:
+                    return true;
                 case ParenExprClass:
-                    return ((ParenExpr)this).getSubExpr().isConstantInitializer();
-                case UnaryOperatorClass:
-                    break;
-                case BinaryOperatorClass:
-                    break;
+                    return ((ParenExpr)this).getSubExpr().isConstantInitializer(context);
                 case ImplicitCastClass:
                 case ExplicitCastClass:
                 {
@@ -1580,18 +1578,18 @@ public abstract class Tree
                     // cast-to-union extension.
                     if (getType().isRecordType())
                     {
-                        return ((CastExpr)this).getSubExpr().isConstantInitializer();
+                        return ((CastExpr)this).getSubExpr().isConstantInitializer(context);
                     }
 
                     if (getType().isIntegerType()
                             && ((CastExpr)this).getSubExpr().getType().isIntegerType() )
                     {
-                        return ((CastExpr)this).getSubExpr().isConstantInitializer();
+                        return ((CastExpr)this).getSubExpr().isConstantInitializer(context);
                     }
                     break;
                 }
             }
-            return isEvaluatable();
+            return isEvaluatable(context);
         }
 
         /**
@@ -1599,10 +1597,10 @@ public abstract class Tree
          * be constant folded, but get rid of evaluation result.
          * @return
          */
-        public boolean isEvaluatable()
+        public boolean isEvaluatable(ASTContext context)
         {
-            OutParamWrapper<EvalResult> result = new OutParamWrapper<>();
-            return evaluate(result.get(), null) && !result.get().hasSideEffects();
+            EvalResult result = new EvalResult();
+            return evaluate(result, context) && !result.hasSideEffects();
         }
 
 	    /**
@@ -3740,8 +3738,7 @@ public abstract class Tree
 
             if (numElements > initExprs.size())
             {
-                for (long i = numElements - initExprs.size();
-                     numElements > 0; --numElements)
+                for (long i = numElements - initExprs.size(); i > 0; --i)
                 {
                     initExprs.add(null);
                 }
@@ -4323,8 +4320,7 @@ public abstract class Tree
 
 		    int indexIdx = 0;
 
-		    // The first one in sub expr array is the initializetion expression.
-		    subExprs[indexIdx++] = init;
+		    // The first one in sub expr array is the initialization expression.
 		    for (int i = 0, e = designator.size(); i != e; i++)
             {
                 designators[i] = designator.get(i);
@@ -4341,6 +4337,8 @@ public abstract class Tree
                     subExprs[indexIdx++] = indexExprs.get(idx+1);
                 }
             }
+
+		    subExprs[indexIdx++] = init;
             assert indexIdx == subExprs.length
                     : "Wrong number of index expressions!";
 	    }
