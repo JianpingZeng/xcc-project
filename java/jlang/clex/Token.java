@@ -65,7 +65,7 @@ public class Token implements Cloneable
         this.loc = loc;
     }
 
-    public String getName()
+    public String getKindName()
     {
         return kind.name;
     }

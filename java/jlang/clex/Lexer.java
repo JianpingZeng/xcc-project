@@ -600,7 +600,7 @@ public class Lexer extends PreprocessorLexer
         {
             ++size;
 
-            if (buffer[size] != '\n' && buffer[size - 1] != '\r')
+            if (buffer[size - 1] != '\n' && buffer[size - 1] != '\r')
                 continue;
 
             if ((buffer[size] == '\r' || buffer[size] == '\n')
@@ -609,9 +609,8 @@ public class Lexer extends PreprocessorLexer
                 ++size;
             }
 
-            return size;
+            return size - curPos;
         }
-
         return 0;
     }
 

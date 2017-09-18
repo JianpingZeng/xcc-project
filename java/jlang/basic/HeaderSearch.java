@@ -174,6 +174,9 @@ public final class HeaderSearch
             return Paths.get(filename);
         }
 
+        // Check if this header file is relative to the current file.
+        // like #include "X.h"      // X.h file is relative to the current
+        // including file.
         if (curFileEntry != null && !isAngled && !noCurDirSearch)
         {
             String temp = curFileEntry.normalize().toFile().getName();
@@ -190,7 +193,7 @@ public final class HeaderSearch
             }
         }
 
-        curDir = null;
+        curDir.set(null);
 
         // If this is a system #include, ignore the user #include locs.
         int i = isAngled ? systemDirIdx : 0;
@@ -201,16 +204,18 @@ public final class HeaderSearch
         for (; i < searchDirs.size(); ++i)
         {
             Path fe = searchDirs.get(i);
-            if (!fe.toFile().getName().equals(filename))
+            Path tempDir = Paths.get(fe.toString() + File.separator + filename);
+            if (!Files.exists(tempDir))
                 continue;
 
-            curDir.set(searchDirs.get(i));
+            curDir.set(fe);
 
             // This file is a system header or C++ unfriendly if the dir is.
-            getFileInfo(fe).dirInfo = getFileInfo(curDir.get()).dirInfo;
-            return fe;
+            getFileInfo(fe).dirInfo = getFileInfo(tempDir).dirInfo;
+            return tempDir;
         }
 
+        // Otherwise, didn't find it, just return null instead.
         return null;
     }
 

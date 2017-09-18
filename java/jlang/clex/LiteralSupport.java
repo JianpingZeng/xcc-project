@@ -105,6 +105,7 @@ public class LiteralSupport
                 break;
             case 'v':
                 resultChar = 11;
+                break;
             case 'x':
             {
                 // Hex escape.

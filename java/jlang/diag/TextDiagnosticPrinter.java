@@ -641,7 +641,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             }
         }
 
-        os.print(outStr.toString());
+        os.println(outStr.toString());
 
         if(useColors)
             os.print(ANSI_RESET);

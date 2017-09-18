@@ -1135,7 +1135,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 "Extremely C Compiler: https://github.com/JianpingZeng/xcc");
         if (Verbose.value)
         {
-            java.lang.System.err.println(NAME +  "version " + VERSION + "on X86 machine");
+            java.lang.System.err.println(NAME +  " version " + VERSION + " on X86 machine");
         }
         if (InputFilenames.isEmpty())
         {

@@ -189,10 +189,11 @@ public final class InitHeaderSearch
                 if (i == quotedIdx)
                     java.lang.System.err.println("#include <...> search starts here:");
                 Path cur = searchList.get(i);
-                String name = cur.toFile().getName();
+                String name = cur.toString();
                 java.lang.System.err.println(name);
             }
             java.lang.System.err.println("End of search list.");
+            java.lang.System.exit(0);
         }
     }
 }
