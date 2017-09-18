@@ -304,11 +304,13 @@ public final class Preprocessor
     {
         Lexer theLexer;
         TokenLexer theTokenLexer;
+        Path curLookupDIr;
 
-        IncludeStackInfo(Lexer theLexer, TokenLexer theTokenLexer)
+        IncludeStackInfo(Lexer theLexer, TokenLexer theTokenLexer, Path curDir)
         {
             this.theLexer = theLexer;
             this.theTokenLexer = theTokenLexer;
+            this.curLookupDIr = curDir;
         }
     }
 
@@ -713,6 +715,7 @@ public final class Preprocessor
             pushIncludeMacroStack();
 
         curLexer = lexer;
+        curDirLookup = curDir;
         if (callbacks != null && !curLexer.isPragmaLexer())
         {
             CharacteristicKind fileType = sourceMgr.getFileCharacteristicKind(curLexer.getFileLoc());
@@ -731,16 +734,19 @@ public final class Preprocessor
 
     private void pushIncludeMacroStack()
     {
-        includeMacroStack.add(new IncludeStackInfo(curLexer, curTokenLexer));
+        includeMacroStack.add(new IncludeStackInfo(curLexer, curTokenLexer, curDirLookup));
         curTokenLexer = null;
         curLexer = null;
+        curDirLookup = null;
     }
 
     private void popIncludeMacroStack()
     {
-        curLexer = includeMacroStack.peek().theLexer;
-        curTokenLexer = includeMacroStack.peek().theTokenLexer;
-        includeMacroStack.pop();
+        assert !includeMacroStack.isEmpty();
+        IncludeStackInfo info = includeMacroStack.pop();
+        curLexer = info.theLexer;
+        curTokenLexer = info.theTokenLexer;
+        curDirLookup = info.curLookupDIr;
     }
 
     /**
@@ -1110,6 +1116,7 @@ public final class Preprocessor
 
         public PPValue(int bitWidth)
         {
+            range = new SourceRange();
             val = new APSInt(bitWidth);
         }
 
@@ -1581,7 +1588,7 @@ public final class Preprocessor
                 default: assert false : "Undefined operator token!";
                 case percent:
                     if (!rhs.val.eq(0))
-                        res = lhs.val.rem(rhs.val);
+                        res.assign(lhs.val.rem(rhs.val));
                     else if (valueLive)
                     {
                         pp.diag(opLoc, err_pp_remainder_by_zero)
@@ -1594,7 +1601,7 @@ public final class Preprocessor
                 case slash:
                     if (!rhs.val.eq(0))
                     {
-                        res = lhs.val.div(rhs.val);
+                        res.assign(lhs.val.div(rhs.val));
                         if (lhs.val.isSigned())
                             overflow = lhs.val.isMinSignedValue();
                     }
@@ -1608,7 +1615,7 @@ public final class Preprocessor
                     }
                     break;
                 case star:
-                    res = lhs.val.mul(rhs.val);
+                    res.assign(lhs.val.mul(rhs.val));
                     if (res.isSigned() && !lhs.val.eq(0) && !rhs.val.eq(0))
                         overflow = !(res.div(rhs.val).eq(lhs.val)) || !res.div(lhs.val).eq(rhs.val);
                     break;
@@ -1628,7 +1635,7 @@ public final class Preprocessor
                     else
                         overflow = ShAmt >= lhs.val.countLeadingOnes();
 
-                    res = lhs.val.shl(ShAmt);
+                    res.assign(lhs.val.shl(ShAmt));
                     break;
                 }
                 case greatergreater: {
@@ -1639,11 +1646,11 @@ public final class Preprocessor
                         overflow = true;
                         ShAmt = lhs.getBitWidth() - 1;
                     }
-                    res = lhs.val.shl(ShAmt);
+                    res.assign(lhs.val.shl(ShAmt));
                     break;
                 }
                 case plus:
-                    res = lhs.val.add(rhs.val);
+                    res.assign(lhs.val.add(rhs.val));
                     if (lhs.isUnsigned())
                         overflow = false;
                     else if (lhs.val.isNonNegative() == rhs.val.isNonNegative() &&
@@ -1651,7 +1658,7 @@ public final class Preprocessor
                         overflow = true;  // overflow for signed addition.
                     break;
                 case sub:
-                    res = lhs.val.sub(rhs.val);
+                    res.assign(lhs.val.sub(rhs.val));
                     if (lhs.isUnsigned())
                         overflow = false;
                     else if (lhs.val.isNonNegative() != rhs.val.isNonNegative() &&
@@ -1659,44 +1666,44 @@ public final class Preprocessor
                         overflow = true;  // overflow for signed subtraction.
                     break;
                 case lessequal:
-                    res = new APSInt(lhs.val.le(rhs.val)?1:0);
+                    res.assign(lhs.val.le(rhs.val)?1:0);
                     res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
                     break;
                 case less:
-                    res = new APSInt(lhs.val.lt(rhs.val)?1:0);
+                    res.assign(lhs.val.lt(rhs.val)?1:0);
                     res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
                     break;
                 case greaterequal:
-                    res = new APSInt(lhs.val.ge(rhs.val)?1:0);
+                    res.assign(lhs.val.ge(rhs.val)?1:0);
                     res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
                     break;
                 case greater:
-                    res = new APSInt(lhs.val.gt(rhs.val)? 1: 0);
+                    res.assign(lhs.val.gt(rhs.val)? 1: 0);
                     res.setIsUnsigned(false);  // C99 6.5.8p6, result is always int (signed)
                     break;
                 case bangequal:
-                    res = new APSInt(lhs.val.eq(rhs.val)? 0 : 1);
+                    res.assign(lhs.val.eq(rhs.val)? 0 : 1);
                     res.setIsUnsigned(false);  // C99 6.5.9p3, result is always int (signed)
                     break;
                 case equalequal:
-                    res = new APSInt(lhs.val.eq(rhs.val)?1:0);
+                    res.assign(lhs.val.eq(rhs.val)?1:0);
                     res.setIsUnsigned(false);  // C99 6.5.9p3, result is always int (signed)
                     break;
                 case amp:
-                    res = lhs.val.and(rhs.val);
+                    res.assign(lhs.val.and(rhs.val));
                     break;
                 case caret:
-                    res = lhs.val.xor(rhs.val);
+                    res.assign(lhs.val.xor(rhs.val));
                     break;
                 case bar:
-                    res = lhs.val.or(rhs.val);
+                    res.assign(lhs.val.or(rhs.val));
                     break;
                 case ampamp:
-                    res = new APSInt(!lhs.val.eq(0) && !rhs.val.eq(0) ? 1 : 0);
+                    res.assign((!lhs.val.eq(0) && !rhs.val.eq(0)) ? 1 : 0);
                     res.setIsUnsigned(false);  // C99 6.5.13p3, result is always int (signed)
                     break;
                 case barbar:
-                    res = new APSInt(!lhs.val.eq(0) || !rhs.val.eq(0) ? 1 : 0);
+                    res.assign((!lhs.val.eq(0) || !rhs.val.eq(0)) ? 1 : 0);
                     res.setIsUnsigned(false);  // C99 6.5.14p3, result is always int (signed)
                     break;
                 case comma:
@@ -1707,7 +1714,7 @@ public final class Preprocessor
                                 .addSourceRange(lhs.getRange())
                                 .addSourceRange(rhs.getRange())
                                 .emit();
-                    res = rhs.val; // lhs = lhs,rhs -> rhs.
+                    res.assign(rhs.val); // lhs = lhs,rhs -> rhs.
                     break;
                 case question: {
                     // Parse the : part of the expression.
@@ -1736,7 +1743,7 @@ public final class Preprocessor
                         return true;
 
                     // Now that we have the condition, the lhs and the rhs of the :, evaluate.
-                    res = !lhs.val.eq(0) ? rhs.val : AfterColonVal.val;
+                    res.assign(!lhs.val.eq(0) ? rhs.val : AfterColonVal.val);
                     rhs.setEnd(AfterColonVal.getRange().getEnd());
 
                     // Usual arithmetic conversions (C99 6.3.1.8p1): result is int if
@@ -1766,7 +1773,6 @@ public final class Preprocessor
             }
             lhs.val = res;
             lhs.setEnd(rhs.range.getEnd());
-            return false;
         }
     }
 
@@ -2344,22 +2350,31 @@ public final class Preprocessor
         return isAngled;
     }
 
-    private Path lookupFile(String filename, boolean isAngled,
+    private Path lookupFile(String filename,
+            boolean isAngled,
+            Path lookupFromDir,
             OutParamWrapper<Path> curDir)
     {
+        // If the header file lookup mechanism may be relative to the current
+        // file, pass in information about where this file in.
         Path curFileEntry = null;
-        FileID fid = getCurrentFileLexer().getFileID();
-        curFileEntry = sourceMgr.getFileEntryForID(fid);
-
-        if (curFileEntry == null)
+        if (lookupFromDir == null)
         {
-            fid = sourceMgr.getMainFileID();
+            FileID fid = getCurrentFileLexer().getFileID();
             curFileEntry = sourceMgr.getFileEntryForID(fid);
-        }
-        curDir.set(curDirLookup);
 
-        Path fe = headerInfo
-                .lookupFile(filename, isAngled, null, curDir, curFileEntry);
+            if (curFileEntry == null)
+            {
+                fid = sourceMgr.getMainFileID();
+                curFileEntry = sourceMgr.getFileEntryForID(fid);
+            }
+        }
+
+        curDir.set(curDirLookup);
+        // Perform standard header file searching.
+        // It performed operation either lookup relative to lookupFromDir or
+        // relative to current file entry.
+        Path fe = headerInfo.lookupFile(filename, isAngled, lookupFromDir, curDir, curFileEntry);
         if (fe != null)
             return fe;
 
@@ -2429,7 +2444,7 @@ public final class Preprocessor
             return;
         }
         OutParamWrapper<Path> curDir = new OutParamWrapper<>();
-        Path file = lookupFile(filename.toString(), isAngled, curDir);
+        Path file = lookupFile(filename.toString(), isAngled, lookupFrom, curDir);
         if (file == null)
         {
             diag(filenameTok, err_pp_file_not_found).
@@ -3906,7 +3921,7 @@ public final class Preprocessor
      */
     public void dumpToken(Token tok, boolean dumpFlags)
     {
-        err.printf("%s '%s'", tok.getName(), getSpelling(tok));
+        err.printf("%s '%s'", tok.getKindName(), getSpelling(tok));
 
         if (!dumpFlags)
             return;
