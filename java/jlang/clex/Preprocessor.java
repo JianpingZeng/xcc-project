@@ -300,6 +300,15 @@ public final class Preprocessor
                 this);
     }
 
+    public SourceLocation getLocEndOfToken(SourceLocation location)
+    {
+        if (!location.isValid() || !location.isFileID())
+            return new SourceLocation();
+
+        int len = Lexer.measureTokenLength(location, getSourceManager(), langInfo);
+        return advanceToTokenCharacter(location, len);
+    }
+
     class IncludeStackInfo
     {
         Lexer theLexer;
@@ -3377,7 +3386,7 @@ public final class Preprocessor
             return tokStart;
         }
 
-        int physOffset = offset;
+        int physOffset = 0;
         while (Lexer.isObviouslySimpleCharacter(buffer[offset]))
         {
             if (charNo == 0)

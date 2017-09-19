@@ -173,4 +173,61 @@ public class Token implements Cloneable
         res.length = length;
         return res;
     }
+
+    public static String getTokenSimpleSpelling(TokenKind kind)
+    {
+        switch (kind)
+        {
+            case l_bracket:            return "[";
+            case r_bracket:            return "]";
+            case l_paren:             return "(";
+            case r_paren:             return ")";
+            case l_brace:             return "{";
+            case r_brace:             return "}";
+            case dot:              return ".";
+            case ellipsis:            return "...";
+            case amp:                 return "&";
+            case ampamp:              return "&&";
+            case ampequal:            return "&=";
+            case star:                return "*";
+            case starequal:           return "*=";
+            case plus:                return "+";
+            case plusplus:            return "++";
+            case plusequal:           return "+=";
+            case sub:               return "-";
+            case arrow:               return "->";
+            case subsub:          return "--";
+            case subequal:          return "-=";
+            case tilde:               return "~";
+            case bang:             return "!";
+            case bangequal:        return "!=";
+            case slash:               return "/";
+            case slashequal:          return "/=";
+            case percent:             return "%";
+            case percentequal:        return "%=";
+            case less:                return "<";
+            case lessless:            return "<<";
+            case lessequal:           return "<=";
+            case lesslessequal:       return "<<=";
+            case greater:             return ">";
+            case greatergreater:      return ">>";
+            case greaterequal:        return ">=";
+            case greatergreaterequal: return ">>=";
+            case caret:               return "^";
+            case caretequal:          return "^=";
+            case bar:                return "|";
+            case barbar:            return "||";
+            case barequal:           return "|=";
+            case question:            return "?";
+            case colon:               return ":";
+            case semi:                return ";";
+            case equal:               return "=";
+            case equalequal:          return "==";
+            case comma:               return ",";
+            case hash:                return "#";
+            case hashhash:            return "##";
+            default:break;
+        }
+        return null;
+    }
 }

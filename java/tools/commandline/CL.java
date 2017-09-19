@@ -319,7 +319,7 @@ public final class CL
                 if (sinkOpts.isEmpty())
                 {
                     System.err.println(": Undefined command line argument '"
-                            + args[i] + "'.  Try 'xcc --help'");
+                            + args[i] + "'.  Try '" + ProgramName + " --help'");
                     ErrorParsing = true;
                 }
                 else
