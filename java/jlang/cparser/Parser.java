@@ -1048,6 +1048,14 @@ public class Parser implements Tag,
             return stmtError();
 
         condExpr = x.get();
+
+        if (tok.is(semi))
+        {
+            diag(tok, warn_empty_if_body).emit();
+            return action.actOnIfStmt(ifLoc, condExpr,
+                    new Tree.NullStmt(SourceLocation.NOPOS),
+                    new Tree.NullStmt(SourceLocation.NOPOS));
+        }
         // C99 6.8.4p3
         // In C99, the body of the if statement is a scope, even if
         // there is only a single statement but compound statement.
@@ -1223,7 +1231,7 @@ public class Parser implements Tag,
         SourceLocation lParenLoc = consumeParen();
         ActionResult<Expr> result = new ActionResult<>(true);
 
-        if (exprType.get().compareTo(CompoundStmt) >= 0)
+        if (exprType.get().compareTo(CompoundStmt) >= 0 && tok.is(l_brace))
         {
             diag(tok, ext_gnu_statement_expr).emit();
             ActionResult<Stmt> stmt = parseCompoundStatement(true, DeclScope.value);
@@ -1382,46 +1390,6 @@ public class Parser implements Tag,
     }
 
     /**
-     * Parse the expression surrounding with a pair of parenthesis.
-     * <pre>
-     *     '(' expression ')'
-     * </pre>
-     * @param cond
-     * @param loc
-     * @param convertToBoolean
-     * @return
-     */
-    private boolean parseParenExpression(
-            OutParamWrapper<ActionResult<Expr>> cond,
-            SourceLocation loc,
-            boolean convertToBoolean)
-    {
-        assert cond != null;
-        assert nextTokenIs(l_paren);
-        SourceLocation lparenLoc = consumeParen();
-
-        cond.set(parseExpression());
-        if (!cond.get().isInvalid() && convertToBoolean)
-        {
-            //TODO convert the condition expression to boolean
-        }
-
-        if (cond.get().isInvalid() && nextTokenIsNot(r_paren))
-        {
-            skipUntil(semi, true);
-            // skip may have stopped if it found the ')'. IfStmt so, we can
-            // continue parsing the if statement.
-            if (nextTokenIsNot(r_paren))
-                return true;
-        }
-
-        // eat the ')'
-        consumeToken();
-        // condition is valid or ')' is present.
-        return false;
-    }
-
-    /**
      * For sufficiency, A simple precedence-based jlang.parser for binary/unary operators.
      * <br>
      * Note: we diverge from the C99 grammar when parsing the assignment-expression
@@ -1502,6 +1470,9 @@ public class Parser implements Tag,
     private ActionResult<Expr> parseExpression()
     {
         ActionResult<Expr> lhs = parseAssignExpression();
+        if (lhs.isInvalid())
+            return lhs;
+
         return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Comma);
     }
 
@@ -1519,7 +1490,7 @@ public class Parser implements Tag,
         // eat the 'switch'
         SourceLocation switchLoc = consumeToken();
 
-        if (nextTokenIsNot(l_brace))
+        if (tok.isNot(l_paren))
         {
             diag(tok, err_expected_lparen_after).addTaggedVal("switch").emit();
             return stmtError();
@@ -1534,7 +1505,7 @@ public class Parser implements Tag,
         // Parse the condition expression.
         ActionResult<Expr> condExpr;
         OutParamWrapper<ActionResult<Expr>> res = new OutParamWrapper<>();
-        if (parseParenExpression(res, switchLoc, false))
+        if (parseParenExprOrCondition(res, switchLoc, false))
         {
             return stmtError();
         }
@@ -1611,7 +1582,7 @@ public class Parser implements Tag,
         OutParamWrapper<ActionResult<Expr>> wrapper = new OutParamWrapper<>();
 
         // parse the condition.
-        if (parseParenExpression(wrapper, whileLoc, true))
+        if (parseParenExprOrCondition(wrapper, whileLoc, true))
             return stmtError();
 
         ActionResult<Expr> cond = wrapper.get();
@@ -1732,7 +1703,8 @@ public class Parser implements Tag,
                     | ScopeFlags.ContinueScope.value;
 
         ParseScope forScope = new ParseScope(this, scopeFlags);
-        SourceLocation lParenLoc = consumeParen();
+        BalancedDelimiterTracker tracker = new BalancedDelimiterTracker(this, l_paren);
+        tracker.consumeOpen();
 
         ActionResult<Expr> value;
         ActionResult<Stmt> firstPart = new ActionResult<Stmt>();
@@ -1754,15 +1726,6 @@ public class Parser implements Tag,
             ArrayList<Decl> declGroup = parseSimpleDeclaration(stmts, TheContext.ForContext,
                     false);
             firstPart = action.actOnDeclStmt(declGroup, declStart, tok.getLocation());
-            if (nextTokenIs(semi))
-            {
-                consumeToken();
-            }
-            else
-            {
-                diag(tok, err_expected_semi_for).emit();
-                skipUntil(semi, true);
-            }
         }
         else
         {
@@ -1830,7 +1793,7 @@ public class Parser implements Tag,
             skipUntil(r_brace, true);
         }
 
-        SourceLocation rParenLoc = consumeParen();
+        tracker.consumeClose();
 
         // C99 6.8.5p5 - In C99, the body of the if statement is a scope, even if
         // there is no compound stmt.  C90 does not have this clause.  We only do this
@@ -1849,10 +1812,12 @@ public class Parser implements Tag,
             return stmtError();
 
         return  action.actOnForStmt(forLoc,
-                lParenLoc, firstPart.get(),
+                tracker.getOpenLocation(),
+                firstPart.get(),
                 secondPart.get(),
                 thirdPart.get(),
-                rParenLoc, body.get());
+                tracker.getCloseLocation(),
+                body.get());
     }
 
     private boolean isSimpleDeclaration()
@@ -2488,7 +2453,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseExprStatement()
     {
-        Token oldTok = tok;
+        Token oldTok = tok.clone();
 
         ActionResult<Expr> res = parseExpression();
         if (res.isInvalid())
@@ -4853,6 +4818,9 @@ public class Parser implements Tag,
     private ActionResult<Expr> parseAssignExpression()
     {
         ActionResult<Expr> lhs = parseCastExpression(false, false, false, 1);
+        if (lhs.isInvalid())
+            return lhs;
+
         return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Assignment);
     }
 
@@ -4887,7 +4855,7 @@ public class Parser implements Tag,
         {
             for (TokenKind kind : tags)
             {
-                if (nextTokenIs(kind))
+                if (tok.is(kind))
                 {
                     if (dontConsume)
                     {
@@ -4895,7 +4863,7 @@ public class Parser implements Tag,
                     }
                     else
                     {
-                        consumeToken();
+                        consumeAnyToken();
                     }
                     return true;
                 }
@@ -4906,15 +4874,15 @@ public class Parser implements Tag,
                     // ran out of tokens
                     return false;
                 case l_paren:
-                    consumeToken();
+                    consumeAnyToken();
                     skipUntil(r_paren, false);
                     break;
                 case l_bracket:
-                    consumeToken();
+                    consumeAnyToken();
                     skipUntil(r_bracket, false);
                     break;
                 case l_brace:
-                    consumeToken();
+                    consumeAnyToken();
                     skipUntil(r_brace, false);
                     break;
 
@@ -4923,10 +4891,10 @@ public class Parser implements Tag,
                 case r_brace:
                     if (!isFirstTokenSkipped)
                         return false;
-                    consumeToken();
+                    consumeAnyToken();
                     break;
                 case string_literal:
-                    consumeToken();
+                    consumeAnyToken();
                     break;
                 case semi:
                     if (stopAtSemi)
@@ -5058,8 +5026,19 @@ public class Parser implements Tag,
             return false;
         }
 
-        diag(tok, diagID).addTaggedVal(msg).emit();
-
+        SourceLocation endLoc = pp.getLocEndOfToken(prevTokLocation);
+        String spelling = Token.getTokenSimpleSpelling(expectedTok);
+        if (endLoc.isValid() && spelling != null)
+        {
+            diag(endLoc, diagID)
+                    .addTaggedVal(msg)
+                    .addFixItHint(FixItHint.createInsertion(endLoc, spelling))
+                    .emit();
+        }
+        else
+        {
+            diag(tok, diagID).emit();
+        }
         if (skipToTok != Unknown)
             skipUntil(skipToTok, true);
         return true;

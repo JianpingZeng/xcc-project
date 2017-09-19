@@ -3912,9 +3912,7 @@ public final class Sema implements DiagnosticParseTag,
         DefaultStmt prevDefaultStmt = null;
         boolean caseListErroneous = false;
 
-        SwitchCase sc;
-        for (sc = ss.getSwitchCaseList();
-             sc != null; sc = sc.getNextSwitchCase());
+        for (SwitchCase sc = ss.getSwitchCaseList(); sc != null; sc = sc.getNextSwitchCase())
         {
             if (sc instanceof DefaultStmt)
             {
@@ -7333,6 +7331,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             // Cast to void allows any expr type.
             kind.set(CK_ToVoid);
+            return false;
         }
         else if (!castTy.isScalarType())
         {

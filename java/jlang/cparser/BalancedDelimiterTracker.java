@@ -67,12 +67,12 @@ public class BalancedDelimiterTracker
         assignClosingDelimiter();
     }
 
-    public SourceLocation getLOpenSourceLocation()
+    public SourceLocation getOpenLocation()
     {
         return lopen;
     }
 
-    public SourceLocation getROpenSourceLocation()
+    public SourceLocation getCloseLocation()
     {
         return rclose;
     }
@@ -160,9 +160,10 @@ public class BalancedDelimiterTracker
                     diagID = err_expected_greater;
                     break;
             }
-            p.diag(p.tok.getLocation(), diagID);
+            p.diag(p.tok.getLocation(), diagID).emit();
             p.diag(lopen, DiagnosticCommonKindsTag.note_matching)
-                    .addTaggedVal(lhsname);
+                    .addTaggedVal(lhsname)
+                    .emit();
             if (p.skipUntil(close, true))
                 rclose = p.tok.getLocation();
         }
