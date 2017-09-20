@@ -291,7 +291,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 
 	//================Expression visitor method===============================//
 
-    //================Bianry operaotr=========================================//
+    //================Bianry operator=========================================//
     public T visitBinaryExpr(BinaryExpr expr) {return visitStmt(expr);}
 
     public T visitCompoundAssignExpr(CompoundAssignExpr expr){return visitStmt(expr);}
@@ -319,6 +319,16 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
     public T visitCallExpr(CallExpr expr) {return visitStmt(expr);}
 
     public T visitInitListExpr(InitListExpr expr){return visitStmt(expr);}
+
+    public T visitDesignatedInitExpr(DesignatedInitExpr expr)
+    {
+    	return visitStmt(expr);
+    }
+
+    public T visitImplicitValueExpr(ImplicitValueInitExpr expr)
+    {
+        return visitStmt(expr);
+    }
 
     // Primary expression.
     public T visitDeclRefExpr(DeclRefExpr expr) {return visitStmt(expr);}
