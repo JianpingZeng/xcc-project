@@ -34,6 +34,11 @@ public enum ProgramAction
 	ASTDump,
 
     /**
+     * Print the AST node in terms of source code.
+     */
+    ASTPrint,
+
+    /**
      * Just lex as fast as we can, no output.
      */
     RunPreprocessorOnly,

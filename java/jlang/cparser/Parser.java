@@ -1051,6 +1051,8 @@ public class Parser implements Tag,
 
         if (tok.is(semi))
         {
+            // cosume this ';'.
+            consumeToken();
             diag(tok, warn_empty_if_body).emit();
             return action.actOnIfStmt(ifLoc, condExpr,
                     new Tree.NullStmt(SourceLocation.NOPOS),

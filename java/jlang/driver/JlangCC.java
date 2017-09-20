@@ -684,6 +684,9 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             case ASTDump:
                 consumer = createASTDumper(null, true);
                 break;
+            case ASTPrint:
+                consumer = createASTDumper(null, false);
+                break;
             case DumpTokens:
                 Token tok = new Token();
                 // Start preprocessing the specified input file.

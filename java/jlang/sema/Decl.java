@@ -307,11 +307,57 @@ public abstract class Decl
     }
 
     public void print(PrintStream os, int indentation)
-    {}
+    {
+        print(os, null, indentation);
+    }
 
     public void print(PrintStream os, PrintingPolicy policy)
     {
         print(os, policy, 0);
+    }
+
+
+    public static void printGroup(ArrayList<Decl> decls,
+            PrintStream os,
+            PrintingPolicy policy,
+            int indentation)
+    {
+        if (decls.size() == 1)
+        {
+            decls.get(0).print(os, policy, indentation);
+            return;
+        }
+
+        int i = 0;
+        TagDecl td = decls.get(0) instanceof TagDecl ? (TagDecl)decls.get(0):null;
+        if (td != null)
+            i++;
+
+        PrintingPolicy subPolicy = new PrintingPolicy(policy);
+        if (td != null && td.isCompleteDefinition())
+        {
+            td.print(os, policy, indentation);
+            os.print(" ");
+            subPolicy.suppressTag = true;
+        }
+
+        boolean isFirst = true;
+        for (int e = decls.size(); i != e; i++)
+        {
+            if (isFirst)
+            {
+                subPolicy.suppressSpecifiers = false;
+                isFirst = false;
+            }
+            else
+            {
+                if (!isFirst)
+                    os.print(", ");
+                subPolicy.suppressSpecifiers = true;
+            }
+
+            decls.get(i).print(os, policy, indentation);
+        }
     }
 
     /**
