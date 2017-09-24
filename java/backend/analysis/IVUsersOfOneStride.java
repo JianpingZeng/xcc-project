@@ -3,7 +3,6 @@ package backend.analysis;
 import backend.value.Instruction;
 import backend.value.Value;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 
 /**
