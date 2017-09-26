@@ -108,6 +108,16 @@ public abstract class LLVMTargetMachine extends TargetMachine
         }
     }
 
+    @Override
+    public boolean addPassesToEmitFileFinish(PassManagerBase pm,
+            MachineCodeEmitter mce, CodeGenOpt opt)
+    {
+        if (mce != null)
+            addSimpleCodeEmitter(pm, opt, mce);
+        // success!
+        return false;
+    }
+
     public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
     {
         return true;

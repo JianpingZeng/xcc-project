@@ -33,7 +33,7 @@ import java.util.*;
 public final class BasicBlock extends Value implements Iterable<Instruction>
 {
 	public static final BasicBlock USELESS_BLOCK =
-			new BasicBlock(-1, "useless", null);
+			new BasicBlock("useless", null);
 
 	/**
 	 * Unique id id for this basic block.
@@ -195,14 +195,13 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 * A private constructor for entry node
 	 */
 	private BasicBlock(
-			int id,
 			String bbName,
 			Function newParent,
 			BasicBlock insertBefore)
 	{
 		super(Type.LabelTy, ValueKind.BasicBlockVal);
         parent = newParent;
-		this.idNumber = id;
+		this.idNumber = 0;
 		this.instructions = new LinkedList<>();
 		this.bbName = bbName;
 
@@ -212,7 +211,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
             LinkedList<BasicBlock> list = newParent.getBasicBlockList();
 
             int idx = list.indexOf(insertBefore);
-            list.add(id, this);
+            list.add(idx, this);
         }
         else if (newParent != null)
             newParent.getBasicBlockList().addLast(this);
@@ -220,31 +219,35 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	}
 
 	private BasicBlock(
-			int id,
 			String bbName,
 			Function parent)
 	{
-		this(id, bbName, parent, null);
+		this(bbName, parent, null);
 	}
 
 	/**
 	 * Create new internal basic block.
 	 */
-	public static BasicBlock createBasicBlock(int id,
+	public static BasicBlock createBasicBlock(
             String bbName,
             Function parent, BasicBlock before)
 	{
-		return new BasicBlock(id, bbName, parent, before);
+		return new BasicBlock(bbName, parent, before);
 	}
 
 	/**
 	 * Create new internal basic block.
 	 */
-	public static BasicBlock createBasicBlock(int id,
+	public static BasicBlock createBasicBlock(
 			String bbName,
 			Function parent)
 	{
-		return new BasicBlock(id, bbName, parent);
+		return new BasicBlock(bbName, parent);
+	}
+
+	public static BasicBlock createBasicBlock(String bbName, BasicBlock insertBefore)
+	{
+		return new BasicBlock(bbName, null, insertBefore);
 	}
 
 	/**

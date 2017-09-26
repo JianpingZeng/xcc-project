@@ -995,6 +995,7 @@ public final class CodeGenFunction
 		else if (resultVal.getType().isComplexType())
 		{
 			// TODO.
+			assert false:"ComplexType is not supported!";
 		}
 		else
 		{

@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.MachineCodeEmitter;
 import backend.pass.*;
 import backend.target.SubtargetFeatures;
 import backend.target.Target;
@@ -324,17 +325,20 @@ public class BackendConsumer implements ASTConsumer
             }
 
             TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
-
+            MachineCodeEmitter mce = null;
             switch (tm.addPassesToEmitFile(pm, asmOutStream, AssemblyFile, optLevel))
             {
+                case AsmFile:
+                    break;
+                case ElfFile:
+                    mce = tm.addELFWriter(pm, asmOutStream);
+                    break;
                 default:
                 case Error:
                     error.set("Unable to interface with target machine!\n");
                     return false;
-                case AsmFile:
-                    break;
             }
-            if (tm.addPassesToEmitFileFinish(getCodeGenPasses(), null, optLevel))
+            if (tm.addPassesToEmitFileFinish(getCodeGenPasses(), mce, optLevel))
             {
                 error.set("Unable to interface with target machine!\n");
                 return false;
