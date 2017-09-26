@@ -287,7 +287,7 @@ public class CodeGenTypes
      * @param fnType
      * @return
      */
-    static TagType verifyFunctionTypeComplete(jlang.type.FunctionType fnType)
+    public static TagType verifyFunctionTypeComplete(jlang.type.FunctionType fnType)
     {
         if (fnType.getResultType().getType() instanceof jlang.type.TagType)
         {
@@ -378,7 +378,8 @@ public class CodeGenTypes
 
             case Complex:
             {
-                // TODO
+                // TODO 9/26
+                assert false:"ComplexType is not supported";
                 break;
             }
             case Pointer:

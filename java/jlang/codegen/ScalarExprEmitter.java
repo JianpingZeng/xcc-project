@@ -47,7 +47,7 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  */
 public class ScalarExprEmitter extends StmtVisitor<Value>
 {
-    static class BinOpInfo
+    public static class BinOpInfo
     {
         Value lhs;
         Value rhs;
@@ -692,8 +692,10 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         return visit(expr.getRHS());
     }
 
-    private Value emitCompare(BinaryExpr expr, CmpInst.Predicate uICmpOpc,
-            CmpInst.Predicate sICmpOpc, CmpInst.Predicate fCmpOpc)
+    private Value emitCompare(BinaryExpr expr,
+            CmpInst.Predicate uICmpOpc,
+            CmpInst.Predicate sICmpOpc,
+            CmpInst.Predicate fCmpOpc)
     {
         testAndClearIgnoreResultAssign();
         Value result = null;
@@ -735,7 +737,10 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     }
 
     public Value visitBinLE(BinaryExpr expr)
-    {return null;}
+    {
+        // TODO: 2017/9/24
+        return null;
+    }
 
     public Value visitBinGE(BinaryExpr expr)
     {return null;}
@@ -853,12 +858,14 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     public Value visitUnaryReal(UnaryExpr expr)
     {
         // TODO.
+        assert false:"Currently, visitUnaryReal() is not supported!";
         return null;
     }
 
     public Value visitUnaryImag(UnaryExpr expr)
     {
         // TODO.
+        assert false:"Currently, visitUnaryImag() is not supported!";
         return null;
     }
 
@@ -869,15 +876,21 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
     }
     @Override
     public Value visitParenExpr(Tree.ParenExpr expr)
-    {return visit(expr.getSubExpr());}
+    {
+        return visit(expr.getSubExpr());
+    }
 
     @Override
     public Value visitIntegerLiteral(Tree.IntegerLiteral expr)
-    {return backend.value.ConstantInt.get(expr.getValue());}
+    {
+        return backend.value.ConstantInt.get(expr.getValue());
+    }
 
     @Override
     public Value visitFloatLiteral(Tree.FloatingLiteral expr)
-    {return backend.value.ConstantFP.get(expr.getValue());}
+    {
+        return backend.value.ConstantFP.get(expr.getValue());
+    }
 
     @Override
     public Value visitCharacterLiteral(Tree.CharacterLiteral expr)
@@ -997,6 +1010,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             return emitScalarConversion(src, expr.getType(), destTy);
         }
 
+        assert !expr.getType().isComplexType():"Complex type not supported!";
         // TODO complex type.
 
         // Okay, this is a cast from an aggregate.  It must be a cast to void.  Just
@@ -1071,7 +1085,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             nextVal = builder.createFAdd(inVal, nextVal, isInc?"inc":"dec");
         }
 
-        // Store the unpdated result through the lvalue.
+        // Store the updated result through the lvalue.
         if (lv.isBitField())
         {
             // TODO.

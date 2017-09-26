@@ -89,7 +89,6 @@ public class HIRModuleGenerator
     private HashMap<String, Decl> deferredDecls = new HashMap<>();
     private ArrayList<Decl> deferredDeclToEmit = new ArrayList<>();
 
-
     public HIRModuleGenerator(ASTContext context,
                               CompileOptions compOpts,
                               Module m,

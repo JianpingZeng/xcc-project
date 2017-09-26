@@ -94,7 +94,7 @@ public class CGRecordLayoutBuilder
         if (layoutFields(d))
             return;
 
-        // We weren't able to layout the struct, try agagin with a packed struct.
+        // We weren't able to layout the struct, try again with a packed struct.
         packed = true;
         alignmentAsLLVMStruct = 1;
         nextFielOffsetInBytes = 0;
@@ -182,12 +182,11 @@ public class CGRecordLayoutBuilder
         assert alignment != 0:"Did not set alignment";
 
         ASTRecordLayout layout = types.getContext().getASTRecordLayout(d);
-        int fieldNo = 0;
 
-        for (int i = 0, e = d.getNumFields(); i < e; i++, ++fieldNo)
+        for (int i = 0, e = d.getNumFields(); i < e; i++)
         {
             Decl.FieldDecl field = d.getDeclAt(i);
-            if (!layoutField(field, layout.getFieldOffsetAt(fieldNo)))
+            if (!layoutField(field, layout.getFieldOffsetAt(i)))
                 assert !packed :"Could not layout fields even with a packed LLVM struct!";
             return false;
         }
