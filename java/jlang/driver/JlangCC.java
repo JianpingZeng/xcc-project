@@ -99,6 +99,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                     new ValueClass.Entry<>(ParseNoop, "parse-noop", "Run parser with noop callbacks (for timings)"),
                     new ValueClass.Entry<>(ParseSyntaxOnly, "fsyntax-only", "Run parser and perform semantic analysis"),
                     new ValueClass.Entry<>(ASTDump, "ast-dump", "Build ASTs and then debug dump them"),
+                    new ValueClass.Entry<>(ASTPrint, "ast-print", "Build ASTs and then print them"),
                     new ValueClass.Entry<>(EmitAssembly, "S", "Emit native assembly code"),
                     new ValueClass.Entry<>(EmitLLVM, "emit-llvm", "Build ASTs then convert to LLVM, emit .ll file"))
             );

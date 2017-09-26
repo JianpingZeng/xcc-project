@@ -794,6 +794,16 @@ public final class ASTContext
 		return getTypeInfo(type).first;
 	}
 
+	public long getTypeSize(Type ty)
+	{
+		return getTypeInfo(ty).first;
+	}
+
+	public int getTypeAlign(Type ty)
+	{
+		return getTypeInfo(ty).second;
+	}
+
 	/**
 	 * Return the unique type for "ptrdiff_t" (ref?)
 	 * defined in <stddef.h>. Pointer - pointer requires this (C99 6.5.6p9).

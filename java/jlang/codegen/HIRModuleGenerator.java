@@ -529,7 +529,7 @@ public class HIRModuleGenerator
 
         if (fd.getType().isFunctionNoProtoType())
         {
-            assert ty.isVarArg():"Didnot lower type as expected";
+            assert ty.isVarArg():"Didn't lower type as expected";
             ArrayList<Type> args = new ArrayList<>();
             args.addAll(ty.getParamTypes());
             ty = FunctionType.get(ty.getReturnType(), args, false);

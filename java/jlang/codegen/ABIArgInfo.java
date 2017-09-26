@@ -41,6 +41,7 @@ public class ABIArgInfo
 
 	private Kind kind;
 	private Type typeData;
+	private int alignment;
 
 	public ABIArgInfo()
 	{
@@ -48,24 +49,40 @@ public class ABIArgInfo
 		typeData = null;
 	}
 
-	private ABIArgInfo(Kind kind, Type ty)
+	private ABIArgInfo(Kind kind, Type ty, int align)
 	{
 		this.kind = kind;
 		typeData = ty;
+		alignment = align;
 	}
 	public static ABIArgInfo getDirect()
 	{
-		return new ABIArgInfo(Direct, null);
+		return new ABIArgInfo(Direct, null, 0);
+	}
+
+	public static ABIArgInfo getExtend()
+	{
+		return new ABIArgInfo(Extend, null, 0);
 	}
 
 	public static ABIArgInfo getIgnore()
 	{
-		return new ABIArgInfo(Ignore, null);
+		return new ABIArgInfo(Ignore, null, 0);
 	}
 
-	public static ABIArgInfo getIndirect()
+	public static ABIArgInfo getIndirect(int alignment)
 	{
-		return new ABIArgInfo(Indirect, null);
+		return new ABIArgInfo(Indirect, null, alignment);
+	}
+
+	public static ABIArgInfo getExpand()
+	{
+		return new ABIArgInfo(Expand, null, 0);
+	}
+
+	public static ABIArgInfo getCoerce(Type ty)
+	{
+		return new ABIArgInfo(Coerce, ty, 0);
 	}
 
     public Kind getKind()
