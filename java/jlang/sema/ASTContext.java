@@ -1461,7 +1461,12 @@ public final class ASTContext
 
 	public ASTRecordLayout getASTRecordLayout(RecordDecl d)
 	{
-		return getASTRecordLayout(d);
+        d = d.getDefinition();
+        if (astRecordLayoutMap.containsKey(d))
+            return astRecordLayoutMap.get(d);
+        ASTRecordLayout layout = ASTRecordLayout.getRecordLayout(this, d);
+        astRecordLayoutMap.put(d, layout);
+        return layout;
 	}
 	/**
 	 * Whether this is a promotable bitfield reference according to C99 6.3.1.1p2.

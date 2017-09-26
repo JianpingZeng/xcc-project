@@ -181,6 +181,11 @@ public final class CodeGenFunction
 		if (body != null)
 		{
 			// emit the standard function prologue.
+			// Note that, this prologue and epilogue differs from calling convention
+			// in Assembly code, we just determines what type of argument or
+			// return value is passed into callee or get from callee with what
+			// Calling convention, e.g. Indirect(by pointer), or direct,extend,
+			// or expand, etc.
 			startFunction(fd, resTy, fn, functionArgList, body.getLBraceLoc());
 			// Generates code for function body.
 			emitStmt(body);
@@ -638,7 +643,9 @@ public final class CodeGenFunction
 			}
 		}
 
-		// Otherwise, the condition can not folded.
+		// Otherwise, the condition can not folded or the condition would be folded
+		// but there is a label contained in this conditional expression. In the
+		// both cases, just emit thenBB first and then falseBB.
 		BasicBlock thenBB = createBasicBlock("if.then");
 		BasicBlock endBB = createBasicBlock("if.end");
 		BasicBlock elseBB = endBB;
@@ -674,9 +681,12 @@ public final class CodeGenFunction
 	 * @param trueBB
 	 * @param falseBB
 	 */
-	public void emitBranchOnBoolExpr(Expr cond, BasicBlock trueBB,
+	public void emitBranchOnBoolExpr(
+			Expr cond,
+			BasicBlock trueBB,
 			BasicBlock falseBB)
 	{
+		// Strips the parenthesis outsides sub-expression.
 		if (cond instanceof ParenExpr)
 			cond = ((ParenExpr) cond).getSubExpr();
 
@@ -692,7 +702,6 @@ public final class CodeGenFunction
 				{
 					// br (1&&x) -> br x.
 					emitBranchOnBoolExpr(condBOp.getRHS(), trueBB, falseBB);
-					;
 					return;
 				}
 
@@ -702,7 +711,6 @@ public final class CodeGenFunction
 				{
 					// br (x&&1) -> br x.
 					emitBranchOnBoolExpr(condBOp.getLHS(), trueBB, falseBB);
-					;
 					return;
 				}
 
@@ -722,7 +730,6 @@ public final class CodeGenFunction
 				{
 					// br (0||X) -> br (x).
 					emitBranchOnBoolExpr(condBOp.getRHS(), trueBB, falseBB);
-					;
 					return;
 				}
 
@@ -730,7 +737,6 @@ public final class CodeGenFunction
 				{
 					// br (X||0) -> br (x).
 					emitBranchOnBoolExpr(condBOp.getLHS(), trueBB, falseBB);
-					;
 					return;
 				}
 

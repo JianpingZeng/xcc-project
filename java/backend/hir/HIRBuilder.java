@@ -1,7 +1,7 @@
 package backend.hir;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,9 +26,12 @@ import java.util.LinkedList;
 import static backend.value.Instruction.CmpInst.Predicate.*;
 
 /**
- * This file defines a class that responsible for creating so many utility method
- * to create different kind of Instruction and then insert it into the BasicBlock
- * enclosing it.
+ * This file defines a class "HIRBuilder" that responsible for converting each
+ * kind of AST node (Expression or Statement) into LLVM IR code. For instance,
+ * converting all of statement (except for expression statement) into control
+ * flow IR, e.g. br, icmp, fcmp, goto etc. In the another greatly important aspect,
+ * the handling of Expression is the focus. We uses some arithmetic, logical,
+ * comparison, shift-wise operation to accompolish this purpose.
  *
  * @author Xlous.zeng
  * @version 0.1
@@ -39,6 +42,7 @@ public class HIRBuilder
 	 * The basic block where all instruction will be inserted.
 	 */
 	private BasicBlock curBB;
+
 	private int insertPtr;
 
 	public HIRBuilder(){super();}
