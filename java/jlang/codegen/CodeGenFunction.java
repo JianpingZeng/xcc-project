@@ -229,7 +229,7 @@ public final class CodeGenFunction
 		builder.setInsertPoint(entryBB);
 
 		if (!resTy.isVoidType())
-			returnValue = createIRTemp(resTy, "retval");
+			returnValue = createAllocaTemp(resTy, "retval");
 
 		curFnInfo = generator.getCodeGenTypes().getFunctionInfo(fnRetTy, args);
 		emitFunctionPrologue(curFn, curFnInfo, args);
@@ -524,13 +524,13 @@ public final class CodeGenFunction
 		return generator.getCodeGenTypes().convertTypeForMem(ty);
 	}
 
-	public boolean hasAggregateBackendType(QualType ty)
+	public static boolean hasAggregateBackendType(QualType ty)
 	{
 		return !ty.isPointerType() && !ty.isRealType() && !ty.isVoidType()
 				&& !ty.isFunctionType();
 	}
 
-	private Value createIRTemp(QualType ty, String name)
+	private Value createAllocaTemp(QualType ty, String name)
 	{
 		Instruction.AllocaInst alloc = createTempAlloc(convertType(ty), name);
 		return alloc;
@@ -1843,7 +1843,7 @@ public final class CodeGenFunction
 	private BasicBlock createBasicBlock(String name, Function parent,
 			BasicBlock before)
 	{
-		return BasicBlock.createBasicBlock(id++, name, parent, before);
+		return BasicBlock.createBasicBlock(name, parent, before);
 	}
 
 	public LValue emitUnSupportedLValue(Expr expr, String msg)

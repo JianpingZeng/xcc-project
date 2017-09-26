@@ -16,14 +16,13 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.value.Module;
 import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.*;
 import backend.type.PointerType;
 import backend.type.Type;
-import tools.APFloat;
-import tools.FltSemantics;
+import backend.value.Module;
+import gnu.trove.map.hash.TIntObjectHashMap;
 import jlang.basic.TargetInfo;
 import jlang.sema.ASTContext;
 import jlang.sema.Decl;
@@ -32,18 +31,19 @@ import jlang.sema.Decl.VarDecl;
 import jlang.type.ArrayType;
 import jlang.type.ArrayType.VariableArrayType;
 import jlang.type.*;
+import tools.APFloat;
+import tools.FltSemantics;
 import tools.Pair;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
 import static jlang.type.TypeClass.*;
 import static jlang.type.TypeClass.Double;
 import static jlang.type.TypeClass.Enum;
 import static jlang.type.TypeClass.Float;
+import static jlang.type.TypeClass.Long;
 import static jlang.type.TypeClass.Short;
+import static jlang.type.TypeClass.Void;
 
 /**
  * @author Xlous.zeng
@@ -51,7 +51,7 @@ import static jlang.type.TypeClass.Short;
  */
 public class CodeGenTypes
 {
-    public static class CGFunctionInfo
+    public static class CGFunctionInfo implements FoldingSetNode
     {
         public static class ArgInfo
         {
@@ -76,14 +76,51 @@ public class CodeGenTypes
 
         public QualType getReturnType(){return args[0].type;}
 
+        public void setReturnInfo(ABIArgInfo retInfo)
+        {
+            assert args != null && args.length > 0;
+            args[0].info = retInfo;
+        }
+
         public ABIArgInfo getReturnInfo() {return args[0].info;}
 
-        public int getNumOfArgs(){return args.length;}
+        public int getNumOfArgs() {return args.length - 1;}
 
         public ArgInfo getArgInfoAt(int idx)
         {
-            assert idx>=0 && idx < args.length;
-            return args[idx];
+            assert idx>=0 && idx < getNumOfArgs();
+            return args[idx+1];
+        }
+
+        public void setArgInfo(int index, ABIArgInfo argInfo)
+        {
+            assert  args != null && args.length > 1 &&
+                    index >= 0 && index < getNumOfArgs();
+            args[index + 1].info = argInfo;
+        }
+
+        @Override
+        public void profile(FoldingSetNodeID id)
+        {
+            getReturnType().profile(id);
+            for (int i = 0, e = getNumOfArgs(); i != e; i++)
+                getArgInfoAt(i).type.profile(id);
+        }
+
+        public static void profile(FoldingSetNodeID id,
+                QualType returnType,
+                List<QualType> argTypes)
+        {
+            returnType.profile(id);
+            argTypes.forEach(ty->ty.profile(id));
+        }
+
+        @Override
+        public int hashCode()
+        {
+            FoldingSetNodeID id = new FoldingSetNodeID();
+            profile(id);
+            return id.computeHash();
         }
     }
 
@@ -159,6 +196,8 @@ public class CodeGenTypes
     private HashMap<jlang.type.Type, backend.type.Type> tagDeclTypes;
     private HashMap<jlang.type.Type, backend.type.Type> functionTypes;
 
+    private TIntObjectHashMap<CGFunctionInfo> functionInfos;
+
     public CodeGenTypes(HIRModuleGenerator moduleBuilder, TargetData td)
     {
         builder = moduleBuilder;
@@ -177,6 +216,28 @@ public class CodeGenTypes
         pointersToResolve = new LinkedList<>();
         tagDeclTypes = new HashMap<>();
         functionTypes = new HashMap<>();
+        functionInfos = new TIntObjectHashMap<>();
+    }
+
+    public ABIInfo getABIInfo()
+    {
+        if (theABIInfo != null)
+            return theABIInfo;
+
+        String prefix = getContext().target.getTargetPrefix();
+        assert prefix.equals("x86") :"Not supported CPU architecture '" + prefix + "'";
+        int bitwidth = getContext().target.getPointerWidth(0);
+        switch (bitwidth)
+        {
+            case 32:
+                theABIInfo = new X86_32ABIInfo(context);
+                break;
+            case 64:
+                theABIInfo = new X86_64ABIInfo();
+            default:
+                theABIInfo = new DefaultABIInfo();
+        }
+        return theABIInfo;
     }
 
     public backend.type.FunctionType getFunctionType(CGFunctionInfo fi, boolean isVaridic)
@@ -520,38 +581,66 @@ public class CodeGenTypes
         return result;
     }
 
+    private void addRecordTypeName(Decl.RecordDecl rd,
+            StructType ty,
+            String suffix)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append(rd.getKindName());
+        sb.append(".");
+
+        Decl.TypeDefDecl tdd;
+        if (rd.getIdentifier() != null)
+        {
+            if (rd.getDeclContext() != null)
+                sb.append(rd.getNameAsString());
+        }
+        else if ((tdd = rd.getTypedefAnonDecl()) != null)
+        {
+            if (tdd.getDeclContext() != null)
+                sb.append(tdd.getNameAsString());
+        }
+        else
+            sb.append("anon");
+
+        if (!suffix.isEmpty())
+            sb.append(suffix);
+
+        // todo ty.setName(sb.toString());
+    }
+
     /**
      * Lay out a tagged decl type like struct/union type.
      * @param decl
      * @return
      */
-    private backend.type.StructType convertRecordDeclType(Decl.RecordDecl decl)
+    private backend.type.Type convertRecordDeclType(Decl.RecordDecl decl)
     {
         jlang.type.Type key = decl.getTypeForDecl();
-        StructType entry = recordDeclTypes.get(key);
 
-        if (entry == null)
+        StructType ty = recordDeclTypes.get(key);
+        if (ty == null || !recordDeclTypes.containsKey(key))
         {
-            // create a place holder type.
-            entry = StructType.get();
-            // TODO addRecordTypeName(decl, entry, "");
+            ty = StructType.get();
+            recordDeclTypes.put(key, ty);
+            addRecordTypeName(decl, ty, "");
         }
 
-        if (!decl.isCompleteDefinition())
-            return entry;
+        decl = decl.getDefinition();
+        if (decl == null || !decl.isCompleteDefinition() || !ty.isOpaque())
+            return ty;
 
-        // if it is unsafe to convert record type to backend type, defer it!
         if (!isSafeToConvert(decl))
         {
             deferredRecords.add(decl);
-            return entry;
+            return ty;
         }
 
         // Okay, this is a definition of a type.  Compile the implementation now.
         boolean insertResult = recordBeingLaidOut.add(key);
         assert insertResult:"Recursively compiling a struct?";
 
-        CGRecordLayout layout = computeRecordLayout(decl, entry);
+        CGRecordLayout layout = CGRecordLayoutBuilder.computeLayout(this, decl);
         cgRecordLayout.put(key, layout);
 
         // We're done laying out this struct.
@@ -567,7 +656,7 @@ public class CodeGenTypes
             while (!deferredRecords.isEmpty())
                 convertRecordDeclType(deferredRecords.removeLast());
 
-        return entry;
+        return ty;
     }
 
     /**
@@ -695,8 +784,7 @@ public class CodeGenTypes
 
     private CGRecordLayout computeRecordLayout(Decl.RecordDecl rd, StructType entry)
     {
-        // TODO creates the layout of record type, 2016.11.1
-        return null;
+        return CGRecordLayoutBuilder.computeLayout(this, rd);
     }
 
     public CGFunctionInfo getFunctionInfo(FunctionProtoType fpt)
@@ -725,8 +813,21 @@ public class CodeGenTypes
 
     public CGFunctionInfo getFunctionInfo2(QualType resType, ArrayList<QualType> argTypes)
     {
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        CGFunctionInfo.profile(id, resType, argTypes);
+        int hash = id.computeHash();
+
+        if (functionInfos.containsKey(hash))
+        {
+            return functionInfos.get(hash);
+        }
+        // Construct a new CGFunctionInfo object.
         CGFunctionInfo fi = new CGFunctionInfo(resType, argTypes);
-        // TODO: 17-6-11  Create FoldingSet.
+        functionInfos.put(hash, fi);
+
+        // Compute ABI information.
+        getABIInfo().computeInfo(fi, context);
+
         // Compute ABI information.
         return fi;
     }

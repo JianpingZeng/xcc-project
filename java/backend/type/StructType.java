@@ -63,6 +63,7 @@ public class StructType extends CompositeType
      */
     private ArrayList<Type> elementTypes;
     private boolean packed;
+    private boolean opaque;
 
     private static TypeMap<StructValType, StructType> structTypes = new TypeMap<>();
 
@@ -169,6 +170,11 @@ public class StructType extends CompositeType
     public boolean isPacked()
     {
         return packed;
+    }
+
+    public boolean isOpaque()
+    {
+        return opaque;
     }
 
     @Override
