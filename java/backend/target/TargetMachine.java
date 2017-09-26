@@ -1,9 +1,11 @@
 package backend.target;
 
 import backend.codegen.MachineCodeEmitter;
+import backend.pass.FunctionPassManager;
 import backend.pass.PassManagerBase;
 
 import java.io.OutputStream;
+import java.io.PrintStream;
 
 /**
  * Primary interface to complete machine description for the backend.target machine.
@@ -15,7 +17,7 @@ import java.io.OutputStream;
  */
 public abstract class TargetMachine
 {
-    /**
+	/**
      * Code generation optimization level.
      */
     public enum CodeGenOpt
@@ -166,4 +168,16 @@ public abstract class TargetMachine
     {
     	return true;
     }
+
+    /**
+     * If the target want to support emission of ELF object code, so that this
+     * method must be implemented aimed to generate ELF code.
+     * @param pm
+     * @param os
+     * @return
+     */
+	public MachineCodeEmitter addELFWriter(FunctionPassManager pm, PrintStream os)
+	{
+		return null;
+	}
 }

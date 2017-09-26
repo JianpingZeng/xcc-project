@@ -1,16 +1,21 @@
 package backend.target.x86;
 
+import backend.codegen.ELFWriter;
 import backend.codegen.MachineCodeEmitter;
+import backend.pass.FunctionPassManager;
 import backend.pass.PassManagerBase;
 import backend.target.*;
 import backend.value.Module;
 
 import java.io.OutputStream;
+import java.io.PrintStream;
 
+import static backend.codegen.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
+import static backend.codegen.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
-import static backend.codegen.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
+import static backend.target.x86.X86ATTAsmPrinter.createX86AsmCodeEmitter;
 import static backend.target.x86.X86DAGToDAGISel.createX86ISelDag;
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
@@ -190,7 +195,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 	public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
 			boolean verbose, OutputStream os)
 	{
-		pm.add(X86ATTAsmPrinter.createX86AsmCodeEmitter(os, this, getTargetAsmInfo(), verbose));
+		pm.add(createX86AsmCodeEmitter(os, this, getTargetAsmInfo(), verbose));
 		return false;
 	}
 
@@ -198,6 +203,17 @@ public class X86TargetMachine extends LLVMTargetMachine
 	public boolean addSimpleCodeEmitter(PassManagerBase pm, CodeGenOpt level,
 			MachineCodeEmitter mce)
 	{
-		return super.addSimpleCodeEmitter(pm, level, mce);
+        pm.add(createX86CodeEmitterPass(this, mce));
+		return false;
 	}
+
+    @Override
+    public MachineCodeEmitter addELFWriter(
+            FunctionPassManager pm,
+            PrintStream os)
+    {
+        ELFWriter writer = new ELFWriter(os, this);
+        pm.add(writer);
+        return writer.getMachineCodeEmitter();
+    }
 }
