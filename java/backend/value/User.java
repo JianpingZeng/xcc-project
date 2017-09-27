@@ -125,4 +125,9 @@ public abstract class User extends Value
             }
         }
     }
+
+    public Operator getOpcode()
+    {
+        return opcode;
+    }
 }
