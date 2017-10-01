@@ -252,4 +252,9 @@ public class LookupResult
     {
         return nameLoc;
     }
+
+    public void setLookupName(IdentifierInfo name)
+    {
+        this.foundName = name;
+    }
 }

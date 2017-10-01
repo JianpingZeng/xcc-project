@@ -406,4 +406,48 @@ public class Util
     {
     	return (int)val == val;
     }
+
+	/***
+	 * Computes the edit distance between two string. The edit distance is defined
+	 * as follows.
+	 * The number of operation needed to be performed to transfrom the str1 to str2
+	 * 1.delete a character.
+	 * 2.add a character.
+	 * 3.replace the old one with new.
+	 * @param str1
+	 * @param str2
+	 * @return
+	 */
+	public static int getEditDistance(String str1, String str2)
+	{
+		if ((str2 == null || str1 == null))
+			return 0;
+
+        /*
+        if i == 0 且 j == 0，edit(i, j) = 0
+        if i == 0 且 j > 0，edit(i, j) = j
+        if i > 0 且j == 0，edit(i, j) = i
+        if i ≥ 1  且 j ≥ 1 ，edit(i, j) == min{ edit(i-1, j) + 1, edit(i, j-1) + 1, edit(i-1, j-1) + f(i, j) }
+        */
+		int len1 = str1.length();
+		int len2 = str2.length();
+		int[][] dist = new int[len1][len2];
+
+		for (int i = 0; i < len2; i++)
+			dist[0][i] = i;
+		for (int i = 0; i < len1; i++)
+			dist[i][0] = i;
+
+		for(int i = 1; i < len1; i++)
+		{
+			for (int j = 1; j < len2; j++)
+			{
+				int temp = Math.min(dist[i-1][j] + 1, dist[i][j-1]+1);
+				dist[i][j] = Math.min(temp, dist[i-1][j-1] + str1.charAt(i) != str2.charAt(j) ? 1 : 0);
+			}
+		}
+
+		return dist[len1-1][len2-1];
+	}
+
 }

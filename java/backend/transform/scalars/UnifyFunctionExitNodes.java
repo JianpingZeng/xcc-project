@@ -90,7 +90,7 @@ public final class UnifyFunctionExitNodes implements FunctionPass
         // Otherwise, there are multiple basic block where return inst lives in.
         // We need to insert PHI node in the new created unified return block
         // for merging multiple incomging value from each return block.
-        BasicBlock unifiedBB = BasicBlock.createBasicBlock(-1, "UnifiedReturnBlock", f);
+        BasicBlock unifiedBB = BasicBlock.createBasicBlock( "UnifiedReturnBlock", f);
         PhiNode pn = null;
 
         // If the function has returned of void type.

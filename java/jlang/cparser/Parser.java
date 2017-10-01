@@ -2608,7 +2608,8 @@ public class Parser implements Tag,
                     {
                         // return true, if there is incorrect.
                         if (parseImplicitInt(declSpecs))
-                            break out;
+                            continue;
+                        break out;
                     }
 
                     OutParamWrapper<String> wrapper1 = new OutParamWrapper<>(prevSpec);
@@ -2775,8 +2776,8 @@ public class Parser implements Tag,
      */
     private boolean parseImplicitInt(DeclSpec ds)
     {
-        assert nextTokenIs(identifier) : "should have identifier.";
-        SourceLocation loc = consumeToken();
+        assert tok.is(identifier) : "should have identifier.";
+        SourceLocation loc = tok.getLocation();
 
         // IfStmt we see an identifier that is not a type getIdentifier, we normally would
         // parse it as the identifer being declared.  However, when a typename
@@ -2815,8 +2816,8 @@ public class Parser implements Tag,
         if (tagName != null)
         {
             diag(loc, err_use_of_tag_name_without_tag)
-                .addTaggedVal(identifierInfo)
                 .addTaggedVal(tagName)
+                .addTaggedVal(identifierInfo)
                 .addFixItHint(FixItHint.createInsertion(tok.getLocation(),
                     tagName))
                 .emit();
@@ -2899,6 +2900,9 @@ public class Parser implements Tag,
         {
             name = tok.getIdentifierInfo();
             nameLoc = tok.getLocation();
+
+            // Consume 'enum-name' character.
+            consumeToken();
         }
 
         // There are three options here.  If we have 'enum foo;', then this is a
@@ -3354,7 +3358,7 @@ public class Parser implements Tag,
             }
             else
             {
-                expectAndConsume(semi, ext_expected_semi_decl_list);
+                expectAndConsume(semi, err_expected_semi_decl_list);
                 skipUntil(r_brace, true);
                 // if we stopped at a ';', consume it.
                 if (nextTokenIs(semi))
@@ -4423,7 +4427,7 @@ public class Parser implements Tag,
                     res = action.actOnUnaryOp(savedLoc, savedKind, res.get());
                 return res;
             }
-
+            case amp:
             case star:
             case plus:
             case sub:

@@ -41,6 +41,7 @@ import static jlang.sema.AssignConvertType.*;
 import static jlang.sema.BinaryOperatorKind.*;
 import static jlang.sema.Decl.DefinitionKind.DeclarationOnly;
 import static jlang.sema.LookupResult.LookupResultKind.Found;
+import static jlang.sema.LookupResult.LookupResultKind.NotFound;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
 import static jlang.sema.Sema.AssignAction.AA_Initializing;
 import static jlang.sema.Sema.LookupNameKind.*;
@@ -244,6 +245,13 @@ public final class Sema implements DiagnosticParseTag,
         LookupResult result = new LookupResult(this, name, loc, lookupKind);
         lookupName(result, s, false);
         return result;
+    }
+
+    public void lookupParsedName(
+            LookupResult result,
+            Scope s)
+    {
+        lookupName(result, s, false);
     }
 
     /**
@@ -8357,6 +8365,141 @@ public final class Sema implements DiagnosticParseTag,
         );
     }
 
+    private static boolean lookupDirect(Sema s, LookupResult result,
+            IDeclContext dc)
+    {
+        boolean found = false;
+        NamedDecl[] decls = dc.lookup(result.getLookupName());
+        if (decls == null)
+            found = true;
+        for (NamedDecl nd : decls)
+        {
+            result.addDecl(nd);
+            found = true;
+        }
+
+        if (!found && dc.isTranslationUnit())
+            return true;
+
+        return found;
+    }
+
+    private boolean lookupQualifiedName(
+            LookupResult res,
+            IDeclContext lookupCtx)
+    {
+        assert lookupCtx != null;
+
+        if (res.getLookupName() == null)
+            return false;
+
+        // Make sure that the declaration context is complete.
+        assert !(lookupCtx instanceof TagDecl) ||
+                ((TagDecl)lookupCtx).isCompleteDefinition()
+                || context.getTypeDeclType(((TagDecl)lookupCtx)).getAsTagType().isBeingDefined()
+                : "Declaration context must already be complete!";
+
+        if (lookupDirect(this, res, lookupCtx))
+        {
+            res.resolveKind();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * The number of typos corrected by CorrectTypo.
+     */
+    private static int TyposCorrected;
+
+    private void lookupVisibleDecls(
+            IDeclContext dc,
+            LookupNameKind kind,
+            TypoCorrectionConsumer consumer)
+    {
+        if (dc == null)
+            return;
+
+        LookupResult res = new LookupResult(this, null, new SourceLocation(), kind);
+        // Enumerate all of the results in this context.
+        for (Decl d : dc.getDeclsInContext())
+        {
+            if (d instanceof NamedDecl)
+            {
+                NamedDecl nd = (NamedDecl)d;
+                consumer.foundDecl(nd);
+            }
+
+
+            // Visit transparent contexts insisde this context.
+            if (d instanceof IDeclContext)
+            {
+                IDeclContext innerCtx = (IDeclContext)d;
+                if (innerCtx.isTransparentContext())
+                    lookupVisibleDecls(innerCtx, kind, consumer);
+            }
+        }
+    }
+
+    /**
+     * Correct the member name typo that find a member name best similar to the
+     * one that presents in the source code.
+     * @param res
+     * @param s
+     * @param memberContext
+     * @return
+     */
+    private boolean correctTypo(
+            LookupResult res,
+            Scope s,
+            IDeclContext memberContext)
+    {
+        if (diags.hasFatalErrorOcurred())
+            return false;
+
+        // Provide a stop gap for files that are just seriously broken.  Trying
+        // to correct all typos can turn into a HUGE performance penalty, causing
+        // some files to take minutes to get rejected by the parser.
+        if (TyposCorrected == 20)
+            return false;
+
+        ++TyposCorrected;
+
+        IdentifierInfo typo = res.getLookupName();
+        if (typo == null)
+            return false;
+
+        TypoCorrectionConsumer consumer = new TypoCorrectionConsumer(typo);
+        if (memberContext != null)
+        {
+            lookupVisibleDecls(memberContext, res.getLookupKind(), consumer);
+        }
+
+        if (consumer.isEmpty())
+            return false;
+
+        ArrayList<NamedDecl> decls = consumer.getBestResults();
+        IdentifierInfo bestName = decls.get(0).getDeclName();
+        for (int i = 1,e =decls.size(); i != e; i++)
+        {
+            if (!bestName.equals(decls.get(i).getDeclName()))
+                return false;
+        }
+
+        int ed = consumer.getBestEditDistance();
+        if (ed == 0 || (bestName.getName().length() / ed) < 3)
+            return false;
+
+        res.clear();
+        res.setLookupName(bestName);
+        if (memberContext != null)
+            lookupQualifiedName(res, memberContext);
+        else
+            lookupParsedName(res, s);
+
+        return res.getResultKind() != NotFound;
+    }
+
     private boolean lookupMemberExprInRecord(
             LookupResult res,
             SourceRange baseRange,
@@ -8368,6 +8511,39 @@ public final class Sema implements DiagnosticParseTag,
                 pdiag(err_typecheck_incomplete_tag).
                         addSourceRange(baseRange)))
             return true;
+
+        // The record definition is complete, now look up the member.
+        IDeclContext dc = recordDecl;
+        lookupQualifiedName(res, dc);
+
+        if (!res.isEmpty())
+            return false;
+
+        // We didn't find anything with the given name, so try to correct
+        // for typos.
+        IdentifierInfo memberName = res.getLookupName();
+        if (correctTypo(res, null, dc) && res.getFoundDecl() instanceof ValueDecl)
+        {
+            diag(res.getNameLoc(), err_no_member_suggest)
+                    .addTaggedVal(memberName)
+                    .addTaggedVal((NamedDecl) dc)
+                    .addTaggedVal(res.getLookupName())
+                    .addFixItHint(FixItHint.createReplacement(res.getNameLoc(),
+                            res.getLookupName().getName()))
+                    .emit();
+
+            if (res.getFoundDecl() instanceof NamedDecl)
+            {
+                NamedDecl nd = res.getFoundDecl();
+                diag(nd.getLocation(), note_previous_declaration)
+                        .addTaggedVal(nd.getDeclName())
+                        .emit();
+            }
+        }
+        else
+        {
+            res.clear();
+        }
 
         return false;
     }
