@@ -336,7 +336,8 @@ public interface DiagnosticSemaTag
 	public static final int err_new_incomplete_type = err_new_array_nonconst + 1;
 	public static final int err_new_uninitialized_const = err_new_incomplete_type + 1;
 	public static final int err_no_member = err_new_uninitialized_const + 1;
-	public static final int err_non_static_static = err_no_member + 1;
+	public static final int err_no_member_suggest = err_no_member + 1;
+	public static final int err_non_static_static = err_no_member_suggest + 1;
 	public static final int err_non_thread_thread = err_non_static_static + 1;
 	public static final int err_non_variable_decl_in_for = err_non_thread_thread + 1;
 	public static final int err_non_virtual_pure = err_non_variable_decl_in_for + 1;

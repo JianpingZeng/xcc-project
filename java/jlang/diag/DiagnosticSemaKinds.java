@@ -337,6 +337,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	ERR_NEW_INCOMPLETE_TYPE(err_new_incomplete_type,CLASS_ERROR, MAP_ERROR, "allocation of incomplete type %0"),
 	ERR_NEW_UNINITIALIZED_CONST(err_new_uninitialized_const,CLASS_ERROR, MAP_ERROR, "must provide an initializer if the allocated object is 'const'"),
 	ERR_NO_MEMBER(err_no_member, CLASS_ERROR, MAP_ERROR, "no member named %0 in %1"),
+	ERR_NO_MEMBER_SUGGEST(err_no_member_suggest, CLASS_ERROR, MAP_ERROR, "no member named %0 in %1; did you mean %2?"),
 	ERR_NON_STATIC_STATIC(err_non_static_static,CLASS_ERROR, MAP_ERROR, "non-static declaration of %0 follows static declaration"),
 	ERR_NON_THREAD_THREAD(err_non_thread_thread,CLASS_ERROR, MAP_ERROR, "non-thread-local declaration of %0 follows thread-local declaration"),
 	ERR_NON_VARIABLE_DECL_IN_FOR(err_non_variable_decl_in_for,CLASS_ERROR, MAP_ERROR, "declaration of non-local variable in 'for' loop"),

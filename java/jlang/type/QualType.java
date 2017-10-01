@@ -573,6 +573,11 @@ public final class QualType implements Cloneable, FoldingSetNode
         return type.getAsRecordType();
     }
 
+    public TagType getAsTagType()
+    {
+        return type.getAsTagType();
+    }
+
     public QualType getPointeeType()
     {
         return type.getPointeeType();

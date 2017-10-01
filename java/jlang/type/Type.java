@@ -592,6 +592,18 @@ public abstract class Type implements TypeClass
         return ty instanceof RecordType ? (RecordType)ty : null;
     }
 
+    public TagType getAsTagType()
+    {
+        if (this instanceof TagType)
+            return (TagType)this;
+
+        if (!(canonicalType.getType() instanceof TagType))
+            return null;
+
+        Type ty = getDesugaredType().getType();
+        return ty instanceof TagType ? (TagType)ty : null;
+    }
+
     public QualType getPointeeType()
     {
         PointerType pt = getAsPointerType();

@@ -403,7 +403,7 @@ public final class LoopSimplify implements FunctionPass
 		}
 
 		// create and insert the new backedge block.
-		BasicBlock beBlock = BasicBlock.createBasicBlock(-1, header.getName()+".backedge",
+		BasicBlock beBlock = BasicBlock.createBasicBlock(header.getName()+".backedge",
 				f);
 		BranchInst beTerminator = new BranchInst(header, beBlock);
 

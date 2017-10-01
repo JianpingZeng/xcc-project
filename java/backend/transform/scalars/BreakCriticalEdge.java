@@ -136,7 +136,7 @@ public final class BreakCriticalEdge implements FunctionPass
         Function f = tibb.getParent();
 
         // Create a new block, linking it into the CFG.
-        BasicBlock newBB = BasicBlock.createBasicBlock(-1,
+        BasicBlock newBB = BasicBlock.createBasicBlock(
                 tibb.getName()+"."+destBB.getName()+"_crit_edge",
                 f);
         BranchInst br = new BranchInst(destBB, newBB);

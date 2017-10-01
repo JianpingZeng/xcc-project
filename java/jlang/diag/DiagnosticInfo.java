@@ -204,10 +204,7 @@ public final class DiagnosticInfo
                         outStr.append("(null)");
                         continue;
                     }
-
-                    outStr.append('\'');
                     outStr.append(II.getName());
-                    outStr.append('\'');
                     break;
                 }
                 case ak_qualtype:
