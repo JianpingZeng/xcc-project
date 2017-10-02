@@ -243,29 +243,36 @@ public class CodeGenTypes
     public backend.type.FunctionType getFunctionType(CGFunctionInfo fi, boolean isVaridic)
     {
         boolean inserted = functionBeingProcessed.contains(fi);
-        assert inserted:"recursively process function.";
+        assert !inserted:"recursively process function.";
 
+        functionBeingProcessed.add(fi);
         ArrayList<Type> argTypes = new ArrayList<>();
         backend.type.Type restType = null;
         ABIArgInfo retAI = fi.getReturnInfo();
+        QualType retTy = fi.getReturnType();
         switch (retAI.getKind())
         {
             case Direct:
+            case Extend:
             {
-                restType = retAI.getType();
+                restType = convertType(retTy);
                 break;
             }
             case Indirect:
             {
                 restType = Type.VoidTy;
-                QualType ret = fi.getReturnType();
-                Type ty = convertType(ret);
-                argTypes.add(PointerType.get(ty, ret.getAddressSpace()));
+                Type ty = convertType(retTy);
+                argTypes.add(PointerType.get(ty, retTy.getAddressSpace()));
                 break;
             }
             case Ignore:
             {
                 restType = Type.VoidTy;
+                break;
+            }
+            case Coerce:
+            {
+                restType = retAI.getCoerceType();
                 break;
             }
         }
@@ -278,6 +285,11 @@ public class CodeGenTypes
             {
                 case Ignore:
                     break;
+                case Coerce:
+                {
+                    argTypes.add(argAI.getCoerceType());
+                    break;
+                }
                 case Indirect:
                 {
                     // Indirect argument always on stack.
@@ -286,14 +298,15 @@ public class CodeGenTypes
                     break;
                 }
                 case Direct:
+                case Extend:
                 {
-                    Type argType = argAI.getType();
+                    Type argType = convertType(argInfo.type);
 
                     // If the type is aggregate type, flatten it.
                     if (argType instanceof StructType)
                     {
                         StructType st = (StructType)argType;
-                        for (int j = 0, size = st.getNumOfElements(); j<e;i++)
+                        for (int j = 0, size = st.getNumOfElements(); j<size; i++)
                             argTypes.add(st.getElementType(j));
                     }
                     else
@@ -302,11 +315,40 @@ public class CodeGenTypes
                     }
                     break;
                 }
+                case Expand:
+                {
+                    getExpandedTypes(argInfo.type, argTypes);
+                    break;
+                }
             }
         }
         boolean erased = functionBeingProcessed.remove(fi);
         assert erased:"Not in set?";
         return FunctionType.get(restType, argTypes, isVaridic);
+    }
+
+    private void getExpandedTypes(QualType ty, ArrayList<Type> argTys)
+    {
+        RecordType rt = ty.getAsStructureType();
+        assert rt != null:"Can only expand structure types.";
+        Decl.RecordDecl rd = rt.getDecl();
+        assert !rd.hasFlexibleArrayNumber():"Cannot expand structure with flexible array";
+
+        for (int i = 0, e = rd.getNumFields(); i != e; i++)
+        {
+            FieldDecl fd = rd.getDeclAt(i);
+            assert !fd.isBitField():"Canot expand structure with bit field members";
+
+            QualType fdTy = fd.getType();
+            if (CodeGenFunction.hasAggregateBackendType(fdTy))
+            {
+                getExpandedTypes(fdTy, argTys);
+            }
+            else
+            {
+                argTys.add(convertType(fdTy));
+            }
+        }
     }
 
     /**

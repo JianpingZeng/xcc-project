@@ -384,6 +384,14 @@ public class Util
 		return findFirstNonOf(src, delims, 0);
 	}
 
+	/**
+	 * Return the index to the first sub-string isn't match the specified
+	 * delim string from startIdx position.
+	 * @param src
+	 * @param delims
+	 * @param startIdx
+	 * @return Return -1 when no found. Otherwise return the specified location.
+	 */
     public static int findFirstNonOf(String src, String delims, int startIdx)
     {
 		for (int i = startIdx; i < src.length(); i++)

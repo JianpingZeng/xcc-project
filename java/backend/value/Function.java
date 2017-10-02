@@ -3,6 +3,7 @@ package backend.value;
 import backend.codegen.MachineFunction;
 import backend.support.CallingConv;
 import backend.type.FunctionType;
+import backend.type.PointerType;
 import backend.type.Type;
 
 import java.util.ArrayList;
@@ -32,7 +33,9 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	public Function(FunctionType ty, LinkageType linkage,
             String name, Module parentModule)
     {
-	    super(ty, ValueKind.FunctionVal, linkage, name);
+	    super(PointerType.getUnqual(ty), ValueKind.FunctionVal, linkage, name);
+	    argumentList = new ArrayList<>();
+
 		if (parentModule != null)
 			parentModule.getFunctionList().add(this);
 

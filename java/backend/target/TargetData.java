@@ -201,7 +201,7 @@ public class TargetData implements ImmutablePass
         setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 4, (byte) 4, (byte) 32); // i32
         setAlignment(AlignTypeEnum.INTEGER_ALIGN, (byte) 8, (byte) 8, (byte) 64); // i64
         setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 4, (byte) 4, (byte) 32); // f32
-        setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 8, (byte) 1, (byte) 64); // f64
+        setAlignment(AlignTypeEnum.FLOAT_ALIGN, (byte) 8, (byte) 8, (byte) 64); // f64
         setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 8, (byte) 8, (byte) 64); // v2i32, v1i64
         setAlignment(AlignTypeEnum.VECTOR_ALIGN, (byte) 16, (byte) 16, (byte) 128); // v16i8, v8i16, v4i32,...
         setAlignment(AGGREGATE_TYPE, (byte) 0, (byte) 8, (byte) 0); // struct
@@ -209,7 +209,8 @@ public class TargetData implements ImmutablePass
         while (temp.length() != 0) {
 
             String token = getToken(temp, "-");
-            String arg0 = getToken(temp, ":");
+            StringBuilder token2 = new StringBuilder(token);
+            String arg0 = getToken(token2, ":");
             int i = 0;
             switch (arg0.charAt(i)) {
                 case 'E':
@@ -219,9 +220,9 @@ public class TargetData implements ImmutablePass
                     littleEndian = true;
                     break;
                 case 'p':
-                    pointerMemSize = Integer.parseInt(getToken(temp, ":")) / 8;
-                    pointerABIAlign = Integer.parseInt(getToken(temp, ":")) / 8;
-                    pointerPrefAlign = Integer.parseInt(getToken(temp, ":")) / 8;
+                    pointerMemSize = Integer.parseInt(getToken(token2, ":")) / 8;
+                    pointerABIAlign = Integer.parseInt(getToken(token2, ":")) / 8;
+                    pointerPrefAlign = Integer.parseInt(getToken(token2, ":")) / 8;
 
                     if (pointerPrefAlign == 0)
                         pointerPrefAlign = pointerABIAlign;
@@ -250,8 +251,8 @@ public class TargetData implements ImmutablePass
                             break;
                     }
                     int size = Integer.parseInt(arg0.substring(1));
-                    byte abiAlign = (byte) (Byte.parseByte(getToken(temp, ":")) / (byte) 8);
-                    byte prefAlign = (byte) (Integer.parseInt(getToken(temp, ":")) / 8);
+                    byte abiAlign = (byte) (Integer.parseUnsignedInt(getToken(token2, ":")) / (byte) 8);
+                    byte prefAlign = (byte) (Integer.parseUnsignedInt(getToken(token2, ":")) / 8);
                     if (prefAlign == 0)
                         prefAlign = abiAlign;
                     setAlignment(alignType, abiAlign, prefAlign, size);
@@ -265,14 +266,16 @@ public class TargetData implements ImmutablePass
 
 	private String getToken(StringBuilder str, String delimiters)
     {
-        int start = 0;
-        for (; start < str.length(); )
-            if (str.substring(start).startsWith(delimiters))
-                start += delimiters.length();
-        int end = 0;
-        end = str.indexOf(delimiters, start);
+    	String src = str.toString();
+    	int start = Util.findFirstNonOf(src, delimiters);
+    	if (start < 0)
+    		start = src.length();
+    	int end = Util.findFirstOf(src, delimiters, start);
+    	if (end < 0)
+    		end = src.length();
+
         String result = str.substring(start, end);
-        str.delete(start, end);
+        str.delete(0, end);
         return result;
     }
 

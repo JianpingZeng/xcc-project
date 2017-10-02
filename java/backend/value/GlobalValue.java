@@ -112,8 +112,15 @@ public abstract class GlobalValue extends Constant
     @Override
     public boolean isNullValue() {return false;}
 
+    /**
+     * The type of all of global value musts be pointer.
+     * @return
+     */
     @Override
-    public PointerType getType() { return (PointerType) super.getType();}
+    public PointerType getType()
+    {
+        return (PointerType) super.getType();
+    }
 
     public boolean hasSection()
     {

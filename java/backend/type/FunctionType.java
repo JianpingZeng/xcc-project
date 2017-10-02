@@ -96,6 +96,7 @@ public class FunctionType extends DerivedType
         FunctionType ft = functionTypes.get(fvt);
         if (ft != null)
             return ft;
+        ft = new FunctionType(result, params, isVarArgs);
         functionTypes.put(fvt, ft);
         return ft;
     }
