@@ -464,10 +464,11 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         {
             try
             {
-                Path path = Files.createFile(Paths.get(outputFile));
-                File file = path.toFile();
-                outPath.append(file.getAbsolutePath());
-                os = new PrintStream(new FileOutputStream(file));
+                File f = new File(outputFile);
+                f.deleteOnExit();
+                f.createNewFile();
+                outPath.append(f.getAbsolutePath());
+                os = new PrintStream(new FileOutputStream(f));
             }
             catch (IOException e)
             {

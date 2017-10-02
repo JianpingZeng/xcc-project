@@ -53,5 +53,5 @@ public class CompileOptions
 	 */
 	public String CPU;
 
-	public ArrayList<String> features;
+	public ArrayList<String> features = new ArrayList<>();
 }

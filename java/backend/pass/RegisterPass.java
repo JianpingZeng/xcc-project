@@ -26,7 +26,7 @@ public class RegisterPass
 {
     private PassInfo passInfo;
     private Class klass;
-    private static HashMap<Class<Pass>, PassInfo> passInfoMap;
+    private static HashMap<PassInfo, Class<Pass>> passInfoMap;
 
     /**
      * Creates an instance of PassInfo with default constructor.
@@ -57,14 +57,14 @@ public class RegisterPass
         if (passInfoMap == null)
             passInfoMap = new HashMap<>();
 
-        assert passInfoMap.containsKey(passInfo) :"Pass already registered!";
-        passInfoMap.put(klass, passInfo);
+        assert !passInfoMap.containsKey(passInfo) :"Pass already registered!";
+        passInfoMap.put(passInfo, klass);
     }
 
     protected void unregisterPass()
     {
         assert passInfoMap != null : "Pass register factory is uninstantiated as yet!";
-        assert passInfoMap.containsKey(klass) :"Pass registered but not in register factory!";
+        assert passInfoMap.containsKey(passInfo) :"Pass registered but not in register factory!";
         passInfoMap.remove(passInfo);
         if (passInfoMap.isEmpty())
             passInfoMap = null;

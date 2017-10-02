@@ -144,6 +144,7 @@ public class HIRModuleGenerator
                 break;
             default:
                 assert decl instanceof Decl.TypeDecl:"Unsupported decl kind!";
+                break;
         }
     }
 
