@@ -44,6 +44,7 @@ import static jlang.sema.LookupResult.LookupResultKind.Found;
 import static jlang.sema.LookupResult.LookupResultKind.NotFound;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
 import static jlang.sema.Sema.AssignAction.AA_Initializing;
+import static jlang.sema.Sema.AssignAction.AA_Returning;
 import static jlang.sema.Sema.LookupNameKind.*;
 import static jlang.sema.UnaryOperatorKind.*;
 import static jlang.support.Linkage.ExternalLinkage;
@@ -4690,6 +4691,12 @@ public final class Sema implements DiagnosticParseTag,
             // C99 6.8.6.4p3(136): The return statement is not an assignment. The
             // overlap restriction of subclause 6.5.16.1 does not apply to the case of
             // function return.
+            OutParamWrapper<Expr> out = new OutParamWrapper<>(retValExpr);
+            if (performCopyInitialization(out, retType, AA_Returning))
+                return stmtError();
+
+            retValExpr = out.get();
+
             checkReturnStackAddress(retValExpr, retType, returnLoc);
             checkImplicitConversion(retValExpr, returnLoc);
             res = new ReturnStmt(returnLoc, retValExpr);
@@ -8859,7 +8866,7 @@ public final class Sema implements DiagnosticParseTag,
 
     public Decl actOnFinishFunctionBody(Decl funcDecl, Stmt fnBody)
     {
-        if (funcDecl instanceof FunctionDecl)
+        assert funcDecl instanceof FunctionDecl;
         {
             FunctionDecl fd = (FunctionDecl)funcDecl;
             fd.setBody(fnBody);
@@ -8875,10 +8882,8 @@ public final class Sema implements DiagnosticParseTag,
 
             if (!fd.isInvalidDecl())
                 diagnoseUnusedParameters(fd.getParamInfo());
-        }
-        else
-        {
-            return null;
+
+            assert funcDecl.equals(getCurFunctionDecl()):"Function parsing confused";
         }
 
         popDeclContext();
