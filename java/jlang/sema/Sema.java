@@ -7285,9 +7285,9 @@ public final class Sema implements DiagnosticParseTag,
                 return uOp.getSubExpr().getType();
             }
         }
-        // TODO complete checkAddressOfOperand()
+        // TODO 2017/10/2 complete checkAddressOfOperand()
         // LLVM SemaExpr.clex:7409.
-        return new QualType();
+        return context.getPointerType(op.getType());
     }
 
     public ActionResult<QualType> actOnTypeName(Scope s, Declarator d)
@@ -8298,7 +8298,7 @@ public final class Sema implements DiagnosticParseTag,
 
             // Returning valid-but-null is how we indicate to the caller that
             // the lookup result was filled in.
-            return exprError();
+            return new ActionResult<Expr>(false);
         }
         // Recover from dot accesses to pointers, e.g.:
         //   type *foo;

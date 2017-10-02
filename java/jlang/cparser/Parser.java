@@ -3215,7 +3215,7 @@ public class Parser implements Tag,
                     // the same declaration of X.  Because of this, we lookup ahead past this
                     // token to see if it's a type specifier.  IfStmt so, we know the code is
                     // otherwise invalid, so we can produce the expected semi error.
-                    if (isKnownBeTypeSpecifier(tok))
+                    if (!isKnownBeTypeSpecifier(peekAheadToken()))
                         expectedSemi = false;
                     break;
                 }
@@ -4694,6 +4694,9 @@ public class Parser implements Tag,
                     IdentifierInfo ii = tok.getIdentifierInfo();
                     SourceLocation opLoc = tok.getLocation();
                     TokenKind opKind = tok.getKind();
+
+                    // Consume the member name.
+                    consumeToken();
 
                     if (!lhs.isInvalid())
                         lhs = action.actOnMemberAccessExpr(getCurScope(),lhs.get(), opLoc, opKind, ii);

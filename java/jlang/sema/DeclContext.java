@@ -59,6 +59,7 @@ public class DeclContext implements IDeclContext
     {
         this.kind = kind;
         decl = d;
+        assert decl instanceof IDeclContext :"Only IDeclContext allow to used here!";
         declInScope = new ArrayList<>(32);
     }
 
@@ -221,7 +222,7 @@ public class DeclContext implements IDeclContext
     public NamedDecl[] lookup(IdentifierInfo name)
     {
         IDeclContext primaryCtx = getPrimaryContext();
-        if (primaryCtx != this)
+        if (primaryCtx != decl)
             return primaryCtx.lookup(name);
 
         /// If there is no lookup data structure, build one now by walking
@@ -229,7 +230,7 @@ public class DeclContext implements IDeclContext
         /// inserting their values.
         if (lookupTable == null)
         {
-            buildLookup(this);
+            buildLookup((IDeclContext)decl);
             if (lookupTable == null)
                 return new NamedDecl[0];
         }
