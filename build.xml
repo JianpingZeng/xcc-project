@@ -2,12 +2,8 @@
 <project name="XCC" default="compile" basedir=".">
     <property file="build.properties" />
 
-    <patternset id="excluded.from.module.xcc">
-        <exclude name="backend/target/x86/**"/>
-    </patternset>
-
     <patternset id="excluded.from.compilation.xcc">
-        <exclude name="backend/target/x86/**"/>
+        <exclude name="**/backend/target/x86/**"/>
     </patternset>
 
     <!-- =================================================================== -->
@@ -34,8 +30,8 @@
                 classpath="${output.libs}/${trove_name}"
                 debug="${debug}"
                 target="1.8">
-            <patternset refid="excluded.from.compilation.xcc"/>
             <src path="${src}"/>
+            <patternset refid="excluded.from.compilation.xcc"/>
         </javac>
     </target>
 

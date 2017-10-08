@@ -11,7 +11,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 import static backend.codegen.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
-import static backend.codegen.X86CodeEmitter.createX86CodeEmitterPass;
+import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
