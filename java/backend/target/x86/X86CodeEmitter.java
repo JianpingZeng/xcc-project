@@ -1,4 +1,4 @@
-package backend.codegen;
+package backend.target.x86;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
@@ -16,6 +16,9 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.MachineCodeEmitter;
+import backend.codegen.MachineFunction;
+import backend.codegen.MachineFunctionPass;
 import backend.target.x86.X86TargetMachine;
 
 /**

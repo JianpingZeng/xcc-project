@@ -23,7 +23,6 @@ import backend.value.Instruction.CallInst;
 import backend.value.Instruction.LoadInst;
 import backend.value.Instruction.StoreInst;
 import backend.value.Value;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
@@ -462,9 +461,9 @@ public final class AliasSetTracker
         return foundAS;
     }
 
-    public void print(OutputStream os) throws NotImplementedException
+    public void print(OutputStream os)
     {
-        throw new NotImplementedException();
+        // TODO: 17-10-8
     }
 
     public static final class AliasSet
