@@ -31,12 +31,13 @@ import tools.Util;
 import tools.commandline.*;
 
 import java.io.OutputStream;
-import java.io.PrintWriter;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Objects;
 
 import static backend.MC.MCStreamer.createAsmStreamer;
 import static backend.codegen.AsmPrinter.BoolOrDefault.BOU_UNSET;
+import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.value.GlobalValue.VisibilityTypes.HiddenVisibility;
 import static backend.value.GlobalValue.VisibilityTypes.ProtectedVisibility;
 
@@ -68,7 +69,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     /**
      * The output stream on which the assembly code will be emitted.
      */
-    protected PrintWriter os;
+    protected PrintStream os;
     /**
      * The target machine text.
      */
@@ -111,7 +112,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     protected AsmPrinter(OutputStream os, TargetMachine tm, TargetAsmInfo tai, boolean v)
     {
         functionNumber = 0;
-        this.os = new PrintWriter(os);
+        this.os = new PrintStream(os);
         this.tm = tm;
         this.tai = tai;
         this.tri = tm.getRegisterInfo();
@@ -230,7 +231,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         Util.shouldNotReachHere("Target does not support EmitMachineConstantPoolValue");
     }
 
-    public static PrintWriter writeTypeSymbol(PrintWriter os, Type ty, Module m)
+    public static PrintStream writeTypeSymbol(PrintStream os, Type ty, Module m)
     {
         os.print(" ");
         if (m != null)
@@ -560,7 +561,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
      * @param ca
      * @param lastIndex
      */
-    private void printAsCString(PrintWriter os, ConstantArray ca, int lastIndex)
+    private void printAsCString(PrintStream os, ConstantArray ca, int lastIndex)
     {
         assert ca.isString() :"Array is not string!";
 
@@ -702,31 +703,6 @@ public abstract class AsmPrinter extends MachineFunctionPass
 
     }
 
-    private static void writeAsOperandInternal(PrintWriter os, Value v,
-            TypePrinting typePrinting,
-            SlotTracker machine)
-    {
-        // TODO: 17-7-31
-    }
-
-    protected void writeAsOperand(PrintWriter os,
-            Value v,
-            boolean printType,
-            Module context)
-    {
-        if (!printType && (!(v instanceof Constant)) || v.hasName() || v instanceof GlobalValue)
-        {
-            writeAsOperandInternal(os, v, null, null);
-            return;
-        }
-
-        if (context == null)
-            context = getModuleFromVal(v);
-
-        TypePrinting typePrinter = new TypePrinting();
-        // TODO: 17-7-31
-    }
-
     private Module getModuleFromVal(Value v)
     {
         if (v instanceof Argument)
@@ -862,13 +838,13 @@ public abstract class AsmPrinter extends MachineFunctionPass
         // TODO: 17-7-31  emit debug information for each MachineInstr.
     }
 
-    private static PrintWriter indent(PrintWriter os,
+    private static PrintStream indent(PrintStream os,
             int level)
     {
         return indent(os, level, 2);
     }
 
-    private static PrintWriter indent(PrintWriter os,
+    private static PrintStream indent(PrintStream os,
             int level,
             int scale)
     {
@@ -879,7 +855,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     }
 
     private static void printChildLoopComment(
-            PrintWriter os,
+            PrintStream os,
             MachineLoop loop,
             TargetAsmInfo tai,
             int functionNumber)

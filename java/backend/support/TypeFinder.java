@@ -1,7 +1,6 @@
-package backend.codegen;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2017, Xlous Zeng.
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +15,22 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-/**
- * @author Xlous.zeng
- * @version 0.1
- */
-public class SlotTracker
+package backend.support;
+
+import backend.type.Type;
+import backend.value.Module;
+
+import java.util.ArrayList;
+
+public class TypeFinder
 {
+    public TypeFinder(TypePrinting printer, ArrayList<Type> fp)
+    {
+
+    }
+
+    public void run(Module m)
+    {
+
+    }
 }

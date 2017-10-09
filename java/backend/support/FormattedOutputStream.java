@@ -1,7 +1,6 @@
-package backend.MC;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2017, Xlous Zeng.
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +15,8 @@ package backend.MC;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.AsmPrinter;
-import backend.target.TargetAsmInfo;
+package backend.support;
 
-import java.io.PrintStream;
-import java.io.PrintWriter;
-
-/**
- * @author Xlous.zeng
- * @version 0.1
- */
-public class MCStreamer
+public class FormattedOutputStream
 {
-    public static MCStreamer createAsmStreamer(
-            MCContext context,
-            PrintStream os,
-            TargetAsmInfo tai,
-            AsmPrinter printer)
-    {
-        return new MCStreamer();
-    }
 }

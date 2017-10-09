@@ -55,7 +55,7 @@ import static jlang.codegen.BackendConsumer.createBackendConsumer;
 import static jlang.diag.DiagChecker.checkDiagnostics;
 import static jlang.driver.JlangCC.LangStds.*;
 import static jlang.support.BackendAction.Backend_EmitAssembly;
-import static jlang.support.BackendAction.Backend_EmitIR;
+import static jlang.support.BackendAction.Backend_EmitLL;
 import static jlang.support.CompileOptions.InliningMethod.NormalInlining;
 import static jlang.support.CompileOptions.InliningMethod.OnlyAlwaysInlining;
 import static jlang.support.LangKind.*;
@@ -710,7 +710,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 BackendAction act;
                 if (progAction == EmitLLVM)
                 {
-                    act = Backend_EmitIR;
+                    act = Backend_EmitLL;
                     os = computeOutFile(infile, "ll", true, outpath);
                 }
                 else
