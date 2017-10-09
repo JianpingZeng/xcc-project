@@ -1,7 +1,7 @@
 package jlang.codegen;
 /*
- * Xlous C language CompilerInstance
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler.
+ * Copyright (c) 2015-2017, Xlous zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import backend.target.SubtargetFeatures;
 import backend.target.Target;
 import backend.target.TargetData;
 import backend.target.TargetMachine;
+import backend.target.TargetMachine.CodeGenFileType;
 import backend.target.TargetMachine.CodeGenOpt;
 import backend.value.BasicBlock;
 import backend.value.Module;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.function.Function;
 
 import static backend.target.TargetMachine.CodeGenFileType.AssemblyFile;
+import static backend.target.TargetMachine.CodeGenFileType.ObjectFile;
 import static backend.target.TargetMachine.CodeGenOpt.*;
 import static jlang.support.BackendAction.*;
 
@@ -290,72 +292,79 @@ public class BackendConsumer implements ASTConsumer
     {
         if (action == Backend_EmitNothing)
             return true;
-
-        if (action == Backend_EmitAssembly)
+        switch (action)
         {
-            boolean fast = compileOptions.optimizationLevel == 1;
-            FunctionPassManager pm = getCodeGenPasses();
-
-            CodeGenOpt optLevel = Default;
-            switch (compileOptions.optimizationLevel)
+            case Backend_EmitAssembly:
+            case Backend_EmitObj:
             {
-                default:break;
-                case 1: optLevel = None;break;
-                case 3: optLevel = Aggressive;break;
-            }
+                boolean fast = compileOptions.optimizationLevel == 1;
+                FunctionPassManager pm = getCodeGenPasses();
 
-            String triple = theModule.getTargetTriple();
-            Target theTarget = Target.TargetRegistry.lookupTarget(triple, error);
-            if (theTarget == null)
-            {
-                error.set("Unable to get target machine: " + error.get());
-                return false;
-            }
-
-            String featureStr = "";
-            if (!compileOptions.CPU.isEmpty() || !compileOptions.features.isEmpty())
-            {
-                SubtargetFeatures features = new SubtargetFeatures();
-                features.setCPU(compileOptions.CPU);
-                for (String str : compileOptions.features)
+                CodeGenOpt optLevel = Default;
+                switch (compileOptions.optimizationLevel)
                 {
-                    features.addFeature(str);
+                    default:
+                        break;
+                    case 1:
+                        optLevel = None;
+                        break;
+                    case 3:
+                        optLevel = Aggressive;
+                        break;
                 }
-                featureStr = features.getString();
-            }
 
-            TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
-            MachineCodeEmitter mce = null;
-            switch (tm.addPassesToEmitFile(pm, asmOutStream, AssemblyFile, optLevel))
-            {
-                case AsmFile:
-                    break;
-                case ElfFile:
-                    mce = tm.addELFWriter(pm, asmOutStream);
-                    break;
-                default:
-                case Error:
+                String triple = theModule.getTargetTriple();
+                Target theTarget = Target.TargetRegistry.lookupTarget(triple, error);
+                if (theTarget == null)
+                {
+                    error.set("Unable to get target machine: " + error.get());
+                    return false;
+                }
+
+                String featureStr = "";
+                if (!compileOptions.CPU.isEmpty() || !compileOptions.features.isEmpty())
+                {
+                    SubtargetFeatures features = new SubtargetFeatures();
+                    features.setCPU(compileOptions.CPU);
+                    for (String str : compileOptions.features)
+                    {
+                        features.addFeature(str);
+                    }
+                    featureStr = features.getString();
+                }
+
+                TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
+                MachineCodeEmitter mce = null;
+                CodeGenFileType cft = action == Backend_EmitAssembly ? AssemblyFile : ObjectFile;
+                switch (tm.addPassesToEmitFile(pm, asmOutStream, cft, optLevel))
+                {
+                    case AsmFile:
+                        break;
+                    case ElfFile:
+                        mce = tm.addELFWriter(pm, asmOutStream);
+                        break;
+                    default:
+                    case Error:
+                        error.set("Unable to interface with target machine!\n");
+                        return false;
+                }
+                if (tm.addPassesToEmitFileFinish(getCodeGenPasses(), mce, optLevel))
+                {
                     error.set("Unable to interface with target machine!\n");
                     return false;
+                }
+                return true;
             }
-            if (tm.addPassesToEmitFileFinish(getCodeGenPasses(), mce, optLevel))
+            case Backend_EmitLL:
             {
-                error.set("Unable to interface with target machine!\n");
+                getPerModulePasses().add(new PrintModulePass(asmOutStream));
                 return false;
             }
-            return true;
-        }
-        else if (action == Backend_EmitIR)
-        {
-            getPerModulePasses().add(new PrintModulePass(asmOutStream));
-            error.set("Unsupport to emit LLVM IR yet!");
-            return false;
-        }
-        else
-        {
-            assert action == Backend_EmitObj;
-            error.set("Unsupport to emit object file yet!");
-            return false;
+            default:
+            {
+                error.set("Unsupport to emit object file yet!");
+                return false;
+            }
         }
     }
 

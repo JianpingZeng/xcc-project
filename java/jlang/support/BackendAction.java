@@ -22,8 +22,21 @@ package jlang.support;
  */
 public enum BackendAction
 {
+    /**
+     * Nothing to do about the LLVM backend.
+     */
     Backend_EmitNothing,
-    Backend_EmitAssembly, Backend_EmitIR,
+    /**
+     * Informs the LLVM backend that we want it to emit assembly code in text.
+     */
+    Backend_EmitAssembly,
+    /**
+     * Tells the LLVM backend to emit LLVM assembly code in text.
+     */
+    Backend_EmitLL,
+    /**
+     * Performs the action to emit objective file based on native architecture.
+     */
     Backend_EmitObj,
 }
 

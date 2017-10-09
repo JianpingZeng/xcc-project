@@ -7,10 +7,11 @@ import backend.value.Module;
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface ImmutablePass extends Pass
+public interface ImmutablePass extends ModulePass
 {
 	default boolean run(Module m) {return false;}
 
 	void initializePass();
 
+	default boolean runOnModule(Module m) {return false;}
 }

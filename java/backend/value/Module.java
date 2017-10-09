@@ -1,9 +1,11 @@
 package backend.value;
 
+import backend.support.AssemblyWriter;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 
+import java.io.PrintStream;
 import java.util.*;
 
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
@@ -53,7 +55,6 @@ public final class Module implements Iterable<Function>
 
 	/**
 	 * An singleton method for instantiating an instance of this class.
-	 * @param context	An context environment.
 	 * @param vars	GlobalVariable declarations list.
 	 * @param functions	FunctionProto declarations list
 	 * @return	The instance of {@link Module}
@@ -197,5 +198,10 @@ public final class Module implements Iterable<Function>
 			typeSymbolTable = new HashMap<>();
 
 		return typeSymbolTable;
+	}
+
+	public void print(PrintStream os)
+	{
+        new AssemblyWriter(os, this).write(this);
 	}
 }

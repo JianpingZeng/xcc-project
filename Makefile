@@ -6,6 +6,7 @@ OUT_LIB_DIR=$(OUT_DIR)/lib
 OUT_BIN_DIR=$(OUT_DIR)/bin
 OUT_JAVADOC_DIR=$(OUT_DIR)/docs
 XCC_JAR=xcc-0.1.jar
+TARGET_SRCS=$(SRC_DIR)/backend/target/x86/*.java
 
 LIB_DIR=lib
 TROVE=$(LIB_DIR)/trove-3.0.3.jar
@@ -92,7 +93,8 @@ gen_tblgen: classes_no_target
 
 
 classes: gen_tblgen
-	$(JC) $(JFLAGS) -cp $(TROVE) -sourcepath $(SRC_DIR) $(GEN_TBLGEN_SRCS)/*.java
+	$(JC) $(JFLAGS) -cp $(TROVE) -sourcepath $(SRC_DIR) $(GEN_TBLGEN_SRCS)/*.java \
+	$(TARGET_SRCS)
 
 jar: classes
 	jar -cf $(OUT_LIB_DIR)/$(XCC_JAR) $(CLASSES_DIR)/
