@@ -417,6 +417,22 @@ public abstract class ConstantExpr extends Constant
         return getCompareTy(predicate, lhs, rhs);
     }
 
+    public boolean isCast()
+    {
+        return Instruction.isCast(getOpcode());
+    }
+
+    public boolean isCompare()
+    {
+        return getOpCode() == Operator.ICmp || getOpCode() == Operator.FCmp;
+    }
+
+    public Predicate getPredicate()
+    {
+        assert isCompare();
+        return ((CompareConstantExpr)this).predicate;
+    }
+
     static class ExprMapKeyType
     {
         Operator op;

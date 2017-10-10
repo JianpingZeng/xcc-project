@@ -147,4 +147,16 @@ public class ConstantArray extends Constant
 	{
 		super.setOperand(idx, c, this);
 	}
+
+	public String getAsString()
+	{
+		assert isString():"Not a string";
+		StringBuilder sb = new StringBuilder();
+
+		for (int i =0, e = getNumOfOperands(); i != e; i++)
+		{
+			sb.append(((ConstantInt)operand(i)).getZExtValue());
+		}
+		return sb.toString();
+	}
 }

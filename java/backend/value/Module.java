@@ -1,6 +1,7 @@
 package backend.value;
 
 import backend.support.AssemblyWriter;
+import backend.support.SlotTracker;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -202,6 +203,6 @@ public final class Module implements Iterable<Function>
 
 	public void print(PrintStream os)
 	{
-        new AssemblyWriter(os, this).write(this);
+        new AssemblyWriter(os, this, new SlotTracker(this)).write(this);
 	}
 }
