@@ -34,15 +34,16 @@ import tools.commandline.OptionHidden;
 import tools.commandline.OptionHiddenApplicator;
 
 import java.io.OutputStream;
-import java.io.PrintWriter;
+import java.io.PrintStream;
 import java.util.HashMap;
 
+import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetMachine.RelocModel.Static;
+import static backend.target.x86.X86GenRegisterNames.*;
 import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.FastCall;
 import static backend.target.x86.X86MachineFunctionInfo.NameDecorationStyle.StdCall;
 import static tools.commandline.OptionNameApplicator.optionName;
-import static backend.target.x86.X86GenRegisterNames.*;
 
 /**
  * @author Xlous.zeng
@@ -216,7 +217,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         emitGlobalConstant(c);
     }
 
-    private static void printUnmangledNameSafely(Value v, PrintWriter os)
+    private static void printUnmangledNameSafely(Value v, PrintStream os)
     {
         String name = v.getName();
         for (int i = 0,e = name.length(); i != e; i++)
