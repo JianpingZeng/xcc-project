@@ -65,6 +65,21 @@ public class Type implements LLVMTypeID, AbstractTypeUser
      */
     protected LinkedList<AbstractTypeUser> abstractTypeUsers;
 
+    /**
+     * A pointer to the array of Types (PATypeHandle) contained
+     * by this Type.  For example, this includes the arguments of a function
+     * type, the elements of a structure, the pointee of a pointer, the element
+     * type of an array, etc.  This pointer may be 0 for types that don't
+     * contain other types (Integer, Double, Float).  In general, the subclass
+     * should arrange for space for the PATypeHandles to be included in the
+     * allocation of the type object and set this pointer to the address of the
+     * first element. This allows the Type class to manipulate the ContainedTys
+     * without understanding the subclass's placement for this array.  keeping
+     * it here also allows the subtype_* members to be implemented MUCH more
+     * efficiently, and dynamically very few types do not contain any elements.
+     */
+    protected PATypeHandle containedTys[];
+
     private static HashMap<Type, String> concreteTypeDescription;
     static
     {
@@ -265,8 +280,8 @@ public class Type implements LLVMTypeID, AbstractTypeUser
         if (!isStructType())
             return false;
         StructType st = (StructType)this;
-        for (Type type : st.getElementTypes())
-            if (!type.isSized())
+        for (int i = 0, e = st.getNumOfElements(); i != e; i++)
+            if (!st.getElementType(i).isSized())
                 return false;
 
         return true;
@@ -292,5 +307,26 @@ public class Type implements LLVMTypeID, AbstractTypeUser
     public void typeBecameConcrete(DerivedType absTy)
     {
         Util.shouldNotReachHere("DerivedType is already a concrete type!");
+    }
+
+    public void addAbstractTypeUser(AbstractTypeUser user)
+    {
+        abstractTypeUsers.add(user);
+    }
+
+    public void removeAbstractTypeUser(AbstractTypeUser user)
+    {
+        abstractTypeUsers.remove(user);
+    }
+
+    public int getNumContainedTypes()
+    {
+        return containedTys.length;
+    }
+
+    public Type getContainedType(int idx)
+    {
+        assert idx >= 0 && idx < containedTys.length;
+        return containedTys[idx].getType();
     }
 }

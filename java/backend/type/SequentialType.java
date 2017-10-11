@@ -29,18 +29,18 @@ import backend.value.Value;
  */
 public class SequentialType extends CompositeType
 {
-    protected Type elemType;
     protected int numElts;
     protected SequentialType(int primitiveID, Type elemType)
     {
         super(primitiveID);
-        this.elemType = elemType;
+        containedTys = new PATypeHandle[1];
+        containedTys[0] = new PATypeHandle(elemType, this);
         numElts = 1;
     }
 
     public Type getElementType()
     {
-        return elemType;
+        return containedTys[0].getType();
     }
 
     /**
@@ -52,7 +52,7 @@ public class SequentialType extends CompositeType
     @Override
     public Type getTypeAtIndex(Value v)
     {
-        return elemType;
+        return getElementType();
     }
 
     @Override

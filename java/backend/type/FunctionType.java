@@ -64,8 +64,6 @@ public class FunctionType extends DerivedType
         }
     }
 
-    private Type resultType;
-    private ArrayList<Type> paramTypes;
     private boolean isVarArgs;
 
     private static TypeMap<FunctionValType, FunctionType> functionTypes = new TypeMap<>();
@@ -74,15 +72,16 @@ public class FunctionType extends DerivedType
             boolean isVarArgs)
     {
         super(FunctionTyID);
-        resultType = retType;
+        containedTys = new PATypeHandle[argsType.size() + 1];
+        containedTys[0] = new PATypeHandle(retType, this);
         this.isVarArgs = isVarArgs;
         isAbstract = retType.isAbstract();
-        paramTypes = new ArrayList<>(argsType.size());
+        int i = 1;
         for (Type argTy : argsType)
         {
             assert isValidArgumentType(argTy)
                     : "Not a valid type for function argument";
-            paramTypes.add(argTy);
+            containedTys[i++] = new PATypeHandle(argTy, this);
             isAbstract |= argTy.isAbstract();
         }
 
@@ -138,22 +137,17 @@ public class FunctionType extends DerivedType
 
     public Type getReturnType()
     {
-        return resultType;
+        return containedTys[0].getType();
     }
 
     public Type getParamType(int index)
     {
-        assert index>=0 && index< paramTypes.size();
-        return paramTypes.get(index);
+        assert index>=0 && index< containedTys.length - 1;
+        return containedTys[index+1].getType();
     }
 
     public int getNumParams()
     {
-        return paramTypes.size();
-    }
-
-    public ArrayList<Type> getParamTypes()
-    {
-        return paramTypes;
+        return containedTys.length - 1;
     }
 }
