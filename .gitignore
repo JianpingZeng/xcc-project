@@ -10,10 +10,10 @@ classes
 
 #Ignores all Linux temporary file.
 *~
-
 Output/
-
 .DS_Store
+cmake-build-*
+build
 
 
 

@@ -190,7 +190,7 @@ public class BackendConsumer implements ASTConsumer
 
         // creates some necessary pass for code generation and optimization.
         createPass();
-        OutParamWrapper<String> error = new OutParamWrapper<>();
+        OutParamWrapper<String> error = new OutParamWrapper<>("");
         if (!addEmitPasses(error))
         {
             System.err.println("UNKNOWN: " + error.get());
@@ -358,7 +358,7 @@ public class BackendConsumer implements ASTConsumer
             case Backend_EmitLL:
             {
                 getPerModulePasses().add(new PrintModulePass(asmOutStream));
-                return false;
+                return true;
             }
             default:
             {
