@@ -97,8 +97,10 @@ classes: gen_tblgen
 	$(TARGET_SRCS)
 
 jar: classes
-	jar -cf $(OUT_LIB_DIR)/$(XCC_JAR) $(CLASSES_DIR)/
-	cp -r $(LIB_DIR)/* $(OUT_LIB_DIR)
+	cd $(CLASSES_DIR); \
+	jar -cf ../../$(OUT_LIB_DIR)/$(XCC_JAR) * ;\
+	cd ../../; \
+	cp -r $(LIB_DIR)/* $(OUT_LIB_DIR) \
 
 all: jar
 	cd out; cmake ../c++ ; make all -j4
