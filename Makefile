@@ -99,19 +99,11 @@ classes: gen_tblgen
 jar: classes
 	jar -cf $(OUT_LIB_DIR)/$(XCC_JAR) $(CLASSES_DIR)/
 	cp -r $(LIB_DIR)/* $(OUT_LIB_DIR)
+
+all: jar
+	cd c++; cmake .\ ; make -j4
+
+.pony: all
 	
-compile: jar
-	${CPP} c++/JlangCC.cpp ${SRCS} -g -o out/bin/jlang-cc  \
-	-I/usr/bin/jdk/include -I/usr/bin/jdk/include/linux/   \
-	-L${JVM_SO} -ljvm -Wl,-rpath=${JVM_SO}
-    	${CPP} c++/Jlang.cpp ${SRCS} -g -o out/bin/jlang       \
-	-I/usr/bin/jdk/include -I/usr/bin/jdk/include/linux/   \
-	-L${JVM_SO} -ljvm -Wl,-rpath=${JVM_SO}
-    	${CPP} c++/TableGen.cpp ${SRCS} -g -o out/bin/tablegen \
-	-I/usr/bin/jdk/include -I/usr/bin/jdk/include/linux/   \
-	-L${JVM_SO} -ljvm -Wl,-rpath=${JVM_SO}
-
-default: jar
-
 clean:
 	$(RM) -r $(OUT_DIR)
