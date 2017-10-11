@@ -24,6 +24,7 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
 import backend.value.GlobalValue.VisibilityTypes;
+import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
 import tools.APFloat;
 import tools.APInt;
@@ -622,7 +623,7 @@ public class AssemblyWriter
         return res;
     }
 
-    private static void writeOptimizationInfo(PrintStream out, ConstantExpr ce)
+    private static void writeOptimizationInfo(PrintStream out, Value val)
     {
         // TODO: 2017/10/10
     }
@@ -833,9 +834,230 @@ public class AssemblyWriter
         }
     }
 
+    /**
+     * Emit the instruction information.
+     * @param inst
+     */
     private void printInstruction(Instruction inst)
     {
-        // TODO: 2017/10/10
+        // print out indentation for each instruction.
+        out.print(' ');
+
+        if (inst.hasName())
+        {
+            printLLVMName(out, inst);
+        }
+        else if (!inst.getType().equals(Type.VoidTy))
+        {
+            int slot = slotTracker.getLocalSlot(inst);
+            if (slot == - 1)
+            {
+                out.print("<badref> = ");
+            }
+            else
+            {
+                out.printf("%%%d = ", slot);
+            }
+        }
+
+        // if this is a volatile store or load instruction,
+        // just print out the volatile marker.
+        if (inst instanceof LoadInst && ((LoadInst)inst).isVolatile() ||
+                (inst instanceof StoreInst) && ((StoreInst)inst).isVolatile())
+        {
+            out.print("volatile ");
+        }
+
+        // Print the instruction operator name.
+        out.print(inst.getOpcodeName());
+
+        writeOptimizationInfo(out, inst);
+
+        if (inst instanceof CmpInst)
+        {
+            CmpInst ci = (CmpInst)inst;
+            out.printf(" %s", getPredicateText(ci.getPredicate()));
+        }
+
+        // print out the type of operands.
+        Value operand = inst.getNumOfOperands() != 0 ? inst.operand(0) : null;
+
+        // Special handling for BranchInst, SwitchInst etc.
+        if (inst instanceof BranchInst && ((BranchInst)inst).isConditional())
+        {
+            BranchInst bi = (BranchInst)inst;
+            out.print(' ');
+            writeOperand(bi.getCondition(), true);
+            out.print(", ");
+            writeOperand(bi.getSuccessor(0), true);
+            out.print(", ");
+            writeOperand(bi.getSuccessor(1), true);
+        }
+        else if (inst instanceof SwitchInst)
+        {
+            out.print(' ');
+            writeOperand(operand, true);
+            out.print(", ");
+            writeOperand(inst.operand(1), true);
+            out.print("[");
+
+            for (int i = 2, e = inst.getNumOfOperands(); i < e; i+=2)
+            {
+                out.println();
+                writeOperand(inst.operand(i), true);
+                out.print(", ");
+                writeOperand(inst.operand(i+1), true);
+            }
+            out.print("\n ]");
+        }
+        else if (inst instanceof PhiNode)
+        {
+            out.print(' ');
+            typePrinter.print(inst.getType(), out);
+            out.print(' ');
+
+            for (int op = 0, e = inst.getNumOfOperands(); op != e; op+=2)
+            {
+                if (op != 0)
+                    out.print(", ");
+                out.print("[ ");
+                writeOperand(inst.operand(op), false);
+                out.print(", ");
+                writeOperand(inst.operand(op+1), false);
+                out.print(" ]");
+            }
+        }
+        else if (inst instanceof ReturnInst && operand == null)
+        {
+            out.print(" void");
+        }
+        else if (inst instanceof CallInst)
+        {
+            assert operand != null:"No called function for CallInst";
+
+            CallInst ci = (CallInst)inst;
+            CallingConv cc = ci.getCallingConv();
+            switch (cc)
+            {
+                case C: break;
+                case Fast: out.print(" fastcc"); break;
+                case Cold: out.print(" coldcc"); break;
+                case X86_StdCall: out.print(" x86_stdcallcc"); break;
+                case X86_FastCall: out.print(" x86_fastcallcc"); break;
+                default: out.print(" cc" + cc.name());break;
+            }
+
+            PointerType pty = (PointerType)operand.getType();
+            FunctionType fty = (FunctionType) pty.getElementType();
+            Type retTy = fty.getReturnType();
+
+            out.print(' ');
+
+            if (!fty.isVarArg() && (!(retTy instanceof PointerType) ||
+                    !(((PointerType)(retTy)).getElementType() instanceof FunctionType )))
+            {
+                typePrinter.print(retTy, out);
+                out.print(' ');
+                writeOperand(operand, false);
+            }
+            else
+            {
+                writeOperand(operand, true);
+            }
+            out.print('(');
+            for (int op = 1, e = inst.getNumOfOperands(); op != e; op++)
+            {
+                if (op > 1)
+                    out.print(", ");
+                writeParamOperand(inst.operand(op));
+            }
+            out.print(')');
+        }
+        else if (inst instanceof AllocaInst)
+        {
+            AllocaInst ai = (AllocaInst)inst;
+            out.print(' ');
+            typePrinter.print(ai.getType().getElementType(), out);
+
+            if (ai.getArraySize() == null || ai.isArrayAllocation())
+            {
+                out.print(", ");
+                writeOperand(ai.getArraySize(), true);
+            }
+        }
+        else if (inst instanceof CastInst)
+        {
+            if (operand != null)
+            {
+                out.print(" ");
+                writeOperand(operand, true);
+            }
+            out.print(" to ");
+            typePrinter.print(inst.getType(), out);
+        }
+        else if (operand != null)
+        {
+            // Print normal instruction.
+            boolean printAllTypes = false;
+            Type theType = operand.getType();
+
+            if (inst instanceof StoreInst || inst instanceof ReturnInst)
+            {
+                printAllTypes = true;
+            }
+            else
+            {
+                for (int i = 1,e = inst.getNumOfOperands(); i != e; i++)
+                {
+                    operand = inst.operand(i);
+                    if (operand != null && !operand.getType().equals(theType))
+                    {
+                        printAllTypes = true;
+                        break;
+                    }
+                }
+            }
+            if (!printAllTypes)
+            {
+                out.print(' ');
+                typePrinter.print(theType, out);
+            }
+
+            out.print(' ');
+            for (int i = 0, e = inst.getNumOfOperands(); i != e; i++)
+            {
+                if (i != 0)
+                    out.print(", ");
+                writeOperand(inst.operand(i), printAllTypes);
+            }
+        }
+
+        // print post operand alignment for load/store.
+        int align = 0;
+        if (inst instanceof LoadInst && (align = ((LoadInst)inst).getAlignment()) != 0)
+        {
+            out.printf(" ,align %d", align);
+        }
+        else if (inst instanceof StoreInst && (align = ((StoreInst)inst).getAlignment()) != 0)
+        {
+            out.printf(" ,align %d", align);
+        }
+        printInfoComment(inst);
+    }
+
+    private void writeParamOperand(Value op)
+    {
+        if (op == null)
+        {
+            out.print("<null operand!>");
+        }
+        else
+        {
+            // print argument tpye.
+            typePrinter.print(op.getType(), out);
+            out.print(' ');
+            writeAsOperandInternal(out, op, typePrinter, slotTracker);
+        }
     }
 
     public void printModule(Module m)
