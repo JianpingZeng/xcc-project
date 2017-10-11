@@ -532,7 +532,8 @@ public class HIRModuleGenerator
         {
             assert ty.isVarArg():"Didn't lower type as expected";
             ArrayList<Type> args = new ArrayList<>();
-            args.addAll(ty.getParamTypes());
+            for (int i = 0, e = ty.getNumParams(); i < e; i++)
+                args.add(ty.getParamType(i));
             ty = FunctionType.get(ty.getReturnType(), args, false);
         }
 

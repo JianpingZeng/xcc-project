@@ -58,10 +58,7 @@ public class StructType extends CompositeType
             return elemTypes.equals(svt.elemTypes) && packed == svt.packed;
         }
     }
-    /**
-     * An array of struct member type.
-     */
-    private ArrayList<Type> elementTypes;
+
     private boolean packed;
     private boolean opaque;
 
@@ -85,7 +82,7 @@ public class StructType extends CompositeType
     protected StructType(ArrayList<Type> memberTypes, boolean packed)
     {
         super(StructTyID);
-        elementTypes = new ArrayList<>(memberTypes.size());
+        containedTys = new PATypeHandle[memberTypes.size()];
 
         this.packed = packed;
         isAbstract = false;
@@ -94,7 +91,7 @@ public class StructType extends CompositeType
             assert memberTypes.get(i) != null :"<null> type for structure type!";
             assert isValidElementType(memberTypes.get(i)) :"Invalid type for structure element!";
             isAbstract |= memberTypes.get(i).isAbstract();
-            this.elementTypes.add(memberTypes.get(i));
+            containedTys[i] = new PATypeHandle(memberTypes.get(i), this);
         }
         setAbstract(isAbstract);
     }
@@ -119,20 +116,15 @@ public class StructType extends CompositeType
         return PlaceHolderType;
     }
 
-    public ArrayList<Type> getElementTypes()
-    {
-        return elementTypes;
-    }
-
     @Override
     public Type getTypeAtIndex(Value v)
     {
         assert v instanceof Constant;
         assert v.getType() == Type.Int32Ty;
         int idx = (int)((ConstantInt)v).getZExtValue();
-        assert idx < elementTypes.size();
+        assert idx < containedTys.length;
         assert indexValid(v);
-        return elementTypes.get(idx);
+        return containedTys[idx].getType();
     }
 
     @Override
@@ -142,7 +134,7 @@ public class StructType extends CompositeType
         if (v.getType() != Type.Int32Ty) return false;
         int idx = (int)((ConstantInt)v).getZExtValue();
 
-        return idx < elementTypes.size();
+        return idx < containedTys.length;
     }
 
     @Override
@@ -153,18 +145,18 @@ public class StructType extends CompositeType
 
     public int getNumOfElements()
     {
-        return elementTypes.size();
+        return containedTys.length;
     }
 
     public Type getElementType(int idx)
     {
-        return elementTypes.get(idx);
+        return containedTys[idx].getType();
     }
 
     public Type getTypeAtIndex(int index)
     {
         assert index >= 0 && index < getNumOfElements() :"Invalid structure index!";
-        return elementTypes.get(index);
+        return containedTys[index].getType();
     }
 
     public boolean isPacked()
