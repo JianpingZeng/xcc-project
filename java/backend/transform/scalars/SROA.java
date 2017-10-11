@@ -175,8 +175,9 @@ public final class SROA implements FunctionPass
             {
                 StructType st = (StructType) ai.getAllocatedType();
                 int i = 0;
-                for (Type ty : st.getElementTypes())
+                for (int e = st.getNumOfElements(); i != e; i++)
                 {
+                    Type ty = st.getContainedType(i);
                     AllocaInst tmp = new AllocaInst(ty, ai.getName()+"."+ i, ai);
                     scalars.add(tmp);
                     list.push(tmp);

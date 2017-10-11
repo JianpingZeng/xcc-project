@@ -101,7 +101,7 @@ jar: classes
 	cp -r $(LIB_DIR)/* $(OUT_LIB_DIR)
 
 all: jar
-	cd c++; cmake .\ ; make -j4
+	cd out; cmake ../c++ ; make all -j4
 
 .pony: all
 	

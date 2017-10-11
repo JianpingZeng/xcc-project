@@ -443,8 +443,9 @@ public class TargetData implements ImmutablePass
 			structSize = 0;
 
 			// Loop over each element in struct type, placing them in memory.
-			for (Type eltTy : st.getElementTypes())
+			for (int i = 0,e = st.getNumOfElements(); i != e; i++)
 			{
+				Type eltTy = st.getElementType(i);
 				long tySize = getTypeSize(eltTy);
 				int tyAlign = getTypeAlign(eltTy);
 
