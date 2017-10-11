@@ -37,6 +37,9 @@ public class GetElementPtrConstantExpr extends ConstantExpr
             Type ty)
     {
         super(ty, GetElementPtr);
-        // TODO: 2017/10/10
+        reserve(idxList.size() + 1);
+        setOperand(0, c, this);
+        for (int i = 0, e = idxList.size(); i != e; i++)
+            setOperand(i+1, idxList.get(i), this);
     }
 }

@@ -253,9 +253,7 @@ public abstract class Instruction extends User
     public boolean isShift() { return isShift(getOpcode()); }
     public boolean isCast()  { return isCast(getOpcode()); }
 
-
-
-    public String getOpcodeName(Operator opcode)
+    public String getOpcodeName()
     {
         return opcode.opName;
     }
