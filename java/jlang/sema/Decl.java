@@ -61,7 +61,9 @@ public abstract class Decl
 
         // for variable
         SC_auto,
-        SC_register
+        SC_register,
+
+        SC_PrivateExtern
     }
 
     /**

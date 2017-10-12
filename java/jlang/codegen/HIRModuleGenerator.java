@@ -1,5 +1,6 @@
 package jlang.codegen;
 
+import backend.support.CallingConv;
 import backend.value.Module;
 import backend.value.Operator;
 import backend.intrinsic.Intrinsic;
@@ -13,6 +14,7 @@ import jlang.ast.Tree.Expr;
 import jlang.ast.Tree.Stmt;
 import jlang.ast.Tree.StringLiteral;
 import jlang.support.CompileOptions;
+import jlang.support.LangOptions;
 import jlang.support.SourceLocation;
 import jlang.diag.Diagnostic;
 import jlang.sema.ASTContext;
@@ -88,6 +90,7 @@ public class HIRModuleGenerator
 
     private HashMap<String, Decl> deferredDecls = new HashMap<>();
     private ArrayList<Decl> deferredDeclToEmit = new ArrayList<>();
+    private LangOptions langOptions;
 
     public HIRModuleGenerator(ASTContext context,
                               CompileOptions compOpts,
@@ -105,6 +108,7 @@ public class HIRModuleGenerator
         cgTypes = new CodeGenTypes(this, td);
         constantStringMap = new HashMap<>();
         globalDeclMaps = new HashMap<>();
+        langOptions = context.getLangOptions();
     }
 
     public CodeGenTypes getCodeGenTypes()
@@ -311,6 +315,68 @@ public class HIRModuleGenerator
 	    }
 	    else
 		    gv.setLinkage(ExternalLinkage);
+        setCommonAttributes(vd, gv);
+    }
+
+    private LangOptions.VisibilityMode getDeclVisibilityMode(Decl d)
+    {
+        if (d instanceof VarDecl)
+        {
+            VarDecl vd = (VarDecl)d;
+            if (vd.getStorageClass() == Decl.StorageClass.SC_PrivateExtern)
+                return LangOptions.VisibilityMode.Hidden;
+        }
+
+        /*
+        TODO complete VisibilityModeAttr for GlobalValue.
+        if (const VisibilityAttr *attr = D->getAttr<VisibilityAttr>()) {
+        switch (attr->getVisibility()) {
+            default: assert(0 && "Unknown visibility!");
+            case VisibilityAttr::DefaultVisibility:
+                return LangOptions::Default;
+            case VisibilityAttr::HiddenVisibility:
+                return LangOptions::Hidden;
+            case VisibilityAttr::ProtectedVisibility:
+                return LangOptions::Protected;
+            }
+        }*/
+        return langOptions.getSymbolVisibility();
+    }
+
+    private void setGlobalVisibility(Decl d, GlobalValue gv)
+    {
+        // Internal definitions always have default visibility.
+        if (gv.hasLocalLinkage())
+        {
+            gv.setVisibility(GlobalValue.VisibilityTypes.DefaultVisibility);
+            return;
+        }
+
+        switch (getDeclVisibilityMode(d))
+        {
+            default: assert false:"Unknown visibility!";
+
+            case Default:
+                gv.setVisibility(GlobalValue.VisibilityTypes.DefaultVisibility);
+                return;
+            case Hidden:
+                gv.setVisibility(GlobalValue.VisibilityTypes.HiddenVisibility);
+                return;
+            case Protected:
+                gv.setVisibility(GlobalValue.VisibilityTypes.ProtectedVisibility);
+                return;
+        }
+    }
+
+    /**
+     * Set some common attributes for global variable or function.
+     * @param d
+     * @param gv
+     */
+    private void setCommonAttributes(Decl d, GlobalValue gv)
+    {
+        setGlobalVisibility(d, gv);
+        // TODO: 2017/10/12  Set the UsedAtr, SectionAttr.
     }
 
     public Constant getAddrOfFunction(FunctionDecl fd)
@@ -385,10 +451,32 @@ public class HIRModuleGenerator
         }
 
         Function f = new Function((FunctionType)type, ExternalLinkage, "", getModule());
+        if (fd != null)
+        {
+            setFunctionAttributes(fd, f, isIncompleteFunction);
+        }
 
         f.setName(mangledName);
         globalDeclMaps.put(mangledName, f);
         return f;
+    }
+
+    private void setFunctionAttributes(FunctionDecl fd,
+            Function f, boolean isIncompleteFunction)
+    {
+        if (!isIncompleteFunction)
+            setLLVMFunctionAttributes(fd, getCodeGenTypes().getFunctionInfo(fd), f);
+        // TODO set linkage according to Attribute, current just set it as ExternalLinkage.
+        f.setLinkage(ExternalLinkage);
+    }
+
+    private void setLLVMFunctionAttributes(
+            FunctionDecl fd,
+            CodeGenTypes.CGFunctionInfo fi,
+            Function f)
+    {
+        //FIXME Set the calling convention default to standard C. 2017/10/12
+        f.setCallingConv(CallingConv.C);
     }
 
     public Constant getAddrOfGlobalVar(VarDecl vd)
@@ -579,6 +667,76 @@ public class HIRModuleGenerator
         new CodeGenFunction(this).generateCode(fd, fn);
 
         globalDeclMaps.put(getMangledName(fd), fn);
+
+        setFunctionDefinitionAttributes(fd, fn);
+    }
+
+    enum GVALinkage
+    {
+        GVA_Internal,
+        GVA_C99Inline,
+        GVA_CXXInline,
+        GVA_StrongExternal
+    }
+
+    private static GVALinkage getLinkageForFunction(
+            ASTContext context,
+            FunctionDecl fd,
+            LangOptions features)
+    {
+        GVALinkage external = GVALinkage.GVA_StrongExternal;
+        // "static" function get internal linkage.
+        if (fd.getStorageClass() == Decl.StorageClass.SC_static)
+            return GVALinkage.GVA_Internal;
+
+        if (!fd.isInlineSpecified())
+            return external;
+
+        // If the inline function explicitly has the GNU inline attribute on it, or if
+        // this is C89 mode, we use to GNU semantics.
+        if (!features.c99)
+        {
+            if (fd.getStorageClass() == Decl.StorageClass.SC_extern)
+            {
+                return GVALinkage.GVA_C99Inline;
+            }
+            // Normal inline is a strong symbol.
+            return GVALinkage.GVA_StrongExternal;
+        }
+        else if (features.gnuMode)
+        {
+            // GCC in C99 mode seems to use a different decision-making process
+            // for external inline.
+            return GVALinkage.GVA_C99Inline;
+        }
+
+        assert features.c99:"Must be in c99 mode if not in C89";
+        if (fd.isC99InlineDefinition())
+            return GVALinkage.GVA_C99Inline;
+
+        return GVALinkage.GVA_StrongExternal;
+    }
+
+    private void setFunctionDefinitionAttributes(FunctionDecl fd, GlobalValue gv)
+    {
+        GVALinkage linkage = getLinkageForFunction(ctx, fd, langOptions);
+        if (linkage == GVALinkage.GVA_Internal)
+        {
+            gv.setLinkage(InteralLinkage);
+        }
+        else if (linkage == GVALinkage.GVA_C99Inline)
+        {
+            // In C99 mode, 'inline' functions are guaranteed to have a strong
+            // definition somewhere else, so we can use available_externally linkage.
+            gv.setLinkage(ExternalLinkage);
+        }
+        else
+        {
+            assert linkage == GVALinkage.GVA_StrongExternal;
+            gv.setLinkage(ExternalLinkage);
+        }
+
+        setCommonAttributes(fd, gv);
     }
 
     public Module getModule() { return m;}
