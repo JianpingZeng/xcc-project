@@ -164,4 +164,9 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	{
 		return cc;
 	}
+
+	public void setCallingConv(CallingConv cc)
+	{
+		this.cc = cc;
+	}
 }

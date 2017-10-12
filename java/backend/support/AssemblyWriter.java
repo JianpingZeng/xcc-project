@@ -716,7 +716,7 @@ public class AssemblyWriter
         }
 
         FunctionType ft = f.getFunctionType();
-        typePrinter.print(ft, out);
+        typePrinter.print(ft.getReturnType(), out);
         out.print(' ');
         writeAsOperandInternal(out, f, typePrinter, slotTracker);
         out.print('(');
@@ -1062,7 +1062,7 @@ public class AssemblyWriter
 
     public void printModule(Module m)
     {
-        if (m.getModuleIdentifier() != null && m.getModuleIdentifier().isEmpty())
+        if (m.getModuleIdentifier() != null && !m.getModuleIdentifier().isEmpty())
         {
             out.printf(";ModuleID = '%s'\n", m.getModuleIdentifier());
         }

@@ -69,7 +69,7 @@ public final class TypePrinting
                 PrintStream out = new PrintStream(baos))
         {
             calcTypeName(ty, typeStack, out, ignoreTopLevelName);
-            out.print(baos.toString());
+            os.print(baos.toString());
 
             if (!ignoreTopLevelName)
                 typenames.put(ty, baos.toString());

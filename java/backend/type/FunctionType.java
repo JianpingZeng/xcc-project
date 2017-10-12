@@ -142,7 +142,7 @@ public class FunctionType extends DerivedType
 
     public Type getParamType(int index)
     {
-        assert index>=0 && index< containedTys.length - 1;
+        assert index >= 0 && index < getNumParams();
         return containedTys[index+1].getType();
     }
 

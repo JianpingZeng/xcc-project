@@ -465,7 +465,9 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             try
             {
                 File f = new File(outputFile);
-                f.deleteOnExit();
+                if (f.exists())
+                    f.delete();
+
                 f.createNewFile();
                 outPath.append(f.getAbsolutePath());
                 os = new PrintStream(new FileOutputStream(f));

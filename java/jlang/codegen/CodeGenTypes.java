@@ -829,6 +829,15 @@ public class CodeGenTypes
         return CGRecordLayoutBuilder.computeLayout(this, rd);
     }
 
+    public CGFunctionInfo getFunctionInfo(Decl.FunctionDecl fd)
+    {
+        jlang.type.FunctionType ft = fd.getType().getAsFunctionType();
+        if (ft instanceof FunctionProtoType)
+            return getFunctionInfo((FunctionProtoType)ft);
+
+        return getFunctionInfo((FunctionNoProtoType)ft);
+    }
+
     public CGFunctionInfo getFunctionInfo(FunctionProtoType fpt)
     {
         ArrayList<QualType> argTypes = new ArrayList<>();
