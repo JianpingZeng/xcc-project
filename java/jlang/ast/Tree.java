@@ -172,6 +172,10 @@ public abstract class Tree implements StmtClass
 
     public String getStmtClassName()
     {
+    	/*
+    	for (int i = 0, e = StmtClassNames.length; i != e; i++)
+    		System.out.printf("%d, %s\n", i, StmtClassNames[i]);
+		*/
         return StmtClassNames[stmtClass];
     }
 

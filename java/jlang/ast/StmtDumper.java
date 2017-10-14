@@ -96,7 +96,7 @@ public class StmtDumper extends StmtVisitor<Void>
     private void indent()
     {
         for (int i = indentLevel; i > 0; i--)
-            os.print(' ');
+            os.print("  ");
     }
 
     private void dumpType(QualType ty)
@@ -120,7 +120,7 @@ public class StmtDumper extends StmtVisitor<Void>
     private void dumpStmt(Stmt node)
     {
         indent();
-        os.printf("(%s %o)", node.getStmtClassName(), node.hashCode());
+        os.printf("(%s 0x%o", node.getStmtClassName(), node.hashCode());
         dumpSourceRange(node);
     }
 
@@ -137,7 +137,7 @@ public class StmtDumper extends StmtVisitor<Void>
             return;
 
         SourceRange r = node.getSourceRange();
-        os.print('<');
+        os.print(" <");
         dumpLocation(r.getBegin());
         if (!r.getEnd().equals(r.getBegin()))
         {
@@ -165,7 +165,7 @@ public class StmtDumper extends StmtVisitor<Void>
         }
         else if (ploc.getLine() != lastLocLine)
         {
-            os.printf("line:%d%d", ploc.getLine(), ploc.getColumn());
+            os.printf("line:%d:%d", ploc.getLine(), ploc.getColumn());
             lastLocLine = ploc.getLine();
         }
         else
@@ -227,6 +227,14 @@ public class StmtDumper extends StmtVisitor<Void>
         }
     }
 
+    // Stmt
+    @Override
+    public Void visitStmt(Stmt s)
+    {
+        dumpStmt(s);
+        return null;
+    }
+
     @Override
     public Void visitDeclStmt(DeclStmt stmt)
     {
@@ -266,6 +274,7 @@ public class StmtDumper extends StmtVisitor<Void>
         return null;
     }
 
+    // Exprs.
     public void visitExpr(Tree.BinaryExpr expr)
     {
         dumpExpr(expr);
