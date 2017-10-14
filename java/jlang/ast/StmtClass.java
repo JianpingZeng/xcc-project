@@ -23,7 +23,7 @@ package jlang.ast;
 public interface StmtClass
 {
     /*
-	 * TopLevel nodes, of jlang.type TopLevel, representing entire source files.
+	 * TopLevel nodes, of type TopLevel, representing entire source files.
 	 */
     int TopLevelClass = 1;
 
@@ -184,6 +184,7 @@ public interface StmtClass
      * An array declares the dump name for each kind of Statement used in Tree.java
      */
     String[] StmtClassNames = {
+            "",     // An dumper string for the erroreous Stmt.
             "TopLevel",
             "SelectExpr",
             "NullStmt",

@@ -1168,6 +1168,7 @@ public abstract class Decl
                     return "register";
                 case SC_static:
                     return "static";
+
             }
         }
     }
@@ -1281,7 +1282,7 @@ public abstract class Decl
         private StorageClass sc;
         private boolean isInlineSpecified;
         private boolean hasImplicitReturnZero;
-        private boolean hasPrototype;
+        private boolean hasInheritedPrototype;
         private SourceLocation endRangeLoc;
 
         private DeclContext dc;
@@ -1320,7 +1321,7 @@ public abstract class Decl
                 QualType type,
                 StorageClass sc,
                 boolean isInline,
-                boolean hasPrototype)
+                boolean hasWrittenPrototype)
         {
             super(FunctionDecl, context, name, location, type);
             this.sc = sc;
@@ -1328,8 +1329,8 @@ public abstract class Decl
             paramInfo = null;
             endRangeLoc = SourceLocation.NOPOS;
             body = null;
-            this.hasPrototype = hasPrototype;
             redeclLink = new DeclLink.LatestDeclLink<>(this);
+            this.hasWrittenPrototype = hasWrittenPrototype;
             dc = new DeclContext(FunctionDecl, this);
         }
 
@@ -1711,7 +1712,7 @@ public abstract class Decl
 
         public boolean hasPrototype()
         {
-            return hasPrototype;
+            return hasWrittenPrototype || hasInheritedPrototype;
         }
 
         public boolean hasWrittenPrototype()
@@ -1756,9 +1757,9 @@ public abstract class Decl
     }
 
     /**
-     * Represents a declaration of a typedef getIdentifier.
+     * Represents a declaration of a typedef name.
      */
-    public static class TypeDefDecl extends TypeDecl
+    public static class TypeDefDecl extends TypedefNameDecl
     {
         /**
          * This is the type that this typedef decl is set to.
@@ -1787,7 +1788,7 @@ public abstract class Decl
     }
 
     /**
-     * Base class for declarations which introduce a typedef-getIdentifier.
+     * Base class for declarations which introduce a typedef-name.
      */
     public static class TypedefNameDecl extends TypeDecl
     {

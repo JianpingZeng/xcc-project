@@ -81,9 +81,9 @@ public class DeclPrinter extends DeclVisitor
 
     private static QualType getDeclType(Decl d)
     {
-        if (d instanceof Decl.TypedefNameDecl)
+        if (d instanceof Decl.TypeDefDecl)
         {
-            return ((Decl.TypedefNameDecl)d).getUnderlyingType();
+            return ((Decl.TypeDefDecl)d).getUnderlyingType();
         }
         else if (d instanceof Decl.ValueDecl)
         {
@@ -170,6 +170,8 @@ public class DeclPrinter extends DeclVisitor
             if (!declsGroupToEmitted.isEmpty())
                 processDeclGroup(declsGroupToEmitted);
 
+            // If the current declaration is an unnamed tag type, save it
+            // so we can merge it with the subsequent declaration(s) using it.
             if (d instanceof TagDecl && ((TagDecl)d).getIdentifier() == null)
             {
                 declsGroupToEmitted.add(d);
@@ -185,12 +187,13 @@ public class DeclPrinter extends DeclVisitor
             {
                 // If this decl is the last one in enum body.
                 if (i + 1 != e)
-                    terminator = ";";
+                    terminator = ",";
             }
             else
-                terminator = ",";
-
-            out.print(terminator);
+            {
+                terminator = ";";
+            }
+            out.println(terminator);
         }
 
         if (!declsGroupToEmitted.isEmpty())
@@ -213,7 +216,6 @@ public class DeclPrinter extends DeclVisitor
         if (!policy.suppressSpecifiers)
             out.print("typedef ");
         out.print(name);
-        out.println(";");
     }
 
     public void visitEnumDecl(Decl.EnumDecl decl)
