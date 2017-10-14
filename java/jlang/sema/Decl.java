@@ -40,7 +40,6 @@ import tools.OutParamWrapper;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import static jlang.cparser.DeclKind.*;
@@ -862,7 +861,20 @@ public abstract class Decl
         private APValue evaluatedValue;
         private boolean isEvaluating;
 
-        private Redeclarator<VarDecl> redeclarator;
+        /**
+         * Points to the next redeclaration in the chain.
+         *
+         * If nextIsPrevious() is true, this is a link to the previous declaration
+         * of this same Decl. If nextIsLatest() is true, this is the first
+         * declaration and Link points to the latest declaration. For example:
+         * <pre>
+         *  #1 int f(int x, int y = 1); // &lt;pointer to #3, true&gt;
+         *  #2 int f(int x = 0, int y); // &lt;pointer to #1, false&gt;
+         *  #3 int f(int x, int y) { return x + y; } // &lt;pointer to #2, false&gt;
+         * </pre>
+         * If there is only one declaration, it is &lt;pointer to self, true&gt;
+         */
+        private DeclLink<VarDecl> redeclLink;
 
         public VarDecl(DeclKind kind,
                 IDeclContext context,
@@ -875,12 +887,13 @@ public abstract class Decl
             wasEvaluated = false;
             evaluatedValue = null;
             isEvaluating = false;
-            redeclarator = new Redeclarator<>(this);
+            redeclLink = new DeclLink.LatestDeclLink<>(this);
         }
 
-        protected VarDecl getNextRedeclaration()
+        @Override
+        public VarDecl getNextRedeclaration()
         {
-            return redeclarator.getRedeclLink().getNext();
+            return getRedeclLink().getNext();
         }
 
         /**
@@ -1062,9 +1075,9 @@ public abstract class Decl
 
         public Expr getDefinition(OutParamWrapper<VarDecl> def)
         {
-            Iterator<VarDecl> itr = this;
+            RedeclIterator<VarDecl> itr = getRedeclIterator();
             Decl.VarDecl current = null;
-            while (itr.hasNext() && (current = itr.next()).getInit() == null);
+            while (itr.hasNext() && (current = itr.getNext()).getInit() == null);
 
             if (itr.hasNext())
             {
@@ -1080,44 +1093,60 @@ public abstract class Decl
         }
 
         @Override
-        public Decl.VarDecl getPreviousDeclaration()
+        public VarDecl getPreviousDeclaration()
         {
-            return redeclarator.getPreviousDeclaration();
+            if(redeclLink.nextIsPrevious())
+                return redeclLink.getNext();
+            return null;
+        }
+        @Override
+        public VarDecl getFirstDeclaration()
+        {
+            Decl.VarDecl cur = this;
+            Decl.VarDecl prev;
+            while ((prev = cur.getPreviousDeclaration()) != null)
+            {
+                cur = prev.getPreviousDeclaration();
+            }
+            return cur;
+        }
+        @Override
+        public void setPreviousDeclaration(VarDecl prevDecl)
+        {
+            VarDecl first;
+            if (prevDecl != null)
+            {
+                redeclLink = new DeclLink.PreviousDeclLink<VarDecl>(prevDecl);
+                first = prevDecl.getFirstDeclaration();
+                assert first.redeclLink.nextIsLatest():"Expected first!";
+            }
+            else
+            {
+                first = this;
+            }
+            first.redeclLink = new DeclLink.LatestDeclLink<>(this);
         }
 
         @Override
-        public Decl.VarDecl getFirstDeclaration()
+        public DeclLink<VarDecl> getRedeclLink()
         {
-            return redeclarator.getFirstDeclaration();
+            return redeclLink;
         }
 
         @Override
-        public void setPreviousDeclaration(Decl.VarDecl prevDecl)
+        public RedeclIterator<VarDecl> getRedeclIterator()
         {
-            redeclarator.setPreviousDeclaration(prevDecl);
-        }
-
-        @Override
-        public boolean hasNext()
-        {
-            return redeclarator.hasNext();
-        }
-
-        @Override
-        public Decl.VarDecl next()
-        {
-            return redeclarator.next();
+            return new <VarDecl>RedeclIterator(this);
         }
 
         public DefinitionKind hasDefinition()
         {
             DefinitionKind kind = DefinitionKind.DeclarationOnly;
 
-            Decl.VarDecl first = getFirstDeclaration();
-            for (;first.hasNext();)
+            RedeclIterator<VarDecl> itr = getRedeclIterator();
+            while (itr.hasNext())
             {
-
-                DefinitionKind k = first.next().isThisDeclarationADefinition();
+                DefinitionKind k = itr.getNext().isThisDeclarationADefinition();
                 if (k.compareTo(kind) > 0)
                     kind = k;
             }
@@ -1139,7 +1168,6 @@ public abstract class Decl
                     return "register";
                 case SC_static:
                     return "static";
-
             }
         }
     }
@@ -1256,11 +1284,25 @@ public abstract class Decl
         private boolean hasPrototype;
         private SourceLocation endRangeLoc;
 
-        private Redeclarator<FunctionDecl> redeclarator;
         private DeclContext dc;
         private boolean isPure;
         private boolean c99InlineDefinition;
         private boolean hasWrittenPrototype;
+
+        /**
+         * Points to the next redeclaration in the chain.
+         *
+         * If nextIsPrevious() is true, this is a link to the previous declaration
+         * of this same Decl. If nextIsLatest() is true, this is the first
+         * declaration and Link points to the latest declaration. For example:
+         * <pre>
+         *  #1 int f(int x, int y = 1); // &lt;pointer to #3, true&gt;
+         *  #2 int f(int x = 0, int y); // &lt;pointer to #1, false&gt;
+         *  #3 int f(int x, int y) { return x + y; } // &lt;pointer to #2, false&gt;
+         * </pre>
+         * If there is only one declaration, it is &lt;pointer to self, true&gt;
+         */
+        private DeclLink<FunctionDecl> redeclLink;
 
         public FunctionDecl(IdentifierInfo name,
                 DeclContext context,
@@ -1287,14 +1329,14 @@ public abstract class Decl
             endRangeLoc = SourceLocation.NOPOS;
             body = null;
             this.hasPrototype = hasPrototype;
-            redeclarator = new Redeclarator<>(this);
+            redeclLink = new DeclLink.LatestDeclLink<>(this);
             dc = new DeclContext(FunctionDecl, this);
         }
 
         @Override
         public FunctionDecl getNextRedeclaration()
         {
-            return redeclarator.getRedeclLink().getNext();
+            return getRedeclLink().getNext();
         }
 
         @Override
@@ -1347,9 +1389,10 @@ public abstract class Decl
 
         public boolean hasBody(OutParamWrapper<FunctionDecl> def)
         {
-            while (hasNext())
+            RedeclIterator<FunctionDecl> itr = getRedeclIterator();
+            while (itr.hasNext())
             {
-                Decl.FunctionDecl fd = next();
+                Decl.FunctionDecl fd = itr.getNext();
                 if (fd != null && fd.body != null)
                 {
                     def.set(fd);
@@ -1370,9 +1413,10 @@ public abstract class Decl
 
         public boolean isDefined(OutParamWrapper<FunctionDecl> def)
         {
-            while (hasNext())
+            RedeclIterator<FunctionDecl> itr = getRedeclIterator();
+            while (itr.hasNext())
             {
-                Decl.FunctionDecl fd = next();
+                Decl.FunctionDecl fd = itr.getNext();
                 if (fd != null && fd.body != null)
                 {
                     def.set(fd);
@@ -1391,9 +1435,10 @@ public abstract class Decl
 
         public Tree.Stmt getBody(OutParamWrapper<FunctionDecl> def)
         {
-            while (hasNext())
+            RedeclIterator<FunctionDecl> itr = getRedeclIterator();
+            while (itr.hasNext())
             {
-                Decl.FunctionDecl fd = next();
+                Decl.FunctionDecl fd = itr.getNext();
                 if (fd != null && fd.body != null)
                 {
                     def.set(fd);
@@ -1461,33 +1506,50 @@ public abstract class Decl
         }
 
         @Override
-        public boolean hasNext()
+        public FunctionDecl getPreviousDeclaration()
         {
-            return redeclarator.hasNext();
+            if(redeclLink.nextIsPrevious())
+                return redeclLink.getNext();
+            return null;
+        }
+        @Override
+        public FunctionDecl getFirstDeclaration()
+        {
+            FunctionDecl cur = this;
+            FunctionDecl prev;
+            while ((prev = cur.getPreviousDeclaration()) != null)
+            {
+                cur = prev.getPreviousDeclaration();
+            }
+            return cur;
+        }
+        @Override
+        public void setPreviousDeclaration(FunctionDecl prevDecl)
+        {
+            FunctionDecl first;
+            if (prevDecl != null)
+            {
+                redeclLink = new DeclLink.PreviousDeclLink<FunctionDecl>(prevDecl);
+                first = prevDecl.getFirstDeclaration();
+                assert first.redeclLink.nextIsLatest():"Expected first!";
+            }
+            else
+            {
+                first = this;
+            }
+            first.redeclLink = new DeclLink.LatestDeclLink<>(this);
         }
 
         @Override
-        public Decl.FunctionDecl next()
+        public DeclLink<FunctionDecl> getRedeclLink()
         {
-            return redeclarator.next();
+            return redeclLink;
         }
 
         @Override
-        public Decl.FunctionDecl getPreviousDeclaration()
+        public RedeclIterator<FunctionDecl> getRedeclIterator()
         {
-            return redeclarator.getPreviousDeclaration();
-        }
-
-        @Override
-        public Decl.FunctionDecl getFirstDeclaration()
-        {
-            return redeclarator.getFirstDeclaration();
-        }
-
-        @Override
-        public void setPreviousDeclaration(Decl.FunctionDecl prevDecl)
-        {
-            redeclarator.setPreviousDeclaration(prevDecl);
+            return new <FunctionDecl>RedeclIterator(this);
         }
 
         @Override
@@ -1779,7 +1841,21 @@ public abstract class Decl
         private TypeDefDecl typedefAnonDecl;
 
         private DeclContext dc;
-        private Redeclarator<TagDecl> redeclarator;
+
+        /**
+         * Points to the next redeclaration in the chain.
+         *
+         * If nextIsPrevious() is true, this is a link to the previous declaration
+         * of this same Decl. If nextIsLatest() is true, this is the first
+         * declaration and Link points to the latest declaration. For example:
+         * <pre>
+         *  #1 int f(int x, int y = 1); // &lt;pointer to #3, true&gt;
+         *  #2 int f(int x = 0, int y); // &lt;pointer to #1, false&gt;
+         *  #3 int f(int x, int y) { return x + y; } // &lt;pointer to #2, false&gt;
+         * </pre>
+         * If there is only one declaration, it is &lt;pointer to self, true&gt;
+         */
+        private DeclLink<TagDecl> redeclLink;
 
         public TagDecl(DeclKind kind,
                 TagKind tagKind,
@@ -1794,13 +1870,11 @@ public abstract class Decl
             this.tagKind = tagKind;
             tagKkeywordLoc = tkl;
             dc = new DeclContext(kind, this);
-            redeclarator = new Redeclarator<>(this);
+            redeclLink = new DeclLink.LatestDeclLink<TagDecl>(this);
             assert kind != DeclKind.EnumDecl || tagKind == TTK_enum :
                     "EnumDecl not matched with TTK_enum";
-
-            redeclarator.setPreviousDeclaration(prevDecl);
+            setPreviousDeclaration(prevDecl);
         }
-
 
         public TagDecl(DeclKind kind,
                 TagKind tagKind,
@@ -1810,6 +1884,13 @@ public abstract class Decl
                 TagDecl prevDecl)
         {
             this(kind, tagKind, context, name, loc, prevDecl, new SourceLocation());;
+        }
+
+
+        @Override
+        public TagDecl getNextRedeclaration()
+        {
+            return getRedeclLink().getNext();
         }
 
         public void startDefinition()
@@ -1912,9 +1993,10 @@ public abstract class Decl
             if (isDefinition)
                 return this;
 
-            for (Iterator<TagDecl> itr = this; itr.hasNext();)
+            RedeclIterator<TagDecl> itr = getRedeclIterator();
+            while (itr.hasNext())
             {
-                TagDecl td = itr.next();
+                TagDecl td = itr.getNext();
                 if (td.isDefinition)
                     return td;
             }
@@ -1942,33 +2024,50 @@ public abstract class Decl
         }
 
         @Override
-        public boolean hasNext()
-        {
-            return redeclarator.hasNext();
-        }
-
-        @Override
-        public TagDecl next()
-        {
-            return redeclarator.next();
-        }
-
-        @Override
         public TagDecl getPreviousDeclaration()
         {
-            return redeclarator.getPreviousDeclaration();
+            if(redeclLink.nextIsPrevious())
+                return redeclLink.getNext();
+            return null;
         }
-
         @Override
         public TagDecl getFirstDeclaration()
         {
-            return redeclarator.getFirstDeclaration();
+            TagDecl cur = this;
+            TagDecl prev;
+            while ((prev = cur.getPreviousDeclaration()) != null)
+            {
+                cur = prev.getPreviousDeclaration();
+            }
+            return cur;
         }
-
         @Override
         public void setPreviousDeclaration(TagDecl prevDecl)
         {
-            redeclarator.setPreviousDeclaration(prevDecl);
+            TagDecl first;
+            if (prevDecl != null)
+            {
+                redeclLink = new DeclLink.PreviousDeclLink<TagDecl>(prevDecl);
+                first = prevDecl.getFirstDeclaration();
+                assert first.redeclLink.nextIsLatest():"Expected first!";
+            }
+            else
+            {
+                first = this;
+            }
+            first.redeclLink = new DeclLink.LatestDeclLink<>(this);
+        }
+
+        @Override
+        public DeclLink<TagDecl> getRedeclLink()
+        {
+            return redeclLink;
+        }
+
+        @Override
+        public RedeclIterator<TagDecl> getRedeclIterator()
+        {
+            return new <TagDecl>RedeclIterator(this);
         }
 
         @Override

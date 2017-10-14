@@ -16,17 +16,37 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import java.util.Iterator;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface Redeclarable<T extends Redeclarable> extends Iterator<T>
+public interface Redeclarable<T extends Redeclarable<T>>
 {
+    /**
+     * Gets the previous declaration in the redeclaration link.
+     * This function is performed by searching link from latest to older decl.
+     * @return
+     */
     T getPreviousDeclaration();
 
+    /**
+     * Gets the first one that is the older declaration in the link.
+     * @return
+     */
     T getFirstDeclaration();
 
+    /**
+     * Sets the given prevDecl as the value of previous redecl link that will
+     * linked to it.
+     * @param prevDecl
+     */
     void setPreviousDeclaration(T prevDecl);
+
+    /**
+     * Obtains a iterator over redeclarations.
+     * @return
+     */
+    RedeclIterator getRedeclIterator();
+
+    DeclLink<T> getRedeclLink();
 }
