@@ -83,7 +83,7 @@ public interface IStmtVisitor<T>
     // Unary operator.
     T visitUnaryExpr(UnaryExpr expr);
 
-    T visitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr expr);
+    T visitSizeofAlignofExpr(SizeOfAlignOfExpr expr);
 
     // postfix operator
     T visitImplicitCastExpr(ImplicitCastExpr expr);

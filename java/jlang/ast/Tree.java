@@ -48,179 +48,9 @@ import static jlang.sema.UnaryOperatorKind.*;
  * @version 1.0
  *
  */
-public abstract class Tree
+public abstract class Tree implements StmtClass
 {
-	/*
-	 * TopLevel nodes, of jlang.type TopLevel, representing entire source files.
-	 */
-	public static final int TopLevelClass = 1;
-
-	public static final int ImportStmtClass = TopLevelClass + 1;
-
-	public static final int SelectExprClass = ImportStmtClass + 1;
-
-	/**
-	 * FunctionProto definitions, of jlang.type MethodDef.
-	 */
-	public static final int MethodDefStmtClass = SelectExprClass + 1;
-
-	/**
-	 * GlobalVariable definitions, of jlang.type VarDef.
-	 */
-	public static final int VarDefStmtClass = MethodDefStmtClass + 1;
-
-	/**
-	 * The no-op statement ";", of jlang.type NullStmt.
-	 */
-	public static final int NullStmtClass = VarDefStmtClass + 1;
-
-    public static final int DeclStmtClass = NullStmtClass + 1;
-
-	/**
-	 * Blocks, of jlang.type CompoundStmt.
-	 */
-	public static final int CompoundStmtClass = DeclStmtClass + 1;
-
-	/**
-	 * Do-while loop statement, of jlang.type Doloop.
-	 */
-	public static final int DoStmtClass = CompoundStmtClass + 1;
-
-	/**
-	 * While loop statement, of jlang.type Whileloop.
-	 */
-	public static final int WhileStmtClass = DoStmtClass + 1;
-
-	/**
-	 * For-loop, of jlang.type Forloop.
-	 */
-	public static final int ForStmtClass = WhileStmtClass + 1;
-
-	/**
-	 * LabelStmt statement, of jlang.type LabelStmt.
-	 */
-	public static final int LabelledStmtClass = ForStmtClass + 1;
-
-	/**
-	 * SwitchStmt statement, of jlang.type SwitchStmt.
-	 */
-	public static final int SwitchStmtClass = LabelledStmtClass + 1;
-
-	/**
-	 * CaseStmt portions in switch statement, of jlang.type CaseStmt.
-	 */
-	public static final int CaseStmtClass = SwitchStmtClass + 1;
-
-    public static final int DefaultStmtClass = CaseStmtClass + 1;
-
-	/**
-	 * ConditionalExpr expression, of jlang.type ConditionalExpr.
-	 */
-	public static final int ConditionalOperatorClass = DefaultStmtClass + 1;
-
-	/**
-	 * IfStmt statements, of jlang.type IfStmt.
-	 */
-	public static final int IfStmtClass = ConditionalOperatorClass + 1;
-
-	/**
-	 * Expression statements, of jlang.type Exec.
-	 */
-	public static final int ExprStmtClass = IfStmtClass + 1;
-
-	/**
-	 * BreakStmt statements, of jlang.type BreakStmt.
-	 */
-	public static final int BreakStmtClass = ExprStmtClass + 1;
-
-	public static final int GotoStmtClass = BreakStmtClass + 1;
-
-	/**
-	 * ContinueStmt statements, of jlang.type ContinueStmt.
-	 */
-	public static final int ContinueStmtClass = GotoStmtClass + 1;
-
-	/**
-	 * ReturnInst statements, of jlang.type ReturnInst.
-	 */
-	public static final int ReturnStmtClass = ContinueStmtClass + 1;
-
-	/**
-	 * FunctionProto invocation expressions, of jlang.type CallExpr.
-	 */
-	public static final int CallExprClass = ReturnStmtClass + 1;
-
-	/**
-	 * Parenthesized subexpressions of jlang.type ParenExpr.
-	 */
-	public static final int ParenExprClass = CallExprClass + 1;
-
-    public static final int ParenListExprClass = ParenExprClass + 1;
-
-
-    public static final int InitListExprClass = ParenListExprClass + 1;
-
-	/**
-	 * Implicit jlang.type cast expressions.
-	 */
-	public static final int ImplicitCastClass = InitListExprClass + 1;
-
-    public static final int ExplicitCastClass = ImplicitCastClass + 1;
-
-	/**
-	 * ArraySubscriptExpr array expression, of jlang.type ArraySubscriptExpr.
-	 */
-	public static final int ArraySubscriptExprClass = ExplicitCastClass + 1;
-
-	/**
-	 * Simple identifiers, of jlang.type DeclRefExpr.
-	 */
-	public static final int DeclRefExprClass = ArraySubscriptExprClass + 1;
-
     /**
-     * Assignment expressions, of jlang.type Assign.
-     */
-    public static final int AssignExprOperatorClass = DeclRefExprClass + 1;
-
-    /**
-     * Assignment operators, of jlang.type OpAssign.
-     */
-    public static final int CompoundAssignOperatorClass = AssignExprOperatorClass
-            + 1;
-
-	/**
-	 * UnaryExpr operators, of jlang.type UnaryExpr.
-	 */
-	public static final int UnaryOperatorClass = CompoundAssignOperatorClass + 1;
-
-	public static final int UnaryExprOrTypeTraitClass = UnaryOperatorClass + 1;
-
-	/**
-	 * BinaryExpr operators, of jlang.type BinaryExpr.
-	 */
-	public static final int BinaryOperatorClass = UnaryExprOrTypeTraitClass + 1;
-
-	public static final int MemberExprClass = BinaryOperatorClass + 1;
-
-	public static final int CompoundLiteralExprClass = MemberExprClass + 1;
-
-    public static final int IntegerLiteralClass = CompoundLiteralExprClass + 1;
-
-    public static final int FloatLiteralClass = IntegerLiteralClass + 1;
-
-    public static final int CharacterLiteralClass = FloatLiteralClass + 1;
-
-    public static final int StringLiteralClass = CharacterLiteralClass + 1;
-
-    public static final int SizeOfAlignOfExprClass = StringLiteralClass + 1;
-
-    public static final int StmtExprClass = SizeOfAlignOfExprClass + 1;
-
-    public static final int DesignatedInitExprClass = StmtExprClass + 1;
-
-    public static final int ImplicitValueInitExprClass = DesignatedInitExprClass + 1;
-
-	/**
 	 * A further classification of the kind of object referenced by an
 	 * l-value or x-value.
 	 */
@@ -322,6 +152,30 @@ public abstract class Tree
     }
 
 	/**
+	 * Gets the number of children stmt enclosed in this stmt.
+	 * @return
+	 */
+	public int getNumChildren()
+    {
+    	return 0;
+    }
+
+	/**
+	 * Obtains the children stmt in the specified position.
+	 * @param index
+	 * @return
+	 */
+	public Tree getChildren(int index)
+    {
+    	return null;
+    }
+
+    public String getStmtClassName()
+    {
+        return StmtClassNames[stmtClass];
+    }
+
+	/**
 	 * Everything in one source file is kept in a TopLevel structure.
 	 *
 	 * @author Xlous.zeng
@@ -357,6 +211,28 @@ public abstract class Tree
         @Override
 		public void accept(StmtVisitor v)
 		{
+		}
+
+		/**
+		 * Gets the number of children stmt enclosed in this stmt.
+		 * @return
+		 */
+		@Override
+		public int getNumChildren()
+		{
+			return decls.size();
+		}
+
+		/**
+		 * Obtains the children stmt in the specified position.
+		 * @param index
+		 * @return
+		 */
+		@Override
+		public Tree getChildren(int index)
+		{
+			assert index >= 0 && index < decls.size();
+			return decls.get(index);
 		}
 	}
 
@@ -552,6 +428,27 @@ public abstract class Tree
 		{
 			return lBraceLoc;
 		}
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return getBody().length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return stats[index];
+        }
     }
 
 	/**
@@ -591,8 +488,11 @@ public abstract class Tree
 	 */
 	public static class DoStmt extends Stmt
 	{
-		public Stmt body;
-		public Expr cond;
+	    private static final int BODY = 0;
+	    private static final int COND = 1;
+	    private static final int END_EXPR = 2;
+
+	    private Stmt[] subExprs;
         public SourceLocation doLoc, whileLoc, rParenLoc;
 
 		public DoStmt(Stmt body, Expr cond,
@@ -601,8 +501,9 @@ public abstract class Tree
 				SourceLocation rParenLoc)
 		{
 			super(DoStmtClass);
-			this.body = body;
-			this.cond = cond;
+			subExprs = new Stmt[END_EXPR];
+			subExprs[BODY] = body;
+			subExprs[COND] = cond;
             this.doLoc = doLoc;
             this.whileLoc = whileLoc;
             this.rParenLoc = rParenLoc;
@@ -618,18 +519,24 @@ public abstract class Tree
 			v.visitDoStmt(this);
 		}
 
-        public Stmt getBody(){return body;}
+        public Stmt getBody()
+        {
+            return subExprs[BODY];
+        }
 
         public void setBody(Stmt body)
         {
-            this.body = body;
+            subExprs[BODY] = body;
         }
 
-        public Expr getCond(){return cond;}
+        public Expr getCond()
+        {
+            return (Expr) subExprs[COND];
+        }
 
         public void setCond(Expr cond)
         {
-            this.cond = cond;
+            subExprs[COND] = cond;
         }
 
         public SourceLocation getDoLoc()
@@ -661,90 +568,145 @@ public abstract class Tree
         {
             this.rParenLoc = rParenLoc;
         }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExprs[index];
+        }
     }
 
 	/**
 	 * A for loop.
 	 */
 	public static class ForStmt extends Stmt
-	{
-		public Stmt init;
-		public Expr cond;
-		public Expr step;
-		public Stmt body;
+    {
+        private final static int INIT = 0;
+        private final static int COND = 1;
+        private final static int STEP = 2;
+        private final static int BODY = 3;
+        private final static int END_EXPR = 4;
+
+        private Stmt[] subExprs;
         public final SourceLocation lParenLoc, rParenLoc, forLoc;
 
-		public ForStmt(SourceLocation forLoc,
-				SourceLocation lParenLoc,
-                Stmt init,
-				Expr cond,
-				Expr step,
-				Stmt body,
-				SourceLocation rParenLoc)
-		{
-			super(ForStmtClass);
-			this.init = init;
-			this.cond = cond;
-			this.step = step;
-			this.body = body;
+        public ForStmt(SourceLocation forLoc, SourceLocation lParenLoc,
+                Stmt init, Expr cond, Expr step, Stmt body, SourceLocation rParenLoc)
+        {
+            super(ForStmtClass);
+            subExprs = new Stmt[END_EXPR];
+            subExprs[INIT] = init;
+            subExprs[COND] = cond;
+            subExprs[STEP] = step;
+            subExprs[BODY] = body;
             this.lParenLoc = lParenLoc;
             this.forLoc = forLoc;
             this.rParenLoc = rParenLoc;
-		}
+        }
 
-		public void accept(StmtVisitor v)
-		{
-			v.visitForStmt(this);
-		}
+        public void accept(StmtVisitor v)
+        {
+        }
 
-        public Stmt getInit() {return init;}
+        public Stmt getInit()
+        {
+            return subExprs[INIT];
+        }
 
         public void setInit(Stmt init)
         {
-            this.init = init;
+            subExprs[INIT] = init;
         }
 
-        public Expr getCond() {return cond;}
+        public Expr getCond()
+        {
+            return (Expr) subExprs[COND];
+        }
 
         public void setCond(Expr cond)
         {
-            this.cond = cond;
+            subExprs[COND] = cond;
         }
 
-        public Expr getStep() {return step;}
+        public Expr getStep()
+        {
+            return (Expr) subExprs[STEP];
+        }
 
         public void setStep(Expr step)
         {
-            this.step = step;
+            subExprs[STEP] = step;
         }
 
-        public Stmt getBody() {return body;}
+        public Stmt getBody()
+        {
+            return subExprs[BODY];
+        }
 
         public void setBody(Stmt body)
         {
-            this.body = body;
+            subExprs[BODY] = body;
         }
 
-        @Override
-        public SourceRange getSourceRange()
+        @Override public SourceRange getSourceRange()
         {
-            return new SourceRange(forLoc, body.getLocEnd());
+            return new SourceRange(forLoc, getBody().getLocEnd());
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         *
+         * @return
+         */
+        @Override public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         *
+         * @param index
+         * @return
+         */
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExprs[index];
         }
     }
-
 	/**
 	 * A while loop
 	 */
 	public static class WhileStmt extends Stmt
 	{
-		public Expr cond;
-		public Stmt body;
+	    private final static int COND = 0;
+	    private final static int BODY = 1;
+	    private final static int END_EXPR = 2;
+	    private Stmt[] subExprs;
+
         public SourceLocation whileLoc;
 		public WhileStmt(Expr cond, Stmt body, SourceLocation whileLoc)
 		{
 			super(WhileStmtClass);
-			this.cond = cond;
-			this.body = body;
+			subExprs = new Stmt[END_EXPR];
+			subExprs[COND] = cond;
+			subExprs[BODY] = body;
             this.whileLoc = whileLoc;
 		}
 
@@ -753,18 +715,24 @@ public abstract class Tree
 			v.visitWhileStmt(this);
 		}
 
-        public Expr getCond(){return cond;}
+        public Expr getCond()
+        {
+            return (Expr) subExprs[COND];
+        }
 
         public void setCond(Expr cond)
         {
-            this.cond = cond;
+            subExprs[COND] = cond;
         }
 
-        public Stmt getBody(){return body;}
+        public Stmt getBody()
+        {
+            return subExprs[BODY];
+        }
 
         public void setBody(Stmt body)
         {
-            this.body = body;
+            subExprs[BODY] = body;
         }
 
         public SourceLocation getWhileLoc()
@@ -780,7 +748,28 @@ public abstract class Tree
         @Override
         public SourceRange getSourceRange()
         {
-            return new SourceRange(whileLoc, body.getLocEnd());
+            return new SourceRange(whileLoc, getBody().getLocEnd());
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        public Tree getChildren(int index)
+        {
+            assert index >=0 && index < getNumChildren();
+            return subExprs[index];
         }
     }
 
@@ -833,6 +822,28 @@ public abstract class Tree
         {
             return new SourceRange(identLoc, body.getLocEnd());
         }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return body;
+        }
     }
 
 	/**
@@ -840,9 +851,12 @@ public abstract class Tree
 	 */
 	public static class IfStmt extends Stmt
 	{
-		private Expr cond;
-		private Stmt thenpart;
-		private Stmt elsepart;
+        private static final int COND = 0;
+        private static final int THEN = 1;
+        private static final int ELSE = 2;
+        private static final int END_EXPR = 3;
+
+        private Stmt[] subStmts;
         private SourceLocation ifLoc;
         private SourceLocation elseLoc;
 
@@ -863,9 +877,10 @@ public abstract class Tree
                 SourceLocation elseLoc)
 		{
 			super(IfStmtClass);
-			this.cond = cond;
-			this.thenpart = thenpart;
-			this.elsepart = elsepart;
+			subStmts = new Stmt[END_EXPR];
+			subStmts[COND] = cond;
+			subStmts[THEN] = thenpart;
+			subStmts[ELSE] = elsepart;
             this.ifLoc = ifLoc;
             this.elseLoc = elseLoc;
 		}
@@ -874,37 +889,71 @@ public abstract class Tree
 
 		public Expr getCond()
 		{
-			return cond;
+			return (Expr) subStmts[COND];
 		}
 
-        public Stmt getThenpart()
+        public Stmt getThenPart()
         {
-            return thenpart;
+            return subStmts[THEN];
         }
 
-        public Stmt getElsepart()
+		public Stmt getElsePart()
         {
-            return elsepart;
+            return subStmts[ELSE];
         }
 
-        public Stmt getThenPart() {return thenpart;}
-
-		public Stmt getElsePart() {return elsepart;}
-
-		public SourceLocation getIfLoc() {return  ifLoc;}
+		public SourceLocation getIfLoc()
+        {
+            return  ifLoc;
+        }
 
         public SourceLocation getElseLoc()
         {
             return elseLoc;
         }
 
+        public void setCond(Expr val)
+        {
+            subStmts[COND] = val;
+        }
+
+        public void setThenPart(Stmt then)
+        {
+            subStmts[THEN] = then;
+        }
+
+        public void setElsePart(Stmt then)
+        {
+            subStmts[ELSE] = then;
+        }
+
         @Override
         public SourceRange getSourceRange()
         {
-            if (elsepart == null)
-                return new SourceRange(ifLoc, elsepart.getLocEnd());
+            if (getElsePart() != null)
+                return new SourceRange(ifLoc, getElsePart().getLocEnd());
             else
-                return new SourceRange(ifLoc, thenpart.getLocEnd());
+                return new SourceRange(ifLoc, getThenPart().getLocEnd());
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        public int getNumChildren()
+        {
+            return subStmts.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        public Tree getChildren(int index)
+        {
+            assert index >=0 && index < getNumChildren();
+            return subStmts[index];
         }
     }
 
@@ -913,10 +962,15 @@ public abstract class Tree
 	 */
 	public static class SwitchStmt extends Stmt
 	{
-		private Expr cond;
+	    private final static int COND = 0;
+	    private final static int BODY = 1;
+	    private final static int END_EXPR = 2;
+
+	    private Stmt[] subExprs;
+
         // This points to a linked list of case and default statements.
 		private SwitchCase firstCase;
-        private Stmt body;
+
         private SourceLocation switchLoc;
         /**
          * A flag which indicates whether all enum values are covered in current
@@ -927,28 +981,29 @@ public abstract class Tree
 		public SwitchStmt(Expr cond, SourceLocation switchLoc)
 		{
 			super(SwitchStmtClass);
-            this.cond = cond;
+			subExprs = new Stmt[END_EXPR];
+			subExprs[COND] = cond;
             this.switchLoc = switchLoc;
 		}
 
 		public void setBody(Stmt body)
         {
-            this.body = body;
+            subExprs[BODY] = body;
         }
 
         public Stmt getBody()
         {
-            return body;
+            return subExprs[BODY];
         }
 
         public Expr getCond()
         {
-            return cond;
+            return (Expr) subExprs[COND];
         }
 
         public void setCond(Expr cond)
         {
-            this.cond = cond;
+            subExprs[COND] = cond;
         }
 
         public SourceLocation getSwitchLoc()
@@ -992,7 +1047,27 @@ public abstract class Tree
         @Override
         public SourceRange getSourceRange()
         {
-            return new SourceRange(switchLoc, body.getLocEnd());
+            return new SourceRange(switchLoc, subExprs[BODY].getLocEnd());
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        public Tree getChildren(int index)
+        {
+            assert index >=0 && index < getNumChildren();
+            return subExprs[index];
         }
     }
 
@@ -1030,20 +1105,25 @@ public abstract class Tree
 	 */
 	public static class CaseStmt extends SwitchCase
     {
-        public Expr value;
-        public Stmt subStmt;
+        private static final int LHS = 0;
+        private static final int SUBSTMT = 1;
+        private static final int END_EXPR = 2;
+
+        private Stmt[] subExprs;
+
         public final SourceLocation caseLoc;
         public final SourceLocation colonLoc;
 
         public CaseStmt(
-		        Expr value,
+		        Expr lhs,
 		        Stmt caseBody,
 		        SourceLocation caseLoc,
 		        SourceLocation colonLoc)
         {
             super(CaseStmtClass);
-            this.value = value;
-            this.subStmt = caseBody;
+            subExprs = new Stmt[END_EXPR];
+            subExprs[LHS] = lhs;
+            subExprs[SUBSTMT] = caseBody;
             this.caseLoc = caseLoc;
             this.colonLoc = colonLoc;
         }
@@ -1065,17 +1145,22 @@ public abstract class Tree
 
         public Stmt getSubStmt()
         {
-            return subStmt;
+            return subExprs[SUBSTMT];
         }
 
         public Expr getCondExpr()
         {
-            return value;
+            return (Expr)subExprs[LHS];
         }
 
         public void setCondExpr(Expr val)
         {
-            value = val;
+            subExprs[LHS] = val;
+        }
+
+        public void setSubStmt(Stmt stmt)
+        {
+            subExprs[SUBSTMT] = stmt;
         }
 
         @Override
@@ -1086,6 +1171,28 @@ public abstract class Tree
                 cs = (CaseStmt) cs.getSubStmt();
 
             return new SourceRange(caseLoc, cs.getSubStmt().getLocEnd());
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return END_EXPR;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExprs[index];
         }
     }
 
@@ -1102,6 +1209,7 @@ public abstract class Tree
             super(DefaultStmtClass);
             this.defaultLoc =defaultLoc;
             this.colonLoc = colonLoc;
+            this.subStmt = subStmt;
         }
 
         @Override
@@ -1130,6 +1238,28 @@ public abstract class Tree
         public SourceRange getSourceRange()
         {
             return new SourceRange(defaultLoc, subStmt.getLocEnd());
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subStmt;
         }
     }
 
@@ -1165,6 +1295,28 @@ public abstract class Tree
         public SourceRange getSourceRange()
         {
             return new SourceRange(breakLoc);
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 0;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return null;
         }
     }
 
@@ -1257,6 +1409,27 @@ public abstract class Tree
         {
             return new SourceRange(continueLoc);
         }
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 0;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return null;
+        }
     }
 
 	/**
@@ -1311,6 +1484,26 @@ public abstract class Tree
                 return new SourceRange(returnloc, retValue.getLocEnd());
             else
                 return new SourceRange(returnloc);
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        public int getNumChildren()
+        {
+            return retValue != null ? 1 : 0;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        public Tree getChildren(int index)
+        {
+            assert index >=0 && index < getNumChildren();
+            return retValue;
         }
     }
 
@@ -2365,7 +2558,8 @@ public abstract class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+        public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(getExprLocation());
 	    }
@@ -2579,6 +2773,27 @@ public abstract class Tree
         {
             return subExpr;
         }
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExpr;
+        }
     }
 
     public static class ParenListExpr extends Expr
@@ -2626,10 +2841,33 @@ public abstract class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+        public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(lParenLoc, rParenLoc);
 	    }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return exprs.size();
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return exprs.get(index);
+        }
     }
 
     //===============================================================//
@@ -2655,8 +2893,31 @@ public abstract class Tree
             this.expr = expr;
             this.castKind = castKind;
         }
+
         public CastKind getCastKind() { return castKind; }
         public Expr getSubExpr() { return expr;}
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return expr;
+        }
     }
 
     /**
@@ -2782,6 +3043,10 @@ public abstract class Tree
      */
     public static class ArraySubscriptExpr extends Expr
     {
+        private final static int LHS = 0;
+        private final static int RHS = 1;
+        private final static int END_EXPR = 2;
+
         private Expr[] subExprs;
         private SourceLocation rBracketLoc;
 
@@ -2793,9 +3058,9 @@ public abstract class Tree
                 SourceLocation rBracketLoc)
         {
             super(ArraySubscriptExprClass, t, OK_Ordinary, valueKind, rBracketLoc);
-            subExprs = new Expr[2];
-            subExprs[0] = indexed;
-            subExprs[1] = index;
+            subExprs = new Expr[END_EXPR];
+            subExprs[LHS] = indexed;
+            subExprs[RHS] = index;
             this.rBracketLoc = rBracketLoc;
         }
 
@@ -2806,22 +3071,22 @@ public abstract class Tree
 
         public Expr getLHS()
         {
-            return subExprs[0];
+            return subExprs[LHS];
         }
 
         public void setLHS(Expr e)
         {
-            subExprs[0] = e;
+            subExprs[LHS] = e;
         }
 
         public Expr getRHS()
         {
-            return subExprs[1];
+            return subExprs[RHS];
         }
 
         public void setRHS(Expr e)
         {
-            subExprs[1] = e;
+            subExprs[RHS] = e;
         }
 
         public Expr getBase()
@@ -2854,6 +3119,28 @@ public abstract class Tree
         {
             v.visitArraySubscriptExpr(this);
         }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExprs[index];
+        }
     }
 
     /**
@@ -2863,14 +3150,10 @@ public abstract class Tree
 	 */
 	public static final class CallExpr extends Expr
 	{
-		/**
-		 * The getIdentifier of callee method.
-		 */
-		public Expr fn;
-		/**
-		 * The formal parameters list.
-		 */
-		public ArrayList<Expr> args;
+	    private static final int Fn = 0;
+	    private static final int PREARGS_START = 1;
+
+	    private Stmt[] subExprs;
 
 		SourceLocation rparenLoc;
 
@@ -2881,8 +3164,11 @@ public abstract class Tree
                 SourceLocation rparenLoc)
 		{
 			super(CallExprClass, resultType, OK_Ordinary, vk, rparenLoc);
-			this.fn = fn;
-			this.args = args;
+			subExprs = new Stmt[args.size() + 1];
+			subExprs[Fn] = fn;
+			for (int i = 0, e = args.size(); i != e; i++)
+			    subExprs[i+1] = args.get(i);
+
 			this.rparenLoc = rparenLoc;
 		}
 
@@ -2893,12 +3179,12 @@ public abstract class Tree
 
         public Expr getCallee()
         {
-            return fn;
+            return (Expr)subExprs[Fn];
         }
 
         public void setCallee(Expr fn)
         {
-            this.fn = fn;
+            subExprs[Fn] = fn;
         }
 
         public Decl getCalleeDecl()
@@ -2936,25 +3222,27 @@ public abstract class Tree
 
         public ArrayList<Expr> getArgs()
         {
-            return args;
+            ArrayList<Expr> res = new ArrayList<>();
+            for (int i = PREARGS_START; i < subExprs.length; i++)
+                res.add((Expr) subExprs[i]);
+            return res;
         }
 
         public Expr getArgAt(int idx)
         {
-            assert idx>= 0 && idx<args.size():"Arg access out of range!";
-            return args.get(idx);
+            assert idx>= 0 && idx< subExprs.length - PREARGS_START:"Arg access out of range!";
+            return (Expr) subExprs[idx + 1];
         }
 
         public void setArgAt(int idx, Expr e)
         {
-            assert idx>= 0 && idx<args.size():"Arg access out of range!";
-            args.set(idx, e);
+            assert idx>= 0 && idx< subExprs.length - 1:"Arg access out of range!";
+            subExprs[idx + 1] = e;
         }
 
         public int getNumCommas()
         {
-            return args != null && !args.isEmpty()
-                    ? args.size() - 1 :0;
+            return subExprs != null && subExprs.length > 1 ? subExprs.length - 1:0;
         }
 
         public QualType getCallReturnType()
@@ -2984,7 +3272,7 @@ public abstract class Tree
 
 		public int getNumArgs()
 		{
-			return args.size();
+			return subExprs.length - PREARGS_START;
 		}
 
 		/**
@@ -3000,18 +3288,39 @@ public abstract class Tree
 
 			if (numArgs < getNumArgs())
 			{
-				for (int i = numArgs, e = getNumArgs(); i < e; i++)
-					args.remove(i);
-
-				args.trimToSize();
+				Stmt[] tmp = new Stmt[numArgs+PREARGS_START];
+				tmp[Fn] = subExprs[Fn];
+				System.arraycopy(subExprs, 1, tmp, 1, numArgs);
+				subExprs = tmp;
 				return;
 			}
-			// Otherwise, null out new args.
-			for (int i = numArgs - getNumArgs(); i != 0; --i)
-			{
-				args.add(null);
-			}
+            // Otherwise, null out new args.
+			Stmt[] tmp = new Stmt[numArgs];
+			System.arraycopy(subExprs, 0, tmp, 0, subExprs.length);
+			subExprs = tmp;
 		}
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExprs[index];
+        }
 	}
 
     /**
@@ -3206,6 +3515,28 @@ public abstract class Tree
 			    return init.getSourceRange();
 		    return new SourceRange(lParenLoc, init.getLocEnd());
 	    }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return init;
+        }
     }
 
 	/**
@@ -3322,12 +3653,39 @@ public abstract class Tree
 		{
 			loc = opLoc;
 		}
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExpr;
+        }
 	}
 
+    /**
+     * Expression with either a type or (unevaluated)
+     * expression operand.  Used for sizeof/alignof (C99 6.5.3.4) and
+     * vec_step (OpenCL 1.1 6.11.12).
+     */
 	public static final class UnaryExprOrTypeTraitExpr extends Expr
     {
         /**
-         * true if operand is a jlang.type, false if it is an expression.
+         * true if operand is a type, false if it is an expression.
          */
         private boolean isType;
         private UnaryExprOrTypeTrait kind;
@@ -3365,7 +3723,6 @@ public abstract class Tree
         @Override
         public void accept(StmtVisitor v)
         {
-            v.visitUnaryExprOrTypeTraitExpr(this);
         }
 
 	    /**
@@ -3374,10 +3731,44 @@ public abstract class Tree
 	     *
 	     * @return
 	     */
-	    @Override public SourceRange getSourceRange()
+	    @Override
+        public SourceRange getSourceRange()
 	    {
 		    return new SourceRange(opLoc, rParenLoc);
 	    }
+
+	    public boolean isArgumentType()
+        {
+            return isType;
+        }
+
+        QualType getArgumentType()
+        {
+            return ty;
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            assert false:"Should not reaching here";
+            return 0;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert false:"Should not reaching here";
+            return null;
+        }
     }
 
 	/**
@@ -3520,6 +3911,28 @@ public abstract class Tree
 		{
 			return new SourceRange(lhs.getLocStart(), rhs.getLocEnd());
 		}
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 2;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return index == 0 ? lhs : rhs;
+        }
 	}
 
     /**
@@ -3580,9 +3993,12 @@ public abstract class Tree
      */
     public static class ConditionalExpr extends Expr
     {
-        public Expr cond;
-        public Expr truepart;
-        public Expr falsepart;
+        private final static int COND = 0;
+        private final static int TRUE = 1;
+        private final static int FALSE = 2;
+        private final static int END_EXPR = 3;
+        private Stmt[] subExprs;
+
         private SourceLocation qLoc, cLoc;
         public ConditionalExpr(Expr cond, SourceLocation qLoc,
                 Expr lhs,
@@ -3592,9 +4008,10 @@ public abstract class Tree
                 ExprValueKind vk)
         {
             super(ConditionalOperatorClass, t, OK_Ordinary, vk, cond.getExprLocation());
-            this.cond = cond;
-            truepart = lhs;
-            falsepart = rhs;
+            subExprs = new Stmt[END_EXPR];
+            subExprs[COND] = cond;
+            subExprs[TRUE] = lhs;
+            subExprs[FALSE] = rhs;
             this.qLoc = qLoc;
             this.cLoc = cLoc;
         }
@@ -3606,17 +4023,17 @@ public abstract class Tree
 
         public Expr getCond()
         {
-            return cond;
+            return (Expr)subExprs[COND];
         }
 
         public Expr getTrueExpr()
         {
-            return truepart;
+            return (Expr) subExprs[TRUE];
         }
 
         public Expr getFalseExpr()
         {
-            return falsepart;
+            return (Expr)subExprs[FALSE];
         }
 
 	    /**
@@ -3628,8 +4045,29 @@ public abstract class Tree
 	    @Override
 	    public SourceRange getSourceRange()
 	    {
-		    return new SourceRange(cond.getLocStart(), falsepart.getLocEnd());
+		    return new SourceRange(getCond().getLocStart(), getFalseExpr().getLocEnd());
 	    }
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExprs[index];
+        }
     }
 
     /**
@@ -3831,6 +4269,28 @@ public abstract class Tree
         {
             lBraceLoc = loc;
         }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return initExprs.size();
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return initExprs.get(index);
+        }
     }
 
     /**
@@ -3957,6 +4417,38 @@ public abstract class Tree
 		{
 			return rParenLoc;
 		}
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            if (isArgumentType())
+            {
+                assert false:"Should not reaching here";
+                return 0;
+            }
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            if (isArgumentType())
+            {
+                assert false:"Should not reaching here";
+                return null;
+            }
+            return getArgumentExpr();
+        }
 	}
 
 	/**
@@ -4005,7 +4497,7 @@ public abstract class Tree
             return lParenLoc;
         }
 
-        public void setlParenLoc(SourceLocation loc)
+        public void setLParenLoc(SourceLocation loc)
         {
             lParenLoc = loc;
         }
@@ -4015,9 +4507,31 @@ public abstract class Tree
             return rParenLoc;
         }
 
-        public void setrParenLoc(SourceLocation loc)
+        public void setRParenLoc(SourceLocation loc)
         {
             rParenLoc = loc;
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return 1;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subStmt;
         }
     }
 
@@ -4445,6 +4959,28 @@ public abstract class Tree
             if (d.isArrayRangeDesignator())
                 return subExprs[d.getFirstExprIndex()+1];
             return null;
+        }
+
+        /**
+         * Gets the number of children stmt enclosed in this stmt.
+         * @return
+         */
+        @Override
+        public int getNumChildren()
+        {
+            return subExprs.length;
+        }
+
+        /**
+         * Obtains the children stmt in the specified position.
+         * @param index
+         * @return
+         */
+        @Override
+        public Tree getChildren(int index)
+        {
+            assert index >= 0 && index < getNumChildren();
+            return subExprs[index];
         }
     }
 }

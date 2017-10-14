@@ -146,8 +146,8 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
 				return visitSwitchStmt((SwitchStmt)s);
 			case Tree.TopLevelClass:
 				break;
-			case Tree.UnaryExprOrTypeTraitClass:
-				return visitUnaryExprOrTypeTraitExpr((UnaryExprOrTypeTraitExpr)s);
+			case StmtClass.SizeOfAlignOfExprClass:
+				return visitSizeofAlignofExpr((SizeOfAlignOfExpr) s);
 			case Tree.WhileStmtClass:
 				return visitWhileStmt((WhileStmt)s);
 		}
@@ -301,7 +301,7 @@ public abstract class StmtVisitor<T> implements IStmtVisitor<T>
     // Unary operator.
     public T visitUnaryExpr(UnaryExpr expr) {return visitStmt(expr);}
 
-    public T visitUnaryExprOrTypeTraitExpr(UnaryExprOrTypeTraitExpr expr) {return visitStmt(expr);}
+    public T visitSizeofAlignofExpr(SizeOfAlignOfExpr expr) {return visitStmt(expr);}
 
     // postfix operator
     public T visitImplicitCastExpr(ImplicitCastExpr expr) {return visitStmt(expr);}

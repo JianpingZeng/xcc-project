@@ -402,7 +402,7 @@ public class StmtPrinter extends StmtVisitor<Void>
         return visitStmt(expr);
     }
 
-    public Void visitUnaryExprOrTypeTraitExpr(Tree.UnaryExprOrTypeTraitExpr expr)
+    public Void visitSizeofAlignofExpr(Tree.UnaryExprOrTypeTraitExpr expr)
     {
         assert false:"Should not handle TypeTraitExpr";
         return null;

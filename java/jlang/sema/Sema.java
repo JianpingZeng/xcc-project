@@ -3621,7 +3621,7 @@ public final class Sema implements DiagnosticParseTag,
     {
         assert caseStmt != null && caseStmt instanceof CaseStmt;
         CaseStmt cs = (CaseStmt) caseStmt;
-        cs.subStmt = subStmt;
+        cs.setSubStmt(subStmt);
     }
 
     public ActionResult<Stmt> actOnDefaultStmt(
