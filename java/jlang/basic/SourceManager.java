@@ -941,7 +941,7 @@ public class SourceManager
         // increasing the offset of each SLocEntry.
         while (true)
         {
-            int middleIndex = (greaterIndex - lessIndex) / 2;
+            int middleIndex = (greaterIndex - lessIndex) / 2 + lessIndex;
             int middleOffset = getSLocEntry(new FileID(middleIndex)).getOffset();
 
             ++numProbes;

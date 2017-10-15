@@ -21,6 +21,6 @@ int main(int argc, char *argv[])
   if (argc != 2)
     return 0;
   float a = atof(argv[1]);
-	printf("sqrt(%f) = %f\n", a, sqrt2(a)); 
-	return 0;
+  printf("sqrt(%f) = %f\n", a, sqrt2(a));
+  return 0;
 }

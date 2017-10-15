@@ -2756,7 +2756,7 @@ public abstract class Tree implements StmtClass
 
         public ParenExpr(Expr expr, SourceLocation l, SourceLocation r)
         {
-            super(ParenExprClass, l);
+            super(ParenExprClass, expr.getType(), OK_Ordinary, EVK_RValue, l);
             this.subExpr = expr;
             lParenLoc = l;
             rParenLoc = r;

@@ -1568,12 +1568,12 @@ public class Parser implements Tag,
         // the case for C90.  Star the loop scope.
         int scopeFlags = 0;
         if (getLangOption().c99)
-            scopeFlags = ScopeFlags.BlockScope.value
+            scopeFlags = ScopeFlags.BreakScope.value
                 | ScopeFlags.ContinueScope.value
                 | ScopeFlags.ControlScope.value
                 | DeclScope.value;
         else
-            scopeFlags = ScopeFlags.BlockScope.value
+            scopeFlags = ScopeFlags.BreakScope.value
                     | ScopeFlags.ContinueScope.value;
 
         ParseScope whileScope = new ParseScope(this, scopeFlags);

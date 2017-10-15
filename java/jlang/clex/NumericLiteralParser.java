@@ -155,6 +155,7 @@ public class NumericLiteralParser
         tokenStr = new char[literal.length];
         System.arraycopy(literal, 0, tokenStr, 0, literal.length);
         this.pp = pp;
+        curPos = 0;
 
         NoSuffix:
         if (tokenStr[curPos] == '0')
@@ -188,6 +189,9 @@ public class NumericLiteralParser
                 sawPeriod = true;
                 curPos = LiteralSupport.skipDigit(tokenStr, curPos);
             }
+            if (curPos == tokenStr.length)
+                break NoSuffix;
+
             if (tokenStr[curPos] == 'e' || tokenStr[curPos] == 'E')
             {
                 // Exponent.
@@ -290,6 +294,14 @@ public class NumericLiteralParser
     {
         assert tokenStr[curPos] == '0' :"Invalid method called";
         curPos++;
+
+        // If it just a '0'.
+        if (curPos >= tokenStr.length)
+        {
+            radix = 8;
+            digitBegin = curPos;
+            return;
+        }
 
         // Handle the hex number like 0x123
         if ((tokenStr[curPos] == 'x' || tokenStr[curPos] == 'X')

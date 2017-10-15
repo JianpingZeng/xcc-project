@@ -1274,7 +1274,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         }
         catch (Exception e)
         {
-            java.lang.System.err.println("Compilation failure, " + e.getMessage());
+            java.lang.System.err.println("Compilation failure.");
+            e.printStackTrace();
             java.lang.System.exit(1);
         }
     }
