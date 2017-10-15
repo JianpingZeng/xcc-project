@@ -3057,12 +3057,15 @@ public class APInt implements Cloneable
 
     public static boolean tcExtractBit(long[] parts, int bit)
     {
-        return (parts[bit / 64] & 1 << bit % 64) != 0;
+        long tmp = parts[bit / 64];
+        long shift = (long)1 << (bit % 64);
+        long res = tmp & shift;
+        return res != 0;
     }
 
     public static void tcSetBit(long[] parts, int bit)
     {
-        parts[bit / 64] |= 1 << bit % 64;
+        parts[bit / 64] |= (long)1 << (bit % 64);
     }
 
     public static void tcAssign(long[] src, long[] dest, int len)
@@ -3158,10 +3161,10 @@ public class APInt implements Cloneable
     }
 
     public static void tcExtract(
-            long[] src,
-            int srcBits,
             long[] dest,
             int dstCount,
+            long[] src,
+            int srcBits,
             int srcLSB)
     {
         int firstSrcPart = 0, dstParts = 0, shift = 0, n = 0;
@@ -3475,14 +3478,17 @@ public class APInt implements Cloneable
 
             while (parts > jump)
             {
-                long part;
                 parts--;
+                /* dst[i] comes from the two parts src[i - jump] and,
+                 * if we have
+                 * an intra-part shift, src[i - jump - 1].
+                 */
+                long part = dst[parts - jump];
 
-                part = dst[parts - jump];
                 if (shift != 0)
                 {
                     part <<= shift;
-                    if (parts >= jump + 1)
+                    if (Long.compareUnsigned(parts, jump + 1) >= 0)
                         part |= dst[parts - jump - 1] >>> (64 - shift);
                 }
                 dst[parts] = part;
@@ -3567,13 +3573,10 @@ public class APInt implements Cloneable
         while (parts != 0)
         {
             parts--;
-            if (lhs[parts] == rhs[parts])
+            int res = Long.compareUnsigned(lhs[parts], rhs[parts]);
+            if (res == 0)
                 continue;
-
-            if (lhs[parts] > rhs[parts])
-                return 1;
-            else
-                return -1;
+            return res;
         }
 
         return 0;

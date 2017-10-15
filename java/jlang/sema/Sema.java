@@ -4400,6 +4400,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     public ArrayList<Decl> finalizeDeclaratorGroup(
+            Scope s,
             DeclSpec ds,
             ArrayList<Decl> declsInGroup)
     {
@@ -4411,6 +4412,9 @@ public final class Sema implements DiagnosticParseTag,
             if (d != null)
                 res.add(d);
 
+        // Since we didn't care of 'auto' in c++ 11, so just return res here.
+        // But if we want to handle 'auto', like 'auto x = 1', the special handling
+        // to it is desired.
         return res;
     }
 
@@ -5851,8 +5855,8 @@ public final class Sema implements DiagnosticParseTag,
             QualType RHSType,
             boolean IsCompAssign)
     {
-        boolean LHSFloat = LHSType.isRealType();
-        boolean RHSFloat = RHSType.isRealType();
+        boolean LHSFloat = LHSType.isRealFloatingType();
+        boolean RHSFloat = RHSType.isRealFloatingType();
 
         // If we have two real floating types, convert the smaller operand
         // to the bigger result.
@@ -6053,14 +6057,16 @@ public final class Sema implements DiagnosticParseTag,
             return lhsType;
 
         // Apply unary and bitfield promotions to the LHS's type.
-        QualType lhsUnpromotedType = lhsType;
+        QualType lhsUnpromotedType = lhsType.clone();
         if (context.isPromotableIntegerType(lhsType))
             lhsType = context.getPromotedIntegerType(lhsType);
 
+        // Perform bitfield promotion.
         QualType lhsBitfieldPromoteTy = context.isPromotableBitField(lhs.get().get());
         if (!lhsBitfieldPromoteTy.isNull())
             lhsType = lhsBitfieldPromoteTy;
-        if (lhsType != lhsUnpromotedType && !isCompAssign)
+
+        if (!lhsType.equals(lhsUnpromotedType) && !isCompAssign)
             lhs.set(implicitCastExprToType(lhs.get().get(), lhsType, EVK_RValue,CK_IntegralCast));
 
         // if both types are identical, no conversions is desired.

@@ -329,7 +329,6 @@ public abstract class Tree implements StmtClass
 
         public ArrayList<Decl> getDeclGroup()
         {
-            assert !isSingleDecl();
             return decls;
         }
 

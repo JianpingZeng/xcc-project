@@ -513,7 +513,7 @@ public class APFloat implements Cloneable
                 long newPart = 0;
                 if (category == fcNormal || category == fcNaN)
                     newPart = significandParts()[0];
-                part = newPart;
+                parts[0] = newPart;
             }
         }
 
@@ -953,7 +953,7 @@ public class APFloat implements Cloneable
         if (partCount() > 1)
             parts[index] = value;
         else
-            part = value;
+            parts[0] = value;
     }
 
     private void setSignificand(long value)
@@ -963,10 +963,7 @@ public class APFloat implements Cloneable
     private long[] significandParts()
     {
         assert category == fcNormal || category == fcNaN;
-        if (partCount() > 1)
-            return parts;
-        else
-            return new long[]{part};
+        return parts;
     }
 
     private int partCount()
@@ -1102,7 +1099,6 @@ public class APFloat implements Cloneable
         if (addend != null)
         {
             FltSemantics saveSemantics = semantics;
-            long savedSignificand = part;
             long[] savedSignificands = parts;
             FltSemantics extendedSemantics;
             int status;
@@ -1116,14 +1112,11 @@ public class APFloat implements Cloneable
                 exponent -= extendedPrecision - omsb;
             }
 
+            /* Create new semantics.  */
             extendedSemantics = semantics;
             extendedSemantics.precision = extendedPrecision;
 
-            if (newPartCount == 1)
-                part = fullSignificand[0];
-            else
-                parts = fullSignificand;
-
+            parts = fullSignificand;
             semantics = extendedSemantics;
 
             APFloat extendedAddend =new APFloat(addend);
@@ -1132,9 +1125,10 @@ public class APFloat implements Cloneable
             assert status == opOK;
             LostFraction = addOrSubtractSignificand(extendedAddend, false);
 
+            /* Restore our state.  */
+            // FIXME
             if (newPartCount == 1)
-                fullSignificand[0] = part;
-            part = savedSignificand;
+                fullSignificand[0] = parts[0];
             parts = savedSignificands;
             semantics = saveSemantics;
             omsb = APInt.tcMSB(fullSignificand, newPartCount) + 1;
@@ -1183,7 +1177,7 @@ public class APFloat implements Cloneable
         int bit, i , partsCounts;
         long[] rhsSignicand;
         long[] lhsSignicand, dividend, divisor;
-        long[] scratch = new long[4];
+
         LostFraction LostFraction;
 
         assert semantics == rhs.semantics;
@@ -1193,18 +1187,20 @@ public class APFloat implements Cloneable
         partsCounts = partCount();
 
         if (partsCounts > 2)
-            dividend = new long[partsCounts * 2];
-        else
-            dividend = scratch;
-
-        divisor = Arrays.copyOfRange(dividend, partsCounts, dividend.length);
-        /* Copy the dividend and divisor as they will be modified in-place.  */
-        for (i = 0; i < partsCounts; i++)
         {
-            dividend[i] = lhsSignicand[i];
-            divisor[i] = rhsSignicand[i];
-            lhsSignicand[i] = 0;
+            dividend = new long[partsCounts];
+            divisor = new long[partsCounts];
         }
+        else
+        {
+            dividend = new long[2];
+            divisor = new long[2];
+        }
+
+        // Copy the lhs as dividend, rhs as the divisor.
+        System.arraycopy(lhsSignicand, 0, dividend, 0, partsCounts);
+        System.arraycopy(rhsSignicand, 0, divisor, 0, partsCounts);
+        Arrays.fill(lhsSignicand, 0, partsCounts, 0);
 
         exponent -= rhs.exponent;
 
@@ -1272,8 +1268,7 @@ public class APFloat implements Cloneable
         int count;
         semantics = sem;
         count = partCount();
-        if (count > 1)
-            parts = new long[count];
+        parts = new long[count];
     }
     /** Write out an  decimal integer.  */
     static char[] writeUnsignedDecimal(char[] dest, int n)
@@ -1910,7 +1905,7 @@ public class APFloat implements Cloneable
         {
             dot.set(i++);
             assert end - begin != 1:"Significand has no digits";
-            while (str.charAt(i) == '0' && i != end)
+            while (i < end && str.charAt(i) == '0')
                 ++i;
         }
 
@@ -2165,8 +2160,10 @@ public class APFloat implements Cloneable
                 dot = p;
         }
 
+        /* If number is all zeroes accept any exponent.  */
         if (p != d.firstSigDigit)
         {
+              /* Drop insignificant trailing zeroes.  */
             if (p != begin)
             {
                 do
@@ -2212,7 +2209,7 @@ public class APFloat implements Cloneable
                93/28 < L < 196/59            [ numerator <= 256 ]
                42039/12655 < L < 28738/8651  [ numerator <= 65536 ]
       */
-        if (decDigitValue(D.digits.charAt(D.firstSigDigit)) >= 10)
+        if (D.firstSigDigit >= D.digits.length() || decDigitValue(D.digits.charAt(D.firstSigDigit)) >= 10)
         {
             category = fcZero;
             fs = opOK;
@@ -2649,7 +2646,7 @@ public class APFloat implements Cloneable
                     excessPrecision, isNearest);
 
             /* Are we guaranteed to round correctly if we truncate?  */
-            if (HUdistance >= HUerr)
+            if (Long.compareUnsigned(HUdistance, HUerr) >= 0)
             {
                 APInt.tcExtract(significandParts(), partCount(),
                         decSig.significandParts(),
@@ -3043,7 +3040,6 @@ public class APFloat implements Cloneable
 
     /* Significand - the fraction with an explicit integer bit.  Must be
        at least one bit wider than the target precision.  */
-    private long part;
     private long[] parts;
 
     private int exponent;
