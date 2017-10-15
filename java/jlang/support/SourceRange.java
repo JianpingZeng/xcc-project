@@ -22,13 +22,11 @@ package jlang.support;
  */
 public class SourceRange
 {
-    private SourceLocation start;
-    private SourceLocation end;
+    private SourceLocation start = new SourceLocation();
+    private SourceLocation end = new SourceLocation();
 
     public SourceRange()
     {
-        start = new SourceLocation();
-        end = new SourceLocation();
     }
 
     public SourceRange(SourceLocation start, SourceLocation end)
@@ -72,7 +70,8 @@ public class SourceRange
         return !isValid();
     }
 
-    @Override public boolean equals(Object obj)
+    @Override
+    public boolean equals(Object obj)
     {
         if (obj == null)
             return false;

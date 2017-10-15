@@ -120,7 +120,7 @@ public class StmtDumper extends StmtVisitor<Void>
     private void dumpStmt(Stmt node)
     {
         indent();
-        os.printf("(%s 0x%o", node.getStmtClassName(), node.hashCode());
+        os.printf("(%s 0x%x", node.getStmtClassName(), node.hashCode());
         dumpSourceRange(node);
     }
 
@@ -139,7 +139,7 @@ public class StmtDumper extends StmtVisitor<Void>
         SourceRange r = node.getSourceRange();
         os.print(" <");
         dumpLocation(r.getBegin());
-        if (!r.getEnd().equals(r.getBegin()))
+        if (!r.getBegin().equals(r.getEnd()))
         {
             os.print(", ");
             dumpLocation(r.getEnd());
@@ -185,7 +185,7 @@ public class StmtDumper extends StmtVisitor<Void>
         else if (d instanceof ValueDecl)
         {
             ValueDecl vd = (ValueDecl)d;
-            os.print('"');
+            os.print(" ");
             if (vd instanceof VarDecl)
             {
                 VarDecl v = (VarDecl)vd;
@@ -247,7 +247,7 @@ public class StmtDumper extends StmtVisitor<Void>
             Decl d = decls.get(i);
             ++indentLevel;
             indent();
-            os.printf("0x%o", d.hashCode());
+            os.printf("0x%x", d.hashCode());
             dumpDeclaration(d);
             if (i != e - 1)
             {
@@ -270,7 +270,7 @@ public class StmtDumper extends StmtVisitor<Void>
     public Void visitGotoStmt(Tree.GotoStmt stmt)
     {
         dumpStmt(stmt);
-        os.printf(" '%s': 0x%o", stmt.getLabel().getNameAsString(), stmt.getLabel().hashCode());
+        os.printf(" '%s': 0x%x", stmt.getLabel().getNameAsString(), stmt.getLabel().hashCode());
         return null;
     }
 
@@ -313,7 +313,7 @@ public class StmtDumper extends StmtVisitor<Void>
                 os.print("Decl");
                 break;
         }
-        os.printf("='%s' 0x%o", expr.getDecl().getNameAsString(),
+        os.printf("='%s' 0x%x", expr.getDecl().getNameAsString(),
                 expr.getDecl().hashCode());
         return null;
     }
@@ -410,7 +410,7 @@ public class StmtDumper extends StmtVisitor<Void>
     {
         dumpExpr(expr);
 
-        os.printf("%s%s 0x%o", expr.isArrow()?"->":".",
+        os.printf("%s%s 0x%x", expr.isArrow()?"->":".",
                 expr.getMemberDecl().getNameAsString(),
                 expr.getMemberDecl().hashCode());
         return null;

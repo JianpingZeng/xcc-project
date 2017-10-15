@@ -135,7 +135,8 @@ public class NumericLiteralParser
         for (int i = 0; i < n; i++)
             buf.append(tokenStr[i]);
 
-        buf.append('\0');
+        // FIXME In Java, the tailing zero is not needed.
+        //buf.append('\0');
 
         APFloat v = new APFloat(format, fcZero, false);
         int status = v.convertFromString(buf.toString(), rmNearestTiesToEven);

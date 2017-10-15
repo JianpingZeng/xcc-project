@@ -321,9 +321,8 @@ public class Parser implements Tag,
             case Typedef:
             {
                 // A function definition can not start with those keyword.
-                ArrayList<Stmt> stmts = new ArrayList<>();
                 OutParamWrapper<SourceLocation> declEnd = new OutParamWrapper<>();
-                return parseDeclaration(stmts, TheContext.FileContext, declEnd);
+                return parseDeclaration(TheContext.FileContext, declEnd);
             }
             /**
              * Else fall through, and yield a syntax error trying to parse
@@ -639,10 +638,9 @@ public class Parser implements Tag,
      *         'break' ';'
      *         'return' expression[opt] ';'
      * </pre>
-     * @param stmts
-     * @return
+     * @return  The declarations group.
      */
-    private ActionResult<Stmt> parseStatementOrDeclaration(ArrayList<Stmt> stmts,
+    private ActionResult<Stmt> parseStatementOrDeclaration(
             boolean onlyStatements)
     {
         String semiError = null;
@@ -666,7 +664,7 @@ public class Parser implements Tag,
                 {
                     SourceLocation declStart = tok.getLocation();
                     OutParamWrapper<SourceLocation> end = new OutParamWrapper<>();
-                    ArrayList<Decl> decls = parseDeclaration(stmts, TheContext.BlockContext, end);
+                    ArrayList<Decl> decls = parseDeclaration(TheContext.BlockContext, end);
                     SourceLocation declEnd = end.get();
 
                     return action.actOnDeclStmt(decls, declStart, declEnd);
@@ -1002,7 +1000,7 @@ public class Parser implements Tag,
         ArrayList<Stmt> stmts = new ArrayList<>();
         while (nextTokenIsNot(r_brace) && nextTokenIsNot(eof))
         {
-            ActionResult<Stmt> res = parseStatementOrDeclaration(stmts, false);
+            ActionResult<Stmt> res = parseStatementOrDeclaration(false);
             stmts.add(res.get());
         }
         if (nextTokenIsNot(r_brace))
@@ -1170,8 +1168,7 @@ public class Parser implements Tag,
 
     private ActionResult<Stmt> parseStatement()
     {
-        ArrayList<Stmt> stmts = new ArrayList<>();
-        return parseStatementOrDeclaration(stmts, true);
+        return parseStatementOrDeclaration(true);
     }
 
     private ActionResult<QualType> parseTypeName()
@@ -1694,7 +1691,7 @@ public class Parser implements Tag,
             skipUntil(semi, true);
             return stmtError();
         }
-        int scopeFlags = 0;
+        int scopeFlags;
         if (getLangOption().c99)
             scopeFlags = ScopeFlags.BreakScope.value
                 | ScopeFlags.ContinueScope.value
@@ -1723,11 +1720,21 @@ public class Parser implements Tag,
         {
             // parse the declaration, for (int X = 4;
             SourceLocation declStart = tok.getLocation();
-            ArrayList<Stmt> stmts = new ArrayList<>(32);
+            OutParamWrapper<SourceLocation> end = new OutParamWrapper<>();
+            ArrayList<Decl> declGroup = parseSimpleDeclaration(end,
+                    TheContext.ForContext, false);
 
-            ArrayList<Decl> declGroup = parseSimpleDeclaration(stmts, TheContext.ForContext,
-                    false);
-            firstPart = action.actOnDeclStmt(declGroup, declStart, tok.getLocation());
+            if (tok.is(semi))
+            {
+                consumeToken(); // "for(int x = 1;)"
+            }
+            else
+            {
+                diag(tok, err_expected_semi_for);
+                skipUntil(semi, true);
+            }
+
+            firstPart = action.actOnDeclStmt(declGroup, declStart, end.get());
         }
         else
         {
@@ -1755,6 +1762,7 @@ public class Parser implements Tag,
         else if (nextTokenIs(r_paren))
         {
             // missing both semicolons
+            // for (...;)
         }
         else
         {
@@ -1849,12 +1857,14 @@ public class Parser implements Tag,
      *
      * If RequireSemi is false, this does not check for a ';' at the end of the
      * declaration.  If it is true, it checks for and eats it.
-     * @param stmts
+     * @param end   The output parameter for obtaining the end location of this
+     *              declaratin in source file.
      * @param context
      * @param requiredSemi
      * @return
      */
-    private ArrayList<Decl> parseSimpleDeclaration(ArrayList<Stmt> stmts,
+    private ArrayList<Decl> parseSimpleDeclaration(
+            OutParamWrapper<SourceLocation> end,
             TheContext context, boolean requiredSemi)
     {
         // Parse the common declaration-specifiers piece.
@@ -1872,11 +1882,20 @@ public class Parser implements Tag,
             return action.convertDeclToDeclGroup(decl);
         }
 
-        return parseDeclGroup(ds, context, false);
+        return parseDeclGroup(ds, context, false, end);
     }
 
     private ArrayList<Decl> parseDeclGroup(DeclSpec ds,
-            TheContext context, boolean allowFunctionDefinition)
+            TheContext context,
+            boolean allowFunctionDefinition)
+    {
+        return parseDeclGroup(ds, context, allowFunctionDefinition, null);
+    }
+
+    private ArrayList<Decl> parseDeclGroup(DeclSpec ds,
+            TheContext context,
+            boolean allowFunctionDefinition,
+            OutParamWrapper<SourceLocation> end)
     {
         Declarator d = new Declarator(ds, context);
         parseDeclarator(d);
@@ -1927,9 +1946,27 @@ public class Parser implements Tag,
 
         ArrayList<Decl> res = parseInitDeclaratorListAfterFirstDeclarator
                 (d, ds, context);
-        // eat the last ';'.
-        expectAndConsume(semi, err_expected_semi_declaration);
-        return res;
+
+        // Set the end location for current declaration.
+        if (end != null)
+            end.set(tok.getLocation());
+
+        if (context != TheContext.ForContext &&
+                expectAndConsume(semi, context == TheContext.FileContext ?
+                err_invalid_token_after_toplevel_declarator :
+                err_expected_semi_declaration))
+        {
+            // Okay, there was no semicolon and one was expected.  If we see a
+            // declaration specifier, just assume it was missing and continue parsing.
+            // Otherwise things are very confused and we skip to recover.
+            if (!isDeclarationSpecifier())
+            {
+                skipUntil(r_brace, true, true);
+                if (tok.is(semi))
+                    consumeToken();
+            }
+        }
+        return action.finalizeDeclaratorGroup(getCurScope(), ds, res);
     }
 
     private ArrayList<Decl> parseInitDeclaratorListAfterFirstDeclarator(
@@ -1976,7 +2013,7 @@ public class Parser implements Tag,
             }
         }
 
-        return action.finalizeDeclaratorGroup(ds, declsInGroup);
+        return declsInGroup;
     }
 
     /**
@@ -2437,16 +2474,16 @@ public class Parser implements Tag,
      * [C++]   using-directive
      * [C++]   using-declaration
      * [C++0x] static_assert-declaration
-     * @param stmts
      * @param dc
      * @param declEnd
      * @return
      */
-    private ArrayList<Decl> parseDeclaration(ArrayList<Stmt> stmts,
-            TheContext dc, OutParamWrapper<SourceLocation> declEnd)
+    private ArrayList<Decl> parseDeclaration(
+            TheContext dc,
+            OutParamWrapper<SourceLocation> declEnd)
     {
         assert declEnd != null;
-        return parseSimpleDeclaration(stmts, dc, false);
+        return parseSimpleDeclaration(declEnd, dc, false);
     }
 
     /**
@@ -4642,18 +4679,24 @@ public class Parser implements Tag,
                 case l_bracket:
                 {
                     // postfix-expression: p-e '[' expression ']'
-                    SourceLocation lBracketLoc = consumeBracket();
+                    BalancedDelimiterTracker delim = new BalancedDelimiterTracker(this, l_bracket);
+
+                    // match the '['.
+                    delim.consumeOpen();
+                    SourceLocation lBracketLoc = delim.getCloseLocation();
                     ActionResult<Expr> idx = parseExpression();
-                    SourceLocation rBracketLoc = consumeBracket();
 
-                    if (!lhs.isInvalid() && !idx.isInvalid() && nextTokenIs(r_bracket))
-                        lhs = action.actOnArraySubscriptExpr(lhs.get(), lBracketLoc,
-                                idx.get(), rBracketLoc);
-                    else
+                    if (lhs.isInvalid() || idx.isInvalid() || !tok.is(r_bracket))
+                    {
                         lhs = exprError();
-
+                        break;
+                    }
                     // match the ']'.
-                    expectAndConsume(r_bracket, err_expected_rsquare);
+                    delim.consumeClose();
+                    SourceLocation rBracketLoc = delim.getCloseLocation();
+                    lhs = action.actOnArraySubscriptExpr(lhs.get(), lBracketLoc,
+                            idx.get(), rBracketLoc);
+
                     break;
                 }
                 case l_paren:
