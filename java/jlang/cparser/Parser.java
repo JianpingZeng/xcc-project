@@ -4702,7 +4702,9 @@ public class Parser implements Tag,
                 case l_paren:
                 {
                     // p-e: p-e '(' argument-expression-list[opt] ')'
-                    loc = consumeParen();
+                    BalancedDelimiterTracker delim = new BalancedDelimiterTracker(this, l_paren);
+                    delim.consumeOpen();
+                    loc = delim.getOpenLocation();
                     ArrayList<Expr> exprs = new ArrayList<>();
                     ArrayList<SourceLocation> commaLocs = new ArrayList<>();
 
@@ -4725,8 +4727,9 @@ public class Parser implements Tag,
 
                         lhs = action.actOnCallExpr(lhs.get(), loc, exprs, tok.getLocation());
                         // eat the ')'.
-                        consumeToken();
+                        delim.consumeClose();
                     }
+                    break;
                 }
                 case arrow: 
                 case dot:
