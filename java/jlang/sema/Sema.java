@@ -3756,10 +3756,17 @@ public final class Sema implements DiagnosticParseTag,
         QualType ty = expr.getType();
         assert !ty.isNull() : "DefaultFunctionArrayConversion - missing type.";
         if (ty.getType().isFunctionType())
-            expr = implicitCastExprToType(expr, ty, EVK_RValue,
+            expr = implicitCastExprToType(expr, context.getPointerType(ty),
+                    EVK_RValue,
                     CK_FunctionToPointerDecay).get();
         else if (ty.isArrayType())
         {
+            // In C90 mode, arrays only promote to pointers if the array expression is
+            // an lvalue.  The relevant legalese is C90 6.2.2.1p3: "an lvalue that has
+            // type 'array of type' is converted to an expression that has type 'pointer
+            // to type'...".  In C99 this was changed to: C99 6.3.2.1p3: "an expression
+            // that has type 'array of type' ...".  The relevant change is "an lvalue"
+            // (C90) to "an expression" (C99).
             if (expr.isLValue() || getLangOptions().c99)
             {
                 expr = implicitCastExprToType(expr,
