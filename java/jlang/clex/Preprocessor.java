@@ -242,44 +242,45 @@ public final class Preprocessor
      * IdentifierInfo methods that compute these properties will need to change to
      * match.
      *
-     * @param token
+     * @param identifier
      */
-    public void handleIdentifier(Token token)
+    public Token handleIdentifier(Token identifier)
     {
-        assert token.getIdentifierInfo()
+        assert identifier.getIdentifierInfo()
                 != null : "Can't handle identifiers without identifier info!";
 
-        IdentifierInfo ii = token.getIdentifierInfo();
+        IdentifierInfo ii = identifier.getIdentifierInfo();
 
         // If this identifier was poisoned, and if it was not produced from a macro
         // expansion, emit an error.
         if (ii.isPoisoned() && curLexer != null)
         {
             if (!ii.equals(Ident__VA_ARGS__))
-                diag(token, err_pp_used_poisoned_id).emit();
+                diag(identifier, err_pp_used_poisoned_id).emit();
             else
-                diag(token, ext_pp_bad_vaargs_use).emit();
+                diag(identifier, ext_pp_bad_vaargs_use).emit();
         }
 
         // If this is a macro to be expanded, do it.
         MacroInfo mi = getMacroInfo(ii);
         if (mi != null)
         {
-            if (!disableMacroExpansion && !token.isExpandingDisabled())
+            if (!disableMacroExpansion && !identifier.isExpandingDisabled())
             {
                 if (mi.isEnabled())
                 {
-                    OutParamWrapper<Token> x = new OutParamWrapper<>(token);
+                    OutParamWrapper<Token> x = new OutParamWrapper<>(identifier);
                     boolean res = !handleMacroExpandedIdentifier(x, mi);
-                    token = x.get();
-                    if (res) return;
+                    identifier = x.get();
+                    if (res)
+                        return identifier;
                 }
                 else
                 {
                     // C99 6.10.3.4p2 says that a disabled macro may never again be
                     // expanded, even if it's in a context where it could be expanded in the
                     // future.
-                    token.setFlag(DisableExpand);
+                    identifier.setFlag(DisableExpand);
                 }
             }
         }
@@ -287,7 +288,9 @@ public final class Preprocessor
         // If this is an extension token, diagnose its use.
         // We avoid diagnosing tokens that originate from macro definitions.
         if (ii.isExtensionToken() && !disableMacroExpansion)
-            diag(token, ext_token_used).emit();
+            diag(identifier, ext_token_used).emit();
+
+        return identifier;
     }
 
     public void enterTokenStream(Token[] toks, boolean disableMacroExpansion,
@@ -680,14 +683,12 @@ public final class Preprocessor
         if (fileEntry != null)
             headerInfo.incrementIncludeCount(fileEntry);
 
-        StringBuilder buffer = new StringBuilder();
-        buffer.append(predefines);
-
         // Generate memory buffer for built-in predefined macroes.
         MemoryBuffer sb = MemoryBuffer
-                .getMemBuffer(buffer.toString(), "<built-in>");
+                .getMemBuffer(predefines, "<built-in>");
         //assert sb != null : "Cannot fail to create predefined source buffer";
         FileID fid = sourceMgr.createFileIDForMemBuffer(sb);
+        fid.setIsBuiltin(true);
         assert !fid.isInvalid() : "Could not create FileID for predefines?";
 
         // Star parsing the predefines.
@@ -2711,7 +2712,7 @@ public final class Preprocessor
                 lastTok = tok.clone();
                 if (tok.isNot(hash))
                 {
-                    mi.addTokenBody(tok);
+                    mi.addTokenBody(lastTok);
 
                     // Obtains the next token of the macro body.
                     lexUnexpandedToken(tok);
@@ -2743,8 +2744,8 @@ public final class Preprocessor
                 }
 
                 // Things look ok, add the '#' and param asmName tokens to the macro.
-                mi.addTokenBody(lastTok);
-                mi.addTokenBody(tok);
+                mi.addTokenBody(lastTok.clone());
+                mi.addTokenBody(tok.clone());
                 lastTok = tok.clone();
 
                 // Get the next token of the macro.
@@ -3113,7 +3114,8 @@ public final class Preprocessor
         return val == 1;
     }
 
-    private Pair<MacroArgs, SourceLocation> readFunctionLikeMacroArgs(Token macroName, MacroInfo mi)
+    private Pair<MacroArgs, SourceLocation> readFunctionLikeMacroArgs(
+            OutParamWrapper<Token> macroName, MacroInfo mi)
     {
         SourceLocation macroEnd = null;
         int numFixedArgsLef = mi.getNumArgs();
@@ -3131,8 +3133,8 @@ public final class Preprocessor
         int numActuals = 0;
         while (tok.isNot(r_paren))
         {
-            assert tok.is(l_paren) || tok
-                    .is(comma) : "only expect argument separators here";
+            assert tok.is(l_paren) || tok.is(comma)
+                    : "only expect argument separators here";
 
             int argTokenStart = argTokens.size();
             SourceLocation argStartLoc = tok.getLocation();
@@ -3144,8 +3146,8 @@ public final class Preprocessor
                 if (tok.is(eof) || tok.is(eom))
                 {
                     // "#if f(<eof>" & "#if f(\n"
-                    diag(macroName, err_unterm_macro_invoc).emit();
-                    macroName = tok;
+                    diag(macroName.get(), err_unterm_macro_invoc).emit();
+                    macroName.set(tok.clone());
                     return Pair.get(null, null);
                 }
                 else if (tok.is(r_paren))
@@ -3188,7 +3190,7 @@ public final class Preprocessor
                     if (m != null && !m.isEnabled())
                         tok.setFlag(DisableExpand);
                 }
-                argTokens.add(tok);
+                argTokens.add(tok.clone());
             }
 
             // If this was an empty argument list foo(), don't add this as an empty
@@ -3271,7 +3273,7 @@ public final class Preprocessor
         {
             // Emit the diagnostic at the macro asmName in case there is a missing ).
             // Emitting it at the , could be far away from the macro asmName.
-            diag(macroName, err_too_many_args_in_macro_invoc).emit();
+            diag(macroName.get(), err_too_many_args_in_macro_invoc).emit();
             return Pair.get(null, null);
         }
 
@@ -3654,6 +3656,7 @@ public final class Preprocessor
         if (mi.isBuiltinMacro())
         {
             expandBuiltinMacro(ident);
+            identifier.set(ident);
             return false;
         }
 
@@ -3676,7 +3679,7 @@ public final class Preprocessor
                 return true;
 
             inMacroArgs = true;
-            Pair<MacroArgs, SourceLocation> res = readFunctionLikeMacroArgs(ident, mi);
+            Pair<MacroArgs, SourceLocation> res = readFunctionLikeMacroArgs(identifier, mi);
             args = res.first;
             if (res.second != null)
                 instantiationEnd = res.second;
@@ -3720,6 +3723,7 @@ public final class Preprocessor
             }
 
             ++NumFastMacroExpanded;
+            identifier.set(ident);
             return false;
         }
         else if (mi.getNumTokens() == 1 &&
@@ -3751,13 +3755,14 @@ public final class Preprocessor
             IdentifierInfo newII = ident.getIdentifierInfo();
             if (newII != null)
             {
-                if (getMacroInfo(newII).equals(mi))
+                if (mi.equals(getMacroInfo(newII)))
                     ident.setFlag(DisableExpand);
             }
 
             // Since this is not an ident token, it can't be macro expanded, so
             // we're done.
             ++NumFastMacroExpanded;
+            identifier.set(ident);
             return false;
 
         }

@@ -230,4 +230,20 @@ public class Token implements Cloneable
         }
         return null;
     }
+
+    /**
+     * Fill the fields of this with other's fields.
+     * @param other
+     */
+    public void copyFrom(Token other)
+    {
+        if (other == null)
+            return;
+
+        loc = other.loc;
+        data = other.data;
+        kind = other.kind;
+        flags = other.flags;
+        length = other.length;
+    }
 }
