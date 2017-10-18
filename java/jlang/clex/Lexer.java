@@ -1318,12 +1318,13 @@ public class Lexer extends PreprocessorLexer
         result.setLiteralData(buffer, tokStart);
     }
 
-    private void finishIdentifier(Token result, int curPos)
+    private Token finishIdentifier(Token result, int curPos)
     {
         int idStart = this.bufferPtr;
         formTokenWithChars(result, curPos, identifier);
 
-        if (isLexingRawMode()) return;
+        if (isLexingRawMode())
+            return result;
 
         IdentifierInfo ii = pp.lookupIdentifierInfo(result, buffer, idStart);
 
@@ -1332,7 +1333,10 @@ public class Lexer extends PreprocessorLexer
         // Finally, now that we know we have an identifier, pass this off to the
         // preprocessor, which may macro expand it or something.
         if (ii.isNeedsHandleIdentifier())
-            pp.handleIdentifier(result);
+        {
+            return pp.handleIdentifier(result);
+        }
+        return result;
     }
 
     private void lexIdentifier(Token result, int curPos)
@@ -1347,7 +1351,7 @@ public class Lexer extends PreprocessorLexer
 
         if (ch != '\\' && ch != '?' && (ch != '$' || langOpts.dollarIdents))
         {
-            finishIdentifier(result, curPos);
+            result.copyFrom(finishIdentifier(result, curPos));
             return;
         }
 
@@ -1360,7 +1364,7 @@ public class Lexer extends PreprocessorLexer
                 // If we hit a $ and they are not supported in identifiers, we are done.
                 if (!langOpts.dollarIdents)
                 {
-                    finishIdentifier(result, curPos);
+                    result.copyFrom(finishIdentifier(result, curPos));
                     return;
                 }
 
@@ -1373,7 +1377,7 @@ public class Lexer extends PreprocessorLexer
             else if (!isIdentifierBody(ch))
             {
                 // Found end of identifier.
-                finishIdentifier(result, curPos);
+                result.copyFrom(finishIdentifier(result, curPos));
             }
 
             // Otherwise, this character is good, consume it.

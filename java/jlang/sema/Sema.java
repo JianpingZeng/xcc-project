@@ -5166,7 +5166,7 @@ public final class Sema implements DiagnosticParseTag,
         // conversion of functions/arrays. If the conversion were done for all
         // DeclExpr's (created by ActOnIdentifierExpr), it would mess up the unary
         // expressions that surpress this implicit conversion (&, sizeof).
-        defaultFunctionArrayConversion(rhsExpr.get().get());
+        rhsExpr.set(defaultFunctionArrayConversion(rhsExpr.get().get()));
 
         // Perform type checking on usual assignment expression.
         QualType rhsType = rhsExpr.get().get().getType();

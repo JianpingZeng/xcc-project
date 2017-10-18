@@ -24,7 +24,19 @@ package jlang.support;
  */
 public class FileID implements Comparable<FileID>
 {
+    /**
+     * The unique ID for this File.
+     * It is defined by {@linkplain jlang.basic.SourceManager} and incremented
+     * automatically when encountering a new File.
+     */
     private int id;
+
+    /**
+     * A flag indicates whether this FileID stems from built-in macro instead of
+     * regulal C source file. It default to false, otherwise it is set by
+     * {@linkplain #setIsBuiltin(boolean)}.
+     */
+    private boolean isBuiltIn;
 
     public FileID()
     {
@@ -76,5 +88,15 @@ public class FileID implements Comparable<FileID>
     public int getID()
     {
         return id;
+    }
+
+    public boolean getIsBuiltin()
+    {
+        return isBuiltIn;
+    }
+
+    public void setIsBuiltin(boolean val)
+    {
+        isBuiltIn = val;
     }
 }
