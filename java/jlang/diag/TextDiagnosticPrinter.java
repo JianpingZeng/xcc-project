@@ -258,7 +258,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         int caretEndColNo = colNo + Lexer.measureTokenLength(loc, sgr, langOpts);
 
         int tokPos = fileOffset;
-        int lineStart = tokPos - colNo;
+        int lineStart = tokPos - colNo + 1;
 
         int lineEnd = tokPos;
         while (strData[lineEnd] != '\n' && strData[lineEnd] != '\r'
@@ -641,7 +641,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
             }
         }
 
-        os.print(outStr.toString());
+        os.println(outStr.toString());
 
         if(useColors)
             os.print(ANSI_RESET);
