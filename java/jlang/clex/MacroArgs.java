@@ -88,24 +88,33 @@ public class MacroArgs
                     return true;
             }
         }
-        return true;
+        return false;
     }
 
     /// Return a pointer to the first token of the unexpanded
     /// token list for the specified formal.
     ///
-    public Token[] getUnexpArgument(int arg)
+    public Token[] getUnexpandedArgument(int arg)
     {
         assert arg >= 0;
-        int i = 0;
-        for (; arg != 0; ++i)
+        int lastEOF = 0;
+        int end = 0;
+        int e = unexpandedArgTokens.length;
+        for (int i = 0; i < e; i++)
         {
-            assert i < getNumArguments();
             if (unexpandedArgTokens[i].is(eof))
+            {
+                if (arg == 0)
+                {
+                    end = i;
+                    break;
+                }
                 --arg;
+                lastEOF = i;
+            }
         }
-        assert i < getNumArguments();
-        return Arrays.copyOfRange(unexpandedArgTokens, i , getNumArguments());
+        assert lastEOF < end && end <= e;
+        return Arrays.copyOfRange(unexpandedArgTokens, lastEOF, end+1);
     }
 
     /// Given a pointer to an expanded or unexpanded argument,
@@ -129,7 +138,7 @@ public class MacroArgs
 
         if (!result.isEmpty()) return result;
 
-        Token[] ai = getUnexpArgument(arg);
+        Token[] ai = getUnexpandedArgument(arg);
         Token[] newAI = new Token[getArgLength(ai) + 1];
         System.arraycopy(ai, 0, newAI, 0, ai.length);
         newAI[newAI.length - 1] = ai[ai.length];
@@ -163,7 +172,7 @@ public class MacroArgs
 
         if (stringifiedArgs.get(argNo) == null ||
                 stringifiedArgs.get(argNo).isNot(string_literal))
-            stringifiedArgs.set(argNo, stringifyArgument(getUnexpArgument(argNo), pp));
+            stringifiedArgs.set(argNo, stringifyArgument(getUnexpandedArgument(argNo), pp));
         return stringifiedArgs.get(argNo);
     }
 
