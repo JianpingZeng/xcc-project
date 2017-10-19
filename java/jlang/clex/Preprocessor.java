@@ -3071,6 +3071,8 @@ public final class Preprocessor
     {
         assert curTokenLexer != null && curLexer == null : "Ending a macro when currently in a #include file!";
 
+        // Delete the current token lexer.
+        curTokenLexer = null;
         // Handle this like a #include file being popped off the stack.
         return handleEndOfFile(result, true);
     }
