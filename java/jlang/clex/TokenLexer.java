@@ -146,7 +146,7 @@ public class TokenLexer
         }
 
         boolean isFirstToken = curToken == 0;
-        result = tokens[curToken--];
+        result.copyFrom(tokens[curToken++]);
 
         boolean tokenisFromPaste = false;
 
@@ -300,7 +300,7 @@ public class TokenLexer
             result.setFlag(LeadingSpace, tok.hasLeadingSpace());
 
             ++curToken;
-            tok = result;
+            tok.copyFrom(result);
         } while (!isAtEnd() && tokens[curToken].is(hashhash));
 
         if (tok.is(identifier))
@@ -373,7 +373,6 @@ public class TokenLexer
                 if (nextTokGetsSpace)
                 {
                     resultToks.get(resultToks.size() - 1).setFlag(LeadingSpace);
-                    ;
                     nextTokGetsSpace = false;
                 }
                 continue;
@@ -395,7 +394,7 @@ public class TokenLexer
             if (!pasteAfter && !pasteBefore)
             {
                 Token[] resultArgToks;
-                Token[] argTok = actualArgs.getUnexpArgument(argNo);
+                Token[] argTok = actualArgs.getUnexpandedArgument(argNo);
                 if (actualArgs.argNeedsPreexpansion(argTok, pp))
                 {
                     List<Token> list = actualArgs.getPreExpArgument(argNo, pp);
@@ -411,7 +410,7 @@ public class TokenLexer
 
                     int numToks = MacroArgs.getArgLength(resultArgToks);
                     for (int j = 0; j < numToks; j++)
-                        resultToks.add(resultArgToks[i]);
+                        resultToks.add(resultArgToks[j]);
 
                     resultToks.get(firstResult).setFlag(LeadingSpace,
                             curTok.hasLeadingSpace() || nextTokGetsSpace);
@@ -426,7 +425,7 @@ public class TokenLexer
 
             // Okay, we have a token that is either the LHS or RHS of a paste (##)
             // argument.  It gets substituted as its non-pre-expanded tokens.
-            Token[] argToks = actualArgs.getUnexpArgument(argNo);
+            Token[] argToks = actualArgs.getUnexpandedArgument(argNo);
             int numToks = MacroArgs.getArgLength(argToks);
             if (numToks != 0)
             {

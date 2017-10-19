@@ -5053,8 +5053,163 @@ public final class Sema implements DiagnosticParseTag,
             ExprValueKind kind,
             SourceLocation quesLoc)
     {
-        // TODO: 2017/3/28
-        return null;
+        cond.set(usualUnaryConversions(cond.get()).get());
+        lhs.set(usualUnaryConversions(lhs.get()).get());
+        rhs.set(usualUnaryConversions(rhs.get()).get());
+        QualType condTy = cond.get().getType();
+        QualType lhsTy = lhs.get().getType();
+        QualType rhsTy = rhs.get().getType();
+
+        // First, check the condition.
+        if (!condTy.isScalarType())
+        {
+            diag(cond.get().getLocStart(), err_typecheck_cond_expect_scalar)
+                    .addTaggedVal(condTy).emit();
+            return new QualType();
+        }
+
+        // If both operands have arithmetic type, do the usual
+        // arithmetic conversion.
+        if (lhsTy.isArithmeticType() && rhsTy.isArithmeticType())
+        {
+            OutParamWrapper<ActionResult<Expr>> lhsWrapper = new OutParamWrapper<>(lhs);
+            OutParamWrapper<ActionResult<Expr>> rhsWrapper = new OutParamWrapper<>(rhs);
+            usualArithmeticConversions(lhsWrapper, rhsWrapper, false);
+            lhs.set(lhsWrapper.get().get());
+            rhs.set(rhsWrapper.get().get());
+            return lhs.get().getType();
+        }
+
+        // If both operands are the same structure or union type, the result is that
+        // type.
+        if (lhsTy.isRecordType() && rhsTy.isRecordType())
+        {
+            RecordType lhsRT = lhsTy.getAsRecordType();
+            RecordType rhsRT = rhsTy.getAsRecordType();
+            if (lhsRT.equals(rhsRT))
+            {
+                return lhsTy.getUnQualifiedType();
+            }
+        }
+
+        // C99 6.5.15p5: "If both operands have void type, the result has void type."
+        // The following || allows only one side to be void (a GCC-ism).
+        if (lhsTy.isVoidType() || rhsTy.isVoidType())
+        {
+            if (!lhsTy.isVoidType())
+            {
+                diag(rhs.get().getLocStart(), ext_typecheck_cond_one_void)
+                        .addSourceRange(rhs.get().getSourceRange()).emit();
+            }
+            if (!rhsTy.isVoidType())
+            {
+                diag(lhs.get().getLocStart(), ext_typecheck_cond_one_void)
+                        .addSourceRange(lhs.get().getSourceRange()).emit();
+            }
+            lhs.set(implicitCastExprToType(lhs.get(), context.VoidTy,
+                    EVK_RValue, CK_ToVoid)
+                    .get());
+            return context.VoidTy;
+        }
+
+        // C99 6.5.15p6 - "if one operand is a null pointer constant, the result has
+        // the type of the other operand."
+        if (lhsTy.isPointerType() && rhs.get().isNullPointerConstant(context))
+        {
+            rhs.set(implicitCastExprToType(rhs.get(), lhsTy, EVK_RValue, CK_NullToPointer).get());;
+            return lhsTy;
+        }
+
+        if (rhsTy.isPointerType() && lhs.get().isNullPointerConstant(context))
+        {
+            lhs.set(implicitCastExprToType(lhs.get(), lhsTy, EVK_RValue, CK_NullToPointer).get());;
+            return rhsTy;
+        }
+
+        // Check constraints for C object pointers types (C99 6.5.15p3,6).
+        if (lhsTy.isPointerType() && rhsTy.isPointerType())
+        {
+            QualType lhsptee = lhsTy.getAsPointerType().getPointeeType();
+            QualType rhsptee = rhsTy.getAsPointerType().getPointeeType();
+
+            // ignore qualifiers on void (C99 6.5.15p3, clause 6)
+            if (lhsptee.isVoidType() && rhsptee.isIncompleteOrObjectType())
+            {
+                // Figure out necessary qualifiers (C99 6.5.15p6)
+                QualType destPointee = lhsptee.getQualifiedType(rhsptee.getCVRQualifiers());
+                QualType destType = context.getPointerType(destPointee);
+                lhs.set(implicitCastExprToType(lhs.get(), destType, EVK_RValue, CK_NoOp).get());
+                rhs.set(implicitCastExprToType(rhs.get(), destType, EVK_RValue, CK_BitCast).get());
+                return destType;
+            }
+
+            if (rhsptee.isVoidType() && lhsptee.isIncompleteOrObjectType())
+            {
+                QualType destPointee = rhsptee.getQualifiedType(lhsptee.getCVRQualifiers());
+                QualType desttype = context.getPointerType(destPointee);
+                lhs.set(implicitCastExprToType(lhs.get(), desttype, EVK_RValue, CK_BitCast).get());
+                rhs.set(implicitCastExprToType(rhs.get(), desttype, EVK_RValue, CK_NoOp).get());
+                return desttype;
+            }
+
+            if (context.getCanonicalType(lhsTy).equals(context.getCanonicalType(rhsTy)))
+            {
+                return lhsTy;
+            }
+
+            if (!context.typesAreCompatible(lhsptee.getUnQualifiedType(),
+                    rhsptee.getUnQualifiedType()))
+            {
+                diag(quesLoc, warn_typecheck_cond_incompatible_pointers)
+                        .addTaggedVal(lhsTy)
+                        .addTaggedVal(rhsTy)
+                        .addSourceRange(lhs.get().getSourceRange())
+                        .addSourceRange(rhs.get().getSourceRange())
+                        .emit();
+                QualType incompatTy = context.getPointerType(context.VoidTy);
+                lhs.set(implicitCastExprToType(lhs.get(), incompatTy, EVK_RValue, CK_BitCast).get());
+                rhs.set(implicitCastExprToType(rhs.get(), incompatTy, EVK_RValue, CK_BitCast).get());
+                return incompatTy;
+            }
+            lhs.set(implicitCastExprToType(lhs.get(), lhsTy, EVK_RValue, CK_BitCast).get());
+            rhs.set(implicitCastExprToType(rhs.get(), rhsTy, EVK_RValue, CK_BitCast).get());
+            return lhsTy;
+        }
+
+        // GCC compatibility: soften pointer/integer mismatch.
+        if (rhsTy.isPointerType() && lhsTy.isIntegerType())
+        {
+            diag(quesLoc, warn_typecheck_cond_pointer_integer_mismatch)
+                    .addTaggedVal(lhsTy).addTaggedVal(rhsTy)
+                    .addSourceRange(lhs.get().getSourceRange())
+                    .addSourceRange(rhs.get().getSourceRange())
+                    .emit();
+            // promote integer to pointer type.
+            lhs.set(implicitCastExprToType(lhs.get(), rhsTy, EVK_RValue, CK_IntegralToPointer).get());
+            return rhsTy;
+        }
+
+        if (lhsTy.isPointerType() && rhsTy.isIntegerType())
+        {
+            diag(quesLoc, warn_typecheck_cond_pointer_integer_mismatch)
+                    .addTaggedVal(lhsTy).addTaggedVal(rhsTy)
+                    .addSourceRange(lhs.get().getSourceRange())
+                    .addSourceRange(rhs.get().getSourceRange())
+                    .emit();
+            // promote integer to pointer type.
+            rhs.set(implicitCastExprToType(rhs.get(), lhsTy, EVK_RValue, CK_IntegralToPointer).get());
+            return lhsTy;
+        }
+
+        // Othewise the operands are not compatible.
+        diag(quesLoc, err_typecheck_cond_incompatible_operands)
+                .addTaggedVal(lhsTy)
+                .addTaggedVal(rhsTy)
+                .addSourceRange(lhs.get().getSourceRange())
+                .addSourceRange(rhs.get().getSourceRange())
+                .emit();
+
+        return new QualType();
     }
 
     /**
