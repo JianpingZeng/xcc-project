@@ -701,12 +701,14 @@ public class Lexer extends PreprocessorLexer
         if (!l.getLangOpts().trigraph)
         {
             if (!l.isLexingRawMode())
-                l.diag(curPos - 2, trigraph_ignored);
+                l.diag(curPos - 2, trigraph_ignored)
+                        .emit();
             return 0;
         }
 
         if (!l.isLexingRawMode())
-            l.diag(curPos - 2, trigraph_ignored).addTaggedVal(String.valueOf(res));
+            l.diag(curPos - 2, trigraph_ignored)
+                    .addTaggedVal(String.valueOf(res)).emit();
         return res;
     }
 

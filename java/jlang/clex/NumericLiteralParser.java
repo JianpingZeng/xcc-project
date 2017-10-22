@@ -325,7 +325,7 @@ public class NumericLiteralParser
             }
 
             // if binary exponent can appear with or with a '.'.
-            if (tokenStr[curPos] == 'p' || tokenStr[curPos] == 'P')
+            if (curPos < tokenStr.length && (tokenStr[curPos] == 'p' || tokenStr[curPos] == 'P'))
             {
                 int exponent = curPos;
                 ++curPos;
@@ -420,7 +420,7 @@ public class NumericLiteralParser
             curPos = LiteralSupport.skipDigit(tokenStr, curPos);
         }
 
-        if (tokenStr[curPos] == 'e' || tokenStr[curPos] == 'E')
+        if (curPos < tokenStr.length && (tokenStr[curPos] == 'e' || tokenStr[curPos] == 'E'))
         {
             int exponent = curPos;
             ++curPos;
