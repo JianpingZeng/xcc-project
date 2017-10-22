@@ -195,6 +195,7 @@ public class NumericLiteralParser
             if (tokenStr[curPos] == 'e' || tokenStr[curPos] == 'E')
             {
                 // Exponent.
+                sawExponent = true;
                 int exponentPos = curPos;
                 curPos++;
                 // '+' or '-' prefix.
@@ -390,8 +391,9 @@ public class NumericLiteralParser
         if (Character.isDigit(tokenStr[curPos]))
         {
             int endecimal = LiteralSupport.skipDigit(tokenStr, curPos);
-            if (tokenStr[endecimal] == '.' || tokenStr[endecimal] == 'e'
-                    || tokenStr[endecimal] == 'E')
+            if (endecimal < tokenStr.length && (tokenStr[endecimal] == '.'
+                    || tokenStr[endecimal] == 'e'
+                    || tokenStr[endecimal] == 'E'))
             {
                 curPos = endecimal;
                 radix = 10;

@@ -3266,7 +3266,7 @@ public class APInt implements Cloneable
 
     public static long highHalf(long v)
     {
-        return v & ~((1L << 32) - 1);
+        return (v & ~((1L << 32) - 1)) >>> 32;
     }
     /**
      * DST += SRC * MULTIPLIER + CARRY   if add is true
@@ -3286,7 +3286,9 @@ public class APInt implements Cloneable
             long carry, int srcParts, int dstParts, boolean add)
     {
         int i, n;
+        assert dstParts <= srcParts + 1;
 
+        /* N loops; minimum of dstParts and srcParts.  */
         n = dstParts < srcParts ? dstParts : srcParts;
 
         for (i = 0; i < n; i++)
@@ -3307,25 +3309,26 @@ public class APInt implements Cloneable
                 mid = lowHalf(srcPart) * highHalf(multiplier);
                 high += highHalf(mid);
                 mid <<= 64 / 2;
-                if (low + mid < low)
+                if (Long.compareUnsigned(low + mid, low) < 0)
                     high++;
                 low += mid;
 
                 mid = highHalf(srcPart) * lowHalf(multiplier);
                 high += highHalf(mid);
                 mid <<= 64 /2 ;
-                if (low + mid < low)
+                if (Long.compareUnsigned(low + mid, low) < 0)
                     high++;
                 low += mid;
 
-                if (low + carry < low)
+                /* Now add carry.  */
+                if (Long.compareUnsigned(low + carry, low) < 0)
                     high++;
                 low += carry;
             }
 
             if (add)
             {
-                if (low + dst[i+dstFromIndex] < low)
+                if (Long.compareUnsigned(low + dst[i+dstFromIndex], low) < 0)
                     high++;
                 dst[i + dstFromIndex] += low;
             }
