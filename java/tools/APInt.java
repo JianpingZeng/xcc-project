@@ -570,6 +570,11 @@ public class APInt implements Cloneable
         return !isNegative();
     }
 
+    public APInt assign(boolean rhs)
+    {
+        return assign(rhs?1:0);
+    }
+
     public APInt assign(long rhs)
     {
         if (isSingleWord())

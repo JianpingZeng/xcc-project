@@ -2153,6 +2153,8 @@ public class Lexer extends PreprocessorLexer
                 break;
             case '#':
                 x = new OutParamWrapper<>(sizeTmp);
+                // 9358
+                // 9443
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '#')
