@@ -1111,8 +1111,8 @@ public final class Sema implements DiagnosticParseTag,
 
             FltSemantics format = context.getFloatTypeSemantics(ty);
 
-            boolean isExact = false;
-            OutParamWrapper<Boolean> x = new OutParamWrapper<>(isExact);
+            boolean isExact;
+            OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
             APFloat val = literal.getFloatValue(format, x);
             isExact = x.get();
             res = new FloatingLiteral(val, isExact, ty, token.getLocation());

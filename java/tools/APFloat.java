@@ -2269,7 +2269,7 @@ public class APFloat implements Cloneable
                     /* The maximum number that can be multiplied by ten with any
                        digit added without overflowing an long.  */
                 } while (p <= D.lastSigDigit
-                        && multiplier <= (~(long) 0 - 9) / 10);
+                        && Long.compareUnsigned(multiplier, (~(long) 0 - 9) / 10) <= 0);
 
                 /* Multiply out the current part.  */
                 APInt.tcMultiplyPart(decSignificand, 0, decSignificand,
@@ -2339,7 +2339,8 @@ public class APFloat implements Cloneable
         pow5s[0] = 78125 * 5;
 
         int[] partsCount = new int[16];
-        Arrays.fill(partsCount, 1);
+        partsCount[0] = 1;
+
         long[] scratch = new long[maxPowerOfFiveParts], p1, p2, pow5;
         int result;
         assert (power <= maxExponent);
@@ -2354,15 +2355,16 @@ public class APFloat implements Cloneable
 
         for (int n = 0; power != 0; power >>>= 1, n++)
         {
-            int pc;
-            pc = partsCount[n];
+            int pc = partsCount[n];
 
             /* Calculate pow(5,pow(2,n+3)) if we haven't yet.  */
             if (pc == 0)
             {
                 pc = partsCount[n - 1];
                 long[] lhs = Arrays.copyOfRange(pow5s, pow5Idx - pc, pow5Idx);
-                APInt.tcFullMultiply(pow5s, lhs, lhs, pc, pc);
+                long[] resMulti = new long[pc+1];
+                APInt.tcFullMultiply(resMulti, lhs, lhs, pc, pc);
+                System.arraycopy(resMulti, 0, pow5s, pow5Idx, resMulti[pc] == 0?pc:pc+1);
                 pc *= 2;
                 if (pow5s[pow5Idx + pc - 1] == 0)
                     pc--;
