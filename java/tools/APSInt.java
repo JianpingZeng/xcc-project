@@ -347,7 +347,8 @@ public class APSInt extends APInt
      */
     public APSInt negative()
     {
-        return new APSInt(((APInt)this).negative(), isUnsigned);
+        APInt neg = super.negative();
+        return new APSInt(neg, isUnsigned);
     }
 
     /**

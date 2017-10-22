@@ -84,7 +84,7 @@ public enum DiagnosticLexKinds implements DiagnosticLexKindsTag
 	EXT_DOLLAR_IN_IDENTIFIER(ext_dollar_in_identifier, CLASS_NOTE, MAP_IGNORE, "'$' in identifier"),
 	EXT_EMBEDDED_DIRECTIVE(ext_embedded_directive, CLASS_NOTE, MAP_IGNORE, "embedding a directive within macro arguments is not portable"),
 	EXT_EMPTY_FNMACRO_ARG(ext_empty_fnmacro_arg, CLASS_NOTE, MAP_IGNORE, "empty macro arguments were standardized in C99"),
-	EXT_FOUR_CHAR_CHARACTER_LITERAL(ext_four_char_character_literal, CLASS_NOTE, MAP_IGNORE, "multi-character character constant"),
+	EXT_FOUR_CHAR_CHARACTER_LITERAL(ext_four_char_character_literal, CLASS_WARNING, MAP_WARNING, "multi-character character constant"),
 	EXT_HEXCONSTANT_INVALID(ext_hexconstant_invalid, CLASS_NOTE, MAP_IGNORE, "hexadecimal floating constants are a C99 feature"),
 	EXT_IMAGINARY_CONSTANT(ext_imaginary_constant, CLASS_NOTE, MAP_IGNORE, "imaginary constants are an extension"),
 	EXT_MISSING_VARARGS_ARG(ext_missing_varargs_arg, CLASS_NOTE, MAP_IGNORE, "varargs argument missing, but tolerated as an extension"),

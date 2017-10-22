@@ -938,6 +938,8 @@ public final class Diagnostic
      */
     public DiagnosticBuilder report(FullSourceLoc loc, int diagID)
     {
+        if (curDiagID != ~0)
+            System.err.println(getDescription(curDiagID));
         assert curDiagID == ~0 : "Multiple diagnostics in flight at once!";
         curDiagLoc = loc;
         curDiagID = diagID;
