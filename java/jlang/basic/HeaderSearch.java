@@ -179,7 +179,7 @@ public final class HeaderSearch
         // including file.
         if (curFileEntry != null && !isAngled && !noCurDirSearch)
         {
-            String temp = curFileEntry.normalize().toFile().getName();
+            String temp = curFileEntry.normalize().getParent().toString();
             temp += File.separator;
             temp += filename;
 

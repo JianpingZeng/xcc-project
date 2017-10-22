@@ -177,7 +177,7 @@ public final class InitHeaderSearch
         searchList.addAll(0, includeGroup[Quoted.ordinal()]);
 
         headers.setSearchPaths(searchList, includeGroup[Quoted.ordinal()].size(),
-                true);
+                false);
 
         // If verbose, print the list of directories that will be used.
         if (verbose)
