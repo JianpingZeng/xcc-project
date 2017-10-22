@@ -64,6 +64,12 @@ public class APSInt extends APInt
         return this;
     }
 
+    public APSInt assign(boolean val)
+    {
+        super.assign(val);
+        return this;
+    }
+
     public APSInt assign(long rhs)
     {
         super.assign(rhs);

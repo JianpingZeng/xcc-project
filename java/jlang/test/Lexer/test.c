@@ -1,5 +1,5 @@
 #include "test.h"
-//#include <stdio.h>
+#include <stdio.h>
 
 static int countItr = 0;
 float ffabs(float x)
@@ -26,8 +26,7 @@ int main()
 {
 	float x = 2.0;
 	countItr = 0;
-	fsqrt(x);
-	//printf("the sqrt of %f is %f.\n", x, );
+	printf("the sqrt of %f is %f.\n", x, fsqrt(x));
 	//printf("the count of iteration is %d.\n", countItr);
 	return 0;
 }

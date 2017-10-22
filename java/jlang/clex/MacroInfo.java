@@ -95,6 +95,7 @@ public final class MacroInfo
     {
         isUsed = true;
         replacementTokens = new ArrayList<>();
+        location = defloc;
     }
 
     public SourceLocation getDefinitionLoc()
@@ -127,18 +128,36 @@ public final class MacroInfo
      */
     public boolean isIdenticalTo(MacroInfo other, Preprocessor pp)
     {
-        if (replacementTokens.size() != other.replacementTokens.size()
-                || argumentList.length != other.argumentList.length
-                || isFunctionLike != other.isFunctionLike
-                || isC99Varargs() != other.isC99Varargs()
-                || isGNUVarargs() != other.isGNUVarargs())
+        if ((argumentList == null && other.argumentList !=null)
+                || (argumentList != null && other.argumentList == null))
             return false;
 
-        // Check arguemnts.
-        for (int i = 0, e = argumentList.length; i < e; ++i)
+        if (argumentList != null && other.argumentList != null)
         {
-            if (!argumentList[i].equals(other.argumentList[i]))
+            if (replacementTokens.size() != other.replacementTokens.size()
+                    || argumentList.length != other.argumentList.length
+                    || isFunctionLike != other.isFunctionLike
+                    || isC99Varargs() != other.isC99Varargs()
+                    || isGNUVarargs() != other.isGNUVarargs())
                 return false;
+        }
+        else
+        {
+            if (replacementTokens.size() != other.replacementTokens.size()
+                    || isFunctionLike != other.isFunctionLike
+                    || isC99Varargs() != other.isC99Varargs()
+                    || isGNUVarargs() != other.isGNUVarargs())
+                return false;
+        }
+
+        // Check arguemnts.
+        if (argumentList != null)
+        {
+            for (int i = 0, e = argumentList.length; i < e; ++i)
+            {
+                if (!argumentList[i].equals(other.argumentList[i]))
+                    return false;
+            }
         }
 
         // Check all tokens.
@@ -317,5 +336,10 @@ public final class MacroInfo
     {
         assert idx >= 0 && idx < argumentList.length;
         return argumentList[idx];
+    }
+
+    public void freeArgumentList()
+    {
+        argumentList = null;
     }
 }

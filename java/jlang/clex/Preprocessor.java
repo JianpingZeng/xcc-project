@@ -1226,7 +1226,7 @@ public final class Preprocessor
             result.setBegin(peekTok.getLocation());
 
             // Get the next token, don't expand it.
-            pp.lexNonComment(peekTok);
+            pp.lexUnexpandedToken(peekTok);
 
             // Two options, it can either be a pp-identifier or a '('.
             SourceLocation lParenLoc = new SourceLocation();
@@ -1361,7 +1361,7 @@ public final class Preprocessor
 
                 if (result.val.getBitWidth() > val.getBitWidth())
                 {
-                    result.val = val.extend(result.val.getBitWidth());
+                    result.val.assign(val.extend(result.val.getBitWidth()));
                 }
                 else
                 {
@@ -1429,7 +1429,7 @@ public final class Preprocessor
 
                 result.setBegin(start);
                 // C99 6.5.3.3p3: The sign of the result matches the sign of the operand.
-                result.val.negative();
+                result.val.assign(result.val.negative());
 
                 boolean overflow = !result.isUnsigned() && result.val.isMinSignedValue();
                 if (overflow && valueLive)
@@ -1448,7 +1448,7 @@ public final class Preprocessor
 
                 result.setBegin(start);
                 // C99 6.5.3.3p4: The sign of the result matches the sign of the operand.
-                result.val.not();
+                result.val.assign(result.val.not());
                 dt.state = TrackerState.Unknown;
                 return false;
             }
@@ -1462,7 +1462,7 @@ public final class Preprocessor
 
                 result.setBegin(start);
                 // C99 6.5.3.3p5: The sign of the result is 'int', aka it is signed.
-                result.val.lNot();
+                result.val.assign(result.val.lNot());
 
                 result.val.setIsUnsigned(false);
                 if (dt.state == DefinedMacro)
@@ -2835,7 +2835,15 @@ public final class Preprocessor
 
         if (callbacks != null)
             callbacks.macroUndefined(ii, mi);
-        setMacroInfo(ii, mi);
+
+        // Relase the macro definition.
+        releaseMacroInfo(mi);
+        setMacroInfo(ii, null);
+    }
+
+    private void releaseMacroInfo(MacroInfo mi)
+    {
+        mi.freeArgumentList();
     }
 
     /**
