@@ -328,7 +328,7 @@ public final class Preprocessor
         }
     }
 
-    private LinkedList<IncludeStackInfo> includeMacroStack;
+    private Stack<IncludeStackInfo> includeMacroStack;
 
     /**
      * These are actions invoked when some preprocessor activity is
@@ -391,7 +391,7 @@ public final class Preprocessor
         this.sourceMgr = sourceMgr;
         identifiers = new IdentifierTable(langOptions, iilookup);
         commentHandlers = new ArrayList<>();
-        includeMacroStack = new LinkedList<>();
+        includeMacroStack = new Stack<>();
         macros = new HashMap<>();
         scrachBuf = new ScratchBuffer(sourceMgr);
         cachedTokens = new ArrayList<>();
