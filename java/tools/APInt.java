@@ -1393,9 +1393,9 @@ public class APInt implements Cloneable
 
     public long getLimitedValue(int limit)
     {
-        return getActiveBits() > 64 || getZExtValue() > limit ?
-                limit :
-                getZExtValue();
+        return Integer.compareUnsigned(getActiveBits(), 64) > 0
+                || Long.compareUnsigned(getZExtValue() , limit) > 0 ?
+                limit : getZExtValue();
     }
 
     /**

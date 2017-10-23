@@ -16,6 +16,7 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
+import jlang.type.FoldingSetNodeID;
 import tools.Pair;
 
 /**
@@ -203,5 +204,14 @@ public class IdentifierInfo implements Cloneable
             return false;
         IdentifierInfo ii = (IdentifierInfo)obj;
         return ii.getName().equals(getName());
+    }
+
+    @Override
+    public int hashCode()
+    {
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        id.addInteger(tokenID.hashCode());
+        id.addString(entry.first);
+        return id.computeHash();
     }
 }

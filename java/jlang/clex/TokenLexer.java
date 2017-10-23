@@ -197,7 +197,9 @@ public class TokenLexer
             }
 
             if (!disableMacroExpansion && ii.isNeedsHandleIdentifier())
-                pp.handleIdentifier(result);
+            {
+                result.copyFrom(pp.handleIdentifier(result));
+            }
         }
 
         // Otherwise, return a normal token.
