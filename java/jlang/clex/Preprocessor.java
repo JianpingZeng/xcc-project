@@ -17,14 +17,16 @@ package jlang.clex;
  */
 
 import gnu.trove.list.array.TIntArrayList;
-import jlang.basic.*;
+import jlang.basic.HeaderSearch;
+import jlang.basic.SourceManager;
+import jlang.basic.TargetInfo;
 import jlang.clex.PPCallBack.FileChangeReason;
 import jlang.clex.Preprocessor.DefinedTracker.TrackerState;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
 import jlang.diag.FullSourceLoc;
-import tools.APSInt;
 import jlang.support.*;
+import tools.APSInt;
 import tools.OutParamWrapper;
 import tools.Pair;
 
@@ -32,14 +34,14 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static java.lang.System.err;
-import static jlang.support.CharacteristicKind.C_User;
-import static jlang.clex.Token.TokenFlags.*;
 import static jlang.clex.PPCallBack.FileChangeReason.RenameFile;
 import static jlang.clex.Preprocessor.DefinedTracker.TrackerState.DefinedMacro;
 import static jlang.clex.Preprocessor.DefinedTracker.TrackerState.NotDefMacro;
+import static jlang.clex.Token.TokenFlags.*;
 import static jlang.clex.TokenKind.*;
 import static jlang.diag.DiagnosticCommonKindsTag.*;
 import static jlang.diag.DiagnosticLexKindsTag.*;
+import static jlang.support.CharacteristicKind.C_User;
 
 /**
  * <p>
@@ -3028,6 +3030,13 @@ public final class Preprocessor
                         // C99 6.10.6 - Pragma Directive.
                         case pp_pragma:
                             handlePragmaDirective();
+                            return;
+                        case pp_warning:
+                            handleUserDiagnosticDirective(result, true);
+                            return;
+                        case pp_include_next:
+                            diag(result, ext_pp_include_next_directive).emit();
+                            //assert false:"#include_next is not supported currently";
                             return;
                     }
                     break;
