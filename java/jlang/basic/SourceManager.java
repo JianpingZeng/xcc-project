@@ -193,7 +193,7 @@ public class SourceManager
 
     public SLocEntry getSLocEntry(FileID fid)
     {
-        assert fid.getID() < slocEntryTable.size();
+        assert fid.getID() < slocEntryTable.size():"invalid id!";
         return slocEntryTable.get(fid.getID());
     }
 
@@ -832,13 +832,14 @@ public class SourceManager
     {
         SLocEntry entry = getSLocEntry(fid);
 
-        if (slocOffset < entry.getOffset())
+        if (Integer.compareUnsigned(slocOffset, entry.getOffset()) < 0)
             return false;
 
         if (fid.getID() + 1 == slocEntryTable.size())
             return true;
 
-        return slocOffset < getSLocEntry(new FileID(fid.getID() + 1)).getOffset();
+        return Integer.compareUnsigned(slocOffset,
+                getSLocEntry(new FileID(fid.getID() + 1)).getOffset()) < 0;
     }
 
     private FileID createFileID(
@@ -907,7 +908,8 @@ public class SourceManager
         assert slocOffset != 0 : "Invalid FileID";
 
         int i = 0;
-        if (slocEntryTable.get(lastFileIDLookup.getID()).getOffset() < slocOffset)
+        if (Integer.compareUnsigned(slocEntryTable.get(lastFileIDLookup.getID()).getOffset(),
+                slocOffset) < 0)
         {
             i = slocEntryTable.size();
         }
@@ -920,7 +922,7 @@ public class SourceManager
         while (true)
         {
             --i;
-            if (slocEntryTable.get(i).getOffset() <= slocOffset)
+            if (Integer.compareUnsigned(slocEntryTable.get(i).getOffset(), slocOffset)<=0)
             {
                 FileID res = new FileID(i);
 
@@ -947,7 +949,7 @@ public class SourceManager
             ++numProbes;
 
             // If the slocOffset is before middleOffset, searching in left hafl
-            if (slocOffset <= middleOffset)
+            if (Integer.compareUnsigned(middleOffset, slocOffset) > 0)
             {
                 greaterIndex = middleIndex;
                 continue;

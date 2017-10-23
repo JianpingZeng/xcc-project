@@ -52,4 +52,8 @@ public enum PPKeyWordKind
 
     // C99 6.10.6 - Pragma Directive.
     pp_pragma,
+
+    // GNU extensions.
+    pp_include_next,
+    pp_warning,
 }
