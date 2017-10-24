@@ -684,7 +684,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	EXT_GNU_PTR_FUNC_ARITH(ext_gnu_ptr_func_arith, CLASS_NOTE, MAP_IGNORE, "arithmetic on pointer to function type %0 is a GNU extension"),
 	EXT_GNU_SUBSCRIPT_VOID_TYPE(ext_gnu_subscript_void_type, CLASS_NOTE, MAP_IGNORE, "subscript of a pointer to void is a GNU extension"),
 	EXT_GNU_VOID_PTR(ext_gnu_void_ptr, CLASS_NOTE, MAP_IGNORE, "use of GNU void* extension"),
-	EXT_IMPLICIT_FUNCTION_DECL(ext_implicit_function_decl, CLASS_NOTE, MAP_IGNORE, "implicit declaration of function %0 is invalid in C99"),
+	EXT_IMPLICIT_FUNCTION_DECL(ext_implicit_function_decl, CLASS_WARNING, MAP_WARNING, "implicit declaration of function %0 is invalid in C99"),
 	EXT_IMPLICIT_LIB_FUNCTION_DECL(ext_implicit_lib_function_decl, CLASS_WARNING, MAP_WARNING, "implicitly declaring C library function '%0' with type %1"),
 	EXT_INTEGER_COMPLEMENT_COMPLEX(ext_integer_complement_complex, CLASS_NOTE, MAP_IGNORE, "ISO C does not support '~' for complex conjugation of %0"),
 	EXT_INTEGER_INCREMENT_COMPLEX(ext_integer_increment_complex, CLASS_NOTE, MAP_IGNORE, "ISO C does not support '++'/'--' on complex integer type %0"),

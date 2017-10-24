@@ -458,4 +458,19 @@ public class Util
 		return dist[len1-1][len2-1];
 	}
 
+	/**
+	 * A function similar with strpbrk in C library.
+	 * @param src
+	 * @param pattern
+	 * @return
+	 */
+	public static int strpbrk(String src, String pattern)
+	{
+		for (int i = 0, e = src.length(); i != e; i++)
+		{
+			if (pattern.indexOf(src.charAt(i)) != -1)
+				return i;
+		}
+		return -1;
+	}
 }

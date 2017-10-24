@@ -17,6 +17,7 @@ package jlang.sema;
  */
 
 import jlang.ast.Tree.Expr;
+import jlang.basic.Context;
 import jlang.basic.SourceManager;
 import jlang.basic.TargetInfo;
 import jlang.basic.TargetInfo.IntType;
@@ -36,6 +37,9 @@ import java.util.HashMap;
 import java.util.TreeMap;
 
 import static jlang.sema.ASTContext.FloatingRank.*;
+import static jlang.sema.ASTContext.GetBuiltinTypeError.GE_Missing_setjmp;
+import static jlang.sema.ASTContext.GetBuiltinTypeError.GE_Missing_stdio;
+import static jlang.sema.ASTContext.GetBuiltinTypeError.GE_None;
 import static jlang.type.ArrayType.ArraySizeModifier.Normal;
 import static jlang.type.TypeClass.*;
 
@@ -102,13 +106,38 @@ public final class ASTContext
 
     public PrintingPolicy printingPolicy;
 
-    public ASTContext(LangOptions opts, SourceManager sourceMgr,
-			TargetInfo targetInfo, IdentifierTable identifierTable)
+    public Context builtinInfo;
+
+	/**
+	 * Built-in va list type.
+	 * This is initially null and set by Sema::LazilyCreateBuiltin when
+	 * a builtin that takes a valist is encountered.
+	 */
+	public QualType builtinVaListType;
+
+	/**
+	 * The type for C FILE.
+	 */
+	private TypeDecl fileDecl;
+
+	/**
+	 * The type for the c jmp_buf type.
+	 */
+	private TypeDecl jmp_bufDecl;
+	/**
+	 * The type for the C sigjmp_buf type.
+	 */
+	private TypeDecl sigjmp_buf_Decl;
+
+	public ASTContext(LangOptions opts, SourceManager sourceMgr,
+			TargetInfo targetInfo, IdentifierTable identifierTable,
+		    Context builtinInfo)
 	{
 		langOptions = opts;
 		this.sourceMgr = sourceMgr;
 		target = targetInfo;
 		this.identifierTable = identifierTable;
+		this.builtinInfo = builtinInfo;
         tuDel = TranslationUnitDecl.create(this);
 
         VoidTy = initBuiltinType(Void);
@@ -138,6 +167,8 @@ public final class ASTContext
         VoidPtrTy = getPointerType(VoidTy);
         comments = new ArrayList<>();
         printingPolicy = new PrintingPolicy(langOptions);
+
+        builtinVaListType = new QualType();
 	}
 
     public SourceManager getSourceManager()
@@ -1298,7 +1329,271 @@ public final class ASTContext
 		return getFromTargetType(target.getSizeType());
 	}
 
-    enum FloatingRank
+	//===----------------------------------------------------------------------===//
+	//                          Builtin Type Computation
+	//===----------------------------------------------------------------------===//
+	private static QualType decodeTypeFromStr(String str,
+			OutParamWrapper<Integer> idx,
+			ASTContext context,
+			OutParamWrapper<GetBuiltinTypeError> error)
+	{
+		return decodeTypeFromStr(str, idx, context, error, true);
+	}
+
+	/// DecodeTypeFromStr - This decodes one type descriptor from Str, advancing the
+	/// pointer over the consumed characters.  This returns the resultant type.
+	private static QualType decodeTypeFromStr(String str,
+			OutParamWrapper<Integer> idx, ASTContext context,
+			OutParamWrapper<GetBuiltinTypeError> error,
+			boolean allowTypeModifiers)
+	{
+		int howLong = 0;
+		boolean signed = false, unsigned = false;
+		boolean done = false;
+
+		while (!done)
+		{
+			switch (str.charAt(idx.get()))
+			{
+				default:
+					done = true;
+					idx.set(idx.get() - 1);
+					break;
+				case 'S':
+					assert !unsigned : "Can not use both 'S' and 'U' modifiers";
+					assert !signed : "Can not use 'S' modifiers multiple times";
+					signed = true;
+					break;
+				case 'U':
+					assert !unsigned : "Can not use 'U' modifiers multiple times";
+					assert !signed : "Can not use both 'S' and 'U' modifiers";
+					unsigned = true;
+					break;
+				case 'L':
+					assert howLong <= 2 : "Can not have LLLL modifier";
+					++howLong;
+					break;
+			}
+			idx.set(idx.get() + 1);
+		}
+
+		QualType type = new QualType();
+
+		switch (str.charAt(idx.get()))
+		{
+			default:
+				assert false : "Unknown builtin type letter!";
+			case 'v':
+				assert howLong == 0 && !signed
+						&& !unsigned : "Bad modifiers used with 'v'";
+				type = context.VoidTy;
+				break;
+			case 'f':
+				assert howLong == 0 && !signed
+						&& !unsigned : "Bad modifiers used with 'f'";
+				type = context.FloatTy;
+				break;
+			case 'd':
+				assert howLong < 2 && !unsigned
+						&& !signed : "Bad modifiers used with 'd;";
+				if (howLong != 0)
+					type = context.LongDoubleTy;
+				else
+					type = context.DoubleTy;
+				break;
+			case 's':
+				assert howLong == 0 : "Bad modifiers with 's'";
+				if (unsigned)
+					type = context.UnsignedShortTy;
+				else
+					type = context.ShortTy;
+				break;
+			case 'i':
+			{
+				switch (howLong)
+				{
+					case 3:
+						type = unsigned ? context.UnsignedInt128Ty :
+								context.Int128Ty;
+						break;
+					case 2:
+						type = unsigned ? context.UnsignedLongLongTy :
+								context.LongLongTy;
+						break;
+					case 1:
+						type = unsigned ? context.UnsignedLongTy :
+								context.LongTy;
+						break;
+					default:
+						type = unsigned ? context.UnsignedIntTy : context.IntTy;
+						break;
+				}
+				break;
+			}
+			case 'c':
+			{
+				assert howLong == 0 : "Bad modifiers with 'c'";
+				if (signed)
+					type = context.SignedCharTy;
+				else if (unsigned)
+					type = context.UnsignedCharTy;
+				else
+					type = context.CharTy;
+				break;
+			}
+			case 'b':   // boolean
+				assert howLong == 0 : "Bad modifiers with 'b'";
+				type = context.BoolTy;
+				break;
+			case 'z':
+				// size_t
+				assert howLong == 0 : "Bad modifiers with 'z'";
+				type = context.getSizeType();
+				break;
+			case 'a':
+				type = context.getBuiltinVaListType();
+				assert !type.isNull() : "builtin va list type not initialized";
+				break;
+			case 'P':
+				type = context.getFILEType();
+				if (type.isNull())
+				{
+					error.set(GE_Missing_stdio);
+					return new QualType();
+				}
+				break;
+			case 'J':
+			{
+				if (signed)
+					type = context.getSigjmp_buf_Type();
+				else
+					type = context.getJmp_bufType();
+				if (type.isNull())
+				{
+					error.set(GE_Missing_setjmp);
+					return new QualType();
+				}
+				break;
+			}
+		}
+		idx.set(idx.get() + 1);
+
+		if (!allowTypeModifiers)
+		{
+			return type;
+		}
+
+		done = false;
+		while (!done)
+		{
+			switch (str.charAt(idx.get()))
+			{
+				default:
+					done = true;
+					idx.set(idx.get() - 1);
+					break;
+				case '*':
+					type = context.getPointerType(type);
+					break;
+				case 'C':
+					type = type.getQualifiedType(QualType.CONST_QUALIFIER);
+					break;
+			}
+			idx.set(idx.get() + 1);
+		}
+		return type;
+	}
+
+	/**
+	 * Return the type for the specified builtin.
+	 * @param builtid
+	 * @return
+	 */
+	public Pair<QualType, GetBuiltinTypeError> getBuiltinType(int builtid)
+	{
+		String typeStr = builtinInfo.getTypeString(builtid);
+		ArrayList<QualType> argTypes = new ArrayList<>();
+
+		//GetBuiltinTypeError error = GE_None;
+		OutParamWrapper<Integer> idx = new OutParamWrapper<>(0);
+		OutParamWrapper<GetBuiltinTypeError> error = new OutParamWrapper<>(GE_None);
+		QualType resType = decodeTypeFromStr(typeStr, idx, this, error);
+		if (error.get() != GE_None)
+			return Pair.get(new QualType(), error.get());
+
+		while (idx.get() < typeStr.length() && typeStr.charAt(idx.get()) != '.')
+		{
+			QualType ty = decodeTypeFromStr(typeStr, idx, this, error);
+			if (error.get() != GE_None)
+				return Pair.get(new QualType(), error.get());
+
+			// Do array-> pointer array. The builtin should use the decayed type.
+			if (ty.isArrayType())
+			{
+				ty = getArrayDecayedType(ty);
+			}
+			argTypes.add(ty);
+		}
+
+		assert typeStr.charAt(idx.get()) != '.' && idx.get() + 1 == typeStr.length()
+				:"'.' should only occur at end of builtin type list";
+
+		if (argTypes.isEmpty() && typeStr.charAt(idx.get()) == '.')
+		{
+			return Pair.get(getFunctionNoProtoType(resType), error.get());
+		}
+		return Pair.get(getFunctionType(resType, argTypes,
+				typeStr.charAt(idx.get()) == '.', 0),
+				error.get());
+	}
+
+	public void setFILEDecl(TypeDecl fd)
+	{
+		fileDecl = fd;
+	}
+
+	public QualType getFILEType()
+	{
+		if (fileDecl != null)
+			return getTypeDeclType(fileDecl);
+		return new QualType();
+	}
+
+	public TypeDecl getJmp_bufDecl()
+	{
+		return jmp_bufDecl;
+	}
+
+	public QualType getJmp_bufType()
+	{
+		if (jmp_bufDecl != null)
+			return getTypeDeclType(jmp_bufDecl);
+		return new QualType();
+	}
+
+	public void setJmp_bufDecl(TypeDecl decl)
+	{
+		this.jmp_bufDecl = decl;
+	}
+
+	public TypeDecl getSigjmp_buf_Decl()
+	{
+		return sigjmp_buf_Decl;
+	}
+
+	public QualType getSigjmp_buf_Type()
+	{
+		if (sigjmp_buf_Decl != null)
+			return getTypeDeclType(sigjmp_buf_Decl);
+		return new QualType();
+	}
+
+	public void setSigjmp_buf_Decl(TypeDecl decl)
+	{
+		this.sigjmp_buf_Decl = decl;
+	}
+
+	enum FloatingRank
 	{
 		FloatRank, DoubleRank, LongDoubleRank
 	}
@@ -1521,4 +1816,32 @@ public final class ASTContext
 	{
 		return !mergeType(lhs, rhs).isNull();
 	}
+
+	public QualType getBuiltinVaListType()
+	{
+		return builtinVaListType;
+	}
+
+	public void setBuiltinVaListType(QualType builtinVaListType)
+	{
+		this.builtinVaListType = builtinVaListType;
+	}
+
+	public enum GetBuiltinTypeError
+    {
+	    /**
+	     * No error.
+	     */
+    	GE_None,
+
+	    /**
+	     * Missing a type from stdio.h
+	     */
+	    GE_Missing_stdio,
+
+	    /**
+	     * Missing type from setjmp.h
+	     */
+	    GE_Missing_setjmp
+    }
 }

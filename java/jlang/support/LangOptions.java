@@ -74,6 +74,14 @@ public final class LangOptions
     public boolean optimizeSize;
 
     public boolean noInline;
+    /**
+     * Flags indicates whether to tell compiler to known builtin of function.
+     */
+    public boolean noBuiltin;
+    /**
+     * Whether emit all decls even unused.
+     */
+    public boolean emitAllDecls;
 
     public enum VisibilityMode
     {
