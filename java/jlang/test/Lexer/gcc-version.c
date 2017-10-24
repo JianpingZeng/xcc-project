@@ -18,8 +18,5 @@ int yy = __GNUC_MINOR__;
 #if __GNUC_PREREQ (4, 1)
 int x = 1;
 # else
-int y = 1;
-# endif
-#else
 int z = 1;
 #endif
