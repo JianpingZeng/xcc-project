@@ -17,9 +17,7 @@ package jlang.clex;
  */
 
 import gnu.trove.list.array.TIntArrayList;
-import jlang.basic.HeaderSearch;
-import jlang.basic.SourceManager;
-import jlang.basic.TargetInfo;
+import jlang.basic.*;
 import jlang.clex.PPCallBack.FileChangeReason;
 import jlang.clex.Preprocessor.DefinedTracker.TrackerState;
 import jlang.diag.Diagnostic;
@@ -314,6 +312,11 @@ public final class Preprocessor
         return advanceToTokenCharacter(location, len);
     }
 
+    public Context getBuiltiInfo()
+    {
+        return builtinInfo;
+    }
+
     class IncludeStackInfo
     {
         Lexer theLexer;
@@ -373,6 +376,8 @@ public final class Preprocessor
      */
     private TIntArrayList backtrackPositions;
 
+    private Context builtinInfo;
+
     public Preprocessor(Diagnostic diag, LangOptions langOptions,
             TargetInfo target, SourceManager sourceMgr,
             HeaderSearch headerSearch)
@@ -384,6 +389,7 @@ public final class Preprocessor
             TargetInfo target, SourceManager sourceMgr,
             HeaderSearch headerSearch, IdentifierInfoLookup iilookup)
     {
+        builtinInfo = new Context(target);
         this.diags = diag;
         langInfo = langOptions;
         this.target = target;

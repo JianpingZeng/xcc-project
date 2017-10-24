@@ -51,6 +51,8 @@ public class IdentifierInfo implements Cloneable
 
     private Pair<String, IdentifierInfo> entry;
 
+    private int builtID;
+
     public IdentifierInfo()
     {
         tokenID = TokenKind.identifier;
@@ -213,5 +215,15 @@ public class IdentifierInfo implements Cloneable
         id.addInteger(tokenID.hashCode());
         id.addString(entry.first);
         return id.computeHash();
+    }
+
+    public void setBuiltID(int id)
+    {
+        builtID = id;
+    }
+
+    public int getBuiltID()
+    {
+        return builtID;
     }
 }

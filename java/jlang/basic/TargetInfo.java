@@ -524,11 +524,24 @@ public abstract class TargetInfo
         return GCCRegAliases;
     }
 
+    public Info[] getTargetBuiltins()
+    {
+        return null;
+    }
 
     // X86 target abstract base class; x86-32 and x86-64 are very close, so
     // most of the implementation can be shared.
     public static abstract class X86TargetInfo extends TargetInfo
     {
+        private static final Info[] BuiltinInfoX86 = new Info[BUILTX86.values().length];
+
+        static
+        {
+            int i = 0;
+            for (BUILTX86 item : BUILTX86.values())
+                BuiltinInfoX86[i++] = new Info(item.name, item.type,
+                        item.attr, null, false);
+        }
         enum X86SSEEnum
         {
             NoMMXSSE, MMX, SSE1, SSE2, SSE3, SSSE3, SSE41, SSE42
@@ -541,6 +554,12 @@ public abstract class TargetInfo
             super(triple);
             sseLevel = X86SSEEnum.NoMMXSSE;
             longDoubleFormat = x87DoubleExtended;
+        }
+
+        @Override
+        public Info[] getTargetBuiltins()
+        {
+            return BuiltinInfoX86;
         }
 
         @Override

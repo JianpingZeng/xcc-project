@@ -225,6 +225,14 @@ public final class Sema implements DiagnosticParseTag,
         return lookupParsedName(s, name, lookupKind, SourceLocation.NOPOS);
     }
 
+    public LookupResult lookupParsedName(
+            Scope s,
+            IdentifierInfo name,
+            LookupNameKind lookupKind,
+            SourceLocation loc)
+    {
+        return lookupParsedName(s, name, lookupKind, loc, false);
+    }
 	/**
      * Performs asmName lookup for a asmName that was parsed in the
      * source code
@@ -241,10 +249,12 @@ public final class Sema implements DiagnosticParseTag,
             Scope s,
             IdentifierInfo name,
             LookupNameKind lookupKind,
-            SourceLocation loc)
+            SourceLocation loc,
+            boolean allowBuiltinCreation)
     {
-        LookupResult result = new LookupResult(this, name, loc, lookupKind);
-        lookupName(result, s, false);
+        LookupResult result = new LookupResult(this, name,
+                loc, lookupKind);
+        lookupName(result, s, false, allowBuiltinCreation);
         return result;
     }
 
@@ -651,6 +661,11 @@ public final class Sema implements DiagnosticParseTag,
         scope.addDecl(newDecl);
     }
 
+    public boolean lookupName(LookupResult result, Scope s, boolean isLinkageLookup)
+    {
+        return lookupName(result, s, isLinkageLookup, false);
+    }
+
     /**
      * Performs unqualified getIdentifier lookup up starting from current scope.
      * <br>
@@ -672,7 +687,11 @@ public final class Sema implements DiagnosticParseTag,
      * @param result
      * @param s
      */
-    public boolean lookupName(LookupResult result, Scope s, boolean isLinkageLookup)
+    public boolean lookupName(
+            LookupResult result,
+            Scope s,
+            boolean isLinkageLookup,
+            boolean allowBuiltinCreation)
     {
         IdentifierInfo name = result.getLookupName();
         if (name == null || name.getName() == null || name.getName().isEmpty())
@@ -710,11 +729,153 @@ public final class Sema implements DiagnosticParseTag,
             s = s.getParent();
         }
 
-        // TODO LookupBiutin().
+        if (allowBuiltinCreation && lookupBuiltin(this, result))
+            return true;
+
         // If we didn't find a use of this identifier, and if the identifier
-        // corresponds to a jlang.driver builtin, create the decl object for the
+        // corresponds to a compiler builtin, create the decl object for the
         // builtin now, injecting it into translation unit scope, and return it.
         return false;
+    }
+
+    private static boolean lookupBuiltin(Sema sema, LookupResult result)
+    {
+        if (result.getLookupKind() == LookupOrdinaryName)
+        {
+            IdentifierInfo ii = result.getLookupName();
+            if (ii != null)
+            {
+                // If this is a builtin on this target or al target,
+                // create the decl.
+                int builtId = ii.getBuiltID();
+                if (builtId != 0)
+                {
+                    NamedDecl nd = sema.lazilyCreateBuiltin(
+                            ii, builtId,
+                            sema.translateUnitScope,
+                            result.getNameLoc());
+                    if (nd != null)
+                    {
+                        result.addDecl(nd);
+                        return true;
+                    }
+
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
+    private NamedDecl lazilyCreateBuiltin(
+            IdentifierInfo ii,
+            int builtid,
+            Scope s,
+            SourceLocation nameLoc)
+    {
+        return lazilyCreateBuiltin(ii, builtid, s, nameLoc, false);
+    }
+
+    /**
+     * The specified builtin id was first used at file scope. Lazily create a
+     * decl for it.
+     * @param ii
+     * @param builtid
+     * @param s
+     * @param nameLoc
+     * @return
+     */
+    private NamedDecl lazilyCreateBuiltin(
+            IdentifierInfo ii,
+            int builtid,
+            Scope s,
+            SourceLocation nameLoc,
+            boolean forRedecalaration)
+    {
+        if (context.builtinInfo.hasVALListUse(builtid))
+            initBuiltinVaListType();
+
+        ASTContext.GetBuiltinTypeError error;
+        Pair<QualType, ASTContext.GetBuiltinTypeError> res =
+                context.getBuiltinType(builtid);
+        QualType r = res.first;
+        error = res.second;
+        switch (error)
+        {
+            case GE_None:
+                break;
+            case GE_Missing_stdio:
+                if (forRedecalaration)
+                {
+                    diag(nameLoc, err_implicit_decl_requires_stdio)
+                            .addTaggedVal(context.builtinInfo.getName(builtid))
+                            .emit();
+                }
+                return null;
+            case GE_Missing_setjmp:
+                if (forRedecalaration)
+                {
+                    diag(nameLoc, err_implicit_decl_requires_setjmp)
+                            .addTaggedVal(context.builtinInfo.getName(builtid))
+                            .emit();
+                }
+                return null;
+        }
+        if (!forRedecalaration && context.builtinInfo.isPredefinedLibFunction(builtid))
+        {
+            diag(nameLoc, ext_implicit_lib_function_decl)
+                    .addTaggedVal(context.builtinInfo.getName(builtid))
+                    .addTaggedVal(r)
+                    .emit();
+            if (context.builtinInfo.getHeaderName(builtid) != null &&
+                    diags.getDiagnosticLevel(ext_implicit_lib_function_decl)
+                            != Diagnostic.Level.Ignored)
+            {
+                diag(nameLoc, note_please_include_header)
+                        .addTaggedVal(context.builtinInfo.getHeaderName(builtid))
+                        .addTaggedVal(context.builtinInfo.getName(builtid))
+                        .emit();
+            }
+        }
+
+        // Create a implicit function.
+        FunctionDecl fd = new FunctionDecl(ii, context.getTranslateUnitDecl(),
+                nameLoc, r, StorageClass.SC_extern, false);
+        fd.setImplicit(true);
+
+        // Create Decl objects for each argument, adding them to FunctionDecl.
+        FunctionProtoType fpt = r.getAsFunctionProtoType();
+        if (fpt != null)
+        {
+            ArrayList<ParamVarDecl> params = new ArrayList<>();
+            for (int i = 0, e = fpt.getNumArgs(); i != e; i++)
+            {
+                params.add(ParamVarDecl.create(fd, null,
+                        new SourceLocation(), fpt.getArgType(i),
+                        StorageClass.SC_none));
+            }
+            fd.setParams(params);
+        }
+
+        IDeclContext savedContext = curContext;
+        curContext = context.getTranslateUnitDecl();
+        pushOnScopeChains(fd, translateUnitScope);
+        curContext = savedContext;
+        return fd;
+    }
+
+    private void initBuiltinVaListType()
+    {
+        if (!context.getBuiltinVaListType().isNull())
+            return;
+
+        IdentifierInfo vaIdent = context.identifierTable.get("__builtin_va_list");
+        LookupResult result = lookupParsedName(translateUnitScope, vaIdent,
+                LookupOrdinaryName, new SourceLocation());
+        NamedDecl varDecl = result.getFoundDecl();
+        assert varDecl != null:"Must predefining __builtin_va_list";
+        TypeDefDecl varTypedef = (TypeDefDecl)varDecl;
+        context.setBuiltinVaListType(context.getTypeDefType(varTypedef));
     }
 
     /**
@@ -1358,19 +1519,28 @@ public final class Sema implements DiagnosticParseTag,
         Decl decl = (Decl) curContext;
         return decl.getDeclContext();
     }
-
     private NamedDecl lookupName(
             Scope s,
             IdentifierInfo name,
             SourceLocation loc,
             LookupNameKind lookupKind)
     {
+        return lookupName(s, name, loc, lookupKind, false);
+    }
+
+    private NamedDecl lookupName(
+            Scope s,
+            IdentifierInfo name,
+            SourceLocation loc,
+            LookupNameKind lookupKind,
+            boolean allowBuiltinCreation)
+    {
         // If the found ident indenitifier info is null, just terminates early.
         if (name == null)
             return null;
 
         LookupResult result = new LookupResult(this, name, loc, lookupKind);
-        lookupName(result, s, false);
+        lookupName(result, s, false, allowBuiltinCreation);
         if (result.getResultKind() != Found)
             return null;
         else
@@ -8887,7 +9057,7 @@ public final class Sema implements DiagnosticParseTag,
      *     we find this declaration of "foo" and complain that it is
      *     not visible.
      */
-    private HashMap<String, NamedDecl> locallyScopedExternalDecls
+    private HashMap<IdentifierInfo, NamedDecl> locallyScopedExternalDecls
             = new HashMap<>();
 
     private Scope translateUnitScope;
@@ -8924,8 +9094,8 @@ public final class Sema implements DiagnosticParseTag,
             diag(nameLoc, warn_implicit_function_decl)
                     .addTaggedVal(name).emit();
         DeclSpec ds = new DeclSpec();
-        OutParamWrapper<String> x = new OutParamWrapper<>();
-        OutParamWrapper<Integer> y = new OutParamWrapper<>();
+        OutParamWrapper<String> x = new OutParamWrapper<>("");
+        OutParamWrapper<Integer> y = new OutParamWrapper<>(-1);
         boolean error = ds.setTypeSpecType(TST.TST_int, nameLoc, x, y);
         String dummy = x.get();
         int diagID = y.get();
@@ -8962,7 +9132,7 @@ public final class Sema implements DiagnosticParseTag,
 
         // Perform the required lookup.
         //LookupResult res = new LookupResult(this, asmName, nameLoc, LookupOrdinaryName);
-        LookupResult res = lookupParsedName(s, id, LookupOrdinaryName, nameLoc);
+        LookupResult res = lookupParsedName(s, id, LookupOrdinaryName, nameLoc, true);
 
         if (res.isAmbiguous())
         {

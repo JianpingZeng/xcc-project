@@ -1306,7 +1306,7 @@ public abstract class Decl
         private DeclLink<FunctionDecl> redeclLink;
 
         public FunctionDecl(IdentifierInfo name,
-                DeclContext context,
+                IDeclContext context,
                 SourceLocation location,
                 QualType type,
                 StorageClass sc,

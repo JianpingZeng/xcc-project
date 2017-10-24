@@ -344,6 +344,14 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             desc("Print macro definitions in -E mode in addition to normal output"),
             init(false));
 
+    public static final BooleanOpt AllowBuiltins =
+            new BooleanOpt(optionName("fbuiltin"),
+                    desc("Disabled implicit builtin knowledge of function"),
+                    init(true));
+
+    public static final BooleanOpt EmitAllDecls =
+            new BooleanOpt(optionName("femit-all-decls"),
+                    desc("Emit all declarations, even unused"));
     /**
      * Result codes.
      */
@@ -738,7 +746,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 pp.getLangOptions(),
                 pp.getSourceManager(),
                 pp.getTargetInfo(),
-                pp.getIdentifierTable());
+                pp.getIdentifierTable(),
+                pp.getBuiltiInfo());
 
         // If we have an ASTConsumer, run the parser with it.
         if (consumer != null)
@@ -965,6 +974,12 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 // Explicit setting overrides default.
         if (DollarsInIdents.getPosition() != 0)
             options.dollarIdents = DollarsInIdents.value;
+
+        if (!AllowBuiltins.value)
+            options.noBuiltin = true;
+
+        if (EmitAllDecls.value)
+            options.emitAllDecls = true;
 
         options.optimizeSize = false;
 
@@ -1241,6 +1256,10 @@ public class JlangCC implements DiagnosticFrontendKindsTag
 
             if (pp == null)
                 continue;
+
+            // Initialize builtin function for target-independent and target-specific.
+            pp.getBuiltiInfo().initializeBuiltin(pp.getIdentifierTable(),
+                    pp.getLangOptions().noBuiltin);
 
             // Initialize the source manager with the given input file.
             if (initializeSourceManager(pp, inputFile))
