@@ -97,7 +97,7 @@ public class MacroArgs
     public Token[] getUnexpandedArgument(int arg)
     {
         assert arg >= 0;
-        int lastEOF = 0;
+        int lastEOF = -1;
         int end = 0;
         int e = unexpandedArgTokens.length;
         for (int i = 0; i < e; i++)
@@ -113,8 +113,8 @@ public class MacroArgs
                 lastEOF = i;
             }
         }
-        assert lastEOF < end && end <= e;
-        return Arrays.copyOfRange(unexpandedArgTokens, lastEOF, end+1);
+        assert lastEOF < end && end <= e:"Illegal macro arguments tokenized!";
+        return Arrays.copyOfRange(unexpandedArgTokens, lastEOF+1, end+1);
     }
 
     /// Given a pointer to an expanded or unexpanded argument,
