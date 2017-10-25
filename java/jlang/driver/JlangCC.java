@@ -351,7 +351,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
 
     public static final BooleanOpt EmitAllDecls =
             new BooleanOpt(optionName("femit-all-decls"),
-                    desc("Emit all declarations, even unused"));
+                    desc("Emit all declarations, even unused"),
+                    init(false));
     /**
      * Result codes.
      */

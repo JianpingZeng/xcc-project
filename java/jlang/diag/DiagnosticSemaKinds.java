@@ -694,7 +694,7 @@ public enum DiagnosticSemaKinds implements DiagnosticSemaTag
 	EXT_MIXED_DECLS_CODE(ext_mixed_decls_code, CLASS_NOTE, MAP_IGNORE, "ISO C90 forbids mixing declarations and code"),
 	EXT_NULL_POINTER_EXPR_NOT_ICE(ext_null_pointer_expr_not_ice, CLASS_NOTE, MAP_IGNORE, "null pointer expression is not an integer constant expression (but is allowed as an extension)"),
 	EXT_OFFSETOF_EXTENDED_FIELD_DESIGNATOR(ext_offsetof_extended_field_designator, CLASS_NOTE, MAP_IGNORE, "using extended field designator is an extension"),
-	EXT_PARAM_NOT_DECLARED(ext_param_not_declared, CLASS_NOTE, MAP_IGNORE, "parameter %0 was not declared, defaulting to type 'int'"),
+	EXT_PARAM_NOT_DECLARED(ext_param_not_declared, CLASS_WARNING, MAP_WARNING, "parameter %0 was not declared, defaulting to type 'int'"),
 	EXT_PARAM_PROMOTED_NOT_COMPATIBLE_WITH_PROTOTYPE(ext_param_promoted_not_compatible_with_prototype, CLASS_WARNING, MAP_WARNING, "promoted type %0 of K&R function parameter is not compatible with the parameter type %1 declared in a previous prototype"),
 	EXT_PREDEF_OUTSIDE_FUNCTION(ext_predef_outside_function, CLASS_WARNING, MAP_WARNING, "predefined identifier is only valid inside function"),
 	EXT_RETURN_HAS_EXPR(ext_return_has_expr, CLASS_WARNING, MAP_WARNING, "void %select{function|method}1 %0 should not return a value"),
