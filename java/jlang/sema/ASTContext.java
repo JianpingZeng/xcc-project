@@ -1351,6 +1351,7 @@ public final class ASTContext
 		boolean signed = false, unsigned = false;
 		boolean done = false;
 
+		// Read prefixed modifiers, like 'U', 'S', 'L'.
 		while (!done)
 		{
 			switch (str.charAt(idx.get()))
@@ -1377,8 +1378,8 @@ public final class ASTContext
 			idx.set(idx.get() + 1);
 		}
 
-		QualType type = new QualType();
-
+		// Step2, read the middle type specifier.
+		QualType type;
 		switch (str.charAt(idx.get()))
 		{
 			default:
@@ -1483,6 +1484,7 @@ public final class ASTContext
 			return type;
 		}
 
+		// Step3, read the postfixed modifiers.
 		done = false;
 		while (!done)
 		{
@@ -1535,7 +1537,7 @@ public final class ASTContext
 			argTypes.add(ty);
 		}
 
-		assert typeStr.charAt(idx.get()) != '.' && idx.get() + 1 == typeStr.length()
+		assert idx.get() + 1 == typeStr.length() || typeStr.charAt(idx.get()) != '.'
 				:"'.' should only occur at end of builtin type list";
 
 		if (argTypes.isEmpty() && typeStr.charAt(idx.get()) == '.')

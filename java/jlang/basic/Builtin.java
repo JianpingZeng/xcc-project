@@ -18,6 +18,64 @@ package jlang.basic;
 
 import static jlang.basic.BuiltID.*;
 
+// FIXME: this needs to be the full list supported by GCC.  Right now, I'm just
+// adding stuff on demand.
+//
+// FIXME: This should really be a .td file, but that requires modifying tblgen.
+// Perhaps tblgen should have plugins.
+
+// The first value provided to the macro specifies the function name of the
+// builtin, and results in a clang::builtin::BIXX enum value for XX.
+
+// The second value provided to the macro specifies the type of the function
+// (result value, then each argument) as follows:
+//  v -> void
+//  b -> boolean
+//  c -> char
+//  s -> short
+//  i -> int
+//  f -> float
+//  d -> double
+//  z -> size_t
+//  F -> constant CFString
+//  a -> __builtin_va_list
+//  A -> "reference" to __builtin_va_list
+//  V -> Vector, following num elements and a base type.
+//  P -> FILE
+//  J -> jmp_buf
+//  SJ -> sigjmp_buf
+//  . -> "...".  This may only occur at the end of the function list.
+//
+// Types maybe prefixed with the following modifiers:
+//  L   -> long (e.g. Li for 'long int')
+//  LL  -> long long
+//  LLL -> __int128_t (e.g. LLLi)
+//  S   -> signed
+//  U   -> unsigned
+//
+// Types may be postfixed with the following modifiers:
+// * -> pointer
+// & -> reference
+// C -> const
+
+// The third value provided to the macro specifies information about attributes
+// of the function.  These must be kept in sync with the predicates in the
+// Builtin::Context class.  Currently we have:
+//  n -> nothrow
+//  r -> noreturn
+//  c -> const
+//  F -> this is a libc/libm function with a '__builtin_' prefix added.
+//  f -> this is a libc/libm function without the '__builtin_' prefix. It can
+//       be followed by ':headername:' to state which header this function
+//       comes from.
+//  p:N: -> this is a printf-like function whose Nth argument is the format
+//          string.
+//  P:N: -> similar to the p:N: attribute, but the function is like vprintf
+//          in that it accepts its arguments as a va_list rather than
+//          through an ellipsis
+//  e -> const, but only when -fmath-errno=0
+//  FIXME: gcc has nonnull
+
 /**
  * @author Xlous.zeng
  * @version 0.1
