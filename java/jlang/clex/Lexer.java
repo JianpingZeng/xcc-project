@@ -870,7 +870,8 @@ public class Lexer extends PreprocessorLexer
         if (curPos != 0 && (buffer[curPos - 1] != '\n' && buffer[curPos - 1] != '\r'))
         {
             diag(bufferEnd, ext_no_newline_eof).addFixItHint(FixItHint
-                    .createInsertion(getSourceLocation(bufferEnd, 1), "\n"));
+                    .createInsertion(getSourceLocation(bufferEnd, 1), "\n"))
+                    .emit();
         }
 
         this.bufferPtr = curPos;
