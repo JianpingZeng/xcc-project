@@ -63,7 +63,7 @@ public enum TokenKind
     Double("double", Tag.DOUBLE, KEYALL),
     False("false", Tag.FALSE, BOOLSUPPORT),
     Unsigned("unsigned", Tag.UNSIGNED, KEYALL),
-    Signed("singed", Tag.SIGNED, KEYALL),
+    Signed("signed", Tag.SIGNED, KEYALL),
     Struct("struct", Tag.STRUCT, KEYALL),
     Union("union", Tag.UNION, KEYALL),
     Enum("enum", Tag.ENUM, KEYALL),

@@ -135,16 +135,23 @@ public class MacroArgs
     {
         assert arg >= 0 && arg < getNumArguments():"Invalid argument number!";
 
+        if (preExpArgTokens.isEmpty())
+        {
+            for (int n = getNumArguments(); n != 0; --n)
+                preExpArgTokens.add(new ArrayList<>());
+        }
+
         ArrayList<Token> result = preExpArgTokens.get(arg);
 
         if (!result.isEmpty()) return result;
 
         Token[] ai = getUnexpandedArgument(arg);
+        /*
         Token[] newAI = new Token[getArgLength(ai) + 1];
         System.arraycopy(ai, 0, newAI, 0, ai.length);
         newAI[newAI.length - 1] = ai[ai.length];
-
-        pp.enterTokenStream(newAI,
+        */
+        pp.enterTokenStream(ai,
                 false /*disable expand*/,
                 false /*owns tokens*/);
 

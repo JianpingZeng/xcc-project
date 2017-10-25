@@ -569,6 +569,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
         if (typeSpecWidth == TSW_unspecified)
             TSWLoc = loc;
 
+        // Turn long long into long and combines proceeding long into 'long long'
         else if (val != TSW_longlong || typeSpecWidth != TSW_long)
         {
             return badSpecifier(val, typeSpecWidth);

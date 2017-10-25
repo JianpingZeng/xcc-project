@@ -1278,6 +1278,10 @@ public final class Sema implements DiagnosticParseTag,
             isExact = x.get();
             res = new FloatingLiteral(val, isExact, ty, token.getLocation());
         }
+        else if (!literal.isIntegerLiteral())
+        {
+            return exprError();
+        }
         else
         {
             QualType ty = new QualType();
@@ -1302,7 +1306,7 @@ public final class Sema implements DiagnosticParseTag,
                 // If this value fits into a ULL, try to figure out what else it
                 // fits into according to the rules of C99.6.4.4.1p5.
 
-                boolean allowUnsigned = literal.isUnsigned;
+                boolean allowUnsigned = literal.isUnsigned || literal.getRadix() != 10;
 
                 // Check from smallest to largest, picking the smallest type we can.
                 int width = 0;
@@ -1319,53 +1323,55 @@ public final class Sema implements DiagnosticParseTag,
                             ty = context.UnsignedIntTy;
                         width = intSize;
                     }
-                    // Are long/unsigned long possibilities?
-                    if (ty.isNull() && !literal.isLongLong)
-                    {
-                        int longSize = context.target.getLongWidth();
-
-                        // does it fit in a unsigned long?
-                        if (resultVal.isIntN(longSize))
-                        {
-                            // Does it fit in a signed long?
-                            if(!literal.isUnsigned && !resultVal.get(longSize - 1))
-                                ty = context.LongTy;
-                            else if (allowUnsigned)
-                                ty = context.UnsignedLongTy;
-                            width = longSize;
-                        }
-                    }
-
-                    if (ty.isNull())
-                    {
-                        int longlongSize = context.target.getLongLongWidth();
-                        // Does it fit in a unsigned long long?
-                        if (resultVal.isIntN(longlongSize))
-                        {
-                            if (!literal.isUnsigned && !resultVal.get(longlongSize-1))
-                                ty = context.LongLongTy;
-                            else if (allowUnsigned)
-                                ty = context.UnsignedLongLongTy;
-                            width = longlongSize;
-                        }
-                    }
-
-                    // If we still couldn't decide a type, we probably have
-                    // something that does not fit in a signed long, but has no U suffix.
-                    if (ty.isNull())
-                    {
-                        diag(token.getLocation(), warn_integer_too_large_for_signed).
-                                addTaggedVal(literal.toString()).emit();
-                        ty = context.UnsignedLongTy;
-                        width = context.target.getLongLongWidth();
-                    }
-
-                    if (resultVal.getBitWidth() != width)
-                        resultVal = resultVal.trunc(width);
                 }
-                return new ActionResult<>(new IntegerLiteral(context,resultVal, ty, token.getLocation()));
+                // Are long/unsigned long possibilities?
+                if (ty.isNull() && !literal.isLongLong)
+                {
+                    int longSize = context.target.getLongWidth();
+
+                    // does it fit in a unsigned long?
+                    if (resultVal.isIntN(longSize))
+                    {
+                        // Does it fit in a signed long?
+                        if(!literal.isUnsigned && !resultVal.get(longSize - 1))
+                            ty = context.LongTy;
+                        else if (allowUnsigned)
+                            ty = context.UnsignedLongTy;
+                        width = longSize;
+                    }
+                }
+
+                // long long or unsigned long long.
+                if (ty.isNull())
+                {
+                    int longlongSize = context.target.getLongLongWidth();
+                    // Does it fit in a unsigned long long?
+                    if (resultVal.isIntN(longlongSize))
+                    {
+                        if (!literal.isUnsigned && !resultVal.get(longlongSize-1))
+                            ty = context.LongLongTy;
+                        else if (allowUnsigned)
+                            ty = context.UnsignedLongLongTy;
+                        width = longlongSize;
+                    }
+                }
+
+                // If we still couldn't decide a type, we probably have
+                // something that does not fit in a signed long, but has no U suffix.
+                if (ty.isNull())
+                {
+                    diag(token.getLocation(), warn_integer_too_large_for_signed).
+                            addTaggedVal(literal.toString()).emit();
+                    ty = context.UnsignedLongTy;
+                    width = context.target.getLongLongWidth();
+                }
+
+                if (resultVal.getBitWidth() != width)
+                    resultVal = resultVal.trunc(width);
             }
+            return new ActionResult<>(new IntegerLiteral(context,resultVal, ty, token.getLocation()));
         }
+
         if (literal.isImaginary)
         {
             // FIXME: 17-5-5 currently imaginary number is not supported
