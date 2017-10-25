@@ -37,6 +37,7 @@ import static jlang.cparser.DeclSpec.TSS.TSS_signed;
 import static jlang.cparser.DeclSpec.TSS.TSS_unsigned;
 import static jlang.cparser.DeclSpec.TST.*;
 import static jlang.cparser.DeclSpec.TSW.TSW_long;
+import static jlang.cparser.DeclSpec.TSW.TSW_longlong;
 import static jlang.cparser.DeclSpec.TSW.TSW_short;
 import static jlang.cparser.Parser.ParenParseOption.*;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
@@ -651,7 +652,7 @@ public class Parser implements Tag,
             case identifier:
             {
                 // C99 6.8.1 labeled-statement
-                if (peekAheadToken().is(colon))
+                if (nextToken().is(colon))
                 {
                     // identifier ':' statement
                     return parseLabeledStatement();
@@ -2696,7 +2697,10 @@ public class Parser implements Tag,
                     break;
 
                 case Long:
-                    isInvalid = declSpecs.setTypeSpecWidth(TSW_long, loc);
+                    if (declSpecs.getTypeSpecWidth() != TSW_long)
+                        isInvalid = declSpecs.setTypeSpecWidth(TSW_long, loc);
+                    else
+                        isInvalid = declSpecs.setTypeSpecWidth(TSW_longlong, loc);
                     break;
                 case Short:
                     isInvalid = declSpecs.setTypeSpecWidth(TSW_short, loc);
@@ -2832,7 +2836,7 @@ public class Parser implements Tag,
 
         // Since we know that this either implicit int (which is rare) or an
         // error, we'd do lookahead to try to do better recovery.
-        if (isValidAfterIdentifierDeclarator(peekAheadToken()))
+        if (isValidAfterIdentifierDeclarator(nextToken()))
         {
             // if this token is valid for implicit int,
             // e.g. "static x = 4", then we just avoid eating the identifier, so
@@ -3252,7 +3256,7 @@ public class Parser implements Tag,
                     // the same declaration of X.  Because of this, we lookup ahead past this
                     // token to see if it's a type specifier.  IfStmt so, we know the code is
                     // otherwise invalid, so we can produce the expected semi error.
-                    if (!isKnownBeTypeSpecifier(peekAheadToken()))
+                    if (!isKnownBeTypeSpecifier(nextToken()))
                         expectedSemi = false;
                     break;
                 }
@@ -3875,8 +3879,8 @@ public class Parser implements Tag,
 
     private boolean isFunctionDeclaratorIdentifierList()
     {
-        return nextTokenIs(identifier) && (tokenIs(peekAheadToken(), comma)
-                || tokenIs(peekAheadToken(), r_paren));
+        return nextTokenIs(identifier) && (tokenIs(nextToken(), comma)
+                || tokenIs(nextToken(), r_paren));
     }
 
 	/**
@@ -4062,7 +4066,7 @@ public class Parser implements Tag,
 
         // C array syntax has many features, but by-far the most common is [] and [4].
         // This code does a fast path to handle some of the most obvious cases.
-        if (nextTokenIs(r_bracket))
+        if (tok.is(r_bracket))
         {
             // eat the ']'.
             rbracketLoc = matchRHSPunctuation(r_bracket, lbracketLoc);
@@ -4074,8 +4078,8 @@ public class Parser implements Tag,
                     rbracketLoc);
             return;
         }
-        else if (nextTokenIs(numeric_constant)
-                && tokenIs(peekAheadToken(), r_bracket))
+        else if (tok.is(numeric_constant)
+                && getLookAheadToken(1).is(r_bracket))
         {
             // [4] is evey common. parse the number
             ActionResult<Expr> numOfSize = action.actOnNumericConstant(tok);
@@ -4114,7 +4118,7 @@ public class Parser implements Tag,
         boolean isStar = false;
         ActionResult<Expr> numElements = new ActionResult<>();
 
-        if (nextTokenIs(star) && tokenIs(peekAheadToken(), r_bracket))
+        if (nextTokenIs(star) && tokenIs(nextToken(), r_bracket))
         {
             consumeToken();     // Eat the '*'.
             if (staticLoc.isValid())
@@ -5132,13 +5136,28 @@ public class Parser implements Tag,
     }
 
     /**
+     * This peeks ahead n tokens and returns that token without
+     * consuming any tokens. lookAhead(0) return 'tok', lookAhead(1)
+     * returns the token after tok, etc.
+     *
+     * Note that this differs from the Preprocessor's lookAhead method,
+     * because the Parser always has on token lexed that the preprocessor doesn't.
+     * @param n
+     * @return
+     */
+    private Token getLookAheadToken(int n)
+    {
+        if (n == 0 || tok.is(eof)) return tok;
+        return pp.lookAhead(n-1);
+    }
+    /**
      * Peeks ahead token and returns that token without consuming any token.
      *
      * @return
      */
-    private Token peekAheadToken()
+    private Token nextToken()
     {
-        return pp.peekAhead(1);
+        return pp.lookAhead(0);
     }
 
     /**

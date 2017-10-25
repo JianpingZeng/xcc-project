@@ -129,6 +129,7 @@ class PreprocessorFactory
         if (opts.asmPreprocessor)
             defineBuiltinMacro(buf, "__ASSEMBLER__=1");
 
+        defineBuiltinMacro(buf, "__STDC__=1");
         if (opts.c99)
             defineBuiltinMacro(buf, "__STDC_VERSION__=199901L");
         else if (!opts.gnuMode && opts.trigraph)

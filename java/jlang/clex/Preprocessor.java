@@ -3907,6 +3907,24 @@ public final class Preprocessor
         disableMacroExpansion = oldVal;
     }
 
+    private boolean inCachingLexMode()
+    {
+        return curLexer == null && curTokenLexer == null;
+    }
+
+    private void enterCachingMode()
+    {
+        if (inCachingLexMode())
+            return;
+        pushIncludeMacroStack();
+    }
+
+    private void exitCachingMode()
+    {
+        if (inCachingLexMode())
+            removeTopOfLexerStack();
+    }
+
     /**
      * This peeks ahead N tokens and returns that token without
      * consuming any tokens.  lookAhead(0) returns the next token that would be
@@ -3927,12 +3945,14 @@ public final class Preprocessor
     public Token peekAhead(int n)
     {
         assert cachedLexPos + n > cachedTokens.size(): "Confused caching.";
+        //FIXME exitCachingMode();
         for (int c = cachedLexPos + n - cachedTokens.size(); c > 0; --c)
         {
             Token res = new Token();
             lex(res);
             cachedTokens.add(res);
         }
+        //enterCachingMode();
         return cachedTokens.get(cachedTokens.size() - 1);
     }
 

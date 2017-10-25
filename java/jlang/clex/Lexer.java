@@ -1607,6 +1607,11 @@ public class Lexer extends PreprocessorLexer
             case '\0':
             {
                 // Null.
+                // FIXME, note that there are multiples '\0' ends in AvailableInternal.h
+                // in Mac OS 10.12.6
+                // So that we just skip them.
+                while (curPos < bufferEnd && buffer[curPos] == '\0') { ++curPos; }
+
                 if (curPos == bufferEnd)
                 {
                     Preprocessor ppcache = pp;
@@ -1699,8 +1704,14 @@ public class Lexer extends PreprocessorLexer
             }
             case 'L':
             {
-                // TODO identify wide character or string.
-                break;
+                x = new OutParamWrapper<>(curPos);
+                ch = getAndAdvanceChar(x, result);
+                if (ch == '"')
+                {
+                    // TODO identify wide character or string.
+                    assert false:"Currently wide string is not supported!";
+                    break;
+                }
             }
 
             case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G':
