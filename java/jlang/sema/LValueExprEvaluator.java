@@ -40,7 +40,7 @@ public class LValueExprEvaluator extends ExprEvaluatorBase<Boolean>
 
     private boolean success(Tree.Expr expr)
     {
-        result.get().base = null;
+        result.get().base = expr;
         result.get().offset = 0;
         return true;
     }

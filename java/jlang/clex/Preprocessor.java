@@ -2553,10 +2553,12 @@ public final class Preprocessor
                     IdentifierInfo[] arr = new IdentifierInfo[argLists.size()];
                     argLists.toArray(arr);
                     mi.setArgumentList(arr);
+                    return false;
                 case eom:
                     diag(tok, err_pp_missing_rparen).emit();
                     return true;
                 default:
+                {
                     // Handle keywords and identifiers here to accept things like
                     // #define Foo(for) for.
                     IdentifierInfo ii = tok.getIdentifierInfo();
@@ -2612,6 +2614,7 @@ public final class Preprocessor
                             mi.setArgumentList(arr);
                             return false;
                     }
+                }
             }
         }
     }

@@ -16,7 +16,6 @@ package jlang.clex;
  * permissions and limitations under the License.
  */
 
-import gnu.trove.list.array.TCharArrayList;
 import jlang.support.SourceLocation;
 
 import java.util.ArrayList;
@@ -56,6 +55,8 @@ public class MacroArgs
     private MacroArgs(int numToks, boolean varargsElided)
     {
         unexpandedArgTokens = new Token[numToks];
+        preExpArgTokens = new ArrayList<>();
+        stringifiedArgs = new ArrayList<>();
         this.varargsElided = varargsElided;
     }
 
@@ -208,55 +209,55 @@ public class MacroArgs
         tok.setKind(string_literal);
 
         int i = 0;
-        TCharArrayList sb = new TCharArrayList();
-        sb.add('\"');
+        StringBuilder sb = new StringBuilder();
+        sb.append('"');
 
         boolean isFirst = true;
         for (; argToks[i].isNot(eof); i++)
         {
-            Token t = argToks[i];
+            Token tmp = argToks[i];
 
             // Handle the non-first token.
             if (!isFirst && (tok.hasLeadingSpace() || tok.isAtStartOfLine()))
             {
-                sb.add(' ');
+                sb.append(' ');
             }
             isFirst = false;
 
             // If this is a string or character constant, escape the token as specified
             // by 6.10.3.2p2.
-            if (tok.is(string_literal) ||   // string literal, "foo"
-                    tok.is(char_constant))  // char literal
+            if (tmp.is(string_literal) ||   // string literal, "foo"
+                    tmp.is(char_constant))  // char literal
             {
-                String str = Lexer.stringify(pp.getSpelling(tok));
-                sb.add(str.toCharArray());
+                String str = Lexer.stringify(pp.getSpelling(tmp));
+                sb.append(str);
             }
             else
             {
                 // Otherwise, just append the token.  Do some gymnastics to get the token
                 // in place and avoid copies where possible.
-                sb.add(pp.getSpelling(tok).toCharArray());
+                sb.append(pp.getSpelling(tmp));
             }
         }
 
         // If the last character of the string is a \, and if it isn't escaped, this
         // is an invalid string literal, diagnose it as specified in C99.
-        if (sb.get(sb.size() - 1) == '\\')
+        if (sb.charAt(sb.length() - 1) == '\\')
         {
-            int firstNonSlash = sb.size() - 2;
-            while (sb.get(firstNonSlash) == '\\')
+            int firstNonSlash = sb.length() - 2;
+            while (sb.charAt(firstNonSlash) == '\\')
                 --firstNonSlash;
 
-            if ((sb.size() - 1-firstNonSlash & 1) != 0)
+            if ((sb.length() - 1-firstNonSlash & 1) != 0)
             {
                 pp.diag(argToks[i - 1], pp_invalid_string_literal).emit();
-                sb.removeAt(sb.size() - 1);
+                sb.deleteCharAt(sb.length() - 1);
             }
         }
 
-        sb.add('"');
+        sb.append('"');
 
-        pp.createString(String.valueOf(sb.toArray()), tok, new SourceLocation());
+        pp.createString(sb.toString(), tok, new SourceLocation());
         return tok;
     }
 }

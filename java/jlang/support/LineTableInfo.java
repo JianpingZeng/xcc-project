@@ -21,7 +21,6 @@ import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.Pair;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 
 /**
  * @author Xlous.zeng
@@ -149,22 +148,12 @@ public class LineTableInfo
             return entries.get(entries.size() - 1);
 
         // Do a binary search to find the maximal element that is still before Offset.
-        entries.sort(Comparator.comparingInt(o -> o.fileOffset));
-
-        int low = 0, high = entries.size();
-        int mid;
-        while (high - low > 0)
+        for (LineEntry entry : entries)
         {
-            mid = (low + high)/2;
-            if (offset >= entries.get(mid).fileOffset)
-            {
-                low = mid + 1;
-            }
-            else
-                high = mid;
+            if (entry.fileOffset == offset)
+                return entry;
         }
-
-        return entries.get(low - 1);
+        return null;
     }
 
     // Low-level access

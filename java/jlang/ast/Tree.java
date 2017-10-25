@@ -2704,7 +2704,7 @@ public abstract class Tree implements StmtClass
 
         public StringLiteral(QualType type)
         {
-            super(CharacterLiteralClass, type, OK_Ordinary, EVK_RValue, null);
+            super(StringLiteralClass, type, OK_Ordinary, EVK_RValue, null);
         }
 
         @Override
