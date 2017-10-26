@@ -36,6 +36,7 @@ import jlang.support.LangOptions.VisibilityMode;
 import jlang.system.Process;
 import tools.OutParamWrapper;
 import tools.Pair;
+import tools.Util;
 import tools.commandline.*;
 
 import java.io.File;
@@ -353,6 +354,12 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             new BooleanOpt(optionName("femit-all-decls"),
                     desc("Emit all declarations, even unused"),
                     init(false));
+
+    // FIXME, This flag woule be turn off in the release.
+    public static final BooleanOpt DebugMode =
+            new BooleanOpt(optionName("debug"),
+                    desc("Enable output debug informaton"),
+                    init(true));
     /**
      * Result codes.
      */
@@ -1195,6 +1202,9 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                     MessageLength.value, !NoColorDiagnostic.value);
         }
 
+        if (DebugMode.value)
+            Util.DEBUG = true;
+
         Diagnostic diag = new Diagnostic(diagClient);
 
         // Install LLVM error handler, so that any LLVM backend diagnostics
@@ -1294,8 +1304,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         }
         catch (Exception e)
         {
-            java.lang.System.err.println("Compilation failure.");
-            e.printStackTrace();
+            java.lang.System.err.println("Compiler internal error, please report this as a bug if you confirm that.");
+            Util.DEBUG(e);
             java.lang.System.exit(1);
         }
     }

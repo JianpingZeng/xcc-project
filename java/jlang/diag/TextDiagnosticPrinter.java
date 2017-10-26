@@ -310,7 +310,7 @@ public final class TextDiagnosticPrinter implements DiagnosticClient
         }
 
         StringBuilder fixtItInsertionLine = new StringBuilder();
-        if (hints.length != 0 && printFixItInfo)
+        if (hints != null && hints.length != 0 && printFixItInfo)
         {
             for (FixItHint hint : hints)
             {
