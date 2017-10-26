@@ -52,7 +52,7 @@ public class SourceLocation implements Comparable<SourceLocation>
 
     public boolean isMacroID()
     {
-        return (id & macroBit) == 1;
+        return (id & macroBit) !=0;
     }
 
     public boolean isValid()
