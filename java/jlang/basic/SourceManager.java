@@ -528,7 +528,7 @@ public class SourceManager
         ContentCache cache = fi.getContentCache();
 
         String filename = cache.fileEntry != null?
-                cache.fileEntry.toFile().getName() : cache.getBuffer().getBufferName();
+                cache.fileEntry.normalize().toString() : cache.getBuffer().getBufferName();
 
         int lineNo = getLineNumber(locInfo.first, locInfo.second);
         int colNo = getColumnNumber(locInfo.first, locInfo.second);
