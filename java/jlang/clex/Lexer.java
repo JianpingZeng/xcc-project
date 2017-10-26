@@ -646,14 +646,13 @@ public class Lexer extends PreprocessorLexer
         assert curPos >= 0 && curPos <= bufferEnd
                 : "Location out of range for this buffer!";
 
-        int charNo = curPos;
         if (fileLoc.isFileID())
-            return fileLoc.getFileLocWithOffset(charNo);
+            return fileLoc.getFileLocWithOffset(curPos);
 
         // Otherwise, this is the _Pragma lexer case, which pretends that all of the
         // tokens are lexed from where the _Pragma was defined.
         assert pp != null : "This doesn't work on raw lexers";
-        return getMappedTokenLoc(pp, fileLoc, charNo, toklen);
+        return getMappedTokenLoc(pp, fileLoc, curPos, toklen);
     }
 
     private Diagnostic.DiagnosticBuilder diag(int curPos, int diagID)

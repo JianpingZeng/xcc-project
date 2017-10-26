@@ -25,6 +25,11 @@ public class Util
 	public static final int UINT16_MAX =		(65535);
 	public static final long UINT32_MAX	= 4294967295L;
 	public static final Long UINT64_MAX	= Long.parseUnsignedLong("18446744073709551615");
+
+	/**
+	 * A flag indicates whether dump debug information.
+	 */
+	public static boolean DEBUG;
 	/**
 	 * Utility method to combine a base hash with the identity hash of one or more objects.
 	 *
