@@ -163,12 +163,10 @@ public class MemoryBuffer implements Cloneable
 
     public static MemoryBuffer getFile(Path path)
     {
-        String file = null;
         long sz = 0;
         try
         {
             sz = Files.size(path);
-            file = path.toFile().getCanonicalPath();
         }
         catch (IOException e)
         {
@@ -178,7 +176,7 @@ public class MemoryBuffer implements Cloneable
         /*
         if (sz >= 4 * 1024)
         {
-            try (FileChannel channel = FileChannel.open(path))
+            try (FileChannel channel = FileChannel.open(filename))
             {
                 ByteBuffer cb = channel.map(FileChannel.MapMode.READ_ONLY, 0, sz);
                 CharBuffer charBuf = cb.asCharBuffer();
@@ -199,7 +197,7 @@ public class MemoryBuffer implements Cloneable
             CharBuffer cb = CharBuffer.allocate((int)sz + 1);
             int res = reader.read(cb);
             MemoryBuffer mb = new MemoryBuffer(cb.array());
-            mb.setFilename(file);
+            mb.setFilename(path.normalize().toString());
             mb.setRegular(true);
             return mb;
         }
@@ -277,7 +275,7 @@ public class MemoryBuffer implements Cloneable
 
     public String getBufferName()
     {
-        return "mapped buffer";
+        return getFilename();
     }
 
     /**
