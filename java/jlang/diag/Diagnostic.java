@@ -479,6 +479,21 @@ public final class Diagnostic
     }
 
     /**
+     * Change an entire diagnostic group (e.g.
+     * "unknown-pragmas" to have the specified mapping.  This returns true and
+     * ignores the request if "Group" was unknown, false otherwise.
+     * @param group
+     * @param map
+     * @return
+     */
+    public boolean setDiagnosticGroupMapping(String group, Mapping map)
+    {
+        // FIXME Currently, should not reaching here
+        assert false:"Currently, should not reaching here";
+        return true;
+    }
+
+    /**
      * This controls whether otherwise-unmapped
      * extension diagnostics are mapped onto ignore/warning/error.  This
      * corresponds to the GCC -pedantic and -pedantic-errors option.

@@ -601,6 +601,9 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         pp.addPragmaHandler(null, new UnknownPragmaHandler("#pragma", callbacks));
         pp.addPragmaHandler("GCC", new UnknownPragmaHandler("#pragma GCC", callbacks));
 
+        // Register the call back class for handling line marker.
+        pp.setPPCallbacks(callbacks);
+
         // After we have configured the preprocessor, enter the main file.
         pp.enterMainSourceFile();
 
