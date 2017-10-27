@@ -17,8 +17,12 @@ package jlang.clex;
  */
 
 import gnu.trove.list.array.TIntArrayList;
-import jlang.basic.*;
+import jlang.basic.Context;
+import jlang.basic.HeaderSearch;
+import jlang.basic.SourceManager;
+import jlang.basic.TargetInfo;
 import jlang.clex.PPCallBack.FileChangeReason;
+import jlang.clex.PragmaHandler.*;
 import jlang.clex.Preprocessor.DefinedTracker.TrackerState;
 import jlang.diag.Diagnostic;
 import jlang.diag.FixItHint;
@@ -33,12 +37,14 @@ import java.util.*;
 
 import static java.lang.System.err;
 import static jlang.clex.PPCallBack.FileChangeReason.RenameFile;
+import static jlang.clex.PPCallBack.FileChangeReason.SystemHeaderPragma;
 import static jlang.clex.Preprocessor.DefinedTracker.TrackerState.DefinedMacro;
 import static jlang.clex.Preprocessor.DefinedTracker.TrackerState.NotDefMacro;
 import static jlang.clex.Token.TokenFlags.*;
 import static jlang.clex.TokenKind.*;
 import static jlang.diag.DiagnosticCommonKindsTag.*;
 import static jlang.diag.DiagnosticLexKindsTag.*;
+import static jlang.support.CharacteristicKind.C_System;
 import static jlang.support.CharacteristicKind.C_User;
 
 /**
@@ -519,9 +525,34 @@ public final class Preprocessor
     private void registerBuiltinPragmas()
     {
         addPragmaHandler(null, new PragmaOnceHandler(getIdentifierInfo("once")));
-        ;
         addPragmaHandler(null, new PragmaMarkHandler(getIdentifierInfo("mark")));
-        ;
+        // #pragma GCC ...
+        addPragmaHandler("GCC", new PragmaPoisonHandler(getIdentifierInfo("poison")));
+        addPragmaHandler("GCC", new PragmaSystemHeaderHandler(
+                getIdentifierInfo("system_header")));
+        addPragmaHandler("GCC", new PragmaDependencyHandler(
+                getIdentifierInfo("dependency")));
+        addPragmaHandler("GCC", new PragmaDiagnosticHandler(
+                getIdentifierInfo("diagnostic"),
+                false));
+        // #pragma clang ...
+        addPragmaHandler("clang", new PragmaPoisonHandler(
+                getIdentifierInfo("poison")));
+        addPragmaHandler("clang", new PragmaSystemHeaderHandler(
+                getIdentifierInfo("system_header")));
+        addPragmaHandler("clang", new PragmaDependencyHandler(
+                getIdentifierInfo("dependency")));
+        addPragmaHandler("clang", new PragmaDiagnosticHandler(
+                getIdentifierInfo("diagnostic"),
+                true));
+
+        addPragmaHandler("STDC", new PragmaSTDC_FP_CONTRACTHandler(
+                getIdentifierInfo("FP_CONTRACT")));
+        addPragmaHandler("STDC", new PragmaSTDC_FENV_ACCESSHandler(
+                getIdentifierInfo("FENV_ACCESS")));
+        addPragmaHandler("STDC", new PragmaSTDC_CX_LIMITED_RANGEHandler(
+                getIdentifierInfo("CX_LIMITED_RANGE")));
+        addPragmaHandler("STDC", new PragmaSTDC_UnknownHandler());
     }
 
     /*
@@ -3842,8 +3873,244 @@ public final class Preprocessor
             diag(onceTok, pp_pragma_once_in_main_file).emit();
             return;
         }
-
         headerInfo.markFileIncludeOnce(getCurrentFileLexer().getFileEntry());
+    }
+
+    /**
+     * Handle #pragma GCC poison. poisonTok is the 'poison'.
+     * @param poisonTok
+     */
+    public void handlePragmaPoison(Token poisonTok)
+    {
+        Token tok = new Token();
+
+        while (true)
+        {
+            // Read the next token to poison.  While doing this, pretend that we are
+            // skipping while reading the identifier to poison.
+            // This avoids errors on code like:
+            //   #pragma GCC poison X
+            //   #pragma GCC poison X
+            if (curLexer != null)
+                curLexer.lexingRawMode = true;
+            lexUnexpandedToken(tok);
+
+            if (curLexer != null)
+                curLexer.lexingRawMode = false;
+
+            // if we reached the end of line, so we done
+            if (tok.is(eom))
+                return;
+
+            if (tok.isNot(identifier))
+            {
+                diag(tok, err_pp_invalid_poison).emit();
+                return;
+            }
+
+            // Look up the identifier info for the token.  We disabled identifier lookup
+            // by saying we're skipping contents, so we need to do this manually.
+            IdentifierInfo ii = lookupIdentifierInfo(tok, null, 0);
+            // already poisoned.
+            if (ii.isPoisoned())
+                continue;
+
+            // If this is a macro identifier, emit a warning.
+            if (ii.isHasMacroDefinition())
+            {
+                diag(tok, pp_poisoning_existing_macro).emit();
+            }
+
+            // finally, poison it.
+            ii.setIsPoisoned(true);
+        }
+    }
+
+    /**
+     * Implement #pragma GCC system_header.  We know
+     * that the whole directive has been parsed.
+     * @param token
+     */
+    public void handlePragmaSystemHeader(Token token)
+    {
+        if (isInPrimaryFile())
+        {
+            diag(token, pp_pragma_sysheader_in_main_file).emit();
+            return;
+        }
+
+        // Get the current file lexer we're looking at.  Ignore _Pragma 'files' etc.
+        PreprocessorLexer theLexer = getCurrentFileLexer();
+
+        // Mark the file as a system header.
+        headerInfo.markFileSystemHeader(theLexer.getFileEntry());
+
+        PresumedLoc ploc = sourceMgr.getPresumedLoc(token.getLocation());
+        int filenameLen = ploc.getFilename().length();
+        int filenameID = sourceMgr.getLineTableFilenameID(ploc.getFilename());
+
+        // Emit a line marker.  This will change any source locations from this point
+        // forward to realize they are in a system header.
+        // Create a line note with this information.
+        sourceMgr.addLineNote(token.getLocation(), ploc.getLine(),
+                filenameID, false, false, true);
+
+        // Notify the client, if desired, that we are in a new source file.
+        if (callbacks != null)
+        {
+            callbacks.fileChanged(token.getLocation(),
+                    SystemHeaderPragma, C_System);
+        }
+    }
+
+    /**
+     * Handle #pragma GCC dependency "foo" blah.
+     * @param depToken
+     */
+    public void handlePragmaDependency(Token depToken)
+    {
+        Token filenameTok = new Token();
+        curLexer.lexIncludeFilename(filenameTok);
+
+        if (filenameTok.is(eom))
+            return;
+        StringBuilder sb = new StringBuilder(getSpelling(filenameTok));
+        boolean isAngled = getIncludeFilenameSpelling(filenameTok.getLocation(), sb);
+
+        // If getIncludeFilenameSpelling set the start ptr to null, there was an
+        // error.
+        if (sb.length() == 0)
+            return;
+
+        OutParamWrapper<Path> curDir = new OutParamWrapper<>(null);
+        Path file = lookupFile(sb.toString(), isAngled, null, curDir);
+        if (file == null)
+        {
+            diag(filenameTok, err_pp_file_not_found)
+                    .addTaggedVal(sb.toString())
+                    .emit();
+            return;
+        }
+
+        assert getCurrentFileLexer() != null;
+        Path curFile = getCurrentFileLexer().getFileEntry();
+
+        if (curFile != null && curFile.toFile().lastModified() <
+                file.toFile().lastModified())
+        {
+            StringBuilder message = new StringBuilder();
+            lex(depToken);
+            while (depToken.isNot(eom))
+            {
+                message.append(getSpelling(depToken)).append(" ");
+                lex(depToken);
+            }
+
+            message.deleteCharAt(message.length() - 1);
+            diag(filenameTok, pp_out_of_date_dependency)
+                    .addTaggedVal(message.toString())
+                    .emit();
+        }
+    }
+
+    /**
+     * Handle the microsoft #pragma comment extension.  The
+     * syntax is:
+     *   #pragma comment(linker, "foo")
+     * 'linker' is one of five identifiers: compiler, exestr, lib, linker, user.
+     /* "foo" is a string, which is fully macro expanded, and permits string
+     * concatenation, embedded escape characters etc.  See MSDN for more details.
+     * @param commentToken
+     */
+    public void handlePragmaComment(Token commentToken)
+    {
+        SourceLocation commentLoc = commentToken.getLocation();
+        lex(commentToken);
+        if (commentToken.isNot(l_paren))
+        {
+            diag(commentLoc, err_pragma_comment_malformed).emit();
+            return;
+        }
+
+        // Read the identifier.
+        lex(commentToken);
+        if (commentToken.isNot(identifier))
+        {
+            diag(commentLoc, err_pragma_comment_malformed).emit();
+            return;
+        }
+
+        // verify that this is one of the 5 whitelisted options.
+        IdentifierInfo ii = commentToken.getIdentifierInfo();
+        if (!ii.isStr("compiler") && !ii.isStr("exestr") &&
+                !ii.isStr("lib") && !ii.isStr("linker") &&
+                !ii.isStr("user"))
+        {
+            diag(commentToken.getLocation(), err_pragma_comment_unknown_kind).emit();
+            return;
+        }
+
+        // Read the optional string if present.
+        lex(commentToken);
+        String argumentString = "";
+        if (commentToken.is(comma))
+        {
+            lex(commentToken); // eat the ','
+
+            if (commentToken.isNot(string_literal))
+            {
+                diag(commentToken.getLocation(), err_pragma_comment_malformed).emit();
+                return;
+            }
+
+            // String concatenation allows multiple strings, which can even come from
+            // macro expansion.
+            // "foo " "bar" "baz"
+            ArrayList<Token> list = new ArrayList<>();
+            do
+            {
+                list.add(commentToken.clone());
+                lex(commentToken);
+            }while(commentToken.is(string_literal));
+
+            // Concatenate and parse the strings.
+            Token[] toks = new Token[list.size()];
+            list.toArray(toks);
+            StringLiteralParser parser = new StringLiteralParser(toks, this);
+            if (parser.hadError)
+                return;
+            if (parser.pascal)
+            {
+                diag(toks[0].getLocation(), err_pragma_comment_malformed).emit();
+                return;
+            }
+
+            argumentString = parser.getString();
+        }
+
+        if (commentToken.isNot(r_paren))
+        {
+            diag(commentToken.getLocation(), err_pragma_comment_malformed).emit();
+            return;
+        }
+
+        lex(commentToken);  // eat the ')'
+        if (commentToken.isNot(eom))
+        {
+            diag(commentToken.getLocation(), err_pragma_comment_malformed).emit();
+            return;
+        }
+
+        // If the pragma is lexically sound, notify any interested PPCallbacks.
+        if (callbacks != null)
+        {
+            callbacks.pragmaComment(commentLoc, ii, argumentString);
+        }
+    }
+
+    public void checkEndOfDirective(String dirType)
+    {
+        checkEndOfDirective(dirType, false);
     }
 
     /**
