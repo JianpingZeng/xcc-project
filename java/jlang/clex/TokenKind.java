@@ -101,6 +101,32 @@ public enum TokenKind
     Switch("switch", Tag.SWITCH, KEYALL),
     While("while", Tag.WHILE, KEYALL),
 
+    // C++ 2.11p1: Keywords.
+    Asm("asm", Tag.ASM,KEYGNU),
+
+    // GNU Extensions (in impl-reserved namespace)
+    _Decimal32("_Decimal32", Tag._DECIMAL32, KEYALL),
+    _Decimal64("_Decimal64", Tag._DECIMAL64, KEYALL),
+    _Decimal128("_Decimal128", Tag._DECIMAL128, KEYALL),
+    //KEYWORD(__null                      , KEYCXX)
+    __Alignof("__alignof", Tag.__ALIGNOF, KEYALL),
+    __Attribute("__attribute", Tag.__ATTRIBUTE, KEYALL),
+    __Builtin_choose_expr("__builtin_choose_expr", Tag.__BUILTIN_CHOOSE_EXPR, KEYALL),
+    __Builtin_offsetof("__builtin_offsetof", Tag.__BUILTIN_OFFSETOF, KEYALL),
+    __Builtin_types_compatible_p("__builtin_types_compatible_p",
+            Tag.__BUILTIN_TYPES_COMPATIBLE_P, KEYALL),
+    __Builtin_va_arg("__builtin_va_arg", Tag.__BUILTIN_VA_ARG, KEYALL),
+    __Extension__("__extension__", Tag.__EXTENSION__ + 1, KEYALL),
+    __Imag("__imag", Tag.__IMAG, KEYALL),
+    __Label__("__label__", Tag.__LABEL__, KEYALL),
+    __Real__("__real", Tag.__REAL__, KEYALL),
+    __Thread("__thread", Tag.__THREAD, KEYALL),
+    __FUNCTION__("__FUNCTION__", Tag.__FUNCTION__, KEYALL),
+    __PREITY_FUNCTION("__PRETTY_FUNCTION__", Tag.__PREITY_FUNCTION, KEYALL),
+
+    // GNU Extensions (outside impl-reserved namespace)
+    Typeof("typeof", Tag.TYPEOF, KEYGNU),
+
     // C99 6.4.6: Punctuators.
     l_paren("(", Tag.LPAREN),
     r_paren(")", Tag.RPAREN),
@@ -154,6 +180,7 @@ public enum TokenKind
 
     hash("#", Tag.HASH),
     hashhash("##", Tag.HASHHASH);
+
 
     public final String name;
     public final int tokenID;

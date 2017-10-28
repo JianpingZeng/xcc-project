@@ -333,7 +333,7 @@ public class Util
 	public static void DEBUG(Object... args)
 	{
 		for (Object arg : args)
-			System.err.print(arg);
+			System.err.println(arg);
 	}
 
 	public static String fixedLengthString(int repeatNum, String unit)

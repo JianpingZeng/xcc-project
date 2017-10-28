@@ -141,7 +141,27 @@ public interface Tag
 
     int HASH = ELLIPSIS + 1;
     int HASHHASH = HASH + 1;
-    
-    int TokenCount = HASHHASH;
+
+    // GNU Extensions (inside impl-reserved namespace)
+    int ASM = HASHHASH + 1;
+    int _DECIMAL32 = ASM + 1;
+    int _DECIMAL64 = _DECIMAL32 + 1;
+    int _DECIMAL128 = _DECIMAL64 + 1;
+    int __ALIGNOF = _DECIMAL128 + 1;
+    int __ATTRIBUTE = __ALIGNOF + 1;
+    int __BUILTIN_CHOOSE_EXPR = __ATTRIBUTE + 1;
+    int __BUILTIN_OFFSETOF = __BUILTIN_CHOOSE_EXPR + 1;
+    int __BUILTIN_TYPES_COMPATIBLE_P = __BUILTIN_OFFSETOF + 1;
+    int __BUILTIN_VA_ARG = __BUILTIN_TYPES_COMPATIBLE_P + 1;
+    int __EXTENSION__ = __BUILTIN_VA_ARG + 1;
+    int __IMAG = __EXTENSION__ + 1;
+    int __LABEL__ = __IMAG + 1;
+    int __REAL__ = __LABEL__ + 1;
+    int __THREAD = __REAL__ + 1;
+    int __FUNCTION__ = __THREAD + 1;
+    int __PREITY_FUNCTION = __FUNCTION__ + 1;
+
+    // GNU Extensions (outside impl-reserved namespace)
+    int TYPEOF = __PREITY_FUNCTION + 1;
 }
 

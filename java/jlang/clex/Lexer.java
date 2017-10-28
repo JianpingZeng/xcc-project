@@ -2166,6 +2166,8 @@ public class Lexer extends PreprocessorLexer
                 x = new OutParamWrapper<>(sizeTmp);
                 // 9358
                 // 9443
+                // sys-cdef.h 12139
+                // features.h 5755
                 ch = getCharAndSize(curPos, x);
                 sizeTmp = x.get();
                 if (ch == '#')
@@ -2239,6 +2241,7 @@ public class Lexer extends PreprocessorLexer
                 result.append('\\');
                 result.append(str.charAt(i));
             }
+            result.append(str.charAt(i));
         }
         return result.toString();
     }

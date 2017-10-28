@@ -155,7 +155,8 @@ public interface DiagnosticParseTag
 	public static final int ext_gnu_conditional_expr = ext_gnu_case_range + 1;
 	public static final int ext_gnu_empty_initializer = ext_gnu_conditional_expr + 1;
 	public static final int ext_gnu_indirect_goto = ext_gnu_empty_initializer + 1;
-	public static final int ext_gnu_missing_equal_designator = ext_gnu_indirect_goto + 1;
+	public static final int ext_gnu_local_label = ext_gnu_indirect_goto + 1;
+	public static final int ext_gnu_missing_equal_designator = ext_gnu_local_label + 1;
 	public static final int ext_gnu_old_style_field_designator = ext_gnu_missing_equal_designator + 1;
 	public static final int ext_gnu_statement_expr = ext_gnu_old_style_field_designator + 1;
 	public static final int ext_ident_list_in_param = ext_gnu_statement_expr + 1;
