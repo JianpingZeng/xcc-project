@@ -396,6 +396,11 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
     private Decl declRep;
     private Expr exprRep;
 
+    /**
+     * Attributes list.
+     */
+    private AttributeList attrList;
+
     private SourceLocation storageClassLoc = SourceLocation.NOPOS,
             TSWLoc = SourceLocation.NOPOS,
             TSTLoc = SourceLocation.NOPOS,
@@ -867,5 +872,28 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
     public boolean isTypeSpecOwned()
     {
         return typeSpecOwned;
+    }
+
+    /**
+     * contatenates two attribute lists.
+     /// The GCC attribute syntax allows for the following:
+     ///
+     /// short __attribute__(( unused, deprecated ))
+     /// int __attribute__(( may_alias, aligned(16) )) var;
+     ///
+     /// This declares 4 attributes using 2 lists. The following syntax is
+     /// also allowed and equivalent to the previous declaration.
+     ///
+     /// short __attribute__((unused)) __attribute__((deprecated))
+     /// int __attribute__((may_alias)) __attribute__((aligned(16))) var;
+     * @param alist
+     */
+    public void addAttributes(AttributeList alist)
+    {
+        if (alist == null)
+            return;
+        if (attrList != null)
+            alist.addAttributeList(attrList);
+        attrList = alist;
     }
 }
