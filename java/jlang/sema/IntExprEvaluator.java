@@ -16,19 +16,15 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
-import tools.APFloat;
-import tools.APFloat.CmpResult;
 import jlang.ast.Tree.*;
-import tools.APInt;
-import tools.APSInt;
-import jlang.support.SourceLocation;
 import jlang.sema.Decl.EnumConstantDecl;
 import jlang.sema.Decl.ParamVarDecl;
 import jlang.sema.Decl.VarDecl;
+import jlang.support.SourceLocation;
 import jlang.type.PointerType;
 import jlang.type.QualType;
-import tools.OutParamWrapper;
-import tools.Util;
+import tools.*;
+import tools.APFloat.CmpResult;
 
 /**
  * This class represents a implementation of evaluating whether the value of constant
@@ -260,7 +256,7 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
             // TODO Clang 3.0 ExprConstant.clex:1398
         }
 
-        if (lhsTy.isRealType() && rhsTy.isRealType())
+        if (lhsTy.isRealFloatingType() && rhsTy.isRealFloatingType())
         {
             OutParamWrapper<APFloat> rhs = new OutParamWrapper<>(new APFloat(0.0));
             OutParamWrapper<APFloat> lhs = new OutParamWrapper<>(new APFloat(0.0));
@@ -539,6 +535,36 @@ public final class IntExprEvaluator extends ExprEvaluatorBase<Boolean>
     public Boolean visitExplicitCastExpr(ExplicitCastExpr expr)
     {
         return visitCastExpr(expr);
+    }
+
+    /**
+     * Evaluate a sizeof a alignof with a result as the expression'type.
+     * @param expr
+     * @return
+     */
+    @Override
+    public Boolean visitSizeofAlignofExpr(SizeOfAlignOfExpr expr)
+    {
+        // Handle alignof separately.
+        if (!expr.isSizeof())
+        {
+            assert false:"Alignof operator not supported currently";
+            return false;
+        }
+
+        QualType srcTy = expr.getTypeOfArgument();
+
+        // sizeof(void), __alignof__(void), sizeof(function) = 1 as a gcc
+        // extension.
+        if (srcTy.isVoidType() || srcTy.isFunctionType())
+            return success(1, expr);
+
+        // sizeof(vla) is not a constant expr. C99 6.5.3.4p2.
+        if (!srcTy.isConstantSizeType())
+            return false;
+
+        long bitwidth = context.getTypeSize(srcTy);
+        return success(bitwidth / context.target.getCharWidth(), expr);
     }
 
     /**

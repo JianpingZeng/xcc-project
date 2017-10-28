@@ -2640,6 +2640,9 @@ public final class Sema implements DiagnosticParseTag,
             return new QualType();
 
         VariableArrayType vlaTy = context.getAsVariableArrayType(ty);
+        if (vlaTy == null)
+            return new QualType();
+
         if (vlaTy.getElementType().isVariableArrayType())
             return new QualType();
 
@@ -2751,6 +2754,14 @@ public final class Sema implements DiagnosticParseTag,
         // todo newOne.setPreviousDeclaration(Old);
     }
 
+    enum AbstractDiagSelID
+    {
+        AbstractNone,
+        AbstractReturnType,
+        AbstractParamType,
+        AbstractVariableType,
+        AbstractFieldType
+    }
 	/**
      * This routine performs all of the type-checking required for a
      * variable declaration once it has been built. It is used both to
@@ -2760,20 +2771,32 @@ public final class Sema implements DiagnosticParseTag,
      * @param prevDecl
      * @param redeclaration
      */
-    private void checkVariableDeclaration(VarDecl newVD,
+    private void checkVariableDeclaration(
+            VarDecl newVD,
             NamedDecl prevDecl,
             OutParamWrapper<Boolean> redeclaration)
     {
+        // If the decl is already known invalid, don't check it.
         if (newVD.isInvalidDecl())
             return;
         QualType ty = newVD.getType();
 
+        // Emit an error if an address space was applied to decl with local storage.
+        // This includes arrays of objects with address space qualifiers, but not
+        // automatic variables that point to other address spaces.
+        // ISO/IEC TR 18037 S5.1.2
+        if (newVD.hasLocalStorage() && ty.getAddressSpace() != 0)
+        {
+            diag(newVD.getLocation(), err_as_qualified_auto_decl).emit();
+            newVD.setInvalidDecl(true);
+            return;
+        }
+
         boolean isVM = ty.isVariablyModifiedType();
-        if ((isVM && newVD.hasLinkage()) || (ty.isVariableArrayType()
-            && newVD.hasGlobalStorage()))
+        if ((isVM && newVD.hasLinkage()) ||
+                (ty.isVariableArrayType() && newVD.hasGlobalStorage()))
         {
             // TODO
-
             OutParamWrapper<Boolean> SizeIsNegative = new OutParamWrapper<>(false);
             QualType FixedTy = tryToFixInvalidVariablyModifiedType(ty, context, SizeIsNegative);
 
@@ -2828,7 +2851,8 @@ public final class Sema implements DiagnosticParseTag,
         }
     }
 
-    private NamedDecl actOnVariableDeclarator(Scope s,
+    private NamedDecl actOnVariableDeclarator(
+            Scope s,
             Declarator d,
             IDeclContext dc,
             QualType ty,
@@ -2880,8 +2904,7 @@ public final class Sema implements DiagnosticParseTag,
         if (d.isInvalidType())
             newVD.setInvalidDecl(true);
 
-        checkVariableDeclaration(newVD, prevDecl,
-                redeclaration);
+        checkVariableDeclaration(newVD, prevDecl, redeclaration);
         return newVD;
     }
 
@@ -3693,9 +3716,20 @@ public final class Sema implements DiagnosticParseTag,
 
     public LabelDecl lookupOrCreateLabel(
             IdentifierInfo name,
-            SourceLocation loc)
+            SourceLocation loc,
+            SourceLocation gnuLabelLoc)
     {
-        NamedDecl res = lookupName(curScope, name, loc, LookupLabelName);
+
+        NamedDecl res = null;
+
+        if (gnuLabelLoc.isValid())
+        {
+            res = new LabelDecl(name, curContext, null, loc, gnuLabelLoc);
+            Scope s = curScope;
+            pushOnScopeChains(res, s, true);
+            return (LabelDecl)res;
+        }
+        res = lookupName(curScope, name, loc, LookupLabelName);
         if (res != null && res.getDeclContext() != curContext)
             res = null;
         if (res == null)
@@ -3707,6 +3741,13 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         return (LabelDecl) res;
+    }
+
+    public LabelDecl lookupOrCreateLabel(
+            IdentifierInfo name,
+            SourceLocation loc)
+    {
+        return lookupOrCreateLabel(name, loc, new SourceLocation());
     }
 
     public ActionResult<Stmt> actOnLabelStmt(
@@ -7423,6 +7464,12 @@ public final class Sema implements DiagnosticParseTag,
                 return UO_Not;
             case bang:
                 return UO_LNot;
+            case __Real__:
+                return UO_Real;
+            case __Imag:
+                return UO_Imag;
+            case __Extension__:
+                return UO_Extension;
         }
     }
 
@@ -9753,7 +9800,9 @@ public final class Sema implements DiagnosticParseTag,
             return exprError();
 
         // C99 6.5.3.4p4: the type (an unsigned integer type) is size_t.
-        return new ActionResult<>(new SizeOfAlignOfExpr(type,
+        return new ActionResult<>(new SizeOfAlignOfExpr(
+                true,
+                type,
                 context.getSizeType(),
                 opLoc, range.getEnd()));
     }
@@ -9786,6 +9835,7 @@ public final class Sema implements DiagnosticParseTag,
      */
     public ActionResult<Expr> actOnSizeofExpr(
             SourceLocation sizeLoc,
+            boolean isSizeof,
             Expr e,
             SourceRange range)
     {
@@ -9805,7 +9855,8 @@ public final class Sema implements DiagnosticParseTag,
         if (isInvalid)
             return exprError();
 
-        return new ActionResult<>(new SizeOfAlignOfExpr(e,
+        return new ActionResult<>(new SizeOfAlignOfExpr(
+                isSizeof, e,
                 context.getSizeType(),
                 sizeLoc, range.getEnd()));
     }

@@ -141,10 +141,16 @@ public class IdentifierTable
 
     public void addKeywords(LangOptions langOpts)
     {
-        for (int i = TokenKind.Void.ordinal(); i <= TokenKind.While.ordinal(); i++)
+        for (int i = TokenKind.Void.ordinal(); i <= TokenKind.Typeof.ordinal(); i++)
         {
             TokenKind kind = TokenKind.values()[i];
             addKeyWord(kind.name, kind, kind.flags, langOpts, this);
+        }
+
+        // Add keyword kind to keywords table.
+        for (KeywordAlias alias : KeywordAlias.values())
+        {
+            addKeyWord(alias.name, alias.kind, alias.flag, langOpts, this);
         }
     }
 }

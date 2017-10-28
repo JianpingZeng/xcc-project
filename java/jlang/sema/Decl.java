@@ -665,11 +665,26 @@ public abstract class Decl
     public static class LabelDecl extends NamedDecl
     {
         LabelStmt stmt;
-        LabelDecl(IdentifierInfo name, IDeclContext context,
-                Tree.LabelStmt stmt, SourceLocation location)
+
+        private SourceLocation locStart;
+
+        LabelDecl(IdentifierInfo name,
+                IDeclContext context,
+                Tree.LabelStmt stmt,
+                SourceLocation identLoc)
         {
-            super(DeclKind.LabelDecl, context, name, location);
+            this(name, context, stmt, identLoc, null);
+        }
+
+        LabelDecl(IdentifierInfo name,
+                IDeclContext context,
+                Tree.LabelStmt stmt,
+                SourceLocation identLoc,
+                SourceLocation startLoc)
+        {
+            super(DeclKind.LabelDecl, context, name, identLoc);
             this.stmt = stmt;
+            locStart = startLoc;
         }
 
         public void setStmt(Tree.LabelStmt stmt)
@@ -682,7 +697,21 @@ public abstract class Decl
             return stmt;
         }
 
+        public boolean isGnuLabel()
+        {
+            return locStart != null;
+        }
 
+        public void setLocStart(SourceLocation loc)
+        {
+            locStart = loc;
+        }
+
+        @Override
+        public SourceRange getSourceRange()
+        {
+            return new SourceRange(locStart, getLocation());
+        }
     }
 
     /**

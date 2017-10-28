@@ -4340,30 +4340,36 @@ public abstract class Tree implements StmtClass
 		private SourceLocation opLoc;
 		private SourceLocation rParenLoc;
 
+		// true if sizeof, false if alignof.
+		private boolean isSizeof;
+
 		public SizeOfAlignOfExpr(
+				boolean isSizeof,
 				QualType operand,
 				QualType resultType,
 				SourceLocation opLoc,
 				SourceLocation rp)
 		{
 			super(SizeOfAlignOfExprClass, resultType, OK_Ordinary, EVK_RValue, opLoc);
+			this.isSizeof = isSizeof;
 			isType = true;
 			this.operand = operand;
 			this.opLoc = opLoc;
 			rParenLoc = rp;
 		}
 
-		public SizeOfAlignOfExpr(
-				Expr operand,
+		public SizeOfAlignOfExpr(boolean isSizeof,
+				Expr subExpr,
 				QualType resultType,
 				SourceLocation opLoc,
 				SourceLocation rp)
 		{
 			super(SizeOfAlignOfExprClass, resultType, OK_Ordinary, EVK_RValue, opLoc);
+			this.isSizeof = isSizeof;
 			isType = false;
-			this.operand = operand;
+			this.operand = subExpr;
 			this.opLoc = opLoc;
-			rParenLoc = rp;
+			this.rParenLoc = rp;
 		}
 
 		@Override
@@ -4452,6 +4458,16 @@ public abstract class Tree implements StmtClass
             }
             return getArgumentExpr();
         }
+
+		public boolean isSizeof()
+		{
+			return isSizeof;
+		}
+
+		public QualType getTypeOfArgument()
+		{
+			return isArgumentType() ? getArgumentType() : getArgumentExpr().getType();
+		}
 	}
 
 	/**

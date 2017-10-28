@@ -312,11 +312,19 @@ public class Parser implements Tag,
             case eof:
                 diag(pos, err_expected_external_declaration).emit();
                 return declGroups();
-            /**
-             * TODO current, inline asm isn't supported.
-            case ASM:
-            {}
-            */
+
+            case __Extension__:
+                // __extension__ silences extension warnings in the subexpression.
+                consumeToken();
+                return parseExternalDeclaration();
+            case Asm:
+                assert false:"Current inline assembly.";
+                return new ArrayList<>();
+            case sub:
+            case plus:
+                diag(tok, err_expected_external_declaration).emit();
+                consumeToken();
+                return new ArrayList<>();
             case Typedef:
             {
                 // A function definition can not start with those keyword.
@@ -994,23 +1002,123 @@ public class Parser implements Tag,
     private ActionResult<Stmt> parseCompoundStatementBody(boolean isStmtExpr)
     {
         assert tok.is(l_brace);
-        SourceLocation startLoc = consumeBrace();     // Eat the '{'.
+        BalancedDelimiterTracker tracker = new BalancedDelimiterTracker(this, l_brace);
+        if (tracker.consumeOpen())
+            return stmtError();     // Eat the '{'.
 
         ArrayList<Stmt> stmts = new ArrayList<>();
+
+        // "__label__ X, Y, Z;" is the GNU "Local Label" extension.  These are
+        // only allowed at the start of a compound stmt regardless of the language.
+        while (tok.is(__Label__))
+        {
+            SourceLocation labelLoc = consumeToken();
+            diag(labelLoc, ext_gnu_local_label).emit();
+
+            ArrayList<Decl> decls = new ArrayList<>();
+            while (true)
+            {
+                if (tok.isNot(identifier))
+                {
+                    diag(tok, err_expected_ident).emit();
+                    break;
+                }
+
+                IdentifierInfo ii = tok.getIdentifierInfo();
+                SourceLocation idloc = consumeToken();
+                decls.add(action.lookupOrCreateLabel(ii, idloc, labelLoc));
+
+                if (tok.isNot(comma))
+                {
+                    break;
+                }
+                consumeToken();
+            }
+
+            DeclSpec ds = new DeclSpec();
+            ArrayList<Decl> res = action.finalizeDeclaratorGroup(getCurScope(), ds, decls);
+            ActionResult<Stmt> r = action.actOnDeclStmt(res, labelLoc, tok.getLocation());
+            expectAndConsume(semi, err_expected_semi_declaration);
+            if (r.isUsable())
+            {
+                stmts.add(r.get());
+            }
+        }
         while (nextTokenIsNot(r_brace) && nextTokenIsNot(eof))
         {
-            ActionResult<Stmt> res = parseStatementOrDeclaration(false);
+            ActionResult<Stmt> res;
+            if (tok.isNot(__Extension__))
+            {
+                 res = parseStatementOrDeclaration(false);
+            }
+            else
+            {
+                // __extension__ can start declaration and it can also be a unary
+                // operator for expression. Consume multiple __extension__ markers
+                // until we can determine which is which.
+                SourceLocation extLoc = consumeToken();
+                while (tok.is(__Extension__))
+                    consumeToken();
+
+                // If this is the start of simple declaration, parse it.
+                if (isDeclarationSpecifier())
+                {
+                    // __extension__ silence warnings in the subdecalaration.
+                    SourceLocation declStart = tok.getLocation();
+                    OutParamWrapper<SourceLocation> declEnd = new OutParamWrapper<>();
+                    ArrayList<Decl> decls = parseDeclaration(TheContext.BlockContext, declEnd);
+                    res = action.actOnDeclStmt(decls, declStart, declEnd.get());
+                }
+                else
+                {
+                    // Otherwise this is a unary __extension__ marker.
+                    ActionResult<Expr> expr = parseExpressionWithLeadingExtension(extLoc);
+                    if (expr.isInvalid())
+                    {
+                        skipUntil(semi, true);
+                        continue;
+                    }
+
+                    expectAndConsume(semi, err_expected_semi_after_expr);
+                    res = action.actOnExprStmt(expr);
+                }
+            }
             stmts.add(res.get());
         }
+
+        // We broke out of the while loop because we found a '}' or EOF.
         if (nextTokenIsNot(r_brace))
         {
             diag(tok, err_expected_lbrace).emit();
             return stmtError();
         }
-        // consume '}'
-        SourceLocation endLoc = matchRHSPunctuation(r_brace, startLoc);
+        if (tracker.consumeClose())
+            return stmtError();
 
-        return action.actOnCompoundStmtBody(startLoc, endLoc, stmts, isStmtExpr);
+        // consume '}'
+
+        return action.actOnCompoundStmtBody(tracker.getOpenLocation(),
+                tracker.getCloseLocation(), stmts, isStmtExpr);
+    }
+
+    /**
+     * This method be called when a leading __extension__ was seen and consumed.
+     * This is neccessary because the token gets consumed in the process of
+     * disambiguating between an expression and a decalaration.
+     * @param extLoc
+     * @return
+     */
+    private ActionResult<Expr> parseExpressionWithLeadingExtension(SourceLocation extLoc)
+    {
+        ActionResult<Expr> lhs = parseCastExpression(false, false, false);
+        if (lhs.isInvalid())
+            return lhs;
+
+        lhs = action.actOnUnaryOp(extLoc, __Extension__, lhs.get());
+        if (lhs.isInvalid())
+            return lhs;
+
+        return parseRHSOfBinaryExpression(lhs, PrecedenceLevel.Comma);
     }
 
     /**
@@ -1278,8 +1386,7 @@ public class Parser implements Tag,
                 result = parseCastExpression(
                         /*isUnaryExpression*/false,
                         /*isAddressOfOperands*/false,
-                        /*(parseAsExprList)*/true,
-                        /*placeHolder*/0);
+                        /*(parseAsExprList)*/true);
                 if (!result.isInvalid())
                 {
                     result = action.actOnCastExpr(getCurScope(), lParenLoc,
@@ -2664,6 +2771,11 @@ public class Parser implements Tag,
                     consumeToken();
                     continue;
                 }
+
+                // GNU attributes support.
+                case __Attribute:
+                    assert false :"Can not support __attribute__ currently";
+                    break;
                 case Static:
                     declSpecs.setStorageClassSpec(DeclSpec.SCS.SCS_static, loc);
                     break;
@@ -2686,6 +2798,10 @@ public class Parser implements Tag,
                 case Inline:
                     declSpecs.setFunctionSpecInline(loc);
                     break;
+                case __Thread:
+                    assert false:"Thread not supported.";
+                    break;
+
 
                 case Unsigned:
                     isInvalid = declSpecs.setTypeSpecSign(TSS_unsigned, loc);
@@ -2760,6 +2876,12 @@ public class Parser implements Tag,
                     diagID = wrapper2.get();
                     break;
                 }
+                case _Decimal32:
+                    break;
+                case _Decimal64:
+                    break ;
+                case _Decimal128:
+                    break;
                 // enum specifier
                 case Enum:
                 {
@@ -2787,6 +2909,10 @@ public class Parser implements Tag,
                 case Restrict:
                     isInvalid = declSpecs.setTypeQualifier(TQ_restrict, loc);
                     break;
+                // GNU typeof support.
+                case Typeof:
+                    break;
+
                 default:
                     break out;
             }
@@ -3443,6 +3569,13 @@ public class Parser implements Tag,
      */
     private void parseStructDeclaration(DeclSpec ds, FieldCallBack callBack)
     {
+        if (tok.is(__Extension__))
+        {
+            // __extension__ sliences extension warnings in the supexpression.
+            consumeToken();
+            parseStructDeclaration(ds, callBack);
+        }
+
         // parse common specifier-qualifier
         parseSpecifierQualifierList(ds);
 
@@ -4295,7 +4428,7 @@ public class Parser implements Tag,
             // Parse another leaf here for the RHS of the operator.
             // ParseCastExpression works here because all RHS expressions in C
             // have it as a prefix, at least.
-            ActionResult<Expr> rhs = parseCastExpression(false, false, false, 0);
+            ActionResult<Expr> rhs = parseCastExpression(false, false, false);
 
             if (rhs.isInvalid())
                 return rhs;
@@ -4346,8 +4479,7 @@ public class Parser implements Tag,
     private ActionResult<Expr> parseCastExpression(
             boolean isUnaryExpression,
             boolean isAddressOfOperand,
-            boolean isTypeCast,
-            int placeHolder)
+            boolean isTypeCast)
     {
         OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
         ActionResult<Expr> res = parseCastExpression(isUnaryExpression,
@@ -4461,7 +4593,7 @@ public class Parser implements Tag,
                 // unary-expression: '++' unary-expression [C99]
                 // unary-expression: '--' unary-expression [C99]
                 SourceLocation savedLoc = consumeToken();
-                res = parseCastExpression(true, false, false, 0);
+                res = parseCastExpression(true, false, false);
                 if (!res.isInvalid())
                     res = action.actOnUnaryOp(savedLoc, savedKind, res.get());
                 return res;
@@ -4472,15 +4604,27 @@ public class Parser implements Tag,
             case sub:
             case tilde:
             case bar:
+            case __Real__:  // unary-expression: '__real' cast-expresion [GNU]
+            case __Imag:    // unary-expression: '__imag' cast-expresion [GNU]
             {
                 SourceLocation savedLoc = consumeToken();
-                res = parseCastExpression(false, false, false, 0);
+                res = parseCastExpression(false, false, false);
+                if (!res.isInvalid())
+                    res = action.actOnUnaryOp(savedLoc, savedKind, res.get());
+                return res;
+            }
+            case __Extension__:
+            {
+                //unary-expression:'__extension__' cast-expr [GNU]
+                SourceLocation savedLoc = consumeToken();
+                res = parseCastExpression(false, false, false);
                 if (!res.isInvalid())
                     res = action.actOnUnaryOp(savedLoc, savedKind, res.get());
                 return res;
             }
             case Sizeof:
-                return parseSizeofExpression();
+            case __Alignof:
+                return parseSizeofAlignofExpression();
             case Char:
             case Bool:
             case Short:
@@ -4549,7 +4693,7 @@ public class Parser implements Tag,
      * </pre>
      * @return
      */
-    private ActionResult<Expr> parseSizeofExpression()
+    private ActionResult<Expr> parseSizeofAlignofExpression()
     {
         assert nextTokenIs(Sizeof):"Not a sizeof expression!";
         Token opTok = tok.clone();
@@ -4570,7 +4714,9 @@ public class Parser implements Tag,
         // Reaching here, it must be sizeof expression.
         if (!operand.isInvalid())
         {
-            operand = action.actOnSizeofExpr(opLoc,
+            operand = action.actOnSizeofExpr(
+                    opLoc,
+                    true,
                     operand.get(),
                     arg.castRange);
         }
@@ -4605,7 +4751,7 @@ public class Parser implements Tag,
 
             // The GNU typeof and alignof extensions also behave as unevaluated
             // operands.
-            operand = parseCastExpression(true, false, false, 0);
+            operand = parseCastExpression(true, false, false);
         }
         else
         {
@@ -4864,7 +5010,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Expr> parseConstantExpression()
     {
-        ActionResult<Expr> lhs = parseCastExpression(false, false, false, 0);
+        ActionResult<Expr> lhs = parseCastExpression(false, false, false);
 
         //   An expression is potentially evaluated unless it appears where an
         //   integral constant expression is required (see 5.19) [...].
@@ -4874,7 +5020,7 @@ public class Parser implements Tag,
 
     private ActionResult<Expr> parseAssignExpression()
     {
-        ActionResult<Expr> lhs = parseCastExpression(false, false, false, 1);
+        ActionResult<Expr> lhs = parseCastExpression(false, false, false);
         if (lhs.isInvalid())
             return lhs;
 

@@ -305,6 +305,7 @@ public enum DiagnosticParseKinds implements DiagnosticParseTag
 			"use of GNU empty initializer extension"),
 	EXT_GNU_INDIRECT_GOTO(ext_gnu_indirect_goto, CLASS_NOTE, MAP_IGNORE,
 			"use of GNU indirect-goto extension"),
+	EXT_GNU_LOCAL_LABEL(ext_gnu_local_label, CLASS_WARNING, MAP_WARNING, "use of GNU declared label extension"),
 	EXT_GNU_MISSING_EQUAL_DESIGNATOR(ext_gnu_missing_equal_designator, CLASS_WARNING,
 			MAP_WARNING, "use of GNU 'missing =' extension in designator"),
 	EXT_GNU_OLD_STYLE_FIELD_DESIGNATOR(ext_gnu_old_style_field_designator, CLASS_WARNING,

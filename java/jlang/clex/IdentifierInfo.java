@@ -226,4 +226,10 @@ public class IdentifierInfo implements Cloneable
     {
         return builtID;
     }
+
+    @Override
+    public String toString()
+    {
+        return "[" + tokenID.name + ", " + getName() + "]";
+    }
 }
