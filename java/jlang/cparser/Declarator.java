@@ -1,5 +1,6 @@
 package jlang.cparser;
 
+import jlang.ast.Tree;
 import jlang.clex.IdentifierInfo;
 import jlang.cparser.DeclSpec.DeclaratorChunk;
 import jlang.cparser.DeclSpec.DeclaratorChunk.FunctionTypeInfo;
@@ -94,6 +95,13 @@ public class Declarator
      * be the least closely bound.
      */
     private ArrayList<DeclaratorChunk> declTypeInfos;
+
+    /**
+     * Attributes.
+     */
+    private AttributeList attrList;
+
+    private Tree.Expr asmLabel;
 
     public Declarator(DeclSpec ds, TheContext context)
     {
@@ -323,5 +331,49 @@ public class Declarator
     {
         assert i >= 0 && i < declTypeInfos.size();
         return declTypeInfos.get(i);
+    }
+
+    /**
+     * simply adds the attribute list to the Declarator.
+     * These examples both add 3 attributes to "var":
+     *  short int var __attribute__((aligned(16),common,deprecated));
+     *  short int x, __attribute__((aligned(16)) var
+     *                                 __attribute__((common,deprecated));
+     *
+     * Also extends the range of the declarator.
+     * @param attr
+     * @param lastLoc
+     */
+    public void addAttributes(AttributeList attr, SourceLocation lastLoc)
+    {
+        if (attr == null)
+            return;
+
+        if (attrList != null)
+            attr.addAttributeList(attrList);
+
+        attrList = attr;
+        if (lastLoc.isValid())
+            setRangeEnd(lastLoc);
+    }
+
+    public boolean hasGroupingParens()
+    {
+        return groupingParens;
+    }
+
+    public void setGroupingParens(boolean groupingParens)
+    {
+        this.groupingParens = groupingParens;
+    }
+
+    public void setAsmLabel(Tree.Expr asmLabel)
+    {
+        this.asmLabel = asmLabel;
+    }
+
+    public Tree.Expr getAsmLabel()
+    {
+        return asmLabel;
     }
 }

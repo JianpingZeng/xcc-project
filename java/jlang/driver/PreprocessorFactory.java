@@ -228,6 +228,7 @@ class PreprocessorFactory
 
         // Get other target #defines.
         target.getTargetDefines(opts, buf);
+
     }
 
     private void defineTypeSize(String macroName, int typeWidth, String valSuffix,

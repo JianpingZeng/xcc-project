@@ -371,7 +371,8 @@ public final class Sema implements DiagnosticParseTag,
             TagUseKind tuk,
             SourceLocation kwLoc,
             IdentifierInfo name,
-            SourceLocation nameLoc)
+            SourceLocation nameLoc,
+            AttributeList attr)
     {
         // if this is not a definition, it must have a getIdentifier
         assert (name != null || tuk == TagUseKind.TUK_definition)
@@ -1112,7 +1113,8 @@ public final class Sema implements DiagnosticParseTag,
             Decl enclosingDecl,
             ArrayList<Decl> fieldDecls,
             SourceLocation startLoc,
-            SourceLocation endLoc)
+            SourceLocation endLoc,
+            AttributeList attr)
     {
         assert enclosingDecl != null:"missing record decl";
 
@@ -1231,6 +1233,11 @@ public final class Sema implements DiagnosticParseTag,
         // Okay, we successfully defined 'Record'.
         if (record != null)
             record.completeDefinition();
+
+        if (attr != null)
+        {
+            // TODO: 17-10-28 processDeclAttributeList(curScope, record, attr);
+        }
     }
 
     public ActionResult<Expr> actOnNumericConstant(Token token)
@@ -1684,13 +1691,16 @@ public final class Sema implements DiagnosticParseTag,
         return newEnumConstDecl;
     }
 
-    public void actOnEnumBody(SourceLocation startLoc,
+    public void actOnEnumBody(
+            SourceLocation startLoc,
             SourceLocation lBraceLoc,
             SourceLocation rBraceLoc,
             Decl decl,
             ArrayList<Decl> enumConstantDecls,
-            Scope curScope)
+            Scope curScope,
+            AttributeList attr)
     {
+        // TODO: 17-10-28  process Attribute list.
         EnumDecl enumDecl = (EnumDecl) decl;
         QualType enumType = new QualType(enumDecl.getTypeForDecl());
 

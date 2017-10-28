@@ -2,7 +2,6 @@ package jlang.cparser;
 
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
-import jlang.ast.Tree.InitListExpr;
 import jlang.ast.Tree.Stmt;
 import jlang.clex.CommentHandler.DefaultCommentHandler;
 import jlang.clex.*;
@@ -23,6 +22,7 @@ import jlang.support.SourceLocation;
 import jlang.support.SourceRange;
 import jlang.type.QualType;
 import tools.OutParamWrapper;
+import tools.Pair;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -318,7 +318,10 @@ public class Parser implements Tag,
                 consumeToken();
                 return parseExternalDeclaration();
             case Asm:
-                assert false:"Current inline assembly.";
+                //assert false:"Current inline assembly.";
+                ActionResult<Expr> result = parseSimpleAsm();
+                expectAndConsume(semi, err_expected_semi_after, "top-level asm block", semi);
+                // TODO: 17-10-28
                 return new ArrayList<>();
             case sub:
             case plus:
@@ -345,6 +348,16 @@ public class Parser implements Tag,
                 return parseDeclarationOrFunctionDefinition();
             }
         }
+    }
+
+    /**
+     * Parses the inline assembly code declared in File context.
+     * @return
+     */
+    private ActionResult<Expr> parseSimpleAsm()
+    {
+        // TODO: 17-10-28
+        return new ActionResult<>();
     }
 
     /**
@@ -521,6 +534,14 @@ public class Parser implements Tag,
 
             while (true)
             {
+                AttributeList attrList = null;
+                // if attribute are present, parse them.
+                if (tok.is(__Attribute))
+                {
+                    attrList = parseAttributes().first;
+                    // FIXME: 17-10-28 use the attribute list.
+                }
+
                 // Ask the actions module to compute the type for this declarator.
                 Decl param = action.actOnParamDeclarator(getCurScope(), paramDeclarator);
 
@@ -772,6 +793,11 @@ public class Parser implements Tag,
         assert nextTokenIs(colon) : "Not a label";
         // identifier ':' statement
         SourceLocation colonLoc = consumeToken();
+
+        // read label attributes, if present.
+        AttributeList attr = null;
+        if (tok.is(__Attribute))
+            attr = parseAttributes().first;
 
         ActionResult<Stmt> res = parseStatement();
         if (res.isInvalid())
@@ -2098,6 +2124,18 @@ public class Parser implements Tag,
             // clear the D for parsing next declarator.
             d.clear();
 
+            // Accept attributes in an init-declarator.  In the first declarator in a
+            // declaration, these would be part of the declspec.  In subsequent
+            // declarators, they become part of the declarator itself, so that they
+            // don't apply to declarators after *this* one.  Examples:
+            //    short __attribute__((common)) var;    -> declspec
+            //    short var __attribute__((common));    -> declarator
+            //    short x, __attribute__((common)) var;    -> declarator
+            if (tok.is(__Attribute))
+            {
+                Pair<AttributeList, SourceLocation> res = parseAttributes();
+                d.addAttributes(res.first, res.second);
+            }
             parseDeclarator(d);
 
             Decl thisDecl = parseDeclarationAfterDeclarator(d);
@@ -2131,11 +2169,35 @@ public class Parser implements Tag,
      *       init-declarator: [C99 6.7]
      *         declarator
      *         declarator '=' initializer
+     * [GNU]   declarator simple-asm-expr[opt] attributes[opt]
+     * [GNU]   declarator simple-asm-expr[opt] attributes[opt] '=' initializer
      * @param d
      * @return
      */
     private Decl parseDeclarationAfterDeclarator(Declarator d)
     {
+        // If a simple-asm-expr is present, parse it.
+        if (tok.is(Asm))
+        {
+            SourceLocation loc = new SourceLocation();
+            ActionResult<Expr> res = parseSimpleAsm();
+            if (res.isInvalid())
+            {
+                skipUntil(semi, true, true);
+                return null;
+            }
+
+            d.setAsmLabel(res.get());
+            d.setRangeEnd(loc);
+        }
+
+        // if attributes are present, parse them.
+        if (tok.is(__Attribute))
+        {
+            Pair<AttributeList, SourceLocation> res = parseAttributes();
+            d.addAttributes(res.first, res.second);
+        }
+
         // inform the semantic module that we just parsed this declarator.
         Decl thisDecl = action.actOnDeclarator(getCurScope(), d);
         if (nextTokenIs(equal))
@@ -2175,68 +2237,6 @@ public class Parser implements Tag,
         if (tok.isNot(l_brace))
             return parseAssignExpression();
         return parseBraceInitializer();
-    }
-
-    /**
-     * Called when parsing an initializer that has a
-     * leading open brace.
-     *
-     * initializer: [C99 6.7.8]
-     *   '{' initializer-list '}'
-     *   '{' initializer-list ',' '}'
-     *
-     *   initializer-list:
-     *     initializer
-     *     initializer-list ',' initializer
-     * @return
-     */
-    private ActionResult<Expr> parseAssignmentExpression()
-    {
-        assert nextTokenIs(l_brace);
-
-        SourceLocation lBraceLoc = consumeToken(); // eat '{'
-        ArrayList<Expr> initExpr = new ArrayList<>();
-
-        if (nextTokenIs(r_brace))
-        {
-            SourceLocation rBraceLoc = consumeToken();
-            diag(lBraceLoc, ext_gnu_empty_initializer).emit();
-            return new ActionResult<Expr>(new InitListExpr(lBraceLoc, rBraceLoc, new ArrayList<>()));
-        }
-
-        boolean initExprOk = true;
-        while (true)
-        {
-            ActionResult<Expr> subInit = parseInitializer();
-
-            if (!subInit.isInvalid())
-                initExpr.add(subInit.get());
-            else
-            {
-                initExprOk = false;
-                if (nextTokenIsNot(comma))
-                {
-                    skipUntil(r_brace, false);
-                    break;
-                }
-            }
-
-            if (nextTokenIsNot(comma))
-                break;
-
-            consumeToken();
-
-            if (nextTokenIs(r_brace))
-                break;
-        }
-
-        boolean close = nextTokenIs(r_brace);
-        SourceLocation rBraceLoc = consumeToken();
-        if (initExprOk && close)
-        {
-            return new ActionResult<Expr>(new InitListExpr(lBraceLoc, rBraceLoc, initExpr));
-        }
-        return exprError();
     }
 
     public static ActionResult<Expr> exprError()
@@ -2774,8 +2774,9 @@ public class Parser implements Tag,
 
                 // GNU attributes support.
                 case __Attribute:
-                    assert false :"Can not support __attribute__ currently";
-                    break;
+                    declSpecs.addAttributes(parseAttributes().first);
+                    continue;
+
                 case Static:
                     declSpecs.setStorageClassSpec(DeclSpec.SCS.SCS_static, loc);
                     break;
@@ -3050,6 +3051,13 @@ public class Parser implements Tag,
      */
     private void parseEnumSpecifier(SourceLocation startLoc, DeclSpec ds)
     {
+        AttributeList attr = null;
+
+        if (tok.is(__Attribute))
+        {
+            attr = parseAttributes().first;
+        }
+
         // Must have either 'enum asmName' or 'enum {...}'.
         if (!tokenIs(tok, identifier) && !tokenIs(tok, l_brace))
         {
@@ -3095,7 +3103,8 @@ public class Parser implements Tag,
                 tuk,
                 startLoc,
                 name,
-                nameLoc);
+                nameLoc,
+                attr);
 
         if (tagDecl.isInvalid())
         {
@@ -3206,7 +3215,13 @@ public class Parser implements Tag,
         }
 
         // eat the '}'
-       SourceLocation rBraceLoc = matchRHSPunctuation(r_brace, lbraceLoc);
+        SourceLocation rBraceLoc = matchRHSPunctuation(r_brace, lbraceLoc);
+
+        AttributeList attr = null;
+        if (tok.is(__Attribute))
+        {
+            attr = parseAttributes().first;
+        }
 
         action.actOnEnumBody(
                 startLoc,
@@ -3214,10 +3229,221 @@ public class Parser implements Tag,
                 rBraceLoc,
                 enumDecl,
                 enumConstantDecls,
-                getCurScope());
+                getCurScope(),
+                attr);
 
         enumScope.exit();
         action.actOnTagFinishDefinition(getCurScope(), enumDecl, rBraceLoc);
+    }
+
+    /**
+     * Parse a non-empty attributes list.
+     *
+     * [GNU] attributes:
+     *         attribute
+     *         attributes attribute
+     *
+     * [GNU]  attribute:
+     *          '__attribute__' '(' '(' attribute-list ')' ')'
+     *
+     * [GNU]  attribute-list:
+     *          attrib
+     *          attribute_list ',' attrib
+     *
+     * [GNU]  attrib:
+     *          empty
+     *          attrib-name
+     *          attrib-name '(' identifier ')'
+     *          attrib-name '(' identifier ',' nonempty-expr-list ')'
+     *          attrib-name '(' argument-expression-list [C99 6.5.2] ')'
+     *
+     * [GNU]  attrib-name:
+     *          identifier
+     *          typespec
+     *          typequal
+     *          storageclass
+     *          
+     * FIXME: The GCC grammar/code for this construct implies we need two
+     * token lookahead. Comment from gcc: "If they start with an identifier 
+     * which is followed by a comma or close parenthesis, then the arguments 
+     * start with that identifier; otherwise they are an expression list."
+     *
+     * At the moment, I am not doing 2 token lookahead. I am also unaware of
+     * any attributes that don't work (based on my limited testing). Most
+     * attributes are very simple in practice. Until we find a bug, I don't see
+     * a pressing need to implement the 2 token lookahead.
+     * @return The returned value's sencond element represents the end location
+     * of this attribute list.
+     */
+    private Pair<AttributeList, SourceLocation> parseAttributes()
+    {
+        assert tok.is(__Attribute):"Not an attributes list!";
+
+        AttributeList attr = null;
+        SourceLocation loc = new SourceLocation();
+        while (tok.is(__Attribute))
+        {
+            // eat the "__attribute__"
+            consumeToken();
+            if (expectAndConsume(l_paren, err_expected_lparen_after, "attribute", Unknown))
+            {
+                skipUntil(r_paren, true);
+                return Pair.get(attr, new SourceLocation());
+            }
+            if (expectAndConsume(l_paren, err_expected_lparen_after, "(", Unknown))
+            {
+                skipUntil(r_paren, true);
+                return Pair.get(attr, new SourceLocation());
+            }
+
+            // Parse the attribute list. e.g. __attribute_((weak, alias("__f"))).
+            while (tok.is(identifier) || isDeclarationSpecifier() ||
+                    tok.is(comma))
+            {
+                if(tok.is(comma))
+                {
+                    consumeToken();
+                    continue;
+                }
+
+                IdentifierInfo attrName = tok.getIdentifierInfo();
+                SourceLocation attrNameLoc = consumeToken();
+
+                // check if we have "paramerized" attribute.
+                if (tok.is(l_paren))
+                {
+                    consumeParen();
+
+                    if (tok.is(identifier))
+                    {
+                        IdentifierInfo paramName = tok.getIdentifierInfo();
+                        SourceLocation paramLoc = consumeToken();
+
+                        if (tok.is(r_paren))
+                        {
+                            // __attribute__(( mode(byte) ))
+                            consumeParen();
+                            attr = new AttributeList(attrName, attrNameLoc,
+                                    paramName, paramLoc, null, attr);
+                        }
+                        else if (tok.is(comma))
+                        {
+                            // __attribute__(( format(printf, 1, 2) ))
+                            consumeToken();
+
+                            ArrayList<Expr> args = new ArrayList<>();
+                            boolean argExprsOK = true;
+                            // now parse the non-empty comma separated list
+                            // of expression.
+                            while (true)
+                            {
+                                ActionResult<Expr> arg = parseAssignExpression();
+                                if (arg.isInvalid())
+                                {
+                                    argExprsOK = false;
+                                    skipUntil(r_paren, true);
+                                    break;
+                                }
+                                else
+                                {
+                                    args.add(arg.get());
+                                }
+                                if (!tok.is(comma))
+                                    break;
+                                // eat the ',' move to the next argument.
+                                consumeToken();
+                            }
+                            if (argExprsOK && tok.is(r_paren))
+                            {
+                                consumeParen();
+                                attr = new AttributeList(attrName, attrNameLoc,
+                                        paramName, paramLoc, args.toArray(),
+                                        attr);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // not a identifier.
+                        switch (tok.getKind())
+                        {
+                            case r_paren:
+                                // parse a possibly empty comma separated list of expressions
+                                // __attribute__(( nonnull() ))
+                                consumeParen();
+                                attr = new AttributeList(attrName, attrNameLoc,
+                                        null, new SourceLocation(), null, attr);
+                                break;
+                            case Char:
+                            case Bool:
+                            case Short:
+                            case Int:
+                            case Long:
+                            case Signed:
+                            case Unsigned:
+                            case Float:
+                            case Double:
+                            case Void:
+                            case Typedef:
+                            {
+                                consumeToken();
+                                attr = new AttributeList(attrName, attrNameLoc,
+                                        null, new SourceLocation(),
+                                        null, attr);
+                                if (tok.is(r_paren))
+                                    consumeParen();
+                                break;
+                            }
+                            default:
+                            {
+                                ArrayList<Expr> argExprs = new ArrayList<>();
+                                boolean argExprOK = true;
+                                // __attribute__(( aligned(16) ))
+                                // now parse the list of expressions
+                                while (true)
+                                {
+                                    ActionResult<Expr> argExpr = parseAssignExpression();
+                                    if (argExpr.isInvalid())
+                                    {
+                                        argExprOK = false;
+                                        skipUntil(r_paren, true);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        argExprs.add(argExpr.get());
+                                    }
+                                    if (tok.isNot(comma))
+                                        break;
+                                    consumeParen();
+                                }
+                                // Match ')'
+                                if (argExprOK && tok.is(r_paren))
+                                {
+                                    consumeParen();
+                                    attr = new AttributeList(attrName, attrNameLoc,
+                                            null,
+                                            new SourceLocation(), argExprs.toArray(),
+                                            attr);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    attr = new AttributeList(attrName, attrNameLoc, null,
+                            new SourceLocation(), null, attr);
+                }
+            }
+            if (expectAndConsume(r_paren, err_expected_rparen))
+                skipUntil(r_paren, false);
+            loc = tok.getLocation();
+            if (expectAndConsume(r_paren, err_expected_rparen))
+                skipUntil(r_paren, false);
+        }
+        return Pair.get(attr, loc);
     }
 
     /**
@@ -3252,6 +3478,14 @@ public class Parser implements Tag,
         {
             assert tagTokKind == Union : "Not a union specifier";
             tagType = TST_union;
+        }
+
+        AttributeList attr = null;
+
+        // if attributes exist after tag, parse them.
+        if (tok.is(__Attribute))
+        {
+            attr = parseAttributes().first;
         }
 
         // Parse the (optional) class asmName
@@ -3298,7 +3532,7 @@ public class Parser implements Tag,
         ActionResult<Decl> tagOrTempResult =
                 action.actOnTag(
                 getCurScope(), tagType,
-                tuk, startLoc, name, nameLoc);
+                tuk, startLoc, name, nameLoc, attr);
         // if there is a body, parse it and perform actions
         if (nextTokenIs(l_brace))
         {
@@ -3532,12 +3766,22 @@ public class Parser implements Tag,
         }
 
         SourceLocation rBraceLoc = consumeBrace();
+
+        AttributeList attr = null;
+        // if attribtue exist after struct contents, parse them.
+        if (tok.is(__Attribute))
+        {
+            attr = parseAttributes().first;
+        }
+
         // eat '}'
         action.actOnFields(getCurScope(),
                 recordLoc,
                 tagDecl,
                 fieldDecls,
-                lBraceLoc, rBraceLoc);
+                lBraceLoc,
+                rBraceLoc,
+                attr);
 
         structScope.exit();
         action.actOnTagFinishDefinition(getCurScope(),
@@ -3548,20 +3792,19 @@ public class Parser implements Tag,
     /**
      * Parse a struct declaration without the terminating semicolon.
      * <pre>
-     *   struct-declaration:
-     *     specifier-qualifier-list struct-declarator-list
-     *
-     *   specifier-qualifier-list:
-     *     type-specifier specifier-qualifier-list[opt]
-     *     type-qualifier specifier-qualifier-list[opt]
-     *
-     *   struct-declarator-list:
-     *     struct-declarator
-     *     struct-declarator-list , struct-declarator
-     *
-     *   struct-declarator:
-     *     declarator
-     *     declarator[opt] : constant-expression
+     *       struct-declaration:
+     *         specifier-qualifier-list struct-declarator-list
+     * [GNU]   __extension__ struct-declaration
+     * [GNU]   specifier-qualifier-list
+     *       struct-declarator-list:
+     *         struct-declarator
+     *         struct-declarator-list ',' struct-declarator
+     * [GNU]   struct-declarator-list ',' attributes[opt] struct-declarator
+     *       struct-declarator:
+     *         declarator
+     * [GNU]   declarator attributes[opt]
+     *         declarator[opt] ':' constant-expression
+     * [GNU]   declarator[opt] ':' constant-expression attributes[opt]
      * </pre>
      *
      * @param ds
@@ -3594,13 +3837,13 @@ public class Parser implements Tag,
             // struct-declarator:
             //   declarator
             //   declarator[opt] : constant-expression
-            if (nextTokenIsNot(colon))
+            if (tok.isNot(colon))
             {
                 parseDeclarator(declaratorField.declarator);
             }
 
             // parse the constant-subExpr after declarator if there is a ':;
-            if (nextTokenIs(colon))
+            if (tok.is(colon))
             {
                 consumeToken();
                 ActionResult<Expr> result = parseConstantExpression();
@@ -3610,13 +3853,27 @@ public class Parser implements Tag,
                     declaratorField.bitFieldSize = result.get();
             }
 
+            // if attribute exists after the declarator, parse them.
+            if (tok.is(__Attribute))
+            {
+                Pair<AttributeList, SourceLocation> res = parseAttributes();
+                declaratorField.declarator.addAttributes(res.first, res.second);
+            }
+
             // we are done with this declarator; invoke the callback
             callBack.invoke(declaratorField);
 
             if (nextTokenIsNot(comma))
                 return;
 
+            // consume ','
             consumeToken();
+
+            if (tok.is(__Attribute))
+            {
+                Pair<AttributeList, SourceLocation> res = parseAttributes();
+                declaratorField.declarator.addAttributes(res.first, res.second);
+            }
         }
     }
 
@@ -3856,8 +4113,11 @@ public class Parser implements Tag,
     /**
      * direct-declarator:
      *   '(' declarator ')'
+     * [GNU]   '(' attributes declarator ')'
      *   direct-declarator '(' parameter-type-list ')'
      *   direct-declarator '(' identifier-list[opt] ')'
+     * [GNU]   direct-declarator '(' parameter-forward-declarations
+     *                    parameter-type-list[opt] ')'
      * @param declarator
      */
     private void parseParenDeclarator(Declarator declarator)
@@ -3868,6 +4128,26 @@ public class Parser implements Tag,
 
         assert !declarator.isPastIdentifier()
                 :"Should be called before passing identifier";
+
+        // Eat any attributes before we look at whether this is a grouping or function
+        // declarator paren.  If this is a grouping paren, the attribute applies to
+        // the type being built up, for example:
+        //     int (__attribute__(()) *x)(long y)
+        // If this ends up not being a grouping paren, the attribute applies to the
+        // first argument, for example:
+        //     int (__attribute__(()) int x)
+        // In either case, we need to eat any attributes to be able to determine what
+        // sort of paren this is.
+        AttributeList attr = null;
+        boolean requireArg = false;
+        if (tok.is(__Attribute))
+        {
+            attr = parseAttributes().first;
+            // We require that the argument list (if this is a non-grouping paren) be
+            // present even if the attribute list was empty.
+            requireArg = true;
+        }
+
         boolean isGrouping;
 
         // If we haven't past the identifier yet (or where the identifier would be
@@ -3891,14 +4171,24 @@ public class Parser implements Tag,
         {
             isGrouping = true;
         }
+
         // If this is a grouping paren, handle:
         // direct-declarator: '(' declarator ')'
+        // direct-declarator: '(' attributes declarator ')'
         if (isGrouping)
         {
+            boolean hadGroupingParens = declarator.hasGroupingParens();
+            declarator.setGroupingParens(true);
+
+            if (attr != null)
+                declarator.addAttributes(attr, new SourceLocation());
+
             parseDeclarator(declarator);
 
             // match ')'
-            consumeParen();
+            SourceLocation loc = matchRHSPunctuation(r_paren, lparenLoc);
+            declarator.setGroupingParens(hadGroupingParens);
+            declarator.setRangeEnd(loc);
             return;
         }
 
@@ -3907,7 +4197,7 @@ public class Parser implements Tag,
         // identifier (and remember where it would have been), then call into
         // ParseFunctionDeclarator to handle of argument list.
         declarator.setIdentifier(null, tok.getLocation());
-        parseFunctionDeclarator(lparenLoc, declarator, true);
+        parseFunctionDeclarator(lparenLoc, declarator, requireArg);
     }
 
 	/**
@@ -4111,7 +4401,9 @@ public class Parser implements Tag,
      *
      *     parameter-declaration: [C99 6.7.5]
      *       declaration-speicifers declarator
+     * [GNU]   declaration-specifiers declarator attributes
      *       declaration-specifiers abstract-declarator[opt]
+     * [GNU]   declaration-specifiers abstract-declarator[opt] attributes
      * </pre>
      *
      * @param declarator
@@ -4144,6 +4436,13 @@ public class Parser implements Tag,
             // This is "FunctionProtoTypeContext".
             Declarator paramDecls = new Declarator(ds, TheContext.FunctionProtoTypeContext);
             parseDeclarator(paramDecls);
+
+            // Parse GNU attributes, if present.
+            if (tok.is(__Attribute))
+            {
+                Pair<AttributeList, SourceLocation> res = parseAttributes();
+                paramDecls.addAttributes(res.first, res.second);
+            }
 
             // remember this parsed parameter in ParamInfo.
             IdentifierInfo paramName = paramDecls.getIdentifier();
@@ -4283,15 +4582,25 @@ public class Parser implements Tag,
                 rbracketLoc);
     }
 
+    private void parseTypeQualifierListOpt(DeclSpec ds)
+    {
+        parseTypeQualifierListOpt(ds, true);
+    }
+
     /**
      * ParseTypeQualifierListOpt
      * <pre>
      * type-qualifier-list: [C99 6.7.5]
      *   type-qualifier
+     *       type-qualifier-list: [C99 6.7.5]
+     *         type-qualifier
+     * [GNU]   attributes                        [ only if AttributesAllowed=true ]
+     *         type-qualifier-list type-qualifier
+     * [GNU]   type-qualifier-list attributes    [ only if AttributesAllowed=true ]
      * </pre>
      * @param ds
      */
-    private void parseTypeQualifierListOpt(DeclSpec ds)
+    private void parseTypeQualifierListOpt(DeclSpec ds,  boolean allowAttribute)
     {
         while(true)
         {
@@ -4308,6 +4617,13 @@ public class Parser implements Tag,
                 case Restrict:
                     isInvalid = ds.setTypeQualifier(TQ_restrict, loc);
                     break;
+                case __Attribute:
+                    if (allowAttribute)
+                    {
+                        ds.addAttributes(parseAttributes().first);
+                        continue;
+                    }
+                    // otherwise,fall through
                 default:
                     // if this is not a type-qualifier token, we are done read type
                     // qualifiers.
@@ -4319,7 +4635,7 @@ public class Parser implements Tag,
             {
                 // TODO: report error.
             }
-            loc = consumeToken();
+            consumeToken();
         }
     }
 
