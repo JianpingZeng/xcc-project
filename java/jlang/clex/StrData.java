@@ -38,10 +38,13 @@ public class StrData implements Cloneable
         this.offset = offset;
     }
 
+    /*
+    * FIXME Comment this to avoid deeply copy. 2017/10/29
     public StrData clone()
     {
         char[] arr = new char[buffer.length];
         System.arraycopy(buffer, 0, arr, 0, arr.length);
         return new StrData(arr, offset);
     }
+    */
 }

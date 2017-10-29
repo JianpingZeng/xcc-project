@@ -37,6 +37,7 @@ import static jlang.cparser.DeclSpec.TSS.TSS_signed;
 import static jlang.cparser.DeclSpec.TSS.TSS_unsigned;
 import static jlang.cparser.DeclSpec.TST.*;
 import static jlang.cparser.DeclSpec.TSW.*;
+import static jlang.cparser.Declarator.TheContext.FileContext;
 import static jlang.cparser.Parser.ParenParseOption.*;
 import static jlang.sema.Scope.ScopeFlags.DeclScope;
 import static jlang.sema.Scope.ScopeFlags.FunctionProtoTypeScope;
@@ -319,10 +320,14 @@ public class Parser implements Tag,
                 return parseExternalDeclaration();
             case Asm:
                 //assert false:"Current inline assembly.";
-                ActionResult<Expr> result = parseSimpleAsm();
+                OutParamWrapper<SourceLocation> endLoc = new OutParamWrapper<>();
+                ActionResult<Expr> result = parseSimpleAsm(endLoc);
                 expectAndConsume(semi, err_expected_semi_after, "top-level asm block", semi);
-                // TODO: 17-10-28
-                return new ArrayList<>();
+                if (result.isInvalid())
+                    return new ArrayList<>();
+
+                return action.convertDeclToDeclGroup(
+                        action.actOnFileScopeAsmDecl(tok.getLocation(), result));
             case sub:
             case plus:
                 diag(tok, err_expected_external_declaration).emit();
@@ -332,7 +337,7 @@ public class Parser implements Tag,
             {
                 // A function definition can not start with those keyword.
                 OutParamWrapper<SourceLocation> declEnd = new OutParamWrapper<>();
-                return parseDeclaration(TheContext.FileContext, declEnd);
+                return parseDeclaration(FileContext, declEnd);
             }
             /**
              * Else fall through, and yield a syntax error trying to parse
@@ -352,12 +357,60 @@ public class Parser implements Tag,
 
     /**
      * Parses the inline assembly code declared in File context.
+     * [GNU]    simple-asm-expr:
+     *              'asm' '(' asm-string-literal ')'
      * @return
      */
-    private ActionResult<Expr> parseSimpleAsm()
+    private ActionResult<Expr> parseSimpleAsm(OutParamWrapper<SourceLocation> endLoc)
     {
-        // TODO: 17-10-28
-        return new ActionResult<>();
+        assert tok.is(Asm):"Not an inline assembly code";
+        SourceLocation asmLoc = consumeToken();
+
+        if (tok.isNot(l_paren))
+        {
+            diag(tok, err_expected_lparen_after).addTaggedVal("asm").emit();
+            return exprError();
+        }
+
+        asmLoc = consumeParen();
+
+        ActionResult<Expr> res = parseAsmStringLiteral();
+        if (res.isInvalid())
+        {
+            skipUntil(r_paren, true, true);
+            if (endLoc != null)
+                endLoc.set(tok.getLocation());
+            consumeAnyToken();
+        }
+        else
+        {
+            asmLoc = matchRHSPunctuation(r_paren, asmLoc);
+            if (endLoc != null)
+                endLoc.set(asmLoc);
+        }
+
+        return res;
+    }
+
+    /**
+     * Parse the inline assembly literal.
+     * [GNU]    asm-string-literal
+     *              string-literal
+     * @return
+     */
+    private ActionResult<Expr> parseAsmStringLiteral()
+    {
+        if (!isTokenStringLiteral())
+        {
+            diag(tok, err_expected_string_literal).emit();
+            return exprError();
+        }
+
+        ActionResult<Expr> res = parseStringLiteralExpression();
+        if (res.isInvalid())
+            return exprError();
+
+        return res;
     }
 
     /**
@@ -412,7 +465,7 @@ public class Parser implements Tag,
             // declSpecs.complete(theDecl);
             return action.convertDeclToDeclGroup(theDecl);
         }
-        return parseDeclGroup(declSpecs, TheContext.FileContext, true);
+        return parseDeclGroup(declSpecs, FileContext, true);
     }
 
 
@@ -2042,6 +2095,15 @@ public class Parser implements Tag,
             return declGroups();
         }
 
+        // If we have a declaration or declarator list, handle it.
+        if (isDeclarationAfterDeclarator())
+        {
+            // Parse the init-declarator-list for a normal declaration.
+            ArrayList<Decl> decls = parseInitDeclaratorListAfterFirstDeclarator(d, ds, FileContext);
+            expectAndConsume(semi, err_expected_semi_declaration);
+            return decls;
+        }
+
         // check to see if we have a function "definition" which must heave a body.
         if (allowFunctionDefinition && d.isFunctionDeclarator()
                 && !isDeclarationAfterDeclarator())
@@ -2084,7 +2146,7 @@ public class Parser implements Tag,
             end.set(tok.getLocation());
 
         if (context != TheContext.ForContext &&
-                expectAndConsume(semi, context == TheContext.FileContext ?
+                expectAndConsume(semi, context == FileContext ?
                 err_invalid_token_after_toplevel_declarator :
                 err_expected_semi_declaration))
         {
@@ -2179,8 +2241,8 @@ public class Parser implements Tag,
         // If a simple-asm-expr is present, parse it.
         if (tok.is(Asm))
         {
-            SourceLocation loc = new SourceLocation();
-            ActionResult<Expr> res = parseSimpleAsm();
+            OutParamWrapper<SourceLocation> loc = new OutParamWrapper<>();
+            ActionResult<Expr> res = parseSimpleAsm(loc);
             if (res.isInvalid())
             {
                 skipUntil(semi, true, true);
@@ -2188,7 +2250,7 @@ public class Parser implements Tag,
             }
 
             d.setAsmLabel(res.get());
-            d.setRangeEnd(loc);
+            d.setRangeEnd(loc.get());
         }
 
         // if attributes are present, parse them.
@@ -2653,8 +2715,10 @@ public class Parser implements Tag,
     private boolean isDeclarationAfterDeclarator()
     {
         return tok.is(equal)            // int X()= -> not a function def
-                || tok.is(comma)     // int X(), -> not a function def
-                || tok.is(semi);     // int X(); -> not a function def
+                || tok.is(comma)         // int X(), -> not a function def
+                || tok.is(semi)          // int X(); -> not a function def
+                || tok.is(__Attribute)  // int X() __attribute__ not a function def.
+                || tok.is(Asm);          // int X() __asm__() not a function def.
     }
 
     /**
