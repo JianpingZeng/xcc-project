@@ -1617,7 +1617,7 @@ public class Parser implements Tag,
      */
     private ActionResult<Stmt> parseSwitchStatement()
     {
-        assert tokenIs(tok, Switch) :"Not a switch statement?";
+        assert tok.is(Switch) :"Not a switch statement?";
         // eat the 'switch'
         SourceLocation switchLoc = consumeToken();
 
@@ -2652,9 +2652,9 @@ public class Parser implements Tag,
      */
     private boolean isDeclarationAfterDeclarator()
     {
-        return tokenIs(tok, equal)            // int X()= -> not a function def
-                || tokenIs(tok, comma)     // int X(), -> not a function def
-                || tokenIs(tok, semi);     // int X(); -> not a function def
+        return tok.is(equal)            // int X()= -> not a function def
+                || tok.is(comma)     // int X(), -> not a function def
+                || tok.is(semi);     // int X(); -> not a function def
     }
 
     /**
@@ -3018,8 +3018,9 @@ public class Parser implements Tag,
      * int x   (             int y);     // direct-declarator
      * int(int x   )                         // direct-declarator
      * int x   ;                         // simple-declaration
-     * int x   =             17;         // init-declarator-list
      * int x   ,             y;          // init-declarator-list
+     * int x   =             17;         // init-declarator-list
+     * int x __asm__        ("foo");     // init-declarator-list
      * int x   :             4;          // struct-declarator
      * <p>
      * This is not, because 'x' does not immediately follow the declspec (though
@@ -3028,9 +3029,9 @@ public class Parser implements Tag,
      */
     private boolean isValidAfterIdentifierDeclarator(Token tok)
     {
-        return tokenIs(tok, l_bracket) || tokenIs(tok, l_paren) || tokenIs(tok,
-                semi) || tokenIs(tok, comma) || tokenIs(tok, equal) || tokenIs(tok,
-                colon);
+        return tok.is(l_bracket) || tok.is(l_paren) || tok.is(r_paren)
+                || tok.is(semi) || tok.is(comma) || tok.is(equal) ||
+                tok.is(Asm) || tok.is(colon);
     }
 
     private Scope getCurScope()
@@ -3059,7 +3060,7 @@ public class Parser implements Tag,
         }
 
         // Must have either 'enum asmName' or 'enum {...}'.
-        if (!tokenIs(tok, identifier) && !tokenIs(tok, l_brace))
+        if (!tok.is(identifier) && !tok.is(l_brace))
         {
             diag(tok, err_expected_ident_lbrace).emit();
             // skip the rest of this declarator, up until a ',' or ';' encounter.
@@ -3069,7 +3070,7 @@ public class Parser implements Tag,
 
         IdentifierInfo name = null;
         SourceLocation nameLoc = SourceLocation.NOPOS;
-        if (tokenIs(tok, identifier))
+        if (tok.is(identifier))
         {
             name = tok.getIdentifierInfo();
             nameLoc = tok.getLocation();
@@ -3082,9 +3083,9 @@ public class Parser implements Tag,
         // forward declaration.  If we have 'enum foo {...' then this is a
         // definition. Otherwise we have something like 'enum foo xyz', a reference.
         Sema.TagUseKind tuk;
-        if (tokenIs(tok, l_brace))
+        if (tok.is(l_brace))
             tuk = TUK_definition;
-        else if (tokenIs(tok, semi))
+        else if (tok.is(semi))
             tuk = TUK_declaration;
         else
             tuk = TUK_reference;
@@ -3110,7 +3111,7 @@ public class Parser implements Tag,
         {
             // the action failed to produce an enumeration getKind().
             // if this is a definition, consume the entire definition.
-            if (tokenIs(tok, l_brace))
+            if (tok.is(l_brace))
             {
                 consumeToken();
                 skipUntil(r_brace, true);
@@ -3120,7 +3121,7 @@ public class Parser implements Tag,
             return;
         }
 
-         if (tokenIs(tok, l_brace))
+         if (tok.is(l_brace))
             parseEnumBody(startLoc, tagDecl.get());
 
         OutParamWrapper<String> prevSpecWrapper = new OutParamWrapper<>();
@@ -3167,7 +3168,7 @@ public class Parser implements Tag,
         ArrayList<Decl> enumConstantDecls = new ArrayList<>(32);
         Decl lastEnumConstDecl = null;
         // Parse the enumerator-list.
-        while(tokenIs(tok, identifier))
+        while(tok.is(identifier))
         {
             IdentifierInfo name = tok.getIdentifierInfo();
             SourceLocation identLoc = consumeToken();
@@ -3889,7 +3890,6 @@ public class Parser implements Tag,
      * pointer:
      *   '*' type-qualifier-list[opt]
      *   '*' type-qualifier-list[opt] pointer
-     *
      * @param declarator
      */
     private void parseDeclarator(Declarator declarator)
@@ -3920,8 +3920,9 @@ public class Parser implements Tag,
                         tok.getLocation(),
                         ds.getConstSpecLoc(),
                         ds.getVolatileSpecLoc(),
-                        ds.getRestrictSpecLoc()),
-                ds.getRangeEnd());
+                        ds.getRestrictSpecLoc(),
+                        ds.getAttributes()),
+               ds.getRangeEnd());
     }
 
     /**

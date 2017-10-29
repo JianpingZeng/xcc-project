@@ -68,6 +68,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             public SourceLocation volatileQualLoc;
             // the location of the restrict-qualifier, if any
             public SourceLocation restrictQualLoc;
+            public AttributeList attrList;
         }
 
         public static class ArrayTypeInfo
@@ -136,7 +137,8 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
                 SourceLocation loc,
                 SourceLocation constQualLoc,
                 SourceLocation volatileQualLoc,
-                SourceLocation restrictQualLoc)
+                SourceLocation restrictQualLoc,
+                AttributeList alist)
         {
             DeclaratorChunk<PointerTypeInfo> res = new DeclaratorChunk<>();
             res.loc = loc;
@@ -146,6 +148,7 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
             res.typeInfo.constQualLoc = constQualLoc;
             res.typeInfo.volatileQualLoc = volatileQualLoc;
             res.typeInfo.restrictQualLoc = restrictQualLoc;
+            res.typeInfo.attrList = alist;
             return res;
         }
 
@@ -219,6 +222,20 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
         public SourceLocation getEndLocation()
         {
             return endLoc;
+        }
+
+        public AttributeList getAttrs()
+        {
+            switch (kind)
+            {
+                default:
+                    assert false:"unknown declarator kind";
+                case Pointer:
+                    return ((PointerTypeInfo)typeInfo).attrList;
+                case Array:
+                case Function:
+                    return null;
+            }
         }
     }
 
@@ -895,5 +912,10 @@ public class DeclSpec implements DiagnosticSemaTag, DiagnosticParseTag
         if (attrList != null)
             alist.addAttributeList(attrList);
         attrList = alist;
+    }
+
+    public AttributeList getAttributes()
+    {
+        return attrList;
     }
 }

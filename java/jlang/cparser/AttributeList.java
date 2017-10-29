@@ -67,12 +67,6 @@ public class AttributeList
         AT_nonnull,
         AT_noreturn,
         AT_nothrow,
-        AT_nsobject,
-        AT_objc_exception,
-        AT_cf_returns_retained,   // Clang-specific.
-        AT_ns_returns_retained,   // Clang-specific.
-        AT_objc_gc,
-        AT_overloadable,       // Clang-specific.
         AT_packed,
         AT_pure,
         AT_regparm,
@@ -291,8 +285,6 @@ public class AttributeList
                 return Kind.AT_constructor;
             case "unavailable":
                 return Kind.AT_unavailable;
-            case "overloadable":
-                return Kind.AT_overloadable;
             case "address_space":
                 return Kind.AT_address_space;
             case "always_inline":
@@ -315,6 +307,4 @@ public class AttributeList
                 return Kind.UnknownAttribute;
         }
     }
-
-    // TODO: 17-10-28  Support GNU __attribute__.
 }

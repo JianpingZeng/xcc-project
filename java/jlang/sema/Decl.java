@@ -22,6 +22,7 @@ package jlang.sema;
  * @version 0.1
  */
 
+import jlang.ast.Attr;
 import jlang.ast.DeclPrinter;
 import jlang.ast.Tree;
 import jlang.ast.Tree.Expr;
@@ -264,6 +265,82 @@ public abstract class Decl
     public boolean isSameInIdentifierNameSpace(IdentifierNamespace otherINS)
     {
         return getIdentifierNamespace() == otherINS;
+    }
+
+    private boolean hasAttrs;
+
+    public boolean hasAttrs()
+    {
+        return hasAttrs;
+    }
+
+    public ArrayList<Attr> getAttrs()
+    {
+        assert hasAttrs:"hasAttrs was wrong?";
+        return getASTContext().getDeclAttrs(this);
+    }
+
+    public void setAttrs(ArrayList<Attr> alist)
+    {
+        assert !hasAttrs:"hasAttrs has been set!";
+        ArrayList<Attr> attrBank = getASTContext().getDeclAttrs(this);
+        assert attrBank.isEmpty():"hasAttrs was wrong?";
+
+        attrBank.addAll(alist);
+        hasAttrs = true;
+    }
+
+    public void addAttr(Attr a)
+    {
+       if (hasAttrs)
+           getAttrs().add(a);
+       else
+       {
+           ArrayList<Attr> list = new ArrayList<>();
+           list.add(a);
+           setAttrs(list);
+       }
+    }
+
+    public void dropAttrs()
+    {
+        if (!hasAttrs)
+            return;
+
+        hasAttrs = false;
+        getASTContext().eraseDeclAttrs(this);
+    }
+
+    public void swapAttrs(Decl rhs)
+    {
+        boolean hasLHSAttr = hasAttrs;
+        boolean hasRHSAttr = rhs.hasAttrs;
+
+        if (!hasLHSAttr && !hasRHSAttr)
+            return;
+
+        if (!hasLHSAttr)
+        {
+            rhs.swapAttrs(this);
+            return;
+        }
+
+        // Handle the case when both decls have attrs.
+        ASTContext ctx = getASTContext();
+        if (hasRHSAttr)
+        {
+            ArrayList<Attr> lhsVec = ctx.eraseDeclAttrs(this);
+            ArrayList<Attr> rhsVec = ctx.eraseDeclAttrs(rhs);
+            ctx.putDeclAttrs(this, rhsVec);
+            ctx.putDeclAttrs(rhs, lhsVec);
+            return;
+        }
+
+        // Otherwise, LHS has an attr and RHS doesn't.
+        ArrayList<Attr> lhsVec = ctx.eraseDeclAttrs(this);
+        ctx.putDeclAttrs(rhs, lhsVec);
+        hasAttrs = false;
+        rhs.hasAttrs = true;
     }
 
     /**
