@@ -18,7 +18,13 @@ package jlang.clex;
 
 import java.util.ArrayList;
 
+import static jlang.diag.DiagnosticLexKindsTag.warn_pragma_ignored;
+
 /**
+ * This PragmaHandler subdivides the namespace of pragmas,
+ * allowing hierarchical pragmas to be defined.  Common examples of namespaces
+ * are "#pragma GCC", "#pragma STDC", and "#pragma omp", but any namespaces may
+ * be (potentially recursively) defined.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -56,10 +62,31 @@ public class PragmaNameSpace extends PragmaHandler
         return ignoreNull? null: nullHandler;
     }
 
+    /**
+     * Handle the Pragma macro, it will lookup for various Pragma Handler to
+     * deal with concrete namespace, like STDC.
+     * @param pp    A preprocessor used to emit diagnostic.
+     * @param tok   The token to be lexed.
+     */
     @Override
-    public void handlePragma(Preprocessor pp, Token firstToken)
+    public void handlePragma(Preprocessor pp, Token tok)
     {
-        // TODO: 17-4-25
+        // Read the "namespace" that the directive is in, e.g. STDC. Do not
+        // macro expand it, the user can have a STDC #define, that should not
+        // affect this.
+        pp.lexUnexpandedToken(tok);
+
+        // get the handler for this namespace.
+        PragmaHandler handler = findHandler(tok.getIdentifierInfo(), false);
+
+        // Check if the handler is null
+        if (handler == null)
+        {
+            pp.diag(tok, warn_pragma_ignored).emit();
+            return;
+        }
+        // Otherwise, use the obtained handler to deal with this.
+        handler.handlePragma(pp, tok);
     }
 
     public void addPragma(PragmaHandler handler)

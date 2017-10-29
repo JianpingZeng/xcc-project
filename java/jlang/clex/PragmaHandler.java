@@ -23,6 +23,15 @@ import java.util.ArrayList;
 import static jlang.diag.DiagnosticLexKindsTag.*;
 
 /**
+ * Instances of this interface defined to handle the various of Pragma that
+ * the language front-end uses. Each handler optionally has a name (e.g. "pack")
+ * and handlePragma method is invoked when a pragma with identifier is found.
+ * If a handler does not match nay of the declared pragmas the handler with a
+ * null identifier is invoked, if it exists.
+ *
+ * Note that the PragmaNamespace class can be used to subdivide pragmas, e.g.
+ * we treat "#pragma STDC" and "#pragma GCC" as namespace that contain other
+ * pragmas.
  * @author Xlous.zeng
  * @version 0.1
  */
