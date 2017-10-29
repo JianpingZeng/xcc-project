@@ -10349,6 +10349,16 @@ public final class Sema implements DiagnosticParseTag,
         return baseObjc;
     }
 
+
+    public Decl actOnFileScopeAsmDecl(SourceLocation location,
+            ActionResult<Expr> expr)
+    {
+        StringLiteral asmString = (StringLiteral) expr.get();
+        FileScopeAsmDecl decl = new FileScopeAsmDecl(curContext, location, asmString);
+        curContext.addDecl(decl);
+        return decl;
+    }
+
     //=========================================================================//
     // handler to attributes semantics.
 

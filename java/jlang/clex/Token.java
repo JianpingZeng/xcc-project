@@ -104,7 +104,7 @@ public class Token implements Cloneable
     public void setLiteralData(StrData data)
     {
         assert isLiteral(): "Cannot get literal data of non-literal";
-        this.data = data.clone();
+        this.data = data;
     }
 
     public void setFlag(int flag)
@@ -164,10 +164,7 @@ public class Token implements Cloneable
     {
         Token res = new Token();
         res.loc = loc;
-        res.data = data == null ? null :
-                        (isLiteral() ?
-                        getLiteralData().clone() :
-                        getIdentifierInfo().clone());
+        res.data = data;
         res.kind = kind;
         res.flags = flags;
         res.length = length;

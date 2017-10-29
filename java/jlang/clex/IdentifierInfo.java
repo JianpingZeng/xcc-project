@@ -177,6 +177,8 @@ public class IdentifierInfo implements Cloneable
         return getLength() == str.length() && str.equals(getName());
     }
 
+    /*
+    * FIXME Comment this to avoid deeply copy. 2017/10/29
     @Override
     public IdentifierInfo clone()
     {
@@ -189,6 +191,7 @@ public class IdentifierInfo implements Cloneable
         ii.entry = entry.clone();
         return ii;
     }
+    */
 
     public void setEntry(Pair<String, IdentifierInfo> pair)
     {
