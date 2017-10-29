@@ -148,9 +148,22 @@ public class Lexer extends PreprocessorLexer
         lexingRawMode = true;
     }
 
-    public static Lexer createPragmaLexer(SourceLocation spellingLoc,
+    /**
+     * Lexer constructor for GNU _Pragma preprocessor macro.
+     * @param spellingLoc   The the token location where lexer would reads the
+     *                      next token (Usually, it is the invalid location).
+     * @param instantiationLocStart The location where _Pragma macro expands,
+     *                      As usual, it is the left parenthesis
+     * @param instantiationLocEnd   The end location that right parenthesis.
+     * @param tokenLen  The length of tokens be lexed.
+     * @param pp
+     * @return  A newly created _Pragam lexer.
+     */
+    public static Lexer createPragmaLexer(
+            SourceLocation spellingLoc,
             SourceLocation instantiationLocStart,
-            SourceLocation instantiationLocEnd, int tokenLen, Preprocessor pp)
+            SourceLocation instantiationLocEnd,
+            int tokenLen, Preprocessor pp)
     {
         SourceManager sgr = pp.getSourceManager();
 
@@ -256,7 +269,7 @@ public class Lexer extends PreprocessorLexer
 
     public static boolean isObviouslySimpleCharacter(char ch)
     {
-        return ch != '?' && ch != '\\';
+        return ch != '?' && ch != '\\' && ch != '\0';
     }
 
     /**
@@ -1611,7 +1624,7 @@ public class Lexer extends PreprocessorLexer
                 // So that we just skip them.
                 while (curPos < bufferEnd && buffer[curPos] == '\0') { ++curPos; }
 
-                if (curPos == bufferEnd)
+                if (curPos == bufferEnd || curPos - 1 == bufferEnd)
                 {
                     Preprocessor ppcache = pp;
                     // Retreat back into the file.

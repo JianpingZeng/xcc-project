@@ -52,7 +52,7 @@ public class ScratchBuffer
         if (byteUsed + buf.length +2 > ScratchBufSize)
             allocateScratchBuffer(buf.length + 2);
 
-        buffer[byteUsed++] = '\0';
+        buffer[byteUsed++] = '\n';
 
         dest.set(byteUsed);
 
