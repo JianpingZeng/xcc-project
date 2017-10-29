@@ -1,6 +1,7 @@
 package jlang.sema;
 
 import jlang.ast.ASTConsumer;
+import jlang.ast.AsmLabelAttr;
 import jlang.ast.CastKind;
 import jlang.ast.Tree;
 import jlang.ast.Tree.*;
@@ -426,7 +427,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         // If there is a previous tc definition or forward declaration was found,
-        // Handle it.
+        // handle it.
         if (prevDecl != null)
         {
             // Check whether the previous declaration is usable.
@@ -2145,7 +2146,7 @@ public final class Sema implements DiagnosticParseTag,
             // single void argument.
             // We let through "const void" here because Sema::GetTypeForDeclarator
             // already checks for that case.
-            if (fti.argInfo != null)
+            if (fti.argInfo != null && !fti.argInfo.isEmpty())
             {
                 // If there is empty function argument list, just break out.
                 DeclSpec.ParamInfo arg = fti.argInfo.get(0);
@@ -2913,6 +2914,17 @@ public final class Sema implements DiagnosticParseTag,
         VarDecl newVD = new VarDecl(DeclKind.VarDecl, dc, name, nameLoc,ty, sc);
         if (d.isInvalidType())
             newVD.setInvalidDecl(true);
+
+        // handle attributes prior to checking for duplication in mergeVarDecl.
+        processDeclAttributes(s, newVD, d);
+
+        // handle GNU asm-level extension (encoded as an attributes).
+        Expr e = d.getAsmLabel();
+        if (e != null)
+        {
+            StringLiteral se = (StringLiteral)e;
+            newVD.addAttr(new AsmLabelAttr(se.getStrData()));
+        }
 
         checkVariableDeclaration(newVD, prevDecl, redeclaration);
         return newVD;
@@ -5610,7 +5622,7 @@ public final class Sema implements DiagnosticParseTag,
             return AssignConvertType.Compatible;
         }
 
-        // Handle the case when left type is pointer type.
+        // handle the case when left type is pointer type.
         if (lhsType.isPointerType())
         {
             // int->ptr
@@ -6177,7 +6189,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
 	/**
-	 * Handle arithmetic conversion with complex types.  Helper function of
+	 * handle arithmetic conversion with complex types.  Helper function of
      * UsualArithmeticConversions()
      * @param lhs
      * @param rhs
@@ -6228,7 +6240,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
 	/**
-     * Handle arithmethic conversion with floating point types.  Helper
+     * handle arithmethic conversion with floating point types.  Helper
      * function of UsualArithmeticConversions()
      * @param lhs
      * @param rhs
@@ -6320,7 +6332,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     /**
-     * Handle integer arithmetic conversions.  Helper function of
+     * handle integer arithmetic conversions.  Helper function of
      * UsualArithmeticConversions()
      * @param lhs
      * @param rhs
@@ -6464,7 +6476,7 @@ public final class Sema implements DiagnosticParseTag,
 
         // At this point, we have two different arithmetic type.
 
-        // Handle complex types first (C99 6.3.1.8p1)
+        // handle complex types first (C99 6.3.1.8p1)
         if (lhsType.isComplexType() || rhsType.isComplexType())
         {
             return handleComplexFloatConversion(lhs, rhs, lhsType, rhsType,
@@ -6512,7 +6524,7 @@ public final class Sema implements DiagnosticParseTag,
         if (lhs.get().isInvalid() || rhs.get().isInvalid())
             return new QualType();
 
-        // Handle the common case, both two operands are arithmetic type.
+        // handle the common case, both two operands are arithmetic type.
         if (lhs.get().get().getType().isArithmeticType()
                 && rhs.get().get().getType().isArithmeticType())
         {
@@ -6823,7 +6835,7 @@ public final class Sema implements DiagnosticParseTag,
         if (lhs.get().isInvalid() || rhs.get().isInvalid())
             return new QualType();
 
-        // Handle the common case, both two operands are arithmetic type.
+        // handle the common case, both two operands are arithmetic type.
         if (lhs.get().get().getType().isArithmeticType()
                 && rhs.get().get().getType().isArithmeticType())
         {
@@ -8053,7 +8065,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     /**
-     * Handle a call to a function with the specified array of arguments.
+     * handle a call to a function with the specified array of arguments.
      * @param fn
      * @param lParenLoc
      * @param args
@@ -8390,7 +8402,7 @@ public final class Sema implements DiagnosticParseTag,
         }
         else
         {
-            // Handle calls to expressions of unknown-any type.
+            // handle calls to expressions of unknown-any type.
             diag(lParenLoc, err_typecheck_call_not_function).
                     addTaggedVal(fn.getType()).
                     addSourceRange(fn.getSourceRange()).
@@ -8695,7 +8707,7 @@ public final class Sema implements DiagnosticParseTag,
             }
         }
 
-        // Handle field access to simple records.
+        // handle field access to simple records.
         if (baseType.isRecordType())
         {
             RecordType rty = baseType.getAsRecordType();
@@ -9818,7 +9830,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     /**
-     * Handle the case that 'sizeof (type-ident)'. Note that typeof and alignof
+     * handle the case that 'sizeof (type-ident)'. Note that typeof and alignof
      * as same as sizeof.
      * @param sizeLoc
      * @param ty
@@ -9837,7 +9849,7 @@ public final class Sema implements DiagnosticParseTag,
     }
 
     /**
-     * Handle the sizeof 'expression' as an operand.
+     * handle the sizeof 'expression' as an operand.
      * @param sizeLoc
      * @param e
      * @param range
@@ -10335,5 +10347,400 @@ public final class Sema implements DiagnosticParseTag,
             (((RecordDecl)(ctx)).isAnonymousStructOrUnion()));
 
         return baseObjc;
+    }
+
+    //=========================================================================//
+    // handler to attributes semantics.
+
+    /**
+     * Given a declarator with attributes indicated in it, apply them to decl.
+     * @param s
+     * @param decl
+     * @param d
+     */
+    private void processDeclAttributes(Scope s, Decl decl, Declarator d)
+    {
+        // handle #pragma weak.
+        NamedDecl nd = decl instanceof NamedDecl ? (NamedDecl) decl : null;
+        if (nd != null && nd.hasLinkage())
+        {
+            // TODO: 17-10-29  WeakInfo
+        }
+
+        // Apply attributes from the DeclSpec if present.
+        AttributeList attrs = d.getDeclSpec().getAttributes();
+        if (attrs != null)
+        {
+            processDeclAttributeList(s, decl, attrs);
+        }
+
+        // Walk the declarator structure, applying decl attributes that were in a type
+        // position to the decl itself.  This handles cases like:
+        //   int *__attr__(x)** D;
+        // when X is a decl attribute.
+        for (int i = 0, e = d.getNumTypeObjects(); i != e; i++)
+        {
+            attrs = d.getTypeObject(i).getAttrs();
+            if (attrs != null)
+                processDeclAttributeList(s, decl, attrs);
+        }
+
+        // Finally, apply any attributes on the decl itself.
+        attrs = d.getAttributes();
+        if (attrs != null)
+        {
+            processDeclAttributeList(s, decl, attrs);
+        }
+    }
+
+    /**
+     * Apply all the decl attributes in the specified
+     * attribute list to the specified decl, ignoring any type attributes.
+     * @param s
+     * @param decl
+     * @param attr
+     */
+    private void processDeclAttributeList(Scope s, Decl decl, AttributeList attr)
+    {
+        while (attr != null)
+        {
+            processDeclAttribute(s, decl, attr, this);
+            attr = attr.getNext();
+        }
+    }
+
+    /**
+     * Apply the specific attribute to the specified decl if
+     * the attribute applies to decls.  If the attribute is a type attribute, just
+     * silently ignore it.
+     * @param s
+     * @param decl
+     * @param attr
+     * @param sema
+     */
+    private static void processDeclAttribute(
+            Scope s, Decl decl,
+            AttributeList attr,
+            Sema sema)
+    {
+        if (attr.isDeclspecAttribute())
+        {
+            return;
+        }
+
+        switch (attr.getKind())
+        {
+            case AT_IBOutlet:    handleIBOutletAttr  (decl, attr, sema); break;
+            case AT_address_space:
+                case AT_alias:       handleAliasAttr     (decl, attr, sema); break;
+            case AT_aligned:     handleAlignedAttr   (decl, attr, sema); break;
+            case AT_always_inline:
+                handleAlwaysInlineAttr  (decl, attr, sema); break;
+            case AT_analyzer_noreturn:
+                handleAnalyzerNoReturnAttr  (decl, attr, sema); break;
+            case AT_annotate:    handleAnnotateAttr  (decl, attr, sema); break;
+            case AT_constructor: handleConstructorAttr(decl, attr, sema); break;
+            case AT_deprecated:  handleDeprecatedAttr(decl, attr, sema); break;
+            case AT_destructor:  handleDestructorAttr(decl, attr, sema); break;
+            case AT_dllexport:   handleDLLExportAttr (decl, attr, sema); break;
+            case AT_dllimport:   handleDLLImportAttr (decl, attr, sema); break;
+            case AT_ext_vector_type:
+                handleExtVectorTypeAttr(decl, attr, sema);
+                break;
+            case AT_fastcall:    handleFastCallAttr  (decl, attr, sema); break;
+            case AT_format:      handleFormatAttr    (decl, attr, sema); break;
+            case AT_format_arg:  handleFormatArgAttr (decl, attr, sema); break;
+            case AT_gnu_inline:  handleGNUInlineAttr(decl, attr, sema); break;
+            case AT_mode:        handleModeAttr      (decl, attr, sema); break;
+            case AT_malloc:      handleMallocAttr    (decl, attr, sema); break;
+            case AT_nonnull:     handleNonNullAttr   (decl, attr, sema); break;
+            case AT_noreturn:    handleNoReturnAttr  (decl, attr, sema); break;
+            case AT_nothrow:     handleNothrowAttr   (decl, attr, sema); break;
+
+            case AT_reqd_wg_size:
+                handleReqdWorkGroupSize(decl, attr, sema); break;
+
+            case AT_packed:      handlePackedAttr    (decl, attr, sema); break;
+            case AT_section:     handleSectionAttr   (decl, attr, sema); break;
+            case AT_stdcall:     handleStdCallAttr   (decl, attr, sema); break;
+            case AT_unavailable: handleUnavailableAttr(decl, attr, sema); break;
+            case AT_unused:      handleUnusedAttr    (decl, attr, sema); break;
+            case AT_used:        handleUsedAttr      (decl, attr, sema); break;
+            case AT_vector_size: handleVectorSizeAttr(decl, attr, sema); break;
+            case AT_visibility:  handleVisibilityAttr(decl, attr, sema); break;
+            case AT_warn_unused_result: handleWarnUnusedResult(decl, attr, sema);
+                break;
+            case AT_weak:        handleWeakAttr      (decl, attr, sema); break;
+            case AT_weak_import: handleWeakImportAttr(decl, attr, sema); break;
+            case AT_transparent_union:
+                handleTransparentUnionAttr(decl, attr, sema);
+                break;
+            case AT_blocks:      handleBlocksAttr    (decl, attr, sema); break;
+            case AT_sentinel:    handleSentinelAttr  (decl, attr, sema); break;
+            case AT_const:       handleConstAttr     (decl, attr, sema); break;
+            case AT_pure:        handlePureAttr      (decl, attr, sema); break;
+            case AT_cleanup:     handleCleanupAttr   (decl, attr, sema); break;
+            case AT_nodebug:     handleNodebugAttr   (decl, attr, sema); break;
+            case AT_noinline:    handleNoinlineAttr  (decl, attr, sema); break;
+            case AT_regparm:     handleRegparmAttr   (decl, attr, sema); break;
+            case IgnoredAttribute:
+            case AT_no_instrument_function:  // Interacts with -pg.
+                // Just ignore
+                break;
+            case UnknownAttribute:
+                break;
+            default:
+                sema.diag(attr.getAttrLoc(), warn_attribute_ignored)
+                        .addTaggedVal(attr.getAttrName()).emit();
+                break;
+        }
+    }
+
+    private static void handleIBOutletAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+        // TODO: 17-10-29
+    }
+
+    private static void handleAliasAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleAlignedAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleAlwaysInlineAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleAnalyzerNoReturnAttr(Decl decl,
+            AttributeList attr, Sema sema)
+    {
+
+    }
+
+    private static void handleAnnotateAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleConstructorAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleDeprecatedAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleDestructorAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleDLLExportAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleDLLImportAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleExtVectorTypeAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleFastCallAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleFormatAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleFormatArgAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleGNUInlineAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleModeAttr(Decl decl, AttributeList attr, Sema sema)
+    {
+
+    }
+
+    private static void handleMallocAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleNonNullAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleNoReturnAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleNothrowAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleReqdWorkGroupSize(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handlePackedAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleSectionAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleStdCallAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleUnavailableAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleUnusedAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleUsedAttr(Decl decl, AttributeList attr, Sema sema)
+    {
+
+    }
+
+    private static void handleVectorSizeAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleWarnUnusedResult(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleVisibilityAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleWeakAttr(Decl decl, AttributeList attr, Sema sema)
+    {
+
+    }
+
+    private static void handleWeakImportAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleTransparentUnionAttr(Decl decl,
+            AttributeList attr, Sema sema)
+    {
+
+    }
+
+    private static void handleBlocksAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleSentinelAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleConstAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handlePureAttr(Decl decl, AttributeList attr, Sema sema)
+    {
+
+    }
+
+    private static void handleCleanupAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleNodebugAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleNoinlineAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
+    }
+
+    private static void handleRegparmAttr(Decl decl, AttributeList attr,
+            Sema sema)
+    {
+
     }
 }

@@ -16,6 +16,7 @@ package jlang.sema;
  * permissions and limitations under the License.
  */
 
+import jlang.ast.Attr;
 import jlang.ast.Tree.Expr;
 import jlang.basic.Context;
 import jlang.basic.SourceManager;
@@ -37,11 +38,38 @@ import java.util.HashMap;
 import java.util.TreeMap;
 
 import static jlang.sema.ASTContext.FloatingRank.*;
-import static jlang.sema.ASTContext.GetBuiltinTypeError.GE_Missing_setjmp;
-import static jlang.sema.ASTContext.GetBuiltinTypeError.GE_Missing_stdio;
-import static jlang.sema.ASTContext.GetBuiltinTypeError.GE_None;
+import static jlang.sema.ASTContext.GetBuiltinTypeError.*;
 import static jlang.type.ArrayType.ArraySizeModifier.Normal;
-import static jlang.type.TypeClass.*;
+import static jlang.type.TypeClass.Bool;
+import static jlang.type.TypeClass.Char_S;
+import static jlang.type.TypeClass.Char_U;
+import static jlang.type.TypeClass.ConstantArray;
+import static jlang.type.TypeClass.ConstantArrayWithExpr;
+import static jlang.type.TypeClass.ConstantArrayWithoutExpr;
+import static jlang.type.TypeClass.Double;
+import static jlang.type.TypeClass.Enum;
+import static jlang.type.TypeClass.Float;
+import static jlang.type.TypeClass.FunctionProto;
+import static jlang.type.TypeClass.IncompleteArray;
+import static jlang.type.TypeClass.Int;
+import static jlang.type.TypeClass.Int128;
+import static jlang.type.TypeClass.Long;
+import static jlang.type.TypeClass.LongDouble;
+import static jlang.type.TypeClass.LongLong;
+import static jlang.type.TypeClass.Pointer;
+import static jlang.type.TypeClass.SChar;
+import static jlang.type.TypeClass.Short;
+import static jlang.type.TypeClass.Struct;
+import static jlang.type.TypeClass.TypeDef;
+import static jlang.type.TypeClass.UChar;
+import static jlang.type.TypeClass.UInt;
+import static jlang.type.TypeClass.UInt128;
+import static jlang.type.TypeClass.ULong;
+import static jlang.type.TypeClass.ULongLong;
+import static jlang.type.TypeClass.UShort;
+import static jlang.type.TypeClass.Union;
+import static jlang.type.TypeClass.VariableArray;
+import static jlang.type.TypeClass.Void;
 
 /**
  * @author Xlous.zeng
@@ -129,6 +157,8 @@ public final class ASTContext
 	 */
 	private TypeDecl sigjmp_buf_Decl;
 
+	private HashMap<Decl, ArrayList<Attr>> declAttrs;
+
 	public ASTContext(LangOptions opts, SourceManager sourceMgr,
 			TargetInfo targetInfo, IdentifierTable identifierTable,
 		    Context builtinInfo)
@@ -169,6 +199,8 @@ public final class ASTContext
         printingPolicy = new PrintingPolicy(langOptions);
 
         builtinVaListType = new QualType();
+
+		declAttrs = new HashMap<>();
 	}
 
     public SourceManager getSourceManager()
@@ -1595,7 +1627,7 @@ public final class ASTContext
 		this.sigjmp_buf_Decl = decl;
 	}
 
-	enum FloatingRank
+    enum FloatingRank
 	{
 		FloatRank, DoubleRank, LongDoubleRank
 	}
@@ -1846,4 +1878,33 @@ public final class ASTContext
 	     */
 	    GE_Missing_setjmp
     }
+
+	public ArrayList<Attr> getDeclAttrs(Decl decl)
+	{
+		if (declAttrs.containsKey(decl))
+		{
+			return declAttrs.get(decl);
+		}
+		else
+		{
+			ArrayList<Attr> alist = new ArrayList<>();
+			declAttrs.put(decl, alist);
+			return alist;
+		}
+	}
+
+	public ArrayList<Attr> eraseDeclAttrs(Decl d)
+	{
+		if (declAttrs.containsKey(d))
+		{
+			return declAttrs.remove(d);
+		}
+		return null;
+	}
+
+	public void putDeclAttrs(Decl d, ArrayList<Attr> alist)
+	{
+		assert !declAttrs.containsKey(d);
+		declAttrs.put(d, alist);
+	}
 }

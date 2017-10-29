@@ -376,4 +376,25 @@ public class Declarator
     {
         return asmLabel;
     }
+
+    public AttributeList getAttributes()
+    {
+        return attrList;
+    }
+
+    /**
+     * do we contain any attributes?
+     * @return
+     */
+    public boolean hasAttributes()
+    {
+        if (attrList != null || getDeclSpec().getAttributes() != null)
+            return true;
+        for (int i = 0, e = getNumTypeObjects(); i != e; i++)
+        {
+            if (getTypeObject(i).getAttrs() != null)
+                return true;
+        }
+        return false;
+    }
 }
