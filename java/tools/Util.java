@@ -436,31 +436,29 @@ public class Util
 		if ((str2 == null || str1 == null))
 			return 0;
 
-        /*
-        if i == 0 且 j == 0，edit(i, j) = 0
-        if i == 0 且 j > 0，edit(i, j) = j
-        if i > 0 且j == 0，edit(i, j) = i
-        if i ≥ 1  且 j ≥ 1 ，edit(i, j) == min{ edit(i-1, j) + 1, edit(i, j-1) + 1, edit(i-1, j-1) + f(i, j) }
-        */
-		int len1 = str1.length();
-		int len2 = str2.length();
-		int[][] dist = new int[len1][len2];
+		if (str1.isEmpty() && str2.isEmpty())
+			return 0;
+		if (str1.length() == 1 && str2.length() == 1)
+			return 1;
 
-		for (int i = 0; i < len2; i++)
-			dist[0][i] = i;
-		for (int i = 0; i < len1; i++)
-			dist[i][0] = i;
-
-		for(int i = 1; i < len1; i++)
-		{
-			for (int j = 1; j < len2; j++)
-			{
-				int temp = Math.min(dist[i-1][j] + 1, dist[i][j-1]+1);
-				dist[i][j] = Math.min(temp, dist[i-1][j-1] + str1.charAt(i) != str2.charAt(j) ? 1 : 0);
-			}
-		}
-
-		return dist[len1-1][len2-1];
+        str1 = str1.toLowerCase();
+        str2 = str2.toLowerCase();
+        int[] costs = new int[str2.length() + 1];
+        for (int j = 0; j < costs.length; j++)
+            costs[j] = j;
+        for (int i = 1; i <= str1.length(); i++)
+        {
+            costs[0] = i;
+            int nw = i - 1;
+            for (int j = 1; j <= str2.length(); j++)
+            {
+                int cj = Math.min(1 + Math.min(costs[j], costs[j - 1]),
+                        str1.charAt(i - 1) == str2.charAt(j - 1) ? nw : nw + 1);
+                nw = costs[j];
+                costs[j] = cj;
+            }
+        }
+        return costs[str2.length()];
 	}
 
 	/**

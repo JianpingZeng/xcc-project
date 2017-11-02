@@ -25,6 +25,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
 using namespace std;
 
 /**
@@ -140,9 +144,17 @@ void invokeClass(char* cmdPath, char* mainClassName, int argc, char** argv)
  */
 std::string getpath()
 {
-  char buf[PATH_MAX + 1];
+  char buf[PATH_MAX + 1] = {0};
+#if defined(__linux__) 
   if (readlink("/proc/self/exe", buf, sizeof(buf) - 1) == -1)
-  throw std::string("readlink() failed");
+    throw std::string("readlink() failed");
+#elif defined(__APPLE__)
+  uint32_t sz = sizeof(buf) - 1;
+ if ( _NSGetExecutablePath(buf, &sz) != 0)
+   throw std::string("_NSGetExecuablePath failed!");
+#else 
+#error("Unsupported OS platform, please build on Linux/Darwin")
+#endif
   std::string str(buf);
   return str.substr(0, str.rfind('/'));
 }

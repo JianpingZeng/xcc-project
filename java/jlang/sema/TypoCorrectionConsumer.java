@@ -22,6 +22,8 @@ import jlang.sema.Decl.NamedDecl;
 import tools.Util;
 
 import java.util.ArrayList;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 /**
  * @author Xlous.zeng
@@ -29,14 +31,33 @@ import java.util.ArrayList;
  */
 public class TypoCorrectionConsumer
 {
+    private class Record implements Comparable<Record>
+    {
+        int edit;
+        NamedDecl decl;
+
+        public Record(int d, NamedDecl nd)
+        {
+            edit = d;
+            decl = nd;
+        }
+
+        @Override
+        public int compareTo(Record o)
+        {
+            return edit - o.edit;
+        }
+    }
+
     private String typo;
-    private ArrayList<NamedDecl> bestResults;
+    private TreeSet<Record> bestResults;
     private int bestEditDistance;
+
 
     public TypoCorrectionConsumer(IdentifierInfo typo)
     {
         this.typo = typo.getName();
-        bestResults = new ArrayList<>();
+        bestResults = new TreeSet<>();
         bestEditDistance = 0;
     }
 
@@ -49,7 +70,7 @@ public class TypoCorrectionConsumer
         int ed = Util.getEditDistance(typo, name.getName());
         if (bestResults.isEmpty())
         {
-            bestResults.add(nd);
+            bestResults.add(new Record(ed, nd));
             bestEditDistance = ed;
         }
         else
@@ -57,14 +78,18 @@ public class TypoCorrectionConsumer
             if (ed < bestEditDistance)
             {
                 bestEditDistance = ed;
-                bestResults.add(nd);
+                bestResults.add(new Record(ed, nd));
             }
         }
     }
 
     public ArrayList<NamedDecl> getBestResults()
     {
-        return bestResults;
+        ArrayList<NamedDecl> res = new ArrayList<>();
+        res.addAll(bestResults.stream()
+                .map(node->node.decl)
+                .collect(Collectors.toList()));
+        return res;
     }
 
     public int getBestEditDistance()

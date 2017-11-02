@@ -5257,10 +5257,10 @@ public class Parser implements Tag,
                 {
                     // postfix-expression: p-e '->' id-expression
                     // postfix-expression: p-e '.' id-expression
+                    TokenKind opKind = tok.getKind();
                     consumeToken();
                     IdentifierInfo ii = tok.getIdentifierInfo();
                     SourceLocation opLoc = tok.getLocation();
-                    TokenKind opKind = tok.getKind();
 
                     // Consume the member name.
                     consumeToken();
