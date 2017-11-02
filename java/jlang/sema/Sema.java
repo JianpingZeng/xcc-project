@@ -8850,7 +8850,6 @@ public final class Sema implements DiagnosticParseTag,
                 consumer.foundDecl(nd);
             }
 
-
             // Visit transparent contexts insisde this context.
             if (d instanceof IDeclContext)
             {
@@ -8900,11 +8899,13 @@ public final class Sema implements DiagnosticParseTag,
 
         ArrayList<NamedDecl> decls = consumer.getBestResults();
         IdentifierInfo bestName = decls.get(0).getDeclName();
+        /**
+         * Fixme
         for (int i = 1,e =decls.size(); i != e; i++)
         {
             if (!bestName.equals(decls.get(i).getDeclName()))
                 return false;
-        }
+        }*/
 
         int ed = consumer.getBestEditDistance();
         if (ed == 0 || (bestName.getName().length() / ed) < 3)
