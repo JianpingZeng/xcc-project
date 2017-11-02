@@ -2060,9 +2060,9 @@ public class Parser implements Tag,
         // declaration-specifiers init-declarator-list[opt] ';'
         if (nextTokenIs(semi))
         {
-            consumeToken();
+            // obtain end location of this struct/union/enum specifier.
+            end.set(consumeToken());
             Decl decl = action.parsedFreeStandingDeclSpec(getCurScope(), ds);
-
             // TODO ds.complete(decl);
             return action.convertDeclToDeclGroup(decl);
         }
@@ -2093,15 +2093,6 @@ public class Parser implements Tag,
             if (nextTokenIs(semi))
                 consumeToken();
             return declGroups();
-        }
-
-        // If we have a declaration or declarator list, handle it.
-        if (isDeclarationAfterDeclarator())
-        {
-            // Parse the init-declarator-list for a normal declaration.
-            ArrayList<Decl> decls = parseInitDeclaratorListAfterFirstDeclarator(d, ds, FileContext);
-            expectAndConsume(semi, err_expected_semi_declaration);
-            return decls;
         }
 
         // check to see if we have a function "definition" which must heave a body.
@@ -2138,6 +2129,7 @@ public class Parser implements Tag,
             return declGroups();
         }
 
+        // Parse the init-declarator-list for a normal declaration.
         ArrayList<Decl> res = parseInitDeclaratorListAfterFirstDeclarator
                 (d, ds, context);
 

@@ -973,7 +973,7 @@ public class APInt implements Cloneable
         assert radix == 10 || radix == 8 || radix == 16 || radix == 2
                 || radix == 36 : "radix sholud be 2, 4, 8, 16!";
 
-        String prefix = null;
+        String prefix = "";
         if (formatAsCLiteral)
         {
             switch (radix)
