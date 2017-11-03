@@ -27,9 +27,9 @@ public class Process
 {
     public static int getStandardErrColumns()
     {
-        if (OSInfo.isLinux())
+        if (OSInfo.isLinux() || OSInfo.isMacOSX() || OSInfo.isMacOS())
         {
-            String val = System.getenv("COLUMNS");
+            String val = System.getenv("columns");
             if (val != null)
                 return Integer.parseInt(val);
             return 143;
