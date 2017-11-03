@@ -1,4 +1,6 @@
+#include<stdio.h>
 #define __DARWIN_EXTSN(sym)
+#define __DARWIN_ALIAS(sym)
 #define __DARWIN_ALIAS_STARTING(_mac, _iphone, x)   x
 
 #if defined(_DARWIN_UNLIMITED_STREAMS) || defined(_DARWIN_C_SOURCE)

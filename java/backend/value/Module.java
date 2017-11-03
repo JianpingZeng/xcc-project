@@ -205,4 +205,10 @@ public final class Module implements Iterable<Function>
 	{
         new AssemblyWriter(os, this, new SlotTracker(this)).write(this);
 	}
+
+	public Function getFunction(String funcName)
+	{
+		GlobalValue gv = getNameOfValue(funcName);
+		return gv instanceof Function ? (Function)gv : null;
+	}
 }
