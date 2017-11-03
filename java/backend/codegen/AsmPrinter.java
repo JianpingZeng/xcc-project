@@ -22,7 +22,6 @@ import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.support.NameMangler;
-import backend.support.TypePrinting;
 import backend.target.*;
 import backend.type.Type;
 import backend.value.*;

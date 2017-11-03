@@ -20,7 +20,6 @@ import backend.codegen.AsmPrinter;
 import backend.target.TargetAsmInfo;
 
 import java.io.PrintStream;
-import java.io.PrintWriter;
 
 /**
  * @author Xlous.zeng
