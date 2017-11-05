@@ -225,7 +225,7 @@ public class AssemblyWriter
 
     private void printInfoComment(Value val)
     {
-        if (!val.getType().equals(Type.VoidTy))
+        if (!val.getType().equals(LLVMContext.VoidTy))
         {
             out.print("; <");
             typePrinter.print(val.getType(), out);
@@ -365,7 +365,7 @@ public class AssemblyWriter
         ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt)cv:null;
         if (ci != null)
         {
-            if (ci.getType().equals(Type.Int1Ty))
+            if (ci.getType().equals(LLVMContext.Int1Ty))
             {
                 out.print(ci.getZExtValue() != 0 ?"true":"false");
                 return;
@@ -847,7 +847,7 @@ public class AssemblyWriter
         {
             printLLVMName(out, inst);
         }
-        else if (!inst.getType().equals(Type.VoidTy))
+        else if (!inst.getType().equals(LLVMContext.VoidTy))
         {
             int slot = slotTracker.getLocalSlot(inst);
             if (slot == - 1)

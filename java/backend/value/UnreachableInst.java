@@ -17,8 +17,6 @@
 
 package backend.value;
 
-import backend.utils.InstVisitor;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -28,12 +26,6 @@ public class UnreachableInst extends Instruction.TerminatorInst
     public UnreachableInst(BasicBlock insertAtEnd)
     {
         super(Operator.Unreachable, "", insertAtEnd);
-    }
-
-    @Override
-    public void accept(InstVisitor visitor)
-    {
-
     }
 
     @Override

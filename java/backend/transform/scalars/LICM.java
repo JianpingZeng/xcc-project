@@ -4,12 +4,12 @@ import backend.analysis.*;
 import backend.analysis.AliasAnalysis.ModRefBehavior;
 import backend.analysis.AliasSetTracker.AliasSet;
 import backend.analysis.LoopInfo;
+import backend.support.LLVMContext;
 import backend.value.*;
 import backend.support.CallSite;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
-import backend.type.Type;
 import backend.value.Instruction.*;
 import backend.value.Value.UndefValue;
 
@@ -286,7 +286,7 @@ public final class LICM implements LoopPass
             return false;
 
         }
-        return (inst instanceof Op2) || (inst instanceof CastInst)
+        return (inst instanceof BinaryInstruction) || (inst instanceof CastInst)
                 || (inst instanceof GetElementPtrInst)
                 || (inst instanceof CmpInst);
     }
@@ -344,7 +344,7 @@ public final class LICM implements LoopPass
 
             // Firstly, we create a stack object to hold the value.
             AllocaInst ai = null;
-            if (!inst.getType().equals(Type.VoidTy))
+            if (!inst.getType().equals(LLVMContext.VoidTy))
             {
                 ai = new AllocaInst(inst.getType(), null, inst.getName(),
                         inst.getParent().getParent().getEntryBlock().getFirstInst());

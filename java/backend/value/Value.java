@@ -18,7 +18,7 @@ public class Value implements Cloneable
 	 * Obtains the getIdentifier of variable. it is null for other instruction.
 	 *
 	 * <p>
-	 * The getIdentifier of variable, which is similar to IR in LLVM.
+	 * The name of variable, which is similar to IR in LLVM.
 	 * For global variable and local variable, those are starts with jlang.symbol'@'
 	 * and '%' respectively.
 	 * <p>To visit <a href = "http://llvm.org/docs/LangRef.html#global-variables">
@@ -35,10 +35,16 @@ public class Value implements Cloneable
 	public final LinkedList<Use> usesList;
 
     private Type ty;
-	
-	public Value(Type ty, int valueType)
+
+    public Value(Type ty, int valueType)
+    {
+        this(ty, valueType, "");
+    }
+
+	public Value(Type ty, int valueType, String name)
 	{
 		this.ty = ty;
+		this.name = name;
         subclassID = valueType;
 		this.usesList = new LinkedList<>();
 	}
@@ -166,8 +172,6 @@ public class Value implements Cloneable
 		usesList.remove(use);
 	}
 
-	public void accept(InstVisitor visitor){}
-
 	public boolean isConstant(){return this instanceof Constant;}
 	
 	public Constant asConstant()
@@ -186,7 +190,7 @@ public class Value implements Cloneable
 	@Override
 	public Value clone()
 	{
-	    return new Value(ty, subclassID);
+	    return new Value(ty, subclassID, name);
 	}
 
 	public void setName(String newName)
@@ -194,7 +198,10 @@ public class Value implements Cloneable
 		name = newName;
 	}
 
-	public String getName(){return name;}
+	public String getName()
+    {
+        return name;
+    }
 
 	public boolean hasName() {return name != null && !name.isEmpty();}
 
@@ -245,7 +252,9 @@ public class Value implements Cloneable
             if (val != null)
                 return val;
 
-            return undefValueConstants.put(ty, new UndefValue(ty));
+            val = new UndefValue(ty);
+            undefValueConstants.put(ty, val);
+            return val;
 		}
 
 		public UndefValue clone()

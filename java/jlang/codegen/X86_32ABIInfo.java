@@ -18,6 +18,7 @@
 package jlang.codegen;
 
 import backend.hir.HIRBuilder;
+import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -229,18 +230,18 @@ public class X86_32ABIInfo implements ABIInfo
                     {
                         assert context.getTypeSize(seltTy) == context.getTypeSize(
                                 retType) : "Unexpect single element structure size!";
-                        return ABIArgInfo.getCoerce(Type.FloatTy);
+                        return ABIArgInfo.getCoerce(LLVMContext.FloatTy);
                     }
                     else if (bt.getTypeClass() == TypeClass.Double)
                     {
                         assert context.getTypeSize(seltTy) == context.getTypeSize(
                                 retType) : "Unexpect single element structure size!";
-                        return ABIArgInfo.getCoerce(Type.DoubleTy);
+                        return ABIArgInfo.getCoerce(LLVMContext.DoubleTy);
                     }
                 }
                 else if (seltTy.isPointerType())
                 {
-                    Type ptrTy = PointerType.getUnqual(Type.Int8Ty);
+                    Type ptrTy = PointerType.getUnqual(LLVMContext.Int8Ty);
                     return ABIArgInfo.getCoerce(ptrTy);
                 }
             }
@@ -305,7 +306,7 @@ public class X86_32ABIInfo implements ABIInfo
     @Override
     public Value emitVAArg(Value vaListAddr, QualType ty, CodeGenFunction cgf)
     {
-        backend.type.Type bp = PointerType.getUnqual(Type.Int8Ty);
+        backend.type.Type bp = PointerType.getUnqual(LLVMContext.Int8Ty);
         backend.type.Type bpp = PointerType.getUnqual(bp);
 
         HIRBuilder builder = cgf.builder;
@@ -316,7 +317,7 @@ public class X86_32ABIInfo implements ABIInfo
         Value addrTyped = builder.createBitCast(addr, pty);
 
         long offset = Util.roundUp(cgf.getContext().getTypeSize(ty)/ 8, 4);
-        Value nextAddr = builder.createGEP(addr, ConstantInt.get(Type.Int32Ty, offset), "ap.next");
+        Value nextAddr = builder.createGEP(addr, ConstantInt.get(LLVMContext.Int32Ty, offset), "ap.next");
         builder.createStore(nextAddr, valistAddrAsBPP);
 
         return addrTyped;

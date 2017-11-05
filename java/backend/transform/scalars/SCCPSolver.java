@@ -183,7 +183,7 @@ public class SCCPSolver implements InstVisitor<Void>
     }
 
     /**
-     * Calling to this method to mark the bb as executable and push it into
+     * Calling to this method to mark the parent as executable and push it into
      * bbWorklist waiting for sequence operation.
      * @param bb
      */
@@ -382,7 +382,7 @@ public class SCCPSolver implements InstVisitor<Void>
         });
     }
 
-    private void visitBinaryOp(Instruction.Op2 inst)
+    private void visitBinaryOp(Instruction.BinaryInstruction inst)
     {
         LatticeStatus ls = getLatticeStatus(inst);
         if (ls.isOverdefined())
@@ -466,126 +466,126 @@ public class SCCPSolver implements InstVisitor<Void>
     }
 
     @Override
-    public Void visitAdd(Instruction.Op2 inst)
+    public Void visitAdd(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFAdd(Instruction.Op2 inst)
+    public Void visitFAdd(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitSub(Instruction.Op2 inst)
+    public Void visitSub(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFSub(Instruction.Op2 inst)
+    public Void visitFSub(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitMul(Instruction.Op2 inst)
+    public Void visitMul(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFMul(Instruction.Op2 inst)
+    public Void visitFMul(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitUDiv(Instruction.Op2 inst)
+    public Void visitUDiv(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitSDiv(Instruction.Op2 inst)
+    public Void visitSDiv(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFDiv(Instruction.Op2 inst)
+    public Void visitFDiv(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitURem(Instruction.Op2 inst)
+    public Void visitURem(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitSRem(Instruction.Op2 inst)
+    public Void visitSRem(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitFRem(Instruction.Op2 inst)
+    public Void visitFRem(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitAnd(Instruction.Op2 inst)
+    public Void visitAnd(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitOr(Instruction.Op2 inst)
+    public Void visitOr(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitXor(Instruction.Op2 inst)
+    public Void visitXor(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitShl(Instruction.Op2 inst)
+    public Void visitShl(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitLShr(Instruction.Op2 inst)
+    public Void visitLShr(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;
     }
 
     @Override
-    public Void visitAShr(Instruction.Op2 inst)
+    public Void visitAShr(Instruction.BinaryInstruction inst)
     {
         visitBinaryOp(inst);
         return null;

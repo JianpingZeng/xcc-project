@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.transform.scalars.ConstantFolder;
 import backend.type.Type;
 import backend.value.Instruction.CmpInst.Predicate;
@@ -230,9 +231,14 @@ public abstract class ConstantExpr extends Constant
         return null;
     }
 
-    public Operator getOpCode()
+    public Operator getOpcode()
     {
         return opcode;
+    }
+
+    public void setOpcode(Operator opc)
+    {
+        opcode = opc;
     }
 
     public Constant operand(int index)
@@ -328,7 +334,7 @@ public abstract class ConstantExpr extends Constant
         ops.add(lhs);
         ops.add(rhs);
         ExprMapKeyType key = new ExprMapKeyType(Operator.ICmp, ops, predicate);
-        return getOrCreate(Type.Int1Ty, key);
+        return getOrCreate(LLVMContext.Int1Ty, key);
     }
 
     public static Constant getFCmp(Predicate predicate,
@@ -346,7 +352,7 @@ public abstract class ConstantExpr extends Constant
         ops.add(lhs);
         ops.add(rhs);
         ExprMapKeyType key = new ExprMapKeyType(Operator.FCmp, ops, predicate);
-        return getOrCreate(Type.Int1Ty, key);
+        return getOrCreate(LLVMContext.Int1Ty, key);
     }
 
     private static Constant getOrCreate(Type reqTy, ExprMapKeyType key)
@@ -424,7 +430,7 @@ public abstract class ConstantExpr extends Constant
 
     public boolean isCompare()
     {
-        return getOpCode() == Operator.ICmp || getOpCode() == Operator.FCmp;
+        return getOpcode() == Operator.ICmp || getOpcode() == Operator.FCmp;
     }
 
     public Predicate getPredicate()

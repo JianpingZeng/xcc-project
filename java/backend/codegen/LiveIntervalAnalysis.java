@@ -575,7 +575,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             for (int i = 0, e = vi.aliveBlocks.size(); i != e; i++)
             {
                 // The index to block where the def reg is alive to out.
-                // add [getInstructionIndex(getFirst(bb)), getInstructionIndex(getLast(bb)) + 4)
+                // add [getInstructionIndex(getFirst(parent)), getInstructionIndex(getLast(parent)) + 4)
                 // LiveRange to the LiveInterval.
                 int bbIdx = vi.aliveBlocks.get(i);
                 MachineBasicBlock block = mf.getMBBAt(bbIdx);

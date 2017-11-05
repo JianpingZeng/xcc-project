@@ -125,8 +125,8 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 
 	/**
 	 * Check to see if a basic block is the loop exit block or not on that
-	 * if the any successor block of the given bb is outside this loop, so that
-	 * this bb would be a loop exit block..
+	 * if the any successor block of the given parent is outside this loop, so that
+	 * this parent would be a loop exit block..
 	 * @param bb
 	 * @return True if the given block is the exit block of this loop, otherwise
 	 * returned false.
@@ -134,7 +134,7 @@ public class Loop extends LoopBase<BasicBlock, Loop>
 	@Override
 	public boolean isLoopExitingBlock(BasicBlock bb)
 	{
-		// The special case: bb is not contained in current loop, just return false.
+		// The special case: parent is not contained in current loop, just return false.
 		if (!contains(bb))
 			return false;
 

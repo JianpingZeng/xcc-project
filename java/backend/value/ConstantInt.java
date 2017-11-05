@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
 import tools.APInt;
@@ -111,7 +112,7 @@ public class ConstantInt extends Constant
     {
         if (TRUE != null)
             return TRUE;
-        TRUE = get(Type.Int1Ty, 1, false);
+        TRUE = get(LLVMContext.Int1Ty, 1, false);
         return TRUE;
     }
 
@@ -119,7 +120,7 @@ public class ConstantInt extends Constant
     {
         if (FALSE != null)
             return FALSE;
-        return (FALSE = get(Type.Int1Ty, 1, false));
+        return (FALSE = get(LLVMContext.Int1Ty, 1, false));
     }
 
     public boolean isMaxValue(boolean isSigned)

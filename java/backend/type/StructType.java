@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.Constant;
 import backend.value.ConstantInt;
 import backend.value.Value;
@@ -76,7 +77,8 @@ public class StructType extends CompositeType
 
     private boolean isValidElementType(backend.type.Type elemTy)
     {
-        return  !(elemTy.equals(Type.VoidTy) || !elemTy.equals(Type.LabelTy));
+        return  !(elemTy.equals(LLVMContext.VoidTy) || !elemTy.equals(
+                LLVMContext.LabelTy));
     }
 
     protected StructType(ArrayList<Type> memberTypes, boolean packed)
@@ -120,7 +122,7 @@ public class StructType extends CompositeType
     public Type getTypeAtIndex(Value v)
     {
         assert v instanceof Constant;
-        assert v.getType() == Type.Int32Ty;
+        assert v.getType() == LLVMContext.Int32Ty;
         int idx = (int)((ConstantInt)v).getZExtValue();
         assert idx < containedTys.length;
         assert indexValid(v);
@@ -131,7 +133,7 @@ public class StructType extends CompositeType
     public boolean indexValid(Value v)
     {
         if (!(v instanceof Constant)) return false;
-        if (v.getType() != Type.Int32Ty) return false;
+        if (v.getType() != LLVMContext.Int32Ty) return false;
         int idx = (int)((ConstantInt)v).getZExtValue();
 
         return idx < containedTys.length;
@@ -140,7 +142,7 @@ public class StructType extends CompositeType
     @Override
     public Type getIndexType()
     {
-        return Type.Int32Ty;
+        return LLVMContext.Int32Ty;
     }
 
     public int getNumOfElements()

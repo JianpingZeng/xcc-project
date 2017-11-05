@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.Module;
 import backend.support.TypePrinting;
 import tools.Util;
@@ -39,19 +40,6 @@ import java.util.LinkedList;
  */
 public class Type implements LLVMTypeID, AbstractTypeUser
 {
-    public static final Type VoidTy = new Type(VoidTyID);
-    public static final Type LabelTy = new Type(LabelTyID);
-
-    public static final IntegerType Int1Ty = IntegerType.get(1);
-    public static final IntegerType Int8Ty = IntegerType.get(8);
-    public static final IntegerType Int16Ty = IntegerType.get(16);
-    public static final IntegerType Int32Ty = IntegerType.get(32);
-    public static final IntegerType Int64Ty = IntegerType.get(64);
-
-    public static final Type FloatTy = new Type(FloatTyID);
-    public static final Type DoubleTy = new Type(DoubleTyID);
-    public static final Type FP128Ty = new Type(FP128TyID);
-    public static final Type X86_FP80Ty = new Type(X86_FP80TyID);
 
     /**
      * The current base type of this type.
@@ -79,14 +67,10 @@ public class Type implements LLVMTypeID, AbstractTypeUser
      * efficiently, and dynamically very few types do not contain any elements.
      */
     protected PATypeHandle containedTys[];
+    private static HashMap<Type, String> concreteTypeDescription =
+            new HashMap<>();
 
-    private static HashMap<Type, String> concreteTypeDescription;
-    static
-    {
-        concreteTypeDescription = new HashMap<>();
-    }
-
-    protected Type(int typeID)
+    public Type(int typeID)
     {
         id = typeID;
         isAbstract = false;
@@ -176,7 +160,7 @@ public class Type implements LLVMTypeID, AbstractTypeUser
 
     public boolean isIntegral()
     {
-        return isIntegerType() || this == Int1Ty;
+        return isIntegerType() || this == LLVMContext.Int1Ty;
     }
 
     public boolean isPrimitiveType()

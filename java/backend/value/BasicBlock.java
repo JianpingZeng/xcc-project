@@ -1,9 +1,8 @@
 package backend.value;
 
 
-import backend.type.Type;
+import backend.support.LLVMContext;
 import backend.utils.BackwardIterator;
-import backend.utils.InstVisitor;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
 import backend.value.Instruction.BranchInst;
@@ -199,7 +198,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			Function newParent,
 			BasicBlock insertBefore)
 	{
-		super(Type.LabelTy, ValueKind.BasicBlockVal);
+		super(LLVMContext.LabelTy, ValueKind.BasicBlockVal);
         parent = newParent;
 		this.idNumber = 0;
 		this.instructions = new LinkedList<>();
@@ -276,37 +275,6 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 		else
 			return new BackwardIterator<Instruction>(
 					instructions.listIterator());
-	}
-
-	/**
-	 * Visit all of the quads in this basic block in forward order with the
-	 * given quad visitor.
-	 *
-	 * @param qv InstVisitor to visit the quads with.
-	 * @see InstVisitor
-	 */
-	public void visitInstructions(InstVisitor qv)
-	{
-		for (Instruction q : instructions)
-		{
-			q.accept(qv);
-		}
-	}
-
-	/**
-	 * Visit all of the quads in this basic block in backward order with the
-	 * given quad visitor.
-	 *
-	 * @param qv InstVisitor to visit the quads with.
-	 * @see InstVisitor
-	 */
-	public void backwardVisitQuads(InstVisitor qv)
-	{
-		for (Iterator<Instruction> i = backwardIterator(); i.hasNext(); )
-		{
-			Instruction q = i.next();
-			q.accept(qv);
-		}
 	}
 
 	/**

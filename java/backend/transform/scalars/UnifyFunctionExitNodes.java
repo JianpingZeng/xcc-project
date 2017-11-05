@@ -16,12 +16,12 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
 import backend.pass.RegisterPass;
-import backend.type.Type;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
@@ -94,7 +94,7 @@ public final class UnifyFunctionExitNodes implements FunctionPass
         PhiNode pn = null;
 
         // If the function has returned of void type.
-        if (f.getReturnType().equals(Type.VoidTy))
+        if (f.getReturnType().equals(LLVMContext.VoidTy))
             new ReturnInst(null, "UnifiedRetVal", unifiedBB);
         else
         {

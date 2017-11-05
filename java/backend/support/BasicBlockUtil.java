@@ -34,8 +34,8 @@ import java.util.ArrayList;
 public final class BasicBlockUtil
 {
     /**
-     * This method transforms bb by introducing a new basic block into the function,
-     * and moving some of the predecessors of bb to be predecessors of the new block.
+     * This method transforms parent by introducing a new basic block into the function,
+     * and moving some of the predecessors of parent to be predecessors of the new block.
      * The new predecessors are indicated by preds list. The new block is given a
      * suffix of 'suffix'.
      *
@@ -69,9 +69,9 @@ public final class BasicBlockUtil
         if (df != null)
             df.splitBlock(newBB);
 
-        // Insert a new PHI node into newBB for every PHI node in bb and that new PHI
-        // node becomes an incoming value for bb's phi node.  However, if the preds
-        // list is empty, we need to insert dummy entries into the PHI nodes in bb to
+        // Insert a new PHI node into newBB for every PHI node in parent and that new PHI
+        // node becomes an incoming value for parent's phi node.  However, if the preds
+        // list is empty, we need to insert dummy entries into the PHI nodes in parent to
         // account for the newly created predecessor.
         if (preds.isEmpty())
         {
@@ -87,7 +87,7 @@ public final class BasicBlockUtil
             return newBB;
         }
 
-        // Otherwise, create a new PHI node in newBB for each PHI node in bb.
+        // Otherwise, create a new PHI node in newBB for each PHI node in parent.
         for (Instruction inst : bb)
         {
             if(!(inst instanceof PhiNode))break;

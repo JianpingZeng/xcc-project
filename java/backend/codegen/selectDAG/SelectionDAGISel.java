@@ -17,12 +17,12 @@ package backend.codegen.selectDAG;
  */
 
 import backend.codegen.*;
+import backend.support.LLVMContext;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
 import backend.target.TargetMachine.CodeGenOpt;
 import backend.target.TargetRegisterInfo;
-import backend.type.Type;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
@@ -159,7 +159,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                         llvmBB.getInstAt(bi).dump();
                     }
 
-                    if (!llvmBB.getInstAt(bi).getType().equals(Type.VoidTy))
+                    if (!llvmBB.getInstAt(bi).getType().equals(LLVMContext.VoidTy))
                     {
                         Instruction inst = llvmBB.getInstAt(bi);
                         if (!funcInfo.valueMap.containsKey(inst))

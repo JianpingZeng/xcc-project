@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.Value;
 
 /**
@@ -59,12 +60,12 @@ public class SequentialType extends CompositeType
     public boolean indexValid(Value v)
     {
         // must be a 'long' index.
-        return v.getType() == Type.Int64Ty;
+        return v.getType() == LLVMContext.Int64Ty;
     }
 
     @Override
     public Type getIndexType()
     {
-        return Type.Int64Ty;
+        return LLVMContext.Int64Ty;
     }
 }

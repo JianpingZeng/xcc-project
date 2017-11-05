@@ -112,19 +112,19 @@ public final class LoopInversion implements LoopPass
 		newBR.replaceTargetWith(header, newHeader);		
 		exitBlock.appendInst(newBR);
 		
-		for (BasicBlock bb : loop.exitBlocks())
+		for (BasicBlock parent : loop.exitBlocks())
 		{
-			if (bb.getLastInst() instanceof BranchInst)
+			if (parent.getLastInst() instanceof BranchInst)
 			{
-				BranchInst br2 = (BranchInst)bb.getLastInst();
+				BranchInst br2 = (BranchInst)parent.getLastInst();
 				br2.replaceTargetWith(loop.getFollowBlock(), exitBlock);
-				bb.removeSuccssor(loop.getFollowBlock());
-				loop.getFollowBlock().removePredecessor(bb);
+				parent.removeSuccssor(loop.getFollowBlock());
+				loop.getFollowBlock().removePredecessor(parent);
 				
-				bb.addSucc(exitBlock);
-				exitBlock.addPred(bb);
+				parent.addSucc(exitBlock);
+				exitBlock.addPred(parent);
 				
-				loop.removeExitBlock(bb);
+				loop.removeExitBlock(parent);
 			}
 		}
 		

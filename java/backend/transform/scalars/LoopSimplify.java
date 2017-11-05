@@ -241,7 +241,7 @@ public final class LoopSimplify implements FunctionPass
 		// Only allow this if the condition is a simple instruction that can be
 		// executed unconditionally.  It must be in the same block as the branch, and
 		// must be at the front of the block.
-		if ((!(cond instanceof CmpInst) && !(cond instanceof Op2))
+		if ((!(cond instanceof CmpInst) && !(cond instanceof BinaryInstruction))
 				|| cond.getParent() != bb || !cond.hasOneUses())
 			return false;
 
@@ -284,7 +284,7 @@ public final class LoopSimplify implements FunctionPass
 			// If we need to invert the condition in the pred block to match, do so now.
 			if (invertPredCond)
 			{
-				Value newCond = Op2.createNot(pbi.getCondition(),
+				Value newCond = BinaryInstruction.createNot(pbi.getCondition(),
 						pbi.getCondition().getName()+".not", pbi);
 				pbi.setCondition(newCond);
 				BasicBlock oldTrue = pbi.getSuccessor(0);
@@ -300,7 +300,7 @@ public final class LoopSimplify implements FunctionPass
 			newInst.setName(cond.getName());
 			cond.setName(newInst.getName()+".old");
 
-			Value newCond = Op2.create(opcode, pbi.getCondition(),
+			Value newCond = BinaryInstruction.create(opcode, pbi.getCondition(),
 					newInst, "or.cond", pbi);
 			pbi.setCondition(newCond);
 			if (pbi.getSuccessor(0) == bb)
@@ -714,7 +714,7 @@ public final class LoopSimplify implements FunctionPass
 			}
 		}
 
-		// If our heuristic for a *good* bb to place this after doesn't find
+		// If our heuristic for a *good* parent to place this after doesn't find
 		// anything, just pick something.  It's likely better than leaving it within
 		// the loop.
 		if (foundBB == null)

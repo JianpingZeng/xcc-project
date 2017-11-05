@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
 import tools.Util;
@@ -295,27 +296,27 @@ public class EVT
                 assert false:"Vector type currently not supported";
                 return llvmTy;
             case isVoid:
-                return Type.VoidTy;
+                return LLVMContext.VoidTy;
             case i1:
-                return Type.Int1Ty;
+                return LLVMContext.Int1Ty;
             case i8:
-                return Type.Int8Ty;
+                return LLVMContext.Int8Ty;
             case i16:
-                return Type.Int16Ty;
+                return LLVMContext.Int16Ty;
             case i32:
-                return Type.Int32Ty;
+                return LLVMContext.Int32Ty;
             case i64:
-                return Type.Int64Ty;
+                return LLVMContext.Int64Ty;
             case i128:
                 return IntegerType.get(128);
             case f32:
-                return Type.FloatTy;
+                return LLVMContext.FloatTy;
             case f64:
-                return Type.DoubleTy;
+                return LLVMContext.DoubleTy;
             case f80:
-                return Type.X86_FP80Ty;
+                return LLVMContext.X86_FP80Ty;
             case f128:
-                return Type.FP128Ty;
+                return LLVMContext.FP128Ty;
             case ppcf128:
                 return null;
             //case v2i8:

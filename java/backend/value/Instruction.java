@@ -1,20 +1,20 @@
 package backend.value;
 
+import backend.hir.AllocationInst;
 import backend.support.CallSite;
-import backend.utils.InstVisitor;
+import backend.support.CallingConv;
+import backend.support.LLVMContext;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
-import backend.support.CallingConv;
 import tools.Util;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import static backend.value.Operator.*;
-import static backend.type.Type.*;
 import static backend.value.Instruction.CmpInst.Predicate.*;
+import static backend.value.Operator.*;
 
 /**
  * This class is an abstract representation of Quadruple. In this class,
@@ -31,15 +31,21 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  */
 public abstract class Instruction extends User
 {
-    private Operator opcode;
+    protected Operator opcode;
+
+    /**
+     * The basic block containing this Value.
+     */
+    protected BasicBlock parent;
 
     public Instruction(Type ty,
-            Operator op,
+            Operator opc,
+            String name,
             Instruction insertBefore)
     {
-        super(ty, ValueKind.InstructionVal + op.index);
-        setOpcode(op);
-        setParent(null);
+        super(ty, ValueKind.InstructionVal + opc.index, name);
+        opcode = opc;
+        parent = null;
         if (insertBefore != null)
         {
             assert (insertBefore.getParent()
@@ -51,46 +57,33 @@ public abstract class Instruction extends User
 
     public Instruction(Type ty,
             Operator op,
+            String name,
             BasicBlock insertAtEnd)
     {
-        super(ty, ValueKind.InstructionVal + op.index);
-        setOpcode(op);
-        setParent(null);
-
+        super(ty, ValueKind.InstructionVal + op.index, name);
+        parent = insertAtEnd;
         // append this instruction into the basic block
-        assert (insertAtEnd
-                != null) : "Basic block to append to may not be NULL!";
+        assert (insertAtEnd != null) :
+                "Basic block to append to may not be NULL!";
         insertAtEnd.appendInst(this);
     }
 
-    public Instruction(Type ty,
-            Operator op)
+    public Instruction(
+            Type ty,
+            Operator op,
+            String name)
     {
-        this(ty, op, (Instruction) null);
+        this(ty, op, name, (Instruction) null);
     }
-
-    /**
-     * Obtains the basic block which holds this instruction.
-     *
-     * @return
-     */
-    public BasicBlock getParent(){return bb;}
-
-    /**
-     * Updates the basic block holds multiple instructions.
-     *
-     * @param bb
-     */
-    public void setParent(BasicBlock bb){this.bb = bb;}
 
     /**
      * Erases this instruction from it's parent basic block.
      */
     public void eraseFromParent()
     {
-        assert bb != null :
+        assert parent != null :
                 "The basic block where the instruction reside to be erased!";
-        bb.removeInst(this);
+        parent.removeInst(this);
     }
 
     /**
@@ -132,24 +125,6 @@ public abstract class Instruction extends User
         return getOpcode() != null ? getOpcode().opName : "";
     }
 
-    /**
-     * Obtains the getIdentifier of this instruction.
-     *
-     * @return return the getIdentifier of this instruction.
-     */
-    public String name(){return instName;}
-
-    /**
-     * An interface for InstVisitor invoking.
-     *
-     * @param visitor The instance of InstVisitor.
-     */
-    public abstract void accept(InstVisitor visitor);
-
-    public Operator getOpcode(){return opcode;}
-
-    public void setOpcode(Operator op){opcode = op;}
-
     public boolean mayHasSideEffects()
     {
         return mayWriteMemory();
@@ -190,7 +165,7 @@ public abstract class Instruction extends User
 
     public void print(PrintStream os)
     {
-
+        // TODO: 17-11-5
     }
 
     public int getIndexToBB()
@@ -321,10 +296,12 @@ public abstract class Instruction extends User
         return isAssociative(getOpcode(), getType()); 
     }
 
-    static boolean isAssociative(Operator op,  Type ty)
+    private static boolean isAssociative(Operator op,  Type ty)
     {
-        if (ty == Int1Ty || ty.equals(Int8Ty) || ty.equals(Int16Ty)
-                || ty.equals(Int32Ty) || ty.equals(Int64Ty))
+        if (ty == LLVMContext.Int1Ty || ty.equals(LLVMContext.Int8Ty) || ty.equals(
+                LLVMContext.Int16Ty)
+                || ty.equals(LLVMContext.Int32Ty) || ty.equals(
+                LLVMContext.Int64Ty))
         {
             switch (op)
             {
@@ -356,7 +333,7 @@ public abstract class Instruction extends User
         return isCommutative(getOpcode());
     }
 
-    static boolean isCommutative(Operator op)
+    private static boolean isCommutative(Operator op)
     {
         switch (op)
         {
@@ -371,24 +348,61 @@ public abstract class Instruction extends User
         }
     }
 
+    public Operator getOpcode()
+    {
+        return opcode;
+    }
+
+    public void setOpcode(Operator opc)
+    {
+        opcode = opc;
+    }
+    /**
+     * Obtains the basic block which holds this instruction.
+     *
+     * @return
+     */
+    public BasicBlock getParent()
+    {
+        return parent;
+    }
+
+    /**
+     * Updates the basic block holds multiple instructions.
+     *
+     * @param bb
+     */
+    public void setParent(BasicBlock bb)
+    {
+        this.parent = bb;
+    }
+
     /**
      * The abstract base class definition for unary operator.
      */
-    public static class Op1 extends Instruction
+    public static class UnaryInstruction extends Instruction
     {
+        private void initialize(Value op, User user)
+        {
+            reserve(1);
+            setOperand(0, op, user);
+        }
         /**
          * Constructs unary operation.
          *
          * @param ty   The inst ty of ret.
          * @param opcode The operator code for this instruction.
-         * @param x      The sole LIROperand.
+         * @param op      The sole LIROperand.
          */
-        public Op1(Type ty, Operator opcode, Value x,
-                String name, Instruction insertBefore)
+        public UnaryInstruction(
+                Type ty,
+                Operator opcode,
+                Value op,
+                String name,
+                Instruction insertBefore)
         {
-            super(ty, opcode, insertBefore);
-            reserve(1);
-            setOperand(0, x, this);
+            super(ty, opcode, name, insertBefore);
+            initialize(op, this);
         }
 
         /**
@@ -396,27 +410,33 @@ public abstract class Instruction extends User
          *
          * @param ty   The inst ty of ret.
          * @param opcode The operator code for this instruction.
-         * @param x      The sole LIROperand.
+         * @param op      The sole LIROperand.
          */
-        public Op1(Type ty, Operator opcode, Value x,
+        public UnaryInstruction(
+                Type ty,
+                Operator opcode,
+                Value op,
                 String name)
         {
-            this(ty, opcode, x, name, (Instruction)null);
+            this(ty, opcode, op, name, (Instruction)null);
         }
 
         /**
          *
          * @param ty
          * @param opcode
-         * @param x
+         * @param op
          * @param name
          * @param insertAtEnd
          */
-        public  Op1(Type ty, Operator opcode, Value x,
-                String name, BasicBlock insertAtEnd)
+        public UnaryInstruction(Type ty,
+                Operator opcode,
+                Value op,
+                String name,
+                BasicBlock insertAtEnd)
         {
-            super(ty, opcode, insertAtEnd);
-            setOperand(0, x, this);
+            super(ty, opcode, name, insertAtEnd);
+            initialize(op, this);
         }
 
         @Override
@@ -432,22 +452,14 @@ public abstract class Instruction extends User
                 return false;
             if (other == this)
                 return true;
-            if (!(other instanceof Op1))
+            if (!(other instanceof UnaryInstruction))
                 return false;
 
-            Op1 op = (Op1) other;
+            UnaryInstruction op = (UnaryInstruction) other;
             return getType() == op.getType() && getOpcode()
                     .equals(op.getOpcode())
                     && operand(0).equals(op.operand(0));
         }
-
-        /**
-         * An interface for InstVisitor invoking.
-         *
-         * @param visitor The instance of InstVisitor.
-         */
-        @Override
-        public void accept(InstVisitor visitor){}
     }
 
     /**
@@ -455,33 +467,45 @@ public abstract class Instruction extends User
      *
      * @author Xlous.zeng
      */
-    public static class Op2 extends Instruction
+    public static class BinaryInstruction extends Instruction
     {
-        public Op2(Type ty, Operator opcode,
-                Value x, Value y, String name)
+        public BinaryInstruction(
+                Type ty,
+                Operator opcode,
+                Value lhs,
+                Value rhs,
+                String name)
         {
-            this(ty, opcode, x, y, name, (Instruction)null);
+            this(ty, opcode, lhs, rhs, name, (Instruction)null);
         }
 
-        public Op2(Type ty, Operator opcode,
-                Value x, Value y, String name,
+        public BinaryInstruction(
+                Type ty,
+                Operator opcode,
+                Value lhs,
+                Value rhs,
+                String name,
                 Instruction insertBefore)
         {
-            super(ty, opcode,insertBefore);
+            super(ty, opcode, name, insertBefore);
             reserve(2);
-            assert x.getType() == y.getType()
+            assert lhs.getType().equals(rhs.getType())
                     : "Can not create binary operation with two operands of differing jlang.type.";
-            init(x, y);
+            init(lhs, rhs);
         }
 
-        public Op2(Type ty, Operator opcode,
-                Value x, Value y, String name,
+        public BinaryInstruction(
+                Type ty,
+                Operator opcode,
+                Value lhs,
+                Value rhs,
+                String name,
                 BasicBlock insertAtEnd)
         {
-            super(ty, opcode, insertAtEnd);
-            assert x.getType() == y.getType()
+            super(ty, opcode, name, insertAtEnd);
+            assert lhs.getType().equals(rhs.getType())
                     : "Can not create binary operation with two operands of differing jlang.type.";
-            init(x, y);
+            init(lhs, rhs);
         }
 
         private void init(Value x, Value y)
@@ -490,21 +514,31 @@ public abstract class Instruction extends User
             setOperand(1, y, this);
         }
 
-        public static Op2 create(Operator op, Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction create(
+                Operator op,
+                Value lhs,
+                Value rhs,
+                String name,
+                Instruction insertBefore)
         {
             assert lhs.getType() == rhs.getType()
                     : "Cannot create binary operator with two operands of differing type!";
-            return new Op2(lhs.getType(), op, lhs, rhs, name, insertBefore);
+            return new BinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 create(Operator op, Value lhs, Value rhs, String name)
+        public static BinaryInstruction create(
+                Operator op,
+                Value lhs,
+                Value rhs,
+                String name)
         {
             assert lhs.getType() == rhs.getType()
                     : "Cannot create binary operator with two operands of differing type!";
-            return new Op2(lhs.getType(), op, lhs, rhs, name, (Instruction)null);
+            return new BinaryInstruction(lhs.getType(), op, lhs, rhs, name, (Instruction)null);
         }
 
-        public static Op2 create(Operator op,
+        public static BinaryInstruction create(
+                Operator op,
                 Value lhs,
                 Value rhs,
                 String name,
@@ -512,189 +546,189 @@ public abstract class Instruction extends User
         {
             assert lhs.getType() == rhs.getType()
                     : "Cannot create binary operator with two operands of differing type!";
-            return new Op2(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
+            return new BinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
         }
 
         //=====================================================================//
         //               The  first version with default insertBefore.         //
-        public static Op2 createAdd(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createAdd(Value lhs, Value rhs, String name)
         {
             return create(Operator.Add, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createFAdd(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createFAdd(Value lhs, Value rhs, String name)
         {
             return create(Operator.FAdd, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createSub(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createSub(Value lhs, Value rhs, String name)
         {
             return create(Operator.Sub, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createFSub(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createFSub(Value lhs, Value rhs, String name)
         {
             return create(Operator.FSub, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createMul(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createMul(Value lhs, Value rhs, String name)
         {
             return create(Operator.FMul, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createFMul(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createFMul(Value lhs, Value rhs, String name)
         {
             return create(Operator.FMul, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createUDiv(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createUDiv(Value lhs, Value rhs, String name)
         {
             return create(Operator.UDiv, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createSDiv(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createSDiv(Value lhs, Value rhs, String name)
         {
             return create(Operator.SDiv, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createFDiv(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createFDiv(Value lhs, Value rhs, String name)
         {
             return create(Operator.FDiv, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createURem(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createURem(Value lhs, Value rhs, String name)
         {
             return create(Operator.URem, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createSRem(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createSRem(Value lhs, Value rhs, String name)
         {
             return create(Operator.SRem, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createFRem(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createFRem(Value lhs, Value rhs, String name)
         {
             return create(Operator.FRem, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createShl(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createShl(Value lhs, Value rhs, String name)
         {
             return create(Operator.Shl, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createLShr(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createLShr(Value lhs, Value rhs, String name)
         {
             return create(Operator.LShr, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createAShr(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createAShr(Value lhs, Value rhs, String name)
         {
             return create(Operator.AShr, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createAnd(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createAnd(Value lhs, Value rhs, String name)
         {
             return create(Operator.And, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createOr(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createOr(Value lhs, Value rhs, String name)
         {
             return create(Operator.Or, lhs, rhs, name, (Instruction) null);
         }
 
-        public static Op2 createXor(Value lhs, Value rhs, String name)
+        public static BinaryInstruction createXor(Value lhs, Value rhs, String name)
         {
             return create(Operator.Xor, lhs, rhs, name, (Instruction) null);
         }
 
         //=====================================================================//
         //                 The second version with insertAtEnd argument.       //
-        public static Op2 createAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Add, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createFAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createFAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FAdd, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Sub, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createFSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createFSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FSub, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FMul, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createFMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createFMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FMul, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createUDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createUDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.UDiv, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createSDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createSDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.SDiv, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createFDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createFDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FDiv, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createURem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createURem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.URem, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createSRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createSRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.SRem, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createFRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createFRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FRem, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createShl(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createShl(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Shl, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createLShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createLShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.LShr, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createAShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createAShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.AShr, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createAnd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createAnd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.And, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createOr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createOr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Or, lhs, rhs, name, insertAtEnd);
         }
 
-        public static Op2 createXor(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createXor(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Xor, lhs, rhs, name, insertAtEnd);
         }
@@ -702,92 +736,92 @@ public abstract class Instruction extends User
 
         //=====================================================================//
         //                   The third version with insertBefore argument.     //
-        public static Op2 createAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Add, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createFAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createFAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FAdd, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createSub(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createSub(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Sub, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createFSub(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createFSub(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FSub, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createMul(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createMul(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FMul, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createFMul(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createFMul(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FMul, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createUDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createUDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.UDiv, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createSDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createSDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.SDiv, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createFDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createFDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FDiv, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createURem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createURem(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.URem, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createSRem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createSRem(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.SRem, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createFRem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createFRem(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FRem, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createShl(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createShl(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Shl, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createLShr(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createLShr(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.LShr, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createAShr(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createAShr(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.AShr, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createAnd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createAnd(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.And, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createOr(Value lhs, Value rhs, String name,Instruction insertBefore)
+        public static BinaryInstruction createOr(Value lhs, Value rhs, String name,Instruction insertBefore)
         {
             return create(Operator.Or, lhs, rhs, name, insertBefore);
         }
 
-        public static Op2 createXor(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryInstruction createXor(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Xor, lhs, rhs, name, insertBefore);
         }
@@ -795,58 +829,58 @@ public abstract class Instruction extends User
 
         // ====================================================================//
         //   Some helper method for create unary operator with Bianry inst.    //
-        public static Op2 createNeg(Value op, String name, Instruction insertBefore)
+        public static BinaryInstruction createNeg(Value op, String name, Instruction insertBefore)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new Op2(op.getType(), Sub, zero, op, name, insertBefore);
+            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertBefore);
         }
 
-        public static Op2 createNeg(Value op, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createNeg(Value op, String name, BasicBlock insertAtEnd)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new Op2(op.getType(), Sub, zero, op, name, insertAtEnd);
+            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertAtEnd);
         }
 
-        public static Op2 createNeg(Value op)
+        public static BinaryInstruction createNeg(Value op)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new Op2(op.getType(), Sub, zero, op, "");
+            return new BinaryInstruction(op.getType(), Sub, zero, op, "");
         }
 
-        public static Op2 createFNeg(Value op, String name, Instruction insertBefore)
+        public static BinaryInstruction createFNeg(Value op, String name, Instruction insertBefore)
         {
             Value zero = ConstantFP.getNullValue(op.getType());
-            return new Op2(op.getType(), Sub, zero, op, name, insertBefore);
+            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertBefore);
         }
 
-        public static Op2 createFNeg(Value op)
+        public static BinaryInstruction createFNeg(Value op)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new Op2(op.getType(), Sub, zero, op, "");
+            return new BinaryInstruction(op.getType(), Sub, zero, op, "");
         }
 
-        public static Op2 createFNeg(Value op, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createFNeg(Value op, String name, BasicBlock insertAtEnd)
         {
             Value zero = ConstantFP.getNullValue(op.getType());
-            return new Op2(op.getType(), Sub, zero, op, name, insertAtEnd);
+            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertAtEnd);
         }
 
-        public static Op2 createNot(Value op, String name, Instruction insertBefore)
+        public static BinaryInstruction createNot(Value op, String name, Instruction insertBefore)
         {
             Constant one = Constant.getAllOnesValue(op.getType());
-            return new Op2(op.getType(), Xor, one, op, name, insertBefore);
+            return new BinaryInstruction(op.getType(), Xor, one, op, name, insertBefore);
         }
 
-        public static Op2 createNot(Value op)
+        public static BinaryInstruction createNot(Value op)
         {
             Constant one = Constant.getAllOnesValue(op.getType());
-            return new Op2(op.getType(), Xor, one, op, "");
+            return new BinaryInstruction(op.getType(), Xor, one, op, "");
         }
 
-        public static Op2 createNot(Value op, String name, BasicBlock insertAtEnd)
+        public static BinaryInstruction createNot(Value op, String name, BasicBlock insertAtEnd)
         {
             Constant one = Constant.getAllOnesValue(op.getType());
-            return new Op2(op.getType(), Xor, one, op, name, insertAtEnd);
+            return new BinaryInstruction(op.getType(), Xor, one, op, name, insertAtEnd);
         }
 
 
@@ -874,10 +908,10 @@ public abstract class Instruction extends User
                 return false;
             if (other == this)
                 return true;
-            if (!(other instanceof Op2))
+            if (!(other instanceof BinaryInstruction))
                 return false;
 
-            Op2 op = (Op2) other;
+            BinaryInstruction op = (BinaryInstruction) other;
             Value x = operand(0);
             Value y = operand(1);
             return getType() == op.getType() && getOpcode()
@@ -885,54 +919,49 @@ public abstract class Instruction extends User
                     && x.equals(op.operand(0))
                     && y.equals(op.operand(1));
         }
-
-        /**
-         * An interface for InstVisitor invoking.
-         *
-         * @param visitor The instance of InstVisitor.
-         */
-        @Override
-        public void accept(InstVisitor visitor)
-        {
-
-        }
     }
 
-    public static class CastInst extends Op1
+    public static class CastInst extends UnaryInstruction
     {
         protected CastInst(Type ty,
                 Operator opcode,
-                Value x, String name)
+                Value x,
+                String name)
         {
             super(ty, opcode, x, name);
-            initialize(x);
         }
 
-        protected CastInst(Type ty, Operator opcode,
-                Value x, String name,
+        protected CastInst(Type ty,
+                Operator opcode,
+                Value x,
+                String name,
                 Instruction insertBefore)
         {
             super(ty, opcode, x, name, insertBefore);
-            initialize(x);
         }
 
-        protected CastInst(Type ty, Operator opcode,
-                Value x, String name,
+        protected CastInst(Type ty,
+                Operator opcode,
+                Value x,
+                String name,
                 BasicBlock insertAtEnd)
         {
             super(ty, opcode, x, name, insertAtEnd);
-            initialize(x);
-        }
-
-        private void initialize(Value x)
-        {
-            reserve(1);
-            setOperand(0, x, this);
         }
 
         public static CastInst createIntegerCast(
                 Value value, Type destTy,
                 boolean isSigned)
+        {
+            return createIntegerCast(value, destTy, isSigned, "", null);
+        }
+
+        public static CastInst createIntegerCast(
+                Value value,
+                Type destTy,
+                boolean isSigned,
+                String instName,
+                Instruction insertBefore)
         {
             assert value.getType().isIntegerType() && destTy.isIntegerType()
                     :"Invalid type!";
@@ -942,7 +971,7 @@ public abstract class Instruction extends User
                     :srcBits>destBits? Trunc
                     :(isSigned ? SExt : ZExt);
 
-            return create(opcode, value, destTy, "", null);
+            return create(opcode, value, destTy, instName, insertBefore);
         }
 
         public static CastInst create(Operator opcode, Value value,
@@ -1290,26 +1319,37 @@ public abstract class Instruction extends User
     public static abstract class CmpInst extends Instruction
     {
         protected Predicate pred;
-        protected CmpInst(final backend.type.Type ty, Operator op, Predicate pred,
-                Value lhs, Value rhs, String name, Instruction insertBefore)
+        protected CmpInst(
+                backend.type.Type ty,
+                Operator op,
+                Predicate pred,
+                Value lhs,
+                Value rhs,
+                String name,
+                Instruction insertBefore)
         {
-            super(ty, op, insertBefore);
-            init(lhs, rhs);
+            super(ty, op, name, insertBefore);
+            init(pred, lhs, rhs);
         }
 
-        protected CmpInst(final backend.type.Type ty, Operator op, Predicate pred,
-                Value lhs, Value rhs, String name,  BasicBlock insertAtEnd)
+        protected CmpInst(
+                backend.type.Type ty,
+                Operator op,
+                Predicate pred,
+                Value lhs,
+                Value rhs,
+                String name,
+                BasicBlock insertAtEnd)
         {
-            super(ty, op, insertAtEnd);
-            init(lhs, rhs);
+            super(ty, op, name, insertAtEnd);
+            init(pred, lhs, rhs);
         }
 
-        private void init(Value lhs, Value rhs)
+        private void init(Predicate pred, Value lhs, Value rhs)
         {
             reserve(2);
             setOperand(0, lhs, this);
             setOperand(1, rhs, this);
-            this.name = name;
             this.pred = pred;
         }
 
@@ -1597,17 +1637,6 @@ public abstract class Instruction extends User
                     "Invalid operand types for FCmp instruction";
         }
 
-        /**
-         * An interface for InstVisitor invoking.
-         *
-         * @param visitor The instance of InstVisitor.
-         */
-        @Override
-        public void accept(InstVisitor visitor)
-        {
-
-        }
-
         public boolean isEquality()
         {
             return pred == FCMP_OEQ || pred == FCMP_ONE ||
@@ -1705,17 +1734,6 @@ public abstract class Instruction extends User
                     "Both operands to ICmp instruction are not of the same type!";
             assert lhs.getType().isIntegerType():
                     "Invalid operand types for ICmp instruction";
-        }
-
-        /**
-         * An interface for InstVisitor invoking.
-         *
-         * @param visitor The instance of InstVisitor.
-         */
-        @Override
-        public void accept(InstVisitor visitor)
-        {
-
         }
 
         public static Predicate getSignedPredicate(Predicate pred)
@@ -1830,23 +1848,28 @@ public abstract class Instruction extends User
      */
     public static abstract class TerminatorInst extends Instruction
     {
-        TerminatorInst(Operator opcode, String instName,
+        TerminatorInst(
+                Operator opcode,
+                String instName,
                 Instruction insertBefore)
         {
-            super(Type.VoidTy, opcode, insertBefore);
+            super(LLVMContext.VoidTy, opcode, instName, insertBefore);
         }
 
-        TerminatorInst(Type ty, Operator opcode, String instName,
+        TerminatorInst(Type ty,
+                Operator opcode,
+                String instName,
                 Instruction insertBefore)
         {
-            super(ty, opcode, insertBefore);
+            super(ty, opcode, instName, insertBefore);
         }
 
 
-        TerminatorInst(Operator opcode, String instName,
+        TerminatorInst(Operator opcode,
+                String instName,
                 BasicBlock insertAtEnd)
         {
-            super(Type.VoidTy, opcode, insertAtEnd);
+            super(LLVMContext.VoidTy, opcode, instName, insertAtEnd);
         }
 
         /**
@@ -1882,7 +1905,7 @@ public abstract class Instruction extends User
     {
         /**
          * Constructs a unconditional Branch instruction.
-         * BranchInst(BasicBlock bb) - 'br B'
+         * BranchInst(BasicBlock parent) - 'br B'
          *
          * @param ifTrue       the branch TargetData.
          * @param insertBefore
@@ -1904,7 +1927,7 @@ public abstract class Instruction extends User
         /**
          * Constructs a branch instruction.
          * <p>
-         * BranchInst(BasicBlock bb) - 'br B'
+         * BranchInst(BasicBlock parent) - 'br B'
          *
          * @param ifTrue the TargetData of this branch.
          */
@@ -1989,12 +2012,6 @@ public abstract class Instruction extends User
         public BranchInst clone()
         {
             return null;
-        }
-
-        @Override
-        public void accept(InstVisitor visitor)
-        {
-
         }
 
         /**
@@ -2111,9 +2128,6 @@ public abstract class Instruction extends User
         }
 
         @Override
-        public void accept(InstVisitor visitor){}
-
-        @Override
         public BasicBlock getSuccessor(int index)
         {
             assert true:"ReturnInst has no successors!";
@@ -2171,8 +2185,9 @@ public abstract class Instruction extends User
         {
             super(((FunctionType)((PointerType)target.getType()).
                             getElementType()).getReturnType(),
-                    Operator.Call, insertBefore);
-            this.name = name.isEmpty()?Operator.Call.opName:name;
+                    Operator.Call, name, insertBefore);
+            setName(name == null || name.isEmpty() ?
+                    Operator.Call.opName:name);
             init(target, args);
         }
 
@@ -2181,8 +2196,9 @@ public abstract class Instruction extends User
         {
             super(((FunctionType)((PointerType)target.getType()).
                             getElementType()).getReturnType(),
-                    Operator.Call, insertAtEnd);
-            this.name = name.isEmpty()?Operator.Call.opName:name;
+                    Operator.Call, name, insertAtEnd);
+            setName(name == null || name.isEmpty() ?
+                    Operator.Call.opName:name);
             init(target, args);
         }
 
@@ -2190,23 +2206,14 @@ public abstract class Instruction extends User
         private void init(Value function, Value[] args)
         {
             reserve(ArgumentOffset + args.length);
-            assert (getNumOfOperands()
-                    == ArgumentOffset + args.length) : "NumOperands not set up?";
+            assert (getNumOfOperands() == ArgumentOffset + args.length)
+                    : "NumOperands not set up?";
             setOperand(0, function, this);
             int idx = ArgumentOffset;
             for (Value arg : args)
             {
                 setOperand(idx++, arg, this);
             }
-        }
-
-        @Override
-        public void accept(InstVisitor visitor){}
-
-        @Override
-        public String toString()
-        {
-            return name();
         }
 
         public int getNumsOfArgs()
@@ -2216,13 +2223,15 @@ public abstract class Instruction extends User
 
         public void setArgument(int index, Value val)
         {
-            assert index + ArgumentOffset >= 0 && index + ArgumentOffset < getNumsOfArgs();
+            assert index + ArgumentOffset >= 0 &&
+                    index + ArgumentOffset < getNumsOfArgs();
             setOperand(index + ArgumentOffset, val, this);
         }
 
         public Value argumentAt(int index)
         {
-            assert index + ArgumentOffset >= 0 && index + ArgumentOffset < getNumsOfArgs();
+            assert index + ArgumentOffset >= 0 &&
+                    index + ArgumentOffset < getNumsOfArgs();
             return operand(index + ArgumentOffset);
         }
 
@@ -2309,14 +2318,6 @@ public abstract class Instruction extends User
             setOperand(0, cond, this);
             setOperand(1, defaultBB, this);
         }
-
-        /**
-         * An interface for InstVisitor invoking.
-         *
-         * @param visitor The instance of InstVisitor.
-         */
-        @Override
-        public void accept(InstVisitor visitor){}
 
         public void addCase(Constant caseVal, BasicBlock targetBB)
         {
@@ -2433,7 +2434,8 @@ public abstract class Instruction extends User
 
         public SwitchInst clone()
         {
-            SwitchInst inst = new SwitchInst(getCondition(), getDefaultBlock(), getNumOfCases(),name);
+            SwitchInst inst = new SwitchInst(getCondition(),
+                    getDefaultBlock(), getNumOfCases(),name);
             inst.operandList = new ArrayList<>(inst.operandList);
             return inst;
         }
@@ -2470,38 +2472,38 @@ public abstract class Instruction extends User
      */
     public static class PhiNode extends Instruction
     {
-        public PhiNode(Type ty, int numReservedValues,
+        public PhiNode(Type ty,
+                int numReservedValues,
                 String name)
         {
             this(ty, numReservedValues, name, (Instruction) null);
         }
 
-        public PhiNode(Type ty, int numReservedValues,
-                String name, Instruction insertBefore)
-        {
-            super(ty, Operator.Phi, insertBefore);
-            reserve(numReservedValues);
-            this.name = name;
-        }
-
-        public PhiNode(Type ty, String name,
+        public PhiNode(Type ty,
+                int numReservedValues,
+                String name,
                 Instruction insertBefore)
         {
-            super(ty, Phi, insertBefore);
-            reserve(4);
-            this.name = name;
+            super(ty, Operator.Phi, name, insertBefore);
+            reserve(numReservedValues);
         }
 
-        public PhiNode(Type type, int numReservedValue, String name,
+        public PhiNode(Type ty,
+                String name,
+                Instruction insertBefore)
+        {
+            super(ty, Phi, name, insertBefore);
+            reserve(4);
+        }
+
+        public PhiNode(Type type,
+                int numReservedValue,
+                String name,
                 BasicBlock insertAtEnd)
         {
-            super(type, Operator.Phi, insertAtEnd);
+            super(type, Operator.Phi, name, insertAtEnd);
             reserve(numReservedValue);
-            this.name = name;
         }
-
-        @Override
-        public void accept(InstVisitor visitor){}
 
         /**
          * Appends a pair that consists of both value and block into argument list.
@@ -2595,12 +2597,6 @@ public abstract class Instruction extends User
             return removeIncomingValue(index, deletePhiIfEmpty);
         }
 
-        @Override
-        public String toString()
-        {
-            return instName;
-        }
-
         public int getBasicBlockIndex(BasicBlock basicBlock)
         {
             assert (basicBlock != null)
@@ -2621,15 +2617,6 @@ public abstract class Instruction extends User
         public int getNumberIncomingValues()
         {
             return getNumOfOperands()>>1;
-        }
-        /**
-         * Gets the getIdentifier of this phi node.
-         *
-         * @return
-         */
-        public String name()
-        {
-            return instName;
         }
 
         /**
@@ -2671,7 +2658,7 @@ public abstract class Instruction extends User
      * <b>Note that </b>all of backend.heap allocation is accomplished by invoking the
      * C language library function as yet.
      */
-    public static class AllocaInst extends Instruction
+    public static class AllocaInst extends AllocationInst
     {
         /**
          * Creates a new {@linkplain AllocaInst} Module that allocates memory
@@ -2688,16 +2675,12 @@ public abstract class Instruction extends User
                 String name,
                 Instruction insertBefore)
         {
-            super(ty, Operator.Alloca, insertBefore);
+            super(ty, Operator.Alloca,
+                    arraySize == null ? ConstantInt.get(LLVMContext.Int32Ty, 1):
+                    arraySize, 0, name, insertBefore);
 
-            // default to 1.
-            if (arraySize == null)
-                arraySize = ConstantInt.get(Int32Ty, 1);
-
-            reserve(1);
-            assert arraySize.getType() == Type.Int32Ty
+            assert getArraySize().getType() == LLVMContext.Int32Ty
                     :"Alloca array getNumOfSubLoop != UnsignedIntTy";
-            setOperand(0, arraySize, this);
         }
 
         public AllocaInst(Type ty,
@@ -2721,7 +2704,7 @@ public abstract class Instruction extends User
          */
         public boolean isArrayAllocation()
         {
-            return operand(0) != ConstantInt.get(Int32Ty, 1);
+            return operand(0) != ConstantInt.get(LLVMContext.Int32Ty, 1);
         }
 
         public Type getAllocatedType()
@@ -2741,19 +2724,6 @@ public abstract class Instruction extends User
         {
             return (PointerType)super.getType();
         }
-
-        @Override
-        public void accept(InstVisitor visitor){}
-
-        /**
-         * Gets the getIdentifier of this alloated variable.
-         *
-         * @return
-         */
-        public String name()
-        {
-            return instName;
-        }
     }
 
     /**
@@ -2770,11 +2740,12 @@ public abstract class Instruction extends User
          * @param value The inst to being writed into memory.
          * @param ptr  The targetAbstractLayer memory address where inst stores.
          */
-        public StoreInst(Value value, Value ptr,
+        public StoreInst(Value value,
+                Value ptr,
                 String name,
                 Instruction insertBefore)
         {
-            super(Type.VoidTy, Operator.Store, insertBefore);
+            super(LLVMContext.VoidTy, Operator.Store, name, insertBefore);
             init(value, ptr);
         }
 
@@ -2784,25 +2755,30 @@ public abstract class Instruction extends User
          * @param value The inst to being writed into memory.
          * @param ptr  The targetAbstractLayer memory address where inst stores.
          */
-        public StoreInst(Value value, Value ptr,
+        public StoreInst(
+                Value value,
+                Value ptr,
                 String name)
         {
-            super(Type.VoidTy, Operator.Store, (Instruction)null);
+            super(LLVMContext.VoidTy, Operator.Store, name, (Instruction)null);
             init(value, ptr);
         }
 
-        public StoreInst(Value value, Value ptr,
+        public StoreInst(Value value,
+                Value ptr,
                 String name,
                 BasicBlock insertAtEnd)
         {
-            super(Type.VoidTy, Operator.Store, insertAtEnd);
+            super(LLVMContext.VoidTy, Operator.Store, name, insertAtEnd);
             init(value, ptr);
         }
 
         private void init(Value value, Value ptr)
         {
-            assert value != null: "The value written into memory must be not null.";
-            assert ptr != null : "The memory address of StoreInst must be not null.";
+            assert value != null :
+                    "The value written into memory must be not null.";
+            assert ptr != null :
+                    "The memory address of StoreInst must be not null.";
             assert ptr.getType().isPointerType()
                     : "the destination of StoreInst must be AllocaInst!";
             reserve(2);
@@ -2825,9 +2801,6 @@ public abstract class Instruction extends User
             return 1;
         }
 
-        @Override
-        public void accept(InstVisitor visitor){}
-
         public boolean isVolatile()
         {
             return aVolatile;
@@ -2848,7 +2821,7 @@ public abstract class Instruction extends User
     /**
      * An instruction for reading data from memory.
      */
-    public static class LoadInst extends Op1
+    public static class LoadInst extends UnaryInstruction
     {
         private boolean isVolatile;
         private int alignment;
@@ -2896,9 +2869,6 @@ public abstract class Instruction extends User
             return 0;
         }
 
-        @Override
-        public void accept(InstVisitor visitor){}
-
         public boolean isVolatile()
         {
             return isVolatile;
@@ -2927,17 +2897,17 @@ public abstract class Instruction extends User
                 Instruction insertBefore)
         {
             super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), idx))),
-                    GetElementPtr, insertBefore);
+                    GetElementPtr, name, insertBefore);
             reserve(2);
-            init(ptr, idx, name);
+            init(ptr, idx);
         }
 
         public GetElementPtrInst(Value ptr, Value idx, String name, BasicBlock insertAtEnd)
         {
             super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), idx))),
-                    GetElementPtr, insertAtEnd);
+                    GetElementPtr, name, insertAtEnd);
             reserve(2);
-            init(ptr, idx, name);
+            init(ptr, idx);
         }
 
         public GetElementPtrInst(Value ptr, Value idx, String name)
@@ -2954,7 +2924,7 @@ public abstract class Instruction extends User
                 String name, Instruction insertBefore)
         {
             super(PointerType.getUnqual(checkType(getIndexedType(ptr.getType(), indices.get(0)))),
-                    GetElementPtr, insertBefore);
+                    GetElementPtr, name, insertBefore);
             reserve(indices.size());
             setOperand(0, ptr);
             int i = 1;
@@ -2962,15 +2932,13 @@ public abstract class Instruction extends User
             {
                 setOperand(i++, idx, this);
             }
-            this.name = name;
         }
 
-        private void init(Value ptr, Value idx, String name)
+        private void init(Value ptr, Value idx)
         {
             assert getNumOfOperands() == 2:"NumOperands not initialized.";
             setOperand(0, ptr, this);
             setOperand(1, idx, this);
-            this.name = name;
         }
 
         /**
@@ -3032,13 +3000,5 @@ public abstract class Instruction extends User
         {
             return getNumOfOperands();
         }
-
-        /**
-         * An interface for InstVisitor invoking.
-         *
-         * @param visitor The instance of InstVisitor.
-         */
-        @Override
-        public void accept(InstVisitor visitor){}
     }
 }

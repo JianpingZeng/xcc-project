@@ -173,7 +173,7 @@ public final class DominatorFrontier extends DominatorFrontierBase
     }
 
     /**
-     * BasicBlock bb's new dominator is newBB. Update bb's dominance frontier
+     * BasicBlock parent's new dominator is newBB. Update parent's dominance frontier
      * to reflect this change.
      * @param bb
      * @param newBB

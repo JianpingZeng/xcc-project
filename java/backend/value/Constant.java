@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -46,9 +47,9 @@ public abstract class Constant extends User
                 return ConstantInt.get((IntegerType) type, 0);
 
             case Type.FloatTyID:
-                return ConstantFP.get(Type.FloatTy, 0);
+                return ConstantFP.get(LLVMContext.FloatTy, 0);
             case Type.DoubleTyID:
-                return ConstantFP.get(Type.DoubleTy, 0);
+                return ConstantFP.get(LLVMContext.DoubleTy, 0);
             case Type.PointerTyID:
                 return ConstantPointerNull.get((PointerType)type);
             case Type.StructTyID:

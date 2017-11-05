@@ -84,7 +84,9 @@ public enum Operator
 
 	// memory operation
 	Alloca("alloca", BitCast.index + 1, 0),
-	Store("store", Alloca.index + 1, 0),
+	Free("free", Alloca.index + 1, 0),
+	Malloc("malloc", Free.index + 1, 0),
+	Store("store", Malloc.index + 1, 0),
 	Load("load", Store.index + 1, 0),
 
 	// other operation

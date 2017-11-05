@@ -115,8 +115,8 @@ public abstract class LoopBase<BlockT, LoopT>
 
     /**
      * Check to see if a basic block is the loop exiting block or not that
-     * if the any successor block of the given bb is outside this loop, so that
-     * this bb would be a loop exiting block..
+     * if the any successor block of the given parent is outside this loop, so that
+     * this parent would be a loop exiting block..
      * @param bb
      * @return True if the given block is the exiting block of this loop, otherwise
      * returned false.
@@ -170,7 +170,7 @@ public abstract class LoopBase<BlockT, LoopT>
 
     public void addFirstBlock(BlockT bb)
     {
-        assert bb != null : "bb not be null";
+        assert bb != null : "parent not be null";
         assert !contains(bb) : "duplicated block added";
 
         blocks.addFirst(bb);
@@ -241,8 +241,8 @@ public abstract class LoopBase<BlockT, LoopT>
 
     public void removeBlockFromLoop(BlockT bb)
     {
-        assert bb != null : "bb not be null";
-        assert contains(bb) : "bb must contained in loop";
+        assert bb != null : "parent not be null";
+        assert contains(bb) : "parent must contained in loop";
         blocks.remove(bb);
     }
 

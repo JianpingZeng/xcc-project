@@ -6,7 +6,7 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.CastInst;
-import backend.value.Instruction.Op2;
+import backend.value.Instruction.BinaryInstruction;
 import backend.value.Instruction.PhiNode;
 import tools.APInt;
 import tools.Pair;
@@ -172,8 +172,8 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 			if (val instanceof ConstantExpr)
 			{
 				ConstantExpr ce = (ConstantExpr)val;
-				if ((ce.getOpCode() == Operator.PtrToInt
-						|| ce.getOpCode() == Operator.IntToPtr)
+				if ((ce.getOpcode() == Operator.PtrToInt
+						|| ce.getOpcode() == Operator.IntToPtr)
 						&& se.getTypeSizeBits(ce.getType())
 						== se.getTypeSizeBits(ce.operand(0).getType()))
 					return ce.operand(0);
@@ -453,7 +453,7 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 					:"No backedge in loop!";
 
 			Constant one = ConstantInt.get(ty, 1);
-			Instruction add = Op2.createAdd(pn, one, "indvar.next",
+			Instruction add = BinaryInstruction.createAdd(pn, one, "indvar.next",
 					header.predAt(predItr).getTerminator());
 
 			insertedValues.add(add);

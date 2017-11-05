@@ -13,7 +13,7 @@ import backend.value.Constant;
 import backend.value.ConstantInt;
 import backend.value.Instruction;
 import backend.value.Instruction.AllocaInst;
-import backend.value.Instruction.Op2;
+import backend.value.Instruction.BinaryInstruction;
 import backend.value.Instruction.StoreInst;
 import backend.value.Value;
 
@@ -147,9 +147,9 @@ public final class InductionVarSimplify implements LoopPass
 			// variable and accumulate informations about them in inductionVars
 			for (Instruction inst : bb)
 			{
-				if (inst instanceof Op2)
+				if (inst instanceof Instruction.BinaryInstruction)
 				{
-					Op2 op = (Op2)inst;
+					Instruction.BinaryInstruction op = (Instruction.BinaryInstruction)inst;
 					if (ivPattern(op, op.operand(0), op.operand(1))
 							|| ivPattern(op, op.operand(1), op.operand(0)))
 					{
@@ -171,9 +171,9 @@ public final class InductionVarSimplify implements LoopPass
 				// and accumulate information in list inductionVars.
 				for (Instruction inst : bb)
 				{
-					if (inst instanceof Op2)
+					if (inst instanceof BinaryInstruction)
 					{
-						Op2 op = (Op2)inst;
+						Instruction.BinaryInstruction op = (Instruction.BinaryInstruction)inst;
 						Value x = op.operand(0), y = op.operand(1);
 						change |= isMulIV(op, x, y, loop);
 						change |= isMulIV(op, y, x, loop);
@@ -227,7 +227,7 @@ public final class InductionVarSimplify implements LoopPass
 	 * @param op2
 	 * @return
 	 */
-	private boolean ivPattern(Op2 inst, Value op1, Value op2)
+	private boolean ivPattern(Instruction.BinaryInstruction inst, Value op1, Value op2)
 	{
 		return inst == op1 && inst.getOpcode().isAdd()
 				&& op2.isConstant()
@@ -279,7 +279,7 @@ public final class InductionVarSimplify implements LoopPass
 	 * @param loop
 	 * @return
 	 */
-	private boolean isMulIV(Op2 inst, Value op1, Value op2, Loop loop)
+	private boolean isMulIV(BinaryInstruction inst, Value op1, Value op2, Loop loop)
 	{	
 		/* 
 		 * Only when inst is a multiple operation and whose first operand
@@ -332,7 +332,7 @@ public final class InductionVarSimplify implements LoopPass
 	 * @param loop
 	 * @return
 	 */
-	private boolean isAddIV(Op2 inst, Value op1, Value op2, Loop loop)
+	private boolean isAddIV(Instruction.BinaryInstruction inst, Value op1, Value op2, Loop loop)
 	{
 		assert inst.getOpcode().isAdd() || inst.getOpcode().isSub();
 		
@@ -447,14 +447,14 @@ public final class InductionVarSimplify implements LoopPass
         				SRdone[i][j] = true;
         				/** db = d*b; */
         				Operator opcode = db.getType().isFloatingPointType() ? Operator.FMul:Operator.Mul;
-        				Op2 t1 = new Op2(db.getType(), opcode, r1.diff, r2.factor, "mul");
+        				Instruction.BinaryInstruction t1 = new Instruction.BinaryInstruction(db.getType(), opcode, r1.diff, r2.factor, "mul");
         				StoreInst s1 = new StoreInst(t1, db, "store");
         				Instruction[] insts = {t1, s1};
         				appendPreheader(insts, preheaderBB);
         				
         				/** tj=b*i */
         				opcode = r2.factor.getType().isFloatingPointType() ? Operator.FMul:Operator.Mul;
-        				t1 = new Op2(r2.factor.getType(),
+        				t1 = new Instruction.BinaryInstruction(r2.factor.getType(),
         						opcode,
         						r2.factor, r1.biv, "mul");
         				s1 = new StoreInst(t1, tj, "store");
@@ -463,13 +463,13 @@ public final class InductionVarSimplify implements LoopPass
       
         				/** tj=tj+c */
 				        opcode = tj.getType().isFloatingPointType()?Operator.FAdd:Operator.Add;
-        				t1 = new Op2(tj.getType(), opcode, tj, r2.diff, opcode.opName);
+        				t1 = new Instruction.BinaryInstruction(tj.getType(), opcode, tj, r2.diff, opcode.opName);
         				s1 = new StoreInst(t1, tj, "");
         				Instruction[] insts3 = {t1, s1};
         				appendPreheader(insts3, preheaderBB);
         				
         				/** tj=tj+db*/
-        				t1 = new Op2(tj.getType(), opcode, tj, db, opcode.opName);
+        				t1 = new Instruction.BinaryInstruction(tj.getType(), opcode, tj, db, opcode.opName);
         				s1 = new StoreInst(t1, tj, "");
         				Instruction[] after = {t1, s1};
         				insertAfter((Instruction) r2.div, after);

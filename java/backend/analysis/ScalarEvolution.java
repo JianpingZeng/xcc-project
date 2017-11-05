@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Operator;
 import backend.utils.PredIterator;
@@ -122,7 +123,7 @@ public final class ScalarEvolution implements FunctionPass
      */
     public SCEV getSCEV(Value val)
     {
-        assert !val.getType().equals(Type.VoidTy) : "Cannot analyze void expression";
+        assert !val.getType().equals(LLVMContext.VoidTy) : "Cannot analyze void expression";
         if (scalars.containsKey(val))
             return scalars.get(val);
         SCEV newOne = createSCEV(val);
@@ -370,7 +371,7 @@ public final class ScalarEvolution implements FunctionPass
 
     private static Constant constantFold(Instruction inst, ArrayList<Constant> operands)
     {
-        if (inst instanceof Op2)
+        if (inst instanceof BinaryInstruction)
             return ConstantExpr.get(inst.getOpcode(), operands.get(0), operands.get(1));
 
         switch (inst.getOpcode())
@@ -406,7 +407,7 @@ public final class ScalarEvolution implements FunctionPass
 
     private static boolean canConstantFold(Instruction inst)
     {
-        if (inst instanceof Op2 || inst instanceof CastInst
+        if (inst instanceof BinaryInstruction || inst instanceof CastInst
                 || inst instanceof GetElementPtrInst)
             return true;
         Function f;
@@ -772,7 +773,7 @@ public final class ScalarEvolution implements FunctionPass
             if (isTrue == exitOnTrue)
             {
                 constantEvolutionLoopExitValue.put(pn, phiVal);
-                return SCEVConstant.get(ConstantInt.get(Type.Int32Ty, iterationNum));
+                return SCEVConstant.get(ConstantInt.get(LLVMContext.Int32Ty, iterationNum));
             }
 
             // Compute the value of the PHI node for the next iteration.
@@ -905,7 +906,7 @@ public final class ScalarEvolution implements FunctionPass
         if (td != null)
             return td.getIntPtrType();
 
-        return Type.Int64Ty;
+        return LLVMContext.Int64Ty;
     }
 
 	/**
@@ -1067,9 +1068,9 @@ public final class ScalarEvolution implements FunctionPass
             SCEV lhs, SCEV rhs, boolean inverse)
     {
         // Recursively handle And and Or conditions.
-        if (condValue instanceof Op2)
+        if (condValue instanceof BinaryInstruction)
         {
-            Op2 bo = (Op2)condValue;
+            BinaryInstruction bo = (BinaryInstruction)condValue;
             if (bo.getOpcode() == Operator.And)
             {
                 if (!inverse)

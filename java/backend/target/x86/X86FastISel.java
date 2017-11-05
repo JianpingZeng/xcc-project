@@ -21,6 +21,7 @@ import backend.codegen.CCAssignFn;
 import backend.codegen.selectDAG.FastISel;
 import backend.codegen.selectDAG.ISD;
 import backend.support.CallSite;
+import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
@@ -401,7 +402,7 @@ public abstract class X86FastISel extends FastISel
         {
             ConstantExpr ce = (ConstantExpr)val;
             u = ce;
-            opcode = ce.getOpCode();
+            opcode = ce.getOpcode();
         }
 
     Unsupported:
@@ -722,8 +723,8 @@ public abstract class X86FastISel extends FastISel
     private boolean x86SelectZExt(Instruction inst)
     {
         // Handle zero-extension from i1 to i8, which is common.
-        if (inst.getType().equals(Type.Int8Ty) &&
-                inst.operand(0).getType().equals(Type.Int1Ty))
+        if (inst.getType().equals(LLVMContext.Int8Ty) &&
+                inst.operand(0).getType().equals(LLVMContext.Int1Ty))
         {
             int resultReg = getRegForValue(inst.operand(0));
             if (resultReg == 0)
@@ -847,7 +848,7 @@ public abstract class X86FastISel extends FastISel
     {
         int creg = 0, opReg = 0, opImm = 0;
         TargetRegisterClass rc = null;
-        if (inst.getType().equals(Type.Int8Ty)) 
+        if (inst.getType().equals(LLVMContext.Int8Ty))
         {
             creg = CL;
             rc = GR8RegisterClass;
@@ -859,7 +860,7 @@ public abstract class X86FastISel extends FastISel
                 default: return false;
             }
         } 
-        else if (inst.getType().equals(Type.Int16Ty)) 
+        else if (inst.getType().equals(LLVMContext.Int16Ty))
         {
             creg = CX;
             rc = GR16RegisterClass;
@@ -871,7 +872,7 @@ public abstract class X86FastISel extends FastISel
                 default: return false;
             }
         }
-        else if (inst.getType().equals(Type.Int32Ty))
+        else if (inst.getType().equals(LLVMContext.Int32Ty))
         {
             creg = ECX;
             rc = GR32RegisterClass;
@@ -883,7 +884,7 @@ public abstract class X86FastISel extends FastISel
                 default: return false;
             }
         }
-        else if (inst.getType().equals(Type.Int64Ty))
+        else if (inst.getType().equals(LLVMContext.Int64Ty))
         {
             creg = RCX;
             rc = GR64RegisterClass;
@@ -1030,10 +1031,10 @@ public abstract class X86FastISel extends FastISel
     {
         // fpext from float to double.
         if (subtarget.hasSSE2() &&
-                inst.getType().equals(Type.DoubleTy))
+                inst.getType().equals(LLVMContext.DoubleTy))
         {
             Value v = inst.operand(0);
-            if (v.getType().equals(Type.FloatTy))
+            if (v.getType().equals(LLVMContext.FloatTy))
             {
                 int opReg = getRegForValue(v);
                 if (opReg == 0)
@@ -1052,10 +1053,10 @@ public abstract class X86FastISel extends FastISel
     {
         // fptrunc from double to float.
         if (subtarget.hasSSE2() &&
-                inst.getType().equals(Type.FloatTy))
+                inst.getType().equals(LLVMContext.FloatTy))
         {
             Value v = inst.operand(0);
-            if (v.getType().equals(Type.DoubleTy))
+            if (v.getType().equals(LLVMContext.DoubleTy))
             {
                 int opReg = getRegForValue(v);
                 if (opReg == 0)
@@ -1095,7 +1096,7 @@ public abstract class X86FastISel extends FastISel
         else if (v instanceof ConstantExpr)
         {
             ConstantExpr ce = (ConstantExpr) v;
-            opcode = ce.getOpCode();
+            opcode = ce.getOpcode();
             u = ce;
         }
 
@@ -1199,7 +1200,7 @@ public abstract class X86FastISel extends FastISel
         Type retTy = cs.getType();
         EVT retVT;
         OutParamWrapper<EVT> x = new OutParamWrapper<>();
-        if (retTy.equals(Type.VoidTy))
+        if (retTy.equals(LLVMContext.VoidTy))
             retVT = new EVT(MVT.isVoid);
         else if (!isTypeLegal(retTy, x, true))
             return false;

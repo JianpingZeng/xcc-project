@@ -16,8 +16,8 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.type.ArrayType;
-import backend.type.Type;
 import jlang.sema.ASTRecordLayout;
 import jlang.sema.Decl;
 import tools.Pair;
@@ -332,7 +332,7 @@ public class CGRecordLayoutBuilder
     {
         if (numBytes <= 0)
             return;
-        backend.type.Type ty = Type.Int8Ty;
+        backend.type.Type ty = LLVMContext.Int8Ty;
         if (numBytes > 1)
             ty = ArrayType.get(ty, numBytes);
 
