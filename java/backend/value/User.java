@@ -26,13 +26,13 @@ public abstract class User extends Value
 
     public User(Type ty, int valueKind)
     {
-        super(ty, valueKind);
-        id = -1;
+        this(ty, valueKind, "");
     }
 	public User(Type ty, int valueKind, String name)
 	{
 		super(ty, valueKind, name);
         id = -1;
+        operandList = new ArrayList<>();
 	}
 
 	protected void reserve(int numOperands)

@@ -305,12 +305,13 @@ public class Type implements LLVMTypeID, AbstractTypeUser
 
     public int getNumContainedTypes()
     {
-        return containedTys.length;
+        return containedTys == null ? 0 : containedTys.length;
     }
 
     public Type getContainedType(int idx)
     {
-        assert idx >= 0 && idx < containedTys.length;
+        assert containedTys != null && idx >= 0 &&
+                idx < containedTys.length;
         return containedTys[idx].getType();
     }
 }

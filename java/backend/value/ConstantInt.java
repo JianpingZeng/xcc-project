@@ -165,6 +165,14 @@ public class ConstantInt extends Constant
     @Override
     public boolean equals(Object obj)
     {
-        return super.equals(obj);
+        if (obj == null)
+            return false;
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+
+        ConstantInt ci = (ConstantInt)obj;
+        return val.eq(ci.getValue());
     }
 }
