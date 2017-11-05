@@ -16,7 +16,6 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import backend.type.Type;
 import backend.value.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
 
@@ -118,7 +117,7 @@ public final class SlotTracker
     private void createModuleSlot(GlobalValue gv)
     {
         assert gv != null;
-        assert !gv.getType().equals(Type.VoidTy);
+        assert !gv.getType().equals(LLVMContext.VoidTy);
         assert !gv.hasName();
 
         int destSlot = mNext++;
@@ -128,7 +127,7 @@ public final class SlotTracker
     private void createFunctionSlot(Value v)
     {
         assert v != null;
-        assert !v.getType().equals(Type.VoidTy);
+        assert !v.getType().equals(LLVMContext.VoidTy);
         assert !v.hasName();
 
         int destSlot = fNext++;
@@ -172,7 +171,7 @@ public final class SlotTracker
             }
             for (Instruction inst : bb)
             {
-                if (!inst.getType().equals(Type.VoidTy) && !inst.hasName())
+                if (!inst.getType().equals(LLVMContext.VoidTy) && !inst.hasName())
                     createFunctionSlot(inst);
             }
         }

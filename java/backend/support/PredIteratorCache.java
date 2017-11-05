@@ -22,7 +22,7 @@ public final class PredIteratorCache
 	private TObjectIntHashMap<BasicBlock> blockToPredsNumMap;
 
 	/**
-	 * Gets the cached predecessors list for the given basic block {@code bb}.
+	 * Gets the cached predecessors list for the given basic block {@code parent}.
 	 * @param bb
 	 * @return
 	 */

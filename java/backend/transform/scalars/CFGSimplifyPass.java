@@ -197,7 +197,7 @@ public final class CFGSimplifyPass implements FunctionPass
 
                 if (succ != bb)
                 {
-                    // bb is not in infinite loop!!!
+                    // parent is not in infinite loop!!!
                     if (!propagatePredecessorForPHIs(bb, succ))
                     {
                         // If our successor has PHI nodes, then we need to update them to
@@ -210,7 +210,7 @@ public final class CFGSimplifyPass implements FunctionPass
                         for (PredIterator itr = succ.predIterator(); predItr.hasNext();)
                             oldSuccPreds.add(itr.next());
 
-                        // Move all PHI nodes in bb to succ if they are alive,
+                        // Move all PHI nodes in parent to succ if they are alive,
                         // otherwise delete them.
                         for (int j = 0; j< bb.getInstList().size();)
                         {
@@ -235,7 +235,7 @@ public final class CFGSimplifyPass implements FunctionPass
                                         pn.addIncoming(pn, oldSuccPreds.get(i));
                                 }
                             }
-                            // everything that jumped to bb now goes to succ!!!
+                            // everything that jumped to parent now goes to succ!!!
                             bb.replaceAllUsesWith(succ);
                             f.getBasicBlockList().remove(bb);
 
@@ -317,7 +317,7 @@ public final class CFGSimplifyPass implements FunctionPass
 
     /**
      * Assumption: Succ is the single successor for BB when this method is called.
-     * and bb is the one to be removed.
+     * and parent is the one to be removed.
      *
      * This is a little tricky because "Succ" has PHI nodes, which need to
      * have extra slots added to them to hold the merge edges from BB's
@@ -330,9 +330,9 @@ public final class CFGSimplifyPass implements FunctionPass
      */
     private boolean propagatePredecessorForPHIs(BasicBlock bb, BasicBlock succ)
     {
-        assert  (bb.succIterator().next() == succ):"Succ is not successor of bb!";
+        assert  (bb.succIterator().next() == succ):"Succ is not successor of parent!";
 
-        // There is no phi node in bb.
+        // There is no phi node in parent.
         if (!(succ.getInstAt(0) instanceof PhiNode))
             return false;
 
@@ -379,7 +379,7 @@ public final class CFGSimplifyPass implements FunctionPass
 
             PhiNode pn = (PhiNode)succ.getInstAt(i);
             Value oldVal = pn.removeIncomingValue(bb, false);
-            assert oldVal != null:"No enry in PHI for Pred bb!";
+            assert oldVal != null:"No enry in PHI for Pred parent!";
 
             // If this incoming value is one of the PHI nodes in BB...
             if (oldVal instanceof PhiNode && ((PhiNode)oldVal).getParent() == bb)

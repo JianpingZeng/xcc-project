@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import tools.TypeMap;
 
 /**
@@ -88,6 +89,6 @@ public final class ArrayType extends SequentialType
 
     public boolean isValidElementType(Type eleTy)
     {
-        return !(eleTy == Type.VoidTy || eleTy == Type.LabelTy);
+        return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
     }
 }

@@ -21,6 +21,7 @@ import backend.MC.MCStreamer;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
+import backend.support.LLVMContext;
 import backend.support.NameMangler;
 import backend.target.*;
 import backend.type.Type;
@@ -363,7 +364,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
             ConstantFP fp = (ConstantFP)c;
             double val = fp.getValue();
 
-            if (fp.getType() == Type.DoubleTy)
+            if (fp.getType() == LLVMContext.DoubleTy)
             {
                 if (data64BitDirective != null)
                 {
@@ -401,7 +402,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 return;
             }
         }
-        else if (c.getType() == Type.Int64Ty)
+        else if (c.getType() == LLVMContext.Int64Ty)
         {
             if (c instanceof ConstantInt)
             {
@@ -506,7 +507,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         {
             ConstantExpr ce = (ConstantExpr)c;
             TargetData td = tm.getTargetData();
-            switch (ce.getOpCode())
+            switch (ce.getOpcode())
             {
                 case GetElementPtr:
                 {
@@ -671,7 +672,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         if (gv.hasInitializer())
         {
             // Always round up alignment of global doubles to 8 bytes.
-            if (gv.getType().getElementType() == Type.DoubleTy && align < 3)
+            if (gv.getType().getElementType() == LLVMContext.DoubleTy && align < 3)
                 align = 3;
             if (align < 4)
             {

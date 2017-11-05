@@ -16,6 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.type.FunctionType;
 import backend.type.*;
@@ -260,14 +261,14 @@ public class CodeGenTypes
             }
             case Indirect:
             {
-                restType = Type.VoidTy;
+                restType = LLVMContext.VoidTy;
                 Type ty = convertType(retTy);
                 argTypes.add(PointerType.get(ty, retTy.getAddressSpace()));
                 break;
             }
             case Ignore:
             {
-                restType = Type.VoidTy;
+                restType = LLVMContext.VoidTy;
                 break;
             }
             case Coerce:
@@ -364,7 +365,7 @@ public class CodeGenTypes
         backend.type.Type res = convertType(t);
 
         // If this is a non-bool type, don't map it.
-        if (!res.equals(Type.Int1Ty))
+        if (!res.equals(LLVMContext.Int1Ty))
             return res;
 
         return backend.type.IntegerType.get((int)builder.getASTContext().getTypeSize(t));
@@ -373,13 +374,13 @@ public class CodeGenTypes
     private backend.type.Type getTypeForFormat(FltSemantics flt)
     {
         if (flt.equals(APFloat.IEEEsingle))
-            return Type.FloatTy;
+            return LLVMContext.FloatTy;
         if (flt.equals(APFloat.IEEEdouble))
-            return Type.DoubleTy;
+            return LLVMContext.DoubleTy;
         if (flt.equals(APFloat.IEEEquad))
-            return Type.FP128Ty;
+            return LLVMContext.FP128Ty;
         if (flt.equals(APFloat.x87DoubleExtended))
-            return Type.X86_FP80Ty;
+            return LLVMContext.X86_FP80Ty;
         assert false:"Unknown float format!";
         return null;
     }
@@ -462,7 +463,7 @@ public class CodeGenTypes
                 // just map to the same as char.
                 return backend.type.IntegerType.get(8);
             case Bool:
-                return Type.Int1Ty;
+                return LLVMContext.Int1Ty;
             case Char_U:
             case UShort:
             case UInt:
@@ -513,7 +514,7 @@ public class CodeGenTypes
                 Type eltTy = convertTypeForMemRecursive(a.getElementType());
                 if (!eltTy.isSized())
                 {
-                    eltTy = Type.Int8Ty;
+                    eltTy = LLVMContext.Int8Ty;
                 }
                 return backend.type.ArrayType.get(eltTy, 0);
             }
@@ -527,7 +528,7 @@ public class CodeGenTypes
                 if (!eltTy.isSized())
                 {
                     skipLayout = true;
-                    eltTy = backend.type.Type.Int8Ty;
+                    eltTy = LLVMContext.Int8Ty;
                 }
                 return backend.type.ArrayType.get(eltTy, a.getSize().getZExtValue());
             }
@@ -597,7 +598,7 @@ public class CodeGenTypes
     public backend.type.Type convertTypeForMemRecursive(QualType ty)
     {
         backend.type.Type resType = convertTypeRecursive(ty);
-        if (resType.equals(Type.Int1Ty))
+        if (resType.equals(LLVMContext.Int1Ty))
             return IntegerType.get((int) context.getTypeSize(ty));
 
         return resType;

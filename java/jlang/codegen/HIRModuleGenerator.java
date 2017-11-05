@@ -1,6 +1,7 @@
 package jlang.codegen;
 
 import backend.support.CallingConv;
+import backend.support.LLVMContext;
 import backend.value.Module;
 import backend.value.Operator;
 import backend.intrinsic.Intrinsic;
@@ -264,8 +265,8 @@ public class HIRModuleGenerator
 	    if (entry instanceof ConstantExpr)
 	    {
 		    ConstantExpr ce = (ConstantExpr)entry;
-		    assert ce.getOpCode() == Operator.BitCast
-				    || ce.getOpCode() == Operator.GetElementPtr;
+		    assert ce.getOpcode() == Operator.BitCast
+				    || ce.getOpcode() == Operator.GetElementPtr;
 		    entry = ce.operand(0);
 	    }
 
@@ -446,7 +447,7 @@ public class HIRModuleGenerator
         boolean isIncompleteFunction = false;
         if (!(type instanceof FunctionType))
         {
-            type = FunctionType.get(Type.VoidTy, new ArrayList<>(), false);
+            type = FunctionType.get(LLVMContext.VoidTy, new ArrayList<>(), false);
             isIncompleteFunction = true;
         }
 
@@ -597,7 +598,7 @@ public class HIRModuleGenerator
             Value[] args = new Value[argNo];
             argList.toArray(args);
             CallInst newCI = new CallInst(args, newFn,"", ci);
-            if (!newCI.getType().equals(Type.VoidTy))
+            if (!newCI.getType().equals(LLVMContext.VoidTy))
                 newCI.setName(ci.getName());
 
             newCI.setCallingConv(ci.getCallingConv());
@@ -632,7 +633,7 @@ public class HIRModuleGenerator
         if (entry instanceof ConstantExpr)
         {
             ConstantExpr ce = (ConstantExpr)entry;
-            assert ce.getOpCode() == Operator.BitCast;
+            assert ce.getOpcode() == Operator.BitCast;
             entry = ce.operand(0);
         }
 
@@ -769,7 +770,7 @@ public class HIRModuleGenerator
                 case LValue:
                 {
                     backend.type.Type destTy = getCodeGenTypes().convertType(ty);
-                    Constant offset = ConstantInt.get(backend.type.Type.Int64Ty,
+                    Constant offset = ConstantInt.get(LLVMContext.Int64Ty,
                             result.getValue().getLValueOffset());
                     Constant c;
                     Expr LVBase = result.getValue().getLValueBase();
@@ -781,7 +782,7 @@ public class HIRModuleGenerator
                         if (!offset.isNullValue())
                         {
                             backend.type.Type type = PointerType.get(
-                                    backend.type.Type.Int8Ty, ty.getAddressSpace());
+                                    LLVMContext.Int8Ty, ty.getAddressSpace());
                             Constant casted = getBitCast(c, type);
                             casted = getElementPtr(casted, offset, 1);
                             c = getBitCast(casted, c.getType());
@@ -811,7 +812,7 @@ public class HIRModuleGenerator
                 case Int:
                 {
                     Constant c = ConstantInt.get(result.getValue().getInt());
-                    if (c.getType() == backend.type.Type.Int1Ty)
+                    if (c.getType() == LLVMContext.Int1Ty)
                     {
                         backend.type.Type boolTy =
                                 getCodeGenTypes().convertTypeForMem(expr.getType());
@@ -841,7 +842,7 @@ public class HIRModuleGenerator
         }
 
         Constant c = new ConstExprEmitter(this, cgf).visit(expr);
-        if (c!=null && c.getType() == backend.type.Type.Int1Ty)
+        if (c!=null && c.getType() == LLVMContext.Int1Ty)
         {
             backend.type.Type boolTy = getCodeGenTypes().convertTypeForMem(expr.getType());
             getZExt(c, boolTy);

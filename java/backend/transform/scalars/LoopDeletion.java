@@ -162,7 +162,7 @@ public final class LoopDeletion implements LoopPass
 		ti.replaceUsesOfWith(loop.getHeaderBlock(), exitBB);
 
 		// Rewrite all of the phi node in the exit block.
-		// replace the incoming value from exiting bb to the preheader block.
+		// replace the incoming value from exiting parent to the preheader block.
 		for (Instruction inst : exitBB)
 		{
 			if (!(inst instanceof PhiNode))

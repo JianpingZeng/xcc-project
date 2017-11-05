@@ -157,7 +157,7 @@ public class ConditionalPropagate implements FunctionPass
     }
 
     /**
-     * We know that bb has one predecessor. If there are any single-entry
+     * We know that parent has one predecessor. If there are any single-entry
      * phi nodes in it, fold them away. This handles the case when all
      * entries to the phi nodes in a block are guaranteed equal, such as
      * when the block has exactly one predecessor.

@@ -67,7 +67,7 @@ public abstract class DominatorFrontierBase implements FunctionPass
     }
 
     /**
-     * Remove basic block bb's frontiers from frontiers set.
+     * Remove basic block parent's frontiers from frontiers set.
      * @param bb
      */
     public void removeBlock(BasicBlock bb)
@@ -78,13 +78,13 @@ public abstract class DominatorFrontierBase implements FunctionPass
 
     public void addToFrontier(BasicBlock bb, BasicBlock frontierNode)
     {
-        assert find(bb) != null :"bb is not in frontier set";
+        assert find(bb) != null :"parent is not in frontier set";
         frontiers.get(bb).add(frontierNode);
     }
 
     public void removeFromFrontier(BasicBlock bb, BasicBlock frontierNode)
     {
-        assert find(bb) != null :"bb is not in frontier set";
+        assert find(bb) != null :"parent is not in frontier set";
         frontiers.get(bb).remove(frontierNode);
     }
 
@@ -101,7 +101,7 @@ public abstract class DominatorFrontierBase implements FunctionPass
         for (BasicBlock bb : ds1)
         {
             if (!tempSet.remove(bb))
-                // bb in ds1 but not in ds`.
+                // parent in ds1 but not in ds`.
                 return true;
         }
 

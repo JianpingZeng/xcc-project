@@ -18,11 +18,14 @@ package jlang.codegen;
 
 import backend.hir.HIRBuilder;
 import backend.support.CallSite;
+import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.GlobalValue.LinkageType;
+import backend.value.Instruction.AllocaInst;
+import backend.value.Instruction.BitCastInst;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.TerminatorInst;
 import jlang.ast.Tree;
@@ -222,8 +225,8 @@ public final class CodeGenFunction
 		// Create a marker to make it easy to insert allocas into the entryblock
 		// later.  Don't create this with the builder, because we don't want it
 		// folded.
-		Value undef = Value.UndefValue.get(Type.Int32Ty);
-		allocaInstPtr = new Instruction.BitCastInst(undef, Type.Int32Ty, "allocapt");
+		Value undef = Value.UndefValue.get(LLVMContext.Int32Ty);
+		allocaInstPtr = new BitCastInst(undef, LLVMContext.Int32Ty, "allocapt", entryBB);
 
 		returnBlock = createBasicBlock("return");
 		builder.setInsertPoint(entryBB);
@@ -532,7 +535,7 @@ public final class CodeGenFunction
 
 	private Value createAllocaTemp(QualType ty, String name)
 	{
-		Instruction.AllocaInst alloc = createTempAlloc(convertType(ty), name);
+		AllocaInst alloc = createTempAlloc(convertType(ty), name);
 		return alloc;
 	}
 
@@ -543,14 +546,14 @@ public final class CodeGenFunction
 	 * @param name
 	 * @return
 	 */
-	public Instruction.AllocaInst createTempAlloc(Type ty, String name)
+	public AllocaInst createTempAlloc(Type ty, String name)
 	{
-		return new Instruction.AllocaInst(ty, null, name, allocaInstPtr);
+		return new AllocaInst(ty, null, name, allocaInstPtr);
 	}
 
-	private Instruction.AllocaInst createTempAlloc(Type ty)
+	private AllocaInst createTempAlloc(Type ty)
 	{
-		return new Instruction.AllocaInst(ty, null, "temp", allocaInstPtr);
+		return new AllocaInst(ty, null, "temp", allocaInstPtr);
 	}
 
 	public Type convertType(QualType t)
@@ -1254,7 +1257,7 @@ public final class CodeGenFunction
 		{
 			// A normal fixed sized variable becomes an alloca in the entry block.
 			backend.type.Type lty = convertTypeForMem(ty);
-			Instruction.AllocaInst alloca = createTempAlloc(lty);
+			AllocaInst alloca = createTempAlloc(lty);
 			alloca.setName(vd.getNameAsString());
 
 			declPtr = alloca;
@@ -1269,9 +1272,9 @@ public final class CodeGenFunction
 			Value vlaSize = emitVLASize(ty);
 
 			// downcast the VLA getNumOfSubLoop expression.
-			vlaSize = builder.createIntCast(vlaSize, Type.Int32Ty, false, "");
+			vlaSize = builder.createIntCast(vlaSize, LLVMContext.Int32Ty, false, "");
 			// allocate an array with variable getNumOfSubLoop.
-			Value vla = builder.createAlloca(Type.Int8Ty, vlaSize, "vla");
+			Value vla = builder.createAlloca(LLVMContext.Int8Ty, vlaSize, "vla");
 
 			// convert the pointer to array into regular pointer.
 			declPtr = builder.createBitCast(vla, elemPtrTy, "temp");
@@ -1407,7 +1410,7 @@ public final class CodeGenFunction
 		//     a = b;     // convert to memcpy calling in LLVM IR.
 		// }
 		//
-		Type bp = PointerType.getUnqual(Type.Int8Ty);
+		Type bp = PointerType.getUnqual(LLVMContext.Int8Ty);
 		if (destPtr.getType() != bp)
 			destPtr = builder.createBitCast(destPtr, bp, "tmp");
 		if (srcPtr.getType() != bp)
@@ -1423,7 +1426,7 @@ public final class CodeGenFunction
 		// indicate when either the source or the destination is volatile.
 		builder.createCall4(generator.getMemCpyFn(), destPtr, srcPtr,
 				ConstantInt.get(intPtr, typeInfo.first/8),
-				ConstantInt.get(Type.Int32Ty, typeInfo.second/8));
+				ConstantInt.get(LLVMContext.Int32Ty, typeInfo.second/8));
 	}
 
 
@@ -1796,7 +1799,7 @@ public final class CodeGenFunction
 
 	private void emitCaseStmt(Tree.CaseStmt s)
 	{
-		emitBlock(createBasicBlock("sw.bb"));
+		emitBlock(createBasicBlock("sw.parent"));
 		BasicBlock caseDest = builder.getInsertBlock();
 
 		APSInt caseVal = s.getCondExpr().evaluateAsInt(getContext());
@@ -1915,8 +1918,8 @@ public final class CodeGenFunction
 		Value v = builder.createLoad(addr, isVolatile, "tmp");
 		// Bool can have different representation in memory than in registers.
 		if (ty.isBooleanType())
-			if (v.getType() != Type.Int1Ty)
-				v = builder.createTrunc(v, Type.Int1Ty, "tobool");
+			if (v.getType() != LLVMContext.Int1Ty)
+				v = builder.createTrunc(v, LLVMContext.Int1Ty, "tobool");
 		return v;
 	}
 
@@ -2151,7 +2154,7 @@ public final class CodeGenFunction
 		CallSite cs = new CallSite(builder.createCall(callee, args));
 
 		Instruction.CallInst ci = cs.getInstruction();
-		if (ci.getType() != Type.VoidTy)
+		if (ci.getType() != LLVMContext.VoidTy)
 			ci.setName("call");
 
 		switch (retAI.getKind())
@@ -2518,7 +2521,7 @@ public final class CodeGenFunction
 		PointerType baseType = (PointerType) baseValue.getType();
 		baseValue = builder.createBitCast(baseValue, PointerType.getUnqual(fieldType), "tmp");
 
-		Value idx = ConstantInt.get(Type.Int32Ty, info.fieldNo);
+		Value idx = ConstantInt.get(LLVMContext.Int32Ty, info.fieldNo);
 		Value v = builder.createGEP(baseValue, idx, "tmp");
 
 		return LValue.makeBitfield(v, info.start, info.size,
@@ -2592,7 +2595,7 @@ public final class CodeGenFunction
 
 	public void emitMemSetToZero(Value address, QualType ty)
 	{
-		Type bp = PointerType.getUnqual(Type.Int8Ty);
+		Type bp = PointerType.getUnqual(LLVMContext.Int8Ty);
 		if (address.getType() != bp)
 			address = builder.createBitCast(address, bp, "bitcast.tmp");
 
@@ -2608,9 +2611,9 @@ public final class CodeGenFunction
 
 		builder.createCall4(generator.getMemSetFn(),
 				address,
-				Constant.getNullValue(Type.Int8Ty),
+				Constant.getNullValue(LLVMContext.Int8Ty),
 				ConstantInt.get(intPtr, typeInfo.first/8),
-				ConstantInt.get(Type.Int32Ty, typeInfo.second/8),
+				ConstantInt.get(LLVMContext.Int32Ty, typeInfo.second/8),
 				"intrinsic.memset");
 	}
 }

@@ -75,7 +75,7 @@ public class SCCP implements FunctionPass
         {
             if (!bbExecutable.contains(bb))
             {
-                // This bb is dead.
+                // This parent is dead.
                 instToDelete.addAll(bb.getInstList());
 
                 // We just delete the instruction but not remove this BasicBlock

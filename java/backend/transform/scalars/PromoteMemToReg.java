@@ -432,7 +432,7 @@ public final class PromoteMemToReg
 			    preds.add(predItr.next());
 
 
-			// loop through all bb which have entity in specified phiNode
+			// loop through all parent which have entity in specified phiNode
 			// and remove them from preds list.
 			for (int idx = 0; idx < phiNode.getNumberIncomingValues(); idx++)
 			{
@@ -760,15 +760,16 @@ public final class PromoteMemToReg
 
 		PhiNode phiNode = newPhiNodes.get(pair);
 
-		// if the specific bb already has a phiNode node added for the i-th alloca
+		// if the specific parent already has a phiNode node added for the i-th alloca
 		// and the we have done.
 		if (phiNode != null)
 			return false;
 
 		AllocaInst AI = allocas.get(allocaNo);
 		// create a phiNode node and add the phiNode-node into the basic block
-		phiNode = new PhiNode(AI.getType(), bb.getNumPredecessors(),
-				AI.name() + "." + version.get());
+		phiNode = new PhiNode(AI.getType(),
+				bb.getNumPredecessors(),
+				AI.getName() + "." + version.get());
 		version.set(version.get()+1);
 
 		bb.insertAfterFirst(phiNode);
@@ -1005,7 +1006,7 @@ public final class PromoteMemToReg
 	}
 
 	/**
-	 * This keeps a per-bb relative ordering of load/store instructions
+	 * This keeps a per-parent relative ordering of load/store instructions
 	 * in the block that directly load or store an alloca.
 	 * <p>
 	 * <p>

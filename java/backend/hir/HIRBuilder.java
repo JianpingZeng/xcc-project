@@ -427,7 +427,7 @@ public class HIRBuilder
 				return null; // TODO folder.createAdd(LC, RC);
 			}
 		}
-		return insert(Op2.createAdd(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createAdd(lhs, rhs, name),name);
 	}
 
 	public Value createFAdd(Value lhs, Value rhs, final String name)
@@ -442,7 +442,7 @@ public class HIRBuilder
 			}
 		}
 
-		return insert(Op2.createFAdd(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createFAdd(lhs, rhs, name),name);
 	}
 
 	public Value createSub(Value lhs, Value rhs, final String name)
@@ -457,7 +457,7 @@ public class HIRBuilder
 			}
 		}
 
-		return insert(Op2.createSub(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createSub(lhs, rhs, name),name);
 	}
 
 	public Value createFSub(Value lhs, Value rhs, final String name)
@@ -472,7 +472,7 @@ public class HIRBuilder
 			}
 		}
 
-		return insert(Op2.createFSub(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createFSub(lhs, rhs, name),name);
 	}
 
 	public Value createMul(Value lhs, Value rhs, final String name)
@@ -486,7 +486,7 @@ public class HIRBuilder
 				return null; // TODO folder.createMul(LC, RC);
 			}
 		}
-		return insert(Op2.createMul(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createMul(lhs, rhs, name),name);
 	}
 
 	public Value createFMul(Value lhs, Value rhs, final String name)
@@ -501,7 +501,7 @@ public class HIRBuilder
 			}
 		}
 
-		return insert(Op2.createFMul(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createFMul(lhs, rhs, name),name);
 	}
 
 	public Value createUDiv(Value lhs, Value rhs, final String name)
@@ -515,7 +515,7 @@ public class HIRBuilder
 				return null; // TODO folder.createUDiv(LC, RC);
 			}
 		}
-		return insert(Op2.createUDiv(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createUDiv(lhs, rhs, name),name);
 	}
 
 	public Value createSDiv(Value lhs, Value rhs, final String name)
@@ -529,7 +529,7 @@ public class HIRBuilder
 				return null; // TODO folder.createSDiv(LC, RC);
 			}
 		}
-		return insert(Op2.createSDiv(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createSDiv(lhs, rhs, name),name);
 	}
 
 	public Value createFDiv(Value lhs, Value rhs, final String name)
@@ -543,7 +543,7 @@ public class HIRBuilder
 				return null; // TODO folder.createFDiv(LC, RC);
 			}
 		}
-		return insert(Op2.createFDiv(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createFDiv(lhs, rhs, name),name);
 	}
 
 	public Value createURem(Value lhs, Value rhs, final String name)
@@ -557,7 +557,7 @@ public class HIRBuilder
 				return null; // TODO folder.createURem(LC, RC);
 			}
 		}
-		return insert(Op2.createURem(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createURem(lhs, rhs, name),name);
 	}
 
 	public Value createSRem(Value lhs, Value rhs, final String name)
@@ -571,7 +571,7 @@ public class HIRBuilder
 				return null; // TODO folder.createSRem(LC, RC);
 			}
 		}
-		return insert(Op2.createSRem(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createSRem(lhs, rhs, name),name);
 	}
 
 	public Value createFRem(Value lhs, Value rhs, final String name)
@@ -585,7 +585,7 @@ public class HIRBuilder
 				return null; // TODO folder.createFRem(LC, RC);
 			}
 		}
-		return insert(Op2.createFRem(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createFRem(lhs, rhs, name),name);
 	}
 
 	public Value createShl(Value lhs, Value rhs, final String name)
@@ -599,7 +599,7 @@ public class HIRBuilder
 				return null; // TODO folder.createShl(LC, RC);
 			}
 		}
-		return insert(Op2.createShl(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createShl(lhs, rhs, name),name);
 	}
 
 	public Value createLShr(Value lhs, Value rhs, final String name)
@@ -613,7 +613,7 @@ public class HIRBuilder
 				return null; // TODO folder.createLShr(LC, RC);
 			}
 		}
-		return insert(Op2.createLShr(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createLShr(lhs, rhs, name),name);
 	}
 
 	public Value createAShr(Value lhs, Value rhs, final String name)
@@ -627,7 +627,7 @@ public class HIRBuilder
 				return null; // TODO folder.createAShr(LC, RC);
 			}
 		}
-		return insert(Op2.createAShr(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createAShr(lhs, rhs, name),name);
 	}
 
 	public Value createAnd(Value lhs, Value rhs, final String name)
@@ -641,7 +641,7 @@ public class HIRBuilder
 				return null; // TODO folder.createAnd(LC, RC);
 			}
 		}
-		return insert(Op2.createAnd(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createAnd(lhs, rhs, name),name);
 	}
 
 	public Value createOr(Value lhs, Value rhs, final String name)
@@ -655,7 +655,7 @@ public class HIRBuilder
 				return null; // TODO folder.createOr(LC, RC);
 			}
 		}
-		return insert(Op2.createOr(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createOr(lhs, rhs, name),name);
 	}
 
 	public Value createXor(Value lhs, Value rhs, final String name)
@@ -669,7 +669,7 @@ public class HIRBuilder
 				return null; // TODO folder.createXor(LC, RC);
 			}
 		}
-		return insert(Op2.createXor(lhs, rhs, name),name);
+		return insert(BinaryInstruction.createXor(lhs, rhs, name),name);
 	}
 
 	public Value createBinOp(Operator opc, Value lhs,
@@ -684,7 +684,7 @@ public class HIRBuilder
 				return null; // TODO folder.createBinOp(opc, LC, RC);
 			}
 		}
-		return insert(Op2.create(opc, lhs, rhs, name),name);
+		return insert(BinaryInstruction.create(opc, lhs, rhs, name),name);
 	}
 
 	public Value createNeg(Value v, final String name)
@@ -694,7 +694,7 @@ public class HIRBuilder
 			Constant vc = (Constant)v;
 			return null; // TODO folder.createNeg(vc);
 		}
-		return insert(Op2.createNeg(v), name);
+		return insert(BinaryInstruction.createNeg(v), name);
 	}
 
 	public Value createFNeg(Value v, final String name)
@@ -704,7 +704,7 @@ public class HIRBuilder
 			Constant vc = (Constant)v;
 			return null; // TODO folder.createFNeg(vc);
 		}
-		return insert(Op2.createFNeg(v), name);
+		return insert(BinaryInstruction.createFNeg(v), name);
 	}
 
 	public Value createNot(Value v, final String name)
@@ -714,7 +714,7 @@ public class HIRBuilder
 			Constant vc = (Constant)v;
 			return null; // TODO folder.createNot(vc);
 		}
-		return insert(Op2.createNot(v), name);
+		return insert(BinaryInstruction.createNot(v), name);
 	}
 
 	public LoadInst createLoad(Value addr)

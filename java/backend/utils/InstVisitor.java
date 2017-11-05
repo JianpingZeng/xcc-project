@@ -39,41 +39,41 @@ public interface InstVisitor<RetTy>
 				assert false : "Undefined instruction type encountered!";
 				System.exit(-1);
 			case Add:
-				return visitAdd((Op2) inst);
+				return visitAdd((BinaryInstruction) inst);
 			case FAdd:
-				return visitFAdd((Op2) inst);
+				return visitFAdd((BinaryInstruction) inst);
 			case Sub:
-				return visitSub((Op2) inst);
+				return visitSub((BinaryInstruction) inst);
 			case FSub:
-				return visitFSub((Op2) inst);
+				return visitFSub((BinaryInstruction) inst);
 			case Mul:
-				return visitMul((Op2) inst);
+				return visitMul((BinaryInstruction) inst);
 			case FMul:
-				return visitFMul((Op2) inst);
+				return visitFMul((BinaryInstruction) inst);
 			case UDiv:
-				return visitUDiv((Op2) inst);
+				return visitUDiv((BinaryInstruction) inst);
 			case SDiv:
-				return visitSDiv((Op2) inst);
+				return visitSDiv((BinaryInstruction) inst);
 			case FDiv:
-				return visitFDiv((Op2) inst);
+				return visitFDiv((BinaryInstruction) inst);
 			case URem:
-				return visitURem((Op2) inst);
+				return visitURem((BinaryInstruction) inst);
 			case SRem:
-				return visitSRem((Op2) inst);
+				return visitSRem((BinaryInstruction) inst);
 			case FRem:
-				return visitFRem((Op2) inst);
+				return visitFRem((BinaryInstruction) inst);
 			case And:
-				return visitAnd((Op2) inst);
+				return visitAnd((BinaryInstruction) inst);
 			case Or:
-				return visitOr((Op2) inst);
+				return visitOr((BinaryInstruction) inst);
 			case Xor:
-				return visitXor((Op2) inst);
+				return visitXor((BinaryInstruction) inst);
 			case Shl:
-				return visitShl((Op2) inst);
+				return visitShl((BinaryInstruction) inst);
 			case AShr:
-				return visitAShr((Op2) inst);
+				return visitAShr((BinaryInstruction) inst);
 			case LShr:
-				return visitLShr((Op2) inst);
+				return visitLShr((BinaryInstruction) inst);
 			case ICmp:
 				return visitICmp((ICmpInst) inst);
 			case FCmp:
@@ -117,47 +117,47 @@ public interface InstVisitor<RetTy>
 	//===============================================//
 	// arithmetic instr.
 	//===============================================//
-	RetTy visitAdd(Op2 inst);
+	RetTy visitAdd(BinaryInstruction inst);
 
-	RetTy visitFAdd(Op2 inst);
+	RetTy visitFAdd(BinaryInstruction inst);
 
-	RetTy visitSub(Op2 inst);
+	RetTy visitSub(BinaryInstruction inst);
 
-	RetTy visitFSub(Op2 inst);
+	RetTy visitFSub(BinaryInstruction inst);
 
-	RetTy visitMul(Op2 inst);
+	RetTy visitMul(BinaryInstruction inst);
 
-	RetTy visitFMul(Op2 inst);
+	RetTy visitFMul(BinaryInstruction inst);
 
-	RetTy visitUDiv(Op2 inst);
+	RetTy visitUDiv(BinaryInstruction inst);
 
-	RetTy visitSDiv(Op2 inst);
+	RetTy visitSDiv(BinaryInstruction inst);
 
-	RetTy visitFDiv(Op2 inst);
+	RetTy visitFDiv(BinaryInstruction inst);
 
-	RetTy visitURem(Op2 inst);
+	RetTy visitURem(BinaryInstruction inst);
 
-	RetTy visitSRem(Op2 inst);
+	RetTy visitSRem(BinaryInstruction inst);
 
-	RetTy visitFRem(Op2 inst);
+	RetTy visitFRem(BinaryInstruction inst);
 
 	//===============================================//
 	// bitwise operator.
 	//===============================================//
-	RetTy visitAnd(Op2 inst);
+	RetTy visitAnd(BinaryInstruction inst);
 
-	RetTy visitOr(Op2 inst);
+	RetTy visitOr(BinaryInstruction inst);
 
-	RetTy visitXor(Op2 inst);
+	RetTy visitXor(BinaryInstruction inst);
 
 	//=============================================//
 	// shift operators.
 	//============================================//
-	RetTy visitShl(Op2 inst);
+	RetTy visitShl(BinaryInstruction inst);
 
-	RetTy visitLShr(Op2 inst);
+	RetTy visitLShr(BinaryInstruction inst);
 
-	RetTy visitAShr(Op2 inst);
+	RetTy visitAShr(BinaryInstruction inst);
 
 	//===============================================//
 	// comparison instr.

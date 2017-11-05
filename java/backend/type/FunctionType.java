@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import tools.TypeMap;
 
 import java.util.ArrayList;
@@ -117,7 +118,7 @@ public class FunctionType extends DerivedType
             return true;
         }
 
-        if (retType == Type.VoidTy || retType instanceof OpaqueType)
+        if (retType == LLVMContext.VoidTy || retType instanceof OpaqueType)
             return true;
 
         if (!(retType instanceof StructType) || ((StructType)retType).getNumOfElements() == 0)

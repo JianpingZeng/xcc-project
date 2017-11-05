@@ -118,7 +118,7 @@ public final class GVNPRE implements FunctionPass
 
         private int nextValueNumber;
 
-        private ExpressionOpCode getOpcode(Op2 inst)
+        private ExpressionOpCode getOpcode(BinaryInstruction inst)
         {
             switch (inst.getOpcode())
             {
@@ -272,7 +272,7 @@ public final class GVNPRE implements FunctionPass
             }
         }
 
-        private Expression createExpression(Op2 inst)
+        private Expression createExpression(BinaryInstruction inst)
         {
             Expression e = new Expression();
             e.opcode = getOpcode(inst);
@@ -333,9 +333,9 @@ public final class GVNPRE implements FunctionPass
                 return valueNumbering.get(val);
 
             Expression e = null;
-            if (val instanceof Op2)
+            if (val instanceof BinaryInstruction)
             {
-                e = createExpression((Op2) val);
+                e = createExpression((BinaryInstruction) val);
             }
             else if (val instanceof CmpInst)
             {
@@ -561,7 +561,7 @@ public final class GVNPRE implements FunctionPass
                 curExprs.set(num);
             }
         }
-        else if (inst instanceof CmpInst || inst instanceof Op2)
+        else if (inst instanceof CmpInst || inst instanceof BinaryInstruction)
         {
             int num = valueTable.lookupOrAdd(inst);
 
@@ -679,7 +679,7 @@ public final class GVNPRE implements FunctionPass
             }
         }
 
-        if (val instanceof Op2 || val instanceof CmpInst)
+        if (val instanceof BinaryInstruction || val instanceof CmpInst)
         {
             User u = (User)val;
             Value newOp1;
@@ -702,10 +702,11 @@ public final class GVNPRE implements FunctionPass
             if (newOp1 != u.operand(0) || newOp2 != u.operand(1))
             {
                 Instruction newVal = null;
-                if (val instanceof Op2)
+                if (val instanceof BinaryInstruction)
                 {
-                    Op2 op = (Op2)val;
-                    newVal = Op2.create(op.getOpcode(), newOp1, newOp2,
+                    BinaryInstruction op = (BinaryInstruction)val;
+                    newVal = BinaryInstruction
+                            .create(op.getOpcode(), newOp1, newOp2,
                             op.getName() +".expr");
                 }
                 else
@@ -883,7 +884,7 @@ public final class GVNPRE implements FunctionPass
                         stack.pop();
                     }
                 }
-                else if (e instanceof Op2 || e instanceof CmpInst)
+                else if (e instanceof BinaryInstruction || e instanceof CmpInst)
                 {
                     User u = (User)e;
                     Value l = findLeader(vals, valueTable.lookup(u.operand(0)));
@@ -965,7 +966,7 @@ public final class GVNPRE implements FunctionPass
                     anticIn.reset(valueTable.lookup(v));
                 }
             }
-            else if (v instanceof Op2 || v instanceof CmpInst)
+            else if (v instanceof BinaryInstruction || v instanceof CmpInst)
             {
                 User u = (User)v;
                 boolean lhsValid = !(u.operand(0) instanceof Instruction);
@@ -1160,7 +1161,7 @@ public final class GVNPRE implements FunctionPass
                 User u = (User)e2;
 
                 Value s1 = null;
-                if (u.operand(0) instanceof Op2
+                if (u.operand(0) instanceof BinaryInstruction
                         || u.operand(0) instanceof CmpInst
                         || u.operand(0) instanceof CastInst
                         || u.operand(0) instanceof GetElementPtrInst)
@@ -1173,9 +1174,9 @@ public final class GVNPRE implements FunctionPass
                 }
 
                 Value s2 = null;
-                if (u instanceof Op2 || u instanceof CmpInst)
+                if (u instanceof BinaryInstruction || u instanceof CmpInst)
                 {
-                    if (u.operand(1) instanceof Op2
+                    if (u.operand(1) instanceof BinaryInstruction
                             || u.operand(1) instanceof CmpInst
                             || u.operand(1) instanceof CastInst
                             || u.operand(1) instanceof GetElementPtrInst)
@@ -1196,7 +1197,7 @@ public final class GVNPRE implements FunctionPass
                     for (int i = gep.getIndexBegin(); i < gep.getIndexEnd(); i++)
                     {
                         Value op = gep.operand(i);
-                        if (op instanceof Op2
+                        if (op instanceof BinaryInstruction
                                 || op instanceof CmpInst
                                 || op instanceof CastInst
                                 || op instanceof GetElementPtrInst)
@@ -1211,22 +1212,25 @@ public final class GVNPRE implements FunctionPass
                 }
 
                 Value newVal = null;
-                if (u instanceof Op2)
+                if (u instanceof BinaryInstruction)
                 {
-                    newVal = Op2.create(u.opcode, s1, s2,
+                    BinaryInstruction bi = (BinaryInstruction)u;
+                    newVal = BinaryInstruction.create(bi.getOpcode(),
+                            s1, s2,
                             u.getName()+".gnvpre",
                             pred.getTerminator());
                 }
                 else if (u instanceof CmpInst)
                 {
                     CmpInst ci = (CmpInst)u;
-                    newVal = CmpInst.create(u.opcode, ci.getPredicate(),
+                    newVal = CmpInst.create(ci.getOpcode(), ci.getPredicate(),
                             s1, s2, u.getName() + ".gvnpre",
                             pred.getTerminator());
                 }
                 else if (u instanceof CastInst)
                 {
-                    newVal = CastInst.create(u.opcode, s1, u.getType(),
+                    CastInst ci = (CastInst)u;
+                    newVal = CastInst.create(ci.getOpcode(), s1, u.getType(),
                             u.getName()+".gvnpre", pred.getTerminator());
                 }
                 else if (u instanceof GetElementPtrInst)
@@ -1278,7 +1282,7 @@ public final class GVNPRE implements FunctionPass
 
         for (Value val : worklist)
         {
-            if (val instanceof Op2 || val instanceof CmpInst
+            if (val instanceof BinaryInstruction || val instanceof CmpInst
                     || val instanceof CastInst
                     || val instanceof GetElementPtrInst)
             {
@@ -1402,7 +1406,7 @@ public final class GVNPRE implements FunctionPass
             for (Iterator<Instruction> itr = bb.iterator(); itr.hasNext(); )
             {
                 Instruction inst = itr.next();
-                if (inst instanceof Op2 || inst instanceof CmpInst
+                if (inst instanceof BinaryInstruction || inst instanceof CmpInst
                         || inst instanceof CastInst
                         || inst instanceof GetElementPtrInst)
                 {

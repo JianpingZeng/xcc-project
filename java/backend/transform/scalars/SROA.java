@@ -21,6 +21,7 @@ import backend.analysis.DomTreeInfo;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
+import backend.support.LLVMContext;
 import backend.type.ArrayType;
 import backend.type.StructType;
 import backend.type.Type;
@@ -215,7 +216,7 @@ public final class SROA implements FunctionPass
                     {
                         String name = gep.getName();
                         ArrayList<Value> args = new ArrayList<>();
-                        args.add(ConstantInt.getNullValue(Type.Int64Ty));
+                        args.add(ConstantInt.getNullValue(LLVMContext.Int64Ty));
                         for (int i = 3, e = gep.getNumOfOperands(); i != e; i++)
                             args.add(gep.operand(i));
 
@@ -262,7 +263,7 @@ public final class SROA implements FunctionPass
 
         GetElementPtrInst gep = (GetElementPtrInst)u;
         if (gep.getNumOfOperands() <= 2
-                || !gep.operand(1).equals(ConstantInt.getNullValue(Type.Int64Ty))
+                || !gep.operand(1).equals(ConstantInt.getNullValue(LLVMContext.Int64Ty))
                 || (!(gep.operand(2) instanceof ConstantInt)
                 && !(gep.operand(2) instanceof ConstantExpr)))
             return false;
@@ -276,27 +277,31 @@ public final class SROA implements FunctionPass
         for (Use u : inst.getUseList())
         {
             User user = u.getUser();
-            switch (user.getOpcode())
+            if (user instanceof Instruction)
             {
-                case Load:
-                    break;
-                case Store:
-                    // Invalid if the value stored into target address is gep.
-                    // It should be second operand.
-                    if (user.operand(0).equals(inst))
-                        return false;
-                    break;
-                case GetElementPtr:
-                    GetElementPtrInst gep = (GetElementPtrInst)user;
-                    if (gep.getNumOfOperands() >= 2 && (!gep.operand(1).isConstant())
-                            || !((Constant)gep.operand(1)).isNullValue())
-                        return false;
+                Instruction in = (Instruction)user;
+                switch (in.getOpcode())
+                {
+                    case Load:
+                        break;
+                    case Store:
+                        // Invalid if the value stored into target address is gep.
+                        // It should be second operand.
+                        if (user.operand(0).equals(inst))
+                            return false;
+                        break;
+                    case GetElementPtr:
+                        GetElementPtrInst gep = (GetElementPtrInst) user;
+                        if (gep.getNumOfOperands() >= 2 && (!gep.operand(1).isConstant())
+                                || !((Constant) gep.operand(1)).isNullValue())
+                            return false;
 
-                    if (!isSafeElementUse(gep))
+                        if (!isSafeElementUse(gep))
+                            return false;
+                        break;
+                    default:
                         return false;
-                    break;
-                default:
-                    return false;
+                }
             }
         }
         return true;

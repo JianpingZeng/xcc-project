@@ -16,6 +16,7 @@ package backend.type;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import tools.TypeMap;
 
 /**
@@ -65,7 +66,7 @@ public class PointerType extends SequentialType
 
     static boolean isValidElementType(Type eleTy)
     {
-        return !(eleTy == Type.VoidTy || eleTy == Type.LabelTy);
+        return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
     }
 
     public int getAddressSpace()

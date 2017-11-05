@@ -17,8 +17,8 @@ package backend.target;
  */
 
 import backend.codegen.AsmWriterFlavorTy;
+import backend.support.LLVMContext;
 import backend.type.ArrayType;
-import backend.type.Type;
 import backend.value.*;
 
 import java.util.TreeMap;
@@ -1024,7 +1024,7 @@ public class TargetAsmInfo
             ArrayType at = c.getType() instanceof ArrayType ? (ArrayType)c.getType() : null;
             if (at != null)
             {
-                return at.getElementType().equals(Type.Int8Ty) &&
+                return at.getElementType().equals(LLVMContext.Int8Ty) &&
                         at.getNumElements() == 1;
             }
         }

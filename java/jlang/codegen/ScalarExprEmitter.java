@@ -17,6 +17,7 @@ package jlang.codegen;
  */
 
 import backend.hir.HIRBuilder;
+import backend.support.LLVMContext;
 import tools.APFloat;
 import backend.type.FunctionType;
 import backend.type.IntegerType;
@@ -99,7 +100,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         if (v instanceof Instruction.ZExtInst)
         {
             Instruction.ZExtInst zi = (Instruction.ZExtInst)v;
-            if (zi.operand(0).getType() == Type.Int1Ty)
+            if (zi.operand(0).getType() == LLVMContext.Int1Ty)
             {
                 Value result = zi.operand(0);
 
@@ -338,7 +339,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // type is i8*, but this is future proof.
         if (eltType.isVoidType() || eltType.isFunctionType())
         {
-            Type i8Ty = PointerType.get(Type.Int8Ty, eltType.getAddressSpace());
+            Type i8Ty = PointerType.get(LLVMContext.Int8Ty, eltType.getAddressSpace());
             Value casted = builder.createBitCast(ptr, i8Ty, "bitcast");
             Value res = builder.createGEP(casted, idx, "add.ptr");
             return builder.createBitCast(res, ptr.getType(), "bitcast");
@@ -386,7 +387,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             // void* type is i8*, but this is future proof.
             if (lhsEltType.isVoidType() || lhsEltType.isFunctionType())
             {
-                Type i8Ty = PointerType.get(Type.Int8Ty, lhsEltType.getAddressSpace());
+                Type i8Ty = PointerType.get(LLVMContext.Int8Ty, lhsEltType.getAddressSpace());
                 Value lhsCasted = builder.createBitCast(info.lhs, i8Ty, "sub.ptr.bitcast");
                 Value res = builder.createGEP(lhsCasted, idx, "sub.ptr");
                 return builder.createBitCast(res, info.lhs.getType(), "bitcast");
@@ -588,7 +589,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // Any edges into the ContBlock are now from an (indeterminate number of)
         // edges from this first condition.  All of these values will be false.  Star
         // setting up the PHI node in the endBlock for this.
-        PhiNode phiNode = new PhiNode(Type.Int1Ty, 2, "phi", endBlock);
+        PhiNode phiNode = new PhiNode(LLVMContext.Int1Ty, 2, "phi", endBlock);
         for (Iterator<BasicBlock> predItr = endBlock.predIterator(); predItr.hasNext();)
         {
             phiNode.addIncoming(ConstantInt.getFalse(), predItr.next());
@@ -642,7 +643,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         // Any edges into the endBlock are now from an (indeterminate number of)
         // edges from this first condition.  All of these values will be true.  Star
         // setting up the PHI node in the end Block for this.
-        PhiNode phiNode = new PhiNode(Type.Int1Ty, 2, "phi", endBlock);
+        PhiNode phiNode = new PhiNode(LLVMContext.Int1Ty, 2, "phi", endBlock);
         for (Iterator<BasicBlock> predItr = endBlock.predIterator(); predItr.hasNext(); )
         {
             phiNode.addIncoming(ConstantInt.getTrue(), predItr.next());
@@ -1043,7 +1044,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         if (inVal.getType() instanceof PointerType)
         {
             PointerType pt = (PointerType)inVal.getType();
-            Constant inc = ConstantInt.get(Type.Int32Ty, amountVal);
+            Constant inc = ConstantInt.get(LLVMContext.Int32Ty, amountVal);
             if (!(pt.getElementType() instanceof FunctionType))
             {
                 QualType ptee = valTy.getPointeeType();
@@ -1051,13 +1052,13 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
             }
             else
             {
-                Type i8Ty = PointerType.get(Type.Int8Ty, ((PointerType) inVal.getType()).getAddressSpace());
+                Type i8Ty = PointerType.get(LLVMContext.Int8Ty, ((PointerType) inVal.getType()).getAddressSpace());
                 nextVal = builder.createBitCast(inVal, i8Ty, "tmp");
                 nextVal = builder.createGEP(nextVal, inc, "ptrincdec");;
                 nextVal = builder.createBitCast(nextVal, inVal.getType(), "");
             }
         }
-        else if (inVal.getType() == Type.Int1Ty && isInc)
+        else if (inVal.getType() == LLVMContext.Int1Ty && isInc)
         {
             // Bool++ is an interesting case, due to promotion rules, we get:
             // Bool++ -> Bool = Bool+1 -> Bool = (int)Bool+1 ->
@@ -1079,7 +1080,7 @@ public class ScalarExprEmitter extends StmtVisitor<Value>
         else
         {
             // Add the inc/dec to the real part.
-            assert (inVal.getType() == Type.FloatTy || inVal.getType() == Type.DoubleTy);
+            assert (inVal.getType() == LLVMContext.FloatTy || inVal.getType() == LLVMContext.DoubleTy);
 
             nextVal = ConstantFP.get(new APFloat(amountVal));
             nextVal = builder.createFAdd(inVal, nextVal, isInc?"inc":"dec");

@@ -191,10 +191,10 @@ public class Canonicalizer implements InstVisitor
 				}
 			}
 			//(V)(x op2 y), where (x op2 y) is represented as value.
-			if (value instanceof Op2)
+			if (value instanceof BinaryInstruction)
 			{
 				// check if the operation was IAND with a constant; it may have narrowed the value already
-				Op2 op = (Op2) value;
+				BinaryInstruction op = (BinaryInstruction) value;
 				// constant should be on right hand side if there is one
 				if (op.getOpcode() == Operator.IAnd && op.y.isConstant())
 				{
@@ -558,7 +558,7 @@ public class Canonicalizer implements InstVisitor
 		return null;
 	}
 
-	private void handleOp2(Op2 inst)
+	private void handleOp2(BinaryInstruction inst)
 	{
 		Value x = inst.x;
 		Value y = inst.y;
@@ -675,7 +675,7 @@ public class Canonicalizer implements InstVisitor
 	 *
 	 * @param inst
 	 *
-	private void moveConstantToRight(Op2 inst)
+	private void moveConstantToRight(BinaryInstruction inst)
 	{
 		if (inst.x.isConstant() && inst.getOpcode().isCommutative())
 			inst.swapOperands();

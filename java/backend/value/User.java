@@ -14,19 +14,6 @@ public abstract class User extends Value
      * Mainly for register allocation.
      */
     public int id;
-
-    public Operator opcode;
-
-    /**
-     * The getIdentifier of this instruction.
-     */
-    protected String instName;
-
-    /**
-     * The basic block containing this Value.
-     */
-    protected BasicBlock bb;
-
     /**
      * the number of values used by this user.
      */
@@ -37,16 +24,23 @@ public abstract class User extends Value
      */
     protected ArrayList<Use> operandList;
 
-	public User(Type ty, int valueKind)
+    public User(Type ty, int valueKind)
+    {
+        super(ty, valueKind);
+        id = -1;
+    }
+	public User(Type ty, int valueKind, String name)
 	{
-		super(ty, valueKind);
+		super(ty, valueKind, name);
         id = -1;
 	}
 
 	protected void reserve(int numOperands)
     {
         assert numOperands>0;
-        operandList = new ArrayList<>(numOperands);
+        operandList = new ArrayList<>();
+        for (; numOperands > 0; --numOperands)
+            operandList.add(null);
     }
 
     /**
@@ -72,6 +66,8 @@ public abstract class User extends Value
      */
     public void setOperand(int index, Use use)
     {
+        if (operandList == null)
+            operandList = new ArrayList<>();
         assert (index >= 0 && index < getNumOfOperands() && use != null);
         operandList.set(index, use);
     }
@@ -124,10 +120,5 @@ public abstract class User extends Value
                 setOperand(i, to, this);
             }
         }
-    }
-
-    public Operator getOpcode()
-    {
-        return opcode;
     }
 }
