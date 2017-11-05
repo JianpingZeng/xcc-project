@@ -2716,7 +2716,7 @@ public abstract class Instruction extends User
          */
         public boolean isArrayAllocation()
         {
-            return operand(0) != ConstantInt.get(LLVMContext.Int32Ty, 1);
+            return !operand(0).equals(ConstantInt.get(LLVMContext.Int32Ty, 1));
         }
 
         public Type getAllocatedType()

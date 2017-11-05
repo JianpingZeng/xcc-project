@@ -867,6 +867,9 @@ public class AssemblyWriter
         {
             out.print("volatile ");
         }
+        Operator opc = inst.getOpcode();
+        if (opc != Operator.Store && opc != Operator.Ret && opc != Operator.Br)
+            out.print(" = ");
 
         // Print the instruction operator name.
         out.print(inst.getOpcodeName());
@@ -979,7 +982,8 @@ public class AssemblyWriter
             out.print(' ');
             typePrinter.print(ai.getType().getElementType(), out);
 
-            if (ai.getArraySize() == null || ai.isArrayAllocation())
+
+            if (ai.getArraySize() != null && ai.isArrayAllocation())
             {
                 out.print(", ");
                 writeOperand(ai.getArraySize(), true);

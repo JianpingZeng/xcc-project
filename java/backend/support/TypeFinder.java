@@ -36,6 +36,8 @@ public class TypeFinder
 
     public TypeFinder(TypePrinting printer, ArrayList<Type> fp)
     {
+        visitedConstants = new HashSet<>();
+        visitedTypes = new HashSet<>();
         this.printer = printer;
         numberedTypes = fp;
     }
