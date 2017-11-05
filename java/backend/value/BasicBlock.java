@@ -382,17 +382,16 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	
 	public void insertAfter(Instruction inst, int after)
 	{
-		assert instructions.contains(inst);
-		assert after>0 && after< getNumOfInsts();
-		
-		instructions.add(after + 1, inst);
+		assert after >=1 && after < getNumOfInsts();
+		if (after == getNumOfInsts() - 1)
+			instructions.add(inst);
+		else
+			instructions.add(after + 1, inst);
 	}
 	
 	public void insertBefore(Instruction inst, int insertBefore)
 	{
-		assert instructions.contains(inst);
-		assert insertBefore>= 1 && insertBefore<=getNumOfInsts();
-
+		assert insertBefore >= 0 && insertBefore < getNumOfInsts();
 		instructions.add(insertBefore, inst);
 	}
 

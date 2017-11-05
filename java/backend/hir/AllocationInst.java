@@ -30,17 +30,22 @@ public class AllocationInst extends Instruction.UnaryInstruction
 {
     protected int align;
 
-    protected AllocationInst(Type ty, Operator opcode, Value arraySize,
-            int align, String name, Instruction insertBefore)
+    protected AllocationInst(
+            Type ty,
+            Operator opcode,
+            Value arraySize,
+            int align,
+            String name,
+            Instruction insertBefore)
     {
-        super(ty, opcode, arraySize, name, insertBefore);
+        super(PointerType.getUnqual(ty), opcode, arraySize, name, insertBefore);
         setAlignment(align);
     }
 
     protected AllocationInst(Type ty, Operator opcode, Value arraySize,
             int align, String name, BasicBlock insertAtEnd)
     {
-        super(ty, opcode, arraySize, name, insertAtEnd);
+        super(PointerType.getUnqual(ty), opcode, arraySize, name, insertAtEnd);
         setAlignment(align);
     }
 

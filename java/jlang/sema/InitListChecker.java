@@ -296,7 +296,7 @@ public class InitListChecker
             for (int i = 0, e = rd.getNumFields(); i != e; i++)
             {
                 Decl.FieldDecl fd = rd.getDeclAt(i);
-                if (fd.getDeclName() != null)
+                if (fd.getIdentifier() != null)
                 {
                     structuredList.setInitializedFieldInUnion(fd);
                     break;

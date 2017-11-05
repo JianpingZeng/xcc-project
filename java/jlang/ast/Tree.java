@@ -807,12 +807,12 @@ public abstract class Tree implements StmtClass
 
         IdentifierInfo getID()
         {
-            return label.getDeclName();
+            return label.getIdentifier();
         }
 
         public String getName()
         {
-            return label.getDeclName().getName();
+            return label.getIdentifier().getName();
         }
 
         public Stmt getSubStmt()

@@ -66,7 +66,7 @@ public class Util
 	 * @return the log base 2 of the value
 	 */
 	public static int log2(int val) {
-		assert val > 0 && isPowerOf2(val);
+		assert val == 0 || isPowerOf2(val);
 		return 31 - Integer.numberOfLeadingZeros(val);
 	}
 

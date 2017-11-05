@@ -620,20 +620,10 @@ public abstract class Decl
             this.name = name;
         }
 
-        public IdentifierInfo getDeclName()
-        {
-            return name;
-        }
-
         public String getNameAsString()
         {
             assert name != null;
             return getIdentifier().getName();
-        }
-
-        public void setDeclName(IdentifierInfo ii)
-        {
-            name = ii;
         }
 
         public boolean hasLinkage()
@@ -722,7 +712,7 @@ public abstract class Decl
 
         public boolean declarationReplaces(NamedDecl oldDecl)
         {
-            assert getDeclName().equals(oldDecl.getDeclName()) :
+            assert getIdentifier().equals(oldDecl.getIdentifier()) :
                     "Declaration asmName mismatch!";
             if (this instanceof FunctionDecl)
             {
@@ -917,12 +907,12 @@ public abstract class Decl
          */
         public boolean isUnamaedBitField()
         {
-            return !hasInit && init != null && getDeclName() == null;
+            return !hasInit && init != null && getIdentifier() == null;
         }
 
         public boolean isAnonymousStructOrUnion()
         {
-            if (!isImplicit() || getDeclName() != null)
+            if (!isImplicit() || getIdentifier() != null)
                 return false;
 
             if (getType().isRecordType())
@@ -1162,7 +1152,7 @@ public abstract class Decl
                 return false;
             IDeclContext dc = getDeclContext();
             if (dc != null)
-                return dc.isFileContext();
+                return !dc.isFileContext();
             return false;
         }
 
