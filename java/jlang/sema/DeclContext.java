@@ -243,20 +243,20 @@ public class DeclContext implements IDeclContext
     private void makeDeclVisibleInContextImpl(NamedDecl d)
     {
         // Skip the unnamed declaration.
-        if (d.getDeclName() == null)
+        if (d.getIdentifier() == null)
             return;
 
         if (lookupTable == null)
             lookupTable = new StoredDeclsMap();
 
         StoredDeclsList declNameEntries;
-        if (lookupTable.containsKey(d.getDeclName()))
-            declNameEntries = lookupTable.get(d.getDeclName());
+        if (lookupTable.containsKey(d.getIdentifier()))
+            declNameEntries = lookupTable.get(d.getIdentifier());
         else
         {
             // Insert a new decl list for this declName.
             declNameEntries = new StoredDeclsList();
-            lookupTable.put(d.getDeclName(), declNameEntries);
+            lookupTable.put(d.getIdentifier(), declNameEntries);
         }
 
         // If the d is the first decl of same decl asmName,

@@ -30,7 +30,7 @@ public final class TypedefType extends Type
 
     public String toString()
     {
-        return decl.getDeclName().getName();
+        return decl.getIdentifier().getName();
     }
 
     public TypeDefDecl getDecl() { return decl;}

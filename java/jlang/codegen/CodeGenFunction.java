@@ -232,7 +232,7 @@ public final class CodeGenFunction
 		builder.setInsertPoint(entryBB);
 
 		if (!resTy.isVoidType())
-			returnValue = createAllocaTemp(resTy, "retval");
+			returnValue = createTempAlloca(resTy, "retval");
 
 		curFnInfo = generator.getCodeGenTypes().getFunctionInfo(fnRetTy, args);
 		emitFunctionPrologue(curFn, curFnInfo, args);
@@ -322,7 +322,7 @@ public final class CodeGenFunction
 						// Create a temporary alloca to hold the argument; the rest of
 						// codegen expects to access aggregates & complex values by
 						// reference.
-						v = createTempAlloc(convertTypeForMem(ty));
+						v = createTempAlloca(convertTypeForMem(ty));
 						builder.createStore(v, v);
 					}
 					else
@@ -340,7 +340,7 @@ public final class CodeGenFunction
                 case Expand:
                 {
                     String name = arg.getNameAsString();
-                    Value temp = createTempAlloc(convertTypeForMem(ty), name + ".addr");
+                    Value temp = createTempAlloca(convertTypeForMem(ty), name + ".addr");
 
                     // Emit each argument for each expanded structure field.
                     int end = expandTypeFromArgs(ty, LValue.makeAddr(temp, 0), fn, ai);
@@ -357,7 +357,7 @@ public final class CodeGenFunction
 				{
 					// Initialize the local variable appropriately.
 					if (hasAggregateBackendType(ty))
-						emitParamDecl(arg, createTempAlloc(convertTypeForMem(ty)));
+						emitParamDecl(arg, createTempAlloca(convertTypeForMem(ty)));
 					else
 						emitParamDecl(arg, Value.UndefValue.get(convertType(arg.getType())));
 
@@ -368,7 +368,7 @@ public final class CodeGenFunction
                 {
                     assert ai != aiEnd :"Argument mismatch!";
 
-                    Value temp = createTempAlloc(convertTypeForMem(ty), "coerce");
+                    Value temp = createTempAlloca(convertTypeForMem(ty), "coerce");
                     createCoercedStore(fn.argAt(ai), temp, this);
                     if (!hasAggregateBackendType(ty))
                     {
@@ -422,7 +422,7 @@ public final class CodeGenFunction
         {
             // Otherwise, do coercion through memory. This is stupid, but simple.
 
-            Value tmp = cgf.createTempAlloc(srcTy);
+            Value tmp = cgf.createTempAlloca(srcTy);
             cgf.builder.createStore(src, tmp);
             Value casted = cgf.builder.createBitCast(tmp, PointerType.getUnqual(destTy));
             Instruction.LoadInst li = cgf.builder.createLoad(casted);
@@ -500,8 +500,8 @@ public final class CodeGenFunction
 			Type lty = convertTypeForMem(ty);
 			if (lty.isSingleValueType())
 			{
-				String name = param.getDeclName() + ".addr";
-				destPtr = createTempAlloc(lty);
+				String name = param.getNameAsString() + ".addr";
+				destPtr = createTempAlloca(lty);
 				destPtr.setName(name);
 
 				// Store the initial value into the alloca just created.
@@ -533,10 +533,14 @@ public final class CodeGenFunction
 				&& !ty.isFunctionType();
 	}
 
-	private Value createAllocaTemp(QualType ty, String name)
+	private Value createTempAlloca(QualType ty)
 	{
-		AllocaInst alloc = createTempAlloc(convertType(ty), name);
-		return alloc;
+		return createTempAlloca(ty, "tmp");
+	}
+
+	private Value createTempAlloca(QualType ty, String name)
+	{
+		return createTempAlloca(convertType(ty), name);
 	}
 
 	/**
@@ -546,12 +550,12 @@ public final class CodeGenFunction
 	 * @param name
 	 * @return
 	 */
-	public AllocaInst createTempAlloc(Type ty, String name)
+	public AllocaInst createTempAlloca(Type ty, String name)
 	{
 		return new AllocaInst(ty, null, name, allocaInstPtr);
 	}
 
-	private AllocaInst createTempAlloc(Type ty)
+	private AllocaInst createTempAlloca(Type ty)
 	{
 		return new AllocaInst(ty, null, "temp", allocaInstPtr);
 	}
@@ -1257,7 +1261,7 @@ public final class CodeGenFunction
 		{
 			// A normal fixed sized variable becomes an alloca in the entry block.
 			backend.type.Type lty = convertTypeForMem(ty);
-			AllocaInst alloca = createTempAlloc(lty);
+			AllocaInst alloca = createTempAlloca(lty);
 			alloca.setName(vd.getNameAsString());
 
 			declPtr = alloca;
@@ -1598,7 +1602,7 @@ public final class CodeGenFunction
 		else
 			assert false : "Undefined context for block var decl";
 
-		String name = contextName + separator + vd.getDeclName();
+		String name = contextName + separator + vd.getIdentifier();
 		Type lty = generator.getCodeGenTypes().convertTypeForMem(ty);
 		return new GlobalVariable(generator.getModule(),
 				lty, ty.isConstant(getContext()),
@@ -1705,6 +1709,7 @@ public final class CodeGenFunction
 					// The internal return value temp always will have pointer
 					// to return-type types.
 					rv = builder.createLoad(returnValue, false, "ret");
+					break;
 				case Indirect:
                 {
                     if (retTy.isComplexType())
@@ -1722,6 +1727,7 @@ public final class CodeGenFunction
                                 builder.createLoad(returnValue, false, "ret"),
                                 curFn.getArgumentList().get(0), false, retTy);
                     }
+                    break;
                 }
                 case Coerce:
                     rv = createCoercedLoad(returnValue, retAI.getCoerceType(), this);
@@ -1770,7 +1776,7 @@ public final class CodeGenFunction
         }
         else
         {
-            Value tmp = cgf.createTempAlloc(ty);
+            Value tmp = cgf.createTempAlloca(ty);
             Value casted = cgf.builder.createBitCast(tmp, PointerType.getUnqual(srcTy));
             Instruction.StoreInst store = cgf.builder.createStore(cgf.builder.createLoad(srcPtr), casted);
             store.setAlignment(1);
@@ -2070,7 +2076,7 @@ public final class CodeGenFunction
 		// If the call returns a temporary with struct return, create a temporary
 		// alloca to hold the result.
 		if (generator.returnTypeUseSret(callInfo))
-			args.add(createTempAlloc(convertTypeForMem(retType)));
+			args.add(createTempAlloca(convertTypeForMem(retType)));
 
 		assert callInfo.getNumOfArgs() == callArgs.size()
                 : "Mismatch between function signature & arguments.";
@@ -2089,7 +2095,7 @@ public final class CodeGenFunction
                     if (rv.isScalar() || rv.isComplex())
                     {
                         // Make a temporary alloca to pass the argument.
-                        args.add(createTempAlloc(convertTypeForMem(ptr.second)));
+                        args.add(createTempAlloca(convertTypeForMem(ptr.second)));
                         if (rv.isScalar())
                         {
                             emitStoreOfScalar(rv.getScalarVal(), args.getLast(),
@@ -2129,7 +2135,7 @@ public final class CodeGenFunction
                     Value srcPtr = null;
                     if (rv.isScalar())
                     {
-                        srcPtr = createTempAlloc(convertTypeForMem(ptr.second), "coerce");
+                        srcPtr = createTempAlloca(convertTypeForMem(ptr.second), "coerce");
                         emitStoreOfScalar(rv.getScalarVal(), srcPtr, false, ptr.second);;
                     }
                     else if (rv.isComplex())
@@ -2181,7 +2187,7 @@ public final class CodeGenFunction
 				if (hasAggregateBackendType(retType))
 				{
 					// emit the returned value of type aggregate type.
-					Value v = createTempAlloc(convertTypeForMem(retType),
+					Value v = createTempAlloca(convertTypeForMem(retType),
 							"agg.tmp");
 					builder.createStore(ci, v);
 					return getAggregate(v);
@@ -2193,7 +2199,7 @@ public final class CodeGenFunction
 				return getUndefRValue(retType);
             case Coerce:
             {
-                Value v = createTempAlloc(convertTypeForMem(retType), "coerce");
+                Value v = createTempAlloca(convertTypeForMem(retType), "coerce");
                 createCoercedStore(ci, v, this);
                 if (retType.isAnyComplexType())
                 {
@@ -2325,7 +2331,7 @@ public final class CodeGenFunction
 		if (expr.getOpcode() != BinaryOperatorKind.BO_Assign)
 			return emitUnSupportedLValue(expr, "binary l-value");
 
-		Value temp = createTempAlloc(convertType(expr.getType()));
+		Value temp = createTempAlloca(convertType(expr.getType()));
 		emitAggExpr(expr, temp, false, false);
 		return LValue.makeAddr(temp, expr.getType().getCVRQualifiers());
 	}
@@ -2532,7 +2538,7 @@ public final class CodeGenFunction
 	public LValue emitCompoundLiteralLValue(CompoundLiteralExpr expr)
 	{
 		Type ty = convertType(expr.getType());
-		Value declPtr = createTempAlloc(ty, ".compoundliteral");
+		Value declPtr = createTempAlloca(ty, ".compoundliteral");
 
 		Expr initExpr = expr.getInitializer();
 
@@ -2567,7 +2573,7 @@ public final class CodeGenFunction
 		if (hasAggregateBackendType(expr.getType()) && !expr.getType()
 				.isComplexType())
 		{
-			aggLoc = createTempAlloc(convertType(expr.getType()));
+			aggLoc = createTempAlloca(convertType(expr.getType()));
 		}
 		return emitAnyExpr(expr, aggLoc, isAggLocVolatile,
 	            /*ignore result*/false, isInitializer);

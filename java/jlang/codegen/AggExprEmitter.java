@@ -112,7 +112,7 @@ public class AggExprEmitter extends StmtVisitor<Void>
 
             // If the source is volatile, we must read from it; to do that, we
             // need some place to hold it.
-            destPtr = cgf.createTempAlloc(cgf.convertType(expr.getType()), "agg.tmp");
+            destPtr = cgf.createTempAlloca(cgf.convertType(expr.getType()), "agg.tmp");
         }
 
         // If the result of the assignment is used, copy the LHS there also.

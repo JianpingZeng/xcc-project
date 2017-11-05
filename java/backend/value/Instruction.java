@@ -56,11 +56,12 @@ public abstract class Instruction extends User
     }
 
     public Instruction(Type ty,
-            Operator op,
+            Operator opc,
             String name,
             BasicBlock insertAtEnd)
     {
-        super(ty, ValueKind.InstructionVal + op.index, name);
+        super(ty, ValueKind.InstructionVal + opc.index, name);
+        opcode = opc;
         parent = insertAtEnd;
         // append this instruction into the basic block
         assert (insertAtEnd != null) :
@@ -122,7 +123,16 @@ public abstract class Instruction extends User
      */
     public String toString()
     {
-        return getOpcode() != null ? getOpcode().opName : "";
+        StringBuilder res = new StringBuilder();
+        res.append('[');
+        if (opcode != null)
+        {
+            res.append(opcode.opName);
+            res.append(',');
+        }
+        res.append(getName());
+        res.append(']');
+        return res.toString();
     }
 
     public boolean mayHasSideEffects()
@@ -455,10 +465,12 @@ public abstract class Instruction extends User
             if (!(other instanceof UnaryInstruction))
                 return false;
 
-            UnaryInstruction op = (UnaryInstruction) other;
-            return getType() == op.getType() && getOpcode()
-                    .equals(op.getOpcode())
-                    && operand(0).equals(op.operand(0));
+            UnaryInstruction ui = (UnaryInstruction) other;
+
+            return getType().equals(ui.getType()) &&
+                    (getOpcode() == ui.getOpcode() ||
+                    getOpcode().equals(ui.getOpcode()))
+                    && operand(0).equals(ui.operand(0));
         }
     }
 
@@ -2718,11 +2730,6 @@ public abstract class Instruction extends User
         public Value getArraySize()
         {
             return operand(0);
-        }
-
-        public backend.type.PointerType getType()
-        {
-            return (PointerType)super.getType();
         }
     }
 

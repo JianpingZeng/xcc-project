@@ -715,7 +715,7 @@ public final class Sema implements DiagnosticParseTag,
                 if (namedDecl.isSameInIdentifierNameSpace(idns))
                 {
                     // just deal with the decl have same identifier namespace as idns.
-                    if (name.equals(namedDecl.getDeclName()))
+                    if (name.equals(namedDecl.getIdentifier()))
                     {
                         result.addDecl(namedDecl);
 
@@ -1161,7 +1161,7 @@ public final class Sema implements DiagnosticParseTag,
             if (fdTy.isFunctionType())
             {
                 diag(fd.getLocation(), err_field_declared_as_function)
-                        .addTaggedVal(fd.getDeclName()).emit();
+                        .addTaggedVal(fd.getIdentifier()).emit();
                 fd.setInvalidDecl(true);
                 enclosingDecl.setInvalidDecl(true);
                 continue;
@@ -1173,7 +1173,7 @@ public final class Sema implements DiagnosticParseTag,
                 if (numNamedMembers < 1)
                 {
                     diag(fd.getLocation(), err_flexible_array_empty_struct)
-                            .addTaggedVal(fd.getDeclName()).emit();
+                            .addTaggedVal(fd.getIdentifier()).emit();
                     fd.setInvalidDecl(true);
                     enclosingDecl.setInvalidDecl(true);
                     continue;
@@ -1208,7 +1208,7 @@ public final class Sema implements DiagnosticParseTag,
                             // structures.
                             diag(fd.getLocation(),
                                     ext_variable_sized_type_in_struct)
-                                    .addTaggedVal(fd.getDeclName())
+                                    .addTaggedVal(fd.getIdentifier())
                                     .addTaggedVal(fd.getType()).emit();
                         }
                         else
@@ -1216,7 +1216,7 @@ public final class Sema implements DiagnosticParseTag,
                             // We support flexible arrays at the end of structs in
                             // other structs as an extension.
                             diag(fd.getLocation(), ext_flexible_array_in_struct)
-                                    .addTaggedVal(fd.getDeclName())
+                                    .addTaggedVal(fd.getIdentifier())
                                     .emit();
                             if (record != null)
                                 record.setHasFlexibleArrayMember(true);
@@ -1916,7 +1916,7 @@ public final class Sema implements DiagnosticParseTag,
         if (ty.getType() instanceof TagType)
         {
             TagDecl td = ((TagType)ty.getType()).getDecl();
-            if (td.getDeclName() == null && td.getTypedefAnonDecl() == null)
+            if (td.getIdentifier() == null && td.getTypedefAnonDecl() == null)
                 td.setTypedefAnonDecl(newTD);
         }
 
@@ -1946,7 +1946,7 @@ public final class Sema implements DiagnosticParseTag,
         if (!(oldOne instanceof TypeDecl))
         {
             diag(newOne.getLocation(), err_redefinition_different_kind)
-                    .addTaggedVal(newOne.getDeclName()).emit();
+                    .addTaggedVal(newOne.getIdentifier()).emit();
             if (oldOne.getLocation().isValid())
             {
                 diag(oldOne.getLocation(), note_previous_definition).emit();
@@ -1979,7 +1979,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         diag(newOne.getLocation(), warn_redefinition_of_typedef)
-                .addTaggedVal(newOne.getDeclName()).emit();
+                .addTaggedVal(newOne.getIdentifier()).emit();
         diag(oldTD.getLocation(), note_previous_definition).emit();
     }
 
@@ -2095,7 +2095,7 @@ public final class Sema implements DiagnosticParseTag,
 
         // If this has an identifier and is not an invalid redeclaration,
         // add it to the scope stack.
-        if (New.getDeclName() != null && !(redeclaration && New.isInvalidDecl()))
+        if (New.getIdentifier() != null && !(redeclaration && New.isInvalidDecl()))
             pushOnScopeChains(New, s, true);
 
         return New;
@@ -2313,7 +2313,7 @@ public final class Sema implements DiagnosticParseTag,
         if (old == null)
         {
             diag(newFD.getLocation(), err_redefinition_different_kind).
-                    addTaggedVal(newFD.getDeclName()).emit();
+                    addTaggedVal(newFD.getIdentifier()).emit();
             diag(oldDecl.getLocation(), note_previous_definition).emit();
             return true;
         }
@@ -2450,7 +2450,7 @@ public final class Sema implements DiagnosticParseTag,
         }
 
         diag(newFD.getLocation(), err_conflicting_types).
-                addTaggedVal(newFD.getDeclName()).emit();
+                addTaggedVal(newFD.getIdentifier()).emit();
         diag(old.getLocation(), prevDiagID).addTaggedVal(old).
                 addTaggedVal(old.getType()).emit();
         return true;
@@ -2695,7 +2695,7 @@ public final class Sema implements DiagnosticParseTag,
         if (!(oldOne instanceof VarDecl))
         {
             diag(newOne.getLocation(), err_redefinition_different_kind)
-                    .addTaggedVal(newOne.getDeclName()).emit();
+                    .addTaggedVal(newOne.getIdentifier()).emit();
             diag(oldOne.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
@@ -2707,7 +2707,7 @@ public final class Sema implements DiagnosticParseTag,
         if (mergedTy.isNull())
         {
             diag(newOne.getLocation(), err_redefinition_different_type)
-                .addTaggedVal(newOne.getDeclName()).emit();
+                .addTaggedVal(newOne.getIdentifier()).emit();
             diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
@@ -2720,7 +2720,7 @@ public final class Sema implements DiagnosticParseTag,
                 (Old.getStorageClass() == StorageClass.SC_none 
                         || Old.hasExternalStorage())) {
             diag(newOne.getLocation(), err_static_non_static).
-                    addTaggedVal(newOne.getDeclName()).emit();
+                    addTaggedVal(newOne.getIdentifier()).emit();
             diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
@@ -2739,7 +2739,7 @@ public final class Sema implements DiagnosticParseTag,
         else if (newOne.getStorageClass() != StorageClass.SC_static &&
                 Old.getStorageClass() == StorageClass.SC_static) {
             diag(newOne.getLocation(), err_non_static_static).
-                    addTaggedVal(newOne.getDeclName()).emit();
+                    addTaggedVal(newOne.getIdentifier()).emit();
             diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
@@ -2755,7 +2755,7 @@ public final class Sema implements DiagnosticParseTag,
             !newOne.getDeclContext().isRecord()))
         {
             diag(newOne.getLocation(), err_redefinition).
-                    addTaggedVal(newOne.getDeclName()).emit();
+                    addTaggedVal(newOne.getIdentifier()).emit();
             diag(Old.getLocation(), note_previous_definition).emit();
             newOne.setInvalidDecl(true);
             return;
@@ -3620,12 +3620,12 @@ public final class Sema implements DiagnosticParseTag,
             if (getLangOptions().gnuMode && fd.isInlineSpecified()
                     && fd.getStorageClass() == StorageClass.SC_extern)
                 diag(fd.getLocation(), err_redefinition_extern_inline)
-                        .addTaggedVal(fd.getDeclName())
+                        .addTaggedVal(fd.getIdentifier())
                         .addTaggedVal(0)
                         .emit();
             else
                 diag(fd.getLocation(), err_redefinition)
-                        .addTaggedVal(fd.getDeclName()).emit();
+                        .addTaggedVal(fd.getIdentifier()).emit();
             diag(fd.getLocation(), note_previous_definition).emit();
         }
     }
@@ -3660,7 +3660,7 @@ public final class Sema implements DiagnosticParseTag,
 
     private void checkShadow(Scope s, VarDecl d)
     {
-        LookupResult r = new LookupResult(this, d.getDeclName(), d.getLocation(),
+        LookupResult r = new LookupResult(this, d.getIdentifier(), d.getLocation(),
                 LookupOrdinaryName);
         lookupName(r, s, false);
         checkShadow(s, d, r);
@@ -3782,7 +3782,7 @@ public final class Sema implements DiagnosticParseTag,
         if (theDecl.stmt != null)
         {
             diag(identLoc, err_redefinition_of_label)
-                    .addTaggedVal(theDecl.getDeclName()).emit();
+                    .addTaggedVal(theDecl.getIdentifier()).emit();
             diag(theDecl.getLocation(), note_previous_declaration).emit();
             return subStmt;
         }
@@ -4315,7 +4315,7 @@ public final class Sema implements DiagnosticParseTag,
                         if (!ei.hasNext() || next.first.gt(ci.first))
                         {
                             diag(ci.second.getCaseLoc(), warn_not_in_enum)
-                                    .addTaggedVal(ed.getDeclName())
+                                    .addTaggedVal(ed.getIdentifier())
                                     .emit();
                         }
                     }
@@ -4336,7 +4336,7 @@ public final class Sema implements DiagnosticParseTag,
                     hasCaseNotInSwitch = true;
                     if (prevDefaultStmt == null)
                     {
-                        unhandledNames.add(ei.second.getDeclName());
+                        unhandledNames.add(ei.second.getIdentifier());
                     }
                 }
 
@@ -4912,7 +4912,7 @@ public final class Sema implements DiagnosticParseTag,
                 {
                     NamedDecl curDecl = getCurFunctionDecl();
                     diag(returnLoc, diagID)
-                            .addTaggedVal(curDecl.getDeclName())
+                            .addTaggedVal(curDecl.getIdentifier())
                             .addTaggedVal(0)
                             .addSourceRange(retValExpr.getSourceRange())
                             .emit();
@@ -8115,14 +8115,14 @@ public final class Sema implements DiagnosticParseTag,
 
         PartialDiagnostic note = fd != null ?
                 pdiag(note_function_with_incomplete_return_type_declared_here)
-                .addTaggedVal(fd.getDeclName().getName())
+                .addTaggedVal(fd.getIdentifier().getName())
                 : pdiag(0);
         SourceLocation noteLoc = fd != null ? fd.getLocation() : new SourceLocation();
 
         return requireCompleteType(loc, returnType, fd != null ?
                 pdiag(err_call_function_incomplete_return)
                         .addSourceRange(ce.getSourceRange())
-                        .addTaggedVal(fd.getDeclName().getName())
+                        .addTaggedVal(fd.getIdentifier().getName())
                 : pdiag(err_call_incomplete_return).
                     addSourceRange(ce.getSourceRange()), Pair.get(noteLoc, note));
     }
@@ -8169,7 +8169,7 @@ public final class Sema implements DiagnosticParseTag,
             if (fndecl != null)
             {
                 diag(fndecl.getLocation(), note_callee_decl).
-                        addTaggedVal(fndecl.getDeclName()).
+                        addTaggedVal(fndecl.getIdentifier()).
                         emit();
             }
             call.setNumArgs(numArgsInProto);
@@ -8193,7 +8193,7 @@ public final class Sema implements DiagnosticParseTag,
                 if (fndecl != null)
                 {
                     diag(fndecl.getLocation(), note_callee_decl).
-                            addTaggedVal(fndecl.getDeclName()).
+                            addTaggedVal(fndecl.getIdentifier()).
                             emit();
                 }
 
@@ -8591,7 +8591,7 @@ public final class Sema implements DiagnosticParseTag,
             NamedDecl dc = context.getAs(baseType, RecordType.class).getDecl();
             diag(lookupResult.getNameLoc(), err_no_member)
             .addTaggedVal(memberName)
-            .addTaggedVal(dc.getDeclName())
+            .addTaggedVal(dc.getIdentifier())
             .addSourceRange(baseExpr != null ? baseExpr.getSourceRange():new SourceRange())
             .emit();
 
@@ -8898,12 +8898,12 @@ public final class Sema implements DiagnosticParseTag,
             return false;
 
         ArrayList<NamedDecl> decls = consumer.getBestResults();
-        IdentifierInfo bestName = decls.get(0).getDeclName();
+        IdentifierInfo bestName = decls.get(0).getIdentifier();
         /**
          * Fixme
         for (int i = 1,e =decls.size(); i != e; i++)
         {
-            if (!bestName.equals(decls.get(i).getDeclName()))
+            if (!bestName.equals(decls.get(i).getIdentifier()))
                 return false;
         }*/
 
@@ -8957,7 +8957,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 NamedDecl nd = res.getFoundDecl();
                 diag(nd.getLocation(), note_previous_declaration)
-                        .addTaggedVal(nd.getDeclName())
+                        .addTaggedVal(nd.getIdentifier())
                         .emit();
             }
         }
@@ -9157,7 +9157,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             NamedDecl prev = locallyScopedExternalDecls.get(name);
             diag(nameLoc, warn_use_out_of_scope_declaration)
-                    .addTaggedVal(prev.getDeclName()).emit();
+                    .addTaggedVal(prev.getIdentifier()).emit();
             diag(prev.getLocation(), note_previous_declaration).emit();
             return prev;
         }
@@ -9214,7 +9214,7 @@ public final class Sema implements DiagnosticParseTag,
         {
             diag(nameLoc, err_ambiguous_reference).addTaggedVal(name).emit();
             diag(res.getFoundDecl().getLocation(), note_ambiguous_candidate)
-                    .addTaggedVal(res.getFoundDecl().getDeclName()).emit();
+                    .addTaggedVal(res.getFoundDecl().getIdentifier()).emit();
             return exprError();
         }
         if (res.isEmpty())
@@ -9618,7 +9618,7 @@ public final class Sema implements DiagnosticParseTag,
         if (vd.getDefinition(def) != null)
         {
             diag(vd.getLocation(), err_redefinition)
-                    .addTaggedVal(vd.getDeclName())
+                    .addTaggedVal(vd.getIdentifier())
                     .emit();
             diag(def.get().getLocation(), note_previous_definition)
                     .emit();
@@ -9641,7 +9641,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 OutParamWrapper<Expr> x = new OutParamWrapper<>(init);
                 OutParamWrapper<QualType> y = new OutParamWrapper<>(declTy);
-                boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getDeclName(), directDecl);
+                boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getIdentifier(), directDecl);
                 init = x.get();
                 declTy = y.get();
                 if (res)
@@ -9670,7 +9670,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 OutParamWrapper<Expr> x = new OutParamWrapper<>(init);
                 OutParamWrapper<QualType> y = new OutParamWrapper<>(declTy);
-                boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getDeclName(), directDecl);
+                boolean res = checkInitializerTypes(x, y, vd.getLocation(), vd.getIdentifier(), directDecl);
                 init = x.get();
                 declTy = y.get();
                 if (res)
@@ -10307,7 +10307,7 @@ public final class Sema implements DiagnosticParseTag,
             {
                 ++i;
                 assert i != e :"Missing object for anonymous record";
-                assert ((NamedDecl)d).getDeclName() == null
+                assert ((NamedDecl)d).getIdentifier() == null
                         : "Decl should be unamed!";
                 return d;
             }
