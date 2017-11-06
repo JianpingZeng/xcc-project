@@ -379,7 +379,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			return null;
 		return instructions.get(instructions.size() - 1);
 	}
-	
+
 	public void insertAfter(Instruction inst, int after)
 	{
 		assert after >=1 && after < getNumOfInsts();
@@ -387,6 +387,13 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 			instructions.add(inst);
 		else
 			instructions.add(after + 1, inst);
+	}
+
+	public void insertBefore(Instruction inst, Instruction insertBefore)
+	{
+		int index = instructions.indexOf(insertBefore);
+		assert index != - 1:"InsertBefore is not exists in Instruction list";
+		insertBefore(inst, index);
 	}
 	
 	public void insertBefore(Instruction inst, int insertBefore)

@@ -1663,6 +1663,7 @@ public final class CodeGenFunction
 			if (curBB.isEmpty() || returnBlock.isUseEmpty())
 			{
 				returnBlock.replaceAllUsesWith(curBB);
+				returnBlock.eraseFromParent();
 				// for GC.
 				returnBlock = null;
 			}
