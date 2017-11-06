@@ -3820,7 +3820,7 @@ public abstract class Tree implements StmtClass
 
 		public BinaryOperatorKind getOpcode() { return opcode;}
 
-		public Expr getLHS() { return rhs; }
+		public Expr getLHS() { return lhs; }
         public void setLHS(Expr e) { lhs = e;}
         public Expr getRHS() { return rhs; }
         public void setRHS(Expr e) { rhs = e;}

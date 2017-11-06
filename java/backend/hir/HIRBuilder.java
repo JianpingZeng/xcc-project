@@ -43,7 +43,7 @@ public class HIRBuilder
 	 */
 	private BasicBlock curBB;
 
-	private int insertPtr;
+	private Instruction insertPtr;
 
 	public HIRBuilder(){super();}
 
@@ -55,14 +55,15 @@ public class HIRBuilder
 	public void setInsertPoint(BasicBlock insertPoint)
 	{
 		curBB = insertPoint;
-		insertPtr = curBB.getNumOfInsts();
+		insertPtr = insertPoint.getLastInst();
+		assert insertPtr != null:"Can not the empty BasicBlock as insert point";
 	}
 
 	public void setInsertPoint(BasicBlock theBB, Instruction pos)
 	{
 		curBB = theBB;
 		assert pos.getParent().equals(theBB);
-		insertPtr = theBB.indexOf(pos);
+		insertPtr = pos;
 	}
 
 	private <InstTy extends Instruction> InstTy insert(InstTy inst)
@@ -82,15 +83,12 @@ public class HIRBuilder
 		return c;
 	}
 
-	private <InstTy extends Instruction> void insertHelper(InstTy inst,
-			BasicBlock bb, int insertPtr)
+	private <InstTy extends Instruction> void insertHelper(
+			InstTy inst,
+			BasicBlock bb,
+			Instruction insertPtr)
 	{
-		if (insertPtr == bb.getNumOfInsts())
-		{
-			bb.appendInst(inst);
-			return;
-		}
-		bb.insertAfter(inst, insertPtr);
+		bb.insertBefore(inst, insertPtr);
 	}
 
 	public BasicBlock getInsertBlock()
@@ -100,7 +98,7 @@ public class HIRBuilder
 
 	public Instruction getInsertPoint()
 	{
-		return curBB.getInstAt(insertPtr);
+		return insertPtr;
 	}
 
 	/**
