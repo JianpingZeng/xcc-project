@@ -2,12 +2,15 @@ package backend.value;
 
 import backend.support.AssemblyWriter;
 import backend.support.SlotTracker;
+import backend.support.ValueSymbolTable;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 
 import static backend.value.GlobalValue.LinkageType.ExternalLinkage;
 
@@ -41,7 +44,12 @@ public final class Module implements Iterable<Function>
 	/**
 	 * Symbol table for values.
 	 */
-	private HashMap<String, Value> valSymTable;
+	private ValueSymbolTable valSymTable;
+
+	/**
+	 * Symbol table for types.
+	 */
+	private HashMap<String, Type> typeSymbolTable;
 
     /**
      * Human readable unique identifier for this module.
@@ -52,21 +60,6 @@ public final class Module implements Iterable<Function>
 
     private String targetTriple;
 
-	private HashMap<String, Type> typeSymbolTable;
-
-	/**
-	 * An singleton method for instantiating an instance of this class.
-	 * @param vars	GlobalVariable declarations list.
-	 * @param functions	FunctionProto declarations list
-	 * @return	The instance of {@link Module}
-	 */
-	public static Module instance(List<GlobalVariable> vars,
-			List<Function> functions)
-	{
-		Module instance = null;
-		return instance;
-	}
-	
 	/**
 	 * Constructor.
 	 * @param globalVariableList
@@ -76,7 +69,7 @@ public final class Module implements Iterable<Function>
 	{
 		this.globalVariableList = globalVariableList;
 		this.functionList = functions;
-		valSymTable = new HashMap<>();
+		valSymTable = new ValueSymbolTable();
 	}
 
 	public Module(String moduleID)
@@ -109,7 +102,7 @@ public final class Module implements Iterable<Function>
 	 */
 	private GlobalValue getNameOfValue(String name)
 	{
-		Value val = valSymTable.get(name);
+		Value val = valSymTable.getValue(name);
 		if (val instanceof GlobalValue)
 			return (GlobalValue)val;
 		return null;
@@ -210,5 +203,10 @@ public final class Module implements Iterable<Function>
 	{
 		GlobalValue gv = getNameOfValue(funcName);
 		return gv instanceof Function ? (Function)gv : null;
+	}
+
+	public ValueSymbolTable getValueSymbolTable()
+	{
+		return valSymTable;
 	}
 }

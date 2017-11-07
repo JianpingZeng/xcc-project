@@ -2,6 +2,7 @@ package backend.value;
 
 import backend.codegen.MachineFunction;
 import backend.support.CallingConv;
+import backend.support.ValueSymbolTable;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -30,8 +31,12 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	private MachineFunction mf;
 	private CallingConv cc;
 
-	public Function(FunctionType ty, LinkageType linkage,
-            String name, Module parentModule)
+	private ValueSymbolTable symTab;
+
+	public Function(FunctionType ty,
+			LinkageType linkage,
+            String name,
+			Module parentModule)
     {
 	    super(PointerType.getUnqual(ty), ValueKind.FunctionVal, linkage, name);
 	    argumentList = new ArrayList<>();
@@ -39,11 +44,14 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 		if (parentModule != null)
 			parentModule.getFunctionList().add(this);
 
+		symTab = new ValueSymbolTable();
         for (int i = 0, e = ty.getNumParams(); i< e; i++)
         {
             Type t = ty.getParamType(i);
             assert !t.isVoidType():"Cann't have void typed argument!";
-            argumentList.add(new Argument(t));
+            Argument arg = new Argument(t);
+            argumentList.add(arg);
+	        arg.setParent(this);
         }
         basicBlockList = new LinkedList<>();
     }
@@ -168,5 +176,10 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 	public void setCallingConv(CallingConv cc)
 	{
 		this.cc = cc;
+	}
+
+	public ValueSymbolTable getValueSymbolTable()
+	{
+		return symTab;
 	}
 }
