@@ -24,13 +24,9 @@ public abstract class User extends Value
      */
     protected ArrayList<Use> operandList;
 
-    public User(Type ty, int valueKind)
-    {
-        this(ty, valueKind, "");
-    }
-	public User(Type ty, int valueKind, String name)
+	public User(Type ty, int valueKind)
 	{
-		super(ty, valueKind, name);
+		super(ty, valueKind);
         id = -1;
         operandList = new ArrayList<>();
 	}

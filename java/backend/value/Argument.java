@@ -42,4 +42,9 @@ public class Argument extends Value
     {
         return parent;
     }
+
+    public void setParent(Function bb)
+    {
+        parent = bb;
+    }
 }

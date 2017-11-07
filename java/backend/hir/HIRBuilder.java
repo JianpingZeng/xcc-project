@@ -75,12 +75,8 @@ public class HIRBuilder
 	private <InstTy extends Instruction> InstTy insert(InstTy inst, String name)
 	{
 		insertHelper(inst, curBB, insertPtr);
+		inst.setName(name);
 		return inst;
-	}
-
-	private Constant insert(Constant c, String name)
-	{
-		return c;
 	}
 
 	private <InstTy extends Instruction> void insertHelper(
@@ -727,7 +723,7 @@ public class HIRBuilder
 
 	public Instruction.StoreInst createStore(Value val, Value ptr)
 	{
-		return insert(new Instruction.StoreInst(val, ptr, ""));
+		return insert(new Instruction.StoreInst(val, ptr, ""), "");
 	}
 
 	public AllocaInst createAlloca(final Type ty, Value arraySize,

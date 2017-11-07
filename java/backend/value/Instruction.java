@@ -43,16 +43,17 @@ public abstract class Instruction extends User
             String name,
             Instruction insertBefore)
     {
-        super(ty, ValueKind.InstructionVal + opc.index, name);
+        super(ty, ValueKind.InstructionVal + opc.index);
         opcode = opc;
-        parent = null;
         if (insertBefore != null)
         {
             assert (insertBefore.getParent()
                     != null) : "Instruction to insert before is not in a basic block";
             int idx = insertBefore.getParent().indexOf(insertBefore);
             insertBefore.getParent().insertBefore(this, idx);
+            setParent(insertBefore.getParent());
         }
+        setName(name);
     }
 
     public Instruction(Type ty,
@@ -60,9 +61,10 @@ public abstract class Instruction extends User
             String name,
             BasicBlock insertAtEnd)
     {
-        super(ty, ValueKind.InstructionVal + opc.index, name);
+        super(ty, ValueKind.InstructionVal + opc.index);
         opcode = opc;
         parent = insertAtEnd;
+        setName(name);
         // append this instruction into the basic block
         assert (insertAtEnd != null) :
                 "Basic block to append to may not be NULL!";

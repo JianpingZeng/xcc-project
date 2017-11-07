@@ -1,5 +1,7 @@
 package backend.value;
 
+import backend.support.LLVMContext;
+import backend.support.ValueSymbolTable;
 import backend.type.Type;
 import backend.utils.InstVisitor;
 import backend.utils.SuccIterator;
@@ -36,15 +38,9 @@ public class Value implements Cloneable
 
     private Type ty;
 
-    public Value(Type ty, int valueType)
-    {
-        this(ty, valueType, "");
-    }
-
-	public Value(Type ty, int valueType, String name)
+	public Value(Type ty, int valueType)
 	{
 		this.ty = ty;
-		this.name = name;
         subclassID = valueType;
 		this.usesList = new LinkedList<>();
 	}
@@ -190,12 +186,70 @@ public class Value implements Cloneable
 	@Override
 	public Value clone()
 	{
-	    return new Value(ty, subclassID, name);
+	    Value res = new Value(ty, subclassID);
+	    res.name = name;
+	    return res;
 	}
 
+	public static ValueSymbolTable getSymTab(Value val)
+    {
+        if (val instanceof Instruction)
+        {
+            Instruction inst = (Instruction)val;
+            BasicBlock bb = inst.getParent();
+            if (bb != null && bb.getParent() != null)
+            {
+                return bb.getParent().getValueSymbolTable();
+            }
+        }
+        else if (val instanceof BasicBlock)
+        {
+            BasicBlock bb = (BasicBlock)val;
+            Function f = bb.getParent();
+            if (f != null)
+                return f.getValueSymbolTable();
+        }
+        else if (val instanceof GlobalValue)
+        {
+            GlobalValue gv = (GlobalValue)val;
+            Module m = gv.getParent();
+            if (m != null)
+                return m.getValueSymbolTable();
+        }
+        else if (val instanceof Argument)
+        {
+            Argument a = (Argument)val;
+            Function f = a.getParent();
+            if (f != null)
+                return f.getValueSymbolTable();
+        }
+        else
+        {
+            assert val instanceof Constant : "Unknown value type!";
+        }
+        return null;
+    }
+
+    /**
+     * Update the name with newName. Occasionally, the newName would be changed
+     * when the set newName is same as old name.
+     * @param newName
+     */
 	public void setName(String newName)
 	{
-		name = newName;
+	    if (newName == null || newName.isEmpty())
+	        return;
+	    assert !getType().equals(LLVMContext.VoidTy):
+                "Can not assign name to void values!";
+	    // get the symbol table to update for this object.
+        ValueSymbolTable vt = getSymTab(this);
+        if (vt == null)
+        {
+            name = newName;
+            return;
+        }
+
+		name = vt.createValueName(newName, this);
 	}
 
 	public String getName()
