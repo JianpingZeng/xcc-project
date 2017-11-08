@@ -66,16 +66,13 @@ public class ValueSymbolTable
         }
 
         // Otherwise, there is a naming conflict. Rename this value.
-        StringBuilder uniqueName = new StringBuilder();
-        uniqueName.append(name);
         while (true)
         {
-            uniqueName.append(++lastUnique);
-            if (!map.containsKey(uniqueName.toString()))
+            String uniqueName = name + (++lastUnique);
+            if (!map.containsKey(uniqueName))
             {
-                String newName = uniqueName.toString();
-                map.put(newName, value);
-                return newName;
+                map.put(uniqueName, value);
+                return uniqueName;
             }
         }
     }
