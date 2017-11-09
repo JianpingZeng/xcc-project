@@ -120,12 +120,12 @@ public abstract class LLVMTargetMachine extends TargetMachine
 
     public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
     {
-        return true;
+        return false;
     }
 
     public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level)
     {
-        return true;
+        return false;
     }
 
     public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level)

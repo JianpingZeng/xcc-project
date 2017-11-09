@@ -36,8 +36,9 @@ public abstract class TargetRegisterInfo
 	private TargetRegisterDesc[] desc;
 	/**
 	 * Mapping the machine register number to its register class.
+     * Fixme, this is not needed.
 	 */
-	private TargetRegisterClass[] phyRegClasses;
+	// private TargetRegisterClass[] phyRegClasses;
 
 	/**
 	 * Register classes of target machine.
@@ -59,27 +60,48 @@ public abstract class TargetRegisterInfo
 	protected int[] superregHash;
 	protected int[] aliasesHash;
 
-	protected TargetRegisterInfo(TargetRegisterDesc[] desc,
-			TargetRegisterClass[] regClasses, int callFrameSetupOpCode,
-			int callFrameDestroyOpCode, int[] subregs, int[] superregs,
+	protected TargetRegisterInfo(
+			TargetRegisterDesc[] desc,
+			TargetRegisterClass[] regClasses,
+			int callFrameSetupOpCode,
+			int callFrameDestroyOpCode,
+			int[] subregs,
+			int[] superregs,
 			int[] aliases)
 	{
 		this.desc = desc;
 		this.regClasses = regClasses;
-		phyRegClasses = new TargetRegisterClass[desc.length];
 
 		// loop over all register classes, handle each register class
 		// and keep track of diagMapping from register to it's register class.
+        /**
+         * FIXME, a physical register may occurs in multiple reg class, So comment it!
+        phyRegClasses = new TargetRegisterClass[desc.length];
 		for (int i = 0, e = regClasses.length; i < e; i++)
 		{
 			for (int j = 0, ee = regClasses[i].getRegSize(); j < ee; j++)
 			{
 				int reg = regClasses[i].getRegister(j);
+				if (phyRegClasses[reg] != null)
+                {
+                    System.err.print(regClasses[i].getName());
+                    System.err.print(": [");
+                    for (int r : regClasses[i].getRegs())
+                        System.err.print(getName(r)+",");
+                    System.err.print("]\n");
+
+                    System.err.print("Before: " + phyRegClasses[reg].getName());
+                    System.err.print(": [");
+                    for (int r : phyRegClasses[reg].getRegs())
+                        System.err.print(getName(r)+",");
+                    System.err.print("]\n");
+                }
 				assert phyRegClasses[reg]
 						== null : "register in more than one class!";
 				phyRegClasses[reg] = regClasses[i];
 			}
 		}
+		*/
 		this.callFrameSetupOpcode = callFrameSetupOpCode;
 		this.callFrameDestroyOpcode = callFrameDestroyOpCode;
 		subregHash = subregs;

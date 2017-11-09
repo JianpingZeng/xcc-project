@@ -18,6 +18,7 @@ package jlang.codegen;
 
 import backend.codegen.MachineCodeEmitter;
 import backend.pass.*;
+import backend.support.ErrorHandling;
 import backend.target.SubtargetFeatures;
 import backend.target.Target;
 import backend.target.TargetData;
@@ -193,8 +194,7 @@ public class BackendConsumer implements ASTConsumer
         OutParamWrapper<String> error = new OutParamWrapper<>("");
         if (!addEmitPasses(error))
         {
-            System.err.println("UNKNOWN: " + error.get());
-            System.exit(-1);
+            ErrorHandling.llvmReportError("UNKNOWN: " + error.get());
         }
 
         // Run passes. For now we do all passes at once.

@@ -188,7 +188,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 	{
 		// converts virtual register in X86 FP inst into floating point stack slot.
 		pm.add(createX86FloatingPointStackitifierPass());
-		return true;
+		return false;
 	}
 
 	@Override
