@@ -38,6 +38,8 @@ public class ErrorHandling
             errorHandler.apply(diagEngineer, msg);
         else
             System.err.printf(msg);
+        // It should terminate program immediately when backend error occurs.
+        System.exit(-1);
     }
 
     public static void installLLVMErrorHandler(LLVMErrorHandler handler, Diagnostic diag)

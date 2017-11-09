@@ -15,10 +15,6 @@ public enum ProgramAction
      * Specify whether just the compilation process be enabled.
      */
     CompilationOnly,
-    /**
-     * Indicates if letting the compiler emit assembly code in target machine.
-     */
-    GenerateAsmCode,
 
     EmitLLVM,
 	/**
@@ -55,5 +51,8 @@ public enum ProgramAction
      */
     ParseNoop,
 
+    /**
+     * Indicates if letting the compiler emit assembly code in target machine.
+     */
     EmitAssembly,
 }

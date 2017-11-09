@@ -726,7 +726,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                 os = computeOutFile(infile, null, true, outpath);
                 break;
             case EmitLLVM:
-            case GenerateAsmCode:
+            case EmitAssembly:
             {
                 BackendAction act;
                 if (progAction == EmitLLVM)
