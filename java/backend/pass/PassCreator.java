@@ -1,5 +1,8 @@
 package backend.pass;
 
+import backend.passManaging.FunctionPassManager;
+import backend.passManaging.PassManager;
+
 /**
  * @author Xlous.zeng
  * @version 0.1

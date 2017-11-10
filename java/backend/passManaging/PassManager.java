@@ -1,4 +1,4 @@
-package backend.pass;
+package backend.passManaging;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,47 +16,44 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.pass.Pass;
 import backend.value.Module;
 
-import java.util.HashSet;
-import java.util.LinkedList;
-
 /**
+ * This class just a thin wrapper of class {@linkplain backend.passManaging.PassManagerImpl}.
+ * This provides simple interface methods with client.
  * @author Xlous.zeng
  * @version 0.1
  */
 public class PassManager implements PassManagerBase
 {
-    private LinkedList<Pass> passesToWork;
-    private HashSet<Pass> existed;
+    private PassManagerImpl pm;
 
     public PassManager()
     {
-        passesToWork = new LinkedList<>();
-        existed = new HashSet<>();
+        pm = new PassManagerImpl(0);
+        // PM is the top level manager of itself.
+        pm.setTopLevelManager(pm);
     }
 
+    /**
+     * Add a pass to the queue of passes to be run.
+     * @param p
+     */
     @Override
     public void add(Pass p)
     {
-        assert p instanceof ModulePass :"Not a module pass?";
-        if (existed.add(p))
-            passesToWork.add(p);
+        pm.add(p);
     }
 
-    @Override
-    public PassManagerType getPassManagerType()
+    /**
+     * Execute all of the passes scheduled for execution. Keep track of whether
+     * any of passes modifies the module, and if so, return true.
+     * @param m
+     * @return
+     */
+    public boolean run(Module m)
     {
-        return PassManagerType.PMT_ModulePassManager;
-    }
-
-    public void run(Module m)
-    {
-        boolean changed = false;
-
-        for (Pass pass : passesToWork)
-        {
-            changed |= pass.run(m);
-        }
+        return pm.run(m);
     }
 }

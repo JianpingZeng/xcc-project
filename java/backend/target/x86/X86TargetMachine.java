@@ -2,8 +2,8 @@ package backend.target.x86;
 
 import backend.codegen.ELFWriter;
 import backend.codegen.MachineCodeEmitter;
-import backend.pass.FunctionPassManager;
-import backend.pass.PassManagerBase;
+import backend.passManaging.FunctionPassManager;
+import backend.passManaging.PassManagerBase;
 import backend.target.*;
 import backend.value.Module;
 

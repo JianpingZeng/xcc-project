@@ -1,8 +1,10 @@
 package backend.pass;
 
-import backend.value.Loop;
 import backend.analysis.LoopInfo;
+import backend.passManaging.PMDataManager;
+import backend.passManaging.PassManagerType;
 import backend.value.Function;
+import backend.value.Loop;
 
 import java.util.*;
 
@@ -10,7 +12,7 @@ import java.util.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class LPPassManager implements FunctionPass, PassManagerBase
+public class LPPassManager extends PMDataManager implements FunctionPass
 {
 	private LinkedList<Loop> loopQueue = new LinkedList<>();
 	private boolean skipThisLoop;
@@ -19,6 +21,15 @@ public class LPPassManager implements FunctionPass, PassManagerBase
 	private Loop currentLoop;
 	private ArrayList<Pass> loopPasses = new ArrayList<>();
 	private HashSet<Pass> containedPasses = new HashSet<>();
+
+	public LPPassManager(int depth)
+	{
+		super(depth);
+		skipThisLoop = false;
+		redoThisLoop = false;
+		li = null;
+		currentLoop = null;
+	}
 
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
@@ -104,35 +115,13 @@ public class LPPassManager implements FunctionPass, PassManagerBase
 	@Override
 	public String getPassName()
 	{
-		return "Loop pass manager";
+		return "Loop Pass Manager";
 	}
 
-	public Pass getContainedPass(int idx)
+	public LPPassManager getContainedPass(int idx)
 	{
-		assert idx >= 0 && idx < loopPasses.size();
-		return loopPasses.get(idx);
-	}
-
-	/**
-	 * Add a pass to the queue of passes to run.
-	 *
-	 * @param p
-	 */
-	@Override
-	public void add(Pass p)
-	{
-		if (p instanceof LoopPass)
-		{
-			LoopPass lp = (LoopPass) p;
-			if (containedPasses.add(lp))
-				loopPasses.add(lp);
-		}
-	}
-
-	@Override
-	public PassManagerType getPassManagerType()
-	{
-		return PassManagerType.PMT_LoopPassManager;
+		assert idx >= 0 && idx < getNumContainedPasses();
+		return (LPPassManager) loopPasses.get(idx);
 	}
 
 	public void deleteLoopFromQueue(Loop loop)
@@ -230,8 +219,27 @@ public class LPPassManager implements FunctionPass, PassManagerBase
 		redoThisLoop = true;
 	}
 
-	private void initializeAnalysisImpl(Pass pass)
+	@Override
+	public PassManagerType getPassManagerType()
+	{
+		return PassManagerType.PMT_LoopPassManager;
+	}
+
+	@Override
+	public Pass getAsPass()
+	{
+		return this;
+	}
+
+	@Override
+	public void initializeAnalysisImpl(Pass pass)
 	{
 
+	}
+
+	@Override
+	public void dumpPassStructures(int offset)
+	{
+		// TODO: 2017/11/10
 	}
 }

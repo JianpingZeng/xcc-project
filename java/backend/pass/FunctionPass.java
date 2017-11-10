@@ -48,16 +48,4 @@ public interface FunctionPass extends Pass
 	{
 		return false;
 	}
-
-	@Override
-	default boolean run(Module m)
-	{
-		boolean changed = doInitialization(m);
-
-		for (Function f : m.getFunctionList())
-			changed |= runOnFunction(f);
-		changed |= doFinalization(m);
-		return changed;
-	}
-
 }

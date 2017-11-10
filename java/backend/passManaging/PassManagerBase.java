@@ -1,10 +1,6 @@
-package backend.pass;
+package backend.passManaging;
 
-import tools.Pair;
-
-import java.util.*;
-
-import static backend.pass.PassInfoSupport.getPassInfo;
+import backend.pass.Pass;
 
 /**
  * An abstract interface to allow code to add
@@ -20,23 +16,9 @@ import static backend.pass.PassInfoSupport.getPassInfo;
  */
 public interface PassManagerBase
 {
-	enum PassManagerType
-	{
-		PMT_Unknow,
-
-		PMT_ModulePassManager,
-
-		PMT_FunctionPassManager,
-
-		PMT_LoopPassManager,
-
-		PMT_BasicBlockPassManager,
-	}
 	/**
 	 * Add a pass to the queue of passes to run.
 	 * @param p
 	 */
 	void add(Pass p);
-
-	PassManagerType getPassManagerType();
 }

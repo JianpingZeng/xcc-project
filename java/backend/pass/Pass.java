@@ -1,6 +1,10 @@
 package backend.pass;
 
-import backend.value.Module;
+import backend.passManaging.PMDataManager;
+import backend.passManaging.PassManagerType;
+import tools.Util;
+
+import java.util.Stack;
 
 import static backend.pass.PassInfoSupport.getPassInfo;
 
@@ -26,6 +30,31 @@ public interface Pass
 	 */
 	default void getAnalysisUsage(AnalysisUsage au) {}
 
-	default boolean run(Module m) { return false; }
+    default void dumpPassStructures(int offset)
+    {
+    	System.err.printf("%s%s\n", Util.fixedLengthString(offset<<1, ' '), getPassName());
+    }
+
+    default PassManagerType getPotentialPassManagerType()
+    {
+    	return PassManagerType.PMT_Unknow;
+    }
+
+    default void assignPassManager(Stack<PMDataManager> pms,
+		    PassManagerType pmt) {}
+
+	/**
+	 * This method should be overridden by ImmutablePass.
+	 * @return
+	 */
+	default ImmutablePass getAsImmutablePass()
+    {
+    	return null;
+    }
+
+    default PMDataManager getAsPMDataManager()
+    {
+    	return null;
+    }
 }
 
