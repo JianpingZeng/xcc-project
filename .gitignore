@@ -7,13 +7,13 @@ xcc.imi
 document
 [O|o]ut
 classes
+[B|b]uild
 
 #Ignores all Linux temporary file.
 *~
 Output/
 .DS_Store
 cmake-build-*
-build
 CMakeFiles
 cmake_install.cmake
 CMakeCache.txt

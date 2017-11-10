@@ -1,0 +1,165 @@
+# Machine code for foo():
+  <fi#0>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#1>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#2>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#3>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+Live Ins: EDI in VR#1026  ESI in VR#1027 
+Live Outs: EAX
+
+: 0x7fdaa1041558, LLVM BB @0x7fdaa0c08dd0, ID#0:
+Live Ins: %EDI %ESI
+	%reg1027<def> = MOV32rr %ESI
+	%reg1026<def> = MOV32rr %EDI
+	%reg1024<def> = MOV32rr %reg1026
+	%reg1025<def> = MOV32rr %reg1027
+	MOV32mr <fi#1>, 1, %reg0, 0, %reg0, %reg1024
+	MOV32mr <fi#2>, 1, %reg0, 0, %reg0, %reg1025
+	%reg1028<def> = MOV32rm <fi#1>, 1, %reg0, 0, %reg0
+	%reg1029<def> = MOV32rm <fi#2>, 1, %reg0, 0, %reg0
+	%reg1030<def> = ADD32rr %reg1028, %reg1029, %EFLAGS<imp-def>
+	MOV32mr <fi#3>, 1, %reg0, 0, %reg0, %reg1030
+	%reg1031<def> = MOV32rm <fi#3>, 1, %reg0, 0, %reg0
+	MOV32mr <fi#0>, 1, %reg0, 0, %reg0, %reg1031
+	%reg1032<def> = MOV32rm <fi#0>, 1, %reg0, 0, %reg0
+	%EAX<def> = MOV32rr %reg1032
+	RET
+
+# End machine code for foo().
+
+# Machine code for foo():
+  <fi#0>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#1>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#2>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#3>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+Live Ins: EDI in VR#1026  ESI in VR#1027 
+Live Outs: EAX
+
+: 0x7fdaa1041558, LLVM BB @0x7fdaa0c08dd0, ID#0:
+Live Ins: %EDI %ESI
+	MOV32mr <fi#1>, 1, %reg0, 0, %reg0, %EDI<kill>
+	MOV32mr <fi#2>, 1, %reg0, 0, %reg0, %ESI<kill>
+	%EAX<def> = MOV32rm <fi#1>, 1, %reg0, 0, %reg0
+	%ECX<def> = MOV32rm <fi#2>, 1, %reg0, 0, %reg0
+	%ECX<def> = ADD32rr %ECX, %EAX<kill>, %EFLAGS<imp-def,dead>
+	MOV32mr <fi#3>, 1, %reg0, 0, %reg0, %ECX<kill>
+	%EAX<def> = MOV32rm <fi#3>, 1, %reg0, 0, %reg0
+	MOV32mr <fi#0>, 1, %reg0, 0, %reg0, %EAX<kill>
+	%EAX<def> = MOV32rm <fi#0>, 1, %reg0, 0, %reg0
+	RET %EAX<imp-use,kill>
+
+# End machine code for foo().
+
+# Machine code for foo():
+  <fi#0>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#1>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#2>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#3>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+Live Ins: EDI in VR#1026  ESI in VR#1027 
+Live Outs: EAX
+
+: 0x7fdaa1041558, LLVM BB @0x7fdaa0c08dd0, ID#0:
+Live Ins: %EDI %ESI
+	MOV32mr <fi#1>, 1, %reg0, 0, %reg0, %EDI<kill>
+	MOV32mr <fi#2>, 1, %reg0, 0, %reg0, %ESI<kill>
+	%EAX<def> = MOV32rm <fi#1>, 1, %reg0, 0, %reg0
+	%ECX<def> = MOV32rm <fi#2>, 1, %reg0, 0, %reg0
+	%ECX<def> = ADD32rr %ECX, %EAX<kill>, %EFLAGS<imp-def,dead>
+	MOV32mr <fi#3>, 1, %reg0, 0, %reg0, %ECX<kill>
+	%EAX<def> = MOV32rm <fi#3>, 1, %reg0, 0, %reg0
+	MOV32mr <fi#0>, 1, %reg0, 0, %reg0, %EAX<kill>
+	%EAX<def> = MOV32rm <fi#0>, 1, %reg0, 0, %reg0
+	RET %EAX<imp-use,kill>
+
+# End machine code for foo().
+
+# Machine code for foo():
+  <fi#0>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#1>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#2>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+  <fi#3>: size is 4 bytes, alignment is 4 bytes, at location [SP+8]
+Live Ins: EDI in VR#1026  ESI in VR#1027 
+Live Outs: EAX
+
+: 0x7fdaa1041558, LLVM BB @0x7fdaa0c08dd0, ID#0:
+Live Ins: %EDI %ESI
+	MOV32mr <fi#1>, 1, %reg0, 0, %reg0, %EDI<kill>
+	MOV32mr <fi#2>, 1, %reg0, 0, %reg0, %ESI<kill>
+	%EAX<def> = MOV32rm <fi#1>, 1, %reg0, 0, %reg0
+	%ECX<def> = MOV32rm <fi#2>, 1, %reg0, 0, %reg0
+	%ECX<def> = ADD32rr %ECX, %EAX<kill>, %EFLAGS<imp-def,dead>
+	MOV32mr <fi#3>, 1, %reg0, 0, %reg0, %ECX<kill>
+	%EAX<def> = MOV32rm <fi#3>, 1, %reg0, 0, %reg0
+	MOV32mr <fi#0>, 1, %reg0, 0, %reg0, %EAX<kill>
+	%EAX<def> = MOV32rm <fi#0>, 1, %reg0, 0, %reg0
+	RET %EAX<imp-use,kill>
+
+# End machine code for foo().
+
+# Machine code for foo():
+  <fi#0>: size is 4 bytes, alignment is 4 bytes, at location [SP-4]
+  <fi#1>: size is 4 bytes, alignment is 4 bytes, at location [SP-8]
+  <fi#2>: size is 4 bytes, alignment is 4 bytes, at location [SP-12]
+  <fi#3>: size is 4 bytes, alignment is 4 bytes, at location [SP-16]
+Live Ins: EDI in VR#1026  ESI in VR#1027 
+Live Outs: EAX
+
+: 0x7fdaa1041558, LLVM BB @0x7fdaa0c08dd0, ID#0:
+Live Ins: %EDI %ESI
+	MOV32mr %RSP, 1, %reg0, -8, %reg0, %EDI<kill>
+	MOV32mr %RSP, 1, %reg0, -12, %reg0, %ESI<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -8, %reg0
+	%ECX<def> = MOV32rm %RSP, 1, %reg0, -12, %reg0
+	%ECX<def> = ADD32rr %ECX, %EAX<kill>, %EFLAGS<imp-def,dead>
+	MOV32mr %RSP, 1, %reg0, -16, %reg0, %ECX<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -16, %reg0
+	MOV32mr %RSP, 1, %reg0, -4, %reg0, %EAX<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -4, %reg0
+	RET %EAX<imp-use,kill>
+
+# End machine code for foo().
+
+# Machine code for foo():
+  <fi#0>: size is 4 bytes, alignment is 4 bytes, at location [SP-4]
+  <fi#1>: size is 4 bytes, alignment is 4 bytes, at location [SP-8]
+  <fi#2>: size is 4 bytes, alignment is 4 bytes, at location [SP-12]
+  <fi#3>: size is 4 bytes, alignment is 4 bytes, at location [SP-16]
+Live Ins: EDI in VR#1026  ESI in VR#1027 
+Live Outs: EAX
+
+: 0x7fdaa1041558, LLVM BB @0x7fdaa0c08dd0, ID#0:
+Live Ins: %EDI %ESI
+	MOV32mr %RSP, 1, %reg0, -8, %reg0, %EDI<kill>
+	MOV32mr %RSP, 1, %reg0, -12, %reg0, %ESI<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -8, %reg0
+	%ECX<def> = MOV32rm %RSP, 1, %reg0, -12, %reg0
+	%ECX<def> = ADD32rr %ECX, %EAX<kill>, %EFLAGS<imp-def,dead>
+	MOV32mr %RSP, 1, %reg0, -16, %reg0, %ECX<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -16, %reg0
+	MOV32mr %RSP, 1, %reg0, -4, %reg0, %EAX<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -4, %reg0
+	RET %EAX<imp-use,kill>
+
+# End machine code for foo().
+
+# Machine code for foo():
+  <fi#0>: size is 4 bytes, alignment is 4 bytes, at location [SP-4]
+  <fi#1>: size is 4 bytes, alignment is 4 bytes, at location [SP-8]
+  <fi#2>: size is 4 bytes, alignment is 4 bytes, at location [SP-12]
+  <fi#3>: size is 4 bytes, alignment is 4 bytes, at location [SP-16]
+Live Ins: EDI in VR#1026  ESI in VR#1027 
+Live Outs: EAX
+
+: 0x7fdaa1041558, LLVM BB @0x7fdaa0c08dd0, ID#0:
+Live Ins: %EDI %ESI
+	MOV32mr %RSP, 1, %reg0, -8, %reg0, %EDI<kill>
+	MOV32mr %RSP, 1, %reg0, -12, %reg0, %ESI<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -8, %reg0
+	%ECX<def> = MOV32rm %RSP, 1, %reg0, -12, %reg0
+	%ECX<def> = ADD32rr %ECX, %EAX<kill>, %EFLAGS<imp-def,dead>
+	MOV32mr %RSP, 1, %reg0, -16, %reg0, %ECX<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -16, %reg0
+	MOV32mr %RSP, 1, %reg0, -4, %reg0, %EAX<kill>
+	%EAX<def> = MOV32rm %RSP, 1, %reg0, -4, %reg0
+	RET %EAX<imp-use,kill>
+
+# End machine code for foo().
