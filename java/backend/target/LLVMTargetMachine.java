@@ -18,7 +18,7 @@ package backend.target;
 
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
-import backend.pass.PassManagerBase;
+import backend.passManaging.PassManagerBase;
 
 import java.io.OutputStream;
 

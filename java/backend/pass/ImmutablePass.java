@@ -14,4 +14,10 @@ public interface ImmutablePass extends ModulePass
 	void initializePass();
 
 	default boolean runOnModule(Module m) {return false;}
+
+	@Override
+	default ImmutablePass getAsImmutablePass()
+	{
+		return this;
+	}
 }

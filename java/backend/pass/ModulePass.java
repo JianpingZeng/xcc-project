@@ -1,6 +1,12 @@
 package backend.pass;
 
+import backend.passManaging.PMDataManager;
+import backend.passManaging.PassManagerType;
 import backend.value.Module;
+
+import java.util.Stack;
+
+import static backend.passManaging.PassManagerType.PMT_ModulePassManager;
 
 /**
  * @author Xlous.zeng
@@ -16,9 +22,23 @@ public interface ModulePass extends Pass
 	 */
 	boolean runOnModule(Module m);
 
-	@Override
-	default boolean run(Module m)
+	default void assignPassManager(Stack<PMDataManager> pms,
+			PassManagerType preferredType)
 	{
-		return runOnModule(m);
+		while (!pms.isEmpty())
+		{
+			PassManagerType ty = pms.peek().getPassManagerType();
+			if (ty.compareTo(PMT_ModulePassManager) > 0)
+				pms.pop();
+			else
+				break;
+		}
+		assert !pms.isEmpty():"Unable to find appropriate pass manager!";
+		pms.peek().add(this);
+	}
+
+	default PassManagerType getPotentialPassManagerType()
+	{
+		return PMT_ModulePassManager;
 	}
 }

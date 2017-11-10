@@ -1,8 +1,8 @@
 package backend.target;
 
 import backend.codegen.MachineCodeEmitter;
-import backend.pass.FunctionPassManager;
-import backend.pass.PassManagerBase;
+import backend.passManaging.FunctionPassManager;
+import backend.passManaging.PassManagerBase;
 
 import java.io.OutputStream;
 import java.io.PrintStream;

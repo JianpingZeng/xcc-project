@@ -18,6 +18,8 @@ package jlang.codegen;
 
 import backend.codegen.MachineCodeEmitter;
 import backend.pass.*;
+import backend.passManaging.FunctionPassManager;
+import backend.passManaging.PassManager;
 import backend.support.ErrorHandling;
 import backend.target.SubtargetFeatures;
 import backend.target.Target;
@@ -214,9 +216,14 @@ public class BackendConsumer implements ASTConsumer
         // register allocation, and instruction scheduling etc.
         if (perCodeGenPasses != null)
         {
+            // Performs initialization works before operating on Function.
+            perCodeGenPasses.doInitialization();
             for (backend.value.Function f : theModule.getFunctionList())
                 if (!f.isDeclaration())
                     perCodeGenPasses.run(f);
+
+            // Finalize!
+            perCodeGenPasses.doFinalization();
         }
     }
 
@@ -224,7 +231,7 @@ public class BackendConsumer implements ASTConsumer
     {
         if (perFunctionPasses == null)
         {
-            perFunctionPasses = new FunctionPassManager();
+            perFunctionPasses = new FunctionPassManager(theModule);
             perFunctionPasses.add(new TargetData(theTargetData));
         }
         return perFunctionPasses;
@@ -244,7 +251,7 @@ public class BackendConsumer implements ASTConsumer
     {
         if (perCodeGenPasses == null)
         {
-            perCodeGenPasses = new FunctionPassManager();
+            perCodeGenPasses = new FunctionPassManager(theModule);
             perCodeGenPasses.add(new TargetData(theTargetData));;
         }
         return perCodeGenPasses;
