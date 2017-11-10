@@ -1,5 +1,7 @@
-# Overview
-This is a C language compiler named of **xcc** for researching and studying
+                    Extremely C Compiler (XCC)
+
+## Overview
+This is a C language compiler named of **XCC** for researching and studying
 machine-independent optimization on IR, like SCCP, GVN, LICM, IndVarSimply,
 ConstantPropagate, ConstantFolding, DCE, and so many Loop Analysis & 
 transforms. In the other hand, it also includes a little of machine-
@@ -9,22 +11,42 @@ In order to focus on optimization, the implementation is derived from
 [Clang project](https://clang.llvm.org/) rather than do it by myself 
 since lacking of sufficient time and energy.  
 
-## Current work
-The frontend for the C language has been finished with respect to Clang
-besides a little code used for semantic checking. But the work of generating 
-LLVM IR from frontend AST is completed, I also have finished some important
-analysis and transforms, including Loop detection, Loop transform, dominator
-tree and domination frontier etc.
+## Features
+The fore-end named of "Jlang" is completed which can used to lex, parse input
+source code. Then semantic action would be performed that operated on AST to
+check the correctness, more important thing is to report precise diagnostics
+information at the given source location.
 
-In the side of backend, First, a local register allocation is added, but
-no instruction scheduling. I just takes the simple code generation from
-IR rather than automatic technique based **Burg**. In order to obtain
-better performance, a simple peephole optimizer for X86 target was added
+In order to view the internal data structure about "Jlang", we provide various
+of command line options to control the output result, e.g. dumping tokens with
+"-E", dumping AST corresponding to source code with option "-ast-dump", emitting
+LLVM 2.6-compatible IR with option "-emit-llvm" etc.
+
+In terms of middle-end, the "XCC" is able to performance some important analysis
+and transformation passes, such as basic alias analysis, induction variable
+recognization, loop recognization, construction of dominator tree, dead code
+elimination, global value numbering, induction variable simplification, lcssa,
+loop invariant code motion, unused loop deletion, loop inversion, sparse conditional
+constant propagation, scalar replacement of aggregate, tail call elimination,
+unreachable basic block elimination etc.
+
+Apart from fore-end and middle optimizer, Implementing the same semantic of
+IR code with machine-specific instructions is also greatly important part of
+complete compiler. In "XCC", all of those work was implemented in directory backend,
+it consists of instruction selection, [TODO]instruction scheduling,
+register allocation. Currently, a naive instruction selection based on macro
+expansion has been completed. "XCC" supports three kind of register allocator,
+SimpleAllocator scoped in single instruction, LocalAllocator focused on basic block,
+and linear scan register allocator focused on whole machine function.
+
+Currently, only X86 target is supported.
 
 ## Future plan
-Continue to fix the drawbacks of the Jlang(our frontend for this project).
-Refines the register allocation, it is possible that we would introduce a
-greedy allocator or LSRA, add a instruction selector based on Burg.
+Make the performance improvement of phase of instruction selection by leverage of
+tree-pattern matching. Add a default instruction scheduling to reduce pipeline stall
+as minimal as possible. Also, there are some valuable points to improve register
+allocator, for example, we can take the use point into consideration to avoid
+code spill and to split whole LiveInterval into multiple parts
 
 ## Usage
 Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
@@ -39,8 +61,11 @@ or [OpenJDK 1.8](https://github.com/alexkasko/openjdk-unofficial-builds).
 1. Clone this repository into your local directory.
 2. Build this project with following command.
    ````bash
-    cd xcc && make
+    cd xcc
+    mkdir build && cd build
+    cmake ../
+    make all [-j8 depends on number of CPU cores in your local machine]
    ````
 3. After finishing step 2, the executable file and jar file would be generated and 
-   resided in directory out/bin, out/lib respectively.
+   resided in directory build/bin, build/lib respectively.
 
