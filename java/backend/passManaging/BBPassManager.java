@@ -81,7 +81,7 @@ public class BBPassManager extends PMDataManager implements FunctionPass
                 verifyPreservedAnalysis(bbp);
                 removeNotPreservedAnalysis(bbp);
                 recordAvailableAnalysis(bbp);
-                removeDataPasses(bbp, f.getName(), ON_FUNCTION_MSG);
+                removeDeadPasses(bbp, f.getName(), ON_FUNCTION_MSG);
 
                 // if dominator information is available then verify it.
                 verifyDomInfo(bbp, f);

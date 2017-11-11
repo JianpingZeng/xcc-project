@@ -159,6 +159,9 @@ public class X86PeepholeOptimizer extends MachineFunctionPass
     /**
      * Register X86 peephole optimization pass.
      */
-    public static RegisterPass x86PPOPassRegister =
-            new RegisterPass("X86 peephole optimizer", X86PeepholeOptimizer.class);
+    static
+    {
+        new RegisterPass("peephole", "X86 peephole optimizer",
+                X86PeepholeOptimizer.class);
+    }
 }

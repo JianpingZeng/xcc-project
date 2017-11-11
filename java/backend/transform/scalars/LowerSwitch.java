@@ -39,8 +39,10 @@ public final class LowerSwitch implements FunctionPass
     /**
      * Register the LowerSwitch pass.
      */
-    public static RegisterPass lowerSwitchRegister =
-            new RegisterPass("X86 lower switch", LowerSwitch.class);
+    static
+    {
+        new RegisterPass("lowerswitch", "X86 lower switch", LowerSwitch.class);
+    }
 
     public static LowerSwitch createLowerSwitchPass() {return new LowerSwitch();}
 

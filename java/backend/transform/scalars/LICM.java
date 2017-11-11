@@ -4,6 +4,7 @@ import backend.analysis.*;
 import backend.analysis.AliasAnalysis.ModRefBehavior;
 import backend.analysis.AliasSetTracker.AliasSet;
 import backend.analysis.LoopInfo;
+import backend.pass.RegisterPass;
 import backend.support.LLVMContext;
 import backend.value.*;
 import backend.support.CallSite;
@@ -93,6 +94,11 @@ public final class LICM implements LoopPass
     private LICM()
     {
         loopToAliasMap = new HashMap<>();
+    }
+
+    static
+    {
+        new RegisterPass("licm", "Loop Invariant Code Motion", LICM.class);
     }
 
     public static LICM createLICMPass()

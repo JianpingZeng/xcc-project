@@ -34,20 +34,27 @@ public class RegisterPass
      * @param name
      * @param klass
      */
-    public RegisterPass(String name, Class klass)
+    public RegisterPass(String name,  String passArg, Class klass)
     {
-        this(name, null, klass);
+        this(passArg, name, klass, false);
+    }
+
+    public RegisterPass( String name, String passArg, Class klass,
+            boolean cfgOnly)
+    {
+        this(passArg, name, klass, cfgOnly, false);
     }
 
     /**
      * Creates an instance of PassInfo with the specified arguments list.
      * @param name
-     * @param args
+     * @param passArg The argument to be printed out into command line.
      * @param klass
      */
-    public RegisterPass(String name, Object[] args, Class klass)
+    public RegisterPass(String name,  String passArg, Class klass,
+            boolean cfgOnly, boolean isAnalysis)
     {
-        passInfo = new PassInfo(name, args, klass);
+        passInfo = new PassInfo(name, passArg, klass, cfgOnly, isAnalysis);
         this.klass = klass;
         registerPass();
     }

@@ -19,6 +19,7 @@ package backend.passManaging;
 import backend.pass.AnalysisUsage;
 import backend.pass.ImmutablePass;
 import backend.pass.Pass;
+import backend.pass.PassInfo;
 import backend.value.Module;
 
 import java.util.ArrayList;
@@ -140,6 +141,12 @@ public class PassManagerImpl extends PMDataManager implements
     public AnalysisUsage findAnalysisUsage(Pass p)
     {
         return tlm.findAnalysisUsage(p);
+    }
+
+    @Override
+    public Pass findAnalysisPass(PassInfo pi)
+    {
+        return tlm.findAnalysisPass(pi);
     }
 
     @Override
