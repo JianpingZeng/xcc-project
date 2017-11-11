@@ -2,6 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.analysis.LoopInfo;
+import backend.pass.RegisterPass;
 import backend.value.*;
 import backend.value.Operator;
 import backend.utils.PredIterator;
@@ -31,6 +32,11 @@ public final class LoopSimplify implements FunctionPass
 	private LoopInfo li;
 	private DomTreeInfo dt;
 	private AliasAnalysis aliasAnalysis;
+
+	static
+	{
+		new RegisterPass("loopsimply", "Loop Simplification Pass", LoopSimplify.class);
+	}
 
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
@@ -202,7 +208,7 @@ public final class LoopSimplify implements FunctionPass
 				changed = true;
 				li.removeBlock(exitingBB);
 
-				DominatorFrontier df = getAnalysisToUpDate(DominatorFrontier.class);
+				DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
 				DomTreeNodeBase<BasicBlock> node = dt.getNode(exitingBB);
 				ArrayList<DomTreeNodeBase<BasicBlock>> children = node.getChildren();
 
@@ -479,7 +485,7 @@ public final class LoopSimplify implements FunctionPass
 
 		// Update dominator information.
 		dt.splitBlock(beBlock);
-		DominatorFrontier df = getAnalysisToUpDate(DominatorFrontier.class);
+		DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
 		if (df != null)
 			df.splitBlock(beBlock);
 	}

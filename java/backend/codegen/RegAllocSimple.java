@@ -1,7 +1,5 @@
 package backend.codegen;
 
-import backend.transform.scalars.PhiElimination;
-import backend.transform.scalars.TwoAddrInstructionPass;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetInstrDesc;

@@ -17,6 +17,7 @@ package backend.transform.scalars;
  */
 
 import backend.pass.FunctionPass;
+import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.value.BasicBlock;
 import backend.value.Function;
@@ -34,6 +35,11 @@ public final class TailCallElim implements FunctionPass
 {
     public final static IntStatistic NumTailElim =
             new IntStatistic("NumTailElim", "The number of tail call elimination");
+
+    static
+    {
+        new RegisterPass("tailcallelim", "Tail Call Elimination", TailCallElim.class);
+    }
     @Override
     public boolean runOnFunction(Function f)
     {

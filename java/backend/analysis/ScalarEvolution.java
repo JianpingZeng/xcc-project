@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.pass.RegisterPass;
 import backend.support.LLVMContext;
 import backend.value.BasicBlock;
 import backend.value.Operator;
@@ -34,8 +35,8 @@ import tools.Util;
 import java.util.*;
 
 import static backend.analysis.ValueTracking.computeNumSignBits;
-import static backend.transform.scalars.ConstantFolder.canConstantFoldCallTo;
-import static backend.transform.scalars.ConstantFolder.constantFoldCall;
+import static backend.transform.utils.ConstantFolder.canConstantFoldCallTo;
+import static backend.transform.utils.ConstantFolder.constantFoldCall;
 
 /**
  * This class is the main scalar evolution jlang.driver. Since client code (intentionally)
@@ -45,6 +46,13 @@ import static backend.transform.scalars.ConstantFolder.constantFoldCall;
  */
 public final class ScalarEvolution implements FunctionPass
 {
+    static
+    {
+        new RegisterPass("scalar-evolution", "Scalar Evolution Analysis",
+                ScalarEvolution.class,
+                false, true);
+    }
+
     public static int maxBruteForceIteration = 100;
     public static int numTripCountsComputed;
 

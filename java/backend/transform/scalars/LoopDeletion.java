@@ -2,6 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.analysis.LoopInfo;
+import backend.pass.RegisterPass;
 import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
@@ -21,6 +22,10 @@ import java.util.Iterator;
  */
 public final class LoopDeletion implements LoopPass
 {
+	static
+	{
+		new RegisterPass("loop-deletion", "Delete dead loops", LoopDeletion.class);
+	}
 	/**
 	 * A static method served as creating an instance of this class
 	 * that operated on program loop.
@@ -173,7 +178,7 @@ public final class LoopDeletion implements LoopPass
 
 		// Update the dominator information and dominator frontier if available.
 		DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
-		DominatorFrontier df = getAnalysisToUpDate(DominatorFrontier.class);
+		DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
 		Iterator<BasicBlock> itr = loop.getBlocks().iterator();
 		while (itr.hasNext())
 		{

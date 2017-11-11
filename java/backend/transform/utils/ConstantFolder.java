@@ -1,4 +1,4 @@
-package backend.transform.scalars;
+package backend.transform.utils;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous

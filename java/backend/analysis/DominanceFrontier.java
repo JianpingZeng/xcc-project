@@ -1,4 +1,4 @@
-package backend.transform.scalars;
+package backend.analysis;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -16,8 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.DomTreeInfo;
-import backend.analysis.DomTreeNodeBase;
+import backend.pass.RegisterPass;
 import backend.value.BasicBlock;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
@@ -32,9 +31,15 @@ import java.util.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class DominatorFrontier extends DominatorFrontierBase
+public final class DominanceFrontier extends DominanceFrontierBase
 {
-    public DominatorFrontier()
+    static
+    {
+        new RegisterPass("domfrontier", "Dominance Frontier Construction",
+                DominanceFrontier.class,
+                true, true);
+    }
+    public DominanceFrontier()
     {
         super(false);
     }

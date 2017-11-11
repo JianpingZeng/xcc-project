@@ -1,4 +1,4 @@
-package backend.transform.scalars;
+package backend.transform.utils;
 
 import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;

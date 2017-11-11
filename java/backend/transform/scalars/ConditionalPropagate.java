@@ -19,6 +19,7 @@ package backend.transform.scalars;
 
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
@@ -28,7 +29,7 @@ import backend.value.Value.UndefValue;
 
 import java.util.LinkedList;
 
-import static backend.transform.scalars.ConstantFolder.constantFoldTerminator;
+import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
 
 /**
  * This pass propagates information about conditional expressions through the
@@ -43,6 +44,10 @@ public class ConditionalPropagate implements FunctionPass
     public static IntStatistic NumSwThread =
             new IntStatistic("NumSwThread", "Number of CFG edges threaded through program");
 
+    static
+    {
+        new RegisterPass("condprop", "Conditional Propagation", ConditionalPropagate.class);
+    }
     private boolean madeChange;
     private LinkedList<BasicBlock> deadBlocks;
 

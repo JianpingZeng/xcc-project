@@ -2,6 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.AliasSetTracker;
 import backend.analysis.DomTreeInfo;
+import backend.analysis.DominanceFrontier;
 import backend.value.BasicBlock;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
@@ -48,7 +49,7 @@ public final class PromoteMemToReg
     /**
      * The computed dominator frontier information for a specified function.
      */
-	private DominatorFrontier df;
+	private DominanceFrontier df;
 
 	private AliasSetTracker ast;
 
@@ -112,14 +113,14 @@ public final class PromoteMemToReg
 
     public static void promoteMemToReg(ArrayList<AllocaInst> allocas,
             DomTreeInfo dt,
-            DominatorFrontier df)
+            DominanceFrontier df)
     {
         promoteMemToReg(allocas, dt, df, null);
     }
 
 	public static void promoteMemToReg(ArrayList<AllocaInst> allocas,
             DomTreeInfo dt,
-            DominatorFrontier df,
+            DominanceFrontier df,
 			AliasSetTracker ast)
     {
         if (allocas.isEmpty()) return;
@@ -128,7 +129,7 @@ public final class PromoteMemToReg
 
 	public PromoteMemToReg(ArrayList<AllocaInst> allocas,
             DomTreeInfo dt,
-            DominatorFrontier df,
+            DominanceFrontier df,
             AliasSetTracker ast)
 	{
 		this.allocas = allocas;

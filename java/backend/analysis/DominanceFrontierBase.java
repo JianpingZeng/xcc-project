@@ -1,4 +1,4 @@
-package backend.transform.scalars;
+package backend.analysis;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -27,13 +27,13 @@ import java.util.HashSet;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class DominatorFrontierBase implements FunctionPass
+public abstract class DominanceFrontierBase implements FunctionPass
 {
     protected HashMap<BasicBlock, HashSet<BasicBlock>> frontiers;
     protected ArrayList<BasicBlock> roots;
     protected boolean isPostDominators;
 
-    protected DominatorFrontierBase(boolean isPost)
+    protected DominanceFrontierBase(boolean isPost)
     {
         frontiers = new HashMap<>();
         roots = new ArrayList<>();
@@ -118,7 +118,7 @@ public abstract class DominatorFrontierBase implements FunctionPass
      * @param other
      * @return
      */
-    public boolean compare(DominatorFrontierBase other)
+    public boolean compare(DominanceFrontierBase other)
     {
         HashMap<BasicBlock, HashSet<BasicBlock>> tempMaps = new HashMap<>();
         other.getFrontiers().entrySet().forEach(entry ->

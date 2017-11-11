@@ -254,7 +254,7 @@ public final class LCSSA implements LoopPass
 		// not use it. This allows Pass Manager to schedule Dominance
 		// Frontier early enough such that one LPPassManager can handle
 		// multiple loop transformation passes.
-		au.addRequired(DominatorFrontier.class);
-		au.addPreserved(DominatorFrontier.class);
+		au.addRequired(DominanceFrontier.class);
+		au.addPreserved(DominanceFrontier.class);
 	}
 }

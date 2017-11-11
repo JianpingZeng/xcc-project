@@ -71,7 +71,7 @@ public final class LICM implements LoopPass
     /**
      * Current Dominator frontier info.
      */
-    private DominatorFrontier df;
+    private DominanceFrontier df;
     /**
      * Set to true when we change anything.
      */
@@ -112,7 +112,7 @@ public final class LICM implements LoopPass
         au.addRequired(LoopSimplify.class);
         au.addRequired(LoopInfo.class);
         au.addRequired(DomTreeInfo.class);
-        au.addRequired(DominatorFrontier.class);
+        au.addRequired(DominanceFrontier.class);
         au.addRequired(AliasAnalysis.class);
     }
 
@@ -138,7 +138,7 @@ public final class LICM implements LoopPass
         changed = false;
         li = getAnalysisToUpDate(LoopInfo.class);
         aa = getAnalysisToUpDate(AliasAnalysis.class);
-        df = getAnalysisToUpDate(DominatorFrontier.class);
+        df = getAnalysisToUpDate(DominanceFrontier.class);
         dt = getAnalysisToUpDate(DomTreeInfo.class);
 
         curAST = new AliasSetTracker(aa);

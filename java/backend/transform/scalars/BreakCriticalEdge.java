@@ -18,6 +18,8 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
+import backend.analysis.DominanceFrontier;
+import backend.pass.RegisterPass;
 import backend.value.Loop;
 import backend.analysis.LoopInfo;
 import backend.value.BasicBlock;
@@ -36,18 +38,43 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 /**
+ * This file define a pass which operates on LLVM IR to break critical edge as
+ * following.
+ * <pre>
+ *     P1      P2    [Two predecessor blocks]
+ *      \     /
+ *       \   /
+ *         BB        [the center BasicBlock]
+ *      /    \
+ *     S1      S2    [Two successor blocks]
+ * </pre>
+ * to following.
+ * <pre>
+ *     P1      P2    [Two predecessor blocks]
+ *      \     /
+ *       Sentinel    [The latest created block]
+ *         |
+ *         BB        [the center BasicBlock]
+ *      /    \
+ *     S1      S2    [Two successor blocks]
+ * </pre>
  * @author Xlous.zeng
  * @version 0.1
  */
 public final class BreakCriticalEdge implements FunctionPass
 {
     private int numBroken;
+    static
+    {
+        new RegisterPass("break-crit-edges", "Break critical edges in CFG", BreakCriticalEdge.class);
+    }
+
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.addPreserved(DomTreeInfo.class);
         au.addPreserved(LoopInfo.class);
-        au.addPreserved(DominatorFrontier.class);
+        au.addPreserved(DominanceFrontier.class);
     }
 
     @Override
@@ -116,7 +143,7 @@ public final class BreakCriticalEdge implements FunctionPass
     /**
      * If this edge is a critical edge, insert a new node to
      * split the critical edge.  This will update DominatorTree and
-     * DominatorFrontier  information if it is available, thus calling this pass
+     * DominanceFrontier  information if it is available, thus calling this pass
      * will not invalidate  any of them.  This returns true if the edge was split,
      * false otherwise.  This ensures that all edges to that dest go to one block
      * instead of each going to a different block.
@@ -219,7 +246,7 @@ public final class BreakCriticalEdge implements FunctionPass
         }
 
         // Update dominator frontier information.
-        DominatorFrontier df = pass.getAnalysisToUpDate(DominatorFrontier.class);
+        DominanceFrontier df = pass.getAnalysisToUpDate(DominanceFrontier.class);
         if (df != null)
         {
             if (!otherPreds.isEmpty())
