@@ -19,6 +19,7 @@ package backend.passManaging;
 import backend.pass.AnalysisUsage;
 import backend.pass.ImmutablePass;
 import backend.pass.Pass;
+import backend.pass.PassInfo;
 import backend.value.Function;
 import backend.value.Module;
 
@@ -123,7 +124,20 @@ public class FunctionPassManagerImpl extends PMDataManager implements
     @Override
     public void addTopLevelPass(Pass p)
     {
-        pmt.addTopLevelPass(p);
+        ImmutablePass ip = p instanceof ImmutablePass ?
+                (ImmutablePass)p : null;
+        if (ip != null)
+        {
+            // p is an immutable pass and it will be managed by
+            // this top level manager.
+            initializeAnalysisImpl(p);
+            addImmutablePass(ip);
+            recordAvailableAnalysis(ip);
+        }
+        else
+        {
+            p.assignPassManager(pmt.getActiveStack());
+        }
     }
 
     @Override
@@ -142,6 +156,12 @@ public class FunctionPassManagerImpl extends PMDataManager implements
     public AnalysisUsage findAnalysisUsage(Pass p)
     {
         return pmt.findAnalysisUsage(p);
+    }
+
+    @Override
+    public Pass findAnalysisPass(PassInfo pi)
+    {
+        return pmt.findAnalysisPass(pi);
     }
 
     @Override

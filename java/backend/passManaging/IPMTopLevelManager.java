@@ -19,6 +19,7 @@ package backend.passManaging;
 import backend.pass.AnalysisUsage;
 import backend.pass.ImmutablePass;
 import backend.pass.Pass;
+import backend.pass.PassInfo;
 
 import java.util.ArrayList;
 
@@ -37,7 +38,7 @@ public interface IPMTopLevelManager
 
     void collectLastUses(ArrayList<Pass> lastUsers, Pass p);
     
-    Pass findAnalysisPass();
+    Pass findAnalysisPass(PassInfo pi);
 
     AnalysisUsage findAnalysisUsage(Pass p);
 

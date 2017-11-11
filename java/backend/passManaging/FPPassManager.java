@@ -70,7 +70,7 @@ public final class FPPassManager extends PMDataManager implements ModulePass
             verifyPreservedAnalysis(fp);
             removeNotPreservedAnalysis(fp);
             recordAvailableAnalysis(fp);
-            removeDataPasses(fp, f.getName(), ON_FUNCTION_MSG);
+            removeDeadPasses(fp, f.getName(), ON_FUNCTION_MSG);
 
             // if dominator information is available then verify it.
             verifyDomInfo(fp, f);

@@ -21,18 +21,47 @@ import backend.pass.ImmutablePass;
 import backend.pass.Pass;
 import backend.pass.PassInfo;
 import backend.value.Function;
+import tools.Util;
+import tools.commandline.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Stack;
+import java.util.*;
+
+import static backend.passManaging.PMDataManager.PassDebugLevel.*;
+import static backend.passManaging.PMDataManager.PassDebuggingString.FREEING_MSG;
+import static tools.commandline.OptionHidden.Hidden;
 
 /**
+ * PMDataManager provides the common place to manage the analysis data used by
+ * pass managers, such sa {@linkplain MPPassManager}, {@linkplain FPPassManager},
+ * and {@linkplain BBPassManager}.
  * @author Xlous.zeng
  * @version 0.1
  */
 public abstract class PMDataManager
 {
+    enum PassDebugLevel
+    {
+        None,
+        Arguments,
+        Structures,
+        Executions,
+        Details
+    }
+
+    public static final Opt<PassDebugLevel> PassDebugging =
+            new Opt<PassDebugLevel>(
+                    new Parser<>(),
+                    new OptionNameApplicator("debug-pass"),
+                    new OptionHiddenApplicator(Hidden),
+                    Desc.desc("Print PassManager debugging information"),
+                    new ValueClass<>(
+                            new ValueClass.Entry<>(None, "none", "disable debug output"),
+                            new ValueClass.Entry<>(Arguments, "arguments", "print pass arguments to pass to 'opt'"),
+                            new ValueClass.Entry<>(Structures, "structures", "print pass structure before run()"),
+                            new ValueClass.Entry<>(Executions, "executions", "print pass name before it is executed"),
+                            new ValueClass.Entry<>(Details, "details", "print pass details when it is executed")
+                    )
+            );
     public enum PassDebuggingString
     {
         EXECUTION_MSG, // "Executing Pass '"
@@ -68,7 +97,20 @@ public abstract class PMDataManager
 
     public void verifyPreservedAnalysis(Pass p)
     {
-        // TODO: 2017/11/10
+        if (Util.DEBUG)
+        {
+            AnalysisUsage au = topLevelManager.findAnalysisUsage(p);
+            HashSet<PassInfo> preservedSet = au.getPreserved();
+            // verify preserved analysis.
+            for (PassInfo pi : preservedSet)
+            {
+                Pass ap = findAnalysisPass(pi, true);
+                if (ap != null)
+                {
+                    ap.verifyAnalysis();
+                }
+            }
+        }
     }
 
     public void verifyDomInfo(Pass p, Function f)
@@ -78,12 +120,71 @@ public abstract class PMDataManager
 
     public void removeNotPreservedAnalysis(Pass p)
     {
-        // TODO: 2017/11/10
+        AnalysisUsage au = topLevelManager.findAnalysisUsage(p);
+        if (au.getPreservedAll())
+            return;
+
+        HashSet<PassInfo> preservedSet = au.getPreserved();
+        for (Map.Entry<PassInfo, Pass> entry : availableAnalysis.entrySet())
+        {
+            if (!(entry.getValue() instanceof ImmutablePass) &&
+                    !preservedSet.contains(entry.getKey()))
+            {
+                // remove this analysis.
+                if (PassDebugging.value.compareTo(Details) >= 0)
+                {
+                    Pass s = entry.getValue();
+                    System.err.printf(" -- '%s' is not preserving '%s'\n",
+                            p.getPassName(),
+                            s.getPassName());
+                }
+                availableAnalysis.remove(entry.getKey());
+            }
+        }
+
+        for (int index = 0; index < PassManagerType.values().length; index++)
+        {
+            if (inheritedAnalysis[index] == null)
+                continue;
+            for (Map.Entry<PassInfo, Pass> entry : inheritedAnalysis[index].entrySet())
+            {
+                if (!(entry.getValue() instanceof ImmutablePass) &&
+                        !preservedSet.contains(entry.getKey()))
+                {
+                    // remove this analysis.
+                    inheritedAnalysis[index].remove(entry.getKey());
+                }
+            }
+        }
     }
 
-    public void removeDataPasses(Pass p, String msg, PassDebuggingString str)
+    public void removeDeadPasses(Pass p,
+            String msg,
+            PassDebuggingString dgb_str)
     {
-        // TODO: 2017/11/10
+        ArrayList<Pass> deadPasses = new ArrayList<>();
+        if (topLevelManager== null)
+            return;
+        topLevelManager.collectLastUses(deadPasses, p);
+        if (PassDebugging.value.compareTo(Details) >= 0 &&
+                !deadPasses.isEmpty())
+        {
+            System.err.printf(" -*- '%s'", p.getPassName());
+            System.err.printf(" is the last user of following pass instance.");
+            System.err.printf(" Free these instance\n");
+        }
+
+        for (Pass dp : deadPasses)
+        {
+            dumpPassInfo(dp, FREEING_MSG, dgb_str, msg);
+
+            PassInfo pi = dp.getPassInfo();
+            if (pi != null)
+            {
+                if (availableAnalysis.containsKey(pi))
+                    availableAnalysis.remove(pi);
+            }
+        }
     }
 
     public void add(Pass p)
@@ -99,7 +200,31 @@ public abstract class PMDataManager
      */
     public void add(Pass p, boolean processAnalysis)
     {
+        if (!processAnalysis)
+        {
+            passVector.add(p);
+            return;
+        }
 
+        ArrayList<Pass> requiredPasses = new ArrayList<>();
+        ArrayList<PassInfo> reqAnalysisNotAvailable = new ArrayList<>();
+
+        collectRequiredAnalysis(requiredPasses, reqAnalysisNotAvailable, p);;
+        for (Pass required : requiredPasses)
+        {
+            passVector.add(required);
+        }
+
+        // Now, take care of required analysises that are not available.
+        for (PassInfo pi : reqAnalysisNotAvailable)
+        {
+            Pass analysisPass = pi.createPass();
+            addLowerLevelRequiredPass(p, analysisPass);
+        }
+
+        removeNotPreservedAnalysis(p);
+        recordAvailableAnalysis(p);
+        passVector.add(p);
     }
 
     public void setTopLevelManager(IPMTopLevelManager tlm)
@@ -141,9 +266,22 @@ public abstract class PMDataManager
         return true;
     }
 
-    public void collectRequiredAnalysis(ArrayList<Pass> requiredPasses,
-            ArrayList<PassInfo> reqPassButNotAvail, Pass p)
-    {}
+    public void collectRequiredAnalysis(
+            ArrayList<Pass> requiredPasses,
+            ArrayList<PassInfo> reqPassButNotAvail,
+            Pass p)
+    {
+        AnalysisUsage au = topLevelManager.findAnalysisUsage(p);
+        HashSet<PassInfo> requiredSet = au.getRequired();
+        for (PassInfo pi : requiredSet)
+        {
+            Pass analysisPass = findAnalysisPass(pi, true);
+            if (analysisPass != null)
+                requiredPasses.add(analysisPass);
+            else
+                reqPassButNotAvail.add(pi);
+        }
+    }
 
     public void initializeAnalysisImpl(Pass p)
     {
@@ -152,29 +290,147 @@ public abstract class PMDataManager
             inheritedAnalysis[i] = null;
     }
 
+    /**
+     * Find the pass that implements PassInfo. If desired pass is not
+     * found then return null.
+     * @param pi
+     * @param searchParent
+     * @return
+     */
+    public Pass findAnalysisPass(PassInfo pi, boolean searchParent)
+    {
+        if (availableAnalysis.containsKey(pi))
+            return availableAnalysis.get(pi);
 
-    public Pass findAnalysisPass() {}
+        // search parents through TopLevelManager.
+        if (searchParent)
+            return topLevelManager.findAnalysisPass(pi);
+        return null;
+    }
 
     public int getDepth()
     {
         return depth;
     }
 
+    /**
+     * Print list of passes that are last used by p.
+     * @param p
+     * @param offset
+     */
     public void dumpLastUses(Pass p, int offset)
-    {}
+    {
+        ArrayList<Pass> luses = new ArrayList<>();
+        if (topLevelManager == null)
+            return;
+
+        topLevelManager.collectLastUses(luses, p);
+        luses.forEach(lu->
+        {
+            System.err.printf("--%s", Util.fixedLengthString(offset<<1, ' '));
+            lu.dumpPassStructures(0);
+        });
+    }
 
     public void dumpPassArguments()
-    {}
+    {
+        for (Pass p : passVector)
+        {
+            if (p instanceof PMDataManager)
+            {
+                PMDataManager pmd = (PMDataManager)p;
+                pmd.dumpPassArguments();
+            }
+            else
+            {
+                PassInfo pi = p.getPassInfo();
+                if (pi != null)
+                {
+                    if (!pi.isAnalysisGroup())
+                        System.err.printf(" -%s", pi.getPassArgument());
+                }
+            }
+        }
+    }
 
     public void dumpPassInfo(Pass p, PassDebuggingString s1,
             PassDebuggingString s2, String msg)
-    {}
+    {
+        if (PassDebugging.value.compareTo(Executions) < 0)
+            return;
+        System.err.printf("0x%x%s", hashCode(), Util.fixedLengthString(depth*2+1, ' '));
+        switch (s1)
+        {
+            case EXECUTION_MSG:
+                System.err.printf("Executing Pass '%s", p.getPassName());
+                break;
+            case MODIFICATION_MSG:
+                System.err.printf("Made modification '%s", p.getPassName());
+                break;
+            case FREEING_MSG:
+                System.err.printf("Freeing Pass '%s", p.getPassName());
+                break;
+            default:break;
+        }
+        switch (s2)
+        {
+            case ON_BASICBLOCK_MSG:
+                System.err.printf(" ' on BasicBlock '%s'...\n", msg);
+                break;
+            case ON_FUNCTION_MSG:
+                System.err.printf(" ' on Function '%s'...\n", msg);
+                break;
+            case ON_MODULE_MSG:
+                System.err.printf(" ' on Module '%s'...\n", msg);
+                break;
+            case ON_CG_MSG:
+                System.err.printf(" ' on CallGraph '%s'...\n", msg);
+                break;
+        }
+    }
 
     public void dumpPreservedSet(Pass p)
-    {}
+    {
+        if (PassDebugging.value.compareTo(Details) < 0)
+            return;
+
+        AnalysisUsage au = new AnalysisUsage();
+        p.getAnalysisUsage(au);
+        dumpAnalysisUsage("Preserved", p, au.getPreserved());
+    }
+
+    public void dumpAnalysisUsage(
+            String msg,
+            Pass p,
+            HashSet<PassInfo> set)
+    {
+        assert PassDebugging.value.compareTo(Details) >= 0;
+        if (set.isEmpty())
+            return;
+
+        System.err.printf("0x%x%s%s%s", p.hashCode(),
+                Util.fixedLengthString(depth*2+3, ' '),
+                msg, " Analyses:");
+        int i = 0;
+        for (PassInfo pi : set)
+        {
+            if (i != 0)
+                System.err.print(',');
+            System.err.printf(" %s", pi.getPassName());
+            ++i;
+        }
+        System.err.println();
+    }
 
     public void dumpRequiredSet(Pass p)
-    {}
+    {
+        if (PassDebugging.value.compareTo(Details) < 0)
+            return;
+
+        AnalysisUsage au = new AnalysisUsage();
+        p.getAnalysisUsage(au);
+        dumpAnalysisUsage("Required", p, au.getRequired());
+    }
 
     public int getNumContainedPasses()
     {
@@ -209,6 +465,22 @@ public abstract class PMDataManager
 
         availableAnalysis.put(info, p);
 
+    }
+
+    public void addLowerLevelRequiredPass(Pass p, Pass requiredPass)
+    {
+        if (topLevelManager != null)
+        {
+            topLevelManager.dumpArguments();
+            topLevelManager.dumpPasses();
+        }
+
+        if (Util.DEBUG)
+        {
+            System.err.printf("Unable to schedule '%s'", requiredPass.getPassName());
+            System.err.printf(" required by '%s\n'", p.getPassName());
+        }
+        Util.shouldNotReachHere("Unable to schedule pass");
     }
 
     public abstract Pass getAsPass();

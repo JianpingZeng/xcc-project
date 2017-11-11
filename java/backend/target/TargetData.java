@@ -79,11 +79,13 @@ public class TargetData implements ImmutablePass
             return os;
         }
     }
-	/**
-	 * Register the default TargetData pass.
-	 */
-	public static RegisterPass targetDataRegPass =
-			new RegisterPass("Target Data Layout", TargetData.class);
+
+    static
+    {
+	    new RegisterPass("targetdata", "Target Data Layout",
+			    TargetData.class, false,
+			    true);
+    }
 	/**
 	 * default to false.
 	 */

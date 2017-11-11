@@ -6,8 +6,6 @@ import tools.Util;
 
 import java.util.Stack;
 
-import static backend.pass.PassInfoSupport.getPassInfo;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -16,9 +14,19 @@ public interface Pass
 {
 	String getPassName();
 
+	/**
+	 * Return the PassInfo data structure that corresponding to this
+	 * pass. If the pass has not been registered, this would return null.
+	 * @return
+	 */
+	default PassInfo getPassInfo()
+	{
+		return PassInfoSupport.getPassInfo(getClass());
+	}
+
 	default <T> T getAnalysisToUpDate(Class<T> klass)
 	{
-		PassInfo pi = getPassInfo(klass);
+		PassInfo pi = PassInfoSupport.getPassInfo(klass);
 		if (pi == null) return null;
 
 		return (T)PassDataBase.getAnalysisOrNull(pi);
@@ -40,6 +48,11 @@ public interface Pass
     	return PassManagerType.PMT_Unknow;
     }
 
+    default void assignPassManager(Stack<PMDataManager> pms)
+    {
+    	assignPassManager(pms, PassManagerType.PMT_Unknow);
+    }
+
     default void assignPassManager(Stack<PMDataManager> pms,
 		    PassManagerType pmt) {}
 
@@ -56,5 +69,19 @@ public interface Pass
     {
     	return null;
     }
+
+	/**
+	 * This member can be implemented by a analysis pass to
+	 * check state of analysis information.
+	 */
+	default void verifyAnalysis()
+    {}
+
+	/**
+	 * Check if available pass managers are suitable for this pass or not.
+	 * @param activeStack
+	 */
+	default void preparePassManager(Stack<PMDataManager> activeStack)
+    {}
 }
 

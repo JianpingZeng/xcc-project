@@ -35,8 +35,10 @@ import java.util.ArrayList;
  */
 public final class Mem2Reg implements FunctionPass
 {
-    public static RegisterPass promotePass =
-            new RegisterPass("Promote memory to Register", Mem2Reg.class);
+    static
+    {
+        new RegisterPass("mem2reg", "Promote memory to Register", Mem2Reg.class);
+    }
     /**
      * Statistics the number of allocas instruction to be promoted.
      */

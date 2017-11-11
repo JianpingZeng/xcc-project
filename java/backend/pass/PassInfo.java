@@ -13,17 +13,37 @@ public final class PassInfo
     /**
      * Command line arguments for running this pass.
      */
-    private Object[] passArgument;
+    private String passArgument;
     /**
      * Class object for the Pass.
      */
     private Class<Pass> klass;
+    private boolean isAnalysisGroup;
+    private boolean isAnalysis;
+    private boolean isCFGOnlyPass;
 
-    public PassInfo(String name, Object[] arg, Class<Pass> typeInfo)
+    /**
+     * Create a PassInfo instance that encanpsulates some information about how
+     * to instance a pass, what name of Pass, and what is command line argument
+     * corresponding to Pass.
+     * @param name  The name of Pass.
+     * @param arg   The command line argument to be printed out into console.
+     * @param typeInfo
+     * @param cfgOnly
+     * @param isAnalysis
+     */
+    public PassInfo(String name,
+            String arg,
+            Class<Pass> typeInfo,
+            boolean cfgOnly,
+            boolean isAnalysis)
     {
         passName = name;
         passArgument = arg;
         klass = typeInfo;
+        this.isCFGOnlyPass = cfgOnly;
+        this.isAnalysis = isAnalysis;
+        isAnalysisGroup = true;
     }
 
     public String getPassName()
@@ -36,7 +56,7 @@ public final class PassInfo
         this.passName = passName;
     }
 
-    public Object[] getPassArgument()
+    public String getPassArgument()
     {
         return passArgument;
     }
@@ -58,5 +78,20 @@ public final class PassInfo
         }
         assert false:"Can not create instance without default ctor!";
         return null;
+    }
+
+    public boolean isAnalysisGroup()
+    {
+        return isAnalysisGroup;
+    }
+
+    public boolean isAnalysis()
+    {
+        return isAnalysis;
+    }
+
+    public boolean isCFGOnlyPass()
+    {
+        return isCFGOnlyPass;
     }
 }

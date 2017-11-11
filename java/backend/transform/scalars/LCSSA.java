@@ -2,6 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.*;
 import backend.analysis.LoopInfo;
+import backend.support.IntStatistic;
 import backend.value.*;
 import backend.pass.*;
 import backend.support.PredIteratorCache;
@@ -49,10 +50,13 @@ public final class LCSSA implements LoopPass
 		predCache = new PredIteratorCache();
 	}
 
-	public static int numLCSSA;
+	public static final IntStatistic numLCSSA =
+			new IntStatistic("numLCSSA", "the number of lcssa");
 
-	public static final RegisterPass X =
-			new RegisterPass("lcssa", LCSSA.class);
+	static
+	{
+		new RegisterPass("lcssa", "Loop closed SSA", LCSSA.class);
+	}
 
 	public static Pass createLCSSAPass()
 	{
@@ -132,7 +136,7 @@ public final class LCSSA implements LoopPass
 	 */
 	private void processInstruction(Instruction inst, ArrayList<BasicBlock> exitBlocks)
 	{
-		numLCSSA++;
+		numLCSSA.inc();
 		HashMap<DomTreeNodeBase<BasicBlock>, Value> phis = new HashMap<>();
 		BasicBlock domBB = inst.getParent();
 
