@@ -38,7 +38,9 @@ public final class UnifyFunctionExitNodes implements FunctionPass
     private BasicBlock returnBlock;
     static
     {
-        new RegisterPass("mergereturn", "Unify function exit nodes", UnifyFunctionExitNodes.class);
+        new RegisterPass("mergereturn",
+                "Unify function exit nodes",
+                UnifyFunctionExitNodes.class);
     }
 
     public static Pass createUnifyFunctionExitNodes()

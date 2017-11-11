@@ -18,11 +18,12 @@ package backend.analysis;
 
 import backend.codegen.*;
 import backend.pass.AnalysisUsage;
+import backend.pass.RegisterPass;
 import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrDesc;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
-import backend.transform.scalars.UnreachableMachineBlockElim;
+import backend.codegen.UnreachableMachineBlockElim;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -171,6 +172,10 @@ public final class LiveVariables extends MachineFunctionPass
     private TargetRegisterInfo regInfo;
     private MachineRegisterInfo machineRegInfo;
 
+    static
+    {
+        new RegisterPass("livevars", "Live Variable Analysis", LiveVariables.class);
+    }
     public LiveVariables()
     {
         virRegInfo = new ArrayList<>();

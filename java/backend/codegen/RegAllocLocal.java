@@ -6,8 +6,6 @@ import backend.target.TargetInstrDesc;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
-import backend.transform.scalars.PhiElimination;
-import backend.transform.scalars.TwoAddrInstructionPass;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 

@@ -18,8 +18,10 @@
 package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
+import backend.analysis.DominanceFrontier;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.support.LLVMContext;
 import backend.type.ArrayType;
@@ -71,10 +73,15 @@ public final class SROA implements FunctionPass
     public static final IntStatistic NumPromoted =
             new IntStatistic("scalarrepl", "Number of allocas promoted");
 
+    static
+    {
+        new RegisterPass("scalarrepl", "Scalar Replacement of Aggregates", SROA.class);
+    }
+
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addRequired(DominatorFrontier.class);
+        au.addRequired(DominanceFrontier.class);
         au.addRequired(DomTreeInfo.class);
     }
 
@@ -108,7 +115,7 @@ public final class SROA implements FunctionPass
         BasicBlock entryBB = f.getEntryBlock();
 
         DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
-        DominatorFrontier df = getAnalysisToUpDate(DominatorFrontier.class);
+        DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
 
         boolean changed = false;
         ArrayList<AllocaInst> allocas = new ArrayList<>();

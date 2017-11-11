@@ -1,4 +1,4 @@
-package backend.transform.scalars;
+package backend.codegen;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2016, Xlous
@@ -18,11 +18,8 @@ package backend.transform.scalars;
 
 import backend.analysis.MachineDomTreeInfo;
 import backend.analysis.MachineLoopInfo;
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
-import backend.codegen.MachineFunctionPass;
-import backend.codegen.MachineInstr;
 import backend.pass.AnalysisUsage;
+import backend.pass.RegisterPass;
 import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
 
@@ -40,6 +37,12 @@ import java.util.ListIterator;
  */
 public final class UnreachableMachineBlockElim extends MachineFunctionPass
 {
+    static
+    {
+        new RegisterPass("unreachableblockelim",
+                "Remove unreachable blocks from the CFG",
+                UnreachableMachineBlockElim.class);
+    }
     @Override
     public String getPassName()
     {

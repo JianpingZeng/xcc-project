@@ -1,6 +1,8 @@
 package backend.transform.scalars;
 
 import backend.pass.FunctionPass;
+import backend.pass.RegisterPass;
+import backend.transform.utils.ConstantFolder;
 import backend.value.*;
 
 import java.util.LinkedList;
@@ -19,6 +21,10 @@ public final class ConstantPropagation implements FunctionPass
 {
 	public long numsInstKilled = 0;
 
+	static
+	{
+        new RegisterPass("constprop", "Simple constant propagation", ConstantPropagation.class);
+	}
 	/**
 	 * Performs constant propagation backend.transform upon given method.
 	 *

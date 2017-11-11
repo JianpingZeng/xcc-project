@@ -24,8 +24,6 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
-import backend.transform.scalars.PhiElimination;
-import backend.transform.scalars.TwoAddrInstructionPass;
 import backend.value.Module;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.procedure.TIntIntProcedure;

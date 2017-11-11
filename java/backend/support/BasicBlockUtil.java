@@ -18,7 +18,7 @@ package backend.support;
 
 import backend.analysis.DomTreeInfo;
 import backend.value.BasicBlock;
-import backend.transform.scalars.DominatorFrontier;
+import backend.analysis.DominanceFrontier;
 import backend.pass.Pass;
 import backend.value.Instruction;
 import backend.value.Instruction.BranchInst;
@@ -63,7 +63,7 @@ public final class BasicBlockUtil
 
         // update dominator tree and dominator frontier info.
         DomTreeInfo dt = pass != null ? pass.getAnalysisToUpDate(DomTreeInfo.class): null;
-        DominatorFrontier df = pass != null ? pass.getAnalysisToUpDate(DominatorFrontier.class): null;
+        DominanceFrontier df = pass != null ? pass.getAnalysisToUpDate(DominanceFrontier.class): null;
         if (dt != null)
             dt.splitBlock(newBB);
         if (df != null)

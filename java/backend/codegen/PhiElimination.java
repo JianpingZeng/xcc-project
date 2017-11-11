@@ -1,8 +1,8 @@
-package backend.transform.scalars;
+package backend.codegen;
 
 import backend.analysis.LiveVariables;
-import backend.codegen.*;
 import backend.pass.AnalysisUsage;
+import backend.pass.RegisterPass;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
@@ -22,6 +22,14 @@ public final class PhiElimination extends MachineFunctionPass
 	private MachineFunction mf;
 	private MachineRegisterInfo mri;
 	private TargetRegisterInfo regInfo;
+
+	static
+	{
+		new RegisterPass("phi-node-elimination",
+				"Eliminate PHI nodes for register allocation",
+				PhiElimination.class);
+	}
+
 	/**
 	 * This method used for performing elimination operation on each PHI node.
 	 * @param mf

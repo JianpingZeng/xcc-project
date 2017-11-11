@@ -2,6 +2,8 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
+import backend.pass.RegisterPass;
+import backend.transform.utils.RDF;
 import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
@@ -37,6 +39,10 @@ import java.util.LinkedList;
  */
 public class DCE implements FunctionPass
 {
+	static
+	{
+		new RegisterPass("die", "Dead Instruction Elimination", DCE.class);
+	}
 	/**
 	 * The list where all critical instruction in Module term resides.
 	 */

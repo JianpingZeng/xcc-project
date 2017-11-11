@@ -1,6 +1,7 @@
 package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
+import backend.pass.RegisterPass;
 import backend.value.Loop;
 import backend.analysis.LoopInfo;
 import backend.value.BasicBlock;
@@ -20,7 +21,7 @@ import backend.value.Value;
 import java.util.ArrayList;
 import java.util.List;
 
-import static backend.transform.scalars.ConstantFolder.constantFoldBinaryInstruction;
+import static backend.transform.utils.ConstantFolder.constantFoldBinaryInstruction;
 
 /**
  * <p>
@@ -89,6 +90,12 @@ public final class InductionVarSimplify implements LoopPass
 	private DomTreeInfo dt;
 	boolean changed = false;
 
+	static
+	{
+		new RegisterPass("indvarsv1", "Canonicalize Induction Variables[Morgen textbook]",
+				InductionVarSimplify.class);
+	}
+
 	@Override
 	public String getPassName()
 	{
@@ -104,7 +111,8 @@ public final class InductionVarSimplify implements LoopPass
 		au.addRequired(UnreachableBlockElim.class);
 	}
 
-	@Override public boolean runOnLoop(Loop loop, LPPassManager ppm)
+	@Override
+	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		li = getAnalysisToUpDate(LoopInfo.class);
 		dt = getAnalysisToUpDate(DomTreeInfo.class);

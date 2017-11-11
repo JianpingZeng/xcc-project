@@ -17,7 +17,7 @@ package backend.value;
  */
 
 import backend.support.LLVMContext;
-import backend.transform.scalars.ConstantFolder;
+import backend.transform.utils.ConstantFolder;
 import backend.type.Type;
 import backend.value.Instruction.CmpInst.Predicate;
 import tools.Util;

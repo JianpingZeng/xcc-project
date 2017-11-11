@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.pass.RegisterPass;
 import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
@@ -32,6 +33,11 @@ import java.util.ArrayList;
  */
 public final class DomTreeInfo implements FunctionPass
 {
+    static
+    {
+        new RegisterPass("domtree", "Dominator Tree Construction",
+                DomTreeInfo.class, true, true);
+    }
     private DomTree dt;
 
     public DomTreeInfo()

@@ -2,6 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
+import backend.pass.RegisterPass;
 import backend.value.BasicBlock;
 import backend.value.Operator;
 import backend.utils.PredIterator;
@@ -503,6 +504,12 @@ public final class GVNPRE implements FunctionPass
     public static GVNPRE createGVNPREPass()
     {
         return new GVNPRE();
+    }
+
+    static
+    {
+        new RegisterPass("gvnpre",
+                "Global Value Numbering/Partial Redundancy Elimination", GVNPRE.class);
     }
 
     @Override

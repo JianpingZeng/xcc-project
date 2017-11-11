@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.pass.RegisterPass;
 import backend.value.BasicBlock;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
@@ -29,7 +30,7 @@ import backend.value.Value;
 
 import java.util.*;
 
-import static backend.transform.scalars.ConstantFolder.constantFoldTerminator;
+import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
 
 /**
  * This pass defined here for removing the unreachable basic block resides inside
@@ -40,6 +41,10 @@ import static backend.transform.scalars.ConstantFolder.constantFoldTerminator;
  */
 public final class CFGSimplifyPass implements FunctionPass
 {
+    static
+    {
+        new RegisterPass("simplifycfg", "Simplify the CFG", CFGSimplifyPass.class);
+    }
     /**
      * calling this method to simplify cfg. It is possible that multiple passes
      * are needed loop over function.

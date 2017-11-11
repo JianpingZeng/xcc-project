@@ -17,6 +17,7 @@ package backend.transform.scalars;
  */
 
 import backend.analysis.DomTreeInfo;
+import backend.analysis.DominanceFrontier;
 import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
@@ -63,7 +64,7 @@ public final class Mem2Reg implements FunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.addRequired(DomTreeInfo.class);
-        au.addRequired(DominatorFrontier.class);
+        au.addRequired(DominanceFrontier.class);
 
         au.addPreserved(UnifyFunctionExitNodes.class);
         au.addPreserved(LowerSwitch.class);
@@ -76,7 +77,7 @@ public final class Mem2Reg implements FunctionPass
         ArrayList<AllocaInst> allocas = new ArrayList<>();
 
         DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
-        DominatorFrontier df = getAnalysisToUpDate(DominatorFrontier.class);
+        DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
         BasicBlock entryBB = f.getEntryBlock();
 
         while (true)

@@ -2,6 +2,7 @@ package backend.analysis;
 
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.pass.RegisterPass;
 import backend.support.DepthFirstOrder;
 import backend.support.LoopInfoBase;
 import backend.utils.PredIterator;
@@ -22,6 +23,11 @@ import java.util.Stack;
 public final class LoopInfo
 		implements LoopInfoBase<BasicBlock, Loop>,FunctionPass
 {
+	static
+	{
+		new RegisterPass("loops", "Natural Loop Information",
+				LoopInfo.class, true, true);
+	}
 	private HashMap<BasicBlock, Loop> bbMap = new HashMap<>();
 
 	private ArrayList<Loop> topLevelLoops = new ArrayList<>();
