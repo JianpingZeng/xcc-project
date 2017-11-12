@@ -34,6 +34,7 @@ public final class SourceMgr
     public static class SMLoc
     {
         private MemoryBuffer buffer;
+        private int startPos;
 
         @Override
         public boolean equals(Object obj)
@@ -44,13 +45,22 @@ public final class SourceMgr
                 return false;
 
             SMLoc loc = (SMLoc)obj;
-            return loc.buffer.equals(buffer);
+            return loc.buffer.equals(buffer) && startPos == loc.startPos;
+        }
+
+        public static SMLoc get(MemoryBuffer buf, int start)
+        {
+            SMLoc loc = new SMLoc();
+            loc.buffer = buf;
+            loc.startPos = start;
+            return loc;
         }
 
         public static SMLoc get(MemoryBuffer buf)
         {
             SMLoc loc = new SMLoc();
             loc.buffer = buf;
+            loc.startPos = buf.getBufferStart();
             return loc;
         }
 
@@ -61,7 +71,7 @@ public final class SourceMgr
 
         public int getPointer()
         {
-            return buffer.getBufferStart();
+            return startPos;
         }
     }
 

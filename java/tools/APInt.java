@@ -93,7 +93,7 @@ public class APInt implements Cloneable
      */
     private static int APINT_BITS_PER_WORD = APINT_WORD_SIZE * CHAR_BIT;
 
-    private APInt(long[] val, int bits)
+    public APInt(long[] val, int bits)
     {
         assert val.length == bits;
         assert bits > 0 : "bitwidth too small";
