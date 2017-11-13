@@ -125,7 +125,7 @@ public final class PhiElimination extends MachineFunctionPass
 		// creates a register to register copy instruction at the position where
 		// indexed by firstInstAfter.
 		regInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, rc);
-		LiveVariables la = getAnalysisToUpDate(LiveVariables.class);
+		LiveVariables la = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 		if (la != null)
 		{
 			MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);

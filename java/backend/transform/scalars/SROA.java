@@ -114,8 +114,8 @@ public final class SROA implements FunctionPass
         // Collects all of AllocaInst from entry block.
         BasicBlock entryBB = f.getEntryBlock();
 
-        DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
-        DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
+        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
 
         boolean changed = false;
         ArrayList<AllocaInst> allocas = new ArrayList<>();

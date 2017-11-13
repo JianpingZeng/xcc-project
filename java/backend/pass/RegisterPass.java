@@ -16,8 +16,6 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-import java.util.HashMap;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -26,20 +24,19 @@ public class RegisterPass
 {
     private PassInfo passInfo;
     private Class klass;
-    private static HashMap<PassInfo, Class<Pass>> passInfoMap;
 
     /**
      * Creates an instance of PassInfo with default constructor.
-     * And register it into {@linkplain #passInfoMap}.
+     * And register it into {@linkplain PassDataBase#registeredPasses}.
      * @param name
      * @param klass
      */
-    public RegisterPass(String name,  String passArg, Class klass)
+    public RegisterPass(String name,  String passArg, Class<? extends Pass> klass)
     {
         this(passArg, name, klass, false);
     }
 
-    public RegisterPass( String name, String passArg, Class klass,
+    public RegisterPass( String name, String passArg, Class<? extends Pass> klass,
             boolean cfgOnly)
     {
         this(passArg, name, klass, cfgOnly, false);
@@ -51,30 +48,15 @@ public class RegisterPass
      * @param passArg The argument to be printed out into command line.
      * @param klass
      */
-    public RegisterPass(String name,  String passArg, Class klass,
-            boolean cfgOnly, boolean isAnalysis)
+    public RegisterPass(String name,
+            String passArg,
+            Class<? extends Pass> klass,
+            boolean cfgOnly,
+            boolean isAnalysis)
     {
         passInfo = new PassInfo(name, passArg, klass, cfgOnly, isAnalysis);
         this.klass = klass;
-        registerPass();
-    }
-
-    public void registerPass()
-    {
-        if (passInfoMap == null)
-            passInfoMap = new HashMap<>();
-
-        assert !passInfoMap.containsKey(passInfo) :"Pass already registered!";
-        passInfoMap.put(passInfo, klass);
-    }
-
-    protected void unregisterPass()
-    {
-        assert passInfoMap != null : "Pass register factory is uninstantiated as yet!";
-        assert passInfoMap.containsKey(passInfo) :"Pass registered but not in register factory!";
-        passInfoMap.remove(passInfo);
-        if (passInfoMap.isEmpty())
-            passInfoMap = null;
+        PassDataBase.registerPass(klass, passInfo);
     }
 
     public PassInfo getPassInfo() {return passInfo;}

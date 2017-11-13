@@ -366,8 +366,8 @@ public class PrologEpilogInserter extends MachineFunctionPass
 
         // Walk instructions in all MBBs, create CSRUsed[] sets, choose
         // whether or not to shrink wrap this function.
-        MachineLoopInfo li = getAnalysisToUpDate(MachineLoopInfo.class);
-        MachineDomTreeInfo dt = getAnalysisToUpDate(MachineDomTreeInfo.class);
+        MachineLoopInfo li = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
+        MachineDomTreeInfo dt = (MachineDomTreeInfo) getAnalysisToUpDate(MachineDomTreeInfo.class);
         TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
 
         boolean allCSRUsesInEntryBlock = true;

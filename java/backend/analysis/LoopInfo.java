@@ -36,13 +36,13 @@ public final class LoopInfo
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		assert au != null;
-		au.addRequired(DomTree.class);
+		au.addRequired(DomTreeInfo.class);
 	}
 
 	@Override
 	public boolean runOnFunction(Function f)
 	{
-		calculate(getAnalysisToUpDate(DomTreeInfo.class));
+		calculate((DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class));
 		return false;
 	}
 

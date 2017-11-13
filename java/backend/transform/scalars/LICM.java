@@ -136,10 +136,10 @@ public final class LICM implements LoopPass
     public boolean runOnLoop(Loop loop, LPPassManager ppm)
     {
         changed = false;
-        li = getAnalysisToUpDate(LoopInfo.class);
-        aa = getAnalysisToUpDate(AliasAnalysis.class);
-        df = getAnalysisToUpDate(DominanceFrontier.class);
-        dt = getAnalysisToUpDate(DomTreeInfo.class);
+        li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+        aa = (AliasAnalysis) getAnalysisToUpDate(AliasAnalysis.class);
+        df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
+        dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 
         curAST = new AliasSetTracker(aa);
         preheaderBB = loop.getLoopPreheader();

@@ -79,7 +79,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
         mri = mf.getMachineRegisterInfo();
         tii = tm.getInstrInfo();
         tri = tm.getRegisterInfo();
-        lv = getAnalysisToUpDate(LiveVariables.class);
+        lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 
         boolean madeChange = false;
         System.err.println("******* Rewriting two-addr instrs ********");

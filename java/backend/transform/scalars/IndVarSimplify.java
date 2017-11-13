@@ -115,10 +115,10 @@ public final class IndVarSimplify implements LoopPass
         if (!loop.isLoopSimplifyForm())
             return false;
 
-        li = getAnalysisToUpDate(LoopInfo.class);
-        se = getAnalysisToUpDate(ScalarEvolution.class);
-        iu = getAnalysisToUpDate(IVUsers.class);
-        dt = getAnalysisToUpDate(DomTreeInfo.class);
+        li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+        se = (ScalarEvolution) getAnalysisToUpDate(ScalarEvolution.class);
+        iu = (IVUsers) getAnalysisToUpDate(IVUsers.class);
+        dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
         changed = false;
 
         // Firstly, transforms all sub loops nested in current loop processed.

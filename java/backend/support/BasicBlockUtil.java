@@ -62,8 +62,10 @@ public final class BasicBlockUtil
         });
 
         // update dominator tree and dominator frontier info.
-        DomTreeInfo dt = pass != null ? pass.getAnalysisToUpDate(DomTreeInfo.class): null;
-        DominanceFrontier df = pass != null ? pass.getAnalysisToUpDate(DominanceFrontier.class): null;
+        DomTreeInfo dt = pass != null ?
+                (DomTreeInfo) pass.getAnalysisToUpDate(DomTreeInfo.class) : null;
+        DominanceFrontier df = pass != null ?
+                (DominanceFrontier) pass.getAnalysisToUpDate(DominanceFrontier.class) : null;
         if (dt != null)
             dt.splitBlock(newBB);
         if (df != null)

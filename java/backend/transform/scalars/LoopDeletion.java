@@ -75,7 +75,7 @@ public final class LoopDeletion implements LoopPass
 		if (latch == null)
 			return false;
 		
-		DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
+		DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 		return dt != null && dt.dominates(exitingBBs.get(0), latch);
 	}
 
@@ -147,7 +147,7 @@ public final class LoopDeletion implements LoopPass
 
 		// We just process the loop when the back edge taken count is not
 		// SCEVCouldNotCompute.
-		ScalarEvolution se = getAnalysisToUpDate(ScalarEvolution.class);
+		ScalarEvolution se = (ScalarEvolution) getAnalysisToUpDate(ScalarEvolution.class);
 		SCEV itrCnt = se.getIterationCount(loop);
 		if (itrCnt instanceof SCEVCouldNotCompute)
 			return changed;
@@ -177,8 +177,8 @@ public final class LoopDeletion implements LoopPass
 		}
 
 		// Update the dominator information and dominator frontier if available.
-		DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
-		DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
+		DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
 		Iterator<BasicBlock> itr = loop.getBlocks().iterator();
 		while (itr.hasNext())
 		{
@@ -199,7 +199,7 @@ public final class LoopDeletion implements LoopPass
 
 		// Erase the instruction and the blocks within this loop.
 		// Remove the loop info.
-		LoopInfo li = getAnalysisToUpDate(LoopInfo.class);
+		LoopInfo li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
 		for (BasicBlock bb : loop.getBlocks())
 		{
 			bb.eraseFromParent();

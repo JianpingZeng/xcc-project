@@ -67,7 +67,8 @@ public class MachineLoopInfo extends MachineFunctionPass
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        calculate(getAnalysisToUpDate(MachineDomTreeInfo.class));
+        calculate(
+                (MachineDomTreeInfo) getAnalysisToUpDate(MachineDomTreeInfo.class));
         return false;
     }
 

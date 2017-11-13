@@ -21,15 +21,15 @@ public interface Pass
 	 */
 	default PassInfo getPassInfo()
 	{
-		return PassInfoSupport.getPassInfo(getClass());
+		return PassDataBase.getPassInfo(this.getClass());
 	}
 
-	default <T> T getAnalysisToUpDate(Class<T> klass)
+	default Pass getAnalysisToUpDate(Class<? extends Pass> klass)
 	{
-		PassInfo pi = PassInfoSupport.getPassInfo(klass);
+		PassInfo pi = PassDataBase.getPassInfo(klass);
 		if (pi == null) return null;
 
-		return (T)PassDataBase.getAnalysisOrNull(pi);
+		return PassDataBase.getAnalysisOrNull(pi);
 	}
 
 	/**

@@ -67,7 +67,7 @@ public final class DominanceFrontier extends DominanceFrontierBase
     public boolean runOnFunction(Function f)
     {
         frontiers.clear();
-        DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
+        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
         roots = dt.getRoots();
         assert roots.size() == 1 :"Only have one root block!";
         calculate(dt, dt.getDomTree().getTreeNodeForBlock(roots.get(0)));
@@ -99,7 +99,7 @@ public final class DominanceFrontier extends DominanceFrontierBase
             addBasicBlock(succ, succSet);
         }
 
-        DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
+        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
         if (dt != null)
         {
             if (dt.dominates(newBB, succ))

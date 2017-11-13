@@ -214,7 +214,7 @@ public final class BreakCriticalEdge implements FunctionPass
         }
 
         boolean newBBDominatesDestBB = true;
-        DomTreeInfo dt = pass.getAnalysisToUpDate(DomTreeInfo.class);
+        DomTreeInfo dt = (DomTreeInfo) pass.getAnalysisToUpDate(DomTreeInfo.class);
         if (dt != null)
         {
             DomTreeNodeBase<BasicBlock> tiNode = dt.getNode(tibb);
@@ -246,7 +246,7 @@ public final class BreakCriticalEdge implements FunctionPass
         }
 
         // Update dominator frontier information.
-        DominanceFrontier df = pass.getAnalysisToUpDate(DominanceFrontier.class);
+        DominanceFrontier df = (DominanceFrontier) pass.getAnalysisToUpDate(DominanceFrontier.class);
         if (df != null)
         {
             if (!otherPreds.isEmpty())
@@ -287,7 +287,7 @@ public final class BreakCriticalEdge implements FunctionPass
 
         // Update LoopInfo if it is around.
         LoopInfo li;
-        if ((li = pass.getAnalysisToUpDate(LoopInfo.class)) != null)
+        if ((li = (LoopInfo) pass.getAnalysisToUpDate(LoopInfo.class)) != null)
         {
             Loop loop;
             if ((loop = li.getLoopFor(tibb)) != null)

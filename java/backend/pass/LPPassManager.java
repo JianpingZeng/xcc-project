@@ -53,7 +53,7 @@ public class LPPassManager extends PMDataManager implements FunctionPass
 	@Override
 	public boolean runOnFunction(Function f)
 	{
-		li = getAnalysisToUpDate(LoopInfo.class);
+		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
 		boolean changed = false;
 
 		for (Loop l : li.getTopLevelLoop())

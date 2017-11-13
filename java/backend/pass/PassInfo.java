@@ -17,7 +17,7 @@ public final class PassInfo
     /**
      * Class object for the Pass.
      */
-    private Class<Pass> klass;
+    private Class<? extends Pass> klass;
     private boolean isAnalysisGroup;
     private boolean isAnalysis;
     private boolean isCFGOnlyPass;
@@ -34,7 +34,7 @@ public final class PassInfo
      */
     public PassInfo(String name,
             String arg,
-            Class<Pass> typeInfo,
+            Class<? extends Pass> typeInfo,
             boolean cfgOnly,
             boolean isAnalysis)
     {
@@ -61,7 +61,7 @@ public final class PassInfo
         return passArgument;
     }
 
-    public Class<Pass> getKlass()
+    public Class<? extends Pass> getKlass()
     {
         return klass;
     }

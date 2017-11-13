@@ -106,8 +106,8 @@ public final class ScalarEvolution implements FunctionPass
     public boolean runOnFunction(Function f)
     {
         this.f = f;
-        li = getAnalysisToUpDate(LoopInfo.class);
-        td = getAnalysisToUpDate(TargetData.class);
+        li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+        td = (TargetData) getAnalysisToUpDate(TargetData.class);
         unknownValue = SCEVCouldNotCompute.getInstance();
         scalars = new HashMap<>();
         iterationCount = new HashMap<>();
