@@ -1063,7 +1063,7 @@ public final class GVNPRE implements FunctionPass
         HashMap<BasicBlock, ValueNumberedSet> generatedExprs = new HashMap<>();
         HashMap<BasicBlock, ArrayList<Value>> generatedTemps = new HashMap<>();
 
-        DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
+        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 
         DomTreeNodeBase<BasicBlock> root = dt.getNode(f.getEntryBlock());
         LinkedList<DomTreeNodeBase<BasicBlock>> worklist =
@@ -1351,7 +1351,7 @@ public final class GVNPRE implements FunctionPass
     {
         boolean changed = false;
 
-        DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
+        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 
         HashMap<BasicBlock, ValueNumberedSet> newSets = new HashMap<>();
         boolean newStuff = true;
@@ -1404,7 +1404,7 @@ public final class GVNPRE implements FunctionPass
         LinkedList<Pair<Instruction, Value>> replace = new LinkedList<>();
         ArrayList<Instruction> erase = new ArrayList<>();
 
-        DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
+        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 
         for (DomTreeNodeBase<BasicBlock> node : dfTraversal(dt.getRootNode()))
         {

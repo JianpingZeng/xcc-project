@@ -72,8 +72,8 @@ public final class LCSSA implements LoopPass
 	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		predCache.clear();
-		li = getAnalysisToUpDate(LoopInfo.class);
-		dt = getAnalysisToUpDate(DomTreeInfo.class);
+		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 
 		loopBlocks = new ArrayList<>(loop.getBlocks());
 		ArrayList<BasicBlock> exitBlocks = loop.getExitingBlocks();

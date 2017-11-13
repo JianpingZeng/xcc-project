@@ -414,7 +414,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         this.mf = mf;
-        li = getAnalysisToUpDate(LiveIntervalAnalysis.class);
+        li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
         tri = mf.getTarget().getRegisterInfo();
         prt = new PhysRegTracker(tri);
 

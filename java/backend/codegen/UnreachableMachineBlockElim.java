@@ -61,8 +61,8 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
     {
         HashSet<MachineBasicBlock> reachable;
 
-        MachineDomTreeInfo mdt = getAnalysisToUpDate(MachineDomTreeInfo.class);
-        MachineLoopInfo mli = getAnalysisToUpDate(MachineLoopInfo.class);
+        MachineDomTreeInfo mdt = (MachineDomTreeInfo) getAnalysisToUpDate(MachineDomTreeInfo.class);
+        MachineLoopInfo mli = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
 
         // mark all reachable machine block.
         reachable =  DepthFirstOrder.reversePostOrder(mf.getEntryBlock());

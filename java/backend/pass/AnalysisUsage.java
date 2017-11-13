@@ -18,7 +18,7 @@ package backend.pass;
 
 import java.util.HashSet;
 
-import static backend.pass.PassInfoSupport.getPassInfo;
+import static backend.pass.PassDataBase.getPassInfo;
 
 /**
  * @author Xlous.zeng
@@ -34,7 +34,7 @@ public final class AnalysisUsage
         preserved = new HashSet<>();
     }
 
-    public AnalysisUsage addRequired(Class<?> reqPass)
+    public AnalysisUsage addRequired(Class<? extends Pass> reqPass)
     {
         PassInfo info = getPassInfo(reqPass);
         assert info != null:"Pass is not registered!";
@@ -43,11 +43,12 @@ public final class AnalysisUsage
 
     public AnalysisUsage addRequiredPassInfo(PassInfo info)
     {
-        required.add(info);
+        if (!required.contains(info))
+            required.add(info);
         return this;
     }
 
-    public AnalysisUsage addPreserved(Class<?> prePass)
+    public AnalysisUsage addPreserved(Class<? extends Pass> prePass)
     {
         PassInfo info = getPassInfo(prePass);
         assert info != null :"Pass is not registered";
@@ -56,7 +57,8 @@ public final class AnalysisUsage
 
     public AnalysisUsage addPreservedPassInfo(PassInfo info)
     {
-        preserved.add(info);
+        if (!preserved.contains(info))
+            preserved.add(info);
         return this;
     }
 

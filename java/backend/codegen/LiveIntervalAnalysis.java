@@ -135,7 +135,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         System.err.printf("***********Function: %s\n", mf.getFunction().getName());
 
         this.mf = mf;
-        lv = getAnalysisToUpDate(LiveVariables.class);
+        lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
         tm = mf.getTarget();
         tri = tm.getRegisterInfo();
         tii = tm.getInstrInfo();
@@ -178,7 +178,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
         // perform a final pass over the instructions and compute spill
         // weights, coalesce virtual registers and remove identity moves
-        LoopInfo loopInfo = getAnalysisToUpDate(LoopInfo.class);
+        LoopInfo loopInfo = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
         TargetInstrInfo tii = tm.getInstrInfo();
 
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
@@ -259,7 +259,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     {
         System.err.printf("************ Joining Intervals *************\n");
 
-        LoopInfo loopInfo = getAnalysisToUpDate(LoopInfo.class);
+        LoopInfo loopInfo = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
         if (loopInfo.isEmpty())
         {
             // If there are no loops in the function, join intervals in function

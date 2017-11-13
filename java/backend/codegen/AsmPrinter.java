@@ -170,7 +170,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         incrementFnNumeber();
 
         if (verboseAsm)
-            li = getAnalysisToUpDate(MachineLoopInfo.class);
+            li = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
     }
 
     protected int getFunctionNumber() {return functionNumber;}

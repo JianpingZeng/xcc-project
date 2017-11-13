@@ -67,7 +67,7 @@ public class DCE implements FunctionPass
 		usefulBlocks = new LinkedList<>();
 		liveInsts = new HashSet<>();
 		m = f;
-		dt = getAnalysisToUpDate(DomTreeInfo.class);
+		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 	}
 
 	@Override

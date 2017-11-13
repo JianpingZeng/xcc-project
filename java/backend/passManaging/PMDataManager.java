@@ -54,6 +54,7 @@ public abstract class PMDataManager
                     new OptionNameApplicator("debug-pass"),
                     new OptionHiddenApplicator(Hidden),
                     Desc.desc("Print PassManager debugging information"),
+                    Initializer.init(None),
                     new ValueClass<>(
                             new ValueClass.Entry<>(None, "none", "disable debug output"),
                             new ValueClass.Entry<>(Arguments, "arguments", "print pass arguments to pass to 'opt'"),

@@ -76,8 +76,8 @@ public final class Mem2Reg implements FunctionPass
         boolean changed = false;
         ArrayList<AllocaInst> allocas = new ArrayList<>();
 
-        DomTreeInfo dt = getAnalysisToUpDate(DomTreeInfo.class);
-        DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
+        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
         BasicBlock entryBB = f.getEntryBlock();
 
         while (true)

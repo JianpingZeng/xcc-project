@@ -63,7 +63,7 @@ import static backend.analysis.AliasAnalysis.ModRefResult.*;
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface AliasAnalysis
+public interface AliasAnalysis extends Pass
 {
     /**
      * Represents the alias query result of two pointer by invoking method

@@ -49,9 +49,9 @@ public final class LoopSimplify implements FunctionPass
 	@Override
 	public boolean runOnFunction(Function f)
 	{
-		li = getAnalysisToUpDate(LoopInfo.class);
-		dt = getAnalysisToUpDate(DomTreeInfo.class);
-		aliasAnalysis = getAnalysisToUpDate(AliasAnalysis.class);
+		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		aliasAnalysis = (AliasAnalysis) getAnalysisToUpDate(AliasAnalysis.class);
 		boolean changed = false;
 		for (Loop loop : li.getTopLevelLoop())
 			 changed |= processLoop(loop);
@@ -208,7 +208,7 @@ public final class LoopSimplify implements FunctionPass
 				changed = true;
 				li.removeBlock(exitingBB);
 
-				DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
+				DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
 				DomTreeNodeBase<BasicBlock> node = dt.getNode(exitingBB);
 				ArrayList<DomTreeNodeBase<BasicBlock>> children = node.getChildren();
 
@@ -485,7 +485,7 @@ public final class LoopSimplify implements FunctionPass
 
 		// Update dominator information.
 		dt.splitBlock(beBlock);
-		DominanceFrontier df = getAnalysisToUpDate(DominanceFrontier.class);
+		DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
 		if (df != null)
 			df.splitBlock(beBlock);
 	}

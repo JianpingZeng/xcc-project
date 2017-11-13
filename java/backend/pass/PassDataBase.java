@@ -20,22 +20,70 @@ import java.util.HashMap;
 
 public final class PassDataBase
 {
-	private static  HashMap<PassInfo, Pass> registeredPasses = new HashMap<>();
+    /**
+     * Mapping from Class information to corresponding PassInfo instance.
+     * Instantiated by class {@linkplain RegisterPass}.
+     */
+    private static HashMap<Class<? extends Pass>, PassInfo> passInfoMap;
+
+    private static HashMap<PassInfo, Class<? extends Pass>> registeredPasses;
 
 	/**
 	 * A registeration interface to client.
 	 * @param pass
-	 * @param name
+	 * @param pi
 	 */
-	public static void registerPass(Class<?> pass, String name)
+	public static void registerPass(Class<? extends Pass> pass, PassInfo pi)
 	{
+		if (registeredPasses == null)
+			registeredPasses = new HashMap<>();
+        if (passInfoMap == null)
+            passInfoMap = new HashMap<>();
+
+		assert !registeredPasses.containsKey(pi) && passInfoMap.containsKey(pass)
+                :"Pass already registered!";
+		registeredPasses.put(pi, pass);
+		passInfoMap.put(pass, pi);
+	}
+
+    /**
+     * This keeps track of which passes implement the interfaces
+     * that are required by the current pass (to implement getAnalysisToUpDate()).
+     */
+    //public ArrayList<Pair<PassInfo, Pass>> analysisImpls;
+
+    public static PassInfo getPassInfo(Class<? extends Pass> klass)
+    {
+        return lookupPassInfo(klass);
+    }
+
+    public static PassInfo lookupPassInfo(Class<? extends Pass> analysisClass)
+    {
+        if (passInfoMap == null) return null;
+        PassInfo res = passInfoMap.get(analysisClass);
+        if (passInfoMap.containsKey(analysisClass))
+            return res;
+        return null;
+    }
+
+    public void unregisterPass(PassInfo pi)
+	{
+		assert pi != null && registeredPasses != null :
+				"Pass register factory is uninstantiated as yet!";
+		assert registeredPasses.containsKey(pi) :
+				"Pass registered but not in register factory!";
+		passInfoMap.remove(registeredPasses.remove(pi));
+		if (registeredPasses.isEmpty())
+			registeredPasses = null;
+		if (passInfoMap.isEmpty())
+		    passInfoMap = null;
 	}
 
 	public static Pass getAnalysisOrNull(PassInfo passInfo)
 	{
 		if (passInfo == null)
 			return null;
-		return registeredPasses.getOrDefault(passInfo, null);
+		return passInfo.createPass();
 	}
 
 	/**

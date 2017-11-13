@@ -114,8 +114,8 @@ public final class InductionVarSimplify implements LoopPass
 	@Override
 	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
-		li = getAnalysisToUpDate(LoopInfo.class);
-		dt = getAnalysisToUpDate(DomTreeInfo.class);
+		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
 
 		this.inductionVars = new ArrayList<>();
 		initialize(loop);

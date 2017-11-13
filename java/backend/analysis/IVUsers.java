@@ -57,9 +57,9 @@ public final class IVUsers implements Printable, LoopPass
 	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		this.loop = loop;
-		li = getAnalysisToUpDate(LoopInfo.class);
-		dt = getAnalysisToUpDate(DomTreeInfo.class);
-		se = getAnalysisToUpDate(ScalarEvolution.class);
+		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		se = (ScalarEvolution) getAnalysisToUpDate(ScalarEvolution.class);
 		BasicBlock header = loop.getHeaderBlock();
 		assert header != null;
 

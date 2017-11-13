@@ -86,7 +86,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             new StringOpt(new OptionNameApplicator("o"),
             valueDesc("path"),
             desc("Specify the output file"),
-            init(""));
+            init("-"));
 
     public static Opt<ProgramAction> ProgAction
              = new Opt<ProgramAction>(new Parser<>(),
@@ -451,25 +451,17 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         String outfile = OutputFile.value;
         PrintStream os = null;
         String outputFile = "";
-        if (outfile == null || outfile.length() <= 0 || infile.equals("-"))
+        if (outfile == null || outfile.isEmpty() || infile.equals("-") || extension == null)
         {
             usestdout = true;
         }
-        else if (!outfile.isEmpty())
-        {
-            outputFile = outfile;
-        }
-        else if (extension != null)
+        else
         {
             int dotPos = infile.lastIndexOf(".");
             Path path;
             if (dotPos >= 0)
                 infile = infile.substring(0, dotPos + 1);
             outputFile = infile + extension;
-        }
-        else
-        {
-            usestdout = true;
         }
 
         if (usestdout)
