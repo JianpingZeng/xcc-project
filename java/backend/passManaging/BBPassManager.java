@@ -59,7 +59,7 @@ public class BBPassManager extends PMDataManager implements FunctionPass
         boolean changed = false;
 
         // Collects inherited analysis from module level pass manager.
-        populateInheritedAnalysis(((PMTopLevelManager)topLevelManager).activeStack);
+        populateInheritedAnalysis(topLevelManager.getActiveStack());
 
         for (BasicBlock bb : f.getBasicBlockList())
         {

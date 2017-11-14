@@ -50,7 +50,7 @@ public final class FPPassManager extends PMDataManager implements ModulePass
         boolean changed = false;
 
         // Collects inherited analysis from module level pass manager.
-        populateInheritedAnalysis(((PMTopLevelManager)topLevelManager).activeStack);
+        populateInheritedAnalysis(topLevelManager.getActiveStack());
 
         for (int index = 0; index < getNumContainedPasses(); ++index)
         {

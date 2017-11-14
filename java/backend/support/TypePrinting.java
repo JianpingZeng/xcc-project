@@ -44,9 +44,45 @@ public final class TypePrinting
         typenames.clear();
     }
 
+    public void print(Type ty, FormattedOutputStream os)
+    {
+        print(ty, os, false);
+    }
+
     public void print(Type ty, PrintStream os)
     {
         print(ty, os, false);
+    }
+
+    public void print(Type ty, FormattedOutputStream os, boolean ignoreTopLevelName)
+    {
+        // Check to see if the type is named.
+        if (!ignoreTopLevelName)
+        {
+            if (typenames.containsKey(ty))
+            {
+                os.print(typenames.get(ty));
+                return;
+            }
+        }
+
+        // Otherwise we have a type that has not been named but is a derived type.
+        // Carefully recurse the type hierarchy to print out any contained symbolic
+        // names.
+        Stack<Type> typeStack = new Stack<>();
+        try(ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                PrintStream out = new PrintStream(baos))
+        {
+            calcTypeName(ty, typeStack, out, ignoreTopLevelName);
+            os.print(baos.toString());
+
+            if (!ignoreTopLevelName)
+                typenames.put(ty, baos.toString());
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void print(Type ty, PrintStream os, boolean ignoreTopLevelName)
@@ -200,7 +236,7 @@ public final class TypePrinting
         typeStack.pop();
     }
 
-    public void printAtLeastOneLevel(Type type, PrintStream out)
+    public void printAtLeastOneLevel(Type type, FormattedOutputStream out)
     {
         print(type, out, true);
     }

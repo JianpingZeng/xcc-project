@@ -75,7 +75,7 @@ public abstract class PMDataManager
         ON_CG_MSG // "' on Call Graph ...\n'"
     }
 
-    protected IPMTopLevelManager topLevelManager;
+    protected PMTopLevelManager topLevelManager;
     /**
      * Collections of pass that are managed by this manager.
      */
@@ -228,12 +228,12 @@ public abstract class PMDataManager
         passVector.add(p);
     }
 
-    public void setTopLevelManager(IPMTopLevelManager tlm)
+    public void setTopLevelManager(PMTopLevelManager tlm)
     {
         topLevelManager = tlm;
     }
 
-    public IPMTopLevelManager getTopLevelManager()
+    public PMTopLevelManager getTopLevelManager()
     {
         return topLevelManager;
     }

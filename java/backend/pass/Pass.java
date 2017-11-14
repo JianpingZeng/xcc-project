@@ -2,15 +2,17 @@ package backend.pass;
 
 import backend.passManaging.PMDataManager;
 import backend.passManaging.PassManagerType;
+import backend.support.Printable;
 import tools.Util;
 
+import java.io.PrintStream;
 import java.util.Stack;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface Pass
+public interface Pass extends Printable
 {
 	String getPassName();
 
@@ -83,5 +85,10 @@ public interface Pass
 	 */
 	default void preparePassManager(Stack<PMDataManager> activeStack)
     {}
+
+    default void print(PrintStream os)
+    {
+    	os.printf("[Pass: %s]\n", getPassName());
+    }
 }
 

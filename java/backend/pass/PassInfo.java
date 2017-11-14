@@ -1,10 +1,14 @@
 package backend.pass;
 
+import backend.support.Printable;
+
+import java.io.PrintStream;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class PassInfo
+public final class PassInfo implements Printable
 {
     /**
      * The asmName of pass.
@@ -93,5 +97,11 @@ public final class PassInfo
     public boolean isCFGOnlyPass()
     {
         return isCFGOnlyPass;
+    }
+
+    @Override
+    public void print(PrintStream os)
+    {
+        os.printf("Pass: %s, %s\n", getPassName(), getPassArgument());
     }
 }

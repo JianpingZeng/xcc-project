@@ -38,20 +38,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import static backend.support.AssemblyWriter.PrefixType.GlobalPrefix;
-import static backend.support.AssemblyWriter.PrefixType.LabelPrefix;
-import static backend.support.AssemblyWriter.PrefixType.LocalPrefix;
+import static backend.support.AssemblyWriter.PrefixType.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
 
 public class AssemblyWriter
 {
-    private PrintStream out;
+    private FormattedOutputStream out;
     private Module theModule;
     private TypePrinting typePrinter;
     private ArrayList<Type> numberedTypes;
     private SlotTracker slotTracker;
 
-    public AssemblyWriter(PrintStream os, Module m, SlotTracker tracker)
+    public AssemblyWriter(FormattedOutputStream os, Module m, SlotTracker tracker)
     {
         out = os;
         theModule = m;
@@ -61,9 +59,10 @@ public class AssemblyWriter
         addModuleTypesToPrinter(typePrinter, numberedTypes, m);
     }
 
-    public static void addModuleTypesToPrinter(TypePrinting printer,
-                                               ArrayList<Type> numberedTypes,
-                                               Module m)
+    private static void addModuleTypesToPrinter(
+            TypePrinting printer,
+            ArrayList<Type> numberedTypes,
+            Module m)
     {
         if (m == null)
             return;
@@ -87,7 +86,7 @@ public class AssemblyWriter
                 continue;
 
             try(ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    PrintStream os = new PrintStream(baos))
+                    FormattedOutputStream os = new FormattedOutputStream(baos))
             {
                 printLLVMName(os, entry.getKey(), LocalPrefix);
                 printer.addTypeName(ty, baos.toString());
@@ -113,11 +112,18 @@ public class AssemblyWriter
         NoPrefix
     }
 
-    private static void printLLVMName(PrintStream os,
+    private static void printLLVMName(FormattedOutputStream os,
                                       Value val)
     {
         printLLVMName(os, val.getName(), val instanceof GlobalValue ? GlobalPrefix
             : LocalPrefix);
+    }
+
+    private static void printLLVMName(PrintStream os,
+            Value val)
+    {
+        printLLVMName(os, val.getName(), val instanceof GlobalValue ? GlobalPrefix
+                : LocalPrefix);
     }
 
     /**
@@ -128,6 +134,56 @@ public class AssemblyWriter
      * @param pt
      */
     private static void printLLVMName(PrintStream os,
+            String name,
+            PrefixType pt)
+    {
+        assert name != null && !name.isEmpty():"Cannot get empty name!";
+        switch (pt)
+        {
+            default:
+                assert false:"Unknown PrefixType";
+                break;
+            case NoPrefix:
+                break;
+            case GlobalPrefix:
+                os.print("@");
+                break;
+            case LocalPrefix:
+            case LabelPrefix:
+                os.print("%");
+                break;
+        }
+
+        boolean needQuotes = Character.isDigit(name.charAt(0));
+        if (!needQuotes)
+        {
+            for (int i = 0, e = name.length(); i != e; i++)
+            {
+                char c = name.charAt(i);
+                if (c != '_' && c != '.' && !Character.isJavaIdentifierPart(c))
+                {
+                    needQuotes = true;
+                    break;
+                }
+            }
+        }
+
+        if (!needQuotes)
+        {
+            os.print(name);
+            return;
+        }
+        os.printf("\"%s\"", name);
+    }
+
+    /**
+     * Turn the specified name into "LLVM name", which is either
+     * prefixed with % or is surrounded with ""'s. Print it now.
+     * @param os
+     * @param name
+     * @param pt
+     */
+    private static void printLLVMName(FormattedOutputStream os,
                                String name,
                                PrefixType pt)
     {
@@ -170,9 +226,10 @@ public class AssemblyWriter
         os.printf("\"%s\"", name);
     }
 
-    public void write(Module m)
+    public void write(Module m) throws IOException
     {
         printModule(m);
+        out.close();
     }
 
     public void write(GlobalValue gv)
@@ -227,6 +284,7 @@ public class AssemblyWriter
     {
         if (!val.getType().equals(LLVMContext.VoidTy))
         {
+            out.padToColumn(50);
             out.print("; <");
             typePrinter.print(val.getType(), out);
             // output number of uses.
@@ -263,6 +321,49 @@ public class AssemblyWriter
     }
 
     public static void writeAsOperandInternal(PrintStream out,
+            Value val,
+            TypePrinting printer,
+            SlotTracker tracker)
+    {
+        if (val.hasName())
+        {
+            printLLVMName(out, val);
+            return;
+        }
+
+        Constant cv = val instanceof Constant ? (Constant)val : null;
+        if (cv != null && !(cv instanceof GlobalValue))
+        {
+            assert printer != null:"Constants require TypePrintering";
+            writeConstantInt(out, cv, printer, tracker);
+            return;
+        }
+
+        char prefix = '%';
+        int slot = -1;
+        if (tracker == null)
+            tracker = createSlotTracker(val);
+
+        if (tracker != null)
+        {
+            GlobalValue gv = val instanceof GlobalValue ? (GlobalValue)val : null;
+            if (gv != null)
+            {
+                slot = tracker.getGlobalSlot(gv);
+                prefix = '@';
+            }
+            else
+            {
+                slot = tracker.getLocalSlot(val);
+            }
+        }
+        if (slot != -1)
+            out.printf("%c%d", prefix, slot);
+        else
+            out.print("<badref>");
+    }
+
+    public static void writeAsOperandInternal(FormattedOutputStream out,
                                         Value val,
                                         TypePrinting printer,
                                         SlotTracker tracker)
@@ -332,6 +433,32 @@ public class AssemblyWriter
     }
 
     public static void writeAsOperand(PrintStream out,
+            Value val,
+            boolean printType,
+            Module context)
+    {
+        if (!printType && (!(val instanceof Constant)) ||
+                val.hasName() || val instanceof GlobalValue)
+        {
+            writeAsOperandInternal(out, val, null, null);
+            return;
+        }
+
+        if (context == null)
+            context = getModuleFromVal(val);
+
+        TypePrinting printer = new TypePrinting();
+        ArrayList<Type> numberedTypes = new ArrayList<>();
+        addModuleTypesToPrinter(printer, numberedTypes, context);
+        if (printType)
+        {
+            printer.print(val.getType(), out);
+            out.print(" ");
+        }
+        writeAsOperandInternal(out, val, printer, null);
+    }
+
+    public static void writeAsOperand(FormattedOutputStream out,
                                        Value val,
                                        boolean printType,
                                        Module context)
@@ -358,6 +485,237 @@ public class AssemblyWriter
     }
 
     public static void writeConstantInt(PrintStream out,
+            Constant cv,
+            TypePrinting printer,
+            SlotTracker tracker)
+    {
+        ConstantInt ci = cv instanceof ConstantInt ? (ConstantInt)cv:null;
+        if (ci != null)
+        {
+            if (ci.getType().equals(LLVMContext.Int1Ty))
+            {
+                out.print(ci.getZExtValue() != 0 ?"true":"false");
+                return;
+            }
+            ci.getValue().print(out);
+            return;
+        }
+
+        ConstantFP fp = (cv instanceof ConstantFP)?(ConstantFP)cv : null;
+        if (fp != null)
+        {
+            if (fp.getValueAPF().getSemantics() == APFloat.IEEEdouble ||
+                    fp.getValueAPF().getSemantics() == APFloat.IEEEsingle)
+            {
+                boolean ignored = false;
+                boolean isDouble = fp.getValueAPF().getSemantics() == APFloat.IEEEdouble;
+                double val = isDouble ? fp.getValueAPF().convertToDouble() :
+                        fp.getValueAPF().convertToFloat();
+                String strVal = String.valueOf(val);
+
+                if ((strVal.charAt(0)>='0' && strVal.charAt(0) <='9') ||
+                        (strVal.charAt(0) == '-' || strVal.charAt(0) == '+') &&
+                                (strVal.charAt(0) >= '0' && strVal.charAt(0) <= '9'))
+                {
+                    if (Double.parseDouble(strVal) == val)
+                    {
+                        out.print(strVal);
+                        return;
+                    }
+                }
+
+                APFloat apf = fp.getValueAPF();
+                if (!isDouble)
+                {
+                    OutParamWrapper<Boolean> x = new OutParamWrapper<>(false);
+                    apf.convert(APFloat.IEEEdouble, rmNearestTiesToEven, x);
+                    ignored = x.get();
+                }
+                out.printf("0x%d", apf.bitcastToAPInt().getZExtValue());
+                return;
+            }
+
+            // Some form of long double.  These appear as a magic letter identifying
+            // the type, then a fixed number of hex digits.
+            out.printf("0x");
+            if (fp.getValueAPF().getSemantics() == APFloat.x87DoubleExtended)
+            {
+                out.printf("K");
+                APInt api = fp.getValueAPF().bitcastToAPInt();
+                long[] p = api.getRawData();
+                long word = p[1];
+                int width = api.getBitWidth();
+                int shiftcount = 12;
+                for (int j = 0; j < width; j+=4, shiftcount -= 4)
+                {
+                    int nibble = (int) ((word >> shiftcount) & 15);
+                    if (nibble < 10)
+                        out.print((char)(nibble + '0'));
+                    else
+                    {
+                        out.print((char) (nibble - 10 + 'A'));
+                    }
+                    if (shiftcount == 0 && j + 4 < width)
+                    {
+                        word = p[0];
+                        shiftcount = 64;
+                        if (width - j - 4 < 64)
+                        {
+                            shiftcount = width - j - 4;
+                        }
+                    }
+                }
+                return;
+            }
+            else if (fp.getValueAPF().getSemantics() == APFloat.IEEEquad)
+            {
+                out.printf("L");
+            }
+            else
+            {
+                Util.shouldNotReachHere("Unsupported floating point type");
+            }
+
+            APInt api = fp.getValueAPF().bitcastToAPInt();
+            long[] p = api.getRawData();
+            int idx = 0;
+            long word = p[idx];
+            int shiftcount = 60;
+            int width = api.getBitWidth();
+            for (int j = 0; j < width; j+= 4, shiftcount-=4)
+            {
+                int nibble = (int) ((word >> shiftcount) & 15);
+                if (nibble < 10)
+                    out.print((char)(nibble + '0'));
+                else
+                {
+                    out.print((char) (nibble - 10 + 'A'));
+                }
+                if (shiftcount == 0 && j + 4 < width)
+                {
+                    word = p[++idx];
+                    shiftcount = 64;
+                    if (width - j - 4 < 64)
+                    {
+                        shiftcount = width - j - 4;
+                    }
+                }
+            }
+            return;
+        }
+
+        if (cv instanceof ConstantAggregateZero)
+        {
+            out.printf("zeroinitializer");
+            return;
+        }
+
+        if (cv instanceof ConstantArray)
+        {
+            ConstantArray ca = (ConstantArray)cv;
+            Type elty = ca.getType().getElementType();
+            if (ca.isString())
+            {
+                out.print("c\"");
+                out.print(ca.getAsString());
+                out.print("\"");
+            }
+            else
+            {
+                out.print("[");
+                if (ca.getNumOfOperands() != 0)
+                {
+                    printer.print(elty, out);
+                    out.print(' ');
+                    writeAsOperandInternal(out, ca.operand(0),
+                            printer, tracker);
+                    for (int i = 1, e = ca.getNumOfOperands(); i != e; i++)
+                    {
+                        out.print(", ");
+                        printer.print(elty, out);
+                        out.print(' ');
+                        writeAsOperandInternal(out, ca.operand(i), printer, tracker);
+                    }
+                }
+                out.print("]");
+            }
+            return;
+        }
+
+        if (cv instanceof ConstantStruct)
+        {
+            ConstantStruct cs = (ConstantStruct)cv;
+            if (cs.getType().isPacked())
+                out.print('<');
+            out.print('{');
+            int n = cs.getNumOfOperands();
+            if (n > 0)
+            {
+                out.print(' ');
+                printer.print(cs.operand(0).getType(), out);
+                out.print(' ');
+
+                writeAsOperandInternal(out, cs.operand(0), printer, tracker);
+                for (int i = 1; i < n; i++)
+                {
+                    out.print(", ");
+                    printer.print(cs.operand(i).getType(), out);
+                    out.print(' ');
+
+                    writeAsOperandInternal(out, cs.operand(i), printer, tracker);
+                }
+                out.print(' ');
+            }
+
+            out.print('}');
+            if (cs.getType().isPacked())
+                out.print('>');
+            return;
+        }
+
+        if (cv instanceof ConstantPointerNull)
+        {
+            out.print("null");
+            return;
+        }
+        if (cv instanceof Value.UndefValue)
+        {
+            out.print("undef");
+            return;
+        }
+        if (cv instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr)cv;
+            out.print(ce.getOpcode().opName);
+            writeOptimizationInfo(out, ce);
+            if (ce.isCompare())
+            {
+                out.printf(" %s", getPredicateText(ce.getPredicate()));
+            }
+            out.printf(" (");
+
+            for (int i = 0, e = ce.getNumOfOperands(); i != e; i++)
+            {
+                printer.print(ce.operand(i).getType(), out);
+                out.print(' ');
+                writeAsOperandInternal(out, ce.operand(i), printer, tracker);
+                if (i < e - 1)
+                    out.printf(", ");
+            }
+
+            if (ce.isCast())
+            {
+                out.printf(" to ");
+                printer.print(ce.getType(), out);
+            }
+            out.printf(")");
+            return;
+        }
+
+        out.printf("<placeholder or erroneous Constant>");
+    }
+
+    public static void writeConstantInt(FormattedOutputStream out,
                                   Constant cv,
                                   TypePrinting printer,
                                   SlotTracker tracker)
@@ -623,12 +981,18 @@ public class AssemblyWriter
         return res;
     }
 
+    private static void writeOptimizationInfo(FormattedOutputStream out, Value val)
+    {
+        // TODO: 2017/10/10
+    }
+
     private static void writeOptimizationInfo(PrintStream out, Value val)
     {
         // TODO: 2017/10/10
     }
 
-    public static void printLinkage(LinkageType linkage, PrintStream out)
+    private static void printLinkage(LinkageType linkage,
+            FormattedOutputStream out)
     {
         switch (linkage)
         {
@@ -649,7 +1013,7 @@ public class AssemblyWriter
         }
     }
 
-    private static void printVisibility(VisibilityTypes vt, PrintStream out)
+    private static void printVisibility(VisibilityTypes vt, FormattedOutputStream out)
     {
         switch (vt)
         {
