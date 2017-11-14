@@ -19,7 +19,6 @@ package backend.codegen;
 import backend.analysis.MachineDomTreeInfo;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
-import backend.pass.RegisterPass;
 import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
 
@@ -37,12 +36,6 @@ import java.util.ListIterator;
  */
 public final class UnreachableMachineBlockElim extends MachineFunctionPass
 {
-    static
-    {
-        new RegisterPass("unreachableblockelim",
-                "Remove unreachable blocks from the CFG",
-                UnreachableMachineBlockElim.class);
-    }
     @Override
     public String getPassName()
     {

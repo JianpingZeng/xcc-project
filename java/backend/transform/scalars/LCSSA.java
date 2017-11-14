@@ -53,11 +53,6 @@ public final class LCSSA implements LoopPass
 	public static final IntStatistic numLCSSA =
 			new IntStatistic("numLCSSA", "the number of lcssa");
 
-	static
-	{
-		new RegisterPass("lcssa", "Loop closed SSA", LCSSA.class);
-	}
-
 	public static Pass createLCSSAPass()
 	{
 		return new LCSSA();

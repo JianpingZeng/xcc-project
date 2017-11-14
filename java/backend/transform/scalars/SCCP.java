@@ -17,7 +17,6 @@ package backend.transform.scalars;
  */
 
 import backend.pass.FunctionPass;
-import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.transform.scalars.SCCPSolver.LatticeStatus;
 import backend.value.*;
@@ -44,11 +43,6 @@ public class SCCP implements FunctionPass
 {
     public static final IntStatistic NumInstrToDels =
             new IntStatistic("NumInstrToDels", "Number instructions to be deleted");
-
-    static
-    {
-        new RegisterPass("sccp", "Sparse Conditional Constant Propagation", SCCP.class);
-    }
     @Override
     public String getPassName()
     {

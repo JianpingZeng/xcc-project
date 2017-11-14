@@ -16,19 +16,16 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.pass.RegisterPass;
-import backend.value.BasicBlock;
+import backend.pass.FunctionPass;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
-import backend.pass.FunctionPass;
-import backend.value.Constant;
-import backend.value.Function;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
-import backend.value.Value;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Stack;
 
 import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
 
@@ -41,10 +38,6 @@ import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
  */
 public final class CFGSimplifyPass implements FunctionPass
 {
-    static
-    {
-        new RegisterPass("simplifycfg", "Simplify the CFG", CFGSimplifyPass.class);
-    }
     /**
      * calling this method to simplify cfg. It is possible that multiple passes
      * are needed loop over function.

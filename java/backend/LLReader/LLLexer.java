@@ -41,7 +41,6 @@ public final class LLLexer
     private int curPtr;
     private SMDiagnostic errorInfo;
     private SourceMgr smg;
-    private LLVMContext context;
 
     private String error;
 
@@ -69,13 +68,12 @@ public final class LLLexer
     private TreeMap<String, backend.type.Type> typeKeywords;
     private TreeMap<String, Pair<Operator, LLTokenKind>> opcKeywords;
 
-    public LLLexer(MemoryBuffer buf, SourceMgr smg, SMDiagnostic diag, LLVMContext ctx)
+    public LLLexer(MemoryBuffer buf, SourceMgr smg, SMDiagnostic diag)
     {
         this.buffer = buf;
         curPtr = buf.getBufferStart();
         this.errorInfo = diag;
         this.smg = smg;
-        this.context = ctx;
         error = "";
         tokKind = Eof;
         strVal = "";

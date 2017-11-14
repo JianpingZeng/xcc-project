@@ -5,7 +5,6 @@ import backend.analysis.MachineDomTreeInfo;
 import backend.analysis.MachineLoopInfo;
 import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.pass.AnalysisUsage;
-import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.target.*;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -43,10 +42,6 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  */
 public final class TwoAddrInstructionPass extends MachineFunctionPass
 {
-    static
-    {
-        new RegisterPass("twoaddressinstruction", "Two-Address instruction pass", TwoAddrInstructionPass.class);
-    }
     public static final IntStatistic NumTwoAddressInsts = new IntStatistic(
             "NumTwoAddressInsts", "Number of two address instructions");
     public static final IntStatistic NumCommuted = new IntStatistic(

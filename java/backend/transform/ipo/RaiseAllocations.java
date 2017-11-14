@@ -15,7 +15,7 @@
  * permissions and limitations under the License.
  */
 
-package backend.transform.ipa;
+package backend.transform.ipo;
 
 import backend.hir.FreeInst;
 import backend.hir.MallocInst;

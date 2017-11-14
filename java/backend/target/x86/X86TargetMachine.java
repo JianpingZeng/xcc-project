@@ -10,12 +10,11 @@ import backend.value.Module;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
-import static backend.codegen.FloatPointStackitifierPass.createX86FloatingPointStackitifierPass;
-import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
 import static backend.target.x86.X86ATTAsmPrinter.createX86AsmCodeEmitter;
+import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
 import static backend.target.x86.X86DAGToDAGISel.createX86ISelDag;
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
@@ -187,7 +186,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 	public boolean addPostRegAlloc(PassManagerBase pm, CodeGenOpt level)
 	{
 		// converts virtual register in X86 FP inst into floating point stack slot.
-		pm.add(createX86FloatingPointStackitifierPass());
+		// todo 2017-10-14 pm.add(createX86FloatingPointStackitifierPass());
 		return false;
 	}
 

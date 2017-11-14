@@ -2,19 +2,13 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
-import backend.pass.RegisterPass;
-import backend.value.BasicBlock;
-import backend.value.Operator;
-import backend.utils.PredIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
 import backend.transform.scalars.GVNPRE.Expression.ExpressionOpCode;
-import backend.value.Function;
-import backend.value.Instruction;
+import backend.utils.PredIterator;
+import backend.value.*;
 import backend.value.Instruction.*;
-import backend.value.User;
-import backend.value.Value;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;
@@ -504,12 +498,6 @@ public final class GVNPRE implements FunctionPass
     public static GVNPRE createGVNPREPass()
     {
         return new GVNPRE();
-    }
-
-    static
-    {
-        new RegisterPass("gvnpre",
-                "Global Value Numbering/Partial Redundancy Elimination", GVNPRE.class);
     }
 
     @Override

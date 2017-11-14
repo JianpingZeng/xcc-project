@@ -1,22 +1,15 @@
 package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
-import backend.pass.RegisterPass;
-import backend.value.Loop;
 import backend.analysis.LoopInfo;
-import backend.value.BasicBlock;
-import backend.value.Operator;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.type.Type;
-import backend.value.Constant;
-import backend.value.ConstantInt;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BinaryInstruction;
 import backend.value.Instruction.StoreInst;
-import backend.value.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -89,12 +82,6 @@ public final class InductionVarSimplify implements LoopPass
 	private LoopInfo li;
 	private DomTreeInfo dt;
 	boolean changed = false;
-
-	static
-	{
-		new RegisterPass("indvarsv1", "Canonicalize Induction Variables[Morgen textbook]",
-				InductionVarSimplify.class);
-	}
 
 	@Override
 	public String getPassName()

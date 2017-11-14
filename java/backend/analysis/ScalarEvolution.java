@@ -16,16 +16,13 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.pass.RegisterPass;
-import backend.support.LLVMContext;
-import backend.value.BasicBlock;
-import backend.value.Operator;
-import backend.utils.PredIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.type.PointerType;
 import backend.type.Type;
+import backend.utils.PredIterator;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
@@ -46,13 +43,6 @@ import static backend.transform.utils.ConstantFolder.constantFoldCall;
  */
 public final class ScalarEvolution implements FunctionPass
 {
-    static
-    {
-        new RegisterPass("scalar-evolution", "Scalar Evolution Analysis",
-                ScalarEvolution.class,
-                false, true);
-    }
-
     public static int maxBruteForceIteration = 100;
     public static int numTripCountsComputed;
 

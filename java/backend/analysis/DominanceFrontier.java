@@ -33,12 +33,7 @@ import java.util.*;
  */
 public final class DominanceFrontier extends DominanceFrontierBase
 {
-    static
-    {
-        new RegisterPass("domfrontier", "Dominance Frontier Construction",
-                DominanceFrontier.class,
-                true, true);
-    }
+
     public DominanceFrontier()
     {
         super(false);

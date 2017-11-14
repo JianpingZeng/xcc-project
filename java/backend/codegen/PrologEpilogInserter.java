@@ -22,7 +22,6 @@ import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
-import backend.pass.RegisterPass;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.target.*;
@@ -55,10 +54,6 @@ import static tools.commandline.ValueDesc.valueDesc;
  */
 public class PrologEpilogInserter extends MachineFunctionPass
 {
-    static
-    {
-        new RegisterPass("prologepilog", "Prologue/Epilogue Insertion", PrologEpilogInserter.class);
-    }
     public static final IntStatistic numSRRecord = new IntStatistic(
             "numSRRecord", "Number of CSR spills+restores reduced");
 

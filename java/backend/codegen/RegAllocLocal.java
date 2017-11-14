@@ -1,11 +1,7 @@
 package backend.codegen;
 
 import backend.pass.AnalysisUsage;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetInstrDesc;
-import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
-import backend.target.TargetRegisterInfo;
+import backend.target.*;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 
@@ -13,9 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
-import static backend.target.TargetRegisterInfo.isPhysicalRegister;
-import static backend.target.TargetRegisterInfo.isVirtualRegister;
+import static backend.target.TargetRegisterInfo.*;
 
 /**
  * This pass performs a pass of performing local register allocation on Machine

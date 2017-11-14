@@ -1,14 +1,11 @@
 package backend.transform.scalars;
 
 import backend.analysis.*;
-import backend.analysis.LoopInfo;
-import backend.pass.RegisterPass;
-import backend.value.*;
-import backend.value.Operator;
-import backend.utils.PredIterator;
-import backend.utils.SuccIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.utils.PredIterator;
+import backend.utils.SuccIterator;
+import backend.value.*;
 import backend.value.Instruction.*;
 import tools.OutParamWrapper;
 
@@ -32,11 +29,6 @@ public final class LoopSimplify implements FunctionPass
 	private LoopInfo li;
 	private DomTreeInfo dt;
 	private AliasAnalysis aliasAnalysis;
-
-	static
-	{
-		new RegisterPass("loopsimply", "Loop Simplification Pass", LoopSimplify.class);
-	}
 
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)

@@ -252,7 +252,7 @@ public class BackendConsumer implements ASTConsumer
         if (perCodeGenPasses == null)
         {
             perCodeGenPasses = new FunctionPassManager(theModule);
-            perCodeGenPasses.add(new TargetData(theTargetData));;
+            perCodeGenPasses.add(new TargetData(theTargetData));
         }
         return perCodeGenPasses;
     }

@@ -16,12 +16,11 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.support.LLVMContext;
-import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
-import backend.pass.RegisterPass;
+import backend.support.LLVMContext;
+import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
@@ -36,12 +35,6 @@ import java.util.LinkedList;
 public final class UnifyFunctionExitNodes implements FunctionPass
 {
     private BasicBlock returnBlock;
-    static
-    {
-        new RegisterPass("mergereturn",
-                "Unify function exit nodes",
-                UnifyFunctionExitNodes.class);
-    }
 
     public static Pass createUnifyFunctionExitNodes()
     {

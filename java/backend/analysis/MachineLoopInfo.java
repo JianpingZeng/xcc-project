@@ -20,7 +20,6 @@ import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
 import backend.pass.AnalysisUsage;
-import backend.pass.RegisterPass;
 import backend.support.DepthFirstOrder;
 import backend.support.LoopInfoBase;
 
@@ -33,12 +32,6 @@ import java.util.*;
 public class MachineLoopInfo extends MachineFunctionPass
     implements LoopInfoBase<MachineBasicBlock, MachineLoop>
 {
-    static
-    {
-        new RegisterPass("machine-loops",
-                "Machine Natural Loop Construction",
-                MachineLoopInfo.class, true);
-    }
     private HashMap<MachineBasicBlock, MachineLoop> bbMap = new HashMap<>();
 
     private ArrayList<MachineLoop> topLevelLoops = new ArrayList<>();
