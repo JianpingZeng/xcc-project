@@ -1,7 +1,6 @@
 package backend.target;
 
 import backend.pass.ImmutablePass;
-import backend.pass.RegisterPass;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
@@ -80,12 +79,6 @@ public class TargetData implements ImmutablePass
         }
     }
 
-    static
-    {
-	    new RegisterPass("targetdata", "Target Data Layout",
-			    TargetData.class, false,
-			    true);
-    }
 	/**
 	 * default to false.
 	 */

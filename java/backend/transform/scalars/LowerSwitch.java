@@ -16,9 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.value.BasicBlock;
 import backend.pass.FunctionPass;
-import backend.pass.RegisterPass;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Instruction.CmpInst.Predicate;
@@ -36,14 +34,6 @@ import java.util.List;
  */
 public final class LowerSwitch implements FunctionPass
 {
-    /**
-     * Register the LowerSwitch pass.
-     */
-    static
-    {
-        new RegisterPass("lowerswitch", "X86 lower switch", LowerSwitch.class);
-    }
-
     public static LowerSwitch createLowerSwitchPass() {return new LowerSwitch();}
 
     @Override

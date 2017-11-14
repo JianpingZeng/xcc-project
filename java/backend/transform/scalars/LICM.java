@@ -3,14 +3,12 @@ package backend.transform.scalars;
 import backend.analysis.*;
 import backend.analysis.AliasAnalysis.ModRefBehavior;
 import backend.analysis.AliasSetTracker.AliasSet;
-import backend.analysis.LoopInfo;
-import backend.pass.RegisterPass;
-import backend.support.LLVMContext;
-import backend.value.*;
-import backend.support.CallSite;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
+import backend.support.CallSite;
+import backend.support.LLVMContext;
+import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Value.UndefValue;
 
@@ -20,7 +18,7 @@ import java.util.HashSet;
 
 import static backend.analysis.AliasAnalysis.ModRefBehavior.DoesNotAccessMemory;
 import static backend.analysis.AliasAnalysis.ModRefBehavior.OnlyReadsMemory;
-import static backend.transform.scalars.PromoteMemToReg.promoteMemToReg;
+import static backend.transform.utils.PromoteMemToReg.promoteMemToReg;
 
 /** 
  * </p>
@@ -94,11 +92,6 @@ public final class LICM implements LoopPass
     private LICM()
     {
         loopToAliasMap = new HashMap<>();
-    }
-
-    static
-    {
-        new RegisterPass("licm", "Loop Invariant Code Motion", LICM.class);
     }
 
     public static LICM createLICMPass()

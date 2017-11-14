@@ -18,10 +18,10 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DominanceFrontier;
-import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
-import backend.pass.RegisterPass;
+import backend.transform.utils.PromoteMemToReg;
+import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.AllocaInst;
@@ -36,10 +36,6 @@ import java.util.ArrayList;
  */
 public final class Mem2Reg implements FunctionPass
 {
-    static
-    {
-        new RegisterPass("mem2reg", "Promote memory to Register", Mem2Reg.class);
-    }
     /**
      * Statistics the number of allocas instruction to be promoted.
      */

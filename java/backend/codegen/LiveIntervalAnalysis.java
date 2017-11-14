@@ -35,7 +35,9 @@ import tools.commandline.Initializer;
 import tools.commandline.OptionNameApplicator;
 
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.TreeMap;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;

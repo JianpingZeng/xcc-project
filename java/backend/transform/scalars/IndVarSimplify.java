@@ -88,10 +88,6 @@ public final class IndVarSimplify implements LoopPass
     private IVUsers iu;
     private DomTreeInfo dt;
 
-    static
-    {
-        new RegisterPass("indvars", "Canonicalize Induction Variables", IndVarSimplify.class);
-    }
     public static Pass createIndVarSimplifyPass()
     {
         return new IndVarSimplify();

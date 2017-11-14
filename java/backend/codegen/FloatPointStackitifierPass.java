@@ -488,12 +488,14 @@ public class FloatPointStackitifierPass extends MachineFunctionPass
         return new FloatPointStackitifierPass();
     }
 
-    @Override public String getPassName()
+    @Override
+    public String getPassName()
     {
         return null;
     }
 
-    @Override public boolean runOnMachineFunction(MachineFunction mf)
+    @Override
+    public boolean runOnMachineFunction(MachineFunction mf)
     {
         return false;
     }

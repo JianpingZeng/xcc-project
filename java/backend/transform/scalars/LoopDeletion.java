@@ -1,12 +1,10 @@
 package backend.transform.scalars;
 
 import backend.analysis.*;
-import backend.analysis.LoopInfo;
-import backend.pass.RegisterPass;
-import backend.value.BasicBlock;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
+import backend.value.BasicBlock;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
@@ -22,10 +20,6 @@ import java.util.Iterator;
  */
 public final class LoopDeletion implements LoopPass
 {
-	static
-	{
-		new RegisterPass("loop-deletion", "Delete dead loops", LoopDeletion.class);
-	}
 	/**
 	 * A static method served as creating an instance of this class
 	 * that operated on program loop.

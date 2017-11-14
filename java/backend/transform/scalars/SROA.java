@@ -21,9 +21,9 @@ import backend.analysis.DomTreeInfo;
 import backend.analysis.DominanceFrontier;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
-import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.support.LLVMContext;
+import backend.transform.utils.PromoteMemToReg;
 import backend.type.ArrayType;
 import backend.type.StructType;
 import backend.type.Type;
@@ -34,7 +34,7 @@ import backend.value.Instruction.GetElementPtrInst;
 import java.util.ArrayList;
 import java.util.Stack;
 
-import static backend.transform.scalars.PromoteMemToReg.isAllocaPromotable;
+import static backend.transform.utils.PromoteMemToReg.isAllocaPromotable;
 
 /**
  * This file defines a class responsible for performing a well known intra-procedural
@@ -72,11 +72,6 @@ public final class SROA implements FunctionPass
             new IntStatistic("scalarrepl", "Number of allocas broken up");
     public static final IntStatistic NumPromoted =
             new IntStatistic("scalarrepl", "Number of allocas promoted");
-
-    static
-    {
-        new RegisterPass("scalarrepl", "Scalar Replacement of Aggregates", SROA.class);
-    }
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)

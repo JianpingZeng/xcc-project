@@ -17,6 +17,8 @@
 
 package backend.target;
 
+import backend.pass.PassRegisterationUtility;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -56,4 +58,12 @@ public class TargetSelect
     public void InitializeTargetInfo() {}
 
     public void LLVMInitializeTarget() {}
+
+    /**
+     * This method must be called to register all of passes.
+     */
+    public void registerAllPasses()
+    {
+        PassRegisterationUtility.registerPasses();
+    }
 }

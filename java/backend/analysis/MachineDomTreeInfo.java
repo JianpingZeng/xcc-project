@@ -21,7 +21,6 @@ import backend.codegen.MachineFunction;
 import backend.codegen.MachineFunctionPass;
 import backend.codegen.MachineInstr;
 import backend.pass.AnalysisUsage;
-import backend.pass.RegisterPass;
 
 import java.util.ArrayList;
 
@@ -33,13 +32,6 @@ import java.util.ArrayList;
  */
 public final class MachineDomTreeInfo extends MachineFunctionPass
 {
-    static
-    {
-        new RegisterPass("machinedomtree", "Machine Dominator Tree Construction",
-                MachineDomTreeInfo.class,
-                true);
-    }
-
     private MachineDomTree dt;
 
     public MachineDomTreeInfo()

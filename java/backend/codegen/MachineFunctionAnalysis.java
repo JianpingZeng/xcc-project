@@ -17,6 +17,7 @@ package backend.codegen;
  */
 
 import backend.pass.FunctionPass;
+import backend.pass.RegisterPass;
 import backend.target.TargetMachine;
 import backend.value.Function;
 
@@ -26,6 +27,12 @@ import backend.value.Function;
  */
 public class MachineFunctionAnalysis implements FunctionPass
 {
+    static
+    {
+        new RegisterPass("machine-function-analysis",
+                "Machine Function Analysis", MachineFunctionAnalysis.class,
+                false, true);
+    }
     private TargetMachine tm;
     private TargetMachine.CodeGenOpt optLevel;
     private MachineFunction mf;

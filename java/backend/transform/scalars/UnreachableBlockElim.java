@@ -16,10 +16,10 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.value.BasicBlock;
-import backend.utils.SuccIterator;
 import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
+import backend.utils.SuccIterator;
+import backend.value.BasicBlock;
 import backend.value.Constant;
 import backend.value.Function;
 import backend.value.Instruction;

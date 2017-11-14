@@ -1,11 +1,7 @@
 package backend.codegen;
 
 import backend.pass.AnalysisUsage;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetInstrDesc;
-import backend.target.TargetMachine;
-import backend.target.TargetRegisterInfo;
-import backend.target.TargetRegisterClass;
+import backend.target.*;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;

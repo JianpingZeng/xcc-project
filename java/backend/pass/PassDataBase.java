@@ -43,16 +43,17 @@ public final class PassDataBase
             passInfoMap = new HashMap<>();
         if (Util.DEBUG)
         {
-            if (!registeredPasses.containsKey(pi) && passInfoMap
+            if (registeredPasses.containsKey(pi) || passInfoMap
                     .containsKey(pass))
             {
                 pi.dump();
+                assert false:"Pass already registered!";
             }
         }
         else
         {
-            assert !registeredPasses.containsKey(pi) && passInfoMap
-                    .containsKey(pass) : "Pass already registered!";
+            assert !registeredPasses.containsKey(pi) &&
+		            !passInfoMap.containsKey(pass) : "Pass already registered!";
         }
 		registeredPasses.put(pi, pass);
 		passInfoMap.put(pass, pi);

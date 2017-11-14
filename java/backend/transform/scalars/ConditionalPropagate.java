@@ -19,7 +19,6 @@ package backend.transform.scalars;
 
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
-import backend.pass.RegisterPass;
 import backend.support.IntStatistic;
 import backend.value.*;
 import backend.value.Instruction.BranchInst;
@@ -43,11 +42,6 @@ public class ConditionalPropagate implements FunctionPass
             new IntStatistic("NumBrThread", "Number of CFG edges threaded through program");
     public static IntStatistic NumSwThread =
             new IntStatistic("NumSwThread", "Number of CFG edges threaded through program");
-
-    static
-    {
-        new RegisterPass("condprop", "Conditional Propagation", ConditionalPropagate.class);
-    }
     private boolean madeChange;
     private LinkedList<BasicBlock> deadBlocks;
 

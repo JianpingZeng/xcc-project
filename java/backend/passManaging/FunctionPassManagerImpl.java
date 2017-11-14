@@ -134,10 +134,10 @@ public class FunctionPassManagerImpl extends PMDataManager implements
         anUsageMap = new HashMap<>();
         activeStack = new Stack<>();
         passManagers = new ArrayList<>();
-        MPPassManager mp = new MPPassManager();
-        mp.setTopLevelManager(this);
-        activeStack.push(mp);
-        addPassManager(mp);
+        FPPassManager fp = new FPPassManager(1);
+        fp.setTopLevelManager(this);
+        activeStack.push(fp);
+        addPassManager(fp);
         tpmt = TopLevelPassManagerType.TLM_Function;
     }
 

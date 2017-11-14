@@ -1154,6 +1154,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         TargetSelect ts = TargetSelect.create();
         ts.InitializeTargetInfo();
         ts.LLVMInitializeTarget();
+        // Register pass
+        ts.registerAllPasses();
 
 	    // Parse the command line argument.
         CL.parseCommandLineOptions(args,

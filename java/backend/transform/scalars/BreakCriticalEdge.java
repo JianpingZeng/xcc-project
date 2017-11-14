@@ -19,19 +19,18 @@ package backend.transform.scalars;
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
-import backend.pass.RegisterPass;
-import backend.value.Loop;
 import backend.analysis.LoopInfo;
-import backend.value.BasicBlock;
-import backend.utils.PredIterator;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
+import backend.utils.PredIterator;
+import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Instruction;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.TerminatorInst;
+import backend.value.Loop;
 import tools.Util;
 
 import java.util.HashSet;
@@ -64,11 +63,6 @@ import java.util.LinkedList;
 public final class BreakCriticalEdge implements FunctionPass
 {
     private int numBroken;
-    static
-    {
-        new RegisterPass("break-crit-edges", "Break critical edges in CFG", BreakCriticalEdge.class);
-    }
-
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
