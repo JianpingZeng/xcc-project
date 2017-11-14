@@ -23,9 +23,11 @@ import backend.pass.PassInfo;
 import backend.value.Function;
 import backend.value.Module;
 
-import java.util.ArrayList;
+import java.util.*;
 
-import static backend.passManaging.PMTopLevelManager.TopLevelPassManagerType.TLM_Function;
+import static backend.passManaging.PMDataManager.PassDebugLevel.Arguments;
+import static backend.passManaging.PMDataManager.PassDebugLevel.Structures;
+import static backend.passManaging.PassManagerType.PMT_ModulePassManager;
 
 /**
  * @author Xlous.zeng
@@ -33,15 +35,21 @@ import static backend.passManaging.PMTopLevelManager.TopLevelPassManagerType.TLM
  */
 public class FunctionPassManagerImpl extends PMDataManager implements
         Pass,
-        IPMTopLevelManager
+        PMTopLevelManager
 {
-    private PMTopLevelManager pmt;
     private boolean wasRun;
+    private TopLevelPassManagerType tpmt;
+    private HashMap<Pass, Pass> lastUsers;
+    private HashMap<Pass, HashSet<Pass>> inversedLastUser;
+    private ArrayList<ImmutablePass> immutablePasses;
+    private HashMap<Pass, AnalysisUsage> anUsageMap;
+    Stack<PMDataManager> activeStack;
+    protected ArrayList<PMDataManager> passManagers;
 
     public FunctionPassManagerImpl(int depth)
     {
         super(depth);
-        pmt = new PMTopLevelManager(TLM_Function);
+        initTopLevelManager();
         wasRun = false;
     }
 
@@ -82,7 +90,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
         initializeAllAnalysisInfo();
 
         boolean changed = false;
-        for (int i = 0, e = getNumContainedPasses(); i !=e; i++)
+        for (int i = 0, e = getNumContainedManagers(); i !=e; i++)
         {
             changed |= getContainedManager(i).runOnFunction(f);
         }
@@ -91,115 +99,243 @@ public class FunctionPassManagerImpl extends PMDataManager implements
 
     public FPPassManager getContainedManager(int index)
     {
-        assert index >=0 && index < getNumContainedPasses();
-        return (FPPassManager) passVector.get(index);
+        assert index >=0 && index < passManagers.size();
+        return (FPPassManager) passManagers.get(index);
     }
 
     public boolean doInitialization(Module m)
     {
         boolean changed = false;
-        for (int i = 0, e = getNumContainedPasses(); i != e; i++)
+        for (int i = 0, e = getNumContainedManagers(); i != e; i++)
             changed |= getContainedManager(i).doInitialization(m);
 
         return changed;
     }
 
+    public int getNumContainedManagers()
+    {
+        return passManagers.size();
+    }
+
     public boolean doFinalization(Module m)
     {
         boolean changed = false;
-        for (int i = 0, e = getNumContainedPasses(); i != e; i++)
+        for (int i = 0, e = getNumContainedManagers(); i != e; i++)
             changed |= getContainedManager(i).doFinalization(m);
 
         return changed;
     }
-    //========================================================================//
-    // Following methods inherited from base class IPMTopLevelManager.========//
-    //========================================================================//
+
+    private void initTopLevelManager()
+    {
+        lastUsers = new HashMap<>();
+        inversedLastUser = new HashMap<>();
+        immutablePasses = new ArrayList<>();
+        anUsageMap = new HashMap<>();
+        activeStack = new Stack<>();
+        passManagers = new ArrayList<>();
+        MPPassManager mp = new MPPassManager();
+        mp.setTopLevelManager(this);
+        activeStack.push(mp);
+        addPassManager(mp);
+        tpmt = TopLevelPassManagerType.TLM_Function;
+    }
+
     @Override
     public void schedulePass(Pass p)
     {
-        pmt.schedulePass(p);
+        // Given pass a chance to prepare the stage.
+        p.preparePassManager(activeStack);
+
+        PassInfo pi = p.getPassInfo();
+        if (pi != null && pi.isAnalysis() && findAnalysisPass(pi) != null)
+        {
+            return;
+        }
+
+        AnalysisUsage au = findAnalysisUsage(p);
+        boolean checkAnalysis = true;
+        while (checkAnalysis)
+        {
+            checkAnalysis = false;
+            HashSet<PassInfo> requiredSet = au.getRequired();
+            for (PassInfo pInfo : requiredSet)
+            {
+                Pass analysisPass = findAnalysisPass(pInfo);
+                if (analysisPass == null)
+                {
+                    analysisPass = pInfo.createPass();
+                    if (p.getPotentialPassManagerType() ==
+                            analysisPass.getPotentialPassManagerType())
+                    {
+                        // schedule analysis pass that is managed by the same pass manager.
+                        schedulePass(analysisPass);
+                    }
+                    else if (p.getPotentialPassManagerType()
+                            .compareTo(analysisPass.getPotentialPassManagerType()) > 0)
+                    {
+                        // schedule analysis pass that is managed by a new manager.
+                        schedulePass(analysisPass);
+                        // recheck analysis passes to ensure that
+                        // required analysises are already checked are
+                        // still available.
+                        checkAnalysis = true;
+                    }
+                    else
+                    {
+                        // don't schedule this analysis.
+                    }
+                }
+            }
+        }
+        // Now all required passes are available.
+        addTopLevelPass(p);
     }
 
     @Override
     public void addTopLevelPass(Pass p)
     {
-        ImmutablePass ip = p instanceof ImmutablePass ?
-                (ImmutablePass)p : null;
+        ImmutablePass ip = p.getAsImmutablePass();
         if (ip != null)
         {
-            // p is an immutable pass and it will be managed by
-            // this top level manager.
             initializeAnalysisImpl(p);
             addImmutablePass(ip);
             recordAvailableAnalysis(ip);
         }
         else
         {
-            p.assignPassManager(pmt.getActiveStack());
+            p.assignPassManager(getActiveStack(), PMT_ModulePassManager);
         }
     }
 
     @Override
     public void setLastUser(ArrayList<Pass> analysisPasses, Pass p)
     {
-        pmt.setLastUser(analysisPasses, p);
+        for (Pass anaPass : analysisPasses)
+        {
+            lastUsers.put(anaPass, p);
+            if (p.equals(anaPass))
+                continue;
+
+            for (Map.Entry<Pass, Pass> entry : lastUsers.entrySet())
+            {
+                if (entry.getValue().equals(anaPass))
+                {
+                    lastUsers.put(entry.getKey(), p);
+                }
+            }
+        }
     }
 
     @Override
     public void collectLastUses(ArrayList<Pass> lastUsers, Pass p)
     {
-        pmt.collectLastUses(lastUsers, p);
-    }
+        if (!inversedLastUser.containsKey(p))
+            return;
 
-    @Override
-    public AnalysisUsage findAnalysisUsage(Pass p)
-    {
-        return pmt.findAnalysisUsage(p);
+        HashSet<Pass> lu = inversedLastUser.get(p);
+        lastUsers.addAll(lu);
     }
 
     @Override
     public Pass findAnalysisPass(PassInfo pi)
     {
-        return pmt.findAnalysisPass(pi);
+        Pass p = null;
+        // check pass manager.
+        for (PMDataManager pm : passManagers)
+        {
+            p = pm.findAnalysisPass(pi, false);
+        }
+
+        for (ImmutablePass ip : immutablePasses)
+        {
+            if (ip.getPassInfo().equals(pi))
+                p = ip;
+        }
+        return p;
     }
 
-    @Override
+    public AnalysisUsage findAnalysisUsage(Pass p)
+    {
+        AnalysisUsage au = null;
+        if (anUsageMap.containsKey(p))
+            au = anUsageMap.get(p);
+        else
+        {
+            au = new AnalysisUsage();
+            p.getAnalysisUsage(au);
+            anUsageMap.put(p, au);
+        }
+        return au;
+    }
+
     public void addImmutablePass(ImmutablePass p)
     {
-        pmt.addImmutablePass(p);
+        p.initializePass();
+        immutablePasses.add(p);
     }
 
-    @Override
     public ArrayList<ImmutablePass> getImmutablePasses()
     {
-        return pmt.getImmutablePasses();
+        return immutablePasses;
     }
 
-    @Override
     public void addPassManager(PMDataManager pm)
     {
-        pmt.addPassManager(pm);
+        passManagers.add(pm);
     }
 
-    @Override
     public void dumpPasses()
     {
-        pmt.dumpPasses();
+        if (PassDebugging.value.compareTo(Structures) < 0)
+            return;
+
+        // print out the immutable passes.
+        immutablePasses.forEach(im->{im.dumpPassStructures(0);});
+
+        // Every class that derives from PMDataManager also derives
+        // from Pass.
+        passManagers.forEach(pm->
+        {
+            ((Pass)pm).dumpPassStructures(1);
+        });
     }
 
-    @Override
     public void dumpArguments()
     {
-        pmt.dumpArguments();
+        if (PassDebugging.value.compareTo(Arguments) < 0)
+            return;
+
+        System.err.print("Pass Arguments: ");
+        passManagers.forEach(PMDataManager::dumpPassArguments);
+        System.err.println();
     }
 
-    @Override
     public void initializeAllAnalysisInfo()
     {
-        pmt.initializeAllAnalysisInfo();
+        for (PMDataManager pm : passManagers)
+        {
+            pm.initializeAnalysisInfo();
+        }
+
+        for (Map.Entry<Pass, Pass> entry : lastUsers.entrySet())
+        {
+            if (inversedLastUser.containsKey(entry.getValue()))
+            {
+                HashSet<Pass> l = inversedLastUser.get(entry.getValue());
+                l.add(entry.getKey());
+            }
+            else
+            {
+                HashSet<Pass> l = new HashSet<>();
+                l.add(entry.getKey());
+                inversedLastUser.put(entry.getValue(), l);
+            }
+        }
     }
-    //========================================================================//
-    // End of methods inherited from base class IPMTopLevelManager.===========//
-    //========================================================================//
+
+    public Stack<PMDataManager> getActiveStack()
+    {
+        return activeStack;
+    }
 }

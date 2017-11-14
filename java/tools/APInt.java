@@ -17,6 +17,8 @@
 
 package tools;
 
+import backend.support.FormattedOutputStream;
+
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2900,6 +2902,18 @@ public class APInt implements Cloneable
     public long logBase2()
     {
         return bitWidth - 1 - countLeadingZeros();
+    }
+
+    public void print(FormattedOutputStream os)
+    {
+        print(os, true);
+    }
+
+    public void print(FormattedOutputStream os, boolean isSigned)
+    {
+        StringBuilder sb = new StringBuilder();
+        toString(sb, 10, isSigned, true);
+        os.print(sb.toString());
     }
 
     public void print(PrintStream os)

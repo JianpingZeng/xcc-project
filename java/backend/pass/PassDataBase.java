@@ -16,6 +16,8 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import tools.Util;
+
 import java.util.HashMap;
 
 public final class PassDataBase
@@ -39,9 +41,19 @@ public final class PassDataBase
 			registeredPasses = new HashMap<>();
         if (passInfoMap == null)
             passInfoMap = new HashMap<>();
-
-		assert !registeredPasses.containsKey(pi) && passInfoMap.containsKey(pass)
-                :"Pass already registered!";
+        if (Util.DEBUG)
+        {
+            if (!registeredPasses.containsKey(pi) && passInfoMap
+                    .containsKey(pass))
+            {
+                pi.dump();
+            }
+        }
+        else
+        {
+            assert !registeredPasses.containsKey(pi) && passInfoMap
+                    .containsKey(pass) : "Pass already registered!";
+        }
 		registeredPasses.put(pi, pass);
 		passInfoMap.put(pass, pi);
 	}

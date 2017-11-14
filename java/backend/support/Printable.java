@@ -9,5 +9,8 @@ import java.io.PrintStream;
 public interface Printable
 {
 	void print(PrintStream os);
-	void dump();
+	default void dump()
+	{
+		print(System.err);
+	}
 }

@@ -1,13 +1,14 @@
 package backend.value;
 
 import backend.support.AssemblyWriter;
+import backend.support.FormattedOutputStream;
 import backend.support.SlotTracker;
 import backend.support.ValueSymbolTable;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
 
-import java.io.PrintStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -194,7 +195,7 @@ public final class Module implements Iterable<Function>
 		return typeSymbolTable;
 	}
 
-	public void print(PrintStream os)
+	public void print(FormattedOutputStream os) throws IOException
 	{
         new AssemblyWriter(os, this, new SlotTracker(this)).write(this);
 	}

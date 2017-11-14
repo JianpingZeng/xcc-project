@@ -16,11 +16,10 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.value.BasicBlock;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.pass.Pass;
-import backend.support.Printable;
+import backend.value.BasicBlock;
 import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
 import backend.value.Loop;
@@ -29,13 +28,15 @@ import tools.OutParamWrapper;
 import tools.Util;
 
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public final class IVUsers implements Printable, LoopPass
+public final class IVUsers implements LoopPass
 {
 	private Loop loop;
 	private LoopInfo li;
@@ -420,11 +421,5 @@ public final class IVUsers implements Printable, LoopPass
 				os.println();
 			}
 		});
-	}
-
-	@Override
-	public void dump()
-	{
-		print(System.err);
 	}
 }

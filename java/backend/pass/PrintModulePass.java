@@ -17,10 +17,11 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.support.FormattedOutputStream;
 import backend.value.Module;
 
+import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintStream;
 
 /**
  * @author Xlous.zeng
@@ -28,19 +29,31 @@ import java.io.PrintStream;
  */
 public class PrintModulePass implements ModulePass
 {
-	private PrintStream os;
+	private FormattedOutputStream os;
+
+	static
+	{
+		new RegisterPass("print-module", "Print out Module", PrintModulePass.class);
+	}
 
 	public PrintModulePass(OutputStream out)
 	{
 		super();
-		os = new PrintStream(out);
+		os = new FormattedOutputStream(out);
 	}
 
 	@Override
 	public boolean runOnModule(Module m)
 	{
-	    m.print(os);
-		return false;
+        try
+        {
+            m.print(os);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        return false;
 	}
 
 	@Override
