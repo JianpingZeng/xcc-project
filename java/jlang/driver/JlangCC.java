@@ -16,6 +16,7 @@ package jlang.driver;
  * permissions and limitations under the License.
  */
 
+import backend.support.BackendCmdOptions;
 import backend.support.ErrorHandling;
 import backend.target.TargetMachine;
 import backend.target.TargetSelect;
@@ -360,6 +361,15 @@ public class JlangCC implements DiagnosticFrontendKindsTag
             new BooleanOpt(optionName("debug"),
                     desc("Enable output debug informaton"),
                     init(true));
+
+    /**
+     * This static code block is attempted to add some desired Jlang command line
+     * options into CommandLine DataBase.
+     */
+    static
+    {
+        BackendCmdOptions.registerBackendCommandLineOptions();
+    }
     /**
      * Result codes.
      */

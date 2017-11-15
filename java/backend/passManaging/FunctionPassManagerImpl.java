@@ -20,6 +20,7 @@ import backend.pass.AnalysisUsage;
 import backend.pass.ImmutablePass;
 import backend.pass.Pass;
 import backend.pass.PassInfo;
+import backend.support.BackendCmdOptions;
 import backend.value.Function;
 import backend.value.Module;
 
@@ -287,7 +288,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
 
     public void dumpPasses()
     {
-        if (PassDebugging.value.compareTo(Structures) < 0)
+        if (BackendCmdOptions.PassDebugging.value.compareTo(Structures) < 0)
             return;
 
         // print out the immutable passes.
@@ -303,7 +304,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
 
     public void dumpArguments()
     {
-        if (PassDebugging.value.compareTo(Arguments) < 0)
+        if (BackendCmdOptions.PassDebugging.value.compareTo(Arguments) < 0)
             return;
 
         System.err.print("Pass Arguments: ");
