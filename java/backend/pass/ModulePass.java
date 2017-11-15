@@ -22,6 +22,13 @@ public interface ModulePass extends Pass
 	 */
 	boolean runOnModule(Module m);
 
+	@Override
+	default void assignPassManager(Stack<PMDataManager> pms)
+	{
+		assignPassManager(pms, PMT_ModulePassManager);
+	}
+
+	@Override
 	default void assignPassManager(Stack<PMDataManager> pms,
 			PassManagerType preferredType)
 	{

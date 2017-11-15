@@ -16,8 +16,13 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.passManaging.FPPassManager;
+import backend.passManaging.PMDataManager;
+import backend.passManaging.PassManagerType;
 import backend.value.Loop;
 import backend.analysis.LoopInfo;
+
+import java.util.Stack;
 
 /**
  * @author Xlous.zeng
@@ -39,4 +44,47 @@ public interface LoopPass extends Pass
     }
 
     default boolean doFinalization() { return false; }
+
+    @Override
+    default PassManagerType getPotentialPassManagerType()
+    {
+        return PassManagerType.PMT_LoopPassManager;
+    }
+
+    @Override
+    default void assignPassManager(Stack<PMDataManager> pms,
+            PassManagerType pmt)
+    {
+        while (!pms.isEmpty())
+        {
+            if (pms.peek().getPassManagerType().compareTo(PassManagerType.PMT_LoopPassManager) > 0)
+            {
+                pms.pop();
+            }
+            else
+                break;
+        }
+        assert !pms.isEmpty():"Errorous status";
+        LPPassManager lpm;
+        if (!(pms.peek() instanceof FPPassManager))
+        {
+            PMDataManager pmd = pms.peek();
+            // Step#1 Create new Function Pass Manager
+            lpm = new LPPassManager(pmd.getDepth()+1);
+            lpm.populateInheritedAnalysis(pms);
+
+            // Step#2 Assign manager to manage this new manager.
+            lpm.assignPassManager(pms, pmd.getPassManagerType());
+            // Step#3 Push new manager into stack.
+            pms.add(lpm);
+        }
+        lpm = (LPPassManager)pms.peek();
+        lpm.add(this);
+    }
+
+    @Override
+    default void assignPassManager(Stack<PMDataManager> pms)
+    {
+        assignPassManager(pms, PassManagerType.PMT_LoopPassManager);
+    }
 }

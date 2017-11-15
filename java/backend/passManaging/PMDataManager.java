@@ -20,15 +20,14 @@ import backend.pass.AnalysisUsage;
 import backend.pass.ImmutablePass;
 import backend.pass.Pass;
 import backend.pass.PassInfo;
+import backend.support.BackendCmdOptions;
 import backend.value.Function;
 import tools.Util;
-import tools.commandline.*;
 
 import java.util.*;
 
 import static backend.passManaging.PMDataManager.PassDebugLevel.*;
 import static backend.passManaging.PMDataManager.PassDebuggingString.FREEING_MSG;
-import static tools.commandline.OptionHidden.Hidden;
 
 /**
  * PMDataManager provides the common place to manage the analysis data used by
@@ -39,7 +38,7 @@ import static tools.commandline.OptionHidden.Hidden;
  */
 public abstract class PMDataManager
 {
-    enum PassDebugLevel
+    public enum PassDebugLevel
     {
         None,
         Arguments,
@@ -48,21 +47,6 @@ public abstract class PMDataManager
         Details
     }
 
-    public static final Opt<PassDebugLevel> PassDebugging =
-            new Opt<PassDebugLevel>(
-                    new Parser<>(),
-                    new OptionNameApplicator("debug-pass"),
-                    new OptionHiddenApplicator(Hidden),
-                    Desc.desc("Print PassManager debugging information"),
-                    Initializer.init(None),
-                    new ValueClass<>(
-                            new ValueClass.Entry<>(None, "none", "disable debug output"),
-                            new ValueClass.Entry<>(Arguments, "arguments", "print pass arguments to pass to 'opt'"),
-                            new ValueClass.Entry<>(Structures, "structures", "print pass structure before run()"),
-                            new ValueClass.Entry<>(Executions, "executions", "print pass name before it is executed"),
-                            new ValueClass.Entry<>(Details, "details", "print pass details when it is executed")
-                    )
-            );
     public enum PassDebuggingString
     {
         EXECUTION_MSG, // "Executing Pass '"
@@ -132,7 +116,7 @@ public abstract class PMDataManager
                     !preservedSet.contains(entry.getKey()))
             {
                 // remove this analysis.
-                if (PassDebugging.value.compareTo(Details) >= 0)
+                if (BackendCmdOptions.PassDebugging.value.compareTo(Details) >= 0)
                 {
                     Pass s = entry.getValue();
                     System.err.printf(" -- '%s' is not preserving '%s'\n",
@@ -167,7 +151,7 @@ public abstract class PMDataManager
         if (topLevelManager== null)
             return;
         topLevelManager.collectLastUses(deadPasses, p);
-        if (PassDebugging.value.compareTo(Details) >= 0 &&
+        if (BackendCmdOptions.PassDebugging.value.compareTo(Details) >= 0 &&
                 !deadPasses.isEmpty())
         {
             System.err.printf(" -*- '%s'", p.getPassName());
@@ -357,7 +341,7 @@ public abstract class PMDataManager
     public void dumpPassInfo(Pass p, PassDebuggingString s1,
             PassDebuggingString s2, String msg)
     {
-        if (PassDebugging.value.compareTo(Executions) < 0)
+        if (BackendCmdOptions.PassDebugging.value.compareTo(Executions) < 0)
             return;
         System.err.printf("0x%x%s", hashCode(), Util.fixedLengthString(depth*2+1, ' '));
         switch (s1)
@@ -392,7 +376,7 @@ public abstract class PMDataManager
 
     public void dumpPreservedSet(Pass p)
     {
-        if (PassDebugging.value.compareTo(Details) < 0)
+        if (BackendCmdOptions.PassDebugging.value.compareTo(Details) < 0)
             return;
 
         AnalysisUsage au = new AnalysisUsage();
@@ -405,7 +389,7 @@ public abstract class PMDataManager
             Pass p,
             HashSet<PassInfo> set)
     {
-        assert PassDebugging.value.compareTo(Details) >= 0;
+        assert BackendCmdOptions.PassDebugging.value.compareTo(Details) >= 0;
         if (set.isEmpty())
             return;
 
@@ -425,7 +409,7 @@ public abstract class PMDataManager
 
     public void dumpRequiredSet(Pass p)
     {
-        if (PassDebugging.value.compareTo(Details) < 0)
+        if (BackendCmdOptions.PassDebugging.value.compareTo(Details) < 0)
             return;
 
         AnalysisUsage au = new AnalysisUsage();
