@@ -1,6 +1,8 @@
 package backend.codegen;
 
 import backend.analysis.LiveVariables;
+import backend.analysis.MachineDomTreeInfo;
+import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
@@ -280,7 +282,10 @@ public final class PhiElimination extends MachineFunctionPass
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
+		au.setPreservedAll();
 		au.addPreserved(LiveVariables.class);
+		au.addPreserved(MachineLoopInfo.class);
+		au.addPreserved(MachineDomTreeInfo.class);
 		super.getAnalysisUsage(au);
 	}
 }

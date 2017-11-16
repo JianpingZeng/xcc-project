@@ -16,8 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.LiveVariables;
-import backend.analysis.LoopInfo;
+import backend.analysis.*;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.target.TargetInstrInfo;
@@ -111,16 +110,25 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
+        au.setPreservesCFG();
+        // TODO 2017/11/16 current can not add AA supporting au.addRequired(AliasAnalysis.class);
+        // TODO 2017/11/16 au.addPreserved(AliasAnalysis.class);
+        au.addPreserved(LiveVariables.class);
         // Compute dead set and kill set for each machine instr.
         au.addRequired(LiveVariables.class);
+
+        // Obtains the loop information used for assigning a spilling weight to
+        // each live interval. The more nested, the more weight.
+        au.addPreserved(MachineLoopInfo.class);
+        au.addPreserved(MachineDomTreeInfo.class);
+
         // Eliminate phi node.
+        au.addPreserved(PhiElimination.class);
         au.addRequired(PhiElimination.class);
+
         // Converts the RISC-like MachineInstr to two addr instruction in some
         // target, for example, X86.
         au.addRequired(TwoAddrInstructionPass.class);
-        // Obtains the loop information used for assigning a spilling weight to
-        // each live interval. The more nested, the more weight.
-        au.addRequired(LoopInfo.class);
         super.getAnalysisUsage(au);
     }
 

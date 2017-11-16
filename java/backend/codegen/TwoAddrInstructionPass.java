@@ -428,6 +428,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
+        assert au != null;
+        au.setPreservedAll();
         au.addPreserved(LiveVariables.class);
         au.addPreserved(MachineLoopInfo.class);
         au.addPreserved(MachineDomTreeInfo.class);

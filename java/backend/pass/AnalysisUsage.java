@@ -68,4 +68,19 @@ public final class AnalysisUsage
     public HashSet<PassInfo> getRequired() {return required;}
 
     public HashSet<PassInfo> getPreserved() {return preserved;}
+
+    /**
+     * This function should be called to by the pass, iff they do
+     * not:
+     * <ol>
+     *  <li>Add or remove basic blocks from the function</li>
+     *  <li>Modify terminator instructions in any way.</li>
+     * </ol>
+     * This function annotates the AnalysisUsage info object to say that analyses
+     * that only depend on the CFG are preserved by this pass.
+     */
+    public void setPreservesCFG()
+    {
+        // TODO: 17-11-16
+    }
 }

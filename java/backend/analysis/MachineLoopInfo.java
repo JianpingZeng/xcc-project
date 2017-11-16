@@ -40,6 +40,7 @@ public class MachineLoopInfo extends MachineFunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         assert au != null;
+        au.setPreservedAll();
         au.addRequired(MachineDomTreeInfo.class);
         super.getAnalysisUsage(au);
     }

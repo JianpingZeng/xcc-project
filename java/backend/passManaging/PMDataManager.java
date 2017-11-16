@@ -110,8 +110,10 @@ public abstract class PMDataManager
             return;
 
         HashSet<PassInfo> preservedSet = au.getPreserved();
-        for (Map.Entry<PassInfo, Pass> entry : availableAnalysis.entrySet())
+        Iterator<Map.Entry<PassInfo, Pass>> itr = availableAnalysis.entrySet().iterator();
+        while (itr.hasNext())
         {
+            Map.Entry<PassInfo, Pass> entry = itr.next();
             if (!(entry.getValue() instanceof ImmutablePass) &&
                     !preservedSet.contains(entry.getKey()))
             {
@@ -123,7 +125,8 @@ public abstract class PMDataManager
                             p.getPassName(),
                             s.getPassName());
                 }
-                availableAnalysis.remove(entry.getKey());
+                itr.remove();
+                //availableAnalysis.remove(entry.getKey());
             }
         }
 
@@ -195,10 +198,7 @@ public abstract class PMDataManager
         ArrayList<PassInfo> reqAnalysisNotAvailable = new ArrayList<>();
 
         collectRequiredAnalysis(requiredPasses, reqAnalysisNotAvailable, p);;
-        for (Pass required : requiredPasses)
-        {
-            passVector.add(required);
-        }
+        passVector.addAll(requiredPasses);
 
         // Now, take care of required analysises that are not available.
         for (PassInfo pi : reqAnalysisNotAvailable)
@@ -463,7 +463,7 @@ public abstract class PMDataManager
         if (Util.DEBUG)
         {
             System.err.printf("Unable to schedule '%s'", requiredPass.getPassName());
-            System.err.printf(" required by '%s\n'", p.getPassName());
+            System.err.printf(" required by '%s'\n", p.getPassName());
         }
         Util.shouldNotReachHere("Unable to schedule pass");
     }
