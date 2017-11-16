@@ -312,7 +312,7 @@ public class BackendConsumer implements ASTConsumer
                 {
                     default:
                         break;
-                    case 1:
+                    case 0:
                         optLevel = None;
                         break;
                     case 3:

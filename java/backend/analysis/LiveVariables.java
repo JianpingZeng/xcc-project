@@ -533,6 +533,7 @@ public final class LiveVariables extends MachineFunctionPass
     {
         assert au != null;
         au.addRequired(UnreachableMachineBlockElim.class);
+        au.setPreservedAll();
         super.getAnalysisUsage(au);
     }
 

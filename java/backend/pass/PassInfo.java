@@ -1,8 +1,10 @@
 package backend.pass;
 
 import backend.support.Printable;
+import jlang.type.FoldingSetNodeID;
 
 import java.io.PrintStream;
+import java.util.Objects;
 
 /**
  * @author Xlous.zeng
@@ -103,5 +105,34 @@ public final class PassInfo implements Printable
     public void print(PrintStream os)
     {
         os.printf("Pass: %s, %s\n", getPassName(), getPassArgument());
+    }
+
+    @Override
+    public int hashCode()
+    {
+        FoldingSetNodeID id = new FoldingSetNodeID();
+        id.addString(passName);
+        id.addString(passArgument);
+        id.addInteger(klass.hashCode());
+        id.addBoolean(isAnalysisGroup);
+        id.addBoolean(isAnalysis);
+        id.addBoolean(isCFGOnlyPass);
+        return id.computeHash();
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (obj == null)
+            return false;
+        if (this == obj)
+            return true;
+        if (getClass() != obj.getClass())
+            return false;
+        PassInfo pi = (PassInfo)obj;
+        return Objects.equals(passName, pi.passName) &&
+                Objects.equals(passArgument, pi.passArgument)
+                && klass == pi.klass && isAnalysisGroup == pi.isAnalysisGroup &&
+                isAnalysis == pi.isAnalysis && isCFGOnlyPass == pi.isCFGOnlyPass;
     }
 }
