@@ -27,7 +27,7 @@ public class CPUInfoUtility
 {
     static
     {
-        File lib = new File(Config.CPUInfoUtility_Path + System.mapLibraryName(Config.CPUInfoUtility_Name));
+        File lib = new File(Config.CPUInfoUtility_Path +"/" + System.mapLibraryName(Config.CPUInfoUtility_Name));
         System.load(lib.getAbsolutePath());
     }
     /**

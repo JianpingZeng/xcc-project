@@ -22,4 +22,8 @@ package backend.target;
  */
 public abstract class TargetSubtarget
 {
+    public int getSpecialAddressLatency()
+    {
+        return 0;
+    }
 }
