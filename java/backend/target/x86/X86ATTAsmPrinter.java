@@ -83,7 +83,9 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        if (subtarget.isTargetDarwin() || subtarget.isTargetELF() || subtarget.isTargetCygMing())
+        au.setPreservedAll();
+        if (subtarget.isTargetDarwin() || subtarget.isTargetELF()
+                || subtarget.isTargetCygMing())
         {
             au.addRequired(MachineModuleInfo.class);
         }

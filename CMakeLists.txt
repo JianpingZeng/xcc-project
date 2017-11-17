@@ -25,24 +25,24 @@ CMake-system, then cd another build directory")
 endif()
 
 # Set the XCC project source and binary directory.
-set(XCC_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(XCC_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(XCC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(XCC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
-set(SRC_DIR ${XCC_SOURCE_DIR}/java)
-set(CLASSES_DIR ${XCC_BINARY_DIR}/classes)
-set(OUT_LIB_DIR ${XCC_BINARY_DIR}/lib)
-set(OUT_BIN_DIR ${XCC_BINARY_DIR}/bin)
-set(OUT_INCLUDE_DIR ${XCC_BINARY_DIR}/include)
-set(OUT_JAVADOC_DIR ${XCC_BINARY_DIR}/docs)
+set(SRC_DIR "${XCC_SOURCE_DIR}/java")
+set(CLASSES_DIR "${XCC_BINARY_DIR}/classes")
+set(OUT_LIB_DIR "${XCC_BINARY_DIR}/lib")
+set(OUT_BIN_DIR "${XCC_BINARY_DIR}/bin")
+set(OUT_INCLUDE_DIR "${XCC_BINARY_DIR}/include")
+set(OUT_JAVADOC_DIR "${XCC_BINARY_DIR}/docs")
 set(XCC_JAR "${PACKAGE_STRING}.jar")
 set(GEN_SOURCES_DIR "${XCC_BINARY_DIR}/gen_tblgen_srcs")
-set(GEN_TBLGEN_SRCS ${GEN_SOURCES_DIR}/backend/target/x86)
+set(GEN_TBLGEN_SRCS "${GEN_SOURCES_DIR}/backend/target/x86")
 
 set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR} -cp ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
-set(EXCLUDE_TARGET ${SRC_DIR}/backend/target/x86)
+set(EXCLUDE_TARGET "${SRC_DIR}/backend/target/x86")
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "DEBUG")
@@ -81,7 +81,7 @@ set(CPUInfoUtility_PATH "${OUT_LIB_DIR}")
 set(CPUInfoUtility_NAME GetCpuIDAndInfo)
 # Configure the XCC_NAME, XCC_MAJOR, XCC_MINOR
 # Produce ${GEN_SOURCES_DIR}/config/Config.java
-set(CONFIG_SRC ${GEN_SOURCES_DIR}/config/Config.java)
+set(CONFIG_SRC "${GEN_SOURCES_DIR}/config/Config.java")
 configure_file(
   ${XCC_SOURCE_DIR}/config/Config.java.in
   ${CONFIG_SRC})

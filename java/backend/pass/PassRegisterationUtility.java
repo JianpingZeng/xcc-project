@@ -78,7 +78,7 @@ public final class PassRegisterationUtility
         new RegisterPass("regalloc-simple", "Simple register allocator", RegAllocSimple.class);
         new RegisterPass("twoaddressinstruction", "Two-Address instruction pass", TwoAddrInstructionPass.class);
         new RegisterPass("unreachable-machineblockelim", "Remove unreachable machine blocks from the machine CFG", UnreachableMachineBlockElim.class);
-
+        new RegisterPass("machine-module=info", "Machine Module Information", MachineModuleInfo.class);
         // Register X86 fast isel by reflect mechanism.
         try
         {
