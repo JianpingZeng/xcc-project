@@ -32,22 +32,76 @@ set(SRC_DIR ${XCC_SOURCE_DIR}/java)
 set(CLASSES_DIR ${XCC_BINARY_DIR}/classes)
 set(OUT_LIB_DIR ${XCC_BINARY_DIR}/lib)
 set(OUT_BIN_DIR ${XCC_BINARY_DIR}/bin)
+set(OUT_INCLUDE_DIR ${XCC_BINARY_DIR}/include)
 set(OUT_JAVADOC_DIR ${XCC_BINARY_DIR}/docs)
 set(XCC_JAR "${PACKAGE_STRING}.jar")
-set(GEN_TBLGEN_SRCS ${XCC_BINARY_DIR}/gen_tblgen_srcs/backend/target/x86)
+set(GEN_SOURCES_DIR "${XCC_BINARY_DIR}/gen_tblgen_srcs")
+set(GEN_TBLGEN_SRCS ${GEN_SOURCES_DIR}/backend/target/x86)
 
-set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR})
+set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR} -cp ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(EXCLUDE_TARGET ${SRC_DIR}/backend/target/x86)
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "DEBUG")
+endif()
+
+if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Og -Wall")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Wall")
+endif ()
+
+if(APPLE)
+    execute_process(COMMAND /usr/libexec/java_home OUTPUT_VARIABLE JDK_HOME)
+    string(REGEX REPLACE "\n$" "" JDK_HOME "${JDK_HOME}")
+    set(JAVA_HOME ${JDK_HOME})
+    set(JDK_LIBS ${JDK_HOME}/jre/lib/server)
+    set(JDK_INCLUDES ${JDK_HOME}/include ${JDK_HOME}/include/darwin)
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(JDK_HOME "$ENV{JAVA_HOME}")
+    string(REGEX REPLACE "\n$" "" JDK_HOME "${JDK_HOME}")
+    set(JDK_LIBS ${JDK_HOME}/jre/lib/amd64/server)
+    set(JDK_INCLUDES ${JDK_HOME}/include ${JDK_HOME}/include/linux)
+endif ()
+
+message(STATUS "JDK_HOME: ${JDK_HOME}")
+message(STATUS "JDK_LIBS: ${JDK_LIBS}")
+message(STATUS "JDK_INCLUDES: ${JDK_INCLUDES}")
+
+link_directories(${JDK_LIBS})
+include_directories(${JDK_INCLUDES})
+include_directories(${OUT_INCLUDE_DIR})
 
 #file(MAKE_DIRECTORY ${OUT_JAVADOC})
+
+set(CPUInfoUtility_PATH "${OUT_LIB_DIR}")
+set(CPUInfoUtility_NAME GetCpuIDAndInfo)
+# Configure the XCC_NAME, XCC_MAJOR, XCC_MINOR
+# Produce ${GEN_SOURCES_DIR}/config/Config.java
+set(CONFIG_SRC ${GEN_SOURCES_DIR}/config/Config.java)
+configure_file(
+  ${XCC_SOURCE_DIR}/config/Config.java.in
+  ${CONFIG_SRC})
+
+add_custom_target(xcc_config
+    COMMAND ${JAVA_COMPILE} ${JFLAGS} ${CONFIG_SRC}
+    DEPENDS ${CONFIG_SRC}
+    COMMENT "Compiling XCC configuration file...")
+
+set(CPU_INFO_HEADER_FILE "${OUT_INCLUDE_DIR}/tools_CPUInfoUtility.h")
+# Generate tools_CPUInfoUtility.h header file.
+add_custom_target(GenCpuInfoHeader
+    COMMAND javah -cp ${CLASSES_DIR} -d ${OUT_INCLUDE_DIR} tools.CPUInfoUtility
+    DEPENDS xcc_config
+    COMMENT "Generating header file for GetCpuIDAndInfo...")
+
+# Add sources file to be compiled.
 file(GLOB_RECURSE SRCS_NO_TARGET "${SRC_DIR}/*.java")
 file(GLOB TARGET_SRCS
     ${SRC_DIR}/backend/target/x86/*.java)
-
 
 # Remove target-specific source files.
 foreach (file ${SRCS_NO_TARGET})
@@ -91,6 +145,7 @@ file(MAKE_DIRECTORY ${CLASSES_DIR})
 # target-specific codes.
 add_custom_target(classes_no_target
     COMMAND ${JAVA_COMPILE} ${JFLAGS} ${TROVE_SRCS} ${SRCS_NO_TARGET}
+    DEPENDS xcc_config
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/java)
 
 # A macro definition for generating target-specific AsmPrinter, registerInfo
@@ -144,36 +199,6 @@ endmacro(add_gen_jar)
 # Generating jar and resides it into out/lib directory.
 add_gen_jar()
 
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "DEBUG")
-endif()
-
-if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Og -Wall")
-else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3 -Wall")
-endif ()
-
-if(APPLE)
-    execute_process(COMMAND /usr/libexec/java_home OUTPUT_VARIABLE JDK_HOME)
-    string(REGEX REPLACE "\n$" "" JDK_HOME "${JDK_HOME}")
-    set(JAVA_HOME ${JDK_HOME})
-    set(JDK_LIBS ${JDK_HOME}/jre/lib/server)
-    set(JDK_INCLUDES ${JDK_HOME}/include ${JDK_HOME}/include/darwin)
-elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    set(JDK_HOME "$ENV{JAVA_HOME}")
-    string(REGEX REPLACE "\n$" "" JDK_HOME "${JDK_HOME}")
-    set(JDK_LIBS ${JDK_HOME}/jre/lib/amd64/server)
-    set(JDK_INCLUDES ${JDK_HOME}/include ${JDK_HOME}/include/linux)
-endif ()
-
-message(STATUS "JDK_HOME: ${JDK_HOME}")
-message(STATUS "JDK_LIBS: ${JDK_LIBS}")
-message(STATUS "JDK_INCLUDES: ${JDK_INCLUDES}")
-
-link_directories(${JDK_LIBS})
-include_directories(${JDK_INCLUDES})
-
 set(COM_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/cpp/NativeLauncher.cpp)
 set(JLANG_SRCS ${COM_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/cpp/Jlang.cpp)
 set(JLANG_CC_SRCS ${COM_SRCS} ${CMAKE_CURRENT_SOURCE_DIR}/cpp/JlangCC.cpp)
@@ -188,6 +213,11 @@ add_jlang_target(jlang ${JLANG_SRCS})
 add_jlang_target(jlang-cc ${JLANG_CC_SRCS})
 add_jlang_target(tablegen ${TABLEGEN_SRCS})
 
+
+set(CPU_ID_SRCS "${XCC_SOURCE_DIR}/cpp/GetCpuIDAndInfo.cpp")
+add_library(${CPUInfoUtility_NAME} SHARED ${CPU_ID_SRCS})
+add_dependencies(${CPUInfoUtility_NAME} jar)
+add_dependencies(${CPUInfoUtility_NAME} GenCpuInfoHeader)
 
 target_link_libraries(jlang jvm)
 target_link_libraries(jlang-cc jvm)

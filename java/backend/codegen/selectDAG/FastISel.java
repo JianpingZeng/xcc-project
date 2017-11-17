@@ -258,7 +258,6 @@ public abstract class FastISel extends MachineFunctionPass
     {
         this.mf = mf;
         this.fn = mf.getFunction();
-        this.mmi = null;
         mri = mf.getMachineRegisterInfo();
         mfi = mf.getFrameInfo();
         mcp = mf.getConstantPool();
@@ -268,14 +267,11 @@ public abstract class FastISel extends MachineFunctionPass
 
         // for debug.
         System.err.printf("%n%n%n==============%s===============%n", fn.getName());
-        selectAllBasicBlocks(fn, mf, null, instrInfo);
+        selectAllBasicBlocks(fn);
         return false;
     }
 
-    public void selectAllBasicBlocks(Function fn,
-            MachineFunction mf,
-            MachineModuleInfo mmi,
-            TargetInstrInfo tii)
+    public void selectAllBasicBlocks(Function fn)
     {
         // Iterate over all basic blocks in the function.
         for (BasicBlock llvmBB : fn.getBasicBlockList())
@@ -285,7 +281,6 @@ public abstract class FastISel extends MachineFunctionPass
             int begin = 0, end = llvmBB.size();
             int bi = begin;
 
-            boolean suppressFastISel = false;
             // Lower any arguments needed in this block if this is entry block.
             if (llvmBB.equals(fn.getEntryBlock()))
             {
