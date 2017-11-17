@@ -58,31 +58,31 @@ static JNIEnv* createVM(char* cmdPath)
 	string path(dir, end);
 	*/
     string path(dir);
-	path += "/lib";
-	string cp = path + "/xcc-0.1.jar";
-	cp = "-Djava.class.path=" + cp;
-	//cp = "-Djava.class.path=/home/xlous/Development/Compiler/xcc/out/lib/xcc-0.1.jar:"
-	//                         "/home/xlous/Development/Compiler/xcc/out/lib/trove-3.0.3.jar";// + cp;
-	#ifdef NDEBUG
+    path += "/lib";
+    string cp = path + "/xcc-0.1.jar";
+    cp = "-Djava.class.path=" + cp;
+    //cp = "-Djava.class.path=/home/xlous/Development/Compiler/xcc/out/lib/xcc-0.1.jar:"
+    //                         "/home/xlous/Development/Compiler/xcc/out/lib/trove-3.0.3.jar";// + cp;
+#ifdef NDEBUG
     cout<<"classpath: "<<cp<<endl;
-	#endif
+#endif
 
-	JavaVM *jvm;                      // Pointer to the JVM (Java Virtual Machine)
+    JavaVM *jvm;                      // Pointer to the JVM (Java Virtual Machine)
     JNIEnv *env;                      // Pointer to native interface
-       //================== prepare loading of Java VM ============================
+    //================== prepare loading of Java VM ============================
     JavaVMInitArgs vm_args;                        // Initialization arguments
     JavaVMOption* options = new JavaVMOption[1];   // JVM invocation options
     options[0].optionString = (char*)cp.c_str();   // where to find java .class
     //该参数可以用来观察C++调用JAVA的过程，设置该参数后，程序会在标准输出设备上打印调用的相关信息
-    options[1].optionString = "-verbose:NONE";
-    vm_args.version = JNI_VERSION_1_8;             // minimum Java version
-    vm_args.nOptions = 2;                          // number of options
+    vm_args.version = JNI_VERSION_1_2;             // minimum Java version
+    vm_args.nOptions = 1;                          // number of options
     vm_args.options = options;
     vm_args.ignoreUnrecognized = false;     // invalid options make the JVM init fail
        //=============== load and initialize Java VM and JNI interface =============
     jint rc = JNI_CreateJavaVM(&jvm, (void**)&env, &vm_args);  // YES !!
     delete[] options;    // we then no longer need the initialisation options.
-    if (rc != JNI_OK) {
+    if (rc != JNI_OK) 
+    {
           // TO DO: error processing...
          cin.get();
          exit(EXIT_FAILURE);
