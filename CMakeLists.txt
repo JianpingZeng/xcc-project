@@ -94,7 +94,7 @@ add_custom_target(xcc_config
 set(CPU_INFO_HEADER_FILE "${OUT_INCLUDE_DIR}/tools_CPUInfoUtility.h")
 # Generate tools_CPUInfoUtility.h header file.
 add_custom_target(GenCpuInfoHeader
-    COMMAND javah -cp ${CLASSES_DIR} -d ${OUT_INCLUDE_DIR} tools.CPUInfoUtility
+    COMMAND javah -cp ${XCC_BINARY_DIR}/classes -d ${XCC_BINARY_DIR}/include tools.CPUInfoUtility
     DEPENDS xcc_config
     COMMENT "Generating header file for GetCpuIDAndInfo...")
 
