@@ -27,7 +27,7 @@ public class MachineModuleInfo implements ImmutablePass
     @Override
     public String getPassName()
     {
-        return null;
+        return "Machine Module Info Pass";
     }
 
     @Override

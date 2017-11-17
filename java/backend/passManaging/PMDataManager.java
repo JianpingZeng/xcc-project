@@ -198,7 +198,6 @@ public abstract class PMDataManager
         ArrayList<PassInfo> reqAnalysisNotAvailable = new ArrayList<>();
 
         collectRequiredAnalysis(requiredPasses, reqAnalysisNotAvailable, p);;
-        passVector.addAll(requiredPasses);
 
         // Now, take care of required analysises that are not available.
         for (PassInfo pi : reqAnalysisNotAvailable)

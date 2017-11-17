@@ -58,6 +58,9 @@ public class SubtargetFeatures
      */
     private static void split(ArrayList<String> features, String init)
     {
+        if (init == null || init.isEmpty())
+            return;
+
         int pos = 0;
         while (true)
         {
@@ -113,7 +116,12 @@ public class SubtargetFeatures
      */
     public void setCPU(String str)
     {
-        features.set(0, str.toLowerCase());
+        if (str == null || str.isEmpty())
+            return;
+        if (features.isEmpty())
+            features.add(str.toLowerCase());
+        else
+            features.set(0, str.toLowerCase());
     }
 
     /** Setting CPU string only if no string is set.
@@ -146,7 +154,7 @@ public class SubtargetFeatures
 
     public void addFeature(String str, boolean isEnabled)
     {
-        if (!str.isEmpty())
+        if (str != null && !str.isEmpty())
         {
             features.add(prependFlag(str.toLowerCase(), isEnabled));
         }
