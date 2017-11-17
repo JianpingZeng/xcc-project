@@ -82,8 +82,8 @@ public final class PassRegisterationUtility
         // Register X86 fast isel by reflect mechanism.
         try
         {
-            new RegisterPass("fastisel", "X86 Fast Instruction Selector",
-                    Class.forName("X86GenFastISel").asSubclass(Pass.class));
+            new RegisterPass("fast-isel", "X86 Fast Instruction Selector",
+                    Class.forName("backend.target.x86.X86GenFastISel").asSubclass(Pass.class));
         }
         catch (ClassNotFoundException e)
         {

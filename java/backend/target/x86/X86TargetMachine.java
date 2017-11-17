@@ -42,7 +42,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 			String fs, boolean is64Bit)
 	{
 		super(t, triple);
-		subtarget = new X86Subtarget(triple, fs, is64Bit);
+		subtarget = X86Subtarget.createX86Subtarget(triple, fs, is64Bit);
 		dataLayout = new TargetData(subtarget.getDataLayout());
 		frameInfo = new TargetFrameInfo(StackGrowDown, subtarget.getStackAlignemnt(),
 				(subtarget.isTargetWin64() ? -40 :

@@ -19,8 +19,10 @@ package backend.target.x86;
 import backend.target.TargetMachine;
 import backend.target.TargetSubtarget;
 import backend.value.GlobalValue;
+import tools.Util;
 
 import static backend.target.x86.X86Subtarget.TargetType.*;
+import static backend.target.x86.X86Subtarget.X863DNowEnum.NoThreeDNow;
 import static backend.target.x86.X86Subtarget.X863DNowEnum.ThreeDNow;
 import static backend.target.x86.X86Subtarget.X863DNowEnum.ThreeDNowA;
 import static backend.target.x86.X86Subtarget.X86SSEEnum.*;
@@ -118,7 +120,7 @@ public class X86Subtarget extends TargetSubtarget
      * Nonzero if this is a darwin platform: the numeric
      * version of the platform, e.g. 8 = 10.4 (Tiger), 9 = 10.5 (Leopard), etc.
      */
-    protected char darwinVers;
+    protected int darwinVers;
 
     /**
      * true if this is a "linux" platform.
@@ -149,9 +151,109 @@ public class X86Subtarget extends TargetSubtarget
 
     public TargetType targetType;
 
-    public X86Subtarget(String tt, String fs, boolean is64bit)
+    protected X86Subtarget(String tt, String fs, boolean is64bit)
     {
+        picStyle = PICStyle.None;
+        x86SSELevel = NoMMXSSE;
+        x863DNowLevel = NoThreeDNow;
+        hasX86_64 = false;
+        hasSSE4A = false;
+        hasAVX = false;
+        hasFMA3 = false;
+        hasFMA4 = false;
+        isBTMemSlow = false;
+        darwinVers = 0;
+        isLinux = false;
+        stackAlignemnt = 8;
+        // This is known good to Yonah, but I don't known about other.
+        maxInlineSizeThreshold = 128;
+        this.is64Bit = is64bit;
+        // Default to ELF unless user explicitly specify.
+        targetType = isELF;
 
+        // default to hard float ABI.
+
+        // determine default and user specified characteristics.
+        if (fs != null && !fs.isEmpty())
+        {
+            // if feature string is not empty and null, parse features string.
+            String cpu = getCurrentX86CPU();
+            parseSubtargetFeatures(fs, cpu);
+            // All X86-64 CPUs also have SSE2, however user might request no SSE via
+            // -mattr, so don't force SSELevel here.
+        }
+        else
+        {
+            // Otherwise, automatical detect CPU type and kind.
+            autoDetectSubtargetFeatures();
+            // make sure SSE2 is enabled, it is available in all of x86_64 CPU.
+            if (is64bit && x86SSELevel.compareTo(SSE2) < 0)
+                x86SSELevel = SSE2;
+        }
+
+        // If requesting codegen for X86-64, make sure that 64-bit features
+        // are enabled.
+        if (is64bit)
+            hasX86_64 = true;
+
+        Util.DEBUG("Subtarget features: SSELevel " + x86SSELevel
+                + ", 3DNowLevel " + x863DNowLevel + ", 64bit " + hasX86_64);
+        assert !is64bit || hasX86_64 :"64-bit code requested on a subtarget that doesn't support it!";
+        if (tt.length() > 5)
+        {
+            int pos = -1;
+            if ((pos = tt.indexOf("-darwin")) != -1)
+            {
+                targetType = isDarwin;
+                // compute darwin version.
+                if (Character.isDigit(tt.charAt(pos+7)))
+                    darwinVers = tt.charAt(pos+7) - '0';
+                else
+                {
+                    darwinVers = 8; // Minimum supported darwin is Tiger.
+                }
+            }
+            if ((pos = tt.indexOf("-linux")) != -1)
+            {
+                targetType = isELF;
+                isLinux = true;
+            }
+            else if ((pos = tt.indexOf("cygwin")) != -1)
+            {
+                targetType = isCygwin;
+            }
+            else if ((pos = tt.indexOf("mingw")) != -1)
+            {
+                targetType = isMingw;
+            }
+            else if ((pos = tt.indexOf("win32")) != -1)
+            {
+                targetType = isWindows;
+            }
+            else if ((pos = tt.indexOf("-cl")) != -1)
+            {
+                targetType = isDarwin;
+                darwinVers = 9;
+            }
+        }
+
+        // Stack alignment is 16 Bytes on Darwin (both 32 and 64 bit) and
+        // for all 64 bit targets.
+        if (targetType == isDarwin || is64bit)
+            stackAlignemnt = 16;
+    }
+
+    /**
+     * Create a X86Subtarget instance with specified target triple, features string,
+     * and predicate.
+     * @param tt    Target triple
+     * @param fs    Features string
+     * @param is64bit   Flag to indicates whether current platform is 64 bit or not.
+     * @return
+     */
+    public static X86Subtarget createX86Subtarget(String tt, String fs, boolean is64bit)
+    {
+        return new X86GenSubtarget(tt, fs, is64bit);
     }
 
     public int getStackAlignemnt()
@@ -164,10 +266,9 @@ public class X86Subtarget extends TargetSubtarget
         return maxInlineSizeThreshold;
     }
 
-    public String parseSubtargetFeatures(StringBuilder fs, StringBuilder cpu)
+    public String parseSubtargetFeatures(String fs, String cpu)
     {
-        // TODO: 17-8-5
-        return null;
+        return "";
     }
 
     public void autoDetectSubtargetFeatures()
@@ -332,7 +433,7 @@ public class X86Subtarget extends TargetSubtarget
 
     /// getDarwinVers - Return the darwin version number, 8 = Tiger, 9 = Leopard,
     /// 10 = Snow Leopard, etc.
-    public char getDarwinVers()
+    public int getDarwinVers()
     {
         return darwinVers;
     }
@@ -380,5 +481,11 @@ public class X86Subtarget extends TargetSubtarget
     {
         // TODO: 17-8-5
         return 0;
+    }
+
+    private static String getCurrentX86CPU()
+    {
+        // TODO: 2017/11/17
+        return null;
     }
 }

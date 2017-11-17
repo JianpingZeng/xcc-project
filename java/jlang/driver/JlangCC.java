@@ -1313,7 +1313,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         {
             java.lang.System.err.println("Compiler internal error, please "
                     + "report this as a bug if you confirm that.");
-            //e.printStackTrace();
+            e.printStackTrace();
             //Util.DEBUG(e);
             java.lang.System.exit(1);
         }
