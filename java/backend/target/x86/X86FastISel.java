@@ -17,13 +17,14 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
-import backend.codegen.CCAssignFn;
 import backend.codegen.selectDAG.FastISel;
 import backend.codegen.selectDAG.ISD;
 import backend.support.CallSite;
+import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
 import backend.target.TargetInstrInfo;
+import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.type.FunctionType;
 import backend.type.PointerType;
@@ -35,15 +36,14 @@ import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.CmpInst;
 import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.map.hash.TObjectIntHashMap;
-import backend.support.CallingConv;
 import tools.OutParamWrapper;
 import tools.Util;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.support.CallingConv.Fast;
+import static backend.support.CallingConv.X86_FastCall;
 import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.PerformTailCallOpt;
@@ -56,15 +56,13 @@ import static backend.target.x86.X86II.*;
 import static backend.target.x86.X86InstrInfo.isGlobalRelativeToPICBase;
 import static backend.target.x86.X86InstrInfo.isGlobalStubReference;
 import static backend.target.x86.X86RegisterInfo.SUBREG_8BIT;
-import static backend.support.CallingConv.Fast;
-import static backend.support.CallingConv.X86_FastCall;
 import static tools.Util.isInt32;
 
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class X86FastISel extends FastISel
+public class X86FastISel extends FastISel
 {
     protected X86Subtarget subtarget;
     /**
@@ -75,17 +73,24 @@ public abstract class X86FastISel extends FastISel
     protected boolean x86ScalarSSEf64;
     protected boolean x86ScalarSSEf32;
 
-    protected X86FastISel(MachineFunction mf,
-            MachineModuleInfo mmi,
-            TObjectIntHashMap<Value> vm,
-            HashMap<BasicBlock, MachineBasicBlock> bm,
-            TObjectIntHashMap<AllocaInst> am)
+    public X86FastISel(TargetMachine tm, TargetMachine.CodeGenOpt level)
     {
-        super(mf, mmi, vm, bm, am);
+        super(tm, level);
         subtarget = (X86Subtarget) tm.getSubtarget();
         stackPtr = subtarget.is64Bit() ? RSP : ESP;
         x86ScalarSSEf32 = subtarget.hasSSE1();
         x86ScalarSSEf64 = subtarget.hasSSE2();
+    }
+
+    @Override
+    public String getPassName()
+    {
+        return "X86 Fast Instruction Selector";
+    }
+
+    public static X86FastISel createX86FastISel(TargetMachine tm, TargetMachine.CodeGenOpt level)
+    {
+        return new X86GenFastISel(tm, level);
     }
 
     @Override
@@ -194,7 +199,7 @@ public abstract class X86FastISel extends FastISel
             int compareImmOpc = x86ChooseCmpImmediateOpcode(vt, ciOp1);
             if (compareImmOpc != 0)
             {
-                buildMI(mbb, tii.get(compareImmOpc)).
+                buildMI(mbb, instrInfo.get(compareImmOpc)).
                         addReg(op0Reg).
                         addImm(ciOp1.getSExtValue());
                 return true;
@@ -209,7 +214,7 @@ public abstract class X86FastISel extends FastISel
         if (op1Reg == 0)
             return false;
 
-        buildMI(mbb, tii.get(compareOpc)).addReg(op0Reg).addReg(op1Reg);
+        buildMI(mbb, instrInfo.get(compareOpc)).addReg(op0Reg).addReg(op1Reg);
         return true;
     }
 
@@ -277,7 +282,7 @@ public abstract class X86FastISel extends FastISel
         }
         resultReg.set(createResultReg(rc));
         X86InstrBuilder
-                .addFullAddress(buildMI(mbb, tii.get(opc), resultReg.get()), am);
+                .addFullAddress(buildMI(mbb, instrInfo.get(opc), resultReg.get()), am);
         return true;
     }
 
@@ -313,7 +318,7 @@ public abstract class X86FastISel extends FastISel
             if (opc != 0)
             {
                 X86InstrBuilder
-                        .addFullAddress(buildMI(mbb, tii.get(opc)), am).addImm(ci.getSExtValue());
+                        .addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addImm(ci.getSExtValue());
                 return true;
             }
         }
@@ -352,7 +357,7 @@ public abstract class X86FastISel extends FastISel
                 opc = subtarget.hasSSE2() ? MOVSDmr : ST_FP64m;
                 break;
         }
-        X86InstrBuilder.addFullAddress(buildMI(mbb, tii.get(opc)), am).addReg(val);
+        X86InstrBuilder.addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addReg(val);
         return true;
     }
 
@@ -568,7 +573,7 @@ public abstract class X86FastISel extends FastISel
 
                 loadReg = createResultReg(rc);
                 X86InstrBuilder
-                        .addFullAddress(buildMI(mbb, tii.get(opc), loadReg), stubAM);
+                        .addFullAddress(buildMI(mbb, instrInfo.get(opc), loadReg), stubAM);
 
                 // Prevent loading GV stub multiple times in same mbb.
                 localValueMap.put(val, loadReg);
@@ -657,9 +662,9 @@ public abstract class X86FastISel extends FastISel
 
                 int ereg = createResultReg(GR8RegisterClass);
                 int npreg = createResultReg(GR8RegisterClass);
-                buildMI(mbb, tii.get(SETEr), ereg);
-                buildMI(mbb, tii.get(SETNPr), npreg);
-                buildMI(mbb, tii.get(AND8rr), resultReg).addReg(npreg).addReg(ereg);
+                buildMI(mbb, instrInfo.get(SETEr), ereg);
+                buildMI(mbb, instrInfo.get(SETNPr), npreg);
+                buildMI(mbb, instrInfo.get(AND8rr), resultReg).addReg(npreg).addReg(ereg);
                 updateValueMap(inst, resultReg);
                 return true;
             }
@@ -670,9 +675,9 @@ public abstract class X86FastISel extends FastISel
 
                 int ereg = createResultReg(GR8RegisterClass);
                 int npreg = createResultReg(GR8RegisterClass);
-                buildMI(mbb, tii.get(SETNEr), ereg);
-                buildMI(mbb, tii.get(SETPr), npreg);
-                buildMI(mbb, tii.get(OR8rr), resultReg).addReg(npreg).addReg(ereg);
+                buildMI(mbb, instrInfo.get(SETNEr), ereg);
+                buildMI(mbb, instrInfo.get(SETPr), npreg);
+                buildMI(mbb, instrInfo.get(OR8rr), resultReg).addReg(npreg).addReg(ereg);
                 updateValueMap(inst, resultReg);
                 return true;
             }
@@ -715,7 +720,7 @@ public abstract class X86FastISel extends FastISel
         if (!x86FastEmitCompare(op0, op1, vt))
             return false;
 
-        buildMI(mbb, tii.get(setCCOpc), resultReg);
+        buildMI(mbb, instrInfo.get(setCCOpc), resultReg);
         updateValueMap(inst, resultReg);
         return true;
     }
@@ -817,14 +822,14 @@ public abstract class X86FastISel extends FastISel
                 if (!x86FastEmitCompare(op0, op1, vt))
                     return false;
 
-                buildMI(mbb, tii.get(branchOpc)).addMBB(trueBB).
+                buildMI(mbb, instrInfo.get(branchOpc)).addMBB(trueBB).
                         addMBB(falseBB);
 
                 if (pred == CmpInst.Predicate.FCMP_UNE)
                 {
                     // X86 requires a second branch to handle UNE (and OEQ,
                     // which is mapped to UNE above).
-                    buildMI(mbb, tii.get(JP)).addMBB(trueBB);
+                    buildMI(mbb, instrInfo.get(JP)).addMBB(trueBB);
                 }
 
                 fastEmitBranch(falseBB);
@@ -837,8 +842,8 @@ public abstract class X86FastISel extends FastISel
         if (opReg == 0)
             return false;
 
-        buildMI(mbb, tii.get(TEST8rr)).addReg(opReg).addReg(opReg);
-        buildMI(mbb, tii.get(JNE)).addMBB(trueBB);
+        buildMI(mbb, instrInfo.get(TEST8rr)).addReg(opReg).addReg(opReg);
+        buildMI(mbb, instrInfo.get(JNE)).addMBB(trueBB);
         fastEmitBranch(falseBB);
         mbb.addSuccessor(trueBB);
         return true;
@@ -915,7 +920,7 @@ public abstract class X86FastISel extends FastISel
         {
             ConstantInt ci = (ConstantInt)inst.operand(1);
             int resultReg = createResultReg(rc);
-            buildMI(mbb, tii.get(opImm), resultReg).addReg(op0Reg).
+            buildMI(mbb, instrInfo.get(opImm), resultReg).addReg(op0Reg).
                     addImm(ci.getZExtValue() & 0xff);
             updateValueMap(inst, resultReg);
             return true;
@@ -926,16 +931,16 @@ public abstract class X86FastISel extends FastISel
             return false;
 
         // First move op1reg to CL register preparing for Shift with AL/AX/EAX/RAX.
-        tii.copyRegToReg(mbb, mbb.size(), creg, op1Reg, rc, rc);
+        instrInfo.copyRegToReg(mbb, mbb.size(), creg, op1Reg, rc, rc);
 
         if (creg != CL)
         {
-            buildMI(mbb, tii.get(TargetInstrInfo.EXTRACT_SUBREG), CL).
+            buildMI(mbb, instrInfo.get(TargetInstrInfo.EXTRACT_SUBREG), CL).
                     addReg(creg).addImm(SUBREG_8BIT);
         }
 
         int resultReg = createResultReg(rc);
-        buildMI(mbb, tii.get(opReg), resultReg).addReg(op0Reg);
+        buildMI(mbb, instrInfo.get(opReg), resultReg).addReg(op0Reg);
         updateValueMap(inst, resultReg);
         return true;
     }
@@ -980,9 +985,9 @@ public abstract class X86FastISel extends FastISel
         if (op2Reg == 0)
             return false;
 
-        buildMI(mbb, tii.get(TEST8rr)).addReg(op0Reg).addReg(op0Reg);
+        buildMI(mbb, instrInfo.get(TEST8rr)).addReg(op0Reg).addReg(op0Reg);
         int resultReg = createResultReg(rc);
-        buildMI(mbb, tii.get(opc), resultReg).addReg(op1Reg).addReg(op2Reg);
+        buildMI(mbb, instrInfo.get(opc), resultReg).addReg(op1Reg).addReg(op2Reg);
         updateValueMap(inst, resultReg);
         return true;
     }
@@ -1016,7 +1021,7 @@ public abstract class X86FastISel extends FastISel
         TargetRegisterClass copyRC = srcIs16Bit ? GR16_ABCDRegisterClass :
                 GR32_ABCDRegisterClass;
         int copyReg = createResultReg(copyRC);
-        buildMI(mbb, tii.get(copyOpc), copyReg).addReg(op0Reg);
+        buildMI(mbb, instrInfo.get(copyOpc), copyReg).addReg(op0Reg);
 
         int resultReg = fastEmitInst_extractsubreg(new MVT(MVT.i8),
                 copyReg, SUBREG_8BIT);
@@ -1041,7 +1046,7 @@ public abstract class X86FastISel extends FastISel
                     return false;
 
                 int resultReg = createResultReg(FR64RegisterClass);
-                buildMI(mbb, tii.get(CVTSS2SDrr), resultReg).addReg(opReg);
+                buildMI(mbb, instrInfo.get(CVTSS2SDrr), resultReg).addReg(opReg);
                 updateValueMap(inst, resultReg);
                 return true;
             }
@@ -1063,7 +1068,7 @@ public abstract class X86FastISel extends FastISel
                     return false;
 
                 int resultReg = createResultReg(FR32RegisterClass);
-                buildMI(mbb, tii.get(CVTSD2SSrr), resultReg).addReg(opReg);
+                buildMI(mbb, instrInfo.get(CVTSD2SSrr), resultReg).addReg(opReg);
                 updateValueMap(inst, resultReg);
                 return true;
             }
@@ -1284,7 +1289,7 @@ public abstract class X86FastISel extends FastISel
 
         // Issue CALLSEQ_START
         int AdjStackDown = tm.getRegisterInfo().getCallFrameSetupOpcode();
-        buildMI(mbb, tii.get(AdjStackDown)).addImm(NumBytes);
+        buildMI(mbb, instrInfo.get(AdjStackDown)).addImm(NumBytes);
 
         // Process argument: walk the register/memloc assignments, inserting
         // copies / loads.
@@ -1357,7 +1362,8 @@ public abstract class X86FastISel extends FastISel
             if (VA.isRegLoc())
             {
                 TargetRegisterClass RC = tli.getRegClassFor(ArgVT);
-                boolean Emitted = tii.copyRegToReg(mbb, mbb.size(), VA.getLocReg(), Arg, RC,
+                boolean Emitted = instrInfo
+                        .copyRegToReg(mbb, mbb.size(), VA.getLocReg(), Arg, RC,
                                 RC);
                 assert Emitted : "Failed to emit a copy instruction!";
                 Emitted = true;
@@ -1388,7 +1394,7 @@ public abstract class X86FastISel extends FastISel
         {
             TargetRegisterClass RC = GR32RegisterClass;
             int Base = getInstrInfo().getGlobalBaseReg(mf);
-            boolean Emitted = tii
+            boolean Emitted = instrInfo
                     .copyRegToReg(mbb, mbb.size(), EBX, Base, RC, RC);
             assert Emitted : "Failed to emit a copy instruction!";
             Emitted = true;
@@ -1400,7 +1406,7 @@ public abstract class X86FastISel extends FastISel
         {
             // Register-indirect call.
             int CallOpc = subtarget.is64Bit() ? CALL64r : CALL32r;
-            MIB = buildMI(mbb, DL, tii.get(CallOpc)).addReg(CalleeOp);
+            MIB = buildMI(mbb, DL, instrInfo.get(CallOpc)).addReg(CalleeOp);
 
         }
         else
@@ -1430,7 +1436,7 @@ public abstract class X86FastISel extends FastISel
                 OpFlags = MO_DARWIN_STUB;
             }
 
-            MIB = buildMI(mbb, DL, tii.get(CallOpc))
+            MIB = buildMI(mbb, DL, instrInfo.get(CallOpc))
                     .addGlobalAddress(GV, 0, OpFlags);
         }
 
@@ -1444,7 +1450,7 @@ public abstract class X86FastISel extends FastISel
 
         // Issue CALLSEQ_END
         int AdjStackUp = tm.getRegisterInfo().getCallFrameDestroyOpcode();
-        buildMI(mbb, DL, tii.get(AdjStackUp)).addImm(NumBytes).addImm(0);
+        buildMI(mbb, DL, instrInfo.get(AdjStackUp)).addImm(NumBytes).addImm(0);
 
         // Now handle call return value (if any).
         if (retVT.getSimpleVT().simpleVT != MVT.isVoid)
@@ -1472,7 +1478,7 @@ public abstract class X86FastISel extends FastISel
             }
 
             int ResultReg = createResultReg(DstRC);
-            boolean Emitted = tii.copyRegToReg(mbb, mbb.size(), ResultReg,
+            boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(), ResultReg,
                     RVLocs.get(0).getLocReg(), DstRC, SrcRC);
             assert Emitted : "Failed to emit a copy instruction!";
             Emitted = true;
@@ -1488,7 +1494,7 @@ public abstract class X86FastISel extends FastISel
                 int MemSize = ResVT.getSizeInBits() / 8;
                 int FI = mfi.createStackObject(MemSize, MemSize);
                 MachineInstrBuilder
-                        .addFrameReference(buildMI(mbb, DL, tii.get(Opc)), FI)
+                        .addFrameReference(buildMI(mbb, DL, instrInfo.get(Opc)), FI)
                         .addReg(ResultReg);
                 DstRC = ResVT.equals(new EVT(MVT.f32)) ?
                         FR32RegisterClass :
@@ -1497,7 +1503,8 @@ public abstract class X86FastISel extends FastISel
                         MOVSSrm :
                         MOVSDrm;
                 ResultReg = createResultReg(DstRC);
-                MachineInstrBuilder.addFrameReference(buildMI(mbb, DL, tii.get(Opc), ResultReg),
+                MachineInstrBuilder.addFrameReference(buildMI(mbb, DL, instrInfo
+                                .get(Opc), ResultReg),
                         FI);
             }
 
@@ -1505,7 +1512,7 @@ public abstract class X86FastISel extends FastISel
             {
                 // Mask out all but lowest bit for some call which produces an i1.
                 int AndResult = createResultReg(GR8RegisterClass);
-                buildMI(mbb, DL, tii.get(AND8ri), AndResult).addReg(ResultReg)
+                buildMI(mbb, DL, instrInfo.get(AND8ri), AndResult).addReg(ResultReg)
                         .addImm(1);
                 ResultReg = AndResult;
             }
@@ -1623,7 +1630,7 @@ public abstract class X86FastISel extends FastISel
                     opc = LEA64r;
                 int resultReg = createResultReg(rc);
                 X86InstrBuilder
-                        .addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
+                        .addLeaAddress(buildMI(mbb, instrInfo.get(opc), resultReg), am);
                 return resultReg;
             }
             return 0;
@@ -1656,7 +1663,7 @@ public abstract class X86FastISel extends FastISel
         int mcpOffset = mcp.getConstantPoolIndex(c, align);
         int resultReg = createResultReg(rc);
         MachineInstrBuilder
-                .addConstantPoolReference(buildMI(mbb, tii.get(opc), resultReg),
+                .addConstantPoolReference(buildMI(mbb, instrInfo.get(opc), resultReg),
                 mcpOffset, picBase, opFlag);
         return resultReg;
     }
@@ -1681,7 +1688,7 @@ public abstract class X86FastISel extends FastISel
         TargetRegisterClass rc = tli.getRegClassFor(new EVT(tli.getPointerTy()));
         int resultReg = createResultReg(rc);
         X86InstrBuilder
-                .addLeaAddress(buildMI(mbb, tii.get(opc), resultReg), am);
+                .addLeaAddress(buildMI(mbb, instrInfo.get(opc), resultReg), am);
         return resultReg;
     }
 

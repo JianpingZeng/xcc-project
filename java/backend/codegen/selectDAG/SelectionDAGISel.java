@@ -29,6 +29,7 @@ import backend.value.Instruction;
 import backend.value.Instruction.BranchInst;
 import backend.value.Instruction.CallInst;
 import backend.value.Instruction.TerminatorInst;
+import tools.Util;
 import tools.commandline.*;
 
 import static backend.target.TargetMachine.CodeGenOpt.Default;
@@ -91,9 +92,8 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         machineRegInfo = mf.getMachineRegisterInfo();
 
         // for debug.
-        System.err.println("\n\n\n===" + fn.getName());
-
-
+        System.err.printf("%n%n%n==============%s===============%n", fn.getName());
+        selectAllBasicBlocks(fn, mf, null, instrInfo);
         return false;
     }
 
@@ -102,11 +102,11 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                                       MachineModuleInfo mmi,
                                       TargetInstrInfo tii)
     {
-        FastISel fastISel = tli.createFastISel(mf,
+        FastISel fastISel = null; /*tli.createFastISel(mf,
                 mmi,
                 funcInfo.valueMap,
                 funcInfo.mbbmap,
-                funcInfo.staticAllocaMap);
+                funcInfo.staticAllocaMap);*/
 
         // Iterate over all basic blocks in the function.
         for (BasicBlock llvmBB : fn.getBasicBlockList())
@@ -219,9 +219,16 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
         // TODO: 17-8-4
     }
 
+    /**
+     * Prints out dump information when finishing codegen on specified BasicBlock.
+     */
     private void finishBasicBlock()
     {
-        // TODO: 17-8-4
+        if (Util.DEBUG)
+        {
+            System.err.println("Target-post-processed machine code:\n");
+            mbb.dump();
+        }
     }
 
     private void lowerArguments(BasicBlock llvmBB)

@@ -65,27 +65,16 @@ public final class FastISelEmitter extends TableGenBackend
             className = target.getName() + "GenFastISel";
 
             os.println("import backend.codegen.MVT;\n"
-                    + "import backend.codegen.MachineBasicBlock;\n"
-                    + "import backend.codegen.MachineFunction;\n"
-                    + "import backend.codegen.MachineModuleInfo;\n"
                     + "import backend.codegen.selectDAG.ISD;\n"
-                    + "import backend.value.BasicBlock;\n"
-                    + "import backend.value.Instruction;\n"
-                    + "import backend.value.Value;\n"
-                    + "import gnu.trove.map.hash.TObjectIntHashMap;\n" + "\n"
-                    + "import java.util.HashMap;\n" + "\n"
+                    + "import backend.target.TargetMachine;\n" + "\n"
                     + "import static backend.target.x86.X86GenInstrNames.*;\n"
                     + "import static backend.target.x86.X86GenRegisterInfo.*;\n"
                     + "import static backend.target.x86.X86GenRegisterNames.AL;");
             os.println();
             os.printf("public final class %s extends X86FastISel {\n\n", className);
 
-            os.println("public X86GenFastISel(MachineFunction mf, MachineModuleInfo mmi,\n"
-                    + "            TObjectIntHashMap<Value> vm,\n"
-                    + "            HashMap<BasicBlock, MachineBasicBlock> bm,\n"
-                    + "            TObjectIntHashMap<Instruction.AllocaInst> am)\n"
-                    + "    {\n" + "        super(mf, mmi, vm, bm, am);\n"
-                    + "    }");
+            os.println("\tpublic X86GenFastISel(TargetMachine tm, TargetMachine.CodeGenOpt level)\n"
+                    + "\t{\n" + "\t\tsuper(tm, level);\n" + "\t}");
             FastISelMap f = new FastISelMap();
             f.collectPatterns(cgp);
             f.printFunctionDefinitions(os);
@@ -627,7 +616,7 @@ public final class FastISelEmitter extends TableGenBackend
                                         if (!memo.physRegs.get(i).equals(""))
                                         {
                                             os.printf(
-                                                    "\ttii.copyRegToReg(mbb, mbb.size(), %s, "
+                                                    "\tinstrInfo.copyRegToReg(mbb, mbb.size(), %s, "
                                                             + " op%d, tm.getRegisterInfo()."
                                                             + "\n\t\t\tgetPhysicalRegisterRegClass(%s), "
                                                             + "mri.getRegClass(op%d));\n",
@@ -739,7 +728,7 @@ public final class FastISelEmitter extends TableGenBackend
                                     if (!memo.physRegs.get(i).equals(""))
                                     {
                                         os.printf(
-                                                "\ttii.copyRegToReg(mbb, mbb.size(), %s, "
+                                                "\tinstrInfo.copyRegToReg(mbb, mbb.size(), %s, "
                                                         + " op%d, tm.getRegisterInfo().getPhysicalRegisterRegClass(%s), "
                                                         + "mri.getRegClass(op%d));\n",
                                                 memo.physRegs.get(i), i,

@@ -36,7 +36,7 @@ set(OUT_JAVADOC_DIR ${XCC_BINARY_DIR}/docs)
 set(XCC_JAR "${PACKAGE_STRING}.jar")
 set(GEN_TBLGEN_SRCS ${XCC_BINARY_DIR}/gen_tblgen_srcs/backend/target/x86)
 
-set(JFLAGS -g -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR})
+set(JFLAGS -source 1.8 -target 1.8 -encoding UTF-8 -d ${CLASSES_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OUT_BIN_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OUT_LIB_DIR}")

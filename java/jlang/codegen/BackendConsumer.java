@@ -369,7 +369,7 @@ public class BackendConsumer implements ASTConsumer
             }
             default:
             {
-                error.set("Unsupport to emit object file yet!");
+                error.set("Unsupported to emit object file yet!");
                 return false;
             }
         }
