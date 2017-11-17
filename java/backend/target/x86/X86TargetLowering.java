@@ -16,16 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.MachineBasicBlock;
-import backend.codegen.MachineFunction;
-import backend.codegen.MachineModuleInfo;
-import backend.codegen.selectDAG.FastISel;
 import backend.target.TargetLowering;
-import backend.value.BasicBlock;
-import backend.value.Instruction.AllocaInst;
-import gnu.trove.map.hash.TObjectIntHashMap;
-
-import java.util.HashMap;
 
 /**
  * @author Xlous.zeng
@@ -36,25 +27,5 @@ public class X86TargetLowering extends TargetLowering
     public X86TargetLowering(X86TargetMachine tm)
     {
         super();
-    }
-
-    /**
-     * This method returns a target specific FastISel object,
-     * or null if the target does not support "fast" ISel.
-     * @param mf
-     * @param mmi
-     * @param vm
-     * @param bm
-     * @param am
-     * @return
-     */
-    @Override
-    public FastISel createFastISel(MachineFunction mf,
-            MachineModuleInfo mmi,
-            TObjectIntHashMap vm,
-            HashMap<BasicBlock, MachineBasicBlock> bm,
-            TObjectIntHashMap<AllocaInst> am)
-    {
-        return new X86GenFastISel(mf, mmi, vm, bm, am);
     }
 }

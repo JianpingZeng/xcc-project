@@ -17,7 +17,6 @@ package backend.target.x86;
  */
 
 import backend.codegen.selectDAG.SelectionDAGISel;
-import backend.pass.RegisterPass;
 import backend.target.TargetMachine.CodeGenOpt;
 
 /**
@@ -26,10 +25,6 @@ import backend.target.TargetMachine.CodeGenOpt;
  */
 public class X86DAGToDAGISel extends SelectionDAGISel
 {
-    static
-    {
-        new RegisterPass("dagisel", "DAG based X86 instruction selection", X86DAGToDAGISel.class);
-    }
     private X86TargetLowering x86Lowering;
 
     private X86Subtarget subtaraget;

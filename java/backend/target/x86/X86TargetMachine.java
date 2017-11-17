@@ -15,7 +15,7 @@ import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.*;
 import static backend.target.x86.X86ATTAsmPrinter.createX86AsmCodeEmitter;
 import static backend.target.x86.X86CodeEmitter.createX86CodeEmitterPass;
-import static backend.target.x86.X86DAGToDAGISel.createX86ISelDag;
+import static backend.target.x86.X86FastISel.createX86FastISel;
 import static backend.target.x86.X86Subtarget.PICStyle.*;
 
 /**
@@ -171,7 +171,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 	@Override
 	public boolean addInstSelector(PassManagerBase pm, CodeGenOpt level)
 	{
-		pm.add(createX86ISelDag(this, level));
+		pm.add(createX86FastISel(this, level));
 		return false;
 	}
 

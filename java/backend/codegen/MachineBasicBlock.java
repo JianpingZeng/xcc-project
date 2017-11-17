@@ -3,6 +3,7 @@ package backend.codegen;
 import backend.value.BasicBlock;
 import gnu.trove.list.array.TIntArrayList;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -282,4 +283,14 @@ public class MachineBasicBlock
     {
         alignment = align;
     }
+
+	public void dump()
+	{
+		// TODO: 2017/11/17
+	}
+
+	public void print(PrintStream os)
+	{
+		// TODO: 2017/11/17
+	}
 }

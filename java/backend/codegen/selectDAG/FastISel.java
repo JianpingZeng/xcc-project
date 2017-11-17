@@ -28,6 +28,7 @@ import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.APFloat;
 import tools.APInt;
 import tools.OutParamWrapper;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,7 +43,7 @@ import static tools.APFloat.RoundingMode.rmTowardZero;
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class FastISel
+public abstract class FastISel extends MachineFunctionPass
 {
     protected MachineBasicBlock mbb;
     protected TObjectIntHashMap<Value> localValueMap;
@@ -51,14 +52,21 @@ public abstract class FastISel
     protected TObjectIntHashMap<AllocaInst> staticAllocMap;
 
     protected MachineFunction mf;
+    protected Function fn;
     protected MachineModuleInfo mmi;
     protected MachineRegisterInfo mri;
     protected MachineFrameInfo mfi;
     protected MachineConstantPool mcp;
     protected TargetMachine tm;
+    protected TargetMachine.CodeGenOpt optLvel;
     protected TargetData td;
-    protected TargetInstrInfo tii;
+    protected TargetInstrInfo instrInfo;
     protected TargetLowering tli;
+    /**
+     * Preserves all information about the whole function when codegin on a single
+     * basic block.
+     */
+    protected FunctionLoweringInfo funcInfo;
 
     public void startNewBlock(MachineBasicBlock mbb)
     {
@@ -233,24 +241,111 @@ public abstract class FastISel
         return idxReg;
     }
 
-    protected FastISel(MachineFunction mf, MachineModuleInfo mmi,
-            TObjectIntHashMap<Value> vm,
-            HashMap<BasicBlock, MachineBasicBlock> bm,
-            TObjectIntHashMap<AllocaInst> am)
+    public FastISel(TargetMachine tm, TargetMachine.CodeGenOpt optLevel)
     {
+        this.tm = tm;
+        this.optLvel = optLevel;
+        this.tli = tm.getTargetLowering();
+        funcInfo = new FunctionLoweringInfo(tli);
         mbb = null;
-        valueMap = vm;
-        mbbMap = bm;
-        staticAllocMap = am;
+        valueMap = funcInfo.valueMap;
+        mbbMap = funcInfo.mbbmap;
+        staticAllocMap = funcInfo.staticAllocaMap;
+    }
+
+    @Override
+    public boolean runOnMachineFunction(MachineFunction mf)
+    {
         this.mf = mf;
-        this.mmi = mmi;
+        this.fn = mf.getFunction();
+        this.mmi = null;
         mri = mf.getMachineRegisterInfo();
         mfi = mf.getFrameInfo();
         mcp = mf.getConstantPool();
         tm = mf.getTarget();
         td = tm.getTargetData();
-        tii = tm.getInstrInfo();
-        tli = tm.getTargetLowering();
+        instrInfo = tm.getInstrInfo();
+
+        // for debug.
+        System.err.printf("%n%n%n==============%s===============%n", fn.getName());
+        selectAllBasicBlocks(fn, mf, null, instrInfo);
+        return false;
+    }
+
+    public void selectAllBasicBlocks(Function fn,
+            MachineFunction mf,
+            MachineModuleInfo mmi,
+            TargetInstrInfo tii)
+    {
+        // Iterate over all basic blocks in the function.
+        for (BasicBlock llvmBB : fn.getBasicBlockList())
+        {
+            mbb = funcInfo.mbbmap.get(llvmBB);
+
+            int begin = 0, end = llvmBB.size();
+            int bi = begin;
+
+            boolean suppressFastISel = false;
+            // Lower any arguments needed in this block if this is entry block.
+            if (llvmBB.equals(fn.getEntryBlock()))
+            {
+                lowerArguments(llvmBB);
+            }
+
+            // Do FastISel on as many instructions as possible.
+            startNewBlock(mbb);
+            for (; bi != end; ++bi)
+            {
+                if (llvmBB.getInstAt(bi) instanceof Instruction.TerminatorInst)
+                {
+                    // TODO: 2017/11/17
+                    assert false:"TerminatorInst waited to be finished!";
+                    System.exit(-1);
+                }
+
+                // First try normal tablegen-generated "fast" selection.
+                if (selectInstruction(llvmBB.getInstAt(bi)))
+                    continue;
+
+                // Next, try calling the target to attempt to handle the instruction.
+                if (targetSelectInstruction(llvmBB.getInstAt(bi)))
+                    continue;
+
+                // Otherwise, give up on FastISel for the rest of the block.
+                // For now, be a little lenient about non-branch terminators.
+                Instruction inst = llvmBB.getInstAt(bi);
+                if (!(inst instanceof Instruction.TerminatorInst) || inst instanceof BranchInst)
+                {
+                    System.err.printf("FastISel didn't select the entire block!%n");
+                    inst.dump();
+                }
+                break;
+            }
+
+            if (bi != end)
+            {
+                assert false:"Must run SelectionDAG instruction selection on "
+                        + "the remainder of the block not handled by FastISel";
+            }
+            finishBasicBlock();
+        }
+    }
+
+    /**
+     * Prints out dump information when finishing codegen on specified BasicBlock.
+     */
+    private void finishBasicBlock()
+    {
+        if (Util.DEBUG)
+        {
+            System.err.println("Target-post-processed machine code:\n");
+            mbb.dump();
+        }
+    }
+
+    private void lowerArguments(BasicBlock llvmBB)
+    {
+        // TODO: 17-8-4
     }
 
     public int createResultReg(TargetRegisterClass rc)
@@ -389,7 +484,7 @@ public abstract class FastISel
     public int fastEmitInst_(int machineInstOpcode, TargetRegisterClass rc)
     {
         int resultReg = createResultReg(rc);
-        TargetInstrDesc ii = tii.get(machineInstOpcode);
+        TargetInstrDesc ii = instrInfo.get(machineInstOpcode);
         buildMI(mbb, ii, resultReg);
         return resultReg;
     }
@@ -399,14 +494,14 @@ public abstract class FastISel
             int op0)
     {
         int resultReg = createResultReg(rc);
-        TargetInstrDesc ii = tii.get(machineInstOpcode);
+        TargetInstrDesc ii = instrInfo.get(machineInstOpcode);
 
         if (ii.getNumDefs() >= 1)
             buildMI(mbb, ii, resultReg).addReg(op0);
         else
         {
             buildMI(mbb, ii).addReg(op0);
-            boolean insertedCopy = tii.copyRegToReg(mbb, mbb.size(),
+            boolean insertedCopy = instrInfo.copyRegToReg(mbb, mbb.size(),
                     resultReg, ii.implicitDefs[0],
                     rc, rc);
             if (!insertedCopy)
@@ -422,14 +517,14 @@ public abstract class FastISel
             int op1)
     {
         int resultReg = createResultReg(rc);
-        TargetInstrDesc ii = tii.get(machineInstOpcode);
+        TargetInstrDesc ii = instrInfo.get(machineInstOpcode);
 
         if (ii.getNumDefs() >= 1)
             buildMI(mbb, ii, resultReg).addReg(op0).addReg(op1);
         else
         {
             buildMI(mbb, ii).addReg(op0).addReg(op1);
-            boolean insertedCopy = tii.copyRegToReg(mbb, mbb.size(),
+            boolean insertedCopy = instrInfo.copyRegToReg(mbb, mbb.size(),
                     resultReg, ii.implicitDefs[0],
                     rc, rc);
             if (!insertedCopy)
@@ -445,14 +540,14 @@ public abstract class FastISel
             long imm)
     {
         int resultReg = createResultReg(rc);
-        TargetInstrDesc ii = tii.get(machineInstOpcode);
+        TargetInstrDesc ii = instrInfo.get(machineInstOpcode);
 
         if (ii.getNumDefs() >= 1)
             buildMI(mbb, ii, resultReg).addReg(op0).addImm(imm);
         else
         {
             buildMI(mbb, ii).addReg(op0).addImm(imm);
-            boolean insertedCopy = tii.copyRegToReg(mbb, mbb.size(),
+            boolean insertedCopy = instrInfo.copyRegToReg(mbb, mbb.size(),
                     resultReg, ii.implicitDefs[0],
                     rc, rc);
             if (!insertedCopy)
@@ -468,14 +563,14 @@ public abstract class FastISel
             ConstantFP fp)
     {
         int resultReg = createResultReg(rc);
-        TargetInstrDesc ii = tii.get(machineInstOpcode);
+        TargetInstrDesc ii = instrInfo.get(machineInstOpcode);
 
         if (ii.getNumDefs() >= 1)
             buildMI(mbb, ii, resultReg).addReg(op0).addFPImm(fp);
         else
         {
             buildMI(mbb, ii).addReg(op0).addFPImm(fp);
-            boolean insertedCopy = tii.copyRegToReg(mbb, mbb.size(),
+            boolean insertedCopy = instrInfo.copyRegToReg(mbb, mbb.size(),
                     resultReg, ii.implicitDefs[0],
                     rc, rc);
             if (!insertedCopy)
@@ -492,14 +587,14 @@ public abstract class FastISel
             long imm)
     {
         int resultReg = createResultReg(rc);
-        TargetInstrDesc ii = tii.get(machineInstOpcode);
+        TargetInstrDesc ii = instrInfo.get(machineInstOpcode);
 
         if (ii.getNumDefs() >= 1)
             buildMI(mbb, ii, resultReg).addReg(op0).addReg(op1).addImm(imm);
         else
         {
             buildMI(mbb, ii).addReg(op0).addReg(op0).addReg(op1).addImm(imm);
-            boolean insertedCopy = tii.copyRegToReg(mbb, mbb.size(),
+            boolean insertedCopy = instrInfo.copyRegToReg(mbb, mbb.size(),
                     resultReg, ii.implicitDefs[0],
                     rc, rc);
             if (!insertedCopy)
@@ -514,14 +609,14 @@ public abstract class FastISel
             long imm)
     {
         int resultReg = createResultReg(rc);
-        TargetInstrDesc ii = tii.get(machineInstOpcode);
+        TargetInstrDesc ii = instrInfo.get(machineInstOpcode);
 
         if (ii.getNumDefs() >= 1)
             buildMI(mbb, ii, resultReg).addImm(imm);
         else
         {
             buildMI(mbb, ii).addImm(imm);
-            boolean insertedCopy = tii.copyRegToReg(mbb, mbb.size(),
+            boolean insertedCopy = instrInfo.copyRegToReg(mbb, mbb.size(),
                     resultReg, ii.implicitDefs[0],
                     rc, rc);
             if (!insertedCopy)
@@ -545,14 +640,14 @@ public abstract class FastISel
         TargetRegisterClass rc = mri.getRegClass(op0);
 
         int resultReg = createResultReg(tli.getRegClassFor(new EVT(retVT)));
-        TargetInstrDesc ii = tii.get(TargetInstrInfo.EXTRACT_SUBREG);
+        TargetInstrDesc ii = instrInfo.get(TargetInstrInfo.EXTRACT_SUBREG);
 
         if (ii.getNumDefs() >= 1)
             buildMI(mbb, ii, resultReg).addReg(op0).addImm(idx);
         else
         {
             buildMI(mbb, ii).addReg(op0).addImm(idx);
-            boolean insertedCopy = tii.copyRegToReg(mbb, mbb.size(),
+            boolean insertedCopy = instrInfo.copyRegToReg(mbb, mbb.size(),
                     resultReg, ii.implicitDefs[0],
                     rc, rc);
             if (!insertedCopy)
@@ -582,7 +677,7 @@ public abstract class FastISel
         }
         else
         {
-            tii.InsertBranch(mbb, msucc, null, new ArrayList<>());
+            instrInfo.InsertBranch(mbb, msucc, null, new ArrayList<>());
         }
         mbb.addSuccessor(msucc);
     }
@@ -605,7 +700,7 @@ public abstract class FastISel
             int assignedReg = valueMap.get(val);
             TargetRegisterClass rc = mri.getRegClass(reg);
 
-            tii.copyRegToReg(mbb, mbb.size(), assignedReg, reg, rc, rc);
+            instrInfo.copyRegToReg(mbb, mbb.size(), assignedReg, reg, rc, rc);
             return assignedReg;
         }
         return reg;
@@ -828,7 +923,8 @@ public abstract class FastISel
             TargetRegisterClass dstClass = tli.getRegClassFor(dstVT);
             resultReg = createResultReg(dstClass);
 
-            boolean insertCopy = tii.copyRegToReg(mbb, mbb.size(), resultReg,
+            boolean insertCopy = instrInfo
+                    .copyRegToReg(mbb, mbb.size(), resultReg,
                     op0, dstClass, srcClass);
             if (!insertCopy)
                 resultReg = 0;

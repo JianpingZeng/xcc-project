@@ -16,14 +16,10 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.*;
-import backend.codegen.selectDAG.FastISel;
+import backend.codegen.EVT;
+import backend.codegen.MVT;
+import backend.codegen.ValueTypeAction;
 import backend.type.Type;
-import backend.value.BasicBlock;
-import backend.value.Instruction;
-import gnu.trove.map.hash.TObjectIntHashMap;
-
-import java.util.HashMap;
 
 import static backend.target.TargetLowering.LegalizeAction.Promote;
 
@@ -108,12 +104,13 @@ public abstract class TargetLowering
         return vt == new EVT(new MVT(MVT.iPTR)) ? new EVT(pointerTy) : vt;
     }
 
+    /*
     public abstract FastISel createFastISel(MachineFunction mf,
             MachineModuleInfo mmi,
             TObjectIntHashMap vm,
             HashMap<BasicBlock, MachineBasicBlock> bm,
             TObjectIntHashMap<Instruction.AllocaInst> am);
-
+    */
     /**
      * Return true if the target has native support for the
      * specified value type.  This means that it has a register that directly
