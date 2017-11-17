@@ -19,6 +19,7 @@ package backend.target.x86;
 import backend.target.TargetMachine;
 import backend.target.TargetSubtarget;
 import backend.value.GlobalValue;
+import tools.CPUInfoUtility;
 import tools.Util;
 
 import static backend.target.x86.X86Subtarget.TargetType.*;
@@ -63,7 +64,7 @@ public class X86Subtarget extends TargetSubtarget
 
     protected enum X86SSEEnum
     {
-        NoMMXSSE, MMX, SSE1, SSE2, SSE3, SSE41, SSE42
+        NoMMXSSE, MMX, SSE1, SSE2, SSE3, SSSE3, SSE41, SSE42
     }
 
     protected enum X863DNowEnum
@@ -151,6 +152,8 @@ public class X86Subtarget extends TargetSubtarget
 
     public TargetType targetType;
 
+    private boolean isLittleEndian;
+
     protected X86Subtarget(String tt, String fs, boolean is64bit)
     {
         picStyle = PICStyle.None;
@@ -171,13 +174,15 @@ public class X86Subtarget extends TargetSubtarget
         // Default to ELF unless user explicitly specify.
         targetType = isELF;
 
+        this.isLittleEndian = true;
+
         // default to hard float ABI.
 
         // determine default and user specified characteristics.
         if (fs != null && !fs.isEmpty())
         {
             // if feature string is not empty and null, parse features string.
-            String cpu = getCurrentX86CPU();
+            String cpu = getCurrentX86CPU(isLittleEndian);
             parseSubtargetFeatures(fs, cpu);
             // All X86-64 CPUs also have SSE2, however user might request no SSE via
             // -mattr, so don't force SSELevel here.
@@ -251,7 +256,8 @@ public class X86Subtarget extends TargetSubtarget
      * @param is64bit   Flag to indicates whether current platform is 64 bit or not.
      * @return
      */
-    public static X86Subtarget createX86Subtarget(String tt, String fs, boolean is64bit)
+    public static X86Subtarget createX86Subtarget(String tt, String fs,
+            boolean is64bit)
     {
         return new X86GenSubtarget(tt, fs, is64bit);
     }
@@ -271,8 +277,96 @@ public class X86Subtarget extends TargetSubtarget
         return "";
     }
 
+    private static int[] detectFamilyModel(int eax)
+    {
+        // return [family, model].
+        int family = (eax >> 8) & 0xf;
+        int model = (eax >> 4) & 0xf;
+        if (family == 6 || family == 0xf)
+        {
+            family += (eax >> 20) & 0xff;
+        }
+        model += ((eax >> 16) & 0xff) << 4;
+        return new int[]{family, model};
+    }
+
+    private static String convertToString(int[] cpuName, int start, boolean isLittelEndian)
+    {
+        StringBuilder buf = new StringBuilder();
+        for (int i = start; i < cpuName.length; i++)
+        {
+            int val = cpuName[i];
+            if (isLittelEndian)
+            {
+                buf.append((char) (val & 0xff));
+                buf.append((char) ((val >>> 8) & 0xff));
+                buf.append((char) ((val >>> 16) & 0xff));
+                buf.append((char) ((val >>> 24) & 0xff));
+            }
+            else
+            {
+                buf.append((char) ((val >>> 24) & 0xff));
+                buf.append((char) ((val >>> 16) & 0xff));
+                buf.append((char) ((val >>> 8) & 0xff));
+                buf.append((char) (val & 0xff));
+            }
+        }
+        System.err.println(buf.toString());
+        return buf.toString();
+    }
+
     public void autoDetectSubtargetFeatures()
     {
+        int[] u = new int[4];
+        if (CPUInfoUtility.getCpuIDAndInfo(0, u))
+            return;
+
+        //Compute name of CPU.
+        // swap u[2] with u[3]
+        int t = u[2];
+        u[2] = u[3];
+        u[3] = t;
+        String cpuName = convertToString(u, 1, isLittleEndian);
+        int eax = u[0];
+        int[] u2 = new int[4];
+        u2[0] = eax;    // EAX, EBX, ECX, EDX.
+        CPUInfoUtility.getCpuIDAndInfo(0x1, u2);
+        eax = u2[0];
+        int ebx = u2[1], ecx = u2[2], edx = u2[3];
+        if (((edx >> 23) & 0x1) !=0)
+            x86SSELevel = MMX;
+        if (((edx >> 25) & 0x1) !=0)
+            x86SSELevel = SSE1;
+        if (((edx >> 26) & 0x1) !=0)
+            x86SSELevel = SSE2;
+        if ((ecx & 0x1) != 0)
+            x86SSELevel = SSE3;
+        if (((ecx >>9) & 0x1) !=0)
+            x86SSELevel = SSSE3;
+        if (((ecx >> 19) & 0x1) != 0)
+            x86SSELevel = SSE41;
+        if (((ecx >> 20) & 0x1) != 0)
+            x86SSELevel = SSE42;
+        boolean isIntel = cpuName.equals("GenuineIntel");
+        boolean isAMD = cpuName.equals("AuthenticAMD");
+        hasFMA3 = isIntel && ((ecx >> 12) & 0x1) != 0;
+        hasAVX = ((ecx >> 28) & 0x1) != 0;
+        if (isIntel || isAMD)
+        {
+            int[] res = detectFamilyModel(eax);
+            int family = res[0];
+            int model = res[1];
+            isBTMemSlow = isAMD || (family == 6 && model >= 13);
+
+            u[0] = eax;     // EAX
+            u[1] = ebx;     // EBX
+            u[2] = ecx;     // ECX
+            u[3] = edx;     // EDX
+            CPUInfoUtility.getCpuIDAndInfo(0x80000001, u);
+            hasX86_64 = ((u[3] >> 29) & 0x1) !=0;
+            hasSSE4A = isAMD && ((u[2] >> 6) & 0x1) != 0;
+            hasFMA4 = isAMD && ((u[2] >> 16) & 0x1) != 0;
+        }
     }
 
     public boolean is64Bit()
@@ -390,6 +484,16 @@ public class X86Subtarget extends TargetSubtarget
         return is64Bit && (targetType == isMingw || targetType == isWindows);
     }
 
+    public void setIsLittleEndian(boolean isLittleEndian)
+    {
+        this.isLittleEndian = isLittleEndian;
+    }
+
+    public boolean isLittleEndian()
+    {
+        return isLittleEndian;
+    }
+
     public String getDataLayout()
     {
         if (is64Bit())
@@ -462,30 +566,164 @@ public class X86Subtarget extends TargetSubtarget
         return false;
     }
 
-    /// This function returns the asmName of a function which has an interface
-    /// like the non-standard bzero function, if such a function exists on
-    /// the current subtarget and it is considered prefereable over
-    /// memset with zero passed as the second argument. Otherwise it
-    /// returns null.
+    /**
+     * This function returns the name of a function which has an interface
+     /// like the non-standard bzero function, if such a function exists on
+     /// the current subtarget and it is considered prefereable over
+     /// memset with zero passed as the second argument. Otherwise it
+     /// returns null.
+     * @return
+     */
     public String getBZeroEntry()
     {
-        // TODO: 17-8-5
+        if (getDarwinVers() >= 10)
+            return "__bzero";
+
         return null;
     }
 
-    /// getSpecialAddressLatency - For targets where it is beneficial to
-    /// backschedule instructions that compute addresses, return a value
-    /// indicating the number of scheduling cycles of backscheduling that
-    /// should be attempted.
+    /**
+     * For targets where it is beneficial to
+     /// backschedule instructions that compute addresses, return a value
+     /// indicating the number of scheduling cycles of backscheduling that
+     /// should be attempted.
+     * @return
+     */
+    @Override
     public int getSpecialAddressLatency()
     {
-        // TODO: 17-8-5
-        return 0;
+        return 200;
     }
 
-    private static String getCurrentX86CPU()
+    private static String getCurrentX86CPU(boolean isLittleEndian)
     {
-        // TODO: 2017/11/17
-        return null;
+        int[] u = new int[4];  // {EAX, EBX, ECX, EDX}
+        if (CPUInfoUtility.getCpuIDAndInfo(0x1, u))
+            return "generic";
+        int[] res = detectFamilyModel(u[0]);
+        int family = res[0];
+        int model = res[1];
+
+        CPUInfoUtility.getCpuIDAndInfo(0x80000001, u);
+        boolean em64T = ((u[3] >> 29) & 0x1) != 0;
+        boolean hasSSE3 = (u[2] & 0x01) != 0;
+
+        int[] u2 = new int[4];
+        u2[0] = u[0];   // EAX
+        CPUInfoUtility.getCpuIDAndInfo(0, u2);
+        u[0] = u2[0];   // update EAX
+
+        // swap u[2] with u[3]
+        int t = u2[2];
+        u2[2] = u2[3];
+        u2[3] = t;
+        String cpuName = convertToString(u2, 1, isLittleEndian);
+        if (cpuName.equals("GenuineIntel"))
+        {
+            switch (family)
+            {
+                case 3:
+                    return "i386";
+                case 4:
+                    return "i486";
+                case 5:
+                    switch (model)
+                    {
+                        case 4: return "pentium-mmx";
+                        default:return "pentium";
+                    }
+                case 6:
+                    switch (model)
+                    {
+                        case 1:  return "pentiumpro";
+                        case 3:
+                        case 5:
+                        case 6:  return "pentium2";
+                        case 7:
+                        case 8:
+                        case 10:
+                        case 11: return "pentium3";
+                        case 9:
+                        case 13: return "pentium-m";
+                        case 14: return "yonah";
+                        case 15:
+                        case 22: // Celeron M 540
+                            return "core2";
+                        case 23: // 45nm: Penryn , Wolfdale, Yorkfield (XE)
+                            return "penryn";
+                        default: return "i686";
+                    }
+                case 15:
+                {
+                    switch (model)
+                    {
+                        case 3:
+                        case 4:
+                        case 6: // same as 4, but 65nm
+                            return (em64T) ? "nocona" : "prescott";
+                        case 26:
+                            return "corei7";
+                        case 28:
+                            return "atom";
+                        default:
+                            return (em64T) ? "x86-64" : "pentium4";
+                    }
+                }
+                default:
+                    return "generic";
+            }
+        }
+        else if (cpuName.equals("AuthenticAMD"))
+        {  // FIXME: this poorly matches the generated SubtargetFeatureKV table.  There
+            // appears to be no way to generate the wide variety of AMD-specific targets
+            // from the information returned from CPUID.
+            switch (family)
+            {
+                case 4:
+                    return "i486";
+                case 5:
+                    switch (model)
+                    {
+                        case 6:
+                        case 7:  return "k6";
+                        case 8:  return "k6-2";
+                        case 9:
+                        case 13: return "k6-3";
+                        default: return "pentium";
+                    }
+                case 6:
+                    switch (model)
+                    {
+                        case 4:  return "athlon-tbird";
+                        case 6:
+                        case 7:
+                        case 8:  return "athlon-mp";
+                        case 10: return "athlon-xp";
+                        default: return "athlon";
+                    }
+                case 15:
+                    if (hasSSE3)
+                    {
+                        return "k8-sse3";
+                    }
+                    else
+                    {
+                        switch (model)
+                        {
+                            case 1:  return "opteron";
+                            case 5:  return "athlon-fx"; // also opteron
+                            default: return "athlon64";
+                        }
+                    }
+                case 16:
+                    return "amdfam10";
+                default:
+                    return "generic";
+            }
+        }
+        else
+        {
+            return "generic";
+        }
     }
 }
