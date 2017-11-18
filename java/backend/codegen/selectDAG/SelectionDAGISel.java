@@ -17,7 +17,6 @@ package backend.codegen.selectDAG;
  */
 
 import backend.codegen.*;
-import backend.support.LLVMContext;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.target.TargetMachine;
@@ -25,12 +24,9 @@ import backend.target.TargetMachine.CodeGenOpt;
 import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import backend.value.Function;
-import backend.value.Instruction;
-import backend.value.Instruction.BranchInst;
-import backend.value.Instruction.CallInst;
-import backend.value.Instruction.TerminatorInst;
 import tools.Util;
-import tools.commandline.*;
+import tools.commandline.BooleanOpt;
+import tools.commandline.OptionHiddenApplicator;
 
 import static backend.target.TargetMachine.CodeGenOpt.Default;
 import static tools.commandline.Desc.desc;
@@ -101,102 +97,7 @@ public abstract class SelectionDAGISel extends MachineFunctionPass
                                       MachineFunction mf,
                                       MachineModuleInfo mmi,
                                       TargetInstrInfo tii)
-    {
-        FastISel fastISel = null; /*tli.createFastISel(mf,
-                mmi,
-                funcInfo.valueMap,
-                funcInfo.mbbmap,
-                funcInfo.staticAllocaMap);*/
-
-        // Iterate over all basic blocks in the function.
-        for (BasicBlock llvmBB : fn.getBasicBlockList())
-        {
-            mbb = funcInfo.mbbmap.get(llvmBB);
-
-            int begin = 0, end = llvmBB.size();
-            int bi = begin;
-
-            boolean suppressFastISel = false;
-            // Lower any arguments needed in this block if this is entry block.
-            if (llvmBB.equals(fn.getEntryBlock()))
-            {
-                lowerArguments(llvmBB);
-            }
-
-            // Do FastISel on as many instructions as possible.
-            fastISel.startNewBlock(mbb);
-            for (; bi != end; ++bi)
-            {
-                if (llvmBB.getInstAt(bi) instanceof TerminatorInst)
-                {
-                    if (!handlePHINodesInSuccessorBlocksFast(llvmBB, fastISel))
-                    {
-                        if (EnableFastISelVerbose.value || EnableFastISelAbort.value)
-                        {
-                            System.err.printf("FastISel miss: ");
-                            llvmBB.getInstAt(bi).dump();
-                        }
-                        if (EnableFastISelAbort.value)
-                            assert false:"FastISel didn't handle a PHI in a successor";
-                        break;
-                    }
-                }
-
-                // First try normal tablegen-generated "fast" selection.
-                if (fastISel.selectInstruction(llvmBB.getInstAt(bi)))
-                    continue;
-
-                // Next, try calling the target to attempt to handle the instruction.
-                if (fastISel.targetSelectInstruction(llvmBB.getInstAt(bi)))
-                    continue;
-
-                // Then handle certain instructions as single-LLVM-Instruction blocks.
-                if (llvmBB.getInstAt(bi) instanceof CallInst)
-                {
-                    if (EnableFastISelVerbose.value || EnableFastISelAbort.value)
-                    {
-                        System.err.printf("FastISel missing call: ");
-                        llvmBB.getInstAt(bi).dump();
-                    }
-
-                    if (!llvmBB.getInstAt(bi).getType().equals(LLVMContext.VoidTy))
-                    {
-                        Instruction inst = llvmBB.getInstAt(bi);
-                        if (!funcInfo.valueMap.containsKey(inst))
-                            funcInfo.valueMap.put(inst, funcInfo.createRegForValue(inst));
-                    }
-
-                    selectBasicBlock(llvmBB, bi, bi+1);
-                    fastISel.setCUrrentBlock(mbb);
-                    continue;
-                }
-
-                // Otherwise, give up on FastISel for the rest of the block.
-                // For now, be a little lenient about non-branch terminators.
-                Instruction inst = llvmBB.getInstAt(bi);
-                if (!(inst instanceof TerminatorInst) || inst instanceof BranchInst)
-                {
-                    if (EnableFastISelVerbose.value || EnableFastISelAbort.value)
-                    {
-                        System.err.printf("FastISel missing call: ");
-                        inst.dump();
-                    }
-                    if (EnableFastISelAbort.value)
-                    {
-                        assert false:"FastISel didn't select the entire block";
-                    }
-                }
-                break;
-            }
-
-            if (bi != end)
-            {
-                assert false:"Must run SelectionDAG instruction selection on "
-                        + "the remainder of the block not handled by FastISel";
-            }
-            finishBasicBlock();
-        }
-    }
+    {}
 
     /**
      * This is the Fast-ISel version of HandlePHINodesInSuccessorBlocks. It only

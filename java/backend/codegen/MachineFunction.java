@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.target.TargetMachine;
+import backend.value.BasicBlock;
 import backend.value.Function;
 
 import java.util.ArrayList;
@@ -164,5 +165,10 @@ public class MachineFunction
 	public int size()
 	{
 		return getBasicBlocks().size();
+	}
+
+	public MachineBasicBlock createMachineBasicBlock(BasicBlock bb)
+	{
+		return new MachineBasicBlock(bb);
 	}
 }

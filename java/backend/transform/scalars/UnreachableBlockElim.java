@@ -68,10 +68,10 @@ public final class UnreachableBlockElim implements FunctionPass
                     ph.replaceAllUsesWith(Constant.getNullValue(ph.getType()));
                     cur.getInstList().removeFirst();
                 }
+                for (SuccIterator sucItr = cur.succIterator(); sucItr.hasNext();)
+                    sucItr.next().removePredecessor(cur);
+                cur.dropAllReferences();
             }
-            for (SuccIterator sucItr = cur.succIterator(); sucItr.hasNext();)
-                sucItr.next().removePredecessor(cur);
-            cur.dropAllReferences();
         }
 
         for (BasicBlock bb : deadedBlocks)

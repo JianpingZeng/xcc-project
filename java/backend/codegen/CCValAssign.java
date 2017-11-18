@@ -35,7 +35,7 @@ public class CCValAssign
     }
 
     /**
-     * This is the value number being assgined.
+     * This is the value number being assgined (e.g. an argument number).
      */
     private int valNo;
     /**

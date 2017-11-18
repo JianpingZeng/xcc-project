@@ -11,7 +11,7 @@ public interface ImmutablePass extends ModulePass
 {
 	default boolean run(Module m) {return false;}
 
-	void initializePass();
+	default void initializePass(){}
 
 	default boolean runOnModule(Module m) {return false;}
 

@@ -16,20 +16,29 @@ package backend.codegen.selectDAG;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.MVT;
+import backend.codegen.EVT;
 import backend.codegen.MachineBasicBlock;
 import backend.codegen.MachineFunction;
 import backend.codegen.MachineRegisterInfo;
+import backend.support.LLVMContext;
+import backend.target.TargetData;
+import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
-import backend.value.BasicBlock;
-import backend.value.Function;
+import backend.type.ArrayType;
+import backend.type.StructType;
+import backend.type.Type;
+import backend.value.*;
 import backend.value.Instruction.AllocaInst;
-import backend.value.Value;
+import backend.value.Instruction.PhiNode;
+import backend.value.Instruction.SwitchInst;
+import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.APInt;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import static backend.codegen.MachineInstrBuilder.buildMI;
 
 /**
  * This contains information that is global to a function that is used when
@@ -54,6 +63,7 @@ public class FunctionLoweringInfo
     public Function fn;
     public MachineFunction mf;
     public MachineRegisterInfo mri;
+
     /**
      * A mapping from LLVM basic block to their machine code entry.
      */
@@ -82,23 +92,155 @@ public class FunctionLoweringInfo
         this.tli = tli;
         mbbmap = new HashMap<>();
         valueMap = new TObjectIntHashMap<>();
+
         staticAllocaMap = new TObjectIntHashMap<>();
         liveOutRegInfo = new ArrayList<>();
+    }
+
+    /**
+     * Determines if the specified instruction is used by PHI node or outside
+     * the basic block that defines it, or used by a switch instruction, which
+     * may extend to multiples basic block.
+     * @param inst
+     * @return
+     */
+    private static boolean isUsedOutsideOfDefiningBlock(Instruction inst)
+    {
+        if (inst.isUseEmpty())
+            return false;
+
+        BasicBlock definingBB = inst.getParent();
+        for (Use u : inst.getUseList())
+        {
+            User user = u.getUser();
+            if (user instanceof PhiNode || user instanceof SwitchInst)
+                return true;
+            if (user instanceof Instruction && ((Instruction)user)
+                    .getParent() != definingBB)
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether the specified Argument is only used in entry block.
+     * @param arg
+     * @return  Return true if it is.
+     */
+    private static boolean isOnlyUsedInEntryBlock(Argument arg)
+    {
+        if (arg.isUseEmpty())
+            return true;
+
+        BasicBlock entryBB = arg.getParent().getEntryBlock();
+        for (Use u : arg.getUseList())
+        {
+            User user = u.getUser();
+            if( (user instanceof Instruction &&
+                    ((Instruction)user).getParent() != entryBB) || user instanceof SwitchInst)
+                return false;   // Not only used in entry block.
+        }
+        return true;
     }
 
     /**
      * Initiliaze this FunctionLoweringInfo with the given Function and its
      * associated MachineFunction.
      */
-    public void set(Function fn, MachineFunction mf, boolean enableFastISel)
+    public void set(Function fn, MachineFunction mf)
     {
-        // TODO: 17-8-4
+        this.fn = fn;
+        this.mf = mf;
+        mri = mf.getMachineRegisterInfo();
+
+        // Create virtual register for each argument that is not dead and is used
+        // outside of the entry block.
+        for (Argument arg : fn.getArgumentList())
+        {
+            if (!isOnlyUsedInEntryBlock(arg))
+                initializeRegForValue(arg);
+        }
+
+        // Initialize the mapping of values to registers.  This is only set up for
+        // instruction values that are used outside of the block that defines
+        // them.
+        for (Instruction inst : fn.getEntryBlock())
+        {
+            if (inst instanceof AllocaInst)
+            {
+                AllocaInst ai = (AllocaInst)inst;
+                ConstantInt size = ai.getArraySize() instanceof ConstantInt
+                        ? (ConstantInt)ai.getArraySize():null;
+                if (size != null)
+                {
+                    // Allocate an array with constant size.
+                    Type eltTy = ai.getAllocatedType();
+                    long tySize = tli.getTargetData().getTypeAllocSize(eltTy);
+
+                    int align = Math.max(tli.getTargetData().getPrefTypeAlignment(eltTy), ai.getAlignment());
+                    tySize *= size.getZExtValue();
+                    if (tySize == 0)
+                        tySize = 1;
+                    // Create a stack object for static sized array.
+                    staticAllocaMap.put(ai, mf.getFrameInfo().createStackObject(tySize, align));
+                }
+            }
+        }
+
+        for (BasicBlock bb : fn.getBasicBlockList())
+        {
+            for (Instruction inst : bb)
+            {
+                if (isUsedOutsideOfDefiningBlock(inst))
+                {
+                    if (!(inst instanceof AllocaInst)
+                            || !staticAllocaMap.contains(inst))
+                        initializeRegForValue(inst);
+                }
+            }
+        }
+
+        // Create an initial MachineBasicBlock for each LLVM BasicBlock in F.  This
+        // also creates the initial PHI MachineInstrs, though none of the input
+        // operands are populated.
+        for (BasicBlock bb : fn.getBasicBlockList())
+        {
+            MachineBasicBlock mbb = mf.createMachineBasicBlock(bb);
+            mbbmap.put(bb, mbb);
+            mf.addMBBNumbering(mbb);
+
+            // Create Machine PHI nodes for LLVM PHI nodes, lowering them as
+            // appropriate.
+            PhiNode pn;
+            for (Instruction inst : bb)
+            {
+                if (!(inst instanceof PhiNode) || inst.isUseEmpty())
+                    continue;
+
+                pn = (PhiNode)inst;
+                assert valueMap.contains(pn)
+                        : "Phi node does not have an assigned virtual register";
+                int phiReg = valueMap.get(pn);
+
+                ArrayList<EVT> valueVTs = new ArrayList<>();
+                computeValueVTs(tli, pn.getType(), valueVTs);
+                for (EVT vt : valueVTs)
+                {
+                    int numRegisters = tli.getNumRegisters(vt);
+                    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+                    for (int i = 0; i < numRegisters; i++)
+                    {
+                        buildMI(mbb, tii.get(TargetInstrInfo.PHI), phiReg+i);
+                    }
+                    phiReg += numRegisters;
+                }
+            }
+        }
     }
 
-    public int makeReg(MVT vt)
+    public int makeReg(EVT vt)
     {
-        // TODO: 17-8-4
-        return 0;
+        return mri.createVirtualRegister(tli.getRegClassFor(vt));
     }
 
     public boolean isExportedInst(Value v)
@@ -106,10 +248,82 @@ public class FunctionLoweringInfo
         return valueMap.containsKey(v);
     }
 
+    /**
+     * Given an LLVM IR type, compute a sequence of
+     * EVTs that represent all the individual underlying
+     * non-aggregate types that comprise it.
+     *
+     * If Offsets is non-null, it points to a vector to be filled in
+     * with the in-memory offsets of each of the individual values.
+     * @param tli
+     * @param ty
+     * @param valueVTs
+     * @param offsets
+     * @param startingOffset
+     */
+    static void computeValueVTs(TargetLowering tli, Type ty, ArrayList<EVT> valueVTs,
+            TLongArrayList offsets, long startingOffset)
+    {
+        if (ty instanceof StructType)
+        {
+            StructType st = (StructType)ty;
+            TargetData.StructLayout layout = tli.getTargetData().getStructLayout(st);
+            for (int i = 0, e = st.getNumOfElements(); i < e; i++)
+            {
+                computeValueVTs(tli, st.getElementType(i), valueVTs, offsets,
+                        startingOffset+layout.getElementOffset(i));;
+            }
+            return;
+        }
+        if (ty instanceof ArrayType)
+        {
+            ArrayType at = (ArrayType)ty;
+            Type eltTy = at.getElementType();
+            long eltSize = tli.getTargetData().getTypeAllocSize(eltTy);
+            for(long i = 0, e = at.getNumElements(); i < e; i++)
+            {
+                computeValueVTs(tli, eltTy, valueVTs, offsets, startingOffset+i*eltSize);;
+            }
+            return;
+        }
+        if (ty.equals(LLVMContext.VoidTy))
+            return;
+        // Non-aggragate type
+        valueVTs.add(tli.getValueType(ty));
+        if (offsets != null)
+            offsets.add(startingOffset);
+    }
+
+    static void computeValueVTs(TargetLowering tli, Type ty, ArrayList<EVT> valueVTs,
+            TLongArrayList offset)
+    {
+        computeValueVTs(tli, ty, valueVTs, offset, 0);
+    }
+
+    static void computeValueVTs(TargetLowering tli, Type ty, ArrayList<EVT> valueVTs)
+    {
+        computeValueVTs(tli, ty, valueVTs, null, 0);
+    }
+
     public int createRegForValue(Value v)
     {
-        // TODO: 17-8-4
-        return 0;
+        ArrayList<EVT> valueVTs = new ArrayList<>();
+        computeValueVTs(tli, v.getType(), valueVTs);
+
+        int firstReg = 0;
+        for (EVT valueVT : valueVTs)
+        {
+            EVT registerVT = tli.getRegisterType(valueVT);
+
+            int numRegs = tli.getNumRegisters(valueVT);
+            for (; numRegs != 0; --numRegs)
+            {
+                int r = makeReg(registerVT);
+                if (firstReg == 0)
+                    firstReg = r;
+            }
+        }
+        return firstReg;
     }
 
     public int initializeRegForValue(Value v)

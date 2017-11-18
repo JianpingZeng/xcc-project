@@ -461,7 +461,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         String outfile = OutputFile.value;
         PrintStream os = null;
         String outputFile = "";
-        if (outfile == null || outfile.isEmpty() || infile.equals("-") || extension == null)
+        if (outfile == null || outfile.isEmpty() || outfile.equals("-") || extension == null)
         {
             usestdout = true;
         }
