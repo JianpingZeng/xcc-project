@@ -123,11 +123,10 @@ public class TargetData implements ImmutablePass
 	 */
 	private String targetName;
 
-	private ArrayList<TargetAlignElem> alignments = new ArrayList<>();
+	private ArrayList<TargetAlignElem> alignments;
 
-	public TargetData()
+	public TargetData(String targetDescription)
 	{
-		this.targetName = "";
 		littleEndian = false;
 		pointerMemSize = 8;
 		pointerPrefAlign = 8;
@@ -137,10 +136,7 @@ public class TargetData implements ImmutablePass
 		intAlignment = 4;
 		shortAlignment = 2;
 		byteAlignment = 1;
-	}
-
-	public TargetData(String targetDescription)
-	{
+		alignments = new ArrayList<>();
 		init(targetDescription);
 	}
 	/**
@@ -288,13 +284,8 @@ public class TargetData implements ImmutablePass
                 return;
             }
         }
+        alignments.add(TargetAlignElem.get(alignType, abiAlign, prefAlign, bitWidth));
     }
-
-	@Override
-	public void initializePass()
-	{
-
-	}
 
 	public TargetData(String targetName, boolean isLittleEndian, int ptrSize,
 			int ptrAlign, int doubleAlign, int floatAlign, int longAlign, int intAlign,

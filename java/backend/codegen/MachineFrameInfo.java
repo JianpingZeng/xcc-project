@@ -22,7 +22,7 @@ public class MachineFrameInfo
          * The getNumOfSubLoop of this object on the stack.
          * 0 means variable object.
          */
-        public int size;
+        public long size;
         /**
          * The required alignment of this stack object.
          */
@@ -36,7 +36,7 @@ public class MachineFrameInfo
          */
         public long spOffset;
 
-        public StackObject(int sz, int align, int offset, boolean im)
+        public StackObject(long sz, int align, int offset, boolean im)
         {
             size = sz;
             alignment = align;
@@ -44,7 +44,7 @@ public class MachineFrameInfo
             isImmutable = im;
         }
 
-        public StackObject(int sz, int align, int offset)
+        public StackObject(long sz, int align, int offset)
         {
             this(sz, align, offset, false);
         }
@@ -184,7 +184,7 @@ public class MachineFrameInfo
     /**
      * getObjectSize - Return the getNumOfSubLoop of the specified object
      */
-    public int getObjectSize(int objectIdx)
+    public long getObjectSize(int objectIdx)
     {
         assert objectIdx + numFixedObjects < objects
                 .size() : "Invalid Object Idx!";
@@ -290,7 +290,7 @@ public class MachineFrameInfo
      * createStackObject - Create a new statically sized stack object, returning
      * a positive integer to represent it.
      */
-    public int createStackObject(int size, int Alignment)
+    public int createStackObject(long size, int Alignment)
     {
         assert size != 0 : "Cannot allocate zero getNumOfSubLoop stack objects!";
         objects.add(new StackObject(size, Alignment, -1));

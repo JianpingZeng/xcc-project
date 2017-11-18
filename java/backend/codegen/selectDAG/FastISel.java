@@ -18,9 +18,6 @@ package backend.codegen.selectDAG;
 
 import backend.codegen.*;
 import backend.target.*;
-import backend.type.SequentialType;
-import backend.type.StructType;
-import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
@@ -70,11 +67,11 @@ public abstract class FastISel extends MachineFunctionPass
 
     public void startNewBlock(MachineBasicBlock mbb)
     {
-        setCUrrentBlock(mbb);
+        setCurrentBlock(mbb);
         localValueMap.clear();
     }
 
-    public void setCUrrentBlock(MachineBasicBlock mbb)
+    public void setCurrentBlock(MachineBasicBlock mbb)
     {
         this.mbb = mbb;
     }
@@ -140,10 +137,6 @@ public abstract class FastISel extends MachineFunctionPass
                 return selectBinaryOp(u, ISD.OR);
             case Xor:
                 return selectBinaryOp(u, ISD.XOR);
-
-            case GetElementPtr:
-                return selectGetElementPtr(u);
-
             case Br:
             {
                 BranchInst bi = (BranchInst)u;
@@ -214,8 +207,91 @@ public abstract class FastISel extends MachineFunctionPass
 
     public int getRegForValue(Value v)
     {
-        // TODO: 17-7-17
-        return 0;
+        EVT realVT = tli.getValueType(v.getType(), true);
+        // FIXME Can not handle non-simple value currently
+        if (!realVT.isSimple())
+            return 0;
+        MVT vt = realVT.getSimpleVT();
+        if (!tli.isTypeLegal(realVT))
+        {
+            // Promote i1 to a legal type, because it is common and easy.
+            if (vt.equals(new MVT(MVT.i1)))
+                vt = tli.getTypeForTransformTo(realVT).getSimpleVT();
+            else
+                return 0;
+        }
+        realVT = new EVT(vt);
+
+        // Lookup for the instructions accros basic block.
+        if (valueMap.contains(v))
+            return valueMap.get(v);
+        // Checks this value whether dead out Basic Block.
+        if (localValueMap.contains(v) && localValueMap.get(v) != 0)
+            return localValueMap.get(v);
+
+        // the result register holds the value.
+        int reg = 0;
+        // Here, the specified Value is newly reached
+        if (v instanceof ConstantInt)
+        {
+            ConstantInt ci = (ConstantInt)v;
+            reg = fastEmit_i(vt, vt, ISD.Constant, ci.getZExtValue());
+        }
+        else if (v instanceof AllocaInst)
+        {
+            reg = targetMaterializeConstant((AllocaInst)v);
+        }
+        else if (v instanceof ConstantPointerNull)
+        {
+            reg = getRegForValue(ConstantInt.getNullValue(td.getIntPtrType()));
+        }
+        else if (v instanceof ConstantFP)
+        {
+            ConstantFP fp = (ConstantFP)v;
+            reg = fastEmit_f(vt, vt, ISD.ConstantFP, fp);
+            MVT pointerTy = tli.getPointerTy();
+            if (reg == 0)
+            {
+                // Try to convert float number into a integer to check whether it
+                // fits.
+                int intWidth = pointerTy.getSizeInBits();
+                APFloat f = fp.getValueAPF();
+                long[] ints = new long[2];
+                OutParamWrapper<Boolean> isExact = new OutParamWrapper<>(false);
+                f.convertToInteger(ints, intWidth, true/*isSign*/, rmTowardZero, isExact);
+                if (isExact.get())
+                {
+                    APInt intVal = new APInt(ints, intWidth);
+                    int intReg = getRegForValue(ConstantInt.get(intVal));
+                    if (intReg != 0)
+                        reg = fastEmit_r(pointerTy, vt, ISD.SINT_TO_FP, intReg);
+                }
+            }
+        }
+        else if (v instanceof ConstantExpr)
+        {
+            ConstantExpr ce = (ConstantExpr)v;
+            if (!selectOperator(ce, ce.getOpcode()))
+                return 0;
+            reg = localValueMap.get(ce);
+        }
+        else if (v instanceof Value.UndefValue)
+        {
+            reg = createResultReg(tli.getRegClassFor(realVT));
+            buildMI(mbb, instrInfo.get(TargetInstrInfo.IMPLICIT_DEF), reg);
+        }
+
+        // If target-independent code couldn't handle the value, give target-specific
+        // code a try.
+        if (reg == 0 && v instanceof Constant)
+            reg = targetMaterializeConstant((Constant)v);
+
+        // Because this value is local to current basic block, so we cached it into
+        // localValueMap but valueMap.
+        if (reg != 0)
+            localValueMap.put(v, reg);
+
+        return reg;
     }
 
     public int lookupRegForValue(Value v)
@@ -245,12 +321,6 @@ public abstract class FastISel extends MachineFunctionPass
     {
         this.tm = tm;
         this.optLvel = optLevel;
-        this.tli = tm.getTargetLowering();
-        funcInfo = new FunctionLoweringInfo(tli);
-        mbb = null;
-        valueMap = funcInfo.valueMap;
-        mbbMap = funcInfo.mbbmap;
-        staticAllocMap = funcInfo.staticAllocaMap;
     }
 
     @Override
@@ -258,6 +328,17 @@ public abstract class FastISel extends MachineFunctionPass
     {
         this.mf = mf;
         this.fn = mf.getFunction();
+        tli = tm.getTargetLowering();
+
+        // Collects information about global to whole Functio.
+        funcInfo = new FunctionLoweringInfo(tli);
+        funcInfo.set(fn, mf);
+
+        valueMap = funcInfo.valueMap;
+        mbbMap = funcInfo.mbbmap;
+        staticAllocMap = funcInfo.staticAllocaMap;
+        localValueMap = new TObjectIntHashMap<>();
+
         mri = mf.getMachineRegisterInfo();
         mfi = mf.getFrameInfo();
         mcp = mf.getConstantPool();
@@ -276,7 +357,9 @@ public abstract class FastISel extends MachineFunctionPass
         // Iterate over all basic blocks in the function.
         for (BasicBlock llvmBB : fn.getBasicBlockList())
         {
+            // First, clear the locaValueMap.
             mbb = funcInfo.mbbmap.get(llvmBB);
+            startNewBlock(mbb);
 
             int begin = 0, end = llvmBB.size();
             int bi = begin;
@@ -284,11 +367,11 @@ public abstract class FastISel extends MachineFunctionPass
             // Lower any arguments needed in this block if this is entry block.
             if (llvmBB.equals(fn.getEntryBlock()))
             {
-                lowerArguments(llvmBB);
+                if (!lowerArguments(llvmBB))
+                    assert false:"Failed to lower argument!";
             }
 
             // Do FastISel on as many instructions as possible.
-            startNewBlock(mbb);
             for (; bi != end; ++bi)
             {
                 if (llvmBB.getInstAt(bi) instanceof Instruction.TerminatorInst)
@@ -338,10 +421,12 @@ public abstract class FastISel extends MachineFunctionPass
         }
     }
 
-    private void lowerArguments(BasicBlock llvmBB)
-    {
-        // TODO: 17-8-4
-    }
+    /**
+     * This method takes responsibility for lowering the function formal arguments
+     * into the specified Memory Location or register.
+     * @param llvmBB
+     */
+    protected abstract boolean lowerArguments(BasicBlock llvmBB);
 
     public int createResultReg(TargetRegisterClass rc)
     {
@@ -796,79 +881,6 @@ public abstract class FastISel extends MachineFunctionPass
         }
 
         updateValueMap(u, resultReg);
-        return true;
-    }
-
-    private boolean selectGetElementPtr(User u)
-    {
-        int baseAddr = getRegForValue(u.operand(0));
-        if (baseAddr == 0)
-            // Unhandled operand. Halt "Fast" instruction selection.
-            return false;
-
-        Type ty = u.operand(0).getType();
-        MVT vt = tli.getPointerTy();
-        for (int i = 1; i < u.getNumOfOperands(); i++)
-        {
-            Value idx = u.operand(i);
-            if (ty instanceof StructType)
-            {
-                StructType sty = (StructType)ty;
-                long field = ((ConstantInt)idx).getZExtValue();
-                if (field != 0)
-                {
-                    // baseAddr = baseAddr + offset.
-                    long offset = td.getStructLayout(sty).getElementOffset(field);
-
-                    baseAddr = fastEmit_ri_(vt, ISD.ADD, baseAddr, offset, vt);
-                    if (baseAddr == 0)
-                        return false;
-                }
-
-                ty = sty.getElementType((int) field);
-            }
-            else
-            {
-                assert ty instanceof SequentialType;
-                ty = ((SequentialType)ty).getElementType();
-
-                // If this is a constant subscript, handle it quickly.
-                if (idx instanceof ConstantInt)
-                {
-                    ConstantInt ci = (ConstantInt)idx;
-                    if (ci.getZExtValue() == 0)
-                        continue;
-                    long off = td.getTypeAllocSize(ty) * ((ConstantInt)ci).getSExtValue();
-
-                    // baseAddr = baseAddr + sizeOfElt * idx.
-                    baseAddr = fastEmit_ri_(vt, ISD.ADD, baseAddr, off, vt);
-                    if (baseAddr == 0)
-                        // Failure.
-                        return false;
-                    continue;
-                }
-
-                // baseAddr = baseAddr + sizeOfElt * idx.
-                long eltSize = td.getTypeAllocSize(ty);
-                int idxN = getRegForGEPIndex(idx);
-                if (idxN == 0)
-                    return false;
-
-                if (eltSize != 1)
-                {
-                    // If eltSize != 0, emit multiple instructon.
-                    idxN = fastEmit_ri_(vt, ISD.MUL, idxN, eltSize, vt);
-                    if (idxN == 0)
-                        return false;
-                }
-                baseAddr = fastEmit_rr(vt, vt, ISD.ADD, baseAddr, idxN);
-                if (baseAddr == 0)
-                    return false;
-            }
-        }
-
-        // We successfully emitted code for the given LLVM instruction.
-        updateValueMap(u, baseAddr);
         return true;
     }
 

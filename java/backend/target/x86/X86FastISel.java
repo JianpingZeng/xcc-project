@@ -26,10 +26,7 @@ import backend.target.TargetData;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
-import backend.type.FunctionType;
-import backend.type.PointerType;
-import backend.type.StructType;
-import backend.type.Type;
+import backend.type.*;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
@@ -135,9 +132,84 @@ public class X86FastISel extends FastISel
                 updateValueMap(inst, Reg);
                 return true;
             }
+
+            case GetElementPtr:
+                return selectGetElementPtr(inst);
+        }
+        return false;
+    }
+
+    private boolean selectGetElementPtr(User u)
+    {
+        int baseAddr = getRegForValue(u.operand(0));
+        if (baseAddr == 0)
+            // Unhandled operand. Halt "Fast" instruction selection.
+            return false;
+
+        Type ty = u.operand(0).getType();
+        MVT vt = tli.getPointerTy();
+        for (int i = 1; i < u.getNumOfOperands(); i++)
+        {
+            Value idx = u.operand(i);
+            if (ty instanceof StructType)
+            {
+                StructType sty = (StructType)ty;
+                long field = ((ConstantInt)idx).getZExtValue();
+                if (field != 0)
+                {
+                    // baseAddr = baseAddr + offset.
+                    long offset = td.getStructLayout(sty).getElementOffset(field);
+
+                    baseAddr = fastEmit_ri_(vt, ISD.ADD, baseAddr, offset, vt);
+                    if (baseAddr == 0)
+                        return false;
+                }
+
+                ty = sty.getElementType((int) field);
+            }
+            else
+            {
+                assert ty instanceof SequentialType;
+                ty = ((SequentialType)ty).getElementType();
+
+                // If this is a constant subscript, handle it quickly.
+                if (idx instanceof ConstantInt)
+                {
+                    ConstantInt ci = (ConstantInt)idx;
+                    if (ci.getZExtValue() == 0)
+                        continue;
+                    long off = td.getTypeAllocSize(ty) * ((ConstantInt)ci).getSExtValue();
+
+                    // baseAddr = baseAddr + sizeOfElt * idx.
+                    baseAddr = fastEmit_ri_(vt, ISD.ADD, baseAddr, off, vt);
+                    if (baseAddr == 0)
+                        // Failure.
+                        return false;
+                    continue;
+                }
+
+                // baseAddr = baseAddr + sizeOfElt * idx.
+                long eltSize = td.getTypeAllocSize(ty);
+                int idxN = getRegForGEPIndex(idx);
+                if (idxN == 0)
+                    return false;
+
+                if (eltSize != 1)
+                {
+                    // If eltSize != 0, emit multiple instructon.
+                    idxN = fastEmit_ri_(vt, ISD.MUL, idxN, eltSize, vt);
+                    if (idxN == 0)
+                        return false;
+                }
+                baseAddr = fastEmit_rr(vt, vt, ISD.ADD, baseAddr, idxN);
+                if (baseAddr == 0)
+                    return false;
+            }
         }
 
-        return false;
+        // We successfully emitted code for the given LLVM instruction.
+        updateValueMap(u, baseAddr);
+        return true;
     }
 
     /**
@@ -281,8 +353,8 @@ public class X86FastISel extends FastISel
                 return false;
         }
         resultReg.set(createResultReg(rc));
-        X86InstrBuilder
-                .addFullAddress(buildMI(mbb, instrInfo.get(opc), resultReg.get()), am);
+        X86InstrBuilder.addFullAddress(buildMI(mbb, instrInfo.get(opc),
+                resultReg.get()), am);
         return true;
     }
 
@@ -1185,14 +1257,14 @@ public class X86FastISel extends FastISel
 
         // Handle only C and fastcc calling conventions for now.
         CallSite cs = new CallSite(ci);
-        CallingConv CC = cs.getCallingConv();
-        if (CC != CallingConv.C && CC != CallingConv.Fast
-                && CC != CallingConv.X86_FastCall)
+        CallingConv cc = cs.getCallingConv();
+        if (cc != CallingConv.C && cc != CallingConv.Fast
+                && cc != CallingConv.X86_FastCall)
             return false;
 
         // On X86, -tailcallopt changes the fastcc ABI. FastISel doesn't
         // handle this for now.
-        if (CC == CallingConv.Fast && PerformTailCallOpt)
+        if (cc == CallingConv.Fast && PerformTailCallOpt)
             return false;
 
         // Let SDISel handle vararg functions.
@@ -1281,8 +1353,8 @@ public class X86FastISel extends FastISel
         // Analyze operands of the call, assigning locations to each operand.
         ArrayList<CCValAssign> ArgLocs = new ArrayList<>();
 
-        CCState CCInfo = new CCState(CC, false, tm, ArgLocs);
-        CCInfo.analyzeCallOperands(argVTs, argFlags, CCAssignFnForCall(CC));
+        CCState CCInfo = new CCState(cc, false, tm, ArgLocs);
+        CCInfo.analyzeCallOperands(argVTs, argFlags, CCAssignFnForCall(cc));
 
         // Get a count of how many bytes are to be pushed on the stack.
         int NumBytes = CCInfo.getNextStackOffset();
@@ -1362,9 +1434,8 @@ public class X86FastISel extends FastISel
             if (VA.isRegLoc())
             {
                 TargetRegisterClass RC = tli.getRegClassFor(ArgVT);
-                boolean Emitted = instrInfo
-                        .copyRegToReg(mbb, mbb.size(), VA.getLocReg(), Arg, RC,
-                                RC);
+                boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(),
+                        VA.getLocReg(), Arg, RC, RC);
                 assert Emitted : "Failed to emit a copy instruction!";
                 Emitted = true;
                 RegArgs.add(VA.getLocReg());
@@ -1456,7 +1527,7 @@ public class X86FastISel extends FastISel
         if (retVT.getSimpleVT().simpleVT != MVT.isVoid)
         {
             ArrayList<CCValAssign> RVLocs = new ArrayList<>();
-            CCInfo = new CCState(CC, false, tm, RVLocs);
+            CCInfo = new CCState(cc, false, tm, RVLocs);
             CCInfo.analyzeCallResult(retVT, RetCC_X86);
 
             // Copy all of the result registers out of their specified physreg.
@@ -1551,6 +1622,118 @@ public class X86FastISel extends FastISel
             return CC_X86_32_FastCC;
         else
             return CC_X86_32_C;
+    }
+
+    @Override
+    protected boolean lowerArguments(BasicBlock llvmBB)
+    {
+        // Firstly, assign a virtual register for each function argument,
+        // also update localValueMap.
+        for (Argument arg : fn.getArgumentList())
+        {
+            // just update those argument which is not in valueMap.
+            if (!valueMap.contains(arg))
+            {
+                int reg = funcInfo.createRegForValue(arg);
+                if (reg == 0)
+                    return false;
+
+                localValueMap.put(arg, reg);
+            }
+        }
+
+        CallingConv cc = fn.getCallingConv();
+        if (cc != CallingConv.C && cc != CallingConv.Fast
+                && cc != CallingConv.X86_FastCall)
+            return false;
+
+        // On X86, -tailcallopt changes the fastcc ABI. FastISel doesn't
+        // handle this for now.
+        if (cc == CallingConv.Fast && PerformTailCallOpt)
+            return false;
+
+        if (((FunctionType)fn.getType().getElementType()).isVarArg())
+        {
+            assert false:"Currently variadic function is not supported!";
+            return false;
+        }
+
+        // A list of regsiters hold the value of each actual argument.
+        TIntArrayList argRegs = new TIntArrayList();
+        ArrayList<EVT> argVTs = new ArrayList<>();
+        ArrayList<ArgFlagsTy> argFlags = new ArrayList<>();
+
+        for (Value arg : fn.getArgumentList())
+        {
+            int argReg = getRegForValue(arg);
+            if (argReg == 0)
+                return false;
+
+            ArgFlagsTy Flags = new ArgFlagsTy();
+
+            Type argTy = arg.getType();
+            EVT argVT = new EVT();
+            OutParamWrapper<EVT> x = new OutParamWrapper<>(argVT);
+            if (!isTypeLegal(argTy, x))
+                return false;
+
+            argVT = x.get();
+            int OriginalAlignment = td.getABITypeAlignment(argTy);
+            Flags.setOrigAlign(OriginalAlignment);
+
+            argRegs.add(argReg);
+            argVTs.add(argVT);
+            argFlags.add(Flags);
+        }
+
+        // Analyze operands of the call, assigning locations to each operand.
+        ArrayList<CCValAssign> argLocs = new ArrayList<>();
+
+        CCState ccInfo = new CCState(cc, false, tm, argLocs);
+        ccInfo.analyzeCallOperands(argVTs, argFlags, CCAssignFnForCall(cc));
+
+        for (int i = 0, e = argLocs.size(); i != e; ++i)
+        {
+            CCValAssign va = argLocs.get(i);
+            // The register where caller pass the specified argument into.
+            int argReg = argRegs.get(va.getValNo());
+            // The EVT of the specified actual argument.
+            EVT argVT = argVTs.get(va.getValNo());
+
+            if (va.isRegLoc())
+            {
+                // Emit an instruction copy the actual argument from assigned
+                // location to the a local virtual register (argReg).
+                TargetRegisterClass regClass = tli.getRegClassFor(argVT);
+                boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(),
+                        argReg, va.getLocReg(), regClass, regClass);
+                assert Emitted : "Failed to emit a copy instruction!";
+                Emitted = true;
+            }
+            else
+            {
+                // Emit an instruction copy the actual argument from stack
+                // location to the local location (a virtual register).
+                int locMemOffset = va.getLocMemOffset();
+                X86AddressMode addrMode = new X86AddressMode();
+                addrMode.base.setBase(stackPtr);
+                addrMode.disp = locMemOffset;
+
+                int opc;
+                if (argVT.getSizeInBits() == 32)
+                    opc = MOV32rm;
+                else if (argVT.getSizeInBits() == 64)
+                    opc = MOV64rm;
+                else
+                {
+                    assert false : "Unsupported passing argument!";
+                    return false;
+                }
+                X86InstrBuilder.addFullAddress(buildMI(mbb, instrInfo.get(opc),
+                        argReg), addrMode);
+            }
+        }
+        return true;
     }
 
     public X86InstrInfo getInstrInfo()
