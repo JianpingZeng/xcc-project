@@ -34,14 +34,14 @@ public class X86AddressMode
         FrameIndexBase
     }
 
-    public abstract class Base
+    public static abstract class Base
     {
         public abstract int getBase();
 
         public abstract void setBase(int base);
     }
 
-    public class RegisterBase extends Base
+    public static class RegisterBase extends Base
     {
         private int reg;
 
@@ -63,7 +63,7 @@ public class X86AddressMode
         }
     }
 
-    public class FrameIndexBase extends Base
+    public static class FrameIndexBase extends Base
     {
         private int frameIndex;
 

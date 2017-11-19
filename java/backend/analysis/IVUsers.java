@@ -142,13 +142,13 @@ public final class IVUsers implements LoopPass
 				if (user instanceof PhiNode || processed.contains(user)
 						|| !addUsersIfInteresting(user))
 				{
-					Util.DEBUG("Found User in other loops: ", user, "\n",
+					Util.Debug("Found User in other loops: ", user, "\n",
 							"  Of SCEV: ", ise, "\n");
 					addUserToIVUsers = true;
 				}
 			}else if (processed.contains(user) || !addUserToIVUsers)
 			{
-				Util.DEBUG("Found User : ", user, "\n",
+				Util.Debug("Found User : ", user, "\n",
 						"  Of SCEV: ", ise, "\n");
 				addUserToIVUsers = true;
 			}
@@ -175,7 +175,7 @@ public final class IVUsers implements LoopPass
 					SCEV newStart = se.getMinusSCEV(start, stride);
 					strideUses.addUser(newStart, user, inst);
 					strideUses.users.getLast().setUseOfPostIncrementedValue(true);
-					Util.DEBUG("  Using postinc SCEV, start=", newStart, "\n");
+					Util.Debug("  Using postinc SCEV, start=", newStart, "\n");
 				}
 				else
 				{

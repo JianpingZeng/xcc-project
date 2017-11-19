@@ -96,27 +96,52 @@ public class MachineOperand
 	// For constant FP.
 	private ConstantFP cfp;
 
-	private class RegOp
+	private static class RegOp
 	{
 		int regNo;
 		MachineOperand prev;   // Access list for register.
 		MachineOperand next;
+
+		RegOp(int regNo)
+        {
+            this(regNo, null, null);
+        }
+
+        RegOp(int regNo, MachineOperand prev, MachineOperand next)
+        {
+            this.regNo = regNo;
+            this.prev = prev;
+            this.next = next;
+        }
 	}
 	// For register operand.
 	private RegOp reg;
 
-	private class Val
+	private static class Val
 	{
 		int index;
 		String symbolName;
 		GlobalValue gv;
+
+		public Val()
+        {
+            index = 0;
+            symbolName = "";
+            gv = null;
+        }
 	}
 	// For Offset and an object identifier. this represent the object as with
 	// an optional offset from it.
-	private class OffsetedInfo
+	private static class OffsetedInfo
 	{
 		Val val;
 		long offset;
+
+		OffsetedInfo()
+        {
+            val = new Val();
+            offset = 0;
+        }
 	}
 
 	private OffsetedInfo offsetedInfo;
@@ -541,21 +566,48 @@ public class MachineOperand
 	{
 		// Unlink this reg operand from reg def-use linked list.
 		assert isOnRegUseList() :"Reg operand is not on a use list";
-		MachineOperand nextOp = reg.next;
-		reg.prev.reg.next = nextOp;
-		if (nextOp != null)
-		{
-			assert nextOp.getReg() == getReg():"Corrupt reg use/def chain!";
-			nextOp.reg.prev = reg.prev;
-		}
+        MachineRegisterInfo regInfo = parentMI.getRegInfo();
+        MachineOperand head = regInfo.getRegUseDefListHead(reg.regNo);
+        if (head.equals(this))
+        {
+            regInfo.updateRegUseDefListHead(getReg(), head.reg.next);
+        }
+        else
+        {
+            if (reg.prev != null)
+            {
+                assert reg.prev.getReg()
+                        == getReg() : "Corrupt reg use/def chain!";
+                reg.prev.reg.next = reg.next;
+            }
+            if (reg.next != null)
+            {
+                assert reg.next.getReg()
+                        == getReg() : "Corrupt reg use/def chain!";
+                reg.next.reg.prev = reg.prev;
+            }
+        }
 		reg.prev = null;
 		reg.next = null;
 	}
 
+    /**
+     * Return true if this operand is on a register use/def list
+     * or false if not.  This can only be called for register operands that are
+     * part of a machine instruction.
+     * @return
+     */
 	public boolean isOnRegUseList()
 	{
-		assert isRegister();
-		return reg.prev != null;
+		assert isRegister():"Can only add reg operand to use lists";
+		if (parentMI != null)
+        {
+            MachineRegisterInfo regInfo = parentMI.getRegInfo();
+            MachineOperand head = regInfo.getRegUseDefListHead(reg.regNo);
+            if (head != null)
+                return true;
+        }
+        return false;
 	}
 
 	public void changeToRegister(int reg,
@@ -611,37 +663,58 @@ public class MachineOperand
 	}
 
 	/**
-	 * Add this register operand to the specified
-	 * MachineRegisterInfo.  If it is null, then the next/prev fields should be
-	 * explicitly nulled out.
+	 * Add this register operand to the specified MachineRegisterInfo.
+     * If it is null, then the next/prev fields should be explicitly
+     * nulled out.
 	 * @param regInfo
 	 */
 	public void addRegOperandToRegInfo(MachineRegisterInfo regInfo)
 	{
+	    // FIXME 2017/11/18, this method works inproperly.
 		assert isRegister():"Can only add reg operand to use lists";
-		// FIXME 2017.7.16
+
+        // If the reginfo pointer is null, just explicitly null out or next/prev
+        // pointers, to ensure they are not garbage.
 		if (regInfo == null)
 		{
 			reg.prev = null;
 			reg.next = null;
 			return;
 		}
-
+        // Otherwise, add this operand to the head of the registers use/def list.
 		MachineOperand head = regInfo.getRegUseDefListHead(getReg());
+		if (head == null)
+        {
+            // If the head node is null, set current op as head node.
+            regInfo.updateRegUseDefListHead(getReg(),this);
+            return;
+        }
 
-		if (head != null && head.isDef())
-		{
-			head = head.reg.next;
-		}
+        if (isDef())
+        {
+            assert !head.isDef():"A register operand only defined at mose once!";
+            // insert the current node as head
+            reg.next = head;
+            head.reg.prev = this;
+            regInfo.updateRegUseDefListHead(getReg(), this);
+        }
+        else
+        {
+            // Insert this machine operand into where immediately after head node.
+            //  [    ] ---> [] -------->NULL
+            //  [head] <--- []
+            //  |    }      []
+            //              ^ (prev)  ^  insert here (cur)
+            MachineOperand prev = head, cur = head;
+            while (cur.reg.next != null)
+            {
+                prev = cur;
+                cur = cur.reg.next;
+            }
 
-		reg.next = head;
-		if (reg.next != null)
-		{
-			assert getReg() == reg.next.getReg():"Different regs on the same list!";
-			reg.next.reg.prev = reg.next;
-		}
-		reg.prev = head;
-		head = this;
+            prev.reg.next = this;
+            this.reg.prev = prev;
+        }
 	}
 
 	public static MachineOperand createImm(long val)
@@ -679,8 +752,9 @@ public class MachineOperand
 		op.isImp = isImp;
 		op.isKill = isKill;
 		op.isDead = isDead;
-		op.isUndef = op.isUndef;
+		op.isUndef = isUndef;
 		op.isEarlyClobber = isEarlyClobber;
+		op.reg = new RegOp(reg);
 		op.subReg = subreg;
 		return op;
 	}
@@ -697,6 +771,7 @@ public class MachineOperand
 	public static MachineOperand createFrameIndex(int idx)
 	{
 		MachineOperand op = new MachineOperand(MO_FrameIndex);
+		op.offsetedInfo = new OffsetedInfo();
 		op.setIndex(idx);
 		return op;
 	}
@@ -704,6 +779,7 @@ public class MachineOperand
 	public static MachineOperand createConstantPoolIndex(int idx, int offset, int targetFlags)
 	{
 		MachineOperand op = new MachineOperand(MO_ConstantPoolIndex);
+        op.offsetedInfo = new OffsetedInfo();
 		op.setIndex(idx);
 		op.setOffset(offset);
 		op.setTargetFlags(targetFlags);
@@ -723,6 +799,7 @@ public class MachineOperand
 			int targetFlags)
 	{
 		MachineOperand op = new MachineOperand(MO_GlobalAddress);
+        op.offsetedInfo = new OffsetedInfo();
 		op.offsetedInfo.val.gv = gv;
 		op.setOffset(offset);
 		op.setTargetFlags(targetFlags);
@@ -734,6 +811,7 @@ public class MachineOperand
 			int targetFlags)
 	{
 		MachineOperand op = new MachineOperand(MO_ExternalSymbol);
+        op.offsetedInfo = new OffsetedInfo();
 		op.offsetedInfo.val.symbolName = symName;
 		op.setOffset(offset);
 		op.setTargetFlags(targetFlags);

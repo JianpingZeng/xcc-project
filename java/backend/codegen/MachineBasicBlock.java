@@ -48,14 +48,31 @@ public class MachineBasicBlock
 
 	public LinkedList<MachineInstr> getInsts() {return insts;}
 
-	public void addLast(MachineInstr instr) {insts.addLast(instr);}
+	public void addLast(MachineInstr instr)
+	{
+		insts.addLast(instr);
+		addNodeToList(instr);
+	}
 
-	public MachineInstr getInstAt(int index) {return insts.get(index);}
+	public MachineInstr getInstAt(int index)
+	{
+		return insts.get(index);
+	}
+
+	private void addNodeToList(MachineInstr instr)
+	{
+		assert instr.getParent() == null:"machine instruction already have parent!";
+		instr.setParent(this);
+
+		// Add the instruction's register operands to their corresponding
+		// use/def lists.
+		instr.addRegOperandsToUseLists(parent.getMachineRegisterInfo());
+	}
 
 	public void insert(int itr, MachineInstr instr)
 	{
 		insts.add(itr, instr);
-		instr.setParent(this);
+		addNodeToList(instr);
 	}
 
 	public void erase(int idx) {insts.remove(idx);}
@@ -181,6 +198,11 @@ public class MachineBasicBlock
 	public MachineFunction getParent()
 	{
 		return parent;
+	}
+
+	public void setParent(MachineFunction parent)
+	{
+		this.parent = parent;
 	}
 
 	public Iterator<MachineBasicBlock> predIterator()

@@ -17,6 +17,7 @@ package backend.codegen;
  */
 
 import backend.target.TargetRegisterClass;
+import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import tools.BitMap;
 import tools.Pair;
@@ -106,19 +107,22 @@ public final class MachineRegisterInfo
      * This is an array of the head of the use/def list for
      * physical registers.
      */
-    private ArrayList<MachineOperand> physRegUseDefLists;
+    private MachineOperand[] physRegUseDefLists;
 
     private BitMap usedPhysRegs;
 
     private ArrayList<Pair<Integer, Integer>> liveIns;
     private TIntArrayList liveOuts;
 
-    public MachineRegisterInfo()
+    public MachineRegisterInfo(TargetRegisterInfo tri)
     {
         vregInfo = new ArrayList<>();
         regClass2VRegMap = new ArrayList<>();
         regAllocHints = new ArrayList<>();
-        physRegUseDefLists = new ArrayList<>();
+
+        // Create physical register def/use chain.
+        physRegUseDefLists = new MachineOperand[tri.getNumRegs()];
+
         usedPhysRegs = new BitMap();
         liveIns = new ArrayList<>();
         liveOuts = new TIntArrayList();
@@ -220,9 +224,26 @@ public final class MachineRegisterInfo
     public MachineOperand getRegUseDefListHead(int regNo)
     {
         if (regNo < FirstVirtualRegister)
-            return physRegUseDefLists.get(regNo);
+            return physRegUseDefLists[regNo];
         regNo -= FirstVirtualRegister;
         return vregInfo.get(regNo).second;
+    }
+
+    /**
+     * Update the head of def/use list for specified physical or virtual register
+     * with head.
+     * @param regNo Physical or virtual register number
+     * @param head  The head of def/use list of specified register number.
+     */
+    public void updateRegUseDefListHead(int regNo, MachineOperand head)
+    {
+        if (regNo < FirstVirtualRegister)
+            physRegUseDefLists[regNo] = head;
+        else
+        {
+            regNo -= FirstVirtualRegister;
+            vregInfo.get(regNo).second = head;
+        }
     }
 
     /**
