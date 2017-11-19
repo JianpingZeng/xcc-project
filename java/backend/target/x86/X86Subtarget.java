@@ -201,7 +201,7 @@ public class X86Subtarget extends TargetSubtarget
         if (is64bit)
             hasX86_64 = true;
 
-        Util.DEBUG("Subtarget features: SSELevel " + x86SSELevel
+        Util.Debug("Subtarget features: SSELevel " + x86SSELevel
                 + ", 3DNowLevel " + x863DNowLevel + ", 64bit " + hasX86_64);
         assert !is64bit || hasX86_64 :"64-bit code requested on a subtarget that doesn't support it!";
         if (tt.length() > 5)

@@ -220,49 +220,56 @@ public final class MachineInstrBuilder
 		return this;
 	}
 
-	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
+	public static MachineInstrBuilder buildMI(
+	        MachineBasicBlock mbb,
 			int insertPos,
-			TargetInstrDesc desc)
+			TargetInstrDesc tid)
 	{
-		MachineInstr mi = new MachineInstr(desc);
+		MachineInstr mi = new MachineInstr(tid);
 		mbb.insert(insertPos, mi);
 		return new MachineInstrBuilder(mi);
 	}
 
-	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
+    public static MachineInstrBuilder buildMI(
+            MachineBasicBlock mbb,
+            int insertPos,
+            TargetInstrDesc tid,
+            int destReg)
+    {
+        MachineInstr mi = new MachineInstr(tid);
+        mbb.insert(insertPos, mi);
+        return new MachineInstrBuilder(mi).addReg(destReg, RegState.Define);
+    }
+
+    public static MachineInstrBuilder buildMI(
+	        MachineBasicBlock mbb,
 			TargetInstrDesc tid,
 			int destReg)
 	{
-		MachineInstr mi = new MachineInstr(mbb, tid);
-		mbb.addLast(mi);
+		MachineInstr mi = new MachineInstr(tid);
+        mbb.addLast(mi);
 		return new MachineInstrBuilder(mi).addReg(destReg, RegState.Define);
 	}
 
-	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb,
-			int insertPos,
-			TargetInstrDesc tid,
-			int destReg)
-	{
-		MachineInstr mi = new MachineInstr(mbb, tid);
-		mbb.insert(insertPos, mi);
-		return new MachineInstrBuilder(mi).addReg(destReg, RegState.Define);
-	}
+    public static MachineInstrBuilder buildMI(
+            MachineBasicBlock mbb,
+            TargetInstrDesc tid)
+    {
+        MachineInstr mi = new MachineInstr(tid);
+        mbb.addLast(mi);
+        return new MachineInstrBuilder(mi);
+    }
 
-	public static MachineInstrBuilder buildMI(TargetInstrDesc desc)
-	{
-		return new MachineInstrBuilder(new MachineInstr(desc));
-	}
+    public static MachineInstrBuilder buildMI(TargetInstrDesc desc)
+    {
+        return new MachineInstrBuilder(new MachineInstr(desc));
+    }
 
-	public static MachineInstrBuilder buildMI(TargetInstrDesc desc, int destReg)
-	{
-		return new MachineInstrBuilder(new MachineInstr(desc)).
-				addReg(destReg, RegState.Define);
-	}
-
-	public static MachineInstrBuilder buildMI(MachineBasicBlock mbb, TargetInstrDesc desc)
-	{
-		return new MachineInstrBuilder(new MachineInstr(mbb, desc));
-	}
+    public static MachineInstrBuilder buildMI(TargetInstrDesc desc, int destReg)
+    {
+        return new MachineInstrBuilder(new MachineInstr(desc)).
+                addReg(destReg, RegState.Define);
+    }
 
 	public MachineInstrBuilder addMemOperand(MachineMemOperand mmo)
 	{

@@ -50,7 +50,7 @@ public class MachineFunction
 		target = tm;
 		mbbNumber = new ArrayList<>();
 		frameInfo = new MachineFrameInfo(tm.getFrameInfo());
-		machineRegisterInfo = new MachineRegisterInfo();
+		machineRegisterInfo = new MachineRegisterInfo(tm.getRegisterInfo());
 		constantPool = new MachineConstantPool(tm.getTargetData());
 		phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
@@ -169,6 +169,8 @@ public class MachineFunction
 
 	public MachineBasicBlock createMachineBasicBlock(BasicBlock bb)
 	{
-		return new MachineBasicBlock(bb);
+		MachineBasicBlock mbb = new MachineBasicBlock(bb);
+		mbb.setParent(this);
+		return mbb;
 	}
 }

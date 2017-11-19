@@ -132,14 +132,21 @@ public class X86FastISel extends FastISel
                 updateValueMap(inst, Reg);
                 return true;
             }
-
             case GetElementPtr:
-                return selectGetElementPtr(inst);
+                return x86SelectGetElementPtr(inst);
+            case Ret:
+                return x86SelectRet(inst);
+            case Switch:
+                assert false:"Switch should already be handled by LowerSwitch pass!";
+                break;
+            case Unreachable:
+                assert false:"Unreachable instruction should be removed!";
+                break;
         }
         return false;
     }
 
-    private boolean selectGetElementPtr(User u)
+    private boolean x86SelectGetElementPtr(User u)
     {
         int baseAddr = getRegForValue(u.operand(0));
         if (baseAddr == 0)
@@ -210,6 +217,107 @@ public class X86FastISel extends FastISel
         // We successfully emitted code for the given LLVM instruction.
         updateValueMap(u, baseAddr);
         return true;
+    }
+
+    private boolean x86SelectRet(Instruction inst)
+    {
+        // Now handle call return value (if any).
+        Type retTy = fn.getReturnType();
+        EVT retVT;
+        OutParamWrapper<EVT> x = new OutParamWrapper<>();
+        if (retTy.equals(LLVMContext.VoidTy))
+            retVT = new EVT(MVT.isVoid);
+        else if (!isTypeLegal(retTy, x, true))
+            return false;
+
+        retVT = x.get();
+
+        // Allow calls which produce i1 results.
+        boolean AndToI1 = false;
+        if (retVT.equals(new EVT(MVT.i1)))
+        {
+            retVT = new EVT(MVT.i8);
+            AndToI1 = true;
+        }
+
+        CallingConv cc = fn.getCallingConv();
+        if (cc != CallingConv.C && cc != CallingConv.Fast
+                && cc != CallingConv.X86_FastCall)
+            return false;
+
+        // On X86, -tailcallopt changes the fastcc ABI. FastISel doesn't
+        // handle this for now.
+        if (cc == CallingConv.Fast && PerformTailCallOpt)
+            return false;
+
+        if (retVT.getSimpleVT().simpleVT != MVT.isVoid)
+        {
+            ArrayList<CCValAssign> RVLocs = new ArrayList<>();
+            CCState ccInfo = new CCState(cc, false, tm, RVLocs);
+            ccInfo.analyzeCallResult(retVT, RetCC_X86);
+
+            // Copy all of the result registers out of their specified physreg.
+            assert RVLocs.size() == 1 : "Can't handle multi-value calls!";
+            EVT CopyVT = RVLocs.get(0).getValVT();
+            TargetRegisterClass DstRC = tli.getRegClassFor(CopyVT);
+            TargetRegisterClass SrcRC = DstRC;
+
+            // If this is a call to a function that returns an fp value on the x87 fp
+            // stack, but where we prefer to use the value in xmm registers, copy it
+            // out as F80 and use a truncate to move it from fp stack reg to xmm reg.
+            if ((RVLocs.get(0).getLocReg() == ST0
+                    || RVLocs.get(0).getLocReg() == ST1)
+                    && isScalarFPTypeInSSEReg(RVLocs.get(0).getValVT()))
+            {
+                CopyVT = new EVT(MVT.f80);
+                SrcRC = RSTRegisterClass;
+                DstRC = RFP80RegisterClass;
+            }
+
+            int ResultReg = createResultReg(DstRC);
+            boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(), ResultReg,
+                    RVLocs.get(0).getLocReg(), DstRC, SrcRC);
+            assert Emitted : "Failed to emit a copy instruction!";
+            Emitted = true;
+            if (CopyVT != RVLocs.get(0).getValVT())
+            {
+                // Round the F80 the right size, which also moves to the appropriate xmm
+                // register. This is accomplished by storing the F80 value in memory and
+                // then loading it back. Ewww...
+                EVT ResVT = RVLocs.get(0).getValVT();
+                int Opc = ResVT.equals(new EVT(MVT.f32)) ?
+                        ST_Fp80m32 :
+                        ST_Fp80m64;
+                int MemSize = ResVT.getSizeInBits() / 8;
+                int FI = mfi.createStackObject(MemSize, MemSize);
+                MachineInstrBuilder
+                        .addFrameReference(buildMI(mbb, DL, instrInfo.get(Opc)), FI)
+                        .addReg(ResultReg);
+                DstRC = ResVT.equals(new EVT(MVT.f32)) ?
+                        FR32RegisterClass :
+                        FR64RegisterClass;
+                Opc = ResVT.equals(new EVT(MVT.f32)) ?
+                        MOVSSrm :
+                        MOVSDrm;
+                ResultReg = createResultReg(DstRC);
+                MachineInstrBuilder.addFrameReference(buildMI(mbb, DL, instrInfo
+                                .get(Opc), ResultReg),
+                        FI);
+            }
+
+            if (AndToI1)
+            {
+                // Mask out all but lowest bit for some call which produces an i1.
+                int AndResult = createResultReg(GR8RegisterClass);
+                buildMI(mbb, DL, instrInfo.get(AND8ri), AndResult).addReg(ResultReg)
+                        .addImm(1);
+                ResultReg = AndResult;
+            }
+
+            updateValueMap(inst, ResultReg);
+        }
+        buildMI(mbb, instrInfo.get(RET));
+        return false;
     }
 
     /**
@@ -506,7 +614,7 @@ public class X86FastISel extends FastISel
                     if (staticAllocMap.containsKey(ai))
                     {
                         am.baseType = FrameIndexBase;
-                        am.base.setBase(staticAllocMap.get(ai));
+                        am.base = new X86AddressMode.FrameIndexBase(staticAllocMap.get(ai));
                         return true;
                     }
                     break;
@@ -1716,7 +1824,8 @@ public class X86FastISel extends FastISel
                 // location to the local location (a virtual register).
                 int locMemOffset = va.getLocMemOffset();
                 X86AddressMode addrMode = new X86AddressMode();
-                addrMode.base.setBase(stackPtr);
+                addrMode.baseType = FrameIndexBase;
+                addrMode.base = new X86AddressMode.FrameIndexBase(stackPtr);
                 addrMode.disp = locMemOffset;
 
                 int opc;

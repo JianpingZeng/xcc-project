@@ -328,7 +328,7 @@ public class Util
         return countLeadingZeros64(~val);
     }
 
-	public static void DEBUG(Object... args)
+	public static void Debug(Object... args)
 	{
 		for (Object arg : args)
 			System.err.println(arg);

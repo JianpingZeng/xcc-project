@@ -24,7 +24,7 @@ import static backend.target.TargetInstrInfo.INLINEASM;
  * <p>There are 2 kinds of operands:
  * <ol>
  * <li>Explicit operands of the machine instruction in vector operands[].
- *  And the more important is that the format of MI is compatible with AT&T
+ *  And the more important is that the format of MI is compatible with Intel
  *  assembly, where dest operand is in the leftmost as follows:
  *  op dest, op0, op1;
  *  op dest op0.
@@ -54,6 +54,14 @@ public class MachineInstr implements Cloneable
 
 	private ArrayList<MachineMemOperand> memOperands = new ArrayList<>();
 
+    /**
+     * The value records the sum of implicitOps and real operands.
+     * Note that it is different with operands.size() which reflect current
+     * number of operands been added into operands list, but totalOperands means
+     * finally number after complete operands add.
+     */
+	private int totalOperands;
+
 	/**
 	 * Return true if it's illegal to add a new operand.
 	 *
@@ -61,8 +69,8 @@ public class MachineInstr implements Cloneable
 	 */
 	private boolean operandsComplete()
 	{
-		int numOperands = TargetInstrInfo.targetInstrDescs[opCode].numOperands;
-		if (numOperands >= 0 && numOperands <= getNumOperands())
+		int numOperands = tid.getNumOperands();
+		if (!tid.isVariadic() && getNumOperands() - numImplicitOps >= numOperands)
 			return true;
 		return false;
 	}
@@ -83,21 +91,11 @@ public class MachineInstr implements Cloneable
 		{
 			numImplicitOps += tid.getImplicitUses().length;
 		}
-
+        totalOperands = numImplicitOps + tid.getNumOperands();
 		operands = new ArrayList<>();
-		for (int idx = numImplicitOps + tid.getNumOperands(); idx > 0; idx--)
-			operands.add(null);
+
 		if (!noImp)
 			addImplicitDefUseOperands();
-	}
-
-	public MachineInstr(MachineBasicBlock mbb, TargetInstrDesc tid)
-	{
-		this(tid, false);
-		parent = mbb;
-		assert mbb
-				!= null : "Can not use inserting operation with null basic block";
-		mbb.addLast(this);
 	}
 
 	public void addImplicitDefUseOperands()
@@ -126,7 +124,61 @@ public class MachineInstr implements Cloneable
 	 */
 	public void addOperand(MachineOperand mo)
 	{
-		// TODO: 17-7-16
+		boolean isImpReg = mo.isRegister() && mo.isImplicit();
+		assert isImpReg || !operandsComplete() :
+                "Try to add an operand to a machine instr that is already done!";
+
+		MachineRegisterInfo regInfo = getRegInfo();
+        // If we are adding the operand to the end of the list, our job is simpler.
+        // This is true most of the time, so this is a reasonable optimization.
+		if (isImpReg || numImplicitOps == 0)
+        {
+            if (operands.isEmpty() || operands.size() < totalOperands)
+            {
+                mo.setParentMI(this);
+                operands.add(mo);
+                if (mo.isRegister())
+                    mo.addRegOperandToRegInfo(regInfo);
+                return;
+            }
+        }
+        // Otherwise, we have to insert a real operand before any implicit ones.
+        int opNo = operands.size() - numImplicitOps;
+		if (regInfo == null)
+        {
+            mo.setParentMI(this);
+            operands.add(opNo, mo);
+
+            if (mo.isRegister())
+                mo.addRegOperandToRegInfo(null);
+        }
+        else if (operands.size() < totalOperands)
+        {
+            for (int i = opNo; i < operands.size(); i++)
+            {
+                assert operands.get(i).isRegister():"Should only be an implicit register!";
+                operands.get(i).removeRegOperandFromRegInfo();
+            }
+
+            operands.add(opNo, mo);
+            mo.setParentMI(this);
+            if (mo.isRegister())
+                mo.addRegOperandToRegInfo(regInfo);
+
+            // re-add all the implicit ops.
+            for (int i = opNo+1; i < operands.size(); i++)
+            {
+                assert operands.get(i).isRegister():"Should only be an implicit register!";
+                operands.get(i).addRegOperandToRegInfo(regInfo);
+            }
+        }
+        else
+        {
+            removeRegOperandsFromUseList();
+            operands.add(opNo, mo);
+            mo.setParentMI(this);
+            addRegOperandsToUseLists(regInfo);
+        }
 	}
 
 	public void removeOperand(int opNo)
@@ -762,7 +814,7 @@ public class MachineInstr implements Cloneable
 	 * operands not be on their use lists yet.
 	 * @param regInfo
 	 */
-	private void addRegOperandsToUseLists(MachineRegisterInfo regInfo)
+    public void addRegOperandsToUseLists(MachineRegisterInfo regInfo)
 	{
 		for (int i = 0, e = operands.size(); i != e; i++)
         {

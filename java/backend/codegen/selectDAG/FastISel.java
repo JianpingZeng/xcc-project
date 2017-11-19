@@ -372,30 +372,33 @@ public abstract class FastISel extends MachineFunctionPass
             }
 
             // Do FastISel on as many instructions as possible.
+            if (Util.DEBUG)
+            {
+                System.err.println("========Instructions============");
+            }
             for (; bi != end; ++bi)
             {
-                if (llvmBB.getInstAt(bi) instanceof Instruction.TerminatorInst)
+                Instruction inst = llvmBB.getInstAt(bi);
+                if (Util.DEBUG)
                 {
-                    // TODO: 2017/11/17
-                    assert false:"TerminatorInst waited to be finished!";
-                    System.exit(-1);
+                    Util.Debug(inst.toString());
                 }
 
                 // First try normal tablegen-generated "fast" selection.
-                if (selectInstruction(llvmBB.getInstAt(bi)))
+                if (selectInstruction(inst))
                     continue;
 
                 // Next, try calling the target to attempt to handle the instruction.
-                if (targetSelectInstruction(llvmBB.getInstAt(bi)))
+                if (targetSelectInstruction(inst))
                     continue;
 
                 // Otherwise, give up on FastISel for the rest of the block.
                 // For now, be a little lenient about non-branch terminators.
-                Instruction inst = llvmBB.getInstAt(bi);
-                if (!(inst instanceof Instruction.TerminatorInst) || inst instanceof BranchInst)
+                if (inst instanceof Instruction.TerminatorInst)
                 {
-                    System.err.printf("FastISel didn't select the entire block!%n");
-                    inst.dump();
+                    // TODO: 2017/11/17
+                    assert false:"TerminatorInst waited to be finished!";
+                    System.exit(-1);
                 }
                 break;
             }
