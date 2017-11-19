@@ -97,7 +97,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                 boolean firstTied = true;
 
                 distanceMap.put(mi, mi + 1);
-                for (int si = 1, sz = tid.getNumOperands(); si != sz; ++si)
+                for (int si = 1, sz = tid.getNumOperands(); si < sz; ++si)
                 {
                     int ti = tid.getOperandConstraint(si, TIED_TO);
                     if (ti == -1)

@@ -6,8 +6,6 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;
 
-import java.util.HashMap;
-
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
@@ -104,25 +102,27 @@ public final class RegAllocSimple extends MachineFunctionPass
 
 	private void allocateBasicBlock(MachineBasicBlock mbb)
 	{
-		for (int i = 0, size = mbb.size(); i < size; i++)
+        TIntIntHashMap virToPhyRegMap = new TIntIntHashMap();
+		for (int i = 0; i < mbb.size(); i++)
 		{
 			MachineInstr mi = mbb.getInstAt(i);
 			regUsed.clear();
-
-			HashMap<Integer, Integer> virToPhyRegMap = new HashMap<>();
+            virToPhyRegMap.clear();
 
 			int opcode = mi.getOpcode();
 			TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
-			for (int useReg : desc.implicitUses)
-				regUsed.set(useReg);
+			if (desc.implicitUses != null && desc.implicitUses.length > 0)
+				for (int useReg : desc.implicitUses)
+					regUsed.set(useReg);
 
-			for (int defReg : desc.implicitDefs)
-				regUsed.set(defReg);
+			if (desc.implicitDefs != null && desc.implicitDefs.length > 0)
+				for (int defReg : desc.implicitDefs)
+					regUsed.set(defReg);
 
 			// loop over all operands, assign physical register for it.
 			for (int j = mi.getNumOperands() - 1; j >= 0; j--)
 			{
-				MachineOperand op = mi.getOperand(i);
+				MachineOperand op = mi.getOperand(j);
 				// just handle virtual register.
 				if (op.isRegister() && op.getReg() != 0 && isVirtualRegister(op.getReg()))
 				{
@@ -130,12 +130,12 @@ public final class RegAllocSimple extends MachineFunctionPass
 
 					// make sure the same virtual register maps to the same physical
 					// register in any given instruction
-					int phyReg = virToPhyRegMap.get(virtualReg);
-					if (phyReg == 0)
+                    int phyReg;
+                    if (!virToPhyRegMap.containsKey(virtualReg))
 					{
 						if (op.isDef())
 						{
-							if (instrInfo.get(opcode).isConvertibleTo3Addr() && i == 0)
+							if (instrInfo.get(opcode).isConvertibleTo3Addr() && j == 0)
 							{
 								// This maps a = b + c into b+= c, and save b into a.
 								assert mi.getOperand(1).isRegister()
@@ -159,7 +159,8 @@ public final class RegAllocSimple extends MachineFunctionPass
 							virToPhyRegMap.put(virtualReg, phyReg);
 						}
 					}
-					mi.setMachineOperandReg(i, phyReg);
+                    phyReg = virToPhyRegMap.get(virtualReg);
+					op.setReg(phyReg);
 				}
 			}
 		}

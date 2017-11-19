@@ -88,6 +88,9 @@ public final class MachineConstantPool
 
     public void print(PrintStream os)
     {
+        if (constants == null || constants.isEmpty())
+            return;
+
         for (int i = 0, e = constants.size(); i < e; i++)
         {
             os.printf("  <cp#%d> is", i);

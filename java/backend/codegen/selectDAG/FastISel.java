@@ -349,7 +349,10 @@ public abstract class FastISel extends MachineFunctionPass
         instrInfo = tm.getInstrInfo();
 
         // for debug.
-        System.err.printf("%n%n%n==============%s===============%n", fn.getName());
+        if (Util.DEBUG)
+        {
+            System.err.printf("%n%n%n==============%s===============%n", fn.getName());
+        }
         selectAllBasicBlocks(fn);
         return false;
     }

@@ -361,7 +361,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
     public static final BooleanOpt DebugMode =
             new BooleanOpt(optionName("debug"),
                     desc("Enable output debug informaton"),
-                    init(true));
+                    init(false));
 
     /**
      * This static code block is attempted to add some desired Jlang command line
