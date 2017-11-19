@@ -21,7 +21,6 @@ import backend.target.*;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
-import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.APFloat;
 import tools.APInt;
 import tools.OutParamWrapper;
@@ -43,14 +42,17 @@ import static tools.APFloat.RoundingMode.rmTowardZero;
 public abstract class FastISel extends MachineFunctionPass
 {
     protected MachineBasicBlock mbb;
-    protected TObjectIntHashMap<Value> localValueMap;
-    protected TObjectIntHashMap<Value> valueMap;
+
+    // FIXME, 2017/11/19 because of TObjectIntHashMap compute the
+    // same value for different key. Like, the computed value of
+    // "load i32* %x.addr" is same with "load i32* %retval"
+    protected HashMap<Value, Integer> localValueMap;
+    protected HashMap<Value, Integer> valueMap;
     protected HashMap<BasicBlock, MachineBasicBlock> mbbMap;
-    protected TObjectIntHashMap<AllocaInst> staticAllocMap;
+    protected HashMap<AllocaInst, Integer> staticAllocMap;
 
     protected MachineFunction mf;
     protected Function fn;
-    protected MachineModuleInfo mmi;
     protected MachineRegisterInfo mri;
     protected MachineFrameInfo mfi;
     protected MachineConstantPool mcp;
@@ -223,10 +225,10 @@ public abstract class FastISel extends MachineFunctionPass
         realVT = new EVT(vt);
 
         // Lookup for the instructions accros basic block.
-        if (valueMap.contains(v))
+        if (valueMap.containsKey(v))
             return valueMap.get(v);
         // Checks this value whether dead out Basic Block.
-        if (localValueMap.contains(v) && localValueMap.get(v) != 0)
+        if (localValueMap.containsKey(v) && localValueMap.get(v) != 0)
             return localValueMap.get(v);
 
         // the result register holds the value.
@@ -337,7 +339,7 @@ public abstract class FastISel extends MachineFunctionPass
         valueMap = funcInfo.valueMap;
         mbbMap = funcInfo.mbbmap;
         staticAllocMap = funcInfo.staticAllocaMap;
-        localValueMap = new TObjectIntHashMap<>();
+        localValueMap = new HashMap<>();
 
         mri = mf.getMachineRegisterInfo();
         mfi = mf.getFrameInfo();

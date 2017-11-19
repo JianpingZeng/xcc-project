@@ -32,7 +32,6 @@ import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.PhiNode;
 import backend.value.Instruction.SwitchInst;
 import gnu.trove.list.array.TLongArrayList;
-import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.APInt;
 
 import java.util.ArrayList;
@@ -73,13 +72,13 @@ public class FunctionLoweringInfo
      * remember which virtual registers hold the values for cross-basic-block
      * values.
      */
-    public TObjectIntHashMap<Value> valueMap;
+    public HashMap<Value, Integer> valueMap;
 
     /**
      * Keep track of frame indices for fixed sized allocas in the entry block.
      * This allows allocas to be efficiently referenced anywhere in the function.
      */
-    public TObjectIntHashMap<AllocaInst> staticAllocaMap;
+    public HashMap<AllocaInst, Integer> staticAllocaMap;
 
     /**
      * Information about live out vregs, indexed by their register number offset
@@ -91,9 +90,9 @@ public class FunctionLoweringInfo
     {
         this.tli = tli;
         mbbmap = new HashMap<>();
-        valueMap = new TObjectIntHashMap<>();
+        valueMap = new HashMap<>();
 
-        staticAllocaMap = new TObjectIntHashMap<>();
+        staticAllocaMap = new HashMap<>();
         liveOutRegInfo = new ArrayList<>();
     }
 
@@ -194,7 +193,7 @@ public class FunctionLoweringInfo
                 if (isUsedOutsideOfDefiningBlock(inst))
                 {
                     if (!(inst instanceof AllocaInst)
-                            || !staticAllocaMap.contains(inst))
+                            || !staticAllocaMap.containsKey(inst))
                         initializeRegForValue(inst);
                 }
             }
@@ -218,7 +217,7 @@ public class FunctionLoweringInfo
                     continue;
 
                 pn = (PhiNode)inst;
-                assert valueMap.contains(pn)
+                assert valueMap.containsKey(pn)
                         : "Phi node does not have an assigned virtual register";
                 int phiReg = valueMap.get(pn);
 

@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.support.FormattedOutputStream;
 import backend.target.TargetInstrDesc;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
@@ -730,58 +731,70 @@ public class MachineInstr implements Cloneable
         return false;
     }
 
-	public void print(PrintStream os, TargetMachine tm)
-	{
+    public void print(FormattedOutputStream os, TargetMachine tm)
+    {
 	    int startOp = 0;
 	    if (getNumOperands()!= 0 && getOperand(0).isRegister() &&
-                getOperand(0).isDef())
-        {
-            getOperand(0).print(os, tm);
-            os.print(" = ");
-            ++startOp;
-        }
+			    getOperand(0).isDef())
+	    {
+		    getOperand(0).print(os, tm);
+		    os.print(" = ");
+		    ++startOp;
+	    }
 
-        os.printf(getDesc().getName());
+	    os.printf(getDesc().getName());
 
 	    for (int i = startOp, e = getNumOperands(); i != e; i++)
-        {
-            if (i != startOp)
-                os.print(",");
-            os.print(" ");
-            getOperand(i).print(os, tm);
-        }
+	    {
+		    if (i != startOp)
+			    os.print(",");
+		    os.print(" ");
+		    getOperand(i).print(os, tm);
+	    }
 
-        if (!memOperands.isEmpty())
-        {
-            for (MachineMemOperand mmo : memOperands)
-            {
-                Value v = mmo.getValue();
+	    if (!memOperands.isEmpty())
+	    {
+		    for (MachineMemOperand mmo : memOperands)
+		    {
+			    Value v = mmo.getValue();
 
-                assert mmo.isLoad() || mmo.isStore() :"SV has to be a load, store or both";
+			    assert mmo.isLoad() || mmo.isStore() :"SV has to be a load, store or both";
 
-                if (mmo.isVolatile())
-                    os.print("Volatile ");
-                if (mmo.isLoad())
-                    os.printf("LD");
-                if (mmo.isStore())
-                    os.printf("ST");
+			    if (mmo.isVolatile())
+				    os.print("Volatile ");
+			    if (mmo.isLoad())
+				    os.printf("LD");
+			    if (mmo.isStore())
+				    os.printf("ST");
 
-                os.printf("(%d,%d) [", mmo.getSize(), mmo.getAlignment());
-                if (v == null)
-                {
-                    os.print("<unknown>");
-                }
-                else if (!v.getName().isEmpty())
-                {
-                    os.print(v.getName());
-                }
-                else
-                    v.print(os);
+			    os.printf("(%d,%d) [", mmo.getSize(), mmo.getAlignment());
+			    if (v == null)
+			    {
+				    os.print("<unknown>");
+			    }
+			    else if (!v.getName().isEmpty())
+			    {
+				    os.print(v.getName());
+			    }
+			    else
+				    v.print(os);
 
-                os.printf(" + %d]", mmo.getOffset());
-            }
-        }
-        os.println();
+			    os.printf(" + %d]", mmo.getOffset());
+		    }
+	    }
+	    os.println();
+    }
+
+	public void print(PrintStream os, TargetMachine tm)
+	{
+	    try(FormattedOutputStream out = new FormattedOutputStream(os))
+	    {
+	    	print(out, tm);
+	    }
+	    catch (Exception e)
+	    {
+	    	e.printStackTrace();
+	    }
     }
 
 	public void dump()

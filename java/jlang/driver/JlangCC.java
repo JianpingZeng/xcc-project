@@ -19,6 +19,7 @@ package jlang.driver;
 import backend.support.BackendCmdOptions;
 import backend.support.ErrorHandling;
 import backend.target.TargetMachine;
+import backend.target.TargetOptions;
 import backend.target.TargetSelect;
 import backend.value.Module;
 import jlang.ast.ASTConsumer;
@@ -369,6 +370,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
     static
     {
         BackendCmdOptions.registerBackendCommandLineOptions();
+        TargetOptions.registerTargetOptions();
     }
     /**
      * Result codes.

@@ -1,9 +1,12 @@
 package backend.codegen;
 
 import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import backend.value.Function;
+import tools.Pair;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
@@ -25,7 +28,7 @@ public class MachineFunction
 	/**
 	 * Keeping track of diagMapping from SSA values to registers.
 	 */
-	private MachineRegisterInfo machineRegisterInfo;
+	private MachineRegisterInfo regInfo;
 	/**
 	 * Keep track of constants to be spilled into stack slot.
 	 */
@@ -50,7 +53,7 @@ public class MachineFunction
 		target = tm;
 		mbbNumber = new ArrayList<>();
 		frameInfo = new MachineFrameInfo(tm.getFrameInfo());
-		machineRegisterInfo = new MachineRegisterInfo(tm.getRegisterInfo());
+		regInfo = new MachineRegisterInfo(tm.getRegisterInfo());
 		constantPool = new MachineConstantPool(tm.getTargetData());
 		phyRegDefUseList = new MachineOperand[tm.getRegisterInfo().getNumRegs()];
 
@@ -66,10 +69,10 @@ public class MachineFunction
 
 	public MachineFrameInfo getFrameInfo() {return frameInfo;}
 
-	public MachineRegisterInfo getMachineRegisterInfo(){return machineRegisterInfo;}
+	public MachineRegisterInfo getMachineRegisterInfo(){return regInfo;}
 
 	public void clearSSARegMap() {
-		machineRegisterInfo.clear();}
+		regInfo.clear();}
 
 	public MachineConstantPool getConstantPool(){return constantPool;}
 
@@ -172,5 +175,60 @@ public class MachineFunction
 		MachineBasicBlock mbb = new MachineBasicBlock(bb);
 		mbb.setParent(this);
 		return mbb;
+	}
+
+	public void print(PrintStream os)
+    {
+        print(os, new PrefixPrinter());
+    }
+
+	public void print(PrintStream os, PrefixPrinter prefix)
+	{
+		os.printf("# Machine code for %s():%n", fn.getName());
+
+		//Print frame information.
+		frameInfo.print(this, os);
+
+		// Print Jump table information.
+		// Print constant pool.
+		constantPool.print(os);
+
+		TargetRegisterInfo tri = target.getRegisterInfo();
+		if (regInfo != null && !regInfo.isLiveInEmpty())
+		{
+			os.printf("Live Ins:");
+			for (Pair<Integer, Integer> entry : regInfo.getLiveIns())
+			{
+				if (tri != null)
+					os.printf(" %s", tri.getName(entry.first));
+				else
+					os.printf(" Reg #%d", entry.first);
+
+				if (entry.second != 0)
+					os.printf(" in VR#%d ", entry.second);
+			}
+			os.println();
+		}
+
+		if (regInfo != null && !regInfo.isLiveOutEmpty())
+		{
+			os.printf("Live Outs:");
+			for (Pair<Integer, Integer> entry : regInfo.getLiveIns())
+			{
+				if (tri != null)
+					os.printf(" %s", tri.getName(entry.first));
+				else
+					os.printf(" Reg #%d", entry.first);
+			}
+			os.println();
+		}
+
+		//
+		for (MachineBasicBlock mbb:mbbNumber)
+		{
+			prefix.print(os, mbb);
+			mbb.print(os, prefix);
+		}
+		os.printf("%n# End machine code for %s().%n%n", fn.getName());
 	}
 }

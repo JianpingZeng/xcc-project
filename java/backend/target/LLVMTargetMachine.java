@@ -22,9 +22,13 @@ import backend.passManaging.PassManagerBase;
 
 import java.io.OutputStream;
 
+import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
+import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.codegen.RegAllocLinearScan.createLinearScanRegAllocator;
 import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
+import static backend.target.TargetOptions.PrintMachineCode;
+import static backend.target.TargetOptions.VerifyMachineCode;
 import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
 import static backend.transform.scalars.UnreachableBlockElim.createUnreachableBlockEliminationPass;
 
@@ -39,6 +43,17 @@ public abstract class LLVMTargetMachine extends TargetMachine
     protected LLVMTargetMachine(Target target, String triple)
     {
         super(target);
+    }
+
+    private static void printAndVerify(
+            PassManagerBase pm,
+            boolean allowDoubleDefs)
+    {
+        if (PrintMachineCode.value)
+            pm.add(createMachineFunctionPrinterPass(System.err));
+
+        if (VerifyMachineCode.value)
+            pm.add(createMachineVerifierPass(allowDoubleDefs));
     }
 
     /**
@@ -66,9 +81,14 @@ public abstract class LLVMTargetMachine extends TargetMachine
         if (addInstSelector(pm, level))
             return true;
 
-        if (addPreRegAlloc(pm, level))
-            return true;
+        // print the machine instructions.
+        printAndVerify(pm, true);
 
+        if (addPreRegAlloc(pm, level))
+        {
+            printAndVerify(pm, true);
+            return true;
+        }
 
         // Perform register allocation to convert to a concrete x86 representation
         if (level == CodeGenOpt.None)
@@ -76,11 +96,17 @@ public abstract class LLVMTargetMachine extends TargetMachine
         else
             pm.add(createLinearScanRegAllocator());
 
+        // Print machine code after register allocation.
+        printAndVerify(pm, false);
+
         if (addPostRegAlloc(pm, level))
+        {
+            printAndVerify(pm, false);
             return true;
+        }
 
         pm.add(createPrologEpilogEmitter());
-        //pm.add(createX86PeepholeOptimizer());
+        printAndVerify(pm, false);
 
         return false;
     }
@@ -93,8 +119,16 @@ public abstract class LLVMTargetMachine extends TargetMachine
         if (addCommonCodeGenPasses(pm, optLevel))
             return FileModel.Error;
 
-        if (addPreEmitPass(pm, optLevel))
+        if (PrintMachineCode.value)
+        {
+            pm.add(createMachineFunctionPrinterPass(System.err));
+        }
+
+        if (addPreEmitPass(pm, optLevel) && PrintMachineCode.value)
+        {
+            pm.add(createMachineFunctionPrinterPass(System.err));
             return FileModel.Error;
+        }
 
         switch (fileType)
         {

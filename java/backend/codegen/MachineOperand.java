@@ -1,6 +1,9 @@
 package backend.codegen;
 
+import backend.support.FormattedOutputStream;
+import backend.support.LLVMContext;
 import backend.target.TargetMachine;
+import backend.target.TargetRegisterInfo;
 import backend.value.ConstantFP;
 import backend.value.GlobalValue;
 import tools.Util;
@@ -224,9 +227,136 @@ public class MachineOperand
 
 	public void print(PrintStream os, TargetMachine tm)
 	{
-		// TODO: 17-7-16
+		try(FormattedOutputStream out = new FormattedOutputStream(os))
+		{
+			print(out, tm);
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
 	}
 
+	public void print(FormattedOutputStream os, TargetMachine tm)
+	{
+		switch (getType())
+		{
+			case MO_Register:
+			{
+				if (getReg() == 0 || TargetRegisterInfo.isVirtualRegister(getReg()))
+				{
+					os.printf("%%reg%d", getReg());
+				}
+				else
+				{
+					// The used register is physical register.
+					if (tm == null)
+					{
+						MachineInstr mi = getParentMI();
+						if (mi != null)
+						{
+							MachineBasicBlock mbb = mi.getParent();
+							if (mbb != null)
+							{
+								MachineFunction mf = mbb.getParent();
+								if (mf != null)
+									tm = mf.getTarget();
+							}
+						}
+					}
+					if (tm != null)
+						os.printf("%%s", tm.getRegisterInfo().getName(getReg()));
+					else
+						os.printf("%%mreg%d", getReg());
+				}
+				if (getSubReg() != 0)
+					os.printf(":%d", getSubReg());
+
+				if (isDef() || isKill() || isDead() || isImplicit() || isUndef()
+						|| isEarlyClobber())
+				{
+					os.printf("<");
+					boolean needComma = false;
+					if (isImplicit())
+					{
+						if (needComma)
+							os.printf(",");
+						os.printf(isDef() ? "imp-def" : "imp-use");
+						needComma = true;
+					}
+					else if (isDef())
+					{
+						if (needComma)
+							os.printf(",");
+						if (isEarlyClobber())
+							os.printf("earlyclobber");
+						os.printf("def");
+						needComma = true;
+					}
+					if (isKill() || isDead() || isUndef())
+					{
+						if (needComma)
+							os.printf(",");
+						if (isKill())
+							os.printf("kill");
+						if (isDead())
+							os.printf("dead");
+						if (isUndef())
+						{
+							if (isKill() || isDead())
+								os.printf(",");
+							os.printf("undef");
+						}
+					}
+					os.printf(">");
+				}
+				break;
+			}
+			case MO_Immediate:
+				os.print(getImm());
+				break;
+			case MO_FPImmediate:
+				if (getFPImm().getType().equals(LLVMContext.FloatTy))
+					os.print(getFPImm().getValueAPF().convertToFloat());
+				else
+					os.print(getFPImm().getValueAPF().convertToDouble());
+				break;
+			case MO_MachineBasicBlock:
+				os.printf("mbb<%s,0x%x>", getMBB().getBasicBlock().getName(),
+						getMBB().hashCode());
+				break;
+			case MO_FrameIndex:
+				os.printf("<fi#%d>", getIndex());
+				break;
+			case MO_ConstantPoolIndex:
+				os.printf("<cp#%d", getIndex());
+				if (getOffset() != 0)
+					os.printf("+%d", getOffset());
+				os.printf(">");
+				break;
+			case MO_JumpTableIndex:
+				os.printf("<ji#^d>", getIndex());
+				break;
+			case MO_GlobalAddress:
+				os.printf("<ga:%s", getGlobal().getName());
+				if (getOffset() != 0)
+					os.printf("+%d", getOffset());
+				os.print(">");
+				break;
+			case MO_ExternalSymbol:
+				os.printf("<es:%s", getSymbolName());
+				if(getOffset() != 0)
+					os.printf("+%d", getOffset());
+				os.print(">");
+				break;
+			default:
+				Util.shouldNotReachHere("Unrecognized operand type");
+				break;
+		}
+		int tf = getTargetFlags();
+		if (tf != 0)
+			os.printf("[TF=%d]", tf);
+	}
 
 	public boolean isRegister()
 	{

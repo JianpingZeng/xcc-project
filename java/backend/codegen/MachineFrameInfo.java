@@ -5,6 +5,7 @@ import backend.target.TargetFrameInfo;
 import backend.target.TargetRegisterClass;
 import backend.type.Type;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
@@ -126,15 +127,16 @@ public class MachineFrameInfo
 
     public boolean isDeadObjectIndex(int objectIdx)
     {
-        assert objectIdx + numFixedObjects < objects.size():
-                "Invalid Object idx!";
+        assert objectIdx + numFixedObjects < objects
+                .size() : "Invalid Object idx!";
 
         return objects.get(objectIdx + numFixedObjects).size == ~0;
     }
 
     /**
-     *  Returns true if the specified index corresponds to a
+     * Returns true if the specified index corresponds to a
      * fixed stack object.
+     *
      * @param idx
      * @return
      */
@@ -145,8 +147,8 @@ public class MachineFrameInfo
 
     public boolean isImmutableObjectIndex(int objectIdx)
     {
-        assert (objectIdx + numFixedObjects) < objects.size() :
-                "Invalid object idx!";
+        assert (objectIdx + numFixedObjects) < objects
+                .size() : "Invalid object idx!";
         return objects.get(objectIdx + numFixedObjects).isImmutable;
     }
 
@@ -275,7 +277,7 @@ public class MachineFrameInfo
      * createFixedObject - Create a new object at a fixed location on the stack.
      * All fixed objects should be created before other objects are created for
      * efficiency.  This returns an index with a negative value.
-     *
+     * <p>
      * Note that, the fixed objects usually are return address, incoming function
      * arguments etc.
      */
@@ -339,8 +341,54 @@ public class MachineFrameInfo
     {
         this.csInfo = csInfo;
     }
+
     public void setCalleeSavedInfoValid(boolean b)
     {
         csIValid = b;
+    }
+
+    public void print(MachineFunction mf, PrintStream os)
+    {
+        TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+        int valueOffset = tfi != null ? tfi.getLocalAreaOffset():0;
+
+        for (int i = 0, e = objects.size(); i < e; i++)
+        {
+            StackObject obj = objects.get(i);
+            os.printf(" <fi#%d>: ", i - numFixedObjects);
+            if (obj.size == ~0L)
+            {
+                os.printf("dead%n");
+                continue;
+            }
+            if (obj.size == 0)
+                os.printf("variable dead");
+            else
+            {
+                os.printf("size is %d byte%s,", obj.size, obj.size != 1 ? "s,":",");
+            }
+            os.printf(" alignent is %d byte%s", obj.alignment, obj.alignment != 1 ?"s,":",");
+            if (i < numFixedObjects)
+                os.printf(" fixed");
+            if (i < numFixedObjects || obj.spOffset != -1)
+            {
+                long offset = obj.spOffset - valueOffset;
+                os.printf(" at location [SP");
+                if (offset > 0)
+                    os.printf("+%d", offset);
+                else if (offset < 0)
+                    os.print(offset);
+                os.print("]");
+            }
+            os.println();
+        }
+
+        if (hasVarSizedObjects())
+            os.println(" Stack frame contains variable sized objects");
+    }
+
+    public void dump(MachineFunction mf)
+    {
+        print(mf, System.err);
     }
 }

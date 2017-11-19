@@ -820,6 +820,9 @@ public final class CL
             out.println("OPTIONS:");
 
             // Print out each options into console.
+            // Sort the options table in alphabetic.
+            opts.sort(Comparator.comparing(o -> o.first));
+
             for (int i = 0, e = opts.size(); i != e; i++)
             {
                 opts.get(i).second.printOptionInfo(maxArgLen);

@@ -1,5 +1,6 @@
 package backend.value;
 
+import backend.support.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.support.ValueSymbolTable;
 import backend.type.Type;
@@ -259,9 +260,21 @@ public class Value implements Cloneable
 
 	public boolean hasName() {return name != null && !name.isEmpty();}
 
+	public void print(FormattedOutputStream os)
+    {
+        os.printf("0x%x", hashCode());
+    }
+
 	public void print(PrintStream os)
 	{
-		// TODO: 17-7-27
+        try(FormattedOutputStream out = new FormattedOutputStream(os))
+        {
+            print(out);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
 	}
 
 	/**
@@ -269,7 +282,7 @@ public class Value implements Cloneable
 	 */
 	public void dump()
 	{
-		// TODO: 17-8-4
+		print(System.err);
 	}
 
     @Override

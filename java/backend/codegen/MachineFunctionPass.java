@@ -1,5 +1,6 @@
 package backend.codegen;
 
+import backend.analysis.*;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;
@@ -38,5 +39,19 @@ public abstract class MachineFunctionPass implements FunctionPass
 	 */
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
-	{}
+	{
+		au.addRequired(MachineFunctionAnalysis.class);
+		au.addPreserved(MachineFunctionAnalysis.class);
+
+		// TODO 2017/11/19 au.addPreserved(AliasAnalysis.class);
+		au.addPreserved(ScalarEvolution.class);
+		au.addPreserved(IVUsers.class);
+		// au.addPreserved(LoopDependenceAnalysis.class);
+		// au.addPreserved(MemoryDependenceAnalysis.class);
+		au.addPreserved(DomTreeInfo.class);
+		au.addPreserved(DominanceFrontier.class);
+		au.addPreserved(LoopInfo.class);
+
+		FunctionPass.super.getAnalysisUsage(au);
+	}
 }

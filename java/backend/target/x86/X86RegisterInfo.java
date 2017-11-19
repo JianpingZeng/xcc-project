@@ -14,8 +14,8 @@ import java.util.ArrayList;
 
 import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.target.TargetOptions.NoFramePointerElim;
-import static backend.target.TargetOptions.RealignStack;
+import static backend.target.TargetOptions.DisableFramePointerElim;
+import static backend.target.TargetOptions.EnableRealignStack;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterNames.*;
 
@@ -432,7 +432,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	{
 		MachineFrameInfo mfi = mf.getFrameInfo();
 
-		return RealignStack && mfi.getMaxAlignment() > stackAlign &&
+		return EnableRealignStack.value && mfi.getMaxAlignment() > stackAlign &&
 				!mfi.hasVarSizedObjects();
 	}
 
@@ -994,7 +994,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	public boolean hasFP(MachineFunction mf)
 	{
 		MachineFrameInfo mfi = mf.getFrameInfo();
-		return (NoFramePointerElim ||
+		return (DisableFramePointerElim.value ||
 				needsStackRealignment(mf) ||
 				mfi.hasVarSizedObjects() ||
 				mfi.isFrameAddressTaken());
