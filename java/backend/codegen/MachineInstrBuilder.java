@@ -40,7 +40,8 @@ public final class MachineInstrBuilder
      * @param offset
      * @return
      */
-    public static MachineInstrBuilder addFrameReference(MachineInstrBuilder mib,
+    public static MachineInstrBuilder addFrameReference(
+    		MachineInstrBuilder mib,
             int fi,
             int offset)
     {

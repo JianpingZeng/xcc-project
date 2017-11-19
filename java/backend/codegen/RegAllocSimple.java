@@ -63,16 +63,32 @@ public final class RegAllocSimple extends MachineFunctionPass
 	private int getFreeReg(int virReg)
 	{
 		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
-		int size = rc.getRegSize();
+		int[] allocatableRegs = rc.getAllocableRegs(mf);
 		while(true)
 		{
-			int regIdx = regClassIdx.get(rc);
-			regClassIdx.put(rc, regIdx+1);
-			assert  regIdx != size:"Not enough register for allocation.";
-			int phyReg = rc.getRegister(regIdx);
+		    if (!regClassIdx.contains(rc))
+            {
+                regClassIdx.put(rc, 1);
+                int physReg = allocatableRegs[0];
+                if (!regUsed.get(physReg))
+                {
+                    mf.getMachineRegisterInfo().setPhysRegUsed(physReg);
+                    return physReg;
+                }
+            }
+            else
+            {
+                int regIdx = regClassIdx.get(rc);
+                regClassIdx.put(rc, regIdx + 1);
+                assert regIdx < allocatableRegs.length : "Not enough register for allocation.";
+                int phyReg = rc.getRegister(regIdx);
 
-			if (!regUsed.get(phyReg))
-				return phyReg;
+                if (!regUsed.get(phyReg))
+                {
+                    mf.getMachineRegisterInfo().setPhysRegUsed(phyReg);
+                    return phyReg;
+                }
+            }
 		}
 	}
 
@@ -96,6 +112,9 @@ public final class RegAllocSimple extends MachineFunctionPass
 		int frameIdx = getStackSlotForVirReg(virReg, rc);
 		regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
 
+		// After spill, it is needed to free used physical register
+        regUsed.set(phyReg, false);
+        regClassIdx.put(rc, regClassIdx.get(rc) - 1);
 		// add count for spilled.
 		++numSpilled;
 	}
