@@ -1,4 +1,4 @@
-package backend.pass;
+package backend.codegen;
 
 /*
  * Extremely C language Compiler.
@@ -17,6 +17,7 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.pass.ModulePass;
 import backend.support.FormattedOutputStream;
 import backend.value.Module;
 
@@ -30,11 +31,6 @@ import java.io.OutputStream;
 public class PrintModulePass implements ModulePass
 {
 	private FormattedOutputStream os;
-
-	static
-	{
-		new RegisterPass("print-module", "Print out Module", PrintModulePass.class);
-	}
 
 	public PrintModulePass(OutputStream out)
 	{

@@ -17,6 +17,7 @@ package jlang.codegen;
  */
 
 import backend.codegen.MachineCodeEmitter;
+import backend.codegen.PrintModulePass;
 import backend.pass.*;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;

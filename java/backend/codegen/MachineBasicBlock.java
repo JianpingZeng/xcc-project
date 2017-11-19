@@ -1,5 +1,7 @@
 package backend.codegen;
 
+import backend.support.FormattedOutputStream;
+import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import gnu.trove.list.array.TIntArrayList;
 
@@ -308,11 +310,89 @@ public class MachineBasicBlock
 
 	public void dump()
 	{
-		// TODO: 2017/11/17
+		print(System.err);
 	}
 
 	public void print(PrintStream os)
 	{
-		// TODO: 2017/11/17
+		print(os, new PrefixPrinter());
 	}
+
+	public void print(PrintStream os, PrefixPrinter prefix)
+	{
+		print(new FormattedOutputStream(os), prefix);
+	}
+
+	public void print(FormattedOutputStream os, PrefixPrinter prefix)
+	{
+		MachineFunction mf = getParent();
+		if (mf == null)
+		{
+			os.printf("Can't print out MachineBasicBlock because parent MachineFunction is null\n");;
+			return;
+		}
+
+		BasicBlock bb = getBasicBlock();
+		os.println();
+		if (bb != null)
+			os.printf("%s: ", bb.getName());
+		os.printf(", LLVM BB @0x%x, ID#%d", bb == null?0:bb.hashCode(), getNumber());
+		if (alignment != 0)
+			os.printf(", Alignment %d",alignment);
+		os.printf(":%n");
+
+		if (!liveIns.isEmpty())
+		{
+			os.printf("Live Ins:");
+			for (int i = 0, e = liveIns.size(); i < e; i++)
+				outputReg(os, liveIns.get(i));
+
+			os.println();
+		}
+
+		// Print the preds of this block according to the CFGs.
+		os.printf("\tPredecessors according to CFG:");
+		for (MachineBasicBlock pred : predecessors)
+			os.printf(" 0x%x (#%d)", pred.hashCode(), pred.getNumber());
+		os.println();
+
+		// Print each machine instruction.
+		for (MachineInstr mi : insts)
+		{
+			prefix.print(os, mi).printf("\t");
+			mi.print(os, getParent().getTarget());
+		}
+
+		// Print the sucessors of this block according to CFG
+		if (!succIsEmpty())
+		{
+			os.printf("\tSuccessors according to CFG:");
+			Iterator<MachineBasicBlock> itr = succIterator();
+			while (itr.hasNext())
+			{
+				MachineBasicBlock succ = itr.next();
+				os.printf(" 0x%x (#%d)", succ.hashCode(), succ.getNumber());
+			}
+			os.println();
+		}
+	}
+    private static void outputReg(FormattedOutputStream os, int reg)
+    {
+        outputReg(os, reg, null);
+    }
+
+    private static void outputReg(FormattedOutputStream os, int reg, TargetRegisterInfo tri)
+    {
+        if (reg == 0 || TargetRegisterInfo.isPhysicalRegister(reg))
+        {
+            if (tri!= null)
+                os.printf(" %%s", tri.getName(reg));
+            else
+                os.printf(" %%mreg(%d)", reg);
+        }
+        else
+        {
+            os.printf(" %%reg%d", reg);
+        }
+    }
 }

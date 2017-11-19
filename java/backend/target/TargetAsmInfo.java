@@ -25,7 +25,7 @@ import java.util.TreeMap;
 
 import static backend.target.SectionKind.isBSS;
 import static backend.target.SectionKind.isReadOnly;
-import static backend.target.TargetOptions.NoZerosInBSS;
+import static backend.target.TargetOptions.DontPlaceZerosInBSS;
 
 /**
  * @author Xlous.zeng
@@ -1037,7 +1037,7 @@ public class TargetAsmInfo
             return true;
 
         Constant c = gvar.getInitializer();
-        return c.isNullValue() && !gvar.isConstant() && !NoZerosInBSS;
+        return c.isNullValue() && !gvar.isConstant() && !DontPlaceZerosInBSS.value;
     }
 
     public String getSectionEndDirectiveSuffix()

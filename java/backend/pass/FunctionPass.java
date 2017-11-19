@@ -96,4 +96,10 @@ public interface FunctionPass extends Pass
     {
         assignPassManager(pms, PassManagerType.PMT_FunctionPassManager);
     }
+
+    @Override
+    default void getAnalysisUsage(AnalysisUsage au)
+    {
+        // By default, no analysis results are used. all are invalidated.
+    }
 }

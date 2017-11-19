@@ -89,6 +89,9 @@ public final class PassRegisterationUtility
         {
             ErrorHandling.llvmReportError("Fail to register X86GenFastISel pass");
         }
+        new RegisterPass("print-function", "Print out Function", PrintMachineFunctionPass.class);
+        new RegisterPass("print-module", "Print out Module", PrintModulePass.class);
+        new RegisterPass("machine-verifier", "Verify generated machine code", MachineCodeVerifier.class);
 
         // Immutable Passes.
         new RegisterPass("targetdata", "Target Data Layout", TargetData.class, false, true);
