@@ -303,7 +303,7 @@ public class X86FastISel extends FastISel
             }
         }
         buildMI(mbb, instrInfo.get(RET));
-        return false;
+        return true;
     }
 
     /**

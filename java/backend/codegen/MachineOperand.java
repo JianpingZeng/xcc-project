@@ -265,7 +265,7 @@ public class MachineOperand
 						}
 					}
 					if (tm != null)
-						os.printf("%%s", tm.getRegisterInfo().getName(getReg()));
+						os.printf("%%%s", tm.getRegisterInfo().getName(getReg()));
 					else
 						os.printf("%%mreg%d", getReg());
 				}
@@ -822,11 +822,25 @@ public class MachineOperand
 
         if (isDef())
         {
-            assert !head.isDef():"A register operand only defined at mose once!";
-            // insert the current node as head
-            reg.next = head;
-            head.reg.prev = this;
-            regInfo.updateRegUseDefListHead(getReg(), this);
+            if (head.isDef())
+            {
+                // Skip the heading defining node.
+                MachineOperand cur = head, prev = head;
+                while (cur != null && cur.isDef())
+                {
+                    prev = cur;
+                    cur = cur.reg.next;
+                }
+                prev.reg.next = this;
+                this.reg.prev = prev;
+            }
+            else
+            {
+                // insert the current node as head
+                reg.next = head;
+                head.reg.prev = this;
+                regInfo.updateRegUseDefListHead(getReg(), this);
+            }
         }
         else
         {

@@ -120,9 +120,15 @@ public abstract class AsmPrinter extends MachineFunctionPass
         outStreamer = createAsmStreamer(outContext, this.os, tai, this);
         switch (AsmVerbose.value)
         {
-            case BOU_UNSET: verboseAsm = v;
-            case BOU_TRUE: verboseAsm = true;
-            case BOU_FALSE: verboseAsm = false;
+            case BOU_UNSET:
+                verboseAsm = v;
+                break;
+            case BOU_TRUE:
+                verboseAsm = true;
+                break;
+            case BOU_FALSE:
+                verboseAsm = false;
+                break;
         }
     }
 

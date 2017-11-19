@@ -311,7 +311,9 @@ public class X86Subtarget extends TargetSubtarget
                 buf.append((char) (val & 0xff));
             }
         }
-        System.err.println(buf.toString());
+        if (Util.DEBUG)
+            System.err.println(buf.toString());
+
         return buf.toString();
     }
 

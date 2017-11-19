@@ -365,7 +365,7 @@ public class MachineFrameInfo
                 os.printf("variable dead");
             else
             {
-                os.printf("size is %d byte%s,", obj.size, obj.size != 1 ? "s,":",");
+                os.printf("size is %d byte%s,", obj.size, obj.size != 1 ? "s":"");
             }
             os.printf(" alignent is %d byte%s", obj.alignment, obj.alignment != 1 ?"s,":",");
             if (i < numFixedObjects)
