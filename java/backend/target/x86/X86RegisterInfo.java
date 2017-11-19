@@ -782,14 +782,14 @@ public class X86RegisterInfo extends X86GenRegisterInfo
     }
 
 	@Override
-	public int loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
-			int destReg, int FrameIndex, TargetRegisterClass rc)
+	public int loadRegFromStackSlot(MachineBasicBlock mbb,
+			int mbbi, int destReg, int frameIndex,
+			TargetRegisterClass rc)
 	{
         MachineFunction mf = mbb.getParent();
         boolean isAligned = getStackAlignment() >= 16 || needsStackRealignment(mf);
-        int opc = getLoadRegOpcode(framePtr, rc, isAligned, tm);
-        addFrameReference(buildMI(mbb, mbbi, tii.get(opc)), destReg).
-                addReg(framePtr);
+        int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
+        addFrameReference(buildMI(mbb, mbbi, tii.get(opc), destReg), frameIndex);
         return mbbi+1;
 	}
 
