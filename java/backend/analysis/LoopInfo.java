@@ -1,5 +1,6 @@
 package backend.analysis;
 
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
@@ -25,6 +26,19 @@ public final class LoopInfo
 	private HashMap<BasicBlock, Loop> bbMap = new HashMap<>();
 
 	private ArrayList<Loop> topLevelLoops = new ArrayList<>();
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
 
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)

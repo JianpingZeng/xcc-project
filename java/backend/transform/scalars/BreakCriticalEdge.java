@@ -20,6 +20,7 @@ import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
 import backend.analysis.LoopInfo;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
@@ -63,6 +64,20 @@ import java.util.LinkedList;
 public final class BreakCriticalEdge implements FunctionPass
 {
     private int numBroken;
+
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {

@@ -17,6 +17,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.ModulePass;
 import backend.support.FormattedOutputStream;
 import backend.value.Module;
@@ -31,6 +32,20 @@ import java.io.OutputStream;
 public class PrintModulePass implements ModulePass
 {
 	private FormattedOutputStream os;
+
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
 
 	public PrintModulePass(OutputStream out)
 	{

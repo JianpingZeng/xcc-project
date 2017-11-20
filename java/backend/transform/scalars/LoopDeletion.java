@@ -1,6 +1,7 @@
 package backend.transform.scalars;
 
 import backend.analysis.*;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
@@ -20,6 +21,19 @@ import java.util.Iterator;
  */
 public final class LoopDeletion implements LoopPass
 {
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
 	/**
 	 * A static method served as creating an instance of this class
 	 * that operated on program loop.

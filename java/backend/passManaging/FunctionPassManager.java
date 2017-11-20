@@ -1,5 +1,6 @@
 package backend.passManaging;
 
+import backend.pass.AnalysisResolver;
 import backend.pass.Pass;
 import backend.value.Function;
 import backend.value.Module;
@@ -18,6 +19,9 @@ public class FunctionPassManager implements PassManagerBase
 		fpm = new FunctionPassManagerImpl(0);
 		fpm.setTopLevelManager(fpm);
 		this.m = m;
+
+		AnalysisResolver resolver = new AnalysisResolver(fpm);
+		fpm.setAnalysisResolver(resolver);
 	}
 	/**
 	 * Execute all of the passes scheduled for execution.  Keep

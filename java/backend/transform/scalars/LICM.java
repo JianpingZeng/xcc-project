@@ -3,6 +3,7 @@ package backend.transform.scalars;
 import backend.analysis.*;
 import backend.analysis.AliasAnalysis.ModRefBehavior;
 import backend.analysis.AliasSetTracker.AliasSet;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
@@ -89,6 +90,19 @@ public final class LICM implements LoopPass
 
     private HashMap<Loop, AliasSetTracker> loopToAliasMap;
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     private LICM()
     {
         loopToAliasMap = new HashMap<>();

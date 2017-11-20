@@ -263,14 +263,17 @@ public class X86FastISel extends FastISel
                 case MVT.i8:
                     opc = isSigned ? MOVSX32rr8:MOVZX32rr8;
                     buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
+                    buildMI(mbb, instrInfo.get(RET)).addReg(destReg);
                     break;
                 case MVT.i16:
                     opc = isSigned ? MOVSX32rr16:MOVZX32rr16;
                     buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
+                    buildMI(mbb, instrInfo.get(RET)).addReg(destReg);
                     break;
                 case MVT.i32:
                     opc = MOV32rr;
                     buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
+                    buildMI(mbb, instrInfo.get(RET)).addReg(destReg);
                     break;
                 case MVT.f32:
                     if (subtarget.hasSSE1())
@@ -302,7 +305,8 @@ public class X86FastISel extends FastISel
                     return false;
             }
         }
-        buildMI(mbb, instrInfo.get(RET));
+        else
+            buildMI(mbb, instrInfo.get(RET));
         return true;
     }
 

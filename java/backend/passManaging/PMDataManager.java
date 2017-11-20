@@ -16,10 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import backend.pass.AnalysisUsage;
-import backend.pass.ImmutablePass;
-import backend.pass.Pass;
-import backend.pass.PassInfo;
+import backend.pass.*;
 import backend.support.BackendCmdOptions;
 import backend.value.Function;
 import tools.Util;
@@ -188,6 +185,11 @@ public abstract class PMDataManager
      */
     public void add(Pass p, boolean processAnalysis)
     {
+        // p is a immutable pass and it will be managed by this
+        // top level manager. Set up analysis resolver to connect them.
+        AnalysisResolver ar = new AnalysisResolver(this);
+        p.setAnalysisResolver(ar);
+
         if (!processAnalysis)
         {
             passVector.add(p);

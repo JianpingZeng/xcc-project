@@ -22,6 +22,20 @@ public class LPPassManager extends PMDataManager implements FunctionPass
 	private ArrayList<Pass> loopPasses = new ArrayList<>();
 	private HashSet<Pass> containedPasses = new HashSet<>();
 
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
+
 	public LPPassManager(int depth)
 	{
 		super(depth);

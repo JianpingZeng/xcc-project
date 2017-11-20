@@ -2,6 +2,7 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.DepthFirstOrder;
@@ -480,6 +481,19 @@ public final class GVNPRE implements FunctionPass
     private HashMap<BasicBlock, ValueNumberedSet> availableOut;
     private HashMap<BasicBlock, ValueNumberedSet> anticipatibleIn;
     private HashMap<BasicBlock, ValueNumberedSet> generatedPhis;
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
 
     private GVNPRE()
     {

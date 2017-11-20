@@ -242,10 +242,13 @@ public class SubtargetFeatures
         }
         else
         {
-            System.err.printf("'" + features.get(0) +
-                    "' is is not a recognized processor for this target"
-                    + " (ignoring processor)"
-                    + "\n");
+            if (Util.DEBUG)
+            {
+                System.err.printf("'" + features.get(0)
+                        + "' is not a recognized processor for this target"
+                        + " (ignoring processor)"
+                        + "\n");
+            }
         }
         for (int i = 1; i < features.size(); i++)
         {
@@ -281,10 +284,13 @@ public class SubtargetFeatures
             }
             else
             {
-                System.err.printf("'" + feature
-                        + "' is not a recognized feature for this target"
-                        + " (ignoring feature)"
-                        + "\n");
+                if(Util.DEBUG)
+                {
+                    System.err.printf("'" + feature
+                            + "' is not a recognized feature for this target"
+                            + " (ignoring feature)"
+                            + "\n");
+                }
             }
         }
         return bit;
@@ -360,8 +366,11 @@ public class SubtargetFeatures
             return entry.value;
         else
         {
-            System.err.printf("'%s' is not a recognized processor for this target"+
-                    " (ignoring processor)\n", features.get(0));
+            if (Util.DEBUG)
+            {
+                System.err.printf("'%s' is not a recognized processor for this target"
+                        + " (ignoring processor)\n", features.get(0));
+            }
             return null;
         }
     }

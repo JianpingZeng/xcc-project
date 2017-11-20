@@ -16,10 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import backend.pass.AnalysisUsage;
-import backend.pass.ImmutablePass;
-import backend.pass.Pass;
-import backend.pass.PassInfo;
+import backend.pass.*;
 import backend.support.BackendCmdOptions;
 import backend.value.Function;
 import backend.value.Module;
@@ -47,6 +44,19 @@ public class FunctionPassManagerImpl extends PMDataManager implements
     Stack<PMDataManager> activeStack;
     protected ArrayList<PMDataManager> passManagers;
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     public FunctionPassManagerImpl(int depth)
     {
         super(depth);
@@ -199,6 +209,10 @@ public class FunctionPassManagerImpl extends PMDataManager implements
         ImmutablePass ip = p.getAsImmutablePass();
         if (ip != null)
         {
+            // p is a immutable pass and it will be managed by this
+            // top level manager. Set up analysis resolver to connect them.
+            AnalysisResolver ar = new AnalysisResolver(this);
+            p.setAnalysisResolver(ar);
             initializeAnalysisImpl(p);
             addImmutablePass(ip);
             recordAvailableAnalysis(ip);

@@ -700,6 +700,8 @@ public class MachineOperand
         MachineOperand head = regInfo.getRegUseDefListHead(reg.regNo);
         if (head.equals(this))
         {
+        	if (head.reg.next != null)
+        	    head.reg.next.reg.prev = null;
             regInfo.updateRegUseDefListHead(getReg(), head.reg.next);
         }
         else
@@ -822,43 +824,31 @@ public class MachineOperand
 
         if (isDef())
         {
-            if (head.isDef())
+            if (!head.isDef())
             {
-                // Skip the heading defining node.
-                MachineOperand cur = head, prev = head;
-                while (cur != null && cur.isDef())
-                {
-                    prev = cur;
-                    cur = cur.reg.next;
-                }
-                prev.reg.next = this;
-                this.reg.prev = prev;
-            }
-            else
-            {
-                // insert the current node as head
-                reg.next = head;
-                head.reg.prev = this;
-                regInfo.updateRegUseDefListHead(getReg(), this);
+	            // insert the current node as head
+	            reg.next = head;
+	            reg.prev = null;
+	            head.reg.prev = this;
+	            regInfo.updateRegUseDefListHead(getReg(), this);
+	            return;
             }
         }
-        else
+        // Insert this machine operand into where immediately after head node.
+        //  [    ] ---> [] -------->NULL
+        //  [head] <--- []
+        //  |    }      []
+        //              ^ (prev)  ^  insert here (cur)
+        MachineOperand cur = head, prev = head;
+        while (cur != null)
         {
-            // Insert this machine operand into where immediately after head node.
-            //  [    ] ---> [] -------->NULL
-            //  [head] <--- []
-            //  |    }      []
-            //              ^ (prev)  ^  insert here (cur)
-            MachineOperand prev = head, cur = head;
-            while (cur.reg.next != null)
-            {
-                prev = cur;
-                cur = cur.reg.next;
-            }
-
-            prev.reg.next = this;
-            this.reg.prev = prev;
+        	prev = cur;
+            cur = cur.reg.next;
         }
+
+        prev.reg.next = this;
+        this.reg.prev = cur;
+        this.reg.next = null;
 	}
 
 	public static MachineOperand createImm(long val)

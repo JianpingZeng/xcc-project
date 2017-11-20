@@ -1,5 +1,6 @@
 package backend.target;
 
+import backend.pass.AnalysisResolver;
 import backend.pass.ImmutablePass;
 import backend.type.ArrayType;
 import backend.type.IntegerType;
@@ -124,6 +125,19 @@ public class TargetData implements ImmutablePass
 	private String targetName;
 
 	private ArrayList<TargetAlignElem> alignments;
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
 
 	public TargetData(String targetDescription)
 	{

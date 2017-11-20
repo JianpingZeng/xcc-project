@@ -90,6 +90,14 @@ public final class FormattedOutputStream implements AutoCloseable
         }
         System.arraycopy(chs, 0, buffer, curPos, chs.length);
         curPos += chs.length;
+        try
+        {
+            os.write(chs);
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public void print(boolean ch)

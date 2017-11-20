@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.BasicBlock;
@@ -33,6 +34,20 @@ import java.util.ArrayList;
 public final class DomTreeInfo implements FunctionPass
 {
     private DomTree dt;
+
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
 
     public DomTreeInfo()
     {

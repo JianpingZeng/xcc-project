@@ -88,6 +88,20 @@ public final class IndVarSimplify implements LoopPass
     private IVUsers iu;
     private DomTreeInfo dt;
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
+
     public static Pass createIndVarSimplifyPass()
     {
         return new IndVarSimplify();

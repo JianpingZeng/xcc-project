@@ -16,6 +16,7 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.pass.RegisterPass;
 import backend.target.TargetMachine;
@@ -36,6 +37,19 @@ public class MachineFunctionAnalysis implements FunctionPass
     private TargetMachine tm;
     private TargetMachine.CodeGenOpt optLevel;
     private MachineFunction mf;
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
 
     public MachineFunctionAnalysis(
             TargetMachine tm)

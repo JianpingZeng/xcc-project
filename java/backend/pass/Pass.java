@@ -26,12 +26,17 @@ public interface Pass extends Printable
 		return PassDataBase.getPassInfo(this.getClass());
 	}
 
+	AnalysisResolver getAnalysisResolver();
+
+	void setAnalysisResolver(AnalysisResolver resolver);
+
 	default Pass getAnalysisToUpDate(Class<? extends Pass> klass)
 	{
 		PassInfo pi = PassDataBase.getPassInfo(klass);
 		if (pi == null) return null;
-
-		return PassDataBase.getAnalysisOrNull(pi);
+        AnalysisResolver resolver = getAnalysisResolver();
+        assert resolver != null:"Pass not resident in PassManger object!";
+		return resolver.getAnalysisIfAvailable(pi, true);
 	}
 
 	/**

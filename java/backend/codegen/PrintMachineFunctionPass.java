@@ -37,7 +37,6 @@ public class PrintMachineFunctionPass extends MachineFunctionPass
     {
         os.printf(banner);
         mf.print(os);
-        os.close();
         return false;
     }
 
