@@ -36,7 +36,12 @@ public class ValueKind
     public static int ConstantArrayVal = ConstantFPVal + 1;         // This is an instance of ConstantArray
     public static int ConstantStructVal = ConstantArrayVal + 1;        // This is an instance of ConstantStruct
     public static int ConstantPointerNullVal = ConstantStructVal + 1;   // This is an instance of ConstantPointerNull
-    public static int InstructionVal = ConstantPointerNullVal + 1;           // This is an instance of Instruction
+    public static int MDNodeVal = ConstantPointerNullVal + 1;           // This is an instance of MDNode
+    public static int MDStringVal = MDNodeVal + 1;                      // This is an instance of MDString
+    public static int NamedMDNodeVal = MDStringVal + 1;                 // This is an instance of NamedMDNode
+    public static int InlineAsmVal = NamedMDNodeVal + 1;                // This is an instance of InlineAsm
+    public static int PseudoSourceValueVal = InlineAsmVal + 1;          // This is an instance of PseudoSourceValue
+    public static int InstructionVal = PseudoSourceValueVal + 1;           // This is an instance of Instruction
     // Enum values starting at InstructionVal are used for Instructions;
     // don't add new values here!
 

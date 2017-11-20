@@ -57,10 +57,10 @@ public final class MachineInstrBuilder
         if (tii.mayStore())
             flags |= MOStore;
         MachineMemOperand mmo = new MachineMemOperand(
-                null,
+                PseudoSourceValue.getFixedStack(fi),
                 flags,
                 mfi.getObjectOffset(fi) + offset,
-                mfi.getObjectOffset(fi),
+                mfi.getObjectSize(fi),
                 mfi.getObjectAlignment(fi));
         return addOffset(mib.addFrameIndex(fi), offset).addMemOperand(mmo);
     }

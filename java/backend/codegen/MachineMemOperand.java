@@ -17,8 +17,16 @@ package backend.codegen;
  */
 
 import backend.value.Value;
+import jlang.type.FoldingSetNodeID;
+import tools.Util;
 
 /**
+ * A description of a memory reference used in the backend.
+ /// Instead of holding a StoreInst or LoadInst, this class holds the address
+ /// Value of the reference along with a byte size and offset. This allows it
+ /// to describe lowered loads and stores. Also, the special PseudoSourceValue
+ /// objects can be used to represent loads and stores to memory locations
+ /// that aren't explicit in the regular LLVM IR.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -33,9 +41,22 @@ public class MachineMemOperand
     public static final int MOStore = 2;
     public static final int MOVolatile = 4;
 
+    /**
+     * Constructor of {@linkplain MachineMemOperand}.
+     * @param v The LLVM IR value
+     * @param f Flag to attribute
+     * @param o Offset
+     * @param s Size of this operand
+     * @param a Alignment
+     */
     public MachineMemOperand(Value v, int f, long o, long s, int a)
     {
-
+        this.offset = o;
+        this.size = s;
+        this.val = v;
+        this.flags = (f &0xf) | (Util.log2(a)+1)<<3;
+        assert Util.isPowerOf2(a):"Alignment is not a power of 2!";
+        assert isLoad() || isStore() :"Not a Load/Store!";
     }
 
     public Value getValue()
@@ -78,8 +99,12 @@ public class MachineMemOperand
         return (flags & MOVolatile) != 0;
     }
 
-    public void profile()
+    public void profile(FoldingSetNodeID id)
     {
-        // TODO: 17-7-19
+        assert id != null;
+        id.addInteger(offset);
+        id.addInteger(size);
+        id.addInteger(val.hashCode());
+        id.addInteger(flags);
     }
 }
