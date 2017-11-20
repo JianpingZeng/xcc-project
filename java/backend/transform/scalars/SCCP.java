@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
 import backend.transform.scalars.SCCPSolver.LatticeStatus;
@@ -43,6 +44,20 @@ public class SCCP implements FunctionPass
 {
     public static final IntStatistic NumInstrToDels =
             new IntStatistic("NumInstrToDels", "Number instructions to be deleted");
+
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     @Override
     public String getPassName()
     {

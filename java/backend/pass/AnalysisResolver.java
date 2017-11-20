@@ -16,37 +16,32 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.passManaging.PMDataManager;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public interface AnalysisResolver
+public final class AnalysisResolver
 {
-    Pass getAnalysisOrNull(PassInfo passInfo);
-
-    void addPass(ImmutablePass ip, AnalysisUsage au);
-
-    /**
-     * Return the analysis result which must be existed.
-     * @param pi
-     * @return
-     */
-    default Pass getAnalysis(PassInfo pi)
+    private PMDataManager pm;
+    public AnalysisResolver(PMDataManager pmd)
     {
-        Pass res = getAnalysisOrNull(pi);
-        assert res != null:"Pass has an incorrent pass used yet!";
-        return res;
+        pm = pmd;
+    }
+
+    public PMDataManager getPMDataManager()
+    {
+        return pm;
     }
 
     /**
-     * Return an analysis pass or null if it is not existed.
+     * Return the analysis result or null if it doesn't exist.
      * @param passInfo
      * @return
      */
-    default Pass getAnalysisToUpdate(PassInfo passInfo)
+    public Pass getAnalysisIfAvailable(PassInfo passInfo, boolean dir)
     {
-        return getAnalysisOrNull(passInfo);
+        return pm.findAnalysisPass(passInfo, dir);
     }
-
-    void markPassUsed(PassInfo passInfo, Pass user);
 }

@@ -45,6 +45,20 @@ public final class LCSSA implements LoopPass
 	private ArrayList<BasicBlock> loopBlocks;
 	PredIteratorCache predCache;
 
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
+
 	private LCSSA()
 	{
 		predCache = new PredIteratorCache();

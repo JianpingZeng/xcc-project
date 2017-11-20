@@ -1,6 +1,7 @@
 package backend.transform.scalars;
 
 import backend.analysis.*;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.utils.PredIterator;
@@ -30,6 +31,19 @@ public final class LoopSimplify implements FunctionPass
 	private DomTreeInfo dt;
 	private AliasAnalysis aliasAnalysis;
 
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{

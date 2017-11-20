@@ -16,14 +16,17 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
-import backend.pass.RegisterPass;
-import backend.value.BasicBlock;
+import backend.pass.AnalysisResolver;
+import backend.pass.AnalysisUsage;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
-import backend.pass.AnalysisUsage;
+import backend.value.BasicBlock;
 import backend.value.Function;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Stack;
 
 /**
  * Concrete subclass of DominanceFrontierBase that is used to compute a
@@ -33,7 +36,19 @@ import java.util.*;
  */
 public final class DominanceFrontier extends DominanceFrontierBase
 {
+    private AnalysisResolver resolver;
 
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     public DominanceFrontier()
     {
         super(false);

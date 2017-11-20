@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.pass.Pass;
@@ -36,6 +37,19 @@ public final class UnifyFunctionExitNodes implements FunctionPass
 {
     private BasicBlock returnBlock;
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     public static Pass createUnifyFunctionExitNodes()
     {
         return new UnifyFunctionExitNodes();

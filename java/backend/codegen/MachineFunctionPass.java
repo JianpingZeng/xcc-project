@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.analysis.*;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.value.Function;
@@ -11,6 +12,20 @@ import backend.value.Function;
  */
 public abstract class MachineFunctionPass implements FunctionPass
 {
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
+
 	/**
 	 * This method must be overridded by concrete subclass for performing
 	 * desired machine code transformation or analysis.

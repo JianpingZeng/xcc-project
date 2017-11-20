@@ -107,6 +107,13 @@ public class TargetInstrDesc
         this.opInfo = opInfo;
     }
 
+    /**
+     * Get an operand tied to defined operand. The specified opNum is
+     * index to general operand.
+     * @param opNum
+     * @param constraint
+     * @return
+     */
     public int getOperandConstraint(int opNum, int constraint)
     {
         if (opNum < numOperands

@@ -16,10 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import backend.pass.AnalysisUsage;
-import backend.pass.FunctionPass;
-import backend.pass.ModulePass;
-import backend.pass.Pass;
+import backend.pass.*;
 import backend.value.Function;
 import backend.value.Module;
 
@@ -37,6 +34,20 @@ import static backend.passManaging.PMDataManager.PassDebuggingString.ON_FUNCTION
  */
 public final class FPPassManager extends PMDataManager implements ModulePass
 {
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
+
     public FPPassManager(int depth)
     {
         super(depth);

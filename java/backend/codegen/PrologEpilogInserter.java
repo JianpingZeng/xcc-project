@@ -22,6 +22,7 @@ import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
+import backend.support.BackendCmdOptions;
 import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.target.*;
@@ -37,7 +38,6 @@ import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static tools.commandline.Desc.desc;
 import static tools.commandline.Initializer.init;
-import static tools.commandline.OptionHidden.Hidden;
 import static tools.commandline.OptionNameApplicator.optionName;
 import static tools.commandline.ValueDesc.valueDesc;
 
@@ -71,20 +71,6 @@ public class PrologEpilogInserter extends MachineFunctionPass
     {
         None, BasicInfo, Iterations, Details
     }
-
-    public static final Opt<ShrinkWrapDebugLevel> ShrinkWrapDebugging = new Opt<ShrinkWrapDebugLevel>(
-            new Parser<>(), optionName("shrink-wrap-dbg"),
-            new OptionHiddenApplicator(Hidden),
-            desc("Print shrink wrapping debugging information"),
-            new ValueClass<>(
-                    new ValueClass.Entry<>(ShrinkWrapDebugLevel.None, "None",
-                            "disable debug output"),
-                    new ValueClass.Entry<>(BasicInfo, "BasicInfo",
-                            "print basic DF sets"),
-                    new ValueClass.Entry<>(ShrinkWrapDebugLevel.Iterations,
-                            "Iterations", "print SR sets for each iteration"),
-                    new ValueClass.Entry<>(Details,
-                            "Details", "print all DF sets")));
 
     private RegScavenger rs;
     /**
@@ -499,12 +485,12 @@ public class PrologEpilogInserter extends MachineFunctionPass
         if (hasFastExitPath)
             System.err.print(" (fast exit path)");
         System.err.println();
-        if (ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
+        if (BackendCmdOptions.ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
         {
             System.err.print("------------------------------"
                     + "-----------------------------\n");
             System.err.printf("UsedCSRegs = %s\n", stringifyCSRegSet(usedCSRegs));
-            if (ShrinkWrapDebugging.value.ordinal() >= Details.ordinal())
+            if (BackendCmdOptions.ShrinkWrapDebugging.value.ordinal() >= Details.ordinal())
             {
                 System.err.print("------------------------------"
                         + "-----------------------------\n");
@@ -546,7 +532,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
             }
         }
 
-        if (ShrinkWrapDebugging.value.ordinal() >= Details.ordinal())
+        if (BackendCmdOptions.ShrinkWrapDebugging.value.ordinal() >= Details.ordinal())
         {
             System.err.print("-----------------------------------------------------------\n");
             System.err.print(" Antic/Avail Sets:\n");
@@ -690,7 +676,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
 
             if (isReturnBlock(succ))
             {
-                if (ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
+                if (BackendCmdOptions.ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
                 {
                     System.err.printf("Fast exit path: %s->%s",
                             getBasicBlockName(entryBlock), getBasicBlockName(succ));
@@ -713,7 +699,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
 
                 if (hasFastExitPath)
                 {
-                    if (ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
+                    if (BackendCmdOptions.ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
                     {
                         System.err.printf("Fast exit path: %s->%s\n",
                                 getBasicBlockName(entryBlock),
@@ -760,7 +746,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
             changed = false;
             ++iterations;
 
-            if (ShrinkWrapDebugging.value.ordinal() >= Iterations.ordinal())
+            if (BackendCmdOptions.ShrinkWrapDebugging.value.ordinal() >= Iterations.ordinal())
             {
                 System.err.printf("iter %d%s\n", iterations,
                         " --------------------------------------------------");
@@ -816,7 +802,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
         notSpilledInEntryBlock.diff(csrSave.get(entryBlock));
         int numSRReducedThisFunction = notSpilledInEntryBlock.size();
         numSRRecord.add(numSRReducedThisFunction);
-        if (ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
+        if (BackendCmdOptions.ShrinkWrapDebugging.value.ordinal() >= BasicInfo.ordinal())
         {
             System.err.print("-----------------------------------------------------------\n");
             System.err.printf("total iterations = %s (%s %d %d )\n",

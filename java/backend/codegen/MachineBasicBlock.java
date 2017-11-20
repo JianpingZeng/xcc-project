@@ -320,14 +320,8 @@ public class MachineBasicBlock
 
 	public void print(PrintStream os, PrefixPrinter prefix)
 	{
-	    try(FormattedOutputStream out = new FormattedOutputStream(os))
-        {
-            print(out, prefix);
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+	    FormattedOutputStream out = new FormattedOutputStream(os);
+        print(out, prefix);
 	}
 
 	public void print(FormattedOutputStream os, PrefixPrinter prefix)

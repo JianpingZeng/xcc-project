@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.LLVMContext;
@@ -81,6 +82,20 @@ public final class ScalarEvolution implements FunctionPass
      * A instruction map to a null if we can not compute its exit value.
      */
     private HashMap<PhiNode, Constant> constantEvolutionLoopExitValue;
+
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
 
     public LoopInfo getLI()
     {

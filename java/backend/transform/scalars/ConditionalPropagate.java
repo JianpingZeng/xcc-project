@@ -17,6 +17,7 @@
 
 package backend.transform.scalars;
 
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
@@ -45,6 +46,19 @@ public class ConditionalPropagate implements FunctionPass
     private boolean madeChange;
     private LinkedList<BasicBlock> deadBlocks;
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     private ConditionalPropagate()
     {
         super();

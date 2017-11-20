@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
@@ -38,6 +39,20 @@ import static backend.transform.utils.ConstantFolder.constantFoldTerminator;
  */
 public final class CFGSimplifyPass implements FunctionPass
 {
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
+
     /**
      * calling this method to simplify cfg. It is possible that multiple passes
      * are needed loop over function.

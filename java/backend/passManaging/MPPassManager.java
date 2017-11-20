@@ -16,6 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.ModulePass;
 import backend.pass.Pass;
@@ -31,6 +32,19 @@ public class MPPassManager extends PMDataManager implements Pass
 {
     private HashMap<Pass, FunctionPassManagerImpl> onTheFlyManager;
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     public MPPassManager()
     {
         super(0);

@@ -16,10 +16,7 @@ package backend.passManaging;
  * permissions and limitations under the License.
  */
 
-import backend.pass.AnalysisUsage;
-import backend.pass.BasicBlockPass;
-import backend.pass.FunctionPass;
-import backend.pass.Pass;
+import backend.pass.*;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Module;
@@ -38,6 +35,19 @@ import static backend.passManaging.PMDataManager.PassDebuggingString.ON_FUNCTION
  */
 public class BBPassManager extends PMDataManager implements FunctionPass
 {
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     public BBPassManager(int depth)
     {
         super(depth);

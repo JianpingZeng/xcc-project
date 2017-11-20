@@ -16,6 +16,7 @@ package backend.analysis;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.pass.Pass;
@@ -53,6 +54,20 @@ public final class IVUsers implements LoopPass
 	 * A diagMapping from strides to the uses in {@linkplain #ivUsers}.
 	 */
 	public HashMap<SCEV, IVUsersOfOneStride> ivUsesByStride;
+
+	private AnalysisResolver resolver;
+
+	@Override
+	public void setAnalysisResolver(AnalysisResolver resolver)
+	{
+		this.resolver = resolver;
+	}
+
+	@Override
+	public AnalysisResolver getAnalysisResolver()
+	{
+		return resolver;
+	}
 
 	@Override
 	public boolean runOnLoop(Loop loop, LPPassManager ppm)

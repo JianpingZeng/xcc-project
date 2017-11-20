@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
 import backend.value.BasicBlock;
@@ -34,6 +35,21 @@ public final class TailCallElim implements FunctionPass
 {
     public final static IntStatistic NumTailElim =
             new IntStatistic("NumTailElim", "The number of tail call elimination");
+
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
+
     @Override
     public boolean runOnFunction(Function f)
     {

@@ -19,6 +19,7 @@ package backend.transform.ipo;
 
 import backend.hir.FreeInst;
 import backend.hir.MallocInst;
+import backend.pass.AnalysisResolver;
 import backend.pass.ModulePass;
 import backend.support.IntStatistic;
 import backend.support.LLVMContext;
@@ -47,6 +48,21 @@ public final class RaiseAllocations implements ModulePass
 
     private Function mallocFunc;
     private Function freeFunc;
+
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
+
     public RaiseAllocations()
     {}
 

@@ -330,8 +330,11 @@ public class Util
 
 	public static void Debug(Object... args)
 	{
-		for (Object arg : args)
-			System.err.println(arg);
+		if(Util.DEBUG)
+		{
+			for (Object arg : args)
+				System.err.println(arg);
+		}
 	}
 
 	public static String fixedLengthString(int repeatNum, String unit)

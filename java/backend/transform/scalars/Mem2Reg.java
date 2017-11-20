@@ -18,6 +18,7 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DominanceFrontier;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.transform.utils.PromoteMemToReg;
@@ -41,6 +42,19 @@ public final class Mem2Reg implements FunctionPass
      */
     public static int numPromoted;
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     /**
      * Provides a entry point to create an instance of this pass.
      * @return

@@ -16,6 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
+import backend.pass.AnalysisResolver;
 import backend.pass.FunctionPass;
 import backend.value.*;
 import backend.value.Instruction.*;
@@ -36,6 +37,19 @@ public final class LowerSwitch implements FunctionPass
 {
     public static LowerSwitch createLowerSwitchPass() {return new LowerSwitch();}
 
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
     @Override
     public String getPassName()
     {

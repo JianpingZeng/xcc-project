@@ -452,17 +452,17 @@ public class MachineInstr implements Cloneable
             return false;
         }
 
-        TargetInstrDesc TID = getDesc();
-        if (useOpIdx >= TID.getNumOperands())
+        TargetInstrDesc tid = getDesc();
+        if (useOpIdx >= tid.getNumOperands())
             return false;
-        MachineOperand MO = getOperand(useOpIdx);
-        if (!MO.isRegister() || !MO.isUse())
+        MachineOperand mo = getOperand(useOpIdx);
+        if (!mo.isRegister() || !mo.isUse())
             return false;
-        int DefIdx = TID.getOperandConstraint(useOpIdx, TIED_TO);
-        if (DefIdx == -1)
+        int defIdx = tid.getOperandConstraint(useOpIdx, TIED_TO);
+        if (defIdx == -1)
             return false;
         if (defOpIdx != null)
-            defOpIdx.set(DefIdx);
+            defOpIdx.set(defIdx);
         return true;
     }
 

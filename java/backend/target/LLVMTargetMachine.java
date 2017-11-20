@@ -26,7 +26,7 @@ import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
 import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
 import static backend.codegen.RegAllocLinearScan.createLinearScanRegAllocator;
-import static backend.codegen.RegAllocSimple.createSimpleRegAllocator;
+import static backend.codegen.RegAllocLocal.createLocalRegAllocator;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetOptions.VerifyMachineCode;
 import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
@@ -43,6 +43,16 @@ public abstract class LLVMTargetMachine extends TargetMachine
     protected LLVMTargetMachine(Target target, String triple)
     {
         super(target);
+    }
+
+    private static void printAndVerify(PassManagerBase pm,
+            boolean allowDoubleDefs, String banner)
+    {
+        if (PrintMachineCode.value)
+            pm.add(createMachineFunctionPrinterPass(System.err, banner));
+
+        if (VerifyMachineCode.value)
+            pm.add(createMachineVerifierPass(allowDoubleDefs));
     }
 
     private static void printAndVerify(
@@ -82,32 +92,34 @@ public abstract class LLVMTargetMachine extends TargetMachine
             return true;
 
         // print the machine instructions.
-        printAndVerify(pm, true);
+        printAndVerify(pm, true,
+                "# *** IR dump after Instruction Selection ***:\n");
 
         if (addPreRegAlloc(pm, level))
         {
-            printAndVerify(pm, true);
+            printAndVerify(pm, true,
+                    "# *** IR dump after Pre-Register allocation ***:\n");
             return true;
         }
 
         // Perform register allocation to convert to a concrete x86 representation
         if (level == CodeGenOpt.None)
-            pm.add(createSimpleRegAllocator());
+            pm.add(createLocalRegAllocator());
         else
             pm.add(createLinearScanRegAllocator());
 
         // Print machine code after register allocation.
-        printAndVerify(pm, false);
+        printAndVerify(pm, false,
+                "# *** IR dump after Register Allocator ***:\n");
 
         if (addPostRegAlloc(pm, level))
         {
-            printAndVerify(pm, false);
             return true;
         }
 
         pm.add(createPrologEpilogEmitter());
-        printAndVerify(pm, false);
-
+        printAndVerify(pm, false,
+                "# *** IR Dump After Prologue/Epilogue Insertion & Frame Finalization ***:\n");
         return false;
     }
 

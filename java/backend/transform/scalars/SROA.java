@@ -19,6 +19,7 @@ package backend.transform.scalars;
 
 import backend.analysis.DomTreeInfo;
 import backend.analysis.DominanceFrontier;
+import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
 import backend.pass.FunctionPass;
 import backend.support.IntStatistic;
@@ -72,6 +73,20 @@ public final class SROA implements FunctionPass
             new IntStatistic("scalarrepl", "Number of allocas broken up");
     public static final IntStatistic NumPromoted =
             new IntStatistic("scalarrepl", "Number of allocas promoted");
+
+    private AnalysisResolver resolver;
+
+    @Override
+    public void setAnalysisResolver(AnalysisResolver resolver)
+    {
+        this.resolver = resolver;
+    }
+
+    @Override
+    public AnalysisResolver getAnalysisResolver()
+    {
+        return resolver;
+    }
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
