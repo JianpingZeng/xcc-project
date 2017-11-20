@@ -9,6 +9,7 @@ import tools.BitMap;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Map;
 
 import static backend.target.TargetRegisterInfo.*;
 
@@ -350,7 +351,7 @@ public class RegAllocLocal extends MachineFunctionPass
 	 */
 	private void removePhyReg(int phyReg)
 	{
-		phyRegUsed.remove(phyReg);
+	    phyRegUsed.entrySet().removeIf(entry->entry.getKey() == phyReg);
 
 		assert phyRegsUseOrder.contains(phyReg)
 				: "Remove a phyReg, but it is not in phyRegUseOrder list";
@@ -482,16 +483,18 @@ public class RegAllocLocal extends MachineFunctionPass
 		// Spill all physical register holding virtual register.
 		if (!phyRegUsed.isEmpty())
 		{
-            Iterator<Integer> mapItr = phyRegUsed.keySet().iterator();
-            while (mapItr.hasNext())
+            Iterator<Map.Entry<Integer, Integer>> mapItr;
+            do
             {
-                int phyReg = mapItr.next();
-                int virReg = phyRegUsed.get(phyReg);
+                mapItr = phyRegUsed.entrySet().iterator();
+	            Map.Entry<Integer, Integer> pair = mapItr.next();
+                int phyReg = pair.getKey();
+                int virReg = pair.getValue();
                 if (virReg != 0)
                     spillVirReg(mbb, itr, virReg, phyReg);
                 else
                     removePhyReg(phyReg);
-            }
+            }while (mapItr.hasNext());
 		}
 
 		phyRegUsed.clear();
