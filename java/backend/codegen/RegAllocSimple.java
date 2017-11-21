@@ -98,7 +98,7 @@ public final class RegAllocSimple extends MachineFunctionPass
 		int frameIdx = getStackSlotForVirReg(virReg, rc);
 		int phyReg = getFreeReg(virReg);
 
-		regInfo.loadRegFromStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
+		instrInfo.loadRegFromStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
 
 		// add the count for reloaded.
 		++numReloaded;
@@ -110,7 +110,9 @@ public final class RegAllocSimple extends MachineFunctionPass
 	{
 		TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 		int frameIdx = getStackSlotForVirReg(virReg, rc);
-		regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
+		boolean isKilled = !(insertPos < mbb.size() &&
+				mbb.getInstAt(insertPos).readsRegister(phyReg, regInfo));
+		instrInfo.storeRegToStackSlot(mbb, insertPos, phyReg, isKilled, frameIdx, rc);
 
 		// After spill, it is needed to free used physical register
         regUsed.set(phyReg, false);

@@ -325,7 +325,7 @@ public class MachineInstr implements Cloneable
 	    for (int i = 0, e = getNumOperands(); i != e; i++)
         {
             MachineOperand mo = getOperand(i);
-            if (!mo.isUse() || !mo.isRegister())
+            if (!mo.isRegister() || !mo.isUse())
                 continue;
 
             int moreg = mo.getReg();
@@ -754,6 +754,7 @@ public class MachineInstr implements Cloneable
 
 	    if (!memOperands.isEmpty())
 	    {
+	    	os.print(", Mem:");
 		    for (MachineMemOperand mmo : memOperands)
 		    {
 			    Value v = mmo.getValue();

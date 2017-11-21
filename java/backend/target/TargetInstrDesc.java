@@ -265,7 +265,7 @@ public class TargetInstrDesc
 
     public boolean hasUnmodeledSideEffects()
     {
-        return (flags & (1 << TID.UnmodeledSideEffects)) != 0;
+        return (flags & (1 << TID.UnmodelSideEffects)) != 0;
     }
 
     public boolean isCommutable()

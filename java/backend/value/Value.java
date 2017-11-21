@@ -255,7 +255,7 @@ public class Value implements Cloneable
 
 	public String getName()
     {
-        return name;
+        return name == null ?"": name;
     }
 
 	public boolean hasName() {return name != null && !name.isEmpty();}

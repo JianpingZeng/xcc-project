@@ -212,7 +212,7 @@ public class RegAllocLocal extends MachineFunctionPass
 		// note that this reg is just reloaded.
 		markVirRegModified(virReg, false);
 
-		regInfo.loadRegFromStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
+		instrInfo.loadRegFromStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
 
 		// add the count for reloaded.
 		NumReloaded.inc();
@@ -276,7 +276,9 @@ public class RegAllocLocal extends MachineFunctionPass
 		{
 			TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virReg);
 			int frameIdx = getStackSlotForVirReg(virReg, rc);
-			regInfo.storeRegToStackSlot(mbb, insertPos, phyReg, frameIdx, rc);
+			boolean isKilled = !(insertPos < mbb.size() &&
+					mbb.getInstAt(insertPos).readsRegister(phyReg, regInfo));
+			instrInfo.storeRegToStackSlot(mbb, insertPos, phyReg, isKilled, frameIdx, rc);
 
 			// add count for spilled.
 			NumSpilled.inc();

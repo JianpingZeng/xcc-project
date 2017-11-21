@@ -1,6 +1,6 @@
 package backend.codegen;
 
-import java.io.PrintStream;
+import backend.support.FormattedOutputStream;
 
 /**
  * A specialized PseudoSourceValue for holding FixedStack values, which must
@@ -17,14 +17,13 @@ public class FixedStackPseudoSourceValue extends PseudoSourceValue
     }
 
     @Override
-    public boolean isConstant()
+    public boolean isConstant(MachineFrameInfo mfi)
     {
-        return super.isConstant();
+        return mfi != null && mfi.isImmutableObjectIndex(frameIndex);
     }
 
-    @Override
-    public void print(PrintStream os)
+    @Override public void print(FormattedOutputStream os)
     {
-        super.print(os);
+        os.printf("FixedStack%d", frameIndex);
     }
 }

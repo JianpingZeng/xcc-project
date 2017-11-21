@@ -12,7 +12,6 @@ import tools.Util;
 
 import java.util.ArrayList;
 
-import static backend.codegen.MachineInstrBuilder.addFrameReference;
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static backend.target.TargetOptions.DisableFramePointerElim;
 import static backend.target.TargetOptions.EnableRealignStack;
@@ -665,18 +664,6 @@ public class X86RegisterInfo extends X86GenRegisterInfo
         return opc;
     }
 
-	@Override
-	public int storeRegToStackSlot(MachineBasicBlock mbb, int mbbi, int srcReg,
-			int frameIndex, TargetRegisterClass rc)
-	{
-	    MachineFunction mf = mbb.getParent();
-	    boolean isAligned = getStackAlignment() >= 16 || needsStackRealignment(mf);
-	    int opc = getStoreRegOpcode(srcReg, rc, isAligned, tm);
-		addFrameReference(buildMI(mbb, mbbi, tii.get(opc)), frameIndex).
-                addReg(srcReg, RegState.Kill);
-		return mbbi+1;
-	}
-
     private static int getLoadRegOpcode(int DestReg,
             TargetRegisterClass rc,
             boolean isStackAligned,
@@ -780,32 +767,6 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
         return opc;
     }
-
-	@Override
-	public int loadRegFromStackSlot(MachineBasicBlock mbb,
-			int mbbi, int destReg, int frameIndex,
-			TargetRegisterClass rc)
-	{
-        MachineFunction mf = mbb.getParent();
-        boolean isAligned = getStackAlignment() >= 16 || needsStackRealignment(mf);
-        int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
-        addFrameReference(buildMI(mbb, mbbi, tii.get(opc), destReg), frameIndex);
-        return mbbi+1;
-	}
-
-	private static int getCopyRegOpcode()
-    {
-        // TODO: 17-7-20
-        return 0;
-    }
-
-	@Override
-	public int copyRegToReg(MachineBasicBlock mbb, int mbbi, int destReg,
-			int srcReg, TargetRegisterClass rc)
-	{
-        // TODO: 17-7-20
-        return mbbi + 1;
-	}
 
 	/**
 	 * This method is called during prolog/epilog code insertion to eliminate
