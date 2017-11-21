@@ -1,6 +1,7 @@
 package backend.codegen;
 
 import backend.target.TargetMachine;
+import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.BasicBlock;
 import backend.value.Function;
@@ -230,5 +231,20 @@ public class MachineFunction
 			mbb.print(os, prefix);
 		}
 		os.printf("%n# End machine code for %s().%n%n", fn.getName());
+	}
+
+	/**
+	 * Add the specified physical register as a live-in values. Also create a
+	 * virtual register associated with this register.
+	 * @param locReg
+	 * @param rc
+	 * @return
+	 */
+	public int addLiveIn(int locReg, TargetRegisterClass rc)
+	{
+		assert rc.contains(locReg):"Not the current regclass!";
+		int virReg = getMachineRegisterInfo().createVirtualRegister(rc);
+		getMachineRegisterInfo().addLiveIn(locReg, virReg);
+		return virReg;
 	}
 }

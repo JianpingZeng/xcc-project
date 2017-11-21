@@ -17,15 +17,13 @@ package backend.target.x86;
  */
 
 import backend.codegen.*;
+import backend.codegen.CCValAssign.LocInfo;
 import backend.codegen.selectDAG.FastISel;
 import backend.codegen.selectDAG.ISD;
 import backend.support.CallSite;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;
-import backend.target.TargetData;
-import backend.target.TargetInstrInfo;
-import backend.target.TargetMachine;
-import backend.target.TargetRegisterClass;
+import backend.target.*;
 import backend.type.*;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
@@ -45,11 +43,13 @@ import static backend.target.TargetMachine.CodeModel.Small;
 import static backend.target.TargetMachine.RelocModel.PIC_;
 import static backend.target.TargetOptions.EnablePerformTailCallOpt;
 import static backend.target.x86.X86AddressMode.BaseType.FrameIndexBase;
+import static backend.target.x86.X86AddressMode.BaseType.RegBase;
 import static backend.target.x86.X86GenCallingConv.*;
 import static backend.target.x86.X86GenInstrNames.*;
 import static backend.target.x86.X86GenRegisterInfo.*;
 import static backend.target.x86.X86GenRegisterNames.*;
 import static backend.target.x86.X86II.*;
+import static backend.target.x86.X86InstrBuilder.addFullAddress;
 import static backend.target.x86.X86InstrInfo.isGlobalRelativeToPICBase;
 import static backend.target.x86.X86InstrInfo.isGlobalStubReference;
 import static backend.target.x86.X86RegisterInfo.SUBREG_8BIT;
@@ -227,7 +227,8 @@ public class X86FastISel extends FastISel
         OutParamWrapper<EVT> x = new OutParamWrapper<>();
         if (retTy.equals(LLVMContext.VoidTy))
         {
-            retVT = new EVT(MVT.isVoid);
+            buildMI(mbb, instrInfo.get(RET));
+            return true;
         }
         else
         {
@@ -237,76 +238,81 @@ public class X86FastISel extends FastISel
         }
 
         CallingConv cc = fn.getCallingConv();
+        /*
         if (cc != CallingConv.C && cc != CallingConv.Fast
                 && cc != CallingConv.X86_FastCall)
             return false;
+        */
 
         // On X86, -tailcallopt changes the fastcc ABI. FastISel doesn't
         // handle this for now.
         if (cc == CallingConv.Fast && EnablePerformTailCallOpt.value)
             return false;
 
-        if (retVT.getSimpleVT().simpleVT != MVT.isVoid)
-        {
-            ArrayList<CCValAssign> rvLocs = new ArrayList<>();
-            CCState ccInfo = new CCState(cc, false, tm, rvLocs);
-            ccInfo.analyzeCallResult(retVT, RetCC_X86);
+        ArrayList<CCValAssign> rvLocs = new ArrayList<>();
+        CCState ccInfo = new CCState(cc, false, tm, rvLocs);
+        ccInfo.analyzeCallResult(retVT, RetCC_X86);
 
-            // Copy all of the result registers out of their specified physreg.
-            assert rvLocs.size() == 1 : "Can't handle multi-value calls!";
-            int srcReg = getRegForValue(inst);
-            int opc;
-            boolean isSigned = retTy.isSigned();
-            int destReg = rvLocs.get(0).getLocReg();
-            switch (retVT.getSimpleVT().simpleVT)
-            {
-                case MVT.i8:
-                    opc = isSigned ? MOVSX32rr8:MOVZX32rr8;
-                    buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
-                    buildMI(mbb, instrInfo.get(RET)).addReg(destReg);
-                    break;
-                case MVT.i16:
-                    opc = isSigned ? MOVSX32rr16:MOVZX32rr16;
-                    buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
-                    buildMI(mbb, instrInfo.get(RET)).addReg(destReg);
-                    break;
-                case MVT.i32:
-                    opc = MOV32rr;
-                    buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
-                    buildMI(mbb, instrInfo.get(RET)).addReg(destReg);
-                    break;
-                case MVT.f32:
-                    if (subtarget.hasSSE1())
-                    {
-                        opc = MOVSSrr;
-                        buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
-                    }
-                    else
-                    {
-                        opc = FsFLD0SS;
-                        buildMI(mbb, instrInfo.get(opc)).addReg(srcReg);
-                    }
-                    break;
-                case MVT.f64:
-                    if (subtarget.hasSSE2())
-                    {
-                        opc = MOVSDrr;
-                        buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
-                    }
-                    else
-                    {
-                        opc = FsFLD0SD;
-                        buildMI(mbb, instrInfo.get(opc)).addReg(srcReg);
-                    }
-                    break;
-                case MVT.i64:
-                default:
-                    assert false:"Unsupported integer type(beyond 64 bit)";
-                    return false;
-            }
+        // If this is the first return lowered for this function, add the regs to the
+        // liveout set for the function.
+        if (mri.isLiveInEmpty())
+        {
+            for (CCValAssign ca : rvLocs)
+                if (ca.isRegLoc())
+                    mri.addLiveOut(ca.getLocReg());
         }
-        else
-            buildMI(mbb, instrInfo.get(RET));
+
+        // Copy all of the result registers out of their specified physreg.
+        assert rvLocs.size() == 1 : "Can't handle multi-value calls!";
+        CCValAssign va = rvLocs.get(0);
+        int srcReg = getRegForValue(inst);
+        int opc;
+        boolean isSigned = retTy.isSigned();
+        int destReg = va.getLocReg();
+        if (va.getLocReg() == ST0 || va.getLocReg() == ST1)
+        {
+            if (isScalarFPTypeInSSEReg(va.getValVT()))
+                assert false:"Unsupported value type and operation!";
+        }
+        switch (retVT.getSimpleVT().simpleVT)
+        {
+            case MVT.i8:
+                opc = isSigned ? MOVSX32rr8:MOVZX32rr8;
+                buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
+                break;
+            case MVT.i16:
+                opc = isSigned ? MOVSX32rr16:MOVZX32rr16;
+                buildMI(mbb, instrInfo.get(opc), destReg).addReg(srcReg);
+                break;
+            case MVT.i32:
+                buildMI(mbb, instrInfo.get(MOV32rr), destReg).addReg(srcReg);
+                break;
+            case MVT.f32:
+                if (subtarget.hasSSE1())
+                {
+                    buildMI(mbb, instrInfo.get(MOVSSrr), destReg).addReg(srcReg);
+                }
+                else
+                {
+                    buildMI(mbb, instrInfo.get(FsFLD0SS)).addReg(srcReg);
+                }
+                break;
+            case MVT.f64:
+                if (subtarget.hasSSE2())
+                {
+                    buildMI(mbb, instrInfo.get(MOVSDrr), destReg).addReg(srcReg);
+                }
+                else
+                {
+                    buildMI(mbb, instrInfo.get(FsFLD0SD)).addReg(srcReg);
+                }
+                break;
+            case MVT.i64:
+            default:
+                assert false:"Unsupported integer type(beyond 64 bit)";
+                return false;
+        }
+        buildMI(mbb, instrInfo.get(RET));
         return true;
     }
 
@@ -451,7 +457,7 @@ public class X86FastISel extends FastISel
                 return false;
         }
         resultReg.set(createResultReg(rc));
-        X86InstrBuilder.addFullAddress(buildMI(mbb, instrInfo.get(opc),
+        addFullAddress(buildMI(mbb, instrInfo.get(opc),
                 resultReg.get()), am);
         return true;
     }
@@ -487,8 +493,7 @@ public class X86FastISel extends FastISel
             }
             if (opc != 0)
             {
-                X86InstrBuilder
-                        .addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addImm(ci.getSExtValue());
+                addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addImm(ci.getSExtValue());
                 return true;
             }
         }
@@ -527,7 +532,7 @@ public class X86FastISel extends FastISel
                 opc = subtarget.hasSSE2() ? MOVSDmr : ST_FP64m;
                 break;
         }
-        X86InstrBuilder.addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addReg(val);
+        addFullAddress(buildMI(mbb, instrInfo.get(opc)), am).addReg(val);
         return true;
     }
 
@@ -742,8 +747,7 @@ public class X86FastISel extends FastISel
                 }
 
                 loadReg = createResultReg(rc);
-                X86InstrBuilder
-                        .addFullAddress(buildMI(mbb, instrInfo.get(opc), loadReg), stubAM);
+                addFullAddress(buildMI(mbb, instrInfo.get(opc), loadReg), stubAM);
 
                 // Prevent loading GV stub multiple times in same mbb.
                 localValueMap.put(val, loadReg);
@@ -1758,16 +1762,15 @@ public class X86FastISel extends FastISel
 
         // A list of regsiters hold the value of each actual argument.
         TIntArrayList argRegs = new TIntArrayList();
-        ArrayList<EVT> argVTs = new ArrayList<>();
-        ArrayList<ArgFlagsTy> argFlags = new ArrayList<>();
 
+        ArrayList<InputArg> incomingArgs = new ArrayList<>();
         for (Value arg : fn.getArgumentList())
         {
             int argReg = getRegForValue(arg);
             if (argReg == 0)
                 return false;
 
-            ArgFlagsTy Flags = new ArgFlagsTy();
+            ArgFlagsTy flags = new ArgFlagsTy();
 
             Type argTy = arg.getType();
             EVT argVT = new EVT();
@@ -1777,64 +1780,300 @@ public class X86FastISel extends FastISel
 
             argVT = x.get();
             int OriginalAlignment = td.getABITypeAlignment(argTy);
-            Flags.setOrigAlign(OriginalAlignment);
+            flags.setOrigAlign(OriginalAlignment);
 
             argRegs.add(argReg);
-            argVTs.add(argVT);
-            argFlags.add(Flags);
+            incomingArgs.add(new InputArg(flags, argVT, true));
         }
 
         // Analyze operands of the call, assigning locations to each operand.
         ArrayList<CCValAssign> argLocs = new ArrayList<>();
-
         CCState ccInfo = new CCState(cc, false, tm, argLocs);
-        ccInfo.analyzeCallOperands(argVTs, argFlags, CCAssignFnForCall(cc));
+        ccInfo.analyzeFormalArguments(incomingArgs, CCAssignFnForCall(cc));
 
+        int lastVal = ~0;
         for (int i = 0, e = argLocs.size(); i != e; ++i)
         {
             CCValAssign va = argLocs.get(i);
-            // The register where caller pass the specified argument into.
-            int argReg = argRegs.get(va.getValNo());
-            // The EVT of the specified actual argument.
-            EVT argVT = argVTs.get(va.getValNo());
+            assert va.getValNo() != lastVal:"Don't support value assigned to multiple locs yet";
+            lastVal = va.getValNo();
 
+            int reg;
+            // The register where caller pass the specified argument into.
             if (va.isRegLoc())
             {
+                EVT regVT = va.getLocVT();
+                TargetRegisterClass rc = null;
+                EVT locVT = va.getLocVT();
+                if (regVT.equals(new EVT(MVT.i32)))
+                {
+                    rc = GR32RegisterClass;
+                }
+                else if (regVT.equals(new EVT(MVT.i64)) && subtarget.is64Bit())
+                    rc = GR64RegisterClass;
+                else if (regVT.equals(new EVT(MVT.f32)))
+                    rc = FR32RegisterClass;
+                else if (regVT.equals(new EVT(MVT.f64)))
+                    rc = FR64RegisterClass;
+                else if (regVT.isVector() && regVT.getSizeInBits() == 128)
+                    rc = VR128RegisterClass;
+                else if (regVT.isVector() && regVT.getSizeInBits() == 64)
+                    rc = VR64RegisterClass;
+                else
+                    assert false:"Unknown argument type!";
+
                 // Emit an instruction copy the actual argument from assigned
                 // location to the a local virtual register (argReg).
-                TargetRegisterClass regClass = tli.getRegClassFor(argVT);
+                reg = mf.addLiveIn(va.getLocReg(), rc);
+                TargetRegisterClass regClass = tli.getRegClassFor(regVT);
+                TargetRegisterClass srcClass = tli.getRegClassFor(locVT);
                 boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(),
-                        argReg, va.getLocReg(), regClass, regClass);
+                        reg, va.getLocReg(), regClass, srcClass);
                 assert Emitted : "Failed to emit a copy instruction!";
-                Emitted = true;
+
+                updateValueMap(fn.argAt(i), reg);
+
+                // If this is an 8-bit or 16-bit value, it is really passed
+                // promotable to i32. Inserts an assert[sz]ext to capture this,
+                // then truncate to right size.
+                // TODO if (va.getLocInfo() == LocInfo.SExt)
             }
             else
             {
-                // Emit an instruction copy the actual argument from stack
-                // location to the local location (a virtual register).
-                int locMemOffset = va.getLocMemOffset();
-                X86AddressMode addrMode = new X86AddressMode();
-                addrMode.baseType = FrameIndexBase;
-                addrMode.base = new X86AddressMode.FrameIndexBase(stackPtr);
-                addrMode.disp = locMemOffset;
+                assert va.isMemLoc();
+                ArgFlagsTy flags = incomingArgs.get(i).flags;
+                boolean alwaysUseMutable = (cc == Fast) &&EnablePerformTailCallOpt.value;
+                boolean isImmutable = !alwaysUseMutable && !flags.isByVal();
+                EVT valVT = va.getLocInfo() == LocInfo.Indirect ?
+                        va.getLocVT() : va.getValVT();
 
+                int fi = mfi.createFixedObject(valVT.getSizeInBits()/8,
+                        va.getLocMemOffset(), isImmutable);
                 int opc;
-                if (argVT.getSizeInBits() == 32)
-                    opc = MOV32rm;
-                else if (argVT.getSizeInBits() == 64)
-                    opc = MOV64rm;
-                else
+                TargetRegisterClass rc;
+                int locVT = va.getLocVT().getSimpleVT().simpleVT;
+                switch (valVT.getSimpleVT().simpleVT)
                 {
-                    assert false : "Unsupported passing argument!";
-                    return false;
+                    case MVT.i8:
+                        opc = MOV8rm;
+                        rc = GR8RegisterClass;
+                        break;
+                    case MVT.i16:
+                        switch (va.getLocInfo())
+                        {
+                            case SExt:
+                                opc = MOVSX16rm8;
+                            case ZExt:
+                            case AExt:
+                                opc = MOVZX16rm8;
+                                break;
+                            default:
+                                opc = MOV8rm;
+                                break;
+                        }
+                        rc = GR16RegisterClass;
+                        break;
+                    case MVT.i32:
+                        switch (va.getLocInfo())
+                        {
+                            case SExt:
+                                if (locVT == MVT.i8)
+                                    opc = MOVSX32rm8;
+                                else if (locVT == MVT.i16)
+                                    opc = MOVSX32rm16;
+                            case ZExt:
+                            case AExt:
+                                if (locVT == MVT.i8)
+                                    opc = MOVZX32rm8;
+                                else if (locVT == MVT.i16)
+                                    opc = MOVZX32rm16;
+                                break;
+                            default:
+                                opc = MOV32rm;
+                                break;
+                        }
+                        rc = GR32RegisterClass;
+                        break;
+                    case MVT.i64:
+                        switch (va.getLocInfo())
+                        {
+                            case SExt:
+                                if (locVT == MVT.i8)
+                                    opc = MOVSX64rm8;
+                                else if (locVT == MVT.i16)
+                                    opc = MOVSX64rm16;
+                                else if (locVT == MVT.i32)
+                                    opc = MOVSX64rm32;
+                            case ZExt:
+                            case AExt:
+                                if (locVT == MVT.i8)
+                                    opc = MOVZX64rm8;
+                                else if (locVT == MVT.i16)
+                                    opc = MOVZX64rm16;
+                                else if (locVT == MVT.i32)
+                                    opc = MOVZX64rm32;
+                                break;
+                            default:
+                                opc = MOV64rm;
+                                break;
+                        }
+                        rc = GR64RegisterClass;
+                        break;
+                    case MVT.f32:
+                        if (!subtarget.hasSSE1())
+                        {
+                            opc = LD_Fp32m;
+                            rc = RFP32RegisterClass;
+                        }
+                        else
+                        {
+                            opc = MOVSSrm;
+                            rc = VR64RegisterClass;
+                        }
+                        break;
+                    case MVT.f64:
+                        if (!subtarget.hasSSE2())
+                        {
+                            if (locVT == MVT.f32)
+                            {
+                                opc = LD_Fp32m64;
+                            }
+                            else
+                            {
+                                assert locVT == MVT.f64;
+                                opc = LD_Fp64m;
+                            }
+                            rc = RFP64RegisterClass;
+                        }
+                        else
+                        {
+                            if (locVT == MVT.f32)
+                            {
+                                opc = CVTSS2SDrm;
+                            }
+                            else
+                            {
+                                assert locVT == MVT.f64;
+                                opc = MOVSDrm;
+                            }
+                            rc = VR64RegisterClass;
+                        }
+                        break;
+                    case MVT.f80:
+                        switch (locVT)
+                        {
+                            case MVT.f32:
+                                opc = LD_Fp32m80;
+                                break;
+                            case MVT.f64:
+                                opc = LD_Fp64m80;
+                                break;
+                            case MVT.f80:
+                                opc = LD_Fp80m;
+                                break;
+                            default:
+                                assert false:"Invalid value type";
+                                break;
+                        }
+                        rc = RFP80RegisterClass;
+                        break;
+                    case MVT.v4i32:
+                    case MVT.v1i64:
+                    case MVT.v2i64:
+                    case MVT.v4f32:
+                    case MVT.v2f64:
+                    default:
+                        assert false:"Unsupported value type (e.g. vector type)";
+                        return false;
                 }
-                X86InstrBuilder.addFullAddress(buildMI(mbb, instrInfo.get(opc),
-                        argReg), addrMode);
+
+                reg = createResultReg(rc);
+                X86AddressMode am = new X86AddressMode();
+                am.baseType = FrameIndexBase;
+                am.base = new X86AddressMode.FrameIndexBase(fi);
+                addFullAddress(buildMI(mbb, instrInfo.get(MOV8rm), reg), am);
+
+                //reg = loadArgFromStack(fi, valVT);
+                updateValueMap(fn.argAt(i), reg);
+            }
+            int opc = 0;
+            TargetRegisterClass rc = null;
+            // If value is passed by pointer, do load.
+            switch (va.getValVT().getSimpleVT().simpleVT)
+            {
+                case MVT.i8:
+                    opc = MOV8rr;
+                    rc = GR8RegisterClass;
+                    break;
+                case MVT.i16:
+                    opc = MOV16rr;
+                    rc = GR16RegisterClass;
+                    break;
+                case MVT.i32:
+                    opc = MOV32rr;
+                    rc = GR32RegisterClass;
+                    break;
+                case MVT.i64:
+                    opc = MOV64rr;
+                    rc = GR64RegisterClass;
+                    break;
+                default:
+                    assert false:"Unsupported value type";
+            }
+            int loadedReg = createResultReg(rc);
+            if (loadedReg == 0)
+                return false;
+
+            if (va.getLocInfo() == LocInfo.Indirect)
+            {
+                updateValueMap(fn.argAt(i), loadedReg);
+                X86AddressMode am = new X86AddressMode();
+                am.base = new X86AddressMode.RegisterBase(loadedReg);
+                am.baseType = RegBase;
+                addFullAddress(buildMI(mbb, instrInfo.get(opc), loadedReg), am);
+            }
+        }
+
+        long stackSize = ccInfo.getNextStackOffset();
+        // align stack specially for tail calls.
+        if (EnablePerformTailCallOpt.value && cc == Fast)
+            stackSize = getAlignedArgumentStackSize(stackSize);
+
+        // if the function takes variable number of arguments, make a frame index
+        // for the start of the first vararg value..
+        int varArgsFrameIndex;
+        if (fn.isVarArg())
+        {
+            if (subtarget.is64Bit() || cc != X86_FastCall)
+                varArgsFrameIndex = mfi.createFixedObject(1, (int) stackSize);
+            if (subtarget.is64Bit())
+            {
+                int totalNumIntRegs = 0, totalNumXMMRegs = 0;
+                // TODO: 2017/11/21
+                assert false:"Should not reaching here, variable argument not supported!";
             }
         }
         return true;
     }
 
+    private long getAlignedArgumentStackSize(long size)
+    {
+        TargetFrameInfo tfi = tm.getFrameInfo();
+        int alignment = tfi.getStackAlignment();
+        long alignMask = alignment - 1;
+        long offset = size;
+        long slotSize = td.getPointerMemSize();
+        if ((offset & alignMask) <= (alignMask - slotSize))
+        {
+            //Number smaller than 12 so just add the difference.
+            offset += ((alignMask - slotSize) - (offset & alignMask));
+        }
+        else
+        {
+            offset = (~alignMask&offset) + alignment + (alignment - slotSize);
+        }
+        return offset;
+    }
     public X86InstrInfo getInstrInfo()
     {
         return (X86InstrInfo)getTargetMachine().getInstrInfo();
