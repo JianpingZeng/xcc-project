@@ -259,7 +259,12 @@ public class MachineBasicBlock
 		liveIns.add(reg);
 	}
 
-    public MachineInstr getLastInst()
+	public TIntArrayList getLiveIns()
+	{
+		return liveIns;
+	}
+
+	public MachineInstr getLastInst()
     {
         return insts.getLast();
     }
