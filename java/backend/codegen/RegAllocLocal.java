@@ -6,10 +6,7 @@ import backend.target.*;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 
 import static backend.target.TargetRegisterInfo.*;
 
@@ -40,7 +37,7 @@ public class RegAllocLocal extends MachineFunctionPass
 	/**
 	 * Mapping physical register to virtual register assigned to it..
 	 */
-	HashMap<Integer, Integer> phyRegUsed;
+	int[] phyRegUsed;
 
 	/**
 	 * Statics data for performance evaluation.
@@ -56,7 +53,6 @@ public class RegAllocLocal extends MachineFunctionPass
 	{
 		stackSlotForVirReg = new TIntIntHashMap();
 		virToPhyRegMap = new HashMap<>();
-		phyRegUsed = new HashMap<>();
         virRegModified = new BitMap();
 	}
 
@@ -83,9 +79,9 @@ public class RegAllocLocal extends MachineFunctionPass
 	 */
 	private void assignVirToPhyReg(int virReg, int phyReg)
 	{
-		assert !phyRegUsed.containsKey(phyReg):"phyreg is already assigned!";
+		assert phyRegUsed[phyReg] == -1:"phyreg is already assigned!";
 
-		phyRegUsed.put(phyReg, virReg);
+		phyRegUsed[phyReg] = virReg;
 		virToPhyRegMap.put(virReg, phyReg);
 		phyRegsUseOrder.addLast(phyReg);
 	}
@@ -105,23 +101,21 @@ public class RegAllocLocal extends MachineFunctionPass
 			for (int i = 0; phyReg == 0; i++)
 			{
 				assert i != phyRegsUseOrder.size()
-						: "Cann't find a register of the appropriate class";
+						: "Can't find a register of the appropriate class";
 
 				int r = phyRegsUseOrder.get(i);
 
-				assert phyRegUsed.containsKey(r)
-						: "PhyReg in phyRegsUseOrder, but is not allocated";
-				if (phyRegUsed.get(r) != 0)
-				{
-					if (regInfo.getRegClass(r) == rc)
-					{
-						phyReg = r;
-						break;
-					}
-					else
-					{
-						boolean subRegFound = false;
-						for (int subReg : regInfo.get(r).subRegs)
+				if (phyRegUsed[r] == -1)
+                {
+                    if (regInfo.getRegClass(r) == rc)
+                    {
+                        phyReg = r;
+                        break;
+                    }
+                    else
+                    {
+                        boolean subRegFound = false;
+                        for (int subReg : regInfo.get(r).subRegs)
                         {
                             if (regInfo.getRegClass(subReg) == rc)
                             {
@@ -130,17 +124,17 @@ public class RegAllocLocal extends MachineFunctionPass
                                 break;
                             }
                         }
-						if (!subRegFound)
-						{
-							for (int superReg : regInfo.get(r).superRegs)
-								if (regInfo.getRegClass(superReg) == rc)
-								{
-									phyReg = superReg;
-									break;
-								}
-						}
-					}
-				}
+                        if (!subRegFound)
+                        {
+                            for (int superReg : regInfo.get(r).superRegs)
+                                if (regInfo.getRegClass(superReg) == rc)
+                                {
+                                    phyReg = superReg;
+                                    break;
+                                }
+                        }
+                    }
+                }
 			}
 
 			assert phyReg != 0:"Physical register not be assigned";
@@ -161,16 +155,15 @@ public class RegAllocLocal extends MachineFunctionPass
 	 */
 	private boolean isPhyRegAvailable(int phyReg)
 	{
-		if (phyRegUsed.containsKey(phyReg)) return false;
+		if (phyRegUsed[phyReg] != -1) return false;
 
-		for (int subReg : regInfo.get(phyReg).subRegs)
-			if (phyRegUsed.containsKey(subReg))
-				return false;
-
-		for (int superReg : regInfo.get(phyReg).superRegs)
-			if (phyRegUsed.containsKey(superReg))
-				return false;
-
+		int[] aliasReg = regInfo.getAliasSet(phyReg);
+		if (aliasReg != null && aliasReg.length > 0)
+        {
+            for (int reg : aliasReg)
+                if (phyRegUsed[reg] != -1)
+                    return false;
+        }
 		return true;
 	}
 
@@ -231,11 +224,10 @@ public class RegAllocLocal extends MachineFunctionPass
 	 */
 	private void spillPhyReg(MachineBasicBlock mbb, int insertPos, int phyReg, boolean onlyVirReg)
 	{
-		if (phyRegUsed.containsKey(phyReg))
-		{
-			if(phyRegUsed.get(phyReg) != 0 || !onlyVirReg)
-				spillVirReg(mbb, insertPos, phyRegUsed.get(phyReg), phyReg);
-		}
+        if(phyRegUsed[phyReg] != -1 || !onlyVirReg)
+        {
+            spillVirReg(mbb, insertPos, phyRegUsed[phyReg], phyReg);
+        }
 		else
 		{
 		    int[] alias = regInfo.getAliasSet(phyReg);
@@ -243,8 +235,8 @@ public class RegAllocLocal extends MachineFunctionPass
             {
                 for (int aliasReg : alias)
                 {
-                    if (phyRegUsed.containsKey(aliasReg) && phyRegUsed.get(aliasReg) != 0)
-                        spillVirReg(mbb, insertPos, phyRegUsed.get(aliasReg), aliasReg);
+                    if (phyRegUsed[aliasReg]!=-1)
+                        spillVirReg(mbb, insertPos, phyRegUsed[aliasReg], aliasReg);
 
                 }
             }
@@ -353,11 +345,11 @@ public class RegAllocLocal extends MachineFunctionPass
 	 */
 	private void removePhyReg(int phyReg)
 	{
-	    phyRegUsed.entrySet().removeIf(entry->entry.getKey() == phyReg);
+	    // free this physical register.
+	    phyRegUsed[phyReg] = -1;
 
-		assert phyRegsUseOrder.contains(phyReg)
-				: "Remove a phyReg, but it is not in phyRegUseOrder list";
-		phyRegsUseOrder.remove(Integer.valueOf(phyReg));
+	    if (phyRegsUseOrder.contains(phyReg))
+		    phyRegsUseOrder.remove(Integer.valueOf(phyReg));
 	}
 
 	/**
@@ -415,7 +407,7 @@ public class RegAllocLocal extends MachineFunctionPass
 				{
 					int reg = op.getReg();
 					spillPhyReg(mbb, i, reg, true);
-					phyRegUsed.put(reg, 0);
+					phyRegUsed[reg] = -1;
 					phyRegsUseOrder.addLast(reg);
 				}
 			}
@@ -426,7 +418,7 @@ public class RegAllocLocal extends MachineFunctionPass
 				for (int impDefReg : desc.implicitDefs)
 				{
 					spillPhyReg(mbb, i, impDefReg, false);
-					phyRegUsed.put(impDefReg, 0);
+					phyRegUsed[impDefReg] = -1;
 					phyRegsUseOrder.addLast(impDefReg);
 				}
 			}
@@ -478,28 +470,23 @@ public class RegAllocLocal extends MachineFunctionPass
 
 		// find a position of the first non-terminator instruction where
 		// some instrs will were inserts after when needed.
-		int itr = mbb.size();
-		while(itr!=0 && instrInfo.get(mbb.getInstAt(itr-1).getOpcode()).isTerminator())
-			--itr;
+
+		int itr = mbb.getFirstTerminator() - 1;
 
 		// Spill all physical register holding virtual register.
-		if (!phyRegUsed.isEmpty())
-		{
-            Iterator<Map.Entry<Integer, Integer>> mapItr;
-            do
-            {
-                mapItr = phyRegUsed.entrySet().iterator();
-	            Map.Entry<Integer, Integer> pair = mapItr.next();
-                int phyReg = pair.getKey();
-                int virReg = pair.getValue();
-                if (virReg != 0)
-                    spillVirReg(mbb, itr, virReg, phyReg);
-                else
-                    removePhyReg(phyReg);
-            }while (mapItr.hasNext());
-		}
+        for (int phyReg = 0, e = regInfo.getNumRegs(); phyReg < e; phyReg++)
+        {
+            // If the specified physical register is allocated, just free it!
+            if (phyRegUsed[phyReg] != -1)
+                spillVirReg(mbb, itr, phyRegUsed[phyReg], phyReg);
+            else
+                removePhyReg(phyReg);
+        }
 
-		phyRegUsed.clear();
+        // Clear phyRegUsed, -1 indicates if it is no longer used.
+        // using 0 to indicate the specified physical register is fixed allocated.
+        Arrays.fill(phyRegUsed, -1);
+
 		assert virToPhyRegMap.isEmpty():"Virtual register still in phys reg?";
 
 		// Clear any physical register which appear live at the end of the basic
@@ -522,6 +509,7 @@ public class RegAllocLocal extends MachineFunctionPass
 		tm = mf.getTarget();
 		regInfo = tm.getRegisterInfo();
 		instrInfo = tm.getInstrInfo();
+        phyRegUsed = new int[regInfo.getNumRegs()];
 		for (MachineBasicBlock mbb : mf.getBasicBlocks())
 			allocateBasicBlock(mbb);
 

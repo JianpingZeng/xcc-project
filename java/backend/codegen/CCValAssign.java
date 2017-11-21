@@ -74,6 +74,11 @@ public class CCValAssign
         return !isMem;
     }
 
+    public boolean isMemLoc()
+    {
+        return isMem;
+    }
+
     public int getLocReg()
     {
         assert isRegLoc();

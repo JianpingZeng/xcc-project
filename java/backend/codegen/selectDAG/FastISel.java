@@ -354,6 +354,18 @@ public abstract class FastISel extends MachineFunctionPass
             System.err.printf("%n%n%n==============%s===============%n", fn.getName());
         }
         selectAllBasicBlocks(fn);
+
+        // If the first basic block in the function has live ins that need to be
+        // copied into vregs, emit the copies into the top of the block before
+        // emitting the code for the block.
+        // TODO emitLiveInCopies(mf.getEntryBlock(),tm.getRegisterInfo(),mri,instrInfo);
+        /**
+         * // Add function live-ins to entry block live-in set.
+         for (MachineRegisterInfo::livein_iterator I = RegInfo->livein_begin(),
+         E = RegInfo->livein_end(); I != E; ++I)
+         MF->begin()->addLiveIn(I->first);
+         */
+        funcInfo.clear();
         return false;
     }
 

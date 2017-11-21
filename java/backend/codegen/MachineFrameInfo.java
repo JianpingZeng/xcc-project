@@ -53,12 +53,23 @@ public class MachineFrameInfo
 
     /**
      * The list of stack objects allocated on this stack frame.
+     * <pre>
+     * The layout of objects is illustrated as follows:
+     * |                      |                            |
+     * |<-Fixed stack object->|<--Local variable object--->|
+     * |For incoming argument |                            |
+     * ^                      ^                            ^
+     * |                      |                            |
+     * -numFixedObjects       0                       top of stack
+     * </pre>
      */
     private ArrayList<StackObject> objects;
 
     /**
      * This indicates the number of fixed objects contained on
-     * the stack.
+     * the stack.</br>
+     * In the another world, it means the number of incoming arguments for
+     * current function.
      */
     private int numFixedObjects;
 
@@ -188,7 +199,8 @@ public class MachineFrameInfo
      */
     public long getObjectSize(int objectIdx)
     {
-        assert objectIdx + numFixedObjects < objects
+        assert objectIdx + numFixedObjects >= 0 &&
+                objectIdx + numFixedObjects < objects
                 .size() : "Invalid Object Idx!";
         return objects.get(objectIdx + numFixedObjects).size;
     }
@@ -198,8 +210,9 @@ public class MachineFrameInfo
      */
     public int getObjectAlignment(int objectIdx)
     {
-        assert objectIdx + numFixedObjects < objects
-                .size() : "Invalid Object Idx!";
+        assert objectIdx + numFixedObjects >= 0 &&
+                objectIdx + numFixedObjects < objects
+                        .size() : "Invalid Object Idx!";
         return objects.get(objectIdx + numFixedObjects).alignment;
     }
 
@@ -209,8 +222,9 @@ public class MachineFrameInfo
      */
     public int getObjectOffset(int objectIdx)
     {
-        assert objectIdx + numFixedObjects < objects
-                .size() : "Invalid Object Idx!";
+        assert objectIdx + numFixedObjects >= 0 &&
+                objectIdx + numFixedObjects < objects
+                        .size() : "Invalid Object Idx!";
         return (int) objects.get(objectIdx + numFixedObjects).spOffset;
     }
 
@@ -220,8 +234,9 @@ public class MachineFrameInfo
      */
     public void setObjectOffset(int objectIdx, long SPOffset)
     {
-        assert objectIdx + numFixedObjects < objects
-                .size() : "Invalid Object Idx!";
+        assert objectIdx + numFixedObjects >= 0 &&
+                objectIdx + numFixedObjects < objects
+                        .size() : "Invalid Object Idx!";
         objects.get(objectIdx + numFixedObjects).spOffset = SPOffset;
     }
 
@@ -281,10 +296,15 @@ public class MachineFrameInfo
      * Note that, the fixed objects usually are return address, incoming function
      * arguments etc.
      */
-    public int createFixedObject(int size, int SPOffset)
+    public int createFixedObject(int size, int offset)
+    {
+        return createFixedObject(size, offset, true);
+    }
+
+    public int createFixedObject(int size, int offset, boolean isImmutable)
     {
         assert size != 0 : "Cannot allocate zero getNumOfSubLoop fixed stack objects!";
-        objects.add(0, new StackObject(size, 1, SPOffset));
+        objects.add(0, new StackObject(size, 1, offset, isImmutable));
         return -(++numFixedObjects);
     }
 
