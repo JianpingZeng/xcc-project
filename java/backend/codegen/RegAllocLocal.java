@@ -1,10 +1,14 @@
 package backend.codegen;
 
+import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.target.*;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
+import tools.Pair;
+import tools.Util;
 
 import java.util.*;
 
@@ -365,20 +369,295 @@ public class RegAllocLocal extends MachineFunctionPass
 		spillPhyReg(mbb, insertPos, phyReg, false);
 	}
 
+    /**
+     * Helper function to determine with MachineInstr a precedes MachineInstr
+     * b within the same MBB.
+     * @param a
+     * @param b
+     * @return
+     */
+	private static boolean precedes(MachineInstr a, MachineInstr b)
+    {
+        if (Objects.equals(a,b))
+            return false;
+
+        MachineBasicBlock mbb = a.getParent();
+        for (int i = 0, e = mbb.size(); i < e; i++)
+        {
+            if (Objects.equals(mbb.getInstAt(i), a))
+                return true;
+            else if (Objects.equals(mbb.getInstAt(i), b))
+                return false;
+        }
+        return false;
+    }
+
+	private BitMap usedInMultipleBlocks = new BitMap();
+
+    /**
+     * Computes liveness of registers within a basic
+     * block, setting the killed/dead flags as appropriate.
+     * @param mbb
+     */
+	private void computeLocalLiveness(MachineBasicBlock mbb)
+	{
+	    MachineRegisterInfo mri = mf.getMachineRegisterInfo();
+        TreeMap<Integer, Pair<MachineInstr, Integer>> lastUseDef = new TreeMap<>();
+        for (int i = 0, e = mbb.size(); i < e; i++)
+        {
+            MachineInstr mi = mbb.getInstAt(i);
+            // Handle use operand.
+            for (int j = 0, sz = mi.getNumOperands(); j < sz; j++)
+            {
+                MachineOperand op = mi.getOperand(j);
+                if (op.isRegister()&& op.getReg() != 0 && op.isUse())
+                {
+                    lastUseDef.put(op.getReg(), Pair.get(mi, j));
+
+                    if (isVirtualRegister(op.getReg()))
+                        continue;
+
+                    int[] aliases = regInfo.getAliasSet(op.getReg());
+                    if (aliases != null && aliases.length > 0)
+                    {
+                        for (int subReg : aliases)
+                        {
+                            if (lastUseDef.containsKey(subReg) &&
+                                    !lastUseDef.get(subReg).first.equals(mi))
+                            {
+                                lastUseDef.put(subReg, Pair.get(mi, j));
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (int j = 0, sz = mi.getNumOperands(); j < sz; j++)
+            {
+                MachineOperand op = mi.getOperand(j);
+                // Defs others than 2-addr redefs _do_ trigger flag changes:
+                //   - A def followed by a def is dead
+                //   - A use followed by a def is a kill
+                if (op.isRegister() && op.getReg() != 0 && op.isDef())
+                {
+                    if (lastUseDef.containsKey(op.getReg()))
+                    {
+                        // Check if this is a two address instruction.  If so, then
+                        // the def does not kill the use.
+                        if (lastUseDef.get(op.getReg()).first.equals(mi) &&
+                                mi.isRegTiedToUseOperand(j, null))
+                            continue;
+
+                        Pair<MachineInstr, Integer> entry = lastUseDef.get(op.getReg());
+                        MachineOperand lastOp = entry.first.getOperand(entry.second);
+                        if (lastOp.isDef())
+                            lastOp.setIsDead(true);
+                        else
+                            lastOp.setIsKill(true);
+                    }
+                    lastUseDef.put(op.getReg(), Pair.get(mi, j));
+                }
+            }
+        }
+
+        // Live-out (of the function) registers contain return values of the function,
+        // so we need to make sure they are alive at return time.
+        if (!mbb.isEmpty() && mbb.getLastInst().getDesc().isReturn())
+        {
+            MachineInstr ret = mbb.getLastInst();
+            TIntArrayList regs = mri.getLiveOuts();
+            if (regs != null && !regs.isEmpty())
+            {
+                for (int i = 0, e = regs.size(); i < e; i++)
+                {
+                    if (!ret.readsRegister(regs.get(i), regInfo))
+                    {
+                        ret.addOperand(MachineOperand.createReg(regs.get(i), false, true));
+                        lastUseDef.put(regs.get(i), Pair.get(ret, ret.getNumOperands()-1));
+                    }
+                }
+            }
+        }
+
+        // Finally, loop over the final use/def of each reg
+        // in the block and determine if it is dead.
+        for (Map.Entry<Integer, Pair<MachineInstr, Integer>> entry : lastUseDef.entrySet())
+        {
+            MachineInstr mi = entry.getValue().first;
+            int index = entry.getValue().second;
+            MachineOperand mo = mi.getOperand(index);
+
+            boolean isPhyReg = isPhyRegAvailable(mo.getReg());
+
+            boolean usedOutsideBlock = isPhyReg ? false:
+                    usedInMultipleBlocks.get(mo.getReg()-FirstVirtualRegister);
+            if (!isPhyReg && !usedOutsideBlock)
+            {
+                // virtual register only used in current block.
+                DefUseChainIterator itr = mri.getRegIterator(mo.getReg());
+                while (itr.hasNext())
+                {
+                    // Two cases:
+                    // - used in another block
+                    // - used in the same block before it is defined (loop)
+                    MachineOperand user = itr.getOpearnd();
+                    MachineInstr userMI = itr.getMachineInstr();
+                    if (!userMI.getParent().equals(mbb) ||
+                            (mo.isDef() && user.isUse() && precedes(userMI, mi)))
+                    {
+                        usedInMultipleBlocks.set(mo.getReg()-FirstVirtualRegister);;
+                        usedOutsideBlock = true;
+                        break;
+                    }
+                }
+            }
+
+            // Physical registers and those that are not live-out of the block
+            // are killed/dead at their last use/def within this block.
+            if (isPhyReg || !usedOutsideBlock)
+            {
+                if (mo.isUse())
+                {
+                    if (!mi.isRegTiedToDefOperand(index, null))
+                        mo.setIsKill(true);
+                }
+                else
+                {
+                    mo.setIsDead(true);
+                }
+            }
+        }
+    }
+
+	/**
+	 * Return true if this is an implicit kill for a read/mod/write register.
+	 * Like, update partial register.
+	 * @param mi
+	 * @param reg
+	 * @return
+	 */
+	private boolean isReadModWriteImplicitKill(MachineInstr mi, int reg)
+	{
+		for (int i = 0, e = mi.getNumOperands(); i < e; i++)
+		{
+			MachineOperand op = mi.getOperand(i);
+			if (op.isRegister() && op.getReg() == reg && op.isDef() && !op.isDead())
+				return true;
+		}
+		return false;
+	}
+
 	private void allocateBasicBlock(MachineBasicBlock mbb)
 	{
+		if (Util.DEBUG)
+			System.err.printf("\nStarting RegAlloc of BB: %s\n", mbb.getBasicBlock().getName());
+
+		// Add live-in registers as active.
+		for (int i = 0, e = mbb.getLiveIns().size(); i < e; i++)
+		{
+			int reg = mbb.getLiveIns().get(i);
+			mf.getMachineRegisterInfo().setPhysRegUsed(reg);
+			phyRegUsed[reg] = 0;    // it is free but reserved now.
+			phyRegsUseOrder.push(reg);
+			for (int alieasReg : regInfo.getAliasSet(reg))
+			{
+				if (phyRegUsed[alieasReg] != -1)
+				{
+					phyRegsUseOrder.push(alieasReg);
+					phyRegUsed[alieasReg] = 0;
+					mf.getMachineRegisterInfo().setPhysRegUsed(alieasReg);
+				}
+			}
+		}
+
+		computeLocalLiveness(mbb);
+
 		for (int i = 0, size = mbb.size(); i < size; i++)
 		{
 			MachineInstr mi = mbb.getInstAt(i);
-
 			int opcode = mi.getOpcode();
 			TargetInstrDesc desc = tm.getInstrInfo().get(opcode);
+
+			if (Util.DEBUG)
+			{
+				System.err.printf("\nStarting RegAlloc of:");
+				mi.dump();
+				for (int usedReg : phyRegUsed)
+				{
+					if (usedReg != -1)
+					{
+						System.err.printf("[%s, %%reg%d] ",
+								regInfo.getName(usedReg), usedReg);
+					}
+				}
+			}
 
 			// loop over all implicit used register, to mark it as recently used,
 			// so they don't get reallocated.
             if (desc.implicitUses != null && desc.implicitUses.length > 0)
 			    for (int useReg : desc.implicitUses)
 				    markPhyRegRecentlyUsed(useReg);
+
+			// Collects killed register set for avoiding redundant spill code.
+			TIntArrayList kills = new TIntArrayList();
+			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
+			{
+				MachineOperand mo = mi.getOperand(j);
+				if (mo.isRegister() && mo.isKill())
+				{
+					if (!mo.isImplicit() ||
+						// These are extra physical register kills when a sub-register
+						// is defined (def of a sub-register is a read/mod/write of the
+						// larger registers). Ignore.
+						!isReadModWriteImplicitKill(mi, mo.getReg()))
+						kills.add(mo.getReg());
+				}
+			}
+
+			// If this instruction is the last user of this register, kill the
+			// value, freeing the register being used, so it doesn't need to be
+			// spilled to memory.
+			for (int j = 0, e = kills.size(); j < e; j++)
+			{
+				int virReg = kills.get(j);
+				int phyReg = virReg;
+				if (isVirtualRegister(virReg))
+				{
+					phyReg = virToPhyRegMap.get(virReg);
+					virToPhyRegMap.remove(virReg);
+				}
+				else
+				{
+					assert phyRegUsed[phyReg] == 0 || phyRegUsed[phyReg] == -1:
+							"Silently clearing a virtual register?";
+				}
+
+				if (phyReg != 0)
+				{
+					if (Util.DEBUG)
+					{
+						System.err.printf(" Last use of %s[%%reg%d], removing it from live set\n",
+								regInfo.getName(phyReg), virReg);
+						removePhyReg(phyReg);
+						int[] aliasReg = regInfo.getAliasSet(phyReg);
+						if (aliasReg != null && aliasReg.length > 0)
+						{
+							for (int subReg : aliasReg)
+							{
+								if (phyRegUsed[subReg] != -1)
+								{
+									if (Util.DEBUG)
+									{
+										System.err.printf(" Last use of %s[%%reg%d], removing it from live set\n",
+												regInfo.getName(subReg), virReg);
+									}
+									removePhyReg(subReg);
+								}
+							}
+						}
+					}
+				}
+			}
 
 			// loop over all operands, assign physical register for it.
 			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
@@ -423,6 +702,14 @@ public class RegAllocLocal extends MachineFunctionPass
 				}
 			}
 
+			TIntArrayList deadDefs = new TIntArrayList();
+			for (int j = 0, e = mi.getNumOperands(); j < e; j++)
+			{
+				MachineOperand op = mi.getOperand(j);
+				if (op.isRegister() && op.isDead())
+					deadDefs.add(op.getReg());
+			}
+
 			// loop over all defined virtual register operands,
 			// assign physical register for it.
 			for (int j = mi.getNumOperands() - 1; j >= 0; j--)
@@ -464,6 +751,50 @@ public class RegAllocLocal extends MachineFunctionPass
 					}
 					markVirRegModified(destVirReg, true);
 					mi.setMachineOperandReg(j, destPhyReg);
+				}
+			}
+
+			// If this instruction defines any registers that are immediately dead,
+			// kill them now.
+			for (int j = 0, e = deadDefs.size(); j < e; j++)
+			{
+				int virReg = deadDefs.get(j);
+				int phyReg = virReg;
+				if (isVirtualRegister(virReg))
+				{
+					phyReg = virToPhyRegMap.get(virReg);
+					assert phyReg != 0;
+					virToPhyRegMap.remove(virReg);
+				}
+				else if (phyRegUsed[phyReg] == -1)
+				{
+					// unallocatable register. Ignore it.
+					continue;
+				}
+				if (phyReg != 0)
+				{
+					if (Util.DEBUG)
+					{
+						System.err.printf(" Register %s [%%reg%d] is never used, removing it from live set\n",
+								regInfo.getName(phyReg), virReg);
+					}
+					removePhyReg(phyReg);
+                    int[] aliasReg = regInfo.getAliasSet(phyReg);
+                    if (aliasReg != null && aliasReg.length > 0)
+                    {
+                        for (int subReg : aliasReg)
+                        {
+                            if (phyRegUsed[subReg] != -1)
+                            {
+                                if (Util.DEBUG)
+                                {
+                                    System.err.printf(" Last use of %s[%%reg%d], removing it from live set\n",
+                                            regInfo.getName(subReg), virReg);
+                                }
+                                removePhyReg(subReg);
+                            }
+                        }
+                    }
 				}
 			}
 		}
