@@ -265,7 +265,7 @@ public class X86FastISel extends FastISel
         // Copy all of the result registers out of their specified physreg.
         assert rvLocs.size() == 1 : "Can't handle multi-value calls!";
         CCValAssign va = rvLocs.get(0);
-        int srcReg = getRegForValue(inst);
+        int srcReg = getRegForValue(inst.operand(0));
         int opc;
         boolean isSigned = retTy.isSigned();
         int destReg = va.getLocReg();

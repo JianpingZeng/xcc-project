@@ -16,6 +16,7 @@ import tools.Util;
 import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetInstrInfo.INLINEASM;
 import static backend.target.TargetOperandInfo.OperandConstraint.TIED_TO;
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
@@ -117,6 +118,8 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
 
                     int ti = tmp.get();
                     if (!mi.getOperand(ti).isRegister() || mi.getOperand(ti).getReg() == 0)
+                        continue;
+                    if (isPhysicalRegister(mi.getOperand(ti).getReg()))
                         continue;
 
                     if (firstTied)
