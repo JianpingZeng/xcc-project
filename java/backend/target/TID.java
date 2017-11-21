@@ -40,7 +40,7 @@ public interface TID
     int FoldableAsLoad = 11;
     int MayLoad = 12;
     int MayStore = 13;
-    int UnmodeledSideEffects = 14;
+    int UnmodelSideEffects = 14;
     int Commutable = 15;
     int ConvertibleTo3Addr = 16;
     int UsesCustomDAGSchedInserter = 17;

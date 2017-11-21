@@ -337,7 +337,8 @@ public class MachineBasicBlock
 		os.println();
 		if (bb != null)
 			os.printf("%s: ", bb.getName());
-		os.printf(", LLVM BB @0x%x, ID#%d", bb == null?0:bb.hashCode(), getNumber());
+		os.printf("0x%x, LLVM BB @0x%x, ID#%d",hashCode(),
+				bb == null?0:bb.hashCode(), getNumber());
 		if (alignment != 0)
 			os.printf(", Alignment %d",alignment);
 		os.printf(":%n");
@@ -352,10 +353,13 @@ public class MachineBasicBlock
 		}
 
 		// Print the preds of this block according to the CFGs.
-		os.printf("\tPredecessors according to CFG:");
-		for (MachineBasicBlock pred : predecessors)
-			os.printf(" 0x%x (#%d)", pred.hashCode(), pred.getNumber());
-		os.println();
+		if (predecessors != null && !predecessors.isEmpty())
+		{
+			os.printf("\tPredecessors according to CFG:");
+			for (MachineBasicBlock pred : predecessors)
+				os.printf(" 0x%x (#%d)", pred.hashCode(), pred.getNumber());
+			os.println();
+		}
 
 		// Print each machine instruction.
 		for (MachineInstr mi : insts)

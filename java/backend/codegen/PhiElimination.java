@@ -111,14 +111,14 @@ public final class PhiElimination extends MachineFunctionPass
 		MachineInstr phiMI = mbb.getInsts().removeFirst();
 		int destReg = phiMI.getOperand(0).getReg();
 
-		TargetRegisterClass rc = mri.getRegClass(destReg);
+		TargetRegisterClass destRC = mri.getRegClass(destReg);
 
 		// update the def of this incomingReg will be performed at predecessor.
-		int incomingReg = mri.createVirtualRegister(rc);
-
+		int incomingReg = mri.createVirtualRegister(destRC);
+		TargetRegisterClass srcRC = mri.getRegClass(incomingReg);
 		// creates a register to register copy instruction at the position where
 		// indexed by firstInstAfter.
-		regInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, rc);
+		instInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, destRC, srcRC);
 		LiveVariables la = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 		if (la != null)
 		{
@@ -157,7 +157,7 @@ public final class PhiElimination extends MachineFunctionPass
 			// This is the point where we can insert a copy if we'd like to.
 			int idx = opBB.getFirstTerminator();
 
-			regInfo.copyRegToReg(opBB, idx, incomingReg, srcReg, rc);
+			instInfo.copyRegToReg(opBB, idx, incomingReg, srcReg, destRC, srcRC);
 
 			// idx++;
 			idx++; // make sure the idx always points to the first terminator inst.

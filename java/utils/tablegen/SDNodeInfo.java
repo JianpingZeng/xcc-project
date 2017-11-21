@@ -77,6 +77,7 @@ public final class SDNodeInfo
                     break;
                 case "SDNPMayStore":
                     properties |= 1 << SDNP.SDNPMayStore;
+                    break;
                 case "SDNPMayLoad":
                     properties |= 1 << SDNP.SDNPMayLoad;
                     break;

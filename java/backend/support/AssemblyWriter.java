@@ -1152,6 +1152,7 @@ public class AssemblyWriter
         if (bb.hasName())
         {
             out.println();
+            out.print(";");
             printLLVMName(out, bb.getName(), LabelPrefix);
             out.print(':');
         }

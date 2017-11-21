@@ -486,26 +486,6 @@ public abstract class TargetRegisterInfo
 	//
 
 	/**
-	 * Inserts a machine isntr into machine basic block and return the next
-	 * insertion position.
-	 *
-	 * @param mbb
-	 * @param mbbi
-	 * @param srcReg
-	 * @param FrameIndex
-	 * @param rc
-	 * @return
-	 */
-	public abstract int storeRegToStackSlot(MachineBasicBlock mbb, int mbbi,
-			int srcReg, int FrameIndex, TargetRegisterClass rc);
-
-	public abstract int loadRegFromStackSlot(MachineBasicBlock mbb, int mbbi,
-			int destReg, int FrameIndex, TargetRegisterClass rc);
-
-	public abstract int copyRegToReg(MachineBasicBlock mbb, int mbbi,
-			int destReg, int srcReg, TargetRegisterClass rc);
-
-	/**
 	 * This method is called during prolog/epilog code insertion to eliminate
 	 * call frame setup and destroy pseudo instructions (but only if the
 	 * Target is using them).  It is responsible for eliminating these

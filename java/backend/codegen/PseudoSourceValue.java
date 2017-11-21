@@ -4,6 +4,7 @@ import backend.support.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.value.Value;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import tools.Util;
 
 import java.io.PrintStream;
 
@@ -19,6 +20,8 @@ import static backend.value.ValueKind.PseudoSourceValueVal;
  */
 public class PseudoSourceValue extends Value
 {
+    private static TIntObjectHashMap<PseudoSourceValue> fsValueMap = new TIntObjectHashMap<>();
+
     public PseudoSourceValue()
     {
         super(LLVMContext.Int8Ty, PseudoSourceValueVal);
@@ -45,19 +48,39 @@ public class PseudoSourceValue extends Value
                 "ConstantPool"
             };
 
+    private static final PseudoSourceValue[] PSValues =
+            {
+                    new PseudoSourceValue(),
+                    new PseudoSourceValue(),
+                    new PseudoSourceValue(),
+                    new PseudoSourceValue()
+            };
     @Override
     public void print(FormattedOutputStream os)
     {
-        os.printf("XX");
+        if (equals(getStack()))
+            os.print(PSVNames[0]);
+        else if (equals(getGOT()))
+            os.print(PSVNames[1]);
+        else if (equals(getJumpTable()))
+            os.print(PSVNames[2]);
+        else if (equals(getConstantPool()))
+            os.print(PSVNames[3]);
+        else
+            assert false:"Invalid PseudoSourceValue";
+
     }
 
-    @Override
-    public boolean isConstant()
+    public boolean isConstant(MachineFrameInfo mfi)
     {
-        return super.isConstant();
+        if (this == getStack())
+            return false;
+        if (this == getGOT() || this == getConstantPool() ||
+                this == getJumpTable())
+            return true;
+        Util.shouldNotReachHere("Unknown PseudoSourceValue");
+        return false;
     }
-
-    private static TIntObjectHashMap<PseudoSourceValue> fsValueMap = new TIntObjectHashMap<>();
 
     /**
      * A pseudo source value referencing a fixed stack frame entry,
@@ -87,11 +110,7 @@ public class PseudoSourceValue extends Value
      */
     public static PseudoSourceValue getStack()
     {
-        if (!fsValueMap.containsKey(0))
-        {
-            fsValueMap.put(0, new PseudoSourceValue());
-        }
-        return fsValueMap.get(0);
+        return PSValues[0];
     }
 
     /**
@@ -101,11 +120,7 @@ public class PseudoSourceValue extends Value
      */
     public static PseudoSourceValue getGOT()
     {
-        if (!fsValueMap.containsKey(1))
-        {
-            fsValueMap.put(0, new PseudoSourceValue());
-        }
-        return fsValueMap.get(1);
+        return PSValues[1];
     }
 
     /**
@@ -114,11 +129,7 @@ public class PseudoSourceValue extends Value
      */
     public static PseudoSourceValue getConstantPool()
     {
-        if (!fsValueMap.containsKey(2))
-        {
-            fsValueMap.put(0, new PseudoSourceValue());
-        }
-        return fsValueMap.get(2);
+        return PSValues[2];
     }
 
     /**
@@ -127,11 +138,7 @@ public class PseudoSourceValue extends Value
      */
     public static PseudoSourceValue getJumpTable()
     {
-        if (!fsValueMap.containsKey(3))
-        {
-            fsValueMap.put(0, new PseudoSourceValue());
-        }
-        return fsValueMap.get(3);
+        return PSValues[3];
     }
 
 }

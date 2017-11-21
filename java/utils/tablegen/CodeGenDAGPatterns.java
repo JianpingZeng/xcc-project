@@ -115,7 +115,7 @@ public final class CodeGenDAGPatterns
         {
             CodeGenInstruction instInfo = pair.getValue();
 
-            boolean[] res = inferFromPattern(instInfo, null);
+            boolean[] res = inferFromPattern(instInfo, this);
             assert res.length == 3;
             instInfo.mayStore = res[0];
             instInfo.mayLoad = res[1];
@@ -125,7 +125,7 @@ public final class CodeGenDAGPatterns
 
     private static boolean[] inferFromPattern(CodeGenInstruction instInfo, CodeGenDAGPatterns cdp)
     {
-        boolean mayStore = false, mayLoad = false, hasSideEffect = false;
+        boolean mayStore, mayLoad, hasSideEffect;
         InstAnalyzer analyzer = new InstAnalyzer(cdp, false, false, false);
         boolean hadPattern =  analyzer.analyze(instInfo.theDef);
         mayStore = analyzer.mayStore;
