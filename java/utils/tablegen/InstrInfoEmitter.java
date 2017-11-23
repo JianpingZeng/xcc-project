@@ -21,10 +21,7 @@ import gnu.trove.map.hash.TObjectIntHashMap;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author Xlous.zeng
@@ -112,7 +109,7 @@ public final class InstrInfoEmitter extends TableGenBackend
                 }
             }
 
-            TObjectIntHashMap<ArrayList<String>> operandInfoIDs = new TObjectIntHashMap<>();
+            HashMap<ArrayList<String>, Integer> operandInfoIDs = new HashMap<>();
 
             // Emit all of the operand info records.
             emitOperandInfo(os, operandInfoIDs);
@@ -121,7 +118,7 @@ public final class InstrInfoEmitter extends TableGenBackend
             ArrayList<CodeGenInstruction> numberedInstrs = new ArrayList<>();
             target.getInstructionsByEnumValue(numberedInstrs);
 
-            // Emit allof the TargetInstrDesc records in theire ENUM order.
+            // Emit all of the TargetInstrDesc records in there ENUM order.
             os.println("\n\t// // Since the java code limit to 65535, the initializer of X86Insts must be divided.");
             os.printf("\tpublic final static TargetInstrDesc[] X86Insts = new TargetInstrDesc[%d];\n", numberedInstrs.size());
             final int NUM = 500;
@@ -171,7 +168,7 @@ public final class InstrInfoEmitter extends TableGenBackend
             int num, Record instrInfo,
             TObjectIntHashMap<ArrayList<Record>> emittedLists,
             TObjectIntHashMap<Record> barriersMap,
-            TObjectIntHashMap<ArrayList<String>> opInfo,
+            HashMap<ArrayList<String>, Integer> opInfo,
             PrintStream os) throws Exception
     {
         int minOperands = 0;
@@ -341,7 +338,7 @@ public final class InstrInfoEmitter extends TableGenBackend
     }
 
     private void emitOperandInfo(PrintStream os,
-            TObjectIntHashMap<ArrayList<String>> operandInfoIDs)
+            HashMap<ArrayList<String>, Integer> operandInfoIDs)
             throws Exception
     {
         int operandListNum = 0;

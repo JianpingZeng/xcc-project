@@ -212,7 +212,7 @@ public final class MachineRegisterInfo
 
     public int getLastVirReg()
     {
-        return vregInfo.size() - 1;
+        return vregInfo.size() - 1 + FirstVirtualRegister;
     }
 
     /**

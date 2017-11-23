@@ -55,6 +55,7 @@ public final class TableGen
     private static Opt<ActionType> action = new Opt<ActionType>(
             new Parser<>(),
             desc("Action to performance"),
+            init(PrintRecords),
             new ValueClass<>(
                     new ValueClass.Entry<>(GenRegisterNames, "gen-register-names",
                             "Generates register names"),

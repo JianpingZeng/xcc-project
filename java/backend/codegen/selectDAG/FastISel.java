@@ -21,10 +21,7 @@ import backend.target.*;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
-import tools.APFloat;
-import tools.APInt;
-import tools.OutParamWrapper;
-import tools.Util;
+import tools.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -355,16 +352,12 @@ public abstract class FastISel extends MachineFunctionPass
         }
         selectAllBasicBlocks(fn);
 
-        // If the first basic block in the function has live ins that need to be
-        // copied into vregs, emit the copies into the top of the block before
-        // emitting the code for the block.
-        // TODO emitLiveInCopies(mf.getEntryBlock(),tm.getRegisterInfo(),mri,instrInfo);
-        /**
-         * // Add function live-ins to entry block live-in set.
-         for (MachineRegisterInfo::livein_iterator I = RegInfo->livein_begin(),
-         E = RegInfo->livein_end(); I != E; ++I)
-         MF->begin()->addLiveIn(I->first);
-         */
+        // Add live-in register into function live in set.
+        MachineRegisterInfo regInfo = mf.getMachineRegisterInfo();
+        for (Pair<Integer, Integer> entry : regInfo.getLiveIns())
+        {
+            mf.getEntryBlock().addLiveIn(entry.first);
+        }
         funcInfo.clear();
         return false;
     }

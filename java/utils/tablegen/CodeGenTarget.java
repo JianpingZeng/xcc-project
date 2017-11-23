@@ -117,7 +117,6 @@ public final class CodeGenTarget
         {
             String asmStr = inst.getValueAsString(instFormatName);
             insts.put(inst.getName(), new CodeGenInstruction(inst, asmStr));
-
         }
     }
 

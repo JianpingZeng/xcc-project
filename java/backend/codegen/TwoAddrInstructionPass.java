@@ -113,7 +113,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                         continue;
 
                     OutParamWrapper<Integer> tmp = new OutParamWrapper<>(0);
-                    if (mi.isRegTiedToDefOperand(si, tmp))
+                    if (!mi.isRegTiedToDefOperand(si, tmp))
                         continue;
 
                     int ti = tmp.get();

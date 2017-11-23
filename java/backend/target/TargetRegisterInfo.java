@@ -167,7 +167,7 @@ public abstract class TargetRegisterInfo
 			TargetRegisterClass rc, BitMap r)
 	{
 		for (int reg : rc.getAllocableRegs(mf))
-			r.set(rc.getRegister(reg));
+			r.set(reg);
 	}
 
 	/**
@@ -586,4 +586,17 @@ public abstract class TargetRegisterInfo
 	{
         // TODO: 2017/7/27
     }
+
+	/**
+	 * Checks if the specified machine instr is a move instr or not.
+	 * if it is, return true and store the srcReg, destReg, srcSubReg,
+	 * destSubReg into regs in the mentioned order.
+	 * @param mi
+	 * @param regs
+	 * @return
+	 */
+	public boolean isMoveInstr(MachineInstr mi, int[] regs)
+	{
+		return false;
+	}
 }

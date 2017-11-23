@@ -119,7 +119,6 @@ public final class CodeGenInstruction
         theDef = r;
         asmString = asmStr;
         operandList = new ArrayList<>();
-        //name = r.getValueAsString("name");
 
         isReturn = r.getValueAsBit("isReturn");
         isBranch = r.getValueAsBit("isBranch");
