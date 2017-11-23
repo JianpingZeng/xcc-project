@@ -112,6 +112,7 @@ public class MachineFrameInfo
 
     public MachineFrameInfo(TargetFrameInfo tfi)
     {
+        csInfo = new ArrayList<>();
         this.tfi = tfi;
         objects = new ArrayList<>();
         numFixedObjects = 0;
@@ -170,7 +171,7 @@ public class MachineFrameInfo
 
     public boolean hasStackObjects()
     {
-        return objects.isEmpty();
+        return !objects.isEmpty();
     }
 
     public boolean hasVarSizedObjects()

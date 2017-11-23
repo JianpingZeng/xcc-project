@@ -21,6 +21,7 @@ import backend.MC.MCStreamer;
 import backend.analysis.MachineLoop;
 import backend.analysis.MachineLoopInfo;
 import backend.pass.AnalysisUsage;
+import backend.support.BackendCmdOptions;
 import backend.support.LLVMContext;
 import backend.support.NameMangler;
 import backend.target.*;
@@ -28,7 +29,6 @@ import backend.type.Type;
 import backend.value.*;
 import backend.value.Value.UndefValue;
 import tools.Util;
-import tools.commandline.*;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 import static backend.MC.MCStreamer.createAsmStreamer;
-import static backend.codegen.AsmPrinter.BoolOrDefault.BOU_UNSET;
 import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.value.GlobalValue.VisibilityTypes.HiddenVisibility;
 import static backend.value.GlobalValue.VisibilityTypes.ProtectedVisibility;
@@ -102,13 +101,6 @@ public abstract class AsmPrinter extends MachineFunctionPass
         BOU_FALSE
     }
 
-    public static final Opt<BoolOrDefault> AsmVerbose = new Opt<BoolOrDefault>(
-            new Parser<>(),
-            OptionNameApplicator.optionName("asm-verbose"),
-            Desc.desc("Add comments to directives."),
-            Initializer.init(BOU_UNSET)
-    );
-
     protected AsmPrinter(OutputStream os, TargetMachine tm, TargetAsmInfo tai, boolean v)
     {
         functionNumber = 0;
@@ -118,7 +110,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         this.tri = tm.getRegisterInfo();
         outContext = new MCContext();
         outStreamer = createAsmStreamer(outContext, this.os, tai, this);
-        switch (AsmVerbose.value)
+        switch (BackendCmdOptions.AsmVerbose.value)
         {
             case BOU_UNSET:
                 verboseAsm = v;

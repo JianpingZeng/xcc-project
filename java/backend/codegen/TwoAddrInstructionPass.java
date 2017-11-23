@@ -24,14 +24,13 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  * This file implements the TwoAddress instruction pass which is used
  * by most register allocators. Two-Address instructions are rewritten
  * from:
- *
  *     A = B op C
  *
  * to:
- *
- *     A = B
- *     A op= C
+ *     B op= C
  * </pre>
+ * Then replace all uses of A with B below original 3-addr instr(A = B op C).
+ * This is a optimization trick in contrast to LLVM's implementation.
  * <p>
  * Note that if a register allocator chooses to use this pass, that it
  * has to be capable of handling the non-SSA nature of these rewritten

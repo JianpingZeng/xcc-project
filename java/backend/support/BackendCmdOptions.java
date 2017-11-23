@@ -16,15 +16,19 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
+import backend.codegen.AsmPrinter;
 import backend.codegen.PrologEpilogInserter;
 import backend.passManaging.PMDataManager;
 import tools.commandline.*;
 
+import static backend.codegen.AsmPrinter.BoolOrDefault.BOU_UNSET;
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel;
 import static backend.passManaging.PMDataManager.PassDebugLevel;
 import static tools.commandline.Desc.desc;
+import static tools.commandline.Initializer.init;
 import static tools.commandline.OptionHidden.Hidden;
 import static tools.commandline.OptionNameApplicator.optionName;
+import static tools.commandline.ValueDesc.valueDesc;
 
 /**
  * This is a utility class for registering Backend command line options into
@@ -65,6 +69,25 @@ public class BackendCmdOptions
                             "Iterations", "print SR sets for each iteration"),
                     new ValueClass.Entry<>(ShrinkWrapDebugLevel.Details,
                             "Details", "print all DF sets")));
+    // Shrink Wrapping:
+    public static final BooleanOpt ShrinkWrapping = new BooleanOpt(optionName("shrink-wrap"),
+            init(false),
+            desc("Shrink wrap callee-saved register spills/restores"));
+
+    // Shrink wrap only the specified function, a debugging aid.
+    public static final StringOpt ShrinkWrapFunc = new StringOpt(optionName("shrink-wrap-func"),
+            desc("Shrink wrap the specified function"), valueDesc("funcname"),
+            init(""));
+
+    public static final Opt<AsmPrinter.BoolOrDefault> AsmVerbose = new Opt<AsmPrinter.BoolOrDefault>(
+            new Parser<>(),
+            optionName("asm-verbose"),
+            desc("Add comments to directives."),
+            init(BOU_UNSET)
+    );
+    public static final BooleanOpt NewAsmPrinter =
+            new BooleanOpt(optionName("experimental-asm-printer"),
+            new OptionHiddenApplicator(Hidden));
 
     /**
      * A method used for registering Backend command line options.

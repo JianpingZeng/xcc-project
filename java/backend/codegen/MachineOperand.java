@@ -774,7 +774,7 @@ public class MachineOperand
 		else
 		{
 			opKind = MO_Register;
-			this.reg.regNo = reg;
+			this.reg = new RegOp(reg);
 
 			MachineFunction mf;
 			if (getParent() != null)

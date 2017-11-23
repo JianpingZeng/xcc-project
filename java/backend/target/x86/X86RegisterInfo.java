@@ -484,8 +484,14 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 
 		mfi.setMaxCallFrameSize(maxAlign);
 
-		// TODO: 17-7-20 Should not reaching here
-		assert false:"Should not reaching here";
+		if (hasFP(mf))
+		{
+			TargetFrameInfo tfi = mf.getTarget().getFrameInfo();
+			int frameIndex = mfi.createFixedObject(slotSize,
+					-slotSize+tfi.getLocalAreaOffset());
+			assert frameIndex == mfi.getObjectIndexBegin():
+					"Slot for EBP register must be last in order to be found!";
+		}
 	}
 
 	public void emitCalleeSavedFrameMoves(MachineFunction mf, int labelId,
@@ -868,12 +874,8 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 	}
 
     @Override
-    public void eliminateFrameIndex(MachineFunction mf, MachineBasicBlock mbb,
-            int ii, RegScavenger rs)
+    public void eliminateFrameIndex(MachineFunction mf, MachineInstr mi, RegScavenger rs)
     {
-	    assert ii == 0:"Unexpected";
-
-	    MachineInstr mi = mbb.getInstAt(ii);
 	    int i = 0;
 	    while(!mi.getOperand(i).isFrameIndex())
 	    {
@@ -944,7 +946,7 @@ public class X86RegisterInfo extends X86GenRegisterInfo
     }
 
     /**
-	 * Return true if the specified function should have a dedicatedd stack pointer
+	 * Return true if the specified function should have a dedicated stack pointer
 	 * register. This is true if function has variable sized objects or if frame
 	 * pointer elimination is disabled.
 	 *
