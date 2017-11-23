@@ -29,17 +29,12 @@ import backend.target.*;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Pair;
-import tools.commandline.*;
 
 import java.util.*;
 
 import static backend.codegen.PrologEpilogInserter.ShrinkWrapDebugLevel.*;
 import static backend.target.TargetFrameInfo.StackDirection.StackGrowDown;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
-import static tools.commandline.Desc.desc;
-import static tools.commandline.Initializer.init;
-import static tools.commandline.OptionNameApplicator.optionName;
-import static tools.commandline.ValueDesc.valueDesc;
 
 /**
  * This class responsible for finalizing the stack frame layout and emits
@@ -47,7 +42,7 @@ import static tools.commandline.ValueDesc.valueDesc;
  *
  * Another important subtask is eliminating abstract frame index reference.
  *
- * <emp>Note that</emp> this pass must be runned after executing machine
+ * <emp>Note that</emp> this pass must be run after executing machine
  * instruction selector.
  * @author Xlous.zeng
  * @version 0.1
@@ -56,15 +51,6 @@ public class PrologEpilogInserter extends MachineFunctionPass
 {
     public static final IntStatistic numSRRecord = new IntStatistic(
             "numSRRecord", "Number of CSR spills+restores reduced");
-
-    // Shrink Wrapping:
-    public static final BooleanOpt ShrinkWrapping = new BooleanOpt(optionName("shrink-wrap"),
-            desc("Shrink wrap callee-saved register spills/restores"));
-
-    // Shrink wrap only the specified function, a debugging aid.
-    public static final StringOpt ShrinkWrapFunc = new StringOpt(optionName("shrink-wrap-func"),
-            desc("Shrink wrap the specified function"), valueDesc("funcname"),
-            init(""));
 
     // Debugging level for shrink wrapping.
     public enum ShrinkWrapDebugLevel
@@ -108,6 +94,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
         anticIn = new TreeMap<>();
         availIn = new TreeMap<>();
         availOut = new TreeMap<>();
+        anticOut = new TreeMap<>();
         csrSave = new TreeMap<>();
         csrRestore = new TreeMap<>();
         entryBlock = null;
@@ -251,7 +238,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
     {
         clearAllSets();
         entryBlock = null;
-        shrinkWrapThisFunction = ShrinkWrapping.value;
+        shrinkWrapThisFunction = BackendCmdOptions.ShrinkWrapping.value;
     }
 
     private void clearAllSets()
@@ -1348,7 +1335,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
         int frameSetupOpcode = regInfo.getCallFrameSetupOpcode();
         int frameDestroyOpcode = regInfo.getCallFrameDestroyOpcode();
 
-        minCSFrameIndex = Integer.MIN_VALUE;
+        minCSFrameIndex = Integer.MAX_VALUE;
         maxCSFrameIndex = 0;
 
         // If the target machine don't support frame setup/destroy pseudo instr,
@@ -1657,7 +1644,7 @@ public class PrologEpilogInserter extends MachineFunctionPass
                 MachineInstr mi = mbb.getInstAt(i);
                 for (int j = 0; j < mi.getNumOperands(); j++)
                     if (mi.getOperand(j).isFrameIndex())
-                        regInfo.eliminateFrameIndex(mf, mbb, i);
+                        regInfo.eliminateFrameIndex(mf, mi);
             }
         }
     }

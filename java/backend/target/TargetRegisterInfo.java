@@ -440,7 +440,7 @@ public abstract class TargetRegisterInfo
 
 	public boolean hasReservedCallFrame(MachineFunction mf)
 	{
-		return !hasFP(mf);
+		return !mf.getFrameInfo().hasVarSizedObjects();
 	}
 
 	public boolean hasReservedSpillSlot(MachineFunction mf, int reg,
@@ -538,15 +538,13 @@ public abstract class TargetRegisterInfo
 	 * finished product.
 	 */
 	public void eliminateFrameIndex(MachineFunction mf,
-			MachineBasicBlock mbb,
-			int ii)
+			MachineInstr mi)
 	{
-		eliminateFrameIndex(mf, mbb, ii, null);
+		eliminateFrameIndex(mf, mi, null);
 	}
 
 	public abstract void eliminateFrameIndex(MachineFunction mf,
-			MachineBasicBlock mbb,
-			int ii,
+			MachineInstr mi,
 			RegScavenger rs);
 
 	/**

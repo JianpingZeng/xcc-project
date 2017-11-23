@@ -43,6 +43,13 @@ public abstract class LLVMTargetMachine extends TargetMachine
     protected LLVMTargetMachine(Target target, String triple)
     {
         super(target);
+        initAsmInfo(target, triple);
+    }
+
+    private void initAsmInfo(Target target, String triple)
+    {
+        asmInfo = target.createAsmInfo(triple);
+        assert asmInfo != null:"Must initialize the TargetAsmInfo for AsmPrinter!";
     }
 
     private static void printAndVerify(PassManagerBase pm,
@@ -133,12 +140,14 @@ public abstract class LLVMTargetMachine extends TargetMachine
 
         if (PrintMachineCode.value)
         {
-            pm.add(createMachineFunctionPrinterPass(System.err));
+            pm.add(createMachineFunctionPrinterPass(System.err,
+                    "# *** IR dump before emitting code ***:\n"));
         }
 
         if (addPreEmitPass(pm, optLevel) && PrintMachineCode.value)
         {
-            pm.add(createMachineFunctionPrinterPass(System.err));
+            pm.add(createMachineFunctionPrinterPass(System.err,
+                    "# *** IR dump after emitting code ***:\n"));
             return FileModel.Error;
         }
 

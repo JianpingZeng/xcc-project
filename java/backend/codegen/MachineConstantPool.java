@@ -19,6 +19,7 @@ public final class MachineConstantPool
 
     public MachineConstantPool(TargetData td)
     {
+        constants = new ArrayList<>();
         this.td = td;
         poolAlignment = 1;
     }
