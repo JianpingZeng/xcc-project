@@ -432,7 +432,7 @@ public final class TGParser
         }
 
         // Remember to clear the let stack.
-        letStack.clear();
+        letStack.pop();
         return false;
     }
 

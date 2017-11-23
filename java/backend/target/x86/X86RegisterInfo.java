@@ -1090,4 +1090,57 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 		assert false:"Should not reaching here";
 		return null;
 	}
+	/**
+	 * Checks if the specified machine instr is a move instr or not.
+	 * if it is, return true and store the srcReg, destReg, srcSubReg,
+	 * destSubReg into regs in the mentioned order.
+	 * @param mi
+	 * @param regs
+	 * @return
+	 */
+	@Override
+	public boolean isMoveInstr(MachineInstr mi, int[] regs)
+	{
+		switch (mi.getOpcode())
+		{
+			default:
+				return false;
+			case X86GenInstrNames.MOV8rr:
+			case X86GenInstrNames.MOV8rr_NOREX:
+			case X86GenInstrNames.MOV16rr:
+			case X86GenInstrNames.MOV32rr:
+			case X86GenInstrNames.MOV64rr:
+			case X86GenInstrNames.MOVSSrr:
+			case X86GenInstrNames.MOVSDrr:
+
+				// FP Stack register class copies
+			case X86GenInstrNames.MOV_Fp3232:
+			case X86GenInstrNames.MOV_Fp6464:
+			case X86GenInstrNames.MOV_Fp8080:
+			case X86GenInstrNames.MOV_Fp3264:
+			case X86GenInstrNames.MOV_Fp3280:
+			case X86GenInstrNames.MOV_Fp6432:
+			case X86GenInstrNames.MOV_Fp8032:
+
+			case X86GenInstrNames.FsMOVAPSrr:
+			case X86GenInstrNames.FsMOVAPDrr:
+			case X86GenInstrNames.MOVAPSrr:
+			case X86GenInstrNames.MOVAPDrr:
+			case X86GenInstrNames.MOVDQArr:
+			case X86GenInstrNames.MOVSS2PSrr:
+			case X86GenInstrNames.MOVSD2PDrr:
+			case X86GenInstrNames.MOVPS2SSrr:
+			case X86GenInstrNames.MOVPD2SDrr:
+			case X86GenInstrNames.MMX_MOVQ64rr:
+				assert mi.getNumOperands() >= 2 &&
+						mi.getOperand(0).isRegister() &&
+						mi.getOperand(1).isRegister() :
+						"invalid register-register move instruction";
+				regs[0] = mi.getOperand(1).getReg();
+				regs[1] = mi.getOperand(0).getReg();
+				regs[2] = mi.getOperand(1).getSubReg();
+				regs[3] = mi.getOperand(0).getSubReg();
+				return true;
+		}
+	}
 }
