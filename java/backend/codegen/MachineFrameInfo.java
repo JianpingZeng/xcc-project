@@ -274,7 +274,7 @@ public class MachineFrameInfo
     }
 
     /**
-     * getMaxCallFrameSize - Return the maximum getNumOfSubLoop of a call frame that must be
+     * getMaxCallFrameSize - Return the maximum number of a call frame that must be
      * allocated for an outgoing function call.  This is only available if
      * CallFrameSetup/Destroy pseudo instructions are used by the target, and
      * then only during or after prolog/epilog code insertion.

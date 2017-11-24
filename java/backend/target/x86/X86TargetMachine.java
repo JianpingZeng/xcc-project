@@ -178,8 +178,8 @@ public class X86TargetMachine extends LLVMTargetMachine
     @Override
     public boolean addPreRegAlloc(PassManagerBase pm, CodeGenOpt level)
     {
-        // TODO: 17-7-24 pm.add(createX86MaxStackAlignmentCalculatorPass());
-        return super.addPreRegAlloc(pm, level);
+        pm.add(MSAC.createMaxStackAlignmentCalculatorPass());
+        return false;
     }
 
     @Override
