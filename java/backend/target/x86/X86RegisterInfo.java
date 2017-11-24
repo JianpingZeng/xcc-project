@@ -1009,11 +1009,11 @@ public class X86RegisterInfo extends X86GenRegisterInfo
 			// When we have no frame pointer, we reserve argument space for call sites
 			// in the function immediately on entry to the current function.  This
 			// eliminates the need for add/sub ESP brackets around call sites.
-			numBytes += mfi.getMaxCallFrameSize();
+			// numBytes += mfi.getMaxCallFrameSize();
 
 			// round the getNumOfSubLoop to a multiple of the alignment.
 			int align = mf.getTarget().getFrameInfo().getStackAlignment();
-			numBytes = ((numBytes + 4) + align - 1) / align * align - 4;
+			numBytes = Util.roundUp(numBytes, align);
 
 			// update the frame info to pretend that this is part of stack.
 			mfi.setStackSize(numBytes);
