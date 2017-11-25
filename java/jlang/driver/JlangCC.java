@@ -463,14 +463,16 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         String outfile = OutputFile.value;
         PrintStream os = null;
         String outputFile = "";
-        if (outfile == null || outfile.isEmpty() || outfile.equals("-") || extension == null)
+        if (outfile != null)
         {
-            usestdout = true;
+            if (outfile.equals("-"))
+                usestdout = true;
+            else
+                outputFile = outfile;
         }
         else
         {
             int dotPos = infile.lastIndexOf(".");
-            Path path;
             if (dotPos >= 0)
                 infile = infile.substring(0, dotPos + 1);
             outputFile = infile + extension;
