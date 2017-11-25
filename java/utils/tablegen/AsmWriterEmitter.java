@@ -663,7 +663,11 @@ public final class AsmWriterEmitter extends TableGenBackend
 
         os.printf("\t\tint asmStrIdx = (int)bits&0x%x, len = (int)opInfo[mi.getOpcode()][1];\n",
                 asmStrBitsMask);
-        os.printf("\t\tos.print(asmStrs.substring(asmStrIdx, asmStrIdx + len));\n\n");
+        os.println("\t\tString asmName = asmStrs.substring(asmStrIdx, asmStrIdx + len);");
+        os.println("\t\tif (asmName.endsWith(\"\\\\t\"))");
+        os.println("\t\t\tasmName = asmName.substring(0, asmName.indexOf(\"\\\\t\")) + \"\\t\";");
+
+        os.println("\n\t\tos.print(asmName);");
 
         os.print("\t\tint number = 0;\n");
         os.print("\t\t// Each code fragment is just for each asm operand\n");
