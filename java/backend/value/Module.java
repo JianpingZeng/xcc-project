@@ -195,6 +195,13 @@ public final class Module implements Iterable<Function>
 		return typeSymbolTable;
 	}
 
+	public Type getTypeByName(String name)
+	{
+		if (typeSymbolTable.containsKey(name))
+			return typeSymbolTable.get(name);
+		return null;
+	}
+
 	public void print(FormattedOutputStream os) throws IOException
 	{
         new AssemblyWriter(os, this, new SlotTracker(this)).write(this);

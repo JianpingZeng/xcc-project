@@ -64,7 +64,7 @@ public class PointerType extends SequentialType
         return get(elemType, 0);
     }
 
-    static boolean isValidElementType(Type eleTy)
+    public static boolean isValidElementType(Type eleTy)
     {
         return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
     }

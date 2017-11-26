@@ -87,7 +87,7 @@ public final class ArrayType extends SequentialType
         return numElts;
     }
 
-    public boolean isValidElementType(Type eleTy)
+    public static boolean isValidElementType(Type eleTy)
     {
         return !(eleTy == LLVMContext.VoidTy || eleTy == LLVMContext.LabelTy);
     }
