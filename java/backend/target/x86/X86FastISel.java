@@ -1849,7 +1849,7 @@ public class X86FastISel extends FastISel
 
                 int fi = mfi.createFixedObject(valVT.getSizeInBits()/8,
                         va.getLocMemOffset(), isImmutable);
-                int opc;
+                int opc = 0;
                 TargetRegisterClass rc;
                 int locVT = va.getLocVT().getSimpleVT().simpleVT;
                 switch (valVT.getSimpleVT().simpleVT)
@@ -1991,7 +1991,7 @@ public class X86FastISel extends FastISel
                 X86AddressMode am = new X86AddressMode();
                 am.baseType = FrameIndexBase;
                 am.base = new X86AddressMode.FrameIndexBase(fi);
-                addFullAddress(buildMI(mbb, instrInfo.get(MOV8rm), reg), am);
+                addFullAddress(buildMI(mbb, instrInfo.get(opc), reg), am);
 
                 //reg = loadArgFromStack(fi, valVT);
                 updateValueMap(fn.argAt(i), reg);

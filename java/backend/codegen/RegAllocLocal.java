@@ -12,6 +12,7 @@ import tools.Util;
 
 import java.util.*;
 
+import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetRegisterInfo.*;
 
 /**
@@ -608,9 +609,12 @@ public class RegAllocLocal extends MachineFunctionPass
 
 		computeLocalLiveness(mbb);
 
-		PrintMachineFunctionPass.createMachineFunctionPrinterPass(System.err,
-                "# *** IR dump after computing Local Liveness ***:\n")
-                .runOnMachineFunction(mf);
+		if (PrintMachineCode.value)
+		{
+			PrintMachineFunctionPass.createMachineFunctionPrinterPass(System.err,
+					"# *** IR dump after computing Local Liveness ***:\n")
+					.runOnMachineFunction(mf);
+		}
 
 		for (int i = 0; i < mbb.size(); i++)
 		{
