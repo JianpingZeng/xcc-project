@@ -75,7 +75,7 @@ public class StructType extends CompositeType
         this(memberTypes, false);
     }
 
-    private boolean isValidElementType(backend.type.Type elemTy)
+    public static boolean isValidElementType(backend.type.Type elemTy)
     {
         return  !(elemTy.equals(LLVMContext.VoidTy) || !elemTy.equals(
                 LLVMContext.LabelTy));
@@ -108,6 +108,11 @@ public class StructType extends CompositeType
         st = new StructType(memberTypes, packed);
         structTypes.put(svt, st);
         return st;
+    }
+
+    public static StructType get(boolean packed)
+    {
+        return get(new ArrayList<>(), packed);
     }
 
     public static StructType get()
