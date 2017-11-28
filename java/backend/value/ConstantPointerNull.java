@@ -16,6 +16,7 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.type.PointerType;
 import backend.type.Type;
 
 import java.util.HashMap;
@@ -55,8 +56,15 @@ public class ConstantPointerNull extends Constant
         nullPtrConstants.remove(ty);
     }
 
-    @Override public boolean isNullValue()
+    @Override
+    public boolean isNullValue()
     {
-        return false;
+        return true;
+    }
+
+    @Override
+    public PointerType getType()
+    {
+        return (PointerType)super.getType();
     }
 }

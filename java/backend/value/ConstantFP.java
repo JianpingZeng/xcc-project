@@ -16,10 +16,15 @@ package backend.value;
  * permissions and limitations under the License.
  */
 
+import backend.support.LLVMContext;
 import backend.type.Type;
+import jlang.type.FoldingSetNodeID;
 import tools.APFloat;
 import tools.APSInt;
+import tools.FltSemantics;
 import tools.OutParamWrapper;
+
+import java.util.HashMap;
 
 import static backend.type.LLVMTypeID.*;
 import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
@@ -30,7 +35,41 @@ import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
  */
 public class ConstantFP extends Constant
 {
+    private static class APFloatKeyInfo
+    {
+        private APFloat flt;
+        public APFloatKeyInfo(APFloat flt)
+        {
+            this.flt = flt;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null)
+                return false;
+            if (this == obj)
+                return true;
+            if (getClass() != obj.getClass())
+                return false;
+            APFloatKeyInfo key = (APFloatKeyInfo)obj;
+            return flt.bitwiseIsEqual(key.flt);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            FoldingSetNodeID id = new FoldingSetNodeID();
+            id.addString(flt.toString());
+            return id.computeHash();
+        }
+    }
+
     private APFloat val;
+
+    private static final HashMap<APFloatKeyInfo, ConstantFP> FPConstants =
+            new HashMap<>();
+
     /**
      * Constructs a new instruction representing the specified constants.
      *
@@ -43,9 +82,44 @@ public class ConstantFP extends Constant
         val = v;
     }
 
-    public static ConstantFP get(Type ty, double v)
+    private static FltSemantics typeToFloatSemantics(Type ty)
     {
-        return get(ty, new APFloat(v));
+        if (ty.equals(LLVMContext.FloatTy))
+            return APFloat.IEEEsingle;
+        if (ty.equals(LLVMContext.DoubleTy))
+            return APFloat.IEEEdouble;
+        if (ty.equals(LLVMContext.X86_FP80Ty))
+            return APFloat.x87DoubleExtended;
+        if (ty.equals(LLVMContext.FP128Ty))
+            return APFloat.IEEEquad;
+
+        assert false:"Unkown FP format";
+        return null;
+    }
+
+    private static Type floatSemanticsToType(FltSemantics semantics)
+    {
+        if (semantics == APFloat.IEEEsingle)
+            return LLVMContext.FloatTy;
+        if (semantics == APFloat.IEEEdouble)
+            return LLVMContext.DoubleTy;
+        if (semantics == APFloat.x87DoubleExtended)
+            return LLVMContext.X86_FP80Ty;
+        if (semantics == APFloat.IEEEquad)
+            return LLVMContext.FP128Ty;
+
+        assert false:"Unknown FP format";
+        return null;
+    }
+
+    public static Constant get(Type ty, double v)
+    {
+        APFloat fv = new APFloat(v);
+        OutParamWrapper<Boolean> ignored = new OutParamWrapper<>();
+        fv.convert(typeToFloatSemantics(ty.getScalarType()),
+                rmNearestTiesToEven, ignored);
+
+        return get(fv);
     }
 
     public static ConstantFP get(Type ty, APFloat v)
@@ -53,20 +127,33 @@ public class ConstantFP extends Constant
         return new ConstantFP(ty, v);
     }
 
-    public static Constant get(APFloat aFloat)
+    public static Constant get(APFloat flt)
     {
-        // TODO
-        return null;
+        ConstantFP fp;
+        APFloatKeyInfo key = new APFloatKeyInfo(flt);
+        if (!FPConstants.containsKey(key))
+        {
+            Type ty = floatSemanticsToType(flt.getSemantics());
+            fp = new ConstantFP(ty, flt);
+            FPConstants.put(key, fp);
+        }
+        else
+        {
+            fp = FPConstants.get(key);
+        }
+        return fp;
     }
 
     @Override
     public boolean isNullValue()
     {
-        return false;
+        // positive zero
+        return val.isZero() &&!val.isNegative();
     }
 
     public static Constant get(APSInt complexIntReal)
     {
+        // TODO: 17-11-28
         return null;
     }
 
@@ -91,7 +178,7 @@ public class ConstantFP extends Constant
         if (getClass() != obj.getClass())
             return false;
         ConstantFP o = (ConstantFP)obj;
-        return val.equals(o.val);
+        return new APFloatKeyInfo(val).equals(new APFloatKeyInfo(o.val));
     }
 
     public static boolean isValueValidForType(Type ty, APFloat val)

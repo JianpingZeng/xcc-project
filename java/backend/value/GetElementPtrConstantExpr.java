@@ -28,6 +28,8 @@ import static backend.value.Operator.GetElementPtr;
  */
 public class GetElementPtrConstantExpr extends ConstantExpr
 {
+    private boolean isInBounds;
+
     /**
      * Constructs a new instruction representing the specified constants.
      *
@@ -41,5 +43,10 @@ public class GetElementPtrConstantExpr extends ConstantExpr
         setOperand(0, c, this);
         for (int i = 0, e = idxList.size(); i != e; i++)
             setOperand(i+1, idxList.get(i), this);
+    }
+
+    public void setIsInBounds(boolean isInBounds)
+    {
+        this.isInBounds = isInBounds;
     }
 }
