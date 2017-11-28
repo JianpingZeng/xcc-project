@@ -19,7 +19,6 @@ package backend.value;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
-import jlang.type.FoldingSetNodeID;
 import tools.APInt;
 
 import java.util.HashMap;
@@ -32,50 +31,10 @@ import java.util.HashMap;
  */
 public class ConstantInt extends Constant
 {
-    static class APIntKeyInfo
-    {
-        APInt val;
-        Type type;
-
-        APIntKeyInfo(APInt v, Type ty)
-        {
-            val = v;
-            type = ty;
-        }
-
-        @Override
-        public int hashCode()
-        {
-            FoldingSetNodeID id = new FoldingSetNodeID();
-            id.addInteger(val.getZExtValue());
-            id.addInteger(type.hashCode());
-            return id.computeHash();
-        }
-
-        @Override
-        public boolean equals(Object obj)
-        {
-            if (obj == null)
-                return false;
-            if (this == obj)
-                return true;
-            if (getClass() != obj.getClass())
-                return false;
-
-            APIntKeyInfo key = (APIntKeyInfo)obj;
-            return val.eq(key.val) && type.equals(key.type);
-        }
-    }
 
     private APInt val;
 
     private static ConstantInt TRUE, FALSE;
-
-    private final static HashMap<APIntKeyInfo, ConstantInt> intConstants;
-    static
-    {
-        intConstants = new HashMap<>();
-    }
 
     /**
      * Constructs a new instruction representing the specified constants.
@@ -102,12 +61,12 @@ public class ConstantInt extends Constant
     public static ConstantInt get(IntegerType ty, APInt val)
     {
         IntegerType ity = IntegerType.get(ty.getBitWidth());
-        APIntKeyInfo key = new APIntKeyInfo(val, ity);
-        ConstantInt slot = intConstants.get(key);
+        UniqueConstantValueImpl.APIntKeyInfo key = new UniqueConstantValueImpl.APIntKeyInfo(val, ity);
+        ConstantInt slot = UniqueConstantValueImpl.intConstants.get(key);
         if (slot != null)
             return slot;
         slot = new ConstantInt(ity, val);
-        intConstants.put(key, slot);
+        UniqueConstantValueImpl.intConstants.put(key, slot);
         return slot;
     }
 
@@ -124,12 +83,12 @@ public class ConstantInt extends Constant
     public static ConstantInt get(APInt val)
     {
         IntegerType ity = IntegerType.get(val.getBitWidth());
-        APIntKeyInfo key = new APIntKeyInfo(val, ity);
-        ConstantInt slot = intConstants.get(key);
+        UniqueConstantValueImpl.APIntKeyInfo key = new UniqueConstantValueImpl.APIntKeyInfo(val, ity);
+        ConstantInt slot = UniqueConstantValueImpl.intConstants.get(key);
         if (slot != null)
             return slot;
         slot = new ConstantInt(ity, val);
-        intConstants.put(key, slot);
+        UniqueConstantValueImpl.intConstants.put(key, slot);
         return slot;
     }
 
