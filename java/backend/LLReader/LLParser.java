@@ -106,7 +106,7 @@ public final class LLParser
         return parseTopLevelEntities() || validateEndOfModule();
     }
 
-    private boolean error(SMLoc loc, String msg)
+    boolean error(SMLoc loc, String msg)
     {
         return lexer.error(loc, msg);
     }
