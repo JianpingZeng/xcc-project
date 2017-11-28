@@ -157,7 +157,7 @@ public class BackendConsumer implements ASTConsumer
     {
         gen.handleTranslationUnit(context);
 
-        // Emits assembly code or hir code for backend.target.
+        // Emits assembly code or ir code for backend.target.
         emitAssembly();
 
         // force to close and flush output stream.

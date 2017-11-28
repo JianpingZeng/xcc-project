@@ -16,7 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.hir.HIRBuilder;
+import backend.ir.HIRBuilder;
 import backend.support.LLVMContext;
 import tools.APFloat;
 import backend.type.FunctionType;

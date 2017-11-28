@@ -1,4 +1,4 @@
-package backend.hir;
+package backend.ir;
 
 /**
  * Contains statistics gathered during the compilation of a method and reported back

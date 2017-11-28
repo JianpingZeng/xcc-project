@@ -1,6 +1,6 @@
 package backend.value;
 
-import backend.hir.AllocationInst;
+import backend.ir.AllocationInst;
 import backend.support.*;
 import backend.type.FunctionType;
 import backend.type.PointerType;

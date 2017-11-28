@@ -1,6 +1,6 @@
 package backend.analysis;
 
-import backend.hir.HIRBuilder;
+import backend.ir.HIRBuilder;
 import backend.support.BasicBlockUtil;
 import backend.type.PointerType;
 import backend.type.Type;
