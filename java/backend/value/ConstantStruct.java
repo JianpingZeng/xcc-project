@@ -19,6 +19,7 @@ package backend.value;
 import backend.type.StructType;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Xlous.zeng
@@ -53,9 +54,14 @@ public class ConstantStruct extends Constant
         return false;
     }
 
-    public static Constant get(Constant[] complex)
+    public static ConstantStruct get(Constant[] elts, boolean packed)
     {
-        return null;
+
+    }
+
+    public static ConstantStruct get(List<Constant> elts, boolean packed)
+    {
+
     }
 
     @Override

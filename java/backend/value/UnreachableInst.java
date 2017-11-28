@@ -28,6 +28,16 @@ public class UnreachableInst extends Instruction.TerminatorInst
         super(Operator.Unreachable, "", insertAtEnd);
     }
 
+    public UnreachableInst(Instruction insertBefore)
+    {
+        super(Operator.Unreachable, "", insertBefore);
+    }
+
+    public UnreachableInst()
+    {
+        this((Instruction) null);
+    }
+
     @Override
     public BasicBlock getSuccessor(int index)
     {

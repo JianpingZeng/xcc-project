@@ -12,7 +12,7 @@ public class GlobalVariable extends GlobalValue
      * Is this a global constant.
      */
     private boolean isConstantGlobal;
-    private boolean threadLocal;
+    private boolean isThreadLocal;
 
     /**
      * Constructs a new instruction representing the specified constant.
@@ -94,12 +94,17 @@ public class GlobalVariable extends GlobalValue
 
     public boolean isThreadLocal()
     {
-        return threadLocal;
+        return isThreadLocal;
     }
 
     public Constant getInitializer()
     {
         assert hasInitializer();
         return (Constant) operand(0);
+    }
+
+    public void setThreadLocal(boolean threadLocal)
+    {
+        this.isThreadLocal = threadLocal;
     }
 }

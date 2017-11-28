@@ -26,7 +26,7 @@ import tools.Util;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class AllocationInst extends Instruction.UnaryInstruction
+public class AllocationInst extends Instruction.UnaryOps
 {
     protected int align;
 

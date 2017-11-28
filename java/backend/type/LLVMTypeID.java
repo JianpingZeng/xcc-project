@@ -35,11 +35,12 @@ public interface LLVMTypeID
 
     int TypeTyID = X86_FP80TyID + 1;
     int LabelTyID = TypeTyID + 1;         // 12   : Labels...
+    int MetadataTyID = LabelTyID + 1;     //
 
 
     // Derived types... see DerivedTypes class...
     // Make sure FirstDerivedTyID stays up to date!!!
-    int IntegerTyID = LabelTyID + 1;          // Arbitrary bit width integers.
+    int IntegerTyID = MetadataTyID + 1;          // Arbitrary bit width integers.
     int FunctionTyID = IntegerTyID + 1;       // Functions... Structs...
     int StructTyID = FunctionTyID + 1;
     int ArrayTyID = StructTyID + 1;          // Array... pointer...

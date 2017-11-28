@@ -29,6 +29,7 @@ public class LLVMContext
 {
     public static final Type VoidTy = new Type(LLVMTypeID.VoidTyID);
     public static final Type LabelTy = new Type(LLVMTypeID.LabelTyID);
+    public static final Type MetadataTy = new Type(LLVMTypeID.MetadataTyID);
     public static final IntegerType Int1Ty = IntegerType.get(1);
     public static final IntegerType Int8Ty = IntegerType.get(8);
     public static final IntegerType Int16Ty = IntegerType.get(16);

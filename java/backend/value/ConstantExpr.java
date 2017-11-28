@@ -18,12 +18,14 @@ package backend.value;
 
 import backend.support.LLVMContext;
 import backend.transform.utils.ConstantFolder;
+import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Instruction.CmpInst.Predicate;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
 
@@ -437,6 +439,26 @@ public abstract class ConstantExpr extends Constant
     {
         assert isCompare();
         return ((CompareConstantExpr)this).predicate;
+    }
+
+    private static Constant getGetElementPtrTy(Type ty, Constant c, List<Constant> indices)
+    {
+        assert Instruction.GetElementPtrInst.getIndexedType(c.getType(), indices)
+                .equals(((PointerType)ty).getElementType()) :"GEP indices invalid!";
+
+        assert c.getType() instanceof PointerType:
+                "Non-pointer type for constant GetElementPtr expression";
+        // TODO: 2017/11/28
+        return null;
+    }
+
+    public static Constant getGetElementPtr(Constant c,
+            List<Constant> indices)
+    {
+        Type ty = Instruction.GetElementPtrInst.getIndexedType(c.getType(), indices);
+        assert ty != null:"GEP indices invalid";
+        int as = ((PointerType)c.getType()).getAddressSpace();
+        return getGetElementPtrTy(PointerType.get(ty, as), c, indices);
     }
 
     static class ExprMapKeyType

@@ -1,12 +1,13 @@
+package backend.support;
 /*
- * Extremely C language Compiler
+ * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,23 +16,20 @@
  * permissions and limitations under the License.
  */
 
-package backend.value;
-
-import backend.type.Type;
-
 /**
  * @author Xlous.zeng
  * @version 0.1
  */
-public class MDString extends MetadataBase
+public final class AttributeWithIndex
 {
-    public MDString(Type ty, int valueKind)
-    {
-        super(ty, valueKind);
-    }
+    public int attrs;
+    public int index;
 
-    public static MetadataBase get(String name)
+    public static AttributeWithIndex get(int index, int attrs)
     {
-        // TODO: 2017/11/28
+        AttributeWithIndex res = new AttributeWithIndex();
+        res.index = index;
+        res.attrs = attrs;
+        return res;
     }
 }

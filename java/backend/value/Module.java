@@ -101,7 +101,7 @@ public final class Module implements Iterable<Function>
 	 * @param name
 	 * @return
 	 */
-	private GlobalValue getNameOfValue(String name)
+	private GlobalValue getValueByName(String name)
 	{
 		Value val = valSymTable.getValue(name);
 		if (val instanceof GlobalValue)
@@ -118,7 +118,7 @@ public final class Module implements Iterable<Function>
 	 */
 	public Constant getOrInsertFunction(String name, FunctionType type)
 	{
-		GlobalValue f = getNameOfValue(name);
+		GlobalValue f = getValueByName(name);
 		if (f == null)
 		{
 			// not found ,add it into valSymTable.
@@ -209,12 +209,25 @@ public final class Module implements Iterable<Function>
 
 	public Function getFunction(String funcName)
 	{
-		GlobalValue gv = getNameOfValue(funcName);
+		GlobalValue gv = getValueByName(funcName);
 		return gv instanceof Function ? (Function)gv : null;
 	}
 
 	public ValueSymbolTable getValueSymbolTable()
 	{
 		return valSymTable;
+	}
+
+	public GlobalVariable getGlobalVariable(String name, boolean allowLocal)
+	{
+		GlobalValue gv = getValueByName(name);
+		if (gv instanceof GlobalVariable)
+		{
+			GlobalVariable gvv = (GlobalVariable)gv;
+			if (allowLocal || !gvv.hasLocalLinkage())
+				return gvv;
+		}
+
+		return null;
 	}
 }
