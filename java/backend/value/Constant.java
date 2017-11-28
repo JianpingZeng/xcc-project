@@ -1,7 +1,7 @@
 package backend.value;
 /*
- * Xlous C language CompilerInstance
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous Zeng
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
 import backend.type.Type;
-import backend.utils.InstVisitor;
 import tools.APInt;
 
 /**
@@ -36,8 +35,6 @@ public abstract class Constant extends User
     {
         super(ty, valueKind);
     }
-
-    public void accept(InstVisitor visitor){}
 
     public static Constant getNullValue(Type type)
     {

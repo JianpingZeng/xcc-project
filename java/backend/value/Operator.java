@@ -105,6 +105,9 @@ public enum Operator
 		this.flags |= flag;
 	}
 
+	public static Operator BinaryOpsBegin = Add;
+	public static Operator BinaryOpsEnd = Trunc;
+
 	static class Flags
 	{
 		public static final int COMMUTATIVE = 0x1;

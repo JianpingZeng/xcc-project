@@ -19,6 +19,7 @@ package backend.value;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.Type;
+import jlang.type.FoldingSetNodeID;
 import tools.APInt;
 
 import java.util.HashMap;
@@ -41,13 +42,36 @@ public class ConstantInt extends Constant
             val = v;
             type = ty;
         }
+
+        @Override
+        public int hashCode()
+        {
+            FoldingSetNodeID id = new FoldingSetNodeID();
+            id.addInteger(val.getZExtValue());
+            id.addInteger(type.hashCode());
+            return id.computeHash();
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (obj == null)
+                return false;
+            if (this == obj)
+                return true;
+            if (getClass() != obj.getClass())
+                return false;
+
+            APIntKeyInfo key = (APIntKeyInfo)obj;
+            return val.eq(key.val) && type.equals(key.type);
+        }
     }
 
     private APInt val;
 
     private static ConstantInt TRUE, FALSE;
 
-    private static HashMap<APIntKeyInfo, ConstantInt> intConstants;
+    private final static HashMap<APIntKeyInfo, ConstantInt> intConstants;
     static
     {
         intConstants = new HashMap<>();
@@ -88,12 +112,13 @@ public class ConstantInt extends Constant
     }
 
     public static ConstantInt get(Type ty, long val)
-    {return get(ty, val, false);}
+    {
+        return get(ty, val, false);
+    }
 
     public static ConstantInt get(Type ty, long val, boolean isSigned)
     {
-        ConstantInt c = get((IntegerType)ty, val, isSigned);
-        return c;
+        return get((IntegerType)ty, val, isSigned);
     }
 
     public static ConstantInt get(APInt val)
