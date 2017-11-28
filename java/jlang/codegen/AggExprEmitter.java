@@ -17,7 +17,7 @@ package jlang.codegen;
  */
 
 import backend.value.BasicBlock;
-import backend.hir.HIRBuilder;
+import backend.ir.HIRBuilder;
 import backend.type.ArrayType;
 import backend.value.Constant;
 import backend.value.Value;

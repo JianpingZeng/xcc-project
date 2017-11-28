@@ -1,4 +1,4 @@
-package backend.hir;
+package backend.ir;
 /*
  * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous zeng.
@@ -718,7 +718,7 @@ public class HIRBuilder
 
 	public LoadInst createLoad(Value addr, boolean isVolatile, String name)
 	{
-		return insert(new LoadInst(addr, name), name);
+		return insert(new LoadInst(addr, name, false, 0), name);
 	}
 
 	public Instruction.StoreInst createStore(Value val, Value ptr)

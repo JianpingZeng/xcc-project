@@ -16,7 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.hir.HIRBuilder;
+import backend.ir.HIRBuilder;
 import backend.support.CallSite;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
@@ -552,12 +552,12 @@ public final class CodeGenFunction
 	 */
 	public AllocaInst createTempAlloca(Type ty, String name)
 	{
-		return new AllocaInst(ty, null, name, allocaInstPtr);
+		return new AllocaInst(ty, null, 0, name, allocaInstPtr);
 	}
 
 	private AllocaInst createTempAlloca(Type ty)
 	{
-		return new AllocaInst(ty, null, "temp", allocaInstPtr);
+		return new AllocaInst(ty, null, 0, "temp", allocaInstPtr);
 	}
 
 	public Type convertType(QualType t)

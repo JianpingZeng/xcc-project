@@ -1,4 +1,4 @@
-package backend.hir;
+package backend.ir;
 
 /**
  * Condition codes used in conditionals.

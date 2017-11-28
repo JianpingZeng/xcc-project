@@ -15,7 +15,7 @@
  * permissions and limitations under the License.
  */
 
-package backend.hir;
+package backend.ir;
 
 import backend.support.LLVMContext;
 import backend.value.BasicBlock;

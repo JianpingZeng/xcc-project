@@ -359,7 +359,7 @@ public final class LICM implements LoopPass
             AllocaInst ai = null;
             if (!inst.getType().equals(LLVMContext.VoidTy))
             {
-                ai = new AllocaInst(inst.getType(), null, inst.getName(),
+                ai = new AllocaInst(inst.getType(), null, 0, inst.getName(),
                         inst.getParent().getParent().getEntryBlock().getFirstInst());
                 curAST.add(ai);
             }

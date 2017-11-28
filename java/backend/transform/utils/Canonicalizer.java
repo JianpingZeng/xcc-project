@@ -1,7 +1,7 @@
 
 /*package backend.transform.scalars;
 
-import backend.hir.*;
+import backend.ir.*;
 import backend.value.Constant;
 import backend.value.Instruction;
 import backend.value.Instruction.*;

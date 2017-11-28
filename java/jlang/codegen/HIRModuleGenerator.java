@@ -825,14 +825,14 @@ public class HIRModuleGenerator
                     Constant complex[] = new Constant[2];
                     complex[0] = ConstantInt.get(result.getValue().getComplexIntReal());
                     complex[1] = ConstantInt.get(result.getValue().getComplexIntImag());
-                    return ConstantStruct.get(complex);
+                    return ConstantStruct.get(complex, false);
                 }
                 case ComplexFloat:
                 {
                     Constant complex[] = new Constant[2];
                     complex[0] = ConstantFP.get(result.getValue().getComplexIntReal());
                     complex[1] = ConstantFP.get(result.getValue().getComplexIntImag());
-                    return ConstantStruct.get(complex);
+                    return ConstantStruct.get(complex, false);
                 }
                 case Float:
                 {

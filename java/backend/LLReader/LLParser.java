@@ -17,8 +17,8 @@
 
 package backend.LLReader;
 
-import backend.hir.FreeInst;
-import backend.hir.MallocInst;
+import backend.ir.FreeInst;
+import backend.ir.MallocInst;
 import backend.support.*;
 import backend.type.*;
 import backend.value.*;
@@ -43,6 +43,9 @@ import java.util.stream.Collectors;
 import static backend.LLReader.LLTokenKind.*;
 
 /**
+ * This file defines a class which responsible for a frontend pipeline, reading
+ * character stream for external file, tokenizing character stream read. finally,
+ * parses a valid Module where function and global value resides.
  * @author Xlous.zeng
  * @version 0.1
  */

@@ -17,8 +17,8 @@
 
 package backend.transform.ipo;
 
-import backend.hir.FreeInst;
-import backend.hir.MallocInst;
+import backend.ir.FreeInst;
+import backend.ir.MallocInst;
 import backend.pass.AnalysisResolver;
 import backend.pass.ModulePass;
 import backend.support.IntStatistic;

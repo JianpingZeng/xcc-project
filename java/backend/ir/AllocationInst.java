@@ -15,7 +15,7 @@
  * permissions and limitations under the License.
  */
 
-package backend.hir;
+package backend.ir;
 
 import backend.type.PointerType;
 import backend.type.Type;

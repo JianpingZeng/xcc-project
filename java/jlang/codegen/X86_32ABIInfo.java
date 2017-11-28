@@ -17,7 +17,7 @@
 
 package jlang.codegen;
 
-import backend.hir.HIRBuilder;
+import backend.ir.HIRBuilder;
 import backend.support.LLVMContext;
 import backend.type.IntegerType;
 import backend.type.PointerType;
