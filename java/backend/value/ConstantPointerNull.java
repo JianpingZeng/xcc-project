@@ -28,13 +28,6 @@ import java.util.HashMap;
  */
 public class ConstantPointerNull extends Constant
 {
-    private static HashMap<Type, ConstantPointerNull> nullPtrConstants;
-
-    static
-    {
-        nullPtrConstants = new HashMap<>();
-    }
-
     /**
      * Constructs a new instruction representing the specified constant.
      *
@@ -47,13 +40,13 @@ public class ConstantPointerNull extends Constant
 
     public static ConstantPointerNull get(Type ty)
     {
-        ConstantPointerNull res = nullPtrConstants.get(ty);
-        return res != null ? res : nullPtrConstants.put(ty, new ConstantPointerNull(ty));
+        ConstantPointerNull res = UniqueConstantValueImpl.nullPtrConstants.get(ty);
+        return res != null ? res : UniqueConstantValueImpl.nullPtrConstants.put(ty, new ConstantPointerNull(ty));
     }
 
     public static void removeConstant(Type ty)
     {
-        nullPtrConstants.remove(ty);
+        UniqueConstantValueImpl.nullPtrConstants.remove(ty);
     }
 
     @Override

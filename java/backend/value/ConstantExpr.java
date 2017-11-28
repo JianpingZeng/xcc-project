@@ -22,12 +22,9 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Instruction.GetElementPtrInst;
-import gnu.trove.list.array.TIntArrayList;
-import jlang.type.FoldingSetNodeID;
 import tools.Util;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
@@ -38,87 +35,8 @@ import static backend.value.Instruction.CmpInst.Predicate.*;
  */
 public abstract class ConstantExpr extends Constant
 {
-    public static class ExprMapKeyType
-    {
-        Operator opcode;
-        Predicate predicate;
-        ArrayList<Constant> operands;
-        TIntArrayList indices;
-
-        public ExprMapKeyType(Operator opc, Constant op)
-        {
-            this(opc, op, FCMP_FALSE);
-        }
-
-        public ExprMapKeyType(Operator opc, Constant op, Predicate pred)
-        {
-            this(opc, op, pred, new TIntArrayList());
-        }
-
-        public ExprMapKeyType(Operator opc, Constant op, Predicate pred, TIntArrayList indices)
-        {
-            opcode = opc;
-            predicate = pred;
-            operands = new ArrayList<>();
-            operands.add(op);
-            this.indices = new TIntArrayList();
-            this.indices.addAll(indices);
-        }
-
-        public ExprMapKeyType(Operator opc, List<Constant> ops, Predicate pred)
-        {
-            this(opc, ops, pred, new TIntArrayList());
-        }
-
-        public ExprMapKeyType(Operator opc, List<Constant> ops)
-        {
-            this(opc, ops, Predicate.FCMP_FALSE);
-        }
-
-        public ExprMapKeyType(Operator opc, List<Constant> ops,
-                Predicate pred, TIntArrayList indices)
-        {
-            opcode = opc;
-            predicate = pred;
-            operands = new ArrayList<>();
-            operands.addAll(ops);
-            this.indices = new TIntArrayList();
-            this.indices.addAll(indices);
-        }
-
-        @Override
-        public boolean equals(Object obj)
-        {
-            if (obj == null)
-                return false;
-            if (obj == this)
-                return true;
-            if (getClass() != obj.getClass())
-                return false;
-            ExprMapKeyType key = (ExprMapKeyType)obj;
-            return opcode == key.opcode && predicate == key.predicate
-                    && operands.equals(key.operands) && indices.equals(key.indices);
-        }
-
-        @Override
-        public int hashCode()
-        {
-            FoldingSetNodeID id = new FoldingSetNodeID();
-            id.addInteger(opcode.hashCode());
-            id.addInteger(predicate.hashCode());
-            id.addInteger(operands.size());
-            operands.forEach(op->id.addInteger(op.hashCode()));
-            id.addInteger(indices.size());
-            for (int i = 0, e = indices.size(); i < e; i++)
-                id.addInteger(indices.get(i));
-            return id.computeHash();
-        }
-    }
-
     protected Operator opcode;
 
-    private final static HashMap<ExprMapKeyType, Constant> exprConstantMaps
-            = new HashMap<>();
     /**
      * Constructs a new instruction representing the specified constants.
      *
@@ -303,12 +221,12 @@ public abstract class ConstantExpr extends Constant
         assert ty.isFirstClassType():"Cannot cast to an aggregate type!";
         // TODO fold a few common cases.
 
-        ExprMapKeyType key = new ExprMapKeyType(op, c);
-        if (exprConstantMaps.containsKey(key))
-            return exprConstantMaps.get(key);
+        UniqueConstantValueImpl.ExprMapKeyType key = new UniqueConstantValueImpl.ExprMapKeyType(op, c);
+        if (UniqueConstantValueImpl.exprConstantMaps.containsKey(key))
+            return UniqueConstantValueImpl.exprConstantMaps.get(key);
 
         Constant val = new UnaryConstExpr(op, c, ty);
-        exprConstantMaps.put(key, val);
+        UniqueConstantValueImpl.exprConstantMaps.put(key, val);
         return val;
     }
 
@@ -359,12 +277,8 @@ public abstract class ConstantExpr extends Constant
         ArrayList<Constant> list = new ArrayList<>(2);
         list.add(c1);
         list.add(c2);
-        ExprMapKeyType key = new ExprMapKeyType(op, list);
-        Constant val = exprConstantMaps.get(key);
-        if (exprConstantMaps.containsKey(key))
-            return exprConstantMaps.get(key);
-
-        // TODO: 17-11-28
+        UniqueConstantValueImpl.ExprMapKeyType key = new UniqueConstantValueImpl.ExprMapKeyType(op, list);
+        return UniqueConstantValueImpl.uniqueImpl.getOrCreate(key);
     }
 
     public static Constant getAdd(Constant lhs, Constant rhs)
@@ -518,17 +432,17 @@ public abstract class ConstantExpr extends Constant
         ArrayList<Constant> elts = new ArrayList<>();
         elts.add(c);
         indices.forEach(ind->elts.add((Constant)ind));
-        backend.value.ConstantExpr.ExprMapKeyType key = new ExprMapKeyType(Operator.GetElementPtr, elts);;
-        if (exprConstantMaps.containsKey(key))
+        UniqueConstantValueImpl.ExprMapKeyType key = new UniqueConstantValueImpl.ExprMapKeyType(Operator.GetElementPtr, elts);;
+        if (UniqueConstantValueImpl.exprConstantMaps.containsKey(key))
         {
-            return exprConstantMaps.get(key);
+            return UniqueConstantValueImpl.exprConstantMaps.get(key);
         }
         else
         {
             ArrayList<Constant> inds = new ArrayList<>();
             indices.forEach(ind->inds.add((Constant)ind));
             GetElementPtrConstantExpr ce = new GetElementPtrConstantExpr(c, inds, ty);
-            exprConstantMaps.put(key, ce);
+            UniqueConstantValueImpl.exprConstantMaps.put(key, ce);
             return ce;
         }
     }
