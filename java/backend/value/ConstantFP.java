@@ -19,6 +19,10 @@ package backend.value;
 import backend.type.Type;
 import tools.APFloat;
 import tools.APSInt;
+import tools.OutParamWrapper;
+
+import static backend.type.LLVMTypeID.*;
+import static tools.APFloat.RoundingMode.rmNearestTiesToEven;
 
 /**
  * @author Xlous.zeng
@@ -88,5 +92,40 @@ public class ConstantFP extends Constant
             return false;
         ConstantFP o = (ConstantFP)obj;
         return val.equals(o.val);
+    }
+
+    public static boolean isValueValidForType(Type ty, APFloat val)
+    {
+        APFloat val2 = new APFloat(val);
+        OutParamWrapper<Boolean> loseInfo = new OutParamWrapper<>(false);
+
+        switch (ty.getTypeID())
+        {
+            default: return false;
+            case FloatTyID:
+            {
+                if (val2.getSemantics() == APFloat.IEEEsingle)
+                    return true;
+                val2.convert(APFloat.IEEEsingle, rmNearestTiesToEven, loseInfo);
+                return !loseInfo.get();
+            }
+            case DoubleTyID:
+            {
+                if (val2.getSemantics() == APFloat.IEEEsingle ||
+                        val2.getSemantics() == APFloat.IEEEdouble)
+                    return true;
+
+                val2.convert(APFloat.IEEEdouble, rmNearestTiesToEven, loseInfo);
+                return !loseInfo.get();
+            }
+            case X86_FP80TyID:
+                return val2.getSemantics() == APFloat.IEEEsingle ||
+                        val2.getSemantics() == APFloat.IEEEdouble ||
+                        val2.getSemantics() == APFloat.x87DoubleExtended;
+            case FP128TyID:
+                return val2.getSemantics() == APFloat.IEEEsingle ||
+                        val2.getSemantics() == APFloat.IEEEdouble ||
+                        val2.getSemantics() == APFloat.IEEEquad;
+        }
     }
 }

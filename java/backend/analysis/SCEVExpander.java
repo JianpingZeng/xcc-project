@@ -6,7 +6,6 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Instruction.CastInst;
-import backend.value.Instruction.BinaryInstruction;
 import backend.value.Instruction.PhiNode;
 import tools.APInt;
 import tools.Pair;
@@ -453,7 +452,8 @@ public final class SCEVExpander implements SCEVVisitor<Value>
 					:"No backedge in loop!";
 
 			Constant one = ConstantInt.get(ty, 1);
-			Instruction add = BinaryInstruction.createAdd(pn, one, "indvar.next",
+			Instruction add = Instruction.BinaryOps
+                    .createAdd(pn, one, "indvar.next",
 					header.predAt(predItr).getTerminator());
 
 			insertedValues.add(add);

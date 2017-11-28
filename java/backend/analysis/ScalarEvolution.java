@@ -384,7 +384,7 @@ public final class ScalarEvolution implements FunctionPass
 
     private static Constant constantFold(Instruction inst, ArrayList<Constant> operands)
     {
-        if (inst instanceof BinaryInstruction)
+        if (inst instanceof BinaryOps)
             return ConstantExpr.get(inst.getOpcode(), operands.get(0), operands.get(1));
 
         switch (inst.getOpcode())
@@ -420,7 +420,7 @@ public final class ScalarEvolution implements FunctionPass
 
     private static boolean canConstantFold(Instruction inst)
     {
-        if (inst instanceof BinaryInstruction || inst instanceof CastInst
+        if (inst instanceof BinaryOps || inst instanceof CastInst
                 || inst instanceof GetElementPtrInst)
             return true;
         Function f;
@@ -1081,9 +1081,9 @@ public final class ScalarEvolution implements FunctionPass
             SCEV lhs, SCEV rhs, boolean inverse)
     {
         // Recursively handle And and Or conditions.
-        if (condValue instanceof BinaryInstruction)
+        if (condValue instanceof BinaryOps)
         {
-            BinaryInstruction bo = (BinaryInstruction)condValue;
+            BinaryOps bo = (BinaryOps)condValue;
             if (bo.getOpcode() == Operator.And)
             {
                 if (!inverse)

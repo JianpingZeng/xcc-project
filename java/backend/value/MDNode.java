@@ -17,7 +17,11 @@
 
 package backend.value;
 
-import backend.type.Type;
+import backend.support.LLVMContext;
+
+import java.util.List;
+
+import static backend.value.ValueKind.MDNodeVal;
 
 /**
  * @author Xlous.zeng
@@ -25,8 +29,22 @@ import backend.type.Type;
  */
 public class MDNode extends MetadataBase
 {
-    public MDNode(Type ty, int valueKind)
+    protected MDNode(List<Value> vals)
     {
-        super(ty, valueKind);
+        super(LLVMContext.MetadataTy, MDNodeVal);
+        reserve(vals.size());
+        for (int i = 0, e = vals.size(); i < e; i++)
+        {
+            MetadataBase mb = vals.get(i) instanceof MetadataBase ?
+                    (MetadataBase)vals.get(i) : null;
+            if (mb != null)
+                setOperand(i, mb);
+
+        }
+    }
+
+    public static MDNode get(List<Value> vals)
+    {
+
     }
 }

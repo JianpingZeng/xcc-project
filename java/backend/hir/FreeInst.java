@@ -28,7 +28,7 @@ import backend.value.Value;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class FreeInst extends Instruction.UnaryInstruction
+public class FreeInst extends Instruction.UnaryOps
 {
     public FreeInst(Value ptr)
     {

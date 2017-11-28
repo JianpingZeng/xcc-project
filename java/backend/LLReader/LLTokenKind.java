@@ -104,7 +104,7 @@ public enum LLTokenKind
     kw_uge, kw_oeq, kw_one, kw_olt, kw_ogt, kw_ole, kw_oge, kw_ord, kw_uno,
     kw_ueq, kw_une,
 
-    // Instruction Opcodes (Opcode in UIntVal).
+    // Instruction Opcodes (Opcode in intVal).
     kw_add,  kw_fadd, kw_sub,  kw_fsub, kw_mul,  kw_fmul,
     kw_udiv, kw_sdiv, kw_fdiv,
     kw_urem, kw_srem, kw_frem, kw_shl,  kw_lshr, kw_ashr,
@@ -122,7 +122,7 @@ public enum LLTokenKind
     kw_extractelement, kw_insertelement, kw_shufflevector, kw_getresult,
     kw_extractvalue, kw_insertvalue,
 
-    // Unsigned Valued tokens (UIntVal).
+    // Unsigned Valued tokens (intVal).
     GlobalID,          // @42
     LocalVarID,        // %42
 

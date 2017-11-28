@@ -1,9 +1,7 @@
 package backend.value;
 
 import backend.hir.AllocationInst;
-import backend.support.CallSite;
-import backend.support.CallingConv;
-import backend.support.LLVMContext;
+import backend.support.*;
 import backend.type.FunctionType;
 import backend.type.PointerType;
 import backend.type.Type;
@@ -392,7 +390,7 @@ public abstract class Instruction extends User
     /**
      * The abstract base class definition for unary operator.
      */
-    public static class UnaryInstruction extends Instruction
+    public static class UnaryOps extends Instruction
     {
         private void initialize(Value op, User user)
         {
@@ -406,7 +404,7 @@ public abstract class Instruction extends User
          * @param opcode The operator code for this instruction.
          * @param op      The sole LIROperand.
          */
-        public UnaryInstruction(
+        public UnaryOps(
                 Type ty,
                 Operator opcode,
                 Value op,
@@ -424,7 +422,7 @@ public abstract class Instruction extends User
          * @param opcode The operator code for this instruction.
          * @param op      The sole LIROperand.
          */
-        public UnaryInstruction(
+        public UnaryOps(
                 Type ty,
                 Operator opcode,
                 Value op,
@@ -441,7 +439,7 @@ public abstract class Instruction extends User
          * @param name
          * @param insertAtEnd
          */
-        public UnaryInstruction(Type ty,
+        public UnaryOps(Type ty,
                 Operator opcode,
                 Value op,
                 String name,
@@ -464,10 +462,10 @@ public abstract class Instruction extends User
                 return false;
             if (other == this)
                 return true;
-            if (!(other instanceof UnaryInstruction))
+            if (!(other instanceof UnaryOps))
                 return false;
 
-            UnaryInstruction ui = (UnaryInstruction) other;
+            UnaryOps ui = (UnaryOps) other;
 
             return getType().equals(ui.getType()) &&
                     (getOpcode() == ui.getOpcode() ||
@@ -481,9 +479,9 @@ public abstract class Instruction extends User
      *
      * @author Xlous.zeng
      */
-    public static class BinaryInstruction extends Instruction
+    public static class BinaryOps extends Instruction
     {
-        public BinaryInstruction(
+        public BinaryOps(
                 Type ty,
                 Operator opcode,
                 Value lhs,
@@ -493,7 +491,7 @@ public abstract class Instruction extends User
             this(ty, opcode, lhs, rhs, name, (Instruction)null);
         }
 
-        public BinaryInstruction(
+        public BinaryOps(
                 Type ty,
                 Operator opcode,
                 Value lhs,
@@ -508,7 +506,7 @@ public abstract class Instruction extends User
             init(lhs, rhs);
         }
 
-        public BinaryInstruction(
+        public BinaryOps(
                 Type ty,
                 Operator opcode,
                 Value lhs,
@@ -528,7 +526,7 @@ public abstract class Instruction extends User
             setOperand(1, y, this);
         }
 
-        public static BinaryInstruction create(
+        public static BinaryOps create(
                 Operator op,
                 Value lhs,
                 Value rhs,
@@ -537,10 +535,10 @@ public abstract class Instruction extends User
         {
             assert lhs.getType() == rhs.getType()
                     : "Cannot create binary operator with two operands of differing type!";
-            return new BinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertBefore);
+            return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction create(
+        public static BinaryOps create(
                 Operator op,
                 Value lhs,
                 Value rhs,
@@ -548,10 +546,10 @@ public abstract class Instruction extends User
         {
             assert lhs.getType() == rhs.getType()
                     : "Cannot create binary operator with two operands of differing type!";
-            return new BinaryInstruction(lhs.getType(), op, lhs, rhs, name, (Instruction)null);
+            return new BinaryOps(lhs.getType(), op, lhs, rhs, name, (Instruction)null);
         }
 
-        public static BinaryInstruction create(
+        public static BinaryOps create(
                 Operator op,
                 Value lhs,
                 Value rhs,
@@ -560,189 +558,189 @@ public abstract class Instruction extends User
         {
             assert lhs.getType() == rhs.getType()
                     : "Cannot create binary operator with two operands of differing type!";
-            return new BinaryInstruction(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
+            return new BinaryOps(lhs.getType(), op, lhs, rhs, name, insertAtEnd);
         }
 
         //=====================================================================//
         //               The  first version with default insertBefore.         //
-        public static BinaryInstruction createAdd(Value lhs, Value rhs, String name)
+        public static BinaryOps createAdd(Value lhs, Value rhs, String name)
         {
             return create(Operator.Add, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createFAdd(Value lhs, Value rhs, String name)
+        public static BinaryOps createFAdd(Value lhs, Value rhs, String name)
         {
             return create(Operator.FAdd, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createSub(Value lhs, Value rhs, String name)
+        public static BinaryOps createSub(Value lhs, Value rhs, String name)
         {
             return create(Operator.Sub, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createFSub(Value lhs, Value rhs, String name)
+        public static BinaryOps createFSub(Value lhs, Value rhs, String name)
         {
             return create(Operator.FSub, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createMul(Value lhs, Value rhs, String name)
+        public static BinaryOps createMul(Value lhs, Value rhs, String name)
         {
             return create(Operator.FMul, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createFMul(Value lhs, Value rhs, String name)
+        public static BinaryOps createFMul(Value lhs, Value rhs, String name)
         {
             return create(Operator.FMul, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createUDiv(Value lhs, Value rhs, String name)
+        public static BinaryOps createUDiv(Value lhs, Value rhs, String name)
         {
             return create(Operator.UDiv, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createSDiv(Value lhs, Value rhs, String name)
+        public static BinaryOps createSDiv(Value lhs, Value rhs, String name)
         {
             return create(Operator.SDiv, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createFDiv(Value lhs, Value rhs, String name)
+        public static BinaryOps createFDiv(Value lhs, Value rhs, String name)
         {
             return create(Operator.FDiv, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createURem(Value lhs, Value rhs, String name)
+        public static BinaryOps createURem(Value lhs, Value rhs, String name)
         {
             return create(Operator.URem, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createSRem(Value lhs, Value rhs, String name)
+        public static BinaryOps createSRem(Value lhs, Value rhs, String name)
         {
             return create(Operator.SRem, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createFRem(Value lhs, Value rhs, String name)
+        public static BinaryOps createFRem(Value lhs, Value rhs, String name)
         {
             return create(Operator.FRem, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createShl(Value lhs, Value rhs, String name)
+        public static BinaryOps createShl(Value lhs, Value rhs, String name)
         {
             return create(Operator.Shl, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createLShr(Value lhs, Value rhs, String name)
+        public static BinaryOps createLShr(Value lhs, Value rhs, String name)
         {
             return create(Operator.LShr, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createAShr(Value lhs, Value rhs, String name)
+        public static BinaryOps createAShr(Value lhs, Value rhs, String name)
         {
             return create(Operator.AShr, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createAnd(Value lhs, Value rhs, String name)
+        public static BinaryOps createAnd(Value lhs, Value rhs, String name)
         {
             return create(Operator.And, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createOr(Value lhs, Value rhs, String name)
+        public static BinaryOps createOr(Value lhs, Value rhs, String name)
         {
             return create(Operator.Or, lhs, rhs, name, (Instruction) null);
         }
 
-        public static BinaryInstruction createXor(Value lhs, Value rhs, String name)
+        public static BinaryOps createXor(Value lhs, Value rhs, String name)
         {
             return create(Operator.Xor, lhs, rhs, name, (Instruction) null);
         }
 
         //=====================================================================//
         //                 The second version with insertAtEnd argument.       //
-        public static BinaryInstruction createAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Add, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createFAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createFAdd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FAdd, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Sub, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createFSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createFSub(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FSub, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FMul, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createFMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createFMul(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FMul, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createUDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createUDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.UDiv, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createSDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createSDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.SDiv, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createFDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createFDiv(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FDiv, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createURem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createURem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.URem, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createSRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createSRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.SRem, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createFRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createFRem(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.FRem, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createShl(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createShl(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Shl, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createLShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createLShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.LShr, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createAShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createAShr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.AShr, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createAnd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createAnd(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.And, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createOr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createOr(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Or, lhs, rhs, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createXor(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createXor(Value lhs, Value rhs, String name, BasicBlock insertAtEnd)
         {
             return create(Operator.Xor, lhs, rhs, name, insertAtEnd);
         }
@@ -750,92 +748,92 @@ public abstract class Instruction extends User
 
         //=====================================================================//
         //                   The third version with insertBefore argument.     //
-        public static BinaryInstruction createAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Add, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createFAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createFAdd(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FAdd, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createSub(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createSub(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Sub, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createFSub(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createFSub(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FSub, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createMul(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createMul(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FMul, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createFMul(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createFMul(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FMul, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createUDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createUDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.UDiv, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createSDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createSDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.SDiv, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createFDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createFDiv(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FDiv, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createURem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createURem(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.URem, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createSRem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createSRem(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.SRem, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createFRem(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createFRem(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.FRem, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createShl(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createShl(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Shl, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createLShr(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createLShr(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.LShr, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createAShr(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createAShr(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.AShr, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createAnd(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createAnd(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.And, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createOr(Value lhs, Value rhs, String name,Instruction insertBefore)
+        public static BinaryOps createOr(Value lhs, Value rhs, String name,Instruction insertBefore)
         {
             return create(Operator.Or, lhs, rhs, name, insertBefore);
         }
 
-        public static BinaryInstruction createXor(Value lhs, Value rhs, String name, Instruction insertBefore)
+        public static BinaryOps createXor(Value lhs, Value rhs, String name, Instruction insertBefore)
         {
             return create(Operator.Xor, lhs, rhs, name, insertBefore);
         }
@@ -843,58 +841,58 @@ public abstract class Instruction extends User
 
         // ====================================================================//
         //   Some helper method for create unary operator with Bianry inst.    //
-        public static BinaryInstruction createNeg(Value op, String name, Instruction insertBefore)
+        public static BinaryOps createNeg(Value op, String name, Instruction insertBefore)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertBefore);
+            return new BinaryOps(op.getType(), Sub, zero, op, name, insertBefore);
         }
 
-        public static BinaryInstruction createNeg(Value op, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createNeg(Value op, String name, BasicBlock insertAtEnd)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertAtEnd);
+            return new BinaryOps(op.getType(), Sub, zero, op, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createNeg(Value op)
+        public static BinaryOps createNeg(Value op)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new BinaryInstruction(op.getType(), Sub, zero, op, "");
+            return new BinaryOps(op.getType(), Sub, zero, op, "");
         }
 
-        public static BinaryInstruction createFNeg(Value op, String name, Instruction insertBefore)
+        public static BinaryOps createFNeg(Value op, String name, Instruction insertBefore)
         {
             Value zero = ConstantFP.getNullValue(op.getType());
-            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertBefore);
+            return new BinaryOps(op.getType(), Sub, zero, op, name, insertBefore);
         }
 
-        public static BinaryInstruction createFNeg(Value op)
+        public static BinaryOps createFNeg(Value op)
         {
             Value zero = ConstantInt.getNullValue(op.getType());
-            return new BinaryInstruction(op.getType(), Sub, zero, op, "");
+            return new BinaryOps(op.getType(), Sub, zero, op, "");
         }
 
-        public static BinaryInstruction createFNeg(Value op, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createFNeg(Value op, String name, BasicBlock insertAtEnd)
         {
             Value zero = ConstantFP.getNullValue(op.getType());
-            return new BinaryInstruction(op.getType(), Sub, zero, op, name, insertAtEnd);
+            return new BinaryOps(op.getType(), Sub, zero, op, name, insertAtEnd);
         }
 
-        public static BinaryInstruction createNot(Value op, String name, Instruction insertBefore)
+        public static BinaryOps createNot(Value op, String name, Instruction insertBefore)
         {
             Constant one = Constant.getAllOnesValue(op.getType());
-            return new BinaryInstruction(op.getType(), Xor, one, op, name, insertBefore);
+            return new BinaryOps(op.getType(), Xor, one, op, name, insertBefore);
         }
 
-        public static BinaryInstruction createNot(Value op)
+        public static BinaryOps createNot(Value op)
         {
             Constant one = Constant.getAllOnesValue(op.getType());
-            return new BinaryInstruction(op.getType(), Xor, one, op, "");
+            return new BinaryOps(op.getType(), Xor, one, op, "");
         }
 
-        public static BinaryInstruction createNot(Value op, String name, BasicBlock insertAtEnd)
+        public static BinaryOps createNot(Value op, String name, BasicBlock insertAtEnd)
         {
             Constant one = Constant.getAllOnesValue(op.getType());
-            return new BinaryInstruction(op.getType(), Xor, one, op, name, insertAtEnd);
+            return new BinaryOps(op.getType(), Xor, one, op, name, insertAtEnd);
         }
 
 
@@ -922,10 +920,10 @@ public abstract class Instruction extends User
                 return false;
             if (other == this)
                 return true;
-            if (!(other instanceof BinaryInstruction))
+            if (!(other instanceof BinaryOps))
                 return false;
 
-            BinaryInstruction op = (BinaryInstruction) other;
+            BinaryOps op = (BinaryOps) other;
             Value x = operand(0);
             Value y = operand(1);
             return getType() == op.getType() && getOpcode()
@@ -935,7 +933,7 @@ public abstract class Instruction extends User
         }
     }
 
-    public static class CastInst extends UnaryInstruction
+    public static class CastInst extends UnaryOps
     {
         protected CastInst(Type ty,
                 Operator opcode,
@@ -1084,6 +1082,17 @@ public abstract class Instruction extends User
                 assert false : "Casting to type that is not first-class type!";
             }
             return Operator.BitCast;
+        }
+
+        public static boolean castIsVoid(Operator opc, Value op, Type destTy)
+        {
+
+        }
+
+        public static boolean castIsValid(Operator opc, Constant constant,
+                Type type)
+        {
+
         }
     }
 
@@ -2171,10 +2180,44 @@ public abstract class Instruction extends User
         // Returns the operand number of the first argument
         private final int ArgumentOffset = 1;
         private CallingConv callingConv;
+        private boolean tailCall;
+        private AttrList attributes;
 
         public CallInst(Value[] args, Value target)
         {
             this(args, target, "");
+        }
+
+        public CallInst(Value callee, List<Value> args)
+        {
+            this(callee, args, "");
+        }
+
+        public CallInst(Value callee, List<Value> args,
+                String name)
+        {
+            this(callee, args, name, null);
+        }
+
+        public CallInst(Value callee, List<Value> args,
+                String name, Instruction insertBefore)
+        {
+            super(((FunctionType)((PointerType)callee.getType()).
+                            getElementType()).getReturnType(),
+                    Operator.Call, name, insertBefore);
+
+            setName(name == null || name.isEmpty() ?
+                    Operator.Call.opName:name);
+
+            reserve(ArgumentOffset + args.size());
+            assert (getNumOfOperands() == ArgumentOffset + args.size())
+                    : "NumOperands not set up?";
+            setOperand(0, callee, this);
+            int idx = ArgumentOffset;
+            for (Value arg : args)
+            {
+                setOperand(idx++, arg, this);
+            }
         }
 
         /**
@@ -2276,6 +2319,179 @@ public abstract class Instruction extends User
         public void setCallingConv(CallingConv callingConv)
         {
             this.callingConv = callingConv;
+        }
+
+        public void setTailCall(boolean tailCall)
+        {
+            this.tailCall = tailCall;
+        }
+
+        public void setAttributes(AttrList attributes)
+        {
+            this.attributes = attributes;
+        }
+
+        public AttrList getAttributes()
+        {
+            return attributes;
+        }
+
+        public boolean hasFnAttr(int n)
+        {
+            return attributes.paramHasAttr(0, n);
+        }
+
+        public void addFnAttr(int n)
+        {
+            addAttribute(0, n);
+        }
+
+        public void removeFnAttr(int n)
+        {
+            removeAttribute(0, n);
+        }
+
+        private void addAttribute(int index, int attr)
+        {
+            // TODO: 2017/11/27
+        }
+
+        private void removeAttribute(int index, int attr)
+        {
+            // TODO: 2017/11/27
+        }
+
+        public boolean paramHasAttr(int i, int attr)
+        {
+            return attributes.paramHasAttr(i, attr);
+        }
+
+        public int getParamAlignment(int index)
+        {
+            return attributes.getParamAlignment(index);
+        }
+
+        /// @brief Determine if the function does not access memory.
+        public boolean doesNotAccessMemory()
+        {
+            return hasFnAttr(Attribute.ReadNone);
+        }
+
+        public void setDoesNotAccessMemory()
+        {
+            setDoesNotAccessMemory(true);
+        }
+
+        public void setDoesNotAccessMemory(boolean doesNotAccessMemory)
+        {
+            if (doesNotAccessMemory)
+                addFnAttr(Attribute.ReadNone);
+            else
+                removeFnAttr(Attribute.ReadNone);
+        }
+
+        /// @brief Determine if the function does not access or only reads memory.
+        public boolean onlyReadsMemory()
+        {
+            return doesNotAccessMemory() || hasFnAttr(Attribute.ReadOnly);
+        }
+
+        public void setOnlyReadsMemory()
+        {
+            setOnlyReadsMemory(true);
+        }
+
+        public void setOnlyReadsMemory(boolean OnlyReadsMemory)
+        {
+            if (OnlyReadsMemory)
+                addFnAttr(Attribute.ReadOnly);
+            else
+                removeFnAttr(Attribute.ReadOnly | Attribute.ReadNone);
+        }
+
+        /// @brief Determine if the function cannot return.
+        public boolean doesNotReturn()
+        {
+            return hasFnAttr(Attribute.NoReturn);
+        }
+
+        public void setDoesNotReturn()
+        {
+            setDoesNotReturn(true);
+        }
+
+        public void setDoesNotReturn(boolean DoesNotReturn)
+        {
+            if (DoesNotReturn)
+                addFnAttr(Attribute.NoReturn);
+            else
+                removeFnAttr(Attribute.NoReturn);
+        }
+
+        /// @brief Determine if the function cannot unwind.
+        public boolean doesNotThrow()
+        {
+            return hasFnAttr(Attribute.NoUnwind);
+        }
+
+        public void setDoesNotThrow()
+        {
+            setDoesNotThrow(true);
+        }
+
+        public void setDoesNotThrow(boolean DoesNotThrow)
+        {
+            if (DoesNotThrow)
+                addFnAttr(Attribute.NoUnwind);
+            else
+                removeFnAttr(Attribute.NoUnwind);
+        }
+
+        /// @brief Determine if the function returns a structure through first
+        /// pointer argument.
+        public boolean hasStructRetAttr()
+        {
+            return paramHasAttr(1, Attribute.StructRet);
+        }
+
+        /// @brief Determine if the parameter does not alias other parameters.
+        /// @param n The parameter to check. 1 is the first parameter, 0 is the return
+        public boolean doesNotAlias(int n)
+        {
+            return paramHasAttr(n, Attribute.NoAlias);
+        }
+
+        public void setDoesNotAlias(int n)
+        {
+            setDoesNotAlias(n, true);
+        }
+
+        public void setDoesNotAlias(int n, boolean DoesNotAlias)
+        {
+            if (DoesNotAlias)
+                addAttribute(n, Attribute.NoAlias);
+            else
+                removeAttribute(n, Attribute.NoAlias);
+        }
+
+        /// @brief Determine if the parameter can be captured.
+        /// @param n The parameter to check. 1 is the first parameter, 0 is the return
+        public boolean doesNotCapture(int n)
+        {
+            return paramHasAttr(n, Attribute.NoCapture);
+        }
+
+        public void setDoesNotCapture(int n)
+        {
+            setDoesNotCapture(n, true);
+        }
+
+        public void setDoesNotCapture(int n, boolean DoesNotCapture)
+        {
+            if (DoesNotCapture)
+                addAttribute(n, Attribute.NoCapture);
+            else
+                removeAttribute(n, Attribute.NoCapture);
         }
     }
 
@@ -2686,29 +2902,35 @@ public abstract class Instruction extends User
          */
         public AllocaInst(Type ty,
                 Value arraySize,
+                int alignment,
                 String name,
                 Instruction insertBefore)
         {
             super(ty, Operator.Alloca,
                     arraySize == null ? ConstantInt.get(LLVMContext.Int32Ty, 1):
-                    arraySize, 0, name, insertBefore);
+                    arraySize, alignment, name, insertBefore);
 
             assert getArraySize().getType() == LLVMContext.Int32Ty
                     :"Alloca array getNumOfSubLoop != UnsignedIntTy";
+        }
+
+        public AllocaInst(Type ty, Value arraySize, int alignment)
+        {
+            this(ty, arraySize, alignment, "", null);
         }
 
         public AllocaInst(Type ty,
                 Value arraySize,
                 String name)
         {
-            this(ty, arraySize, name,null);
+            this(ty, arraySize, 0, name,null);
         }
 
         public AllocaInst(Type ty,
                 String name,
                 Instruction insertBefore)
         {
-            this(ty, null, name, insertBefore);
+            this(ty, null, 0, name, insertBefore);
         }
 
         /**
@@ -2740,9 +2962,22 @@ public abstract class Instruction extends User
      */
     public static class StoreInst extends Instruction
     {
-        private boolean aVolatile;
+        private boolean isVolatile;
         private int alignment;
 
+
+        public StoreInst(Value value, Value ptr, boolean isVolatile, int align)
+        {
+            this(value, ptr, isVolatile, align, "", null);
+        }
+
+        public StoreInst(Value value, Value ptr, boolean isVolatile,
+                int align, String name, Instruction insertBefore)
+        {
+            super(LLVMContext.VoidTy, Operator.Store, name, insertBefore);
+            setIsVolatile(isVolatile);
+            setAlignment(align);
+        }
         /**
          * Constructs a new store instruction.
          *
@@ -2812,7 +3047,12 @@ public abstract class Instruction extends User
 
         public boolean isVolatile()
         {
-            return aVolatile;
+            return isVolatile;
+        }
+
+        public void setIsVolatile(boolean isVolatile)
+        {
+            this.isVolatile = isVolatile;
         }
 
         public void setAlignment(int align)
@@ -2830,13 +3070,13 @@ public abstract class Instruction extends User
     /**
      * An instruction for reading data from memory.
      */
-    public static class LoadInst extends UnaryInstruction
+    public static class LoadInst extends UnaryOps
     {
         private boolean isVolatile;
         private int alignment;
 
-        public LoadInst(Value from,
-                String name, Instruction insertBefore)
+
+        public LoadInst(Value from, String name, Instruction insertBefore)
         {
             super(((PointerType)from.getType()).getElementType(),
                     Operator.Load,
@@ -2846,16 +3086,17 @@ public abstract class Instruction extends User
             assertOK();
         }
 
-        public LoadInst(Value from,
-                String name)
+        public LoadInst(Value from, String name, boolean isVolatile, int align)
         {
             super(((PointerType)from.getType()).getElementType(),
                     Operator.Load, from, name, (Instruction)null);
+            setName(name);
+            setAlignment(align);
+            setIsVolatile(isVolatile);
             assertOK();
         }
 
-        public LoadInst(Value from,
-                String name, BasicBlock insertAtEnd)
+        public LoadInst(Value from, String name, BasicBlock insertAtEnd)
         {
             super(((PointerType)from.getType()).getElementType(),
                     Operator.Load, from, name, insertAtEnd);
@@ -2883,6 +3124,11 @@ public abstract class Instruction extends User
             return isVolatile;
         }
 
+        public void setIsVolatile(boolean isVolatile)
+        {
+            this.isVolatile = isVolatile;
+        }
+
         public void setAlignment(int align)
         {
             assert (align & (align - 1)) == 0 :"Alignment must be power of 2!";
@@ -2900,6 +3146,8 @@ public abstract class Instruction extends User
      */
     public static class GetElementPtrInst extends Instruction
     {
+        private boolean inbounds;
+
         public GetElementPtrInst(Value ptr,
                 Value idx,
                 String name,
@@ -2962,7 +3210,7 @@ public abstract class Instruction extends User
             return ty;
         }
 
-        public static Type getIndexedType(Type ptrType, Value idx)
+        public static Type getIndexedType(Type ptrType, List<Value> indices)
         {
             // It is not pointer type.
             if (!(ptrType instanceof PointerType))
@@ -3008,6 +3256,16 @@ public abstract class Instruction extends User
         public int getIndexEnd()
         {
             return getNumOfOperands();
+        }
+
+        public void setInbounds(boolean inbounds)
+        {
+            this.inbounds = inbounds;
+        }
+
+        public boolean getInbounds()
+        {
+            return inbounds;
         }
     }
 }
