@@ -749,7 +749,7 @@ public class SCCPSolver implements InstVisitor<Void>
         }
         else if (ls.isConstant())
         {
-            markConstant(inst, ConstantExpr.getElementPtr(ls.getConstVal(), ops));
+            markConstant(inst, ConstantExpr.getGetElementPtr(ls.getConstVal(), ops));
             return null;
         }
         assert false:"Unknown Lattice value";

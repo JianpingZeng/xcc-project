@@ -2,9 +2,11 @@ package backend.value;
 
 import backend.support.LLVMContext;
 import backend.type.ArrayType;
+import backend.value.UniqueConstantValueImpl.ConstantArrayKey;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+
+import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
  * @author Xlous.zeng
@@ -12,35 +14,13 @@ import java.util.HashMap;
  */
 public class ConstantArray extends Constant
 {
-    private static class ConstantArrayKey
-	{
-		ArrayType type;
-		ArrayList<Constant> eltVals;
-
-		ConstantArrayKey(ArrayType type, ArrayList<Constant> eltVals)
-		{
-			this.type = type;
-			this.eltVals = eltVals;
-		}
-	}
-
-	/**
-	 * A cache mapping pair of ArrayType and Constant value list to ConstantArray.
-	 */
-	private static HashMap<ConstantArrayKey, ConstantArray> arrayConstants;
-
-	static {
-		arrayConstants = new HashMap<>();
-	}
-
-
 	/**
 	 * Constructs a new instruction representing the specified constant.
 	 *
 	 * @param ty
 	 * @param elementVals
 	 */
-	private ConstantArray(ArrayType ty, ArrayList<Constant> elementVals)
+    ConstantArray(ArrayType ty, ArrayList<Constant> elementVals)
 	{
 		super(ty,  ValueKind.ConstantArrayVal);
 		reserve(elementVals.size());
@@ -86,30 +66,20 @@ public class ConstantArray extends Constant
 		// If this is an all-zero array, return a ConstantAggregateZero object
 		if (!elementVals.isEmpty())
 		{
+			ConstantArrayKey key = new ConstantArrayKey(ty, elementVals);
 			Constant c = elementVals.get(0);
 			if (!c.isNullValue())
 			{
-				return getOrCreateConstantArray(ty, elementVals);
+				return getUniqueImpl().getOrCreate(key);
 			}
 
 			for (int i = 1, e = elementVals.size(); i < e; i++)
 			{
 				if (!elementVals.get(i).isNullValue())
-					return getOrCreateConstantArray(ty, elementVals);
+					return getUniqueImpl().getOrCreate(key);
 			}
 		}
 		return ConstantAggregateZero.get(ty);
-	}
-
-	public static ConstantArray getOrCreateConstantArray(ArrayType ty, ArrayList<Constant> vals)
-	{
-		ConstantArrayKey key = new ConstantArrayKey(ty, vals);
-		ConstantArray arr = arrayConstants.get(key);
-		if (key != null)
-			return arr;
-		arr = new ConstantArray(ty, vals);
-		arrayConstants.put(key, arr);
-		return arr;
 	}
 
 	@Override
@@ -140,7 +110,7 @@ public class ConstantArray extends Constant
 	@Override
 	public Constant operand(int idx)
 	{
-		return (Constant) super.operand(idx);
+		return super.operand(idx);
 	}
 
 	public void setOperand(int idx, Constant c)

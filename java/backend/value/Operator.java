@@ -152,4 +152,19 @@ public enum Operator
     {
         return index>=Trunc.index && index<=BitCast.index;
     }
+
+    public boolean isBinaryOps()
+    {
+    	return index>= BinaryOpsBegin.index && index < BinaryOpsEnd.index;
+    }
+
+    public boolean isUnaryOps()
+    {
+        return index >= BinaryOpsEnd.index && index <= Load.index && this != Store;
+    }
+
+    public boolean isGEP()
+    {
+    	return this == GetElementPtr;
+    }
 }

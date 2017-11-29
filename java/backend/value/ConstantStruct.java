@@ -17,11 +17,15 @@ package backend.value;
  */
 
 import backend.type.StructType;
+import backend.type.Type;
+import backend.value.UniqueConstantValueImpl.ConstantStructKey;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * This class defines internal data structure for representing constant struct
+ * in LLVM IR, like '{1, 2, 3}' defines a constant struct with 3 integer.
  * @author Xlous.zeng
  * @version 0.1
  */
@@ -54,18 +58,44 @@ public class ConstantStruct extends Constant
         return false;
     }
 
-    public static ConstantStruct get(Constant[] elts, boolean packed)
+    public static Constant get(StructType type, List<Constant> elts)
     {
-
+        // Create a ConstantAggregateZero value if all elements are zeros
+        for (Constant elt : elts)
+        {
+            if (!elt.isNullValue())
+            {
+                ConstantStructKey key = new ConstantStructKey(type, elts);
+                return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
+            }
+        }
+        return ConstantAggregateZero.get(type);
     }
 
-    public static ConstantStruct get(List<Constant> elts, boolean packed)
+    public static Constant get(Constant[] elts, boolean packed)
     {
+        ArrayList<Type> eltTypes = new ArrayList<>();
+        ArrayList<Constant> indices = new ArrayList<>();
+        for (Constant c : elts)
+        {
+            eltTypes.add(c.getType());
+            indices.add(c);
+        }
+        return get(StructType.get(eltTypes, packed), indices);
+    }
 
+    public static Constant get(List<Constant> elts, boolean packed)
+    {
+        ArrayList<Type> eltTypes = new ArrayList<>();
+        for (Constant c : elts)
+        {
+            eltTypes.add(c.getType());
+        }
+        return get(StructType.get(eltTypes, packed), elts);
     }
 
     @Override
     public StructType getType() { return (StructType)super.getType();}
     @Override
-    public Constant operand(int idx) { return (Constant)super.operand(idx); }
+    public Constant operand(int idx) { return super.operand(idx); }
 }

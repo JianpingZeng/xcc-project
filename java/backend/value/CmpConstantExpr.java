@@ -23,7 +23,7 @@ import backend.value.Instruction.CmpInst.Predicate;
  * @author Xlous.zeng
  * @version 0.1
  */
-public class CompareConstantExpr extends ConstantExpr
+public class CmpConstantExpr extends ConstantExpr
 {
     Predicate predicate;
     /**
@@ -32,8 +32,10 @@ public class CompareConstantExpr extends ConstantExpr
      * @param ty
      * @param opcode
      */
-    protected CompareConstantExpr(Type ty, Operator opcode,
-            Constant lhs, Constant rhs,
+    protected CmpConstantExpr(Type ty,
+            Operator opcode,
+            Constant lhs,
+            Constant rhs,
             Predicate pred)
     {
         super(ty, opcode);

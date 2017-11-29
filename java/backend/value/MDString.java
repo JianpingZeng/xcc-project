@@ -17,7 +17,10 @@
 
 package backend.value;
 
-import backend.type.Type;
+import backend.support.LLVMContext;
+
+import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
+import static backend.value.ValueKind.MDStringVal;
 
 /**
  * @author Xlous.zeng
@@ -25,13 +28,15 @@ import backend.type.Type;
  */
 public class MDString extends MetadataBase
 {
-    public MDString(Type ty, int valueKind)
+    private String name;
+
+    MDString(String str)
     {
-        super(ty, valueKind);
+        super(LLVMContext.LabelTy, MDStringVal);
     }
 
     public static MetadataBase get(String name)
     {
-        // TODO: 2017/11/28
+        return getUniqueImpl().getOrCreate(name);
     }
 }

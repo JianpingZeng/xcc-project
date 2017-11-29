@@ -784,7 +784,7 @@ public class HIRModuleGenerator
                             backend.type.Type type = PointerType.get(
                                     LLVMContext.Int8Ty, ty.getAddressSpace());
                             Constant casted = getBitCast(c, type);
-                            ArrayList<Value> indices = new ArrayList<>();
+                            ArrayList<Constant> indices = new ArrayList<>();
                             indices.add(offset);
                             casted = getGetElementPtr(casted, indices);
 

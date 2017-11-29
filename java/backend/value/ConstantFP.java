@@ -18,6 +18,7 @@ package backend.value;
 
 import backend.support.LLVMContext;
 import backend.type.Type;
+import backend.value.UniqueConstantValueImpl.APFloatKeyType;
 import tools.APFloat;
 import tools.APSInt;
 import tools.FltSemantics;
@@ -41,7 +42,7 @@ public class ConstantFP extends Constant
      * @param ty
      * @param v
      */
-    private ConstantFP(Type ty, APFloat v)
+    ConstantFP(Type ty, APFloat v)
     {
         super(ty, ValueKind.ConstantFPVal);
         val = v;
@@ -59,21 +60,6 @@ public class ConstantFP extends Constant
             return APFloat.IEEEquad;
 
         assert false:"Unkown FP format";
-        return null;
-    }
-
-    private static Type floatSemanticsToType(FltSemantics semantics)
-    {
-        if (semantics == APFloat.IEEEsingle)
-            return LLVMContext.FloatTy;
-        if (semantics == APFloat.IEEEdouble)
-            return LLVMContext.DoubleTy;
-        if (semantics == APFloat.x87DoubleExtended)
-            return LLVMContext.X86_FP80Ty;
-        if (semantics == APFloat.IEEEquad)
-            return LLVMContext.FP128Ty;
-
-        assert false:"Unknown FP format";
         return null;
     }
 
@@ -95,18 +81,8 @@ public class ConstantFP extends Constant
     public static Constant get(APFloat flt)
     {
         ConstantFP fp;
-        UniqueConstantValueImpl.APFloatKeyInfo key = new UniqueConstantValueImpl.APFloatKeyInfo(flt);
-        if (!UniqueConstantValueImpl.FPConstants.containsKey(key))
-        {
-            Type ty = floatSemanticsToType(flt.getSemantics());
-            fp = new ConstantFP(ty, flt);
-            UniqueConstantValueImpl.FPConstants.put(key, fp);
-        }
-        else
-        {
-            fp = UniqueConstantValueImpl.FPConstants.get(key);
-        }
-        return fp;
+        APFloatKeyType key = new APFloatKeyType(flt);
+        return UniqueConstantValueImpl.getUniqueImpl().getOrCreate(key);
     }
 
     @Override
@@ -143,7 +119,7 @@ public class ConstantFP extends Constant
         if (getClass() != obj.getClass())
             return false;
         ConstantFP o = (ConstantFP)obj;
-        return new UniqueConstantValueImpl.APFloatKeyInfo(val).equals(new UniqueConstantValueImpl.APFloatKeyInfo(o.val));
+        return new APFloatKeyType(val).equals(new APFloatKeyType(o.val));
     }
 
     public static boolean isValueValidForType(Type ty, APFloat val)
