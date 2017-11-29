@@ -44,17 +44,17 @@ public final class LoopInfo
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		assert au != null;
-		au.addRequired(DomTreeInfo.class);
+		au.addRequired(DomTree.class);
 	}
 
 	@Override
 	public boolean runOnFunction(Function f)
 	{
-		calculate((DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class));
+		calculate((DomTree) getAnalysisToUpDate(DomTree.class));
 		return false;
 	}
 
-	private void calculate(DomTreeInfo dt)
+	private void calculate(DomTree dt)
 	{
 		BasicBlock rootNode = dt.getRootNode().getBlock();
 
@@ -67,7 +67,7 @@ public final class LoopInfo
 		}
 	}
 
-	private Loop considerForLoop(BasicBlock bb, DomTreeInfo dt)
+	private Loop considerForLoop(BasicBlock bb, DomTree dt)
 	{
 		if (bbMap.containsKey(bb))
 			return null;

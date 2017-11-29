@@ -39,7 +39,7 @@ public final class LLLexer
 {
     private MemoryBuffer buffer;
     private int curPtr;
-    private SMDiagnostic errorInfo;
+    private OutParamWrapper<SMDiagnostic> errorInfo;
     private SourceMgr smg;
 
     private String error;
@@ -68,11 +68,11 @@ public final class LLLexer
     private TreeMap<String, backend.type.Type> typeKeywords;
     private TreeMap<String, Pair<Operator, LLTokenKind>> opcKeywords;
 
-    public LLLexer(MemoryBuffer buf, SourceMgr smg, SMDiagnostic diag)
+    public LLLexer(MemoryBuffer buf, SourceMgr smg, OutParamWrapper<SMDiagnostic> diag)
     {
         this.buffer = buf;
         curPtr = buf.getBufferStart();
-        this.errorInfo = diag;
+        errorInfo = diag;
         this.smg = smg;
         error = "";
         tokKind = Eof;
@@ -315,7 +315,7 @@ public final class LLLexer
 
     public boolean error(SourceMgr.SMLoc loc, String msg)
     {
-        errorInfo = smg.getMessage(loc, msg, "error");
+        errorInfo.set(smg.getMessage(loc, msg, "error"));
         return true;
     }
 
@@ -421,9 +421,9 @@ public final class LLLexer
             case '>':
                 return greater;
             case ')':
-                return lparen;
-            case '(':
                 return rparen;
+            case '(':
+                return lparen;
             case ',':
                 return comma;
             case '*':
@@ -514,14 +514,14 @@ public final class LLLexer
 
         // Handle GlobalVarName: @[-a-zA-Z$._][-a-zA-Z$._0-9]*
         char ch = buffer.getCharAt(curPtr);
-        if (Character.isLetter(ch) || ch == '-' || ch == '$' || ch == '.')
+        if (isLLIdentifierPart(ch))
         {
-            ++curPtr;
-            ch = buffer.getCharAt(curPtr);
-            while (Character.isLetter(ch) || ch == '-' || ch == '$'
-                    || ch == '.' || Character.isDigit(ch))
-                curPtr++;
-            strVal = buffer.getSubString(tokStart+1, curPtr-1);
+            do
+            {
+                ch = buffer.getCharAt(++curPtr);
+            }while (isLLIdentifierPart(ch) || Character.isDigit(ch));
+
+            strVal = buffer.getSubString(tokStart+1, curPtr);
             return GlobalVar;
         }
 
@@ -530,11 +530,10 @@ public final class LLLexer
         {
             do
             {
-                curPtr++;
-                ch = buffer.getCharAt(curPtr);
+                ch = buffer.getCharAt(++curPtr);
             }while (Character.isDigit(ch));
 
-            long val = Long.parseLong(buffer.getSubString(tokStart+1, curPtr-1));
+            long val = Long.parseLong(buffer.getSubString(tokStart+1, curPtr));
             if ((int)val != val)
             {
                 error("invalid value number(too long)");
@@ -624,11 +623,11 @@ public final class LLLexer
                     error("End of file in local variable name");
                     return Error;
                 }
-                if (nextCh == '"')
-                {
-                    strVal = buffer.getSubString(tokStart+2, curPtr-1);
-                    return LocalVar;
-                }
+                if (nextCh != '"')
+                    continue;
+
+                strVal = buffer.getSubString(tokStart+1, curPtr-1);
+                return LocalVar;
             }
         }
         else if (isLLIdentifierPart(ch))
@@ -643,9 +642,12 @@ public final class LLLexer
                     return Error;
                 }
                 if (!isLabelChar(nextCh))
+                {
+                    --curPtr;
                     break;
+                }
             }
-            strVal = buffer.getSubString(tokStart+2, curPtr-1);
+            strVal = buffer.getSubString(tokStart+1, curPtr);
             return LocalVar;
         }
         else if (Character.isDigit(ch))
@@ -660,9 +662,12 @@ public final class LLLexer
                     return Error;
                 }
                 if (!Character.isDigit((char)nextCh))
+                {
+                    --curPtr;
                     break;
+                }
             }
-            long val = Long.parseLong(buffer.getSubString(tokStart+2, curPtr-1));
+            long val = Long.parseLong(buffer.getSubString(tokStart+1, curPtr));
             if ((int)val != val)
             {
                 error("Invalid local variable id(too long)");
@@ -702,7 +707,6 @@ public final class LLLexer
         {
             while (true)
             {
-                ++curPtr;
                 ch = getNextChar();
                 if (ch == -1)
                 {
@@ -1000,7 +1004,10 @@ public final class LLLexer
                     return Error;
                 }
                 if (!(ch >= '0' && ch <='9'))
+                {
+                    --curPtr;
                     break;
+                }
             }
             int numBits = Integer.parseInt(buffer.getSubString(tokStart+1, curPtr));
             if (numBits < IntegerType.MIN_INT_BITS || numBits > IntegerType.MAX_INT_BITS)
@@ -1037,7 +1044,11 @@ public final class LLLexer
             if (ch == '$' || ch == '.' || ch == '-')
                 nonKeyword = true;
             if (!isLabelChar(ch))
+            {
+                // discard the invalid char for label.
+                --curPtr;
                 break;
+            }
         }
         strVal = buffer.getSubString(tokStart, curPtr);
         if (nonKeyword)
@@ -1080,10 +1091,9 @@ public final class LLLexer
     {
         while (true)
         {
-            char ch = buffer.getCharAt(curPtr);
-            if (ch == '\n' || ch == '\r' || getNextChar() == -1)
+            int ch = getNextChar();
+            if (ch == '\n' || ch == '\r' || ch == -1)
                 return;
-            curPtr++;
         }
     }
 

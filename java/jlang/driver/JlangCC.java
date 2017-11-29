@@ -307,7 +307,8 @@ public class JlangCC implements DiagnosticFrontendKindsTag
     public static ListOpt<String> InputFilenames = new ListOpt<String>(
             new ParserString(),
             new FormattingFlagsApplicator(Positional),
-            desc("<input files>"));
+            desc("<input files>"),
+            init("-"));
 
     public static StringOpt Isysroot = new StringOpt(
         new OptionNameApplicator("isysroot"),
@@ -1178,12 +1179,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
         {
             java.lang.System.err.println(NAME +  " version " + VERSION + " on X86 machine");
         }
-        if (InputFilenames.isEmpty())
-        {
-            InputFilenames.add("-");
-        }
 
-        int messageLength;
         if (MessageLength.getNumOccurrences() == 0)
             MessageLength.setValue(Process.getStandardErrColumns());
 

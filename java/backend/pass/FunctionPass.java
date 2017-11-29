@@ -2,11 +2,10 @@ package backend.pass;
 
 import backend.passManaging.FPPassManager;
 import backend.passManaging.PMDataManager;
+import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
-import backend.value.Module;
 import backend.value.Function;
-
-import java.util.Stack;
+import backend.value.Module;
 
 /**
  * This class is used to implement most global
@@ -61,7 +60,7 @@ public interface FunctionPass extends Pass
 	}
 
 	@Override
-	default void assignPassManager(Stack<PMDataManager> pms,
+	default void assignPassManager(PMStack pms,
 			PassManagerType pmt)
 	{
         while (!pms.isEmpty())
@@ -85,14 +84,14 @@ public interface FunctionPass extends Pass
             // Step#2 Assign manager to manage this new manager.
             fpm.assignPassManager(pms, pmd.getPassManagerType());
             // Step#3 Push new manager into stack.
-            pms.add(fpm);
+            pms.push(fpm);
         }
         fpm = (FPPassManager)pms.peek();
         fpm.add(this);
 	}
 
     @Override
-    default void assignPassManager(Stack<PMDataManager> pms)
+    default void assignPassManager(PMStack pms)
     {
         assignPassManager(pms, PassManagerType.PMT_FunctionPassManager);
     }

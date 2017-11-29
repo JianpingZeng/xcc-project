@@ -16,7 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.value.BasicBlock;
 import backend.analysis.DominanceFrontier;
 import backend.pass.Pass;
@@ -62,8 +62,8 @@ public final class BasicBlockUtil
         });
 
         // update dominator tree and dominator frontier info.
-        DomTreeInfo dt = pass != null ?
-                (DomTreeInfo) pass.getAnalysisToUpDate(DomTreeInfo.class) : null;
+        DomTree dt = pass != null ?
+                (DomTree) pass.getAnalysisToUpDate(DomTree.class) : null;
         DominanceFrontier df = pass != null ?
                 (DominanceFrontier) pass.getAnalysisToUpDate(DominanceFrontier.class) : null;
         if (dt != null)

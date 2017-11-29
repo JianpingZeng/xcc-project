@@ -22,7 +22,6 @@ import backend.pass.Pass;
 import backend.pass.PassInfo;
 
 import java.util.ArrayList;
-import java.util.Stack;
 
 /**
  * PMTopLevelManager manages lastUser information and collects some usefully
@@ -78,7 +77,7 @@ public interface PMTopLevelManager
 
     void initializeAllAnalysisInfo();
 
-    Stack<PMDataManager> getActiveStack();
+    PMStack getActiveStack();
 
     int getNumContainedManagers();
 }

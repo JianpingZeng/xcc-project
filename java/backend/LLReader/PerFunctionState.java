@@ -85,7 +85,7 @@ public final class PerFunctionState
             return null;    // already diagnosed error.
 
         // Append the BB into the function's BB list.
-        fn.getBasicBlockList().addLast(bb);
+        fn.appendBB(bb);
 
         // Remove bb from forward refs list.
         if (name == null || name.isEmpty())
@@ -170,13 +170,13 @@ public final class PerFunctionState
             forwardRefVals.remove(nameStr);
         }
         // set the name of instruction.
-        inst.setName(nameStr);
         if (inst.getName().equals(nameStr))
         {
             return parser.error(nameLoc, StringFormatter
                     .format("multiple definition of local value named '%%%s'",
                             nameStr).toString());
         }
+        inst.setName(nameStr);
         return false;
     }
 

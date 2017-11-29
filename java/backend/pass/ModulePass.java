@@ -1,10 +1,8 @@
 package backend.pass;
 
-import backend.passManaging.PMDataManager;
+import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
 import backend.value.Module;
-
-import java.util.Stack;
 
 import static backend.passManaging.PassManagerType.PMT_ModulePassManager;
 
@@ -23,13 +21,13 @@ public interface ModulePass extends Pass
 	boolean runOnModule(Module m);
 
 	@Override
-	default void assignPassManager(Stack<PMDataManager> pms)
+	default void assignPassManager(PMStack pms)
 	{
 		assignPassManager(pms, PMT_ModulePassManager);
 	}
 
 	@Override
-	default void assignPassManager(Stack<PMDataManager> pms,
+	default void assignPassManager(PMStack pms,
 			PassManagerType preferredType)
 	{
 		while (!pms.isEmpty())

@@ -472,7 +472,7 @@ public class SCEVAddRecExpr extends SCEV
 	}
 
 	@Override
-	public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+	public boolean dominates(BasicBlock bb, DomTree dt)
 	{
 		// TODO: 17-6-18
 		return false;

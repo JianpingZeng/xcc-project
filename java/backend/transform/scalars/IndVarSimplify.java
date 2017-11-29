@@ -86,7 +86,7 @@ public final class IndVarSimplify implements LoopPass
     private ScalarEvolution se;
     private boolean changed = false;
     private IVUsers iu;
-    private DomTreeInfo dt;
+    private DomTree dt;
 
     private AnalysisResolver resolver;
 
@@ -128,7 +128,7 @@ public final class IndVarSimplify implements LoopPass
         li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
         se = (ScalarEvolution) getAnalysisToUpDate(ScalarEvolution.class);
         iu = (IVUsers) getAnalysisToUpDate(IVUsers.class);
-        dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        dt = (DomTree) getAnalysisToUpDate(DomTree.class);
         changed = false;
 
         // Firstly, transforms all sub loops nested in current loop processed.
@@ -642,7 +642,7 @@ public final class IndVarSimplify implements LoopPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addRequired(DomTreeInfo.class);
+        au.addRequired(DomTree.class);
         au.addRequired(LoopInfo.class);
         au.addRequired(ScalarEvolution.class);
         au.addRequired(LoopSimplify.class);

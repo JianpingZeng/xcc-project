@@ -27,19 +27,19 @@ public class RegisterPass
 
     /**
      * Creates an instance of PassInfo with default constructor.
-     * And register it into {@linkplain PassDataBase#registeredPasses}.
+     * And register it into {@linkplain PassRegistrar#registeredPasses}.
      * @param name
      * @param klass
      */
     public RegisterPass(String name,  String passArg, Class<? extends Pass> klass)
     {
-        this(passArg, name, klass, false);
+        this(name, passArg, klass, false);
     }
 
-    public RegisterPass( String name, String passArg, Class<? extends Pass> klass,
+    public RegisterPass(String name, String passArg, Class<? extends Pass> klass,
             boolean cfgOnly)
     {
-        this(passArg, name, klass, cfgOnly, false);
+        this(name, passArg, klass, cfgOnly, false);
     }
 
     /**
@@ -56,7 +56,7 @@ public class RegisterPass
     {
         passInfo = new PassInfo(name, passArg, klass, cfgOnly, isAnalysis);
         this.klass = klass;
-        PassDataBase.registerPass(klass, passInfo);
+        PassRegistrar.registerPass(klass, passInfo);
     }
 
     public PassInfo getPassInfo() {return passInfo;}

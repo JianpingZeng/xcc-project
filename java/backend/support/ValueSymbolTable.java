@@ -79,7 +79,7 @@ public class ValueSymbolTable
 
     public Value getValue(String name)
     {
-        if (name == null)
+        if (name == null || name.isEmpty())
             return null;
         return map.get(name);
     }

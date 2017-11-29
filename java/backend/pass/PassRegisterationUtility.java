@@ -36,64 +36,63 @@ public final class PassRegisterationUtility
     public static void registerPasses()
     {
         // Analysis passes.
-        new RegisterPass("liveintervals", "Live Interval Analysis", LiveIntervalAnalysis.class);
-        new RegisterPass("domfrontier", "Dominance Frontier Construction", DominanceFrontier.class, true, true);
-        new RegisterPass("domtree", "Dominator Tree Construction", DomTreeInfo.class, true, true);
-        new RegisterPass("iv-users", "Induction Variable Users", IVUsers.class,false, true);
-        new RegisterPass("livevars", "Live Variable Analysis", LiveVariables.class);
-        new RegisterPass("loops", "Natural Loop Information", LoopInfo.class, true, true);
-        new RegisterPass("machinedomtree", "Machine Dominator Tree Construction", MachineDomTreeInfo.class, true);
-        new RegisterPass("machine-loops", "Machine Natural Loop Construction", MachineLoopInfo.class, true);
-        new RegisterPass("scalar-evolution", "Scalar Evolution Analysis", ScalarEvolution.class, false, true);
+        new RegisterPass("Live Interval Analysis", "liveintervals", LiveIntervalAnalysis.class);
+        new RegisterPass( "Dominance Frontier Construction", "domfrontier", DominanceFrontier.class, true, true);
+        new RegisterPass("Dominator Tree Construction", "domtree", DomTree.class, true, true);
+        new RegisterPass( "Induction Variable Users", "iv-users",IVUsers.class,false, true);
+        new RegisterPass( "Live Variable Analysis", "livevars", LiveVariables.class);
+        new RegisterPass( "Natural Loop Information", "loops", LoopInfo.class, true, true);
+        new RegisterPass( "Machine Dominator Tree Construction", "machinedomtree", MachineDomTreeInfo.class, true);
+        new RegisterPass( "Machine Natural Loop Construction", "machine-loops", MachineLoopInfo.class, true);
+        new RegisterPass( "Scalar Evolution Analysis", "scalar-evolution", ScalarEvolution.class, false, true);
 
         // IPO transformation
-        new RegisterPass("raiseallocs", "Raise allocations from calls to instructions", RaiseAllocations.class);
+        new RegisterPass( "Raise allocations from calls to instructions", "raiseallocs", RaiseAllocations.class);
 
         // Scalar transformation
-        new RegisterPass("break-crit-edges", "Break critical edges in CFG", BreakCriticalEdge.class);
-        new RegisterPass("simplifycfg", "Simplify the CFG", CFGSimplifyPass.class);
-        new RegisterPass("condprop", "Conditional Propagation", ConditionalPropagate.class);
-        new RegisterPass("constprop", "Simple constant propagation", ConstantPropagation.class);
-        new RegisterPass("die", "Dead Instruction Elimination", DCE.class);
-        new RegisterPass("gvnpre", "Global Value Numbering/Partial Redundancy Elimination", GVNPRE.class);
-        new RegisterPass("indvarsv1", "Canonicalize Induction Variables[Morgen textbook]", InductionVarSimplify.class);
-        new RegisterPass("indvars", "Canonicalize Induction Variables", IndVarSimplify.class);
-        new RegisterPass("lcssa", "Loop closed SSA", LCSSA.class);
-        new RegisterPass("licm", "Loop Invariant Code Motion", LICM.class);
-        new RegisterPass("loop-deletion", "Delete dead loops", LoopDeletion.class);
-        new RegisterPass("loopsimply", "Loop Simplification Pass", LoopSimplify.class);
-        new RegisterPass("lowerswitch", "X86 lower switch", LowerSwitch.class);
-        new RegisterPass("mem2reg", "Promote memory to Register", Mem2Reg.class);
-        new RegisterPass("sccp", "Sparse Conditional Constant Propagation", SCCP.class);
-        new RegisterPass("scalarrepl", "Scalar Replacement of Aggregates", SROA.class);
-        new RegisterPass("tailcallelim", "Tail Call Elimination", TailCallElim.class);
-        new RegisterPass("mergereturn", "Unify function exit nodes", UnifyFunctionExitNodes.class);
-        new RegisterPass("unreachableblockelim", "Remove unreachable basic block from CFG", UnreachableBlockElim.class);
+        new RegisterPass("Break critical edges in CFG", "break-crit-edges", BreakCriticalEdge.class);
+        new RegisterPass("Simplify the CFG", "simplifycfg", CFGSimplifyPass.class);
+        new RegisterPass("Conditional Propagation", "condprop", ConditionalPropagate.class);
+        new RegisterPass("Simple constant propagation", "constprop", ConstantPropagation.class);
+        new RegisterPass("Dead Instruction Elimination", "die", DCE.class);
+        new RegisterPass("Global Value Numbering/Partial Redundancy Elimination", "gvnpre", GVNPRE.class);
+        new RegisterPass("Canonicalize Induction Variables[Morgen textbook]", "indvarsv1", InductionVarSimplify.class);
+        new RegisterPass("Canonicalize Induction Variables", "indvars", IndVarSimplify.class);
+        new RegisterPass("Loop closed SSA", "lcssa", LCSSA.class);
+        new RegisterPass("Loop Invariant Code Motion", "licm", LICM.class);
+        new RegisterPass("Delete dead loops", "loop-deletion", LoopDeletion.class);
+        new RegisterPass("Loop Simplification Pass","loopsimplify", LoopSimplify.class);
+        new RegisterPass("Lower switch with branch", "lowerswitch", LowerSwitch.class);
+        new RegisterPass("Promote memory to Register", "mem2reg",  Mem2Reg.class);
+        new RegisterPass("Sparse Conditional Constant Propagation", "sccp", SCCP.class);
+        new RegisterPass("Scalar Replacement of Aggregates", "scalarrepl", SROA.class);
+        new RegisterPass("Tail Call Elimination", "tailcallelim", TailCallElim.class);
+        new RegisterPass("Unify function exit nodes", "mergereturn", UnifyFunctionExitNodes.class);
+        new RegisterPass("Remove unreachable basic block from CFG", "unreachableblockelim", UnreachableBlockElim.class);
 
         // Machine Function Passes
-        new RegisterPass("phi-node-elimination", "Eliminate PHI nodes for register allocation", PhiElimination.class);
-        new RegisterPass("prologepilog", "Prologue/Epilogue Insertion", PrologEpilogInserter.class);
-        new RegisterPass("lsra", "Linear Scan Register Allocation", RegAllocLinearScan.class);
-        new RegisterPass("regalloc-local", "Local register allocator", RegAllocLocal.class);
-        new RegisterPass("regalloc-simple", "Simple register allocator", RegAllocSimple.class);
-        new RegisterPass("twoaddressinstruction", "Two-Address instruction pass", TwoAddrInstructionPass.class);
-        new RegisterPass("unreachable-machineblockelim", "Remove unreachable machine blocks from the machine CFG", UnreachableMachineBlockElim.class);
-        new RegisterPass("machine-module=info", "Machine Module Information", MachineModuleInfo.class);
+        new RegisterPass("Eliminate PHI nodes for register allocation", "phi-node-elimination",  PhiElimination.class);
+        new RegisterPass("Prologue/Epilogue Insertion", "prologepilog",  PrologEpilogInserter.class);
+        new RegisterPass("Linear Scan Register Allocation", "lsra", RegAllocLinearScan.class);
+        new RegisterPass("Local register allocator", "regalloc-local",RegAllocLocal.class);
+        new RegisterPass("Two-Address instruction pass", "twoaddressinstruction", TwoAddrInstructionPass.class);
+        new RegisterPass("Remove unreachable machine blocks from the machine CFG", "unreachable-machineblockelim", UnreachableMachineBlockElim.class);
+        new RegisterPass("Machine Module Information", "machine-module=info", MachineModuleInfo.class);
         // Register X86 fast isel by reflect mechanism.
         try
         {
-            new RegisterPass("fast-isel", "X86 Fast Instruction Selector",
+            new RegisterPass("X86 Fast Instruction Selector", "fast-isel",
                     Class.forName("backend.target.x86.X86GenFastISel").asSubclass(Pass.class));
         }
         catch (ClassNotFoundException e)
         {
             ErrorHandling.llvmReportError("Fail to register X86GenFastISel pass");
         }
-        new RegisterPass("print-function", "Print out Function", PrintMachineFunctionPass.class);
-        new RegisterPass("print-module", "Print out Module", PrintModulePass.class);
-        new RegisterPass("machine-verifier", "Verify generated machine code", MachineCodeVerifier.class);
+        new RegisterPass("Print out Function", "print-function", PrintMachineFunctionPass.class);
+        new RegisterPass("Print out Module", "print-module", PrintModulePass.class);
+        new RegisterPass("Verify generated machine code","machine-verifier", MachineCodeVerifier.class);
 
         // Immutable Passes.
-        new RegisterPass("targetdata", "Target Data Layout", TargetData.class, false, true);
+        new RegisterPass("Target Data Layout", "targetdata", TargetData.class, false, true);
     }
 }

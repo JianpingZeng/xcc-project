@@ -18,7 +18,7 @@
 package backend.transform.utils;
 
 import backend.analysis.AliasSetTracker;
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
 import backend.value.BasicBlock;
 import backend.utils.PredIterator;
@@ -62,7 +62,7 @@ public final class PromoteMemToReg
 	/**
 	 * The dominator tree information.
 	 */
-	private DomTreeInfo dt;
+	private DomTree dt;
     /**
      * The computed dominator frontier information for a specified function.
      */
@@ -129,14 +129,14 @@ public final class PromoteMemToReg
 	public static int numberPhiInsert = 0;
 
     public static void promoteMemToReg(ArrayList<AllocaInst> allocas,
-            DomTreeInfo dt,
+            DomTree dt,
             DominanceFrontier df)
     {
         promoteMemToReg(allocas, dt, df, null);
     }
 
 	public static void promoteMemToReg(ArrayList<AllocaInst> allocas,
-            DomTreeInfo dt,
+            DomTree dt,
             DominanceFrontier df,
 			AliasSetTracker ast)
     {
@@ -145,7 +145,7 @@ public final class PromoteMemToReg
     }
 
 	public PromoteMemToReg(ArrayList<AllocaInst> allocas,
-            DomTreeInfo dt,
+            DomTree dt,
             DominanceFrontier df,
             AliasSetTracker ast)
 	{

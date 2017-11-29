@@ -86,7 +86,7 @@ public final class SCEVUnknown extends SCEV
     }
 
     @Override
-    public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+    public boolean dominates(BasicBlock bb, DomTree dt)
     {
         // TODO: 17-7-1
         return false;

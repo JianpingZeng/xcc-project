@@ -38,20 +38,22 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
 
     private AttrList attributeList;
 
-    public Function(FunctionType ty, LinkageType linkage, String name,
+    public Function(FunctionType ty,
+            LinkageType linkage,
+            String name,
             Module parentModule)
     {
         super(PointerType.getUnqual(ty), ValueKind.FunctionVal, linkage, name);
         argumentList = new ArrayList<>();
 
         if (parentModule != null)
-            parentModule.getFunctionList().add(this);
+            parentModule.addFunction(this);
 
         symTab = new ValueSymbolTable();
         for (int i = 0, e = ty.getNumParams(); i < e; i++)
         {
             Type t = ty.getParamType(i);
-            assert !t.isVoidType() : "Cann't have void typed argument!";
+            assert !t.isVoidType() : "Can't have void typed argument!";
             Argument arg = new Argument(t);
             argumentList.add(arg);
             arg.setParent(this);
@@ -100,6 +102,13 @@ public class Function extends GlobalValue implements Iterable<BasicBlock>
     public BasicBlock getEntryBlock()
     {
         return basicBlockList.getFirst();
+    }
+
+    public void appendBB(BasicBlock bb)
+    {
+        assert bb != null;
+        basicBlockList.addLast(bb);
+        bb.setParent(this);
     }
 
     /**

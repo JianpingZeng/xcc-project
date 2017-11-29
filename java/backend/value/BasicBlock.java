@@ -105,6 +105,12 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
         return parent;
     }
 
+    public void setParent(Function fn)
+    {
+    	assert fn != null;
+    	parent = fn;
+    }
+
 	/**
 	 * This predicate returns true if there is a constant user refers it existing.
 	 * @return
@@ -350,17 +356,18 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 	 */
 	public void appendInst(Instruction inst)
 	{
-		assert (inst != null) : "Cannot add null instructions to block";
+		assert (inst != null) : "Can'ot add null instructions to block";
 		if (instructions.isEmpty() || !(instructions.getLast() instanceof BranchInst))
 		{
 			instructions.add(inst);
 		}
 		else 
 		{
-			assert !(inst instanceof BranchInst) :
+			assert !(getLastInst() instanceof BranchInst) :
 				"Can not insert more than one branch in basic block";
 			instructions.add(inst);
 		}
+		inst.setParent(this);
 	}
 
 	public int getID()

@@ -80,7 +80,7 @@ public final class LLParser
     private TIntObjectHashMap<Pair<GlobalValue, SMLoc>> forwardRefValIDs;
     private ArrayList<GlobalValue> numberedVals;
 
-    public LLParser(MemoryBuffer buf, SourceMgr smg, SMDiagnostic diag, Module m)
+    public LLParser(MemoryBuffer buf, SourceMgr smg, Module m, OutParamWrapper<SMDiagnostic> diag)
     {
         lexer = new LLLexer(buf, smg, diag);
         this.m = m;
@@ -511,6 +511,7 @@ public final class LLParser
 
         OutParamWrapper<String> str = new OutParamWrapper<>();
         boolean tripleOrDataLayout = true;
+        lexer.lex();    // eat 'target'
 
         switch (lexer.getTokKind())
         {
@@ -530,7 +531,7 @@ public final class LLParser
         if (tripleOrDataLayout)
             m.setTargetTriple(str.get());
         else
-            m.setTargetTriple(str.get());
+            m.setDataLayout(str.get());
         return false;
     }
 
@@ -762,11 +763,11 @@ public final class LLParser
         }
 
         ArrayList<ArgInfo> argList = new ArrayList<>();
-        OutParamWrapper<Boolean> isVarArg = new OutParamWrapper<>();
-        OutParamWrapper<Integer> funcAttrs = new OutParamWrapper<>();
-        OutParamWrapper<String> section = new OutParamWrapper<>();
-        OutParamWrapper<Integer> alignment = new OutParamWrapper<>();
-        OutParamWrapper<String> gc = new OutParamWrapper<>();
+        OutParamWrapper<Boolean> isVarArg = new OutParamWrapper<>(false);
+        OutParamWrapper<Integer> funcAttrs = new OutParamWrapper<>(0);
+        OutParamWrapper<String> section = new OutParamWrapper<>("");
+        OutParamWrapper<Integer> alignment = new OutParamWrapper<>(0);
+        OutParamWrapper<String> gc = new OutParamWrapper<>("");
 
         if (parseArgumentList(argList, isVarArg, false) ||
                 parseOptionalAttrs(funcAttrs, 2) ||
@@ -881,7 +882,7 @@ public final class LLParser
         if (fn == null)
             fn = new Function(ft, LinkageType.ExternalLinkage, functionName, m);
         else
-            m.getFunctionList().add(fn);
+            m.addFunction(fn);
 
         if (functionName == null || functionName.isEmpty())
             numberedVals.add(fn);
@@ -1072,7 +1073,7 @@ public final class LLParser
     private boolean parseOptionalCommaAlignment(OutParamWrapper<Integer> align)
     {
         if (!expectToken(LLTokenKind.comma))
-            return true;
+            return false;
         return parseToken(LLTokenKind.kw_align, "expect 'align'") ||
                 parseInt32(align);
     }
@@ -1729,7 +1730,7 @@ public final class LLParser
 
             if (parseInstruction(inst, bb, pfs)) return true;
 
-            bb.getInstList().addLast(inst.get());
+            bb.appendInst(inst.get());
 
             // set the name of the instruction.
             if (pfs.setInstName(nameID, nameStr, nameLoc, inst.get()))
@@ -1760,7 +1761,7 @@ public final class LLParser
             return tokError("found end of file when expecting more instructions");
 
         SMLoc loc = lexer.getLoc();
-        Operator opc = parseOperator(lexer.getIntVal());
+        Operator opc = parseOperator(kind);
         lexer.lex();    // eat keyword token.
 
         switch (kind)
@@ -1974,7 +1975,7 @@ public final class LLParser
         ptr = new OutParamWrapper<>();
         OutParamWrapper<SMLoc> valLoc = new OutParamWrapper<>();
         OutParamWrapper<SMLoc> ptrLoc = new OutParamWrapper<>();
-        OutParamWrapper<Integer> align = new OutParamWrapper<>();
+        OutParamWrapper<Integer> align = new OutParamWrapper<>(0);
 
         if (parseTypeAndValue(val, valLoc, pfs) ||
                 parseToken(comma, "expected a ',' in store instruction")
@@ -2014,7 +2015,7 @@ public final class LLParser
     {
         OutParamWrapper<Value> ptr = new OutParamWrapper<>();
         OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
-        OutParamWrapper<Integer> align = new OutParamWrapper<>();
+        OutParamWrapper<Integer> align = new OutParamWrapper<>(0);
         if (parseTypeAndValue(ptr, loc, pfs)
                 || parseOptionalCommaAlignment(align))
             return true;
@@ -2066,7 +2067,7 @@ public final class LLParser
         OutParamWrapper<Type> ty = new OutParamWrapper<>();
         if (parseType(ty, false)) return true;
 
-        OutParamWrapper<Integer> align = new OutParamWrapper<>();
+        OutParamWrapper<Integer> align = new OutParamWrapper<>(0);
         OutParamWrapper<Value> val = new OutParamWrapper<>();
         OutParamWrapper<SMLoc> loc = new OutParamWrapper<>();
 
@@ -2491,7 +2492,8 @@ public final class LLParser
     private boolean parseValID(ValID id)
     {
         id.loc = lexer.getLoc();
-        switch (lexer.getTokKind())
+        LLTokenKind tok = lexer.getTokKind();
+        switch (tok)
         {
             default:
                 return tokError("expected value token");
@@ -2695,7 +2697,7 @@ public final class LLParser
             case kw_inttoptr:
             case kw_ptrtoint:
             {
-                Operator opc = parseOperator(lexer.getIntVal());
+                Operator opc = parseOperator(tok);
                 lexer.lex();
                 OutParamWrapper<Type> destTy = new OutParamWrapper<>();
                 OutParamWrapper<Constant> srcVal = new OutParamWrapper<>();
@@ -2717,7 +2719,7 @@ public final class LLParser
             case kw_icmp:
             case kw_fcmp:
             {
-                Operator opc = parseOperator(lexer.getIntVal());
+                Operator opc = parseOperator(tok);
                 OutParamWrapper<Constant> val0 = new OutParamWrapper<>();
                 OutParamWrapper<Constant> val1 = new OutParamWrapper<>();
                 OutParamWrapper<Predicate> pred = new OutParamWrapper<>();
@@ -2768,7 +2770,7 @@ public final class LLParser
             case kw_frem:
             {
                 boolean nuw = false, nsw = false;
-                Operator opc = parseOperator(lexer.getIntVal());
+                Operator opc = parseOperator(tok);
                 OutParamWrapper<Constant> val0 = new OutParamWrapper<>();
                 OutParamWrapper<Constant> val1 = new OutParamWrapper<>();
                 boolean exact = false;
@@ -2826,7 +2828,7 @@ public final class LLParser
             case kw_or:
             case kw_xor:
             {
-                Operator opc = parseOperator(lexer.getIntVal());
+                Operator opc = parseOperator(tok);
                 OutParamWrapper<Constant> val0 = new OutParamWrapper<>();
                 OutParamWrapper<Constant> val1 = new OutParamWrapper<>();
                 lexer.lex();
@@ -2853,7 +2855,7 @@ public final class LLParser
             }
             case kw_getelementptr:
             {
-                Operator opc = parseOperator(lexer.getIntVal());
+                Operator opc = parseOperator(tok);
                 ArrayList<Constant> elts = new ArrayList<>();
 
                 lexer.lex();
@@ -3230,14 +3232,114 @@ public final class LLParser
         return frdVal;
     }
 
-    private Operator parseOperator(int opc)
+    private Operator parseOperator(LLTokenKind tok)
     {
-        for (Operator op : Operator.values())
-            if (op.index == opc)
-                return op;
+        switch (tok)
+        {
+            case kw_extractelement:
+            case kw_insertelement:
+            case kw_shufflevector:
+            case kw_getresult:
+            case kw_extractvalue:
+            case kw_insertvalue:
+            case kw_select:
+            case kw_va_arg:
+            default:
+                tokError("invalid opecode!");
+                return null;
+            case kw_add:
+                return Operator.Add;
+            case kw_fadd:
+                return Operator.FAdd;
+            case kw_sub:
+                return Operator.Sub;
+            case kw_fsub:
+                return Operator.FSub;
+            case kw_mul:
+                return Operator.Mul;
+            case kw_fmul:
+                return Operator.FMul;
+            case kw_udiv:
+                return Operator.UDiv;
+            case kw_sdiv:
+                return Operator.SDiv;
+            case kw_fdiv:
+                return Operator.FDiv;
+            case kw_urem:
+                return Operator.URem;
+            case kw_srem:
+                return Operator.SRem;
+            case kw_frem:
+                return Operator.FRem;
+            case kw_shl:
+                return Operator.Shl;
+            case kw_lshr:
+                return Operator.LShr;
+            case kw_ashr:
+                return Operator.AShr;
+            case kw_and:
+                return Operator.And;
+            case kw_or:
+                return Operator.Or;
+            case kw_xor:
+                return Operator.Xor;
+            case kw_icmp:
+                return Operator.ICmp;
+            case kw_fcmp:
+                return Operator.FCmp;
 
-        tokError("invalid opecode!");
-        return null;
+            case kw_phi:
+                return Operator.Phi;
+            case kw_call:
+                return Operator.Call;
+            case kw_trunc:
+                return Operator.Trunc;
+            case kw_zext:
+                return Operator.ZExt;
+            case kw_sext:
+                return Operator.SExt;
+            case kw_fptrunc:
+                return Operator.FPTrunc;
+            case kw_fpext:
+                return Operator.FPExt;
+            case kw_uitofp:
+                return Operator.UIToFP;
+            case kw_sitofp:
+                return Operator.SIToFP;
+            case kw_fptoui:
+                return Operator.FPToUI;
+            case kw_fptosi:
+                return Operator.FPToSI;
+            case kw_inttoptr:
+                return Operator.IntToPtr;
+            case kw_ptrtoint:
+                return Operator.PtrToInt;
+            case kw_bitcast:
+                return Operator.BitCast;
+
+            case kw_ret:
+                return Operator.Ret;
+            case kw_br:
+                return Operator.Br;
+            case kw_switch:
+                return Operator.Switch;
+            case kw_invoke:
+            case kw_unwind:
+            case kw_unreachable:
+                return Operator.Unreachable;
+            case kw_malloc:
+                return Operator.Malloc;
+            case kw_alloca:
+                return Operator.Alloca;
+            case kw_free:
+                return Operator.Free;
+            case kw_load:
+                return Operator.Load;
+            case kw_store:
+                return Operator.Store;
+            case kw_getelementptr:
+                return Operator.GetElementPtr;
+        }
     }
 
     private boolean parseCmpPredicate(OutParamWrapper<Predicate> pred, Operator opc)
@@ -3512,7 +3614,7 @@ public final class LLParser
             return error(itr.value().second,
                     StringFormatter.format("use of undefined type '%%%d'", itr.key()).toString());
         }
-        if (forwardRefVals.isEmpty())
+        if (!forwardRefVals.isEmpty())
         {
             Map.Entry<String, Pair<GlobalValue, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
             return error(itr.getValue().second,

@@ -269,11 +269,24 @@ public abstract class PMDataManager
         }
     }
 
+    /**
+     * Ensure all of required analysis passes by this pass run before this pass!
+     * And make a cache for quickly look up the specified analysis pass by PassInfo.
+     * @param p
+     */
     public void initializeAnalysisImpl(Pass p)
     {
-        availableAnalysis.clear();
-        for (int i = 0; i < PassManagerType.values().length; i++)
-            inheritedAnalysis[i] = null;
+        AnalysisUsage au = new AnalysisUsage();
+        p.getAnalysisUsage(au);
+        for (PassInfo req: au.getRequired())
+        {
+            Pass reqPass = findAnalysisPass(req, true);
+            if (reqPass == null)
+                continue;
+            AnalysisResolver resolver = p.getAnalysisResolver();
+            assert resolver != null;
+            resolver.addAnalysisImplPair(req, reqPass);
+        }
     }
 
     /**
@@ -434,7 +447,7 @@ public abstract class PMDataManager
         return availableAnalysis;
     }
 
-    public void populateInheritedAnalysis(Stack<PMDataManager> pms)
+    public void populateInheritedAnalysis(PMStack pms)
     {
         int index = 0;
         for (PMDataManager pm : pms)
@@ -446,11 +459,7 @@ public abstract class PMDataManager
     public void recordAvailableAnalysis(Pass p)
     {
         PassInfo info = p.getPassInfo();
-        if (info == null)
-            return;
-
         availableAnalysis.put(info, p);
-
     }
 
     public void addLowerLevelRequiredPass(Pass p, Pass requiredPass)

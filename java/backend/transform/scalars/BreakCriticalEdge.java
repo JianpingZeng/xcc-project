@@ -16,7 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.analysis.DominanceFrontier;
 import backend.analysis.LoopInfo;
@@ -81,7 +81,7 @@ public final class BreakCriticalEdge implements FunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addPreserved(DomTreeInfo.class);
+        au.addPreserved(DomTree.class);
         au.addPreserved(LoopInfo.class);
         au.addPreserved(DominanceFrontier.class);
     }
@@ -223,7 +223,7 @@ public final class BreakCriticalEdge implements FunctionPass
         }
 
         boolean newBBDominatesDestBB = true;
-        DomTreeInfo dt = (DomTreeInfo) pass.getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree) pass.getAnalysisToUpDate(DomTree.class);
         if (dt != null)
         {
             DomTreeNodeBase<BasicBlock> tiNode = dt.getNode(tibb);

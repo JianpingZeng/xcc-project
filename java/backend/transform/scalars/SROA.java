@@ -17,7 +17,7 @@
 
 package backend.transform.scalars;
 
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -92,7 +92,7 @@ public final class SROA implements FunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.addRequired(DominanceFrontier.class);
-        au.addRequired(DomTreeInfo.class);
+        au.addRequired(DomTree.class);
     }
 
     @Override
@@ -124,7 +124,7 @@ public final class SROA implements FunctionPass
         // Collects all of AllocaInst from entry block.
         BasicBlock entryBB = f.getEntryBlock();
 
-        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
         DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
 
         boolean changed = false;

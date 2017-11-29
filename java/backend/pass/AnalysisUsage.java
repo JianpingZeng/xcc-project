@@ -18,7 +18,7 @@ package backend.pass;
 
 import java.util.HashSet;
 
-import static backend.pass.PassDataBase.getPassInfo;
+import static backend.pass.PassRegistrar.getPassInfo;
 
 /**
  * @author Xlous.zeng
