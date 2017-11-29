@@ -19,7 +19,7 @@ package backend.value;
 import backend.type.PointerType;
 import backend.type.Type;
 
-import java.util.HashMap;
+import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
  * A constant pointer value that points to null.
@@ -33,20 +33,19 @@ public class ConstantPointerNull extends Constant
      *
      * @param ty
      */
-    private ConstantPointerNull(Type ty)
+    ConstantPointerNull(Type ty)
     {
         super(ty, ValueKind.ConstantPointerNullVal);
     }
 
     public static ConstantPointerNull get(Type ty)
     {
-        ConstantPointerNull res = UniqueConstantValueImpl.nullPtrConstants.get(ty);
-        return res != null ? res : UniqueConstantValueImpl.nullPtrConstants.put(ty, new ConstantPointerNull(ty));
+        return (ConstantPointerNull) getUniqueImpl().getOrCreate(ty);
     }
 
     public static void removeConstant(Type ty)
     {
-        UniqueConstantValueImpl.nullPtrConstants.remove(ty);
+        getUniqueImpl().removeKey(ty);
     }
 
     @Override

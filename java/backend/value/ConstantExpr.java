@@ -22,12 +22,14 @@ import backend.type.PointerType;
 import backend.type.Type;
 import backend.value.Instruction.CmpInst.Predicate;
 import backend.value.Instruction.GetElementPtrInst;
+import backend.value.UniqueConstantValueImpl.ExprMapKeyType;
 import tools.Util;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static backend.value.Instruction.CmpInst.Predicate.*;
+import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 
 /**
  * @author Xlous.zeng
@@ -56,7 +58,7 @@ public abstract class ConstantExpr extends Constant
 
     public static Constant getSizeOf(Type ty)
     {
-        ArrayList<Value> index = new ArrayList<>();
+        ArrayList<Constant> index = new ArrayList<>();
         index.add(ConstantInt.get(LLVMContext.Int32Ty, 1));
 
         Constant gep = getGetElementPtr(Constant.getNullValue
@@ -221,13 +223,8 @@ public abstract class ConstantExpr extends Constant
         assert ty.isFirstClassType():"Cannot cast to an aggregate type!";
         // TODO fold a few common cases.
 
-        UniqueConstantValueImpl.ExprMapKeyType key = new UniqueConstantValueImpl.ExprMapKeyType(op, c);
-        if (UniqueConstantValueImpl.exprConstantMaps.containsKey(key))
-            return UniqueConstantValueImpl.exprConstantMaps.get(key);
-
-        Constant val = new UnaryConstExpr(op, c, ty);
-        UniqueConstantValueImpl.exprConstantMaps.put(key, val);
-        return val;
+        ExprMapKeyType key = new ExprMapKeyType(op, c);
+        return getUniqueImpl().getOrCreate(key);
     }
 
     public Operator getOpcode()
@@ -242,7 +239,7 @@ public abstract class ConstantExpr extends Constant
 
     public Constant operand(int index)
     {
-        return (Constant) super.operand(index);
+        return super.operand(index);
     }
 
     public static Constant getNeg(Constant c)
@@ -277,8 +274,8 @@ public abstract class ConstantExpr extends Constant
         ArrayList<Constant> list = new ArrayList<>(2);
         list.add(c1);
         list.add(c2);
-        UniqueConstantValueImpl.ExprMapKeyType key = new UniqueConstantValueImpl.ExprMapKeyType(op, list);
-        return UniqueConstantValueImpl.uniqueImpl.getOrCreate(key);
+        ExprMapKeyType key = new ExprMapKeyType(op, list);
+        return getUniqueImpl().getOrCreate(key);
     }
 
     public static Constant getAdd(Constant lhs, Constant rhs)
@@ -419,7 +416,7 @@ public abstract class ConstantExpr extends Constant
     public Predicate getPredicate()
     {
         assert isCompare();
-        return ((CompareConstantExpr)this).predicate;
+        return ((CmpConstantExpr)this).predicate;
     }
 
     private static Constant getGetElementPtrTy(Type ty, Constant c, List<Value> indices)
@@ -432,39 +429,22 @@ public abstract class ConstantExpr extends Constant
         ArrayList<Constant> elts = new ArrayList<>();
         elts.add(c);
         indices.forEach(ind->elts.add((Constant)ind));
-        UniqueConstantValueImpl.ExprMapKeyType key = new UniqueConstantValueImpl.ExprMapKeyType(Operator.GetElementPtr, elts);;
-        if (UniqueConstantValueImpl.exprConstantMaps.containsKey(key))
-        {
-            return UniqueConstantValueImpl.exprConstantMaps.get(key);
-        }
-        else
-        {
-            ArrayList<Constant> inds = new ArrayList<>();
-            indices.forEach(ind->inds.add((Constant)ind));
-            GetElementPtrConstantExpr ce = new GetElementPtrConstantExpr(c, inds, ty);
-            UniqueConstantValueImpl.exprConstantMaps.put(key, ce);
-            return ce;
-        }
+        ExprMapKeyType key = new ExprMapKeyType(Operator.GetElementPtr, elts);
+        return getUniqueImpl().getOrCreate(key);
     }
 
 
-    public static Constant getElementPtr(Constant base, List<Constant> operands)
+    public static Constant getGetElementPtr(Constant base, List<Constant> elts)
     {
-        ArrayList<Value> indices = new ArrayList<>();
-        indices.addAll(operands);
-        return getGetElementPtr(base, indices);
-    }
-
-    public static Constant getGetElementPtr(Constant c,
-            List<Value> indices)
-    {
-        Type ty = GetElementPtrInst.getIndexedType(c.getType(), indices);
+        ArrayList<Value> ops = new ArrayList<>();
+        ops.addAll(elts);
+        Type ty = GetElementPtrInst.getIndexedType(base.getType(), ops);
         assert ty != null:"GEP indices invalid";
-        int as = ((PointerType)c.getType()).getAddressSpace();
-        return getGetElementPtrTy(PointerType.get(ty, as), c, indices);
+        int as = ((PointerType)base.getType()).getAddressSpace();
+        return getGetElementPtrTy(PointerType.get(ty, as), base, ops);
     }
 
-    public static Constant getInBoundsGetElementPtr(Constant c, List<Value> idxs)
+    public static Constant getInBoundsGetElementPtr(Constant c, List<Constant> idxs)
     {
         Constant result = getGetElementPtr(c, idxs);
         if (result instanceof GetElementPtrConstantExpr)

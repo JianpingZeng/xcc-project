@@ -413,7 +413,7 @@ public final class ScalarEvolution implements FunctionPass
             case GetElementPtr:
                 Constant base = operands.get(0);
                 operands.remove(0);
-                return ConstantExpr.getElementPtr(base, operands);
+                return ConstantExpr.getGetElementPtr(base, operands);
         }
         return null;
     }

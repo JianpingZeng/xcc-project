@@ -2292,9 +2292,9 @@ public final class LLParser
         Value op = val.get();
         Type destTy = ty.get();
         SMLoc opLoc = loc.get();
-        if (!CastInst.castIsVoid(opc, op, destTy))
+        if (!CastInst.castIsValid(opc, op, destTy))
         {
-            CastInst.castIsVoid(opc, op, destTy);
+            CastInst.castIsValid(opc, op, destTy);
             return error(opLoc, StringFormatter.format("invalid type conversion from '%s' to '%s'",
                     op.getType().getDescription(), destTy.getDescription()).toString());
         }

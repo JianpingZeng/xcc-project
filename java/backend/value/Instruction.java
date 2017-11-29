@@ -1084,15 +1084,56 @@ public abstract class Instruction extends User
             return Operator.BitCast;
         }
 
-        public static boolean castIsVoid(Operator opc, Value op, Type destTy)
+        /**
+         * This method used for checking validate of casting a value to specified
+         * destination type.
+         * @param opc
+         * @param op
+         * @param destTy
+         * @return Return true if the specified cast operation is valid, otherwise
+         * return false.
+         */
+        public static boolean castIsValid(Operator opc, Value op, Type destTy)
         {
+            Type srcTy = op.getType();
+            if (!srcTy.isFirstClassType() || !destTy.isFirstClassType())
+                return false;
 
-        }
+            int srcBits = srcTy.getScalarSizeBits();
+            int destBits = destTy.getScalarSizeBits();
+            switch (opc)
+            {
+                case Trunc:
+                    return srcTy.isInteger() && destTy.isInteger() &&
+                            srcBits > destBits;
+                case SExt:
+                    return srcTy.isInteger() && destTy.isInteger() &&
+                            srcBits < destBits;
+                case ZExt:
+                    return srcTy.isInteger() && destTy.isInteger() &&
+                            srcBits < destBits;
+                case FPTrunc:
+                    return srcTy.isFloatingPoint() && destTy.isFloatingPoint()
+                            && srcBits > destBits;
+                case FPExt:
+                    return srcTy.isFloatingPoint() && destTy.isFloatingPoint()
+                            && srcBits < destBits;
+                case FPToSI:
+                case FPToUI:
+                    return srcTy.isFloatingPoint() && destTy.isInteger();
+                case SIToFP:
+                case UIToFP:
+                    return srcTy.isInteger() && destTy.isFloatingPoint();
+                case BitCast:
+                    // bit cast is no op in machine level, but we should check
+                    // both type is same when one is of type PointerType
+                    if ((srcTy instanceof PointerType) != (destTy instanceof PointerType))
+                        return false;
 
-        public static boolean castIsValid(Operator opc, Constant constant,
-                Type type)
-        {
-
+                    return srcTy.getPrimitiveSizeInBits() == destTy.getPrimitiveSizeInBits();
+                default:
+                    return false;   // input error
+            }
         }
     }
 
@@ -3218,11 +3259,28 @@ public abstract class Instruction extends User
             PointerType pt = (PointerType)ptrType;
 
             // Check the pointer index.
-            if (!pt.indexValid(idx)) return null;
+            for (Value idx : indices)
+            {
+                if (!pt.indexValid(idx))
+                    return null;
+            }
 
             return pt.getElementType();
         }
 
+        public static Type getIndexedType(Type ptrType, Value idx)
+        {
+            // It is not pointer type.
+            if (!(ptrType instanceof PointerType))
+                return null;
+            PointerType pt = (PointerType)ptrType;
+
+            // Check the pointer index.
+            if (!pt.indexValid(idx))
+                return null;
+
+            return pt.getElementType();
+        }
 	    /**
          * Overload to return most specific pointer type.
          * @return

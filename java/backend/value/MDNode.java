@@ -18,9 +18,11 @@
 package backend.value;
 
 import backend.support.LLVMContext;
+import backend.value.UniqueConstantValueImpl.MDNodeKeyType;
 
 import java.util.List;
 
+import static backend.value.UniqueConstantValueImpl.getUniqueImpl;
 import static backend.value.ValueKind.MDNodeVal;
 
 /**
@@ -29,7 +31,7 @@ import static backend.value.ValueKind.MDNodeVal;
  */
 public class MDNode extends MetadataBase
 {
-    protected MDNode(List<Value> vals)
+    MDNode(List<Value> vals)
     {
         super(LLVMContext.MetadataTy, MDNodeVal);
         reserve(vals.size());
@@ -45,6 +47,7 @@ public class MDNode extends MetadataBase
 
     public static MDNode get(List<Value> vals)
     {
-
+        MDNodeKeyType key = new MDNodeKeyType(vals);
+        return getUniqueImpl().getOrCreate(key);
     }
 }
