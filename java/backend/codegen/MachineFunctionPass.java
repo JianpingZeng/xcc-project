@@ -63,7 +63,7 @@ public abstract class MachineFunctionPass implements FunctionPass
 		au.addPreserved(IVUsers.class);
 		// au.addPreserved(LoopDependenceAnalysis.class);
 		// au.addPreserved(MemoryDependenceAnalysis.class);
-		au.addPreserved(DomTreeInfo.class);
+		au.addPreserved(DomTree.class);
 		au.addPreserved(DominanceFrontier.class);
 		au.addPreserved(LoopInfo.class);
 

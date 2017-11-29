@@ -19,11 +19,13 @@ package backend.codegen;
 
 import backend.pass.AnalysisResolver;
 import backend.pass.ModulePass;
+import backend.pass.Pass;
 import backend.support.FormattedOutputStream;
 import backend.value.Module;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintStream;
 
 /**
  * @author Xlous.zeng
@@ -71,5 +73,10 @@ public class PrintModulePass implements ModulePass
     public String getPassName()
 	{
 		return "Print module into text file";
+	}
+
+	public static Pass createPrintModulePass(PrintStream os)
+	{
+		return new PrintModulePass(os);
 	}
 }

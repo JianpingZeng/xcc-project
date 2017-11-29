@@ -18,6 +18,8 @@ package backend.pass;
 
 import backend.passManaging.PMDataManager;
 
+import java.util.HashMap;
+
 /**
  * @author Xlous.zeng
  * @version 0.1
@@ -25,9 +27,12 @@ import backend.passManaging.PMDataManager;
 public final class AnalysisResolver
 {
     private PMDataManager pm;
+    private HashMap<PassInfo, Pass> analysisImpls;
+
     public AnalysisResolver(PMDataManager pmd)
     {
         pm = pmd;
+        analysisImpls = new HashMap<>();
     }
 
     public PMDataManager getPMDataManager()
@@ -43,5 +48,17 @@ public final class AnalysisResolver
     public Pass getAnalysisIfAvailable(PassInfo passInfo, boolean dir)
     {
         return pm.findAnalysisPass(passInfo, dir);
+    }
+
+    public Pass findImplPass(PassInfo pi)
+    {
+        if (analysisImpls.containsKey(pi))
+            return analysisImpls.get(pi);
+        return null;
+    }
+
+    public void addAnalysisImplPair(PassInfo pi, Pass p)
+    {
+        analysisImpls.put(pi, p);
     }
 }

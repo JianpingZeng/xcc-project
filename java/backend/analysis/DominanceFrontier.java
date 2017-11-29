@@ -64,7 +64,7 @@ public final class DominanceFrontier extends DominanceFrontierBase
     public void getAnalysisUsage(AnalysisUsage au)
     {
         au.setPreservedAll();
-        au.addRequired(DomTreeInfo.class);
+        au.addRequired(DomTree.class);
     }
 
     @Override
@@ -77,7 +77,8 @@ public final class DominanceFrontier extends DominanceFrontierBase
     public boolean runOnFunction(Function f)
     {
         frontiers.clear();
-        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree)getAnalysisToUpDate(DomTree.class);
+        assert dt != null:"No available DomTree pass";
         roots = dt.getRoots();
         assert roots.size() == 1 :"Only have one root block!";
         calculate(dt, dt.getDomTree().getTreeNodeForBlock(roots.get(0)));
@@ -109,7 +110,7 @@ public final class DominanceFrontier extends DominanceFrontierBase
             addBasicBlock(succ, succSet);
         }
 
-        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
         if (dt != null)
         {
             if (dt.dominates(newBB, succ))
@@ -195,7 +196,7 @@ public final class DominanceFrontier extends DominanceFrontierBase
      * @param dt
      */
     public void changeIDom(BasicBlock bb, BasicBlock newBB,
-            DomTreeInfo dt)
+            DomTree dt)
     {
          HashSet<BasicBlock> newDF = find(newBB);
          HashSet<BasicBlock> df = find(bb);
@@ -211,7 +212,7 @@ public final class DominanceFrontier extends DominanceFrontierBase
          newDF.remove(bb);
     }
 
-    public HashSet<BasicBlock> calculate(DomTreeInfo dt,
+    public HashSet<BasicBlock> calculate(DomTree dt,
             DomTreeNodeBase<BasicBlock> node)
     {
         BasicBlock bb = node.getBlock();

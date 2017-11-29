@@ -1,12 +1,12 @@
 package backend.pass;
 
 import backend.passManaging.PMDataManager;
+import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
 import backend.support.Printable;
 import tools.Util;
 
 import java.io.PrintStream;
-import java.util.Stack;
 
 /**
  * @author Xlous.zeng
@@ -23,7 +23,7 @@ public interface Pass extends Printable
 	 */
 	default PassInfo getPassInfo()
 	{
-		return PassDataBase.getPassInfo(this.getClass());
+		return PassRegistrar.getPassInfo(this.getClass());
 	}
 
 	AnalysisResolver getAnalysisResolver();
@@ -32,11 +32,11 @@ public interface Pass extends Printable
 
 	default Pass getAnalysisToUpDate(Class<? extends Pass> klass)
 	{
-		PassInfo pi = PassDataBase.getPassInfo(klass);
+		PassInfo pi = PassRegistrar.getPassInfo(klass);
 		if (pi == null) return null;
         AnalysisResolver resolver = getAnalysisResolver();
         assert resolver != null:"Pass not resident in PassManger object!";
-		return resolver.getAnalysisIfAvailable(pi, true);
+		return resolver.findImplPass(pi);
 	}
 
 	/**
@@ -55,12 +55,12 @@ public interface Pass extends Printable
     	return PassManagerType.PMT_Unknow;
     }
 
-    default void assignPassManager(Stack<PMDataManager> pms)
+    default void assignPassManager(PMStack pms)
     {
     	assignPassManager(pms, PassManagerType.PMT_Unknow);
     }
 
-    default void assignPassManager(Stack<PMDataManager> pms,
+    default void assignPassManager(PMStack pms,
 		    PassManagerType pmt) {}
 
 	/**
@@ -88,7 +88,7 @@ public interface Pass extends Printable
 	 * Check if available pass managers are suitable for this pass or not.
 	 * @param activeStack
 	 */
-	default void preparePassManager(Stack<PMDataManager> activeStack)
+	default void preparePassManager(PMStack activeStack)
     {}
 
     default void print(PrintStream os)

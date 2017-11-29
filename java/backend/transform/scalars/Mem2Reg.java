@@ -16,7 +16,7 @@ package backend.transform.scalars;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -73,7 +73,7 @@ public final class Mem2Reg implements FunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addRequired(DomTreeInfo.class);
+        au.addRequired(DomTree.class);
         au.addRequired(DominanceFrontier.class);
 
         au.addPreserved(UnifyFunctionExitNodes.class);
@@ -86,7 +86,7 @@ public final class Mem2Reg implements FunctionPass
         boolean changed = false;
         ArrayList<AllocaInst> allocas = new ArrayList<>();
 
-        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
         DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
         BasicBlock entryBB = f.getEntryBlock();
 

@@ -1,6 +1,6 @@
 package backend.transform.scalars;
 
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -55,7 +55,7 @@ public class DCE implements FunctionPass
 
 	private Function m;
 
-	private DomTreeInfo dt;
+	private DomTree dt;
 
 	private AnalysisResolver resolver;
 
@@ -77,13 +77,13 @@ public class DCE implements FunctionPass
 		usefulBlocks = new LinkedList<>();
 		liveInsts = new HashSet<>();
 		m = f;
-		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 	}
 
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		au.addRequired(DomTreeInfo.class);
+		au.addRequired(DomTree.class);
 	}
 
 	/**

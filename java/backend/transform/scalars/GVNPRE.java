@@ -1,6 +1,6 @@
 package backend.transform.scalars;
 
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.analysis.DomTreeNodeBase;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -519,7 +519,7 @@ public final class GVNPRE implements FunctionPass
     {
         au.addRequired(BreakCriticalEdge.class);
         au.addRequired(UnifyFunctionExitNodes.class);
-        au.addRequired(DomTreeInfo.class);
+        au.addRequired(DomTree.class);
     }
 
     @Override
@@ -1065,7 +1065,7 @@ public final class GVNPRE implements FunctionPass
         HashMap<BasicBlock, ValueNumberedSet> generatedExprs = new HashMap<>();
         HashMap<BasicBlock, ArrayList<Value>> generatedTemps = new HashMap<>();
 
-        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 
         DomTreeNodeBase<BasicBlock> root = dt.getNode(f.getEntryBlock());
         LinkedList<DomTreeNodeBase<BasicBlock>> worklist =
@@ -1353,7 +1353,7 @@ public final class GVNPRE implements FunctionPass
     {
         boolean changed = false;
 
-        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 
         HashMap<BasicBlock, ValueNumberedSet> newSets = new HashMap<>();
         boolean newStuff = true;
@@ -1406,7 +1406,7 @@ public final class GVNPRE implements FunctionPass
         LinkedList<Pair<Instruction, Value>> replace = new LinkedList<>();
         ArrayList<Instruction> erase = new ArrayList<>();
 
-        DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 
         for (DomTreeNodeBase<BasicBlock> node : dfTraversal(dt.getRootNode()))
         {

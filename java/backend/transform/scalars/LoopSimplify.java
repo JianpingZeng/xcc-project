@@ -28,7 +28,7 @@ import static backend.support.BasicBlockUtil.splitBlockPredecessors;
 public final class LoopSimplify implements FunctionPass
 {
 	private LoopInfo li;
-	private DomTreeInfo dt;
+	private DomTree dt;
 	private AliasAnalysis aliasAnalysis;
 
 	private AnalysisResolver resolver;
@@ -48,7 +48,7 @@ public final class LoopSimplify implements FunctionPass
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		au.addRequired(LoopInfo.class);
-		au.addRequired(DomTreeInfo.class);
+		au.addRequired(DomTree.class);
 		au.addPreserved(AliasAnalysis.class);
 		au.addPreserved(BreakCriticalEdge.class);
 	}
@@ -56,7 +56,7 @@ public final class LoopSimplify implements FunctionPass
 	public boolean runOnFunction(Function f)
 	{
 		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
-		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 		aliasAnalysis = (AliasAnalysis) getAnalysisToUpDate(AliasAnalysis.class);
 		boolean changed = false;
 		for (Loop loop : li.getTopLevelLoop())
@@ -604,7 +604,7 @@ public final class LoopSimplify implements FunctionPass
 	 * @return
 	 */
 	private PhiNode findPhiToPartitionLoop(Loop loop,
-			DomTreeInfo dt,
+			DomTree dt,
 			AliasAnalysis aliasAnalysis)
 	{
 		for (Instruction inst : loop.getHeaderBlock().getInstList())

@@ -46,5 +46,32 @@ public final class SMDiagnostic
     }
 
     public void print(String progName, PrintStream os)
-    {}
+    {
+        if (progName != null && !progName.isEmpty())
+            os.printf("%s: ", progName);
+
+        if (filename.equals("-"))
+            os.printf("<stdin>");
+        else
+            os.print(filename);
+
+        if (lineNo != -1)
+        {
+            os.printf(":%d", lineNo);
+            if (columnNo != -1)
+                os.printf(":%d", columnNo+1);
+        }
+
+        os.printf(": %s%n", message);
+        if (lineNo != -1 && columnNo != -1)
+        {
+            os.println(lineContents);
+
+            /// print out spaces/tabs before caret.
+            for (int i = 0; i < columnNo; i++)
+                os.print(lineContents.charAt(i) == '\t'?'\t':' ');
+
+            os.println("^");
+        }
+    }
 }

@@ -41,7 +41,7 @@ public final class IVUsers implements LoopPass
 {
 	private Loop loop;
 	private LoopInfo li;
-	private DomTreeInfo dt;
+	private DomTree dt;
 	private ScalarEvolution se;
 	private HashSet<Instruction> processed = new HashSet<>();
 
@@ -74,7 +74,7 @@ public final class IVUsers implements LoopPass
 	{
 		this.loop = loop;
 		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
-		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 		se = (ScalarEvolution) getAnalysisToUpDate(ScalarEvolution.class);
 		BasicBlock header = loop.getHeaderBlock();
 		assert header != null;
@@ -202,7 +202,7 @@ public final class IVUsers implements LoopPass
 	}
 
 	private static boolean ivUseShouldUsePostIncValue(Instruction user,
-			Instruction iv, Loop loop, LoopInfo li, DomTreeInfo dt,
+			Instruction iv, Loop loop, LoopInfo li, DomTree dt,
 			Pass p)
 	{
 		// If the user is in the loop, use the pre-inc value.
@@ -262,7 +262,7 @@ public final class IVUsers implements LoopPass
 	private static boolean getSCEVStartAndStride(SCEV sh, Loop loop,
 			Loop useLoop, OutParamWrapper<SCEV> start,
 			OutParamWrapper<SCEV> stride,
-			ScalarEvolution se, DomTreeInfo dt)
+			ScalarEvolution se, DomTree dt)
 	{
 		SCEV theAddRec = start.get();
 

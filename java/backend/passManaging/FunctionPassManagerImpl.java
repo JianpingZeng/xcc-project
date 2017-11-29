@@ -41,7 +41,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
     private HashMap<Pass, HashSet<Pass>> inversedLastUser;
     private ArrayList<ImmutablePass> immutablePasses;
     private HashMap<Pass, AnalysisUsage> anUsageMap;
-    Stack<PMDataManager> activeStack;
+    private PMStack activeStack;
     protected ArrayList<PMDataManager> passManagers;
 
     private AnalysisResolver resolver;
@@ -143,7 +143,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
         inversedLastUser = new HashMap<>();
         immutablePasses = new ArrayList<>();
         anUsageMap = new HashMap<>();
-        activeStack = new Stack<>();
+        activeStack = new PMStack();
         passManagers = new ArrayList<>();
         FPPassManager fp = new FPPassManager(1);
         fp.setTopLevelManager(this);
@@ -349,7 +349,7 @@ public class FunctionPassManagerImpl extends PMDataManager implements
         }
     }
 
-    public Stack<PMDataManager> getActiveStack()
+    public PMStack getActiveStack()
     {
         return activeStack;
     }

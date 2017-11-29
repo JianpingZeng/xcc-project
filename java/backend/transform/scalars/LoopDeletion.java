@@ -59,7 +59,7 @@ public final class LoopDeletion implements LoopPass
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
 		au.addRequired(ScalarEvolution.class);
-		au.addRequired(DomTreeInfo.class);
+		au.addRequired(DomTree.class);
 		au.addRequired(LoopInfo.class);
 		au.addRequired(LoopSimplify.class);
 		au.addRequired(LCSSA.class);
@@ -83,7 +83,7 @@ public final class LoopDeletion implements LoopPass
 		if (latch == null)
 			return false;
 		
-		DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 		return dt != null && dt.dominates(exitingBBs.get(0), latch);
 	}
 
@@ -185,7 +185,7 @@ public final class LoopDeletion implements LoopPass
 		}
 
 		// Update the dominator information and dominator frontier if available.
-		DomTreeInfo dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		DomTree dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 		DominanceFrontier df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
 		Iterator<BasicBlock> itr = loop.getBlocks().iterator();
 		while (itr.hasNext())

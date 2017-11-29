@@ -1,6 +1,6 @@
 package backend.transform.scalars;
 
-import backend.analysis.DomTreeInfo;
+import backend.analysis.DomTree;
 import backend.analysis.LoopInfo;
 import backend.pass.AnalysisResolver;
 import backend.pass.AnalysisUsage;
@@ -80,7 +80,7 @@ public final class InductionVarSimplify implements LoopPass
 	private boolean[][] SRdone;
 
 	private LoopInfo li;
-	private DomTreeInfo dt;
+	private DomTree dt;
 	boolean changed = false;
 	private AnalysisResolver resolver;
 
@@ -105,7 +105,7 @@ public final class InductionVarSimplify implements LoopPass
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		au.addRequired(DomTreeInfo.class);
+		au.addRequired(DomTree.class);
 		au.addRequired(LoopInfo.class);
 		au.addRequired(LoopSimplify.class);
 		au.addRequired(UnreachableBlockElim.class);
@@ -115,7 +115,7 @@ public final class InductionVarSimplify implements LoopPass
 	public boolean runOnLoop(Loop loop, LPPassManager ppm)
 	{
 		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
-		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 
 		this.inductionVars = new ArrayList<>();
 		initialize(loop);

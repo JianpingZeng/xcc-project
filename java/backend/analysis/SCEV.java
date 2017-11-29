@@ -97,7 +97,7 @@ public abstract class SCEV
      * @param dt
      * @return
      */
-    public abstract boolean dominates(BasicBlock bb, DomTreeInfo dt);
+    public abstract boolean dominates(BasicBlock bb, DomTree dt);
 
     public abstract void print(PrintStream os);
 

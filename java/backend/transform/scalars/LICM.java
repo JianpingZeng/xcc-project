@@ -66,7 +66,7 @@ public final class LICM implements LoopPass
     /**
      * Current dominator tree info.
      */
-    private DomTreeInfo dt;
+    private DomTree dt;
     /**
      * Current Dominator frontier info.
      */
@@ -118,7 +118,7 @@ public final class LICM implements LoopPass
     {
         au.addRequired(LoopSimplify.class);
         au.addRequired(LoopInfo.class);
-        au.addRequired(DomTreeInfo.class);
+        au.addRequired(DomTree.class);
         au.addRequired(DominanceFrontier.class);
         au.addRequired(AliasAnalysis.class);
     }
@@ -146,7 +146,7 @@ public final class LICM implements LoopPass
         li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
         aa = (AliasAnalysis) getAnalysisToUpDate(AliasAnalysis.class);
         df = (DominanceFrontier) getAnalysisToUpDate(DominanceFrontier.class);
-        dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+        dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 
         curAST = new AliasSetTracker(aa);
         preheaderBB = loop.getLoopPreheader();

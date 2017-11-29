@@ -111,7 +111,7 @@ public final class SCEVConstant extends SCEV
 	 * @return
 	 */
 	@Override
-	public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+	public boolean dominates(BasicBlock bb, DomTree dt)
 	{
 		return false;
 	}

@@ -71,6 +71,7 @@ public final class Module implements Iterable<Function>
 		this.globalVariableList = globalVariableList;
 		this.functionList = functions;
 		valSymTable = new ValueSymbolTable();
+		typeSymbolTable = new HashMap<>();
 	}
 
 	public Module(String moduleID)
@@ -78,6 +79,8 @@ public final class Module implements Iterable<Function>
         this.moduleID = moduleID;
         globalVariableList = new ArrayList<>(32);
         functionList = new ArrayList<>(32);
+	    valSymTable = new ValueSymbolTable();
+	    typeSymbolTable = new HashMap<>();
     }
 
     public String getModuleIdentifier() { return moduleID;}
@@ -230,4 +233,11 @@ public final class Module implements Iterable<Function>
 
 		return null;
 	}
+
+    public void addFunction(Function fn)
+    {
+        assert fn != null;
+        functionList.add(fn);
+        fn.setParent(this);
+    }
 }

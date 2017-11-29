@@ -29,8 +29,8 @@ import static tools.commandline.CL.markOptionsChanged;
  */
 public class Parser<T> implements ParserInterface<T>
 {
-    private ArrayList<Pair<String, Pair<T, String>>> values;
-    private boolean hasOptionName;
+    protected ArrayList<Pair<String, Pair<T, String>>> values;
+    protected boolean hasOptionName;
     
     public int getNumOptions()
     {
@@ -70,7 +70,7 @@ public class Parser<T> implements ParserInterface<T>
         return opt.error("Cannot find option named '" + argVal + "'!");
     }
 
-    void addLiteralOption(String name, T val, String helpStr)
+    public void addLiteralOption(String name, T val, String helpStr)
     {
         assert findOption(name) < 0 : "Option already exists!";
         values.add(Pair.get(name, Pair.get(val, helpStr)));
@@ -109,7 +109,7 @@ public class Parser<T> implements ParserInterface<T>
      * @param name
      * @return
      */
-    int findOption(String name)
+    public int findOption(String name)
     {
         for (int i = 0, e = getNumOptions();i < e; ++i)
         {

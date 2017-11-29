@@ -41,7 +41,7 @@ import java.util.HashMap;
 public final class LCSSA implements LoopPass
 {
 	private LoopInfo li;
-	private DomTreeInfo dt;
+	private DomTree dt;
 	private ArrayList<BasicBlock> loopBlocks;
 	PredIteratorCache predCache;
 
@@ -82,7 +82,7 @@ public final class LCSSA implements LoopPass
 	{
 		predCache.clear();
 		li = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
-		dt = (DomTreeInfo) getAnalysisToUpDate(DomTreeInfo.class);
+		dt = (DomTree) getAnalysisToUpDate(DomTree.class);
 
 		loopBlocks = new ArrayList<>(loop.getBlocks());
 		ArrayList<BasicBlock> exitBlocks = loop.getExitingBlocks();
@@ -255,9 +255,9 @@ public final class LCSSA implements LoopPass
 		au.addPreserved(LoopSimplify.class);
 		au.addRequired(LoopInfo.class);
 		au.addPreserved(LoopInfo.class);
-		au.addRequired(DomTreeInfo.class);
+		au.addRequired(DomTree.class);
 		au.addPreserved(ScalarEvolution.class);
-		au.addPreserved(DomTreeInfo.class);
+		au.addPreserved(DomTree.class);
 
 		// Request DominanceFrontier now, even though LCSSA does
 		// not use it. This allows Pass Manager to schedule Dominance

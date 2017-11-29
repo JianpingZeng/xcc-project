@@ -16,19 +16,29 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.passManaging.PassRegistrationListener;
 import tools.Util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
-public final class PassDataBase
+public final class PassRegistrar
 {
     /**
      * Mapping from Class information to corresponding PassInfo instance.
      * Instantiated by class {@linkplain RegisterPass}.
      */
-    private static HashMap<Class<? extends Pass>, PassInfo> passInfoMap;
+    private static final HashMap<Class<? extends Pass>, PassInfo> passInfoMap
+		    = new HashMap<>();
 
-    private static HashMap<PassInfo, Class<? extends Pass>> registeredPasses;
+    private static final HashMap<PassInfo, Class<? extends Pass>> registeredPasses
+		    = new HashMap<>();
+
+	/**
+	 * All of pass registeration listener registered in here.
+	 */
+	public static final ArrayList<PassRegistrationListener> listeners
+		    = new ArrayList<>();
 
 	/**
 	 * A registeration interface to client.
@@ -37,10 +47,6 @@ public final class PassDataBase
 	 */
 	public static void registerPass(Class<? extends Pass> pass, PassInfo pi)
 	{
-		if (registeredPasses == null)
-			registeredPasses = new HashMap<>();
-        if (passInfoMap == null)
-            passInfoMap = new HashMap<>();
         if (Util.DEBUG)
         {
             if (registeredPasses.containsKey(pi) || passInfoMap
@@ -57,6 +63,14 @@ public final class PassDataBase
         }
 		registeredPasses.put(pi, pass);
 		passInfoMap.put(pass, pi);
+
+		if (!listeners.isEmpty())
+		{
+			for (PassRegistrationListener listener : listeners)
+			{
+				listener.passRegistered(pi);
+			}
+		}
 	}
 
     /**
@@ -86,10 +100,6 @@ public final class PassDataBase
 		assert registeredPasses.containsKey(pi) :
 				"Pass registered but not in register factory!";
 		passInfoMap.remove(registeredPasses.remove(pi));
-		if (registeredPasses.isEmpty())
-			registeredPasses = null;
-		if (passInfoMap.isEmpty())
-		    passInfoMap = null;
 	}
 
 	public static Pass getAnalysisOrNull(PassInfo passInfo)
@@ -119,5 +129,15 @@ public final class PassDataBase
 	public static Pass getAnalysisToUpdate(PassInfo passInfo)
 	{
 		return getAnalysisOrNull(passInfo);
+	}
+
+	/**
+	 * Inform the pass listener to enumerate all of registered passes in here
+	 * with specified method.
+	 * @param listener
+	 */
+	public static void enumerateWith(PassRegistrationListener listener)
+	{
+		passInfoMap.values().forEach(listener::passEnumerate);
 	}
 }

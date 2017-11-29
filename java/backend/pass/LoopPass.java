@@ -16,13 +16,12 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
+import backend.analysis.LoopInfo;
 import backend.passManaging.FPPassManager;
 import backend.passManaging.PMDataManager;
+import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
 import backend.value.Loop;
-import backend.analysis.LoopInfo;
-
-import java.util.Stack;
 
 /**
  * @author Xlous.zeng
@@ -52,7 +51,7 @@ public interface LoopPass extends Pass
     }
 
     @Override
-    default void assignPassManager(Stack<PMDataManager> pms,
+    default void assignPassManager(PMStack pms,
             PassManagerType pmt)
     {
         while (!pms.isEmpty())
@@ -76,14 +75,14 @@ public interface LoopPass extends Pass
             // Step#2 Assign manager to manage this new manager.
             lpm.assignPassManager(pms, pmd.getPassManagerType());
             // Step#3 Push new manager into stack.
-            pms.add(lpm);
+            pms.push(lpm);
         }
         lpm = (LPPassManager)pms.peek();
         lpm.add(this);
     }
 
     @Override
-    default void assignPassManager(Stack<PMDataManager> pms)
+    default void assignPassManager(PMStack pms)
     {
         assignPassManager(pms, PassManagerType.PMT_LoopPassManager);
     }

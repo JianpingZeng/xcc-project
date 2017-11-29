@@ -1,14 +1,9 @@
 package backend.pass;
 
-import backend.passManaging.BBPassManager;
-import backend.passManaging.FPPassManager;
-import backend.passManaging.PMDataManager;
-import backend.passManaging.PassManagerType;
+import backend.passManaging.*;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import backend.value.Module;
-
-import java.util.Stack;
 
 /**
  * @author Xlous.zeng
@@ -55,7 +50,7 @@ public interface BasicBlockPass extends Pass
     }
 
     @Override
-	default void assignPassManager(Stack<PMDataManager> pms,
+	default void assignPassManager(PMStack pms,
 			PassManagerType pmt)
 	{
         while (!pms.isEmpty())
@@ -80,14 +75,14 @@ public interface BasicBlockPass extends Pass
             // Step#2 Assign manager to manage this new manager.
             bpm.assignPassManager(pms, pmd.getPassManagerType());
             // Step#3 Push new manager into stack.
-            pms.add(bpm);
+            pms.push(bpm);
         }
         bpm = (BBPassManager)pms.peek();
         bpm.add(this);
 	}
 
 	@Override
-	default void assignPassManager(Stack<PMDataManager> pms)
+	default void assignPassManager(PMStack pms)
 	{
 		assignPassManager(pms, PassManagerType.PMT_BasicBlockPassManager);
 	}

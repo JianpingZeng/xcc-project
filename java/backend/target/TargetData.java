@@ -6,6 +6,7 @@ import backend.type.ArrayType;
 import backend.type.IntegerType;
 import backend.type.StructType;
 import backend.type.Type;
+import backend.value.Module;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -153,6 +154,13 @@ public class TargetData implements ImmutablePass
 		alignments = new ArrayList<>();
 		init(targetDescription);
 	}
+
+	public TargetData(Module m)
+	{
+		alignments = new ArrayList<>();
+		init(m.getDataLayout());
+	}
+
 	/**
 	A TargetDescription string consists of a sequence of hyphen-delimited
 	specifiers for target endianness, pointer size and alignments, and various

@@ -120,7 +120,7 @@ public final class SCEVSDivExpr extends SCEV
         return rhs.getType();
     }
 
-    @Override public boolean dominates(BasicBlock bb, DomTreeInfo dt)
+    @Override public boolean dominates(BasicBlock bb, DomTree dt)
     {
         return false;
     }
