@@ -58,6 +58,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     private DomTreeNodeBase<BasicBlock> rootNodes;
     private HashMap<BasicBlock, DomTreeNodeBase<BasicBlock>> bb2DomTreeNode;
     private Function fn;
+    private TObjectIntHashMap<BasicBlock> bb2Number;
     private static final int UNDEF = -1;
 
     @Override
@@ -69,7 +70,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
         BasicBlock entryBB = f.getEntryBlock();
         reversePostOrder = dfTraversal(entryBB);
         doms = new int[reversePostOrder.size()];
-        TObjectIntHashMap<BasicBlock> bb2Number = new TObjectIntHashMap<>();
+        bb2Number = new TObjectIntHashMap<>();
 
         rootNodes = new DomTreeNodeBase<>(entryBB, null);
         bb2DomTreeNode = new HashMap<>();
@@ -179,82 +180,174 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     public boolean dominates(DomTreeNodeBase<BasicBlock> A,
             DomTreeNodeBase<BasicBlock> B)
     {
-        return false;
+        assert A.getBlock().getParent() == fn
+                && B.getBlock().getParent() == A.getBlock().getParent();
+
+        if (A == B)
+            return true;
+        while (B != A && B != null)
+        {
+            B = B.getIDom();
+        }
+
+        return B != null;
     }
 
     @Override
     public boolean dominates(BasicBlock A, BasicBlock B)
     {
-        return false;
+        assert A.getParent() == fn && B.getParent() == A.getParent();
+
+        if (A == B)
+            return true;
+        int indexA = bb2Number.get(A);
+        int indexB = bb2Number.get(B);
+        while (indexB != indexA && indexB != doms[indexB])
+        {
+            indexB = doms[indexB];
+        }
+
+        return indexB != doms[indexB];
     }
 
     @Override
     public boolean strictDominate(DomTreeNodeBase<BasicBlock> A,
             DomTreeNodeBase<BasicBlock> B)
     {
-        return false;
+        return dominates(A, B) && A != B;
     }
 
     @Override
     public boolean strictDominate(BasicBlock a, BasicBlock b)
     {
-        return false;
+        return dominates(a, b) && a != b;
     }
 
     @Override
-    public boolean isReachableFromEntry(BasicBlock BB)
+    public boolean isReachableFromEntry(BasicBlock bb)
     {
-        return false;
+        int idx = bb2Number.get(bb);
+        return doms[idx] != UNDEF;
     }
 
     @Override
     public boolean isReachableFromEntry(DomTreeNodeBase<BasicBlock> node)
     {
-        return false;
+        return isReachableFromEntry(node.getBlock());
     }
 
     @Override
     public BasicBlock getIDom(BasicBlock block)
     {
-        return null;
+        return reversePostOrder.get(doms[bb2Number.get(block)]);
     }
 
     @Override
     public BasicBlock findNearestCommonDominator(BasicBlock bb1, BasicBlock bb2)
     {
-        return null;
+        if (bb1 == null || bb2 == null)
+            return null;
+
+        if (bb1.getParent() != bb2.getParent() && bb1.getParent() == fn)
+            return null;
+
+        int idx1 = bb2Number.get(bb1);
+        int idx2 = bb2Number.get(bb2);
+        while (idx1 != idx2)
+        {
+            while (idx1 < idx2)
+                idx1 = doms[idx1];
+            while (idx2 < idx1)
+                idx2 = doms[idx2];
+        }
+        return reversePostOrder.get(idx1);
     }
 
     @Override
     public void eraseNode(BasicBlock bb)
     {
+        assert bb != null;
 
+        int index = bb2Number.get(bb);
+        boolean exist = false;
+        for (int i : doms)
+        {
+            if (i == index)
+            {
+                exist = true;
+                break;
+            }
+        }
+        assert !exist:"Can not remove non-leaf node";
+        doms[index] = UNDEF;
+        bb2Number.remove(bb);
+        bb2DomTreeNode.remove(bb);
+        if (roots.contains(bb)) roots.remove(bb);
+        if (rootNodes.getBlock().equals(bb)) rootNodes = null;
     }
 
     @Override
     public void splitBlock(BasicBlock newBB)
     {
-
+        // TODO: 2017/11/30
     }
 
     @Override
     public DomTreeNodeBase<BasicBlock> addNewBlock(BasicBlock bb,
             BasicBlock idom)
     {
-        return null;
+        assert bb != null && idom != null && bb2Number.containsKey(idom);
+        int bbIndex = reversePostOrder.size() - reversePostOrder.indexOf(bb) - 1;
+        int idomIndex = bb2Number.get(idom);
+        doms[bbIndex] = idomIndex;
+        bb2Number.put(bb, bbIndex);
+        DomTreeNodeBase<BasicBlock> domBB = new DomTreeNodeBase<>(
+                bb, bb2DomTreeNode.get(idom));
+        bb2DomTreeNode.put(bb, domBB);
+        return domBB;
     }
 
     @Override
     public void changeIDom(DomTreeNodeBase<BasicBlock> oldIDom,
             DomTreeNodeBase<BasicBlock> newIDom)
     {
+        assert bb2Number.containsKey(oldIDom.getBlock()) &&
+                bb2Number.containsKey(newIDom.getBlock());
+        int oldIdomIndex = bb2Number.get(oldIDom.getBlock());
+        int newIdomIndex = bb2Number.get(newIDom.getBlock());
+        for (int idx = 0; idx < doms.length; idx++)
+        {
+            if (doms[idx] == oldIdomIndex)
+                doms[idx] = newIdomIndex;
+        }
 
+        for (DomTreeNodeBase<BasicBlock> domBB : bb2DomTreeNode.values())
+        {
+            if (domBB.getIDom().equals(oldIDom))
+                domBB.setIDom(newIDom);
+        }
     }
 
     @Override
     public void changeIDom(BasicBlock oldIDomBB, BasicBlock newIDomBB)
     {
+        assert bb2Number.containsKey(oldIDomBB) &&
+                bb2Number.containsKey(newIDomBB);
+        int oldIdomIndex = bb2Number.get(oldIDomBB);
+        int newIdomIndex = bb2Number.get(newIDomBB);
+        for (int idx = 0; idx < doms.length; idx++)
+        {
+            if (doms[idx] == oldIdomIndex)
+                doms[idx] = newIdomIndex;
+        }
 
+        for (BasicBlock bb : bb2DomTreeNode.keySet())
+        {
+            if (bb2DomTreeNode.get(bb).getIDom().getBlock().equals(oldIDomBB))
+            {
+                bb2DomTreeNode.put(bb, bb2DomTreeNode.get(newIDomBB));
+            }
+        }
     }
 
     public void dump()
