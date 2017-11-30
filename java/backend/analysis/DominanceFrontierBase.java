@@ -57,7 +57,7 @@ public abstract class DominanceFrontierBase implements FunctionPass
 
     public HashSet<BasicBlock> find(BasicBlock bb)
     {
-        return frontiers.get(bb);
+        return frontiers.containsKey(bb) ? null : frontiers.get(bb);
     }
 
     public void addBasicBlock(BasicBlock bb, HashSet<BasicBlock> frontiers)

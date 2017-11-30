@@ -27,7 +27,6 @@ import backend.value.Instruction;
 import backend.value.Instruction.PhiNode;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 
 /**
  * @author Xlous.zeng
@@ -67,7 +66,7 @@ public final class UnreachableBlockElim implements FunctionPass
     {
         // marks the reachable block by visiting the CFG in the order of
         // depth-first.
-        LinkedHashSet<BasicBlock> visited;
+        ArrayList<BasicBlock> visited;
         visited = DepthFirstOrder.reversePostOrder(f.getEntryBlock());
 
         ArrayList<BasicBlock> deadedBlocks = new ArrayList<>();

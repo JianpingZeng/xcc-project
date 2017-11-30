@@ -69,7 +69,7 @@ public class MachineLoopInfo extends MachineFunctionPass
     {
         MachineBasicBlock rootNode = dt.getRootNode().getBlock();
 
-        Set<MachineBasicBlock> dfList = DepthFirstOrder.reversePostOrder(rootNode);
+        ArrayList<MachineBasicBlock> dfList = DepthFirstOrder.reversePostOrder(rootNode);
         for (MachineBasicBlock bb : dfList)
         {
             MachineLoop loop = considerForLoop(bb, dt);

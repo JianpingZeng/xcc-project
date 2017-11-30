@@ -23,7 +23,6 @@ import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
@@ -52,7 +51,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        HashSet<MachineBasicBlock> reachable;
+        ArrayList<MachineBasicBlock> reachable;
 
         MachineDomTreeInfo mdt = (MachineDomTreeInfo) getAnalysisToUpDate(MachineDomTreeInfo.class);
         MachineLoopInfo mli = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);

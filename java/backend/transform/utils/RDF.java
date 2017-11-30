@@ -1,7 +1,7 @@
 package backend.transform.utils;
 
-import backend.analysis.DomTreeInfo;
 import backend.analysis.DomTreeNodeBase;
+import backend.analysis.IDomTreeInfo;
 import backend.utils.SuccIterator;
 import backend.value.BasicBlock;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -26,7 +26,7 @@ public final class RDF
 	 * This method used to initialize a map that maps dominator tree node
 	 * into it's depth level in the Dominator tree.
 	 */
-	private static void init(DomTreeInfo dt)
+	private static void init(IDomTreeInfo dt)
 	{
 		if (domLevels.isEmpty())
 		{
@@ -54,7 +54,7 @@ public final class RDF
 	 * @param entry    The basic block computed reverse dominator frontier.
 	 * @return  The reverse dominator frontier set.
 	 */
-	public static LinkedList<BasicBlock> run(DomTreeInfo dt, BasicBlock entry)
+	public static LinkedList<BasicBlock> run(IDomTreeInfo dt, BasicBlock entry)
 	{
 		LinkedList<BasicBlock> rdf = new LinkedList<>();
 

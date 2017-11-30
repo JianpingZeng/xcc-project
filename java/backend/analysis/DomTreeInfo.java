@@ -14,7 +14,7 @@ import java.util.*;
  *
  * Created by Jianping Zeng  on 2016/2/29.
  */
-public final class DomTreeInfo
+public final class DomTreeInfo implements IDomTreeInfo
 {
 	/**
 	 * The root nodes set of this tree.
