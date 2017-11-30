@@ -17,6 +17,7 @@
 
 package backend.analysis;
 
+import backend.utils.PredIterator;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import gnu.trove.map.hash.TObjectIntHashMap;
@@ -289,7 +290,68 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     @Override
     public void splitBlock(BasicBlock newBB)
     {
-        // TODO: 2017/11/30
+        ArrayList<BasicBlock> succs = new ArrayList<>();
+        for (int i = 0, e = newBB.getNumSuccessors(); i < e; i++)
+            succs.add(newBB.suxAt(i));
+
+        assert succs.size() == 1 :"newBB must have a single successor";
+
+        BasicBlock succ = succs.get(0);
+
+        ArrayList<BasicBlock> preds = new ArrayList<>();
+        for (PredIterator<BasicBlock> itr = newBB.predIterator(); itr.hasNext();)
+            preds.add(itr.next());
+
+        assert !preds.isEmpty() :"No predecessors block!";
+
+        boolean newBBDominatesSucc = true;
+        for (PredIterator<BasicBlock> succPredItr = succ.predIterator();
+             succPredItr.hasNext();)
+        {
+            BasicBlock p = succPredItr.next();
+            if (p != newBB && !dominates(succ, p)
+                    && isReachableFromEntry(p))
+            {
+                newBBDominatesSucc = false;
+                break;
+            }
+        }
+
+        // Find newBB's immediate dominator and create new dominator tree node
+        // for newBB.
+        BasicBlock newBBIDom = null;
+        int i = 0;
+        for (; i < preds.size(); i++)
+        {
+            if (isReachableFromEntry(preds.get(i)))
+            {
+                newBBIDom = preds.get(i);
+                break;
+            }
+        }
+
+        // It's possible that none of the predecessors of NewBB are reachable;
+        // in that case, NewBB itself is unreachable, so nothing needs to be
+        // changed.
+        if (newBBIDom == null)
+            return;
+
+        for (i += 1; i < preds.size(); i++)
+        {
+            if (isReachableFromEntry(preds.get(i)))
+                newBBIDom = findNearestCommonDominator(newBB, preds.get(i));
+        }
+
+        // Create a new dominator tree node, and set it as the idom of newBB.
+        DomTreeNodeBase<BasicBlock> newBBNode = addNewBlock(newBB, newBBIDom);
+
+        // If newBB strictly dominates other blocks, then it is now the immediate
+        // dominator of cucc.  Update the dominator tree as appropriate.
+        if (newBBDominatesSucc)
+        {
+            DomTreeNodeBase<BasicBlock> newBBSuccNode = getTreeNodeForBlock(succ);
+            changeIDom(newBBSuccNode, newBBNode);
+        }
     }
 
     @Override
