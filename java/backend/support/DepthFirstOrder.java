@@ -18,9 +18,8 @@ package backend.support;
 
 import backend.analysis.DomTreeNodeBase;
 import backend.codegen.MachineBasicBlock;
-import backend.value.BasicBlock;
-import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
+import backend.value.BasicBlock;
 
 import java.util.*;
 
@@ -36,52 +35,12 @@ public final class DepthFirstOrder
      * @param start
      * @return
      */
-    public static LinkedHashSet<BasicBlock> reversePostOrder(BasicBlock start)
+    public static ArrayList<BasicBlock> reversePostOrder(BasicBlock start)
     {
-        LinkedHashSet visited = new LinkedHashSet();
-        reversePostOrder(start, visited, true);
+        ArrayList<BasicBlock> visited = new ArrayList<>();
+        visited.addAll(postOrder(start));
+        Collections.reverse(visited);
         return visited;
-    }
-
-    /**
-     * Computes the reverse post order for the specified CFG from the start node.
-     * The reverse post order of Basic Block is restored in returned list.
-     *
-     * But the difference is this method can take a argument specifying the
-     * visiting direction (down or up) with above method.
-     * @return
-     */
-    public static void reversePostOrder(
-            BasicBlock start,
-            LinkedHashSet<BasicBlock> visited,
-            boolean direction)
-    {
-        if (visited.contains(start))
-            return;
-
-        LinkedList<BasicBlock> worklist = new LinkedList<>();
-        worklist.addLast(start);
-
-        while (!worklist.isEmpty())
-        {
-            BasicBlock curr = worklist.removeLast();
-            if (!visited.add(curr))
-                continue;
-
-            Stack<BasicBlock> res = new Stack<>();
-            if (direction)
-            {
-                for (SuccIterator itr = curr.succIterator(); itr.hasNext();)
-                    res.push(itr.next());
-            }
-            else
-            {
-                for (PredIterator<BasicBlock> itr = curr.predIterator(); itr.hasNext();)
-                    res.push(itr.next());
-            }
-            if (!res.isEmpty())
-                res.forEach(worklist::addLast);
-        }
     }
 
     /**
@@ -90,47 +49,12 @@ public final class DepthFirstOrder
      * @param start
      * @return
      */
-    public static LinkedHashSet<MachineBasicBlock> reversePostOrder(MachineBasicBlock start)
+    public static ArrayList<MachineBasicBlock> reversePostOrder(MachineBasicBlock start)
     {
-        LinkedHashSet visited = new LinkedHashSet();
-        reversePostOrder(start, visited, true);
+        ArrayList<MachineBasicBlock> visited = new ArrayList<>();
+        visited.addAll(postOrder(start));
+        Collections.reverse(visited);
         return visited;
-    }
-
-    /**
-     * Computes the reverse post order for the specified CFG from the start node.
-     * The reverse post order of Basic Block is restored in returned list.
-     *
-     * But the difference is this method can take a argument specifying the
-     * visiting direction (down or up) with above method.
-     * @return
-     */
-    public static void reversePostOrder(
-            MachineBasicBlock start,
-            LinkedHashSet<MachineBasicBlock> visited,
-            boolean direction)
-    {
-        if (visited.contains(start))
-            return;
-
-        LinkedList<MachineBasicBlock> worklist = new LinkedList<>();
-        worklist.addLast(start);
-
-        while (!worklist.isEmpty())
-        {
-            MachineBasicBlock curr = worklist.removeLast();
-            if (!visited.add(curr))
-                continue;
-
-            List<MachineBasicBlock> list = direction ?
-                    curr.getSuccessors() : curr.getPredecessors();
-
-            if (!list.isEmpty())
-            {
-                Collections.reverse(list);
-                list.forEach(worklist::addLast);
-            }
-        }
     }
 
     public static LinkedList<BasicBlock> postOrder(BasicBlock startBlock)
@@ -150,6 +74,25 @@ public final class DepthFirstOrder
                 visit(itr.next(), res, visited);
 
             res.add(bb);
+        }
+    }
+
+    public static List<MachineBasicBlock> postOrder(MachineBasicBlock start)
+    {
+        ArrayList<MachineBasicBlock> res = new ArrayList<>();
+        HashSet<MachineBasicBlock> visited = new HashSet<>();
+        visit(start, res, visited);
+        return res;
+    }
+
+    private static void visit(MachineBasicBlock start,
+            ArrayList<MachineBasicBlock> result,
+            HashSet<MachineBasicBlock> visited)
+    {
+        if (visited.add(start))
+        {
+            start.getSuccessors().forEach(succ->visit(succ, result, visited));
+            result.add(start);
         }
     }
 
@@ -175,17 +118,13 @@ public final class DepthFirstOrder
         return ret;
     }
 
-    public static LinkedList<MachineBasicBlock> dfTraversal(MachineBasicBlock entry)
+    public static ArrayList<MachineBasicBlock> dfTraversal(MachineBasicBlock entry)
     {
-        LinkedHashSet<MachineBasicBlock> res = new LinkedHashSet<>();
-        reversePostOrder(entry, res, true);
-        return new LinkedList<>(res);
+        return reversePostOrder(entry);
     }
 
-    public static LinkedList<BasicBlock> dfTraversal(BasicBlock entry)
+    public static ArrayList<BasicBlock> dfTraversal(BasicBlock entry)
     {
-        LinkedHashSet<BasicBlock> res = new LinkedHashSet<>();
-        reversePostOrder(entry, res, true);
-        return new LinkedList<>(res);
+        return reversePostOrder(entry);
     }
 }

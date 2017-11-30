@@ -12,7 +12,6 @@ import backend.value.Loop;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Set;
 import java.util.Stack;
 
 /**
@@ -58,7 +57,7 @@ public final class LoopInfo
 	{
 		BasicBlock rootNode = dt.getRootNode().getBlock();
 
-		Set<BasicBlock> dfList = DepthFirstOrder.reversePostOrder(rootNode);
+		ArrayList<BasicBlock> dfList = DepthFirstOrder.reversePostOrder(rootNode);
 		for (BasicBlock bb : dfList)
 		{
 			Loop loop = considerForLoop(bb, dt);

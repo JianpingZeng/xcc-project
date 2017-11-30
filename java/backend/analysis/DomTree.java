@@ -26,14 +26,14 @@ import backend.value.Instruction;
 import java.util.ArrayList;
 
 /**
- * Defines a class for computing dominator tree info on FunctionProto using
- * class {@linkplain DomTree}.
+ * Defines a class for computing dominator tree info on Function using
+ * class {@linkplain DomTreeInfo}.
  * @author Xlous.zeng
  * @version 0.1
  */
 public final class DomTree implements FunctionPass
 {
-    private DomTreeInfo dt;
+    private IDomTreeInfo dt;
 
     private AnalysisResolver resolver;
 
@@ -51,7 +51,7 @@ public final class DomTree implements FunctionPass
 
     public DomTree()
     {
-        dt = new DomTreeInfo();
+        dt = new DomTreeInfoCooper();
     }
 
     @Override
@@ -163,7 +163,7 @@ public final class DomTree implements FunctionPass
         dt.eraseNode(bb);
     }
 
-    public DomTreeInfo getDomTree()
+    public IDomTreeInfo getDomTree()
     {
         return dt;
     }

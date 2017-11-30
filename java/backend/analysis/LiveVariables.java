@@ -220,7 +220,7 @@ public final class LiveVariables extends MachineFunctionPass
         // definition before use since the domination property of SSA form.
         // But there is a exception that PHI node, that will be handled specially
         // later.
-        Set<MachineBasicBlock> visited = DepthFirstOrder.reversePostOrder(mf.getEntryBlock());
+        ArrayList<MachineBasicBlock> visited = DepthFirstOrder.reversePostOrder(mf.getEntryBlock());
         for (MachineBasicBlock mbb : visited)
         {
             distanceMap.clear();

@@ -28,6 +28,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Stack;
 
+import static backend.support.DepthFirstOrder.dfTraversal;
+
 /**
  * Concrete subclass of DominanceFrontierBase that is used to compute a
  * forward dominator frontiers.
@@ -81,8 +83,45 @@ public final class DominanceFrontier extends DominanceFrontierBase
         assert dt != null:"No available DomTree pass";
         roots = dt.getRoots();
         assert roots.size() == 1 :"Only have one root block!";
-        calculate(dt, dt.getDomTree().getTreeNodeForBlock(roots.get(0)));
+        calculateCooper(dt, dt.getRoot());
         return false;
+    }
+
+    /**
+     * Compute dominance frontier for each graph node according to Cooper algorithm
+     */
+    private void calculateCooper(DomTree dt, BasicBlock entry)
+    {
+        // Inverse post-order of CFG
+        ArrayList<BasicBlock> dfs = dfTraversal(entry);
+        IDomTreeInfo di = dt.getDomTree();
+        for (BasicBlock bb : dfs)
+        {
+            int e = bb.getNumPredecessors();
+            if (e > 1)
+            {
+                BasicBlock idom = di.getIDom(bb);
+                for (int i = 0; i < e; i++)
+                {
+                    BasicBlock runner = bb.predAt(i);
+                    while (!runner.equals(idom))
+                    {
+                        // add to the runner's dominance frontier set
+                        if (frontiers.containsKey(runner))
+                        {
+                            frontiers.get(runner).add(bb);
+                        }
+                        else
+                        {
+                            HashSet<BasicBlock> set = new HashSet<>();
+                            set.add(bb);
+                            frontiers.put(runner, set);
+                        }
+                        runner = di.getIDom(runner);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -212,7 +251,14 @@ public final class DominanceFrontier extends DominanceFrontierBase
          newDF.remove(bb);
     }
 
-    public HashSet<BasicBlock> calculate(DomTree dt,
+    /**
+     * Calculate the dominator frontier for each graph node. Return a set of
+     * df node.
+     * @param dt
+     * @param node
+     * @return
+     */
+    private HashSet<BasicBlock> calculate(DomTree dt,
             DomTreeNodeBase<BasicBlock> node)
     {
         BasicBlock bb = node.getBlock();
