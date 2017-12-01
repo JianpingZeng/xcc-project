@@ -260,17 +260,17 @@ public final class SourceMgr
 
         MemoryBuffer curMB = getBufferInfo(curBuf).buffer;
         assert curMB.getBuffer() == loc.buffer.getBuffer();
-        int lineStart = loc.getPointer();
-        while (lineStart >= curMB.getBufferStart()
-                && curMB.getCharAt(lineStart) != '\n'
-                && curMB.getCharAt(lineStart) != '\r')
-            --lineStart;
+        int columnStart = loc.getPointer();
+        while (columnStart >= curMB.getBufferStart()
+                && curMB.getCharAt(columnStart) != '\n'
+                && curMB.getCharAt(columnStart) != '\r')
+            --columnStart;
 
-        int lineEnd = loc.buffer.getBufferStart();
-        while (lineEnd != curMB.length()
-                && curMB.getCharAt(lineEnd) != '\n'
-                && curMB.getCharAt(lineEnd) != '\r')
-            ++lineEnd;
+        int columnEnd = loc.getPointer();
+        while (columnEnd < curMB.length()
+                && curMB.getCharAt(columnEnd) != '\n'
+                && curMB.getCharAt(columnEnd) != '\r')
+            ++columnEnd;
 
         String printedMsg = "";
         if (type != null)
@@ -282,8 +282,8 @@ public final class SourceMgr
         printedMsg += msg;
 
         return new SMDiagnostic(curMB.getBufferName(), findLineNumber(loc, curBuf),
-                curMB.getBufferStart() - lineStart, printedMsg,
-                curMB.getSubString(lineStart, lineEnd));
+                curMB.getBufferStart() - columnStart, printedMsg,
+                curMB.getSubString(columnStart, columnEnd));
     }
 
     private void printIncludeStack(SMLoc includeLoc, PrintStream os)

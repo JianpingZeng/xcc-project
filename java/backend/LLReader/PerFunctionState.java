@@ -62,14 +62,14 @@ public final class PerFunctionState
         {
             Map.Entry<String, Pair<Value, SMLoc>> itr = forwardRefVals.entrySet().iterator().next();
             return parser.error(itr.getValue().second,
-                    StringFormatter.format("use of undefined value '%%%s'", itr.getKey()).toString());
+                    StringFormatter.format("use of undefined value '%%%s'", itr.getKey()).getValue());
         }
 
         if (!forwardRefValIDs.isEmpty())
         {
             Map.Entry<Integer, Pair<Value, SMLoc>> itr = forwardRefValIDs.entrySet().iterator().next();
             return parser.error(itr.getValue().second,
-                    StringFormatter.format("use of undefined value '%%%d'", itr.getKey()).toString());
+                    StringFormatter.format("use of undefined value '%%%d'", itr.getKey()).getValue());
         }
         return false;
     }
@@ -139,7 +139,8 @@ public final class PerFunctionState
 
             if (nameID != numberedVals.size())
                 return parser.error(nameLoc,
-                        StringFormatter.format("instruction expected to be numbered '%%%d'", numberedVals.size()).toString());
+                        StringFormatter.format("instruction expected to be numbered '%%%d'",
+                                numberedVals.size()).getValue());
 
             if (forwardRefValIDs.containsKey(nameID))
             {
@@ -148,7 +149,7 @@ public final class PerFunctionState
                 {
                     return parser.error(nameLoc,
                             StringFormatter.format("instruction forward referenced with type '%%%s'"
-                                    , itr.first.getType().getDescription()).toString());
+                                    , itr.first.getType().getDescription()).getValue());
                 }
                 itr.first.replaceAllUsesWith(inst);
                 forwardRefValIDs.remove(nameID);
@@ -164,7 +165,7 @@ public final class PerFunctionState
             if (!itr.first.getType().equals(inst.getType()))
             {
                 return parser.error(nameLoc, StringFormatter.format("instruction forward refernced with type '$$$s'",
-                        itr.first.getType().getDescription()).toString());
+                        itr.first.getType().getDescription()).getValue());
             }
             itr.first.replaceAllUsesWith(inst);
             forwardRefVals.remove(nameStr);
@@ -198,7 +199,7 @@ public final class PerFunctionState
                         .format("'%%%d' is not a basic block", id).toString());
             else
                 parser.error(loc, StringFormatter.format("'%%%d' defined with type '%s'",
-                        id, val.getType().getDescription()).toString());
+                        id, val.getType().getDescription()).getValue());
             return null;
         }
 
@@ -237,7 +238,7 @@ public final class PerFunctionState
                         .format("'%%%s' is not a basic block", name).toString());
             else
                 parser.error(loc, StringFormatter.format("'%%%s' defined with type '%s'",
-                        name, val.getType().getDescription()).toString());
+                        name, val.getType().getDescription()).getValue());
             return null;
         }
 

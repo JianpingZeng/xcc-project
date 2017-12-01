@@ -40,7 +40,7 @@ public final class Parser
         if (f == null)
         {
             diag.set(srcMgr.getMessage(new SMLoc(),
-                    StringFormatter.format("Could not open input file '%s'\n", filename).toString(),
+                    StringFormatter.format("Could not open input file '%s'\n", filename).getValue(),
                     "fatal error"));
             return null;
         }

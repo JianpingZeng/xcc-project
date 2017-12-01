@@ -1,6 +1,6 @@
 package utils.opt;
 /*
- * Xlous C language Compiler
+ * Extremely C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,9 @@ import tools.OutParamWrapper;
 import tools.SMDiagnostic;
 import tools.commandline.*;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.Comparator;
 
 import static backend.codegen.PrintModulePass.createPrintModulePass;
@@ -104,8 +107,7 @@ public final class Optimizer
                     valueDesc("filename"));
     private static final StringOpt OutputFilename =
             new StringOpt(optionName("o"), desc("Override output filename"),
-                    valueDesc("filename"),
-                    init("-"));
+                    valueDesc("filename"));
     private static BooleanOpt PrintEachModule =
             new BooleanOpt(optionName("p"),
                     desc("Print module after each transformed"),
@@ -123,6 +125,8 @@ public final class Optimizer
                     desc("Verify after each transform"),
                     init(false));
 
+    private static FileOutputStream fos;
+
     public static void main(String[] args)
     {
         try
@@ -133,7 +137,8 @@ public final class Optimizer
             CL.parseCommandLineOptions(args, "An optimizer on LLVM IR");
 
             OutParamWrapper<SMDiagnostic> diag = new OutParamWrapper<>();
-            Module m = backend.LLReader.Parser.parseAssemblyFile(InputFilename.value, diag);
+            Module m = backend.LLReader.Parser
+                    .parseAssemblyFile(InputFilename.value, diag);
             if (m == null)
                 diag.get().print("optimizer", System.err);
 
@@ -143,8 +148,8 @@ public final class Optimizer
             // Create a new optimization pass for each one specified on the command line
             for (int i = 0, e = AvailablePasses.size(); i < e; i++)
             {
-                if (StandardCompileOpts.value &&
-                        StandardCompileOpts.getPosition() < AvailablePasses.getPosition(i))
+                if (StandardCompileOpts.value
+                        && StandardCompileOpts.getPosition() < AvailablePasses.getPosition(i))
                 {
                     addStandardCompilePasses(pm);
                     StandardCompileOpts.value = false;
@@ -177,11 +182,48 @@ public final class Optimizer
                 StandardCompileOpts.value = false;
             }
 
+            // After analysis and transform passes runed output transformed LLVM IR to
+            // output file
+            createOutputPass(pm);
             pm.run(m);
+
+            // close the file output stream if destination is file but no stdou
+            if (fos != null) fos.close();
         }
         catch (Exception e)
         {
             System.err.println(e.getMessage());
+        }
+    }
+
+    private static String computeOuputFilename(String inputname)
+    {
+        assert inputname!= null && !inputname.isEmpty();
+        int dotPos = inputname.lastIndexOf('.');
+        if (dotPos < 0)
+            dotPos = inputname.length();
+        return inputname.substring(0, dotPos) + ".ll";
+    }
+
+    private static void createOutputPass(PassManager pm)
+    {
+        if (OutputFilename.value == null || !OutputFilename.value.equals("-"))
+        {
+            String destFile = OutputFilename.value != null ?
+                    OutputFilename.value : computeOuputFilename(InputFilename.value);
+            try
+            {
+                fos = new FileOutputStream(destFile);
+                pm.add(createPrintModulePass(new PrintStream(fos)));
+            }
+            catch (FileNotFoundException e)
+            {
+                System.err.println("error: "+ e.getMessage());
+            }
+        }
+        else
+        {
+            pm.add(createPrintModulePass(System.err));
         }
     }
 

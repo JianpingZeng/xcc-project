@@ -290,13 +290,9 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     @Override
     public void splitBlock(BasicBlock newBB)
     {
-        ArrayList<BasicBlock> succs = new ArrayList<>();
-        for (int i = 0, e = newBB.getNumSuccessors(); i < e; i++)
-            succs.add(newBB.suxAt(i));
-
-        assert succs.size() == 1 :"newBB must have a single successor";
-
-        BasicBlock succ = succs.get(0);
+        int e = newBB.getNumSuccessors();
+        BasicBlock succ = newBB.suxAt(0);
+        assert e == 1 && succ != null : "newBB must have a single successor";
 
         ArrayList<BasicBlock> preds = new ArrayList<>();
         for (PredIterator<BasicBlock> itr = newBB.predIterator(); itr.hasNext();)
