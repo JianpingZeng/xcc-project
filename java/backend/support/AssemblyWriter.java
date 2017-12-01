@@ -1210,6 +1210,7 @@ public class AssemblyWriter
         if (inst.hasName())
         {
             printLLVMName(out, inst);
+            out.printf(" = ");
         }
         else if (!inst.getType().equals(LLVMContext.VoidTy))
         {
@@ -1232,8 +1233,8 @@ public class AssemblyWriter
             out.print("volatile ");
         }
         Operator opc = inst.getOpcode();
-        if (opc != Operator.Store && opc != Operator.Ret && opc != Operator.Br)
-            out.print(" = ");
+        //if (opc != Operator.Store && opc != Operator.Ret && opc != Operator.Br)
+        //    out.print(" = ");
 
         // Print the instruction operator name.
         out.print(inst.getOpcodeName());

@@ -219,7 +219,7 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
             list.add(idx, this);
         }
         else if (newParent != null)
-            newParent.getBasicBlockList().addLast(this);
+            newParent.appendBB(this);
         name = bbName;
 	}
 

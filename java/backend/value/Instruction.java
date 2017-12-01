@@ -3016,6 +3016,7 @@ public abstract class Instruction extends User
                 int align, String name, Instruction insertBefore)
         {
             super(LLVMContext.VoidTy, Operator.Store, name, insertBefore);
+            init(value, ptr);
             setIsVolatile(isVolatile);
             setAlignment(align);
         }
@@ -3030,8 +3031,7 @@ public abstract class Instruction extends User
                 String name,
                 Instruction insertBefore)
         {
-            super(LLVMContext.VoidTy, Operator.Store, name, insertBefore);
-            init(value, ptr);
+            this(value, ptr, false, 0, name, insertBefore);
         }
 
         /**
@@ -3045,8 +3045,7 @@ public abstract class Instruction extends User
                 Value ptr,
                 String name)
         {
-            super(LLVMContext.VoidTy, Operator.Store, name, (Instruction)null);
-            init(value, ptr);
+            this(value, ptr, false, 0, name, null);
         }
 
         public StoreInst(Value value,
@@ -3055,6 +3054,8 @@ public abstract class Instruction extends User
                 BasicBlock insertAtEnd)
         {
             super(LLVMContext.VoidTy, Operator.Store, name, insertAtEnd);
+            setIsVolatile(false);
+            setAlignment(0);
             init(value, ptr);
         }
 
