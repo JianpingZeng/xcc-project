@@ -145,6 +145,12 @@ public final class Optimizer
             PassManager pm = new PassManager();
             pm.add(new TargetData(m));
 
+
+            if (PrintEachModule.value)
+            {
+                pm.add(createPrintModulePass(System.err));
+            }
+
             // Create a new optimization pass for each one specified on the command line
             for (int i = 0, e = AvailablePasses.size(); i < e; i++)
             {
