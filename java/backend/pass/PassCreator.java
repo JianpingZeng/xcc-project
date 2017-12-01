@@ -35,7 +35,7 @@ public class PassCreator
 	}
 
 	public static void createStandardModulePasses(PassManager pm,
-			byte optimizationLevel,
+			int optimizationLevel,
 			boolean optimizeSize,
 			boolean unrollLoops,
 			Pass inliningPass)

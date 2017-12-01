@@ -6,6 +6,7 @@ import backend.support.ValueSymbolTable;
 import backend.type.Type;
 import backend.utils.InstVisitor;
 import backend.utils.SuccIterator;
+import backend.value.Instruction.PhiNode;
 
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -77,7 +78,7 @@ public class Value implements Cloneable
 		// replaces all old uses with new one.
 		while (!usesList.isEmpty())
 		{
-			newValue.addUse(usesList.remove(0));
+			usesList.get(0).setValue(newValue);
 		}
 
 		if (this instanceof Instruction)
@@ -87,14 +88,16 @@ public class Value implements Cloneable
 			while (itr.hasNext())
 			{
 			    BasicBlock succ = itr.next();
-				for (Value inst : succ)
+				for (int i = 0, e =  succ.getNumOfInsts(); i < e; i++)
 				{
-					if (!(inst instanceof Instruction.PhiNode))
+					Instruction inst = succ.getInstAt(i);
+					if (!(inst instanceof PhiNode))
 						break;
-					int i;
-					Instruction.PhiNode PN = (Instruction.PhiNode) inst;
-					if ((i = PN.getBasicBlockIndex(BB)) >= 0)
-						PN.setIncomingValue(i, newValue);
+
+					int j;
+					PhiNode PN = (PhiNode) inst;
+					if ((j = PN.getBasicBlockIndex(BB)) >= 0)
+						PN.setIncomingValue(j, newValue);
 				}
 			}
 		}
