@@ -101,8 +101,9 @@ public final class Mem2Reg implements FunctionPass
 
             if (allocas.isEmpty()) break;
 
-            PromoteMemToReg.promoteMemToReg(allocas, dt, df);
             numPromoted += allocas.size();
+            PromoteMemToReg.promoteMemToReg(allocas, dt, df);
+            numPromoted -= allocas.size();
             changed = true;
         }
         return changed;

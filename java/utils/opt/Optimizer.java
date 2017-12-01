@@ -247,7 +247,7 @@ public final class Optimizer
 
         // TODO InlinePass
         createStandardModulePasses(pm,
-                (byte)1/*optimization level*/,
+                1/*optimization level*/,
                 false/*optimize size*/,
                 false/*unroll loop*/,
                 null/*inline pass*/);

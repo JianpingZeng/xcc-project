@@ -20,16 +20,17 @@ package backend.transform.utils;
 import backend.analysis.AliasSetTracker;
 import backend.analysis.DomTree;
 import backend.analysis.DominanceFrontier;
-import backend.value.BasicBlock;
+import backend.codegen.PrintModulePass;
+import backend.type.PointerType;
 import backend.utils.PredIterator;
 import backend.utils.SuccIterator;
-import backend.type.PointerType;
 import backend.value.*;
 import backend.value.Instruction.*;
 import backend.value.Value.UndefValue;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.OutParamWrapper;
 import tools.Pair;
+import tools.Util;
 
 import java.util.*;
 
@@ -244,7 +245,8 @@ public final class PromoteMemToReg
 		LargeBlockInfo lbi = new LargeBlockInfo();
 
 		// promotes every alloca instruction one by one.
-		for (int allocaNum = 0, e = allocas.size(); allocaNum < e; allocaNum++)
+		int i = 0;
+		for (int allocaNum = 0; allocaNum < allocas.size(); allocaNum++)
 		{
             AllocaInst ai = allocas.get(allocaNum);
 			assert isAllocaPromotable(ai)
@@ -293,6 +295,14 @@ public final class PromoteMemToReg
 					// the alloca instruction has been processed, remove it.
 					allocaNum = removeFromAllocasList(allocaNum);
 					++numberSingleStore;
+
+					// Print out after each alloca promoted
+                    if (Util.DEBUG)
+                    {
+                        System.err.println("# *** After " + (++i)
+                                + "'th alloca promoted ***:");
+                        new PrintModulePass(System.err).runOnModule(f.getParent());
+                    }
 					continue;
 				}
 			}
@@ -1066,11 +1076,12 @@ public final class PromoteMemToReg
 			// instruction in the block, in order to avoid repeating
 			// scanning
 			BasicBlock bb = inst.getParent();
-			int no = 0;
-			for (Instruction it : bb)
+
+			for (int no = 0, e = bb.getNumOfInsts(); no < e; no++)
 			{
+				Instruction it = bb.getInstAt(no);
 				if (isIntertestingInstruction(it))
-					instNumbers.put(it, no++);
+					instNumbers.put(it, no);
 			}
 			assert instNumbers.contains(inst)
                     : "No this instruction in current basic block.";

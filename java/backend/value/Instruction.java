@@ -454,24 +454,6 @@ public abstract class Instruction extends User
         {
             return Util.hash1(getOpcode().index, operand(0));
         }
-
-        @Override
-        public boolean equals(Object other)
-        {
-            if (other == null)
-                return false;
-            if (other == this)
-                return true;
-            if (!(other instanceof UnaryOps))
-                return false;
-
-            UnaryOps ui = (UnaryOps) other;
-
-            return getType().equals(ui.getType()) &&
-                    (getOpcode() == ui.getOpcode() ||
-                    getOpcode().equals(ui.getOpcode()))
-                    && operand(0).equals(ui.operand(0));
-        }
     }
 
     /**

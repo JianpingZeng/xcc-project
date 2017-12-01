@@ -21,6 +21,7 @@ import backend.utils.PredIterator;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -124,7 +125,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
         createDomTree();
 
         // For debug
-        dump();
+        if (Util.DEBUG) dump();
     }
 
     private int interset(int finger1, int finger2)
