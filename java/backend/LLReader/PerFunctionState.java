@@ -84,9 +84,6 @@ public final class PerFunctionState
         if (bb == null)
             return null;    // already diagnosed error.
 
-        // Append the BB into the function's BB list.
-        fn.appendBB(bb);
-
         // Remove bb from forward refs list.
         if (name == null || name.isEmpty())
         {
