@@ -62,7 +62,7 @@ public final class SMDiagnostic
                 os.printf(":%d", columnNo+1);
         }
 
-        os.printf(": %s%n", message);
+        os.printf(": %s", message);
         if (lineNo != -1 && columnNo != -1)
         {
             os.println(lineContents);

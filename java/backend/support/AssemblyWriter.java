@@ -229,7 +229,6 @@ public class AssemblyWriter
     public void write(Module m) throws IOException
     {
         printModule(m);
-        out.close();
     }
 
     public void write(GlobalValue gv)

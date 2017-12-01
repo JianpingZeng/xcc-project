@@ -310,6 +310,12 @@ public class APInt implements Cloneable
             if (r<= 1)
                 return r;
         }
+        if (radix == 10)
+        {
+            r = ch - '0';
+            if (r >= 0 && r <= 9)
+                return r;
+        }
         return -1;
     }
 
