@@ -19,7 +19,6 @@ package backend.codegen;
 
 import backend.pass.AnalysisResolver;
 import backend.pass.ModulePass;
-import backend.pass.Pass;
 import backend.support.FormattedOutputStream;
 import backend.value.Module;
 
@@ -75,7 +74,7 @@ public class PrintModulePass implements ModulePass
 		return "Print module into text file";
 	}
 
-	public static Pass createPrintModulePass(PrintStream os)
+	public static PrintModulePass createPrintModulePass(PrintStream os)
 	{
 		return new PrintModulePass(os);
 	}

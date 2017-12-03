@@ -34,6 +34,8 @@ import tools.Util;
 
 import java.util.*;
 
+import static backend.codegen.PrintModulePass.createPrintModulePass;
+
 /**
  * This file promotes memory references to be register references.  It promotes
  * alloca instructions which only have loads and stores as usesList.  An alloca is
@@ -358,6 +360,11 @@ public final class PromoteMemToReg
 			determineInsertionPoint(ai, allocaNum, info);
 		}// end of traveling alloca instruction list.
 
+
+		// For Debug
+		System.err.println("# *** After Eliminate trivial allocas ***:");
+		createPrintModulePass(System.err).runOnModule(f.getParent());
+
 		// all of allocas must has been handled
 		// just return.
 		if (allocas.isEmpty())
@@ -367,7 +374,7 @@ public final class PromoteMemToReg
 
 		ArrayList<Value> values = new ArrayList<>(allocas.size());
 		for (int idx = 0; idx < allocas.size(); idx++)
-			values.set(idx, UndefValue.get(allocas.get(idx).getType()));
+			values.add(UndefValue.get(allocas.get(idx).getType()));
 
 		// walk all basic block in the function performing
 		// SSA construction algorithm and inserting the phi nodes

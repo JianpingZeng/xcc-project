@@ -33,7 +33,7 @@ public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>>
     /**
      * Immediate dominator.
      */
-    private DomTreeNodeBase<T> IDom;
+    private DomTreeNodeBase<T> iDom;
     /**
      * All of child node.
      */
@@ -42,6 +42,19 @@ public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>>
     public int DFSNumIn = -1;
     public int DFSNumOut = -1;
 
+    public DomTreeNodeBase()
+    {
+        iDom = null;
+        children = new ArrayList<>();
+    }
+
+    public DomTreeNodeBase(T bb, DomTreeNodeBase<T> iDom)
+    {
+        this.block = bb;
+        this.iDom = iDom;
+        children = new ArrayList<>();
+    }
+
     public T getBlock()
     {
         return block;
@@ -49,20 +62,25 @@ public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>>
 
     public DomTreeNodeBase<T> getIDom()
     {
-        return IDom;
+        return iDom;
     }
 
     public void setIDom(DomTreeNodeBase<T> newIDom)
     {
-        assert IDom != null : "No immediate dominator";
-        if (this.IDom != newIDom)
+        //assert iDom != null : "No immediate dominator";
+        if (iDom == null)
         {
-            assert IDom.children
-                    .contains(this) : "Not in immediate dominator chidren set";
+            iDom = newIDom;
+            newIDom.children.add(this);
+        }
+        else if (iDom != newIDom)
+        {
+            assert iDom.children.contains(this)
+                    : "Not in immediate dominator chidren set";
             // erase this, no longer idom's child
-            IDom.children.remove(this);
-            this.IDom = newIDom;
-            IDom.children.add(this);
+            iDom.children.remove(this);
+            this.iDom = newIDom;
+            newIDom.children.add(this);
         }
     }
 
@@ -78,12 +96,6 @@ public class DomTreeNodeBase<T> implements Iterable<DomTreeNodeBase<T>>
             return Collections.emptyIterator();
         else
             return children.iterator();
-    }
-
-    public DomTreeNodeBase(T bb, DomTreeNodeBase<T> IDom)
-    {
-        this.block = bb;
-        this.IDom = IDom;
     }
 
     public DomTreeNodeBase<T> addChidren(DomTreeNodeBase<T> C)

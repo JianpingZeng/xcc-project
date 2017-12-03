@@ -21,7 +21,6 @@ import backend.utils.PredIterator;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import gnu.trove.map.hash.TObjectIntHashMap;
-import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -99,6 +98,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
         while (changed)
         {
             changed = false;
+            int idx = e-2;
             for (int i = 1; i < e; i++)
             {
                 BasicBlock bb = reversePostOrder.get(i);
@@ -113,19 +113,21 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
                     if (doms[pred] != UNDEF)
                         newIdom = interset(pred, newIdom);
                 }
-                if (doms[i] != newIdom)
+                if (doms[idx] != newIdom)
                 {
-                    doms[i] = newIdom;
+                    doms[idx] = newIdom;
                     changed = true;
                 }
+                --idx;
             }
+            assert idx == -1:"Remained unhandled BasicBlock";
         }
 
         // Step#3: create a dom tree
         createDomTree();
 
         // For debug
-        if (Util.DEBUG) dump();
+        dump();
     }
 
     private int interset(int finger1, int finger2)
@@ -149,6 +151,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
             if (i == idomIdx) continue;
 
             BasicBlock idomBB = reversePostOrder.get(idomIdx);
+
             bb2DomTreeNode.get(reversePostOrder.get(i))
                     .setIDom(bb2DomTreeNode.get(idomBB));
         }

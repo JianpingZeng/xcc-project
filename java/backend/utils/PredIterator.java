@@ -17,7 +17,6 @@ package backend.utils;
  */
 
 import backend.value.BasicBlock;
-import backend.value.Instruction.TerminatorInst;
 import backend.value.Value;
 
 import java.util.Iterator;
@@ -46,7 +45,7 @@ public class PredIterator<B extends Value> implements Iterator<BasicBlock>
     @Override
     public boolean hasNext()
     {
-        return idx < curBB.usesList.size();
+        return idx < curBB.getNumPredecessors();
     }
 
     /**
@@ -61,6 +60,6 @@ public class PredIterator<B extends Value> implements Iterator<BasicBlock>
         if (idx>=curBB.usesList.size())
             throw new NoSuchElementException();
 
-        return ((TerminatorInst)curBB.useAt(idx++).getUser()).getParent();
+        return curBB.predAt(idx++);
     }
 }
