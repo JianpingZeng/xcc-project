@@ -3135,7 +3135,7 @@ public abstract class Instruction extends User
 
         public Value getPointerOperand()
         {
-            return operand(1);
+            return operand(0);
         }
 
         public int getPointerOperandIndex()

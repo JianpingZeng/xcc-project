@@ -48,6 +48,7 @@ public class AssemblyWriter
     private TypePrinting typePrinter;
     private ArrayList<Type> numberedTypes;
     private SlotTracker slotTracker;
+    private final static int PadToColumns = 50;
 
     public AssemblyWriter(FormattedOutputStream os, Module m, SlotTracker tracker)
     {
@@ -283,7 +284,7 @@ public class AssemblyWriter
     {
         if (!val.getType().equals(LLVMContext.VoidTy))
         {
-            out.padToColumn(50);
+            out.padToColumn(PadToColumns);
             out.print("; <");
             typePrinter.print(val.getType(), out);
             // output number of uses.
@@ -1171,6 +1172,7 @@ public class AssemblyWriter
         }
         else if (!bb.equals(bb.getParent().getEntryBlock()))
         {
+            out.padToColumn(PadToColumns);
             // not the entry block.
             out.print(";");
             int numOfPreds = bb.getNumPredecessors();

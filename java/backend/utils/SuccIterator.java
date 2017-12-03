@@ -64,6 +64,6 @@ public class SuccIterator implements Iterator<BasicBlock>
         if (idx>= endInst.getNumOfSuccessors())
             throw new NoSuchElementException();
 
-        return ((TerminatorInst)endInst.useAt(idx).getUser()).getSuccessor(idx);
+        return endInst.getSuccessor(idx++);
     }
 }
