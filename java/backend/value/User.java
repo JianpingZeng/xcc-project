@@ -14,10 +14,6 @@ public abstract class User extends Value
      * Mainly for register allocation.
      */
     public int id;
-    /**
-     * the number of values used by this user.
-     */
-    protected int numOperands = -1;
 
     /**
      * This array with element of jlang.type Value represents all operands.

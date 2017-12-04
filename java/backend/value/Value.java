@@ -4,9 +4,6 @@ import backend.support.FormattedOutputStream;
 import backend.support.LLVMContext;
 import backend.support.ValueSymbolTable;
 import backend.type.Type;
-import backend.utils.InstVisitor;
-import backend.utils.SuccIterator;
-import backend.value.Instruction.PhiNode;
 
 import java.io.PrintStream;
 import java.util.HashMap;
@@ -73,14 +70,25 @@ public class Value implements Cloneable
 		assert newValue != null
 				: "Instruction.replaceAllusesWith(<null>) is invalid.";
 		assert getType() == newValue.getType()
-                : "replaceAllUses of value with new value of different jlang.type";
+                : "replaceAllUses of value with new value of different type";
+		assert this != newValue:"Can not replaceAllUsesWith itself!";
 
 		// replaces all old uses with new one.
 		while (!usesList.isEmpty())
 		{
-			usesList.get(0).setValue(newValue);
+		    Use u = usesList.element();
+		    if (u.getUser() instanceof Constant)
+            {
+                Constant c = (Constant)u.getUser();
+                if (!(c instanceof GlobalValue))
+                {
+                    c.replaceUsesOfWithOnConstant(this, newValue, u);
+                }
+            }
+			u.setValue(newValue);
 		}
 
+		/*
 		if (this instanceof Instruction)
 		{
 			BasicBlock BB = ((Instruction)this).getParent();
@@ -100,7 +108,7 @@ public class Value implements Cloneable
 						PN.setIncomingValue(j, newValue);
 				}
 			}
-		}
+		}*/
 	}
 
 	public boolean isUseEmpty()
@@ -332,9 +340,13 @@ public class Value implements Cloneable
 			return get(getType());
 		}
 
-		public void accept(InstVisitor visitor){}
+        @Override
+        public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
+        {
+            assert false:"Should not reaching here!";
+        }
 
-		@Override
+        @Override
 		public boolean isNullValue()
 		{
 			return false;

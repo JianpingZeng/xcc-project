@@ -14,6 +14,7 @@ import tools.FltSemantics;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import static backend.value.Instruction.CmpInst.Predicate.FCMP_FALSE;
@@ -26,31 +27,31 @@ import static backend.value.Instruction.CmpInst.Predicate.FCMP_FALSE;
  */
 public final class UniqueConstantValueImpl
 {
-    private final static HashMap<ExprMapKeyType, ConstantExpr> ExprConstantMaps
+    public final static HashMap<ExprMapKeyType, ConstantExpr> ExprConstantMaps
             = new HashMap<>();
 
-    private final static HashMap<APIntKeyType, ConstantInt> IntConstants
+    public final static HashMap<APIntKeyType, ConstantInt> IntConstants
             = new HashMap<>();
 
-    private final static HashMap<APFloatKeyType, ConstantFP> FPConstants
+    public final static HashMap<APFloatKeyType, ConstantFP> FPConstants
             = new HashMap<>();
 
-    private final static HashMap<Type, ConstantPointerNull> NullPtrConstants
+    public final static HashMap<Type, ConstantPointerNull> NullPtrConstants
             = new HashMap<>();
 
-    private final static HashMap<ConstantStructKey, ConstantStruct> StructConstants
+    public final static HashMap<ConstantStructKey, ConstantStruct> StructConstants
             = new HashMap<>();
 
-    private final static HashMap<MDNodeKeyType, MDNode> MDNodeConstants
+    public final static HashMap<MDNodeKeyType, MDNode> MDNodeConstants
             = new HashMap<>();
 
-    private final static HashMap<String, MDString> MDStringConstants
+    public final static HashMap<String, MDString> MDStringConstants
             = new HashMap<>();
 
     /**
      * A cache mapping pair of ArrayType and Constant value list to ConstantArray.
      */
-    private static HashMap<ConstantArrayKey, ConstantArray> ArrayConstants
+    public static HashMap<ConstantArrayKey, ConstantArray> ArrayConstants
             = new HashMap<>();
 
     /**
@@ -159,10 +160,30 @@ public final class UniqueConstantValueImpl
         return cpn;
     }
 
-    public void removeKey(Type ty)
+    public void remove(Type ty)
     {
         NullPtrConstants.remove(ty);
     }
+
+    public void remove(ConstantExpr ce)
+    {
+        boolean changed = true;
+
+        Iterator<ExprMapKeyType> itr = ExprConstantMaps.keySet().iterator();
+        while (itr.hasNext())
+        {
+            if (ExprConstantMaps.get(itr.next()).equals(ce))
+                itr.remove();
+        }
+    }
+
+    public void remove(ConstantStruct key)
+    {
+
+    }
+
+    public void remove(ConstantArray key)
+    {}
 
     public ConstantArray getOrCreate(ConstantArrayKey key)
     {

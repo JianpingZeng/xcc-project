@@ -84,4 +84,26 @@ public abstract class Constant extends User
                 return true;
         return false;
     }
+
+    /**
+     * This method is a specialf form of {@linkplain Value#replaceAllUsesWith(Value)}
+     * operates on {@linkplain Constant}. Basically this method gose through the trouble
+     * of building a new constant that is equivalent to the current one, with all
+     * from replaced with uses of to. After this construction is completed, all
+     * of the uses of 'this' are replaced to use the new constant. In general,
+     * you should not call this method, instead  use {@linkplain Value#replaceAllUsesWith(Value)}
+     * , which automatically dispatches to this method as needed.
+     * @param from
+     * @param to
+     * @param u
+     */
+    public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
+    {
+        assert getNumOfOperands() == 0:
+                "replaceUsesOfWithOnConstant must be "
+                + "implemented for all constants that have operands!";
+        assert false:"Constants that do not have operands cannot be using 'From'!";
+    }
+
+    public void destroyConstant() {}
 }
