@@ -309,7 +309,7 @@ public final class PromoteMemToReg
 				}
 			}
 
-			// IfStmt the alloca is only read and written in one block.
+			// If the alloca is only read and written in one block.
 			// just perform a linear scan sweep over the block to
 			// eliminate it.
 			if (info.onlyUsedOneBlock)
@@ -384,6 +384,7 @@ public final class PromoteMemToReg
 
 		do
 		{
+		    // Performs DFS walks on CFG
 			RenamePassData rpd = new RenamePassData();
 			rpd.swap(renamePassWorkList.removeLast());
 
@@ -396,7 +397,7 @@ public final class PromoteMemToReg
 		// Remove the allocas themselves from the function.
 		for (AllocaInst ai : allocas)
 		{
-			// IfStmt there are any usesList of the alloca instructions left, they must be in
+			// If there are any usesList of the alloca instructions left, they must be in
 			// unreachable basic blocks that were not processed by walking the dominator
 			// tree. Just delete the users now.
 			if (!ai.usesList.isEmpty())
@@ -442,7 +443,7 @@ public final class PromoteMemToReg
 
 		// At this point, the renamer has added entries to PHI nodes for all reachable
 		// code.  Unfortunately, there may be unreachable blocks which the renamer
-		// hasn't traversed.  IfStmt this is the case, the PHI nodes may not
+		// hasn't traversed.  If this is the case, the PHI nodes may not
 		// have incoming VALUES for all predecessors.  Loop over all PHI nodes we have
 		// created, inserting undef VALUES if they are missing any incoming VALUES.
 		//
@@ -636,7 +637,7 @@ public final class PromoteMemToReg
 	}
 
 	/**
-	 * Many allocas are only used within a single basic block.  IfStmt this is the
+	 * Many allocas are only used within a single basic block.  If this is the
 	 * case, avoid traversing the CFG and inserting a lot of potentially useless
 	 * PHI nodes by just performing a single linear pass over the basic block
 	 * using the AllocaInst.
@@ -832,8 +833,8 @@ public final class PromoteMemToReg
 		LinkedList<BasicBlock> liveBlockWorkList = new LinkedList<>();
 		liveBlockWorkList.addAll(info.usingBlocks);
 
-		// IfStmt any of the using blocks is also a definition block, check to see if the
-		// definition occurs before or after the use.  IfStmt it happens before the use,
+		// If any of the using blocks is also a definition block, check to see if the
+		// definition occurs before or after the use.  If it happens before the use,
 		// the value isn't really live-in.
 		for (int idx = 0; idx < liveBlockWorkList.size(); ++idx)
 		{
@@ -900,7 +901,7 @@ public final class PromoteMemToReg
 	 * <p>
 	 * When there is only a single store, we can use the domtree to trivially
 	 * replace all of the dominated loads with the stored value. Do so, and return
-	 * true if this has successfully promoted the alloca entirely. IfStmt this returns
+	 * true if this has successfully promoted the alloca entirely. If this returns
 	 * false there were some loads which were not dominated by the single store
 	 * and thus must be phi-ed with undef. We fall back to the standard alloca
 	 * </p>

@@ -36,9 +36,9 @@ public enum Operator
 	FDiv("fdiv", UDiv.index + 1, ASSOCIATIVE),
 
     // mod operation
-    URem("URem", FDiv.index + 1, ASSOCIATIVE),
-    SRem("SRem", URem.index + 1, ASSOCIATIVE),
-    FRem("FRem", SRem.index + 1, ASSOCIATIVE),
+    URem("urem", FDiv.index + 1, ASSOCIATIVE),
+    SRem("srem", URem.index + 1, ASSOCIATIVE),
+    FRem("frem", SRem.index + 1, ASSOCIATIVE),
 
 	// bit-operation
 	And("and", SRem.index + 1, ASSOCIATIVE | COMMUTATIVE),
@@ -48,8 +48,8 @@ public enum Operator
 	Xor("xor", Or.index + 1, ASSOCIATIVE | COMMUTATIVE),
 
     // comparison operation
-    ICmp("ICmp", Xor.index + 1, 0),
-	FCmp("FCmp",ICmp.index + 1, 0),
+    ICmp("icmp", Xor.index + 1, 0),
+	FCmp("fcmp",ICmp.index + 1, 0),
 
 	// shift operation
 	Shl("shl", FCmp.index + 1, 0),
@@ -60,27 +60,27 @@ public enum Operator
 	//truncate integers.
 	Trunc("trunc", AShr.index + 1, 0),
 	// zero extend integers.
-	ZExt("ZExt", Trunc.index + 1, 0),
+	ZExt("zext", Trunc.index + 1, 0),
 	// Sign extend integers.
-	SExt("SExt", ZExt.index + 1, 0),
+	SExt("sext", ZExt.index + 1, 0),
 	// floatint-pint to unsigned integer.
-	FPToUI("FPToUI", SExt.index + 1, 0),
+	FPToUI("fptoui", SExt.index + 1, 0),
 	// floating point to signed integer.
-	FPToSI("FPToSI", FPToUI.index + 1, 0),
+	FPToSI("fptosi", FPToUI.index + 1, 0),
 	// unsigned integer to floating-point.
-	UIToFP("UIToFP", FPToSI.index + 1, 0),
+	UIToFP("uitofp", FPToSI.index + 1, 0),
 	// signed integer to floating-point.
-	SIToFP("SIToFP", UIToFP.index + 1, 0),
+	SIToFP("sitofp", UIToFP.index + 1, 0),
 	// floating point truncate.
 	FPTrunc("f2l", SIToFP.index + 1, 0),
 	// float point extend.
-	FPExt("FPExt", FPTrunc.index + 1, 0),
+	FPExt("fpext", FPTrunc.index + 1, 0),
 	// pointer to integer.
-	PtrToInt("PtrToInt", FPExt.index + 1, 0),
+	PtrToInt("ptrtoint", FPExt.index + 1, 0),
 	// Integer to pointer.
-	IntToPtr("IntToPtr", PtrToInt.index + 1, 0),
+	IntToPtr("intoptr", PtrToInt.index + 1, 0),
 	// type cast.
-	BitCast("BitCast", IntToPtr.index + 1, 0),
+	BitCast("bitcast", IntToPtr.index + 1, 0),
 
 	// memory operation
 	Alloca("alloca", BitCast.index + 1, 0),
@@ -92,7 +92,7 @@ public enum Operator
 	// other operation
 	Phi("phi", Load.index + 1, 0),
 	Call("call", Phi.index + 1, 0),
-	GetElementPtr("GetElementPtr", Call.index + 1, 0);
+	GetElementPtr("getelementptr", Call.index + 1, 0);
 
 	public final String opName;
 	public final int index;
