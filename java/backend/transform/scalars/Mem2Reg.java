@@ -29,6 +29,8 @@ import backend.value.Instruction.AllocaInst;
 
 import java.util.ArrayList;
 
+import static backend.codegen.PrintModulePass.createPrintModulePass;
+
 /**
  * This pass is a simple pass wrapper around the PromoteMemToReg function call
  * exposed by the Utils library.
@@ -105,6 +107,14 @@ public final class Mem2Reg implements FunctionPass
             PromoteMemToReg.promoteMemToReg(allocas, dt, df);
             numPromoted -= allocas.size();
             changed = true;
+        }
+
+        // For Debug
+        //if (Util.DEBUG)
+        {
+            System.err.println(
+                    "# *** IR dump After Promote memory to register ***:");
+            createPrintModulePass(System.err).runOnModule(f.getParent());
         }
         return changed;
     }

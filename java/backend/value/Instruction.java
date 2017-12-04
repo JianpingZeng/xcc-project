@@ -2738,7 +2738,7 @@ public abstract class Instruction extends User
                 Instruction insertBefore)
         {
             super(ty, Operator.Phi, name, insertBefore);
-            reserve(numReservedValues);
+            reserve(numReservedValues*2);
         }
 
         public PhiNode(Type ty,
@@ -2755,9 +2755,10 @@ public abstract class Instruction extends User
                 BasicBlock insertAtEnd)
         {
             super(type, Operator.Phi, name, insertAtEnd);
-            reserve(numReservedValue);
+            reserve(numReservedValue*2);
         }
 
+        private int index;
         /**
          * Appends a pair that consists of both value and block into argument list.
          *
@@ -2768,10 +2769,12 @@ public abstract class Instruction extends User
         {
             assert value != null : "Phi node got a null value";
             assert block != null : "Phi node got a null basic block";
-            assert value.getType() == getType() : "All of operands of Phi must be same jlang.type.";
+            assert value.getType() == getType() : "All of operands of Phi must be same type.";
+            assert index < getNumOfOperands();
 
-            setIncomingValue(getNumberIncomingValues() - 1, value);
-            setIncomingBlock(getNumberIncomingValues() - 1, block);
+            operandList.set(index, new Use(value, this));
+            operandList.set(index+1, new Use(block, this));
+            index += 2;
         }
 
         /**
@@ -2809,22 +2812,22 @@ public abstract class Instruction extends User
          */
         public BasicBlock getIncomingBlock(int index)
         {
-            assert index >= 0 && index
-                    < numOperands : "The index is beyond out the num of list";
+            assert index >= 0 && index < getNumberIncomingValues()
+                    : "The index is beyond out the num of list";
             return (BasicBlock) operand(index << 1 + 1);
         }
 
         public void setIncomingBlock(int index, BasicBlock bb)
         {
-            assert index >= 0 && index
-                    < numOperands : "The index is beyond out the num of list";
+            assert index >= 0 && index < getNumberIncomingValues()
+                    : "The index is beyond out the num of list";
             setOperand((index << 1) + 1, bb, this);
         }
 
         public Value removeIncomingValue(int index, boolean deletePhiIfEmpty)
         {
-            assert index >= 0 && index
-                    < numOperands : "The index is beyond out the num of list";
+            assert index >= 0 && index < getNumberIncomingValues()
+                    : "The index is beyond out the num of list";
 
             Value old = operand(index << 1);
             operandList.remove(index);
@@ -2838,6 +2841,7 @@ public abstract class Instruction extends User
             }
             return old;
         }
+
         public Value removeIncomingValue(BasicBlock bb)
         {
             return removeIncomingValue(bb, true);

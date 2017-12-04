@@ -62,6 +62,18 @@ public class GlobalVariable extends GlobalValue
     @Override
     public boolean isNullValue(){return false;}
 
+    @Override
+    public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
+    {
+        assert getNumOfOperands() == 1:
+                "Attempt to replace uses of Constants on a GVar with no initializer";
+        assert operand(0).equals(from):
+                "Attempt to replace wrong constant initializer in GVar";
+        assert to instanceof Constant:
+                "Attempt to replace GVar initializer with non-constant";
+        setOperand(0, (Constant)to);
+    }
+
     /**
      * Return true if the primary definition of this global value is
      * outside of the current translation unit.

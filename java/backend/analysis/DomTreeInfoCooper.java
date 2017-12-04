@@ -244,7 +244,8 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
     @Override
     public BasicBlock getIDom(BasicBlock block)
     {
-        return reversePostOrder.get(doms[bb2Number.get(block)]);
+        int len = reversePostOrder.size()-1;
+        return reversePostOrder.get(len-doms[bb2Number.get(block)]);
     }
 
     @Override

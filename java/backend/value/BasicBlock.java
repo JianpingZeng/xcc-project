@@ -598,13 +598,27 @@ public final class BasicBlock extends Value implements Iterable<Instruction>
 
 	public int getNumPredecessors()
 	{
-		return usesList.size();
+		if (usesList == null || usesList.isEmpty())
+			return 0;
+
+		return Math.toIntExact(usesList.stream()
+				.filter(u -> u.getUser() instanceof TerminatorInst).count());
 	}
 
 	public BasicBlock predAt(int index)
 	{
 		assert index >= 0 && index < getNumPredecessors();
-		return ((TerminatorInst)useAt(index).getUser()).getParent();
+		for (Use u : usesList)
+		{
+			if (u.getUser() instanceof TerminatorInst)
+			{
+				if (index == 0)
+					return ((TerminatorInst)u.getUser()).getParent();
+				--index;
+			}
+		}
+		assert false:"Should not reaching here!";
+		return null;
 	}
 
 	/**

@@ -34,7 +34,7 @@ import tools.Util;
 
 import java.util.*;
 
-import static backend.codegen.PrintModulePass.createPrintModulePass;
+import static backend.support.DepthFirstOrder.dfTraversal;
 
 /**
  * This file promotes memory references to be register references.  It promotes
@@ -342,8 +342,12 @@ public final class PromoteMemToReg
 			if (bbNumbers.isEmpty())
 			{
 				int id = 0;
-				for (BasicBlock BB : f)
-					bbNumbers.put(BB, id++);
+				// with reverse post-order on function
+                ArrayList<BasicBlock> reversePost = dfTraversal(f.getEntryBlock());
+                for (BasicBlock bb : reversePost)
+                {
+                    bbNumbers.put(bb, id++);
+                }
 			}
 
             // If we have an AST to keep updated, remember some pointer value that is
@@ -359,11 +363,6 @@ public final class PromoteMemToReg
 			// some work by avoiding insertion of dead phi nodes.
 			determineInsertionPoint(ai, allocaNum, info);
 		}// end of traveling alloca instruction list.
-
-
-		// For Debug
-		System.err.println("# *** After Eliminate trivial allocas ***:");
-		createPrintModulePass(System.err).runOnModule(f.getParent());
 
 		// all of allocas must has been handled
 		// just return.
@@ -751,25 +750,18 @@ public final class PromoteMemToReg
             HashSet<BasicBlock> dfs = df.find(bb);
             if (dfs == null)
                 continue;
-            for (Iterator<BasicBlock> itr = dfs.iterator(); itr.hasNext();)
-            {
-                BasicBlock b = itr.next();
-                if (!liveInBlocks.contains(b))
-                    continue;
 
-                dfBlocks.add(Pair.get(bbNumbers.get(b), b));
-            }
+            // Avoiding insert dead phi node if the alloca isn't live in
+            // specified bb.
+            dfs.removeIf(b->!liveInBlocks.contains(b));
 
             OutParamWrapper<Integer> res = new OutParamWrapper<>(currentVersion);;
-
-            for (int i = 0, e = dfBlocks.size(); i < e; i++)
+            for (BasicBlock b : dfs)
             {
-                BasicBlock b = dfBlocks.get(i).second;
                 res.set(currentVersion);
-                if (queuePhiNode(bb, allocaNum, res, insertedPHINodes))
+                if (queuePhiNode(b, allocaNum, res, insertedPHINodes))
                     info.definingBlocks.add(b);
             }
-            defBlocks.clear();
         }
 	}
 
@@ -790,7 +782,7 @@ public final class PromoteMemToReg
 	    Pair<BasicBlock, Integer> pair = Pair.get(bb, allocaNo);
 
         // If the BB already has a phi node added for the i'th alloca then we're done!
-	    if (!newPhiNodes.containsKey(pair))
+	    if (newPhiNodes.containsKey(pair))
 	        return false;
 
 		PhiNode phiNode = newPhiNodes.get(pair);
@@ -800,14 +792,16 @@ public final class PromoteMemToReg
 		if (phiNode != null)
 			return false;
 
-		AllocaInst AI = allocas.get(allocaNo);
+		AllocaInst ai = allocas.get(allocaNo);
 		// create a phiNode node and add the phiNode-node into the basic block
-		phiNode = new PhiNode(AI.getType(),
+		phiNode = new PhiNode(allocas.get(allocaNo).getAllocatedType(),
 				bb.getNumPredecessors(),
-				AI.getName() + "." + version.get());
-		version.set(version.get()+1);
+				allocas.get(allocaNo).getName() + "." + version.get(),
+                bb.getFirstInst());
+		newPhiNodes.put(pair, phiNode);
 
-		bb.insertAfterFirst(phiNode);
+		version.set(version.get()+1);
+		//bb.insertBefore(phiNode, bb.getFirstNonPhi());
 		++numberPhiInsert;
 
 		phiToAllocaMap.put(phiNode, allocaNo);

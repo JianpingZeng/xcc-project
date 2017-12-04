@@ -113,6 +113,78 @@ public class ConstantArray extends Constant
 		return super.operand(idx);
 	}
 
+	@Override
+	public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
+	{
+		assert to instanceof Constant :"Can't make Constant refer to non-constant";
+
+		Constant toV = (Constant)to;
+
+		ArrayList<Constant> values = new ArrayList<>();
+		boolean isAllZeros = false;
+		int numUpdated = 0;
+
+		if (!toV.isNullValue())
+		{
+			for (Use use : operandList)
+			{
+				Constant val = (Constant)use.getValue();
+				if(val.equals(from))
+				{
+					val = toV;
+					++numUpdated;
+				}
+				values.add(val);
+			}
+		}
+		else
+		{
+			isAllZeros = true;
+			for (Use use : operandList)
+			{
+				Constant val = (Constant)use.getValue();
+				if(val.equals(from))
+				{
+					val = toV;
+					++numUpdated;
+				}
+				values.add(val);
+				if (isAllZeros) isAllZeros = val.isNullValue();
+			}
+		}
+		Constant replacement;
+		if (isAllZeros)
+			replacement = ConstantAggregateZero.get(getType());
+		else
+		{
+			ConstantArrayKey key = new ConstantArrayKey(getType(), values);
+			if (UniqueConstantValueImpl.ArrayConstants.containsKey(key))
+			{
+				replacement = getUniqueImpl().getOrCreate(key);
+			}
+			else
+			{
+				for (int i = 0, e = getNumOfOperands(); i < e; i++)
+				{
+					if (operand(i).equals(from))
+						setOperand(i, toV);
+				}
+				ConstantArray ca = new ConstantArray(getType(), values);
+				UniqueConstantValueImpl.ArrayConstants.put(key, ca);
+				return;
+			}
+		}
+		assert !replacement.equals(this):"I didn't contain from!";
+		replaceAllUsesWith(replacement);
+		destroyConstant();
+	}
+
+	@Override
+	public void destroyConstant()
+	{
+		getUniqueImpl().remove(this);
+	}
+
 	public void setOperand(int idx, Constant c)
 	{
 		super.setOperand(idx, c, this);

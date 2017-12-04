@@ -45,7 +45,7 @@ public class ConstantPointerNull extends Constant
 
     public static void removeConstant(Type ty)
     {
-        getUniqueImpl().removeKey(ty);
+        getUniqueImpl().remove(ty);
     }
 
     @Override

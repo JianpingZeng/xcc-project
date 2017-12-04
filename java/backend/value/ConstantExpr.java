@@ -452,4 +452,70 @@ public abstract class ConstantExpr extends Constant
 
         return result;
     }
+
+    @Override
+    public void replaceUsesOfWithOnConstant(Value from, Value to, Use u)
+    {
+        assert to instanceof Constant:"Can't make constant refer to non-constant!";
+        Constant toV = (Constant)to;
+
+        Constant replacement = null;
+        if (getOpcode() == Operator.GetElementPtr)
+        {
+            ArrayList<Constant> indices = new ArrayList<>();
+            Constant pointer = operand(0);
+            if (pointer.equals(from)) pointer = toV;
+
+            for (int i = 1, e = getNumOfOperands(); i < e; i++)
+            {
+                Constant val = operand(i);
+                if (val.equals(from)) val = toV;
+                indices.add(val);
+            }
+            replacement = ConstantExpr.getGetElementPtr(pointer, indices);
+        }
+        else if (isCast())
+        {
+            assert operand(0).equals(from):"Cast only has one use!";
+            replacement = ConstantExpr.getCast(getOpcode(), toV, getType());
+        }
+        else if (isCompare())
+        {
+            Constant c1 = operand(0);
+            Constant c2 = operand(1);
+            if (c1.equals(from)) c1 = toV;
+            if (c2.equals(from)) c2 = toV;
+            if (getOpcode() == Operator.ICmp)
+                replacement = ConstantExpr.getICmp(getPredicate(), c1, c2);
+            else
+            {
+                assert getOpcode() == Operator.FCmp;
+                replacement = ConstantExpr.getFCmp(getPredicate(), c1, c2);
+            }
+        }
+        else if (getNumOfOperands() == 2)
+        {
+            Constant c1 = operand(0);
+            Constant c2 = operand(1);
+            if (c1.equals(from)) c1 = toV;
+            if (c2.equals(from)) c2 = toV;
+
+            replacement = ConstantExpr.get(getOpcode(), c1, c2);
+        }
+        else
+        {
+            Util.shouldNotReachHere("Unknown ConstantExpr type!");
+            return;
+        }
+        assert replacement != this:"Didn't contain from!";
+        replaceAllUsesWith(replacement);
+
+        // delete constant.
+        destroyConstant();
+    }
+
+    public void destroyConstant()
+    {
+        getUniqueImpl().remove(this);
+    }
 }
