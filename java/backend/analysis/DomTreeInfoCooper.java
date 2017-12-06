@@ -21,6 +21,7 @@ import backend.utils.PredIterator;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.Util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,8 +73,6 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
         reversePostOrder = dfTraversal(entryBB);
         doms = new int[reversePostOrder.size()];
         bb2Number = new TObjectIntHashMap<>();
-
-        rootNodes = new DomTreeNodeBase<>(entryBB, null);
         bb2DomTreeNode = new HashMap<>();
 
         int e = reversePostOrder.size();
@@ -127,7 +126,7 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
         createDomTree();
 
         // For debug
-        dump();
+        if (Util.DEBUG) dump();
     }
 
     private int interset(int finger1, int finger2)
@@ -144,17 +143,19 @@ public final class DomTreeInfoCooper implements IDomTreeInfo
 
     private void createDomTree()
     {
-        for (int i = 0; i < doms.length; i++)
+        int e = doms.length;
+        for (int i = 0; i < e; i++)
         {
             int idomIdx = doms[i];
             // skip entry bb
             if (i == idomIdx) continue;
 
-            BasicBlock idomBB = reversePostOrder.get(idomIdx);
+            BasicBlock idomBB = reversePostOrder.get(e-1-idomIdx);
 
-            bb2DomTreeNode.get(reversePostOrder.get(i))
+            bb2DomTreeNode.get(reversePostOrder.get(e-1-i))
                     .setIDom(bb2DomTreeNode.get(idomBB));
         }
+        rootNodes = bb2DomTreeNode.get(reversePostOrder.get(0));
     }
 
     @Override

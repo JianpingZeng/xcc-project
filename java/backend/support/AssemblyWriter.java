@@ -292,7 +292,7 @@ public class AssemblyWriter
         }
     }
 
-    private static SlotTracker createSlotTracker(Value val)
+    public static SlotTracker createSlotTracker(Value val)
     {
         if (val instanceof Argument)
         {

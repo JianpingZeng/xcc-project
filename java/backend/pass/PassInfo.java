@@ -1,6 +1,7 @@
 package backend.pass;
 
 import backend.support.Printable;
+import backend.value.Module;
 import jlang.type.FoldingSetNodeID;
 
 import java.io.PrintStream;
@@ -102,7 +103,7 @@ public final class PassInfo implements Printable
     }
 
     @Override
-    public void print(PrintStream os)
+    public void print(PrintStream os, Module m)
     {
         os.printf("Pass: %s, %s\n", getPassName(), getPassArgument());
     }

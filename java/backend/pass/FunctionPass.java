@@ -7,6 +7,8 @@ import backend.passManaging.PassManagerType;
 import backend.value.Function;
 import backend.value.Module;
 
+import java.io.PrintStream;
+
 /**
  * This class is used to implement most global
  * optimizations.  Optimizations should subclass this class if they meet the
@@ -20,49 +22,50 @@ import backend.value.Module;
  */
 public interface FunctionPass extends Pass
 {
-	//protected AnalysisResolver resolver = new FunctionPassManager();
-	//ArrayList<Pair<PassInfo, Pass>> analysisImpls
-	//		= new ArrayList<>();
-	/**
-	 * To run this pass on a module, we simply call runOnFunction once for
-	 * each module.
-	 * @param f
-	 * @return
-	 */
-	boolean runOnFunction(Function f);
+    //protected AnalysisResolver resolver = new FunctionPassManager();
+    //ArrayList<Pair<PassInfo, Pass>> analysisImpls
+    //		= new ArrayList<>();
 
-	/**
-	 * Do some initialization jobs in pre-function pass.
-	 * This method must be overridden by concrete subclasses.
-	 * @param m
-	 * @return
-	 */
-	default boolean doInitialization(Module m)
-	{
-		return false;
-	}
+    /**
+     * To run this pass on a module, we simply call runOnFunction once for
+     * each module.
+     *
+     * @param f
+     * @return
+     */
+    boolean runOnFunction(Function f);
 
-    @Override
-    default PassManagerType getPotentialPassManagerType()
+    /**
+     * Do some initialization jobs in pre-function pass.
+     * This method must be overridden by concrete subclasses.
+     *
+     * @param m
+     * @return
+     */
+    default boolean doInitialization(Module m)
+    {
+        return false;
+    }
+
+    @Override default PassManagerType getPotentialPassManagerType()
     {
         return PassManagerType.PMT_FunctionPassManager;
     }
 
     /**
-	 * Do some initialization jobs in pre-function pass.
-	 * This method must be overridden by concrete subclasses.
-	 * @param m
-	 * @return
-	 */
-	default boolean doFinalization(Module m)
-	{
-		return false;
-	}
+     * Do some initialization jobs in pre-function pass.
+     * This method must be overridden by concrete subclasses.
+     *
+     * @param m
+     * @return
+     */
+    default boolean doFinalization(Module m)
+    {
+        return false;
+    }
 
-	@Override
-	default void assignPassManager(PMStack pms,
-			PassManagerType pmt)
-	{
+    @Override default void assignPassManager(PMStack pms, PassManagerType pmt)
+    {
         while (!pms.isEmpty())
         {
             if (pms.peek().getPassManagerType().compareTo(PassManagerType.PMT_FunctionPassManager) > 0)
@@ -70,15 +73,15 @@ public interface FunctionPass extends Pass
                 pms.pop();
             }
             else
-               break;
+                break;
         }
-        assert !pms.isEmpty():"Errorous status";
+        assert !pms.isEmpty() : "Errorous status";
         FPPassManager fpm;
         if (!(pms.peek() instanceof FPPassManager))
         {
             PMDataManager pmd = pms.peek();
             // Step#1 Create new Function Pass Manager
-            fpm = new FPPassManager(pmd.getDepth()+1);
+            fpm = new FPPassManager(pmd.getDepth() + 1);
             fpm.populateInheritedAnalysis(pms);
 
             // Step#2 Assign manager to manage this new manager.
@@ -86,9 +89,9 @@ public interface FunctionPass extends Pass
             // Step#3 Push new manager into stack.
             pms.push(fpm);
         }
-        fpm = (FPPassManager)pms.peek();
+        fpm = (FPPassManager) pms.peek();
         fpm.add(this);
-	}
+    }
 
     @Override
     default void assignPassManager(PMStack pms)
@@ -100,5 +103,11 @@ public interface FunctionPass extends Pass
     default void getAnalysisUsage(AnalysisUsage au)
     {
         // By default, no analysis results are used. all are invalidated.
+    }
+
+    @Override
+    default void print(PrintStream os, Module m)
+    {
+        os.printf("Pass::print not implemented for pass: '%s'%n", getPassName());
     }
 }
