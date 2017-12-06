@@ -1,5 +1,7 @@
 package backend.support;
 
+import backend.value.Module;
+
 import java.io.PrintStream;
 
 /**
@@ -8,9 +10,10 @@ import java.io.PrintStream;
  */
 public interface Printable
 {
-	void print(PrintStream os);
+	void print(PrintStream os, Module m);
+
 	default void dump()
 	{
-		print(System.err);
+		print(System.err, null);
 	}
 }

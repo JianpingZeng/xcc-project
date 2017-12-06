@@ -4,6 +4,7 @@ import backend.passManaging.PMDataManager;
 import backend.passManaging.PMStack;
 import backend.passManaging.PassManagerType;
 import backend.support.Printable;
+import backend.value.Module;
 import tools.Util;
 
 import java.io.PrintStream;
@@ -91,7 +92,7 @@ public interface Pass extends Printable
 	default void preparePassManager(PMStack activeStack)
     {}
 
-    default void print(PrintStream os)
+    default void print(PrintStream os, Module m)
     {
     	os.printf("[Pass: %s]\n", getPassName());
     }

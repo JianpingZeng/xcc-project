@@ -19,6 +19,7 @@ package backend.pass;
 
 import backend.analysis.*;
 import backend.codegen.*;
+import backend.support.DomTreePrinter;
 import backend.support.ErrorHandling;
 import backend.target.TargetData;
 import backend.transform.ipo.RaiseAllocations;
@@ -45,6 +46,7 @@ public final class PassRegisterationUtility
         new RegisterPass( "Machine Dominator Tree Construction", "machinedomtree", MachineDomTreeInfo.class, true);
         new RegisterPass( "Machine Natural Loop Construction", "machine-loops", MachineLoopInfo.class, true);
         new RegisterPass( "Scalar Evolution Analysis", "scalar-evolution", ScalarEvolution.class, false, true);
+        new RegisterPass("Print out Dom tree into dot file", "dot-domtree", DomTreePrinter.class, false, true);
 
         // IPO transformation
         new RegisterPass( "Raise allocations from calls to instructions", "raiseallocs", RaiseAllocations.class);

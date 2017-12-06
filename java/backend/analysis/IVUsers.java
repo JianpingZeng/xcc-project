@@ -20,11 +20,8 @@ import backend.pass.AnalysisResolver;
 import backend.pass.LPPassManager;
 import backend.pass.LoopPass;
 import backend.pass.Pass;
-import backend.value.BasicBlock;
-import backend.value.Instruction;
+import backend.value.*;
 import backend.value.Instruction.PhiNode;
-import backend.value.Loop;
-import backend.value.Use;
 import tools.OutParamWrapper;
 import tools.Util;
 
@@ -405,7 +402,7 @@ public final class IVUsers implements LoopPass
 	}
 
 	@Override
-	public void print(PrintStream os)
+	public void print(PrintStream os, Module m)
 	{
 		os.print("IV Users for loop: ");
 		os.print(loop.getHeaderBlock().getName() + " ");

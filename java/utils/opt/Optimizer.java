@@ -151,6 +151,8 @@ public final class Optimizer
                 pm.add(createPrintModulePass(System.err));
             }
 
+            boolean allAnalysis = true;
+
             // Create a new optimization pass for each one specified on the command line
             for (int i = 0, e = AvailablePasses.size(); i < e; i++)
             {
@@ -162,6 +164,8 @@ public final class Optimizer
                 }
 
                 PassInfo pi = AvailablePasses.get(i);
+                if (!pi.isAnalysis()) allAnalysis = false;
+
                 Pass p = null;
                 if (pi.getKlass() != null)
                 {
@@ -188,9 +192,11 @@ public final class Optimizer
                 StandardCompileOpts.value = false;
             }
 
-            // After analysis and transform passes runed output transformed LLVM IR to
-            // output file
-            createOutputPass(pm);
+            // After transform passes runed output transformed LLVM IR to
+            // output file (Only when all runed pass are transform pass)
+            if (!allAnalysis)
+                createOutputPass(pm);
+
             pm.run(m);
 
             // close the file output stream if destination is file but no stdou

@@ -158,7 +158,9 @@ public class TargetData implements ImmutablePass
 	public TargetData(Module m)
 	{
 		alignments = new ArrayList<>();
-		init(m.getDataLayout());
+		String dataLayout = m.getDataLayout();
+		assert dataLayout!=null && !dataLayout.isEmpty();
+		init(dataLayout);
 	}
 
 	/**
