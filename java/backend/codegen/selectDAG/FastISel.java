@@ -21,10 +21,13 @@ import backend.target.*;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
 import backend.value.Instruction.BranchInst;
+import backend.value.Instruction.PhiNode;
+import backend.value.Instruction.TerminatorInst;
 import tools.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
 import static tools.APFloat.RoundingMode.rmTowardZero;
@@ -63,6 +66,8 @@ public abstract class FastISel extends MachineFunctionPass
      * basic block.
      */
     protected FunctionLoweringInfo funcInfo;
+
+    private ArrayList<Pair<MachineInstr, Integer>> phiNodeToUpdate;
 
     public void startNewBlock(MachineBasicBlock mbb)
     {
@@ -153,9 +158,8 @@ public abstract class FastISel extends MachineFunctionPass
             }
 
             case Phi:
-                // PHI nodes are already emitted.
+                // Phi instruction already emit.
                 return true;
-
             case Alloca:
                 // FunctionLowering has the static-sized case covered.
                 if (staticAllocMap.containsKey(u))
@@ -320,6 +324,7 @@ public abstract class FastISel extends MachineFunctionPass
     {
         this.tm = tm;
         this.optLvel = optLevel;
+        phiNodeToUpdate = new ArrayList<>();
     }
 
     @Override
@@ -329,7 +334,7 @@ public abstract class FastISel extends MachineFunctionPass
         this.fn = mf.getFunction();
         tli = tm.getTargetLowering();
 
-        // Collects information about global to whole Functio.
+        // Collects information about global to whole Function.
         funcInfo = new FunctionLoweringInfo(tli);
         funcInfo.set(fn, mf);
 
@@ -394,6 +399,17 @@ public abstract class FastISel extends MachineFunctionPass
                     Util.Debug(inst.toString());
                 }
 
+                if (inst instanceof TerminatorInst)
+                {
+                    // create machine phi node for phinode in successor
+                    if(!handlePhiNodeInSuccessorBlocks(llvmBB))
+                    {
+                        System.err.println("FastISel miss: ");
+                        inst.dump();
+                        break;
+                    }
+                }
+
                 // First try normal tablegen-generated "fast" selection.
                 if (selectInstruction(inst))
                     continue;
@@ -404,7 +420,7 @@ public abstract class FastISel extends MachineFunctionPass
 
                 // Otherwise, give up on FastISel for the rest of the block.
                 // For now, be a little lenient about non-branch terminators.
-                if (inst instanceof Instruction.TerminatorInst)
+                if (inst instanceof TerminatorInst)
                 {
                     // TODO: 2017/11/17
                     assert false:"TerminatorInst waited to be finished!";
@@ -418,6 +434,8 @@ public abstract class FastISel extends MachineFunctionPass
                 assert false:"Must run SelectionDAG instruction selection on "
                         + "the remainder of the block not handled by FastISel";
             }
+
+            // add operand for machine phinode
             finishBasicBlock();
         }
     }
@@ -431,7 +449,80 @@ public abstract class FastISel extends MachineFunctionPass
         {
             System.err.println("Target-post-processed machine code:\n");
             mbb.dump();
+            System.err.printf("Total amount of phi nodes to update: %d%n",
+                    phiNodeToUpdate.size());
+            int i = 0;
+            for (Pair<MachineInstr, Integer> pair : phiNodeToUpdate)
+            {
+                System.err.printf("Node %d : (0x%x, %d)%n", i++, pair.first.hashCode(),
+                        pair.second);
+            }
         }
+
+        // Update PHI Nodes
+        for (int i = 0, e = phiNodeToUpdate.size(); i < e; i++)
+        {
+            MachineInstr mi = phiNodeToUpdate.get(i).first;
+            assert mi.getOpcode() == TargetInstrInfo.PHI:
+                    "This is not a machine phi node that we are updating!";
+            mi.addOperand(MachineOperand.createReg(phiNodeToUpdate.get(i).second, false, false));
+            mi.addOperand(MachineOperand.createMBB(mbb, 0));
+        }
+
+        phiNodeToUpdate.clear();
+    }
+
+    private boolean handlePhiNodeInSuccessorBlocks(BasicBlock bb)
+    {
+        HashSet<MachineBasicBlock> succHandled = new HashSet<>();
+        // Check successor node's PhiNode that expect a constant to be available
+        // from this block.
+        for (int succ = 0, e = bb.getNumSuccessors(); succ < e; succ++)
+        {
+            BasicBlock succBB = bb.suxAt(succ);
+            if (succBB == null || succBB.isEmpty()) continue;
+            if (!(succBB.getFirstInst() instanceof PhiNode))
+                continue;
+
+            MachineBasicBlock succMBB = funcInfo.mbbmap.get(succBB);
+
+            // If the terminator has multiple identical successors (common for
+            // switch), only handle each successor once.
+            if (!succHandled.add(succMBB))
+                continue;
+
+            int mbbIdx = 0;
+            for (int i = 0, sz = succBB.size(); i < sz &&
+                    succBB.getInstAt(i) instanceof PhiNode; i++)
+            {
+                PhiNode pn = (PhiNode)succBB.getInstAt(i);
+                // don't handle phinode has no use
+                if (pn.isUseEmpty()) continue;
+
+                EVT vt = tli.getValueType(pn.getType(), true);
+                if (vt.equals(new EVT(MVT.Other)) || !tli.isTypeLegal(vt))
+                {
+                    // promote MVT.i1
+                    if (vt.getSimpleVT().simpleVT == MVT.i1)
+                        vt = tli.getTypeForTransformTo(vt);
+                    else
+                    {
+                        // erroreous type
+                        return false;
+                    }
+                }
+
+                Value phiOp = pn.getIncomingValueForBlock(bb);
+                int reg = getRegForValue(phiOp);
+                if (reg <= 0)
+                {
+                    // erroreous type
+                    return false;
+                }
+                phiNodeToUpdate.add(Pair.get(succMBB.getInstAt(mbbIdx++), reg));
+            }
+        }
+        return true;
     }
 
     /**

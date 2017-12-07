@@ -208,28 +208,23 @@ public class FunctionLoweringInfo
             mbbmap.put(bb, mbb);
             mf.addMBBNumbering(mbb);
 
-            // Create Machine PHI nodes for LLVM PHI nodes, lowering them as
-            // appropriate.
-            PhiNode pn;
-            for (Instruction inst : bb)
+            for (int i = 0, e = bb.size(); i < e && bb.getInstAt(i) instanceof PhiNode; i++)
             {
-                if (!(inst instanceof PhiNode) || inst.isUseEmpty())
-                    continue;
+                PhiNode pn = (PhiNode)bb.getInstAt(i);
 
-                pn = (PhiNode)inst;
-                assert valueMap.containsKey(pn)
-                        : "Phi node does not have an assigned virtual register";
-                int phiReg = valueMap.get(pn);
+                int phiReg = createRegForValue(pn);
+                assert phiReg > 0 :"failed to create vreg for phinode";
 
+                valueMap.put(pn, phiReg);
                 ArrayList<EVT> valueVTs = new ArrayList<>();
                 computeValueVTs(tli, pn.getType(), valueVTs);
                 for (EVT vt : valueVTs)
                 {
                     int numRegisters = tli.getNumRegisters(vt);
                     TargetInstrInfo tii = mf.getTarget().getInstrInfo();
-                    for (int i = 0; i < numRegisters; i++)
+                    for (int j = 0; j < numRegisters; j++)
                     {
-                        buildMI(mbb, tii.get(TargetInstrInfo.PHI), phiReg+i);
+                        buildMI(mbb, tii.get(TargetInstrInfo.PHI), phiReg + j);
                     }
                     phiReg += numRegisters;
                 }
