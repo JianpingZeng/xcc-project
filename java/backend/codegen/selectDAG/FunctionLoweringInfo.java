@@ -22,7 +22,6 @@ import backend.codegen.MachineFunction;
 import backend.codegen.MachineRegisterInfo;
 import backend.support.LLVMContext;
 import backend.target.TargetData;
-import backend.target.TargetInstrInfo;
 import backend.target.TargetLowering;
 import backend.type.ArrayType;
 import backend.type.StructType;
@@ -36,8 +35,6 @@ import tools.APInt;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-
-import static backend.codegen.MachineInstrBuilder.buildMI;
 
 /**
  * This contains information that is global to a function that is used when
@@ -207,28 +204,6 @@ public class FunctionLoweringInfo
             MachineBasicBlock mbb = mf.createMachineBasicBlock(bb);
             mbbmap.put(bb, mbb);
             mf.addMBBNumbering(mbb);
-
-            for (int i = 0, e = bb.size(); i < e && bb.getInstAt(i) instanceof PhiNode; i++)
-            {
-                PhiNode pn = (PhiNode)bb.getInstAt(i);
-
-                int phiReg = createRegForValue(pn);
-                assert phiReg > 0 :"failed to create vreg for phinode";
-
-                valueMap.put(pn, phiReg);
-                ArrayList<EVT> valueVTs = new ArrayList<>();
-                computeValueVTs(tli, pn.getType(), valueVTs);
-                for (EVT vt : valueVTs)
-                {
-                    int numRegisters = tli.getNumRegisters(vt);
-                    TargetInstrInfo tii = mf.getTarget().getInstrInfo();
-                    for (int j = 0; j < numRegisters; j++)
-                    {
-                        buildMI(mbb, tii.get(TargetInstrInfo.PHI), phiReg + j);
-                    }
-                    phiReg += numRegisters;
-                }
-            }
         }
     }
 
