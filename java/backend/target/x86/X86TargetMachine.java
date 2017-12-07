@@ -189,7 +189,7 @@ public class X86TargetMachine extends LLVMTargetMachine
 		// todo 2017-10-14 pm.add(createX86FloatingPointStackitifierPass());
 		return false;
 	}
-
+	
 	@Override
 	public boolean addAssemblyEmitter(PassManagerBase pm, CodeGenOpt level,
 			boolean verbose, OutputStream os)

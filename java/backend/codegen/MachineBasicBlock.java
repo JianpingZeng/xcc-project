@@ -125,13 +125,13 @@ public class MachineBasicBlock
 		successors.remove(idx);
 	}
 
-	private void addPredecessor(MachineBasicBlock pred)
+	public void addPredecessor(MachineBasicBlock pred)
 	{
 		assert pred!= null :"Can not add a null pred";
 		predecessors.add(pred);
 	}
 
-	private void removePredecessor(MachineBasicBlock pred)
+	public void removePredecessor(MachineBasicBlock pred)
 	{
 		assert predecessors.contains(pred)
 				: "The pred to be removed not contained in pred list";
@@ -165,13 +165,13 @@ public class MachineBasicBlock
 
 	public int getNumSuccessors() {return successors.size(); }
 
-	public MachineBasicBlock getPred(int idx)
+	public MachineBasicBlock predAt(int idx)
 	{
 		assert idx >= 0 && idx < getNumPredecessors();
 		return predecessors.get(idx);
 	}
 
-	public MachineBasicBlock getSucc(int idx)
+	public MachineBasicBlock suxAt(int idx)
 	{
 		assert idx>= 0 && idx < getNumSuccessors();
 		return successors.get(idx);
@@ -290,7 +290,7 @@ public class MachineBasicBlock
 	        return false;
 
 	    // The predecessor has to be immediately before this block.
-	    MachineBasicBlock pred = getPred(0);
+	    MachineBasicBlock pred = predAt(0);
 	    if (!pred.isLayoutSuccessor(this))
 	        return false;
 

@@ -34,6 +34,7 @@ import tools.Util;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.TreeMap;
 
 import static backend.support.AssemblyWriter.writeAsOperand;
 import static backend.target.TargetMachine.RelocModel.PIC_;
@@ -59,6 +60,10 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
     private X86Subtarget subtarget;
     private HashMap<Function, X86MachineFunctionInfo> functionInfoMap;
 
+    private TreeMap<String, String> gvStubs;
+    private TreeMap<String, String> hiddenGVStubs;
+    private TreeMap<String, String> fnStubs;
+
     public X86ATTAsmPrinter(OutputStream os, X86TargetMachine tm,
             TargetAsmInfo tai, boolean v)
     {
@@ -66,6 +71,9 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         mbbNumber = new TObjectIntHashMap<>();
         subtarget = tm.getSubtarget();
         functionInfoMap = new HashMap<>();
+        gvStubs = new TreeMap<>();
+        hiddenGVStubs = new TreeMap<>();
+        fnStubs = new TreeMap<>();
     }
 
     @Override
@@ -263,9 +271,148 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         printMemReference(mi, opNo);
     }
 
+    /**
+     * This method used to print an immediate value that ends up being encoded
+     * as a pc-relative value.
+     * @param mi
+     * @param opNo
+     */
     public void print_pcrel_imm(MachineInstr mi, int opNo)
     {
-        Util.shouldNotReachHere();
+        MachineOperand mo = mi.getOperand(opNo);
+        switch(mo.getType())
+        {
+            default:
+                Util.shouldNotReachHere("Unknown pcrel immediate operand");
+            case MO_Immediate:
+                os.print(mo.getImm());
+                return;
+            case MO_MachineBasicBlock:
+                printBasicBlockLabel(mo.getMBB(), false, false, false);
+                return;
+            case MO_GlobalAddress:
+            case MO_ExternalSymbol:
+                printSymbolOperand(mo);
+                return;
+        }
+    }
+
+    /**
+     * Print a raw symbol reference operand. THis handles jump tables, constant
+     * pools, global address and external symbols, all of which part to a label
+     * with various suffixes for relocation types etc.
+     * @param mo
+     */
+    private void printSymbolOperand(MachineOperand mo)
+    {
+        switch (mo.getType())
+        {
+            default:
+                Util.shouldNotReachHere("Unknown symbol type!");
+            case MO_JumpTableIndex:
+                os.printf("%sJIT%d_%d", tai.getPrivateGlobalPrefix(),
+                        getFunctionNumber(), mo.getIndex());
+                break;
+            case MO_ConstantPoolIndex:
+                os.printf("%sCPI%d_%d", tai.getPrivateGlobalPrefix(),
+                        getFunctionNumber(), mo.getIndex());
+                break;
+            case MO_GlobalAddress:
+                GlobalValue gv = mo.getGlobal();
+                StringBuilder suffix = new StringBuilder();
+                int ts = mo.getTargetFlags();
+                if (ts == X86II.MO_DARWIN_STUB) suffix.append("$stub");
+                else if (ts == X86II.MO_DARWIN_NONLAZY ||
+                        ts == X86II.MO_DARWIN_NONLAZY_PIC_BASE ||
+                        ts == X86II.MO_DARWIN_HIDDEN_NONLAZY ||
+                        ts == X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE)
+                {
+                    suffix.append("$non_lazy_ptr");
+                }
+
+                String name = mangler.getValueName(gv) + suffix.toString();
+                if (subtarget.isTargetCygMing())
+                    name = decorateName(name, gv);
+
+                // handle DLLImport linkage
+                if (ts ==X86II.MO_DLLIMPORT)
+                    name = "__imp_" + name;
+                if (ts == X86II.MO_DARWIN_NONLAZY || ts == X86II.MO_DARWIN_NONLAZY_PIC_BASE)
+                    gvStubs.put(name, mangler.getValueName(gv));
+                else if (ts == X86II.MO_DARWIN_HIDDEN_NONLAZY ||
+                        ts == X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE)
+                    hiddenGVStubs.put(name, mangler.getValueName(gv));
+                else if (ts == X86II.MO_DARWIN_STUB)
+                    fnStubs.put(name, mangler.getValueName(gv));
+
+                // If the name begins with a dollar-sign, enclose it in parens.  We do this
+                // to avoid having it look like an integer immediate to the assembler.
+                if (name.startsWith("$"))
+                    os.printf("(%s)", name);
+                else
+                    os.print(name);
+
+                printOffset(mo.getOffset());
+                break;
+            case MO_ExternalSymbol:
+                name = mangler.makeNameProperly(mo.getSymbolName());
+                if (mo.getTargetFlags() == X86II.MO_DARWIN_STUB)
+                {
+                    fnStubs.put(name + "$stub", name);
+                    name += "$stub";
+                }
+
+                if (name.startsWith("$"))
+                    os.printf("(%s)", name);
+                else
+                    os.print(name);
+                break;
+        }
+
+        switch (mo.getTargetFlags())
+        {
+            default:
+                Util.shouldNotReachHere("Unknown target flag on GlobalValue operand");
+            case X86II.MO_NO_FLAG:
+                break;
+            case X86II.MO_DARWIN_NONLAZY:
+            case X86II.MO_DARWIN_HIDDEN_NONLAZY:
+            case X86II.MO_DLLIMPORT:
+            case X86II.MO_DARWIN_STUB:
+                // there affect the name of symbol, not any suffix.
+                break;
+            case X86II.MO_GOT_ABSOLUTE_ADDRESS:
+                os.printf(" + [.-");
+                printPICBaseSymbol();
+                os.printf("]");
+                break;
+            case X86II.MO_PIC_BASE_OFFSET:
+            case X86II.MO_DARWIN_NONLAZY_PIC_BASE:
+            case X86II.MO_DARWIN_HIDDEN_NONLAZY_PIC_BASE:
+                os.print('-');
+                printPICBaseSymbol();
+                break;
+            case X86II.MO_TLSGD: os.print("@TLSGD"); break;
+            case X86II.MO_GOTTPOFF: os.print("@GOTTPOFF"); break;
+            case X86II.MO_INDNTPOFF: os.print("@INDNTPOFF"); break;
+            case X86II.MO_TPOFF: os.print("@TPOFF"); break;
+            case X86II.MO_NTPOFF: os.print("@NTPOFF"); break;
+            case X86II.MO_GOTPCREL: os.print("@GOTPCREL"); break;
+            case X86II.MO_GOT: os.print("@GOT"); break;
+            case X86II.MO_GOTOFF: os.print("@GOTOFF"); break;
+            case X86II.MO_PLT: os.print("@PLT"); break;
+        }
+    }
+
+    private void printPICBaseSymbol()
+    {
+        if (subtarget.isTargetDarwin())
+            os.printf("\"L%d$pb\"", getFunctionNumber());
+        else
+        {
+            assert subtarget.isTargetELF():"Don't know how to print PIC label!";
+            os.printf(".LXCC$%d.$piclabel", getFunctionNumber());
+        }
     }
 
     public void printi128mem(MachineInstr mi, int opNo)
@@ -1203,11 +1350,12 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
 
             os.print("(");
             if (baseReg.getReg() != 0)
-                printOperand(mi, baseRegOperand, modifier);
+                // Must add a offset(opNo) on baseRegOperand
+                printOperand(mi, baseRegOperand + opNo, modifier);
             if (indexReg.getReg() != 0)
             {
                 os.printf(",");
-                printOperand(mi, indexRegOperand, modifier);
+                printOperand(mi, indexRegOperand + opNo, modifier);
                 if (scaleVal != 1)
                     os.printf(",%d", scaleVal);
             }

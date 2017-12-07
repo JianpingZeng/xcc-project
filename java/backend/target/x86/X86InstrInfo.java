@@ -517,7 +517,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
 
     private static int x86AddrNumOperands = 5;
 
-    @Override public int isStoreToStackSlot(MachineInstr mi,
+    @Override
+    public int isStoreToStackSlot(MachineInstr mi,
             OutParamWrapper<Integer> frameIndex)
     {
         switch (mi.getOpcode())
@@ -1553,14 +1554,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         return Count;
     }
 
+    @Override
     public int insertBranch(MachineBasicBlock mbb, MachineBasicBlock tbb,
             MachineBasicBlock fbb, ArrayList<MachineOperand> cond)
     {
         // FIXME this should probably have a DebugLoc operand
         // DebugLoc dl = DebugLoc::getUnknownLoc();
         // Shouldn't be a fall through.
-        assert tbb
-                != null : "InsertBranch must not be told to insert a fallthrough";
+        assert tbb != null :
+                "insertBranch must not be told to insert a fallthrough";
         assert (cond.size() == 1 || cond.size()
                 == 0) : "X86 branch conditions have one component!";
 
@@ -1937,17 +1939,17 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     }
 
     public void storeRegToStackSlot(MachineBasicBlock mbb, int index,
-            int SrcReg, boolean isKill, int FrameIdx, TargetRegisterClass rc)
+            int srcReg, boolean isKill, int frameIndex, TargetRegisterClass rc)
     {
         MachineFunction MF = mbb.getParent();
         boolean isAligned =
                 (registerInfo.getStackAlignment() >= 16) || registerInfo
                         .needsStackRealignment(MF);
-        int Opc = getStoreRegOpcode(SrcReg, rc, isAligned, tm);
+        int Opc = getStoreRegOpcode(srcReg, rc, isAligned, tm);
         //DebugLoc DL = DebugLoc::getUnknownLoc();
         //if (MI != mbb.end()) DL = MI.getDebugLoc();
-        addFrameReference(buildMI(mbb, index, get(Opc)), FrameIdx)
-                .addReg(SrcReg, getKillRegState(isKill));
+        addFrameReference(buildMI(mbb, index, get(Opc)), frameIndex)
+                .addReg(srcReg, getKillRegState(isKill));
     }
 
     void storeRegToAddr(MachineFunction MF, int SrcReg, boolean isKill,
@@ -2069,16 +2071,16 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     }
 
     public void loadRegFromStackSlot(MachineBasicBlock mbb, int index,
-            int DestReg, int FrameIdx, TargetRegisterClass rc)
+            int destReg, int frameIndex, TargetRegisterClass rc)
     {
         MachineFunction mf = mbb.getParent();
         boolean isAligned =
                 (registerInfo.getStackAlignment() >= 16) || registerInfo
                         .needsStackRealignment(mf);
-        int opc = getLoadRegOpcode(DestReg, rc, isAligned, tm);
+        int opc = getLoadRegOpcode(destReg, rc, isAligned, tm);
         //DebugLoc DL = DebugLoc::getUnknownLoc();
         //if (index != mbb.size()) DL = MI.getDebugLoc();
-        addFrameReference(buildMI(mbb, index, get(opc), DestReg), FrameIdx);
+        addFrameReference(buildMI(mbb, index, get(opc), destReg), frameIndex);
     }
 
     public void loadRegFromAddr(MachineFunction MF, int DestReg,
@@ -2144,9 +2146,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     }
 
     public boolean restoreCalleeSavedRegisters(MachineBasicBlock mbb, int index,
-            ArrayList<CalleeSavedInfo> CSI)
+            ArrayList<CalleeSavedInfo> csi)
     {
-        if (CSI.isEmpty())
+        if (csi.isEmpty())
             return false;
 
         //DebugLoc DL = DebugLoc::getUnknownLoc();
@@ -2157,20 +2159,20 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         boolean is64Bit = ((X86Subtarget) tm.getSubtarget()).is64Bit();
         boolean isWin64 = ((X86Subtarget) tm.getSubtarget()).isTargetWin64();
         int Opc = is64Bit ? POP64r : POP32r;
-        for (int i = 0, e = CSI.size(); i != e; ++i)
+        for (int i = 0, e = csi.size(); i != e; ++i)
         {
-            int Reg = CSI.get(i).getReg();
+            int Reg = csi.get(i).getReg();
             if (Reg == FPReg)
                 // X86RegisterInfo::emitEpilogue will handle restoring of frame register.
                 continue;
-            TargetRegisterClass RegisterClass = CSI.get(i).getRegisterClass();
+            TargetRegisterClass RegisterClass = csi.get(i).getRegisterClass();
             if (RegisterClass != VR128RegisterClass && !isWin64)
             {
                 buildMI(mbb, index, get(Opc), Reg);
             }
             else
             {
-                loadRegFromStackSlot(mbb, index, Reg, CSI.get(i).getFrameIdx(),
+                loadRegFromStackSlot(mbb, index, Reg, csi.get(i).getFrameIdx(),
                         RegisterClass);
             }
         }
@@ -2244,21 +2246,21 @@ public class X86InstrInfo extends TargetInstrInfoImpl
     }
 
     @Override
-    protected MachineInstr foldMemoryOperandImpl(MachineFunction MF,
-            MachineInstr MI, int i, ArrayList<MachineOperand> MOs, int Align)
+    protected MachineInstr foldMemoryOperandImpl(MachineFunction mf,
+            MachineInstr mi, int i, ArrayList<MachineOperand> mos, int align)
     {
         TIntObjectHashMap<Pair<Integer, Integer>> OpcodeTablePtr = null;
         boolean isTwoAddrFold = false;
-        int NumOps = MI.getDesc().getNumOperands();
+        int NumOps = mi.getDesc().getNumOperands();
         boolean isTwoAddr = NumOps > 1
-                && MI.getDesc().getOperandConstraint(1, TIED_TO) != -1;
+                && mi.getDesc().getOperandConstraint(1, TIED_TO) != -1;
 
         MachineInstr NewMI = null;
         // Folding a memory location into the two-address part of a two-address
         // instruction is different than folding it other places.  It requires
         // replacing the *two* registers with the memory location.
-        if (isTwoAddr && NumOps >= 2 && i < 2 && MI.getOperand(0).isRegister() && MI
-                .getOperand(1).isRegister() && MI.getOperand(0).getReg() == MI
+        if (isTwoAddr && NumOps >= 2 && i < 2 && mi.getOperand(0).isRegister() && mi
+                .getOperand(1).isRegister() && mi.getOperand(0).getReg() == mi
                 .getOperand(1).getReg())
         {
             OpcodeTablePtr = regOp2MemOpTable2Addr;
@@ -2266,12 +2268,12 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
         else if (i == 0)
         { // If operand 0
-            if (MI.getOpcode() == MOV16r0)
-                NewMI = MakeM0Inst(this, MOV16mi, MOs, MI);
-            else if (MI.getOpcode() == MOV32r0)
-                NewMI = MakeM0Inst(this, MOV32mi, MOs, MI);
-            else if (MI.getOpcode() == MOV8r0)
-                NewMI = MakeM0Inst(this, MOV8mi, MOs, MI);
+            if (mi.getOpcode() == MOV16r0)
+                NewMI = MakeM0Inst(this, MOV16mi, mos, mi);
+            else if (mi.getOpcode() == MOV32r0)
+                NewMI = MakeM0Inst(this, MOV32mi, mos, mi);
+            else if (mi.getOpcode() == MOV8r0)
+                NewMI = MakeM0Inst(this, MOV8mi, mos, mi);
             if (NewMI != null)
                 return NewMI;
 
@@ -2290,19 +2292,19 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         if (OpcodeTablePtr != null)
         {
             // Find the Opcode to fuse
-            if (OpcodeTablePtr.containsKey(MI.getOpcode()))
+            if (OpcodeTablePtr.containsKey(mi.getOpcode()))
             {
-                int MinAlign = OpcodeTablePtr.get(MI.getOpcode()).second;
-                if (Align < MinAlign)
+                int MinAlign = OpcodeTablePtr.get(mi.getOpcode()).second;
+                if (align < MinAlign)
                     return null;
                 if (isTwoAddrFold)
-                    NewMI = FuseTwoAddrInst(MF,
-                            OpcodeTablePtr.get(MI.getOpcode()).first, MOs, MI,
+                    NewMI = FuseTwoAddrInst(mf,
+                            OpcodeTablePtr.get(mi.getOpcode()).first, mos, mi,
                             this);
                 else
-                    NewMI = FuseInst(MF,
-                            OpcodeTablePtr.get(MI.getOpcode()).first, i, MOs,
-                            MI, this);
+                    NewMI = FuseInst(mf,
+                            OpcodeTablePtr.get(mi.getOpcode()).first, i, mos,
+                            mi, this);
                 return NewMI;
             }
         }
@@ -2311,24 +2313,25 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         if (PrintFailedFusing.value)
         {
             System.err.printf("We failed to fuse operand %d in ", i);
-            MI.print(System.err, null);
+            mi.print(System.err, null);
         }
         return null;
     }
 
-    public MachineInstr foldMemoryOperandImpl(MachineFunction MF,
-            MachineInstr MI, TIntArrayList Ops, int FrameIndex)
+    @Override
+    public MachineInstr foldMemoryOperandImpl(MachineFunction mf,
+            MachineInstr mi, TIntArrayList ops, int frameIndex)
     {
         // Check switch flag
         if (NoFusing.value)
             return null;
 
-        MachineFrameInfo MFI = MF.getFrameInfo();
-        int Alignment = MFI.getObjectAlignment(FrameIndex);
-        if (Ops.size() == 2 && Ops.get(0) == 0 && Ops.get(1) == 1)
+        MachineFrameInfo MFI = mf.getFrameInfo();
+        int Alignment = MFI.getObjectAlignment(frameIndex);
+        if (ops.size() == 2 && ops.get(0) == 0 && ops.get(1) == 1)
         {
             int NewOpc = 0;
-            switch (MI.getOpcode())
+            switch (mi.getOpcode())
             {
                 default:
                     return null;
@@ -2346,19 +2349,20 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     break;
             }
             // Change to CMPXXri r, 0 first.
-            MI.setDesc(get(NewOpc));
-            MI.getOperand(1).changeToImmediate(0);
+            mi.setDesc(get(NewOpc));
+            mi.getOperand(1).changeToImmediate(0);
         }
-        else if (Ops.size() != 1)
+        else if (ops.size() != 1)
             return null;
 
         ArrayList<MachineOperand> MOs = new ArrayList<>();
-        MOs.add(MachineOperand.createFrameIndex(FrameIndex));
-        return foldMemoryOperandImpl(MF, MI, Ops.get(0), MOs, Alignment);
+        MOs.add(MachineOperand.createFrameIndex(frameIndex));
+        return foldMemoryOperandImpl(mf, mi, ops.get(0), MOs, Alignment);
     }
 
-    public MachineInstr foldMemoryOperandImpl(MachineFunction MF,
-            MachineInstr MI, TIntArrayList Ops, MachineInstr LoadMI)
+    @Override
+    public MachineInstr foldMemoryOperandImpl(MachineFunction mf,
+            MachineInstr mi, TIntArrayList Ops, MachineInstr loadMI)
     {
         // Check switch flag
         if (NoFusing.value)
@@ -2366,15 +2370,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl
 
         // Determine the alignment of the load.
         int Alignment = 0;
-        if (LoadMI.hasOneMemOperand())
-            Alignment = LoadMI.getMemOperand(0).getAlignment();
-        else if (LoadMI.getOpcode() == V_SET0
-                || LoadMI.getOpcode() == V_SETALLONES)
+        if (loadMI.hasOneMemOperand())
+            Alignment = loadMI.getMemOperand(0).getAlignment();
+        else if (loadMI.getOpcode() == V_SET0
+                || loadMI.getOpcode() == V_SETALLONES)
             Alignment = 16;
         if (Ops.size() == 2 && Ops.get(0) == 0 && Ops.get(1) == 1)
         {
             int NewOpc = 0;
-            switch (MI.getOpcode())
+            switch (mi.getOpcode())
             {
                 default:
                     return null;
@@ -2392,14 +2396,14 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                     break;
             }
             // Change to CMPXXri r, 0 first.
-            MI.setDesc(get(NewOpc));
-            MI.getOperand(1).changeToImmediate(0);
+            mi.setDesc(get(NewOpc));
+            mi.getOperand(1).changeToImmediate(0);
         }
         else if (Ops.size() != 1)
             return null;
 
         ArrayList<MachineOperand> MOs = new ArrayList<>();
-        if (LoadMI.getOpcode() == V_SET0 || LoadMI.getOpcode() == V_SETALLONES)
+        if (loadMI.getOpcode() == V_SET0 || loadMI.getOpcode() == V_SETALLONES)
         {
             // Folding a V_SET0 or V_SETALLONES as a load, to ease register pressure.
             // Create a ant-pool entry and operands to load from it.
@@ -2440,14 +2444,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         else
         {
             // Folding a normal load. Just copy the load's address operands.
-            int NumOps = LoadMI.getDesc().getNumOperands();
+            int NumOps = loadMI.getDesc().getNumOperands();
             for (int i = NumOps - x86AddrNumOperands; i != NumOps; ++i)
-                MOs.add(LoadMI.getOperand(i));
+                MOs.add(loadMI.getOperand(i));
         }
-        return foldMemoryOperandImpl(MF, MI, Ops.get(0), MOs, Alignment);
+        return foldMemoryOperandImpl(mf, mi, Ops.get(0), MOs, Alignment);
     }
 
-    public boolean canFoldMemoryOperand(MachineInstr MI, TIntArrayList Ops)
+    @Override
+    public boolean canFoldMemoryOperand(MachineInstr mi, TIntArrayList Ops)
     {
         // Check switch flag
         if (NoFusing.value)
@@ -2455,7 +2460,7 @@ public class X86InstrInfo extends TargetInstrInfoImpl
 
         if (Ops.size() == 2 && Ops.get(0) == 0 && Ops.get(1) == 1)
         {
-            switch (MI.getOpcode())
+            switch (mi.getOpcode())
             {
                 default:
                     return false;
@@ -2471,10 +2476,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             return false;
 
         int OpNum = Ops.get(0);
-        int Opc = MI.getOpcode();
-        int NumOps = MI.getDesc().getNumOperands();
+        int Opc = mi.getOpcode();
+        int NumOps = mi.getDesc().getNumOperands();
         boolean isTwoAddr = NumOps > 1
-                && MI.getDesc().getOperandConstraint(1, TIED_TO) != -1;
+                && mi.getDesc().getOperandConstraint(1, TIED_TO) != -1;
 
         // Folding a memory location into the two-address part of a two-address
         // instruction is different than folding it other places.  It requires
@@ -2516,25 +2521,26 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         return false;
     }
 
-    public boolean unfoldMemoryOperand(MachineFunction MF, MachineInstr MI,
-            int Reg, boolean UnfoldLoad, boolean UnfoldStore,
-            ArrayList<MachineInstr> NewMIs)
+    @Override
+    public boolean unfoldMemoryOperand(MachineFunction mf, MachineInstr mi,
+            int reg, boolean unfoldLoad, boolean unfoldStore,
+            ArrayList<MachineInstr> newMIs)
     {
 
-        if (!memOp2RegOpTable.containsKey(MI.getOpcode()))
+        if (!memOp2RegOpTable.containsKey(mi.getOpcode()))
             return false;
-        Pair<Integer, Integer> pair = memOp2RegOpTable.get(MI.getOpcode());
+        Pair<Integer, Integer> pair = memOp2RegOpTable.get(mi.getOpcode());
         //DebugLoc dl = MI.getDebugLoc();
         int Opc = pair.first;
         int index = pair.second & 0xf;
         boolean FoldedLoad = (pair.second & (1 << 4)) != 0;
         boolean FoldedStore = (pair.second & (1 << 5)) != 0;
-        if (UnfoldLoad && !FoldedLoad)
+        if (unfoldLoad && !FoldedLoad)
             return false;
-        UnfoldLoad &= FoldedLoad;
-        if (UnfoldStore && !FoldedStore)
+        unfoldLoad &= FoldedLoad;
+        if (unfoldStore && !FoldedStore)
             return false;
-        UnfoldStore &= FoldedStore;
+        unfoldStore &= FoldedStore;
 
         TargetInstrDesc TID = get(Opc);
         TargetOperandInfo TOI = TID.opInfo[index];
@@ -2543,9 +2549,9 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         ArrayList<MachineOperand> BeforeOps = new ArrayList<>();
         ArrayList<MachineOperand> AfterOps = new ArrayList<>();
         ArrayList<MachineOperand> ImpOps = new ArrayList<>();
-        for (int i = 0, e = MI.getNumOperands(); i != e; ++i)
+        for (int i = 0, e = mi.getNumOperands(); i != e; ++i)
         {
-            MachineOperand Op = MI.getOperand(i);
+            MachineOperand Op = mi.getOperand(i);
             if (i >= index && i < index + x86AddrNumOperands)
                 AddrOps.add(Op);
             else if (Op.isRegister() && Op.isImplicit())
@@ -2557,15 +2563,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
 
         // Emit the load instruction.
-        if (UnfoldLoad)
+        if (unfoldLoad)
         {
-            loadRegFromAddr(MF, Reg, AddrOps, rc, NewMIs);
-            if (UnfoldStore)
+            loadRegFromAddr(mf, reg, AddrOps, rc, newMIs);
+            if (unfoldStore)
             {
                 // Address operands cannot be marked isKill.
                 for (int i = 1; i != 1 + x86AddrNumOperands; ++i)
                 {
-                    MachineOperand MO = NewMIs.get(0).getOperand(i);
+                    MachineOperand MO = newMIs.get(0).getOperand(i);
                     if (MO.isRegister())
                         MO.setIsKill(false);
                 }
@@ -2577,11 +2583,11 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         MachineInstrBuilder MIB = buildMI(TID);
 
         if (FoldedStore)
-            MIB.addReg(Reg, RegState.Define);
+            MIB.addReg(reg, RegState.Define);
         for (int i = 0, e = BeforeOps.size(); i != e; ++i)
             MIB.addOperand(BeforeOps.get(i));
         if (FoldedLoad)
-            MIB.addReg(Reg);
+            MIB.addReg(reg);
         for (int i = 0, e = AfterOps.size(); i != e; ++i)
             MIB.addOperand(AfterOps.get(i));
         for (int i = 0, e = ImpOps.size(); i != e; ++i)
@@ -2629,36 +2635,38 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                 }
             }
         }
-        NewMIs.add(MIB.getMInstr());
+        newMIs.add(MIB.getMInstr());
 
         // Emit the store instruction.
-        if (UnfoldStore)
+        if (unfoldStore)
         {
             TargetRegisterClass DstRC = TID.opInfo[0]
                     .getRegisterClass(registerInfo);
-            storeRegToAddr(MF, Reg, true, AddrOps, DstRC, NewMIs);
+            storeRegToAddr(mf, reg, true, AddrOps, DstRC, newMIs);
         }
 
         return true;
     }
 
-    public int getOpcodeAfterMemoryUnfold(int Opc, boolean UnfoldLoad,
-            boolean UnfoldStore)
+    @Override
+    public int getOpcodeAfterMemoryUnfold(int opc, boolean unfoldLoad,
+            boolean unfoldStore)
     {
-        if (!memOp2RegOpTable.containsKey(Opc))
+        if (!memOp2RegOpTable.containsKey(opc))
             return 0;
 
-        boolean FoldedLoad = (memOp2RegOpTable.get(Opc).second & (1 << 4)) != 0;
+        boolean FoldedLoad = (memOp2RegOpTable.get(opc).second & (1 << 4)) != 0;
         boolean FoldedStore =
-                (memOp2RegOpTable.get(Opc).second & (1 << 5)) != 0;
-        if (UnfoldLoad && !FoldedLoad)
+                (memOp2RegOpTable.get(opc).second & (1 << 5)) != 0;
+        if (unfoldLoad && !FoldedLoad)
             return 0;
-        if (UnfoldStore && !FoldedStore)
+        if (unfoldStore && !FoldedStore)
             return 0;
-        return memOp2RegOpTable.get(Opc).first;
+        return memOp2RegOpTable.get(opc).first;
     }
 
-    public boolean BlockHasNoFallThrough(MachineBasicBlock mbb)
+    @Override
+    public boolean blockHasNoFallThrough(MachineBasicBlock mbb)
     {
         if (mbb.isEmpty())
             return false;
@@ -2683,7 +2691,8 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         }
     }
 
-    public boolean ReverseBranchCondition(ArrayList<MachineOperand> cond)
+    @Override
+    public boolean reverseBranchCondition(ArrayList<MachineOperand> cond)
     {
         assert cond.size() == 1 : "Invalid X86 branch condition!";
         long CC = cond.get(0).getImm();
@@ -3453,14 +3462,15 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         return finalSize;
     }
 
-    public int GetInstSizeInBytes(MachineInstr MI)
+    @Override
+    public int getInstSizeInBytes(MachineInstr mi)
     {
-        TargetInstrDesc Desc = MI.getDesc();
+        TargetInstrDesc Desc = mi.getDesc();
         boolean IsPIC = tm.getRelocationModel() == PIC_;
         boolean Is64BitMode = tm.getSubtarget().is64Bit();
-        int Size = getInstSizeWithDesc(MI, Desc, IsPIC, Is64BitMode);
+        int Size = getInstSizeWithDesc(mi, Desc, IsPIC, Is64BitMode);
         if (Desc.getOpcode() == MOVPC32r)
-            Size += getInstSizeWithDesc(MI, get(POP32r), IsPIC, Is64BitMode);
+            Size += getInstSizeWithDesc(mi, get(POP32r), IsPIC, Is64BitMode);
         return Size;
     }
 

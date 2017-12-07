@@ -119,8 +119,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
         // Obtains the loop information used for assigning a spilling weight to
         // each live interval. The more nested, the more weight.
-        au.addPreserved(MachineLoopInfo.class);
-        au.addPreserved(MachineDomTreeInfo.class);
+        au.addPreserved(MachineLoop.class);
+        au.addPreserved(MachineDomTree.class);
 
         // Eliminate phi node.
         au.addPreserved(PhiElimination.class);

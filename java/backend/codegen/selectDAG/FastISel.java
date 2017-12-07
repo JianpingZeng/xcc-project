@@ -770,9 +770,10 @@ public abstract class FastISel extends MachineFunctionPass
         }
         else
         {
-            instrInfo.InsertBranch(mbb, msucc, null, new ArrayList<>());
+            instrInfo.insertBranch(mbb, msucc, null, new ArrayList<>());
         }
         mbb.addSuccessor(msucc);
+        msucc.addPredecessor(mbb);
     }
 
     public int updateValueMap(Value val, int reg)

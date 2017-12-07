@@ -80,7 +80,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
 
     protected boolean verboseAsm;
 
-    protected MachineLoopInfo li;
+    protected MachineLoop li;
     /**
      * A asmName mangler for performing necessary mangling on global linkage entity.
      */
@@ -128,7 +128,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         if (verboseAsm)
-            au.addRequired(MachineLoopInfo.class);
+            au.addRequired(MachineLoop.class);
         super.getAnalysisUsage(au);
     }
 
@@ -168,7 +168,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
         incrementFnNumeber();
 
         if (verboseAsm)
-            li = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
+            li = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
     }
 
     protected int getFunctionNumber() {return functionNumber;}
@@ -771,7 +771,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
     {
         if (verboseAsm)
         {
-            MachineLoop loop = li.getLoopFor(mbb);
+            MachineLoopInfo loop = li.getLoopFor(mbb);
             if (loop != null)
             {
                 os.println();
@@ -806,9 +806,9 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 }
 
                 // Add parent loop information.
-                for (MachineLoop curLoop = loop.getParentLoop();
-                        curLoop != null;
-                        curLoop = curLoop.getParentLoop())
+                for (MachineLoopInfo curLoop = loop.getParentLoop();
+                     curLoop != null;
+                     curLoop = curLoop.getParentLoop())
                 {
                     MachineBasicBlock hBB = curLoop.getHeaderBlock();
                     assert hBB != null:"No header for loop";
@@ -854,12 +854,12 @@ public abstract class AsmPrinter extends MachineFunctionPass
 
     private static void printChildLoopComment(
             PrintStream os,
-            MachineLoop loop,
+            MachineLoopInfo loop,
             TargetAsmInfo tai,
             int functionNumber)
     {
         // Add child loop information.
-        for (MachineLoop childLoop : loop.getSubLoops())
+        for (MachineLoopInfo childLoop : loop.getSubLoops())
         {
             MachineBasicBlock header = childLoop.getHeaderBlock();
             assert header != null:"No header for loop";

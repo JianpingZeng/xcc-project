@@ -300,6 +300,7 @@ public class BackendConsumer implements ASTConsumer
     {
         if (action == Backend_EmitNothing)
             return true;
+
         switch (action)
         {
             case Backend_EmitAssembly:
@@ -342,6 +343,8 @@ public class BackendConsumer implements ASTConsumer
                 }
 
                 TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
+                theTarget.setAsmVerbosityDefault(true);
+
                 MachineCodeEmitter mce = null;
                 CodeGenFileType cft = action == Backend_EmitAssembly ? AssemblyFile : ObjectFile;
                 switch (tm.addPassesToEmitFile(pm, asmOutStream, cft, optLevel))

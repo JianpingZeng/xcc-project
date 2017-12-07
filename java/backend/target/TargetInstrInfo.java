@@ -197,34 +197,37 @@ public abstract class TargetInstrInfo
 	/// findCommutedOpIndices - If specified MI is commutable, return the two
 	/// operand indices that would swap value. Return true if the instruction
 	/// is not in a form which this routine understands.
-	public abstract boolean findCommutedOpIndices(MachineInstr MI,
-			OutParamWrapper<Integer> SrcOpIdx1,
-		OutParamWrapper<Integer> SrcOpIdx2);
+	public abstract boolean findCommutedOpIndices(
+			MachineInstr mi,
+			OutParamWrapper<Integer> srcOpIdx1,
+		OutParamWrapper<Integer> srcOpIdx2);
 
-	public  boolean AnalyzeBranch(MachineBasicBlock MBB, MachineBasicBlock TBB,
-			MachineBasicBlock FBB,
-			ArrayList<MachineOperand> Cond)
+	public  boolean analyzeBranch(
+			MachineBasicBlock mbb,
+			MachineBasicBlock tbb,
+			MachineBasicBlock fbb,
+			ArrayList<MachineOperand> cond)
 	{
-		return AnalyzeBranch(MBB, TBB, FBB, Cond, false);
+		return analyzeBranch(mbb, tbb, fbb, cond, false);
 	}
 	
-	/// AnalyzeBranch - Analyze the branching code at the end of MBB, returning
+	/// AnalyzeBranch - Analyze the branching code at the end of mbb, returning
 	/// true if it cannot be understood (e.g. it's a switch dispatch or isn't
 	/// implemented for a target).  Upon success, this returns false and returns
 	/// with the following information in various cases:
 	///
 	/// 1. If this block ends with no branches (it just falls through to its succ)
-	///    just return false, leaving TBB/FBB null.
-	/// 2. If this block ends with only an unconditional branch, it sets TBB to be
+	///    just return false, leaving tb/fbb null.
+	/// 2. If this block ends with only an unconditional branch, it sets tb to be
 	///    the destination block.
 	/// 3. If this block ends with an conditional branch and it falls through to
-	///    a successor block, it sets TBB to be the branch destination block and
+	///    a successor block, it sets tb to be the branch destination block and
 	///    a list of operands that evaluate the condition. These
 	///    operands can be passed to other TargetInstrInfo methods to create new
 	///    branches.
 	/// 4. If this block ends with a conditional branch followed by an
-	///    unconditional branch, it returns the 'true' destination in TBB, the
-	///    'false' destination in FBB, and a list of operands that evaluate the
+	///    unconditional branch, it returns the 'true' destination in tb, the
+	///    'false' destination in fbb, and a list of operands that evaluate the
 	///    condition.  These operands can be passed to other TargetInstrInfo
 	///    methods to create new branches.
 	///
@@ -234,10 +237,12 @@ public abstract class TargetInstrInfo
 	/// If AllowModify is true, then this routine is allowed to modify the basic
 	/// block (e.g. delete instructions after the unconditional branch).
 	///
-	public  boolean AnalyzeBranch(MachineBasicBlock MBB, MachineBasicBlock TBB,
-		MachineBasicBlock FBB,
-		ArrayList<MachineOperand> Cond,
-		boolean AllowModify)
+	public  boolean analyzeBranch(
+			MachineBasicBlock mbb,
+			MachineBasicBlock tbb,
+			MachineBasicBlock fbb,
+			ArrayList<MachineOperand> cond,
+			boolean allowModify)
 	{
 		return true;
 	}
@@ -245,11 +250,11 @@ public abstract class TargetInstrInfo
 	/// RemoveBranch - Remove the branching code at the end of the specific MBB.
 	/// This is only invoked in cases where AnalyzeBranch returns success. It
 	/// returns the number of instructions that were removed.
-	public  int RemoveBranch(MachineBasicBlock MBB)  
+	public  int removeBranch(MachineBasicBlock mbb)
 	{
-	assert false : "Target didn't implement TargetInstrInfo::RemoveBranch!";
-	return 0;
-}
+		assert false : "Target didn't implement TargetInstrInfo::RemoveBranch!";
+		return 0;
+	}
 
 	/// InsertBranch - Insert branch code into the end of the specified
 	/// MachineBasicBlock.  The operands to this method are the same as those
@@ -261,10 +266,10 @@ public abstract class TargetInstrInfo
 	/// cases where AnalyzeBranch doesn't apply because there was no original
 	/// branch to analyze.  At least this much must be implemented, else tail
 	/// merging needs to be disabled.
-	public  int InsertBranch(MachineBasicBlock MBB,
-			MachineBasicBlock TBB,
-			MachineBasicBlock FBB,
-            ArrayList<MachineOperand> Cond)
+	public  int insertBranch(MachineBasicBlock mbb,
+			MachineBasicBlock tbb,
+			MachineBasicBlock fbb,
+            ArrayList<MachineOperand> cond)
 	{
 		assert false : "Target didn't implement TargetInstrInfo::InsertBranch!";
 		return 0;
@@ -289,11 +294,11 @@ public abstract class TargetInstrInfo
 	/// added to the given machine basic block before the specified machine
 	/// instruction. If isKill is true, the register operand is the last use and
 	/// must be marked kill.
-	public  void storeRegToStackSlot(MachineBasicBlock MBB,
+	public  void storeRegToStackSlot(MachineBasicBlock mbb,
 			int pos,
-			int SrcReg,
+			int srcReg,
 			boolean isKill,
-			int FrameIndex,
+			int frameIndex,
 			TargetRegisterClass rc)
 	{
 		assert false : "Target didn't implement TargetInstrInfo::storeRegToStackSlot!";
@@ -303,10 +308,10 @@ public abstract class TargetInstrInfo
 	/// class from the specified stack frame index. The load instruction is to be
 	/// added to the given machine basic block before the specified machine
 	/// instruction.
-	public  void loadRegFromStackSlot(MachineBasicBlock MBB,
+	public  void loadRegFromStackSlot(MachineBasicBlock mbb,
 			int pos,
-			int DestReg, 
-			int FrameIndex,
+			int destReg,
+			int frameIndex,
 			TargetRegisterClass rc)  
 	{
 		assert false : "Target didn't implement TargetInstrInfo::loadRegFromStackSlot!";
@@ -316,9 +321,9 @@ public abstract class TargetInstrInfo
 	/// saved registers and returns true if it isn't possible / profitable to do
 	/// so by issuing a series of store instructions via
 	/// storeRegToStackSlot(). Returns false otherwise.
-	public  boolean spillCalleeSavedRegisters(MachineBasicBlock MBB,
+	public  boolean spillCalleeSavedRegisters(MachineBasicBlock mbb,
 		int pos,
-        ArrayList<CalleeSavedInfo> CSI)
+        ArrayList<CalleeSavedInfo> csi)
 	{
 		return false;
 	}
@@ -327,21 +332,22 @@ public abstract class TargetInstrInfo
 	/// saved registers and returns true if it isn't possible / profitable to do
 	/// so by issuing a series of load instructions via loadRegToStackSlot().
 	/// Returns false otherwise.
-	public  boolean restoreCalleeSavedRegisters(MachineBasicBlock MBB,
+	public  boolean restoreCalleeSavedRegisters(
+			MachineBasicBlock mbb,
 			int pos,
-			ArrayList<CalleeSavedInfo> CSI)  
+			ArrayList<CalleeSavedInfo> csi)
 	{
 		return false;
 	}
 
-    public MachineInstr foldMemoryOperand(MachineFunction MF,
-            MachineInstr MI,
+    public MachineInstr foldMemoryOperand(MachineFunction mf,
+            MachineInstr mi,
             int ops,
-            int FrameIndex)
+            int frameIndex)
     {
         TIntArrayList list = new TIntArrayList();
         list.add(ops);
-        return foldMemoryOperand(MF, MI, list, FrameIndex);
+        return foldMemoryOperand(mf, mi, list, frameIndex);
     }
 
 	/// foldMemoryOperand - Attempt to fold a load or store of the specified stack
@@ -350,33 +356,40 @@ public abstract class TargetInstrInfo
 	/// operand folded, otherwise NULL is returned. The client is responsible for
 	/// removing the old instruction and adding the new one in the instruction
 	/// stream.
-	public abstract MachineInstr foldMemoryOperand(MachineFunction MF,
-			MachineInstr MI,
-			TIntArrayList Ops,
-			int FrameIndex);
+	public abstract MachineInstr foldMemoryOperand(
+			MachineFunction mf,
+			MachineInstr mi,
+			TIntArrayList ops,
+			int frameIndex);
 
 	/// foldMemoryOperand - Same as the previous version except it allows folding
 	/// of any load and store from / to any address, not just from a specific
 	/// stack slot.
-	public abstract MachineInstr foldMemoryOperand(MachineFunction MF,
-		MachineInstr MI,
-		TIntArrayList Ops,
-		MachineInstr LoadMI);
+	public abstract MachineInstr foldMemoryOperand(
+			MachineFunction mf,
+			MachineInstr mi,
+			TIntArrayList ops,
+			MachineInstr loadMI);
 
 	
 	/// foldMemoryOperandImpl - Target-dependent implementation for
 	/// foldMemoryOperand. Target-independent code in foldMemoryOperand will
 	/// take care of adding a MachineMemOperand to the newly created instruction.
-	protected MachineInstr foldMemoryOperandImpl(MachineFunction MF,
-		MachineInstr MI,
-		TIntArrayList Ops,
-		int FrameIndex)  
+	protected MachineInstr foldMemoryOperandImpl(
+			MachineFunction mf,
+			MachineInstr mi,
+			TIntArrayList ops,
+			int frameIndex)
 	{
 		return null;
 	}
 
-	protected MachineInstr foldMemoryOperandImpl(MachineFunction MF,
-			MachineInstr MI, int i, ArrayList<MachineOperand> MOs, int Align)
+	protected MachineInstr foldMemoryOperandImpl(
+			MachineFunction mf,
+			MachineInstr mi,
+			int i,
+			ArrayList<MachineOperand> mos,
+			int align)
 	{
 		return null;
 	}
@@ -384,10 +397,11 @@ public abstract class TargetInstrInfo
 	/// foldMemoryOperandImpl - Target-dependent implementation for
 	/// foldMemoryOperand. Target-independent code in foldMemoryOperand will
 	/// take care of adding a MachineMemOperand to the newly created instruction.
-	public MachineInstr foldMemoryOperandImpl(MachineFunction MF,
-		MachineInstr MI,
-		TIntArrayList ops,
-		MachineInstr LoadMI)
+	public MachineInstr foldMemoryOperandImpl(
+			MachineFunction mf,
+			MachineInstr mi,
+			TIntArrayList ops,
+			MachineInstr loadMI)
 	{
 		return null;
 	}
@@ -395,7 +409,7 @@ public abstract class TargetInstrInfo
 
 	/// canFoldMemoryOperand - Returns true for the specified load / store if
 	/// folding is possible.
-	public boolean canFoldMemoryOperand( MachineInstr MI, TIntArrayList ops)
+	public boolean canFoldMemoryOperand(MachineInstr mi, TIntArrayList ops)
 	{
 		return false;
 	}
@@ -403,12 +417,13 @@ public abstract class TargetInstrInfo
 	/// unfoldMemoryOperand - Separate a single instruction which folded a load or
 	/// a store or a load and a store into two or more instruction. If this is
 	/// possible, returns true as well as the new instructions by reference.
-	public  boolean unfoldMemoryOperand(MachineFunction MF,
-			MachineInstr MI,
-			int Reg,
-			boolean UnfoldLoad,
-			boolean UnfoldStore,
-			ArrayList<MachineInstr> NewMIs)
+	public  boolean unfoldMemoryOperand(
+			MachineFunction mf,
+			MachineInstr mi,
+			int reg,
+			boolean unfoldLoad,
+			boolean unfoldStore,
+			ArrayList<MachineInstr> newMIs)
 	{
 		return false;
 	}
@@ -418,8 +433,10 @@ public abstract class TargetInstrInfo
 	/// instruction after load / store are unfolded from an instruction of the
 	/// specified opcode. It returns zero if the specified unfolding is not
 	/// possible.
-	public  int getOpcodeAfterMemoryUnfold(int Opc,
-		boolean UnfoldLoad, boolean UnfoldStore)
+	public  int getOpcodeAfterMemoryUnfold(
+			int opc,
+			boolean unfoldLoad,
+			boolean unfoldStore)
 	{
 		return 0;
 	}
@@ -428,42 +445,45 @@ public abstract class TargetInstrInfo
 	/// fall-through into its successor block.  This is primarily used when a
 	/// branch is unanalyzable.  It is useful for things like unconditional
 	/// indirect branches (jump tables).
-	public  boolean BlockHasNoFallThrough( MachineBasicBlock MBB)  {
-	return false;
-}
+	public  boolean blockHasNoFallThrough(MachineBasicBlock mbb)
+	{
+		return false;
+	}
 
 	/// ReverseBranchCondition - Reverses the branch condition of the specified
 	/// condition list, returning false on success and true if it cannot be
 	/// reversed.
-	public boolean ReverseBranchCondition(ArrayList<MachineOperand> Cond)
+	public boolean reverseBranchCondition(ArrayList<MachineOperand> cond)
 	{
 		return true;
 	}
 
 	/// insertNoop - Insert a noop into the instruction stream at the specified
 	/// point.
-	public abstract void insertNoop(MachineBasicBlock MBB, int pos);
+	public abstract void insertNoop(MachineBasicBlock mbb, int pos);
 
 	/// isPredicated - Returns true if the instruction is already predicated.
 	///
-	public  boolean isPredicated( MachineInstr MI)
+	public  boolean isPredicated( MachineInstr mi)
 	{
 		return false;
 	}
 
 	/// isUnpredicatedTerminator - Returns true if the instruction is a
 	/// terminator instruction that has not been predicated.
-	public abstract boolean isUnpredicatedTerminator( MachineInstr MI);
+	public abstract boolean isUnpredicatedTerminator(MachineInstr mi);
 
-	/// PredicateInstruction - Convert the instruction into a predicated
+	/// predicateInstruction - Convert the instruction into a predicated
 	/// instruction. It returns true if the operation was successful.
-	public abstract boolean PredicateInstruction(MachineInstr MI,
-                         ArrayList<MachineOperand> Pred);
+	public abstract boolean predicateInstruction(
+			MachineInstr mi,
+            ArrayList<MachineOperand> pred);
 
 	/// SubsumesPredicate - Returns true if the first specified predicate
 	/// subsumes the second, e.g. GE subsumes GT.
-	public boolean SubsumesPredicate( ArrayList<MachineOperand> Pred1,
-                          ArrayList<MachineOperand> Pred2)
+	public boolean subsumesPredicate(
+			ArrayList<MachineOperand> pred1,
+            ArrayList<MachineOperand> pred2)
 	{
 		return false;
 	}
@@ -471,26 +491,27 @@ public abstract class TargetInstrInfo
 	/// DefinesPredicate - If the specified instruction defines any predicate
 	/// or condition code register(s) used for predication, returns true as well
 	/// as the definition predicate(s) by reference.
-	public  boolean DefinesPredicate(MachineInstr MI,
-		ArrayList<MachineOperand> Pred)
+	public  boolean definesPredicate(
+			MachineInstr mi,
+			ArrayList<MachineOperand> pred)
 	{
 		return false;
 	}
 
 	/// isSafeToMoveRegClassDefs - Return true if it's safe to move a machine
 	/// instruction that defines the specified register class.
-	public  boolean isSafeToMoveRegClassDefs( TargetRegisterClass RC)
+	public  boolean isSafeToMoveRegClassDefs( TargetRegisterClass rc)
 	{
 		return true;
 	}
 
 	/// isDeadInstruction - Return true if the instruction is considered dead.
 	/// This allows some late codegen passes to delete them.
-	public abstract boolean isDeadInstruction( MachineInstr MI);
+	public abstract boolean isDeadInstruction( MachineInstr mi);
 
 	/// GetInstSize - Returns the size of the specified Instruction.
 	///
-	public int GetInstSizeInBytes( MachineInstr MI)
+	public int getInstSizeInBytes( MachineInstr mi)
 	{
 		assert false : "Target didn't implement TargetInstrInfo::GetInstSize!";
 		return 0;
@@ -499,7 +520,7 @@ public abstract class TargetInstrInfo
 	/// GetFunctionSizeInBytes - Returns the size of the specified
 	/// MachineFunction.
 	///
-	public abstract  int GetFunctionSizeInBytes( MachineFunction MF);
+	public abstract  int getFunctionSizeInBytes(MachineFunction mf);
 
 	/// Measure the specified inline asm to determine an approximation of its
 	/// length.
