@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
+import static backend.codegen.selectDAG.FunctionLoweringInfo.computeValueVTs;
 import static tools.APFloat.RoundingMode.rmTowardZero;
 
 /**
@@ -472,6 +473,11 @@ public abstract class FastISel extends MachineFunctionPass
         phiNodeToUpdate.clear();
     }
 
+    /**
+     * A map from LLVM IR PhiNode to Machine PHI instruction.
+     */
+    private HashMap<PhiNode, MachineInstr> phinode2MI = new HashMap<>();
+
     private boolean handlePhiNodeInSuccessorBlocks(BasicBlock bb)
     {
         HashSet<MachineBasicBlock> succHandled = new HashSet<>();
@@ -491,13 +497,40 @@ public abstract class FastISel extends MachineFunctionPass
             if (!succHandled.add(succMBB))
                 continue;
 
-            int mbbIdx = 0;
             for (int i = 0, sz = succBB.size(); i < sz &&
                     succBB.getInstAt(i) instanceof PhiNode; i++)
             {
                 PhiNode pn = (PhiNode)succBB.getInstAt(i);
                 // don't handle phinode has no use
                 if (pn.isUseEmpty()) continue;
+
+                MachineInstr pnMI = null;
+                if (phinode2MI.containsKey(pn))
+                {
+                    pnMI = phinode2MI.get(pn);
+                }
+                else
+                {
+                    int phiReg = getRegForValue(pn);
+                    assert phiReg > 0 :"failed to create vreg for phinode";
+
+                    valueMap.put(pn, phiReg);
+                    ArrayList<EVT> valueVTs = new ArrayList<>();
+                    computeValueVTs(tli, pn.getType(), valueVTs);
+                    for (EVT ty : valueVTs)
+                    {
+                        int numRegisters = tli.getNumRegisters(ty);
+                        TargetInstrInfo tii = mf.getTarget().getInstrInfo();
+                        for (int j = 0; j < numRegisters; j++)
+                        {
+                            pnMI = buildMI(mbb, tii.get(TargetInstrInfo.PHI), phiReg + j)
+                                    .getMInstr();
+                        }
+                        phiReg += numRegisters;
+                    }
+                    phinode2MI.put(pn, pnMI);
+                }
+                assert pnMI != null;
 
                 EVT vt = tli.getValueType(pn.getType(), true);
                 if (vt.equals(new EVT(MVT.Other)) || !tli.isTypeLegal(vt))
@@ -516,10 +549,10 @@ public abstract class FastISel extends MachineFunctionPass
                 int reg = getRegForValue(phiOp);
                 if (reg <= 0)
                 {
-                    // erroreous type
+                    // errorous type
                     return false;
                 }
-                phiNodeToUpdate.add(Pair.get(succMBB.getInstAt(mbbIdx++), reg));
+                phiNodeToUpdate.add(Pair.get(pnMI, reg));
             }
         }
         return true;
