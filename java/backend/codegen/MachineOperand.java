@@ -666,17 +666,6 @@ public class MachineOperand
 		}
 	}
 
-	@Override
-	public boolean equals(Object obj)
-	{
-		if (obj == null) return false;
-		if (this ==obj) return true;
-		if (getClass() != obj.getClass())
-			return false;
-
-		return isIdenticalTo((MachineOperand)obj);
-	}
-
 	/**
 	 * Replace this operand with a new immediate operand of
 	 * the specified value.  If an operand is known to be an immediate already,
@@ -818,6 +807,8 @@ public class MachineOperand
 		if (head == null)
         {
             // If the head node is null, set current op as head node.
+	        this.reg.prev = null;
+	        this.reg.next = null;
             regInfo.updateRegUseDefListHead(getReg(),this);
             return;
         }
@@ -847,7 +838,7 @@ public class MachineOperand
         }
 
         prev.reg.next = this;
-        this.reg.prev = cur;
+        this.reg.prev = prev;
         this.reg.next = null;
 	}
 

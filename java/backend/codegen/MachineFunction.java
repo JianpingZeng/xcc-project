@@ -70,10 +70,12 @@ public class MachineFunction
 
 	public MachineFrameInfo getFrameInfo() {return frameInfo;}
 
-	public MachineRegisterInfo getMachineRegisterInfo(){return regInfo;}
+	public MachineRegisterInfo getMachineRegisterInfo() {return regInfo;}
 
-	public void clearSSARegMap() {
-		regInfo.clear();}
+	public void clearSSARegMap()
+	{
+		regInfo.clear();
+	}
 
 	public MachineConstantPool getConstantPool(){return constantPool;}
 

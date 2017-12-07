@@ -234,4 +234,9 @@ public class NameMangler
     {
         return (acceptableChars[ch/32] & (1 << (ch &31))) != 0;
     }
+
+    public String makeNameProperly(String name)
+    {
+        return null;
+    }
 }

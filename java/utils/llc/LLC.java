@@ -23,6 +23,7 @@ import backend.pass.PassCreator;
 import backend.pass.PassRegisterationUtility;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
+import backend.support.BackendCmdOptions;
 import backend.support.ErrorHandling;
 import backend.target.*;
 import backend.value.Module;
@@ -147,6 +148,15 @@ public class LLC
             desc("Target specific attributes"),
             valueDesc("+a1,+a2,-a3,..."));
 
+    /**
+     * This static code block is attempted to add some desired Jlang command line
+     * options into CommandLine DataBase.
+     */
+    static
+    {
+        BackendCmdOptions.registerBackendCommandLineOptions();
+        TargetOptions.registerTargetOptions();
+    }
 
     private static Module theModule;
     private static FunctionPassManager perFunctionPasses;
@@ -325,6 +335,8 @@ public class LLC
                 }
 
                 TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
+                theTarget.setAsmVerbosityDefault(true);
+
                 MachineCodeEmitter mce = null;
                 TargetMachine.CodeGenFileType cft = OutFiletype.value == FileType.Asm
                         ? AssemblyFile : ObjectFile;

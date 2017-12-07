@@ -1,7 +1,6 @@
-package backend.pass;
 /*
- * Xlous C language Compiler
- * Copyright (c) 2015-2016, Xlous
+ * Extremely C language Compiler
+ * Copyright (c) 2015-2017, Xlous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +15,11 @@ package backend.pass;
  * permissions and limitations under the License.
  */
 
-/**
- * This class declares all passes registeration method.
- * @author Xlous.zeng
- * @version 0.1
- */
-public final class InitializePasses
+#include "NativeLauncher.h"
+
+int main(int argc, char **argv)
 {
-    // TODO LiveAnalysisPass.
-    // TODO UnreachableBlockElim
-    // TODO UnreachableMachineBlockElim
-    // TODO MachineLoop
-    // TODO MachineDomTree
+    std::string cmdPath = getpath();
+    invokeClass((char*)cmdPath.c_str(), "utils/llc/LLC", argc, argv);
+    return 0;
 }

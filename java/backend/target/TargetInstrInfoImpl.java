@@ -61,50 +61,64 @@ public abstract class TargetInstrInfoImpl extends TargetInstrInfo
         return null;
     }
 
-    @Override public boolean findCommutedOpIndices(MachineInstr MI,
-            OutParamWrapper<Integer> SrcOpIdx1,
-            OutParamWrapper<Integer> SrcOpIdx2)
+    @Override
+    public boolean findCommutedOpIndices(MachineInstr mi,
+            OutParamWrapper<Integer> srcOpIdx1,
+            OutParamWrapper<Integer> srcOpIdx2)
     {
         return false;
     }
 
     @Override
-    public MachineInstr foldMemoryOperand(MachineFunction MF, MachineInstr MI,
-            TIntArrayList Ops, int FrameIndex)
+    public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi,
+            TIntArrayList ops, int frameIndex)
     {
         return null;
     }
 
     @Override
-    public MachineInstr foldMemoryOperand(MachineFunction MF, MachineInstr MI,
-            TIntArrayList Ops, MachineInstr LoadMI)
+    public MachineInstr foldMemoryOperand(MachineFunction mf, MachineInstr mi,
+            TIntArrayList ops, MachineInstr loadMI)
     {
         return null;
     }
 
-    @Override public void insertNoop(MachineBasicBlock MBB, int pos)
+    @Override
+    public void insertNoop(MachineBasicBlock mbb, int pos)
     {
 
     }
 
-    @Override public boolean isUnpredicatedTerminator(MachineInstr MI)
+    @Override
+    public boolean isUnpredicatedTerminator(MachineInstr mi)
     {
         return false;
     }
 
-    @Override public boolean PredicateInstruction(MachineInstr MI,
-            ArrayList<MachineOperand> Pred)
+    @Override
+    public boolean predicateInstruction(MachineInstr mi,
+            ArrayList<MachineOperand> pred)
     {
         return false;
     }
 
-    @Override public boolean isDeadInstruction(MachineInstr MI)
+    @Override
+    public boolean isDeadInstruction(MachineInstr mi)
     {
         return false;
     }
 
-    @Override public int GetFunctionSizeInBytes(MachineFunction MF)
+    @Override
+    public int getFunctionSizeInBytes(MachineFunction mf)
     {
-        return 0;
+        int totalSize = 0;
+        for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        {
+            for (MachineInstr mi : mbb.getInsts())
+            {
+                totalSize += getInstSizeInBytes(mi);
+            }
+        }
+        return totalSize;
     }
 }

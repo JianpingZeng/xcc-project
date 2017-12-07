@@ -24,6 +24,7 @@ import backend.support.CallSite;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;
 import backend.target.*;
+import backend.target.TargetMachine.CodeGenOpt;
 import backend.type.*;
 import backend.value.*;
 import backend.value.Instruction.AllocaInst;
@@ -70,7 +71,7 @@ public class X86FastISel extends FastISel
     protected boolean x86ScalarSSEf64;
     protected boolean x86ScalarSSEf32;
 
-    public X86FastISel(TargetMachine tm, TargetMachine.CodeGenOpt level)
+    public X86FastISel(TargetMachine tm, CodeGenOpt level)
     {
         super(tm, level);
         subtarget = (X86Subtarget) tm.getSubtarget();
@@ -85,7 +86,7 @@ public class X86FastISel extends FastISel
         return "X86 Fast Instruction Selector";
     }
 
-    public static X86FastISel createX86FastISel(TargetMachine tm, TargetMachine.CodeGenOpt level)
+    public static X86FastISel createX86FastISel(TargetMachine tm, CodeGenOpt level)
     {
         return new X86GenFastISel(tm, level);
     }
@@ -818,6 +819,13 @@ public class X86FastISel extends FastISel
     {
         CmpInst ci = (CmpInst)inst;
 
+        // If there is only one use of this cmp instr and the use is branch.
+        // Performs some peephole optimization on conditional branch
+        if (ci.hasOneUses() && ci.useAt(0).getUser() instanceof BranchInst)
+        {
+            return true;
+        }
+
         EVT vt;
         OutParamWrapper<EVT> x = new OutParamWrapper<>();
         if (!isTypeLegal(inst.operand(0).getType(), x))
@@ -996,8 +1004,7 @@ public class X86FastISel extends FastISel
                 if (!x86FastEmitCompare(op0, op1, vt))
                     return false;
 
-                buildMI(mbb, instrInfo.get(branchOpc)).addMBB(trueBB).
-                        addMBB(falseBB);
+                buildMI(mbb, instrInfo.get(branchOpc)).addMBB(trueBB);
 
                 if (pred == CmpInst.Predicate.FCMP_UNE)
                 {
@@ -1008,6 +1015,7 @@ public class X86FastISel extends FastISel
 
                 fastEmitBranch(falseBB);
                 mbb.addSuccessor(trueBB);
+                trueBB.addPredecessor(mbb);
                 return true;
             }
         }
@@ -1020,6 +1028,7 @@ public class X86FastISel extends FastISel
         buildMI(mbb, instrInfo.get(JNE)).addMBB(trueBB);
         fastEmitBranch(falseBB);
         mbb.addSuccessor(trueBB);
+        trueBB.addPredecessor(mbb);
         return true;
     }
 

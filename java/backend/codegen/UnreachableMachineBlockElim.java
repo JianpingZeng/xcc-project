@@ -16,8 +16,8 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.MachineDomTreeInfo;
-import backend.analysis.MachineLoopInfo;
+import backend.analysis.MachineDomTree;
+import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
@@ -53,8 +53,8 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
     {
         ArrayList<MachineBasicBlock> reachable;
 
-        MachineDomTreeInfo mdt = (MachineDomTreeInfo) getAnalysisToUpDate(MachineDomTreeInfo.class);
-        MachineLoopInfo mli = (MachineLoopInfo) getAnalysisToUpDate(MachineLoopInfo.class);
+        MachineDomTree mdt = (MachineDomTree) getAnalysisToUpDate(MachineDomTree.class);
+        MachineLoop mli = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
 
         // mark all reachable machine block.
         reachable =  DepthFirstOrder.reversePostOrder(mf.getEntryBlock());
@@ -76,7 +76,7 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
 
                 for (int i = 0; i < mbb.getNumSuccessors(); )
                 {
-                    MachineBasicBlock succ = mbb.getSucc(i);
+                    MachineBasicBlock succ = mbb.suxAt(i);
 
                     for (ListIterator<MachineInstr> itr = succ.getInsts().listIterator();
                             itr.hasNext(); )
@@ -158,14 +158,14 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
 
     /**
      * Add all required MachineFunctionPasses for UnreachableMachineBlockElim
-     * to the PassManager, like MachineLoopInfo and MachineDomTreeInfo.
+     * to the PassManager, like MachineLoop and MachineDomTree.
      * @param au
      */
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
-        au.addPreserved(MachineLoopInfo.class);
-        au.addPreserved(MachineDomTreeInfo.class);
+        au.addPreserved(MachineLoop.class);
+        au.addPreserved(MachineDomTree.class);
         super.getAnalysisUsage(au);
     }
 }
