@@ -187,7 +187,7 @@ public class LLC
         }
         catch (Exception e)
         {
-            System.err.println(e.getMessage());
+            e.printStackTrace();
         }
     }
 
