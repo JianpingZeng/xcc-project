@@ -511,7 +511,10 @@ public abstract class FastISel extends MachineFunctionPass
                 }
                 else
                 {
-                    int phiReg = getRegForValue(pn);
+                    EVT resVT = tli.getValueType(pn.getType());
+                    if (!resVT.isSimple()) return false;
+
+                    int phiReg = mri.createVirtualRegister(tli.getRegClassFor(resVT));
                     assert phiReg > 0 :"failed to create vreg for phinode";
 
                     valueMap.put(pn, phiReg);
@@ -523,7 +526,7 @@ public abstract class FastISel extends MachineFunctionPass
                         TargetInstrInfo tii = mf.getTarget().getInstrInfo();
                         for (int j = 0; j < numRegisters; j++)
                         {
-                            pnMI = buildMI(mbb, tii.get(TargetInstrInfo.PHI), phiReg + j)
+                            pnMI = buildMI(succMBB, tii.get(TargetInstrInfo.PHI), phiReg + j)
                                     .getMInstr();
                         }
                         phiReg += numRegisters;

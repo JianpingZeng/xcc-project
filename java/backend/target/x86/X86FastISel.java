@@ -1807,7 +1807,7 @@ public class X86FastISel extends FastISel
             assert va.getValNo() != lastVal:"Don't support value assigned to multiple locs yet";
             lastVal = va.getValNo();
 
-            int reg;
+            int reg = argRegs.get(i);
             // The register where caller pass the specified argument into.
             if (va.isRegLoc())
             {
@@ -1831,9 +1831,11 @@ public class X86FastISel extends FastISel
                 else
                     assert false:"Unknown argument type!";
 
+                // Add the incoming argument as livein register.
+                mf.addLiveIn(va.getLocReg(), rc);
+
                 // Emit an instruction copy the actual argument from assigned
                 // location to the a local virtual register (argReg).
-                reg = mf.addLiveIn(va.getLocReg(), rc);
                 TargetRegisterClass regClass = tli.getRegClassFor(regVT);
                 TargetRegisterClass srcClass = tli.getRegClassFor(locVT);
                 boolean Emitted = instrInfo.copyRegToReg(mbb, mbb.size(),
@@ -1996,7 +1998,6 @@ public class X86FastISel extends FastISel
                         return false;
                 }
 
-                reg = createResultReg(rc);
                 X86AddressMode am = new X86AddressMode();
                 am.baseType = FrameIndexBase;
                 am.base = new X86AddressMode.FrameIndexBase(fi);
@@ -2005,36 +2006,37 @@ public class X86FastISel extends FastISel
                 //reg = loadArgFromStack(fi, valVT);
                 updateValueMap(fn.argAt(i), reg);
             }
-            int opc = 0;
-            TargetRegisterClass rc = null;
-            // If value is passed by pointer, do load.
-            switch (va.getValVT().getSimpleVT().simpleVT)
-            {
-                case MVT.i8:
-                    opc = MOV8rr;
-                    rc = GR8RegisterClass;
-                    break;
-                case MVT.i16:
-                    opc = MOV16rr;
-                    rc = GR16RegisterClass;
-                    break;
-                case MVT.i32:
-                    opc = MOV32rr;
-                    rc = GR32RegisterClass;
-                    break;
-                case MVT.i64:
-                    opc = MOV64rr;
-                    rc = GR64RegisterClass;
-                    break;
-                default:
-                    assert false:"Unsupported value type";
-            }
-            int loadedReg = createResultReg(rc);
-            if (loadedReg == 0)
-                return false;
 
             if (va.getLocInfo() == LocInfo.Indirect)
             {
+                int opc = 0;
+                TargetRegisterClass rc = null;
+                // If value is passed by pointer, do load.
+                switch (va.getValVT().getSimpleVT().simpleVT)
+                {
+                    case MVT.i8:
+                        opc = MOV8rr;
+                        rc = GR8RegisterClass;
+                        break;
+                    case MVT.i16:
+                        opc = MOV16rr;
+                        rc = GR16RegisterClass;
+                        break;
+                    case MVT.i32:
+                        opc = MOV32rr;
+                        rc = GR32RegisterClass;
+                        break;
+                    case MVT.i64:
+                        opc = MOV64rr;
+                        rc = GR64RegisterClass;
+                        break;
+                    default:
+                        assert false:"Unsupported value type";
+                }
+                int loadedReg = createResultReg(rc);
+                if (loadedReg == 0)
+                    return false;
+
                 updateValueMap(fn.argAt(i), loadedReg);
                 X86AddressMode am = new X86AddressMode();
                 am.base = new X86AddressMode.RegisterBase(loadedReg);
