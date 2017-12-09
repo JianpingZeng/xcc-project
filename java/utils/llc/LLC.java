@@ -18,6 +18,8 @@
 package utils.llc;
 
 import backend.codegen.MachineCodeEmitter;
+import backend.codegen.RegAllocLocal;
+import backend.codegen.RegisterRegAlloc;
 import backend.pass.Pass;
 import backend.pass.PassCreator;
 import backend.pass.PassRegisterationUtility;
@@ -336,6 +338,8 @@ public class LLC
 
                 TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
                 theTarget.setAsmVerbosityDefault(true);
+
+                RegisterRegAlloc.setDefault(RegAllocLocal::createLocalRegAllocator);
 
                 MachineCodeEmitter mce = null;
                 TargetMachine.CodeGenFileType cft = OutFiletype.value == FileType.Asm

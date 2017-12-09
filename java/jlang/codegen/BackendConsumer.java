@@ -18,6 +18,8 @@ package jlang.codegen;
 
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.PrintModulePass;
+import backend.codegen.RegAllocLocal;
+import backend.codegen.RegisterRegAlloc;
 import backend.pass.*;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
@@ -344,6 +346,7 @@ public class BackendConsumer implements ASTConsumer
 
                 TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
                 theTarget.setAsmVerbosityDefault(true);
+                RegisterRegAlloc.setDefault(RegAllocLocal::createLocalRegAllocator);
 
                 MachineCodeEmitter mce = null;
                 CodeGenFileType cft = action == Backend_EmitAssembly ? AssemblyFile : ObjectFile;

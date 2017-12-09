@@ -75,8 +75,6 @@ public final class PassRegisterationUtility
         // Machine Function Passes
         new RegisterPass("Eliminate PHI nodes for register allocation", "phi-node-elimination",  PhiElimination.class);
         new RegisterPass("Prologue/Epilogue Insertion", "prologepilog",  PrologEpilogInserter.class);
-        new RegisterPass("Linear Scan Register Allocation", "lsra", RegAllocLinearScan.class);
-        new RegisterPass("Local register allocator", "regalloc-local",RegAllocLocal.class);
         new RegisterPass("Two-Address instruction pass", "twoaddressinstruction", TwoAddrInstructionPass.class);
         new RegisterPass("Remove unreachable machine blocks from the machine CFG", "unreachable-machineblockelim", UnreachableMachineBlockElim.class);
         new RegisterPass("Machine Module Information", "machine-module=info", MachineModuleInfo.class);
@@ -90,6 +88,11 @@ public final class PassRegisterationUtility
         {
             ErrorHandling.llvmReportError("Fail to register X86GenFastISel pass");
         }
+
+        new RegisterRegAlloc("linearscan","Linear Scan Register Allocation", RegAllocLinearScan::createLinearScanRegAllocator);
+        new RegisterRegAlloc("local","Local register allocator", RegAllocLocal::createLocalRegAllocator);
+
+
         new RegisterPass("Print out Function", "print-function", PrintMachineFunctionPass.class);
         new RegisterPass("Print out Module", "print-module", PrintModulePass.class);
         new RegisterPass("Verify generated machine code","machine-verifier", MachineCodeVerifier.class);

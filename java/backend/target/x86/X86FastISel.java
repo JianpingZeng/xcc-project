@@ -18,8 +18,8 @@ package backend.target.x86;
 
 import backend.codegen.*;
 import backend.codegen.CCValAssign.LocInfo;
-import backend.codegen.selectDAG.FastISel;
-import backend.codegen.selectDAG.ISD;
+import backend.codegen.fastISel.FastISel;
+import backend.codegen.fastISel.ISD;
 import backend.support.CallSite;
 import backend.support.CallingConv;
 import backend.support.LLVMContext;

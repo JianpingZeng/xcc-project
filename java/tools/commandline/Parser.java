@@ -81,7 +81,7 @@ public class Parser<T> implements ParserInterface<T>
      * Remove the specified option at the specified position.
      * @param name
      */
-    void removeLiteralOption(String name) 
+    public void removeLiteralOption(String name)
     {
         int index = findOption(name);
         assert index >= 0 : "Option not found!";

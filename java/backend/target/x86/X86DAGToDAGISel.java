@@ -16,7 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.selectDAG.SelectionDAGISel;
+import backend.codegen.fastISel.SelectionDAGISel;
 import backend.target.TargetMachine.CodeGenOpt;
 
 /**

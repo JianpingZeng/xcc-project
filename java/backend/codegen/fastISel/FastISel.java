@@ -1,4 +1,4 @@
-package backend.codegen.selectDAG;
+package backend.codegen.fastISel;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
@@ -30,7 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import static backend.codegen.MachineInstrBuilder.buildMI;
-import static backend.codegen.selectDAG.FunctionLoweringInfo.computeValueVTs;
+import static backend.codegen.fastISel.FunctionLoweringInfo.computeValueVTs;
 import static tools.APFloat.RoundingMode.rmTowardZero;
 
 /**

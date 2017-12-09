@@ -1,4 +1,4 @@
-package backend.codegen.selectDAG;
+package backend.codegen.fastISel;
 /*
  * Xlous C language Compiler
  * Copyright (c) 2015-2017, Xlous Zeng.
