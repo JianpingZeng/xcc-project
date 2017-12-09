@@ -19,14 +19,13 @@ package backend.target;
 import backend.codegen.MachineCodeEmitter;
 import backend.codegen.MachineFunctionAnalysis;
 import backend.passManaging.PassManagerBase;
+import backend.support.BackendCmdOptions;
 
 import java.io.OutputStream;
 
 import static backend.codegen.MachineCodeVerifier.createMachineVerifierPass;
 import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.codegen.PrologEpilogInserter.createPrologEpilogEmitter;
-import static backend.codegen.RegAllocLinearScan.createLinearScanRegAllocator;
-import static backend.codegen.RegAllocLocal.createLocalRegAllocator;
 import static backend.target.TargetOptions.PrintMachineCode;
 import static backend.target.TargetOptions.VerifyMachineCode;
 import static backend.transform.scalars.LowerSwitch.createLowerSwitchPass;
@@ -110,10 +109,7 @@ public abstract class LLVMTargetMachine extends TargetMachine
         }
 
         // Perform register allocation to convert to a concrete x86 representation
-        if (level == CodeGenOpt.None)
-            pm.add(createLocalRegAllocator());
-        else
-            pm.add(createLinearScanRegAllocator());
+        pm.add(BackendCmdOptions.createRegisterAllocator());
 
         // Print machine code after register allocation.
         printAndVerify(pm, false,

@@ -16,8 +16,7 @@ package backend.support;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.AsmPrinter;
-import backend.codegen.PrologEpilogInserter;
+import backend.codegen.*;
 import backend.passManaging.PMDataManager;
 import tools.commandline.*;
 
@@ -88,6 +87,27 @@ public class BackendCmdOptions
     public static final BooleanOpt NewAsmPrinter =
             new BooleanOpt(optionName("experimental-asm-printer"),
             new OptionHiddenApplicator(Hidden));
+
+    public static final Opt<MachinePassCtor> RegAlloc =
+            new Opt<MachinePassCtor>(new RegisterRegAllocParser(),
+                    optionName("regalloc"),
+                    desc("Register allocator to use: (default = local)"),
+                    init((MachinePassCtor) RegAllocLocal::createLocalRegAllocator));
+
+    /**
+     * Choose an appropriate register allocator according command line option.
+     * @return
+     */
+    public static MachineFunctionPass createRegisterAllocator()
+    {
+        MachinePassCtor ctor = RegisterRegAlloc.getDefault();
+        if (ctor == null)
+        {
+            ctor = RegAlloc.value;
+            RegisterRegAlloc.setDefault(ctor);
+        }
+        return ctor.apply();
+    }
 
     /**
      * A method used for registering Backend command line options.

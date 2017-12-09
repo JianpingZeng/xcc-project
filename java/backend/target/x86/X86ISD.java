@@ -16,7 +16,7 @@ package backend.target.x86;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.selectDAG.ISD;
+import backend.codegen.fastISel.ISD;
 
 /**
  * @author Xlous.zeng
