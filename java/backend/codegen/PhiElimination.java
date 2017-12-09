@@ -11,6 +11,8 @@ import backend.target.TargetRegisterInfo;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import static backend.target.TargetOptions.PrintMachineCode;
+import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
@@ -43,11 +45,18 @@ public final class PhiElimination extends MachineFunctionPass
 		{
 			changed |= eliminatePHINodes(mbb);
 		}
+
+        if (PrintMachineCode.value)
+        {
+            PrintMachineFunctionPass.createMachineFunctionPrinterPass(System.err,
+                    "# *** IR dump after PHI elimination ***:\n")
+                    .runOnMachineFunction(mf);
+        }
 		return changed;
 	}
 
 	/**
-	 * uses the registe to register copy instruction to replace the
+	 * uses the register to register copy instruction to replace the
 	 * PHI instruction.
 	 * @param mbb
 	 * @return
@@ -59,7 +68,7 @@ public final class PhiElimination extends MachineFunctionPass
 
 		// a arrays whose each element represents the uses count of the specified
 		// virtual register.
-		int[] vregPHIUsesCount = new int[mri.getLastVirReg()+1];
+		int[] vregPHIUsesCount = new int[mri.getLastVirReg()+1-FirstVirtualRegister];
 
 		// count the use for all of virtual register.
 		for (MachineBasicBlock pred : mbb.getPredecessors())
@@ -74,8 +83,9 @@ public final class PhiElimination extends MachineFunctionPass
 					for (int j = 1, e = mi.getNumOperands(); j<e; j += 2)
 					{
                         MachineOperand mo = mi.getOperand(j);
-					    if (mo.isRegister() && mo.getReg() != 0 && isVirtualRegister(mo.getReg()))
-						    vregPHIUsesCount[mo.getReg()]++;
+					    if (mo.isRegister() && mo.getReg() != 0 &&
+							    isVirtualRegister(mo.getReg()))
+						    vregPHIUsesCount[mo.getReg()-FirstVirtualRegister]++;
 					}
 				}
 			}
@@ -83,11 +93,12 @@ public final class PhiElimination extends MachineFunctionPass
 
 		// find the first non-phi instruction.
 		int firstInstAfterPhi = 0;
-		for (; firstInstAfterPhi < mbb.size() && isDummyPhiInstr(
-				mbb.getInstAt(firstInstAfterPhi).getOpcode());
+		for (; firstInstAfterPhi < mbb.size() &&
+                isDummyPhiInstr(mbb.getInstAt(firstInstAfterPhi).getOpcode());
 		     firstInstAfterPhi++);
 
-		for (; isDummyPhiInstr(mbb.getInstAt(0).getOpcode()); )
+		// Replace each PHI node with move instr in predecessor
+		while (isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
 			lowerPhiNode(mbb, firstInstAfterPhi, vregPHIUsesCount);
 		return true;
 	}
@@ -108,7 +119,7 @@ public final class PhiElimination extends MachineFunctionPass
 	private boolean lowerPhiNode(MachineBasicBlock mbb,
 			int firstInstAfterPhi, int[] vregPHIUsesCount)
 	{
-		MachineInstr phiMI = mbb.getInsts().removeFirst();
+		MachineInstr phiMI = mbb.getFirstInst();
 		int destReg = phiMI.getOperand(0).getReg();
 
 		TargetRegisterClass destRC = mri.getRegClass(destReg);
@@ -119,20 +130,23 @@ public final class PhiElimination extends MachineFunctionPass
 		// creates a register to register copy instruction at the position where
 		// indexed by firstInstAfter.
 		instInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, destRC, srcRC);
-		LiveVariables la = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
-		if (la != null)
+
+		// Delete the PHI node whose index to 0
+        mbb.remove(0);
+		LiveVariables lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
+		if (lv != null)
 		{
 			MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
 
-			la.addVirtualRegisterKilled(incomingReg, copyInst);
+			lv.addVirtualRegisterKilled(incomingReg, copyInst);
 
-			la.removeVirtualRegisterKilled(phiMI);
+			lv.removeVirtualRegisterKilled(phiMI);
 
 			// if the result is dead, update live analysis.
-			if (la.registerDefIsDeaded(phiMI, destReg))
+			if (lv.registerDefIsDeaded(phiMI, destReg))
 			{
-				la.addVirtualRegisterDead(destReg, copyInst);
-				la.removeVirtualRegisterDead(phiMI);
+				lv.addVirtualRegisterDead(destReg, copyInst);
+				lv.removeVirtualRegisterDead(phiMI);
 			}
 
 			// records the defined MO for destReg.
@@ -140,7 +154,7 @@ public final class PhiElimination extends MachineFunctionPass
 		}
 
 		HashSet<MachineBasicBlock> mbbInsertedInto = new HashSet<>();
-		for (int i = phiMI.getNumOperands() - 1; i > 1; i-=2)
+		for (int i = phiMI.getNumOperands() - 1; i >= 1; i-=2)
 		{
 			int srcReg = phiMI.getOperand(i-1).getReg();
 			assert mri.isVirtualReg(srcReg):
@@ -161,11 +175,11 @@ public final class PhiElimination extends MachineFunctionPass
 
 			// idx++;
 			idx++; // make sure the idx always points to the first terminator inst.
-			if (la == null) continue;
+			if (lv == null) continue;
 
-			LiveVariables.VarInfo srcRegVarInfo = la.getVarInfo(srcReg);
+			LiveVariables.VarInfo srcRegVarInfo = lv.getVarInfo(srcReg);
 
-			boolean valueIsLive = vregPHIUsesCount[srcReg] != 0;
+			boolean valueIsLive = vregPHIUsesCount[srcReg-FirstVirtualRegister] != 0;
 
 			// records the successor blocks which is not contained in aliveBlocks
 			// set.
@@ -245,7 +259,7 @@ public final class PhiElimination extends MachineFunctionPass
 
 				int killInst = !firstTerminatorUsesValue ? idx-1 : idx;
 
-				la.addVirtualRegisterKilled(srcReg, opBB.getInstAt(killInst));
+				lv.addVirtualRegisterKilled(srcReg, opBB.getInstAt(killInst));
 
 				int opBlockNum = opBB.getNumber();
 				if (opBlockNum < srcRegVarInfo.aliveBlocks.size())

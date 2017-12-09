@@ -219,9 +219,9 @@ public class MachineBasicBlock
 
 	public int getFirstTerminator()
 	{
-		int i = size() - 1;
-		for (; i >=0 && getInstAt(i).getDesc().isTerminator(); i--);
-		return i;
+		assert !isEmpty() && getInstAt(size()-1).getDesc().isTerminator():
+				"Must have only one terminator instruction in the tail of MBB";
+		return size()-1;
 	}
 
 	/**
