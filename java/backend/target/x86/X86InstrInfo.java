@@ -1616,219 +1616,223 @@ public class X86InstrInfo extends TargetInstrInfoImpl
         return GR8_ABCD_HRegisterClass.contains(Reg);
     }
 
-    public boolean copyRegToReg(MachineBasicBlock mbb, int index, int DestReg,
-            int SrcReg, TargetRegisterClass DestRC, TargetRegisterClass SrcRC)
+    public boolean copyRegToReg(MachineBasicBlock mbb,
+            int index,
+            int destReg,
+            int srcReg,
+            TargetRegisterClass destRC,
+            TargetRegisterClass srcRC)
     {
         // DebugLoc DL = DebugLoc::getUnknownLoc();
         //if (MI != mbb.end()) DL = MI.getDebugLoc();
 
-        // Determine if DstRC and SrcRC have a common superclass in common.
-        TargetRegisterClass CommonRC = DestRC;
-        if (DestRC.equals(SrcRC))
+        // Determine if DstRC and srcRC have a common superclass in common.
+        TargetRegisterClass commonRC = destRC;
+        if (destRC.equals(srcRC))
     /* Source and destination have the same register class. */
             ;
-        else if (CommonRC.hasSuperClass(SrcRC))
-            CommonRC = SrcRC;
-        else if (!DestRC.hasSubClass(SrcRC))
+        else if (commonRC.hasSuperClass(srcRC))
+            commonRC = srcRC;
+        else if (!destRC.hasSubClass(srcRC))
         {
             // Neither of GR64_NOREX or GR64_NOSP is a superclass of the other,
             // but we want to copy then as GR64. Similarly, for GR32_NOREX and
             // GR32_NOSP, copy as GR32.
-            if (SrcRC.hasSuperClass(GR64RegisterClass) && DestRC
+            if (srcRC.hasSuperClass(GR64RegisterClass) && destRC
                     .hasSuperClass(GR64RegisterClass))
-                CommonRC = GR64RegisterClass;
-            else if (SrcRC.hasSuperClass(GR32RegisterClass) && DestRC
+                commonRC = GR64RegisterClass;
+            else if (srcRC.hasSuperClass(GR32RegisterClass) && destRC
                     .hasSuperClass(GR32RegisterClass))
-                CommonRC = GR32RegisterClass;
+                commonRC = GR32RegisterClass;
             else
-                CommonRC = null;
+                commonRC = null;
         }
 
-        if (CommonRC != null)
+        if (commonRC != null)
         {
-            int Opc;
-            if (CommonRC == GR64RegisterClass
-                    || CommonRC == GR64_NOSPRegisterClass)
+            int opc;
+            if (commonRC == GR64RegisterClass
+                    || commonRC == GR64_NOSPRegisterClass)
             {
-                Opc = MOV64rr;
+                opc = MOV64rr;
             }
-            else if (CommonRC == GR32RegisterClass
-                    || CommonRC == GR32_NOSPRegisterClass)
+            else if (commonRC == GR32RegisterClass
+                    || commonRC == GR32_NOSPRegisterClass)
             {
-                Opc = MOV32rr;
+                opc = MOV32rr;
             }
-            else if (CommonRC == GR16RegisterClass)
+            else if (commonRC == GR16RegisterClass)
             {
-                Opc = MOV16rr;
+                opc = MOV16rr;
             }
-            else if (CommonRC == GR8RegisterClass)
+            else if (commonRC == GR8RegisterClass)
             {
                 // Copying to or from a physical H register on x86-64 requires a NOREX
                 // move.  Otherwise use a normal move.
-                if ((isHReg(DestReg) || isHReg(SrcReg)) && ((X86Subtarget) tm
+                if ((isHReg(destReg) || isHReg(srcReg)) && ((X86Subtarget) tm
                         .getSubtarget()).is64Bit())
-                    Opc = MOV8rr_NOREX;
+                    opc = MOV8rr_NOREX;
                 else
-                    Opc = MOV8rr;
+                    opc = MOV8rr;
             }
-            else if (CommonRC == GR64_ABCDRegisterClass)
+            else if (commonRC == GR64_ABCDRegisterClass)
             {
-                Opc = MOV64rr;
+                opc = MOV64rr;
             }
-            else if (CommonRC == GR32_ABCDRegisterClass)
+            else if (commonRC == GR32_ABCDRegisterClass)
             {
-                Opc = MOV32rr;
+                opc = MOV32rr;
             }
-            else if (CommonRC == GR16_ABCDRegisterClass)
+            else if (commonRC == GR16_ABCDRegisterClass)
             {
-                Opc = MOV16rr;
+                opc = MOV16rr;
             }
-            else if (CommonRC == GR8_ABCD_LRegisterClass)
+            else if (commonRC == GR8_ABCD_LRegisterClass)
             {
-                Opc = MOV8rr;
+                opc = MOV8rr;
             }
-            else if (CommonRC == GR8_ABCD_HRegisterClass)
+            else if (commonRC == GR8_ABCD_HRegisterClass)
             {
                 if (((X86Subtarget) tm.getSubtarget()).is64Bit())
-                    Opc = MOV8rr_NOREX;
+                    opc = MOV8rr_NOREX;
                 else
-                    Opc = MOV8rr;
+                    opc = MOV8rr;
             }
-            else if (CommonRC == GR64_NOREXRegisterClass
-                    || CommonRC == GR64_NOREX_NOSPRegisterClass)
+            else if (commonRC == GR64_NOREXRegisterClass
+                    || commonRC == GR64_NOREX_NOSPRegisterClass)
             {
-                Opc = MOV64rr;
+                opc = MOV64rr;
             }
-            else if (CommonRC == GR32_NOREXRegisterClass)
+            else if (commonRC == GR32_NOREXRegisterClass)
             {
-                Opc = MOV32rr;
+                opc = MOV32rr;
             }
-            else if (CommonRC == GR16_NOREXRegisterClass)
+            else if (commonRC == GR16_NOREXRegisterClass)
             {
-                Opc = MOV16rr;
+                opc = MOV16rr;
             }
-            else if (CommonRC == GR8_NOREXRegisterClass)
+            else if (commonRC == GR8_NOREXRegisterClass)
             {
-                Opc = MOV8rr;
+                opc = MOV8rr;
             }
-            else if (CommonRC == RFP32RegisterClass)
+            else if (commonRC == RFP32RegisterClass)
             {
-                Opc = MOV_Fp3232;
+                opc = MOV_Fp3232;
             }
-            else if (CommonRC == RFP64RegisterClass
-                    || CommonRC == RSTRegisterClass)
+            else if (commonRC == RFP64RegisterClass
+                    || commonRC == RSTRegisterClass)
             {
-                Opc = MOV_Fp6464;
+                opc = MOV_Fp6464;
             }
-            else if (CommonRC == RFP80RegisterClass)
+            else if (commonRC == RFP80RegisterClass)
             {
-                Opc = MOV_Fp8080;
+                opc = MOV_Fp8080;
             }
-            else if (CommonRC == FR32RegisterClass)
+            else if (commonRC == FR32RegisterClass)
             {
-                Opc = FsMOVAPSrr;
+                opc = FsMOVAPSrr;
             }
-            else if (CommonRC == FR64RegisterClass)
+            else if (commonRC == FR64RegisterClass)
             {
-                Opc = FsMOVAPDrr;
+                opc = FsMOVAPDrr;
             }
-            else if (CommonRC == VR128RegisterClass)
+            else if (commonRC == VR128RegisterClass)
             {
-                Opc = MOVAPSrr;
+                opc = MOVAPSrr;
             }
-            else if (CommonRC == VR64RegisterClass)
+            else if (commonRC == VR64RegisterClass)
             {
-                Opc = MMX_MOVQ64rr;
+                opc = MMX_MOVQ64rr;
             }
             else
             {
                 return false;
             }
-            buildMI(mbb, index, get(Opc), DestReg).addReg(SrcReg);
+            buildMI(mbb, index, get(opc), destReg).addReg(srcReg);
             return true;
         }
 
         // Moving EFLAGS to / from another register requires a push and a pop.
-        if (SrcRC == CCRRegisterClass)
+        if (srcRC == CCRRegisterClass)
         {
-            if (SrcReg != EFLAGS)
+            if (srcReg != EFLAGS)
                 return false;
-            if (DestRC == GR64RegisterClass || DestRC == GR64_NOSPRegisterClass)
+            if (destRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass)
             {
                 buildMI(mbb, index, get(PUSHFQ));
-                buildMI(mbb, index, get(POP64r), DestReg);
+                buildMI(mbb, index, get(POP64r), destReg);
                 return true;
             }
-            else if (DestRC == GR32RegisterClass
-                    || DestRC == GR32_NOSPRegisterClass)
+            else if (destRC == GR32RegisterClass
+                    || destRC == GR32_NOSPRegisterClass)
             {
                 buildMI(mbb, index, get(PUSHFD));
-                buildMI(mbb, index, get(POP32r), DestReg);
+                buildMI(mbb, index, get(POP32r), destReg);
                 return true;
             }
         }
-        else if (DestRC == CCRRegisterClass)
+        else if (destRC == CCRRegisterClass)
         {
-            if (DestReg != EFLAGS)
+            if (destReg != EFLAGS)
                 return false;
-            if (SrcRC == GR64RegisterClass || DestRC == GR64_NOSPRegisterClass)
+            if (srcRC == GR64RegisterClass || destRC == GR64_NOSPRegisterClass)
             {
-                buildMI(mbb, index, get(PUSH64r)).addReg(SrcReg);
+                buildMI(mbb, index, get(PUSH64r)).addReg(srcReg);
                 buildMI(mbb, index, get(POPFQ));
                 return true;
             }
-            else if (SrcRC == GR32RegisterClass
-                    || DestRC == GR32_NOSPRegisterClass)
+            else if (srcRC == GR32RegisterClass
+                    || destRC == GR32_NOSPRegisterClass)
             {
-                buildMI(mbb, index, get(PUSH32r)).addReg(SrcReg);
+                buildMI(mbb, index, get(PUSH32r)).addReg(srcReg);
                 buildMI(mbb, index, get(POPFD));
                 return true;
             }
         }
 
         // Moving from ST(0) turns into FpGET_ST0_32 etc.
-        if (SrcRC == RSTRegisterClass)
+        if (srcRC == RSTRegisterClass)
         {
             // Copying from ST(0)/ST(1).
-            if (SrcReg != ST0 && SrcReg != ST1)
+            if (srcReg != ST0 && srcReg != ST1)
                 // Can only copy from ST(0)/ST(1) right now
                 return false;
-            boolean isST0 = SrcReg == ST0;
+            boolean isST0 = srcReg == ST0;
             int Opc;
-            if (DestRC == RFP32RegisterClass)
+            if (destRC == RFP32RegisterClass)
                 Opc = isST0 ? FpGET_ST0_32 : FpGET_ST1_32;
-            else if (DestRC == RFP64RegisterClass)
+            else if (destRC == RFP64RegisterClass)
                 Opc = isST0 ? FpGET_ST0_64 : FpGET_ST1_64;
             else
             {
-                if (DestRC != RFP80RegisterClass)
+                if (destRC != RFP80RegisterClass)
                     return false;
                 Opc = isST0 ? FpGET_ST0_80 : FpGET_ST1_80;
             }
-            buildMI(mbb, index, get(Opc), DestReg);
+            buildMI(mbb, index, get(Opc), destReg);
             return true;
         }
 
         // Moving to ST(0) turns into FpSET_ST0_32 etc.
-        if (DestRC == RSTRegisterClass)
+        if (destRC == RSTRegisterClass)
         {
             // Copying to ST(0) / ST(1).
-            if (DestReg != ST0 && DestReg != ST1)
+            if (destReg != ST0 && destReg != ST1)
                 // Can only copy to TOS right now
                 return false;
-            boolean isST0 = DestReg == ST0;
+            boolean isST0 = destReg == ST0;
             int Opc;
-            if (SrcRC == RFP32RegisterClass)
+            if (srcRC == RFP32RegisterClass)
                 Opc = isST0 ? FpSET_ST0_32 : FpSET_ST1_32;
-            else if (SrcRC == RFP64RegisterClass)
+            else if (srcRC == RFP64RegisterClass)
                 Opc = isST0 ? FpSET_ST0_64 : FpSET_ST1_64;
             else
             {
-                if (SrcRC != RFP80RegisterClass)
+                if (srcRC != RFP80RegisterClass)
                     return false;
                 Opc = isST0 ? FpSET_ST0_80 : FpSET_ST1_80;
             }
-            buildMI(mbb, index, get(Opc)).addReg(SrcReg);
+            buildMI(mbb, index, get(Opc)).addReg(srcReg);
             return true;
         }
 

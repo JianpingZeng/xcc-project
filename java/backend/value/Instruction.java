@@ -2814,14 +2814,14 @@ public abstract class Instruction extends User
         {
             assert index >= 0 && index < getNumberIncomingValues()
                     : "The index is beyond out the num of list";
-            return (BasicBlock) operand(index << 1 + 1);
+            return (BasicBlock) operand(index*2 + 1);
         }
 
         public void setIncomingBlock(int index, BasicBlock bb)
         {
             assert index >= 0 && index < getNumberIncomingValues()
                     : "The index is beyond out the num of list";
-            setOperand((index << 1) + 1, bb, this);
+            setOperand(index*2 + 1, bb, this);
         }
 
         public Value removeIncomingValue(int index, boolean deletePhiIfEmpty)
@@ -2829,7 +2829,7 @@ public abstract class Instruction extends User
             assert index >= 0 && index < getNumberIncomingValues()
                     : "The index is beyond out the num of list";
 
-            Value old = operand(index << 1);
+            Value old = operand(index*2);
             operandList.remove(index);
             operandList.remove(index+1);
 
