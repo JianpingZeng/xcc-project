@@ -76,7 +76,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
         mri = mf.getMachineRegisterInfo();
         tii = tm.getInstrInfo();
         tri = tm.getRegisterInfo();
-        //FIXME AnalysisResolver 2017/11/20 lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
+        lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 
         boolean madeChange = false;
         if (Util.DEBUG)
