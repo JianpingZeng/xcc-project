@@ -22,7 +22,6 @@ import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrDesc;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
 import tools.BitMap;
@@ -30,6 +29,7 @@ import tools.BitMap;
 import java.util.*;
 
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
+import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 
 /**
  * @author Xlous.zeng
@@ -212,9 +212,6 @@ public final class LiveVariables extends MachineFunctionPass
 
         analyzePhiNodes(mf);
 
-        // TODO handle physical register which are live in the function.
-        // TODO 2016.12.3
-
         // Computes the live information for virtual register in the depth-first
         // first order on the CFG of the function. It ensures that we we see the
         // definition before use since the domination property of SSA form.
@@ -224,6 +221,13 @@ public final class LiveVariables extends MachineFunctionPass
         for (MachineBasicBlock mbb : visited)
         {
             distanceMap.clear();
+            for (int i = 0, e = mbb.getLiveIns().size(); i < e; i++)
+            {
+                int preg = mbb.getLiveIns().get(i);
+                assert isPhysicalRegister(preg):"Virtual register can not used in Live-in";
+                handlePhyRegDef(preg, null);
+            }
+
             // loop over all of the mi, processing them.
             int dist = 0;
             for (MachineInstr inst : mbb.getInsts())
@@ -237,7 +241,7 @@ public final class LiveVariables extends MachineFunctionPass
                 TargetInstrDesc instDesc = instInfo.get(inst.getOpcode());
 
                 // process all implicit uses reg.
-                if (instDesc.implicitUses != null)
+                if (instDesc.implicitUses != null && instDesc.implicitUses.length > 0)
                 {
                     for (int implReg : instDesc.implicitUses)
                     {
@@ -249,7 +253,7 @@ public final class LiveVariables extends MachineFunctionPass
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    if (mo.isUse() && mo.getReg() != 0 && mo.isRegister())
+                    if (mo.isRegister() && mo.getReg() != 0 && mo.isUse())
                     {
                         int reg = mo.getReg();
                         if (machineRegInfo.isPhysicalReg(reg)
@@ -278,7 +282,7 @@ public final class LiveVariables extends MachineFunctionPass
                 {
                     MachineOperand mo = inst.getOperand(i);
                     int reg = mo.getReg();
-                    if (mo.isDef() && mo.isRegister() && mo.getReg() != 0)
+                    if (mo.isRegister() && mo.getReg() != 0 && mo.isDef())
                     {
                         if (machineRegInfo.isPhysicalReg(reg)
                                 && allocatablePhyRegs.get(reg))
@@ -287,26 +291,25 @@ public final class LiveVariables extends MachineFunctionPass
                             handleVirRegDef(reg, inst);
                     }
                 }
-
-                // handle any virtual assignments from PHI node which might be
-                // at the bottom of this basic block. We check all of successor
-                // blocks to see if they have PHI node, and if so, we simulate
-                // an assignment at the end of the current block.
-                TIntArrayList varInfoForPhi = phiVarInfo[mbb.getNumber()];
-                if (!varInfoForPhi.isEmpty())
-                {
-                    for (TIntIterator itr = varInfoForPhi.iterator(); itr.hasNext();)
-                    {
-                        // mark it alive only in the block where it coming from
-                        // (means current block).
-                        int reg = itr.next();
-                        markVirRegAliveInBlock(getVarInfo(reg),
-                                machineRegInfo.getDefMI(reg).getParent(),
-                                mbb);
-                    }
-                }
             }
 
+            // handle any virtual assignments from PHI node which might be
+            // at the bottom of this basic block. We check all of successor
+            // blocks to see if they have PHI node, and if so, we simulate
+            // an assignment at the end of the current block.
+            TIntArrayList varInfoForPhi = phiVarInfo[mbb.getNumber()];
+            if (varInfoForPhi != null && !varInfoForPhi.isEmpty())
+            {
+                for (int i = 0, e = varInfoForPhi.size(); i < e; i++)
+                {
+                    // mark it alive only in the block where it coming from
+                    // (means current block).
+                    int reg = varInfoForPhi.get(i);
+                    markVirRegAliveInBlock(getVarInfo(reg),
+                            machineRegInfo.getDefMI(reg).getParent(),
+                            mbb);
+                }
+            }
 
             // Finally, if the last instruction in the block is a return,
             // make sure it as using all of the live out values in the fucntion.
@@ -314,7 +317,17 @@ public final class LiveVariables extends MachineFunctionPass
             if (!mbb.isEmpty() && tid.isReturn())
             {
                 MachineInstr ret = mbb.getInsts().getLast();
-                // TODO live out of function, 2016.12.3.
+                TIntArrayList liveouts = mf.getMachineRegisterInfo().getLiveOuts();
+                for (int i = 0; i < liveouts.size(); i++)
+                {
+                    int preg = liveouts.get(i);
+                    assert isPhysicalRegister(preg):"Virtual register can't used as Live-out";
+                    handlePhyRegUse(preg, ret);
+
+                    // Add this physical register as implicit-use operand of ret instr
+                    if (!ret.readsRegister(preg, null))
+                        ret.addOperand(MachineOperand.createReg(preg, false, true));
+                }
             }
 
             // Loop over PhysRegDef / PhysRegUse, killing any registers that are
@@ -355,8 +368,8 @@ public final class LiveVariables extends MachineFunctionPass
         // sort the all register killed or deaded by walking through registerDeaded
         // registerKilled in the order of increasing the register number.
         // in order to perform binary search for efficiency.
-        registerDeaded.forEach((key1, value1) -> value1.sort());
-        registerKilled.forEach((key, value) -> value.sort());
+        // registerDeaded.forEach((key1, value1) -> value1.sort());
+        // registerKilled.forEach((key, value) -> value.sort());
 
         return false;
     }
@@ -472,8 +485,8 @@ public final class LiveVariables extends MachineFunctionPass
 
         while(!worklist.isEmpty())
         {
-            MachineBasicBlock pred = worklist.getLast();
-            worklist.removeLast();
+            MachineBasicBlock pred = worklist.getFirst();
+            worklist.removeFirst();
             markVirRegAliveInBlock(varInfo, defMBB, pred, worklist);
         }
     }
@@ -501,8 +514,7 @@ public final class LiveVariables extends MachineFunctionPass
         int mbbNo = mbb.getNumber();
 
         // check to see if this block is one of the lastUsed blocks.
-        // if so, remove it, because there is only one last use instr in
-        // the same block.
+        // if so, remove it, because virReg is live out in the same block.
         for (int i = 0; i < varInfo.kills.size();)
         {
             if (varInfo.kills.get(i).getParent() == mbb)
@@ -551,7 +563,7 @@ public final class LiveVariables extends MachineFunctionPass
             for (int i = 0, e = mbb.size(); i < e &&
                     ( mi = mbb.getInstAt(i)).getOpcode() == TargetInstrInfo.PHI; i++)
             {
-                for (int j = 1, sz = mi.getNumOperands(); j < sz; j++)
+                for (int j = 1, sz = mi.getNumOperands(); j < sz; j+=2)
                     phiVarInfo[mi.getOperand(j+1).getMBB().getNumber()].
                             add(mi.getOperand(j).getReg());
             }

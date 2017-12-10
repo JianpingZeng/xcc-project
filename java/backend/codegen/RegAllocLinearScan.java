@@ -16,6 +16,8 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
+import backend.analysis.MachineDomTree;
+import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
@@ -59,7 +61,12 @@ public class RegAllocLinearScan extends MachineFunctionPass
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
     {
+        au.setPreservesCFG();
         au.addRequired(LiveIntervalAnalysis.class);
+
+        au.addRequired(MachineLoop.class);
+        au.addPreserved(MachineLoop.class);
+        au.addPreserved(MachineDomTree.class);
         super.getAnalysisUsage(au);
     }
 
