@@ -164,16 +164,23 @@ public class LiveInterval implements Comparable<LiveInterval>
         return ranges.get(found).contains(index);
     }
 
+    /**
+     * Get the index to upper bound in the specified list.
+     * @param ranges
+     * @param start
+     * @param end
+     * @param key
+     * @return
+     */
     private static int upperBound(ArrayList<LiveRange> ranges, int start, int end, int key)
     {
-        int idx = 0;
         for (int i = start; i != end; i++)
         {
             LiveRange r = ranges.get(i);
             if (!(r.start < key))
-                return idx;
+                return i;
         }
-        return -1;
+        return end;
     }
 
     private static int upperBound(ArrayList<LiveRange> ranges, int start, int key)
@@ -434,6 +441,13 @@ public class LiveInterval implements Comparable<LiveInterval>
         return false;
     }
 
+    /**
+     * Insert the specified LiveRange into ranges list in the order of ascending
+     * live range.
+     * @param lr
+     * @param idxToRange
+     * @return
+     */
     private int addRangeFrom(LiveRange lr, int idxToRange)
     {
         int start = lr.start, end = lr.end;
@@ -459,7 +473,7 @@ public class LiveInterval implements Comparable<LiveInterval>
 
         // Otherwise, if this range ends in the middle of, or right next to, another
         // interval, merge it into that interval.
-        if (idx != -1)
+        if (idx != ranges.size())
         {
             if (lr.valId == ranges.get(idx).valId)
             {
@@ -529,7 +543,7 @@ public class LiveInterval implements Comparable<LiveInterval>
 
     private void extendIntervalEndTo(int idxToRange, int newEnd)
     {
-        assert idxToRange != ranges.size():"Not a valid interval!";
+        assert idxToRange < ranges.size():"Not a valid interval!";
 
         int valId = ranges.get(idxToRange).valId;
 

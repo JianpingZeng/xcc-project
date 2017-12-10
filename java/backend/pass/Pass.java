@@ -37,7 +37,7 @@ public interface Pass extends Printable
 		if (pi == null) return null;
         AnalysisResolver resolver = getAnalysisResolver();
         assert resolver != null:"Pass not resident in PassManger object!";
-		return resolver.findImplPass(pi);
+		return resolver.getAnalysisIfAvailable(pi, true);
 	}
 
 	/**
