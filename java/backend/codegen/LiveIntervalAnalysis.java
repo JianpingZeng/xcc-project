@@ -582,7 +582,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 if (!vi.kills.get(0).equals(mbb.getInstAt(index)))
                 {
                     // the kill till to use slot
-                    killIdx = getUseIndex(getInstructionIndex(mbb.getInstAt(index)));
+                    killIdx = getUseIndex(getInstructionIndex(vi.kills.get(0)));
                 }
                 else
                 {
@@ -597,6 +597,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                     assert vi.aliveBlocks.isEmpty():"Shouldn't be alive across any block";
                     LiveRange range = new LiveRange(defIdx, killIdx, li.getNextValue());
                     li.addRange(range);
+                    return;
                 }
             }
 
@@ -841,15 +842,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             {
                 MachineInstr mi = mbb.getInstAt(i);
 
-                int[] implDefs = mi.getDesc().implicitDefs;
-                if (implDefs != null && implDefs.length > 0)
-                {
-                    // Process implicitly def operand.
-                    for (int def : implDefs)
-                        handleRegisterDef(mbb, i, def);
-                }
-
-                // Process explicitly defs.
+                // Process defs (includes explicitly and implicitly defs).
                 for (int j = 0, sz = mi.getNumOperands(); j < sz; ++j)
                 {
                     MachineOperand mo = mi.getOperand(j);

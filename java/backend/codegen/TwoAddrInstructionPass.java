@@ -504,11 +504,11 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
     public void getAnalysisUsage(AnalysisUsage au)
     {
         assert au != null;
-        au.setPreservedAll();
+        au.setPreservesCFG();
         au.addPreserved(LiveVariables.class);
         au.addPreserved(MachineLoop.class);
         au.addPreserved(MachineDomTree.class);
-        au.addRequired(PhiElimination.class);
+        au.addPreserved(PhiElimination.class);
         super.getAnalysisUsage(au);
     }
 

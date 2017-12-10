@@ -219,7 +219,7 @@ public final class LiveVariables extends MachineFunctionPass
         // But there is a exception that PHI node, that will be handled specially
         // later.
         ArrayList<MachineBasicBlock> visited = DepthFirstOrder.reversePostOrder(mf.getEntryBlock());
-        for (MachineBasicBlock mbb : visited)
+               for (MachineBasicBlock mbb : visited)
         {
             distanceMap.clear();
             for (int i = 0, e = mbb.getLiveIns().size(); i < e; i++)
@@ -396,15 +396,15 @@ public final class LiveVariables extends MachineFunctionPass
         VarInfo varInfo = getVarInfo(virReg);
         MachineBasicBlock mbb = mi.getParent();
         MachineBasicBlock defBB = machineRegInfo.getDefMI(virReg).getParent();
+        ++varInfo.numUses;
 
-        for (int i = 0; i < varInfo.kills.size();)
+        if (!varInfo.kills.isEmpty() && varInfo.kills
+                .get(varInfo.kills.size()-1).getParent() == mbb)
         {
-            if (varInfo.kills.get(i).getParent() == mbb)
-            {
-                varInfo.kills.remove(i);
-                return;
-            }
-            i++;
+            // If this basic block is already a kill block. Increase the live
+            // range by updating the kill instruction
+            varInfo.kills.set(varInfo.kills.size() - 1, mi);
+            return;
         }
 
         if (mbb.equals(defBB)) return;
@@ -471,6 +471,15 @@ public final class LiveVariables extends MachineFunctionPass
                 && regIdx <= machineRegInfo.getLastVirReg()
                 :"not a valid virtual register!";
         regIdx -= FirstVirtualRegister;
+        if (regIdx >= virRegInfo.length)
+        {
+            VarInfo[] temp = new VarInfo[regIdx*2];
+            System.arraycopy(virRegInfo, 0, temp, 0, virRegInfo.length);
+            virRegInfo = temp;
+        }
+
+        if (virRegInfo[regIdx] != null)
+            return virRegInfo[regIdx];
 
         return virRegInfo[regIdx] = new VarInfo();
     }
@@ -641,8 +650,11 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public void addVirtualRegisterKilled(int incomingReg, MachineInstr mi)
     {
-        TIntArrayList list = registerKilled.get(mi);
         // handle the special common case.
+        if (!registerKilled.containsKey(mi))
+            registerKilled.put(mi, new TIntArrayList());
+
+        TIntArrayList list = registerKilled.get(mi);
         if (list.isEmpty() || incomingReg > list.get(list.size() - 1))
             list.add(incomingReg);
         // sort the order.
@@ -710,6 +722,9 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public void addVirtualRegisterDead(int reg, MachineInstr mi)
     {
+        if (!registerDeaded.containsKey(mi))
+            registerDeaded.put(mi, new TIntArrayList());
+
         TIntArrayList list = registerDeaded.get(mi);
         // handles the special common cases.
         if (list.isEmpty() || reg > list.size())

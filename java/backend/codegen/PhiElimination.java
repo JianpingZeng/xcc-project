@@ -1,8 +1,6 @@
 package backend.codegen;
 
 import backend.analysis.LiveVariables;
-import backend.analysis.MachineDomTree;
-import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterClass;
@@ -130,14 +128,13 @@ public final class PhiElimination extends MachineFunctionPass
 		// creates a register to register copy instruction at the position where
 		// indexed by firstInstAfter.
 		instInfo.copyRegToReg(mbb, firstInstAfterPhi, destReg, incomingReg, destRC, srcRC);
+		MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
 
 		// Delete the PHI node whose index to 0
         mbb.remove(0);
 		LiveVariables lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
 		if (lv != null)
 		{
-			MachineInstr copyInst = mbb.getInstAt(firstInstAfterPhi);
-
 			lv.addVirtualRegisterKilled(incomingReg, copyInst);
 
 			lv.removeVirtualRegisterKilled(phiMI);
@@ -150,7 +147,7 @@ public final class PhiElimination extends MachineFunctionPass
 			}
 
 			// records the defined MO for destReg.
-			mri.setDefMO(destReg, copyInst.getOperand(0));
+			lv.getVarInfo(destReg).defInst = copyInst;
 		}
 
 		HashSet<MachineBasicBlock> mbbInsertedInto = new HashSet<>();
@@ -296,10 +293,7 @@ public final class PhiElimination extends MachineFunctionPass
 	@Override
 	public void getAnalysisUsage(AnalysisUsage au)
 	{
-		au.setPreservedAll();
 		au.addPreserved(LiveVariables.class);
-		au.addPreserved(MachineLoop.class);
-		au.addPreserved(MachineDomTree.class);
 		super.getAnalysisUsage(au);
 	}
 }

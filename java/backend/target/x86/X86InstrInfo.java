@@ -475,8 +475,10 @@ public class X86InstrInfo extends TargetInstrInfoImpl
                         .isRegister() : "invalid register-register move instruction";
                 srcReg.set(mi.getOperand(1).getReg());
                 destReg.set(mi.getOperand(0).getReg());
-                srcSubIdx.set(mi.getOperand(1).getSubReg());
-                destSubIdx.set(mi.getOperand(0).getSubReg());
+                if (srcSubIdx != null)
+                    srcSubIdx.set(mi.getOperand(1).getSubReg());
+                if (destSubIdx != null)
+                    destSubIdx.set(mi.getOperand(0).getSubReg());
                 return true;
         }
     }
