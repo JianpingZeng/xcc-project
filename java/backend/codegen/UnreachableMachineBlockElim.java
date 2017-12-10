@@ -23,6 +23,7 @@ import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrInfo;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
@@ -111,13 +112,17 @@ public final class UnreachableMachineBlockElim extends MachineFunctionPass
         {
             // Prune the unneeded PHI nodes.
             MachineBasicBlock mbb = mf.getMBBAt(i);
-            ArrayList<MachineBasicBlock> pred = mbb.getPredecessors();
-            for (int j = 0; j <  mbb.size(); )
+            if (mbb.isEmpty() || mbb.getInstAt(0).getOpcode() != TargetInstrInfo.PHI)
+                continue;
+
+            HashSet<MachineBasicBlock> pred = new HashSet<>();
+            pred.addAll(mbb.getPredecessors());
+
+            MachineInstr phi;
+            for (int j = 0; j <  mbb.size() && (phi = mbb.getInstAt(j))
+                    .getOpcode() == TargetInstrInfo.PHI; )
             {
-                MachineInstr phi = mbb.getInstAt(j);
-                if (phi.getOpcode() != TargetInstrInfo.PHI)
-                    continue;
-                for (int k = phi.getNumOperands() - 1; k >= 2; k-=2)
+                for (int k = phi.getNumOperands() - 1; k >= 1; k-=2)
                 {
                     // Removes some phi entries that is not from predecessor.
                     if (!pred.contains(phi.getOperand(k).getMBB()))

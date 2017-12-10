@@ -17,6 +17,7 @@ package backend.pass;
  */
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 import static backend.pass.PassRegistrar.getPassInfo;
 
@@ -26,12 +27,12 @@ import static backend.pass.PassRegistrar.getPassInfo;
  */
 public final class AnalysisUsage
 {
-    private HashSet<PassInfo> required, preserved;
+    private LinkedHashSet<PassInfo> required, preserved;
     private boolean preservedAll;
     public AnalysisUsage()
     {
-        required = new HashSet<>();
-        preserved = new HashSet<>();
+        required = new LinkedHashSet<>();
+        preserved = new LinkedHashSet<>();
     }
 
     public AnalysisUsage addRequired(Class<? extends Pass> reqPass)

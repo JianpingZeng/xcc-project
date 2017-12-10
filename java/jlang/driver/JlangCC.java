@@ -358,7 +358,7 @@ public class JlangCC implements DiagnosticFrontendKindsTag
                     desc("Emit all declarations, even unused"),
                     init(false));
 
-    // FIXME, This flag woule be turn off in the release.
+    // FIXME, This flag would be turn off in the release.
     public static final BooleanOpt DebugMode =
             new BooleanOpt(optionName("debug"),
                     desc("Enable output debug informaton"),

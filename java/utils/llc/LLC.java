@@ -18,7 +18,7 @@
 package utils.llc;
 
 import backend.codegen.MachineCodeEmitter;
-import backend.codegen.RegAllocLocal;
+import backend.codegen.RegAllocLinearScan;
 import backend.codegen.RegisterRegAlloc;
 import backend.pass.Pass;
 import backend.pass.PassCreator;
@@ -34,6 +34,7 @@ import jlang.driver.JlangCC;
 import jlang.system.Process;
 import tools.OutParamWrapper;
 import tools.SMDiagnostic;
+import tools.Util;
 import tools.commandline.*;
 
 import java.io.File;
@@ -150,6 +151,12 @@ public class LLC
             desc("Target specific attributes"),
             valueDesc("+a1,+a2,-a3,..."));
 
+    // FIXME, This flag would be turn off in the release.
+    public static final BooleanOpt DebugMode =
+            new BooleanOpt(optionName("debug"),
+                    desc("Enable output debug informaton"),
+                    init(false));
+
     /**
      * This static code block is attempted to add some desired Jlang command line
      * options into CommandLine DataBase.
@@ -178,6 +185,8 @@ public class LLC
             PassRegisterationUtility.registerPasses();
 
             CL.parseCommandLineOptions(args, "The Compiler for LLVM IR");
+
+            Util.DEBUG = DebugMode.value;
 
             OutParamWrapper<SMDiagnostic> diag = new OutParamWrapper<>();
             theModule = backend.LLReader.Parser
@@ -339,7 +348,7 @@ public class LLC
                 TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
                 theTarget.setAsmVerbosityDefault(true);
 
-                RegisterRegAlloc.setDefault(RegAllocLocal::createLocalRegAllocator);
+                RegisterRegAlloc.setDefault(RegAllocLinearScan::createLinearScanRegAllocator);
 
                 MachineCodeEmitter mce = null;
                 TargetMachine.CodeGenFileType cft = OutFiletype.value == FileType.Asm
@@ -387,7 +396,7 @@ public class LLC
         {
             int dotPos = infile.lastIndexOf(".");
             if (dotPos >= 0)
-                infile = infile.substring(0, dotPos + 1);
+                infile = infile.substring(0, dotPos);
             outputFile = infile + extension;
         }
 
