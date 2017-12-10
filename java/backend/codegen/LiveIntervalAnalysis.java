@@ -29,15 +29,18 @@ import gnu.trove.procedure.TIntIntProcedure;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Pair;
+import tools.Util;
 import tools.commandline.BooleanOpt;
 import tools.commandline.Initializer;
 import tools.commandline.OptionNameApplicator;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.TreeMap;
 
+import static backend.support.DepthFirstOrder.dfTraversal;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 import static tools.commandline.Desc.desc;
@@ -78,17 +81,17 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     }
 
     /**
-     * A diagMapping from instruction number to itself.
+     * A mapping from instruction number to itself.
      */
-    private TreeMap<Integer, MachineInstr> idx2MI;
+    private MachineInstr[] idx2MI;
 
     /**
      * A mapping from MachineInstr to its number.
      */
-    private TreeMap<MachineInstr, Integer> mi2Idx;
+    private HashMap<MachineInstr, Integer> mi2Idx;
 
     private TreeMap<Integer, LiveInterval> reg2LiveInterval;
-    private TreeMap<LiveInterval, Integer> liveInterval2Reg;
+    private HashMap<LiveInterval, Integer> liveInterval2Reg;
 
     private LiveVariables lv;
     private MachineFunction mf;
@@ -98,13 +101,13 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private TargetInstrInfo tii;
     private MachineRegisterInfo mri;
     private TIntIntHashMap r2rMap = new TIntIntHashMap();
+    private ArrayList<MachineBasicBlock> reversePostorder;
 
     public LiveIntervalAnalysis()
     {
-        idx2MI = new TreeMap<>();
-        mi2Idx = new TreeMap<>();
+        mi2Idx = new HashMap<>();
         reg2LiveInterval = new TreeMap<>();
-        liveInterval2Reg = new TreeMap<>();
+        liveInterval2Reg = new HashMap<>();
     }
 
     @Override
@@ -138,10 +141,20 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         return "Computes Live Intervals for each virtual register";
     }
 
+    private void putIndex2MI(int idx, MachineInstr mi)
+    {
+        idx2MI[idx >> Util.log2(InstrSlots.NUM)] = mi;
+    }
+
+    private MachineInstr getMIByIdx(int idx)
+    {
+        return idx2MI[idx >> Util.log2(InstrSlots.NUM)];
+    }
+
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        System.err.println("***********Linear Scan Register Allocator**********");
+        System.err.println("*********** Live Interval Analysis **********");
         System.err.printf("***********Function: %s\n", mf.getFunction().getName());
 
         this.mf = mf;
@@ -156,15 +169,23 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         // Step#2: Numbering each MachineInstr in each MachineBasicBlock.
 
         int idx = 0;
+        reversePostorder = dfTraversal(mf.getEntryBlock());
+        int numOfMI = 0;
+        for (MachineBasicBlock mbb : reversePostorder)
+        {
+            numOfMI += mbb.size();
+        }
+        idx2MI = new MachineInstr[numOfMI];
+
         // Step#3: Walk through each MachineInstr to compute live interval.
-        for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        for (MachineBasicBlock mbb : reversePostorder)
         {
             for (int i = 0, e = mbb.size(); i != e; i++)
             {
                 MachineInstr mi = mbb.getInstAt(i);
                 assert !(mi2Idx.containsKey(mi)):"Duplicate mi2Idx entry";
                 mi2Idx.put(mi, idx);
-                idx2MI.put(idx, mi);
+                putIndex2MI(idx, mi);
                 idx += InstrSlots.NUM;
             }
         }
@@ -210,7 +231,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                     // LiveInterval interval = getOrCreateInterval(regRep);
                     if (mi2Idx.containsKey(mi))
                     {
-                        idx2MI.put(mi2Idx.get(mi)/InstrSlots.NUM, null);
+                        putIndex2MI(mi2Idx.get(mi)/InstrSlots.NUM, null);
                         mi2Idx.remove(mi);
                     }
                     itr.remove();
@@ -557,10 +578,17 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             if (vi.kills.size() == 1 && vi.kills.get(0).getParent().equals(mbb))
             {
                 int killIdx;
+                // Check if the def mi is same as use mi or not
                 if (!vi.kills.get(0).equals(mbb.getInstAt(index)))
+                {
+                    // the kill till to use slot
                     killIdx = getUseIndex(getInstructionIndex(mbb.getInstAt(index)));
+                }
                 else
+                {
+                    // the kill idx gets store slot
                     killIdx = defIdx + 1;
+                }
 
                 // If the kill happens after the definition, we have an intra-block
                 // live range.
@@ -612,10 +640,11 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             // If it is the result of 2-addr instruction elimination, the first
             // operand must be register and it is def-use.
             MachineInstr mi = mbb.getInstAt(index);
-            if (mi.getOperand(0).isRegister()
-                    && mi.getOperand(0).getReg() == li.register
-                    && mi.getOperand(0).isDef()
-                    && mi.getOperand(0).isUse())
+            MachineOperand mo = mi.getOperand(0);
+            if (mo.isRegister()
+                && mo.getReg() == li.register
+                && mo.isDef()
+                && mo.isUse())
             {
                 int defIndex = getDefIndex(getInstructionIndex(vi.defInst));
                 int redefIndex = getDefIndex(getInstructionIndex(mi));
@@ -669,7 +698,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 }
 
                 // In the case of PHI elimination, each variable definition is only
-                // live until the end of the block.  We've already taken care of the
+                // live until the end of the block.  We've already take care of the
                 // rest of the live range.
                 int defIndex = getDefIndex(getInstructionIndex(mi));
                 LiveRange r = new LiveRange(defIndex,
@@ -711,8 +740,9 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
     private MachineInstr getInstructionFromIndex(int idx)
     {
-        assert idx2MI.containsKey(idx);
-        return idx2MI.get(idx);
+        MachineInstr mi = getMIByIdx(idx);
+        assert mi != null;
+        return mi;
     }
 
     private void handlePhysicalRegisterDef(
@@ -805,7 +835,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         // MachineInstr's SSA property, definition dominates all uses.
         // So avoiding iterative dataflow analysis to compute local liveIn and
         // liveOuts.
-        for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        for (MachineBasicBlock mbb : reversePostorder)
         {
             for (int i = 0, e = mbb.size(); i != e; i++)
             {
@@ -877,7 +907,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                                 lv.instructionChanged(mi, fmi);
                                 vrm.virtFolded(interval.register, mi, fmi);
                                 mi2Idx.remove(mi);
-                                idx2MI.put(index/InstrSlots.NUM, fmi);
+                                putIndex2MI(index/InstrSlots.NUM, fmi);
                                 mi2Idx.put(fmi, index);
                                 MachineBasicBlock mbb = mi.getParent();
                                 mbb.insert(mbb.remove(mi), fmi);

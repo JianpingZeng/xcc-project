@@ -118,12 +118,12 @@ public final class LiveVariables extends MachineFunctionPass
     }
 
     /**
-     * This list is diagMapping from the virtual register number to variable information.
+     * This list is mapping from the virtual register number to variable information.
      * {@linkplain TargetRegisterInfo#FirstVirtualRegister} is subtracted from
-     * virtual register numbe before indexing into this list.
+     * virtual register number before indexing into this list.
      *
      */
-    private ArrayList<VarInfo> virRegInfo;
+    private VarInfo[] virRegInfo;
 
     /**
      * This map keeps track of all of the registers that
@@ -172,7 +172,6 @@ public final class LiveVariables extends MachineFunctionPass
 
     public LiveVariables()
     {
-        virRegInfo = new ArrayList<>();
         distanceMap = new TObjectIntHashMap<>();
     }
 
@@ -198,6 +197,8 @@ public final class LiveVariables extends MachineFunctionPass
         this.mf = mf;
         regInfo = mf.getTarget().getRegisterInfo();
         machineRegInfo = mf.getMachineRegisterInfo();
+        virRegInfo = new VarInfo[machineRegInfo.getLastVirReg()-FirstVirtualRegister+1];
+
         allocatablePhyRegs = regInfo.getAllocatableSet(mf);
         TargetInstrInfo instInfo = mf.getTarget().getInstrInfo();
         registerDeaded = new HashMap<>();
@@ -281,14 +282,16 @@ public final class LiveVariables extends MachineFunctionPass
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    int reg = mo.getReg();
                     if (mo.isRegister() && mo.getReg() != 0 && mo.isDef())
                     {
+                        int reg = mo.getReg();
                         if (machineRegInfo.isPhysicalReg(reg)
                                 && allocatablePhyRegs.get(reg))
                             handlePhyRegDef(reg, inst);
                         else if (machineRegInfo.isVirtualReg(reg))
+                        {
                             handleVirRegDef(reg, inst);
+                        }
                     }
                 }
             }
@@ -341,11 +344,12 @@ public final class LiveVariables extends MachineFunctionPass
             Arrays.fill(phyRegUses, false);
         }
 
-        for (int i = 0, sz = virRegInfo.size(); i < sz; i++)
+        for (int i = 0; i < virRegInfo.length; i++)
         {
-            for (int j = 0, sz2 = virRegInfo.get(i).kills.size(); j != sz2; j++)
+            VarInfo vi = virRegInfo[i];
+            for (int j = 0, sz2 = vi.kills.size(); j != sz2; j++)
             {
-                MachineInstr mi = virRegInfo.get(i).kills.get(j);
+                MachineInstr mi = vi.kills.get(j);
                 if (mi == machineRegInfo.getDefMI(i + FirstVirtualRegister))
                 {
                     // this instruction defines this virtual register and use it,
@@ -403,7 +407,7 @@ public final class LiveVariables extends MachineFunctionPass
             i++;
         }
 
-        assert mbb != defBB :"should have ";
+        if (mbb.equals(defBB)) return;
 
         varInfo.kills.add(mi);
         // Update all dominating blocks to mark them known live.
@@ -417,11 +421,21 @@ public final class LiveVariables extends MachineFunctionPass
         if (prev != null)
         {
             if (phyRegUses[phyReg])
+            {
                 // previous one is use
+                if (!registerKilled.containsKey(prev))
+                    registerKilled.put(prev, new TIntArrayList());
+
                 registerKilled.get(prev).add(phyReg);
+            }
             else
+            {
                 // previous one is definition.
+                if (!registerDeaded.containsKey(prev))
+                    registerDeaded.put(prev, new TIntArrayList());
+
                 registerDeaded.get(prev).add(phyReg);
+            }
         }
 
         phyRegInfo[phyReg] = mi;
@@ -437,6 +451,9 @@ public final class LiveVariables extends MachineFunctionPass
     private void handleVirRegDef(int virReg, MachineInstr mi)
     {
         VarInfo varInfo = getVarInfo(virReg);
+        assert varInfo.defInst == null:"Multiple defs";
+        varInfo.defInst = mi;
+
         // if the varInfo is not alive in any block, default to dead.
         if (varInfo.aliveBlocks.isEmpty())
             varInfo.kills.add(mi);
@@ -451,15 +468,11 @@ public final class LiveVariables extends MachineFunctionPass
     public VarInfo getVarInfo(int regIdx)
     {
         assert machineRegInfo.isVirtualReg(regIdx)
-                :"not a virtual register!";
+                && regIdx <= machineRegInfo.getLastVirReg()
+                :"not a valid virtual register!";
         regIdx -= FirstVirtualRegister;
-        if (regIdx >= virRegInfo.size())
-            if (regIdx < virRegInfo.size() * 2)
-                virRegInfo.ensureCapacity(2*regIdx);
-            else
-                virRegInfo.ensureCapacity(2*virRegInfo.size());
 
-        return virRegInfo.set(regIdx, new VarInfo());
+        return virRegInfo[regIdx] = new VarInfo();
     }
 
     /**
