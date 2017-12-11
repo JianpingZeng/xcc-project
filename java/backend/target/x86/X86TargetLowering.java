@@ -17,6 +17,7 @@ package backend.target.x86;
  */
 
 import backend.codegen.MVT;
+import backend.codegen.MachineFunction;
 import backend.target.TargetLowering;
 import backend.target.TargetRegisterInfo;
 
@@ -104,5 +105,11 @@ public class X86TargetLowering extends TargetLowering
         }
 
         computeRegisterProperties();
+    }
+
+    @Override
+    public X86MachineFunctionInfo createMachineFunctionInfo(MachineFunction mf)
+    {
+        return new X86MachineFunctionInfo(mf);
     }
 }
