@@ -16,9 +16,7 @@ package backend.target;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.EVT;
-import backend.codegen.MVT;
-import backend.codegen.ValueTypeAction;
+import backend.codegen.*;
 import backend.type.Type;
 import tools.OutParamWrapper;
 import tools.Pair;
@@ -118,6 +116,13 @@ public abstract class TargetLowering
     {
         return tm;
     }
+
+    /**
+     * Create a detail info about machine function.
+     * @param mf
+     * @return
+     */
+    public abstract MachineFunctionInfo createMachineFunctionInfo(MachineFunction mf);
 
     public EVT getValueType(Type type)
     {

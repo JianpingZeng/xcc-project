@@ -157,7 +157,7 @@ public class MachineFunction
 	public MachineFunctionInfo getInfo()
     {
         if (mfInfo == null)
-        	mfInfo = new X86MachineFunctionInfo(this);
+        	mfInfo = target.getTargetLowering().createMachineFunctionInfo(this);
         return mfInfo;
     }
 
