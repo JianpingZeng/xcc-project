@@ -17,6 +17,7 @@ package backend.analysis;
  */
 
 import backend.codegen.*;
+import backend.codegen.MachineRegisterInfo.DefUseChainIterator;
 import backend.pass.AnalysisUsage;
 import backend.support.DepthFirstOrder;
 import backend.target.TargetInstrDesc;
@@ -24,7 +25,9 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import gnu.trove.set.hash.TIntHashSet;
 import tools.BitMap;
+import tools.OutParamWrapper;
 
 import java.util.*;
 
@@ -145,12 +148,12 @@ public final class LiveVariables extends MachineFunctionPass
      * This is a purely local property, since all physical register are presumed
      * destroyed before across another block.
      */
-    private MachineInstr[] phyRegInfo;
+    private MachineInstr[] phyRegDef;
 
     /**
      * Keep track of if the specified physical register is used or not.
      */
-    private boolean[] phyRegUses;
+    private MachineInstr[] phyRegUses;
 
     /**
      * Keeps track of PHI node.
@@ -166,7 +169,6 @@ public final class LiveVariables extends MachineFunctionPass
      */
     private BitMap allocatablePhyRegs;
 
-    private MachineFunction mf;
     private TargetRegisterInfo regInfo;
     private MachineRegisterInfo machineRegInfo;
 
@@ -194,7 +196,6 @@ public final class LiveVariables extends MachineFunctionPass
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        this.mf = mf;
         regInfo = mf.getTarget().getRegisterInfo();
         machineRegInfo = mf.getMachineRegisterInfo();
         virRegInfo = new VarInfo[machineRegInfo.getLastVirReg()-FirstVirtualRegister+1];
@@ -205,8 +206,9 @@ public final class LiveVariables extends MachineFunctionPass
         registerKilled = new HashMap<>();
 
         int numRegs = regInfo.getNumRegs();
-        phyRegInfo = new MachineInstr[numRegs];
-        phyRegUses = new boolean[numRegs];
+        phyRegDef = new MachineInstr[numRegs];
+        phyRegUses = new MachineInstr[numRegs];
+
         phiVarInfo = new TIntArrayList[mf.getNumBlockIDs()];
         for (int i = 0; i < mf.getNumBlockIDs(); i++)
             phiVarInfo[i] = new TIntArrayList();
@@ -239,59 +241,44 @@ public final class LiveVariables extends MachineFunctionPass
                 int numOperands = inst.getNumOperands();
                 if (inst.getOpcode() == TargetInstrInfo.PHI)
                     numOperands = 1;
-                TargetInstrDesc instDesc = instInfo.get(inst.getOpcode());
 
-                // process all implicit uses reg.
-                if (instDesc.implicitUses != null && instDesc.implicitUses.length > 0)
-                {
-                    for (int implReg : instDesc.implicitUses)
-                    {
-                        handlePhyRegUse(implReg, inst);
-                    }
-                }
-
-                // process all explicit uses.
+                TIntArrayList defRegs = new TIntArrayList();
+                TIntArrayList useRegs = new TIntArrayList();
                 for (int i = 0; i < numOperands; i++)
                 {
                     MachineOperand mo = inst.getOperand(i);
-                    if (mo.isRegister() && mo.getReg() != 0 && mo.isUse())
-                    {
-                        int reg = mo.getReg();
-                        if (machineRegInfo.isPhysicalReg(reg)
-                                && allocatablePhyRegs.get(reg))
-                        {
-                            handlePhyRegUse(reg, inst);
-                        }
-                        else if (machineRegInfo.isVirtualReg(reg))
-                        {
-                            handleVirRegUse(reg, inst);
-                        }
-                    }
+                    if (!mo.isRegister() || mo.getReg() == 0)
+                        continue;
+                    if (mo.isUse() && !mo.isDef())
+                        useRegs.add(mo.getReg());
+                    else if (mo.isDef())
+                        defRegs.add(mo.getReg());
                 }
 
-                // process all implicit defs.
-                if (instDesc.implicitDefs != null && instDesc.implicitDefs.length != 0)
+                // process all uses.
+                for (int i = 0; i < useRegs.size(); i++)
                 {
-                    for (int regDef : instDesc.implicitDefs)
+                    int reg = useRegs.get(i);
+                    if (machineRegInfo.isPhysicalReg(reg)
+                            && allocatablePhyRegs.get(reg))
                     {
-                        handlePhyRegDef(regDef, inst);
+                        handlePhyRegUse(reg, inst);
+                    }
+                    else if (machineRegInfo.isVirtualReg(reg))
+                    {
+                        handleVirRegUse(reg, inst);
                     }
                 }
-
-                // process all explicit defs.
-                for (int i = 0; i < numOperands; i++)
+                // process all defs.
+                for (int i = 0; i < defRegs.size(); i++)
                 {
-                    MachineOperand mo = inst.getOperand(i);
-                    if (mo.isRegister() && mo.getReg() != 0 && mo.isDef())
+                    int reg = defRegs.get(i);
+                    if (machineRegInfo.isPhysicalReg(reg)
+                            && allocatablePhyRegs.get(reg))
+                        handlePhyRegDef(reg, inst);
+                    else if (machineRegInfo.isVirtualReg(reg))
                     {
-                        int reg = mo.getReg();
-                        if (machineRegInfo.isPhysicalReg(reg)
-                                && allocatablePhyRegs.get(reg))
-                            handlePhyRegDef(reg, inst);
-                        else if (machineRegInfo.isVirtualReg(reg))
-                        {
-                            handleVirRegDef(reg, inst);
-                        }
+                        handleVirRegDef(reg, inst);
                     }
                 }
             }
@@ -337,10 +324,10 @@ public final class LiveVariables extends MachineFunctionPass
             // available at the end of the basic block.
             for (int i = 0; i < numRegs; i++)
             {
-                if (phyRegInfo[i] != null)
+                if (phyRegDef[i] != null)
                     handlePhyRegDef(i, null);
             }
-            Arrays.fill(phyRegInfo, null);
+            Arrays.fill(phyRegDef, null);
             Arrays.fill(phyRegUses, false);
         }
 
@@ -378,15 +365,57 @@ public final class LiveVariables extends MachineFunctionPass
         return false;
     }
 
+    private MachineInstr findLastPartialDef(int reg, OutParamWrapper<Integer> partDefReg)
+    {
+        int lastDefReg = 0;
+        int lastDefDist = 0;
+        MachineInstr lastDef = null;
+        for (int subReg : regInfo.getSubRegisters(reg))
+        {
+            MachineInstr def = phyRegDef[subReg];
+            if (def == null) continue;
+            int dist = distanceMap.get(def);
+            if (dist > lastDefDist)
+            {
+                lastDefReg = subReg;
+                lastDef = def;
+                lastDefDist = dist;
+            }
+        }
+        partDefReg.set(lastDefReg);
+        return lastDef;
+    }
+
     private void handlePhyRegUse(int phyReg, MachineInstr mi)
     {
-        phyRegInfo[phyReg] = mi;
-        phyRegUses[phyReg] = true;
+        if (phyRegDef[phyReg] == null && phyRegUses[phyReg] == null)
+        {
+            OutParamWrapper<Integer> x = new OutParamWrapper<>(0);
+            MachineInstr lastPartialDef = findLastPartialDef(phyReg, x);
+            int partDefReg = x.get();
+            if (lastPartialDef != null)
+            {
+                lastPartialDef.addOperand(MachineOperand.createReg(phyReg, true, true));
+                phyRegDef[phyReg] = lastPartialDef;
+                TIntHashSet processed = new TIntHashSet();
+                for (int sub : regInfo.getSubRegisters(phyReg))
+                {
+                    if (processed.contains(sub)) continue;
+                    if (sub == partDefReg || regInfo.isSubRegister(partDefReg, sub))
+                        continue;
+                    lastPartialDef.addOperand(MachineOperand.createReg(sub, false, true));
+                    phyRegDef[sub] = lastPartialDef;
+                    for (int ss : regInfo.getSubRegisters(sub))
+                        processed.add(ss);
+                }
+            }
+        }
+        phyRegUses[phyReg] = mi;
 
         for (int subReg : regInfo.get(phyReg).subRegs)
         {
-            phyRegInfo[subReg] = mi;
-            phyRegUses[subReg] = true;
+            phyRegDef[subReg] = mi;
+            phyRegUses[subReg] = mi;
         }
     }
 
@@ -414,37 +443,240 @@ public final class LiveVariables extends MachineFunctionPass
         markVirRegAliveInBlock(varInfo, defBB, mbb);
     }
 
-    private void handlePhyRegDef(int phyReg, MachineInstr mi)
+    /**
+     * Adds kill register and its sub-register of specified machine instr.
+     * @param reg
+     * @param mi
+     * @return  Return true if add a register as kill to mi.
+     */
+    private boolean handlePhysRegKill(int reg, MachineInstr mi)
     {
-        // Does this kill a previous version of this register?
-        MachineInstr prev = phyRegInfo[phyReg];
-        if (prev != null)
+        if (phyRegUses[reg] == null && phyRegDef[reg] == null)
+            return false;
+
+        MachineInstr lastRefOrPartRef = phyRegUses[reg] != null ?
+                phyRegUses[reg] : phyRegDef[reg];
+
+        int lastRefOrPartRefDist = distanceMap.get(lastRefOrPartRef);
+        TIntHashSet partUses = new TIntHashSet();
+        for (int subReg : regInfo.getSubRegisters(reg))
         {
-            if (phyRegUses[phyReg])
+            MachineInstr use = phyRegUses[subReg];
+            if (use != null)
             {
-                // previous one is use
-                if (!registerKilled.containsKey(prev))
-                    registerKilled.put(prev, new TIntArrayList());
-
-                registerKilled.get(prev).add(phyReg);
-            }
-            else
-            {
-                // previous one is definition.
-                if (!registerDeaded.containsKey(prev))
-                    registerDeaded.put(prev, new TIntArrayList());
-
-                registerDeaded.get(prev).add(phyReg);
+                for (int ss : regInfo.getSubRegisters(subReg))
+                    partUses.add(ss);
+                int dist = distanceMap.get(use);
+                if (dist > lastRefOrPartRefDist)
+                {
+                    lastRefOrPartRef = use;
+                    lastRefOrPartRefDist = dist;
+                }
             }
         }
 
-        phyRegInfo[phyReg] = mi;
-        phyRegUses[phyReg] = false;
+        if (lastRefOrPartRef == phyRegDef[reg] && lastRefOrPartRef != mi)
+        {
+            lastRefOrPartRef.addRegisterDead(reg, regInfo, true);
+        }
+        else if (phyRegUses[reg] == null)
+        {
+            phyRegDef[reg].addRegisterDead(reg, regInfo, true);
+            for (int sub : regInfo.getSubRegisters(reg))
+            {
+                if (partUses.contains(sub))
+                {
+                    boolean needDef = true;
+                    if (phyRegDef[reg] == phyRegDef[sub])
+                    {
+                        MachineOperand mo = phyRegDef[reg].findRegisterDefOperand(sub, false, null);
+                        if (mo != null)
+                        {
+                            needDef = false;
+                            assert !mo.isDead();
+                        }
+                    }
+
+                    if (needDef)
+                        phyRegDef[reg].addOperand(MachineOperand.createReg(sub, true, true));
+                    lastRefOrPartRef.addRegisterKilled(sub, regInfo, true);
+                    for (int ss : regInfo.getSubRegisters(sub))
+                    {
+                        partUses.remove(ss);
+                    }
+                }
+            }
+        }
+        else
+            lastRefOrPartRef.addRegisterKilled(reg, regInfo, true);
+        return true;
+    }
+
+    /**
+     * Return true if the specified register will be used after current mi and
+     * before the next defined.
+     * @param reg
+     * @param mi
+     * @param mbb
+     * @return
+     */
+    private boolean hasRegisterUseBelow(int reg, MachineInstr mi, MachineBasicBlock mbb)
+    {
+        boolean hasDistInfo = true;
+        int curDist = distanceMap.get(mi);
+        ArrayList<MachineInstr> uses = new ArrayList<>();
+        ArrayList<MachineInstr> defs = new ArrayList<>();
+        for (DefUseChainIterator itr = machineRegInfo.getRegIterator(reg); itr.hasNext(); itr.next())
+        {
+            MachineOperand mo = itr.getOpearnd();
+            MachineInstr udMI = mo.getParent();
+            if (udMI.getParent() != mbb)
+                continue;
+
+            boolean isBelow = false;
+            if (!distanceMap.containsKey(udMI))
+            {
+                isBelow = true;
+                hasDistInfo = false;
+            }
+            else if (distanceMap.get(udMI) > curDist)
+            {
+                isBelow = true;
+            }
+            if (isBelow)
+            {
+                if (mo.isUse())
+                    uses.add(udMI);
+                if (mo.isDef())
+                    defs.add(udMI);
+            }
+        }
+
+        if (uses.isEmpty())
+            return false;
+        else if (defs.isEmpty())
+            return true;
+        if (!hasDistInfo)
+        {
+            ++curDist;
+            int idx = mbb.getInsts().indexOf(mi);
+            ++idx;
+            for (; idx < mbb.size(); idx++)
+            {
+                distanceMap.put(mbb.getInstAt(idx), curDist);
+            }
+        }
+
+        int earliestUse = distanceMap.get(uses.get(0));
+        for (int i = 1, e = uses.size(); i < e; i++)
+        {
+            int dist = distanceMap.get(uses.get(i));
+            if (dist < earliestUse)
+                earliestUse = dist;
+        }
+        for (MachineInstr defMI : defs)
+        {
+            int dist = distanceMap.get(defMI);
+            if (dist < earliestUse)
+                return false;
+        }
+        return true;
+    }
+
+    private void handlePhyRegDef(int phyReg, MachineInstr mi)
+    {
+        TIntHashSet live = new TIntHashSet();
+        if (phyRegDef[phyReg] != null || phyRegUses[phyReg] != null)
+        {
+            live.add(phyReg);
+            for (int sub : regInfo.getSubRegisters(phyReg))
+            {
+                live.add(sub);
+            }
+        }
+        else
+        {
+            // Check if the sub register of this was used or defined previously.
+            for (int sub : regInfo.getSubRegisters(phyReg))
+            {
+                if (phyRegDef[sub] != null || phyRegUses[sub] != null)
+                {
+                    live.add(sub);
+                    for (int ss : regInfo.getSubRegisters(sub))
+                    {
+                        live.add(ss);
+                    }
+                }
+            }
+        }
+
+        if (!handlePhysRegKill(phyReg, mi))
+        {
+            for (int sub : regInfo.getSubRegisters(phyReg))
+            {
+                if (!live.contains(sub))
+                    continue;
+                if (handlePhysRegKill(sub, mi))
+                {
+                    live.remove(sub);
+                    for (int ss : regInfo.getSubRegisters(sub))
+                        live.remove(ss);
+                }
+            }
+            assert live.isEmpty():"Not all defined registers are killed/dead";
+        }
+
+        if (mi != null)
+        {
+            // Does this extend the live range of a super-register?
+            TIntHashSet processed = new TIntHashSet();
+            for (int superReg : regInfo.getSubRegisters(phyReg))
+            {
+                if (!processed.add(superReg))
+                    continue;
+                MachineInstr lastRef = phyRegUses[superReg] != null ?
+                        phyRegUses[superReg] : phyRegDef[superReg];
+                if (lastRef != null && lastRef != mi)
+                {
+                    if (hasRegisterUseBelow(superReg, mi, mi.getParent()))
+                    {
+                        mi.addOperand(MachineOperand.createReg(superReg, false,
+                                true, true, false, false, false, 0));
+                        mi.addOperand(MachineOperand.createReg(superReg, true,
+                                true));
+                        phyRegDef[superReg] = mi;
+                        phyRegUses[superReg] = null;
+                        processed.add(superReg);
+                        for (int ss : regInfo.getSubRegisters(superReg))
+                        {
+                            phyRegDef[ss] = mi;
+                            phyRegUses[ss] = null;
+                            processed.add(ss);
+                        }
+                    }
+                    else
+                    {
+                        if (handlePhysRegKill(superReg, mi))
+                        {
+                            phyRegDef[superReg] = null;
+                            phyRegUses[superReg] = null;
+                            for (int ss : regInfo.getSubRegisters(superReg))
+                            {
+                                phyRegUses[ss] = null;
+                                phyRegDef[ss] = null;
+                                processed.add(ss);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        phyRegDef[phyReg] = mi;
 
         for (int subReg : regInfo.get(phyReg).subRegs)
         {
-            phyRegInfo[subReg] = mi;
-            phyRegUses[subReg] = false;
+            phyRegDef[subReg] = mi;
         }
     }
 

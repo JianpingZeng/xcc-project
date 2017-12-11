@@ -301,12 +301,12 @@ public class MachineInstr implements Cloneable
 
 	public boolean modifiedRegister(int reg, TargetRegisterInfo tri)
 	{
-		return findRegisterDefOperandIdx(reg, false, tri) != -1;
+		return findRegisterDefOperand(reg, false, tri) != null;
 	}
 
 	public boolean registerDefIsDead(int reg, TargetRegisterInfo tri)
 	{
-		return findRegisterDefOperandIdx(reg, true, tri) != -1;
+		return findRegisterDefOperand(reg, true, tri) != null;
 	}
 
 	/**
@@ -357,7 +357,7 @@ public class MachineInstr implements Cloneable
      * @param tri
      * @return
      */
-	public int findRegisterDefOperandIdx(
+	public MachineOperand findRegisterDefOperand(
 	        int reg,
             boolean isDead,
 			TargetRegisterInfo tri)
@@ -375,10 +375,10 @@ public class MachineInstr implements Cloneable
                     && isPhysicalRegister(reg))
             {
                 if (!isDead || mo.isDead())
-                    return i;
+                    return mo;
             }
         }
-        return -1;
+        return null;
 	}
 
     /**
