@@ -605,7 +605,7 @@ public class LiveInterval implements Comparable<LiveInterval>
         }
         else
             os.printf("%%reg%d", register);
-        os.printf(",%f", weight);
+        os.printf(",%.2f", weight);
 
         if (isEmpty())
         {
@@ -616,6 +616,7 @@ public class LiveInterval implements Comparable<LiveInterval>
             os.print(" = ");
             ranges.forEach(r->r.print(os));
         }
+        os.println();
     }
 
     public void dump()
