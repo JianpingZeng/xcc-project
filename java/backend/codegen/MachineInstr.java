@@ -309,6 +309,16 @@ public class MachineInstr implements Cloneable
 		return findRegisterDefOperand(reg, true, tri) != null;
 	}
 
+	public boolean modifiersRegister(int reg)
+	{
+		return modifiersRegister(reg, null);
+	}
+
+	public boolean modifiersRegister(int reg, TargetRegisterInfo tri)
+	{
+		return findRegisterDefOperand(reg, false, tri) != null;
+	}
+
 	/**
 	 * Returns the MachineOperand that is a use of
 	 * the specific register or -1 if it is not found. It further tightening
@@ -372,7 +382,7 @@ public class MachineInstr implements Cloneable
             if (moreg == 0)
                 continue;
             if (moreg == reg || (tri != null && isPhysicalRegister(moreg))
-                    && isPhysicalRegister(reg))
+                    && isPhysicalRegister(reg) && tri.isSubRegister(moreg, reg))
             {
                 if (!isDead || mo.isDead())
                     return mo;

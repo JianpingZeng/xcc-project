@@ -33,6 +33,7 @@ import java.util.*;
 
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
+import static backend.target.TargetRegisterInfo.isVirtualRegister;
 
 /**
  * @author Xlous.zeng
@@ -77,7 +78,6 @@ public final class LiveVariables extends MachineFunctionPass
      */
     public static class VarInfo
     {
-        //todo add a DefInst. 2017.7.27
         public MachineInstr defInst;
 
         /**
@@ -117,6 +117,24 @@ public final class LiveVariables extends MachineFunctionPass
         public boolean removeLastUse(MachineInstr mi)
         {
             return kills.remove(mi);
+        }
+
+        /**
+         * Remove the specified machine instr from kills set.
+         * @param mi
+         * @return
+         */
+        public boolean removeKill(MachineInstr mi)
+        {
+            for (Iterator<MachineInstr> itr = kills.iterator(); itr.hasNext();)
+            {
+                if (itr.next() == mi)
+                {
+                    itr.remove();
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -328,7 +346,7 @@ public final class LiveVariables extends MachineFunctionPass
                     handlePhyRegDef(i, null);
             }
             Arrays.fill(phyRegDef, null);
-            Arrays.fill(phyRegUses, false);
+            Arrays.fill(phyRegUses, null);
         }
 
         for (int i = 0; i < virRegInfo.length; i++)
@@ -414,7 +432,6 @@ public final class LiveVariables extends MachineFunctionPass
 
         for (int subReg : regInfo.get(phyReg).subRegs)
         {
-            phyRegDef[subReg] = mi;
             phyRegUses[subReg] = mi;
         }
     }
@@ -454,6 +471,7 @@ public final class LiveVariables extends MachineFunctionPass
         if (phyRegUses[reg] == null && phyRegDef[reg] == null)
             return false;
 
+        //
         MachineInstr lastRefOrPartRef = phyRegUses[reg] != null ?
                 phyRegUses[reg] : phyRegDef[reg];
 
@@ -475,12 +493,16 @@ public final class LiveVariables extends MachineFunctionPass
             }
         }
 
+        // Multiple defined of specified physical register
+        // EAX = ... <imp-dead>
+        // EAX = ...
         if (lastRefOrPartRef == phyRegDef[reg] && lastRefOrPartRef != mi)
         {
             lastRefOrPartRef.addRegisterDead(reg, regInfo, true);
         }
         else if (phyRegUses[reg] == null)
         {
+            //
             phyRegDef[reg].addRegisterDead(reg, regInfo, true);
             for (int sub : regInfo.getSubRegisters(reg))
             {
@@ -508,6 +530,8 @@ public final class LiveVariables extends MachineFunctionPass
             }
         }
         else
+            // EAX = ...
+            // ... = EAX <imp-kill> this is last ref
             lastRefOrPartRef.addRegisterKilled(reg, regInfo, true);
         return true;
     }
@@ -585,6 +609,7 @@ public final class LiveVariables extends MachineFunctionPass
 
     private void handlePhyRegDef(int phyReg, MachineInstr mi)
     {
+        // Checks if the full or partial be used previously, if so remenber it
         TIntHashSet live = new TIntHashSet();
         if (phyRegDef[phyReg] != null || phyRegUses[phyReg] != null)
         {
@@ -630,7 +655,7 @@ public final class LiveVariables extends MachineFunctionPass
         {
             // Does this extend the live range of a super-register?
             TIntHashSet processed = new TIntHashSet();
-            for (int superReg : regInfo.getSubRegisters(phyReg))
+            for (int superReg : regInfo.getSuperRegisters(phyReg))
             {
                 if (!processed.add(superReg))
                     continue;
@@ -638,6 +663,13 @@ public final class LiveVariables extends MachineFunctionPass
                         phyRegUses[superReg] : phyRegDef[superReg];
                 if (lastRef != null && lastRef != mi)
                 {
+                    // The larger register is previously defined. Now a smaller part is
+                    // being re-defined. Treat it as read/mod/write if there are uses
+                    // below.
+                    // EAX =
+                    // AX  =        EAX<imp-use,kill>, EAX<imp-def>
+                    // ...
+                    ///    =  EAX
                     if (hasRegisterUseBelow(superReg, mi, mi.getParent()))
                     {
                         mi.addOperand(MachineOperand.createReg(superReg, false,
@@ -670,13 +702,14 @@ public final class LiveVariables extends MachineFunctionPass
                     }
                 }
             }
-        }
 
-        phyRegDef[phyReg] = mi;
-
-        for (int subReg : regInfo.get(phyReg).subRegs)
-        {
-            phyRegDef[subReg] = mi;
+            phyRegDef[phyReg] = mi;
+            phyRegUses[phyReg] = null;
+            for (int subReg : regInfo.get(phyReg).subRegs)
+            {
+                phyRegDef[subReg] = mi;
+                phyRegUses[subReg] = null;
+            }
         }
     }
 
@@ -828,14 +861,12 @@ public final class LiveVariables extends MachineFunctionPass
 
     public TIntArrayList getKillsList(MachineInstr mi)
     {
-        return registerKilled.containsKey(mi)
-                ? registerKilled.get(mi) : dummmy;
+        return registerKilled.getOrDefault(mi, dummmy);
     }
 
     public TIntArrayList getDeadedDefList(MachineInstr mi)
     {
-        return registerDeaded.containsKey(mi)
-                ? registerDeaded.get(mi) : dummmy;
+        return registerDeaded.getOrDefault(mi, dummmy);
     }
 
     /**
@@ -864,14 +895,46 @@ public final class LiveVariables extends MachineFunctionPass
     /**
      * When the address of an instruction changes, this
      * method should be called so that live variables can update its internal
-     * data structures.  This removes the records for OldMI, transfering them to
-     * the records for NewMI.
+     * data structures.  This removes the records for oldMI, transfering them to
+     * the records for newMI.
      * @param oldMI
      * @param newMI
      */
     public void instructionChanged(MachineInstr oldMI, MachineInstr newMI)
     {
+        for (int i = 0, e = oldMI.getNumOperands(); i < e; i++)
+        {
+            MachineOperand mo = oldMI.getOperand(i);
+            if (mo.isRegister() && mo.getReg() != 0 && isVirtualRegister(mo.getReg()))
+            {
+                int reg = mo.getReg();
+                VarInfo vi = getVarInfo(reg);
+                if (mo.isDef())
+                {
+                    if (vi.defInst == oldMI)
+                        vi.defInst = newMI;
+                }
+                if (mo.isUse())
+                {
+                    if (vi.removeKill(oldMI))
+                        vi.kills.add(newMI);
+                }
+            }
+        }
 
+        TIntArrayList newKills = getKillsList(newMI);
+        boolean empty = newKills.isEmpty();
+        newKills.addAll(registerKilled.get(oldMI));
+        if (!empty)
+            newKills.sort();
+        registerKilled.remove(oldMI);
+
+        TIntArrayList newDeads = getDeadedDefList(newMI);
+        empty = newDeads.isEmpty();
+        newDeads.addAll(registerDeaded.get(oldMI));
+        if (!empty)
+            newDeads.sort();
+        registerDeaded.remove(oldMI);
     }
 
     /**

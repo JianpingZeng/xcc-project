@@ -123,8 +123,9 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         // Obtains the loop information used for assigning a spilling weight to
         // each live interval. The more nested, the more weight.
         au.addPreserved(MachineLoop.class);
+        au.addRequired(MachineLoop.class);
         au.addPreserved(MachineDomTree.class);
-
+        au.addPreserved(MachineDomTree.class);
         // Eliminate phi node.
         au.addPreserved(PhiElimination.class);
         au.addRequired(PhiElimination.class);
@@ -209,12 +210,12 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
         // perform a final pass over the instructions and compute spill
         // weights, coalesce virtual registers and remove identity moves
-        LoopInfo loopInfo = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
+        MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
         TargetInstrInfo tii = tm.getInstrInfo();
 
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
-            int loopDepth = loopInfo.getLoopDepth(mbb.getBasicBlock());
+            int loopDepth = loopInfo.getLoopDepth(mbb);
 
             for (Iterator<MachineInstr> itr = mbb.getInsts().iterator(); itr.hasNext(); )
             {
@@ -290,40 +291,41 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     {
         System.err.printf("************ Joining Intervals *************\n");
 
-        LoopInfo loopInfo = (LoopInfo) getAnalysisToUpDate(LoopInfo.class);
-        if (loopInfo.isEmpty())
+        MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+        if (loopInfo != null)
         {
-            // If there are no loops in the function, join intervals in function
-            // order.
-            for (MachineBasicBlock mbb : mf.getBasicBlocks())
-                joinIntervalsInMachineBB(mbb);
-        }
-        else
-        {
-            // Otherwise, join intervals in inner loops before other intervals.
-            // Unfortunately we can't just iterate over loop hierarchy here because
-            // there may be more MBB's than BB's.  Collect MBB's for sorting.
-            ArrayList<Pair<Integer, MachineBasicBlock>> mbbs = new ArrayList<>();
-            mf.getBasicBlocks().forEach(mbb->
+            if (loopInfo.isNoTopLevelLoop())
             {
-                mbbs.add(Pair.get(loopInfo.getLoopDepth(mbb.getBasicBlock()), mbb));
-            });
+                // If there are no loops in the function, join intervals in function
+                // order.
+                for (MachineBasicBlock mbb : mf.getBasicBlocks())
+                    joinIntervalsInMachineBB(mbb);
+            }
+            else
+            {
+                // Otherwise, join intervals in inner loops before other intervals.
+                // Unfortunately we can't just iterate over loop hierarchy here because
+                // there may be more MBB's than BB's.  Collect MBB's for sorting.
+                ArrayList<Pair<Integer, MachineBasicBlock>> mbbs = new ArrayList<>();
+                mf.getBasicBlocks().forEach(mbb -> {
+                    mbbs.add(Pair.get(loopInfo.getLoopDepth(mbb),
+                            mbb));
+                });
 
-            // Sort mbb by loop depth.
-            mbbs.sort((lhs, rhs) ->
-            {
-                if (lhs.first > rhs.first)
-                    return -1;
-                if (lhs.first.equals(rhs.first)
-                        && lhs.second.getNumber() < rhs.second.getNumber())
-                    return -1;
-                return 1;
-            });
+                // Sort mbb by loop depth.
+                mbbs.sort((lhs, rhs) -> {
+                    if (lhs.first > rhs.first)
+                        return -1;
+                    if (lhs.first.equals(rhs.first) && lhs.second.getNumber() < rhs.second.getNumber())
+                        return -1;
+                    return 1;
+                });
 
-            // Finally, joi intervals in loop nest order.
-            for (Pair<Integer, MachineBasicBlock> pair : mbbs)
-            {
-                joinIntervalsInMachineBB(pair.second);
+                // Finally, joi intervals in loop nest order.
+                for (Pair<Integer, MachineBasicBlock> pair : mbbs)
+                {
+                    joinIntervalsInMachineBB(pair.second);
+                }
             }
         }
 
@@ -582,7 +584,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                 if (!vi.kills.get(0).equals(mbb.getInstAt(index)))
                 {
                     // the kill till to use slot
-                    killIdx = getUseIndex(getInstructionIndex(vi.kills.get(0)));
+                    killIdx = getUseIndex(getInstructionIndex(vi.kills.get(0))) + 1;
                 }
                 else
                 {
@@ -605,8 +607,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             // of the defining block, potentially live across some blocks, then is
             // live into some number of blocks, but gets killed.  Start by adding a
             // range that goes from this definition to the end of the defining block.
-            int lastIdx = getInstructionIndex(mbb.getInsts().getLast());
-            LiveRange liveThrough = new LiveRange(defIdx, lastIdx + InstrSlots.NUM, li.getNextValue());
+            int lastIdx = getInstructionIndex(mbb.getInsts().getLast()) + InstrSlots.NUM;
+            LiveRange liveThrough = new LiveRange(defIdx, lastIdx, li.getNextValue());
             li.addRange(liveThrough);
 
             for (int i = 0, e = vi.aliveBlocks.size(); i != e; i++)
@@ -629,7 +631,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             for (MachineInstr killMI : vi.kills)
             {
                 int begin = getInstructionIndex(killMI.getParent().getInsts().getFirst());
-                int end = getInstructionIndex(killMI) + InstrSlots.USE;
+                int end = getUseIndex(getInstructionIndex(killMI)) + 1;
                 li.addRange(new LiveRange(begin, end, li.getNextValue()));
             }
         }
@@ -731,10 +733,17 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                     getOrCreateInterval(reg),
                     srcReg.get(), destReg.get(),
                     false);
-            for (int alias : tri.getAliasSet(reg))
+            for (int subReg : tri.getSubRegisters(reg))
             {
-                handlePhysicalRegisterDef(mbb, index, getOrCreateInterval(alias),
-                        srcReg.get(), destReg.get(), false);
+                // Def of a register also defines its sub-registers.
+                if (!mbb.getInstAt(index).modifiedRegister(subReg, tri))
+                {
+                    // If MI also modifies the sub-register explicitly, avoid processing it
+                    // more than once. Do not pass in TRI here so it checks for exact match.
+                    handlePhysicalRegisterDef(mbb, index,
+                            getOrCreateInterval(subReg),
+                            srcReg.get(), destReg.get(), false);
+                }
             }
         }
     }
@@ -776,7 +785,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             while (++index != mbb.size())
             {
                 baseIndex += InstrSlots.NUM;
-                if (lv.killRegister(mbb.getInstAt(index), interval.register))
+                if (mbb.getInstAt(index).killsRegister(interval.register))
                 {
                     end = getUseIndex(baseIndex) + 1;
                     break exit;
