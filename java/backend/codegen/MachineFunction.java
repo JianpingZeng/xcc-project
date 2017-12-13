@@ -3,7 +3,6 @@ package backend.codegen;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
-import backend.target.x86.X86MachineFunctionInfo;
 import backend.value.BasicBlock;
 import backend.value.Function;
 import tools.Pair;
