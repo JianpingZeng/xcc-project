@@ -23,10 +23,7 @@ import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import gnu.trove.set.hash.TIntHashSet;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.PriorityQueue;
+import java.util.*;
 
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
@@ -43,16 +40,17 @@ import static backend.target.TargetRegisterInfo.isVirtualRegister;
  */
 public class RegAllocLinearScan extends MachineFunctionPass
 {
-    private PriorityQueue<LiveInterval> unhandled = new PriorityQueue<>();
-    private PriorityQueue<LiveInterval> fixed = new PriorityQueue<>();
+    private TreeSet<LiveInterval> unhandled;
+    private TreeSet<LiveInterval> fixed;
 
-    private ArrayList<LiveInterval> active = new ArrayList<>();
-    private ArrayList<LiveInterval> inactive = new ArrayList<>();
-    private LinkedList<LiveInterval> handled = new LinkedList<>();
+    private ArrayList<LiveInterval> active;
+    private ArrayList<LiveInterval> inactive;
+    private LinkedList<LiveInterval> handled;
 
     private LiveIntervalAnalysis li;
     private PhysRegTracker prt;
     private TargetRegisterInfo tri;
+    private MachineRegisterInfo mri;
     private VirtRegMap vrm;
     private MachineFunction mf;
     private float[] spillWeights;
@@ -100,7 +98,8 @@ public class RegAllocLinearScan extends MachineFunctionPass
         while (!unhandled.isEmpty())
         {
             // remove and obtains the first live interval whose start is first.
-            LiveInterval cur = unhandled.poll();
+            LiveInterval cur = unhandled.pollFirst();
+            assert cur != null;
 
             for (int i = 0; i < active.size(); i++)
             {
@@ -109,15 +108,15 @@ public class RegAllocLinearScan extends MachineFunctionPass
                 {
                     active.remove(i);
                     --i;
-                    prt.delRegUse(li.register);
+                    prt.delRegUse(vrm.getPhys(li.register));
                 }
                 else if (!li.isLiveAt(cur.beginNumber()))
                 {
                     active.remove(i);
                     --i;
                     inactive.add(li);
-                    
-                    prt.delRegUse(li.register);
+
+                    prt.delRegUse(vrm.getPhys(li.register));
                 }
             }
 
@@ -208,7 +207,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         if (phyReg != 0)
         {
             vrm.assignVirt2Phys(cur.register, phyReg);
-            prt.addRegUse(cur.register);
+            prt.addRegUse(phyReg);
             active.add(cur);
             handled.add(cur);
             return;
@@ -408,7 +407,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
     private int getFreePhysReg(LiveInterval cur)
     {
-        TargetRegisterClass rc = tri.getRegClass(cur.register);
+        TargetRegisterClass rc = mri.getRegClass(cur.register);
         for (int reg : rc.getAllocableRegs(mf))
         {
             if (prt.isRegAvail(reg))
@@ -417,12 +416,25 @@ public class RegAllocLinearScan extends MachineFunctionPass
         return 0;
     }
 
+    private RegAllocLinearScan()
+    {
+        unhandled = new TreeSet<>(
+                Comparator.comparingInt(LiveInterval::beginNumber));
+        fixed = new TreeSet<>(
+                Comparator.comparingInt(LiveInterval::beginNumber));
+
+        active = new ArrayList<>();
+        inactive = new ArrayList<>();
+        handled = new LinkedList<>();
+    }
+
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
         this.mf = mf;
         li = (LiveIntervalAnalysis) getAnalysisToUpDate(LiveIntervalAnalysis.class);
         tri = mf.getTarget().getRegisterInfo();
+        mri = mf.getMachineRegisterInfo();
         prt = new PhysRegTracker(tri);
 
         // Step#1: Initialize interval set.
@@ -439,6 +451,12 @@ public class RegAllocLinearScan extends MachineFunctionPass
         // Step#3: Inserts load code for loading data from memory before use, or
         // store data to memory after define it.
         spiller.runOnMachineFunction(mf, vrm);
+        unhandled.clear();
+        fixed.clear();
+        active.clear();
+        inactive.clear();
+        handled.clear();
+
         return true;
     }
 

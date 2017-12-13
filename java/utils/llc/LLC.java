@@ -309,7 +309,7 @@ public class LLC
         {
             case Asm:
             case Obj:
-                boolean fast = OptLevel.value == 1;
+                boolean fast = OptLevel.value < 1;
                 FunctionPassManager pm = getCodeGenPasses();
 
                 TargetMachine.CodeGenOpt optLevel = Default;

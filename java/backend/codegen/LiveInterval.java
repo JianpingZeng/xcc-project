@@ -343,48 +343,7 @@ public class LiveInterval implements Comparable<LiveInterval>
      */
     public boolean overlaps(LiveInterval other)
     {
-        int i = 0, ie = ranges.size();
-        int j = 0, je = other.ranges.size();
-
-        if (ranges.get(i).start < other.ranges.get(j).start)
-        {
-            i = upperBound(ranges, i, ie, other.ranges.get(j).start);
-            if (i != -1) --i;
-        }
-        else if (other.ranges.get(j).start < ranges.get(i).start)
-        {
-            j = upperBound(other.ranges, j, je, ranges.get(i).start);
-            if (j != -1) --j;
-        }
-        else
-            return true;
-
-        while (i != ie && j != je)
-        {
-            if (ranges.get(i).start == other.ranges.get(j).start)
-                return true;
-
-            if (ranges.get(i).start > other.ranges.get(j).start)
-            {
-                int temp = i;
-                i = j;
-                j = temp;
-
-                temp = ie;
-                ie = je;
-                je = temp;
-                ArrayList<LiveRange> t = ranges;
-                ranges = other.ranges;
-                other.ranges = t;
-            }
-            assert ranges.get(i).start < other.ranges.get(j).start;
-
-            if (ranges.get(i).end > other.ranges.get(j).start)
-                return true;
-            ++i;
-        }
-
-        return false;
+        return overlapsFrom(other, 0);
     }
 
     public boolean overlapsFrom(LiveInterval other, int startPos)
@@ -392,22 +351,22 @@ public class LiveInterval implements Comparable<LiveInterval>
         int i = 0, ie = ranges.size();
         int j = startPos, je = other.ranges.size();
 
-        assert (other.ranges.get(startPos).start <= ranges.get(i).start
-                || startPos == 0) && (startPos != other.ranges.size());
+        assert other.getRange(startPos).start <= getRange(i).start ||
+                startPos == 0:"Bogus start position hint!";
 
-        if (ranges.get(i).start < other.ranges.get(j).start)
+        if (getRange(i).start < other.getRange(j).start)
         {
-            i = upperBound(ranges, i, ie, other.ranges.get(j).start);
+            i = upperBound(ranges, i, ie, other.getRange(j).start);
             if (i != -1) --i;
         }
-        else if (other.ranges.get(j).start < ranges.get(i).start)
+        else if (other.getRange(j).start < getRange(i).start)
         {
             ++startPos;
             if (startPos != other.ranges.size() &&
-                    other.ranges.get(startPos).start <= ranges.get(i).start)
+                    other.getRange(startPos).start <= getRange(i).start)
             {
                 assert startPos < other.ranges.size() && i < ranges.size();
-                j = upperBound(other.ranges, j, je, ranges.get(i).start);
+                j = upperBound(other.ranges, j, je, getRange(i).start);
                 if (j != -1) --j;
             }
         }
@@ -417,9 +376,10 @@ public class LiveInterval implements Comparable<LiveInterval>
         if (j == je)
             return false;
 
+        ArrayList<LiveRange> thisRange = ranges, otherRange = other.ranges;
         while (i != ie)
         {
-            if (ranges.get(i).start > other.ranges.get(j).start)
+            if (thisRange.get(i).start > otherRange.get(j).start)
             {
                 int temp = i;
                 i = j;
@@ -428,12 +388,12 @@ public class LiveInterval implements Comparable<LiveInterval>
                 temp = ie;
                 ie = je;
                 je = temp;
-                ArrayList<LiveRange> t = ranges;
-                ranges = other.ranges;
-                other.ranges = t;
+                ArrayList<LiveRange> t = thisRange;
+                thisRange = otherRange;
+                otherRange = t;
             }
 
-            if (ranges.get(i).end > other.ranges.get(j).start)
+            if (thisRange.get(i).end > otherRange.get(j).start)
                 return true;
             ++i;
         }
