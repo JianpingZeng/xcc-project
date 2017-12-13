@@ -49,6 +49,8 @@ public class RegAllocLocal extends MachineFunctionPass
 
 	private boolean[] usedInMultipleBlocks;
 
+	private MachineRegisterInfo mri;
+
 	/**
 	 * Statics data for performance evaluation.
 	 */
@@ -618,12 +620,13 @@ public class RegAllocLocal extends MachineFunctionPass
 			{
 				System.err.printf("\nStarting RegAlloc of:");
 				mi.dump();
-				for (int usedReg : phyRegUsed)
+				for (int j = 0; j < phyRegUsed.length; j++)
 				{
+                    int usedReg = phyRegUsed[j];
 					if (usedReg != -1 && usedReg != -2)
 					{
 						System.err.printf("[%s, %%reg%d] ",
-								regInfo.getName(usedReg), usedReg);
+								regInfo.getName(j), usedReg);
 					}
 				}
 			}
@@ -892,7 +895,9 @@ public class RegAllocLocal extends MachineFunctionPass
         {
             // If the specified physical register is allocated, just free it!
             if (phyRegUsed[phyReg] != -1 && phyRegUsed[phyReg] != -2)
+            {
                 spillVirReg(mbb, itr, phyRegUsed[phyReg], phyReg);
+            }
             else
                 removePhyReg(phyReg);
         }
@@ -909,6 +914,23 @@ public class RegAllocLocal extends MachineFunctionPass
 		phyRegsUseOrder.clear();
 	}
 
+    /**
+     * Get the lastly machine inst references the specified reg operand.
+     * @param reg
+     * @return
+     */
+	private MachineInstr getLastUseMI(int reg)
+    {
+        DefUseChainIterator itr = mri.getUseIterator(reg);
+        MachineOperand mo = null;
+        while (itr.hasNext())
+        {
+            mo = itr.getOpearnd();
+            itr.next();
+        }
+        return mo == null? null : mo.getParent();
+    }
+
 	/**
 	 * This method must be overridded by concrete subclass for performing
 	 * desired machine code transformation or analysis.
@@ -921,7 +943,8 @@ public class RegAllocLocal extends MachineFunctionPass
 	{
 		this.mf = mf;
 		tm = mf.getTarget();
-        int lastVirReg = mf.getMachineRegisterInfo().getLastVirReg();
+		mri = mf.getMachineRegisterInfo();
+        int lastVirReg = mri.getLastVirReg();
 
 		regInfo = tm.getRegisterInfo();
 		instrInfo = tm.getInstrInfo();

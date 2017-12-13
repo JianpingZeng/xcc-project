@@ -100,6 +100,12 @@ public class BackendCmdOptions
      */
     public static MachineFunctionPass createRegisterAllocator()
     {
+        if (RegAlloc.value != null)
+        {
+            RegisterRegAlloc.setDefault(RegAlloc.value);
+            return RegAlloc.value.apply();
+        }
+
         MachinePassCtor ctor = RegisterRegAlloc.getDefault();
         if (ctor == null)
         {

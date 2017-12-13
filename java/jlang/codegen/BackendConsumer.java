@@ -16,10 +16,7 @@ package jlang.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.codegen.MachineCodeEmitter;
-import backend.codegen.PrintModulePass;
-import backend.codegen.RegAllocLocal;
-import backend.codegen.RegisterRegAlloc;
+import backend.codegen.*;
 import backend.pass.*;
 import backend.passManaging.FunctionPassManager;
 import backend.passManaging.PassManager;
@@ -308,7 +305,7 @@ public class BackendConsumer implements ASTConsumer
             case Backend_EmitAssembly:
             case Backend_EmitObj:
             {
-                boolean fast = compileOptions.optimizationLevel == 1;
+                boolean fast = compileOptions.optimizationLevel < 1;
                 FunctionPassManager pm = getCodeGenPasses();
 
                 CodeGenOpt optLevel = Default;
@@ -346,7 +343,8 @@ public class BackendConsumer implements ASTConsumer
 
                 TargetMachine tm = theTarget.createTargetMachine(triple, featureStr);
                 theTarget.setAsmVerbosityDefault(true);
-                RegisterRegAlloc.setDefault(RegAllocLocal::createLocalRegAllocator);
+                RegisterRegAlloc.setDefault(fast ?RegAllocLocal::createLocalRegAllocator:
+                        RegAllocLinearScan::createLinearScanRegAllocator);
 
                 MachineCodeEmitter mce = null;
                 CodeGenFileType cft = action == Backend_EmitAssembly ? AssemblyFile : ObjectFile;

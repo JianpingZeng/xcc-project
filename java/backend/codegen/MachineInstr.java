@@ -375,7 +375,7 @@ public class MachineInstr implements Cloneable
         for (int i = 0, e = getNumOperands(); i != e; i++)
         {
             MachineOperand mo = getOperand(i);
-            if (!mo.isDef() || !mo.isRegister())
+            if (!mo.isRegister() || !mo.isDef())
                 continue;
 
             int moreg = mo.getReg();
