@@ -122,10 +122,10 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
         // Obtains the loop information used for assigning a spilling weight to
         // each live interval. The more nested, the more weight.
+        au.addPreserved(MachineDomTree.class);
+        au.addRequired(MachineDomTree.class);
         au.addPreserved(MachineLoop.class);
         au.addRequired(MachineLoop.class);
-        au.addPreserved(MachineDomTree.class);
-        au.addPreserved(MachineDomTree.class);
         // Eliminate phi node.
         au.addPreserved(PhiElimination.class);
         au.addRequired(PhiElimination.class);
@@ -203,9 +203,10 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         }
 
         // If acquired by command line argument, join intervals.
+        /* FIXME currently disable, it is possible to perform register coalescing in a standalone pass
         if (EnableJoining.value)
             joinIntervals();
-
+        */
         numIntervalsAfter.add(getNumIntervals());
 
         // perform a final pass over the instructions and compute spill
@@ -247,7 +248,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                         {
                             // Replace register with representative register.
                             int reg = rep(mo.getReg());
-                            mi.setMachineOperandReg(i, reg);
+                            if (reg != mo.getReg())
+                                mi.setMachineOperandReg(i, reg);
 
                             LiveInterval interval = getInterval(reg);
                             interval.weight += ((mo.isUse() ? 1:0) + (mo.isDef()?1:0)) + Math.pow(10, loopDepth);
@@ -259,14 +261,18 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         }
 
         System.err.printf("************ Intervals *************\n");
-        reg2LiveInterval.values().forEach(System.err::println);
+        for (LiveInterval interval : reg2LiveInterval.values())
+        {
+            interval.print(System.err, tri);
+        }
 
         System.err.printf("************ MachineInstrs *************\n");
         for (MachineBasicBlock mbb : mf.getBasicBlocks())
         {
             System.err.println(mbb.getBasicBlock().getName() + ":");
-            for (MachineInstr mi : mbb.getInsts())
+            for (int i = 0, e = mbb.size(); i < e; i++)
             {
+                MachineInstr mi = mbb.getInstAt(i);
                 System.err.printf("%d\t", getInstructionIndex(mi));
                 mi.print(System.err, tm);
             }

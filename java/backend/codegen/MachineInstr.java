@@ -798,8 +798,9 @@ public class MachineInstr implements Cloneable
 
 	public void print(PrintStream os, TargetMachine tm)
 	{
-	    try(FormattedOutputStream out = new FormattedOutputStream(os))
+	    try
 	    {
+		    FormattedOutputStream out = new FormattedOutputStream(os);
 	    	print(out, tm);
 	    }
 	    catch (Exception e)
