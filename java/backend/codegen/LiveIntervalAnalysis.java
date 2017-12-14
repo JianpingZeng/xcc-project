@@ -155,8 +155,11 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
     {
-        System.err.println("*********** Live Interval Analysis **********");
-        System.err.printf("***********Function: %s\n", mf.getFunction().getName());
+        if (Util.DEBUG)
+        {
+            System.err.println("*********** Live Interval Analysis **********");
+            System.err.printf("***********Function: %s\n", mf.getFunction().getName());
+        }
 
         this.mf = mf;
         lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
@@ -196,10 +199,13 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
         numIntervals.add(getNumIntervals());
 
-        System.err.printf("*********** Intervals *************\n");
-        for (LiveInterval interval : reg2LiveInterval.values())
+        if (Util.DEBUG)
         {
-            interval.print(System.err, tri);
+            System.err.printf("*********** Intervals *************\n");
+            for (LiveInterval interval : reg2LiveInterval.values())
+            {
+                interval.print(System.err, tri);
+            }
         }
 
         // If acquired by command line argument, join intervals.
@@ -255,26 +261,27 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
                             interval.weight += ((mo.isUse() ? 1:0) + (mo.isDef()?1:0)) + Math.pow(10, loopDepth);
                         }
                     }
-
                 }
             }
         }
 
-        System.err.printf("************ Intervals *************\n");
-        for (LiveInterval interval : reg2LiveInterval.values())
+        if (Util.DEBUG)
         {
-            interval.print(System.err, tri);
-        }
-
-        System.err.printf("************ MachineInstrs *************\n");
-        for (MachineBasicBlock mbb : mf.getBasicBlocks())
-        {
-            System.err.println(mbb.getBasicBlock().getName() + ":");
-            for (int i = 0, e = mbb.size(); i < e; i++)
+            System.err.printf("************ Intervals *************\n");
+            for (LiveInterval interval : reg2LiveInterval.values())
             {
-                MachineInstr mi = mbb.getInstAt(i);
-                System.err.printf("%d\t", getInstructionIndex(mi));
-                mi.print(System.err, tm);
+                interval.print(System.err, tri);
+            }
+            System.err.printf("************ MachineInstrs *************\n");
+            for (MachineBasicBlock mbb : mf.getBasicBlocks())
+            {
+                System.err.println(mbb.getBasicBlock().getName() + ":");
+                for (int i = 0, e = mbb.size(); i < e; i++)
+                {
+                    MachineInstr mi = mbb.getInstAt(i);
+                    System.err.printf("%d\t", getInstructionIndex(mi));
+                    mi.print(System.err, tm);
+                }
             }
         }
         return true;
@@ -571,7 +578,9 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             int index,
             LiveInterval li)
     {
-        System.err.printf("\t\tregister: %s\n", getRegisterName(li.register));
+        if (Util.DEBUG)
+            System.err.printf("\t\tregister: %s\n", getRegisterName(li.register));
+
         LiveVariables.VarInfo vi = lv.getVarInfo(li.register);
 
         // Virtual registers may be defined multiple times (due to phi

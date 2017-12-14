@@ -18,42 +18,48 @@ package backend.codegen;
 
 import backend.support.IntStatistic;
 import backend.target.TargetMachine;
+import tools.Util;
 import tools.commandline.*;
 
 import java.util.Arrays;
 
-import static backend.codegen.Spiller.SpillerName.Local;
-import static backend.codegen.Spiller.SpillerName.Simple;
+import static backend.codegen.VirtRegRewriter.RewriterName.Local;
+import static backend.codegen.VirtRegRewriter.RewriterName.Simple;
 import static backend.target.TargetRegisterInfo.FirstVirtualRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
 import static tools.commandline.FormattingFlags.Prefix;
 import static tools.commandline.OptionNameApplicator.optionName;
 
 /**
- * This interface implements an interface assign spilled virtual registers to
- * stack slot, rewriting the code.
+ * This interface implements an interface that rewriting the reference to virtual
+ * registers to physical register or stack slot.
  * @author Xlous.zeng
  * @version 0.1
  */
-public abstract class Spiller
+public abstract class VirtRegRewriter
 {
-    public static IntStatistic numSpills = new IntStatistic("spiller", "Number of register spills");
-    public static IntStatistic numStores = new IntStatistic("spiller", "Number of stores added");
-    public static IntStatistic numLoads = new IntStatistic("spiller", "Number of loads added");
+    public static IntStatistic numSpills =
+            new IntStatistic("VirtPhyWriter", "Number of register spills");
+    public static IntStatistic numStores =
+            new IntStatistic("VirtPhyWriter", "Number of stores added");
+    public static IntStatistic numLoads =
+            new IntStatistic("VirtPhyWriter", "Number of loads added");
 
-    public enum SpillerName
+    public enum RewriterName
     {
         Simple,
         Local
     }
 
-    public static Opt<SpillerName> SpillerOpt = new Opt<>(
+    public static Opt<RewriterName> RewriterOpt = new Opt<>(
             new Parser<>(),
-            optionName("spiller"), new FormattingFlagsApplicator(Prefix),
+            optionName("virtRegRewriter"),
+            new FormattingFlagsApplicator(Prefix),
+            Desc.desc("Choose a rewriter(currently only simple supported)"),
             new ValueClass<>(
-                    new ValueClass.Entry<>(Simple, "simple", "simple spiller"),
-                    new ValueClass.Entry<>(Local, "local", "local spiller")),
-            Initializer.init(Local));
+                    new ValueClass.Entry<>(Simple, "simple", "simple virtual register rewriter"),
+                    new ValueClass.Entry<>(Local, "local", "local virtual register rewriter")),
+            Initializer.init(Simple));
 
 
     public abstract boolean runOnMachineFunction(MachineFunction mf, VirtRegMap vrm);
@@ -62,21 +68,27 @@ public abstract class Spiller
      * Create an return a spiller object, as specified on the command line.
      * @return
      */
-    public static Spiller createSpiller()
+    public static VirtRegRewriter createVirtRegRewriter()
     {
-        if (SpillerOpt.value == Simple)
-            return new SimpleSpiller();
+        return new SimpleVirtRegRewriter();
+        /*
+        if (RewriterOpt.value == Simple)
+
         else
-            return new LocalSpiller();
+            return new LocalVirtRegRewriter();
+        */
     }
 
-    public static class SimpleSpiller extends Spiller
+    public static class SimpleVirtRegRewriter extends VirtRegRewriter
     {
         @Override
         public boolean runOnMachineFunction(MachineFunction mf, VirtRegMap vrm)
         {
-            System.err.printf("********* Rewrite machine code *********\n");
-            System.err.printf("********* Function: %s\n", mf.getFunction().getName());
+            if (Util.DEBUG)
+            {
+                System.err.printf("********* Rewrite machine code *********\n");
+                System.err.printf("********* Function: %s\n", mf.getFunction().getName());
+            }
 
             TargetMachine tm = mf.getTarget();
             MachineRegisterInfo mri = mf.getMachineRegisterInfo();
@@ -86,7 +98,8 @@ public abstract class Spiller
 
             for (MachineBasicBlock mbb : mf.getBasicBlocks())
             {
-                System.err.printf("%s:\n", mbb.getBasicBlock().getName());
+                if (Util.DEBUG)
+                    System.err.printf("%s:\n", mbb.getBasicBlock().getName());
                 for (int i = 0; i < mbb.size(); i++)
                 {
                     MachineInstr mi = mbb.getInstAt(i);
@@ -105,8 +118,11 @@ public abstract class Spiller
                                         physReg, vrm.getStackSlot(virtReg),
                                         mri.getRegClass(virtReg));
                                 loaded[virtReg -FirstVirtualRegister] = true;
-                                System.err.printf("\t");
-                                mbb.getInstAt(i-1).print(System.err, tm);
+                                if (Util.DEBUG)
+                                {
+                                    System.err.printf("\t");
+                                    mbb.getInstAt(i - 1).print(System.err, tm);
+                                }
                                 numLoads.inc();
                             }
                             if (mo.isDef() && vrm.hasStackSlot(virtReg))
@@ -122,8 +138,11 @@ public abstract class Spiller
                             mi.setMachineOperandReg(j, physReg);
                         }
                     }
-                    System.err.print("\t");
-                    mi.print(System.err, tm);
+                    if (Util.DEBUG)
+                    {
+                        System.err.print("\t");
+                        mi.print(System.err, tm);
+                    }
                     Arrays.fill(loaded, false);
                 }
             }
@@ -131,7 +150,7 @@ public abstract class Spiller
         }
     }
 
-    public static class LocalSpiller extends Spiller
+    public static class LocalVirtRegRewriter extends VirtRegRewriter
     {
         @Override
         public boolean runOnMachineFunction(MachineFunction mf, VirtRegMap vrm)

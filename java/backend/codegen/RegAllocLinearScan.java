@@ -54,7 +54,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
     private VirtRegMap vrm;
     private MachineFunction mf;
     private float[] spillWeights;
-    private Spiller spiller;
+    private VirtRegRewriter rewriter;
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -445,12 +445,12 @@ public class RegAllocLinearScan extends MachineFunctionPass
         // Step#2:
         linearScan();
 
-        if (spiller == null)
-            spiller = Spiller.createSpiller();
+        if (rewriter == null)
+            rewriter = VirtRegRewriter.createVirtRegRewriter();
 
         // Step#3: Inserts load code for loading data from memory before use, or
         // store data to memory after define it.
-        spiller.runOnMachineFunction(mf, vrm);
+        rewriter.runOnMachineFunction(mf, vrm);
         unhandled.clear();
         fixed.clear();
         active.clear();
