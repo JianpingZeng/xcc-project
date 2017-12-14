@@ -48,6 +48,12 @@ as minimal as possible. Also, there are some valuable points to improve register
 allocator, for example, we can take the use point into consideration to avoid
 code spill and to split whole LiveInterval into multiple parts
 
+### Todo List
+For the register allocation, a live interval coalescing and live interval spliting
+should be added to avoiding redundant move instruction. Another point should be
+improved is peephole optimization after instruction inselection, currently naive
+instruction selection generates very poorly machine code.
+
 ## Usage
 Great announcement! We build Jlang and Backend for Ubuntu 14.04/Ubuntu 16.04
 64 bit OS with OracleJDK/OpenJDK 1.8, GCC 5.4/6.3 or Clang 3.9/4.0 successfully.
