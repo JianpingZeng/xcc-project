@@ -58,11 +58,10 @@ public class LiveInterval implements Comparable<LiveInterval>
     public void removeRange(int begin, int end)
     {
         int idx = upperBound(ranges, 0, begin);
-        assert idx != -1 :"Range is not in interval";
-        --idx;
+        assert idx != ranges.size() :"Range is not in interval";
 
-        assert ranges.get(idx).contains(begin)
-                && ranges.get(idx).contains(end-1)
+        --idx;
+        assert  ranges.get(idx).contains(end-1)
                 : "Range is not entirely in interval!";
 
         if (ranges.get(idx).start == begin)
@@ -156,12 +155,7 @@ public class LiveInterval implements Comparable<LiveInterval>
     public boolean isLiveAt(int index)
     {
         int found = upperBound(ranges,0, index);
-
-        if (found == 0)
-            return false;
-
-        --found;
-        return ranges.get(found).contains(index);
+        return ranges.get(found-1).contains(index);
     }
 
     /**
@@ -177,7 +171,7 @@ public class LiveInterval implements Comparable<LiveInterval>
         for (int i = start; i != end; i++)
         {
             LiveRange r = ranges.get(i);
-            if (!(r.start < key))
+            if (r.start > key)
                 return i;
         }
         return end;
@@ -191,73 +185,77 @@ public class LiveInterval implements Comparable<LiveInterval>
     public LiveRange getLiveRangeContaining(int idx)
     {
         int found = upperBound(ranges,0, idx);
-        if (found > 0)
-        {
-            LiveRange lr = ranges.get(found - 1);
-            if (lr.contains(idx))
-                return lr;
-        }
+        assert found >= 0;
+        LiveRange lr = ranges.get(found - 1);
+        if (lr.contains(idx))
+            return lr;
+
         return null;
     }
 
+    /**
+     * Two intervals are joinable if the either don't overlap at all
+     * or if the destination of the copy is a single assignment value, and it
+     * only overlaps with one value in the source interval.
+     * @param other
+     * @param copyIdx
+     * @return
+     */
     public boolean joinable(LiveInterval other, int copyIdx)
     {
-        LiveRange sourceLR = other.getLiveRangeContaining(copyIdx);
+        LiveRange sourceLR = other.getLiveRangeContaining(copyIdx-1);
         LiveRange destLR = getLiveRangeContaining(copyIdx);
-        assert sourceLR != null && destLR != null:"Not joining due to copy?";
+        assert sourceLR != null && destLR != null;
+
         int otherValIdx = sourceLR.valId;
         int thisValIdx = destLR.valId;
 
         int i = 0, ie = ranges.size(), j = 0, je = other.ranges.size();
 
-        if (ranges.get(i).start < other.ranges.get(j).start)
+        if (getRange(i).start < other.getRange(j).start)
         {
-            i = upperBound(ranges, i, ie, other.ranges.get(j).start);
-            if (i != -1) --i;
+            i = upperBound(ranges, i, ie, other.getRange(j).start);
+            if (i != 0) --i;
         }
-        else if (other.ranges.get(j).start < ranges.get(i).start)
+        else if (other.getRange(j).start < getRange(i).start)
         {
-            j = upperBound(other.ranges, j, je, ranges.get(i).start);
-            if (j != -1)
+            j = upperBound(other.ranges, j, je, getRange(i).start);
+            if (j != 0)
                 --j;
         }
 
         while (i != ie && j != je)
         {
-            if (ranges.get(i).start == other.ranges.get(j).start)
-            {
-                if (ranges.get(i).valId != thisValIdx
-                        || other.ranges.get(j).valId != otherValIdx)
-                {
-                    return false;
-                }
-            }
-            else if (ranges.get(i).start < other.ranges.get(j).start)
-            {
-                if (ranges.get(i).end > other.ranges.get(j).start)
-                {
-                    if (ranges.get(i).valId != thisValIdx
-                            || other.ranges.get(j).valId != otherValIdx)
-                    {
-                        return false;
-                    }
-                }
-            }
-            else
-            {
-                if (other.ranges.get(j).end > ranges.get(i).start)
-                {
-                    if (ranges.get(i).valId != thisValIdx
-                            || other.ranges.get(j).valId != otherValIdx)
-                        return false;
-                }
-            }
-            if (ranges.get(i).end < other.ranges.get(j).end)
+            if (nonTrivialOverlap(getRange(i), other.getRange(j), thisValIdx, otherValIdx))
+                return false;
+
+            if (getRange(i).end < other.getRange(j).end)
                 ++i;
             else
                 ++j;
         }
         return true;
+    }
+
+    private static boolean nonTrivialOverlap(LiveRange lhs, LiveRange rhs,
+            int iIdx, int jIdx)
+    {
+        if (lhs.start == rhs.start)
+        {
+            if (lhs.valId!= iIdx || rhs.valId != jIdx)
+                return true;
+        }
+        else if (lhs.start < rhs.start)
+        {
+            if (lhs.end > rhs.start)
+                return true;
+        }
+        else
+        {
+            if (rhs.end > lhs.start)
+                return true;
+        }
+        return false;
     }
 
     public void getOverlapingRanges(
@@ -415,7 +413,7 @@ public class LiveInterval implements Comparable<LiveInterval>
 
         if (idx != 0)
         {
-            int prior = idx-1;
+            int prior = idx - 1;
             if (lr.valId == ranges.get(prior).valId)
             {
                 if (ranges.get(prior).start <= start && ranges.get(prior).end >= start)
@@ -460,7 +458,7 @@ public class LiveInterval implements Comparable<LiveInterval>
 
     public void join(LiveInterval other, int copyIdx)
     {
-        LiveRange sourceLR = other.getLiveRangeContaining(copyIdx);
+        LiveRange sourceLR = other.getLiveRangeContaining(copyIdx-1);
         LiveRange destLR = getLiveRangeContaining(copyIdx);
         assert sourceLR != null && destLR != null:"Not joining due to copy?";
         int mergedSrcValIdx = sourceLR.valId;

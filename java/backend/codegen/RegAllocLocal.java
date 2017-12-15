@@ -121,7 +121,7 @@ public class RegAllocLocal extends MachineFunctionPass
                 // register
 				if (phyRegUsed[r] > 0)
                 {
-                    if (regInfo.getRegClass(r) == rc)
+                    if (rc.contains(r))
                     {
                         phyReg = r;
                         break;
@@ -133,7 +133,7 @@ public class RegAllocLocal extends MachineFunctionPass
                         {
                             for (int aliasReg : aliases)
                             {
-                                if (regInfo.getRegClass(aliasReg) == rc
+                                if (rc.contains(aliasReg)
                                         && phyRegUsed[aliasReg] != 0
                                         && phyRegUsed[aliasReg] != -2)
                                 {

@@ -65,6 +65,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
         au.addRequired(MachineLoop.class);
         au.addPreserved(MachineLoop.class);
         au.addPreserved(MachineDomTree.class);
+        au.addRequired(LiveIntervalCoalescing.class);
         super.getAnalysisUsage(au);
     }
 
@@ -220,7 +221,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
 
         float minWeigth = Float.MAX_VALUE;
         int minReg = 0;
-        TargetRegisterClass rc = tri.getRegClass(cur.register);
+        TargetRegisterClass rc = mri.getRegClass(cur.register);
         for (int reg : rc.getAllocableRegs(mf))
         {
             if (spillWeights[reg] <= minWeigth)

@@ -91,7 +91,7 @@ public final class PassRegisterationUtility
 
         new RegisterRegAlloc("linearscan","Linear Scan Register Allocation", RegAllocLinearScan::createLinearScanRegAllocator);
         new RegisterRegAlloc("local","Local register allocator", RegAllocLocal::createLocalRegAllocator);
-
+        new RegisterPass("register-coalescing", "Simple register coalescer", LiveIntervalCoalescing.class);
 
         new RegisterPass("Print out Function", "print-function", PrintMachineFunctionPass.class);
         new RegisterPass("Print out Module", "print-module", PrintModulePass.class);

@@ -16,7 +16,9 @@ package backend.codegen;
  * permissions and limitations under the License.
  */
 
-import backend.analysis.*;
+import backend.analysis.LiveVariables;
+import backend.analysis.MachineDomTree;
+import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
 import backend.support.IntStatistic;
 import backend.target.TargetInstrInfo;
@@ -25,10 +27,8 @@ import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.Module;
 import gnu.trove.map.hash.TIntIntHashMap;
-import gnu.trove.procedure.TIntIntProcedure;
 import tools.BitMap;
 import tools.OutParamWrapper;
-import tools.Pair;
 import tools.Util;
 import tools.commandline.BooleanOpt;
 import tools.commandline.Initializer;
@@ -56,9 +56,6 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
 
     public static IntStatistic numIntervalsAfter =
             new IntStatistic("liveIntervals", "Number of intervals after coalescing");
-
-    public static IntStatistic numJoins =
-            new IntStatistic("liveIntervals", "Number of intervals joins performed");
 
     public static IntStatistic numPeep =
             new IntStatistic("liveIntervals", "Number of identit moves eliminated after coalescing");
@@ -90,7 +87,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
      */
     private HashMap<MachineInstr, Integer> mi2Idx;
 
-    private TreeMap<Integer, LiveInterval> reg2LiveInterval;
+    public TreeMap<Integer, LiveInterval> reg2LiveInterval;
     private HashMap<LiveInterval, Integer> liveInterval2Reg;
 
     private LiveVariables lv;
@@ -100,7 +97,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private BitMap allocatableRegs;
     private TargetInstrInfo tii;
     private MachineRegisterInfo mri;
-    private TIntIntHashMap r2rMap = new TIntIntHashMap();
+    public TIntIntHashMap r2rMap = new TIntIntHashMap();
     private ArrayList<MachineBasicBlock> reversePostorder;
 
     public LiveIntervalAnalysis()
@@ -292,200 +289,12 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
      * @param reg
      * @return
      */
-    private int rep(int reg)
+    public int rep(int reg)
     {
         if (r2rMap.containsKey(reg))
             return r2rMap.get(reg);
 
         return reg;
-    }
-
-    private void joinIntervals()
-    {
-        System.err.printf("************ Joining Intervals *************\n");
-
-        MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
-        if (loopInfo != null)
-        {
-            if (loopInfo.isNoTopLevelLoop())
-            {
-                // If there are no loops in the function, join intervals in function
-                // order.
-                for (MachineBasicBlock mbb : mf.getBasicBlocks())
-                    joinIntervalsInMachineBB(mbb);
-            }
-            else
-            {
-                // Otherwise, join intervals in inner loops before other intervals.
-                // Unfortunately we can't just iterate over loop hierarchy here because
-                // there may be more MBB's than BB's.  Collect MBB's for sorting.
-                ArrayList<Pair<Integer, MachineBasicBlock>> mbbs = new ArrayList<>();
-                mf.getBasicBlocks().forEach(mbb -> {
-                    mbbs.add(Pair.get(loopInfo.getLoopDepth(mbb),
-                            mbb));
-                });
-
-                // Sort mbb by loop depth.
-                mbbs.sort((lhs, rhs) -> {
-                    if (lhs.first > rhs.first)
-                        return -1;
-                    if (lhs.first.equals(rhs.first) && lhs.second.getNumber() < rhs.second.getNumber())
-                        return -1;
-                    return 1;
-                });
-
-                // Finally, joi intervals in loop nest order.
-                for (Pair<Integer, MachineBasicBlock> pair : mbbs)
-                {
-                    joinIntervalsInMachineBB(pair.second);
-                }
-            }
-        }
-
-        System.err.printf("**** Register mapping ***\n");
-        r2rMap.forEachEntry(new TIntIntProcedure()
-        {
-            @Override
-            public boolean execute(int i, int i1)
-            {
-                System.err.printf(" reg %d -> reg %d\n", i, i1);
-                return false;
-            }
-        });
-    }
-
-    private void joinIntervalsInMachineBB(MachineBasicBlock mbb)
-    {
-        System.err.printf("%s:\n", mbb.getBasicBlock().getName());
-        TargetInstrInfo tii = tm.getInstrInfo();
-
-        for (MachineInstr mi : mbb.getInsts())
-        {
-            System.err.printf("%d\t", getInstructionIndex(mi));
-            mi.print(System.err, tm);
-
-            // we only join virtual registers with allocatable
-            // physical registers since we do not have liveness information
-            // on not allocatable physical registers
-            OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
-            OutParamWrapper<Integer> dstReg = new OutParamWrapper<>(0);
-            if (tii.isMoveInstr(mi, srcReg, dstReg, null, null)
-                    && (isVirtualRegister(srcReg.get())
-                    || lv.getAllocatablePhyRegs().get(srcReg.get()))
-                    && (isVirtualRegister(dstReg.get())
-                    || lv.getAllocatablePhyRegs().get(dstReg.get())))
-            {
-                // Get representaive register.
-                int regA = rep(srcReg.get());
-                int regB = rep(dstReg.get());
-
-                if (regA == regB)
-                    continue;
-
-                // If there are both physical register, we can not join them.
-                if (isPhysicalRegister(regA) && isPhysicalRegister(regB))
-                {
-                    continue;
-                }
-
-                // If they are not of the same register class, we cannot join them.
-                if (differingRegisterClasses(regA, regB))
-                {
-                    continue;
-                }
-
-                LiveInterval intervalA = getInterval(regA);
-                LiveInterval intervalB = getInterval(regB);
-                assert intervalA.register == regA && intervalB.register == regB
-                        :"Regiser diagMapping is horribly borken!";
-
-                System.err.printf("\t\tInspecting ");
-                intervalA.print(System.err, tri);
-                System.err.print(" and ");
-                intervalB.print(System.err, tri);
-                System.err.print(": ");
-
-                // If two intervals contain a single value and are joined by a copy, it
-                // does not matter if the intervals overlap, they can always be joined.
-                boolean triviallyJoinable = intervalA.containsOneValue() &&
-                        intervalB.containsOneValue();
-
-                int midDefIdx = getDefIndex(getInstructionIndex(mi));
-                if (triviallyJoinable || intervalB.joinable(intervalA, midDefIdx)
-                        && !overlapsAliases(intervalA, intervalB))
-                {
-                    intervalB.join(intervalA, midDefIdx);
-
-                    if (!isPhysicalRegister(regA))
-                    {
-                        r2rMap.remove(regA);
-                        r2rMap.put(regA, regB);
-                    }
-                    else
-                    {
-                        r2rMap.put(regB, regA);
-                        intervalB.register = regA;
-                        intervalA.swap(intervalB);
-                        reg2LiveInterval.remove(regB);
-                    }
-                    numJoins.inc();
-                }
-                else
-                {
-                    System.err.println("Interference!");
-                }
-            }
-        }
-    }
-
-    /**
-     *
-     * @param lhs
-     * @param rhs
-     * @return
-     */
-    private boolean overlapsAliases(LiveInterval lhs, LiveInterval rhs)
-    {
-        if (!isPhysicalRegister(lhs.register))
-        {
-            if (!isPhysicalRegister(rhs.register))
-                return false;       // Virtual register never aliased.
-            LiveInterval temp = lhs;
-            lhs = rhs;
-            rhs = temp;
-        }
-
-        assert isPhysicalRegister(lhs.register)
-                : "First interval describe a physical register";
-
-        for (int alias : tri.getAliasSet(lhs.register))
-        {
-            if (rhs.overlaps(getInterval(alias)))
-                return true;
-        }
-        return false;
-    }
-
-    /**
-     * Return true if the two specified registers belong to different register
-     * classes.  The registers may be either phys or virt regs.
-     * @param regA
-     * @param regB
-     * @return
-     */
-    private boolean differingRegisterClasses(int regA, int regB)
-    {
-        TargetRegisterClass rc = null;
-        if (isVirtualRegister(regA))
-            rc = mri.getRegClass(regA);
-        else
-            rc = tri.getRegClass(regA);
-
-        // Compare against the rc for the second reg.
-        if (isVirtualRegister(regB))
-            return !rc.equals(mri.getRegClass(regB));
-        else
-            return !rc.equals(tri.getRegClass(regB));
     }
 
     private int getNumIntervals()
@@ -521,10 +330,9 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         return newInterval;
     }
 
-    private LiveInterval getInterval(int reg)
+    public LiveInterval getInterval(int reg)
     {
-        assert reg2LiveInterval.containsKey(reg);
-        return reg2LiveInterval.get(reg);
+        return reg2LiveInterval.getOrDefault(reg, null);
     }
 
     public String getRegisterName(int register)
@@ -535,7 +343,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             return "%reg" + register;
     }
 
-    private int getInstructionIndex(MachineInstr mi)
+    public int getInstructionIndex(MachineInstr mi)
     {
         assert mi2Idx.containsKey(mi);
         return mi2Idx.get(mi);
@@ -547,7 +355,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         //return index - index % InstrSlots.NUM;
     }
 
-    private static int getDefIndex(int index)
+    public static int getDefIndex(int index)
     {
         return getBaseIndex(index) + InstrSlots.DEF;
     }

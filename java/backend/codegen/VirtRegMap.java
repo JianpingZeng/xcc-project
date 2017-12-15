@@ -17,7 +17,6 @@ package backend.codegen;
  */
 
 import backend.target.TargetRegisterClass;
-import backend.target.TargetRegisterInfo;
 import gnu.trove.map.hash.TIntIntHashMap;
 import tools.SetMultiMap;
 
@@ -66,8 +65,7 @@ public class VirtRegMap
 
     public int assignVirt2StackSlot(int virtReg)
     {
-        TargetRegisterInfo tri = mf.getTarget().getRegisterInfo();
-        TargetRegisterClass rc = tri.getRegClass(virtReg);
+        TargetRegisterClass rc = mf.getMachineRegisterInfo().getRegClass(virtReg);
         int fi = mf.getFrameInfo().createStackObject(rc);
         v2StackSlotMap.put(virtReg, fi);
         return fi;
