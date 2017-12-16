@@ -17,7 +17,6 @@ import java.util.LinkedList;
 public class MachineBasicBlock
 {
 	private LinkedList<MachineInstr> insts;
-	private MachineBasicBlock prev, next;
 	private final BasicBlock bb;
 	private TIntArrayList liveIns;
 
@@ -73,7 +72,11 @@ public class MachineBasicBlock
 
 	public void insert(int itr, MachineInstr instr)
 	{
-		insts.add(itr, instr);
+	    assert itr >= 0 && itr <= size();
+	    if (itr == size())
+	        insts.add(instr);
+	    else
+	        insts.add(itr, instr);
 		addNodeToList(instr);
 	}
 
@@ -219,9 +222,10 @@ public class MachineBasicBlock
 
 	public int getFirstTerminator()
 	{
-		assert !isEmpty() && getInstAt(size()-1).getDesc().isTerminator():
-				"Must have only one terminator instruction in the tail of MBB";
-		return size()-1;
+	    int i = 0;
+	    int size = size();
+	    while (i < size && !getInstAt(i).getDesc().isTerminator()) ++i;
+		return i;
 	}
 
 	/**
@@ -245,7 +249,19 @@ public class MachineBasicBlock
 
 	public boolean isLayoutSuccessor(MachineBasicBlock mbb)
 	{
-		return mbb.next == mbb;
+		if (parent != null && mbb.getParent() != null && parent == mbb.getParent())
+		{
+			ArrayList<MachineBasicBlock> mbbs = parent.getBasicBlocks();
+			for (int i = 0, e = mbb.size(); i < e; i++)
+			{
+				if (mbbs.get(i) == this)
+				{
+					if (i == e -1) return false;
+					return mbbs.get(i+1) == mbb;
+				}
+			}
+		}
+		return false;
 	}
 
 	public void removeInstrAt(int indexToDel)
