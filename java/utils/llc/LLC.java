@@ -17,10 +17,7 @@
 
 package utils.llc;
 
-import backend.codegen.MachineCodeEmitter;
-import backend.codegen.RegAllocLinearScan;
-import backend.codegen.RegAllocLocal;
-import backend.codegen.RegisterRegAlloc;
+import backend.codegen.*;
 import backend.pass.Pass;
 import backend.pass.PassCreator;
 import backend.pass.PassRegisterationUtility;
