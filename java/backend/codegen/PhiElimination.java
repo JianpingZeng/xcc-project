@@ -100,6 +100,7 @@ public final class PhiElimination extends MachineFunctionPass
 		// Replace each PHI node with move instr in predecessor
 		while (isDummyPhiInstr(mbb.getInstAt(0).getOpcode()))
 			lowerPhiNode(mbb, firstInstAfterPhi, vregPHIUsesCount);
+
 		return true;
 	}
 

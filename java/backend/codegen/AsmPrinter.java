@@ -28,6 +28,7 @@ import backend.target.*;
 import backend.type.Type;
 import backend.value.*;
 import backend.value.Value.UndefValue;
+import tools.TextUtils;
 import tools.Util;
 
 import java.io.OutputStream;
@@ -541,12 +542,6 @@ public abstract class AsmPrinter extends MachineFunctionPass
         return (int)val;
     }
 
-    public static boolean isprint(int c)
-    {
-        // TODO
-        return true;
-    }
-
     private static char toOctal(int x)
     {
         return (char)(x&0x7 + '0');
@@ -571,7 +566,7 @@ public abstract class AsmPrinter extends MachineFunctionPass
                 os.print("\\\"");
             else if (c == '\\')
                 os.print("\\\\");
-            else if (isprint(c))
+            else if (TextUtils.isPrintable(c))
                 os.print(c);
             else
             {

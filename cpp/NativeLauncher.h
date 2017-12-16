@@ -30,7 +30,7 @@
 /**
  * Creates a Java Virtual machine.
  */
-static JNIEnv* createVM(char* cmdPath);
+JNIEnv* createVM(char* cmdPath);
 
 /**
  * Call the specified main method in the main class, like utils.tablegen.TableGen

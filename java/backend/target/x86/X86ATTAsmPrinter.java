@@ -29,6 +29,7 @@ import backend.type.FunctionType;
 import backend.type.Type;
 import backend.value.*;
 import gnu.trove.map.hash.TObjectIntHashMap;
+import tools.TextUtils;
 import tools.Util;
 
 import java.io.OutputStream;
@@ -227,7 +228,7 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         String name = v.getName();
         for (int i = 0,e = name.length(); i != e; i++)
         {
-            if (isprint(name.charAt(i)))
+            if (TextUtils.isPrintable(name.charAt(i)))
                 os.print(name.charAt(0));
         }
     }
@@ -450,11 +451,11 @@ public abstract class X86ATTAsmPrinter extends AsmPrinter
         {
             case InteralLinkage:
                 switchSection(".text", f);
-                emitAlignment(4, f);
+                emitAlignment(fnAlign, f);
                 break;
             case ExternalLinkage:
                 switchSection(".text", f);
-                emitAlignment(4, f);
+                emitAlignment(fnAlign, f);
                 os.println("\t.global\t" + curFnName);
                 break;
             default:
