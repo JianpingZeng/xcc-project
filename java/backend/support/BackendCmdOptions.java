@@ -94,6 +94,11 @@ public class BackendCmdOptions
                     desc("Register allocator to use: (default = local)"),
                     init((MachinePassCtor) RegAllocLocal::createLocalRegAllocator));
 
+    public static final BooleanOpt UseDFSOnNumberMI =
+            new BooleanOpt(optionName("use-dfs-numbering-mi"),
+                    new OptionHiddenApplicator(Hidden),
+                    desc("Use dfs order to number machine instr(default to true)"),
+                    init(true));
     /**
      * Choose an appropriate register allocator according command line option.
      * @return

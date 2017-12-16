@@ -32,6 +32,7 @@ public final class DepthFirstOrder
     /**
      * Computes the reverse post order for the specified CFG from the start node.
      * The reverse post order of Basic Block is restored in returned list.
+     *
      * @param start
      * @return
      */
@@ -46,10 +47,12 @@ public final class DepthFirstOrder
     /**
      * Computes the reverse post order for the specified CFG from the start node.
      * The reverse post order of Basic Block is restored in returned list.
+     *
      * @param start
      * @return
      */
-    public static ArrayList<MachineBasicBlock> reversePostOrder(MachineBasicBlock start)
+    public static ArrayList<MachineBasicBlock> reversePostOrder(
+            MachineBasicBlock start)
     {
         ArrayList<MachineBasicBlock> visited = new ArrayList<>();
         visited.addAll(postOrder(start));
@@ -91,7 +94,7 @@ public final class DepthFirstOrder
     {
         if (visited.add(start))
         {
-            start.getSuccessors().forEach(succ->visit(succ, result, visited));
+            start.getSuccessors().forEach(succ -> visit(succ, result, visited));
             result.add(start);
         }
     }
@@ -116,6 +119,25 @@ public final class DepthFirstOrder
             temps.forEach(stack::push);
         }
         return ret;
+    }
+
+    private static void visitDFS(MachineBasicBlock start,
+            ArrayList<MachineBasicBlock> result,
+            HashSet<MachineBasicBlock> visited)
+    {
+        if (visited.add(start))
+        {
+            result.add(start);
+            start.getSuccessors().forEach(succ -> visitDFS(succ, result, visited));
+        }
+    }
+
+    public static ArrayList<MachineBasicBlock> dfs(MachineBasicBlock entry)
+    {
+        ArrayList<MachineBasicBlock> result = new ArrayList<>();
+        HashSet<MachineBasicBlock> visited = new HashSet<>();
+        visitDFS(entry, result, visited);
+        return result;
     }
 
     public static ArrayList<MachineBasicBlock> dfTraversal(MachineBasicBlock entry)

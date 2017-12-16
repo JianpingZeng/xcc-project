@@ -20,6 +20,7 @@ import backend.analysis.LiveVariables;
 import backend.analysis.MachineDomTree;
 import backend.analysis.MachineLoop;
 import backend.pass.AnalysisUsage;
+import backend.support.DepthFirstOrder;
 import backend.support.IntStatistic;
 import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
@@ -29,19 +30,16 @@ import backend.value.Module;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Util;
-import tools.commandline.BooleanOpt;
-import tools.commandline.Initializer;
-import tools.commandline.OptionNameApplicator;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.TreeMap;
 
+import static backend.support.BackendCmdOptions.UseDFSOnNumberMI;
 import static backend.support.DepthFirstOrder.dfTraversal;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
-import static tools.commandline.Desc.desc;
 
 /**
  * @author Xlous.zeng
@@ -84,7 +82,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private BitMap allocatableRegs;
     private TargetInstrInfo tii;
     private MachineRegisterInfo mri;
-    private ArrayList<MachineBasicBlock> reversePostorder;
+    private ArrayList<MachineBasicBlock> numberOrder;
 
     public LiveIntervalAnalysis()
     {
@@ -156,16 +154,17 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         // Step#2: Numbering each MachineInstr in each MachineBasicBlock.
 
         int idx = 0;
-        reversePostorder = dfTraversal(mf.getEntryBlock());
+        numberOrder = UseDFSOnNumberMI.value?
+                DepthFirstOrder.dfs(mf.getEntryBlock()) :dfTraversal(mf.getEntryBlock());
         int numOfMI = 0;
-        for (MachineBasicBlock mbb : reversePostorder)
+        for (MachineBasicBlock mbb : numberOrder)
         {
             numOfMI += mbb.size();
         }
         idx2MI = new MachineInstr[numOfMI];
 
         // Step#3: Walk through each MachineInstr to compute live interval.
-        for (MachineBasicBlock mbb : reversePostorder)
+        for (MachineBasicBlock mbb : numberOrder)
         {
             for (int i = 0, e = mbb.size(); i != e; i++)
             {
@@ -177,6 +176,17 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
             }
         }
 
+        if (Util.DEBUG)
+        {
+            for (MachineBasicBlock mbb : mf.getBasicBlocks())
+            {
+                for (MachineInstr mi : mbb.getInsts())
+                {
+                    System.err.printf("%d:", mi2Idx.get(mi));
+                    mi.print(System.err, tm);
+                }
+            }
+        }
         // Step#4: Compute live interval.
         computeLiveIntervals();
 
@@ -590,7 +600,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         // MachineInstr's SSA property, definition dominates all uses.
         // So avoiding iterative dataflow analysis to compute local liveIn and
         // liveOuts.
-        for (MachineBasicBlock mbb : reversePostorder)
+        for (MachineBasicBlock mbb : numberOrder)
         {
             for (int i = 0, e = mbb.size(); i != e; i++)
             {
