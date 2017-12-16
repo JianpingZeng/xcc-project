@@ -26,7 +26,6 @@ import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
 import backend.value.Module;
-import gnu.trove.map.hash.TIntIntHashMap;
 import tools.BitMap;
 import tools.OutParamWrapper;
 import tools.Util;
@@ -37,7 +36,6 @@ import tools.commandline.OptionNameApplicator;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.TreeMap;
 
 import static backend.support.DepthFirstOrder.dfTraversal;
@@ -54,19 +52,8 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     public static IntStatistic numIntervals =
             new IntStatistic("liveIntervals", "Number of original intervals");
 
-    public static IntStatistic numIntervalsAfter =
-            new IntStatistic("liveIntervals", "Number of intervals after coalescing");
-
-    public static IntStatistic numPeep =
-            new IntStatistic("liveIntervals", "Number of identit moves eliminated after coalescing");
-
     public static IntStatistic numFolded =
             new IntStatistic("liveIntervals", "Number of loads/stores folded into instructions");
-
-    public static BooleanOpt EnableJoining = new BooleanOpt(
-            OptionNameApplicator.optionName("join-liveintervals"),
-            desc("Join compatible live interval"),
-            Initializer.init(true));
 
     public interface InstrSlots
     {
@@ -85,7 +72,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     /**
      * A mapping from MachineInstr to its number.
      */
-    private HashMap<MachineInstr, Integer> mi2Idx;
+    public HashMap<MachineInstr, Integer> mi2Idx;
 
     public TreeMap<Integer, LiveInterval> reg2LiveInterval;
     private HashMap<LiveInterval, Integer> liveInterval2Reg;
@@ -97,7 +84,6 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
     private BitMap allocatableRegs;
     private TargetInstrInfo tii;
     private MachineRegisterInfo mri;
-    public TIntIntHashMap r2rMap = new TIntIntHashMap();
     private ArrayList<MachineBasicBlock> reversePostorder;
 
     public LiveIntervalAnalysis()
@@ -139,7 +125,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         return "Computes Live Intervals for each virtual register";
     }
 
-    private void putIndex2MI(int idx, MachineInstr mi)
+    public void putIndex2MI(int idx, MachineInstr mi)
     {
         idx2MI[idx >> Util.log2(InstrSlots.NUM)] = mi;
     }
@@ -210,57 +196,6 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         if (EnableJoining.value)
             joinIntervals();
         */
-        numIntervalsAfter.add(getNumIntervals());
-
-        // perform a final pass over the instructions and compute spill
-        // weights, coalesce virtual registers and remove identity moves
-        MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
-        TargetInstrInfo tii = tm.getInstrInfo();
-
-        for (MachineBasicBlock mbb : mf.getBasicBlocks())
-        {
-            int loopDepth = loopInfo.getLoopDepth(mbb);
-
-            for (Iterator<MachineInstr> itr = mbb.getInsts().iterator(); itr.hasNext(); )
-            {
-                MachineInstr mi = itr.next();
-                OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
-                OutParamWrapper<Integer> dstReg = new OutParamWrapper<>();
-                int regRep;
-
-                // If the move will be an identify move delete it.
-                if (tii.isMoveInstr(mi, srcReg, dstReg, null, null)
-                        && (regRep = rep(srcReg.get())) == rep(dstReg.get()))
-                {
-                    // Remove from def list.
-                    // LiveInterval interval = getOrCreateInterval(regRep);
-                    if (mi2Idx.containsKey(mi))
-                    {
-                        putIndex2MI(mi2Idx.get(mi)/InstrSlots.NUM, null);
-                        mi2Idx.remove(mi);
-                    }
-                    itr.remove();
-                    numPeep.inc();
-                }
-                else
-                {
-                    for (int i = 0, e = mi.getNumOperands(); i < e; i++)
-                    {
-                        MachineOperand mo = mi.getOperand(i);
-                        if (mo.isRegister() && mo.getReg() != 0 && isVirtualRegister(mo.getReg()))
-                        {
-                            // Replace register with representative register.
-                            int reg = rep(mo.getReg());
-                            if (reg != mo.getReg())
-                                mi.setMachineOperandReg(i, reg);
-
-                            LiveInterval interval = getInterval(reg);
-                            interval.weight += ((mo.isUse() ? 1:0) + (mo.isDef()?1:0)) + Math.pow(10, loopDepth);
-                        }
-                    }
-                }
-            }
-        }
 
         if (Util.DEBUG)
         {
@@ -284,20 +219,7 @@ public class LiveIntervalAnalysis extends MachineFunctionPass
         return true;
     }
 
-    /**
-     * Returns the representative of this register.
-     * @param reg
-     * @return
-     */
-    public int rep(int reg)
-    {
-        if (r2rMap.containsKey(reg))
-            return r2rMap.get(reg);
-
-        return reg;
-    }
-
-    private int getNumIntervals()
+    public int getNumIntervals()
     {
         return reg2LiveInterval.size();
     }
