@@ -2769,7 +2769,8 @@ public abstract class Instruction extends User
         {
             assert value != null : "Phi node got a null value";
             assert block != null : "Phi node got a null basic block";
-            assert value.getType() == getType() : "All of operands of Phi must be same type.";
+            assert value.getType().equals(getType())
+                    : "All of operands of Phi must be same type.";
             assert index < getNumOfOperands();
 
             operandList.set(index, new Use(value, this));

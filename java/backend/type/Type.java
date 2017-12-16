@@ -40,7 +40,6 @@ import java.util.LinkedList;
  */
 public class Type implements LLVMTypeID, AbstractTypeUser
 {
-
     /**
      * The current base type of this type.
      */

@@ -900,12 +900,12 @@ public class MachineInstr implements Cloneable
 		return memOperands.get(index);
 	}
 
-	public void setMachineOperandReg(int idx, int physReg)
+	public void setMachineOperandReg(int idx, int reg)
 	{
 		assert idx >= 0 && idx < getNumOperands();
-		assert isPhysicalRegister(physReg);
+		//assert isPhysicalRegister(reg);
 		assert getOperand(idx).isRegister();
-		getOperand(idx).setReg(physReg);
+		getOperand(idx).setReg(reg);
 	}
 
 	public int index()

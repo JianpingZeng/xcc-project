@@ -4,7 +4,7 @@
 static int countItr = 0;
 float ffabs(float x)
 {
-	return ((x >= 0) << 1)*x - x;
+	return ((x >= 0)*2)*x - x;
 }
 float fsqrt(float a)
 {

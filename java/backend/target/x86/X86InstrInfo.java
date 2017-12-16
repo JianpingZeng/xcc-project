@@ -883,7 +883,6 @@ public class X86InstrInfo extends TargetInstrInfoImpl
             LiveVariables lv)
     {
         MachineInstr mi = mbb.getInstAt(insertPos);
-        MachineFunction mf = mi.getParent().getParent();
 
         // All instructions input are two-addr instructions.  Get the known operands.
         int dest = mi.getOperand(0).getReg();

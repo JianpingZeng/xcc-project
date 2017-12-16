@@ -187,14 +187,14 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                         }
                                     }
 
+                                    MachineInstr oldMI = mbb.getInstAt(i);
                                     MachineInstr newMI = tii.convertToThreeAddress(mbb, i, lv);
                                     if (newMI != null)
                                     {
                                         if (Util.DEBUG)
                                         {
                                             System.err.print("2addr: CONVERTING 2-ADDR: ");
-                                            mbb.getInstAt(i)
-                                                    .print(System.err, null);
+                                            oldMI.print(System.err, null);
                                             System.err.print("2addr:            3-ADDR: ");
                                             newMI.print(System.err, null);
                                         }
@@ -204,10 +204,9 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
                                                 false, tri) != null)
                                         {
                                             sunk = sink3AddrInstruction(mbb,
-                                                    newMI, regB, i);
+                                                    newMI, regB, i+1);
                                         }
-
-                                        mbb.remove(i); // Nuke the old mi.
+                                        mbb.remove(oldMI);  // Nuke the old mi.
 
                                         if (!sunk)
                                         {
@@ -416,6 +415,7 @@ public final class TwoAddrInstructionPass extends MachineFunctionPass
         for (DefUseChainIterator itr = mri.getUseIterator(savedReg); itr.hasNext(); )
         {
             MachineOperand useMO = itr.getOpearnd();
+            itr.next();
             if (!useMO.isKill())
                 continue;
             killMI = useMO.getParentMI();
