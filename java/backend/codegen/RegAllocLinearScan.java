@@ -134,7 +134,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
                     inactive.remove(i);
                     --i;
                     active.add(li);
-                    prt.addRegUse(li.register);
+                    prt.addRegUse(vrm.getPhys(li.register));
                 }
             }
 
@@ -231,7 +231,7 @@ public class RegAllocLinearScan extends MachineFunctionPass
             }
         }
 
-        System.err.printf("\tregister with min weight: %s (%d)\n",
+        System.err.printf("\tregister with min weight: %s (%f)\n",
                 tri.getName(minReg),
                 minWeigth);
 

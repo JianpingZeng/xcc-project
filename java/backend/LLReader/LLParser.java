@@ -3084,7 +3084,7 @@ public final class LLParser
                 val.set(getGlobalVal(id.intVal, ty, id.loc));
                 return val.get() == null;
             case t_APSInt:
-                if (!(ty instanceof PointerType))
+                if (!(ty instanceof IntegerType))
                 {
                     return error(id.loc, "integer constant must have integer type");
                 }

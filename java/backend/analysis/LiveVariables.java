@@ -352,6 +352,7 @@ public final class LiveVariables extends MachineFunctionPass
         for (int i = 0; i < virRegInfo.length; i++)
         {
             VarInfo vi = virRegInfo[i];
+            if (vi == null) continue;
             for (int j = 0, sz2 = vi.kills.size(); j != sz2; j++)
             {
                 MachineInstr mi = vi.kills.get(j);

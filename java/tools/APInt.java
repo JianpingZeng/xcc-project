@@ -97,7 +97,6 @@ public class APInt implements Cloneable
 
     public APInt(long[] val, int bits)
     {
-        assert val.length == bits;
         assert bits > 0 : "bitwidth too small";
         bitWidth = bits;
         pVal = val;
@@ -669,20 +668,20 @@ public class APInt implements Cloneable
      */
     public APInt zext(int width)
     {
-        assert width > 0 : "Invalid APInt ZeroExtend request";
-        if (width <= APINT_WORD_SIZE)
-            return new APInt(width, val);
-
-        APInt result = new APInt(new long[getNumWords(width)], width);
-
-        // Copys words
-        int i;
-        for (i = 0; i != getNumWords(); i++)
-            result.pVal[i] = getRawData()[i];
-
-        // Zero remaining words.
-        Arrays.fill(result.pVal, i, result.pVal.length, 0);
-        return result;
+        assert width > bitWidth : "Invalid APInt ZeroExtend request";
+        int wordBefore = getNumWords();
+        bitWidth = width;
+        int wordAfter = getNumWords();
+        if (wordBefore != wordAfter)
+        {
+            long[] newVal = new long[wordAfter];
+            if (wordBefore == 1)
+                newVal[0] = val;
+            else
+                System.arraycopy(pVal, 0, newVal, 0, pVal.length);
+            pVal = newVal;
+        }
+        return this;
     }
 
     public APInt sext(int width)

@@ -1,4 +1,4 @@
-//#define fabs(x) (x - (x < 0)*(2x))
+//#define fabs(x) (x - ((x) < 0)*(2*(x)))
 float fabs(float x)
 {
     return x - (x < 0)*(2*x);
