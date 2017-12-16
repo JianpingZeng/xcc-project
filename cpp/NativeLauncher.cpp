@@ -35,15 +35,15 @@ using namespace std;
  * Creates a Java Virtual machine.
  * @param cmdPath The path to native launcher, like jlang-cc etc.
  */
-static JNIEnv* createVM(char* cmdPath)
+JNIEnv* createVM(char* cmdPath)
 {
     #ifdef PATH_MAX
         char absolute[PATH_MAX] = {0};
     #else
         char absolute[4086] = {0};
     #endif
-    realpath(cmdPath, absolute);
-
+    char* res = realpath(cmdPath, absolute);
+    res = res;  // to avoid warning on unused result
     #ifdef NDEBUG
     cout<<absolute<<endl;
     #endif

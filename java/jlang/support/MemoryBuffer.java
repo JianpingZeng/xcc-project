@@ -107,8 +107,10 @@ public class MemoryBuffer implements Cloneable
 
     public String getSubString(int lineStart, int lineEnd)
     {
-        assert 0 <= lineStart && lineStart < lineEnd
+        assert 0 <= lineStart && lineStart <= lineEnd
                 && lineEnd < buffer.length;
+        if (lineEnd == lineStart) return "";
+
         StringBuilder sb = new StringBuilder();
         for (int i = lineStart; i < lineEnd; i++)
             sb.append(buffer[i]);
