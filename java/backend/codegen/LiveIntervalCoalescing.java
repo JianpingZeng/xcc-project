@@ -25,15 +25,22 @@ import backend.target.TargetInstrInfo;
 import backend.target.TargetMachine;
 import backend.target.TargetRegisterClass;
 import backend.target.TargetRegisterInfo;
+import gnu.trove.map.hash.TIntIntHashMap;
 import tools.OutParamWrapper;
 import tools.Pair;
 import tools.Util;
+import tools.commandline.BooleanOpt;
+import tools.commandline.Initializer;
+import tools.commandline.OptionNameApplicator;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import static backend.codegen.LiveIntervalAnalysis.getDefIndex;
+import static backend.codegen.PrintMachineFunctionPass.createMachineFunctionPrinterPass;
 import static backend.target.TargetRegisterInfo.isPhysicalRegister;
 import static backend.target.TargetRegisterInfo.isVirtualRegister;
+import static tools.commandline.Desc.desc;
 
 /**
  * This file defines a class takes responsibility for performing register coalescing
@@ -46,12 +53,25 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
     public static IntStatistic numJoins =
             new IntStatistic("liveIntervals", "Number of intervals joins performed");
 
+    public static IntStatistic numIntervalsAfter =
+            new IntStatistic("liveIntervals", "Number of intervals after coalescing");
+
+    public static IntStatistic numPeep =
+            new IntStatistic("liveIntervals", "Number of identit moves eliminated after coalescing");
+
+    public static BooleanOpt EnableJoining = new BooleanOpt(
+            OptionNameApplicator.optionName("join-liveintervals"),
+            desc("Join compatible live interval"),
+            Initializer.init(true));
+
+
     private MachineFunction mf;
     private TargetMachine tm;
     private LiveIntervalAnalysis li;
     private TargetRegisterInfo tri;
     private MachineRegisterInfo mri;
     private LiveVariables lv;
+    public TIntIntHashMap r2rMap = new TIntIntHashMap();
 
     @Override
     public void getAnalysisUsage(AnalysisUsage au)
@@ -64,6 +84,18 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
         au.addPreserved(TwoAddrInstructionPass.class);
         super.getAnalysisUsage(au);
     }
+    /**
+     * Returns the representative of this register.
+     * @param reg
+     * @return
+     */
+    public int rep(int reg)
+    {
+        if (r2rMap.containsKey(reg))
+            return rep(r2rMap.get(reg));
+
+        return reg;
+    }
 
     @Override
     public boolean runOnMachineFunction(MachineFunction mf)
@@ -74,8 +106,67 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
         tri = tm.getRegisterInfo();
         mri = mf.getMachineRegisterInfo();
         lv = (LiveVariables) getAnalysisToUpDate(LiveVariables.class);
+
         joinIntervals();
-        return false;
+
+        numIntervalsAfter.add(li.getNumIntervals());
+
+        // perform a final pass over the instructions and compute spill
+        // weights, coalesce virtual registers and remove identity moves
+        MachineLoop loopInfo = (MachineLoop) getAnalysisToUpDate(MachineLoop.class);
+        TargetInstrInfo tii = tm.getInstrInfo();
+
+        for (MachineBasicBlock mbb : mf.getBasicBlocks())
+        {
+            int loopDepth = loopInfo.getLoopDepth(mbb);
+
+            for (Iterator<MachineInstr> itr = mbb.getInsts().iterator(); itr.hasNext(); )
+            {
+                MachineInstr mi = itr.next();
+                OutParamWrapper<Integer> srcReg = new OutParamWrapper<>(0);
+                OutParamWrapper<Integer> dstReg = new OutParamWrapper<>(0);
+                int regRep;
+
+                // If the move will be an identify move delete it.
+                if (tii.isMoveInstr(mi, srcReg, dstReg, null, null)
+                        && (regRep = rep(srcReg.get())) == rep(dstReg.get())
+                        && regRep != 0)
+                {
+                    // Remove from def list.
+                    // LiveInterval interval = getOrCreateInterval(regRep);
+                    if (li.mi2Idx.containsKey(mi))
+                    {
+                        li.putIndex2MI(li.mi2Idx.get(mi) /
+                                LiveIntervalAnalysis.InstrSlots.NUM, null);
+                        li.mi2Idx.remove(mi);
+                    }
+                    itr.remove();
+                    numPeep.inc();
+                }
+                else
+                {
+                    for (int i = 0, e = mi.getNumOperands(); i < e; i++)
+                    {
+                        MachineOperand mo = mi.getOperand(i);
+                        if (mo.isRegister() && mo.getReg() != 0 && isVirtualRegister(mo.getReg()))
+                        {
+                            // Replace register with representative register.
+                            int reg = rep(mo.getReg());
+                            if (reg != mo.getReg())
+                                mi.setMachineOperandReg(i, reg);
+
+                            LiveInterval interval = li.getInterval(reg);
+                            interval.weight += ((mo.isUse() ? 1:0) + (mo.isDef()?1:0)) + Math.pow(10, loopDepth);
+                        }
+                    }
+                }
+            }
+        }
+
+        createMachineFunctionPrinterPass(System.err,
+                "# *** IR dump after register coalescing ***:\n")
+                .runOnMachineFunction(mf);
+        return true;
     }
 
     @Override
@@ -130,9 +221,9 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
         if (Util.DEBUG)
         {
             System.err.printf("**** Register mapping ***\n");
-            for (int key : li.r2rMap.keys())
+            for (int key : r2rMap.keys())
             {
-                System.err.printf(" reg %d -> reg %d\n", key, li.r2rMap.get(key));
+                System.err.printf(" reg %d -> reg %d\n", key, r2rMap.get(key));
             }
         }
     }
@@ -163,8 +254,8 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
                     || lv.getAllocatablePhyRegs().get(dstReg.get())))
             {
                 // Get representaive register.
-                int regA = li.rep(srcReg.get());
-                int regB = li.rep(dstReg.get());
+                int regA = rep(srcReg.get());
+                int regB = rep(dstReg.get());
 
                 if (regA == regB)
                     continue;
@@ -208,12 +299,12 @@ public final class LiveIntervalCoalescing extends MachineFunctionPass
 
                     if (!isPhysicalRegister(regA))
                     {
-                        li.r2rMap.remove(regA);
-                        li.r2rMap.put(regA, regB);
+                        r2rMap.remove(regA);
+                        r2rMap.put(regA, regB);
                     }
                     else
                     {
-                        li.r2rMap.put(regB, regA);
+                        r2rMap.put(regB, regA);
                         intervalB.register = regA;
                         intervalA.swap(intervalB);
                         li.reg2LiveInterval.remove(regB);
